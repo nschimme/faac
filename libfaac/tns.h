@@ -30,6 +30,8 @@ Copyright (c) 1997.
 #ifndef TNS_H
 #define TNS_H
 
+#include "faac_real.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
