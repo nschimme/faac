@@ -28,7 +28,7 @@
 #include "util.h"
 #include <faac.h>
 
-typedef faac_real psyfloat;
+typedef float psyfloat;
 
 typedef struct
 {
