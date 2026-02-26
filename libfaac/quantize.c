@@ -270,16 +270,16 @@ static void qlevel(CoderInfo *coderInfo,
 
               int res;
               __asm__ __volatile__ (
-                  "move $v0, %1\n\t"
-                  "move $v1, %2\n\t"
-                  MXU_S32I2M(MXU_XR1, MIPS_V0)
-                  MXU_S32I2M(MXU_XR2, MIPS_V1)
-                  MXU_S32CPS(MXU_XR3, MXU_XR1, MXU_XR2)
-                  MXU_S32M2I(MXU_XR3, MIPS_V0)
-                  "move %0, $v0\n\t"
+                  "move $2, %1\n\t"
+                  "move $3, %2\n\t"
+                  MXU_S32I2M(1, 2)
+                  MXU_S32I2M(2, 3)
+                  MXU_S32CPS(3, 1, 2)
+                  MXU_S32M2I(3, 2)
+                  "move %0, $2\n\t"
                   : "=r"(res)
                   : "r"(q), "r"(u.i)
-                  : "v0", "v1"
+                  : "$2", "$3"
               );
               xi[cnt] = res;
           }

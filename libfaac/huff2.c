@@ -121,17 +121,21 @@ static int huffcode(int *qs /* quantized spectrum */,
                             ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
             int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
             __asm__ __volatile__ (
-                "move $v0, %1\n\t"
-                "move $v1, %2\n\t"
-                MXU_S32I2M(1, 2)
-                MXU_S32I2M(2, 3)
-                MXU_Q8MULSU(3, 1, 2, 4)
-                MXU_D16ASUM(5, 3, 4, 0, MXU_APTN2_AA)
-                MXU_S32M2I(5, 2)
-                "move %0, $v0\n\t"
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
+                MXU_S32I2M(1, 2) /* XR1 = qp_packed */
+                MXU_S32I2M(2, 3) /* XR2 = coeffs */
+                MXU_S32I2M(5, 0) /* XR5 = 0 */
+                MXU_S32I2M(6, 0) /* XR6 = 0 */
+                MXU_Q8MULSU(3, 1, 2, 4) /* XR3={P3,P2}, XR4={P1,P0} */
+                MXU_D16ASUM(5, 3, 4, 6, MXU_APTN2_AA) /* XR5=P3+P2, XR6=P1+P0 */
+                MXU_S32M2I(5, 2) /* v0 = XR5 */
+                MXU_S32M2I(6, 3) /* v1 = XR6 */
+                "addu $2, $2, $3\n\t"
+                "move %0, $2\n\t"
                 : "=r"(res)
                 : "r"(qp_packed), "r"(coeffs)
-                : "v0", "v1"
+                : "$2", "$3"
             );
             idx = res + 40;
 #else
@@ -163,18 +167,22 @@ static int huffcode(int *qs /* quantized spectrum */,
                             ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
             int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
             __asm__ __volatile__ (
-                "move $v0, %1\n\t"
-                "move $v1, %2\n\t"
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
                 MXU_S32I2M(1, 2)
                 MXU_S32I2M(2, 3)
+                MXU_S32I2M(6, 0)
+                MXU_S32I2M(7, 0)
                 MXU_Q8ABD(3, 1, 0)
-                MXU_Q8MUL(4, 3, 2, 5) /* XR4, XR5 = abs(qp) * coeffs */
-                MXU_D16ASUM(6, 4, 5, 0, MXU_APTN2_AA)
+                MXU_Q8MUL(4, 3, 2, 5) /* XR4={P3,P2}, XR5={P1,P0} */
+                MXU_D16ASUM(6, 4, 5, 7, MXU_APTN2_AA)
                 MXU_S32M2I(6, 2)
-                "move %0, $v0\n\t"
+                MXU_S32M2I(7, 3)
+                "addu $2, $2, $3\n\t"
+                "move %0, $2\n\t"
                 : "=r"(res)
                 : "r"(qp_packed), "r"(coeffs)
-                : "v0", "v1"
+                : "$2", "$3"
             );
             idx = res;
 #else
@@ -223,17 +231,18 @@ static int huffcode(int *qs /* quantized spectrum */,
             int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16;
             int coeffs = (9 << 24) | (1 << 16);
             __asm__ __volatile__ (
-                "move $v0, %1\n\t"
-                "move $v1, %2\n\t"
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
                 MXU_S32I2M(1, 2)
                 MXU_S32I2M(2, 3)
+                MXU_S32I2M(5, 0)
                 MXU_Q8MULSU(3, 1, 2, 4)
                 MXU_D16ASUM(5, 3, 4, 0, MXU_APTN2_AA)
                 MXU_S32M2I(5, 2)
-                "move %0, $v0\n\t"
+                "move %0, $2\n\t"
                 : "=r"(res)
                 : "r"(qp_packed), "r"(coeffs)
-                : "v0", "v1"
+                : "$2", "$3"
             );
             idx = res + 40;
 #else

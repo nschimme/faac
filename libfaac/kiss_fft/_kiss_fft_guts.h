@@ -55,21 +55,23 @@ struct kiss_fft_state{
         _arai = (int)((unsigned short)(a).r | ((unsigned short)(a).i << 16)); \
         _brbi = (int)((unsigned short)(b).r | ((unsigned short)(b).i << 16)); \
         __asm__ __volatile__ ( \
-            "move $v0, %2\n\t" \
-            "move $v1, %3\n\t" \
-            MXU_S32I2M(1, 2) \
-            MXU_S32I2M(2, 3) \
-            MXU_D16MUL(3, 1, 2, 4, MXU_OPTN2_WW) \
-            MXU_D16MUL(5, 1, 2, 6, MXU_OPTN2_XW) \
-            MXU_D32ADD(7, 3, 4, 0, MXU_APTN2_SA) \
-            MXU_D32ADD(8, 5, 6, 0, MXU_APTN2_AA) \
-            MXU_S32M2I(7, 2) \
-            MXU_S32M2I(8, 3) \
-            "move %0, $v0\n\t" \
-            "move %1, $v1\n\t" \
+            "move $2, %2\n\t" \
+            "move $3, %3\n\t" \
+            MXU_S32I2M(1, 2) /* XR1 = {a.i, a.r} */ \
+            MXU_S32I2M(2, 3) /* XR2 = {b.i, b.r} */ \
+            MXU_D16MUL(3, 1, 2, 4, MXU_OPTN2_WW) /* XR3=a.i*b.i, XR4=a.r*b.r */ \
+            MXU_D16MUL(5, 1, 2, 6, MXU_OPTN2_XW) /* XR5=a.i*b.r, XR6=a.r*b.i */ \
+            MXU_S32M2I(4, 2) /* v0 = a.r*b.r */ \
+            MXU_S32M2I(3, 3) /* v1 = a.i*b.i */ \
+            "subu $2, $2, $3\n\t" /* res_r = a.r*b.r - a.i*b.i */ \
+            MXU_S32M2I(6, 3) /* v1 = a.r*b.i */ \
+            MXU_S32M2I(5, 4) /* a0 = a.i*b.r */ \
+            "addu $3, $3, $4\n\t" /* res_i = a.r*b.i + a.i*b.r */ \
+            "move %0, $2\n\t" \
+            "move %1, $3\n\t" \
             : "=r"(_res_r), "=r"(_res_i) \
             : "r"(_arai), "r"(_brbi) \
-            : "v0", "v1" \
+            : "$2", "$3", "$4" \
         ); \
         (m).r = (short)(_res_r >> 15); \
         (m).i = (short)(_res_i >> 15); \

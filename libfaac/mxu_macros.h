@@ -133,31 +133,31 @@
 
 /* S32AND XRa, XRb, XRc: Bitwise AND */
 #define MXU_S32AND(xra, xrb, xrc) \
-    ".word (0x1c << 26) | (4 << 21) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x27\n\t"
+    ".word (0x1c << 26) | (4 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x27\n\t"
 
 /* S32OR XRa, XRb, XRc: Bitwise OR */
 #define MXU_S32OR(xra, xrb, xrc) \
-    ".word (0x1c << 26) | (5 << 21) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x27\n\t"
+    ".word (0x1c << 26) | (5 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x27\n\t"
 
 /* S32CPS XRa, XRb, XRc: Copy Sign */
 #define MXU_S32CPS(xra, xrb, xrc) \
-    ".word (0x1c << 26) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x07\n\t"
+    ".word (0x1c << 26) | (0 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x07\n\t"
 
 /* S32MAX XRa, XRb, XRc: Signed Maximum */
 #define MXU_S32MAX(xra, xrb, xrc) \
-    ".word (0x1c << 26) | (0 << 21) | (0 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x03\n\t"
+    ".word (0x1c << 26) | (0 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x03\n\t"
 
 /* Q8ABD XRa, XRb, XRc: Quad 8-bit Absolute Difference */
 #define MXU_Q8ABD(xra, xrb, xrc) \
-    ".word (0x1c << 26) | (0 << 21) | (4 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x07\n\t"
+    ".word (0x1c << 26) | (4 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x07\n\t"
 
 /* Enable MXU utility */
 #define MXU_ENABLE() \
     __asm__ __volatile__ ( \
-        "li $v0, 1\n\t" \
-        MXU_S32I2M(MXU_XR16, MIPS_V0) \
+        "li $2, 1\n\t" \
+        MXU_S32I2M(MXU_XR16, 2) \
         "nop\n\t" "nop\n\t" "nop\n\t" \
-        : : : "v0" \
+        : : : "$2" \
     )
 
 #endif /* MXU_MACROS_H */
