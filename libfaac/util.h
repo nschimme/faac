@@ -22,6 +22,19 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#if defined(__SSE2__) || defined(CPUMXU)
+#ifdef _MSC_VER /* visual c++ */
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#else /* gcc or icc */
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#endif
+#else
+#define ALIGN16_BEG
+#define ALIGN16_END
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */

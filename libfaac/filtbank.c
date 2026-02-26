@@ -455,8 +455,19 @@ static void MDCT( FFT_Tables *fft_tables, double *data, int N )
             tempi = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n=2i*/
 
         /* calculate pre-twiddled FFT input */
+#ifdef CPUMXU
+        {
+            float ftempr = (float)tempr;
+            float ftempi = (float)tempi;
+            float fc = (float)c;
+            float fs = (float)s;
+            xr[i] = (double)(ftempr * fc + ftempi * fs);
+            xi[i] = (double)(ftempi * fc - ftempr * fs);
+        }
+#else
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
+#endif
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -527,8 +538,19 @@ static void IMDCT( FFT_Tables *fft_tables, double *data, int N)
         tempi = data[(N >> 1) - 1 - 2 * i];
 
         /* calculate pre-twiddled FFT input */
+#ifdef CPUMXU
+        {
+            float ftempr = (float)tempr;
+            float ftempi = (float)tempi;
+            float fc = (float)c;
+            float fs = (float)s;
+            xr[i] = (double)(ftempr * fc - ftempi * fs);
+            xi[i] = (double)(ftempi * fc + ftempr * fs);
+        }
+#else
         xr[i] = tempr * c - tempi * s;
         xi[i] = tempi * c + tempr * s;
+#endif
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;

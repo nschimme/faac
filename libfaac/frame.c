@@ -29,6 +29,9 @@
 #include "bitstream.h"
 #include "filtbank.h"
 #include "util.h"
+#ifdef CPUMXU
+#include "mxu_macros.h"
+#endif
 #include "tns.h"
 #include "stereo.h"
 
@@ -307,6 +310,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     }
 
     /* Initialize coder functions */
+#ifdef CPUMXU
+    MXU_ENABLE();
+#endif
 	fft_initialize( &hEncoder->fft_tables );
 
 	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,

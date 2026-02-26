@@ -27,6 +27,10 @@
 # include <immintrin.h>
 #endif
 
+#ifdef CPUMXU
+# include "mxu_macros.h"
+#endif
+
 #ifdef __SSE2__
 # ifdef __GNUC__
 #  include <cpuid.h>
@@ -38,19 +42,6 @@
 # include <intrin.h>
 # define __SSE2__
 # define bit_SSE2 (1 << 26)
-#endif
-
-#ifdef __SSE2__
-#ifdef _MSC_VER /* visual c++ */
-#define ALIGN16_BEG __declspec(align(16))
-#define ALIGN16_END
-#else /* gcc or icc */
-#define ALIGN16_BEG
-#define ALIGN16_END __attribute__((aligned(16)))
-#endif
-#else
-#define ALIGN16_BEG
-#define ALIGN16_END
 #endif
 
 #ifdef __GNUC__
@@ -117,6 +108,16 @@ static void bmask(CoderInfo *coderInfo, double *xr0, double *bandqual,
     xr = xr0;
     for (win = 0; win < gsize; win++)
     {
+#ifdef CPUMXU
+        for (cnt = start; cnt < end; cnt++)
+        {
+            float fval = (float)xr[cnt];
+            float fe = fval * fval;
+            avge += (double)fe;
+            if ((double)fe > maxe)
+                maxe = (double)fe;
+        }
+#else
         for (cnt = start; cnt < end; cnt++)
         {
             double e = xr[cnt]*xr[cnt];
@@ -124,6 +125,7 @@ static void bmask(CoderInfo *coderInfo, double *xr0, double *bandqual,
             if (maxe < e)
                 maxe = e;
         }
+#endif
         xr += BLOCK_LEN_SHORT;
     }
     maxe *= gsize;
@@ -254,6 +256,37 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       for (win = 0; win < gsize; win++)
       {
+#ifdef CPUMXU
+          const float fmagic = (float)MAGIC_NUMBER;
+          const float fsfacfix = (float)sfacfix;
+          for (cnt = 0; cnt < end; cnt++)
+          {
+              union { float f; int i; } u;
+              u.f = (float)xr[cnt];
+              float aval = fabsf(u.f);
+              float tmp = aval * fsfacfix;
+              tmp = sqrtf(tmp * sqrtf(tmp));
+              int q = (int)(tmp + fmagic);
+
+              int res;
+              __asm__ __volatile__ (
+                  "move $v0, %1\n\t"
+                  "move $v1, %2\n\t"
+                  MXU_S32I2M(MXU_XR1, MIPS_V0)
+                  MXU_S32I2M(MXU_XR2, MIPS_V1)
+                  MXU_S32CPS(MXU_XR3, MXU_XR1, MXU_XR2)
+                  MXU_S32M2I(MXU_XR3, MIPS_V0)
+                  "move %0, $v0\n\t"
+                  : "=r"(res)
+                  : "r"(q), "r"(u.i)
+                  : "v0", "v1"
+              );
+              xi[cnt] = res;
+          }
+          xi += end;
+          xr += BLOCK_LEN_SHORT;
+          continue;
+#endif
 #ifdef __SSE2__
           if (sse2)
           {

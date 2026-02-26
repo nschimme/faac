@@ -2,3 +2,8 @@ option('frontend',
     description: 'Build the frontend',
     type: 'boolean',
     value: true)
+
+option('mxu',
+    description: 'Enable MXU optimizations (XBurst1)',
+    type: 'boolean',
+    value: false)

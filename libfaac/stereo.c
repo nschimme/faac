@@ -21,6 +21,9 @@
 
 #include <math.h>
 #include "stereo.h"
+#ifdef CPUMXU
+#include "mxu_macros.h"
+#endif
 #include "huff2.h"
 
 
@@ -64,6 +67,21 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
             double *sl = sl0 + win * BLOCK_LEN_SHORT;
             double *sr = sr0 + win * BLOCK_LEN_SHORT;
 
+#ifdef CPUMXU
+            for (l = start; l < end; l++)
+            {
+                float flx = (float)sl[l];
+                float frx = (float)sr[l];
+
+                float fsum = flx + frx;
+                float fdiff = flx - frx;
+
+                enrgs += (double)(fsum * fsum);
+                enrgd += (double)(fdiff * fdiff);
+                enrgl += (double)(flx * flx);
+                enrgr += (double)(frx * frx);
+            }
+#else
             for (l = start; l < end; l++)
             {
                 double lx = sl[l];
@@ -77,6 +95,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                 enrgl += lx * lx;
                 enrgr += rx * rx;
             }
+#endif
         }
 
         ethr = sqrt(enrgl) + sqrt(enrgr);
@@ -170,6 +189,21 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
             double *sl = sl0 + win * BLOCK_LEN_SHORT;
             double *sr = sr0 + win * BLOCK_LEN_SHORT;
 
+#ifdef CPUMXU
+            for (l = start; l < end; l++)
+            {
+                float flx = (float)sl[l];
+                float frx = (float)sr[l];
+
+                float fsum = 0.5f * (flx + frx);
+                float fdiff = 0.5f * (flx - frx);
+
+                enrgs += (double)(fsum * fsum);
+                enrgd += (double)(fdiff * fdiff);
+                enrgl += (double)(flx * flx);
+                enrgr += (double)(frx * frx);
+            }
+#else
             for (l = start; l < end; l++)
             {
                 double lx = sl[l];
@@ -183,6 +217,7 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
                 enrgl += lx * lx;
                 enrgr += rx * rx;
             }
+#endif
         }
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))

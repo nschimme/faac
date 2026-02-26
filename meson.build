@@ -22,6 +22,13 @@ cpu_family = target_machine.cpu_family()
 doSse = cpu_family in ['x86', 'x86_64']
 config_h.set('CPUSSE', doSse)
 
+doMxu = get_option('mxu')
+if not doMxu and cpu_family == 'mips'
+    # Auto-detect or assume based on some other criteria?
+    # For now, let's just rely on the option.
+endif
+config_h.set('CPUMXU', doMxu)
+
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']

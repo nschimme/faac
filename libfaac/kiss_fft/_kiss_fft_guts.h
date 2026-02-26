@@ -48,9 +48,37 @@ struct kiss_fft_state{
 
 #   define S_MUL(a,b) sround( smul(a,b) )
 
+#if defined(CPUMXU)
+#   define C_MUL(m,a,b) \
+    do { \
+        int _arai, _brbi, _res_r, _res_i; \
+        _arai = (int)((unsigned short)(a).r | ((unsigned short)(a).i << 16)); \
+        _brbi = (int)((unsigned short)(b).r | ((unsigned short)(b).i << 16)); \
+        __asm__ __volatile__ ( \
+            "move $v0, %2\n\t" \
+            "move $v1, %3\n\t" \
+            MXU_S32I2M(1, 2) \
+            MXU_S32I2M(2, 3) \
+            MXU_D16MUL(3, 1, 2, 4, MXU_OPTN2_WW) \
+            MXU_D16MUL(5, 1, 2, 6, MXU_OPTN2_XW) \
+            MXU_D32ADD(7, 3, 4, 0, MXU_APTN2_SA) \
+            MXU_D32ADD(8, 5, 6, 0, MXU_APTN2_AA) \
+            MXU_S32M2I(7, 2) \
+            MXU_S32M2I(8, 3) \
+            "move %0, $v0\n\t" \
+            "move %1, $v1\n\t" \
+            : "=r"(_res_r), "=r"(_res_i) \
+            : "r"(_arai), "r"(_brbi) \
+            : "v0", "v1" \
+        ); \
+        (m).r = (short)(_res_r >> 15); \
+        (m).i = (short)(_res_i >> 15); \
+    } while(0)
+#else
 #   define C_MUL(m,a,b) \
       do{ (m).r = sround( smul((a).r,(b).r) - smul((a).i,(b).i) ); \
           (m).i = sround( smul((a).r,(b).i) + smul((a).i,(b).r) ); }while(0)
+#endif
 
 #   define C_FIXDIV(c,div) \
     do{ (c).r /= div; (c).i /=div; }while(0)

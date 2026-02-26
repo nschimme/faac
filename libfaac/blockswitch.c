@@ -276,8 +276,8 @@ static void mdct( FFT_Tables *fft_tables, double *data, int N )
     double cosfreq8, sinfreq8;
     int i, n;
 
-    double xi[BLOCK_LEN_LONG / 2];
-    double xr[BLOCK_LEN_LONG / 2];
+    double ALIGN16_BEG xi[BLOCK_LEN_LONG / 2] ALIGN16_END;
+    double ALIGN16_BEG xr[BLOCK_LEN_LONG / 2] ALIGN16_END;
 
     /* prepare for recurrence relation in pre-twiddle */
     cfreq = cos (freq);
@@ -393,8 +393,16 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           break;
 
       e = 0.0;
+#ifdef CPUMXU
+      for (l = first; l < last; l++)
+      {
+          float fl = (float)transBuffS[l];
+          e += (double)(fl * fl);
+      }
+#else
       for (l = first; l < last; l++)
           e += transBuffS[l] * transBuffS[l];
+#endif
 
       psydata->engNext2[win][sfb] = e;
     }
