@@ -28,7 +28,7 @@
 #include "util.h"
 #include <faac.h>
 
-typedef float psyfloat;
+typedef faac_real psyfloat;
 
 typedef struct
 {
@@ -45,7 +45,7 @@ typedef struct
 psydata_t;
 
 
-static void Hann(GlobalPsyInfo * gpsyInfo, float *inSamples, int size)
+static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
 {
   int i;
 
@@ -70,7 +70,7 @@ static struct {
 } frames;
 #endif
 
-static void PsyCheckShort(PsyInfo * psyInfo, float quality)
+static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;
@@ -95,13 +95,13 @@ static void PsyCheckShort(PsyInfo * psyInfo, float quality)
 
       if (lasteng)
       {
-          float toteng = 0.0;
-          float volchg = 0.0;
+          faac_real toteng = 0.0;
+          faac_real volchg = 0.0;
 
           for (sfb = firstband; sfb < lastband; sfb++)
           {
               toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
-              volchg += fabsf(eng[sfb] - lasteng[sfb]);
+              volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
           if ((volchg / toteng * quality) > 3.0)
@@ -128,17 +128,17 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   int i, j, size;
 
   gpsyInfo->hannWindow =
-    (float *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(float));
+    (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
   gpsyInfo->hannWindowS =
-    (float *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(float));
+    (faac_real *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(faac_real));
 
   for (i = 0; i < BLOCK_LEN_LONG * 2; i++)
-    gpsyInfo->hannWindow[i] = 0.5 * (1 - cosf(2.0 * M_PI * (i + 0.5) /
+    gpsyInfo->hannWindow[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
 					     (BLOCK_LEN_LONG * 2)));
   for (i = 0; i < BLOCK_LEN_SHORT * 2; i++)
-    gpsyInfo->hannWindowS[i] = 0.5 * (1 - cosf(2.0 * M_PI * (i + 0.5) /
+    gpsyInfo->hannWindowS[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
 					      (BLOCK_LEN_SHORT * 2)));
-  gpsyInfo->sampleRate = (float) sampleRate;
+  gpsyInfo->sampleRate = (faac_real) sampleRate;
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -152,8 +152,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psyInfo[channel].size = size;
 
     psyInfo[channel].prevSamples =
-      (float *) AllocMemory(size * sizeof(float));
-    memset(psyInfo[channel].prevSamples, 0, size * sizeof(float));
+      (faac_real *) AllocMemory(size * sizeof(faac_real));
+    memset(psyInfo[channel].prevSamples, 0, size * sizeof(faac_real));
   }
 
   size = BLOCK_LEN_SHORT;
@@ -230,7 +230,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 			 PsyInfo * psyInfo, int *cb_width_long, int
 			 num_cb_long, int *cb_width_short,
 			 int num_cb_short, unsigned int numChannels,
-			 float quality
+			 faac_real quality
 			)
 {
   unsigned int channel;
@@ -269,21 +269,21 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 }
 
 // imported from filtbank.c
-static void mdct( FFT_Tables *fft_tables, float *data, int N )
+static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
 {
-    float tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    float freq = 2.0 * M_PI / N;
-    float cosfreq8, sinfreq8;
+    faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
+    faac_real freq = 2.0 * M_PI / N;
+    faac_real cosfreq8, sinfreq8;
     int i, n;
 
-    float xi[BLOCK_LEN_LONG / 2];
-    float xr[BLOCK_LEN_LONG / 2];
+    faac_real xi[BLOCK_LEN_LONG / 2];
+    faac_real xr[BLOCK_LEN_LONG / 2];
 
     /* prepare for recurrence relation in pre-twiddle */
-    cfreq = cosf(freq);
-    sfreq = sinf(freq);
-    cosfreq8 = cosf(freq * 0.125);
-    sinfreq8 = sinf(freq * 0.125);
+    cfreq = FAAC_COS(freq);
+    sfreq = FAAC_SIN(freq);
+    cosfreq8 = FAAC_COS(freq * 0.125);
+    sinfreq8 = FAAC_SIN(freq * 0.125);
     c = cosfreq8;
     s = sinfreq8;
 
@@ -345,20 +345,20 @@ static void mdct( FFT_Tables *fft_tables, float *data, int N )
 
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    float *newSamples, unsigned int bandwidth,
+			    faac_real *newSamples, unsigned int bandwidth,
 			    int *cb_width_short, int num_cb_short)
 {
   int win;
-  float transBuff[2 * BLOCK_LEN_LONG];
-  float transBuffS[2 * BLOCK_LEN_SHORT];
+  faac_real transBuff[2 * BLOCK_LEN_LONG];
+  faac_real transBuffS[2 * BLOCK_LEN_SHORT];
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
   int sfb;
 
   psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
 
-  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(float));
-  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(float));
+  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
+  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
 
   for (win = 0; win < 8; win++)
   {
@@ -366,7 +366,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     int last = 0;
 
     memcpy(transBuffS, transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2,
-	   2 * psyInfo->sizeS * sizeof(float));
+	   2 * psyInfo->sizeS * sizeof(faac_real));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
     mdct( fft_tables, transBuffS, 2 * psyInfo->sizeS);
@@ -380,7 +380,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
     for (sfb = 0; sfb < num_cb_short; sfb++)
     {
-      float e;
+      faac_real e;
       int l;
 
       first = last;
@@ -405,7 +405,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     }
   }
 
-  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(float));
+  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)

@@ -22,6 +22,8 @@
 #ifndef PSYCH_H
 #define PSYCH_H
 
+#include "faac_real.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -39,7 +41,7 @@ typedef struct {
 	int sizeS;
 
 	/* Previous input samples */
-	float *prevSamples;
+	faac_real *prevSamples;
 
 	int block_type;
 
@@ -47,11 +49,11 @@ typedef struct {
 } PsyInfo;
 
 typedef struct {
-	float sampleRate;
+	faac_real sampleRate;
 
 	/* Hann window */
-	float *hannWindow;
-	float *hannWindowS;
+	faac_real *hannWindow;
+	faac_real *hannWindowS;
 
         void *data;
 } GlobalPsyInfo;
@@ -67,9 +69,9 @@ void (*PsyEnd) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 void (*PsyCalculate) (ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
 		PsyInfo *psyInfo, int *cb_width_long, int num_cb_long,
 		int *cb_width_short, int num_cb_short,
-		unsigned int numChannels, float quality);
+		unsigned int numChannels, faac_real quality);
 void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-		float *newSamples, unsigned int bandwidth,
+		faac_real *newSamples, unsigned int bandwidth,
 		int *cb_width_short, int num_cb_short);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);

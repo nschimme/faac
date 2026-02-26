@@ -37,11 +37,11 @@ extern "C" {
 
 void TnsInit(faacEncStruct* hEncoder);
 void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
-               int* sfbOffsetTable,float* spec);
+               int* sfbOffsetTable,faac_real* spec);
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
-                         enum WINDOW_TYPE blockType, int *sfbOffsetTable, float *spec);
+                         enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec);
 void TnsDecodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
-                         enum WINDOW_TYPE blockType, int *sfbOffsetTable, float *spec);
+                         enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec);
 
 #ifdef __cplusplus
 }
