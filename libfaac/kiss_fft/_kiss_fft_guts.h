@@ -81,17 +81,17 @@ struct kiss_fft_state{
     do {    (res).r -= (a).r;  (res).i -= (a).i;  }while(0)
 
 static 
-void kf_cexp(kiss_fft_cpx * x,double phase) /* returns e ** (j*phase)   */
+void kf_cexp(kiss_fft_cpx * x,float phase) /* returns e ** (j*phase)   */
 {
 #ifdef FIXED_POINT
-    x->r = (kiss_fft_scalar) (32767 * cos (phase));
-    x->i = (kiss_fft_scalar) (32767 * sin (phase));
+    x->r = (kiss_fft_scalar) (32767 * cosf(phase));
+    x->i = (kiss_fft_scalar) (32767 * sinf(phase));
 #else
-    x->r = cos (phase);
-    x->i = sin (phase);
+    x->r = cosf(phase);
+    x->i = sinf(phase);
 #endif
 }
 
 /* a debugging function */
 #define pcpx(c)\
-    fprintf(stderr,"%g + %gi\n",(double)((c)->r),(double)((c)->i) )
+    fprintf(stderr,"%g + %gi\n",(float)((c)->r),(float)((c)->i) )

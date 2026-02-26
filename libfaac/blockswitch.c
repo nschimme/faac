@@ -45,7 +45,7 @@ typedef struct
 psydata_t;
 
 
-static void Hann(GlobalPsyInfo * gpsyInfo, double *inSamples, int size)
+static void Hann(GlobalPsyInfo * gpsyInfo, float *inSamples, int size)
 {
   int i;
 
@@ -70,7 +70,7 @@ static struct {
 } frames;
 #endif
 
-static void PsyCheckShort(PsyInfo * psyInfo, double quality)
+static void PsyCheckShort(PsyInfo * psyInfo, float quality)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;
@@ -95,13 +95,13 @@ static void PsyCheckShort(PsyInfo * psyInfo, double quality)
 
       if (lasteng)
       {
-          double toteng = 0.0;
-          double volchg = 0.0;
+          float toteng = 0.0;
+          float volchg = 0.0;
 
           for (sfb = firstband; sfb < lastband; sfb++)
           {
               toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
-              volchg += fabs(eng[sfb] - lasteng[sfb]);
+              volchg += fabsf(eng[sfb] - lasteng[sfb]);
           }
 
           if ((volchg / toteng * quality) > 3.0)
@@ -128,17 +128,17 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   int i, j, size;
 
   gpsyInfo->hannWindow =
-    (double *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(double));
+    (float *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(float));
   gpsyInfo->hannWindowS =
-    (double *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(double));
+    (float *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(float));
 
   for (i = 0; i < BLOCK_LEN_LONG * 2; i++)
-    gpsyInfo->hannWindow[i] = 0.5 * (1 - cos(2.0 * M_PI * (i + 0.5) /
+    gpsyInfo->hannWindow[i] = 0.5 * (1 - cosf(2.0 * M_PI * (i + 0.5) /
 					     (BLOCK_LEN_LONG * 2)));
   for (i = 0; i < BLOCK_LEN_SHORT * 2; i++)
-    gpsyInfo->hannWindowS[i] = 0.5 * (1 - cos(2.0 * M_PI * (i + 0.5) /
+    gpsyInfo->hannWindowS[i] = 0.5 * (1 - cosf(2.0 * M_PI * (i + 0.5) /
 					      (BLOCK_LEN_SHORT * 2)));
-  gpsyInfo->sampleRate = (double) sampleRate;
+  gpsyInfo->sampleRate = (float) sampleRate;
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -152,8 +152,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psyInfo[channel].size = size;
 
     psyInfo[channel].prevSamples =
-      (double *) AllocMemory(size * sizeof(double));
-    memset(psyInfo[channel].prevSamples, 0, size * sizeof(double));
+      (float *) AllocMemory(size * sizeof(float));
+    memset(psyInfo[channel].prevSamples, 0, size * sizeof(float));
   }
 
   size = BLOCK_LEN_SHORT;
@@ -230,7 +230,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 			 PsyInfo * psyInfo, int *cb_width_long, int
 			 num_cb_long, int *cb_width_short,
 			 int num_cb_short, unsigned int numChannels,
-			 double quality
+			 float quality
 			)
 {
   unsigned int channel;
@@ -269,21 +269,21 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 }
 
 // imported from filtbank.c
-static void mdct( FFT_Tables *fft_tables, double *data, int N )
+static void mdct( FFT_Tables *fft_tables, float *data, int N )
 {
-    double tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    double freq = 2.0 * M_PI / N;
-    double cosfreq8, sinfreq8;
+    float tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
+    float freq = 2.0 * M_PI / N;
+    float cosfreq8, sinfreq8;
     int i, n;
 
-    double xi[BLOCK_LEN_LONG / 2];
-    double xr[BLOCK_LEN_LONG / 2];
+    float xi[BLOCK_LEN_LONG / 2];
+    float xr[BLOCK_LEN_LONG / 2];
 
     /* prepare for recurrence relation in pre-twiddle */
-    cfreq = cos (freq);
-    sfreq = sin (freq);
-    cosfreq8 = cos (freq * 0.125);
-    sinfreq8 = sin (freq * 0.125);
+    cfreq = cosf(freq);
+    sfreq = sinf(freq);
+    cosfreq8 = cosf(freq * 0.125);
+    sinfreq8 = sinf(freq * 0.125);
     c = cosfreq8;
     s = sinfreq8;
 
@@ -345,20 +345,20 @@ static void mdct( FFT_Tables *fft_tables, double *data, int N )
 
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    double *newSamples, unsigned int bandwidth,
+			    float *newSamples, unsigned int bandwidth,
 			    int *cb_width_short, int num_cb_short)
 {
   int win;
-  double transBuff[2 * BLOCK_LEN_LONG];
-  double transBuffS[2 * BLOCK_LEN_SHORT];
+  float transBuff[2 * BLOCK_LEN_LONG];
+  float transBuffS[2 * BLOCK_LEN_SHORT];
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
   int sfb;
 
   psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
 
-  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(double));
-  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(double));
+  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(float));
+  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(float));
 
   for (win = 0; win < 8; win++)
   {
@@ -366,7 +366,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     int last = 0;
 
     memcpy(transBuffS, transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2,
-	   2 * psyInfo->sizeS * sizeof(double));
+	   2 * psyInfo->sizeS * sizeof(float));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
     mdct( fft_tables, transBuffS, 2 * psyInfo->sizeS);
@@ -380,7 +380,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
     for (sfb = 0; sfb < num_cb_short; sfb++)
     {
-      double e;
+      float e;
       int l;
 
       first = last;
@@ -405,7 +405,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     }
   }
 
-  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(double));
+  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(float));
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)

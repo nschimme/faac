@@ -48,8 +48,8 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-void rfft			( FFT_Tables *fft_tables, double *x, int logm );
-void fft			( FFT_Tables *fft_tables, double *xr, double *xi, int logm );
-void ffti			( FFT_Tables *fft_tables, double *xr, double *xi, int logm );
+void rfft			( FFT_Tables *fft_tables, float *x, int logm );
+void fft			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
+void ffti			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
 
 #endif

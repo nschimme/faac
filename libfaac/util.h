@@ -50,7 +50,7 @@ int GetMaxPredSfb(int samplingRateIdx);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
-unsigned int BitAllocation(double pe, int short_block);
+unsigned int BitAllocation(float pe, int short_block);
 
 #ifdef __cplusplus
 }

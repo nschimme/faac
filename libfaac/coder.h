@@ -77,8 +77,8 @@ typedef struct {
     int direction;                       /* Filtering direction */
     int coefCompress;                    /* Are coeffs compressed? */
     int length;                          /* Length, in bands */
-    double aCoeffs[TNS_MAX_ORDER+1];     /* AR Coefficients */
-    double kCoeffs[TNS_MAX_ORDER+1];     /* Reflection Coefficients */
+    float aCoeffs[TNS_MAX_ORDER+1];     /* AR Coefficients */
+    float kCoeffs[TNS_MAX_ORDER+1];     /* Reflection Coefficients */
     int index[TNS_MAX_ORDER+1];          /* Coefficient indices */
 } TnsFilterData;
 

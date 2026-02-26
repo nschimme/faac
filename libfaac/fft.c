@@ -66,7 +66,7 @@ void fft_terminate( FFT_Tables *fft_tables )
     }
 }
 
-void rfft( FFT_Tables *fft_tables, double *x, int logm )
+void rfft( FFT_Tables *fft_tables, float *x, int logm )
 {
 /* sur: use real-only optimized FFT */
 
@@ -120,7 +120,7 @@ void rfft( FFT_Tables *fft_tables, double *x, int logm )
     }
 }
 
-void fft( FFT_Tables *fft_tables, double *xr, double *xi, int logm )
+void fft( FFT_Tables *fft_tables, float *xr, float *xi, int logm )
 {
     int nfft = 0;
 
@@ -173,7 +173,7 @@ void fft( FFT_Tables *fft_tables, double *xr, double *xi, int logm )
     }
 }
 
-void ffti( FFT_Tables *fft_tables, double *xr, double *xi, int logm )
+void ffti( FFT_Tables *fft_tables, float *xr, float *xi, int logm )
 {
     int nfft = 0;
 
@@ -204,7 +204,7 @@ void ffti( FFT_Tables *fft_tables, double *xr, double *xi, int logm )
     if ( fft_tables->cfg[logm][1] )
     {
         unsigned int i;
-        double fac = 1.0 / (double)nfft;
+        float fac = 1.0 / (float)nfft;
         
         for ( i = 0; i < nfft; i++ )
         {
@@ -269,7 +269,7 @@ void fft_terminate( FFT_Tables *fft_tables )
 	fft_tables->reordertbl	= NULL;
 }
 
-static void reorder( FFT_Tables *fft_tables, double *x, int logm)
+static void reorder( FFT_Tables *fft_tables, float *x, int logm)
 {
 	int i;
 	int size = 1 << logm;
@@ -300,7 +300,7 @@ static void reorder( FFT_Tables *fft_tables, double *x, int logm)
 	for (i = 0; i < size; i++)
 	{
 		int j = r[i];
-		double tmp;
+		float tmp;
 
 		if (j <= i)
 			continue;
@@ -312,8 +312,8 @@ static void reorder( FFT_Tables *fft_tables, double *x, int logm)
 }
 
 static void fft_proc(
-		double *xr, 
-		double *xi,
+		float *xr,
+		float *xi,
 		fftfloat *refac, 
 		fftfloat *imfac, 
 		int size)	
@@ -334,7 +334,7 @@ static void fft_proc(
 			exp = 0;
 			for (shift = 0; shift < step; shift++)
 			{
-				double v2r, v2i;
+				float v2r, v2i;
 
 				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
 				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
@@ -370,14 +370,14 @@ static void check_tables( FFT_Tables *fft_tables, int logm)
 
 		for (i = 0; i < (size >> 1); i++)
 		{
-			double theta = 2.0 * M_PI * ((double) i) / (double) size;
-			fft_tables->costbl[logm][i]		= cos(theta);
-			fft_tables->negsintbl[logm][i]	= -sin(theta);
+			float theta = 2.0 * M_PI * ((float) i) / (float) size;
+			fft_tables->costbl[logm][i]		= cosf(theta);
+			fft_tables->negsintbl[logm][i]	= -sinf(theta);
 		}
 	}
 }
 
-void fft( FFT_Tables *fft_tables, double *xr, double *xi, int logm)
+void fft( FFT_Tables *fft_tables, float *xr, float *xi, int logm)
 {
 	if (logm > MAXLOGM)
 	{
@@ -399,9 +399,9 @@ void fft( FFT_Tables *fft_tables, double *xr, double *xi, int logm)
 	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }
 
-void rfft( FFT_Tables *fft_tables, double *x, int logm)
+void rfft( FFT_Tables *fft_tables, float *x, int logm)
 {
-	double xi[1 << MAXLOGR];
+	float xi[1 << MAXLOGR];
 
 	if (logm > MAXLOGR)
 	{
@@ -416,11 +416,11 @@ void rfft( FFT_Tables *fft_tables, double *x, int logm)
 	memcpy(x + (1 << (logm - 1)), xi, (1 << (logm - 1)) * sizeof(*x));
 }
 
-void ffti( FFT_Tables *fft_tables, double *xr, double *xi, int logm)
+void ffti( FFT_Tables *fft_tables, float *xr, float *xi, int logm)
 {
 	int i, size;
-	double fac;
-	double *xrp, *xip;
+	float fac;
+	float *xrp, *xip;
 
 	fft( fft_tables, xi, xr, logm);
 

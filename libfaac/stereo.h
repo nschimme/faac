@@ -22,8 +22,8 @@
 
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
-               double *s[MAX_CHANNELS],
+               float *s[MAX_CHANNELS],
                int maxchan,
-               double quality,
+               float quality,
                int mode
               );

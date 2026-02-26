@@ -47,19 +47,19 @@ void			FilterBankEnd		( faacEncStruct* hEncoder );
 
 void			FilterBank( faacEncStruct* hEncoder,
 						CoderInfo *coderInfo,
-						double *p_in_data,
-						double *p_out_mdct,
-						double *p_overlap,
+						float *p_in_data,
+						float *p_out_mdct,
+						float *p_overlap,
 						int overlap_select );
 
 void			IFilterBank( faacEncStruct* hEncoder,
 						CoderInfo *coderInfo,
-						double *p_in_data,
-						double *p_out_mdct,
-						double *p_overlap,
+						float *p_in_data,
+						float *p_out_mdct,
+						float *p_overlap,
 						int overlap_select );
 
-void			specFilter(	double *freqBuff,
+void			specFilter(	float *freqBuff,
 						int sampleRate,
 						int lowpassFreq,
 						int specLen );
