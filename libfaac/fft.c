@@ -322,7 +322,26 @@ static void fft_proc(
 	int exp, estep;
 
 	estep = size;
-	for (step = 1; step < size; step *= 2)
+
+	/* Step 1: refac[0] = 1.0, imfac[0] = 0.0 */
+	estep >>= 1;
+	for (pos = 0; pos < size; pos += 2)
+	{
+		faac_real v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+	for (step = 2; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;

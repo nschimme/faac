@@ -65,6 +65,10 @@ typedef struct {
     faac_real *sin_window_short;
     faac_real *kbd_window_long;
     faac_real *kbd_window_short;
+    faac_real *transf_buf;
+    faac_real *overlap_buf;
+    faac_real *mdct_xi;
+    faac_real *mdct_xr;
     faac_real *freqBuff[MAX_CHANNELS];
     faac_real *overlapBuff[MAX_CHANNELS];
 

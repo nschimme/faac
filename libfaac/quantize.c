@@ -62,6 +62,25 @@
 #define MAGIC_NUMBER  0.4054
 #define NOISEFLOOR 0.4
 
+static faac_real pow10_sfstep[121];
+static int pow10_init = 0;
+
+static void init_pow10_sfstep()
+{
+    int i;
+#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
+    /* 2^0.25 (1.50515 dB) step from AAC specs */
+    static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
+#else
+    static const faac_real sfstep = 20 / 1.50515;
+#endif
+
+    for (i = 0; i <= 120; i++) {
+        pow10_sfstep[i] = FAAC_POW(10, (i - 60) / sfstep);
+    }
+    pow10_init = 1;
+}
+
 // band sound masking
 static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
                   int gnum, faac_real quality)
@@ -246,8 +265,13 @@ static void qlevel(CoderInfo *coderInfo,
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      else {
+          if (!pow10_init) init_pow10_sfstep();
+          if (sfac >= -60 && sfac <= 60)
+              sfacfix = pow10_sfstep[sfac + 60];
+          else
+              sfacfix = FAAC_POW(10, sfac / sfstep);
+      }
 
       xr = xr0 + start;
       end -= start;
@@ -283,16 +307,22 @@ static void qlevel(CoderInfo *coderInfo,
           }
 #endif
 
-          for (cnt = 0; cnt < end; cnt++)
-          {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
+          if (sfacfix == 0.0) {
+              for (cnt = 0; cnt < end; cnt++)
+                  xi[cnt] = 0;
+          } else {
+              faac_real sfacfix_075 = FAAC_POW(sfacfix, 0.75);
+              for (cnt = 0; cnt < end; cnt++)
+              {
+                  faac_real tmp = FAAC_FABS(xr[cnt]);
 
-              tmp *= sfacfix;
-              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+                  /* tmp^0.75 = sqrt(tmp * sqrt(tmp)) */
+                  tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp)) * sfacfix_075;
 
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+                  xi[cnt] = (int)(tmp + MAGIC_NUMBER);
+                  if (xr[cnt] < 0)
+                      xi[cnt] = -xi[cnt];
+              }
           }
           xi += cnt;
           xr += BLOCK_LEN_SHORT;
