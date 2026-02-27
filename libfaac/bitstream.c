@@ -910,9 +910,14 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
+    /* Fast path: bits fit into current byte */
+    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
+    if (numBit <= maxNum) {
+        return WriteByte(bitStream, data, numBit);
+    }
+
     /* write bits in packets according to buffer byte boundaries */
     num = 0;
-    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
     while (num < numBit) {
         curNum = min(numBit-num,maxNum);
         bits = data>>(numBit-num-curNum);

@@ -411,7 +411,18 @@ int huffbook(CoderInfo *coder,
     int maxq = 0;
     int bookmin, lenmin;
 
-    for (cnt = 0; cnt < len; cnt++)
+    for (cnt = 0; cnt < (len & ~3); cnt += 4)
+    {
+        int q0 = abs(qs[cnt]);
+        int q1 = abs(qs[cnt+1]);
+        int q2 = abs(qs[cnt+2]);
+        int q3 = abs(qs[cnt+3]);
+        if (maxq < q0) maxq = q0;
+        if (maxq < q1) maxq = q1;
+        if (maxq < q2) maxq = q2;
+        if (maxq < q3) maxq = q3;
+    }
+    for (; cnt < len; cnt++)
     {
         int q = abs(qs[cnt]);
         if (maxq < q)
