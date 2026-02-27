@@ -70,8 +70,9 @@ static inline float fast_log10(float x)
 
 static inline float fast_pow2(float x)
 {
-    float offset = (x < 0) ? 1.0f : 0.0f;
-    union { uint32_t i; float f; } v = { (uint32_t)((x + 121.2740575f + offset) * 8388608.0f) };
+    if (x < -126.0f) return 0.0f;
+    if (x > 128.0f) return 3e38f;
+    union { uint32_t i; float f; } v = { (uint32_t)((x + 126.94269504f) * 8388608.0f) };
     return v.f;
 }
 
