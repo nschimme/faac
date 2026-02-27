@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "frame.h"
 
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
@@ -158,7 +159,8 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-static void qlevel(CoderInfo *coderInfo,
+static void qlevel(faacEncStruct *hEncoder,
+                   CoderInfo *coderInfo,
                    const faac_real *xr0,
                    const faac_real *bandqual,
                    int gnum,
@@ -247,15 +249,15 @@ static void qlevel(CoderInfo *coderInfo,
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else {
-          if (!coderInfo->pow10_sfstep_init) {
+          if (!hEncoder->pow10_sfstep_init) {
               int i;
               for (i = 0; i < 256; i++) {
-                  coderInfo->pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
+                  hEncoder->pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
               }
-              coderInfo->pow10_sfstep_init = 1;
+              hEncoder->pow10_sfstep_init = 1;
           }
           if (sfac >= -128 && sfac < 128) {
-              sfacfix = coderInfo->pow10_sfstep[sfac + 128];
+              sfacfix = hEncoder->pow10_sfstep[sfac + 128];
           } else {
               sfacfix = FAAC_POW(10, sfac / sfstep);
           }
@@ -314,7 +316,7 @@ static void qlevel(CoderInfo *coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(faacEncStruct *hEncoder, CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     int cnt;
@@ -339,7 +341,7 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
         {
             bmask(coder, gxr, bandlvl, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
+            qlevel(hEncoder, coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

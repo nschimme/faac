@@ -70,7 +70,9 @@ void (*PsyCalculate) (ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
 		PsyInfo *psyInfo, int *cb_width_long, int num_cb_long,
 		int *cb_width_short, int num_cb_short,
 		unsigned int numChannels, faac_real quality);
-void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+struct faacEncStruct;
+
+void (*PsyBufferUpdate) ( struct faacEncStruct *hEncoder, PsyInfo * psyInfo,
 		faac_real *newSamples, unsigned int bandwidth,
 		int *cb_width_short, int num_cb_short);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,

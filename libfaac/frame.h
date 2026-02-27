@@ -40,67 +40,53 @@ extern "C" {
 #include <faaccfg.h>
 
 struct faacEncStruct {
-    /* number of channels in AAC file */
-    unsigned int numChannels;
-
-    /* samplerate of AAC file */
-    unsigned long sampleRate;
-    unsigned int sampleRateIdx;
-
-    unsigned int usedBytes;
-
-    /* frame number */
-    unsigned int frameNum;
-    unsigned int flushFrame;
-
-    /* Scalefactorband data */
-    SR_INFO *srInfo;
-
-    /* sample buffers of current next and next next frame*/
-    faac_real *sampleBuff[MAX_CHANNELS];
-    faac_real *next3SampleBuff[MAX_CHANNELS];
-
-    /* Filterbank buffers */
-    faac_real *sin_window_long;
-    faac_real *sin_window_short;
-    faac_real *kbd_window_long;
-    faac_real *kbd_window_short;
-    faac_real *freqBuff[MAX_CHANNELS];
-    faac_real *overlapBuff[MAX_CHANNELS];
-
-    faac_real *msSpectrum[MAX_CHANNELS];
-
-    /* Channel and Coder data for all channels */
-    CoderInfo coderInfo[MAX_CHANNELS];
-    ChannelInfo channelInfo[MAX_CHANNELS];
-
-    /* Psychoacoustics data */
-    PsyInfo psyInfo[MAX_CHANNELS];
-    GlobalPsyInfo gpsyInfo;
-
-    /* Configuration data */
-    faacEncConfiguration config;
-
-    psymodel_t *psymodel;
-
-    /* quantizer specific config */
+    /* Hot members for quantization and coding */
     AACQuantCfg aacquantCfg;
+    /* Shared quantization tables */
+    faac_real pow10_sfstep[256];
+    int pow10_sfstep_init;
 
-    /* FFT Tables */
+    /* FFT and MDCT factors/tables */
     FFT_Tables	fft_tables;
+    faac_real *mdct_twiddles_long;
+    faac_real *mdct_twiddles_short;
 
     /* Temporary buffers for FilterBank, MDCT and IMDCT to avoid reallocations */
     faac_real *transf_buf;
     faac_real *overlap_buf;
     faac_real *mdct_xi;
     faac_real *mdct_xr;
-
-    /* Twiddle factors for MDCT/IMDCT */
-    faac_real *mdct_twiddles_long;
-    faac_real *mdct_twiddles_short;
-
-    /* Temporary buffer for TNS */
     faac_real *tns_temp;
+
+    /* Psychoacoustics data */
+    GlobalPsyInfo gpsyInfo;
+    psymodel_t *psymodel;
+
+    /* Configuration and basic info */
+    faacEncConfiguration config;
+    unsigned int numChannels;
+    unsigned long sampleRate;
+    unsigned int sampleRateIdx;
+    unsigned int usedBytes;
+    unsigned int frameNum;
+    unsigned int flushFrame;
+    SR_INFO *srInfo;
+
+    /* Filterbank windows */
+    faac_real *sin_window_long;
+    faac_real *sin_window_short;
+    faac_real *kbd_window_long;
+    faac_real *kbd_window_short;
+
+    /* Per-channel data */
+    faac_real *sampleBuff[MAX_CHANNELS];
+    faac_real *next3SampleBuff[MAX_CHANNELS];
+    faac_real *freqBuff[MAX_CHANNELS];
+    faac_real *overlapBuff[MAX_CHANNELS];
+    faac_real *msSpectrum[MAX_CHANNELS];
+    CoderInfo coderInfo[MAX_CHANNELS];
+    ChannelInfo channelInfo[MAX_CHANNELS];
+    PsyInfo psyInfo[MAX_CHANNELS];
 };
 
 typedef struct faacEncStruct faacEncStruct;

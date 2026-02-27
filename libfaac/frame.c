@@ -475,8 +475,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
 		{
 			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
-					&hEncoder->gpsyInfo,
+					hEncoder,
 					&hEncoder->psyInfo[channel],
 					hEncoder->next3SampleBuff[channel],
 					bandWidth,
@@ -583,7 +582,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+        BlocQuant(hEncoder, &coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }
 
