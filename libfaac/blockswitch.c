@@ -350,7 +350,7 @@ static void PsyBufferUpdate( faacEncStruct *hEncoder, PsyInfo * psyInfo,
 {
   GlobalPsyInfo *gpsyInfo = &hEncoder->gpsyInfo;
   int win;
-  faac_real transBuff[2 * BLOCK_LEN_LONG];
+  faac_real *transBuff = hEncoder->work_buffer;
   faac_real transBuffS[2 * BLOCK_LEN_SHORT];
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;

@@ -91,12 +91,12 @@ void FilterBankInit(faacEncStruct* hEncoder)
     CalculateKBDWindow(hEncoder->kbd_window_long, 4, BLOCK_LEN_LONG*2);
     CalculateKBDWindow(hEncoder->kbd_window_short, 6, BLOCK_LEN_SHORT*2);
 
-    hEncoder->work_buffer = (faac_real*)AllocMemory(6*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->work_buffer = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
     hEncoder->transf_buf = hEncoder->work_buffer;
-    hEncoder->overlap_buf = hEncoder->work_buffer + 2*BLOCK_LEN_LONG;
-    hEncoder->mdct_xr = hEncoder->work_buffer + 4*BLOCK_LEN_LONG;
-    hEncoder->mdct_xi = hEncoder->work_buffer + 4*BLOCK_LEN_LONG + (BLOCK_LEN_LONG / 2);
-    hEncoder->tns_temp = hEncoder->work_buffer + 5*BLOCK_LEN_LONG;
+    hEncoder->overlap_buf = hEncoder->work_buffer;
+    hEncoder->mdct_xr = hEncoder->work_buffer;
+    hEncoder->mdct_xi = hEncoder->work_buffer + (BLOCK_LEN_LONG / 2);
+    hEncoder->tns_temp = hEncoder->work_buffer + BLOCK_LEN_LONG;
 
     hEncoder->mdct_twiddles_long = (faac_real*)AllocMemory(2*(2*BLOCK_LEN_LONG >> 2)*sizeof(faac_real));
     hEncoder->mdct_twiddles_short = (faac_real*)AllocMemory(2*(2*BLOCK_LEN_SHORT >> 2)*sizeof(faac_real));

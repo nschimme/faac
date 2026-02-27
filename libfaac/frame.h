@@ -84,7 +84,6 @@ struct faacEncStruct {
     faac_real *next3SampleBuff[MAX_CHANNELS];
     faac_real *freqBuff[MAX_CHANNELS];
     faac_real *overlapBuff[MAX_CHANNELS];
-    faac_real *msSpectrum[MAX_CHANNELS];
     CoderInfo coderInfo[MAX_CHANNELS];
     ChannelInfo channelInfo[MAX_CHANNELS];
     PsyInfo psyInfo[MAX_CHANNELS];
