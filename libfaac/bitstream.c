@@ -33,6 +33,7 @@ Copyright (c) 1997.
 #include "huff2.h"
 #include "bitstream.h"
 #include "util.h"
+#include "frame.h"
 
 static int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
@@ -849,6 +850,7 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     BitStream *bitStream;
 
     bitStream = AllocMemory(sizeof(BitStream));
+    if (!bitStream) return NULL;
     bitStream->size = size;
 #ifdef DRM
     /* skip first byte for CRC */

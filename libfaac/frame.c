@@ -331,6 +331,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
 
     FilterBankEnd(hEncoder);
+    TnsEnd(hEncoder);
 
     fft_terminate(&hEncoder->fft_tables);
 
@@ -552,7 +553,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((!channelInfo[channel].lfe) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
+            TnsEncode(hEncoder,
+                      &(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
