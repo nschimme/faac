@@ -52,6 +52,7 @@ struct faacEncStruct {
     faac_real *mdct_twiddles_short;
 
     /* Temporary buffers for FilterBank, MDCT and IMDCT to avoid reallocations */
+    faac_real *work_buffer;
     faac_real *transf_buf;
     faac_real *overlap_buf;
     faac_real *mdct_xi;
