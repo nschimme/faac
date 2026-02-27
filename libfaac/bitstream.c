@@ -886,14 +886,16 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+    idx = (bitStream->currentBit >> 3);
+    if (idx >= bitStream->size)
+        idx %= bitStream->size;
+    numUsed = bitStream->currentBit & 7;
 #ifndef DRM
     if (numUsed == 0)
         bitStream->data[idx] = 0;
 #endif
     bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        (8-numUsed-numBit);
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 

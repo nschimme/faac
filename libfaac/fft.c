@@ -392,7 +392,43 @@ static void fft_proc(
 			x1 = x2;
 			x2 += step;
 			exp = 0;
-			for (shift = 0; shift < step; shift++)
+			for (shift = 0; shift < (step & ~3); shift += 4)
+			{
+				faac_real v2r, v2i, r_f, i_f;
+
+				/* 0 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 1 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 2 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 3 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+			}
+			for (; shift < step; shift++)
 			{
 				faac_real v2r, v2i;
 				faac_real r_f = refac[exp];
