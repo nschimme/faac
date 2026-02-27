@@ -252,50 +252,62 @@ static void qlevel(CoderInfo *coderInfo,
       xr = xr0 + start;
       end -= start;
       xi = xitab;
-      for (win = 0; win < gsize; win++)
-      {
-#ifdef __SSE2__
-          if (sse2)
+      if (sfacfix > 0.0) {
+          for (win = 0; win < gsize; win++)
           {
-              const __m128 zero = _mm_setzero_ps();
-              const __m128 sfac = _mm_set1_ps(sfacfix);
-              const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-              for (cnt = 0; cnt < end; cnt += 4)
+#ifdef __SSE2__
+              if (sse2)
               {
-                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
+                  const __m128 zero = _mm_setzero_ps();
+                  const __m128 sfac = _mm_set1_ps(sfacfix);
+                  const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+                  for (cnt = 0; cnt < end; cnt += 4)
+                  {
+                      __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
 
-                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                  x = _mm_mul_ps(x, sfac);
-                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                  x = _mm_sqrt_ps(x);
-                  x = _mm_add_ps(x, magic);
+                      x = _mm_max_ps(x, _mm_sub_ps(zero, x));
+                      x = _mm_mul_ps(x, sfac);
+                      x = _mm_mul_ps(x, _mm_sqrt_ps(x));
+                      x = _mm_sqrt_ps(x);
+                      x = _mm_add_ps(x, magic);
 
-                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+                      *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+                  }
+                  for (cnt = 0; cnt < end; cnt++)
+                  {
+                      if (xr[cnt] < 0)
+                          xi[cnt] = -xi[cnt];
+                  }
+                  xi += cnt;
+                  xr += BLOCK_LEN_SHORT;
+                  continue;
               }
+#endif
+
               for (cnt = 0; cnt < end; cnt++)
               {
+                  faac_real tmp = FAAC_FABS(xr[cnt]);
+
+                  tmp *= sfacfix;
+                  tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+
+                  xi[cnt] = (int)(tmp + MAGIC_NUMBER);
                   if (xr[cnt] < 0)
                       xi[cnt] = -xi[cnt];
               }
               xi += cnt;
               xr += BLOCK_LEN_SHORT;
-              continue;
           }
-#endif
-
-          for (cnt = 0; cnt < end; cnt++)
+      } else {
+          for (win = 0; win < gsize; win++)
           {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
-
-              tmp *= sfacfix;
-              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+              for (cnt = 0; cnt < end; cnt++)
+              {
+                  xi[cnt] = 0;
+              }
+              xi += cnt;
+              xr += BLOCK_LEN_SHORT;
           }
-          xi += cnt;
-          xr += BLOCK_LEN_SHORT;
       }
       huffbook(coderInfo, xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;

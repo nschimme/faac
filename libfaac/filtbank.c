@@ -46,8 +46,8 @@ Copyright(c)1996.
 
 static void		CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
 static faac_real	Izero				( faac_real x);
-static void		MDCT				( FFT_Tables *fft_tables, faac_real *data, int N );
-static void		IMDCT				( FFT_Tables *fft_tables, faac_real *data, int N );
+static void		MDCT				( faacEncStruct *hEncoder, faac_real *data, int N );
+static void		IMDCT				( faacEncStruct *hEncoder, faac_real *data, int N );
 
 
 
@@ -65,6 +65,44 @@ void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->sin_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
     hEncoder->kbd_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
     hEncoder->kbd_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
+
+    hEncoder->transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->overlap_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->mdct_xi = (faac_real*)AllocMemory((2*BLOCK_LEN_LONG >> 2)*sizeof(faac_real));
+    hEncoder->mdct_xr = (faac_real*)AllocMemory((2*BLOCK_LEN_LONG >> 2)*sizeof(faac_real));
+
+    hEncoder->mdct_twid_long = (faac_real*)AllocMemory((BLOCK_LEN_LONG)*sizeof(faac_real));
+    hEncoder->mdct_twid_short = (faac_real*)AllocMemory((BLOCK_LEN_SHORT)*sizeof(faac_real));
+
+    {
+        int i;
+        faac_real cfreq, sfreq, c, s, cold;
+        faac_real freq = TWOPI / (2*BLOCK_LEN_LONG);
+        cfreq = FAAC_COS(freq);
+        sfreq = FAAC_SIN(freq);
+        c = FAAC_COS(freq * 0.125);
+        s = FAAC_SIN(freq * 0.125);
+        for (i = 0; i < (2*BLOCK_LEN_LONG >> 2); i++) {
+            hEncoder->mdct_twid_long[2*i] = c;
+            hEncoder->mdct_twid_long[2*i+1] = s;
+            cold = c;
+            c = c * cfreq - s * sfreq;
+            s = s * cfreq + cold * sfreq;
+        }
+
+        freq = TWOPI / (2*BLOCK_LEN_SHORT);
+        cfreq = FAAC_COS(freq);
+        sfreq = FAAC_SIN(freq);
+        c = FAAC_COS(freq * 0.125);
+        s = FAAC_SIN(freq * 0.125);
+        for (i = 0; i < (2*BLOCK_LEN_SHORT >> 2); i++) {
+            hEncoder->mdct_twid_short[2*i] = c;
+            hEncoder->mdct_twid_short[2*i+1] = s;
+            cold = c;
+            c = c * cfreq - s * sfreq;
+            s = s * cfreq + cold * sfreq;
+        }
+    }
 
     for( i=0; i<BLOCK_LEN_LONG; i++ )
         hEncoder->sin_window_long[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_LONG)) * (i + 0.5));
@@ -88,6 +126,13 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->sin_window_short) FreeMemory(hEncoder->sin_window_short);
     if (hEncoder->kbd_window_long) FreeMemory(hEncoder->kbd_window_long);
     if (hEncoder->kbd_window_short) FreeMemory(hEncoder->kbd_window_short);
+
+    if (hEncoder->transf_buf) FreeMemory(hEncoder->transf_buf);
+    if (hEncoder->overlap_buf) FreeMemory(hEncoder->overlap_buf);
+    if (hEncoder->mdct_xi) FreeMemory(hEncoder->mdct_xi);
+    if (hEncoder->mdct_xr) FreeMemory(hEncoder->mdct_xr);
+    if (hEncoder->mdct_twid_long) FreeMemory(hEncoder->mdct_twid_long);
+    if (hEncoder->mdct_twid_short) FreeMemory(hEncoder->mdct_twid_short);
 }
 
 void FilterBank(faacEncStruct* hEncoder,
@@ -102,7 +147,7 @@ void FilterBank(faacEncStruct* hEncoder,
     int k, i;
     int block_type = coderInfo->block_type;
 
-    transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    transf_buf = hEncoder->transf_buf;
 
     /* create / shift old values */
     /* We use p_overlap here as buffer holding the last frame time signal*/
@@ -163,7 +208,7 @@ void FilterBank(faacEncStruct* hEncoder,
             p_out_mdct[i] = p_o_buf[i] * first_window[i];
             p_out_mdct[i+BLOCK_LEN_LONG] = p_o_buf[i+BLOCK_LEN_LONG] * second_window[BLOCK_LEN_LONG-i-1];
         }
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case LONG_SHORT_WINDOW :
@@ -173,7 +218,7 @@ void FilterBank(faacEncStruct* hEncoder,
         for ( i = 0 ; i < BLOCK_LEN_SHORT ; i++)
             p_out_mdct[i+BLOCK_LEN_LONG+NFLAT_LS] = p_o_buf[i+BLOCK_LEN_LONG+NFLAT_LS] * second_window[BLOCK_LEN_SHORT-i-1];
         SetMemory(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT,0,NFLAT_LS*sizeof(faac_real));
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case SHORT_LONG_WINDOW :
@@ -183,7 +228,7 @@ void FilterBank(faacEncStruct* hEncoder,
         memcpy(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT,p_o_buf+NFLAT_LS+BLOCK_LEN_SHORT,NFLAT_LS*sizeof(faac_real));
         for ( i = 0 ; i < BLOCK_LEN_LONG ; i++)
             p_out_mdct[i+BLOCK_LEN_LONG] = p_o_buf[i+BLOCK_LEN_LONG] * second_window[BLOCK_LEN_LONG-i-1];
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case ONLY_SHORT_WINDOW :
@@ -193,7 +238,7 @@ void FilterBank(faacEncStruct* hEncoder,
                 p_out_mdct[i] = p_o_buf[i] * first_window[i];
                 p_out_mdct[i+BLOCK_LEN_SHORT] = p_o_buf[i+BLOCK_LEN_SHORT] * second_window[BLOCK_LEN_SHORT-i-1];
             }
-            MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_SHORT );
+            MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_SHORT );
             p_out_mdct += BLOCK_LEN_SHORT;
             p_o_buf += BLOCK_LEN_SHORT;
             first_window = second_window;
@@ -201,7 +246,6 @@ void FilterBank(faacEncStruct* hEncoder,
         break;
     }
 
-    if (transf_buf) FreeMemory(transf_buf);
 }
 
 void IFilterBank(faacEncStruct* hEncoder,
@@ -218,8 +262,8 @@ void IFilterBank(faacEncStruct* hEncoder,
     int k, i;
     int block_type = coderInfo->block_type;
 
-    transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
-    overlap_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    transf_buf = hEncoder->transf_buf;
+    overlap_buf = hEncoder->overlap_buf;
 
     /*  Window shape processing */
     if (overlap_select != MNON_OVERLAPPED) {
@@ -266,7 +310,7 @@ void IFilterBank(faacEncStruct* hEncoder,
     switch( block_type ) {
     case ONLY_LONG_WINDOW :
         memcpy(transf_buf, p_in_data,BLOCK_LEN_LONG*sizeof(faac_real));
-        IMDCT( &hEncoder->fft_tables, transf_buf, 2*BLOCK_LEN_LONG );
+        IMDCT( hEncoder, transf_buf, 2*BLOCK_LEN_LONG );
         for ( i = 0 ; i < BLOCK_LEN_LONG ; i++)
             transf_buf[i] *= first_window[i];
         if (overlap_select != MNON_OVERLAPPED) {
@@ -282,7 +326,7 @@ void IFilterBank(faacEncStruct* hEncoder,
 
     case LONG_SHORT_WINDOW :
         memcpy(transf_buf, p_in_data,BLOCK_LEN_LONG*sizeof(faac_real));
-        IMDCT( &hEncoder->fft_tables, transf_buf, 2*BLOCK_LEN_LONG );
+        IMDCT( hEncoder, transf_buf, 2*BLOCK_LEN_LONG );
         for ( i = 0 ; i < BLOCK_LEN_LONG ; i++)
             transf_buf[i] *= first_window[i];
         if (overlap_select != MNON_OVERLAPPED) {
@@ -301,7 +345,7 @@ void IFilterBank(faacEncStruct* hEncoder,
 
     case SHORT_LONG_WINDOW :
         memcpy(transf_buf, p_in_data,BLOCK_LEN_LONG*sizeof(faac_real));
-        IMDCT( &hEncoder->fft_tables, transf_buf, 2*BLOCK_LEN_LONG );
+        IMDCT( hEncoder, transf_buf, 2*BLOCK_LEN_LONG );
         for ( i = 0 ; i < BLOCK_LEN_SHORT ; i++)
             transf_buf[i+NFLAT_LS] *= first_window[i];
         if (overlap_select != MNON_OVERLAPPED) {
@@ -325,7 +369,7 @@ void IFilterBank(faacEncStruct* hEncoder,
         }
         for ( k=0; k < MAX_SHORT_WINDOWS; k++ ) {
             memcpy(transf_buf,p_in_data,BLOCK_LEN_SHORT*sizeof(faac_real));
-            IMDCT( &hEncoder->fft_tables, transf_buf, 2*BLOCK_LEN_SHORT );
+            IMDCT( hEncoder, transf_buf, 2*BLOCK_LEN_SHORT );
             p_in_data += BLOCK_LEN_SHORT;
             if (overlap_select != MNON_OVERLAPPED) {
                 for ( i = 0 ; i < BLOCK_LEN_SHORT ; i++){
@@ -354,9 +398,6 @@ void IFilterBank(faacEncStruct* hEncoder,
 
     /* save unused output data */
     memcpy(p_overlap,o_buf+BLOCK_LEN_LONG,BLOCK_LEN_LONG*sizeof(faac_real));
-
-    if (overlap_buf) FreeMemory(overlap_buf);
-    if (transf_buf) FreeMemory(transf_buf);
 }
 
 void specFilter(faac_real *freqBuff,
@@ -420,48 +461,44 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     }
 }
 
-static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
+static void MDCT( faacEncStruct *hEncoder, faac_real *data, int N )
 {
-    faac_real *xi, *xr;
-    faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    faac_real freq = TWOPI / N;
-    faac_real cosfreq8, sinfreq8;
+    FFT_Tables *fft_tables = &hEncoder->fft_tables;
+    faac_real *xi, *xr, *twid;
+    faac_real tempr, tempi, c, s; /* temps for pre and post twiddle */
     int i, n;
 
-    xi = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
-    xr = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
+    xi = hEncoder->mdct_xi;
+    xr = hEncoder->mdct_xr;
+    twid = (N == 2*BLOCK_LEN_LONG) ? hEncoder->mdct_twid_long : hEncoder->mdct_twid_short;
 
-    /* prepare for recurrence relation in pre-twiddle */
-    cfreq = FAAC_COS(freq);
-    sfreq = FAAC_SIN(freq);
-    cosfreq8 = FAAC_COS(freq * 0.125);
-    sinfreq8 = FAAC_SIN(freq * 0.125);
-    c = cosfreq8;
-    s = sinfreq8;
-
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < (N >> 3); i++) {
         /* calculate real and imaginary parts of g(n) or G(p) */
         n = (N >> 1) - 1 - 2 * i;
-
-        if (i < (N >> 3))
-            tempr = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n = N / 2 - 1 - 2i */
-        else
-            tempr = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n = N / 2 - 1 - 2i */
+        tempr = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n];
 
         n = 2 * i;
-        if (i < (N >> 3))
-            tempi = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n=2i */
-        else
-            tempi = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n=2i*/
+        tempi = data [(N >> 2) + n] - data [(N >> 2) - 1 - n];
 
         /* calculate pre-twiddled FFT input */
+        c = twid[2*i];
+        s = twid[2*i+1];
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
+    }
+    for (; i < (N >> 2); i++) {
+        /* calculate real and imaginary parts of g(n) or G(p) */
+        n = (N >> 1) - 1 - 2 * i;
+        tempr = data [(N >> 2) + n] - data [(N >> 2) - 1 - n];
 
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+        n = 2 * i;
+        tempi = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n];
+
+        /* calculate pre-twiddled FFT input */
+        c = twid[2*i];
+        s = twid[2*i+1];
+        xr[i] = tempr * c + tempi * s;
+        xi[i] = tempi * c - tempr * s;
     }
 
     /* Perform in-place complex FFT of length N/4 */
@@ -473,13 +510,11 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
         fft( fft_tables, xr, xi, 9);
     }
 
-    /* prepare for recurrence relations in post-twiddle */
-    c = cosfreq8;
-    s = sinfreq8;
-
     /* post-twiddle FFT output and then get output data */
     for (i = 0; i < (N >> 2); i++) {
         /* get post-twiddled FFT output  */
+        c = twid[2*i];
+        s = twid[2*i+1];
         tempr = 2. * (xr[i] * c + xi[i] * s);
         tempi = 2. * (xi[i] * c - xr[i] * s);
 
@@ -488,38 +523,23 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
         data [(N >> 1) - 1 - 2 * i] = tempi;  /* first half odd */
         data [(N >> 1) + 2 * i] = -tempi;  /* second half even */
         data [N - 1 - 2 * i] = tempr;  /* second half odd */
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
     }
-
-    if (xr) FreeMemory(xr);
-    if (xi) FreeMemory(xi);
 }
 
-static void IMDCT( FFT_Tables *fft_tables, faac_real *data, int N)
+static void IMDCT( faacEncStruct *hEncoder, faac_real *data, int N)
 {
-    faac_real *xi, *xr;
-    faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    faac_real freq = 2.0 * M_PI / N;
-    faac_real fac, cosfreq8, sinfreq8;
+    FFT_Tables *fft_tables = &hEncoder->fft_tables;
+    faac_real *xi, *xr, *twid;
+    faac_real tempr, tempi, c, s; /* temps for pre and post twiddle */
+    faac_real fac;
     int i;
 
-    xi = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
-    xr = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
+    xi = hEncoder->mdct_xi;
+    xr = hEncoder->mdct_xr;
+    twid = (N == 2*BLOCK_LEN_LONG) ? hEncoder->mdct_twid_long : hEncoder->mdct_twid_short;
 
     /* Choosing to allocate 2/N factor to Inverse Xform! */
     fac = 2. / N; /* remaining 2/N from 4/N IFFT factor */
-
-    /* prepare for recurrence relation in pre-twiddle */
-    cfreq = FAAC_COS(freq);
-    sfreq = FAAC_SIN(freq);
-    cosfreq8 = FAAC_COS(freq * 0.125);
-    sinfreq8 = FAAC_SIN(freq * 0.125);
-    c = cosfreq8;
-    s = sinfreq8;
 
     for (i = 0; i < (N >> 2); i++) {
         /* calculate real and imaginary parts of g(n) or G(p) */
@@ -527,13 +547,10 @@ static void IMDCT( FFT_Tables *fft_tables, faac_real *data, int N)
         tempi = data[(N >> 1) - 1 - 2 * i];
 
         /* calculate pre-twiddled FFT input */
+        c = twid[2*i];
+        s = twid[2*i+1];
         xr[i] = tempr * c - tempi * s;
         xi[i] = tempi * c + tempr * s;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
     }
 
     /* Perform in-place complex IFFT of length N/4 */
@@ -545,36 +562,35 @@ static void IMDCT( FFT_Tables *fft_tables, faac_real *data, int N)
         ffti( fft_tables, xr, xi, 9);
     }
 
-    /* prepare for recurrence relations in post-twiddle */
-    c = cosfreq8;
-    s = sinfreq8;
-
     /* post-twiddle FFT output and then get output data */
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < (N >> 3); i++) {
 
         /* get post-twiddled FFT output  */
+        c = twid[2*i];
+        s = twid[2*i+1];
         tempr = fac * (xr[i] * c - xi[i] * s);
         tempi = fac * (xi[i] * c + xr[i] * s);
 
         /* fill in output values */
         data [(N >> 1) + (N >> 2) - 1 - 2 * i] = tempr;
-        if (i < (N >> 3))
-            data [(N >> 1) + (N >> 2) + 2 * i] = tempr;
-        else
-            data [2 * i - (N >> 2)] = -tempr;
+        data [(N >> 1) + (N >> 2) + 2 * i] = tempr;
 
         data [(N >> 2) + 2 * i] = tempi;
-        if (i < (N >> 3))
-            data [(N >> 2) - 1 - 2 * i] = -tempi;
-        else
-            data [(N >> 2) + N - 1 - 2*i] = tempi;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+        data [(N >> 2) - 1 - 2 * i] = -tempi;
     }
+    for (; i < (N >> 2); i++) {
 
-    if (xr) FreeMemory(xr);
-    if (xi) FreeMemory(xi);
+        /* get post-twiddled FFT output  */
+        c = twid[2*i];
+        s = twid[2*i+1];
+        tempr = fac * (xr[i] * c - xi[i] * s);
+        tempi = fac * (xi[i] * c + xr[i] * s);
+
+        /* fill in output values */
+        data [(N >> 1) + (N >> 2) - 1 - 2 * i] = tempr;
+        data [2 * i - (N >> 2)] = -tempr;
+
+        data [(N >> 2) + 2 * i] = tempi;
+        data [(N >> 2) + N - 1 - 2*i] = tempi;
+    }
 }

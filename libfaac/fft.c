@@ -321,8 +321,60 @@ static void fft_proc(
 	int step, shift, pos;
 	int exp, estep;
 
-	estep = size;
-	for (step = 1; step < size; step *= 2)
+	estep = size >> 1;
+	/* first stage: step = 1, refac[0] = 1, imfac[0] = 0 */
+	for (pos = 0; pos < size; pos += 2)
+	{
+		faac_real v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+	/* second stage: step = 2, estep = size / 4 */
+	/* shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0 */
+	/* shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1 */
+	if (size >= 4) {
+		for (pos = 0; pos < size; pos += 4)
+		{
+			faac_real v2r, v2i;
+			int x1 = pos;
+			int x2 = pos + 2;
+
+			/* shift = 0 */
+			v2r = xr[x2];
+			v2i = xi[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			/* shift = 1 */
+			x1++;
+			x2++;
+			v2r = xi[x2];
+			v2i = -xr[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+	}
+
+	estep = size >> 2;
+	for (step = 4; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;
