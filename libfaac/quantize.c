@@ -62,6 +62,9 @@
 #define MAGIC_NUMBER  0.4054
 #define NOISEFLOOR 0.4
 
+static faac_real pow10_sfstep[256];
+static int pow10_sfstep_init = 0;
+
 // band sound masking
 static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
                   int gnum, faac_real quality)
@@ -246,8 +249,20 @@ static void qlevel(CoderInfo *coderInfo,
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      else {
+          if (!pow10_sfstep_init) {
+              int i;
+              for (i = 0; i < 256; i++) {
+                  pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
+              }
+              pow10_sfstep_init = 1;
+          }
+          if (sfac >= -128 && sfac < 128) {
+              sfacfix = pow10_sfstep[sfac + 128];
+          } else {
+              sfacfix = FAAC_POW(10, sfac / sfstep);
+          }
+      }
 
       xr = xr0 + start;
       end -= start;
@@ -285,14 +300,14 @@ static void qlevel(CoderInfo *coderInfo,
 
           for (cnt = 0; cnt < end; cnt++)
           {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
+              faac_real val = xr[cnt];
+              faac_real tmp = FAAC_FABS(val);
 
               tmp *= sfacfix;
               tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+              int q = (int)(tmp + MAGIC_NUMBER);
+              xi[cnt] = (val < 0) ? -q : q;
           }
           xi += cnt;
           xr += BLOCK_LEN_SHORT;

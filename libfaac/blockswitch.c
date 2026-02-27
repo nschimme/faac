@@ -287,19 +287,35 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
     c = cosfreq8;
     s = sinfreq8;
 
-    for (i = 0; i < (N >> 2); i++) {
+    int N4 = N >> 2;
+    int N8 = N >> 3;
+    int N3_4_1 = (3 * N >> 2) - 1;
+    int N4_1 = (N >> 2) - 1;
+    int N_N4 = N - (N >> 2);
+    int N_N4_1 = N + (N >> 2) - 1;
+
+    for (i = 0; i < N8; i++) {
         /* calculate real and imaginary parts of g(n) or G(p) */
         n = 2 * i;
 
-        if (n < (N >> 2))
-            tempr = data [(N>>2) + (N>>1) - 1 - n] + data [N - (N>>2) + n];
-        else
-            tempr = data [(N>>2) + (N>>1) - 1 - n] - data [-(N>>2) + n];
+        tempr = data [N3_4_1 - n] + data [N_N4 + n];
+        tempi = data [(N>>2) + n] - data [N4_1 - n];
 
-        if (n < (N >> 2))
-            tempi = data [(N>>2) + n] - data [(N>>2) - 1 - n];
-        else
-            tempi = data [(N>>2) + n] + data [N + (N>>2) - 1 - n];
+        /* calculate pre-twiddled FFT input */
+        xr[i] = tempr * c + tempi * s;
+        xi[i] = tempi * c - tempr * s;
+
+        /* use recurrence to prepare cosine and sine for next value of i */
+        cold = c;
+        c = c * cfreq - s * sfreq;
+        s = s * cfreq + cold * sfreq;
+    }
+    for (; i < N4; i++) {
+        /* calculate real and imaginary parts of g(n) or G(p) */
+        n = 2 * i;
+
+        tempr = data [N3_4_1 - n] - data [n - (N>>2)];
+        tempi = data [(N>>2) + n] + data [N_N4_1 - n];
 
         /* calculate pre-twiddled FFT input */
         xr[i] = tempr * c + tempi * s;
@@ -325,7 +341,7 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
     s = sinfreq8;
 
     /* post-twiddle FFT output and then get output data */
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < N4; i++) {
         /* get post-twiddled FFT output  */
         tempr = 2. * (xr[i] * c + xi[i] * s);
         tempi = 2. * (xi[i] * c - xr[i] * s);
