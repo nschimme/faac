@@ -455,6 +455,11 @@ static void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
     faac_real tempr, tempi, c, s;
     faac_real *twiddles;
     int i, n;
+    int N4 = N >> 2;
+    int N8 = N >> 3;
+    int N2 = N >> 1;
+    int N4_1 = (N >> 2) - 1;
+    int N_N4_1 = N + (N >> 2) - 1;
 
     xi = hEncoder->mdct_xi;
     xr = hEncoder->mdct_xr;
@@ -464,24 +469,31 @@ static void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
     else
         twiddles = hEncoder->mdct_twiddles_short;
 
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < N8; i++) {
         /* calculate real and imaginary parts of g(n) or G(p) */
-        n = (N >> 1) - 1 - 2 * i;
+        int i2 = 2 * i;
+        n = N2 - 1 - i2;
+        tempr = data [(N >> 2) + n] + data [N_N4_1 - n];
 
-        if (i < (N >> 3))
-            tempr = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n = N / 2 - 1 - 2i */
-        else
-            tempr = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n = N / 2 - 1 - 2i */
-
-        n = 2 * i;
-        if (i < (N >> 3))
-            tempi = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n=2i */
-        else
-            tempi = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n=2i*/
+        tempi = data [(N >> 2) + i2] - data [N4_1 - i2];
 
         /* calculate pre-twiddled FFT input */
-        c = twiddles[2*i];
-        s = twiddles[2*i+1];
+        c = twiddles[i2];
+        s = twiddles[i2+1];
+        xr[i] = tempr * c + tempi * s;
+        xi[i] = tempi * c - tempr * s;
+    }
+    for (; i < N4; i++) {
+        /* calculate real and imaginary parts of g(n) or G(p) */
+        int i2 = 2 * i;
+        n = N2 - 1 - i2;
+        tempr = data [(N >> 2) + n] - data [N4_1 - n];
+
+        tempi = data [(N >> 2) + i2] + data [N_N4_1 - i2];
+
+        /* calculate pre-twiddled FFT input */
+        c = twiddles[i2];
+        s = twiddles[i2+1];
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
     }
@@ -496,7 +508,7 @@ static void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
     }
 
     /* post-twiddle FFT output and then get output data */
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < N4; i++) {
         /* get post-twiddled FFT output  */
         c = twiddles[2*i];
         s = twiddles[2*i+1];
@@ -518,6 +530,8 @@ static void IMDCT( faacEncStruct* hEncoder, faac_real *data, int N)
     faac_real fac;
     faac_real *twiddles;
     int i;
+    int N4 = N >> 2;
+    int N8 = N >> 3;
 
     xi = hEncoder->mdct_xi;
     xr = hEncoder->mdct_xr;
@@ -530,7 +544,7 @@ static void IMDCT( faacEncStruct* hEncoder, faac_real *data, int N)
     else
         twiddles = hEncoder->mdct_twiddles_short;
 
-    for (i = 0; i < (N >> 2); i++) {
+    for (i = 0; i < N4; i++) {
         /* calculate real and imaginary parts of g(n) or G(p) */
         tempr = -data[2 * i];
         tempi = data[(N >> 1) - 1 - 2 * i];
@@ -552,23 +566,32 @@ static void IMDCT( faacEncStruct* hEncoder, faac_real *data, int N)
     }
 
     /* post-twiddle FFT output and then get output data */
-    for (i = 0; i < (N >> 2); i++) {
-
+    for (i = 0; i < N8; i++) {
+        c = twiddles[2*i];
+        s = twiddles[2*i+1];
         /* get post-twiddled FFT output  */
         tempr = fac * (xr[i] * c - xi[i] * s);
         tempi = fac * (xi[i] * c + xr[i] * s);
 
         /* fill in output values */
         data [(N >> 1) + (N >> 2) - 1 - 2 * i] = tempr;
-        if (i < (N >> 3))
-            data [(N >> 1) + (N >> 2) + 2 * i] = tempr;
-        else
-            data [2 * i - (N >> 2)] = -tempr;
+        data [(N >> 1) + (N >> 2) + 2 * i] = tempr;
 
         data [(N >> 2) + 2 * i] = tempi;
-        if (i < (N >> 3))
-            data [(N >> 2) - 1 - 2 * i] = -tempi;
-        else
-            data [(N >> 2) + N - 1 - 2*i] = tempi;
+        data [(N >> 2) - 1 - 2 * i] = -tempi;
+    }
+    for (; i < N4; i++) {
+        c = twiddles[2*i];
+        s = twiddles[2*i+1];
+        /* get post-twiddled FFT output  */
+        tempr = fac * (xr[i] * c - xi[i] * s);
+        tempi = fac * (xi[i] * c + xr[i] * s);
+
+        /* fill in output values */
+        data [(N >> 1) + (N >> 2) - 1 - 2 * i] = tempr;
+        data [2 * i - (N >> 2)] = -tempr;
+
+        data [(N >> 2) + 2 * i] = tempi;
+        data [(N >> 2) + N - 1 - 2*i] = tempi;
     }
 }

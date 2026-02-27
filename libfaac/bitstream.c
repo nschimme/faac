@@ -886,14 +886,16 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+    idx = (bitStream->currentBit >> 3);
+    if (idx >= bitStream->size)
+        idx %= bitStream->size;
+    numUsed = bitStream->currentBit & 7;
 #ifndef DRM
     if (numUsed == 0)
         bitStream->data[idx] = 0;
 #endif
     bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        (8-numUsed-numBit);
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -910,9 +912,14 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
+    /* Fast path: bits fit into current byte */
+    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
+    if (numBit <= maxNum) {
+        return WriteByte(bitStream, data, numBit);
+    }
+
     /* write bits in packets according to buffer byte boundaries */
     num = 0;
-    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
     while (num < numBit) {
         curNum = min(numBit-num,maxNum);
         bits = data>>(numBit-num-curNum);

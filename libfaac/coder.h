@@ -138,6 +138,9 @@ typedef struct {
 #endif
 
     TnsInfo tnsInfo;
+
+    faac_real pow10_sfstep[256];
+    int pow10_sfstep_init;
 } CoderInfo;
 
 typedef struct {

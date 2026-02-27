@@ -269,11 +269,11 @@ void fft_terminate( FFT_Tables *fft_tables )
 	fft_tables->reordertbl	= NULL;
 }
 
-static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
+static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 {
 	int i;
 	int size = 1 << logm;
-	unsigned short *r;	//size
+	unsigned short *r;
 
 
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
@@ -305,9 +305,13 @@ static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
 		if (j <= i)
 			continue;
 
-		tmp = x[i];
-		x[i] = x[j];
-		x[j] = tmp;
+		tmp = xr[i];
+		xr[i] = xr[j];
+		xr[j] = tmp;
+
+		tmp = xi[i];
+		xi[i] = xi[j];
+		xi[j] = tmp;
 	}
 }
 
@@ -322,7 +326,63 @@ static void fft_proc(
 	int exp, estep;
 
 	estep = size;
-	for (step = 1; step < size; step *= 2)
+
+	/* First stage: step = 1, refac[0] = 1, imfac[0] = 0 */
+	{
+		int x1, x2;
+		estep >>= 1;
+		for (pos = 0; pos < size; pos += 2)
+		{
+			faac_real v2r, v2i;
+			x1 = pos;
+			x2 = pos + 1;
+
+			v2r = xr[x2];
+			v2i = xi[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+		step = 2;
+	}
+
+	/* Second stage: step = 2, refac[0]=1, imfac[0]=0, refac[estep]=0, imfac[estep]=-1 */
+	if (step < size)
+	{
+		int x1, x2;
+		int estep2 = estep >> 1;
+		for (pos = 0; pos < size; pos += 4)
+		{
+			faac_real v2r, v2i;
+			x1 = pos;
+			x2 = pos + 2;
+
+			/* shift = 0: exp = 0, refac=1, imfac=0 */
+			v2r = xr[x2];
+			v2i = xi[x2];
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			/* shift = 1: exp = estep, refac=0, imfac=-1 */
+			x1++;
+			x2++;
+			v2r = xi[x2];
+			v2i = -xr[x2];
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+		step = 4;
+		estep = estep2;
+	}
+
+	for (; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;
@@ -332,12 +392,50 @@ static void fft_proc(
 			x1 = x2;
 			x2 += step;
 			exp = 0;
-			for (shift = 0; shift < step; shift++)
+			for (shift = 0; shift < (step & ~3); shift += 4)
+			{
+				faac_real v2r, v2i, r_f, i_f;
+
+				/* 0 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 1 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 2 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+
+				/* 3 */
+				r_f = refac[exp]; i_f = imfac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
+				xr[x2] = xr[x1] - v2r; xr[x1] += v2r;
+				xi[x2] = xi[x1] - v2i; xi[x1] += v2i;
+				exp += estep; x1++; x2++;
+			}
+			for (; shift < step; shift++)
 			{
 				faac_real v2r, v2i;
+				faac_real r_f = refac[exp];
+				faac_real i_f = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
 
 				xr[x2] = xr[x1] - v2r;
 				xr[x1] += v2r;
@@ -393,8 +491,7 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 
 	check_tables( fft_tables, logm);
 
-	reorder( fft_tables, xr, logm);
-	reorder( fft_tables, xi, logm);
+	reorder2( fft_tables, xr, xi, logm);
 
 	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }

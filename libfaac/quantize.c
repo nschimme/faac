@@ -166,7 +166,7 @@ static void qlevel(CoderInfo *coderInfo,
                   )
 {
     int sb, cnt;
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
+#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600) && !defined(USE_FAST_MATH)
     /* 2^0.25 (1.50515 dB) step from AAC specs */
     static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
 #else
@@ -246,8 +246,20 @@ static void qlevel(CoderInfo *coderInfo,
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      else {
+          if (!coderInfo->pow10_sfstep_init) {
+              int i;
+              for (i = 0; i < 256; i++) {
+                  coderInfo->pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
+              }
+              coderInfo->pow10_sfstep_init = 1;
+          }
+          if (sfac >= -128 && sfac < 128) {
+              sfacfix = coderInfo->pow10_sfstep[sfac + 128];
+          } else {
+              sfacfix = FAAC_POW(10, sfac / sfstep);
+          }
+      }
 
       xr = xr0 + start;
       end -= start;
@@ -283,16 +295,39 @@ static void qlevel(CoderInfo *coderInfo,
           }
 #endif
 
-          for (cnt = 0; cnt < end; cnt++)
+          for (cnt = 0; cnt < (end & ~3); cnt += 4)
           {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
+              faac_real val0 = xr[cnt];
+              faac_real val1 = xr[cnt + 1];
+              faac_real val2 = xr[cnt + 2];
+              faac_real val3 = xr[cnt + 3];
+              faac_real tmp0 = FAAC_FABS(val0) * sfacfix;
+              faac_real tmp1 = FAAC_FABS(val1) * sfacfix;
+              faac_real tmp2 = FAAC_FABS(val2) * sfacfix;
+              faac_real tmp3 = FAAC_FABS(val3) * sfacfix;
+              tmp0 = FAAC_SQRT(tmp0 * FAAC_SQRT(tmp0));
+              tmp1 = FAAC_SQRT(tmp1 * FAAC_SQRT(tmp1));
+              tmp2 = FAAC_SQRT(tmp2 * FAAC_SQRT(tmp2));
+              tmp3 = FAAC_SQRT(tmp3 * FAAC_SQRT(tmp3));
+              int q0 = (int)(tmp0 + MAGIC_NUMBER);
+              int q1 = (int)(tmp1 + MAGIC_NUMBER);
+              int q2 = (int)(tmp2 + MAGIC_NUMBER);
+              int q3 = (int)(tmp3 + MAGIC_NUMBER);
+              xi[cnt] = (val0 < 0) ? -q0 : q0;
+              xi[cnt + 1] = (val1 < 0) ? -q1 : q1;
+              xi[cnt + 2] = (val2 < 0) ? -q2 : q2;
+              xi[cnt + 3] = (val3 < 0) ? -q3 : q3;
+          }
+          for (; cnt < end; cnt++)
+          {
+              faac_real val = xr[cnt];
+              faac_real tmp = FAAC_FABS(val);
 
               tmp *= sfacfix;
               tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+              int q = (int)(tmp + MAGIC_NUMBER);
+              xi[cnt] = (val < 0) ? -q : q;
           }
           xi += cnt;
           xr += BLOCK_LEN_SHORT;
