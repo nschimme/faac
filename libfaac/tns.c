@@ -28,6 +28,7 @@ Copyright (c) 1997.
  */
 
 #include <math.h>
+#include <stdlib.h>
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
@@ -75,7 +76,7 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
 static void TnsFilter(int length,faac_real* spec,TnsFilterData* filter);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter);
+static void TnsInvFilter(faacEncStruct* hEncoder, int length,faac_real* spec,TnsFilterData* filter);
 
 
 /*****************************************************/
@@ -122,13 +123,20 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
     }
+    hEncoder->tns_temp = (faac_real*)AllocMemory(BLOCK_LEN_LONG * sizeof(faac_real));
+}
+
+void TnsEnd(faacEncStruct* hEncoder)
+{
+    if (hEncoder->tns_temp) FreeMemory(hEncoder->tns_temp);
 }
 
 
 /*****************************************************/
 /* TnsEncode:                                        */
 /*****************************************************/
-void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
+void TnsEncode(faacEncStruct* hEncoder,
+               TnsInfo* tnsInfo,       /* TNS info */
                int numberOfBands,       /* Number of bands per window */
                int maxSfb,              /* max_sfb */
                enum WINDOW_TYPE blockType,   /* block type */
@@ -205,7 +213,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);      /* Filter */
+            TnsInvFilter(hEncoder,length,&spec[startIndex],tnsFilter);      /* Filter */
         }
     }
 }
@@ -216,7 +224,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 /* This is a stripped-down version of TnsEncode()    */
 /* which performs TNS analysis filtering only        */
 /*****************************************************/
-void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
+void TnsEncodeFilterOnly(faacEncStruct* hEncoder,
+                         TnsInfo* tnsInfo,           /* TNS info */
                          int numberOfBands,          /* Number of bands per window */
                          int maxSfb,                 /* max_sfb */
                          enum WINDOW_TYPE blockType, /* block type */
@@ -266,7 +275,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);
+            TnsInvFilter(hEncoder,length,&spec[startIndex],tnsFilter);
         }
     }
 }
@@ -277,7 +286,8 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /* This is a stripped-down version of TnsEncode()    */
 /* which performs TNS synthesis filtering only       */
 /*****************************************************/
-void TnsDecodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
+void TnsDecodeFilterOnly(faacEncStruct* hEncoder,
+                         TnsInfo* tnsInfo,           /* TNS info */
                          int numberOfBands,          /* Number of bands per window */
                          int maxSfb,                 /* max_sfb */
                          enum WINDOW_TYPE blockType, /* block type */
@@ -391,14 +401,12 @@ static void TnsFilter(int length,faac_real* spec,TnsFilterData* filter)
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
+static void TnsInvFilter(faacEncStruct* hEncoder, int length,faac_real* spec,TnsFilterData* filter)
 {
     int i,j,k=0;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
-    faac_real* temp;
-
-    temp = (faac_real *)AllocMemory(length * sizeof (faac_real));
+    faac_real* temp = hEncoder->tns_temp;
 
     /* Determine loop parameters for given direction */
     if (filter->direction) {
@@ -441,7 +449,6 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
             }
         }
     }
-    if (temp) FreeMemory(temp);
 }
 
 

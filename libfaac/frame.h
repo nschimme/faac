@@ -39,7 +39,7 @@ extern "C" {
 
 #include <faaccfg.h>
 
-typedef struct {
+struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -88,7 +88,22 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
-} faacEncStruct;
+
+    /* Temporary buffers for FilterBank, MDCT and IMDCT to avoid reallocations */
+    faac_real *transf_buf;
+    faac_real *overlap_buf;
+    faac_real *mdct_xi;
+    faac_real *mdct_xr;
+
+    /* Twiddle factors for MDCT/IMDCT */
+    faac_real *mdct_twiddles_long;
+    faac_real *mdct_twiddles_short;
+
+    /* Temporary buffer for TNS */
+    faac_real *tns_temp;
+};
+
+typedef struct faacEncStruct faacEncStruct;
 
 #ifdef __cplusplus
 }
