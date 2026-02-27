@@ -35,13 +35,13 @@ Copyright (c) 1996.
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
 
+#include "coder.h"
+#include "channels.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#include "frame.h"
-#include "coder.h"
-#include "channels.h"
 
 /*
  * Raw bitstream constants
@@ -119,9 +119,9 @@ typedef struct
   long numByte;         /* number of bytes read/written (only file) */
 } BitStream;
 
+struct faacEncStruct;
 
-
-int WriteBitstream(faacEncStruct* hEncoder,
+int WriteBitstream(struct faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
                    BitStream *bitStream,
@@ -141,4 +141,3 @@ int PutBit(BitStream *bitStream,
 #endif /* __cplusplus */
 
 #endif /* BITSTREAM_H */
-

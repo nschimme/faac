@@ -94,6 +94,7 @@ struct faacEncStruct {
 
     /* Temporary buffers for FilterBank and MDCT to avoid reallocations */
     faac_real *transf_buf;
+    faac_real *overlap_buf;
     faac_real *mdct_xi;
     faac_real *mdct_xr;
 

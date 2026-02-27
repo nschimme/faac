@@ -22,7 +22,8 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
-
+#include "bitstream.h"
+#include "frame.h"
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
                    faac_real *sl0, faac_real *sr0, int *sfcnt,
