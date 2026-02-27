@@ -222,7 +222,6 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 	int size = 1 << logm;
 	const unsigned short *r;
 
-
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
 	{
 		fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));

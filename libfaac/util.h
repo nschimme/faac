@@ -67,6 +67,17 @@ extern "C" {
 #define ALIGN16_END
 #endif
 
+#if defined(__GNUC__) || defined(__clang__)
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#elif defined(_MSC_VER)
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#else
+#define ALIGN16_BEG
+#define ALIGN16_END
+#endif
+
 /* Memory functions */
 static inline void *AllocMemory(size_t size) {
     void *ptr;
