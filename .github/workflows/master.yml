@@ -35,6 +35,13 @@ jobs:
               options: -Dfloating-point=single,
             }
           - {
+              name: Linux GCC (No DRM),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Ddrm=false,
+            }
+          - {
               name: macOS Clang,
               os: macos-latest,
               compiler: clang,
