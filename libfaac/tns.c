@@ -308,6 +308,8 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
             /* Unroll loop for better performance */
             for (j=1;j<=(order&~3);j+=4) {
 #define TNS_STEP_REV(OFFSET) spec[i]+=temp[i+(j+OFFSET)]*a[j+OFFSET];
+                /* Sur: Original was: spec[i]+=temp[i+j]*a[j];
+                   Loop unrolling for faster DSP path. */
                 TNS_STEP_REV(0)
                 TNS_STEP_REV(1)
                 TNS_STEP_REV(2)
@@ -337,6 +339,8 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
             /* Unroll loop for better performance */
             for (j=1;j<=(order&~3);j+=4) {
 #define TNS_STEP(OFFSET) spec[i]+=temp[i-(j+OFFSET)]*a[j+OFFSET];
+                /* Sur: Original was: spec[i]+=temp[i-j]*a[j];
+                   Loop unrolling for faster DSP path. */
                 TNS_STEP(0)
                 TNS_STEP(1)
                 TNS_STEP(2)

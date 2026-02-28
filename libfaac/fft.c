@@ -269,7 +269,10 @@ static void fft_proc(
 	int exp, estep;
 
 	estep = size >> 1;
-	/* first stage: step = 1, refac[0] = 1, imfac[0] = 0 */
+	/* Sur: Sur's micro-optimizations for in-order CPUs.
+	   First stage: step = 1, refac[0] = 1, imfac[0] = 0.
+	   Eliminate redundant multiplications by 1 and 0.
+	*/
 	for (pos = 0; pos < size; pos += 2)
 	{
 		faac_real v2r, v2i;
@@ -286,9 +289,11 @@ static void fft_proc(
 		xi[x1] += v2i;
 	}
 
-	/* second stage: step = 2, estep = size / 4 */
-	/* shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0 */
-	/* shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1 */
+	/* Second stage: step = 2, estep = size / 4.
+	   shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0.
+	   shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1.
+	   Eliminate multiplications and avoid trig calls for this stage.
+	*/
 	if (size >= 4) {
 		for (pos = 0; pos < size; pos += 4)
 		{

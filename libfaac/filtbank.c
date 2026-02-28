@@ -269,6 +269,7 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     c = cosfreq8;
     s = sinfreq8;
 
+/* Sur: Split MDCT loop to eliminate conditional branches inside hot loop. */
 #define PRE_TWIDDLE(FORM_TEMPR, FORM_TEMPI) \
     { \
         int i2 = 2 * i; \

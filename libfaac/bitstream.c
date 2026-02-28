@@ -892,7 +892,7 @@ static int WriteByte(BitStream *bitStream,
         bitStream->data[idx] = 0;
 #endif
     bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT - numUsed - numBit);
+        (8 - numUsed - numBit);
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
