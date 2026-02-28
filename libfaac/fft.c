@@ -342,9 +342,11 @@ static void fft_proc(
 			for (shift = 0; shift < step; shift++)
 			{
 				faac_real v2r, v2i;
+				faac_real r_f = refac[exp];
+				faac_real i_f = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
 
 				xr[x2] = xr[x1] - v2r;
 				xr[x1] += v2r;
