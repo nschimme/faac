@@ -269,13 +269,12 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     c = cosfreq8;
     s = sinfreq8;
 
-/* Sur: Split MDCT loop to eliminate conditional branches inside hot loop. */
-#define PRE_TWIDDLE(FORM_TEMPR, FORM_TEMPI) \
+#define PRE_TWIDDLE(TEMPR_EXPR, TEMPI_EXPR) \
     { \
-        int i2 = 2 * i; \
-        n = (N >> 1) - 1 - i2; \
-        tempr = FORM_TEMPR; \
-        tempi = FORM_TEMPI; \
+        n = (N >> 1) - 1 - 2 * i; \
+        tempr = TEMPR_EXPR; \
+        n = 2 * i; \
+        tempi = TEMPI_EXPR; \
         xr[i] = tempr * c + tempi * s; \
         xi[i] = tempi * c - tempr * s; \
         cold = c; \
@@ -283,13 +282,14 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
         s = s * cfreq + cold * sfreq; \
     }
 
+    /* Sur's optimization: Split loop to eliminate branch */
     for (i = 0; i < (N >> 3); i++) {
-        PRE_TWIDDLE(data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n],
-                    data [(N >> 2) + i2] - data [(N >> 2) - 1 - i2])
+        PRE_TWIDDLE(data[(N >> 2) + n] + data[N + (N >> 2) - 1 - n],
+                   data[(N >> 2) + n] - data[(N >> 2) - 1 - n])
     }
     for (; i < (N >> 2); i++) {
-        PRE_TWIDDLE(data [(N >> 2) + n] - data [(N >> 2) - 1 - n],
-                    data [(N >> 2) + i2] + data [N + (N >> 2) - 1 - i2])
+        PRE_TWIDDLE(data[(N >> 2) + n] - data[(N >> 2) - 1 - n],
+                   data[(N >> 2) + n] + data[N + (N >> 2) - 1 - n])
     }
 #undef PRE_TWIDDLE
 

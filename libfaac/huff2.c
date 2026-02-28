@@ -425,6 +425,7 @@ int huffbook(CoderInfo *coder,
         HUFF_UPDATE_MAXQ(3)
 #undef HUFF_UPDATE_MAXQ
     }
+    /* Search remaining values */
     for (; cnt < len; cnt++)
     {
         int q = abs(qs[cnt]);

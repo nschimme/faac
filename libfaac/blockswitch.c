@@ -287,29 +287,29 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
     c = cosfreq8;
     s = sinfreq8;
 
-    for (i = 0; i < (N >> 2); i++) {
-        /* calculate real and imaginary parts of g(n) or G(p) */
-        n = 2 * i;
-
-        if (n < (N >> 2))
-            tempr = data [(N>>2) + (N>>1) - 1 - n] + data [N - (N>>2) + n];
-        else
-            tempr = data [(N>>2) + (N>>1) - 1 - n] - data [-(N>>2) + n];
-
-        if (n < (N >> 2))
-            tempi = data [(N>>2) + n] - data [(N>>2) - 1 - n];
-        else
-            tempi = data [(N>>2) + n] + data [N + (N>>2) - 1 - n];
-
-        /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+#define PRE_TWIDDLE(TEMPR_EXPR, TEMPI_EXPR) \
+    { \
+        tempr = TEMPR_EXPR; \
+        tempi = TEMPI_EXPR; \
+        xr[i] = tempr * c + tempi * s; \
+        xi[i] = tempi * c - tempr * s; \
+        cold = c; \
+        c = c * cfreq - s * sfreq; \
+        s = s * cfreq + cold * sfreq; \
     }
+
+    /* Sur's optimization: Split loop to eliminate branch */
+    for (i = 0; i < (N >> 3); i++) {
+        n = 2 * i;
+        PRE_TWIDDLE(data[(N>>2) + (N>>1) - 1 - n] + data[N - (N>>2) + n],
+                   data[(N>>2) + n] - data[(N>>2) - 1 - n])
+    }
+    for (; i < (N >> 2); i++) {
+        n = 2 * i;
+        PRE_TWIDDLE(data[(N>>2) + (N>>1) - 1 - n] - data[-(N>>2) + n],
+                   data[(N>>2) + n] + data[N + (N>>2) - 1 - n])
+    }
+#undef PRE_TWIDDLE
 
     /* Perform in-place complex FFT of length N/4 */
     switch (N) {

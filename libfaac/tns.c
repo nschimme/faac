@@ -303,25 +303,23 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
         }
 
         /* Now filter the rest */
-        for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
-            /* Unroll loop for better performance */
-            for (j=1;j<=(order&~3);j+=4) {
-#define TNS_STEP_REV(OFFSET) spec[i]+=temp[i+(j+OFFSET)]*a[j+OFFSET];
-                /* Sur: Original was: spec[i]+=temp[i+j]*a[j];
-                   Loop unrolling for faster DSP path. */
-                TNS_STEP_REV(0)
-                TNS_STEP_REV(1)
-                TNS_STEP_REV(2)
-                TNS_STEP_REV(3)
-#undef TNS_STEP_REV
-            }
-            for (;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+#define TNS_STEP_REV(IDX) \
+        { \
+            temp[IDX] = spec[IDX]; \
+            for (j = 1; j <= order; j++) { \
+                spec[IDX] += temp[IDX + j] * a[j]; \
+            } \
         }
-
-
+        for (i = length - 1 - order; i >= 3; i -= 4) {
+            TNS_STEP_REV(i - 0)
+            TNS_STEP_REV(i - 1)
+            TNS_STEP_REV(i - 2)
+            TNS_STEP_REV(i - 3)
+        }
+        for (; i >= 0; i--) {
+            TNS_STEP_REV(i)
+        }
+#undef TNS_STEP_REV
     } else {
 
         /* Startup, initial state is zero */
@@ -334,23 +332,24 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
         }
 
         /* Now filter the rest */
-        for (i=order;i<length;i++) {
-            temp[i]=spec[i];
-            /* Unroll loop for better performance */
-            for (j=1;j<=(order&~3);j+=4) {
-#define TNS_STEP(OFFSET) spec[i]+=temp[i-(j+OFFSET)]*a[j+OFFSET];
-                /* Sur: Original was: spec[i]+=temp[i-j]*a[j];
-                   Loop unrolling for faster DSP path. */
-                TNS_STEP(0)
-                TNS_STEP(1)
-                TNS_STEP(2)
-                TNS_STEP(3)
-#undef TNS_STEP
-            }
-            for (;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+#define TNS_STEP(IDX) \
+        { \
+            temp[IDX] = spec[IDX]; \
+            for (j = 1; j <= order; j++) { \
+                spec[IDX] += temp[IDX - j] * a[j]; \
+            } \
         }
+        /* Safely unroll: process in blocks of 4 from 'order' until no more full blocks of 4 fit before 'length' */
+        for (i = order; i <= length - 4; i += 4) {
+            TNS_STEP(i + 0)
+            TNS_STEP(i + 1)
+            TNS_STEP(i + 2)
+            TNS_STEP(i + 3)
+        }
+        for (; i < length; i++) {
+            TNS_STEP(i)
+        }
+#undef TNS_STEP
     }
     if (temp) FreeMemory(temp);
 }
