@@ -14,7 +14,3 @@ option('floating-point',
     choices: ['single', 'double'],
     value: 'double')
 
-option('fast-math',
-    description: 'Use fast math approximations (not bit-exact)',
-    type: 'boolean',
-    value: false)

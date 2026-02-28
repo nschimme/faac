@@ -28,9 +28,6 @@ else
     config_h.set('FAAC_PRECISION_SINGLE', 1)
 endif
 
-if get_option('fast-math')
-    config_h.set('USE_FAST_MATH', 1)
-endif
 
 c_args = []
 
