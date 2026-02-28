@@ -19,10 +19,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+
+#ifdef CPUMXU
+# include "mxu_macros.h"
+#endif
 
 #ifdef DRM
 static int vcb11;
@@ -112,7 +117,32 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
+#ifdef CPUMXU
+            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16 |
+                            ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
+            int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
+            int res;
+            __asm__ __volatile__ (
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
+                MXU_S32I2M(1, 2)
+                MXU_S32I2M(2, 3)
+                "li $2, 0\n\t"
+                MXU_S32I2M(5, 2)
+                MXU_S32I2M(6, 2)
+                MXU_Q8MULSU(3, 1, 2, 4)
+                MXU_D16ASUM(5, 3, 4, 6, 0)
+                MXU_S32M2I(5, 2)
+                MXU_S32M2I(6, 3)
+                "addu %0, $2, $3\n\t"
+                : "=r"(res)
+                : "r"(qp_packed), "r"(coeffs)
+                : "memory", "$2", "$3"
+            );
+            idx = res + 40;
+#else
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
+#endif
             if (idx < 0 || idx >= arrlen(book01))
             {
                 return -1;
@@ -133,7 +163,33 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
+#ifdef CPUMXU
+            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16 |
+                            ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
+            int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
+            int res;
+            __asm__ __volatile__ (
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
+                MXU_S32I2M(1, 2)
+                MXU_S32I2M(2, 3)
+                "li $2, 0\n\t"
+                MXU_S32I2M(6, 2)
+                MXU_S32I2M(7, 2)
+                MXU_Q8ABD(3, 1, 0)
+                MXU_Q8MULSU(4, 2, 3, 5)
+                MXU_D16ASUM(6, 4, 5, 7, 0)
+                MXU_S32M2I(6, 2)
+                MXU_S32M2I(7, 3)
+                "addu %0, $2, $3\n\t"
+                : "=r"(res)
+                : "r"(qp_packed), "r"(coeffs)
+                : "memory", "$2", "$3"
+            );
+            idx = res;
+#else
             idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
+#endif
             if (idx < 0 || idx >= arrlen(book03))
             {
                 return -1;
@@ -172,7 +228,29 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
+#ifdef CPUMXU
+            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16;
+            int coeffs = (9 << 24) | (1 << 16);
+            int res;
+            __asm__ __volatile__ (
+                "move $2, %1\n\t"
+                "move $3, %2\n\t"
+                MXU_S32I2M(1, 2)
+                MXU_S32I2M(2, 3)
+                MXU_Q8MULSU(3, 1, 2, 0)
+                MXU_S32M2I(3, 2)
+                "srl $3, $2, 24\n\t"
+                "srl $2, $2, 16\n\t"
+                "andi $2, $2, 0xFF\n\t"
+                "addu %0, $2, $3\n\t"
+                : "=r"(res)
+                : "r"(qp_packed), "r"(coeffs)
+                : "memory", "$2", "$3"
+            );
+            idx = res + 40;
+#else
             idx = 9 * qp[0] + qp[1] + 40;
+#endif
             if (idx < 0 || idx >= arrlen(book05))
             {
                 return -1;

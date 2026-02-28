@@ -22,6 +22,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "faac_real.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -46,11 +48,10 @@ extern "C" {
 #define SetMemory(block, value, size) memset(block, value, size)
 
 int GetSRIndex(unsigned int sampleRate);
-int GetMaxPredSfb(int samplingRateIdx);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
-unsigned int BitAllocation(double pe, int short_block);
+unsigned int BitAllocation(faac_real pe, int short_block);
 
 #ifdef __cplusplus
 }

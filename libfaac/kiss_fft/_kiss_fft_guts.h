@@ -13,7 +13,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 /* kiss_fft.h
-   defines kiss_fft_scalar as either short or a float type
+   defines kiss_fft_scalar as either short or a faac_real type
    and defines
    typedef struct { kiss_fft_scalar r; kiss_fft_scalar i; }kiss_fft_cpx; */
 #include "kiss_fft.h"
@@ -48,9 +48,40 @@ struct kiss_fft_state{
 
 #   define S_MUL(a,b) sround( smul(a,b) )
 
+#ifdef CPUMXU
+#include "../mxu_macros.h"
+#define C_MUL(m,a,b) \
+    do { \
+        int res_r, res_i; \
+        int val_a = ((int)((a).r) << 16) | ((int)((a).i) & 0xffff); \
+        int val_b = ((int)((b).r) << 16) | ((int)((b).i) & 0xffff); \
+        __asm__ __volatile__ ( \
+            "move $2, %2\n\t" \
+            "move $3, %3\n\t" \
+            MXU_S32I2M(1, 2) \
+            MXU_S32I2M(2, 3) \
+            MXU_D16MUL(3, 1, 2, 4, 0) /* XR3 = ac, XR4 = bd */ \
+            MXU_D16MUL(5, 1, 2, 6, 3) /* XR5 = ad, XR6 = bc */ \
+            MXU_S32M2I(3, 2) \
+            MXU_S32M2I(4, 3) \
+            "subu %0, $2, $3\n\t" \
+            MXU_S32M2I(5, 2) \
+            MXU_S32M2I(6, 3) \
+            "addu %1, $2, $3\n\t" \
+            "addiu %0, %0, 16384\n\t" \
+            "addiu %1, %1, 16384\n\t" \
+            : "=r"(res_r), "=r"(res_i) \
+            : "r"(val_a), "r"(val_b) \
+            : "$2", "$3" \
+        ); \
+        (m).r = (kiss_fft_scalar)(res_r >> 15); \
+        (m).i = (kiss_fft_scalar)(res_i >> 15); \
+    } while(0)
+#else
 #   define C_MUL(m,a,b) \
       do{ (m).r = sround( smul((a).r,(b).r) - smul((a).i,(b).i) ); \
           (m).i = sround( smul((a).r,(b).i) + smul((a).i,(b).r) ); }while(0)
+#endif
 
 #   define C_FIXDIV(c,div) \
     do{ (c).r /= div; (c).i /=div; }while(0)
@@ -81,17 +112,17 @@ struct kiss_fft_state{
     do {    (res).r -= (a).r;  (res).i -= (a).i;  }while(0)
 
 static 
-void kf_cexp(kiss_fft_cpx * x,double phase) /* returns e ** (j*phase)   */
+void kf_cexp(kiss_fft_cpx * x,faac_real phase) /* returns e ** (j*phase)   */
 {
 #ifdef FIXED_POINT
-    x->r = (kiss_fft_scalar) (32767 * cos (phase));
-    x->i = (kiss_fft_scalar) (32767 * sin (phase));
+    x->r = (kiss_fft_scalar) (32767 * FAAC_COS(phase));
+    x->i = (kiss_fft_scalar) (32767 * FAAC_SIN(phase));
 #else
-    x->r = cos (phase);
-    x->i = sin (phase);
+    x->r = FAAC_COS(phase);
+    x->i = FAAC_SIN(phase);
 #endif
 }
 
 /* a debugging function */
 #define pcpx(c)\
-    fprintf(stderr,"%g + %gi\n",(double)((c)->r),(double)((c)->i) )
+    fprintf(stderr,"%g + %gi\n",(faac_real)((c)->r),(faac_real)((c)->i) )

@@ -22,7 +22,9 @@
 #ifndef _FFT_H_
 #define _FFT_H_
 
-typedef float fftfloat;
+#include "faac_real.h"
+
+typedef faac_real fftfloat;
 
 #if defined DRM && !defined DRM_1024
 
@@ -32,6 +34,8 @@ typedef struct
 {
     /*      cfg[Max FFT][FFT and inverse FFT] */
     void*   cfg[MAX_FFT][2];
+    faac_real *mdct_twiddles_long;
+    faac_real *mdct_twiddles_short;
 } FFT_Tables;
 
 #else  /* use own FFT */
@@ -41,6 +45,8 @@ typedef struct
     fftfloat **costbl;
     fftfloat **negsintbl;
     unsigned short **reordertbl;
+    faac_real *mdct_twiddles_long;
+    faac_real *mdct_twiddles_short;
 } FFT_Tables;
 
 #endif /* defined DRM && !defined DRM_1024 */
@@ -48,8 +54,7 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-void rfft			( FFT_Tables *fft_tables, double *x, int logm );
-void fft			( FFT_Tables *fft_tables, double *xr, double *xi, int logm );
-void ffti			( FFT_Tables *fft_tables, double *xr, double *xi, int logm );
+void rfft			( FFT_Tables *fft_tables, faac_real *x, int logm );
+void fft			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
 
 #endif
