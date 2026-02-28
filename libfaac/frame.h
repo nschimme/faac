@@ -36,10 +36,13 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
+#include "util.h"
 
 #include <faaccfg.h>
 
-typedef struct {
+typedef struct faacEncStruct faacEncStruct;
+
+struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -86,7 +89,11 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
-} faacEncStruct;
+
+    ALIGN16_BEG faac_real pow10_sfstep[256] ALIGN16_END;
+    int pow10_sfstep_init;
+    ALIGN16_BEG int xitab[FRAME_LEN] ALIGN16_END;
+};
 
 #ifdef __cplusplus
 }
