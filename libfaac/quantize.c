@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
-#include "quantdata.h"
-#include "util.h"
 
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
@@ -248,8 +246,6 @@ static void qlevel(CoderInfo *coderInfo,
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
-      else if (sfac >= -128 && sfac < 128)
-          sfacfix = pow10_sfstep[sfac + 128];
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
