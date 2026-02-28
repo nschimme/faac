@@ -411,21 +411,7 @@ int huffbook(CoderInfo *coder,
     int maxq = 0;
     int bookmin, lenmin;
 
-    /* Unrolled loop for faster max value search */
-    for (cnt = 0; cnt < (len & ~3); cnt += 4)
-    {
-#define HUFF_UPDATE_MAXQ(OFFSET) \
-        { \
-            int q = abs(qs[cnt + OFFSET]); \
-            if (maxq < q) maxq = q; \
-        }
-        HUFF_UPDATE_MAXQ(0)
-        HUFF_UPDATE_MAXQ(1)
-        HUFF_UPDATE_MAXQ(2)
-        HUFF_UPDATE_MAXQ(3)
-#undef HUFF_UPDATE_MAXQ
-    }
-    for (; cnt < len; cnt++)
+    for (cnt = 0; cnt < len; cnt++)
     {
         int q = abs(qs[cnt]);
         if (maxq < q)
