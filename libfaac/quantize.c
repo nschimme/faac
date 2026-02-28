@@ -252,50 +252,76 @@ static void qlevel(CoderInfo *coderInfo,
       xr = xr0 + start;
       end -= start;
       xi = xitab;
-      for (win = 0; win < gsize; win++)
-      {
+      if (sfacfix > 0.0) {
+          /* Move constant sfacfix^0.75 out of the loop.
+             Original was: (abs(xr[cnt]) * sfacfix)^0.75
+             Equivalent to: abs(xr[cnt])^0.75 * sfacfix^0.75
+          */
+          faac_real sfacfix_075 = FAAC_POW(sfacfix, 0.75);
+
 #ifdef __SSE2__
-          if (sse2)
+          const __m128 sfac075 = _mm_set1_ps(sfacfix_075);
+          const __m128 zero = _mm_setzero_ps();
+          const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+#endif
+
+#define QUANTIZE_CORE(SAMPLE, RESULT) \
+    { \
+        faac_real tmp = FAAC_FABS(SAMPLE); \
+        tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp)) * sfacfix_075; \
+        RESULT = (int)(tmp + MAGIC_NUMBER); \
+        if ((SAMPLE) < 0.0) RESULT = -RESULT; \
+    }
+
+          for (win = 0; win < gsize; win++)
           {
-              const __m128 zero = _mm_setzero_ps();
-              const __m128 sfac = _mm_set1_ps(sfacfix);
-              const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-              for (cnt = 0; cnt < end; cnt += 4)
+#ifdef __SSE2__
+              if (sse2 && (sizeof(faac_real) == sizeof(float)))
               {
-                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
-
-                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                  x = _mm_mul_ps(x, sfac);
-                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                  x = _mm_sqrt_ps(x);
-                  x = _mm_add_ps(x, magic);
-
-                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+                  for (cnt = 0; cnt < (end & ~3); cnt += 4)
+                  {
+                      __m128 x = _mm_loadu_ps((const float *)(xr + cnt));
+                      x = _mm_max_ps(x, _mm_sub_ps(zero, x));
+                      /* x^0.75 = sqrt(x * sqrt(x)) */
+                      x = _mm_mul_ps(_mm_sqrt_ps(_mm_mul_ps(x, _mm_sqrt_ps(x))), sfac075);
+                      x = _mm_add_ps(x, magic);
+                      /* Use unaligned store as SFB widths are not guaranteed to be multiples of 4 */
+                      _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
+                  }
+                  for (cnt = 0; cnt < end; cnt++)
+                  {
+                      if (xr[cnt] < 0.0) xi[cnt] = -xi[cnt];
+                  }
               }
-              for (cnt = 0; cnt < end; cnt++)
+              else
+#endif
               {
-                  if (xr[cnt] < 0)
-                      xi[cnt] = -xi[cnt];
+                  for (cnt = 0; cnt < (end & ~3); cnt += 4)
+                  {
+                      QUANTIZE_CORE(xr[cnt+0], xi[cnt+0])
+                      QUANTIZE_CORE(xr[cnt+1], xi[cnt+1])
+                      QUANTIZE_CORE(xr[cnt+2], xi[cnt+2])
+                      QUANTIZE_CORE(xr[cnt+3], xi[cnt+3])
+                  }
+                  for (; cnt < end; cnt++)
+                  {
+                      QUANTIZE_CORE(xr[cnt], xi[cnt])
+                  }
               }
               xi += cnt;
               xr += BLOCK_LEN_SHORT;
-              continue;
           }
-#endif
-
-          for (cnt = 0; cnt < end; cnt++)
+#undef QUANTIZE_CORE
+      } else {
+          for (win = 0; win < gsize; win++)
           {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
-
-              tmp *= sfacfix;
-              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+              for (cnt = 0; cnt < end; cnt++)
+              {
+                  xi[cnt] = 0;
+              }
+              xi += cnt;
+              xr += BLOCK_LEN_SHORT;
           }
-          xi += cnt;
-          xr += BLOCK_LEN_SHORT;
       }
       huffbook(coderInfo, xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;

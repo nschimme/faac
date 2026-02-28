@@ -43,8 +43,24 @@ extern "C" {
 #endif
 
 /* Memory functions */
-#define AllocMemory(size) malloc(size)
-#define FreeMemory(block) free(block)
+static inline void *AllocMemory(size_t size) {
+    void *ptr;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    ptr = _aligned_malloc(size, 16);
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    ptr = aligned_alloc(16, (size + 15) & ~15);
+#else
+    if (posix_memalign(&ptr, 16, size) != 0) return NULL;
+#endif
+    return ptr;
+}
+static inline void FreeMemory(void *block) {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    _aligned_free(block);
+#else
+    free(block);
+#endif
+}
 #define SetMemory(block, value, size) memset(block, value, size)
 
 int GetSRIndex(unsigned int sampleRate);

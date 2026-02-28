@@ -268,8 +268,60 @@ static void fft_proc(
 	int step, shift, pos;
 	int exp, estep;
 
-	estep = size;
-	for (step = 1; step < size; step *= 2)
+	estep = size >> 1;
+	/* first stage: step = 1, refac[0] = 1, imfac[0] = 0 */
+	for (pos = 0; pos < size; pos += 2)
+	{
+		faac_real v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+	/* second stage: step = 2, estep = size / 4 */
+	/* shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0 */
+	/* shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1 */
+	if (size >= 4) {
+		for (pos = 0; pos < size; pos += 4)
+		{
+			faac_real v2r, v2i;
+			int x1 = pos;
+			int x2 = pos + 2;
+
+			/* shift = 0 */
+			v2r = xr[x2];
+			v2i = xi[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			/* shift = 1 */
+			x1++;
+			x2++;
+			v2r = xi[x2];
+			v2i = -xr[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+	}
+
+	estep = size >> 2;
+	for (step = 4; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;
@@ -279,12 +331,40 @@ static void fft_proc(
 			x1 = x2;
 			x2 += step;
 			exp = 0;
-			for (shift = 0; shift < step; shift++)
+
+            /* Unrolled loop for better performance on in-order CPUs */
+            for (shift = 0; shift < (step & ~3); shift += 4)
+            {
+                faac_real v2r, v2i, r_f, i_f;
+
+#define FFT_BUTTERFLY(OFFSET) \
+                r_f = refac[exp]; i_f = imfac[exp]; \
+                v2r = xr[x2 + OFFSET] * r_f - xi[x2 + OFFSET] * i_f; \
+                v2i = xr[x2 + OFFSET] * i_f + xi[x2 + OFFSET] * r_f; \
+                xr[x2 + OFFSET] = xr[x1 + OFFSET] - v2r; \
+                xr[x1 + OFFSET] += v2r; \
+                xi[x2 + OFFSET] = xi[x1 + OFFSET] - v2i; \
+                xi[x1 + OFFSET] += v2i; \
+                exp += estep;
+
+                FFT_BUTTERFLY(0)
+                FFT_BUTTERFLY(1)
+                FFT_BUTTERFLY(2)
+                FFT_BUTTERFLY(3)
+#undef FFT_BUTTERFLY
+
+                x1 += 4;
+                x2 += 4;
+            }
+
+			for (; shift < step; shift++)
 			{
 				faac_real v2r, v2i;
+				faac_real r_f = refac[exp];
+				faac_real i_f = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				v2r = xr[x2] * r_f - xi[x2] * i_f;
+				v2i = xr[x2] * i_f + xi[x2] * r_f;
 
 				xr[x2] = xr[x1] - v2r;
 				xr[x1] += v2r;

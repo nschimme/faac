@@ -269,30 +269,28 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     c = cosfreq8;
     s = sinfreq8;
 
-    for (i = 0; i < (N >> 2); i++) {
-        /* calculate real and imaginary parts of g(n) or G(p) */
-        n = (N >> 1) - 1 - 2 * i;
-
-        if (i < (N >> 3))
-            tempr = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n = N / 2 - 1 - 2i */
-        else
-            tempr = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n = N / 2 - 1 - 2i */
-
-        n = 2 * i;
-        if (i < (N >> 3))
-            tempi = data [(N >> 2) + n] - data [(N >> 2) - 1 - n]; /* use first form of e(n) for n=2i */
-        else
-            tempi = data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n]; /* use second form of e(n) for n=2i*/
-
-        /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+#define PRE_TWIDDLE(FORM_TEMPR, FORM_TEMPI) \
+    { \
+        int i2 = 2 * i; \
+        n = (N >> 1) - 1 - i2; \
+        tempr = FORM_TEMPR; \
+        tempi = FORM_TEMPI; \
+        xr[i] = tempr * c + tempi * s; \
+        xi[i] = tempi * c - tempr * s; \
+        cold = c; \
+        c = c * cfreq - s * sfreq; \
+        s = s * cfreq + cold * sfreq; \
     }
+
+    for (i = 0; i < (N >> 3); i++) {
+        PRE_TWIDDLE(data [(N >> 2) + n] + data [N + (N >> 2) - 1 - n],
+                    data [(N >> 2) + i2] - data [(N >> 2) - 1 - i2])
+    }
+    for (; i < (N >> 2); i++) {
+        PRE_TWIDDLE(data [(N >> 2) + n] - data [(N >> 2) - 1 - n],
+                    data [(N >> 2) + i2] + data [N + (N >> 2) - 1 - i2])
+    }
+#undef PRE_TWIDDLE
 
     /* Perform in-place complex FFT of length N/4 */
     switch (N) {
