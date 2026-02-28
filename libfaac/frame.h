@@ -92,12 +92,12 @@ struct faacEncStruct {
     /* FFT Tables */
     FFT_Tables	fft_tables;
 
-    /* Temporary buffers for FilterBank, MDCT and IMDCT to avoid reallocations */
+    /* Temporary buffers for FilterBank and MDCT to avoid reallocations */
     faac_real *transf_buf;
     faac_real *mdct_xi;
     faac_real *mdct_xr;
 
-    /* Twiddle factors for MDCT/IMDCT */
+    /* Twiddle factors for MDCT */
     faac_real *mdct_twiddles_long;
     faac_real *mdct_twiddles_short;
 
