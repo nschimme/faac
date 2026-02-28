@@ -117,7 +117,7 @@ static int WriteFAACStr(BitStream *bitStream, char *version, int write)
   sprintf(str, "libfaac %s", version);
 
   len = strlen(str) + 1;
-  padbits = (BYTE_NUMBIT - ((bitStream->numBit + (BYTE_NUMBIT - 1)) & (BYTE_NUMBIT - 1))) & (BYTE_NUMBIT - 1);
+  padbits = (8 - ((bitStream->numBit + 7) % 8)) % 8;
   count = len + 3;
 
   bitcnt = LEN_SE_ID + 4 + ((count < 15) ? 0 : 8) + count * 8;
@@ -884,9 +884,8 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    /* Optimized by replacing division and modulo with shifts and masks */
-    idx = (bitStream->currentBit >> 3) % bitStream->size;
-    numUsed = bitStream->currentBit & (BYTE_NUMBIT - 1);
+    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+    numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
     if (numUsed == 0)
         bitStream->data[idx] = 0;
@@ -909,13 +908,9 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
-    maxNum = BYTE_NUMBIT - (bitStream->currentBit % BYTE_NUMBIT);
-    if (numBit <= maxNum) {
-        return WriteByte(bitStream, data, numBit);
-    }
-
     /* write bits in packets according to buffer byte boundaries */
     num = 0;
+    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
     while (num < numBit) {
         curNum = min(numBit-num,maxNum);
         bits = data>>(numBit-num-curNum);
@@ -940,9 +935,9 @@ static int ByteAlign(BitStream *bitStream, int writeFlag, int bitsSoFar)
         len = bitsSoFar;
     }
 
-    j = (BYTE_NUMBIT - (len & (BYTE_NUMBIT - 1))) & (BYTE_NUMBIT - 1);
+    j = (8 - (len%8))%8;
 
-    if ((len & (BYTE_NUMBIT - 1)) == 0) j = 0;
+    if ((len % 8) == 0) j = 0;
     if (writeFlag) {
         for( i=0; i<j; i++ ) {
             PutBit(bitStream, 0, 1);
