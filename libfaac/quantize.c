@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
-#include "quant_tables.h"
+#include "quantdata.h"
 
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
