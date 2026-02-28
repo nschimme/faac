@@ -41,6 +41,20 @@ extern "C" {
 #ifndef M_PI
 #define M_PI        3.14159265358979323846
 #endif
+#ifndef TWOPI
+#define TWOPI       (2.0 * M_PI)
+#endif
+
+#if defined(_MSC_VER)
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#elif defined(__GNUC__) || defined(__clang__)
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#else
+#define ALIGN16_BEG
+#define ALIGN16_END
+#endif
 
 #if defined(_MSC_VER)
 #define ALIGN16_BEG __declspec(align(16))
@@ -54,8 +68,24 @@ extern "C" {
 #endif
 
 /* Memory functions */
-#define AllocMemory(size) malloc(size)
-#define FreeMemory(block) free(block)
+static inline void *AllocMemory(size_t size) {
+    void *ptr;
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    ptr = _aligned_malloc(size, 16);
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+    ptr = aligned_alloc(16, (size + 15) & ~15);
+#else
+    if (posix_memalign(&ptr, 16, size) != 0) return NULL;
+#endif
+    return ptr;
+}
+static inline void FreeMemory(void *block) {
+#if defined(_MSC_VER) || defined(__MINGW32__)
+    _aligned_free(block);
+#else
+    free(block);
+#endif
+}
 #define SetMemory(block, value, size) memset(block, value, size)
 
 int GetSRIndex(unsigned int sampleRate);

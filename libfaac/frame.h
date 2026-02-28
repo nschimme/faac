@@ -33,14 +33,16 @@ extern "C" {
 
 #include "coder.h"
 #include "channels.h"
-#include "blockswitch.h"
 #include "fft.h"
-#include "quantize.h"
 #include "util.h"
 
 #include <faaccfg.h>
 
 typedef struct faacEncStruct faacEncStruct;
+
+#include "blockswitch.h"
+#include "quantize.h"
+#include "tns.h"
 
 struct faacEncStruct {
     /* number of channels in AAC file */
@@ -89,6 +91,18 @@ struct faacEncStruct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* Temporary buffers for FilterBank, MDCT and IMDCT to avoid reallocations */
+    faac_real *transf_buf;
+    faac_real *mdct_xi;
+    faac_real *mdct_xr;
+
+    /* Twiddle factors for MDCT/IMDCT */
+    faac_real *mdct_twiddles_long;
+    faac_real *mdct_twiddles_short;
+
+    /* Temporary buffer for TNS */
+    faac_real *tns_temp;
 
     ALIGN16_BEG faac_real pow10_sfstep[256] ALIGN16_END;
     int pow10_sfstep_init;
