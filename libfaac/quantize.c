@@ -23,10 +23,6 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "frame.h"
-#ifdef USE_BUILTIN_TABLES
-#include "builtin_tables.h"
-#endif
-
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
 #endif
@@ -239,13 +235,6 @@ static void qlevel(faacEncStruct *hEncoder,
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else {
-#ifdef USE_BUILTIN_TABLES
-          if (sfac >= -128 && sfac < 128) {
-              sfacfix = pow10_sfstep_table[sfac + 128];
-          } else {
-              sfacfix = FAAC_POW(10, sfac / sfstep);
-          }
-#else
           if (!hEncoder->pow10_sfstep_init) {
               int i;
               for (i = 0; i < 256; i++) {
@@ -258,7 +247,6 @@ static void qlevel(faacEncStruct *hEncoder,
           } else {
               sfacfix = FAAC_POW(10, sfac / sfstep);
           }
-#endif
       }
 
       xr = xr0 + start;

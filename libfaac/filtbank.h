@@ -55,6 +55,8 @@ void			FilterBank( struct faacEncStruct* hEncoder,
 						int overlap_select );
 
 
+void MDCT( struct faacEncStruct* hEncoder, faac_real *data, int N );
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

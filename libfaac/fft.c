@@ -26,10 +26,6 @@
 #include "fft.h"
 #include "util.h"
 
-#ifdef USE_BUILTIN_TABLES
-#include "builtin_tables.h"
-#endif
-
 #define MAXLOGM 9
 #define MAXLOGR 8
 
@@ -180,27 +176,8 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm )
 
 #else /* !defined DRM || defined DRM_1024 */
 
-#ifdef USE_BUILTIN_TABLES
-static const faac_real *builtin_costbl(int logm) {
-    if (logm == 6) return fft_costbl_6;
-    if (logm == 9) return fft_costbl_9;
-    return NULL;
-}
-static const faac_real *builtin_negsintbl(int logm) {
-    if (logm == 6) return fft_negsintbl_6;
-    if (logm == 9) return fft_negsintbl_9;
-    return NULL;
-}
-static const unsigned short *builtin_reorder(int logm) {
-    if (logm == 6) return fft_reorder_6;
-    if (logm == 9) return fft_reorder_9;
-    return NULL;
-}
-#endif
-
 void fft_initialize( FFT_Tables *fft_tables )
 {
-#ifndef USE_BUILTIN_TABLES
 	int i;
 	fft_tables->costbl		= AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->costbl[0] ) );
 	fft_tables->negsintbl	= AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->negsintbl[0] ) );
@@ -212,16 +189,10 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
 	}
-#else
-    fft_tables->costbl = NULL;
-    fft_tables->negsintbl = NULL;
-    fft_tables->reordertbl = NULL;
-#endif
 }
 
 void fft_terminate( FFT_Tables *fft_tables )
 {
-#ifndef USE_BUILTIN_TABLES
 	int i;
 
 	for( i = 0; i< MAXLOGM+1; i++ )
@@ -239,7 +210,6 @@ void fft_terminate( FFT_Tables *fft_tables )
 	FreeMemory( fft_tables->costbl );
 	FreeMemory( fft_tables->negsintbl );
 	FreeMemory( fft_tables->reordertbl );
-#endif
 
 	fft_tables->costbl		= NULL;
 	fft_tables->negsintbl	= NULL;
@@ -252,9 +222,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 	int size = 1 << logm;
 	const unsigned short *r;
 
-#ifdef USE_BUILTIN_TABLES
-    r = builtin_reorder(logm);
-#else
+
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
 	{
 		fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
@@ -275,7 +243,6 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 	}
 
 	r = fft_tables->reordertbl[logm];
-#endif
 
 	for (i = 0; i < size; i++)
 	{
@@ -423,7 +390,6 @@ static void fft_proc(
 	}
 }
 
-#ifndef USE_BUILTIN_TABLES
 static void check_tables( FFT_Tables *fft_tables, int logm)
 {
 	if( fft_tables->costbl[logm] == NULL )
@@ -445,7 +411,6 @@ static void check_tables( FFT_Tables *fft_tables, int logm)
 		}
 	}
 }
-#endif
 
 void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 {
@@ -461,18 +426,11 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 		return;
 	}
 
-#ifdef USE_BUILTIN_TABLES
-    const faac_real *costbl = builtin_costbl(logm);
-    const faac_real *negsintbl = builtin_negsintbl(logm);
-#else
 	check_tables( fft_tables, logm);
-    const faac_real *costbl = fft_tables->costbl[logm];
-    const faac_real *negsintbl = fft_tables->negsintbl[logm];
-#endif
 
 	reorder2( fft_tables, xr, xi, logm);
 
-	fft_proc( xr, xi, (fftfloat *)costbl, (fftfloat *)negsintbl, 1 << logm );
+	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }
 
 void rfft( FFT_Tables *fft_tables, faac_real *x, int logm)

@@ -26,6 +26,18 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <string.h>
+
+#if defined(_MSC_VER)
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#elif defined(__GNUC__) || defined(__clang__)
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#else
+#define ALIGN16_BEG
+#define ALIGN16_END
+#endif
 
 #ifdef FAAC_PRECISION_SINGLE
 typedef float faac_real;
@@ -57,8 +69,9 @@ typedef double faac_real;
 
 static inline float fast_log2(float x)
 {
-    union { float f; uint32_t i; } vx = { x };
-    float y = (float)vx.i;
+    uint32_t i;
+    memcpy(&i, &x, 4);
+    float y = (float)i;
     y *= 1.1920928955078125e-7f;
     return y - 126.94269504f;
 }
@@ -72,8 +85,10 @@ static inline float fast_pow2(float x)
 {
     if (x < -126.0f) return 0.0f;
     if (x > 128.0f) return 3e38f;
-    union { uint32_t i; float f; } v = { (uint32_t)((x + 126.94269504f) * 8388608.0f) };
-    return v.f;
+    uint32_t i = (uint32_t)((x + 126.94269504f) * 8388608.0f);
+    float f;
+    memcpy(&f, &i, 4);
+    return f;
 }
 
 static inline float fast_pow(float x, float y)
