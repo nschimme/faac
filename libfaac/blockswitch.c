@@ -29,10 +29,6 @@
 #include "frame.h"
 #include <faac.h>
 
-#ifdef USE_BUILTIN_TABLES
-#include "builtin_tables.h"
-#endif
-
 typedef float psyfloat;
 
 typedef struct
@@ -273,120 +269,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
   }
 }
 
-// imported from filtbank.c
-static void mdct( struct faacEncStruct *hEncoder, faac_real *data, int N )
-{
-    faac_real tempr, tempi, c, s;
-#ifndef USE_BUILTIN_TABLES
-    faac_real cold, cfreq, sfreq;
-#endif
-    int i, n;
-
-    faac_real xi[BLOCK_LEN_LONG / 2];
-    faac_real xr[BLOCK_LEN_LONG / 2];
-
-    int N4 = N >> 2;
-    int N8 = N >> 3;
-    int N3_4_1 = (3 * N >> 2) - 1;
-    int N4_1 = (N >> 2) - 1;
-    int N_N4 = N - (N >> 2);
-    int N_N4_1 = N + (N >> 2) - 1;
-
-#ifdef USE_BUILTIN_TABLES
-    const faac_real *twiddles = (N == 2048) ? mdct_twiddles_long_table : mdct_twiddles_short_table;
-#else
-    faac_real freq = 2.0 * M_PI / N;
-    cfreq = FAAC_COS(freq);
-    sfreq = FAAC_SIN(freq);
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
-#endif
-
-    for (i = 0; i < N8; i++) {
-#ifdef USE_BUILTIN_TABLES
-        c = *twiddles++;
-        s = *twiddles++;
-#endif
-        /* calculate real and imaginary parts of g(n) or G(p) */
-        n = 2 * i;
-
-        tempr = data [N3_4_1 - n] + data [N_N4 + n];
-        tempi = data [(N>>2) + n] - data [N4_1 - n];
-
-        /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
-
-#ifndef USE_BUILTIN_TABLES
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
-#endif
-    }
-    for (; i < N4; i++) {
-#ifdef USE_BUILTIN_TABLES
-        c = *twiddles++;
-        s = *twiddles++;
-#endif
-        /* calculate real and imaginary parts of g(n) or G(p) */
-        n = 2 * i;
-
-        tempr = data [N3_4_1 - n] - data [n - (N>>2)];
-        tempi = data [(N>>2) + n] + data [N_N4_1 - n];
-
-        /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
-
-#ifndef USE_BUILTIN_TABLES
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
-#endif
-    }
-
-    /* Perform in-place complex FFT of length N/4 */
-    switch (N) {
-    case BLOCK_LEN_SHORT * 2:
-        fft( &hEncoder->fft_tables, xr, xi, 6);
-        break;
-    case BLOCK_LEN_LONG * 2:
-        fft( &hEncoder->fft_tables, xr, xi, 9);
-    }
-
-#ifdef USE_BUILTIN_TABLES
-    twiddles = (N == 2048) ? mdct_twiddles_long_table : mdct_twiddles_short_table;
-#else
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
-#endif
-
-    /* post-twiddle FFT output and then get output data */
-    for (i = 0; i < N4; i++) {
-#ifdef USE_BUILTIN_TABLES
-        c = *twiddles++;
-        s = *twiddles++;
-#endif
-        /* get post-twiddled FFT output  */
-        tempr = 2. * (xr[i] * c + xi[i] * s);
-        tempi = 2. * (xi[i] * c - xr[i] * s);
-
-        /* fill in output values */
-        data [2 * i] = -tempr;   /* first half even */
-        data [(N >> 1) - 1 - 2 * i] = tempi;  /* first half odd */
-        data [(N >> 1) + 2 * i] = -tempi;  /* second half even */
-        data [N - 1 - 2 * i] = tempr;  /* second half odd */
-
-#ifndef USE_BUILTIN_TABLES
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
-#endif
-    }
-}
+#include "filtbank.h"
 
 
 static void PsyBufferUpdate( struct faacEncStruct *hEncoder, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
@@ -394,8 +277,8 @@ static void PsyBufferUpdate( struct faacEncStruct *hEncoder, GlobalPsyInfo * gps
 			    int *cb_width_short, int num_cb_short)
 {
   int win;
-  faac_real transBuff[2 * BLOCK_LEN_LONG];
-  faac_real transBuffS[2 * BLOCK_LEN_SHORT];
+  ALIGN16_BEG faac_real transBuff[2 * BLOCK_LEN_LONG] ALIGN16_END;
+  ALIGN16_BEG faac_real transBuffS[2 * BLOCK_LEN_SHORT] ALIGN16_END;
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
   int sfb;
@@ -414,7 +297,7 @@ static void PsyBufferUpdate( struct faacEncStruct *hEncoder, GlobalPsyInfo * gps
 	   2 * psyInfo->sizeS * sizeof(faac_real));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    mdct( hEncoder, transBuffS, 2 * psyInfo->sizeS);
+    MDCT( hEncoder, transBuffS, 2 * psyInfo->sizeS);
 
     // shift bufs
     tmp = psydata->engPrev[win];

@@ -23,10 +23,6 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "frame.h"
-#ifdef USE_BUILTIN_TABLES
-#include "builtin_tables.h"
-#endif
-
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
 #endif
@@ -202,7 +198,6 @@ static void qlevel(faacEncStruct *hEncoder,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int ALIGN16_BEG xitab[8 * MAXSHORTBAND] ALIGN16_END;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -252,13 +247,6 @@ static void qlevel(faacEncStruct *hEncoder,
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else {
-#ifdef USE_BUILTIN_TABLES
-          if (sfac >= -128 && sfac < 128) {
-              sfacfix = pow10_sfstep_table[sfac + 128];
-          } else {
-              sfacfix = FAAC_POW(10, sfac / sfstep);
-          }
-#else
           if (!hEncoder->pow10_sfstep_init) {
               int i;
               for (i = 0; i < 256; i++) {
@@ -271,12 +259,11 @@ static void qlevel(faacEncStruct *hEncoder,
           } else {
               sfacfix = FAAC_POW(10, sfac / sfstep);
           }
-#endif
       }
 
       xr = xr0 + start;
       end -= start;
-      xi = xitab;
+      xi = hEncoder->xitab;
       for (win = 0; win < gsize; win++)
       {
 #ifdef __SSE2__
@@ -342,7 +329,7 @@ static void qlevel(faacEncStruct *hEncoder,
           xi += cnt;
           xr += BLOCK_LEN_SHORT;
       }
-      huffbook(coderInfo, xitab, gsize * end);
+      huffbook(coderInfo, hEncoder->xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }

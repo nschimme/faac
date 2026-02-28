@@ -8,7 +8,6 @@ endif
 common_src = [
     'bitstream.c',
     'bitstream.h',
-    'builtin_tables.c',
     'blockswitch.c',
     'blockswitch.h',
     'channels.c',

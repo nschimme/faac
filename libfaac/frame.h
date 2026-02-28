@@ -102,8 +102,9 @@ struct faacEncStruct {
     /* Temporary buffer for TNS */
     faac_real *tns_temp;
 
-    faac_real pow10_sfstep[256];
+    ALIGN16_BEG faac_real pow10_sfstep[256] ALIGN16_END;
     int pow10_sfstep_init;
+    ALIGN16_BEG int xitab[FRAME_LEN] ALIGN16_END;
 };
 
 typedef struct faacEncStruct faacEncStruct;

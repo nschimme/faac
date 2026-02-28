@@ -41,21 +41,14 @@ Copyright(c)1996.
 #include "fft.h"
 #include "util.h"
 
-#ifdef USE_BUILTIN_TABLES
-#include "builtin_tables.h"
-#endif
-
 #define  TWOPI       2*M_PI
 
 
-#ifndef USE_BUILTIN_TABLES
 static void		CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
 static faac_real	Izero				( faac_real x);
-#endif
-static void		MDCT				( faacEncStruct* hEncoder, faac_real *data, int N );
-static void		IMDCT				( faacEncStruct* hEncoder, faac_real *data, int N );
+void		MDCT				( faacEncStruct* hEncoder, faac_real *data, int N );
+void		IMDCT				( faacEncStruct* hEncoder, faac_real *data, int N );
 
-#ifndef USE_BUILTIN_TABLES
 static void InitializeTwiddles(faac_real *twiddles, int N)
 {
     faac_real freq = TWOPI / N;
@@ -74,14 +67,10 @@ static void InitializeTwiddles(faac_real *twiddles, int N)
         s = s * cfreq + cold * sfreq;
     }
 }
-#endif
 
 void FilterBankInit(faacEncStruct* hEncoder)
 {
-    unsigned int channel;
-#ifndef USE_BUILTIN_TABLES
-    unsigned int i;
-#endif
+    unsigned int i, channel;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         hEncoder->freqBuff[channel] = (faac_real*)AllocMemory(2*FRAME_LEN*sizeof(faac_real));
@@ -89,14 +78,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
         SetMemory(hEncoder->overlapBuff[channel], 0, FRAME_LEN*sizeof(faac_real));
     }
 
-#ifdef USE_BUILTIN_TABLES
-    hEncoder->sin_window_long = (faac_real *)sin_window_long_table;
-    hEncoder->sin_window_short = (faac_real *)sin_window_short_table;
-    hEncoder->kbd_window_long = (faac_real *)kbd_window_long_table;
-    hEncoder->kbd_window_short = (faac_real *)kbd_window_short_table;
-    hEncoder->mdct_twiddles_long = (faac_real *)mdct_twiddles_long_table;
-    hEncoder->mdct_twiddles_short = (faac_real *)mdct_twiddles_short_table;
-#else
     hEncoder->sin_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
     hEncoder->sin_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
     hEncoder->kbd_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
@@ -115,7 +96,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
 
     InitializeTwiddles(hEncoder->mdct_twiddles_long, 2*BLOCK_LEN_LONG);
     InitializeTwiddles(hEncoder->mdct_twiddles_short, 2*BLOCK_LEN_SHORT);
-#endif
 
     hEncoder->transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
     hEncoder->overlap_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
@@ -132,14 +112,13 @@ void FilterBankEnd(faacEncStruct* hEncoder)
         if (hEncoder->overlapBuff[channel]) FreeMemory(hEncoder->overlapBuff[channel]);
     }
 
-#ifndef USE_BUILTIN_TABLES
     if (hEncoder->sin_window_long) FreeMemory(hEncoder->sin_window_long);
     if (hEncoder->sin_window_short) FreeMemory(hEncoder->sin_window_short);
     if (hEncoder->kbd_window_long) FreeMemory(hEncoder->kbd_window_long);
     if (hEncoder->kbd_window_short) FreeMemory(hEncoder->kbd_window_short);
+
     if (hEncoder->mdct_twiddles_long) FreeMemory(hEncoder->mdct_twiddles_long);
     if (hEncoder->mdct_twiddles_short) FreeMemory(hEncoder->mdct_twiddles_short);
-#endif
 
     if (hEncoder->transf_buf) FreeMemory(hEncoder->transf_buf);
     if (hEncoder->overlap_buf) FreeMemory(hEncoder->overlap_buf);
@@ -424,7 +403,6 @@ void specFilter(faac_real *freqBuff,
     SetMemory(freqBuff+xlowpass,0,(specLen-xlowpass)*sizeof(faac_real));
 }
 
-#ifndef USE_BUILTIN_TABLES
 static faac_real Izero(faac_real x)
 {
     const faac_real IzeroEPSILON = 1E-41;  /* Max error acceptable in Izero */
@@ -470,9 +448,8 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
         win[i] = FAAC_SQRT(tmp*sum);
     }
 }
-#endif
 
-static void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
+void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
 {
     faac_real *xi, *xr;
     faac_real tempr, tempi, c, s;
@@ -546,7 +523,7 @@ static void MDCT( faacEncStruct* hEncoder, faac_real *data, int N )
     }
 }
 
-static void IMDCT( faacEncStruct* hEncoder, faac_real *data, int N)
+void IMDCT( faacEncStruct* hEncoder, faac_real *data, int N)
 {
     faac_real *xi, *xr;
     faac_real tempr, tempi, c, s;

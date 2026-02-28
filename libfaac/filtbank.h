@@ -64,6 +64,8 @@ void			specFilter(	faac_real *freqBuff,
 						int lowpassFreq,
 						int specLen );
 
+void MDCT( faacEncStruct* hEncoder, faac_real *data, int N );
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
