@@ -81,7 +81,7 @@ struct faacEncStruct {
     /* Configuration data */
     faacEncConfiguration config;
 
-    psymodel_t *psymodel;
+    struct psymodel_s *psymodel;
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
@@ -101,6 +101,9 @@ struct faacEncStruct {
 
     /* Temporary buffer for TNS */
     faac_real *tns_temp;
+
+    faac_real pow10_sfstep[256];
+    int pow10_sfstep_init;
 };
 
 typedef struct faacEncStruct faacEncStruct;

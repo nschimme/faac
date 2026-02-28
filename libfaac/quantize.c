@@ -22,6 +22,10 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "frame.h"
+#ifdef USE_BUILTIN_TABLES
+#include "builtin_tables.h"
+#endif
 
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
@@ -158,7 +162,8 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-static void qlevel(CoderInfo *coderInfo,
+static void qlevel(faacEncStruct *hEncoder,
+                   CoderInfo *coderInfo,
                    const faac_real *xr0,
                    const faac_real *bandqual,
                    int gnum,
@@ -247,18 +252,26 @@ static void qlevel(CoderInfo *coderInfo,
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else {
-          if (!coderInfo->pow10_sfstep_init) {
-              int i;
-              for (i = 0; i < 256; i++) {
-                  coderInfo->pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
-              }
-              coderInfo->pow10_sfstep_init = 1;
-          }
+#ifdef USE_BUILTIN_TABLES
           if (sfac >= -128 && sfac < 128) {
-              sfacfix = coderInfo->pow10_sfstep[sfac + 128];
+              sfacfix = pow10_sfstep_table[sfac + 128];
           } else {
               sfacfix = FAAC_POW(10, sfac / sfstep);
           }
+#else
+          if (!hEncoder->pow10_sfstep_init) {
+              int i;
+              for (i = 0; i < 256; i++) {
+                  hEncoder->pow10_sfstep[i] = FAAC_POW(10, (i - 128) / sfstep);
+              }
+              hEncoder->pow10_sfstep_init = 1;
+          }
+          if (sfac >= -128 && sfac < 128) {
+              sfacfix = hEncoder->pow10_sfstep[sfac + 128];
+          } else {
+              sfacfix = FAAC_POW(10, sfac / sfstep);
+          }
+#endif
       }
 
       xr = xr0 + start;
@@ -295,7 +308,27 @@ static void qlevel(CoderInfo *coderInfo,
           }
 #endif
 
-          for (cnt = 0; cnt < end; cnt++)
+          for (cnt = 0; cnt < (end & ~3); cnt += 4)
+          {
+              faac_real val, tmp;
+              int q;
+
+              #define QUANT(OFFSET) \
+              val = xr[cnt + OFFSET]; \
+              tmp = FAAC_FABS(val); \
+              tmp *= sfacfix; \
+              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp)); \
+              q = (int)(tmp + (faac_real)MAGIC_NUMBER); \
+              xi[cnt + OFFSET] = (val < (faac_real)0.0) ? -q : q;
+
+              QUANT(0)
+              QUANT(1)
+              QUANT(2)
+              QUANT(3)
+              #undef QUANT
+          }
+
+          for (; cnt < end; cnt++)
           {
               faac_real val = xr[cnt];
               faac_real tmp = FAAC_FABS(val);
@@ -303,8 +336,8 @@ static void qlevel(CoderInfo *coderInfo,
               tmp *= sfacfix;
               tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
-              int q = (int)(tmp + MAGIC_NUMBER);
-              xi[cnt] = (val < 0) ? -q : q;
+              int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
+              xi[cnt] = (val < (faac_real)0.0) ? -q : q;
           }
           xi += cnt;
           xr += BLOCK_LEN_SHORT;
@@ -314,7 +347,7 @@ static void qlevel(CoderInfo *coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(faacEncStruct *hEncoder, CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     int cnt;
@@ -339,7 +372,7 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
         {
             bmask(coder, gxr, bandlvl, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
+            qlevel(hEncoder, coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

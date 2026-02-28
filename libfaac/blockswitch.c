@@ -26,7 +26,12 @@
 #include "coder.h"
 #include "fft.h"
 #include "util.h"
+#include "frame.h"
 #include <faac.h>
+
+#ifdef USE_BUILTIN_TABLES
+#include "builtin_tables.h"
+#endif
 
 typedef float psyfloat;
 
@@ -269,23 +274,16 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 }
 
 // imported from filtbank.c
-static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
+static void mdct( struct faacEncStruct *hEncoder, faac_real *data, int N )
 {
-    faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    faac_real freq = 2.0 * M_PI / N;
-    faac_real cosfreq8, sinfreq8;
+    faac_real tempr, tempi, c, s;
+#ifndef USE_BUILTIN_TABLES
+    faac_real cold, cfreq, sfreq;
+#endif
     int i, n;
 
     faac_real xi[BLOCK_LEN_LONG / 2];
     faac_real xr[BLOCK_LEN_LONG / 2];
-
-    /* prepare for recurrence relation in pre-twiddle */
-    cfreq = FAAC_COS(freq);
-    sfreq = FAAC_SIN(freq);
-    cosfreq8 = FAAC_COS(freq * 0.125);
-    sinfreq8 = FAAC_SIN(freq * 0.125);
-    c = cosfreq8;
-    s = sinfreq8;
 
     int N4 = N >> 2;
     int N8 = N >> 3;
@@ -294,7 +292,21 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
     int N_N4 = N - (N >> 2);
     int N_N4_1 = N + (N >> 2) - 1;
 
+#ifdef USE_BUILTIN_TABLES
+    const faac_real *twiddles = (N == 2048) ? mdct_twiddles_long_table : mdct_twiddles_short_table;
+#else
+    faac_real freq = 2.0 * M_PI / N;
+    cfreq = FAAC_COS(freq);
+    sfreq = FAAC_SIN(freq);
+    c = FAAC_COS(freq * 0.125);
+    s = FAAC_SIN(freq * 0.125);
+#endif
+
     for (i = 0; i < N8; i++) {
+#ifdef USE_BUILTIN_TABLES
+        c = *twiddles++;
+        s = *twiddles++;
+#endif
         /* calculate real and imaginary parts of g(n) or G(p) */
         n = 2 * i;
 
@@ -305,12 +317,18 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
 
+#ifndef USE_BUILTIN_TABLES
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
         c = c * cfreq - s * sfreq;
         s = s * cfreq + cold * sfreq;
+#endif
     }
     for (; i < N4; i++) {
+#ifdef USE_BUILTIN_TABLES
+        c = *twiddles++;
+        s = *twiddles++;
+#endif
         /* calculate real and imaginary parts of g(n) or G(p) */
         n = 2 * i;
 
@@ -321,27 +339,36 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
 
+#ifndef USE_BUILTIN_TABLES
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
         c = c * cfreq - s * sfreq;
         s = s * cfreq + cold * sfreq;
+#endif
     }
 
     /* Perform in-place complex FFT of length N/4 */
     switch (N) {
     case BLOCK_LEN_SHORT * 2:
-        fft( fft_tables, xr, xi, 6);
+        fft( &hEncoder->fft_tables, xr, xi, 6);
         break;
     case BLOCK_LEN_LONG * 2:
-        fft( fft_tables, xr, xi, 9);
+        fft( &hEncoder->fft_tables, xr, xi, 9);
     }
 
-    /* prepare for recurrence relations in post-twiddle */
-    c = cosfreq8;
-    s = sinfreq8;
+#ifdef USE_BUILTIN_TABLES
+    twiddles = (N == 2048) ? mdct_twiddles_long_table : mdct_twiddles_short_table;
+#else
+    c = FAAC_COS(freq * 0.125);
+    s = FAAC_SIN(freq * 0.125);
+#endif
 
     /* post-twiddle FFT output and then get output data */
     for (i = 0; i < N4; i++) {
+#ifdef USE_BUILTIN_TABLES
+        c = *twiddles++;
+        s = *twiddles++;
+#endif
         /* get post-twiddled FFT output  */
         tempr = 2. * (xr[i] * c + xi[i] * s);
         tempi = 2. * (xi[i] * c - xr[i] * s);
@@ -352,15 +379,17 @@ static void mdct( FFT_Tables *fft_tables, faac_real *data, int N )
         data [(N >> 1) + 2 * i] = -tempi;  /* second half even */
         data [N - 1 - 2 * i] = tempr;  /* second half odd */
 
+#ifndef USE_BUILTIN_TABLES
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
         c = c * cfreq - s * sfreq;
         s = s * cfreq + cold * sfreq;
+#endif
     }
 }
 
 
-static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+static void PsyBufferUpdate( struct faacEncStruct *hEncoder, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 			    faac_real *newSamples, unsigned int bandwidth,
 			    int *cb_width_short, int num_cb_short)
 {
@@ -385,7 +414,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 	   2 * psyInfo->sizeS * sizeof(faac_real));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    mdct( fft_tables, transBuffS, 2 * psyInfo->sizeS);
+    mdct( hEncoder, transBuffS, 2 * psyInfo->sizeS);
 
     // shift bufs
     tmp = psydata->engPrev[win];

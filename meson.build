@@ -32,6 +32,10 @@ if get_option('fast-math')
     config_h.set('USE_FAST_MATH', 1)
 endif
 
+if get_option('builtin-tables')
+    config_h.set('USE_BUILTIN_TABLES', 1)
+endif
+
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
