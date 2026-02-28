@@ -273,7 +273,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 {
 	int i;
 	int size = 1 << logm;
-	unsigned short *r;
+	const unsigned short *r;
 
 
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
@@ -392,7 +392,33 @@ static void fft_proc(
 			x1 = x2;
 			x2 += step;
 			exp = 0;
-			for (shift = 0; shift < step; shift++)
+
+            /* Unrolled loop for better performance on in-order CPUs */
+            for (shift = 0; shift < (step & ~3); shift += 4)
+            {
+                faac_real v2r, v2i, r_f, i_f;
+
+                #define BUTTERFLY(OFFSET) \
+                r_f = refac[exp]; i_f = imfac[exp]; \
+                v2r = xr[x2 + OFFSET] * r_f - xi[x2 + OFFSET] * i_f; \
+                v2i = xr[x2 + OFFSET] * i_f + xi[x2 + OFFSET] * r_f; \
+                xr[x2 + OFFSET] = xr[x1 + OFFSET] - v2r; \
+                xr[x1 + OFFSET] += v2r; \
+                xi[x2 + OFFSET] = xi[x1 + OFFSET] - v2i; \
+                xi[x1 + OFFSET] += v2i; \
+                exp += estep;
+
+                BUTTERFLY(0)
+                BUTTERFLY(1)
+                BUTTERFLY(2)
+                BUTTERFLY(3)
+                #undef BUTTERFLY
+
+                x1 += 4;
+                x2 += 4;
+            }
+
+			for (; shift < step; shift++)
 			{
 				faac_real v2r, v2i;
 				faac_real r_f = refac[exp];

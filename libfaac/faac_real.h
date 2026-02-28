@@ -27,6 +27,17 @@
 #include <math.h>
 #include <stdint.h>
 
+#if defined(_MSC_VER)
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#elif defined(__GNUC__) || defined(__clang__)
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#else
+#define ALIGN16_BEG
+#define ALIGN16_END
+#endif
+
 #ifdef FAAC_PRECISION_SINGLE
 typedef float faac_real;
 #define FAAC_SIN sinf
@@ -51,38 +62,5 @@ typedef double faac_real;
 #define FAAC_FLOOR floor
 #endif
 
-#ifdef USE_FAST_MATH
-#undef FAAC_LOG10
-#undef FAAC_POW
-
-static inline float fast_log2(float x)
-{
-    union { float f; uint32_t i; } vx = { x };
-    float y = (float)vx.i;
-    y *= 1.1920928955078125e-7f;
-    return y - 126.94269504f;
-}
-
-static inline float fast_log10(float x)
-{
-    return fast_log2(x) * 0.3010299956639812f;
-}
-
-static inline float fast_pow2(float x)
-{
-    if (x < -126.0f) return 0.0f;
-    if (x > 128.0f) return 3e38f;
-    union { uint32_t i; float f; } v = { (uint32_t)((x + 126.94269504f) * 8388608.0f) };
-    return v.f;
-}
-
-static inline float fast_pow(float x, float y)
-{
-    return fast_pow2(y * fast_log2(x));
-}
-
-#define FAAC_LOG10 fast_log10
-#define FAAC_POW fast_pow
-#endif
 
 #endif /* FAAC_REAL_H */
