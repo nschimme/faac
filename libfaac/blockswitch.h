@@ -36,6 +36,8 @@ extern "C" {
 #include "channels.h"
 #include "fft.h"
 
+struct faacEncStruct;
+
 typedef struct {
 	int size;
 	int sizeS;
