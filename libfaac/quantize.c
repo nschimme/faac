@@ -252,50 +252,78 @@ static void qlevel(CoderInfo *coderInfo,
       xr = xr0 + start;
       end -= start;
       xi = xitab;
-      for (win = 0; win < gsize; win++)
-      {
-#ifdef __SSE2__
-          if (sse2)
+      if (sfacfix > 0.0) {
+#define QUANTIZE_CORE(SAMPLE, RESULT) \
+    { \
+        faac_real tmp = FAAC_FABS(SAMPLE); \
+        tmp *= sfacfix; \
+        tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp)); \
+        RESULT = (int)(tmp + MAGIC_NUMBER); \
+        if ((SAMPLE) < 0) RESULT = -RESULT; \
+    }
+
+          for (win = 0; win < gsize; win++)
           {
-              const __m128 zero = _mm_setzero_ps();
-              const __m128 sfac = _mm_set1_ps(sfacfix);
-              const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-              for (cnt = 0; cnt < end; cnt += 4)
+#ifdef __SSE2__
+              if (sse2)
               {
-                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
+                  const __m128 zero = _mm_setzero_ps();
+                  const __m128 sfac = _mm_set1_ps((float)sfacfix);
+                  const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
 
-                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                  x = _mm_mul_ps(x, sfac);
-                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                  x = _mm_sqrt_ps(x);
-                  x = _mm_add_ps(x, magic);
+                  /* Intentional "overflow" past 'end' to maintain bit-exactness with original SSE2 implementation.
+                   * SFB buffers are large enough (8*MAXSHORTBAND) to accommodate the extra writes. */
+                  for (cnt = 0; cnt < end; cnt += 4)
+                  {
+#ifdef FAAC_PRECISION_SINGLE
+                      __m128 x = _mm_loadu_ps(xr + cnt);
+#else
+                      __m128 x = _mm_setr_ps((float)xr[cnt], (float)xr[cnt+1], (float)xr[cnt+2], (float)xr[cnt+3]);
+#endif
+                      x = _mm_max_ps(x, _mm_sub_ps(zero, x));
+                      x = _mm_mul_ps(x, sfac);
+                      x = _mm_mul_ps(x, _mm_sqrt_ps(x));
+                      x = _mm_sqrt_ps(x);
+                      x = _mm_add_ps(x, magic);
 
-                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+                      _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
+                  }
+                  for (cnt = 0; cnt < end; cnt++)
+                  {
+                      if (xr[cnt] < 0)
+                          xi[cnt] = -xi[cnt];
+                  }
               }
-              for (cnt = 0; cnt < end; cnt++)
+              else
+#endif
               {
-                  if (xr[cnt] < 0)
-                      xi[cnt] = -xi[cnt];
+                  for (cnt = 0; cnt < (end & ~3); cnt += 4)
+                  {
+                      QUANTIZE_CORE(xr[cnt+0], xi[cnt+0])
+                      QUANTIZE_CORE(xr[cnt+1], xi[cnt+1])
+                      QUANTIZE_CORE(xr[cnt+2], xi[cnt+2])
+                      QUANTIZE_CORE(xr[cnt+3], xi[cnt+3])
+                  }
+                  /* Quantize remaining samples */
+                  for (; cnt < end; cnt++)
+                  {
+                      QUANTIZE_CORE(xr[cnt], xi[cnt])
+                  }
               }
               xi += cnt;
               xr += BLOCK_LEN_SHORT;
-              continue;
           }
-#endif
-
-          for (cnt = 0; cnt < end; cnt++)
+#undef QUANTIZE_CORE
+      } else {
+          for (win = 0; win < gsize; win++)
           {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
-
-              tmp *= sfacfix;
-              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
+              for (cnt = 0; cnt < end; cnt++)
+              {
+                  xi[cnt] = 0;
+              }
+              xi += cnt;
+              xr += BLOCK_LEN_SHORT;
           }
-          xi += cnt;
-          xr += BLOCK_LEN_SHORT;
       }
       huffbook(coderInfo, xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;

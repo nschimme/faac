@@ -274,8 +274,8 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 			    int *cb_width_short, int num_cb_short)
 {
   int win;
-  faac_real transBuff[2 * BLOCK_LEN_LONG];
-  faac_real transBuffS[2 * BLOCK_LEN_SHORT];
+  ALIGN16_BEG faac_real transBuff[2 * BLOCK_LEN_LONG] ALIGN16_END;
+  ALIGN16_BEG faac_real transBuffS[2 * BLOCK_LEN_SHORT] ALIGN16_END;
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
   int sfb;
