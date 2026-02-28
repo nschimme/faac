@@ -84,7 +84,7 @@ struct faacEncStruct {
     /* Configuration data */
     faacEncConfiguration config;
 
-    psymodel_t *psymodel;
+    struct psymodel_s *psymodel;
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;

@@ -475,7 +475,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
 		{
 			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
+					hEncoder,
 					&hEncoder->gpsyInfo,
 					&hEncoder->psyInfo[channel],
 					hEncoder->next3SampleBuff[channel],

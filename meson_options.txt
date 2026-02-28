@@ -18,3 +18,8 @@ option('fast-math',
     description: 'Use fast math approximations (not bit-exact)',
     type: 'boolean',
     value: false)
+
+option('builtin-tables',
+    description: 'Use precalculated lookup tables (increases binary size)',
+    type: 'boolean',
+    value: false)
