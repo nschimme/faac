@@ -56,7 +56,7 @@ jobs:
               name: Windows MSVC,
               os: windows-latest,
               compiler: cl,
-              shell: bash,
+              shell: pwsh,
               options: -Dfloating-point=double,
               cflags: /W4
             }
@@ -98,7 +98,8 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - name: Build
+      - name: Build (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
         env:
           CC: ${{ matrix.config.compiler }}
           CFLAGS: ${{ matrix.config.cflags }}
@@ -107,6 +108,15 @@ jobs:
           cd build
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
+
+      - name: Build (General)
+        if: matrix.config.shell != 'msys2 {0}'
+        env:
+          CC: ${{ matrix.config.compiler }}
+          CFLAGS: ${{ matrix.config.cflags }}
+        run: |
+          meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
+          meson install -C build
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v4
