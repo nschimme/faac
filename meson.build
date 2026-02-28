@@ -37,6 +37,13 @@ if get_option('builtin-tables')
 endif
 
 c_args = []
+
+if get_option('fast-math')
+    if cc.has_argument('-ffast-math')
+        c_args += '-ffast-math'
+    endif
+endif
+
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
 else

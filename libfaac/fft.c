@@ -234,18 +234,21 @@ void ffti( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm )
 #else /* !defined DRM || defined DRM_1024 */
 
 #ifdef USE_BUILTIN_TABLES
-static const faac_real *builtin_costbl[] = {
-    NULL, fft_costbl_1, fft_costbl_2, fft_costbl_3, fft_costbl_4,
-    fft_costbl_5, fft_costbl_6, fft_costbl_7, fft_costbl_8, fft_costbl_9
-};
-static const faac_real *builtin_negsintbl[] = {
-    NULL, fft_negsintbl_1, fft_negsintbl_2, fft_negsintbl_3, fft_negsintbl_4,
-    fft_negsintbl_5, fft_negsintbl_6, fft_negsintbl_7, fft_negsintbl_8, fft_negsintbl_9
-};
-static const unsigned short *builtin_reorder[] = {
-    NULL, fft_reorder_1, fft_reorder_2, fft_reorder_3, fft_reorder_4,
-    fft_reorder_5, fft_reorder_6, fft_reorder_7, fft_reorder_8, fft_reorder_9
-};
+static const faac_real *builtin_costbl(int logm) {
+    if (logm == 6) return fft_costbl_6;
+    if (logm == 9) return fft_costbl_9;
+    return NULL;
+}
+static const faac_real *builtin_negsintbl(int logm) {
+    if (logm == 6) return fft_negsintbl_6;
+    if (logm == 9) return fft_negsintbl_9;
+    return NULL;
+}
+static const unsigned short *builtin_reorder(int logm) {
+    if (logm == 6) return fft_reorder_6;
+    if (logm == 9) return fft_reorder_9;
+    return NULL;
+}
 #endif
 
 void fft_initialize( FFT_Tables *fft_tables )
@@ -303,7 +306,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 	const unsigned short *r;
 
 #ifdef USE_BUILTIN_TABLES
-    r = builtin_reorder[logm];
+    r = builtin_reorder(logm);
 #else
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
 	{
@@ -512,8 +515,8 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 	}
 
 #ifdef USE_BUILTIN_TABLES
-    const faac_real *costbl = builtin_costbl[logm];
-    const faac_real *negsintbl = builtin_negsintbl[logm];
+    const faac_real *costbl = builtin_costbl(logm);
+    const faac_real *negsintbl = builtin_negsintbl(logm);
 #else
 	check_tables( fft_tables, logm);
     const faac_real *costbl = fft_tables->costbl[logm];

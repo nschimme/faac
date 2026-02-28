@@ -1,4 +1,5 @@
 import math
+import sys
 
 def print_table(name, table, type_name="faac_real", is_float=True, is_decl=False):
     if is_decl:
@@ -81,8 +82,6 @@ def generate_twiddles(n):
         s = s * cfreq + cold * sfreq
     return twiddles
 
-import sys
-
 mode = sys.argv[1] if len(sys.argv) > 1 else "header"
 
 if mode == "header":
@@ -96,11 +95,14 @@ if mode == "source":
     print("#ifdef FAAC_PRECISION_SINGLE\n#define FR(x) x##f\n#else\n#define FR(x) x\n#endif\n")
 
 print_table("pow10_sfstep_table", generate_pow10_table(), is_decl=is_decl)
-for logm in range(1, 10):
+
+print("#ifndef DRM")
+for logm in [6, 9]:
     c, s = generate_fft_tables(logm)
     print_table(f"fft_costbl_{logm}", c, is_decl=is_decl)
     print_table(f"fft_negsintbl_{logm}", s, is_decl=is_decl)
     print_table(f"fft_reorder_{logm}", generate_reorder_table(logm), "unsigned short", False, is_decl=is_decl)
+print("#endif")
 
 print_table("sin_window_long_table", generate_sin_window(1024), is_decl=is_decl)
 print_table("sin_window_short_table", generate_sin_window(128), is_decl=is_decl)
