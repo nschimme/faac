@@ -26,7 +26,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#include "frame.h"
+#include "coder.h"
 
 #ifdef DRM
 #define NFLAT_LS (( BLOCK_LEN_LONG - BLOCK_LEN_SHORT ) / 2)
@@ -41,16 +41,21 @@ extern "C" {
 #define SINE_WINDOW 0
 #define KBD_WINDOW  1
 
-void			FilterBankInit		( faacEncStruct* hEncoder );
+struct faacEncStruct;
 
-void			FilterBankEnd		( faacEncStruct* hEncoder );
+void			FilterBankInit		( struct faacEncStruct* hEncoder );
 
-void			FilterBank( faacEncStruct* hEncoder,
+void			FilterBankEnd		( struct faacEncStruct* hEncoder );
+
+void			FilterBank( struct faacEncStruct* hEncoder,
 						CoderInfo *coderInfo,
 						faac_real *p_in_data,
 						faac_real *p_out_mdct,
 						faac_real *p_overlap,
 						int overlap_select );
+
+
+void MDCT( struct faacEncStruct* hEncoder, faac_real *data, int N );
 
 
 #ifdef __cplusplus

@@ -41,16 +41,14 @@ Copyright(c)1996.
 #include "fft.h"
 #include "util.h"
 
-#define  TWOPI       2*M_PI
-
 
 static void		CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
 static faac_real	Izero				( faac_real x);
-static void		MDCT				( FFT_Tables *fft_tables, faac_real *data, int N );
+void           MDCT                            ( faacEncStruct *hEncoder, faac_real *data, int N );
 
 
 
-void FilterBankInit(faacEncStruct* hEncoder)
+void FilterBankInit(struct faacEncStruct* hEncoder)
 {
     unsigned int i, channel;
 
@@ -72,9 +70,14 @@ void FilterBankInit(faacEncStruct* hEncoder)
 
     CalculateKBDWindow(hEncoder->kbd_window_long, 4, BLOCK_LEN_LONG*2);
     CalculateKBDWindow(hEncoder->kbd_window_short, 6, BLOCK_LEN_SHORT*2);
+
+    hEncoder->transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->overlap_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->mdct_xi = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
+    hEncoder->mdct_xr = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
 }
 
-void FilterBankEnd(faacEncStruct* hEncoder)
+void FilterBankEnd(struct faacEncStruct* hEncoder)
 {
     unsigned int channel;
 
@@ -87,9 +90,14 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->sin_window_short) FreeMemory(hEncoder->sin_window_short);
     if (hEncoder->kbd_window_long) FreeMemory(hEncoder->kbd_window_long);
     if (hEncoder->kbd_window_short) FreeMemory(hEncoder->kbd_window_short);
+
+    if (hEncoder->transf_buf) FreeMemory(hEncoder->transf_buf);
+    if (hEncoder->overlap_buf) FreeMemory(hEncoder->overlap_buf);
+    if (hEncoder->mdct_xi) FreeMemory(hEncoder->mdct_xi);
+    if (hEncoder->mdct_xr) FreeMemory(hEncoder->mdct_xr);
 }
 
-void FilterBank(faacEncStruct* hEncoder,
+void FilterBank(struct faacEncStruct* hEncoder,
                 CoderInfo *coderInfo,
                 faac_real *p_in_data,
                 faac_real *p_out_mdct,
@@ -97,11 +105,9 @@ void FilterBank(faacEncStruct* hEncoder,
                 int overlap_select)
 {
     faac_real *p_o_buf, *first_window, *second_window;
-    faac_real *transf_buf;
+    faac_real *transf_buf = hEncoder->transf_buf;
     int k, i;
     int block_type = coderInfo->block_type;
-
-    transf_buf = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
 
     /* create / shift old values */
     /* We use p_overlap here as buffer holding the last frame time signal*/
@@ -162,7 +168,7 @@ void FilterBank(faacEncStruct* hEncoder,
             p_out_mdct[i] = p_o_buf[i] * first_window[i];
             p_out_mdct[i+BLOCK_LEN_LONG] = p_o_buf[i+BLOCK_LEN_LONG] * second_window[BLOCK_LEN_LONG-i-1];
         }
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case LONG_SHORT_WINDOW :
@@ -172,7 +178,7 @@ void FilterBank(faacEncStruct* hEncoder,
         for ( i = 0 ; i < BLOCK_LEN_SHORT ; i++)
             p_out_mdct[i+BLOCK_LEN_LONG+NFLAT_LS] = p_o_buf[i+BLOCK_LEN_LONG+NFLAT_LS] * second_window[BLOCK_LEN_SHORT-i-1];
         SetMemory(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT,0,NFLAT_LS*sizeof(faac_real));
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case SHORT_LONG_WINDOW :
@@ -182,7 +188,7 @@ void FilterBank(faacEncStruct* hEncoder,
         memcpy(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT,p_o_buf+NFLAT_LS+BLOCK_LEN_SHORT,NFLAT_LS*sizeof(faac_real));
         for ( i = 0 ; i < BLOCK_LEN_LONG ; i++)
             p_out_mdct[i+BLOCK_LEN_LONG] = p_o_buf[i+BLOCK_LEN_LONG] * second_window[BLOCK_LEN_LONG-i-1];
-        MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG );
+        MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_LONG );
         break;
 
     case ONLY_SHORT_WINDOW :
@@ -192,15 +198,13 @@ void FilterBank(faacEncStruct* hEncoder,
                 p_out_mdct[i] = p_o_buf[i] * first_window[i];
                 p_out_mdct[i+BLOCK_LEN_SHORT] = p_o_buf[i+BLOCK_LEN_SHORT] * second_window[BLOCK_LEN_SHORT-i-1];
             }
-            MDCT( &hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_SHORT );
+            MDCT( hEncoder, p_out_mdct, 2*BLOCK_LEN_SHORT );
             p_out_mdct += BLOCK_LEN_SHORT;
             p_o_buf += BLOCK_LEN_SHORT;
             first_window = second_window;
         }
         break;
     }
-
-    if (transf_buf) FreeMemory(transf_buf);
 }
 
 
@@ -250,7 +254,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     }
 }
 
-static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
+void MDCT( struct faacEncStruct *hEncoder, faac_real *data, int N )
 {
     faac_real *xi, *xr;
     faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
@@ -258,8 +262,8 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     faac_real cosfreq8, sinfreq8;
     int i, n;
 
-    xi = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
-    xr = (faac_real*)AllocMemory((N >> 2)*sizeof(faac_real));
+    xi = hEncoder->mdct_xi;
+    xr = hEncoder->mdct_xr;
 
     /* prepare for recurrence relation in pre-twiddle */
     cfreq = FAAC_COS(freq);
@@ -297,10 +301,10 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     /* Perform in-place complex FFT of length N/4 */
     switch (N) {
     case BLOCK_LEN_SHORT * 2:
-        fft( fft_tables, xr, xi, 6);
+        fft( &hEncoder->fft_tables, xr, xi, 6);
         break;
     case BLOCK_LEN_LONG * 2:
-        fft( fft_tables, xr, xi, 9);
+        fft( &hEncoder->fft_tables, xr, xi, 9);
     }
 
     /* prepare for recurrence relations in post-twiddle */
@@ -325,7 +329,5 @@ static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
         s = s * cfreq + cold * sfreq;
     }
 
-    if (xr) FreeMemory(xr);
-    if (xi) FreeMemory(xi);
 }
 
