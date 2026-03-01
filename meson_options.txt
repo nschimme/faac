@@ -13,8 +13,3 @@ option('floating-point',
     type: 'combo',
     choices: ['single', 'double'],
     value: 'double')
-
-option('sse2',
-    description: 'Enable hand-rolled SSE2 optimizations',
-    type: 'boolean',
-    value: true)

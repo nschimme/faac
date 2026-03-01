@@ -67,7 +67,7 @@ if get_option('drm')
         c_args: c_args + ['-DDRM'],
         link_args: link_args,
         dependencies: [ libm ],
-    link_with: quantize_simd_libs,
+        link_with: quantize_simd_libs,
         vs_module_defs: 'libfaac.def',
         install: true
     )
