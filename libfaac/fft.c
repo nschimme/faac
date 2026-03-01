@@ -269,8 +269,9 @@ static void fft_proc(
 	int exp, estep;
 
 	estep = size >> 1;
-	/* First stage: step = 1, refac[0] = 1, imfac[0] = 0.
-	   Eliminate redundant multiplications by 1 and 0.
+	/* First stage: step = 1
+	   Twiddle factor W_N^0 is always (1, 0).
+	   Eliminate all multiplications and table lookups.
 	*/
 	for (pos = 0; pos < size; pos += 2)
 	{
@@ -288,10 +289,10 @@ static void fft_proc(
 		xi[x1] += v2i;
 	}
 
-    /* Second stage: step = 2, estep = size / 4.
-	   shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0.
-	   shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1.
-	   Eliminate multiplications and avoid trig calls for this stage.
+	/* Second stage: step = 2
+	   shift = 0: Twiddle is (1, 0).
+	   shift = 1: Twiddle is (0, -1).
+	   Eliminate multiplications and avoid trig/table calls entirely.
 	*/
 	if (size >= 4) {
 		for (pos = 0; pos < size; pos += 4)
@@ -300,7 +301,7 @@ static void fft_proc(
 			int x1 = pos;
 			int x2 = pos + 2;
 
-			/* shift = 0 */
+			/* shift = 0: Rotation by 0 degrees */
 			v2r = xr[x2];
 			v2i = xi[x2];
 
@@ -310,12 +311,12 @@ static void fft_proc(
 			xi[x2] = xi[x1] - v2i;
 			xi[x1] += v2i;
 
-			/* shift = 1 */
+			/* shift = 1: Rotation by -90 degrees */
 			x1++;
 			x2++;
-			exp = size >> 2;
-			v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-			v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+
+			v2r = xi[x2];
+			v2i = -xr[x2];
 
 			xr[x2] = xr[x1] - v2r;
 			xr[x1] += v2r;
@@ -325,6 +326,7 @@ static void fft_proc(
 		}
 	}
 
+	/* Resume standard Radix-2 loop from stage 3 (step = 4) */
 	estep = size >> 2;
 	for (step = 4; step < size; step *= 2)
 	{
