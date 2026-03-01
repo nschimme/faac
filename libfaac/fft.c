@@ -47,6 +47,8 @@ static const int logm_to_nfft[] =
 void fft_initialize( FFT_Tables *fft_tables )
 {
     memset( fft_tables->cfg, 0, sizeof( fft_tables->cfg ) );
+    fft_tables->mdct_twiddles_long = NULL;
+    fft_tables->mdct_twiddles_short = NULL;
 }
 void fft_terminate( FFT_Tables *fft_tables )
 {
@@ -64,6 +66,11 @@ void fft_terminate( FFT_Tables *fft_tables )
             fft_tables->cfg[i][1] = NULL;
         }
     }
+
+    if (fft_tables->mdct_twiddles_long) FreeMemory(fft_tables->mdct_twiddles_long);
+    if (fft_tables->mdct_twiddles_short) FreeMemory(fft_tables->mdct_twiddles_short);
+    fft_tables->mdct_twiddles_long = NULL;
+    fft_tables->mdct_twiddles_short = NULL;
 }
 
 void rfft( FFT_Tables *fft_tables, faac_real *x, int logm )
@@ -189,6 +196,9 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
 	}
+
+	fft_tables->mdct_twiddles_long = NULL;
+	fft_tables->mdct_twiddles_short = NULL;
 }
 
 void fft_terminate( FFT_Tables *fft_tables )
@@ -214,6 +224,11 @@ void fft_terminate( FFT_Tables *fft_tables )
 	fft_tables->costbl		= NULL;
 	fft_tables->negsintbl	= NULL;
 	fft_tables->reordertbl	= NULL;
+
+	if (fft_tables->mdct_twiddles_long) FreeMemory(fft_tables->mdct_twiddles_long);
+	if (fft_tables->mdct_twiddles_short) FreeMemory(fft_tables->mdct_twiddles_short);
+	fft_tables->mdct_twiddles_long = NULL;
+	fft_tables->mdct_twiddles_short = NULL;
 }
 
 static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
@@ -268,8 +283,61 @@ static void fft_proc(
 	int step, shift, pos;
 	int exp, estep;
 
-	estep = size;
-	for (step = 1; step < size; step *= 2)
+	/* First stage: step = 1, refac[0] = 1, imfac[0] = 0.
+	   Eliminate redundant multiplications by 1 and 0.
+	*/
+	for (pos = 0; pos < size; pos += 2)
+	{
+		faac_real v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+	/* Second stage: step = 2.
+	   Specialization for shift = 0.
+	   For shift = 1, use table values to maintain bit-exactness.
+	*/
+	if (size >= 4) {
+		int e_q = size >> 2;
+		faac_real r_q = refac[e_q];
+		faac_real i_q = imfac[e_q];
+		for (pos = 0; pos < size; pos += 4)
+		{
+			faac_real v2r, v2i;
+			int x1 = pos;
+			int x2 = pos + 2;
+
+			/* shift = 0 */
+			v2r = xr[x2];
+			v2i = xi[x2];
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			/* shift = 1 */
+			x1++;
+			x2++;
+			v2r = xr[x2] * r_q - xi[x2] * i_q;
+			v2i = xr[x2] * i_q + xi[x2] * r_q;
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+	}
+
+	estep = size >> 2;
+	for (step = 4; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;
@@ -290,7 +358,6 @@ static void fft_proc(
 				xr[x1] += v2r;
 
 				xi[x2] = xi[x1] - v2i;
-
 				xi[x1] += v2i;
 
 				exp += estep;
