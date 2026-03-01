@@ -23,35 +23,11 @@
 #include "quantize.h"
 #include "huff2.h"
 
-#if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
-# include <immintrin.h>
-#endif
+#include "quantize_internal.h"
+#include "cpu_compute.h"
 
-#ifdef __SSE2__
-# ifdef __GNUC__
-#  include <cpuid.h>
-# endif
-#endif
-
-#ifdef _MSC_VER
-# include <immintrin.h>
-# include <intrin.h>
-# define __SSE2__
-# define bit_SSE2 (1 << 26)
-#endif
-
-#ifdef __SSE2__
-#ifdef _MSC_VER /* visual c++ */
-#define ALIGN16_BEG __declspec(align(16))
-#define ALIGN16_END
-#else /* gcc or icc */
-#define ALIGN16_BEG
-#define ALIGN16_END __attribute__((aligned(16)))
-#endif
-#else
 #define ALIGN16_BEG
 #define ALIGN16_END
-#endif
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -176,20 +152,7 @@ static void qlevel(CoderInfo *coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
-#ifdef __SSE2__
-    int cpuid[4];
-    int sse2 = 0;
-
-    cpuid[3] = 0;
-# ifdef __GNUC__
-    __cpuid(1, cpuid[0], cpuid[1], cpuid[2], cpuid[3]);
-# endif
-# ifdef _MSC_VER
-    __cpuid(cpuid, 1);
-# endif
-    if (cpuid[3] & bit_SSE2)
-        sse2 = 1;
-#endif
+    cpu_caps_t caps = get_cpu_caps();
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -254,54 +217,22 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       if (sfacfix > 0.0)
       {
+          void (*quant_fn)(int, faac_real, const faac_real *, int *) = quantize_lines;
+
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+          if (caps & CPU_CAP_AVX2)
+              quant_fn = quantize_lines_avx2;
+          else if (caps & CPU_CAP_SSE2)
+              quant_fn = quantize_lines_sse2;
+#elif defined(__aarch64__) || defined(__arm__)
+          if (caps & CPU_CAP_NEON)
+              quant_fn = quantize_lines_neon;
+#endif
+
           for (win = 0; win < gsize; win++)
           {
-#ifdef __SSE2__
-              if (sse2)
-              {
-                  const __m128 zero = _mm_setzero_ps();
-                  const __m128 sfac = _mm_set1_ps((float)sfacfix);
-                  const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-
-                  /* Intentional "overflow" past 'end' to maintain bit-exactness with original SSE2 implementation.
-                   * SFB buffers are large enough (8*MAXSHORTBAND) to accommodate the extra writes. */
-                  for (cnt = 0; cnt < end; cnt += 4)
-                  {
-#ifdef FAAC_PRECISION_SINGLE
-                      __m128 x = _mm_loadu_ps(xr + cnt);
-#else
-                      __m128 x = _mm_setr_ps((float)xr[cnt], (float)xr[cnt+1], (float)xr[cnt+2], (float)xr[cnt+3]);
-#endif
-                      x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                      x = _mm_mul_ps(x, sfac);
-                      x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                      x = _mm_sqrt_ps(x);
-                      x = _mm_add_ps(x, magic);
-
-                      _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
-                  }
-                  for (cnt = 0; cnt < end; cnt++)
-                  {
-                      if (xr[cnt] < 0)
-                          xi[cnt] = -xi[cnt];
-                  }
-              }
-              else
-#endif
-              {
-                  for (cnt = 0; cnt < end; cnt++)
-                  {
-                      faac_real tmp = FAAC_FABS(xr[cnt]);
-
-                      tmp *= sfacfix;
-                      tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-                      xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-                      if (xr[cnt] < 0)
-                          xi[cnt] = -xi[cnt];
-                  }
-              }
-              xi += cnt;
+              quant_fn(end, sfacfix, xr, xi);
+              xi += end;
               xr += BLOCK_LEN_SHORT;
           }
       }
