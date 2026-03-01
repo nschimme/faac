@@ -46,4 +46,11 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 
+void quantize_sfb(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
+
+/* Architecture specific implementations */
+void quantize_sfb_sse2(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
+void quantize_sfb_avx2(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
+void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
+
 #endif

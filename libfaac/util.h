@@ -24,6 +24,14 @@
 
 #include "faac_real.h"
 
+#ifdef _MSC_VER /* visual c++ */
+#define ALIGN16_BEG __declspec(align(16))
+#define ALIGN16_END
+#else /* gcc or icc */
+#define ALIGN16_BEG
+#define ALIGN16_END __attribute__((aligned(16)))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -46,6 +54,20 @@ extern "C" {
 #define AllocMemory(size) malloc(size)
 #define FreeMemory(block) free(block)
 #define SetMemory(block, value, size) memset(block, value, size)
+
+typedef enum {
+    CPU_CAP_NONE = 0,
+    CPU_CAP_SSE2 = 1 << 0,
+    CPU_CAP_SSE3 = 1 << 1,
+    CPU_CAP_SSSE3 = 1 << 2,
+    CPU_CAP_SSE4_1 = 1 << 3,
+    CPU_CAP_SSE4_2 = 1 << 4,
+    CPU_CAP_AVX = 1 << 5,
+    CPU_CAP_AVX2 = 1 << 6,
+    CPU_CAP_NEON = 1 << 7,
+} cpu_caps_t;
+
+cpu_caps_t get_cpu_caps(void);
 
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);

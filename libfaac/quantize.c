@@ -22,12 +22,7 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
-
-#include "quantize_internal.h"
-#include "cpu_compute.h"
-
-#define ALIGN16_BEG
-#define ALIGN16_END
+#include "util.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -160,7 +155,7 @@ static void qlevel(CoderInfo *coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int ALIGN16_BEG xitab[8 * MAXSHORTBAND] ALIGN16_END;
+      ALIGN16_BEG int xitab[8 * MAXSHORTBAND] ALIGN16_END;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -217,24 +212,19 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       if (sfacfix > 0.0)
       {
-          void (*quant_fn)(int, faac_real, const faac_real *, int *) = quantize_lines;
+          void (*quant_fn)(int, int, faac_real, const faac_real *, int *) = quantize_sfb;
 
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
           if (caps & CPU_CAP_AVX2)
-              quant_fn = quantize_lines_avx2;
+              quant_fn = quantize_sfb_avx2;
           else if (caps & CPU_CAP_SSE2)
-              quant_fn = quantize_lines_sse2;
+              quant_fn = quantize_sfb_sse2;
 #elif defined(__aarch64__) || defined(__arm__)
           if (caps & CPU_CAP_NEON)
-              quant_fn = quantize_lines_neon;
+              quant_fn = quantize_sfb_neon;
 #endif
 
-          for (win = 0; win < gsize; win++)
-          {
-              quant_fn(end, sfacfix, xr, xi);
-              xi += end;
-              xr += BLOCK_LEN_SHORT;
-          }
+          quant_fn(end, gsize, sfacfix, xr, xi);
       }
       else
       {
