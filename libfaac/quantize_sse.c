@@ -1,16 +1,14 @@
 #include <immintrin.h>
 #include <math.h>
-#include "faac_real.h"
 #include "coder.h"
-#include "huff2.h"
 
 #define MAGIC_NUMBER 0.4054
 
 void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
-    const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps((float)sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+    const __m128 zero = _mm_setzero_ps();
     int cnt;
     int n4 = n & ~3;
 
@@ -24,38 +22,63 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_loadu_ps(xr + cnt);
 #endif
 
-        // Compute absolute value
-        __m128 abs_x = _mm_max_ps(x, _mm_sub_ps(zero, x));
+        // Original logic: abs(x)
+        x = _mm_max_ps(x, _mm_sub_ps(zero, x));
 
         // tmp = abs(x) * sfacfix
-        __m128 tmp = _mm_mul_ps(abs_x, sfac);
+        x = _mm_mul_ps(x, sfac);
 
         // tmp = sqrt(tmp * sqrt(tmp))
-        tmp = _mm_mul_ps(tmp, _mm_sqrt_ps(tmp));
-        tmp = _mm_sqrt_ps(tmp);
+        x = _mm_mul_ps(x, _mm_sqrt_ps(x));
+        x = _mm_sqrt_ps(x);
 
         // q = (int)(tmp + MAGIC_NUMBER)
-        __m128 q = _mm_add_ps(tmp, magic);
-        __m128i iq = _mm_cvttps_epi32(q);
+        x = _mm_add_ps(x, magic);
 
-        // Apply sign: if x < 0, iq = -iq
-        __m128 sign_mask = _mm_cmplt_ps(x, zero);
-        __m128i isign_mask = _mm_castps_si128(sign_mask);
-
-        // Result = (iq ^ mask) - mask
-        iq = _mm_sub_epi32(_mm_xor_si128(iq, isign_mask), isign_mask);
-
-        _mm_storeu_si128((__m128i*)(xi + cnt), iq);
+        _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
     }
 
-    // Handle remainder
-    for (; cnt < n; cnt++)
+    // Original logic: separate scalar loop for sign application
+    // and also handles remainder
+    for (cnt = 0; cnt < n; cnt++)
+    {
+        if (xr[cnt] < 0)
+            xi[cnt] = -xi[cnt];
+    }
+
+    // Remainder quantization (if not handled by the loop above because n was not multiple of 4)
+    // Actually the original SSE2 loop in quantize.c was:
+    /*
+              for (cnt = 0; cnt < end; cnt += 4)
+              {
+                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
+
+                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
+                  x = _mm_mul_ps(x, sfac);
+                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
+                  x = _mm_sqrt_ps(x);
+                  x = _mm_add_ps(x, magic);
+
+                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+              }
+              for (cnt = 0; cnt < end; cnt++)
+              {
+                  if (xr[cnt] < 0)
+                      xi[cnt] = -xi[cnt];
+              }
+    */
+    // Wait, the original code DID have a buffer overflow if end was not a multiple of 4!
+    // My n4 loop handles the SIMD part safely.
+    // I need to make sure the remainder is quantized too if I use n4.
+
+    for (cnt = n4; cnt < n; cnt++)
     {
         float val = (float)xr[cnt];
         float tmp = (val < 0.0f) ? -val : val;
         tmp *= (float)sfacfix;
         tmp = sqrtf(tmp * sqrtf(tmp));
-        int q = (int)(tmp + MAGIC_NUMBER);
-        xi[cnt] = (val < 0.0f) ? -q : q;
+        xi[cnt] = (int)(tmp + MAGIC_NUMBER);
+        if (val < 0.0f)
+            xi[cnt] = -xi[cnt];
     }
 }
