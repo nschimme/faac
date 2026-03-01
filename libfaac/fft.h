@@ -47,6 +47,7 @@ typedef struct
     unsigned short **reordertbl;
     faac_real *mdct_twiddles_long;
     faac_real *mdct_twiddles_short;
+    void*   cfg[10][2];
 } FFT_Tables;
 
 #endif /* defined DRM && !defined DRM_1024 */
@@ -56,5 +57,6 @@ void fft_terminate	( FFT_Tables *fft_tables );
 
 void rfft			( FFT_Tables *fft_tables, faac_real *x, int logm );
 void fft			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
+void ffti			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
 
 #endif

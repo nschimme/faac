@@ -93,9 +93,56 @@ struct kiss_fft_state{
 #else  /* not FIXED_POINT*/
 
 #   define S_MUL(a,b) ( (a)*(b) )
+#ifdef CPUMXU
+#include "../mxu_macros.h"
+#define C_MUL(m,a,b) \
+    do { \
+        float ar = (float)(a).r; \
+        float ai = (float)(a).i; \
+        float br = (float)(b).r; \
+        float bi = (float)(b).i; \
+        float resr, resi; \
+        __asm__ __volatile__ ( \
+            "mtc1 %2, $f4\n\t" \
+            "mtc1 %3, $f5\n\t" \
+            "mtc1 %4, $f6\n\t" \
+            "mtc1 %5, $f7\n\t" \
+            "mfc1 $2, $f4\n\t" \
+            "mfc1 $3, $f5\n\t" \
+            MXU_S32I2M(1, 2) \
+            MXU_S32I2M(2, 3) \
+            MXU_REPIW(1, 1, 0) /* VR1 = [ar, ar, ar, ar] */ \
+            MXU_REPIW(2, 2, 0) /* VR2 = [ai, ai, ai, ai] */ \
+            "mfc1 $2, $f6\n\t" \
+            "mfc1 $3, $f7\n\t" \
+            MXU_S32I2M(3, 2) \
+            MXU_S32I2M(4, 3) \
+            MXU_REPIW(3, 3, 0) /* VR3 = [br, br, br, br] */ \
+            MXU_REPIW(4, 4, 0) /* VR4 = [bi, bi, bi, bi] */ \
+            MXU_FMULW(5, 1, 3) /* VR5 = ar*br */ \
+            MXU_FMULW(6, 2, 4) /* VR6 = ai*bi */ \
+            MXU_FSUBW(7, 5, 6) /* VR7 = ar*br - ai*bi */ \
+            MXU_FMULW(8, 1, 4) /* VR8 = ar*bi */ \
+            MXU_FMULW(9, 2, 3) /* VR9 = ai*br */ \
+            MXU_FADDW(10, 8, 9) /* VR10 = ar*bi + ai*br */ \
+            MXU_MTFPUW($f4, 7, 0) \
+            MXU_MTFPUW($f5, 10, 0) \
+            "mfc1 $2, $f4\n\t" \
+            "mfc1 $3, $f5\n\t" \
+            "mtc1 $2, %0\n\t" \
+            "mtc1 $3, %1\n\t" \
+            : "=f"(resr), "=f"(resi) \
+            : "f"(ar), "f"(ai), "f"(br), "f"(bi) \
+            : "$2", "$3", "$f4", "$f5", "$f6", "$f7" \
+        ); \
+        (m).r = (kiss_fft_scalar)resr; \
+        (m).i = (kiss_fft_scalar)resi; \
+    } while(0)
+#else
 #define C_MUL(m,a,b) \
     do{ (m).r = (a).r*(b).r - (a).i*(b).i;\
         (m).i = (a).r*(b).i + (a).i*(b).r; }while(0)
+#endif
 #   define C_FIXDIV(c,div) /* NOOP */
 #   define C_MULBYSCALAR( c, s ) \
     do{ (c).r *= (s);\

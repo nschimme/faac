@@ -114,35 +114,44 @@ static int huffcode(int *qs /* quantized spectrum */,
 #endif
     case 1:
     case 2:
-        for(ofs = 0; ofs < len; ofs += 4)
+#ifdef CPUMXU
+        {
+            int n4 = (len / 4) * 4;
+            static const short h_coeffs_case12[] = {27, 9, 3, 1, 0, 0, 0, 0};
+            for(ofs = 0; ofs < n4; ofs += 4)
+            {
+                qp = qs+ofs;
+                int res;
+                __asm__ __volatile__ (
+                    "move $2, %1\n\t"
+                    "move $3, %2\n\t"
+                    MXU_LU1Q(1, 2, 0) /* VR1 = qp[0..3] */
+                    MXU_LU1Q(2, 3, 0) /* VR2 = coeffs[0..3] */
+                    MXU_DOTPSH(3, 1, 2) /* VR3 = [qp0*27+qp1*9, qp2*3+qp3*1, ...] */
+                    MXU_MTCPUSW(2, 3, 0) /* GPR2 = VR3[0] */
+                    MXU_MTCPUSW(3, 3, 1) /* GPR3 = VR3[1] */
+                    "addu %0, $2, $3\n\t"
+                    : "=r"(res)
+                    : "r"(qp), "r"(h_coeffs_case12)
+                    : "memory", "$2", "$3"
+                );
+                idx = res + 40;
+                if (idx < 0 || idx >= arrlen(book01)) return -1;
+                blen = book[idx].len;
+                if (coder) {
+                    data = book[idx].data;
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                    DRMDATA;
+                }
+                bits += blen;
+            }
+        }
+#endif
+        for(; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
-#ifdef CPUMXU
-            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16 |
-                            ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
-            int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
-            int res;
-            __asm__ __volatile__ (
-                "move $2, %1\n\t"
-                "move $3, %2\n\t"
-                MXU_S32I2M(1, 2)
-                MXU_S32I2M(2, 3)
-                "li $2, 0\n\t"
-                MXU_S32I2M(5, 2)
-                MXU_S32I2M(6, 2)
-                MXU_Q8MULSU(3, 1, 2, 4)
-                MXU_D16ASUM(5, 3, 4, 6, 0)
-                MXU_S32M2I(5, 2)
-                MXU_S32M2I(6, 3)
-                "addu %0, $2, $3\n\t"
-                : "=r"(res)
-                : "r"(qp_packed), "r"(coeffs)
-                : "memory", "$2", "$3"
-            );
-            idx = res + 40;
-#else
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-#endif
             if (idx < 0 || idx >= arrlen(book01))
             {
                 return -1;
@@ -160,36 +169,55 @@ static int huffcode(int *qs /* quantized spectrum */,
         break;
     case 3:
     case 4:
-        for(ofs = 0; ofs < len; ofs += 4)
+#ifdef CPUMXU
+        {
+            int n4 = (len / 4) * 4;
+            static const short h_coeffs_case34[] = {27, 9, 3, 1, 0, 0, 0, 0};
+            for(ofs = 0; ofs < n4; ofs += 4)
+            {
+                qp = qs+ofs;
+                int res;
+                __asm__ __volatile__ (
+                    "move $2, %1\n\t"
+                    "move $3, %2\n\t"
+                    MXU_LU1Q(1, 2, 0) /* VR1 = qp[0..3] */
+                    MXU_LU1Q(2, 3, 0) /* VR2 = coeffs[0..3] */
+                    MXU_DADDSW(3, 1, 0) /* VR3 = abs(VR1) */
+                    MXU_DOTPSH(4, 3, 2) /* VR4 = [abs(qp0)*27+abs(qp1)*9, abs(qp2)*3+abs(qp3)*1, ...] */
+                    MXU_MTCPUSW(2, 4, 0) /* GPR2 = VR4[0] */
+                    MXU_MTCPUSW(3, 4, 1) /* GPR3 = VR4[1] */
+                    "addu %0, $2, $3\n\t"
+                    : "=r"(res)
+                    : "r"(qp), "r"(h_coeffs_case34)
+                    : "memory", "$2", "$3"
+                );
+                idx = res;
+                if (idx < 0 || idx >= arrlen(book03)) return -1;
+                blen = book[idx].len;
+                if (!coder) {
+                    for(cnt = 0; cnt < 4; cnt++)
+                        if(qp[cnt]) blen++;
+                } else {
+                    data = book[idx].data;
+                    for(cnt = 0; cnt < 4; cnt++) {
+                        if(qp[cnt]) {
+                            blen++;
+                            data <<= 1;
+                            if (qp[cnt] < 0) data |= 1;
+                        }
+                    }
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                    DRMDATA;
+                }
+                bits += blen;
+            }
+        }
+#endif
+        for(; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
-#ifdef CPUMXU
-            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16 |
-                            ((signed char)qp[2] & 0xFF) << 8 | ((signed char)qp[3] & 0xFF);
-            int coeffs = (27 << 24) | (9 << 16) | (3 << 8) | 1;
-            int res;
-            __asm__ __volatile__ (
-                "move $2, %1\n\t"
-                "move $3, %2\n\t"
-                MXU_S32I2M(1, 2)
-                MXU_S32I2M(2, 3)
-                "li $2, 0\n\t"
-                MXU_S32I2M(6, 2)
-                MXU_S32I2M(7, 2)
-                MXU_Q8ABD(3, 1, 0)
-                MXU_Q8MULSU(4, 2, 3, 5)
-                MXU_D16ASUM(6, 4, 5, 7, 0)
-                MXU_S32M2I(6, 2)
-                MXU_S32M2I(7, 3)
-                "addu %0, $2, $3\n\t"
-                : "=r"(res)
-                : "r"(qp_packed), "r"(coeffs)
-                : "memory", "$2", "$3"
-            );
-            idx = res;
-#else
             idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-#endif
             if (idx < 0 || idx >= arrlen(book03))
             {
                 return -1;
@@ -225,32 +253,43 @@ static int huffcode(int *qs /* quantized spectrum */,
         break;
     case 5:
     case 6:
-        for(ofs = 0; ofs < len; ofs += 2)
+#ifdef CPUMXU
+        {
+            int n2 = (len / 2) * 2;
+            static const short h_coeffs_case56[] = {9, 1, 0, 0, 0, 0, 0, 0};
+            for(ofs = 0; ofs < n2; ofs += 2)
+            {
+                qp = qs+ofs;
+                int res;
+                __asm__ __volatile__ (
+                    "move $2, %1\n\t"
+                    "move $3, %2\n\t"
+                    MXU_LU1Q(1, 2, 0) /* VR1 = qp[0..1] */
+                    MXU_LU1Q(2, 3, 0) /* VR2 = coeffs[0..1] */
+                    MXU_DOTPSH(3, 1, 2) /* VR3[0] = qp0*9+qp1*1 */
+                    MXU_MTCPUSW(2, 3, 0)
+                    "move %0, $2\n\t"
+                    : "=r"(res)
+                    : "r"(qp), "r"(h_coeffs_case56)
+                    : "memory", "$2", "$3"
+                );
+                idx = res + 40;
+                if (idx < 0 || idx >= arrlen(book05)) return -1;
+                blen = book[idx].len;
+                if (coder) {
+                    data = book[idx].data;
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                    DRMDATA;
+                }
+                bits += blen;
+            }
+        }
+#endif
+        for(; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
-#ifdef CPUMXU
-            int qp_packed = ((signed char)qp[0] & 0xFF) << 24 | ((signed char)qp[1] & 0xFF) << 16;
-            int coeffs = (9 << 24) | (1 << 16);
-            int res;
-            __asm__ __volatile__ (
-                "move $2, %1\n\t"
-                "move $3, %2\n\t"
-                MXU_S32I2M(1, 2)
-                MXU_S32I2M(2, 3)
-                MXU_Q8MULSU(3, 1, 2, 0)
-                MXU_S32M2I(3, 2)
-                "srl $3, $2, 24\n\t"
-                "srl $2, $2, 16\n\t"
-                "andi $2, $2, 0xFF\n\t"
-                "addu %0, $2, $3\n\t"
-                : "=r"(res)
-                : "r"(qp_packed), "r"(coeffs)
-                : "memory", "$2", "$3"
-            );
-            idx = res + 40;
-#else
             idx = 9 * qp[0] + qp[1] + 40;
-#endif
             if (idx < 0 || idx >= arrlen(book05))
             {
                 return -1;

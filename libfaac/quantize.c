@@ -255,31 +255,49 @@ static void qlevel(CoderInfo *coderInfo,
       for (win = 0; win < gsize; win++)
       {
 #ifdef CPUMXU
-          const faac_real fmagic = (faac_real)MAGIC_NUMBER;
-          const faac_real fsfacfix = (faac_real)sfacfix;
-          for (cnt = 0; cnt < end; cnt++)
+          const float fsfacfix = (float)sfacfix;
+          const float fmagic = (float)MAGIC_NUMBER;
+          int n4 = (end / 4) * 4;
+          for (cnt = 0; cnt < n4; cnt += 4)
           {
-              union { float f; int i; } u;
-              u.f = (float)xr[cnt];
-              float aval = fabsf(u.f);
-              float tmp = aval * (float)fsfacfix;
-              tmp = sqrtf(tmp * sqrtf(tmp));
-              int q = (int)(tmp + (float)fmagic);
-
-              int res;
               __asm__ __volatile__ (
+                  "move $2, %0\n\t"
+                  "mtc1 %2, $f4\n\t"
+                  "mtc1 %3, $f5\n\t"
+                  MXU_LU1Q(1, 2, 0)
+                  "mfc1 $2, $f4\n\t"
+                  "mfc1 $3, $f5\n\t"
+                  MXU_S32I2M(14, 2)
+                  MXU_S32I2M(15, 3)
+                  MXU_REPIW(2, 14, 0) /* VR2 = sfacfix */
+                  MXU_REPIW(3, 15, 0) /* VR3 = magic */
+                  MXU_FMAXW(4, 1, 0) /* VR4 = abs(x) (0 is VR0=zero) */
+                  MXU_FMULW(5, 4, 2) /* VR5 = abs(x) * sfacfix */
+                  MXU_FSQRTW(6, 5)   /* VR6 = sqrt(tmp) */
+                  MXU_FMULW(7, 5, 6) /* VR7 = tmp * sqrt(tmp) */
+                  MXU_FSQRTW(8, 7)   /* VR8 = sqrt(tmp * sqrt(tmp)) */
+                  MXU_FADDW(9, 8, 3) /* VR9 = tmp + magic */
+                  MXU_VTRUNCSWS(10, 9) /* VR10 = (int)VR9 */
+                  MXU_FSUBW(11, 0, 10) /* VR11 = -VR10 */
+                  /* Sign application logic: if x < 0, pick VR11, else VR10 */
+                  /* We can use FCLTW and BSELV */
+                  MXU_FCLTW(12, 1, 0) /* VR12 = (x < 0) ? 0xffffffff : 0 */
+                  MXU_BSELV(13, 10, 11, 12) /* VR13 = (VR12) ? VR11 : VR10 */
                   "move $2, %1\n\t"
-                  "move $3, %2\n\t"
-                  MXU_S32I2M(1, 2)
-                  MXU_S32I2M(2, 3)
-                  MXU_S32CPS(3, 1, 2)
-                  MXU_S32M2I(3, 2)
-                  "move %0, $2\n\t"
-                  : "=r"(res)
-                  : "r"(q), "r"(u.i)
-                  : "memory", "$2", "$3"
+                  MXU_SU1Q(13, 2, 0)
+                  :
+                  : "r"(xr + cnt), "r"(xi + cnt), "r"(fsfacfix), "r"(fmagic)
+                  : "memory", "$2", "$3", "$f4", "$f5"
               );
-              xi[cnt] = res;
+          }
+          for (; cnt < end; cnt++)
+          {
+              float tmp = fabsf((float)xr[cnt]);
+              tmp *= fsfacfix;
+              tmp = sqrtf(tmp * sqrtf(tmp));
+              xi[cnt] = (int)(tmp + fmagic);
+              if (xr[cnt] < 0)
+                  xi[cnt] = -xi[cnt];
           }
           xi += end;
           xr += BLOCK_LEN_SHORT;

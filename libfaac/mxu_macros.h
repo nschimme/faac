@@ -175,6 +175,68 @@
 #define MXU_S32MAX(xra, xrb, xrc) \
     ".word (0x1c << 26) | (0 << 18) | ((" #xrc ") << 14) | ((" #xrb ") << 10) | ((" #xra ") << 6) | 0x03\n\t"
 
+/* MXU2 Opcodes and Encodings (Major: COP2=0x12, SPECIAL2=0x1C) */
+
+/* 2R10I: LU1Q vrd, offset(base) -> Op=0x1C, base, offset, vrd, funct0=0x14 */
+#define MXU_LU1Q(vrd, base, offset) \
+    ".word (0x1c << 26) | ((" #base ") << 21) | (((" #offset ") & 0x3FF) << 11) | ((" #vrd ") << 6) | 0x14\n\t"
+
+/* 2R10I: SU1Q vrd, offset(base) -> Op=0x1C, base, offset, vrd, funct0=0x1C */
+#define MXU_SU1Q(vrd, base, offset) \
+    ".word (0x1c << 26) | ((" #base ") << 21) | (((" #offset ") & 0x3FF) << 11) | ((" #vrd ") << 6) | 0x1C\n\t"
+
+/* 3RFP: FADDW vrd, vrs, vrt -> Op=0x12, 0x18, vrt, vrs, vrd, 0x0, 0x0 */
+#define MXU_FADDW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x18 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x00\n\t"
+
+/* 3RFP: FSUBW vrd, vrs, vrt -> Op=0x12, 0x18, vrt, vrs, vrd, 0x1, 0x0 */
+#define MXU_FSUBW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x18 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x01\n\t"
+
+/* 3RFP: FMULW vrd, vrs, vrt -> Op=0x12, 0x18, vrt, vrs, vrd, 0x2, 0x0 */
+#define MXU_FMULW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x18 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x02\n\t"
+
+/* 3RFP: FMAXW vrd, vrs, vrt -> Op=0x12, 0x18, vrt, vrs, vrd, 0x0C, 0x0 */
+#define MXU_FMAXW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x18 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | (0x0C)\n\t"
+
+/* 2RFP: FSQRTW vrd, vrs -> Op=0x12, 0x1E, 0x1, vrs, vrd, 0x0, 0x0 */
+#define MXU_FSQRTW(vrd, vrs) \
+    ".word (0x12 << 26) | (0x1E << 21) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x10000\n\t"
+
+/* 2RFP: VTRUNCSWS vrd, vrs -> Op=0x12, 0x1E, 0x1, vrs, vrd, 0x0A, 0x0 */
+#define MXU_VTRUNCSWS(vrd, vrs) \
+    ".word (0x12 << 26) | (0x1E << 21) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | (0x1000A)\n\t"
+
+/* 3RFP: FCLTW vrd, vrs, vrt -> Op=0x12, 0x18, vrt, vrs, vrd, 0x0A, 0x0 (FCLT.W) */
+#define MXU_FCLTW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x1A << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x02\n\t"
+
+/* 4R: BSELV vrd, vrs, vrt, vrr -> Op=0x1C, vrr, vrt, vrs, vrd, 0x19 */
+#define MXU_BSELV(vrd, vrs, vrt, vrr) \
+    ".word (0x1c << 26) | ((" #vrr ") << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x19\n\t"
+
+/* 2R8I: REPIW vrd, vrs, imm -> Op=0x1C, 0x2, imm, vrs, vrd, 0x35 */
+#define MXU_REPIW(vrd, vrs, imm) \
+    ".word (0x1c << 26) | (0x02 << 24) | ((" #imm ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x35\n\t"
+
+/* 2R8I: MTCPUSW rd, vrs, imm -> Op=0x1C, 0x2, imm, rd, vrs, 0x33 */
+#define MXU_MTCPUSW(rd, vrs, imm) \
+    ".word (0x1c << 26) | (0x02 << 24) | ((" #imm ") << 16) | ((" #rd ") << 11) | ((" #vrs ") << 6) | 0x33\n\t"
+
+/* 3RINT: DOTPSH vrd, vrs, vrt -> Op=0x12, 0x12, vrt, vrs, vrd, 0x21 */
+#define MXU_DOTPSH(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x12 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x21\n\t"
+
+/* 3RINT: DADDSW vrd, vrs, vrt -> Op=0x12, 0x12, vrt, vrs, vrd, 0x26 */
+#define MXU_DADDSW(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x12 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x26\n\t"
+
+/* 3RVEC: XORV vrd, vrs, vrt -> Op=0x12, 0x16, vrt, vrs, vrd, 0x3B */
+#define MXU_XORV(vrd, vrs, vrt) \
+    ".word (0x12 << 26) | (0x16 << 21) | ((" #vrt ") << 16) | ((" #vrs ") << 11) | ((" #vrd ") << 6) | 0x3B\n\t"
+
 /* Enable MXU utility */
 #define MXU_ENABLE() \
     __asm__ __volatile__ ( \

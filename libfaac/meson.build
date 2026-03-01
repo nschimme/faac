@@ -33,7 +33,7 @@ common_src = [
     'util.h',
 ]
 
-libfaac = library('faac', common_src,
+libfaac = library('faac', common_src + ['kiss_fft/kiss_fft.c'],
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,
@@ -47,6 +47,7 @@ drm_src = [
     'kiss_fft/kiss_fft.c',
     'kiss_fft/kiss_fft.h'
 ]
+
 libfaac_drm = library('faac_drm', common_src + drm_src,
     include_directories: ['..', '../include'],
     c_args: c_args + ['-DDRM'],
