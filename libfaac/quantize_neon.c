@@ -8,56 +8,71 @@
 void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
 {
     int win, cnt;
-    float32x4_t vsfac = vdupq_n_f32((float)sfacfix);
-    float32x4_t vmagic = vdupq_n_f32(MAGIC_NUMBER);
-    float32x4_t vzero = vdupq_n_f32(0.0f);
+    float32x4_t vzero32 = vdupq_n_f32(0.0f);
 
     for (win = 0; win < gsize; win++)
     {
+#ifdef FAAC_PRECISION_SINGLE
+        float32x4_t vsfac = vdupq_n_f32((float)sfacfix);
+        float32x4_t vmagic = vdupq_n_f32(MAGIC_NUMBER);
         for (cnt = 0; cnt <= end - 4; cnt += 4)
         {
-#ifdef FAAC_PRECISION_SINGLE
             float32x4_t x = vld1q_f32(xr + cnt);
-#else
-#ifdef __aarch64__
-            /* Correctly load doubles and convert to float SIMD on AArch64 */
-            float32x4_t x = vcombine_f32(vcvt_f32_f64(vld1q_f64(xr + cnt)), vcvt_f32_f64(vld1q_f64(xr + cnt + 2)));
-#else
-            /* Scalar fallback for 32-bit ARM double precision */
-            float x_arr[4] = {(float)xr[cnt], (float)xr[cnt+1], (float)xr[cnt+2], (float)xr[cnt+3]};
-            float32x4_t x = vld1q_f32(x_arr);
-#endif
-#endif
-            float32x4_t x_abs = vabsq_f32(x);
-            float32x4_t tmp = vmulq_f32(x_abs, vsfac);
+            float32x4_t t = vmulq_f32(vabsq_f32(x), vsfac);
 
 #if defined(__aarch64__)
-            /* vsqrtq_f32 is AArch64 only */
-            float32x4_t s = vsqrtq_f32(tmp);
-            tmp = vmulq_f32(tmp, s);
-            tmp = vaddq_f32(vsqrtq_f32(tmp), vmagic);
+            t = vaddq_f32(vsqrtq_f32(vmulq_f32(t, vsqrtq_f32(t))), vmagic);
 #else
-            /* Newton-Raphson approximation for ARMv7 */
-            uint32x4_t m = vcltq_f32(vzero, tmp);
-            float32x4_t r = vrsqrteq_f32(tmp);
-            r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            float32x4_t sv = vbslq_f32(m, vmulq_f32(tmp, r), vzero);
-            tmp = vmulq_f32(tmp, sv);
-            m = vcltq_f32(vzero, tmp);
-            r = vrsqrteq_f32(tmp);
-            r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            tmp = vaddq_f32(vbslq_f32(m, vmulq_f32(tmp, r), vzero), vmagic);
+            #define NR_SQRT(V) do { \
+                uint32x4_t m = vcltq_f32(vzero32, V); \
+                float32x4_t r = vrsqrteq_f32(V); \
+                r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), V)); \
+                V = vbslq_f32(m, vmulq_f32(V, r), vzero32); \
+            } while(0)
+            float32x4_t s = t; NR_SQRT(s); t = vmulq_f32(t, s); NR_SQRT(t); t = vaddq_f32(t, vmagic);
 #endif
-            int32x4_t q = vcvtq_s32_f32(tmp);
-            int32x4_t g = vreinterpretq_s32_u32(vcltq_f32(x, vzero));
+            int32x4_t q = vcvtq_s32_f32(t);
+            int32x4_t g = vreinterpretq_s32_u32(vcltq_f32(x, vzero32));
             vst1q_s32(xi + cnt, vsubq_s32(veorq_s32(q, g), g));
         }
+#else
+#if defined(__aarch64__)
+        float64x2_t vdsfac = vdupq_n_f64(sfacfix);
+        float64x2_t vdmagic = vdupq_n_f64((double)MAGIC_NUMBER);
+        float64x2_t vzero64 = vdupq_n_f64(0.0);
+
+        for (cnt = 0; cnt <= end - 4; cnt += 4)
+        {
+            float64x2_t x0 = vld1q_f64(xr + cnt);
+            float64x2_t x1 = vld1q_f64(xr + cnt + 2);
+
+            float64x2_t t0 = vmulq_f64(vabsq_f64(x0), vdsfac);
+            float64x2_t t1 = vmulq_f64(vabsq_f64(x1), vdsfac);
+
+            t0 = vaddq_f64(vsqrtq_f64(vmulq_f64(t0, vsqrtq_f64(t0))), vdmagic);
+            t1 = vaddq_f64(vsqrtq_f64(vmulq_f64(t1, vsqrtq_f64(t1))), vdmagic);
+
+            int32x2_t q0 = vqmovn_s64(vcvtq_s64_f64(t0));
+            int32x2_t q1 = vqmovn_s64(vcvtq_s64_f64(t1));
+
+            int32x4_t q = vcombine_s32(q0, q1);
+
+            int64x2_t g0 = vreinterpretq_s64_u64(vcltq_f64(x0, vzero64));
+            int64x2_t g1 = vreinterpretq_s64_u64(vcltq_f64(x1, vzero64));
+            int32x4_t g = vcombine_s32(vqmovn_s64(g0), vqmovn_s64(g1));
+
+            vst1q_s32(xi + cnt, vsubq_s32(veorq_s32(q, g), g));
+        }
+#else
+        cnt = 0;
+#endif
+#endif
         for (; cnt < end; cnt++)
         {
             faac_real tmp = FAAC_FABS(xr[cnt]);
             tmp *= sfacfix;
             tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-            xi[cnt] = (int)(tmp + (faac_real)MAGIC_NUMBER);
+            xi[cnt] = (int)(tmp + (faac_real)0.4054);
             if (xr[cnt] < 0) xi[cnt] = -xi[cnt];
         }
         xi += end;
