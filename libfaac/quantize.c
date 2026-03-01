@@ -22,36 +22,30 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "util.h"
+#include "faac_real.h"
+#include "frame.h"
 
-#if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
-# include <immintrin.h>
-#endif
+void quantize_sfb(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
+{
+    int win, cnt;
+    for (win = 0; win < gsize; win++)
+    {
+        for (cnt = 0; cnt < end; cnt++)
+        {
+            faac_real tmp = FAAC_FABS(xr[cnt]);
 
-#ifdef __SSE2__
-# ifdef __GNUC__
-#  include <cpuid.h>
-# endif
-#endif
+            tmp *= sfacfix;
+            tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
-#ifdef _MSC_VER
-# include <immintrin.h>
-# include <intrin.h>
-# define __SSE2__
-# define bit_SSE2 (1 << 26)
-#endif
-
-#ifdef __SSE2__
-#ifdef _MSC_VER /* visual c++ */
-#define ALIGN16_BEG __declspec(align(16))
-#define ALIGN16_END
-#else /* gcc or icc */
-#define ALIGN16_BEG
-#define ALIGN16_END __attribute__((aligned(16)))
-#endif
-#else
-#define ALIGN16_BEG
-#define ALIGN16_END
-#endif
+            xi[cnt] = (int)(tmp + 0.4054);
+            if (xr[cnt] < 0)
+                xi[cnt] = -xi[cnt];
+        }
+        xi += end;
+        xr += BLOCK_LEN_SHORT;
+    }
+}
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -158,7 +152,8 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-static void qlevel(CoderInfo *coderInfo,
+static void qlevel(struct faacEncStruct *hEncoder,
+                   CoderInfo *coderInfo,
                    const faac_real *xr0,
                    const faac_real *bandqual,
                    int gnum,
@@ -176,20 +171,6 @@ static void qlevel(CoderInfo *coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
-#ifdef __SSE2__
-    int cpuid[4];
-    int sse2 = 0;
-
-    cpuid[3] = 0;
-# ifdef __GNUC__
-    __cpuid(1, cpuid[0], cpuid[1], cpuid[2], cpuid[3]);
-# endif
-# ifdef _MSC_VER
-    __cpuid(cpuid, 1);
-# endif
-    if (cpuid[3] & bit_SSE2)
-        sse2 = 1;
-#endif
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -197,7 +178,7 @@ static void qlevel(CoderInfo *coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int ALIGN16_BEG xitab[8 * MAXSHORTBAND] ALIGN16_END;
+      ALIGN32_BEG int xitab[1024 + 32] ALIGN32_END;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -252,57 +233,26 @@ static void qlevel(CoderInfo *coderInfo,
       xr = xr0 + start;
       end -= start;
       xi = xitab;
-      for (win = 0; win < gsize; win++)
+      if (sfacfix > 0.0)
       {
-#ifdef __SSE2__
-          if (sse2)
+          hEncoder->quantize_sfb_p(end, gsize, sfacfix, xr, xi);
+      }
+      else
+      {
+          for (win = 0; win < gsize; win++)
           {
-              const __m128 zero = _mm_setzero_ps();
-              const __m128 sfac = _mm_set1_ps(sfacfix);
-              const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-              for (cnt = 0; cnt < end; cnt += 4)
-              {
-                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
-
-                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                  x = _mm_mul_ps(x, sfac);
-                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                  x = _mm_sqrt_ps(x);
-                  x = _mm_add_ps(x, magic);
-
-                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
-              }
               for (cnt = 0; cnt < end; cnt++)
-              {
-                  if (xr[cnt] < 0)
-                      xi[cnt] = -xi[cnt];
-              }
-              xi += cnt;
+                  xi[cnt] = 0;
+              xi += end;
               xr += BLOCK_LEN_SHORT;
-              continue;
           }
-#endif
-
-          for (cnt = 0; cnt < end; cnt++)
-          {
-              faac_real tmp = FAAC_FABS(xr[cnt]);
-
-              tmp *= sfacfix;
-              tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-              xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-              if (xr[cnt] < 0)
-                  xi[cnt] = -xi[cnt];
-          }
-          xi += cnt;
-          xr += BLOCK_LEN_SHORT;
       }
       huffbook(coderInfo, xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
-int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(struct faacEncStruct *hEncoder, CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     int cnt;
@@ -327,7 +277,7 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
         {
             bmask(coder, gxr, bandlvl, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
+            qlevel(hEncoder, coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

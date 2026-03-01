@@ -23,6 +23,7 @@ common_src = [
     'huff2.h',
     'huffdata.c',
     'huffdata.h',
+    'cpu_compute.c',
     'quantize.c',
     'quantize.h',
     'stereo.c',
@@ -33,10 +34,31 @@ common_src = [
     'util.h',
 ]
 
+simd_libs = []
+
+if cpu_family in ['x86', 'x86_64']
+    simd_libs += static_library('quantize_sse', 'quantize_sse.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + ['-msse2']
+    )
+    simd_libs += static_library('quantize_avx2', 'quantize_avx2.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + ['-mavx2']
+    )
+endif
+
+if cpu_family in ['arm', 'aarch64']
+    simd_libs += static_library('quantize_neon', 'quantize_neon.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args
+    )
+endif
+
 libfaac = library('faac', common_src,
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,
+    link_with: simd_libs,
     dependencies: [ libm ],
     vs_module_defs: 'libfaac.def',
     install: true
@@ -52,6 +74,7 @@ if get_option('drm')
         include_directories: ['..', '../include'],
         c_args: c_args + ['-DDRM'],
         link_args: link_args,
+        link_with: simd_libs,
         dependencies: [ libm ],
         vs_module_defs: 'libfaac.def',
         install: true

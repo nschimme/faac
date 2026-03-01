@@ -39,7 +39,7 @@ extern "C" {
 
 #include <faaccfg.h>
 
-typedef struct {
+typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -83,6 +83,7 @@ typedef struct {
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
+    quantize_sfb_fn quantize_sfb_p;
 
     /* FFT Tables */
     FFT_Tables	fft_tables;

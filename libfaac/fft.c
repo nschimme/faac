@@ -47,6 +47,8 @@ static const int logm_to_nfft[] =
 void fft_initialize( FFT_Tables *fft_tables )
 {
     memset( fft_tables->cfg, 0, sizeof( fft_tables->cfg ) );
+    fft_tables->mdct_twiddles_long = NULL;
+    fft_tables->mdct_twiddles_short = NULL;
 }
 void fft_terminate( FFT_Tables *fft_tables )
 {
@@ -64,6 +66,11 @@ void fft_terminate( FFT_Tables *fft_tables )
             fft_tables->cfg[i][1] = NULL;
         }
     }
+
+    if (fft_tables->mdct_twiddles_long) FreeMemory(fft_tables->mdct_twiddles_long);
+    if (fft_tables->mdct_twiddles_short) FreeMemory(fft_tables->mdct_twiddles_short);
+    fft_tables->mdct_twiddles_long = NULL;
+    fft_tables->mdct_twiddles_short = NULL;
 }
 
 void rfft( FFT_Tables *fft_tables, faac_real *x, int logm )
@@ -189,6 +196,9 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
 	}
+
+	fft_tables->mdct_twiddles_long = NULL;
+	fft_tables->mdct_twiddles_short = NULL;
 }
 
 void fft_terminate( FFT_Tables *fft_tables )
@@ -214,13 +224,18 @@ void fft_terminate( FFT_Tables *fft_tables )
 	fft_tables->costbl		= NULL;
 	fft_tables->negsintbl	= NULL;
 	fft_tables->reordertbl	= NULL;
+
+	if (fft_tables->mdct_twiddles_long) FreeMemory(fft_tables->mdct_twiddles_long);
+	if (fft_tables->mdct_twiddles_short) FreeMemory(fft_tables->mdct_twiddles_short);
+	fft_tables->mdct_twiddles_long = NULL;
+	fft_tables->mdct_twiddles_short = NULL;
 }
 
-static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
+static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 {
 	int i;
 	int size = 1 << logm;
-	unsigned short *r;	//size
+	const unsigned short *r;
 
 
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
@@ -252,9 +267,13 @@ static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
 		if (j <= i)
 			continue;
 
-		tmp = x[i];
-		x[i] = x[j];
-		x[j] = tmp;
+		tmp = xr[i];
+		xr[i] = xr[j];
+		xr[j] = tmp;
+
+		tmp = xi[i];
+		xi[i] = xi[j];
+		xi[j] = tmp;
 	}
 }
 
@@ -268,8 +287,65 @@ static void fft_proc(
 	int step, shift, pos;
 	int exp, estep;
 
-	estep = size;
-	for (step = 1; step < size; step *= 2)
+	estep = size >> 1;
+	/* First stage: step = 1, refac[0] = 1, imfac[0] = 0.
+	   Eliminate redundant multiplications by 1 and 0.
+	*/
+	for (pos = 0; pos < size; pos += 2)
+	{
+		faac_real v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+    /* Second stage: step = 2, estep = size / 4.
+	   shift = 0: exp = 0, refac[0] = 1, imfac[0] = 0.
+	   shift = 1: exp = size/4, refac[size/4] = 0, imfac[size/4] = -1.
+	   Eliminate multiplications and avoid trig calls for this stage.
+	*/
+	if (size >= 4) {
+		for (pos = 0; pos < size; pos += 4)
+		{
+			faac_real v2r, v2i;
+			int x1 = pos;
+			int x2 = pos + 2;
+
+			/* shift = 0 */
+			v2r = xr[x2];
+			v2i = xi[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			/* shift = 1 */
+			x1++;
+			x2++;
+			exp = size >> 2;
+			v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
+			v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+	}
+
+	estep = size >> 2;
+	for (step = 4; step < size; step *= 2)
 	{
 		int x1;
 		int x2 = 0;
@@ -340,8 +416,7 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 
 	check_tables( fft_tables, logm);
 
-	reorder( fft_tables, xr, logm);
-	reorder( fft_tables, xi, logm);
+	reorder2( fft_tables, xr, xi, logm);
 
 	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }

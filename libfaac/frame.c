@@ -318,6 +318,18 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     TnsInit(hEncoder);
 
+    hEncoder->quantize_sfb_p = quantize_sfb;
+    /* cpu_caps_t caps = get_cpu_caps();
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+    if (caps & CPU_CAP_AVX2)
+    hEncoder->quantize_sfb_p = quantize_sfb;
+    else if (caps & CPU_CAP_SSE2)
+    hEncoder->quantize_sfb_p = quantize_sfb;
+#elif defined(__aarch64__) || defined(__arm__)
+    if (caps & CPU_CAP_NEON)
+    hEncoder->quantize_sfb_p = quantize_sfb;
+#endif
+
     /* Return handle */
     return hEncoder;
 }
@@ -581,7 +593,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+        BlocQuant(hEncoder, &coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }
 
