@@ -1,15 +1,3 @@
-option('frontend',
-    description: 'Build the frontend',
-    type: 'boolean',
-    value: true)
-
-option('drm',
-    description: 'Build the DRM variant library',
-    type: 'boolean',
-    value: true)
-
-option('floating-point',
-    description: 'Floating point precision',
-    type: 'combo',
-    choices: ['single', 'double'],
-    value: 'double')
+option('floating-point', type: 'combo', choices: ['single', 'double'], value: 'double')
+option('drm', type: 'boolean', value: true)
+option('frontend', type: 'boolean', value: true)

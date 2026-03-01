@@ -79,8 +79,10 @@ cpu_caps_t get_cpu_caps(void)
 #ifdef __APPLE__
     int val = 0;
     size_t len = sizeof(val);
-    if ((sysctlbyname("hw.optional.neon", &val, &len, NULL, 0) == 0 && val) ||
-        (sysctlbyname("hw.optional.advsimd", &val, &len, NULL, 0) == 0 && val)) {
+    /* Detect AdvSIMD/NEON on macOS (both ARM and AArch64) */
+    if (sysctlbyname("hw.optional.advsimd", &val, &len, NULL, 0) == 0 && val) {
+        caps |= CPU_CAP_NEON;
+    } else if (sysctlbyname("hw.optional.neon", &val, &len, NULL, 0) == 0 && val) {
         caps |= CPU_CAP_NEON;
     }
 #elif defined(__linux__)

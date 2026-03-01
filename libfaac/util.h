@@ -27,9 +27,13 @@
 #ifdef _MSC_VER /* visual c++ */
 #define ALIGN16_BEG __declspec(align(16))
 #define ALIGN16_END
+#define ALIGN32_BEG __declspec(align(32))
+#define ALIGN32_END
 #else /* gcc or icc */
 #define ALIGN16_BEG
 #define ALIGN16_END __attribute__((aligned(16)))
+#define ALIGN32_BEG
+#define ALIGN32_END __attribute__((aligned(32)))
 #endif
 
 #ifdef __cplusplus
