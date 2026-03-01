@@ -18,3 +18,8 @@ option('sse2',
     description: 'Enable hand-rolled SSE2 optimizations',
     type: 'boolean',
     value: true)
+
+option('avx2',
+    description: 'Enable hand-rolled AVX2 optimizations',
+    type: 'boolean',
+    value: true)

@@ -20,6 +20,12 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdint.h>
+#ifdef _WIN32
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -35,12 +41,24 @@
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
+typedef struct {
+    QuantizeFunc qfunc;
+    int size_factor;
+    int alignment;
+} QuantizerStrategy;
+
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_AVX2)
+extern void quantize_avx2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
+
+enum {MAXSHORTBAND = 36};
+
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-static QuantizeFunc qfunc = quantize_scalar;
+static QuantizerStrategy qstrategy = { quantize_scalar, 8, 1 };
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
@@ -61,14 +79,30 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 void QuantizeInit(void)
 {
-#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
     unsigned int caps = get_cpu_caps();
-    if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
-    else
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_AVX2)
+    if (caps & CPU_CAP_AVX2)
+    {
+        qstrategy.qfunc = quantize_avx2;
+        qstrategy.size_factor = 16;
+        qstrategy.alignment = 32;
+        return;
+    }
 #endif
-        qfunc = quantize_scalar;
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
+    if (caps & CPU_CAP_SSE2)
+    {
+        qstrategy.qfunc = quantize_sse2;
+        qstrategy.size_factor = 8;
+        qstrategy.alignment = 16;
+        return;
+    }
+#endif
+    qstrategy.qfunc = quantize_scalar;
+    qstrategy.size_factor = 8;
+    qstrategy.alignment = 1;
 }
+
 #define NOISEFLOOR 0.4
 
 // band sound masking
@@ -162,7 +196,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 }
 
-enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -184,17 +217,24 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
 
+    // Allocate xitab once outside the loop to avoid stack exhaustion
+    // Maximum possible size is gsize * max(sfb_width)
+    // BLOCK_LEN_SHORT is a safe upper bound for max(sfb_width)
+    int *xitab_alloc = (int *)alloca(gsize * BLOCK_LEN_SHORT * sizeof(int) + qstrategy.alignment);
+    int align_mask = qstrategy.alignment - 1;
+    int *xitab_base = (int *)(((uintptr_t)xitab_alloc + align_mask) & ~align_mask);
+
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
       faac_real sfacfix;
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
       const faac_real *xr;
       int win;
+      int *xitab = xitab_base;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -243,7 +283,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qstrategy.qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
       }

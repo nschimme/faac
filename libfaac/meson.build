@@ -7,13 +7,24 @@ endif
 
 quantize_simd_libs = []
 
-if (cpu_family in ['x86', 'x86_64']) and get_option('sse2')
-    sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
-    quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
-        include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag
-    )
-    quantize_simd_libs += quantize_sse
+if (cpu_family in ['x86', 'x86_64'])
+    if get_option('sse2')
+        sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
+        quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
+            include_directories: ['..', '../include'],
+            c_args: c_args + sse2_flag
+        )
+        quantize_simd_libs += quantize_sse
+    endif
+
+    if get_option('avx2')
+        avx2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:AVX2'] : ['-mavx2']
+        quantize_avx = static_library('quantize_avx', 'quantize_avx.c',
+            include_directories: ['..', '../include'],
+            c_args: c_args + avx2_flag
+        )
+        quantize_simd_libs += quantize_avx
+    endif
 endif
 
 common_src = [
