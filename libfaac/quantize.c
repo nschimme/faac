@@ -177,7 +177,7 @@ static void qlevel(CoderInfo *coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      ALIGN16_BEG int xitab[8 * MAXSHORTBAND + 8] ALIGN16_END;
+      ALIGN32_BEG int xitab[1024 + 32] ALIGN32_END;
       int *xi;
       int start, end;
       const faac_real *xr;
