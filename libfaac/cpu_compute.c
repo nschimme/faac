@@ -75,17 +75,22 @@ cpu_caps_t get_cpu_caps(void)
     }
 #endif
 
-#if defined(__aarch64__)
-    caps |= CPU_CAP_NEON;
-#elif defined(__arm__)
+#if defined(__aarch64__) || defined(__arm__)
 #ifdef __APPLE__
     int val = 0;
     size_t len = sizeof(val);
-    if (sysctlbyname("hw.optional.neon", &val, &len, NULL, 0) == 0 && val) {
+    if ((sysctlbyname("hw.optional.neon", &val, &len, NULL, 0) == 0 && val) ||
+        (sysctlbyname("hw.optional.advsimd", &val, &len, NULL, 0) == 0 && val)) {
         caps |= CPU_CAP_NEON;
     }
 #elif defined(__linux__)
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+#ifdef __aarch64__
+    if (getauxval(AT_HWCAP) & HWCAP_ASIMD) caps |= CPU_CAP_NEON;
+#else
     if (getauxval(AT_HWCAP) & HWCAP_NEON) caps |= CPU_CAP_NEON;
+#endif
 #endif
 #endif
 

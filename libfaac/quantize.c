@@ -23,6 +23,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "util.h"
+#include "faac_real.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -212,19 +213,24 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       if (sfacfix > 0.0)
       {
-          void (*quant_fn)(int, int, faac_real, const faac_real *, int *) = quantize_sfb;
-
 #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
           if (caps & CPU_CAP_AVX2)
-              quant_fn = quantize_sfb_avx2;
+              quantize_sfb_avx2(end, gsize, sfacfix, xr, xi);
           else if (caps & CPU_CAP_SSE2)
-              quant_fn = quantize_sfb_sse2;
+              quantize_sfb_sse2(end, gsize, sfacfix, xr, xi);
+          else
+              quantize_sfb(end, gsize, sfacfix, xr, xi);
 #elif defined(__aarch64__) || defined(__arm__)
           if (caps & CPU_CAP_NEON)
-              quant_fn = quantize_sfb_neon;
+              quantize_sfb_neon(end, gsize, sfacfix, xr, xi);
+          else
+              quantize_sfb(end, gsize, sfacfix, xr, xi);
+#else
+          quantize_sfb(end, gsize, sfacfix, xr, xi);
 #endif
-
-          quant_fn(end, gsize, sfacfix, xr, xi);
+          huffbook(coderInfo, xitab, gsize * end);
+          coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+          continue;
       }
       else
       {
@@ -235,9 +241,9 @@ static void qlevel(CoderInfo *coderInfo,
               xi += cnt;
               xr += BLOCK_LEN_SHORT;
           }
+          huffbook(coderInfo, xitab, gsize * end);
+          coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
       }
-      huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
@@ -453,4 +459,25 @@ void BlocStat(void)
 #if PRINTSTAT
     printf("frames:%d; groups:%d; g/f:%f\n", frames, groups, (faac_real)groups/frames);
 #endif
+}
+
+void quantize_sfb(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
+{
+    int win, cnt;
+    for (win = 0; win < gsize; win++)
+    {
+        for (cnt = 0; cnt < end; cnt++)
+        {
+            faac_real tmp = FAAC_FABS(xr[cnt]);
+
+            tmp *= sfacfix;
+            tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+
+            xi[cnt] = (int)(tmp + MAGIC_NUMBER);
+            if (xr[cnt] < 0)
+                xi[cnt] = -xi[cnt];
+        }
+        xi += end;
+        xr += BLOCK_LEN_SHORT;
+    }
 }

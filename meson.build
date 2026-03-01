@@ -19,9 +19,6 @@ libm = cc.find_library('m', required: false)
 
 cpu_family = target_machine.cpu_family()
 
-doSse = cpu_family in ['x86', 'x86_64']
-config_h.set('CPUSSE', doSse)
-
 if get_option('floating-point') == 'double'
     config_h.set('FAAC_PRECISION_DOUBLE', 1)
 else

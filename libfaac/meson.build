@@ -26,7 +26,6 @@ common_src = [
     'cpu_compute.c',
     'quantize.c',
     'quantize.h',
-    'quantize_ref.c',
     'stereo.c',
     'stereo.h',
     'tns.c',
@@ -37,7 +36,7 @@ common_src = [
 
 simd_libs = []
 
-if doSse
+if cpu_family in ['x86', 'x86_64']
     simd_libs += static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
         c_args: c_args + ['-msse2']
