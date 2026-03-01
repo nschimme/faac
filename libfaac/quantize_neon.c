@@ -8,9 +8,9 @@
 void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
 {
     int win, cnt;
-    float32x4_t sfac = vdupq_n_f32((float)sfacfix);
-    float32x4_t magic = vdupq_n_f32(MAGIC_NUMBER);
-    float32x4_t zero = vdupq_n_f32(0.0f);
+    float32x4_t vsfac = vdupq_n_f32((float)sfacfix);
+    float32x4_t vmagic = vdupq_n_f32(MAGIC_NUMBER);
+    float32x4_t vzero = vdupq_n_f32(0.0f);
 
     for (win = 0; win < gsize; win++)
     {
@@ -19,7 +19,6 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
 #ifdef FAAC_PRECISION_SINGLE
             float32x4_t x = vld1q_f32(xr + cnt);
 #else
-            /* Efficiently convert double to float using NEON (AArch64) */
 #ifdef __aarch64__
             float32x4_t x = vcombine_f32(vcvt_f32_f64(vld1q_f64(xr + cnt)), vcvt_f32_f64(vld1q_f64(xr + cnt + 2)));
 #else
@@ -27,30 +26,32 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
 #endif
 #endif
             float32x4_t x_abs = vabsq_f32(x);
-            float32x4_t tmp = vmulq_f32(x_abs, sfac);
+            float32x4_t tmp = vmulq_f32(x_abs, vsfac);
 
 #if defined(__aarch64__)
             float32x4_t sqrt_tmp = vsqrtq_f32(tmp);
             tmp = vmulq_f32(tmp, sqrt_tmp);
             tmp = vsqrtq_f32(tmp);
 #else
-            /* Sequence of reciprocal square root steps for ARMv7, handling zero */
-            uint32x4_t mask = vcltq_f32(zero, tmp);
+            uint32x4_t mask = vcltq_f32(vzero, tmp);
             float32x4_t r = vrsqrteq_f32(tmp);
             r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            float32x4_t sqrt_val = vmulq_f32(tmp, r);
-            sqrt_val = vbslq_f32(mask, sqrt_val, zero);
+            float32x4_t sqrt_val = vbslq_f32(mask, vmulq_f32(tmp, r), vzero);
             tmp = vmulq_f32(tmp, sqrt_val);
 
-            mask = vcltq_f32(zero, tmp);
+            mask = vcltq_f32(vzero, tmp);
             r = vrsqrteq_f32(tmp);
             r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            sqrt_val = vmulq_f32(tmp, r);
-            tmp = vbslq_f32(mask, sqrt_val, zero);
+            tmp = vbslq_f32(mask, vmulq_f32(tmp, r), vzero);
 #endif
-            tmp = vaddq_f32(tmp, magic);
+            tmp = vaddq_f32(tmp, vmagic);
 
             int32x4_t q = vcvtq_s32_f32(tmp);
+
+            /* Apply sign: q = (q ^ sign) - sign */
+            int32x4_t sign = vreinterpretq_s32_u32(vcltq_f32(x, vzero));
+            q = vsubq_s32(veorq_s32(q, sign), sign);
+
             vst1q_s32(xi + cnt, q);
         }
         for (cnt = 0; cnt < end; cnt++)
@@ -58,7 +59,7 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
             if (xr[cnt] < 0)
                 xi[cnt] = -xi[cnt];
         }
-        xi += end;
+        xi += (end + 3) & ~3;
         xr += BLOCK_LEN_SHORT;
     }
 }

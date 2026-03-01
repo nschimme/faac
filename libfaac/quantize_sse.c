@@ -8,33 +8,38 @@
 void quantize_sfb_sse2(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
 {
     int win, cnt;
-    const __m128 zero = _mm_setzero_ps();
-    const __m128 sfac = _mm_set1_ps((float)sfacfix);
-    const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+    const __m128 vzero = _mm_setzero_ps();
+    const __m128 vsfac = _mm_set1_ps((float)sfacfix);
+    const __m128 vmagic = _mm_set1_ps(MAGIC_NUMBER);
 
     for (win = 0; win < gsize; win++)
     {
-        /* Intentional "overflow" past 'end' to maintain bit-exactness and performance.
-         * SFB buffers are large enough (8*MAXSHORTBAND) to accommodate the extra writes. */
-        for (cnt = 0; cnt < end; cnt += 4)
+        for (cnt = 0; cnt <= end - 4; cnt += 4)
         {
 #ifdef FAAC_PRECISION_SINGLE
             __m128 x = _mm_loadu_ps(xr + cnt);
 #else
-            __m128 x = _mm_setr_ps((float)xr[cnt], (float)xr[cnt+1], (float)xr[cnt+2], (float)xr[cnt+3]);
+            __m128 x = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(xr + cnt)), _mm_cvtpd_ps(_mm_loadu_pd(xr + cnt + 2)));
 #endif
-            x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-            x = _mm_mul_ps(x, sfac);
-            x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-            x = _mm_sqrt_ps(x);
-            x = _mm_add_ps(x, magic);
+            __m128 x_abs = _mm_max_ps(x, _mm_sub_ps(vzero, x));
+            __m128 tmp = _mm_mul_ps(x_abs, vsfac);
+            tmp = _mm_mul_ps(tmp, _mm_sqrt_ps(tmp));
+            tmp = _mm_sqrt_ps(tmp);
+            tmp = _mm_add_ps(tmp, vmagic);
 
-            _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
+            __m128i q = _mm_cvttps_epi32(tmp);
+            __m128i sign = _mm_srai_epi32(_mm_castps_si128(x), 31);
+            q = _mm_sub_epi32(_mm_xor_si128(q, sign), sign);
+
+            _mm_storeu_si128((__m128i*)(xi + cnt), q);
         }
-        for (cnt = 0; cnt < end; cnt++)
+        for (; cnt < end; cnt++)
         {
-            if (xr[cnt] < 0)
-                xi[cnt] = -xi[cnt];
+            faac_real tmp = FAAC_FABS(xr[cnt]);
+            tmp *= sfacfix;
+            tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+            xi[cnt] = (int)(tmp + (faac_real)MAGIC_NUMBER);
+            if (xr[cnt] < 0) xi[cnt] = -xi[cnt];
         }
         xi += end;
         xr += BLOCK_LEN_SHORT;

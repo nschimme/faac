@@ -84,8 +84,6 @@ cpu_caps_t get_cpu_caps(void)
         caps |= CPU_CAP_NEON;
     }
 #elif defined(__linux__)
-#include <sys/auxv.h>
-#include <asm/hwcap.h>
 #ifdef __aarch64__
     if (getauxval(AT_HWCAP) & HWCAP_ASIMD) caps |= CPU_CAP_NEON;
 #else

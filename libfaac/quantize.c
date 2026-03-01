@@ -156,7 +156,7 @@ static void qlevel(CoderInfo *coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      ALIGN16_BEG int xitab[8 * MAXSHORTBAND] ALIGN16_END;
+      ALIGN16_BEG int xitab[8 * MAXSHORTBAND + 8] ALIGN16_END;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -228,9 +228,6 @@ static void qlevel(CoderInfo *coderInfo,
 #else
           quantize_sfb(end, gsize, sfacfix, xr, xi);
 #endif
-          huffbook(coderInfo, xitab, gsize * end);
-          coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
-          continue;
       }
       else
       {
@@ -238,12 +235,12 @@ static void qlevel(CoderInfo *coderInfo,
           {
               for (cnt = 0; cnt < end; cnt++)
                   xi[cnt] = 0;
-              xi += cnt;
+              xi += end;
               xr += BLOCK_LEN_SHORT;
           }
-          huffbook(coderInfo, xitab, gsize * end);
-          coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
       }
+      huffbook(coderInfo, xitab, gsize * end);
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
