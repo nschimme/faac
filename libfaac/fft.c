@@ -186,15 +186,15 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm )
 void fft_initialize( FFT_Tables *fft_tables )
 {
     int i;
-    fft_tables->costbl        = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->costbl[0] ) );
-    fft_tables->negsintbl    = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->negsintbl[0] ) );
-    fft_tables->reordertbl    = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->reordertbl[0] ) );
+    fft_tables->costbl = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->costbl[0] ) );
+    fft_tables->negsintbl = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->negsintbl[0] ) );
+    fft_tables->reordertbl = AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->reordertbl[0] ) );
 
     for( i = 0; i< MAXLOGM+1; i++ )
     {
-        fft_tables->costbl[i]        = NULL;
-        fft_tables->negsintbl[i]    = NULL;
-        fft_tables->reordertbl[i]    = NULL;
+        fft_tables->costbl[i] = NULL;
+        fft_tables->negsintbl[i] = NULL;
+        fft_tables->reordertbl[i] = NULL;
     }
 
     fft_tables->mdct_twiddles_long = NULL;
@@ -221,9 +221,9 @@ void fft_terminate( FFT_Tables *fft_tables )
     FreeMemory( fft_tables->negsintbl );
     FreeMemory( fft_tables->reordertbl );
 
-    fft_tables->costbl        = NULL;
-    fft_tables->negsintbl    = NULL;
-    fft_tables->reordertbl    = NULL;
+    fft_tables->costbl = NULL;
+    fft_tables->negsintbl = NULL;
+    fft_tables->reordertbl = NULL;
 
     if (fft_tables->mdct_twiddles_long) FreeMemory(fft_tables->mdct_twiddles_long);
     if (fft_tables->mdct_twiddles_short) FreeMemory(fft_tables->mdct_twiddles_short);
@@ -350,27 +350,35 @@ static void fft_proc(
     estep = size >> 2;
     for (step = 4; step < size; step *= 2)
     {
+        int step2 = 2 * step;
         estep >>= 1;
         exp = 0;
         for (shift = 0; shift < step; shift++)
         {
             faac_real wr = refac[exp];
             faac_real wi = imfac[exp];
+            faac_real *xr1 = xr + shift;
+            faac_real *xi1 = xi + shift;
+            faac_real *xr2 = xr1 + step;
+            faac_real *xi2 = xi1 + step;
 
-            for (pos = 0; pos < size; pos += (2 * step))
+            for (pos = 0; pos < size; pos += step2)
             {
                 faac_real v2r, v2i;
-                int x1 = pos + shift;
-                int x2 = x1 + step;
 
-                v2r = xr[x2] * wr - xi[x2] * wi;
-                v2i = xr[x2] * wi + xi[x2] * wr;
+                v2r = *xr2 * wr - *xi2 * wi;
+                v2i = *xr2 * wi + *xi2 * wr;
 
-                xr[x2] = xr[x1] - v2r;
-                xr[x1] += v2r;
+                *xr2 = *xr1 - v2r;
+                *xr1 += v2r;
 
-                xi[x2] = xi[x1] - v2i;
-                xi[x1] += v2i;
+                *xi2 = *xi1 - v2i;
+                *xi1 += v2i;
+
+                xr1 += step2;
+                xr2 += step2;
+                xi1 += step2;
+                xi2 += step2;
             }
             exp += estep;
         }
@@ -387,14 +395,14 @@ static void check_tables( FFT_Tables *fft_tables, int logm)
         if( fft_tables->negsintbl[logm] != NULL )
             FreeMemory( fft_tables->negsintbl[logm] );
 
-        fft_tables->costbl[logm]    = AllocMemory((size / 2) * sizeof(*(fft_tables->costbl[0])));
-        fft_tables->negsintbl[logm]    = AllocMemory((size / 2) * sizeof(*(fft_tables->negsintbl[0])));
+        fft_tables->costbl[logm] = AllocMemory((size / 2) * sizeof(*(fft_tables->costbl[0])));
+        fft_tables->negsintbl[logm] = AllocMemory((size / 2) * sizeof(*(fft_tables->negsintbl[0])));
 
         for (i = 0; i < (size >> 1); i++)
         {
             faac_real theta = 2.0 * M_PI * ((faac_real) i) / (faac_real) size;
-            fft_tables->costbl[logm][i]        = FAAC_COS(theta);
-            fft_tables->negsintbl[logm][i]    = -FAAC_SIN(theta);
+            fft_tables->costbl[logm][i] = FAAC_COS(theta);
+            fft_tables->negsintbl[logm][i] = -FAAC_SIN(theta);
         }
     }
 }
