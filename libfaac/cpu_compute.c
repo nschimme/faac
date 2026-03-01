@@ -1,9 +1,11 @@
 #include "cpu_compute.h"
 
-#ifdef _MSC_VER
-# include <intrin.h>
-#elif defined(__GNUC__)
-# include <cpuid.h>
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
+# ifdef _MSC_VER
+#  include <intrin.h>
+# elif defined(__GNUC__) || defined(__clang__)
+#  include <cpuid.h>
+# endif
 #endif
 
 unsigned int get_cpu_caps(void)
