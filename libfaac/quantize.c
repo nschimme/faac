@@ -20,6 +20,8 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -62,6 +64,13 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 void QuantizeInit(void)
 {
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
+    const char *no_simd = getenv("FAAC_NO_SIMD");
+    if (no_simd && (no_simd[0] == '1'))
+    {
+        qfunc = quantize_scalar;
+        return;
+    }
+
     unsigned int caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;
@@ -233,10 +242,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       end -= start;
       xi = xitab;
-      if (sfacfix == 0.0)
+      if (sfacfix <= 0.0)
       {
-          for (cnt = 0; cnt < gsize * end; cnt++)
-              xi[cnt] = 0;
+          memset(xi, 0, gsize * end * sizeof(int));
       }
       else
       {
