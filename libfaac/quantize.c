@@ -24,6 +24,7 @@
 #include "huff2.h"
 #include "util.h"
 #include "faac_real.h"
+#include "frame.h"
 
 void quantize_sfb(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
 {
@@ -151,7 +152,8 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-static void qlevel(CoderInfo *coderInfo,
+static void qlevel(struct faacEncStruct *hEncoder,
+                   CoderInfo *coderInfo,
                    const faac_real *xr0,
                    const faac_real *bandqual,
                    int gnum,
@@ -169,7 +171,6 @@ static void qlevel(CoderInfo *coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
-    cpu_caps_t caps = get_cpu_caps();
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -234,27 +235,7 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       if (sfacfix > 0.0)
       {
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-          if (caps & CPU_CAP_AVX2) {
-              quantize_sfb_avx2(end, gsize, sfacfix, xr, xi);
-              huffbook(coderInfo, xitab, gsize * end);
-              coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
-              continue;
-          } else if (caps & CPU_CAP_SSE2) {
-              quantize_sfb_sse2(end, gsize, sfacfix, xr, xi);
-              huffbook(coderInfo, xitab, gsize * end);
-              coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
-              continue;
-          }
-#elif defined(__aarch64__) || defined(__arm__)
-          if (caps & CPU_CAP_NEON) {
-              quantize_sfb_neon(end, gsize, sfacfix, xr, xi);
-              huffbook(coderInfo, xitab, gsize * end);
-              coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
-              continue;
-          }
-#endif
-          quantize_sfb(end, gsize, sfacfix, xr, xi);
+          hEncoder->quantize_sfb_p(end, gsize, sfacfix, xr, xi);
       }
       else
       {
@@ -271,7 +252,7 @@ static void qlevel(CoderInfo *coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(struct faacEncStruct *hEncoder, CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     int cnt;
@@ -296,7 +277,7 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
         {
             bmask(coder, gxr, bandlvl, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
+            qlevel(hEncoder, coder, gxr, bandlvl, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

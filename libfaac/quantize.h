@@ -41,10 +41,13 @@ enum {
     SF_OFFSET = 100,
 };
 
-int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
+struct faacEncStruct;
+int BlocQuant(struct faacEncStruct *hEncoder, CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
+
+typedef void (*quantize_sfb_fn)(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
 
 void quantize_sfb(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi);
 
