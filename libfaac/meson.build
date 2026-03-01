@@ -4,6 +4,27 @@ if host_machine.system() == 'windows' and meson.get_compiler('c').get_id() == 'g
     link_args += '-Wl,--add-stdcall-alias'
 endif
 
+quantize_c_args = c_args
+if cc.get_argument_syntax() != 'msvc'
+    # Remove global -msse2 for SIMD libraries to avoid pollution
+    new_args = []
+    foreach arg : c_args
+        if arg != '-msse2'
+            new_args += arg
+        endif
+    endforeach
+    quantize_c_args = new_args
+endif
+
+quantize_simd_libs = []
+
+if (cpu_family in ['x86', 'x86_64']) and get_option('sse2')
+    quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
+        include_directories: ['..', '../include'],
+        c_args: quantize_c_args + ['-msse2']
+    )
+    quantize_simd_libs += quantize_sse
+endif
 
 common_src = [
     'bitstream.c',
@@ -13,6 +34,8 @@ common_src = [
     'channels.c',
     'channels.h',
     'coder.h',
+    'cpu_compute.c',
+    'cpu_compute.h',
     'filtbank.c',
     'filtbank.h',
     'fft.c',
@@ -38,6 +61,7 @@ libfaac = library('faac', common_src,
     c_args: c_args,
     link_args: link_args,
     dependencies: [ libm ],
+    link_with: quantize_simd_libs,
     vs_module_defs: 'libfaac.def',
     install: true
 )
@@ -53,6 +77,7 @@ if get_option('drm')
         c_args: c_args + ['-DDRM'],
         link_args: link_args,
         dependencies: [ libm ],
+    link_with: quantize_simd_libs,
         vs_module_defs: 'libfaac.def',
         install: true
     )

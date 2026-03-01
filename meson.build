@@ -21,6 +21,9 @@ cpu_family = target_machine.cpu_family()
 
 doSse = (cpu_family in ['x86', 'x86_64']) and get_option('sse2')
 config_h.set('CPUSSE', doSse)
+if doSse
+    config_h.set('HAVE_SSE2', 1)
+endif
 
 if get_option('floating-point') == 'double'
     config_h.set('FAAC_PRECISION_DOUBLE', 1)
@@ -32,9 +35,6 @@ c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
 else
-    if doSse
-        c_args += ['-msse2']
-    endif
     c_args += ['-fvisibility=hidden']
 endif
 

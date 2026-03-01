@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "cpu_compute.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -30,6 +31,43 @@
 #endif
 
 #define MAGIC_NUMBER  0.4054
+
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
+
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+static QuantizeFunc qfunc = quantize_scalar;
+
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+{
+    const faac_real magic = MAGIC_NUMBER;
+    int cnt;
+    for (cnt = 0; cnt < n; cnt++)
+    {
+        faac_real val = xr[cnt];
+        faac_real tmp = FAAC_FABS(val);
+
+        tmp *= sfacfix;
+        tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+
+        int q = (int)(tmp + magic);
+        xi[cnt] = (val < 0) ? -q : q;
+    }
+}
+
+void QuantizeInit(void)
+{
+    unsigned int caps = get_cpu_caps();
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(HAVE_SSE2)
+    if (caps & CPU_CAP_SSE2)
+        qfunc = quantize_sse2;
+    else
+#endif
+        qfunc = quantize_scalar;
+}
 #define NOISEFLOOR 0.4
 
 // band sound masking
@@ -144,7 +182,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
-    const faac_real magic = MAGIC_NUMBER;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -205,17 +242,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              for (cnt = 0; cnt < end; cnt++)
-              {
-                  faac_real val = xr[cnt];
-                  faac_real tmp = FAAC_FABS(val);
-
-                  tmp *= sfacfix;
-                  tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-                  int q = (int)(tmp + magic);
-                  xi[cnt] = (val < 0) ? -q : q;
-              }
+              qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
       }
