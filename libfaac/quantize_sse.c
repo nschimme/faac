@@ -38,39 +38,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
     }
 
-    // Original logic: separate scalar loop for sign application
-    // and also handles remainder
-    for (cnt = 0; cnt < n; cnt++)
-    {
-        if (xr[cnt] < 0)
-            xi[cnt] = -xi[cnt];
-    }
-
-    // Remainder quantization (if not handled by the loop above because n was not multiple of 4)
-    // Actually the original SSE2 loop in quantize.c was:
-    /*
-              for (cnt = 0; cnt < end; cnt += 4)
-              {
-                  __m128 x = {xr[cnt], xr[cnt + 1], xr[cnt + 2], xr[cnt + 3]};
-
-                  x = _mm_max_ps(x, _mm_sub_ps(zero, x));
-                  x = _mm_mul_ps(x, sfac);
-                  x = _mm_mul_ps(x, _mm_sqrt_ps(x));
-                  x = _mm_sqrt_ps(x);
-                  x = _mm_add_ps(x, magic);
-
-                  *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
-              }
-              for (cnt = 0; cnt < end; cnt++)
-              {
-                  if (xr[cnt] < 0)
-                      xi[cnt] = -xi[cnt];
-              }
-    */
-    // Wait, the original code DID have a buffer overflow if end was not a multiple of 4!
-    // My n4 loop handles the SIMD part safely.
-    // I need to make sure the remainder is quantized too if I use n4.
-
+    // Remainder quantization FIRST
     for (cnt = n4; cnt < n; cnt++)
     {
         float val = (float)xr[cnt];
@@ -78,7 +46,12 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         tmp *= (float)sfacfix;
         tmp = sqrtf(tmp * sqrtf(tmp));
         xi[cnt] = (int)(tmp + MAGIC_NUMBER);
-        if (val < 0.0f)
+    }
+
+    // Original logic: separate scalar loop for sign application
+    for (cnt = 0; cnt < n; cnt++)
+    {
+        if (xr[cnt] < 0)
             xi[cnt] = -xi[cnt];
     }
 }

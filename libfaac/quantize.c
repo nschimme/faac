@@ -30,13 +30,6 @@
                      + __GNUC_PATCHLEVEL__)
 #endif
 
-#ifdef _MSC_VER /* visual c++ */
-#define ALIGN16_BEG __declspec(align(16))
-#define ALIGN16_END
-#else /* gcc or icc */
-#define ALIGN16_BEG
-#define ALIGN16_END __attribute__((aligned(16)))
-#endif
 
 #define MAGIC_NUMBER  0.4054
 
@@ -197,7 +190,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int ALIGN16_BEG xitab[8 * MAXSHORTBAND] ALIGN16_END;
+      int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
       const faac_real *xr;
