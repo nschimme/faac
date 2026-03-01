@@ -254,15 +254,16 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       if (sfacfix > 0.0)
       {
+#ifdef __SSE2__
+          const __m128 zero = _mm_setzero_ps();
+          const __m128 sfac = _mm_set1_ps((float)sfacfix);
+          const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+#endif
           for (win = 0; win < gsize; win++)
           {
 #ifdef __SSE2__
               if (sse2)
               {
-                  const __m128 zero = _mm_setzero_ps();
-                  const __m128 sfac = _mm_set1_ps((float)sfacfix);
-                  const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-
                   /* Intentional "overflow" past 'end' to maintain bit-exactness with original SSE2 implementation.
                    * SFB buffers are large enough (8*MAXSHORTBAND) to accommodate the extra writes. */
                   for (cnt = 0; cnt < end; cnt += 4)
