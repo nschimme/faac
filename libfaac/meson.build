@@ -4,17 +4,6 @@ if host_machine.system() == 'windows' and meson.get_compiler('c').get_id() == 'g
     link_args += '-Wl,--add-stdcall-alias'
 endif
 
-quantize_c_args = c_args
-if cc.get_argument_syntax() != 'msvc'
-    # Remove global -msse2 for SIMD libraries to avoid pollution
-    new_args = []
-    foreach arg : c_args
-        if arg != '-msse2'
-            new_args += arg
-        endif
-    endforeach
-    quantize_c_args = new_args
-endif
 
 quantize_simd_libs = []
 
@@ -22,7 +11,7 @@ if (cpu_family in ['x86', 'x86_64']) and get_option('sse2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
-        c_args: quantize_c_args + sse2_flag
+        c_args: c_args + sse2_flag
     )
     quantize_simd_libs += quantize_sse
 endif
