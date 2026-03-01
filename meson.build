@@ -24,6 +24,11 @@ if doSse
     config_h.set('HAVE_SSE2', 1)
 endif
 
+doAvx2 = (cpu_family in ['x86', 'x86_64']) and get_option('avx2')
+if doAvx2
+    config_h.set('HAVE_AVX2', 1)
+endif
+
 if get_option('floating-point') == 'double'
     config_h.set('FAAC_PRECISION_DOUBLE', 1)
 else
