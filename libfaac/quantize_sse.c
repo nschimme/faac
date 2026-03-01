@@ -24,14 +24,12 @@ void quantize_sfb_sse2(int end, int gsize, faac_real sfacfix, const faac_real *x
             __m128 x_abs = _mm_max_ps(x, _mm_sub_ps(vzero, x));
             __m128 tmp = _mm_mul_ps(x_abs, vsfac);
             tmp = _mm_mul_ps(tmp, _mm_sqrt_ps(tmp));
-            tmp = _mm_sqrt_ps(tmp);
-            tmp = _mm_add_ps(tmp, vmagic);
+            tmp = _mm_add_ps(_mm_sqrt_ps(tmp), vmagic);
 
             __m128i q = _mm_cvttps_epi32(tmp);
-            __m128i sign = _mm_srai_epi32(_mm_castps_si128(x), 31);
-            q = _mm_sub_epi32(_mm_xor_si128(q, sign), sign);
+            __m128i s = _mm_srai_epi32(_mm_castps_si128(x), 31);
 
-            _mm_storeu_si128((__m128i*)(xi + cnt), q);
+            _mm_storeu_si128((__m128i*)(xi + cnt), _mm_sub_epi32(_mm_xor_si128(q, s), s));
         }
         for (; cnt < end; cnt++)
         {

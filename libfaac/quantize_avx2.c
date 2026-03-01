@@ -25,13 +25,10 @@ void quantize_sfb_avx2(int end, int gsize, faac_real sfacfix, const faac_real *x
             __m256 x_abs = _mm256_max_ps(x, _mm256_sub_ps(vzero, x));
             __m256 tmp = _mm256_mul_ps(x_abs, vsfac);
             tmp = _mm256_mul_ps(tmp, _mm256_sqrt_ps(tmp));
-            tmp = _mm256_sqrt_ps(tmp);
-            tmp = _mm256_add_ps(tmp, vmagic);
+            tmp = _mm256_add_ps(_mm256_sqrt_ps(tmp), vmagic);
 
             __m256i q = _mm256_cvttps_epi32(tmp);
-            q = _mm256_sign_epi32(q, _mm256_castps_si256(x));
-
-            _mm256_storeu_si256((__m256i*)(xi + cnt), q);
+            _mm256_storeu_si256((__m256i*)(xi + cnt), _mm256_sign_epi32(q, _mm256_castps_si256(x)));
         }
         for (; cnt < end; cnt++)
         {

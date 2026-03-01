@@ -1,6 +1,6 @@
 Input           | Time (s)   | MD5 Hash
 ------------------------------------------------------------
-sine.wav        |      1.557 | 17702f457da3909ba0d984432c376725
-noise.wav       |      1.823 | ee4a4661f42981ff4398b460b9b39218
-sweep.wav       |      1.568 | 5770048c3200fac48b03c04488b79710
-silent.wav      |      1.361 | 3431f281ee2cbd66df75f2abf3a9852f
+sine.wav        |      2.185 | 17702f457da3909ba0d984432c376725
+noise.wav       |      1.811 | ee4a4661f42981ff4398b460b9b39218
+sweep.wav       |      1.664 | 5770048c3200fac48b03c04488b79710
+silent.wav      |      1.443 | 3431f281ee2cbd66df75f2abf3a9852f

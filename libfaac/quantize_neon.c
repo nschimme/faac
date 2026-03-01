@@ -14,7 +14,7 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
 
     for (win = 0; win < gsize; win++)
     {
-        for (cnt = 0; cnt < end; cnt += 4)
+        for (cnt = 0; cnt <= end - 4; cnt += 4)
         {
 #ifdef FAAC_PRECISION_SINGLE
             float32x4_t x = vld1q_f32(xr + cnt);
@@ -29,37 +29,33 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
             float32x4_t tmp = vmulq_f32(x_abs, vsfac);
 
 #if defined(__aarch64__)
-            float32x4_t sqrt_tmp = vsqrtq_f32(tmp);
-            tmp = vmulq_f32(tmp, sqrt_tmp);
-            tmp = vsqrtq_f32(tmp);
+            float32x4_t s = vsqrtq_f32(tmp);
+            tmp = vmulq_f32(tmp, s);
+            tmp = vaddq_f32(vsqrtq_f32(tmp), vmagic);
 #else
-            uint32x4_t mask = vcltq_f32(vzero, tmp);
+            uint32x4_t m = vcltq_f32(vzero, tmp);
             float32x4_t r = vrsqrteq_f32(tmp);
             r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            float32x4_t sqrt_val = vbslq_f32(mask, vmulq_f32(tmp, r), vzero);
-            tmp = vmulq_f32(tmp, sqrt_val);
-
-            mask = vcltq_f32(vzero, tmp);
+            float32x4_t sv = vbslq_f32(m, vmulq_f32(tmp, r), vzero);
+            tmp = vmulq_f32(tmp, sv);
+            m = vcltq_f32(vzero, tmp);
             r = vrsqrteq_f32(tmp);
             r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(r, r), tmp));
-            tmp = vbslq_f32(mask, vmulq_f32(tmp, r), vzero);
+            tmp = vaddq_f32(vbslq_f32(m, vmulq_f32(tmp, r), vzero), vmagic);
 #endif
-            tmp = vaddq_f32(tmp, vmagic);
-
             int32x4_t q = vcvtq_s32_f32(tmp);
-
-            /* Apply sign: q = (q ^ sign) - sign */
-            int32x4_t sign = vreinterpretq_s32_u32(vcltq_f32(x, vzero));
-            q = vsubq_s32(veorq_s32(q, sign), sign);
-
-            vst1q_s32(xi + cnt, q);
+            int32x4_t g = vreinterpretq_s32_u32(vcltq_f32(x, vzero));
+            vst1q_s32(xi + cnt, vsubq_s32(veorq_s32(q, g), g));
         }
-        for (cnt = 0; cnt < end; cnt++)
+        for (; cnt < end; cnt++)
         {
-            if (xr[cnt] < 0)
-                xi[cnt] = -xi[cnt];
+            faac_real tmp = FAAC_FABS(xr[cnt]);
+            tmp *= sfacfix;
+            tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+            xi[cnt] = (int)(tmp + (faac_real)MAGIC_NUMBER);
+            if (xr[cnt] < 0) xi[cnt] = -xi[cnt];
         }
-        xi += (end + 3) & ~3;
+        xi += end;
         xr += BLOCK_LEN_SHORT;
     }
 }
