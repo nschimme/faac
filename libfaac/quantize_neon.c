@@ -8,11 +8,11 @@
 void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *xr, int *xi)
 {
     int win, cnt;
-    float32x4_t vzero32 = vdupq_n_f32(0.0f);
 
     for (win = 0; win < gsize; win++)
     {
 #ifdef FAAC_PRECISION_SINGLE
+        float32x4_t vzero32 = vdupq_n_f32(0.0f);
         float32x4_t vsfac = vdupq_n_f32((float)sfacfix);
         float32x4_t vmagic = vdupq_n_f32(MAGIC_NUMBER);
         if (end >= 4)
@@ -59,7 +59,8 @@ void quantize_sfb_neon(int end, int gsize, faac_real sfacfix, const faac_real *x
                 int64x2_t g64 = vreinterpretq_s64_u64(vcltq_f64(x, vzero64));
                 int32x2_t g = vqmovn_s64(g64);
 
-                vst1_s32(xi + cnt, vsubq_s32(veorq_s32(q, g), g));
+                /* Correctly use 64-bit SIMD intrinsics for int32x2_t */
+                vst1_s32(xi + cnt, vsub_s32(veor_s32(q, g), g));
             }
         }
         else cnt = 0;
