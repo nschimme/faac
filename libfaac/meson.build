@@ -7,7 +7,7 @@ endif
 
 quantize_simd_libs = []
 
-if (cpu_family in ['x86', 'x86_64']) and get_option('sse2')
+if (cpu_family in ['x86', 'x86_64'])
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
