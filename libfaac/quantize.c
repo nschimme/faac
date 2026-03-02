@@ -74,7 +74,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int noiseGate)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -174,6 +174,16 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       }
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
           bandqual[sfb] = spread[sfb];
+  }
+
+  if (noiseGate > 0)
+  {
+      faac_real ng_thr = (faac_real)noiseGate * NOISEFLOOR * 2.0;
+      for (sfb = coderInfo->sfbn / 2; sfb < coderInfo->sfbn; sfb++)
+      {
+          if (bandenrg[sfb] < ng_thr)
+              bandqual[sfb] = 0.0;
+      }
   }
 }
 
@@ -296,7 +306,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->noiseGate);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }

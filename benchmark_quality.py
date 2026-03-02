@@ -36,10 +36,11 @@ def run_bench(args):
     return end - start, result.stderr
 
 def main():
-    for test_type in ['complex', 'transient']:
-        wav_file = f'bench_{test_type}.wav'
+    for sample_rate in [16000, 44100]:
+      for test_type in ['complex', 'transient']:
+        wav_file = f'bench_{sample_rate}_{test_type}.wav'
         print(f"\nTesting {test_type} signal...")
-        generate_test_wav(wav_file, type=test_type)
+        generate_test_wav(wav_file, type=test_type, sample_rate=sample_rate)
 
         configs = [
             ("New (Default)", []),
@@ -50,8 +51,8 @@ def main():
             ("No TNS Short", ["--tns-short", "0"]),
         ]
 
-        bitrate = "16"
-        print(f"Bitrate: {bitrate}kbps")
+        bitrate = "16" if sample_rate == 16000 else "64"
+        print(f"Sample Rate: {sample_rate}Hz | Bitrate: {bitrate}kbps")
         print(f"{'Configuration':<20} | {'Time (s)':<10} | {'Output Size':<12}")
         print("-" * 50)
 

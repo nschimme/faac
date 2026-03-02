@@ -107,9 +107,12 @@ static void PsyCheckShort(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_real
 
           faac_real threshold = 3.0;
 
-          /* Increase sensitivity for low sample rates */
-          if (gpsyInfo->sampleRate < 30000)
-              threshold = 2.0;
+          /* Smoothly increase sensitivity for low sample rates */
+          if (gpsyInfo->sampleRate < 44100)
+          {
+              threshold = 1.5 + (3.0 - 1.5) * (gpsyInfo->sampleRate - 8000.0) / (44100.0 - 8000.0);
+              if (threshold < 1.5) threshold = 1.5;
+          }
 
           if ((volchg / toteng * quality) > threshold)
           {
