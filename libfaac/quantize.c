@@ -240,7 +240,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict tonality,
                    int *pns_state,
                    const faac_real * __restrict bandlvl_stable,
-                   AACQuantCfg *aacquantCfg
+                   AACQuantCfg *aacquantCfg,
+                   int win_offset
                   )
 {
     int sb;
@@ -331,13 +332,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               faac_real magic = MAGIC_NUMBER;
-              /* Lower bias for high frequencies to reduce ringing */
-              if (sb > (coderInfo->sfbn * 2 / 3))
+
+              /* Adaptive Quantization Rounding to kill metallic ringing */
+              /* Standard LC-AAC uses 0.4054; reducing this for noise-like bands
+                 and high frequencies improves perceived quality. */
+              if (sb > (coderInfo->sfbn / 2))
               {
+                  faac_real tonality_fac = tonality[sb];
+                  if (tonality_fac > 2.0) tonality_fac = 2.0;
+
+                  /* More aggressive reduction for noise-like high bands */
+                  magic = 0.33 + 0.05 * (tonality_fac / 2.0);
+
+                  /* Bitrate-dependent sharpening */
                   if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000)
-                      magic = 0.35; // More aggressive reduction for very low bitrates
-                  else
-                      magic = 0.38;
+                      magic -= 0.03;
               }
 
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -346,6 +355,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
+
+      /* Store quantized spectrum for Trellis optimization */
+      int spectrum_start = coderInfo->sfb_offset[sb];
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      {
+          /* Adjust for grouping and window size in short blocks */
+          for (win = 0; win < gsize; win++)
+              memcpy(coderInfo->quantized_spectra + (win_offset + win) * BLOCK_LEN_SHORT + spectrum_start,
+                     xitab + win * end, end * sizeof(int));
+      }
+      else
+      {
+          memcpy(coderInfo->quantized_spectra + spectrum_start, xitab, end * sizeof(int));
+      }
+
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
@@ -372,6 +396,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         int lastsf;
 
         gxr = xr;
+        int win_offset = 0;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             faac_real bandlvl_stable[MAX_SCFAC_BANDS];
@@ -384,9 +409,14 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
-                   pns_state, bandlvl_stable, aacquantCfg);
+                   pns_state, bandlvl_stable, aacquantCfg, win_offset);
+
+            win_offset += coder->groups.len[cnt];
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
+
+        coder->global_gain = 0;
+        huff_trellis(coder);
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -403,7 +433,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -411,22 +440,30 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             {
                 int diff = coder->sf[cnt] - lastis;
 
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
 
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book && (book != HCB_PNS))
             {
-                int diff = coder->sf[cnt] - lastsf;
+                /* Non-linear Scalefactor Delta Optimization */
+                /* For higher bands or noise-like bands, we can slightly adjust
+                   the scalefactor to reduce the bit cost of the delta (diff). */
+                int target_sf = coder->sf[cnt];
+                int diff = target_sf - lastsf;
 
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
+                if (cnt > (coder->bandcnt / 2) && abs(diff) > 1)
+                {
+                    /* Bias towards smaller deltas for non-critical bands */
+                    if (diff > 0) target_sf--;
+                    else target_sf++;
+                    diff = target_sf - lastsf;
+                }
+
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
 
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;

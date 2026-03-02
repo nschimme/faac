@@ -31,5 +31,6 @@ enum {
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
+void huff_trellis(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
