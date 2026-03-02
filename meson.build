@@ -21,6 +21,7 @@ cpu_family = target_machine.cpu_family()
 
 doSse = cpu_family in ['x86', 'x86_64']
 config_h.set('CPUSSE', doSse)
+config_h.set('HAVE_AVX2', doSse and get_option('avx2'))
 
 if get_option('floating-point') == 'double'
     config_h.set('FAAC_PRECISION_DOUBLE', 1)
