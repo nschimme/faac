@@ -88,6 +88,10 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    /* Huffman Trellis Workspace */
+    int huff_cost[MAX_SCFAC_BANDS][12];
+    int huff_path[MAX_SCFAC_BANDS][12];
+
     /* FFT Tables */
     FFT_Tables	fft_tables;
 } faacEncStruct;

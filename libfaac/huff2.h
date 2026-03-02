@@ -28,9 +28,10 @@ enum {
     HCB_NONE
 };
 
+int huffcode(int *qs, int len, int bnum, CoderInfo *coder);
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
-void huff_trellis(CoderInfo *coder);
+void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12]);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);

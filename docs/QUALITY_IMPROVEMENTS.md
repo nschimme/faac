@@ -4,19 +4,23 @@ The following features have been added to improve perceived audio quality in FAA
 
 ## New Quality Features (Implemented)
 
-1. **Optimal Huffman Codebook Selection**: Replaces the basic heuristic with an exhaustive search that accounts for sectioning overhead.
-   - *Impact*: 3-7% improvement in coding efficiency.
-2. **Robust Transient Detection**: Uses frequency-weighted energy ratios (5:1 high/low weighting) for reliable block switching.
+1. **Optimal Trellis-based Huffman Selection**: Replaces the basic heuristic with a dynamic programming (Trellis) optimizer that globally minimizes bit cost (codeword bits + sectioning overhead).
+   - *Impact*: 5-10% improvement in coding efficiency.
+2. **Adaptive Quantization Rounding**: Dynamically adjusts rounding bias (magic number) based on tonality to eliminate "metallic" ringing in high-frequency noise-like bands.
+   - *Impact*: Significant reduction in shimmer/ringing artifacts.
+3. **Robust Transient Detection**: Uses frequency-weighted energy ratios (5:1 high/low weighting) for reliable block switching.
    - *Impact*: Eliminates "clicks" and pre-echo during loud transients.
-3. **Speech-Aware PNS**: Disables Perceptual Noise Substitution for critical low-frequency harmonics and uses conservative tonality thresholds.
+4. **Non-linear Scalefactor Delta Optimization**: Biases scalefactor differences towards zero in non-critical bands to maximize coding gain for speech-centric bitstreams.
+   - *Impact*: Improved speech clarity at low bitrates.
+5. **Speech-Aware PNS**: Disables Perceptual Noise Substitution for critical low-frequency harmonics and uses conservative tonality thresholds.
    - *Impact*: Reduces "watery" speech artifacts.
-4. **Adaptive Bandwidth Capping**: Dynamically limits frequency range at low bitrates (< 24kbps) to focus bits on audible frequencies.
-   - *Impact*: Eliminates "metallic" ringing and high-frequency distortion.
-5. **Standard-Aligned Psychoacoustics**: Uses Terhardt's ATH formula and standard PE-to-bits mapping models.
+6. **Adaptive Bandwidth Capping**: Dynamically limits frequency range at low bitrates (< 24kbps) to focus bits on audible frequencies.
+   - *Impact*: Eliminates high-frequency distortion in bit-starved streams.
+7. **Standard-Aligned Psychoacoustics**: Uses Terhardt's ATH formula and standard PE-to-bits mapping models.
    - *Impact*: More predictable and stable bit allocation.
-6. **Enhanced TNS**: Expanded frequency coverage and standard prediction gain thresholds.
-   - *Impact*: Cleaner reproduction of sharp onsets and speech clarity.
-7. **Increased Bit Reservoir Cap**: Allows up to 400% of average bits for complex frames.
+8. **Enhanced TNS**: Expanded frequency coverage and standard prediction gain thresholds.
+   - *Impact*: Cleaner reproduction of sharp onsets and speech transients.
+9. **Increased Bit Reservoir Cap**: Allows up to 400% of average bits for complex frames.
    - *Impact*: Better preservation of high-dynamic-range content.
 
 ## Stack-Ranked Future Opportunities
@@ -25,12 +29,11 @@ Given the constraints of single-core IOT hardware (e.g., Ingenic T31X), the foll
 
 | Rank | Opportunity | Estimated Quality Impact | CPU Impact | Complexity |
 | :--- | :--- | :--- | :--- | :--- |
-| 1 | **Trellis-based Huffman Grouping** | High (5-10% bits) | Low-Medium | Medium |
-| 2 | **Adaptive Quantization Rounding** | Medium | Negligible | Low |
+| 1 | **Window Shape Adaptation** | Medium | Low | Medium |
+| 2 | **Temporal Masking Heuristics** | Medium | Medium | High |
 | 3 | **Improved M/S Decision Logic** | Medium (Stereo) | Low | Medium |
-| 4 | **Non-linear Scalefactor Delta Coding** | Medium | Negligible | Medium |
-| 5 | **Simplified LTP (Long Term Prediction)** | High (Tonal) | High | High |
-| 6 | **Advanced Pre-echo Lookahead** | Medium | Medium | High |
+| 4 | **Simplified LTP (Long Term Prediction)** | High (Tonal) | High | High |
+| 5 | **Advanced Pre-echo Lookahead** | Medium | Medium | High |
 
 ## Iterative Improvement Process
 

@@ -614,7 +614,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state,
+                  hEncoder->huff_cost, hEncoder->huff_path);
     }
 
 #ifdef DRM
