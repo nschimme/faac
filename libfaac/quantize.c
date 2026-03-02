@@ -223,7 +223,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandenrg,
                    int gnum,
                    int pnslevel,
-                   const faac_real * __restrict tonality
+                   const faac_real * __restrict tonality,
+                   int *pns_state,
+                   int *prev_pns_sf
                   )
 {
     int sb;
@@ -269,18 +271,34 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      /* Refined PNS Trigger: uses both masking threshold and tonality */
+      /* Refined PNS Trigger: uses masking threshold, tonality, and hysteresis */
       if (pnslevel > 0)
       {
           faac_real pns_tonality_thr = 1.0 + (10.0 - pnslevel) * 0.5;
+          int prev_pns = pns_state[coderInfo->bandcnt];
+
+          /* Exit PNS if tonality is significantly higher (Hysteresis) */
+          if (prev_pns)
+              pns_tonality_thr *= 1.5;
+
           if ((bandqual[sb] < pnsthr) || (tonality[sb] < pns_tonality_thr))
           {
+              pns_state[coderInfo->bandcnt] = 1;
               coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-              coderInfo->sf[coderInfo->bandcnt] +=
+              int target_sf = coderInfo->sf[coderInfo->bandcnt] +
                   FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+
+              /* PNS Scale Factor Smoothing (0.3 alpha) to prevent warbling */
+              if (prev_pns && prev_pns_sf[coderInfo->bandcnt] > 0)
+                  target_sf = (int)(0.7 * prev_pns_sf[coderInfo->bandcnt] + 0.3 * target_sf + 0.5);
+
+              coderInfo->sf[coderInfo->bandcnt] = target_sf;
+              prev_pns_sf[coderInfo->bandcnt] = target_sf;
+
               coderInfo->bandcnt++;
               continue;
           }
+          pns_state[coderInfo->bandcnt] = 0;
       }
 #endif
 
@@ -315,7 +333,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state, int *prev_pns_sf)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -343,7 +361,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                   (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
-                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
+                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
+                   pns_state, prev_pns_sf);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
