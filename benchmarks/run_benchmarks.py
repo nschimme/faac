@@ -3,8 +3,12 @@ import subprocess
 import time
 import hashlib
 import sys
+import json
+import re
 
-TEST_FILES = ["sine.wav", "sweep.wav", "noise.wav", "silence.wav"]
+RATES = [16000, 44100, 48000]
+QUALITIES = [10, 100, 250]
+TYPES = ["sine", "sweep", "noise", "silence"]
 DATA_DIR = "benchmarks/data"
 OUTPUT_DIR = "benchmarks/output"
 
@@ -15,47 +19,65 @@ def get_md5(filename):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def get_binary_size(path):
+    if os.path.exists(path):
+        return os.path.getsize(path)
+    return 0
+
 def run_benchmark(faac_path, precision, scalar=True):
     env = os.environ.copy()
     if scalar:
         env["FAAC_NO_SIMD"] = "1"
+    env["FAAC_DUMP_MSE"] = "1"
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = []
+    results = {"matrix": {}, "binary_size": get_binary_size(faac_path)}
 
-    print(f"--- Benchmarking {precision} precision (Scalar: {scalar}) ---")
-    for test_file in TEST_FILES:
-        input_path = os.path.join(DATA_DIR, test_file)
-        if not os.path.exists(input_path):
-            print(f"Skipping {test_file}, not found.")
-            continue
+    print(f"--- Matrix Benchmarking {precision} precision (Scalar: {scalar}) ---")
 
-        output_path = os.path.join(OUTPUT_DIR, f"{test_file}_{precision}.aac")
+    for rate in RATES:
+        for quality in QUALITIES:
+            for t in TYPES:
+                input_path = os.path.join(DATA_DIR, f"{t}_{rate}.wav")
+                if not os.path.exists(input_path):
+                    continue
 
-        start_time = time.time()
-        cmd = [faac_path, "-o", output_path, input_path]
-        try:
-            # We use capture_output=True to keep the console clean
-            subprocess.run(cmd, env=env, check=True, capture_output=True)
-            elapsed = time.time() - start_time
-            md5 = get_md5(output_path)
-            print(f"{test_file}: {elapsed:.2f}s, MD5: {md5}")
-            results.append({"file": test_file, "time": elapsed, "md5": md5})
-        except subprocess.CalledProcessError as e:
-            print(f"Error running {test_file}: {e.stderr.decode()}")
+                key = f"{t}_{rate}_q{quality}"
+                output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
+
+                start_time = time.time()
+                cmd = [faac_path, "-q", str(quality), "-o", output_path, input_path]
+                try:
+                    proc = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
+                    elapsed = time.time() - start_time
+                    md5 = get_md5(output_path)
+
+                    mse = re.findall(r"MSE: ([\d.]+)", proc.stdout)
+                    holes = re.findall(r"HOLES: ([\d.]+)%", proc.stdout)
+                    ms = re.findall(r"MS_RATIO: ([\d.]+)%", proc.stdout)
+
+                    results["matrix"][key] = {
+                        "time": elapsed,
+                        "md5": md5,
+                        "mse": float(mse[-1]) if mse else 0,
+                        "holes": float(holes[-1]) if holes else 0,
+                        "ms_ratio": float(ms[-1]) if ms else 0
+                    }
+                    print(f"{key:<20}: {elapsed:>5.2f}s, MSE: {results['matrix'][key]['mse']:>9.1f}")
+                except subprocess.CalledProcessError as e:
+                    print(f"Error running {key}: {e.stderr}")
 
     return results
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python3 benchmarks/run_benchmarks.py <faac_bin_path> <precision_name>")
+    if len(sys.argv) < 4:
+        print("Usage: python3 benchmarks/run_benchmarks.py <faac_bin_path> <precision_name> <output_json>")
         sys.exit(1)
 
     faac_bin = sys.argv[1]
     precision = sys.argv[2]
+    out_json = sys.argv[3]
 
-    if not os.path.exists(faac_bin):
-        print(f"FAAC binary not found at {faac_bin}.")
-        sys.exit(1)
-
-    run_benchmark(faac_bin, precision)
+    data = run_benchmark(faac_bin, precision)
+    with open(out_json, "w") as f:
+        json.dump(data, f, indent=2)

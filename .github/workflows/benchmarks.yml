@@ -1,0 +1,66 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - 'libfaac/**'
+      - 'benchmarks/**'
+
+jobs:
+  benchmark:
+    name: Multi-Matrix Efficiency & Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build
+          pip install meson
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          path: optimized
+
+      - name: Checkout Base branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.base_ref }}
+          path: baseline
+
+      - name: Generate Multi-Rate Test Suite
+        run: |
+          python3 optimized/benchmarks/generate_waves.py
+
+      - name: Build Baseline
+        run: |
+          cd baseline
+          meson setup build -Dfloating-point=double
+          ninja -C build
+
+      - name: Build Optimized
+        run: |
+          cd optimized
+          meson setup build -Dfloating-point=double
+          ninja -C build
+
+      - name: Run Baseline Matrix
+        run: |
+          python3 optimized/benchmarks/run_benchmarks.py baseline/build/frontend/faac baseline baseline.json
+
+      - name: Run Optimized Matrix
+        run: |
+          python3 optimized/benchmarks/run_benchmarks.py optimized/build/frontend/faac optimized optimized.json
+
+      - name: Compare Results
+        run: |
+          python3 optimized/benchmarks/compare_results.py baseline.json optimized.json > report.txt
+          cat report.txt
+
+      - name: Upload Matrix Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-rate-matrix-report
+          path: report.txt

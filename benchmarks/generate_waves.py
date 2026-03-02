@@ -13,8 +13,7 @@ def generate_wave(filename, duration_sec, sample_rate, func_name):
         wav_file.setsampwidth(2)  # 16-bit
         wav_file.setframerate(sample_rate)
 
-        # Buffering for speed
-        buffer_size = 44100
+        buffer_size = sample_rate # 1 second chunks
 
         if func_name == "sine":
             freq = 1000.0
@@ -37,9 +36,6 @@ def generate_wave(filename, duration_sec, sample_rate, func_name):
                 data = []
                 for j in range(i, i + chunk_size):
                     t = j / sample_rate
-                    # Exponential sweep is usually better
-                    # freq = f0 * (f1 / f0) ** (t / duration)
-                    # Linear sweep as requested before
                     freq = f0 + (f1 - f0) * (t / duration)
                     val = math.sin(2.0 * math.pi * freq * t)
                     ival = max(-32768, min(32767, int(val * 32767)))
@@ -67,15 +63,13 @@ def generate_wave(filename, duration_sec, sample_rate, func_name):
                     wav_file.writeframesraw(data)
 
 if __name__ == "__main__":
-    sample_rate = 44100
+    rates = [16000, 44100, 48000]
     duration = 600 # 10 minutes
 
-    print("Generating sine wave...")
-    generate_wave("benchmarks/data/sine.wav", duration, sample_rate, "sine")
-    print("Generating sweep...")
-    generate_wave("benchmarks/data/sweep.wav", duration, sample_rate, "sweep")
-    print("Generating noise...")
-    generate_wave("benchmarks/data/noise.wav", duration, sample_rate, "noise")
-    print("Generating silence...")
-    generate_wave("benchmarks/data/silence.wav", duration, sample_rate, "silence")
+    for rate in rates:
+        print(f"Generating {rate}Hz suite...")
+        generate_wave(f"benchmarks/data/sine_{rate}.wav", duration, rate, "sine")
+        generate_wave(f"benchmarks/data/sweep_{rate}.wav", duration, rate, "sweep")
+        generate_wave(f"benchmarks/data/noise_{rate}.wav", duration, rate, "noise")
+        generate_wave(f"benchmarks/data/silence_{rate}.wav", duration, rate, "silence")
     print("Done.")

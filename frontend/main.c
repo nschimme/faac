@@ -70,6 +70,7 @@
 #include "input.h"
 
 #include <faac.h>
+#include "../libfaac/frame.h"
 
 #define FALSE 0
 #define TRUE 1
@@ -1166,6 +1167,27 @@ int main(int argc, char *argv[])
                 }
 
                 fflush(stderr);
+
+                if (getenv("FAAC_DUMP_MSE")) {
+                    double total_mse = 0;
+                    faacEncStruct *s = (faacEncStruct*)hEncoder;
+                    int ch;
+                    double total_holes = 0, total_sfb = 0, hf_loss = 0, ms_used = 0, ms_total = 0;
+                    for (ch = 0; ch < s->numChannels; ch++) {
+                        total_mse += s->coderInfo[ch].total_ms_error;
+                        total_holes += s->coderInfo[ch].spectral_holes;
+                        total_sfb += s->coderInfo[ch].total_sfb;
+                        hf_loss += s->coderInfo[ch].hf_energy_loss;
+                        ms_used += s->coderInfo[ch].ms_used;
+                        ms_total += s->coderInfo[ch].ms_total;
+                    }
+                    if (total_sfb < 1) total_sfb = 1;
+                    if (ms_total < 1) ms_total = 1;
+                    printf("\rMSE: %.6f HOLES: %.1f%% HF_LOSS: %.6f MS_RATIO: %.1f%% ",
+                        total_mse, (total_holes / total_sfb) * 100.0, hf_loss, (ms_used / ms_total) * 100.0);
+                    fflush(stdout);
+                }
+
 #ifdef _WIN32
                 if (frames != 0)
                 {

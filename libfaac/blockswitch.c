@@ -65,7 +65,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       else
           eng = psydata->en_next[win - 8];
 
-      if (eng > (lasteng * 3.0 / quality) && eng > 500000.0)
+      if (eng > (lasteng * (1.0 + 3.0 / quality)) && eng > 500000.0)
       {
           psyInfo->block_type = ONLY_SHORT_WINDOW;
           break;

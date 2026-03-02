@@ -135,6 +135,12 @@ typedef struct {
     int iLenReordSpData;
 #endif
 
+    double total_ms_error;
+    int spectral_holes;
+    int total_sfb;
+    int ms_used;
+    int ms_total;
+    faac_real hf_energy_loss;
     TnsInfo tnsInfo;
 } CoderInfo;
 
