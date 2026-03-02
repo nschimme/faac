@@ -28,8 +28,13 @@
 #include "util.h"
 #include <faac.h>
 #include "filtbank.h"
+#include "quantize.h"
 
 typedef float psyfloat;
+
+typedef struct {
+    faac_real ath_table[BLOCK_LEN_LONG];
+} Psy2Global;
 
 typedef struct
 {
@@ -162,6 +167,21 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 					      (BLOCK_LEN_SHORT * 2)));
   gpsyInfo->sampleRate = (faac_real) sampleRate;
 
+  Psy2Global *global = AllocMemory(sizeof(Psy2Global));
+  for (i = 0; i < BLOCK_LEN_LONG; i++)
+  {
+      faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
+      faac_real fkHz = freq / 1000.0;
+      faac_real ath;
+      if (fkHz < 0.1) fkHz = 0.1;
+      ath = 3.64 * FAAC_POW(fkHz, -0.8)
+            - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
+            + 0.001 * FAAC_POW(fkHz, 4.0);
+
+      global->ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+  }
+  gpsyInfo->data = global;
+
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
@@ -209,6 +229,9 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
 {
   unsigned int channel;
   int j;
+
+  if (gpsyInfo->data)
+      FreeMemory(gpsyInfo->data);
 
   if (gpsyInfo->hannWindow)
     FreeMemory(gpsyInfo->hannWindow);
@@ -394,11 +417,146 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   }
 }
 
+#define NOISEFLOOR 0.4
+
+static void PsyMask(GlobalPsyInfo * gpsyInfo, PsyInfo *psyInfo, CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
+                  faac_real * __restrict tonality, faac_real * __restrict bandlvl_stable)
+{
+  int sfb, start, end, cnt;
+  int *cb_offset = coderInfo->sfb_offset;
+  int last;
+  faac_real avgenrg;
+  faac_real powm = 0.4;
+  faac_real totenrg = 0.0;
+  int gsize = coderInfo->groups.len[gnum];
+  const faac_real *xr;
+  int win;
+  int enrgcnt = 0;
+  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  Psy2Global *global = (Psy2Global *)gpsyInfo->data;
+
+  for (win = 0; win < gsize; win++)
+  {
+      xr = xr0 + win * BLOCK_LEN_SHORT;
+      for (cnt = 0; cnt < total_len; cnt++)
+      {
+          totenrg += xr[cnt] * xr[cnt];
+      }
+  }
+  enrgcnt = gsize * total_len;
+
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  {
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          bandlvl[sfb] = 0.0;
+          bandenrg[sfb] = 0.0;
+      }
+
+      return;
+  }
+
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+  {
+    faac_real avge, maxe;
+    faac_real target;
+
+    start = cb_offset[sfb];
+    end = cb_offset[sfb + 1];
+
+    avge = 0.0;
+    maxe = 0.0;
+    for (win = 0; win < gsize; win++)
+    {
+        xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        int n = end - start;
+        for (cnt = 0; cnt < n; cnt++)
+        {
+            faac_real val = xr[cnt];
+            faac_real e = val * val;
+            avge += e;
+            if (maxe < e)
+                maxe = e;
+        }
+    }
+    bandenrg[sfb] = avge;
+    maxe *= gsize;
+
+    /* Optimized tonality: simplified peak-to-average ratio */
+    if (avge > 0.0001)
+        tonality[sfb] = maxe * (end - start) / avge;
+    else
+        tonality[sfb] = 0;
+
+#define NOISETONE 0.2
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    {
+        last = BLOCK_LEN_SHORT;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
+
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+
+        target *= 1.5;
+    }
+    else
+    {
+        last = BLOCK_LEN_LONG;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
+
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    }
+
+    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    bandlvl[sfb] = target * quality;
+    if (bandlvl_stable)
+        bandlvl_stable[sfb] = target;
+  }
+
+  /* Standard-aligned frequency spreading (energy domain) */
+  if (spreading > 0)
+  {
+      faac_real spread[MAX_SCFAC_BANDS];
+      /* Approximate spreading slopes: masking-down (lower freq) ~30dB/bark,
+         masking-up (higher freq) ~15dB/bark.
+         Scaled by level (5 = default). */
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          faac_real s = bandenrg[sfb];
+          if (sfb > 0) s = max(s, bandenrg[sfb - 1] * 0.02 * spreading); // ~17dB masking-up
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandenrg[sfb + 1] * 0.01 * spreading); // ~20dB masking-down
+          spread[sfb] = s;
+      }
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+          bandenrg[sfb] = spread[sfb];
+  }
+
+  if (athLevel > 0)
+  {
+      /* High-precision ATH suppression using precomputed table */
+      faac_real sensitivity = athLevel * 0.1;
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          int bcenter = (coderInfo->sfb_offset[sfb] + coderInfo->sfb_offset[sfb + 1]) >> 1;
+          if (bcenter >= BLOCK_LEN_LONG) bcenter = BLOCK_LEN_LONG - 1;
+
+          if (bandenrg[sfb] < global->ath_table[bcenter] * sensitivity)
+              bandlvl[sfb] = 0.0;
+      }
+  }
+}
+
 psymodel_t psymodel2 =
 {
   PsyInit,
   PsyEnd,
   PsyCalculate,
   PsyBufferUpdate,
-  BlockSwitch
+  BlockSwitch,
+  PsyMask
 };

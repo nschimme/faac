@@ -78,6 +78,9 @@ void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyI
 		int *cb_width_short, int num_cb_short);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
+void (*PsyMask) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo, CoderInfo *coderInfo, faac_real *xr0, faac_real *bandlvl,
+		faac_real *bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
+		faac_real *tonality, faac_real *bandlvl_stable);
 } psymodel_t;
 
 extern psymodel_t psymodel2;

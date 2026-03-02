@@ -96,11 +96,11 @@ typedef struct faacEncConfiguration
     /* Bitstream output format (0 = Raw; 1 = ADTS) */
     unsigned int outputFormat;
 
-    /* psychoacoustic model list */
-    psymodellist_t *psymodellist;
-
     /* selected index in psymodellist */
     unsigned int psymodelidx;
+
+    /* psychoacoustic model list */
+    psymodellist_t *psymodellist;
 
     /*
 		PCM Sample Input Format

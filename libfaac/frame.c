@@ -43,8 +43,11 @@ static char *libCopyright =
   " Copyright (C) 2002,2003,2017  Krzysztof Nikiel\n"
   "This software is based on the ISO MPEG-4 reference source code.\n";
 
+extern psymodel_t psymodel_mdct;
+
 static const psymodellist_t psymodellist[] = {
   {&psymodel2, "knipsycho psychoacoustic"},
+  {&psymodel_mdct, "mdct-based psychoacoustic"},
   {NULL}
 };
 
@@ -331,6 +334,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize coder functions */
 	fft_initialize( &hEncoder->fft_tables );
 
+	hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
 	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
         hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short,
@@ -613,7 +617,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->psyInfo[channel].prev_block_type = coderInfo[channel].block_type;
         }
 
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+        BlocQuant(hEncoder, &coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
     }
 
