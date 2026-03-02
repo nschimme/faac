@@ -75,5 +75,9 @@ unsigned int get_cpu_caps(void)
     }
 #endif
 
+#if defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM)
+    caps |= CPU_CAP_NEON;
+#endif
+
     return caps;
 }
