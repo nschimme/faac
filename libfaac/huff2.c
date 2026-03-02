@@ -409,7 +409,11 @@ int huffbook(CoderInfo *coder,
 {
     int cnt;
     int maxq = 0;
-    int bookmin, lenmin;
+    int bookmin = HCB_ZERO;
+    int lenmin = 0;
+    int book;
+    int prev_book = HCB_ZERO;
+    int section_overhead;
 
     for (cnt = 0; cnt < len; cnt++)
     {
@@ -418,36 +422,40 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+    if (maxq > 0)
+    {
+        int start_book = 1;
+        if (maxq >= 13) start_book = 11;
+        else if (maxq >= 8) start_book = 9;
+        else if (maxq >= 5) start_book = 7;
+        else if (maxq >= 2) start_book = 5;
 
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
+        if (coder->bandcnt > 0)
+            prev_book = coder->book[coder->bandcnt - 1];
+
+        if (prev_book < 1 || prev_book > 11)
+            prev_book = HCB_ZERO;
+
+        section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
+
+        lenmin = 0x7FFFFFFF;
+        bookmin = start_book;
+
+        for (book = start_book; book <= 11; book++)
+        {
+            int bits = huffcode(qs, len, book, 0);
+            if (bits >= 0)
+            {
+                if (book == prev_book)
+                    bits -= section_overhead;
+
+                if (bits < lenmin)
+                {
+                    lenmin = bits;
+                    bookmin = book;
+                }
+            }
+        }
     }
 
 #ifdef DRM
