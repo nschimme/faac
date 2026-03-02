@@ -202,8 +202,8 @@ static help_t help_advanced[] = {
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
     {"--no-bit-reservoir\tDisable bit reservoir.\n"},
-    {"--no-spreading\tDisable frequency spreading.\n"},
-    {"--no-tns-short\tDisable TNS for short blocks.\n"},
+    {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
+    {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
     {0}
 };
 
@@ -468,8 +468,8 @@ int main(int argc, char *argv[])
 
     int shortctl = SHORTCTL_NORMAL;
     static int bitReservoir = 1;
-    static int spreading = 1;
-    static int tnsShort = 1;
+    static int spreading = 5;
+    static int tnsShort = 5;
 
     FILE *outfile = NULL;
 
@@ -524,8 +524,10 @@ int main(int argc, char *argv[])
     {
         static struct option long_options[] = {
             {"no-bit-reservoir", 0, &bitReservoir, 0},
-            {"no-spreading", 0, &spreading, 0},
-            {"no-tns-short", 0, &tnsShort, 0},
+            {"no-spreading", 0, NULL, 'S'},
+            {"no-tns-short", 0, NULL, 'T'},
+            {"spreading", 1, NULL, 'S'},
+            {"tns-short", 1, NULL, 'T'},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -784,6 +786,14 @@ int main(int argc, char *argv[])
             break;
         case 'X':
             rawEndian = 0;
+            break;
+        case 'S':
+            if (optarg) spreading = atoi(optarg);
+            else spreading = 0;
+            break;
+        case 'T':
+            if (optarg) tnsShort = atoi(optarg);
+            else tnsShort = 0;
             break;
         case 'v':
             verbose = atoi(optarg);

@@ -290,8 +290,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
     hEncoder->config.bitReservoir = 1;
-    hEncoder->config.spreading = 1;
-    hEncoder->config.tnsShort = 1;
+    hEncoder->config.spreading = 5;
+    hEncoder->config.tnsShort = 5;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )

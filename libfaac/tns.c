@@ -196,7 +196,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        faac_real threshold = DEF_TNS_GAIN_THRESH;
+        if (blockType == ONLY_SHORT_WINDOW)
+            threshold = 1.0 + (2.0 - 1.0) * (10.0 - tnsShort) / 10.0;
+
+        if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
