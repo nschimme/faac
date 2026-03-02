@@ -182,10 +182,27 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   if (noiseGate > 0)
   {
-      faac_real ng_thr = (faac_real)noiseGate * NOISEFLOOR * 2.0;
-      for (sfb = coderInfo->sfbn / 2; sfb < coderInfo->sfbn; sfb++)
+      /* Industry standard ATH (Absolute Threshold of Hearing) approximation.
+         Prevents allocating bits to noise that is inaudible.
+         Level (1-10) scales the overall sensitivity. */
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          if (bandenrg[sfb] < ng_thr)
+          int bstart = coderInfo->sfb_offset[sfb];
+          int bend = coderInfo->sfb_offset[sfb + 1];
+          faac_real freq = (faac_real)(bstart + bend) * 18000.0 / (BLOCK_LEN_LONG * 2.0); // approx center freq
+          faac_real ath;
+
+          /* ATH formula (Terhardt): 3.64*(f/1000)^-0.8 - 6.5*exp(-0.6*(f/1000-3.3)^2) + 10^-3*(f/1000)^4 */
+          faac_real fkHz = freq / 1000.0;
+          if (fkHz < 0.1) fkHz = 0.1;
+          ath = 3.64 * FAAC_POW(fkHz, -0.8)
+                - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
+                + 0.001 * FAAC_POW(fkHz, 4.0);
+
+          /* Convert dB to energy-ish units for comparison with bandenrg */
+          faac_real ath_enrg = FAAC_POW(10.0, (ath - 20.0) / 10.0) * noiseGate * 0.1;
+
+          if (bandenrg[sfb] < ath_enrg)
               bandqual[sfb] = 0.0;
       }
   }
