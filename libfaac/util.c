@@ -72,7 +72,8 @@ unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int b
         bitrate_fac *= 1.2;
 
     if (short_block) {
-        pew1 = 1.2 * bitrate_fac; // Increased bit allocation for short blocks (transients)
+        /* Favor transients even more at low bitrates */
+        pew1 = 1.1 * bitrate_fac;
         pew2 = 40.0 * bitrate_fac;
     } else {
         pew1 = 0.4 * bitrate_fac;

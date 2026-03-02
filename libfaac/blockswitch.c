@@ -96,28 +96,35 @@ static void PsyCheckShort(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_real
 
       if (lasteng)
       {
-          faac_real toteng = 0.0;
-          faac_real volchg = 0.0;
+          faac_real enrgl = 0.0, enrgh = 0.0;
+          faac_real lastenrgl = 0.0, lastenrgh = 0.0;
+          int midband = lastband / 2;
 
-          for (sfb = firstband; sfb < lastband; sfb++)
+          for (sfb = firstband; sfb < midband; sfb++)
           {
-              toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
-              volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
+              enrgl += eng[sfb];
+              lastenrgl += lasteng[sfb];
+          }
+          for (sfb = midband; sfb < lastband; sfb++)
+          {
+              enrgh += eng[sfb];
+              lastenrgh += lasteng[sfb];
           }
 
-          faac_real threshold = 2.0; // Reduced from 3.0 to be more sensitive to transients
+          /* Standard-aligned energy ratio thresholds */
+          /* Transients usually show a large increase in high-frequency energy */
+          faac_real ratio_l = (lastenrgl > 1.0) ? enrgl / lastenrgl : 1.0;
+          faac_real ratio_h = (lastenrgh > 1.0) ? enrgh / lastenrgh : 1.0;
 
-          /* Smoothly increase sensitivity for low sample rates */
-          if (gpsyInfo->sampleRate < 44100)
+          /* Avoid triggering on very quiet signals or small fluctuations */
+          if ((enrgl + enrgh) > 500000.0)
           {
-              threshold = 1.2 + (2.0 - 1.2) * (gpsyInfo->sampleRate - 8000.0) / (44100.0 - 8000.0);
-              if (threshold < 1.2) threshold = 1.2;
-          }
+              /* Transients usually show a sharp increase in high-frequency energy.
+                 Use energy-normalized thresholds to detect these reliably. */
+              faac_real combined_ratio = (ratio_h * 5.0 + ratio_l) / 6.0;
 
-          if ((volchg / toteng * quality) > threshold)
-          {
-              /* Additional check for sudden energy increase to avoid false positives */
-              if (volchg > (0.1 * toteng)) {
+              if (combined_ratio > 50.0)
+              {
                   psyInfo->block_type = ONLY_SHORT_WINDOW;
                   break;
               }
