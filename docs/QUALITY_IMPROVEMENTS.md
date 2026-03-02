@@ -16,36 +16,6 @@ The following features have been added to improve perceived audio quality in FAA
 7. **ATH Suppression**: Industry-standard Absolute Threshold of Hearing (ATH) model (Terhardt approximation) suppresses inaudible noise to save bits.
 8. **Improved PNS**: Perceptual Noise Substitution now uses tonality detection to identify noise-like bands more accurately, improving efficiency at low bitrates.
 
-## Architectural Efficiency: Unlocking Higher Quality
-
-To enable advanced features like LTP or Trellis-based Huffman without exceeding the 20% CPU/Size overhead limit, we must refactor the core pipeline to reduce redundancy.
-
-### 1. MDCT-based Psychoacoustic Model (PAM)
-**Priority: High (Enabler)**
-- **Research**: Currently, FAAC performs a redundant FFT for the psychoacoustic "brain" (`PsyBufferUpdate`) and an MDCT for coding. By deriving masking thresholds directly from the MDCT coefficients, we can eliminate the FFT entirely.
-- **Estimated Impact**: 30-40% CPU reduction.
-- **Implementation Strategy**:
-  - **Phase 1 (Single Path)**: Send windowed input directly to the MDCT engine.
-  - **Phase 2 (Energy Estimation)**: Group the 1024 MDCT coefficients into AAC Scale Factor Bands (SFB) and calculate energy $E_b = \sum X_k^2$.
-  - **Phase 3 (Masking Curve)**: Use a simplified triangular spreading function across SFBs in the MDCT domain.
-  - **Phase 4 (SMR Calculation)**: Allocate bits based on the Signal-to-Mask Ratio ($SMR_b = E_b / Thr_b$).
-- **Constraints**: Trigger window switching on energy transients to handle MDCT time-domain aliasing; avoid `sqrt()` calls by working in the squared energy domain.
-
-### 2. Modular Compilation (Size Optimization)
-**Priority: Medium**
-- **Research**: FAAC's binary size can be further reduced for embedded IOT environments by making non-essential components optional via Meson.
-- **Opportunities**:
-  - Add `meson_options.txt` toggles for **PNS**, **TNS**, and **M/S Stereo** logic.
-  - While DRM is already optional, further decoupling can reduce the instruction cache footprint, leaving more room for video encoding algorithms.
-
-### 3. Fixed-Point Transition
-**Priority: Medium**
-- **Research**: Transitioning from floating-point (`faac_real`) to fixed-point is critical for IOT cores like the Ingenic T31X that may have limited or no advanced FPU.
-- **Pros/Cons**:
-  - **Fixed-Point Transform**: Lower complexity, significant gain in the heaviest part of the pipeline.
-  - **Full Fixed-Point Pipeline**: Highest CPU efficiency but requires careful scaling to prevent precision loss and clipping artifacts.
-- **Impact**: Highly dependent on hardware; on cores without hardware floating-point support, this is the single largest "unlock" available.
-
 ## Iterative Improvement Process
 
 To further improve quality for specific IOT environments:
@@ -54,16 +24,12 @@ To further improve quality for specific IOT environments:
 3. **PE Weighting**: The `BitAllocation` function in `libfaac/util.c` can be tuned to better map Perceptual Entropy to target bit counts for your specific bitrate range.
 4. **A/B Testing**: Compare the outgoing AAC against FDK-AAC using standard tools (like PEAQ or MUSHRA tests) to identify remaining gap areas.
 
-## Next "Low Hanging Fruit" (Stack Rank)
-
-Refactors that "unlock" quality are now weighted highest:
-
-1. **MDCT-based PAM Implementation**: (CPU Unlock) Reduces transform redundancy.
-2. **Modular Meson Options**: (Size Unlock) Enables fitting into tighter IOT flash/RAM constraints.
-3. **Fixed-Point Transform Refactor**: (CPU Unlock) Targeted optimization for ARM/Ingenic.
-4. **Huffman Codebook Selection Optimization**: Improves coding efficiency by 3-7%.
-5. **LTP (Long Term Prediction)**: High quality for tonal signals, enabled by CPU savings from step 1.
-
 ## Standards Compliance
 
 These improvements utilize existing tools defined in the AAC standard to maximize quality without introducing compatibility issues with standard decoders.
+
+## Next "Low Hanging Fruit"
+
+Given the current IOT/NVR constraints, the following items are recommended for future work:
+1. **Huffman Codebook Selection Optimization**: Refining how spectral lines are grouped into sections can improve coding efficiency by 3-7%.
+3. **LTP (Long Term Prediction)**: While computationally more expensive, LTP can significantly improve quality for tonal signals (like sirens or consistent motor hums) at low bitrates.

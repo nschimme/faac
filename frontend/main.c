@@ -99,8 +99,7 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS,
-    OPT_PSY
+    OPT_PNS
 };
 
 typedef struct {
@@ -207,7 +206,6 @@ static help_t help_advanced[] = {
     {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
     {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
     {"--ath-level X\tATH suppression level (0-10, default 0).\n"},
-    {"--psy X\tSelect psychoacoustic model (0 = knipsycho (default), 1 = MDCT-based).\n"},
     {0}
 };
 
@@ -475,7 +473,6 @@ int main(int argc, char *argv[])
     static int spreading = 5;
     static int tnsShort = 5;
     static int athLevel = 5;
-    unsigned int psymodelidx = 0;
 
     FILE *outfile = NULL;
 
@@ -576,7 +573,6 @@ int main(int argc, char *argv[])
             {"ignorelength", 0, &ignorelen, 1},
             {"tag", 1, 0, TAG_FLAG},
             {"overwrite", 0, &overwrite, 1},
-            {"psy", 1, 0, OPT_PSY},
             {0, 0, 0, 0}
         };
         int c = -1;
@@ -829,15 +825,6 @@ int main(int argc, char *argv[])
         case OPT_PNS:
             pnslevel = atoi(optarg);
             break;
-        case OPT_PSY:
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    psymodelidx = i;
-                }
-                break;
-            }
         case '?':
         default:
             help('?');
@@ -994,7 +981,6 @@ int main(int argc, char *argv[])
     myFormat->spreading = spreading;
     myFormat->tnsShort = tnsShort;
     myFormat->athLevel = athLevel;
-    myFormat->psymodelidx = psymodelidx;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

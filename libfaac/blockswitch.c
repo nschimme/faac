@@ -28,7 +28,6 @@
 #include "util.h"
 #include <faac.h>
 #include "filtbank.h"
-#include "quantize.h"
 
 typedef float psyfloat;
 
@@ -153,6 +152,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 {
   unsigned int channel;
   int i, j, size;
+  Psy2Global *global = AllocMemory(sizeof(Psy2Global));
 
   gpsyInfo->hannWindow =
     (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
@@ -167,7 +167,6 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 					      (BLOCK_LEN_SHORT * 2)));
   gpsyInfo->sampleRate = (faac_real) sampleRate;
 
-  Psy2Global *global = AllocMemory(sizeof(Psy2Global));
   for (i = 0; i < BLOCK_LEN_LONG; i++)
   {
       faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
@@ -419,7 +418,7 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
 
 #define NOISEFLOOR 0.4
 
-static void PsyMask(GlobalPsyInfo * gpsyInfo, PsyInfo *psyInfo, CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
+static void PsyMask(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
                   faac_real * __restrict tonality, faac_real * __restrict bandlvl_stable)
 {

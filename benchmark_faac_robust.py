@@ -59,7 +59,12 @@ def main():
 
     test_signals = ['complex', 'transient', 'noise', 'sine']
     sample_rates = [16000, 44100]
-    psy_models = [0, 1] # 0 = knipsycho (current), 1 = MDCT-based (to be implemented)
+
+    # Check if --psy is supported
+    help_output = subprocess.run([faac_path, '-h'], capture_output=True, text=True).stdout
+    has_psy = '--psy' in help_output
+
+    psy_models = [0, 1] if has_psy else [0]
 
     print(f"{'Signal':<10} | {'Rate':<6} | {'Psy':<3} | {'Time (s)':<10} | {'Size':<10} | {'MD5'}")
     print("-" * 70)
@@ -71,8 +76,10 @@ def main():
 
             for psy in psy_models:
                 out_aac = f'out_{sig}_{rate}_psy{psy}.aac'
-                # Assuming --psy <n> is the flag to select psychoacoustic model
-                args = ['-b', '64', '--psy', str(psy), wav_file, '-o', out_aac]
+                if has_psy:
+                    args = ['-b', '64', '--psy', str(psy), wav_file, '-o', out_aac]
+                else:
+                    args = ['-b', '64', wav_file, '-o', out_aac]
 
                 try:
                     duration, stderr = run_bench(faac_path, args)
