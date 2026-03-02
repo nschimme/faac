@@ -420,6 +420,15 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
     int cnt;
     int l;
+    int bitratePerChannel = aacquantCfg->quality; // In bit/s/channel
+
+    /* Refine bandwidth for low bitrates to prevent metallic artifacts */
+    if (bitratePerChannel < 24000)
+    {
+        int maxBW = 4500;
+        if (bitratePerChannel < 16000) maxBW = 3500;
+        if (*bw > maxBW) *bw = maxBW;
+    }
 
     l = 0;
     for (cnt = 0; cnt < sr->num_cb_short; cnt++)
