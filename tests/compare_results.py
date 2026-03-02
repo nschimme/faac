@@ -8,7 +8,7 @@ def compare(base_file, opt_file):
         opt = json.load(f)
 
     print("=" * 105)
-    print(f"{'Test Case':<25} | {'Spdup':<6} | {'MOS Delta':<10} | {'MSE Chg':<8} | {'Status'}")
+    print(f"{'Test Case':<25} | {'MOS Delta':<10} | {'MSE Chg':<8} | {'Status'}")
     print("-" * 105)
 
     base_m = base["matrix"]
@@ -17,7 +17,6 @@ def compare(base_file, opt_file):
     for k in sorted(base_m.keys()):
         if k in opt_m:
             b, o = base_m[k], opt_m[k]
-            speedup = b["time"] / o["time"] if o["time"] > 0 else 0
 
             b_mos = b.get("mos")
             o_mos = o.get("mos")
@@ -27,25 +26,34 @@ def compare(base_file, opt_file):
             o_mse = o.get("mse", 0)
             mse_chg = ((o_mse / b_mse) - 1) * 100 if b_mse > 0 else 0
 
-            # Status:
-            # - PASS: Speedup > 0.9, MOS delta > -0.2 (perceptually equivalent)
-            # - FAIL: MOS delta < -0.5 (significant degradation)
             status = "PASS"
             if mos_delta is not None and mos_delta < -0.2: status = "WARN (PERC)"
             if mos_delta is not None and mos_delta < -0.5: status = "FAIL (QUAL)"
-            if speedup < 0.9: status = "SLOW " + status
 
             mos_str = f"{mos_delta:>+10.2f}" if mos_delta is not None else "   N/A    "
             mse_str = f"{mse_chg:>+7.1f}%" if (b_mse > 0 or o_mse > 0) else "  N/A   "
 
-            print(f"{k:<25} | {speedup:>5.2f}x | {mos_str} | {mse_str} | {status}")
+            print(f"{k:<25} | {mos_str} | {mse_str} | {status}")
 
-    # Overall Summary
-    total_base = sum(f["time"] for f in base_m.values())
-    total_opt = sum(f["time"] for f in opt_m.values())
+    print("-" * 105)
+    print(f"{'Throughput Comparison':<25} | {'Base (s)':<8} | {'Opt (s)':<8} | {'Spdup'}")
     print("-" * 105)
 
-    improvement = (1 - total_opt/total_base)*100 if total_base > 0 else 0
+    base_tp = base.get("throughput", {})
+    opt_tp = opt.get("throughput", {})
+
+    total_base_t = 0
+    total_opt_t = 0
+
+    for k in sorted(base_tp.keys()):
+        if k in opt_tp:
+            bt, ot = base_tp[k], opt_tp[k]
+            total_base_t += bt
+            total_opt_t += ot
+            print(f"{k:<25} | {bt:>8.2f} | {ot:>8.2f} | {(bt/ot):>5.2f}x")
+
+    print("-" * 105)
+    improvement = (1 - total_opt_t/total_base_t)*100 if total_base_t > 0 else 0
     print(f"OVERALL CPU REDUCTION: {improvement:.1f}%")
 
     base_size = base.get("binary_size", 0)

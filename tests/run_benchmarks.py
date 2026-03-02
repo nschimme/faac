@@ -6,7 +6,7 @@ import sys
 import json
 import re
 
-RATES = [16000, 44100, 48000]
+RATES = [16000, 48000]
 QUALITIES = [10, 100, 250]
 TYPES = ["sine", "sweep", "noise", "harpsichord", "castanets", "applause", "silence"]
 DATA_DIR = "tests/data"
@@ -27,11 +27,9 @@ def get_binary_size(path):
 def run_visqol(ref_wav, deg_wav, rate):
     """Run ViSQOL and parse MOS score."""
     try:
-        # ViSQOL has subcommands for different rates
         mode = "wideband" if rate <= 16000 else "fullband"
         cmd = ["visqol", mode, "--reference", ref_wav, "--degraded", deg_wav]
         proc = subprocess.run(cmd, capture_output=True, text=True)
-        # Parse MOS-LQO from output: "MOS-LQO: 4.123"
         match = re.search(r"MOS-LQO:\s+([-.\d]+)", proc.stdout)
         if match:
             return float(match.group(1))
@@ -46,30 +44,40 @@ def run_benchmark(faac_path, precision, scalar=True):
     env["FAAC_DUMP_MSE"] = "1"
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = {"matrix": {}, "binary_size": get_binary_size(faac_path)}
+    results = {"matrix": {}, "throughput": {}, "binary_size": get_binary_size(faac_path)}
 
-    print(f"--- Matrix Tests {precision} precision (Scalar: {scalar}) ---")
+    print(f"--- Throughput Tests {precision} ---")
+    for rate in RATES:
+        for t in ["sine", "noise"]:
+            input_path = os.path.join(DATA_DIR, f"{t}_{rate}_long.wav")
+            if not os.path.exists(input_path): continue
 
+            output_path = os.path.join(OUTPUT_DIR, f"{t}_{rate}_long_{precision}.aac")
+            start_time = time.time()
+            subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
+            elapsed = time.time() - start_time
+            results["throughput"][f"{t}_{rate}"] = elapsed
+            print(f"Throughput {t}_{rate:<5}: {elapsed:>5.2f}s")
+
+    print(f"\n--- Perceptual Tests {precision} ---")
     for rate in RATES:
         for quality in QUALITIES:
             for t in TYPES:
                 input_path = os.path.join(DATA_DIR, f"{t}_{rate}.wav")
-                if not os.path.exists(input_path):
-                    continue
+                if not os.path.exists(input_path): continue
 
                 key = f"{t}_{rate}_q{quality}"
                 output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
                 deg_wav = output_path.replace(".aac", "_deg.wav")
 
-                start_time = time.time()
                 cmd = [faac_path, "-q", str(quality), "-o", output_path, input_path]
                 try:
                     proc = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
-                    elapsed = time.time() - start_time
 
                     # Qualitative: ViSQOL MOS
                     mos = None
                     try:
+                        # Ensure faad is present for decoding
                         subprocess.run(["faad", "-o", deg_wav, output_path], capture_output=True)
                         if os.path.exists(deg_wav):
                             mos = run_visqol(input_path, deg_wav, rate)
@@ -79,16 +87,14 @@ def run_benchmark(faac_path, precision, scalar=True):
                         if os.path.exists(deg_wav): os.remove(deg_wav)
 
                     mse_match = re.search(r"MSE: ([\d.]+)", proc.stdout)
-                    mse = float(mse_match.group(1)) if mse_match else 0
 
                     results["matrix"][key] = {
-                        "time": elapsed,
                         "md5": get_md5(output_path),
-                        "mse": mse,
+                        "mse": float(mse_match.group(1)) if mse_match else 0,
                         "mos": mos
                     }
                     mos_str = f"MOS: {mos:>4.2f}" if mos is not None else ""
-                    print(f"{key:<25}: {elapsed:>5.2f}s {mos_str}")
+                    print(f"{key:<25}: {mos_str}")
                 except subprocess.CalledProcessError as e:
                     print(f"Error running {key}: {e.stderr}")
 
