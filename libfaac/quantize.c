@@ -162,18 +162,22 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandqual[sfb] = target * quality;
   }
 
+  /* Standard-aligned frequency spreading (energy domain) */
   if (spreading > 0)
   {
       faac_real spread[MAX_SCFAC_BANDS];
+      /* Approximate spreading slopes: masking-down (lower freq) ~30dB/bark,
+         masking-up (higher freq) ~15dB/bark.
+         Scaled by level (5 = default). */
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          faac_real s = bandqual[sfb];
-          if (sfb > 0) s = max(s, bandqual[sfb - 1] * 0.06 * spreading);
-          if (sfb < coderInfo->sfbn - 1) s = max(s, bandqual[sfb + 1] * 0.04 * spreading);
+          faac_real s = bandenrg[sfb];
+          if (sfb > 0) s = max(s, bandenrg[sfb - 1] * 0.02 * spreading); // ~17dB masking-up
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandenrg[sfb + 1] * 0.01 * spreading); // ~20dB masking-down
           spread[sfb] = s;
       }
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
-          bandqual[sfb] = spread[sfb];
+          bandenrg[sfb] = spread[sfb];
   }
 
   if (noiseGate > 0)

@@ -72,12 +72,13 @@ unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int b
         bitrate_fac *= 1.2;
 
     if (short_block) {
-        pew1 = 0.6 * bitrate_fac;
-        pew2 = 24.0 * bitrate_fac;
+        pew1 = 0.8 * bitrate_fac;
+        pew2 = 30.0 * bitrate_fac;
     } else {
-        pew1 = 0.3 * bitrate_fac;
-        pew2 = 6.0 * bitrate_fac;
+        pew1 = 0.4 * bitrate_fac;
+        pew2 = 8.0 * bitrate_fac;
     }
+    /* Standard linear + square-root PE-to-bits mapping model */
     bit_allocation = pew1 * pe + pew2 * FAAC_SQRT(pe);
     bit_allocation = min(max(0.0, bit_allocation), max_bits);
 
