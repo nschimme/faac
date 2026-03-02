@@ -662,6 +662,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int usedbits = frameBytes * 8;
         faac_real fix;
 
+        if (usedbits <= 0)
+            return frameBytes;
+
         if (hEncoder->config.bitReservoir)
         {
             faac_real totalpe = 0;
@@ -671,7 +674,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             for (channel = 0; channel < numChannels; channel++)
                 totalpe += hEncoder->psyInfo[channel].pe;
 
-            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW);
+            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW, numChannels);
             bitres_des = (desbits * 3 / 2); // limit to 150% of avg bits
 
             if (bit_allocation > bitres_des)
