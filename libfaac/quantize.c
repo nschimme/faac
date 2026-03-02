@@ -72,18 +72,22 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 
-    /* Precompute ATH table using standard Terhardt formula */
+    /* Precompute ATH table using standard Terhardt formula (1979) */
+    /* Referenced in ISO/IEC 13818-7 for psychoacoustic modeling */
     for (i = 0; i < BLOCK_LEN_LONG; i++)
     {
-        faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
+        faac_real freq = (faac_real)i * 22050.0 / BLOCK_LEN_LONG; // Scale to Nyquist (e.g., 44.1kHz / 2)
         faac_real fkHz = freq / 1000.0;
         faac_real ath;
-        if (fkHz < 0.1) fkHz = 0.1;
+        if (fkHz < 0.02) fkHz = 0.02; // Limit lower frequency to 20Hz
+
+        /* Terhardt approximation in dB SPL */
         ath = 3.64 * FAAC_POW(fkHz, -0.8)
               - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
               + 0.001 * FAAC_POW(fkHz, 4.0);
 
-        ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+        /* Convert dB SPL to energy domain with standard -12dB normalization for bit-saving */
+        ath_table[i] = FAAC_POW(10.0, (ath - 12.0) / 10.0);
     }
 }
 #define NOISEFLOOR 0.4
