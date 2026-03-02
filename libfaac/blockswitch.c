@@ -116,8 +116,11 @@ static void PsyCheckShort(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_real
 
           if ((volchg / toteng * quality) > threshold)
           {
-              psyInfo->block_type = ONLY_SHORT_WINDOW;
-              break;
+              /* Additional check for sudden energy increase to avoid false positives */
+              if (volchg > (0.1 * toteng)) {
+                  psyInfo->block_type = ONLY_SHORT_WINDOW;
+                  break;
+              }
           }
       }
       lasteng = eng;

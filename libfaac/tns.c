@@ -198,7 +198,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         faac_real threshold = DEF_TNS_GAIN_THRESH;
         if (blockType == ONLY_SHORT_WINDOW)
-            threshold = 1.0 + (2.0 - 1.0) * (10.0 - tnsShort) / 10.0;
+            threshold = 1.0 + (1.5 - 1.0) * (10.0 - tnsShort) / 10.0; // More aggressive TNS for short blocks
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
