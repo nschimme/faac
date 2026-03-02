@@ -26,9 +26,9 @@ jobs:
 
       - name: Build and Install gstpeaq
         run: |
-          git clone https://github.com/HSU-ANT/gstpeaq.git
-          cd gstpeaq
-          ./autogen.sh
+          wget https://github.com/HSU-ANT/gstpeaq/releases/download/version-0.6.1/gstpeaq-0.6.1.tar.gz
+          tar -xzf gstpeaq-0.6.1.tar.gz
+          cd gstpeaq-0.6.1
           ./configure --prefix=/usr
           make
           sudo make install
