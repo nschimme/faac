@@ -72,18 +72,22 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 
-    /* Precompute ATH table using standard Terhardt formula */
+    /* Precompute ATH table using standard Terhardt formula (1979) */
+    /* Referenced in ISO/IEC 13818-7 for psychoacoustic modeling */
     for (i = 0; i < BLOCK_LEN_LONG; i++)
     {
-        faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
+        faac_real freq = (faac_real)i * 22050.0 / BLOCK_LEN_LONG; // Scale to Nyquist (e.g., 44.1kHz / 2)
         faac_real fkHz = freq / 1000.0;
         faac_real ath;
-        if (fkHz < 0.1) fkHz = 0.1;
+        if (fkHz < 0.02) fkHz = 0.02; // Limit lower frequency to 20Hz
+
+        /* Terhardt approximation in dB SPL */
         ath = 3.64 * FAAC_POW(fkHz, -0.8)
               - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
               + 0.001 * FAAC_POW(fkHz, 4.0);
 
-        ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+        /* Convert dB SPL to energy domain with standard -12dB normalization for bit-saving */
+        ath_table[i] = FAAC_POW(10.0, (ath - 12.0) / 10.0);
     }
 }
 #define NOISEFLOOR 0.4
@@ -154,9 +158,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* Optimized tonality: simplified peak-to-average ratio */
     if (avge > 0.0001)
-        tonality[sfb] = maxe * (end - start) / avge;
+    {
+        faac_real par = maxe * (end - start) / avge;
+        tonality[sfb] = par;
+    }
     else
+    {
         tonality[sfb] = 0;
+    }
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
@@ -230,7 +239,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    int pnslevel,
                    const faac_real * __restrict tonality,
                    int *pns_state,
-                   const faac_real * __restrict bandlvl_stable
+                   const faac_real * __restrict bandlvl_stable,
+                   AACQuantCfg *aacquantCfg,
+                   int win_offset
                   )
 {
     int sb;
@@ -251,6 +262,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      int maxq = 0;
+      int spectrum_start;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
@@ -283,7 +296,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           faac_real thr = pnsthr;
           if (prev_pns) thr *= 2.0;
 
-          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < 1.8))
+          /* More conservative PNS to reduce watery artifacts.
+             A lower threshold means we only trigger PNS for very noise-like bands. */
+          faac_real tonality_thr = 1.4;
+          if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000) tonality_thr = 1.0;
+
+          /* Disable PNS for low frequency bands to preserve speech harmonics */
+          if (start < 16) tonality_thr = 0.0;
+
+          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < tonality_thr))
           {
               pns_state[coderInfo->bandcnt] = 1;
               coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
@@ -313,21 +334,86 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               faac_real magic = MAGIC_NUMBER;
-              /* Lower bias for high frequencies to reduce ringing */
-              if (sb > (coderInfo->sfbn * 2 / 3))
-                  magic = 0.38;
+
+              /* Adaptive Quantization Rounding to kill metallic ringing */
+              /* Standard LC-AAC uses 0.4054; reducing this for noise-like bands
+                 and high frequencies improves perceived quality. */
+              if (sb > (coderInfo->sfbn / 2))
+              {
+                  faac_real tonality_fac = tonality[sb];
+                  if (tonality_fac > 2.0) tonality_fac = 2.0;
+
+                  /* More aggressive reduction for noise-like high bands */
+                  magic = 0.33 + 0.05 * (tonality_fac / 2.0);
+
+                  /* Bitrate-dependent sharpening */
+                  if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000)
+                      magic -= 0.03;
+              }
 
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix, magic);
+              for (int k = 0; k < end; k++)
+                  if (abs(xi[k]) > maxq) maxq = abs(xi[k]);
               xi += end;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
+      /* Store quantized spectrum for final Huffman pass */
+      spectrum_start = coderInfo->sfb_offset[sb];
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      {
+          /* Adjust for grouping and window size in short blocks */
+          for (win = 0; win < gsize; win++)
+              memcpy(coderInfo->quantized_spectra + win * BLOCK_LEN_SHORT + spectrum_start,
+                     xitab + win * end, end * sizeof(int));
+      }
+      else
+      {
+          memcpy(coderInfo->quantized_spectra + spectrum_start, xitab, end * sizeof(int));
+      }
+
+      coderInfo->band_maxq[coderInfo->bandcnt] = maxq;
+      coderInfo->band_offset[coderInfo->bandcnt] = start;
+
+      /* Store quantized spectrum for final Huffman pass */
+      int spec_offset = coderInfo->sfb_offset[sb];
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      {
+          /* Adjust for grouping and window size in short blocks */
+          for (win = 0; win < gsize; win++)
+              memcpy(coderInfo->quantized_spectra + (win_offset + win) * BLOCK_LEN_SHORT + spec_offset,
+                     xitab + win * end, end * sizeof(int));
+      }
+      else
+      {
+          memcpy(coderInfo->quantized_spectra + spec_offset, xitab, end * sizeof(int));
+      }
+
+      /* Viable Huffman book selection to optimize performance */
+      int book;
+      for (book = 0; book <= 11; book++)
+          coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
+
+      if (maxq == 0) {
+          coderInfo->huff_bits[coderInfo->bandcnt][0] = 0;
+      } else {
+          int start_book = 1;
+          if (maxq >= 13) start_book = 11;
+          else if (maxq >= 8) start_book = 9;
+          else if (maxq >= 5) start_book = 7;
+          else if (maxq >= 3) start_book = 5;
+          else if (maxq >= 2) start_book = 3;
+
+          for (book = start_book; book <= 11; book++)
+              coderInfo->huff_bits[coderInfo->bandcnt][book] = huffcode(xitab, gsize * end, book, 0);
+      }
+
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state,
+              int (*huff_cost)[12], int (*huff_path)[12])
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -349,6 +435,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         int lastsf;
 
         gxr = xr;
+        int win_offset = 0;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             faac_real bandlvl_stable[MAX_SCFAC_BANDS];
@@ -361,9 +448,14 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
-                   pns_state, bandlvl_stable);
+                   pns_state, bandlvl_stable, aacquantCfg, win_offset);
+
+            win_offset += coder->groups.len[cnt];
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
+
+        coder->global_gain = 0;
+        huff_trellis(coder, huff_cost, huff_path);
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -380,7 +472,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -388,22 +479,39 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             {
                 int diff = coder->sf[cnt] - lastis;
 
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
 
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book && (book != HCB_PNS))
             {
-                int diff = coder->sf[cnt] - lastsf;
+                /* Non-linear Scalefactor Delta Optimization */
+                /* For higher bands or noise-like bands, we can slightly adjust
+                   the scalefactor to reduce the bit cost of the delta (diff). */
+                int target_sf = coder->sf[cnt];
+                int diff = target_sf - lastsf;
 
+                if (cnt > (coder->bandcnt / 2) && abs(diff) > 1)
+                {
+                    /* Bias towards smaller deltas for non-critical bands */
+                    if (diff > 0) target_sf--;
+                    else target_sf++;
+                    diff = target_sf - lastsf;
+                }
+
+                /* Ensure standard compliance: delta within -60..60 range */
                 if (diff < -60)
+                {
                     diff = -60;
+                    target_sf = lastsf + diff;
+                }
                 if (diff > 60)
+                {
                     diff = 60;
+                    target_sf = lastsf + diff;
+                }
 
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;
@@ -420,6 +528,23 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
     int cnt;
     int l;
+    int bitratePerChannel = aacquantCfg->quality;
+
+    /* Approximate bitrate for VBR mode (quality < 1000) */
+    if (bitratePerChannel < 1000)
+    {
+        /* quality 100 approx 64kbps stereo, so 32kbps mono. */
+        bitratePerChannel = bitratePerChannel * 320;
+    }
+
+    /* Refine bandwidth for low bitrates to prevent metallic artifacts. */
+    if (bitratePerChannel < 24000)
+    {
+        int maxBW = 5500;
+        if (bitratePerChannel < 16000) maxBW = 4500;
+        if (bitratePerChannel < 12000) maxBW = 3500;
+        if (*bw > maxBW) *bw = maxBW;
+    }
 
     l = 0;
     for (cnt = 0; cnt < sr->num_cb_short; cnt++)

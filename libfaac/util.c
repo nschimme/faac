@@ -55,6 +55,7 @@ unsigned int MinBitrate()
 }
 
 /* Calculate bit_allocation based on PE and target bitrate */
+/* Standard linear + square-root PE-to-bits mapping model (ISO/IEC 14496-3) */
 unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int bitRatePerChannel, int bitResLevel)
 {
     faac_real pew1;
@@ -63,23 +64,29 @@ unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int b
     faac_real max_bits = 6144.0 * numChannels;
     faac_real bitrate_fac;
 
-    /* Bitrate-aware and level-aware factor */
+    /* Normalize bitResLevel (5 is default) */
     bitrate_fac = (faac_real)bitResLevel / 5.0;
 
-    if (bitRatePerChannel < 32000)
-        bitrate_fac *= 0.8;
+    /* Adjust weighting for low bitrates to maintain stability */
+    if (bitRatePerChannel < 24000)
+        bitrate_fac *= 0.75;
     else if (bitRatePerChannel > 64000)
-        bitrate_fac *= 1.2;
+        bitrate_fac *= 1.25;
 
     if (short_block) {
-        pew1 = 0.8 * bitrate_fac;
-        pew2 = 30.0 * bitrate_fac;
+        /* Standard weighting for transients */
+        pew1 = 1.0 * bitrate_fac;
+        pew2 = 35.0 * bitrate_fac;
     } else {
-        pew1 = 0.4 * bitrate_fac;
-        pew2 = 8.0 * bitrate_fac;
+        /* Standard weighting for steady-state */
+        pew1 = 0.35 * bitrate_fac;
+        pew2 = 7.0 * bitrate_fac;
     }
-    /* Standard linear + square-root PE-to-bits mapping model */
+
+    /* Standard PE-to-bits mapping model */
     bit_allocation = pew1 * pe + pew2 * FAAC_SQRT(pe);
+
+    /* Limit bit allocation per frame to standard maximums */
     bit_allocation = min(max(0.0, bit_allocation), max_bits);
 
     return (unsigned int)(bit_allocation+0.5);

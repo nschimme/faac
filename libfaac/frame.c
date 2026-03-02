@@ -614,7 +614,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state,
+                  hEncoder->huff_cost, hEncoder->huff_path);
     }
 
 #ifdef DRM
@@ -692,7 +693,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 totalpe += hEncoder->psyInfo[channel].pe;
 
             bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW, numChannels, hEncoder->config.bitRate, hEncoder->config.bitReservoir);
-            bitres_des = (desbits * 3 / 2); // limit to 150% of avg bits
+            bitres_des = (desbits * 4); // Increased to 400% for better transient handling
 
             if (bit_allocation > bitres_des)
                 bit_allocation = bitres_des;

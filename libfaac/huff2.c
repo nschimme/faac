@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
@@ -68,14 +69,14 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
-                    CoderInfo *coder)
+int huffcode(int *qs /* quantized spectrum */,
+             int len,
+             int bnum,
+             CoderInfo *coder)
 {
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
-    hcode16_t *book;
+    hcode16_t *book = NULL;
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
@@ -92,21 +93,40 @@ static int huffcode(int *qs /* quantized spectrum */,
     else
         datacnt = 0;
 
-    book = hmap[bnum];
+    if (bnum >= 1 && bnum <= 11)
+        book = hmap[bnum];
+
     switch (bnum)
     {
-#ifdef DRM
     case HCB_ZERO:
+        for (cnt = 0; cnt < len; cnt++)
+            if (qs[cnt]) return -1;
+#ifdef DRM
+        if (coder) {
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                coder->s[datacnt].data = 0;
+                coder->s[datacnt++].len = 0;
+                coder->num_data_cw[coder->cur_cw++] = 1;
+            }
+        }
+#endif
+        return 0;
+
     case HCB_INTENSITY:
     case HCB_INTENSITY2:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            coder->s[datacnt].data = 0;
-            coder->s[datacnt++].len = 0;
-            coder->num_data_cw[coder->cur_cw++] = 1;
+    case HCB_PNS:
+#ifdef DRM
+        if (coder) {
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                coder->s[datacnt].data = 0;
+                coder->s[datacnt++].len = 0;
+                coder->num_data_cw[coder->cur_cw++] = 1;
+            }
         }
-        break;
 #endif
+        return 0;
     case 1:
     case 2:
         for(ofs = 0; ofs < len; ofs += 4)
@@ -409,7 +429,11 @@ int huffbook(CoderInfo *coder,
 {
     int cnt;
     int maxq = 0;
-    int bookmin, lenmin;
+    int bookmin = HCB_ZERO;
+    int lenmin = 0;
+    int book;
+    int prev_book = HCB_ZERO;
+    int section_overhead;
 
     for (cnt = 0; cnt < len; cnt++)
     {
@@ -418,36 +442,44 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+    if (maxq > 0)
+    {
+        int start_book = 1;
+        if (maxq >= 13) start_book = 11;
+        else if (maxq >= 8) start_book = 9;
+        else if (maxq >= 5) start_book = 7;
+        else if (maxq >= 3) start_book = 5;
+        else if (maxq >= 2) start_book = 3;
 
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
+        if (coder->bandcnt > 0)
+            prev_book = coder->book[coder->bandcnt - 1];
+
+        if (prev_book < 1 || prev_book > 11)
+            prev_book = HCB_ZERO;
+
+        /* Standard section overhead: 3 bits for short, 5 bits for long block length
+           plus 4 bits for codebook index = 7 or 9 bits.
+           Actually for long blocks it can be up to 5 bits for length, so 9 is a safe min. */
+        section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
+
+        lenmin = 0x7FFFFFFF;
+        bookmin = start_book;
+
+        for (book = start_book; book <= 11; book++)
+        {
+            int bits = huffcode(qs, len, book, 0);
+            if (bits >= 0)
+            {
+                if (book == prev_book)
+                    bits -= section_overhead;
+
+                if (bits < lenmin)
+                {
+                    lenmin = bits;
+                    bookmin = book;
+                }
+            }
+        }
     }
 
 #ifdef DRM
@@ -462,6 +494,133 @@ int huffbook(CoderInfo *coder,
     coder->book[coder->bandcnt] = bookmin;
 
     return 0;
+}
+
+void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
+{
+    int group, band, book;
+    int section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 15;
+    int best_books[MAX_SCFAC_BANDS];
+
+    /* Initialize Trellis nodes */
+    for (band = 0; band < coder->bandcnt; band++)
+        for (book = 0; book <= 11; book++)
+            cost[band][book] = 0x3FFFFFFF;
+
+    coder->datacnt = 0;
+
+    /* Process groups independently */
+    int win_offset = 0;
+    for (group = 0; group < coder->groups.n; group++)
+    {
+        int first_band = group * coder->sfbn;
+        int group_size = coder->groups.len[group];
+
+        /* Forward pass using pre-calculated bits */
+        for (band = first_band; band < (group + 1) * coder->sfbn; band++)
+        {
+            int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
+
+            if (is_non_spectral) {
+                int min_prev = 0x3FFFFFFF;
+                int best_prev = 0;
+                if (band == first_band) {
+                    min_prev = 0;
+                    best_prev = -1;
+                } else {
+                    for (int b = 0; b <= 11; b++) {
+                        if (cost[band-1][b] < min_prev) {
+                            min_prev = cost[band-1][b];
+                            best_prev = b;
+                        }
+                    }
+                }
+                for (int b = 0; b <= 11; b++) {
+                    cost[band][b] = min_prev;
+                    path[band][b] = best_prev;
+                }
+                continue;
+            }
+
+            for (book = 0; book <= 11; book++)
+            {
+                int bits = coder->huff_bits[band][book];
+                if (bits < 0) continue;
+
+                if (band == first_band || (coder->book[band-1] >= 13 && coder->book[band-1] < HCB_NONE))
+                {
+                    int prev_min = 0;
+                    int prev_best = -1;
+                    if (band > first_band) {
+                        prev_min = cost[band-1][0];
+                        prev_best = path[band-1][0];
+                    }
+                    cost[band][book] = prev_min + bits + section_overhead;
+                    path[band][book] = prev_best;
+                }
+                else
+                {
+                    for (int prev_book = 0; prev_book <= 11; prev_book++)
+                    {
+                        if (cost[band - 1][prev_book] >= 0x3FFFFFFF) continue;
+
+                        int total_cost = cost[band - 1][prev_book] + bits;
+                        if (book != prev_book)
+                            total_cost += section_overhead;
+
+                        if (total_cost < cost[band][book])
+                        {
+                            cost[band][book] = total_cost;
+                            path[band][book] = prev_book;
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Backward pass */
+        int last_band = (group + 1) * coder->sfbn - 1;
+        int min_cost = 0x3FFFFFFF;
+        int best_book = 0;
+        for (book = 0; book <= 11; book++) {
+            if (cost[last_band][book] < min_cost) {
+                min_cost = cost[last_band][book];
+                best_book = book;
+            }
+        }
+
+        for (band = last_band; band >= first_band; band--) {
+            int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
+            if (!is_non_spectral) {
+                best_books[band] = best_book;
+            }
+            best_book = path[band][best_book];
+            if (best_book < 0) best_book = 0;
+        }
+
+        /* Final pass: actually encode spectral data into bitstream buffer */
+        for (band = first_band; band < (group + 1) * coder->sfbn; band++)
+        {
+            int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
+            if (!is_non_spectral) {
+                int chosen_book = best_books[band];
+                coder->book[band] = chosen_book;
+
+                if (chosen_book > 0) {
+                    int sb = band % coder->sfbn;
+                    int start = coder->sfb_offset[sb];
+                    int end = coder->sfb_offset[sb + 1];
+                    int len = end - start;
+
+                    for (int w = 0; w < group_size; w++) {
+                        int *qs = coder->quantized_spectra + (win_offset + w) * BLOCK_LEN_SHORT + start;
+                        huffcode(qs, len, chosen_book, coder);
+                    }
+                }
+            }
+        }
+        win_offset += group_size;
+    }
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)

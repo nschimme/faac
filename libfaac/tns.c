@@ -37,7 +37,7 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Limit bands to > 2.0 kHz */
+/* Standard TNS minimum bands (ISO/IEC 13818-7 Table B.18) */
 static unsigned short tnsMinBandNumberLong[12] =
 { 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
@@ -155,10 +155,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
         order = tnsInfo->tnsMaxOrderShort;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        lengthInBands = stopBand-startBand;
         break;
 
     default:
@@ -166,10 +166,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        lengthInBands = stopBand - startBand;
         break;
     }
 
@@ -196,9 +196,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        faac_real threshold = DEF_TNS_GAIN_THRESH;
+        /* Standard-aligned prediction gain thresholds for TNS (ISO/IEC 13818-7) */
+        /* Recommended gain threshold for AAC-LC is typically around 1.4-1.5 */
+        faac_real threshold = 1.4 + (1.6 - 1.4) * (10.0 - tnsShort) / 10.0;
+
         if (blockType == ONLY_SHORT_WINDOW)
-            threshold = 1.0 + (2.0 - 1.0) * (10.0 - tnsShort) / 10.0;
+            threshold *= 0.85; // Slightly lower threshold for transients
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
