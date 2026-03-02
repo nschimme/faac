@@ -12,18 +12,6 @@ TYPES = ["sine", "sweep", "noise", "harpsichord", "castanets", "applause", "sile
 DATA_DIR = "tests/data"
 OUTPUT_DIR = "tests/output"
 
-def get_md5(filename):
-    hash_md5 = hashlib.md5()
-    with open(filename, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
-
-def get_binary_size(path):
-    if os.path.exists(path):
-        return os.path.getsize(path)
-    return 0
-
 def run_visqol(ref_wav, deg_wav, rate):
     """Run ViSQOL and parse MOS score."""
     try:
@@ -37,24 +25,16 @@ def run_visqol(ref_wav, deg_wav, rate):
         pass
     return None
 
-def run_benchmark(faac_path, lib_path, precision, scalar=True):
+def run_benchmark(faac_path, precision, scalar=True):
     env = os.environ.copy()
     if scalar:
         env["FAAC_NO_SIMD"] = "1"
     env["FAAC_DUMP_MSE"] = "1"
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = {
-        "matrix": {},
-        "throughput": {},
-        "lib_size": get_binary_size(lib_path),
-        "bin_size": get_binary_size(faac_path)
-    }
+    results = {"matrix": {}, "throughput": {}}
 
-    print(f"--- Matrix Tests ({precision} precision) ---")
-    print(f"Library size: {results['lib_size']} bytes")
-
-    # Throughput subset
+    print(f"--- Throughput Tests ({precision}) ---")
     for rate in RATES:
         for t in ["sine", "noise"]:
             input_path = os.path.join(DATA_DIR, f"{t}_{rate}_long.wav")
@@ -66,10 +46,11 @@ def run_benchmark(faac_path, lib_path, precision, scalar=True):
                 subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
                 elapsed = time.time() - start_time
                 results["throughput"][f"{t}_{rate}"] = elapsed
+                print(f"Throughput {t}_{rate:<5}: {elapsed:>5.2f}s")
             except:
                 pass
 
-    # Perceptual full matrix
+    print(f"\n--- Perceptual Tests ({precision}) ---")
     for rate in RATES:
         for quality in QUALITIES:
             for t in TYPES:
@@ -100,16 +81,17 @@ def run_benchmark(faac_path, lib_path, precision, scalar=True):
                         "mse": float(mse_match.group(1)) if mse_match else 0,
                         "mos": mos
                     }
+                    if mos: print(f"{key:<25}: MOS {mos:.2f}")
                 except:
                     pass
 
     return results
 
 if __name__ == "__main__":
-    if len(sys.argv) < 5:
-        print("Usage: python3 tests/run_benchmarks.py <faac_bin_path> <lib_path> <precision_name> <output_json>")
+    if len(sys.argv) < 4:
+        print("Usage: python3 tests/run_benchmarks.py <faac_bin_path> <precision_name> <output_json>")
         sys.exit(1)
 
-    data = run_benchmark(sys.argv[1], sys.argv[2], sys.argv[3])
-    with open(sys.argv[4], "w") as f:
+    data = run_benchmark(sys.argv[1], sys.argv[2])
+    with open(sys.argv[3], "w") as f:
         json.dump(data, f, indent=2)

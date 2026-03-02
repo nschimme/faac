@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    name: Multi-Matrix Perceptual Validation
+    name: Multi-Pass Multi-Matrix Validation
     runs-on: ubuntu-latest
 
     steps:
@@ -33,59 +33,68 @@ jobs:
       - name: Generate Multi-Rate Test Suite
         run: |
           python3 optimized/tests/generate_waves.py
-          # fetch_sqam.py is skipped in CI for reliability, uses synthetic matrix
 
-      - name: Build and Run (Double Precision)
+      - name: Build and Test Precision Matrix (Performance & Quality)
         run: |
-          # Baseline
-          cd baseline
-          meson setup build_double -Dfloating-point=double --buildtype=release -Dc_args="-Os"
-          ninja -C build_double
-          cd ..
+          for precision in single double; do
+            echo "--- Testing $precision precision (Performance Mode) ---"
+            # Build Baseline
+            cd baseline
+            rm -rf build
+            meson setup build -Dfloating-point=$precision --buildtype=release
+            ninja -C build
+            cd ..
 
-          # Optimized
-          cd optimized
-          meson setup build_double -Dfloating-point=double --buildtype=release -Dc_args="-Os"
-          ninja -C build_double
-          cd ..
+            # Build Optimized
+            cd optimized
+            rm -rf build
+            meson setup build -Dfloating-point=$precision --buildtype=release
+            ninja -C build
+            cd ..
 
-          python3 optimized/tests/run_benchmarks.py baseline/build_double/frontend/faac baseline/build_double/libfaac/libfaac.so double_base double_base.json
-          python3 optimized/tests/run_benchmarks.py optimized/build_double/frontend/faac optimized/build_double/libfaac/libfaac.so double_opt double_opt.json
+            python3 optimized/tests/run_benchmarks.py baseline/build/frontend/faac ${precision}_base ${precision}_base.json
+            python3 optimized/tests/run_benchmarks.py optimized/build/frontend/faac ${precision}_opt ${precision}_opt.json
 
-          echo "### Double Precision Matrix ###" >> report.txt
-          python3 optimized/tests/compare_results.py double_base.json double_opt.json >> report.txt
+            echo "### $precision Precision Matrix ###" >> report.txt
+            python3 optimized/tests/compare_results.py ${precision}_base.json ${precision}_opt.json >> report.txt
+          done
 
-      - name: Build and Run (Single Precision)
+      - name: Build and Measure Size Optimized (Footprint Mode)
         run: |
-          # Baseline
-          cd baseline
-          meson setup build_single -Dfloating-point=single --buildtype=release -Dc_args="-Os"
-          ninja -C build_single
-          cd ..
+          for precision in single double; do
+            echo "--- Measuring $precision size (-Os) ---"
+            # Build Baseline
+            cd baseline
+            rm -rf build_size
+            meson setup build_size -Dfloating-point=$precision --buildtype=release -Dc_args="-Os"
+            ninja -C build_size
+            cd ..
 
-          # Optimized
-          cd optimized
-          meson setup build_single -Dfloating-point=single --buildtype=release -Dc_args="-Os"
-          ninja -C build_single
-          cd ..
+            # Build Optimized
+            cd optimized
+            rm -rf build_size
+            meson setup build_size -Dfloating-point=$precision --buildtype=release -Dc_args="-Os"
+            ninja -C build_size
+            cd ..
 
-          python3 optimized/tests/run_benchmarks.py baseline/build_single/frontend/faac baseline/build_single/libfaac/libfaac.so single_base single_base.json
-          python3 optimized/tests/run_benchmarks.py optimized/build_single/frontend/faac optimized/build_single/libfaac/libfaac.so single_opt single_opt.json
+            python3 optimized/tests/measure_size.py baseline/build_size/libfaac/libfaac.so baseline/build_size/frontend/faac ${precision}_size_base.json
+            python3 optimized/tests/measure_size.py optimized/build_size/libfaac/libfaac.so optimized/build_size/frontend/faac ${precision}_size_opt.json
 
-          echo -e "\n\n### Single Precision Matrix ###" >> report.txt
-          python3 optimized/tests/compare_results.py single_base.json single_opt.json >> report.txt
+            echo -e "\n### $precision Size Footprint (-Os) ###" >> report.txt
+            # We use a simple JSON compare for size
+            python3 -c "import json; b=json.load(open('${precision}_size_base.json')); o=json.load(open('${precision}_size_opt.json')); print(f'Library Size Change: {((o[\"lib_size\"]/b[\"lib_size\"])-1)*100:+.2f}% ({b[\"lib_size\"]} -> {o[\"lib_size\"]})')" >> report.txt
+          done
 
       - name: Publish Report
         run: |
           cat report.txt
-          # Fail if any test case in optimized reports FAIL
           if grep -q "FAIL" report.txt; then
-            echo "Quality regression detected!"
+            echo "Regression detected!"
             exit 1
           fi
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: qualitative-report
+          name: multi-pass-report
           path: report.txt

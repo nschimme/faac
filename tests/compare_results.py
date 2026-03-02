@@ -50,11 +50,6 @@ def compare(base_file, opt_file):
     print("-" * 105)
     improvement = (1 - total_opt_t/total_base_t)*100 if total_base_t > 0 else 0
     print(f"OVERALL CPU REDUCTION: {improvement:.1f}%")
-
-    base_lib = base.get("lib_size", 0)
-    opt_lib = opt.get("lib_size", 0)
-    if base_lib > 0:
-        print(f"LIBRARY SIZE CHANGE: {((opt_lib/base_lib)-1)*100:+.2f}% ({base_lib} -> {opt_lib} bytes)")
     print("=" * 105)
 
 if __name__ == "__main__":
