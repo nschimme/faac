@@ -205,6 +205,7 @@ static help_t help_advanced[] = {
     {"--no-bit-reservoir\tDisable bit reservoir.\n"},
     {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
     {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
+    {"--noise-gate X\tPsychoacoustic noise gate level (0-10, default 0).\n"},
     {0}
 };
 
@@ -471,6 +472,7 @@ int main(int argc, char *argv[])
     static int bitReservoir = 5;
     static int spreading = 5;
     static int tnsShort = 5;
+    static int noiseGate = 0;
 
     FILE *outfile = NULL;
 
@@ -530,6 +532,7 @@ int main(int argc, char *argv[])
             {"no-tns-short", 0, NULL, 'T'},
             {"spreading", 1, NULL, 'S'},
             {"tns-short", 1, NULL, 'T'},
+            {"noise-gate", 1, NULL, 'G'},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -801,6 +804,9 @@ int main(int argc, char *argv[])
             if (optarg) tnsShort = atoi(optarg);
             else tnsShort = 0;
             break;
+        case 'G':
+            if (optarg) noiseGate = atoi(optarg);
+            break;
         case 'v':
             verbose = atoi(optarg);
             break;
@@ -974,6 +980,7 @@ int main(int argc, char *argv[])
     myFormat->bitReservoir = bitReservoir;
     myFormat->spreading = spreading;
     myFormat->tnsShort = tnsShort;
+    myFormat->noiseGate = noiseGate;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

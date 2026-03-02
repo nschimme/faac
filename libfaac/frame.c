@@ -166,7 +166,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
+        faac_real bw_fac = g_bw.fac;
+        /* Smoothly adjust bandwidth multiplier based on sample rate */
+        if (hEncoder->sampleRate < 32000)
+        {
+            faac_real boost = 1.0 + 0.4 * (32000.0 - hEncoder->sampleRate) / (32000.0 - 8000.0);
+            bw_fac *= boost;
+        }
+
+        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * bw_fac / 50000.0;
         if (config->bandWidth > g_bw.freq)
             config->bandWidth = g_bw.freq;
 
@@ -211,6 +219,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     hEncoder->aacquantCfg.spreading = config->spreading;
+    hEncoder->aacquantCfg.noiseGate = config->noiseGate;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -292,6 +301,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitReservoir = 5;
     hEncoder->config.spreading = 5;
     hEncoder->config.tnsShort = 5;
+    hEncoder->config.noiseGate = 0;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
