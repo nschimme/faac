@@ -10,9 +10,10 @@ The following features have been added to improve perceived audio quality in FAA
    - *Tuning*: Level-based control (0-10) scales the masking slopes (~17-20dB/bark).
 3. **TNS for Short Blocks**: Reduces pre-echo artifacts in sharp transients (e.g., door clicks).
    - *Tuning*: Adjust `DEF_TNS_GAIN_THRESH` in `libfaac/coder.h` to change TNS sensitivity.
-4. **Enhanced Block Switching**: Improved sensitivity for low sample rates (8-22kHz) common in IOT.
-5. **Adaptive Quantization Bias**: Dynamically adjusts rounding to reduce ringing in upper frequencies.
-6. **Conservative M/S Decision**: Better bit allocation in stereo modes by avoiding unstable side-channels.
+4. **Enhanced Block Switching**: Smoothly adjusts sensitivity (1.5-3.0 threshold) based on sample rate, ensuring transients are preserved even at low rates (8-22kHz).
+5. **Adaptive Quantization Bias**: Dynamically adjusts rounding (0.405 -> 0.38) for upper frequencies to reduce ringing, aligning with standard AAC-LC optimizations.
+6. **Conservative M/S Decision**: Refined mid/side decision logic to ensure stable stereo imaging and bit efficiency.
+7. **ATH Suppression**: Industry-standard Absolute Threshold of Hearing (ATH) model suppresses inaudible noise to save bits.
 
 ## Iterative Improvement Process
 
