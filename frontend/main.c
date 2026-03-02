@@ -206,6 +206,7 @@ static help_t help_advanced[] = {
     {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
     {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
     {"--ath-level X\tATH suppression level (0-10, default 0).\n"},
+    {"--huffman-opt X\tHuffman optimization level (0-10, default 5).\n"},
     {0}
 };
 
@@ -473,6 +474,7 @@ int main(int argc, char *argv[])
     static int spreading = 5;
     static int tnsShort = 5;
     static int athLevel = 5;
+    static int huffmanOpt = 5;
 
     FILE *outfile = NULL;
 
@@ -533,6 +535,7 @@ int main(int argc, char *argv[])
             {"spreading", 1, NULL, 'S'},
             {"tns-short", 1, NULL, 'T'},
             {"ath-level", 1, NULL, 'G'},
+            {"huffman-opt", 1, NULL, 'H'},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -807,6 +810,9 @@ int main(int argc, char *argv[])
         case 'G':
             if (optarg) athLevel = atoi(optarg);
             break;
+        case 'H':
+            if (optarg) huffmanOpt = atoi(optarg);
+            break;
         case 'v':
             verbose = atoi(optarg);
             break;
@@ -814,7 +820,6 @@ int main(int argc, char *argv[])
         case HELP_IO:
         case HELP_MP4:
         case HELP_ADVANCED:
-        case 'H':
         case 'h':
             help(c);
             return 1;
@@ -981,6 +986,7 @@ int main(int argc, char *argv[])
     myFormat->spreading = spreading;
     myFormat->tnsShort = tnsShort;
     myFormat->athLevel = athLevel;
+    myFormat->huffmanOpt = huffmanOpt;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

@@ -88,6 +88,9 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    /* ATH Table */
+    faac_real ath_table[BLOCK_LEN_LONG];
+
     /* FFT Tables */
     FFT_Tables	fft_tables;
 } faacEncStruct;

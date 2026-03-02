@@ -33,6 +33,7 @@ typedef struct
     int pnslevel;
     int spreading;
     int athLevel;
+    int huffmanOpt;
     faac_real tonality[MAX_SCFAC_BANDS];
 } AACQuantCfg;
 
@@ -44,7 +45,7 @@ enum {
     SF_OFFSET = 100,
 };
 
-int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg, int *pns_state);
+int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg, int *pns_state, faac_real *ath_table);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);

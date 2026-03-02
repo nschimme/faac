@@ -220,6 +220,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     hEncoder->aacquantCfg.spreading = config->spreading;
     hEncoder->aacquantCfg.athLevel = config->athLevel;
+    hEncoder->aacquantCfg.huffmanOpt = config->huffmanOpt;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -252,7 +253,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
                                   unsigned long *inputSamples,
                                   unsigned long *maxOutputBytes)
 {
-    unsigned int channel;
+    unsigned int channel, i;
     faacEncStruct* hEncoder;
 
     if (numChannels > MAX_CHANNELS)
@@ -274,6 +275,20 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     hEncoder->bitResMax = 6144 * numChannels;
     hEncoder->bitResLevel = hEncoder->bitResMax;
+
+    /* Initialize ATH table for this instance */
+    for (i = 0; i < BLOCK_LEN_LONG; i++)
+    {
+        faac_real freq = (faac_real)i * (faac_real)sampleRate / (BLOCK_LEN_LONG * 2.0);
+        faac_real fkHz = freq / 1000.0;
+        faac_real ath;
+        if (fkHz < 0.1) fkHz = 0.1;
+        ath = 3.64 * FAAC_POW(fkHz, -0.8)
+              - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
+              + 0.001 * FAAC_POW(fkHz, 4.0);
+
+        hEncoder->ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+    }
 
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
@@ -302,6 +317,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.spreading = 5;
     hEncoder->config.tnsShort = 5;
     hEncoder->config.athLevel = 5;
+    hEncoder->config.huffmanOpt = 5;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
@@ -614,7 +630,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state, hEncoder->ath_table);
     }
 
 #ifdef DRM

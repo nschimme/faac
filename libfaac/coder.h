@@ -112,6 +112,10 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    int quantized_spectrum[FRAME_LEN];
+    int band_widths[MAX_SCFAC_BANDS];
+    int quant_spec_idx;
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
