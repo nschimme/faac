@@ -201,6 +201,7 @@ static help_t help_advanced[] = {
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
+    {"--bit-reservoir X\tBit reservoir level (0-10, default 5).\n"},
     {"--no-bit-reservoir\tDisable bit reservoir.\n"},
     {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
     {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
@@ -467,7 +468,7 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = SHORTCTL_NORMAL;
-    static int bitReservoir = 1;
+    static int bitReservoir = 5;
     static int spreading = 5;
     static int tnsShort = 5;
 
@@ -523,6 +524,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         static struct option long_options[] = {
+            {"bit-reservoir", 1, NULL, 'V'},
             {"no-bit-reservoir", 0, &bitReservoir, 0},
             {"no-spreading", 0, NULL, 'S'},
             {"no-tns-short", 0, NULL, 'T'},
@@ -786,6 +788,10 @@ int main(int argc, char *argv[])
             break;
         case 'X':
             rawEndian = 0;
+            break;
+        case 'V':
+            if (optarg) bitReservoir = atoi(optarg);
+            else bitReservoir = 0;
             break;
         case 'S':
             if (optarg) spreading = atoi(optarg);

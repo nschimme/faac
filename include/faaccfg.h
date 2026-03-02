@@ -129,7 +129,7 @@ typedef struct faacEncConfiguration
     int pnslevel;
 
     /* Quality improvements */
-    int bitReservoir; /* 0 or 1 (default: 1) */
+    int bitReservoir; /* 0 to 10 (default: 5) */
     int spreading;    /* 0 to 10 (default: 5) */
     int tnsShort;     /* 0 to 10 (default: 5) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
