@@ -43,7 +43,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
 
-        *(__m128i*)(xi + cnt) = _mm_cvttps_epi32(x);
+        _mm_storeu_si128((__m128i*)(xi + cnt), _mm_cvttps_epi32(x));
     }
 
     for (cnt = 0; cnt < n; cnt++)
