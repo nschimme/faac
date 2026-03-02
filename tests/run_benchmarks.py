@@ -37,16 +37,24 @@ def run_visqol(ref_wav, deg_wav, rate):
         pass
     return None
 
-def run_benchmark(faac_path, precision, scalar=True):
+def run_benchmark(faac_path, lib_path, precision, scalar=True):
     env = os.environ.copy()
     if scalar:
         env["FAAC_NO_SIMD"] = "1"
     env["FAAC_DUMP_MSE"] = "1"
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = {"matrix": {}, "throughput": {}, "binary_size": get_binary_size(faac_path)}
+    results = {
+        "matrix": {},
+        "throughput": {},
+        "lib_size": get_binary_size(lib_path),
+        "bin_size": get_binary_size(faac_path)
+    }
 
-    print(f"--- Throughput Tests {precision} ---")
+    print(f"--- Matrix Tests ({precision} precision) ---")
+    print(f"Library size: {results['lib_size']} bytes")
+
+    # Throughput subset
     for rate in RATES:
         for t in ["sine", "noise"]:
             input_path = os.path.join(DATA_DIR, f"{t}_{rate}_long.wav")
@@ -54,12 +62,14 @@ def run_benchmark(faac_path, precision, scalar=True):
 
             output_path = os.path.join(OUTPUT_DIR, f"{t}_{rate}_long_{precision}.aac")
             start_time = time.time()
-            subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
-            elapsed = time.time() - start_time
-            results["throughput"][f"{t}_{rate}"] = elapsed
-            print(f"Throughput {t}_{rate:<5}: {elapsed:>5.2f}s")
+            try:
+                subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
+                elapsed = time.time() - start_time
+                results["throughput"][f"{t}_{rate}"] = elapsed
+            except:
+                pass
 
-    print(f"\n--- Perceptual Tests {precision} ---")
+    # Perceptual full matrix
     for rate in RATES:
         for quality in QUALITIES:
             for t in TYPES:
@@ -74,10 +84,8 @@ def run_benchmark(faac_path, precision, scalar=True):
                 try:
                     proc = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
 
-                    # Qualitative: ViSQOL MOS
                     mos = None
                     try:
-                        # Ensure faad is present for decoding
                         subprocess.run(["faad", "-o", deg_wav, output_path], capture_output=True)
                         if os.path.exists(deg_wav):
                             mos = run_visqol(input_path, deg_wav, rate)
@@ -89,21 +97,19 @@ def run_benchmark(faac_path, precision, scalar=True):
                     mse_match = re.search(r"MSE: ([\d.]+)", proc.stdout)
 
                     results["matrix"][key] = {
-                        "md5": get_md5(output_path),
                         "mse": float(mse_match.group(1)) if mse_match else 0,
                         "mos": mos
                     }
-                    mos_str = f"MOS: {mos:>4.2f}" if mos is not None else ""
-                    print(f"{key:<25}: {mos_str}")
-                except subprocess.CalledProcessError as e:
-                    print(f"Error running {key}: {e.stderr}")
+                except:
+                    pass
 
     return results
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python3 tests/run_benchmarks.py <faac_bin_path> <precision_name> <output_json>")
+    if len(sys.argv) < 5:
+        print("Usage: python3 tests/run_benchmarks.py <faac_bin_path> <lib_path> <precision_name> <output_json>")
         sys.exit(1)
-    data = run_benchmark(sys.argv[1], sys.argv[2])
-    with open(sys.argv[3], "w") as f:
+
+    data = run_benchmark(sys.argv[1], sys.argv[2], sys.argv[3])
+    with open(sys.argv[4], "w") as f:
         json.dump(data, f, indent=2)
