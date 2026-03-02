@@ -14,6 +14,15 @@ if (cpu_family in ['x86', 'x86_64'])
         c_args: c_args + sse2_flag
     )
     quantize_simd_libs += quantize_sse
+
+    if get_option('avx2')
+        avx2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:AVX2'] : ['-mavx2', '-mfma']
+        quantize_avx = static_library('quantize_avx', 'quantize_avx.c',
+            include_directories: ['..', '../include'],
+            c_args: c_args + avx2_flag
+        )
+        quantize_simd_libs += quantize_avx
+    endif
 endif
 
 common_src = [

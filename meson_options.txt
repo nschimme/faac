@@ -13,3 +13,8 @@ option('floating-point',
     type: 'combo',
     choices: ['single', 'double'],
     value: 'double')
+
+option('avx2',
+    description: 'Build with AVX2 support',
+    type: 'boolean',
+    value: true)

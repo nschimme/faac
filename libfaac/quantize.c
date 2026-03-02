@@ -18,6 +18,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,10 +42,13 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#ifdef HAVE_AVX2
+extern void quantize_avx2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
 #endif
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-static QuantizeFunc qfunc = quantize_scalar;
+static QuantizeFunc qfunc_ptr = quantize_scalar;
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
@@ -64,11 +71,32 @@ void QuantizeInit(void)
 {
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
     unsigned int caps = get_cpu_caps();
-    if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
-    else
+    const char *no_simd = getenv("FAAC_NO_SIMD");
+    const char *no_avx2 = getenv("FAAC_NO_AVX2");
+
+    if (no_simd && atoi(no_simd))
+    {
+        qfunc_ptr = quantize_scalar;
+        return;
+    }
+
+    qfunc_ptr = quantize_scalar;
+
+    if ((caps & CPU_CAP_AVX2) && !(no_avx2 && atoi(no_avx2)))
+    {
+#ifdef HAVE_AVX2
+        qfunc_ptr = quantize_avx2;
+#else
+        qfunc_ptr = quantize_sse2;
 #endif
-        qfunc = quantize_scalar;
+    }
+    else if (caps & CPU_CAP_SSE2)
+    {
+        qfunc_ptr = quantize_sse2;
+    }
+#else
+    qfunc_ptr = quantize_scalar;
+#endif
 }
 #define NOISEFLOOR 0.4
 
@@ -243,7 +271,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc_ptr(xr, xi, end, sfacfix);
               xi += end;
           }
       }
