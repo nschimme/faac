@@ -292,7 +292,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           /* More conservative PNS to reduce watery artifacts.
              A lower threshold means we only trigger PNS for very noise-like bands. */
           faac_real tonality_thr = 1.4;
-          if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000) tonality_thr = 1.1;
+          if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000) tonality_thr = 1.0;
+
+          /* Disable PNS for low frequency bands to preserve speech harmonics */
+          if (start < 16) tonality_thr = 0.0;
 
           if ((bandlvl_stable[sb] < thr) || (tonality[sb] < tonality_thr))
           {
@@ -436,15 +439,21 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
     int cnt;
     int l;
-    int bitratePerChannel = aacquantCfg->quality; // In bit/s/channel
+    int bitratePerChannel = aacquantCfg->quality;
 
-    /* Refine bandwidth for low bitrates to prevent metallic artifacts.
-       Only apply if quality is actually representing bitrate (CBR/ABR modes, > 1000).
-       Standard VBR quality settings (10-500) are ignored here. */
-    if (bitratePerChannel > 1000 && bitratePerChannel < 24000)
+    /* Approximate bitrate for VBR mode (quality < 1000) */
+    if (bitratePerChannel < 1000)
     {
-        int maxBW = 4500;
-        if (bitratePerChannel < 16000) maxBW = 3500;
+        /* quality 100 approx 64kbps stereo, so 32kbps mono. */
+        bitratePerChannel = bitratePerChannel * 320;
+    }
+
+    /* Refine bandwidth for low bitrates to prevent metallic artifacts. */
+    if (bitratePerChannel < 24000)
+    {
+        int maxBW = 5500;
+        if (bitratePerChannel < 16000) maxBW = 4500;
+        if (bitratePerChannel < 12000) maxBW = 3500;
         if (*bw > maxBW) *bw = maxBW;
     }
 

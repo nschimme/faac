@@ -37,11 +37,11 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Limit bands to > 2.0 kHz */
+/* Expanded TNS coverage for better click suppression */
 static unsigned short tnsMinBandNumberLong[12] =
-{ 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
+{ 5, 6, 8, 10, 10, 12, 15, 16, 16, 18, 20, 20 };
 static unsigned short tnsMinBandNumberShort[12] =
-{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
+{ 1, 1, 1, 2, 2, 3, 4, 4, 6, 8, 8, 10 };
 
 /**************************************/
 /* Main/Low Profile TNS Parameters    */
