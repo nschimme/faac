@@ -472,7 +472,7 @@ int main(int argc, char *argv[])
     static int bitReservoir = 5;
     static int spreading = 5;
     static int tnsShort = 5;
-    static int athLevel = 0;
+    static int athLevel = 5;
 
     FILE *outfile = NULL;
 

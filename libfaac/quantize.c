@@ -91,7 +91,7 @@ void QuantizeInit(void)
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
-                  faac_real * __restrict tonality)
+                  faac_real * __restrict tonality, faac_real * __restrict bandlvl_stable)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -183,6 +183,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
     bandlvl[sfb] = target * quality;
+    if (bandlvl_stable)
+        bandlvl_stable[sfb] = target;
   }
 
   /* Standard-aligned frequency spreading (energy domain) */
@@ -351,15 +353,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             faac_real bandlvl_stable[MAX_SCFAC_BANDS];
 
-            /* Calculate stable masking for PNS decision (quality=1.0) */
-            bmask(coder, gxr, bandlvl_stable, bandenrg, cnt,
-                  1.0, aacquantCfg->spreading, aacquantCfg->athLevel,
-                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
-
-            /* Calculate dynamic masking for actual quantization */
+            /* Optimized single-pass masking calculation */
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
-                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
+                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
+                  bandlvl_stable);
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
