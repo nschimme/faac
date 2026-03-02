@@ -32,7 +32,7 @@ typedef struct
     int max_l;
     int pnslevel;
     int spreading;
-    int noiseGate;
+    int athLevel;
 } AACQuantCfg;
 
 enum {

@@ -219,7 +219,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     hEncoder->aacquantCfg.spreading = config->spreading;
-    hEncoder->aacquantCfg.noiseGate = config->noiseGate;
+    hEncoder->aacquantCfg.athLevel = config->athLevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -301,7 +301,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitReservoir = 5;
     hEncoder->config.spreading = 5;
     hEncoder->config.tnsShort = 5;
-    hEncoder->config.noiseGate = 0;
+    hEncoder->config.athLevel = 0;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
