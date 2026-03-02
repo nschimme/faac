@@ -132,7 +132,7 @@ typedef struct faacEncConfiguration
     int bitReservoir; /* 0 to 10 (default: 5) */
     int spreading;    /* 0 to 10 (default: 5) */
     int tnsShort;     /* 0 to 10 (default: 5) */
-    int noiseGate;    /* 0 to 10 (default: 0 - off) */
+    int athLevel;     /* 0 to 10 (default: 0 - off) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

@@ -74,7 +74,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int noiseGate)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -180,7 +180,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandenrg[sfb] = spread[sfb];
   }
 
-  if (noiseGate > 0)
+  if (athLevel > 0)
   {
       /* Industry standard ATH (Absolute Threshold of Hearing) approximation.
          Prevents allocating bits to noise that is inaudible.
@@ -200,7 +200,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
                 + 0.001 * FAAC_POW(fkHz, 4.0);
 
           /* Convert dB to energy-ish units for comparison with bandenrg */
-          faac_real ath_enrg = FAAC_POW(10.0, (ath - 20.0) / 10.0) * noiseGate * 0.1;
+          faac_real ath_enrg = FAAC_POW(10.0, (ath - 20.0) / 10.0) * athLevel * 0.1;
 
           if (bandenrg[sfb] < ath_enrg)
               bandqual[sfb] = 0.0;
@@ -327,7 +327,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->noiseGate);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
