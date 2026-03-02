@@ -428,7 +428,8 @@ int huffbook(CoderInfo *coder,
         if (maxq >= 13) start_book = 11;
         else if (maxq >= 8) start_book = 9;
         else if (maxq >= 5) start_book = 7;
-        else if (maxq >= 2) start_book = 5;
+        else if (maxq >= 3) start_book = 5;
+        else if (maxq >= 2) start_book = 3;
 
         if (coder->bandcnt > 0)
             prev_book = coder->book[coder->bandcnt - 1];
@@ -436,6 +437,9 @@ int huffbook(CoderInfo *coder,
         if (prev_book < 1 || prev_book > 11)
             prev_book = HCB_ZERO;
 
+        /* Standard section overhead: 3 bits for short, 5 bits for long block length
+           plus 4 bits for codebook index = 7 or 9 bits.
+           Actually for long blocks it can be up to 5 bits for length, so 9 is a safe min. */
         section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
 
         lenmin = 0x7FFFFFFF;

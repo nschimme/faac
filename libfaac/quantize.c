@@ -154,9 +154,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* Optimized tonality: simplified peak-to-average ratio */
     if (avge > 0.0001)
-        tonality[sfb] = maxe * (end - start) / avge;
+    {
+        faac_real par = maxe * (end - start) / avge;
+        tonality[sfb] = par;
+    }
     else
+    {
         tonality[sfb] = 0;
+    }
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
@@ -230,7 +235,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    int pnslevel,
                    const faac_real * __restrict tonality,
                    int *pns_state,
-                   const faac_real * __restrict bandlvl_stable
+                   const faac_real * __restrict bandlvl_stable,
+                   AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -283,7 +289,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           faac_real thr = pnsthr;
           if (prev_pns) thr *= 2.0;
 
-          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < 1.8))
+          /* More conservative PNS to reduce watery artifacts.
+             A lower threshold means we only trigger PNS for very noise-like bands. */
+          faac_real tonality_thr = 1.4;
+          if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000) tonality_thr = 1.1;
+
+          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < tonality_thr))
           {
               pns_state[coderInfo->bandcnt] = 1;
               coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
@@ -315,7 +326,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               faac_real magic = MAGIC_NUMBER;
               /* Lower bias for high frequencies to reduce ringing */
               if (sb > (coderInfo->sfbn * 2 / 3))
-                  magic = 0.38;
+              {
+                  if (aacquantCfg->quality > 1000 && aacquantCfg->quality < 24000)
+                      magic = 0.35; // More aggressive reduction for very low bitrates
+                  else
+                      magic = 0.38;
+              }
 
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix, magic);
@@ -361,7 +377,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
-                   pns_state, bandlvl_stable);
+                   pns_state, bandlvl_stable, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -422,8 +438,10 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     int l;
     int bitratePerChannel = aacquantCfg->quality; // In bit/s/channel
 
-    /* Refine bandwidth for low bitrates to prevent metallic artifacts */
-    if (bitratePerChannel < 24000)
+    /* Refine bandwidth for low bitrates to prevent metallic artifacts.
+       Only apply if quality is actually representing bitrate (CBR/ABR modes, > 1000).
+       Standard VBR quality settings (10-500) are ignored here. */
+    if (bitratePerChannel > 1000 && bitratePerChannel < 24000)
     {
         int maxBW = 4500;
         if (bitratePerChannel < 16000) maxBW = 3500;
