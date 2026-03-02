@@ -42,11 +42,12 @@ def main():
         generate_test_wav(wav_file, type=test_type)
 
         configs = [
-            ("New (All On)", []),
-            ("Old (All Off)", ["--no-bit-reservoir", "--no-spreading", "--no-tns-short"]),
+            ("New (Default)", []),
+            ("New (Level 10)", ["--spreading", "10", "--tns-short", "10"]),
+            ("Old (All Off)", ["--no-bit-reservoir", "--spreading", "0", "--tns-short", "0"]),
             ("No Reservoir", ["--no-bit-reservoir"]),
-            ("No Spreading", ["--no-spreading"]),
-            ("No TNS Short", ["--no-tns-short"]),
+            ("No Spreading", ["--spreading", "0"]),
+            ("No TNS Short", ["--tns-short", "0"]),
         ]
 
         bitrate = "32"

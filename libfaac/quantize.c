@@ -163,14 +163,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandqual[sfb] = target * quality;
   }
 
-  if (spreading)
+  if (spreading > 0)
   {
       faac_real spread[MAX_SCFAC_BANDS];
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
           faac_real s = bandqual[sfb];
-          if (sfb > 0) s = max(s, bandqual[sfb - 1] * 0.3);
-          if (sfb < coderInfo->sfbn - 1) s = max(s, bandqual[sfb + 1] * 0.2);
+          if (sfb > 0) s = max(s, bandqual[sfb - 1] * 0.06 * spreading);
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandqual[sfb + 1] * 0.04 * spreading);
           spread[sfb] = s;
       }
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
