@@ -132,7 +132,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                int maxSfb,              /* max_sfb */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
-               faac_real* spec)            /* Spectral data array */
+               faac_real* spec,            /* Spectral data array */
+               int tnsShort)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -144,9 +145,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        if (!tnsShort)
+        {
+            tnsInfo->tnsDataPresent = 0;
+            return;
+        }
 
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
@@ -160,7 +163,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;

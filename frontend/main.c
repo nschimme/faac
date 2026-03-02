@@ -201,6 +201,9 @@ static help_t help_advanced[] = {
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
+    {"--no-bit-reservoir\tDisable bit reservoir.\n"},
+    {"--no-spreading\tDisable frequency spreading.\n"},
+    {"--no-tns-short\tDisable TNS for short blocks.\n"},
     {0}
 };
 
@@ -464,6 +467,9 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = SHORTCTL_NORMAL;
+    static int bitReservoir = 1;
+    static int spreading = 1;
+    static int tnsShort = 1;
 
     FILE *outfile = NULL;
 
@@ -517,6 +523,9 @@ int main(int argc, char *argv[])
     while (1)
     {
         static struct option long_options[] = {
+            {"no-bit-reservoir", 0, &bitReservoir, 0},
+            {"no-spreading", 0, &spreading, 0},
+            {"no-tns-short", 0, &tnsShort, 0},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -946,6 +955,9 @@ int main(int argc, char *argv[])
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
     myFormat->bandWidth = cutOff;
+    myFormat->bitReservoir = bitReservoir;
+    myFormat->spreading = spreading;
+    myFormat->tnsShort = tnsShort;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

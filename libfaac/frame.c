@@ -125,6 +125,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
 
+    hEncoder->config.bitReservoir = config->bitReservoir;
+    hEncoder->config.spreading = config->spreading;
+    hEncoder->config.tnsShort = config->tnsShort;
+
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     switch( hEncoder->config.inputFormat )
@@ -206,6 +210,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.spreading = config->spreading;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -258,6 +263,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
+    hEncoder->bitResMax = 6144 * numChannels;
+    hEncoder->bitResLevel = hEncoder->bitResMax;
+
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
@@ -280,6 +288,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->psymodel =
       (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
+
+    hEncoder->config.bitReservoir = 1;
+    hEncoder->config.spreading = 1;
+    hEncoder->config.tnsShort = 1;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
@@ -559,7 +571,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel],
+                      hEncoder->config.tnsShort);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -646,7 +659,38 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int usedbits = frameBytes * 8;
+        faac_real fix;
+
+        if (hEncoder->config.bitReservoir)
+        {
+            faac_real totalpe = 0;
+            int bit_allocation;
+            int bitres_des;
+
+            for (channel = 0; channel < numChannels; channel++)
+                totalpe += hEncoder->psyInfo[channel].pe;
+
+            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW);
+            bitres_des = (desbits * 3 / 2); // limit to 150% of avg bits
+
+            if (bit_allocation > bitres_des)
+                bit_allocation = bitres_des;
+            if (bit_allocation < desbits / 2)
+                bit_allocation = desbits / 2;
+
+            hEncoder->bitResLevel += desbits - usedbits;
+            if (hEncoder->bitResLevel > hEncoder->bitResMax)
+                hEncoder->bitResLevel = hEncoder->bitResMax;
+            if (hEncoder->bitResLevel < 0)
+                hEncoder->bitResLevel = 0;
+
+            fix = (faac_real)(bit_allocation + (hEncoder->bitResLevel - hEncoder->bitResMax / 2) / 8) / (faac_real)usedbits;
+        }
+        else
+        {
+            fix = (faac_real)desbits / (faac_real)usedbits;
+        }
 
         if (fix < 0.9)
             fix += 0.1;
