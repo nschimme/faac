@@ -21,7 +21,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc faad
+          sudo apt-get install -y meson ninja-build bc faad ffmpeg
           pip install meson
 
       - name: Install dependencies (macOS)
@@ -40,6 +40,18 @@ jobs:
           # Use cargo to install visqol tool
           cargo install visqol
 
+      - name: Cache Datasets
+        id: cache-datasets
+        uses: actions/cache@v3
+        with:
+          path: tests/data/external
+          key: ${{ runner.os }}-datasets-v1
+
+      - name: Setup Datasets
+        if: steps.cache-datasets.outputs.cache-hit != 'true'
+        run: |
+          python3 tests/setup_datasets.py
+
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
@@ -51,9 +63,6 @@ jobs:
           ref: ${{ github.base_ref }}
           path: baseline
 
-      - name: Generate Multi-Rate Test Suite
-        run: |
-          python3 optimized/tests/generate_waves.py
 
       - name: Build and Run Matrix
         shell: bash
