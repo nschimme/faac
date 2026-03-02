@@ -43,6 +43,7 @@ extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, 
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 static QuantizeFunc qfunc = quantize_scalar;
+static faac_real ath_table[BLOCK_LEN_LONG];
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
@@ -62,6 +63,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 void QuantizeInit(void)
 {
+    int i;
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
     unsigned int caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -69,6 +71,20 @@ void QuantizeInit(void)
     else
 #endif
         qfunc = quantize_scalar;
+
+    /* Precompute ATH table using standard Terhardt formula */
+    for (i = 0; i < BLOCK_LEN_LONG; i++)
+    {
+        faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
+        faac_real fkHz = freq / 1000.0;
+        faac_real ath;
+        if (fkHz < 0.1) fkHz = 0.1;
+        ath = 3.64 * FAAC_POW(fkHz, -0.8)
+              - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
+              + 0.001 * FAAC_POW(fkHz, 4.0);
+
+        ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+    }
 }
 #define NOISEFLOOR 0.4
 
@@ -136,9 +152,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
-    /* Simplified tonality: peak-to-average ratio */
-    if (avge > 0)
-        tonality[sfb] = maxe / (avge / (end - start));
+    /* Optimized tonality: simplified peak-to-average ratio */
+    if (avge > 0.0001)
+        tonality[sfb] = maxe * (end - start) / avge;
     else
         tonality[sfb] = 0;
 
@@ -189,27 +205,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   if (athLevel > 0)
   {
-      /* Industry standard ATH (Absolute Threshold of Hearing) approximation.
-         Prevents allocating bits to noise that is inaudible.
-         Level (1-10) scales the overall sensitivity. */
+      /* High-precision ATH suppression using precomputed table */
+      faac_real sensitivity = athLevel * 0.1;
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          int bstart = coderInfo->sfb_offset[sfb];
-          int bend = coderInfo->sfb_offset[sfb + 1];
-          faac_real freq = (faac_real)(bstart + bend) * 18000.0 / (BLOCK_LEN_LONG * 2.0); // approx center freq
-          faac_real ath;
+          int bcenter = (coderInfo->sfb_offset[sfb] + coderInfo->sfb_offset[sfb + 1]) >> 1;
+          if (bcenter >= BLOCK_LEN_LONG) bcenter = BLOCK_LEN_LONG - 1;
 
-          /* ATH formula (Terhardt): 3.64*(f/1000)^-0.8 - 6.5*exp(-0.6*(f/1000-3.3)^2) + 10^-3*(f/1000)^4 */
-          faac_real fkHz = freq / 1000.0;
-          if (fkHz < 0.1) fkHz = 0.1;
-          ath = 3.64 * FAAC_POW(fkHz, -0.8)
-                - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
-                + 0.001 * FAAC_POW(fkHz, 4.0);
-
-          /* Convert dB to energy-ish units for comparison with bandenrg */
-          faac_real ath_enrg = FAAC_POW(10.0, (ath - 20.0) / 10.0) * athLevel * 0.1;
-
-          if (bandenrg[sfb] < ath_enrg)
+          if (bandenrg[sfb] < ath_table[bcenter] * sensitivity)
               bandlvl[sfb] = 0.0;
       }
   }
@@ -271,29 +274,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      /* Refined PNS Trigger: uses stable masking threshold, tonality, and hysteresis */
-      if (pnslevel > 0)
+      /* Optimized PNS Trigger */
+      if (pnslevel > 0 && start > 32)
       {
-          faac_real pns_tonality_thr = 1.0 + (10.0 - pnslevel) * 0.8; // Increased threshold
           int prev_pns = pns_state[coderInfo->bandcnt];
+          faac_real thr = pnsthr;
+          if (prev_pns) thr *= 2.0;
 
-          /* Exit PNS if tonality is significantly higher (Hysteresis) */
-          if (prev_pns)
-              pns_tonality_thr *= 2.5;
-
-          /* PNS only for high frequency (>4kHz approx) to avoid speech artifacts */
-          if (start > (4000.0 * BLOCK_LEN_LONG / (18000.0 * 2.0)))
+          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < 1.8))
           {
-              /* Higher tonality threshold for entering PNS (stable decision) */
-              if ((bandlvl_stable[sb] < pnsthr) || (tonality[sb] < pns_tonality_thr * 0.7))
-              {
-                  pns_state[coderInfo->bandcnt] = 1;
-                  coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-                  coderInfo->sf[coderInfo->bandcnt] +=
-                      FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
-                  coderInfo->bandcnt++;
-                  continue;
-              }
+              pns_state[coderInfo->bandcnt] = 1;
+              coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+              coderInfo->sf[coderInfo->bandcnt] +=
+                  FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+              coderInfo->bandcnt++;
+              continue;
           }
           pns_state[coderInfo->bandcnt] = 0;
       }
