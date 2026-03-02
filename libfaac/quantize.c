@@ -225,7 +225,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    int pnslevel,
                    const faac_real * __restrict tonality,
                    int *pns_state,
-                   int *prev_pns_sf
+                   const faac_real * __restrict bandlvl_stable
                   )
 {
     int sb;
@@ -271,32 +271,29 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      /* Refined PNS Trigger: uses masking threshold, tonality, and hysteresis */
+      /* Refined PNS Trigger: uses stable masking threshold, tonality, and hysteresis */
       if (pnslevel > 0)
       {
-          faac_real pns_tonality_thr = 1.0 + (10.0 - pnslevel) * 0.5;
+          faac_real pns_tonality_thr = 1.0 + (10.0 - pnslevel) * 0.8; // Increased threshold
           int prev_pns = pns_state[coderInfo->bandcnt];
 
           /* Exit PNS if tonality is significantly higher (Hysteresis) */
           if (prev_pns)
-              pns_tonality_thr *= 1.5;
+              pns_tonality_thr *= 2.5;
 
-          if ((bandqual[sb] < pnsthr) || (tonality[sb] < pns_tonality_thr))
+          /* PNS only for high frequency (>4kHz approx) to avoid speech artifacts */
+          if (start > (4000.0 * BLOCK_LEN_LONG / (18000.0 * 2.0)))
           {
-              pns_state[coderInfo->bandcnt] = 1;
-              coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-              int target_sf = coderInfo->sf[coderInfo->bandcnt] +
-                  FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
-
-              /* PNS Scale Factor Smoothing (0.3 alpha) to prevent warbling */
-              if (prev_pns && prev_pns_sf[coderInfo->bandcnt] > 0)
-                  target_sf = (int)(0.7 * prev_pns_sf[coderInfo->bandcnt] + 0.3 * target_sf + 0.5);
-
-              coderInfo->sf[coderInfo->bandcnt] = target_sf;
-              prev_pns_sf[coderInfo->bandcnt] = target_sf;
-
-              coderInfo->bandcnt++;
-              continue;
+              /* Higher tonality threshold for entering PNS (stable decision) */
+              if ((bandlvl_stable[sb] < pnsthr) || (tonality[sb] < pns_tonality_thr * 0.7))
+              {
+                  pns_state[coderInfo->bandcnt] = 1;
+                  coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+                  coderInfo->sf[coderInfo->bandcnt] +=
+                      FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+                  coderInfo->bandcnt++;
+                  continue;
+              }
           }
           pns_state[coderInfo->bandcnt] = 0;
       }
@@ -333,7 +330,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state, int *prev_pns_sf)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -357,12 +354,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
+            faac_real bandlvl_stable[MAX_SCFAC_BANDS];
+
+            /* Calculate stable masking for PNS decision (quality=1.0) */
+            bmask(coder, gxr, bandlvl_stable, bandenrg, cnt,
+                  1.0, aacquantCfg->spreading, aacquantCfg->athLevel,
+                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
+
+            /* Calculate dynamic masking for actual quantization */
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
+
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
-                   pns_state, prev_pns_sf);
+                   pns_state, bandlvl_stable);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

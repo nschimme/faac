@@ -606,8 +606,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
+        /* Reset PNS state if block type changed (standard practice to avoid warbling) */
+        if (coderInfo[channel].block_type != hEncoder->psyInfo[channel].prev_block_type)
+        {
+            memset(hEncoder->psyInfo[channel].pns_state, 0, sizeof(hEncoder->psyInfo[channel].pns_state));
+            hEncoder->psyInfo[channel].prev_block_type = coderInfo[channel].block_type;
+        }
+
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state, hEncoder->psyInfo[channel].prev_pns_sf);
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
     }
 
 #ifdef DRM
