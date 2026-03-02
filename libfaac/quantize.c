@@ -73,8 +73,9 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel)
+static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
+                  faac_real * __restrict tonality)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -102,7 +103,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          bandqual[sfb] = 0.0;
+          bandlvl[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
 
@@ -135,6 +136,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
+    /* Simplified tonality: peak-to-average ratio */
+    if (avge > 0)
+        tonality[sfb] = maxe / (avge / (end - start));
+    else
+        tonality[sfb] = 0;
+
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -159,7 +166,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
+    bandlvl[sfb] = target * quality;
   }
 
   /* Standard-aligned frequency spreading (energy domain) */
@@ -203,7 +210,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           faac_real ath_enrg = FAAC_POW(10.0, (ath - 20.0) / 10.0) * athLevel * 0.1;
 
           if (bandenrg[sfb] < ath_enrg)
-              bandqual[sfb] = 0.0;
+              bandlvl[sfb] = 0.0;
       }
   }
 }
@@ -215,7 +222,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   const faac_real * __restrict tonality
                   )
 {
     int sb;
@@ -261,13 +269,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      /* Refined PNS Trigger: uses both masking threshold and tonality */
+      if (pnslevel > 0)
       {
-          coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
-          coderInfo->bandcnt++;
-          continue;
+          faac_real pns_tonality_thr = 1.0 + (10.0 - pnslevel) * 0.5;
+          if ((bandqual[sb] < pnsthr) || (tonality[sb] < pns_tonality_thr))
+          {
+              coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+              coderInfo->sf[coderInfo->bandcnt] +=
+                  FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+              coderInfo->bandcnt++;
+              continue;
+          }
       }
 #endif
 
@@ -327,8 +340,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
+                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
+                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n));
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

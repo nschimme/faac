@@ -286,7 +286,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
     hEncoder->config.jointmode = JOINT_IS;
-    hEncoder->config.pnslevel = 4;
+    hEncoder->config.pnslevel = 5;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
