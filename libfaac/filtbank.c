@@ -46,7 +46,7 @@ Copyright(c)1996.
 
 static void		CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
 static faac_real	Izero				( faac_real x);
-static void		MDCT				( FFT_Tables *fft_tables, faac_real *data, int N );
+void MDCT( FFT_Tables *fft_tables, faac_real *data, int N );
 
 
 
@@ -250,7 +250,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     }
 }
 
-static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
+void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
 {
     faac_real *xi, *xr;
     faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
