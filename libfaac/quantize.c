@@ -96,7 +96,6 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
       total_enrg += enrg[sfb];
 
       // Tonality estimator: Peak-to-Average ratio
-      // Highly tonal bands have high max_e relative to average energy per bin
       if (enrg[sfb] > 1e-6) {
           faac_real avg_e = enrg[sfb] / (width * gsize);
           tonality[sfb] = max_e / avg_e;
@@ -113,7 +112,6 @@ static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
   // Phase 3: Masking Curve (Simplified Spreading)
   for (sfb = 0; sfb < num_bands; sfb++) {
       // Internal masking (within band)
-      // Tonal bands (tonality > 5.0) are harder to mask, so we lower the threshold
       faac_real tone_fact = (tonality[sfb] > 5.0) ? 0.0005 : 0.00125;
       thr[sfb] = enrg[sfb] * tone_fact;
 
@@ -238,27 +236,6 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       for (win = 0; win < gsize; win++)
       {
-#ifdef PRINTSTAT
-          if (sfacfix > 1e-10) {
-              for (cnt = 0; cnt < end; cnt++)
-              {
-                  faac_real tmp = FAAC_FABS(xr[cnt]);
-                  tmp *= sfacfix;
-                  tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-                  int q = (int)(tmp + MAGIC_NUMBER);
-
-                  // De-quantize: (q^(4/3)) / sfacfix
-                  faac_real deq = FAAC_POW((faac_real)q, 4.0/3.0) / sfacfix;
-                  faac_real diff = FAAC_FABS(xr[cnt]) - deq;
-                  coderInfo->total_ms_error += diff * diff;
-              }
-          } else {
-              for (cnt = 0; cnt < end; cnt++) {
-                  coderInfo->total_ms_error += xr[cnt] * xr[cnt];
-              }
-          }
-#endif
-
 #ifdef __SSE2__
           if (sse2)
           {
@@ -303,28 +280,6 @@ static void qlevel(CoderInfo *coderInfo,
           xr += BLOCK_LEN_SHORT;
       }
       huffbook(coderInfo, xitab, gsize * end);
-
-#ifdef PRINTSTAT
-      // Health Check: Track Spectral Holes
-      coderInfo->total_sfb++;
-      if (coderInfo->book[coderInfo->bandcnt] == HCB_ZERO) {
-          coderInfo->spectral_holes++;
-      }
-
-      // Health Check: Track HF Energy Loss (bands above 12kHz approx)
-      if (sb > (coderInfo->sfbn * 3 / 4)) {
-          faac_real band_enrg = 0;
-          const faac_real *hfxr = xr0 + start;
-          for (win = 0; win < gsize; win++) {
-              for (cnt = 0; cnt < end; cnt++) band_enrg += hfxr[cnt] * hfxr[cnt];
-              hfxr += BLOCK_LEN_SHORT;
-          }
-          if (coderInfo->book[coderInfo->bandcnt] == HCB_ZERO) {
-              coderInfo->hf_energy_loss += band_enrg;
-          }
-      }
-#endif
-
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
@@ -336,12 +291,6 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
     faac_real *gxr;
 
     coder->global_gain = 0;
-#ifdef PRINTSTAT
-    coder->total_ms_error = 0.0;
-    coder->spectral_holes = 0;
-    coder->total_sfb = 0;
-    coder->hf_energy_loss = 0.0;
-#endif
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
@@ -474,9 +423,7 @@ static void resete(faac_real min[NSFB_SHORT], faac_real max[NSFB_SHORT],
         min[sfb] = max[sfb] = e[sfb];
 }
 
-#ifndef PRINTSTAT
 #define PRINTSTAT 0
-#endif
 #if PRINTSTAT
 static int groups = 0;
 static int frames = 0;

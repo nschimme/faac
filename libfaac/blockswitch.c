@@ -39,16 +39,6 @@ typedef struct
 }
 psydata_t;
 
-#ifndef PRINTSTAT
-#define PRINTSTAT 0
-#endif
-#if PRINTSTAT
-static struct {
-    int tot;
-    int s;
-} frames;
-#endif
-
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   psydata_t *psydata = psyInfo->data;
@@ -74,12 +64,6 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       }
       lasteng = eng;
   }
-
-#if PRINTSTAT
-  frames.tot++;
-  if (psyInfo->block_type == ONLY_SHORT_WINDOW)
-      frames.s++;
-#endif
 }
 
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -107,10 +91,6 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
     if (psyInfo[channel].data)
       FreeMemory(psyInfo[channel].data);
   }
-
-#if PRINTSTAT
-  printf("short frames: %d/%d (%.2f %%)\n", frames.s, frames.tot, 100.0*frames.s/frames.tot);
-#endif
 }
 
 /* Do psychoacoustical analysis */

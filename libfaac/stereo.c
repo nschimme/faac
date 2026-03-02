@@ -244,13 +244,6 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
         }
 
         channel->msInfo.ms_used[*sfcnt] = ms;
-
-#ifdef PRINTSTAT
-        // Health Check: Track M/S usage
-        coder->ms_total++;
-        if (ms) coder->ms_used++;
-#endif
-
         (*sfcnt)++;
     }
 }
@@ -265,12 +258,6 @@ void AACstereo(CoderInfo *coder,
               )
 {
     int chn;
-#ifdef PRINTSTAT
-    for (chn = 0; chn < maxchan; chn++) {
-        coder[chn].ms_used = 0;
-        coder[chn].ms_total = 0;
-    }
-#endif
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
     static const faac_real sidemin = 0.1; /* -20dB */
