@@ -23,7 +23,10 @@ def compare(base_file, opt_file):
             o_odg = o.get("odg")
             odg_delta = (o_odg - b_odg) if (o_odg is not None and b_odg is not None) else None
 
-            mse_chg = ((o["mse"] / b["mse"]) - 1) * 100 if b["mse"] > 0 else 0
+            # MSE is only compared if available in both
+            b_mse = b.get("mse", 0)
+            o_mse = o.get("mse", 0)
+            mse_chg = ((o_mse / b_mse) - 1) * 100 if b_mse > 0 else 0
 
             # Status:
             # - PASS: Speedup > 0.9, ODG delta > -0.2 (perceptually equivalent)
@@ -34,8 +37,9 @@ def compare(base_file, opt_file):
             if speedup < 0.9: status = "SLOW " + status
 
             odg_str = f"{odg_delta:>+10.2f}" if odg_delta is not None else "   N/A    "
+            mse_str = f"{mse_chg:>+7.1f}%" if (b_mse > 0 or o_mse > 0) else "  N/A   "
 
-            print(f"{k:<25} | {speedup:>5.2f}x | {odg_str} | {mse_chg:>+7.1f}% | {status}")
+            print(f"{k:<25} | {speedup:>5.2f}x | {odg_str} | {mse_str} | {status}")
 
     # Overall Summary
     total_base = sum(f["time"] for f in base_m.values())

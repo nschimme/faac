@@ -474,7 +474,9 @@ static void resete(faac_real min[NSFB_SHORT], faac_real max[NSFB_SHORT],
         min[sfb] = max[sfb] = e[sfb];
 }
 
+#ifndef PRINTSTAT
 #define PRINTSTAT 0
+#endif
 #if PRINTSTAT
 static int groups = 0;
 static int frames = 0;

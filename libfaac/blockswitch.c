@@ -39,7 +39,9 @@ typedef struct
 }
 psydata_t;
 
+#ifndef PRINTSTAT
 #define PRINTSTAT 0
+#endif
 #if PRINTSTAT
 static struct {
     int tot;
