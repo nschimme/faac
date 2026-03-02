@@ -240,7 +240,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict tonality,
                    int *pns_state,
                    const faac_real * __restrict bandlvl_stable,
-                   AACQuantCfg *aacquantCfg
+                   AACQuantCfg *aacquantCfg,
+                   int win_offset
                   )
 {
     int sb;
@@ -262,6 +263,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real rmsx;
       faac_real etot;
       int maxq = 0;
+      int spectrum_start;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
@@ -357,7 +359,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       /* Store quantized spectrum for final Huffman pass */
-      int spectrum_start = coderInfo->sfb_offset[sb];
+      spectrum_start = coderInfo->sfb_offset[sb];
       if (coderInfo->block_type == ONLY_SHORT_WINDOW)
       {
           /* Adjust for grouping and window size in short blocks */
@@ -370,22 +372,39 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           memcpy(coderInfo->quantized_spectra + spectrum_start, xitab, end * sizeof(int));
       }
 
+      coderInfo->band_maxq[coderInfo->bandcnt] = maxq;
+
+      /* Store quantized spectrum for final Huffman pass */
+      int spectrum_offset = coderInfo->sfb_offset[sb];
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      {
+          /* Adjust for grouping and window size in short blocks */
+          for (win = 0; win < gsize; win++)
+              memcpy(coderInfo->quantized_spectra + (win_offset + win) * BLOCK_LEN_SHORT + spectrum_offset,
+                     xitab + win * end, end * sizeof(int));
+      }
+      else
+      {
+          memcpy(coderInfo->quantized_spectra + spectrum_offset, xitab, end * sizeof(int));
+      }
+
       int book;
-      for (book = 0; book <= 11; book++)
-          coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
-
-      coderInfo->huff_bits[coderInfo->bandcnt][0] = (maxq == 0) ? 0 : -1;
-
-      if (maxq > 0) {
+      for (book = 0; book <= 11; book++) {
           int start_book = 1;
+          if (maxq == 0) {
+              coderInfo->huff_bits[coderInfo->bandcnt][book] = (book == 0) ? 0 : -1;
+              continue;
+          }
           if (maxq >= 13) start_book = 11;
           else if (maxq >= 8) start_book = 9;
           else if (maxq >= 5) start_book = 7;
           else if (maxq >= 3) start_book = 5;
           else if (maxq >= 2) start_book = 3;
 
-          for (book = start_book; book <= 11; book++)
+          if (book >= start_book || book == 0)
               coderInfo->huff_bits[coderInfo->bandcnt][book] = huffcode(xitab, gsize * end, book, 0);
+          else
+              coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
       }
 
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
@@ -415,6 +434,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         int lastsf;
 
         gxr = xr;
+        int win_offset = 0;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             faac_real bandlvl_stable[MAX_SCFAC_BANDS];
@@ -427,8 +447,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
                    aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
-                   pns_state, bandlvl_stable, aacquantCfg);
+                   pns_state, bandlvl_stable, aacquantCfg, win_offset);
 
+            win_offset += coder->groups.len[cnt];
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
