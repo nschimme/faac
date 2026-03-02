@@ -473,6 +473,7 @@ int main(int argc, char *argv[])
     static int spreading = 5;
     static int tnsShort = 5;
     static int athLevel = 5;
+    unsigned int psymodelidx = 0;
 
     FILE *outfile = NULL;
 
@@ -533,6 +534,7 @@ int main(int argc, char *argv[])
             {"spreading", 1, NULL, 'S'},
             {"tns-short", 1, NULL, 'T'},
             {"ath-level", 1, NULL, 'G'},
+            {"psy", 1, NULL, 'y'},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -807,6 +809,9 @@ int main(int argc, char *argv[])
         case 'G':
             if (optarg) athLevel = atoi(optarg);
             break;
+        case 'y':
+            if (optarg) psymodelidx = atoi(optarg);
+            break;
         case 'v':
             verbose = atoi(optarg);
             break;
@@ -981,6 +986,7 @@ int main(int argc, char *argv[])
     myFormat->spreading = spreading;
     myFormat->tnsShort = tnsShort;
     myFormat->athLevel = athLevel;
+    myFormat->psymodelidx = psymodelidx;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

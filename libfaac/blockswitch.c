@@ -28,6 +28,7 @@
 #include "util.h"
 #include <faac.h>
 #include "filtbank.h"
+#include "quantize.h"
 
 typedef float psyfloat;
 

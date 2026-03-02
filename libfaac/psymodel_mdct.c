@@ -120,13 +120,14 @@ static void MDCTPsyCalculate(ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
             prev_enrg = enrg;
         }
 
-        if (max_volchg > 10.0) {
+        /* Trigger short blocks if energy increases significantly */
+        if (max_volchg > 8.0) {
             info->block_type = ONLY_SHORT_WINDOW;
         } else {
             info->block_type = ONLY_LONG_WINDOW;
         }
 
-        info->pe = 500.0;
+        /* PE will be calculated during PsyMask for higher accuracy */
     }
 }
 
@@ -227,13 +228,21 @@ static void MDCTPsyMask(GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo, CoderInfo * _
         if (bandlvl_stable) bandlvl_stable[sfb] = target;
     }
 
-    /* Calculate Perceptual Entropy (PE) from MDCT energy for bit reservoir */
+    /* Phase 4: Perceptual Entropy (PE) refinement based on SMR */
     faac_real pe = 0;
     for (sfb = 0; sfb < coderInfo->sfbn; sfb++) {
-        if (bandenrg[sfb] > 0)
-            pe += FAAC_LOG10(bandenrg[sfb]);
+        start = cb_offset[sfb];
+        end = cb_offset[sfb + 1];
+        if (bandlvl[sfb] > 0.0001) {
+            faac_real smr = bandenrg[sfb] / (bandlvl[sfb] / quality);
+            if (smr > 1.0) {
+                /* PE is roughly proportional to log of SMR */
+                pe += (end - start) * FAAC_LOG10(smr);
+            }
+        }
     }
-    psyInfo->pe = pe;
+    /* Normalize PE to match expected range in BitAllocation (~300-3000) */
+    psyInfo->pe = pe * 0.1;
 
     if (spreading > 0) {
         faac_real spread[MAX_SCFAC_BANDS];

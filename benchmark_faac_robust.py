@@ -14,19 +14,16 @@ def generate_test_wav(filename, duration=10, sample_rate=44100, type='complex', 
         wav_file.setframerate(sample_rate)
         for i in range(num_samples):
             if type == 'complex':
-                # Complex signal: sine sweep + occasional noise bursts
                 freq = 440 + 5000 * (i / num_samples)
                 value = int(16384.0 * math.sin(2.0 * math.pi * freq * i / sample_rate))
                 if (i // (sample_rate // 2)) % 4 == 0:
                     value += int(8000 * (2 * (i % 2) - 1))
             elif type == 'transient':
-                # Clicks
                 if i % (sample_rate // 2) < 100:
                     value = 20000 if (i % 2 == 0) else -20000
                 else:
                     value = 0
             elif type == 'noise':
-                # White noise
                 import random
                 random.seed(seed + i)
                 value = int(random.uniform(-16384, 16383))
@@ -60,11 +57,10 @@ def main():
     test_signals = ['complex', 'transient', 'noise', 'sine']
     sample_rates = [16000, 44100]
 
-    # Check if --psy is supported
     help_output = subprocess.run([faac_path, '-h'], capture_output=True, text=True).stdout
     has_psy = '--psy' in help_output
 
-    psy_models = [0, 1] if has_psy else [0]
+    psy_models = [0, 1]
 
     print(f"{'Signal':<10} | {'Rate':<6} | {'Psy':<3} | {'Time (s)':<10} | {'Size':<10} | {'MD5'}")
     print("-" * 70)
