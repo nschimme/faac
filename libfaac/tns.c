@@ -127,7 +127,13 @@ void TnsInit(faacEncStruct* hEncoder)
 /*****************************************************/
 /* TnsEncode:                                        */
 /*****************************************************/
-void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)            /* Spectral data array */
+void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
+               int numberOfBands,       /* Number of bands per window */
+               int maxSfb,              /* max_sfb */
+               enum WINDOW_TYPE blockType,   /* block type */
+               int* sfbOffsetTable,     /* Scalefactor band offset table */
+               faac_real* spec,            /* Spectral data array */
+               faac_real* temp)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -210,7 +216,13 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 /* This is a stripped-down version of TnsEncode()    */
 /* which performs TNS analysis filtering only        */
 /*****************************************************/
-void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)               /* Spectral data array */
+void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
+                         int numberOfBands,          /* Number of bands per window */
+                         int maxSfb,                 /* max_sfb */
+                         enum WINDOW_TYPE blockType, /* block type */
+                         int* sfbOffsetTable,        /* Scalefactor band offset table */
+                         faac_real* spec,               /* Spectral data array */
+                         faac_real* temp)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand;    /* Bands over which to apply TNS */
