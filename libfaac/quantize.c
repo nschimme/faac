@@ -35,18 +35,17 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 static QuantizeFunc qfunc = quantize_scalar;
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -257,8 +256,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           for (win = 0; win < gsize; win++)
           {
+              faac_real magic = MAGIC_NUMBER;
+              /* Lower bias for high frequencies to reduce ringing */
+              if (sb > (coderInfo->sfbn * 2 / 3))
+                  magic = 0.38;
+
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }

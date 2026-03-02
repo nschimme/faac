@@ -54,20 +54,29 @@ unsigned int MinBitrate()
     return 8000;
 }
 
-/* Calculate bit_allocation based on PE */
-unsigned int BitAllocation(faac_real pe, int short_block, int numChannels)
+/* Calculate bit_allocation based on PE and target bitrate */
+unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int bitRatePerChannel)
 {
     faac_real pew1;
     faac_real pew2;
     faac_real bit_allocation;
     faac_real max_bits = 6144.0 * numChannels;
+    faac_real bitrate_fac;
+
+    /* Bitrate-aware factor: more conservative at low bitrates */
+    if (bitRatePerChannel < 32000)
+        bitrate_fac = 0.8;
+    else if (bitRatePerChannel > 64000)
+        bitrate_fac = 1.2;
+    else
+        bitrate_fac = 1.0;
 
     if (short_block) {
-        pew1 = 0.6;
-        pew2 = 24.0;
+        pew1 = 0.6 * bitrate_fac;
+        pew2 = 24.0 * bitrate_fac;
     } else {
-        pew1 = 0.3;
-        pew2 = 6.0;
+        pew1 = 0.3 * bitrate_fac;
+        pew2 = 6.0 * bitrate_fac;
     }
     bit_allocation = pew1 * pe + pew2 * FAAC_SQRT(pe);
     bit_allocation = min(max(0.0, bit_allocation), max_bits);

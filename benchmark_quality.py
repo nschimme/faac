@@ -50,7 +50,7 @@ def main():
             ("No TNS Short", ["--tns-short", "0"]),
         ]
 
-        bitrate = "32"
+        bitrate = "16"
         print(f"Bitrate: {bitrate}kbps")
         print(f"{'Configuration':<20} | {'Time (s)':<10} | {'Output Size':<12}")
         print("-" * 50)
