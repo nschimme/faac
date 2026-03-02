@@ -35,7 +35,9 @@ static inline float32x4_t vsqrtq_f32_v7(float32x4_t x)
     /* One iteration of Newton-Raphson */
     r = vmulq_f32(r, vrsqrtsq_f32(vmulq_f32(x, r), r));
     /* x * 1/sqrt(x) = sqrt(x) */
-    return vmulq_f32(x, r);
+    float32x4_t res = vmulq_f32(x, r);
+    /* Return 0 for zero or negative input to avoid NaN from 0 * inf */
+    return vbslq_f32(vcleq_f32(x, vdupq_n_f32(0.0f)), vdupq_n_f32(0.0f), res);
 }
 #endif
 
