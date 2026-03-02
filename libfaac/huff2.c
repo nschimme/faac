@@ -514,12 +514,20 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
             /* Respect pre-selected non-spectral books (PNS, Intensity) */
             if (coder->book[first_band] >= 13 && coder->book[first_band] < HCB_NONE)
             {
-                cost[first_band][0] = 0; /* Any spectral bits cost 0 for non-spectral bands */
-                path[first_band][0] = -1;
+                for (book = 0; book <= 11; book++) {
+                    cost[first_band][book] = 0;
+                    path[first_band][book] = -1;
+                }
                 break;
             }
 
-            int bits = coder->huff_bits[first_band][book];
+            int start = coder->sfb_offset[0];
+            int end = coder->sfb_offset[1];
+            int len = end - start;
+            int bits;
+
+            bits = coder->huff_bits[first_band][book];
+
             if (bits >= 0)
             {
                 cost[first_band][book] = bits + section_overhead;
@@ -531,12 +539,23 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
         for (band = first_band + 1; band < (group + 1) * coder->sfbn; band++)
         {
             int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
+            int sb = band % coder->sfbn;
+            int start = coder->sfb_offset[sb];
+            int end = coder->sfb_offset[sb + 1];
+            int len = end - start;
 
             for (book = 0; book <= 11; book++)
             {
-                if (is_non_spectral && book > 0) break;
+                int bits;
+                if (is_non_spectral)
+                {
+                    bits = 0;
+                }
+                else
+                {
+                    bits = coder->huff_bits[band][book];
+                }
 
-                int bits = is_non_spectral ? 0 : coder->huff_bits[band][book];
                 if (bits < 0) continue;
 
                 /* Try all paths from previous band */
@@ -577,7 +596,14 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
         for (band = last_band; band >= first_band; band--)
         {
             if (coder->book[band] < 13 || coder->book[band] >= HCB_NONE)
+            {
+                if (best_book < 0 || best_book > 11) {
+                    /* Fallback to something safe if trellis failed */
+                    best_book = HCB_ESC;
+                }
                 coder->book[band] = best_book;
+                huffcode(NULL, 0, best_book, coder); // Apply huffman data for final book
+            }
 
             if (band > first_band)
                 best_book = path[band][best_book];

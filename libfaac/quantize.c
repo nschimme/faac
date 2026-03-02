@@ -261,6 +261,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      int maxq = 0;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
@@ -350,12 +351,42 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix, magic);
+              for (int k = 0; k < end; k++)
+                  if (abs(xi[k]) > maxq) maxq = abs(xi[k]);
               xi += end;
           }
       }
+      /* Store quantized spectrum for final Huffman pass */
+      int spectrum_start = coderInfo->sfb_offset[sb];
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      {
+          /* Adjust for grouping and window size in short blocks */
+          for (win = 0; win < gsize; win++)
+              memcpy(coderInfo->quantized_spectra + win * BLOCK_LEN_SHORT + spectrum_start,
+                     xitab + win * end, end * sizeof(int));
+      }
+      else
+      {
+          memcpy(coderInfo->quantized_spectra + spectrum_start, xitab, end * sizeof(int));
+      }
+
       int book;
       for (book = 0; book <= 11; book++)
-          coderInfo->huff_bits[coderInfo->bandcnt][book] = huffcode(xitab, gsize * end, book, 0);
+          coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
+
+      coderInfo->huff_bits[coderInfo->bandcnt][0] = (maxq == 0) ? 0 : -1;
+
+      if (maxq > 0) {
+          int start_book = 1;
+          if (maxq >= 13) start_book = 11;
+          else if (maxq >= 8) start_book = 9;
+          else if (maxq >= 5) start_book = 7;
+          else if (maxq >= 3) start_book = 5;
+          else if (maxq >= 2) start_book = 3;
+
+          for (book = start_book; book <= 11; book++)
+              coderInfo->huff_bits[coderInfo->bandcnt][book] = huffcode(xitab, gsize * end, book, 0);
+      }
 
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }

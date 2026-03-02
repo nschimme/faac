@@ -108,6 +108,7 @@ typedef struct {
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
+    int quantized_spectra[FRAME_LEN];
     int huff_bits[MAX_SCFAC_BANDS][12];
     int bandcnt;
     int sfbn;
