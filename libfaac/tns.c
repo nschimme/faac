@@ -132,7 +132,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                int maxSfb,              /* max_sfb */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
-               faac_real* spec)            /* Spectral data array */
+               faac_real* spec,            /* Spectral data array */
+               int tnsShort)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -144,9 +145,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        if (!tnsShort)
+        {
+            tnsInfo->tnsDataPresent = 0;
+            return;
+        }
 
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
@@ -160,7 +163,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -193,7 +196,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        faac_real threshold = DEF_TNS_GAIN_THRESH;
+        if (blockType == ONLY_SHORT_WINDOW)
+            threshold = 1.0 + (2.0 - 1.0) * (10.0 - tnsShort) / 10.0;
+
+        if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;

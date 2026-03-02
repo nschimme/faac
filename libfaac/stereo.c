@@ -190,7 +190,8 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
             enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;
 
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
+            /* More conservative M/S decision to avoid side-channel artifacts */
+            if ((enrgs * thrmid * 1.5) >= (enrgl + enrgr))
             {
                 ms = 1;
                 phase = PH_IN;

@@ -30,6 +30,7 @@ enum {
 
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
-             int len);
+             int len,
+             int huffmanOpt);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);

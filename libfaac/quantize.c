@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
+#include "util.h"
 #include "huff2.h"
 #include "cpu_compute.h"
 
@@ -34,18 +35,17 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 static QuantizeFunc qfunc = quantize_scalar;
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -73,8 +73,9 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
+                  faac_real * __restrict tonality, faac_real * __restrict bandlvl_stable, faac_real *ath_table)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -102,7 +103,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          bandqual[sfb] = 0.0;
+          bandlvl[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
 
@@ -135,6 +136,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
+    /* Optimized tonality: simplified peak-to-average ratio */
+    if (avge > 0.0001)
+        tonality[sfb] = maxe * (end - start) / avge;
+    else
+        tonality[sfb] = 0;
+
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -159,7 +166,41 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
+    bandlvl[sfb] = target * quality;
+    if (bandlvl_stable)
+        bandlvl_stable[sfb] = target;
+  }
+
+  /* Standard-aligned frequency spreading (masking domain) */
+  if (spreading > 0)
+  {
+      faac_real spread[MAX_SCFAC_BANDS];
+      /* Approximate spreading slopes: masking-down (lower freq) ~30dB/bark,
+         masking-up (higher freq) ~15dB/bark.
+         Scaled by level (5 = default). */
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          faac_real s = bandlvl[sfb];
+          if (sfb > 0) s = max(s, bandlvl[sfb - 1] * 0.02 * spreading); // ~17dB masking-up
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandlvl[sfb + 1] * 0.01 * spreading); // ~20dB masking-down
+          spread[sfb] = s;
+      }
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+          bandlvl[sfb] = spread[sfb];
+  }
+
+  if (athLevel > 0)
+  {
+      /* High-precision ATH suppression using precomputed table */
+      faac_real sensitivity = athLevel * 0.1;
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          int bcenter = (coderInfo->sfb_offset[sfb] + coderInfo->sfb_offset[sfb + 1]) >> 1;
+          if (bcenter >= BLOCK_LEN_LONG) bcenter = BLOCK_LEN_LONG - 1;
+
+          if (bandenrg[sfb] < ath_table[bcenter] * sensitivity)
+              bandlvl[sfb] = 0.0;
+      }
   }
 }
 
@@ -170,7 +211,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   const faac_real * __restrict tonality,
+                   int *pns_state,
+                   const faac_real * __restrict bandlvl_stable
                   )
 {
     int sb;
@@ -191,7 +235,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -216,13 +259,27 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      /* Optimized PNS Trigger */
+      if (pnslevel > 0 && start > 32)
       {
-          coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
-          coderInfo->bandcnt++;
-          continue;
+          int prev_pns = pns_state[coderInfo->bandcnt];
+          faac_real thr = pnsthr;
+          faac_real ton_thr = 1.8;
+          if (prev_pns) {
+              thr *= 2.0;
+              ton_thr *= 1.5;
+          }
+
+          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < ton_thr))
+          {
+              pns_state[coderInfo->bandcnt] = 1;
+              coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+              coderInfo->sf[coderInfo->bandcnt] +=
+                  FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+              coderInfo->bandcnt++;
+              continue;
+          }
+          pns_state[coderInfo->bandcnt] = 0;
       }
 #endif
 
@@ -233,7 +290,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
       end -= start;
-      xi = xitab;
+      xi = coderInfo->quantized_spectrum + coderInfo->quant_spec_idx;
       if (sfacfix <= 0.0)
       {
           memset(xi, 0, gsize * end * sizeof(int));
@@ -242,17 +299,25 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           for (win = 0; win < gsize; win++)
           {
+              faac_real magic = MAGIC_NUMBER;
+              /* Lower bias for high frequencies to reduce ringing */
+              if (sb > (coderInfo->sfbn * 2 / 3))
+                  magic = 0.38;
+
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
+      coderInfo->band_widths[coderInfo->bandcnt] = gsize * end;
+      coderInfo->quant_spec_idx += gsize * end;
+      /* Assign a temporary book for reservoir calculation */
+      coderInfo->book[coderInfo->bandcnt] = HCB_ESC;
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state, faac_real *ath_table)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -263,6 +328,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
+    coder->quant_spec_idx = 0;
 #ifdef DRM
     coder->iLenReordSpData = 0; /* init length of reordered spectral data */
     coder->iLenLongestCW = 0; /* init length of longest codeword */
@@ -276,11 +342,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
+            faac_real bandlvl_stable[MAX_SCFAC_BANDS];
+
+            /* Optimized single-pass masking calculation */
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
+                  aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
+                  bandlvl_stable, ath_table);
+
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
+                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
+                   pns_state, bandlvl_stable);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
+
+        memset(coder->band_widths, 0, sizeof(coder->band_widths));
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -295,9 +371,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             }
         }
 
+        /* Final Huffman Pass with Sectioning Optimization */
+        int spec_idx = 0;
+        int band;
+        int saved_bandcnt = coder->bandcnt;
+        coder->bandcnt = 0;
+        for (band = 0; band < saved_bandcnt; band++)
+        {
+            if (coder->book[band] != HCB_PNS)
+                huffbook(coder, coder->quantized_spectrum + spec_idx, coder->band_widths[band], aacquantCfg->huffmanOpt);
+            spec_idx += coder->band_widths[band];
+            coder->bandcnt++;
+        }
+
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];

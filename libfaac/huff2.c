@@ -405,11 +405,14 @@ static int huffcode(int *qs /* quantized spectrum */,
 
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
-             int len)
+             int len,
+             int huffmanOpt)
 {
     int cnt;
     int maxq = 0;
-    int bookmin, lenmin;
+    int bookmin = HCB_ZERO;
+    int lenmin = 0;
+    int b;
 
     for (cnt = 0; cnt < len; cnt++)
     {
@@ -418,36 +421,46 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
-
     if (maxq < 1)
     {
         bookmin = HCB_ZERO;
         lenmin = 0;
     }
-    else if (maxq < 2)
+    else if (huffmanOpt > 0)
     {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
+        /* Optimized search: check all valid books for the max value */
+        bookmin = HCB_ESC;
+        lenmin = huffcode(qs, len, bookmin, 0);
+
+        int start_book = 1;
+        if (maxq >= 13) start_book = HCB_ESC;
+        else if (maxq >= 8) start_book = 9;
+        else if (maxq >= 5) start_book = 7;
+        else if (maxq >= 3) start_book = 5;
+        else if (maxq >= 2) start_book = 3;
+
+        /* Scalable search effort based on huffmanOpt level (1-10) */
+        int effort = (huffmanOpt + 1) / 2;
+        for (b = start_book; b <= (start_book < HCB_ESC ? start_book + effort : HCB_ESC); b++)
+        {
+            if (b > HCB_ESC) break;
+            int l = huffcode(qs, len, b, 0);
+            if (l >= 0 && l < lenmin)
+            {
+                lenmin = l;
+                bookmin = b;
+            }
+        }
     }
     else
     {
-        bookmin = HCB_ESC;
+#define BOOKMIN(n) { bookmin=n; lenmin=huffcode(qs,len,bookmin,0); if(huffcode(qs,len,bookmin+1,0)<lenmin) { bookmin++; lenmin=huffcode(qs,len,bookmin,0); } }
+        if (maxq < 2) BOOKMIN(1)
+        else if (maxq < 3) BOOKMIN(3)
+        else if (maxq < 5) BOOKMIN(5)
+        else if (maxq < 8) BOOKMIN(7)
+        else if (maxq < 13) BOOKMIN(9)
+        else { bookmin = HCB_ESC; lenmin = huffcode(qs, len, bookmin, 0); }
     }
 
 #ifdef DRM
@@ -456,12 +469,14 @@ int huffbook(CoderInfo *coder,
     if (vcb11)
         bookmin = vcb11;
 #else
-    if (bookmin > HCB_ZERO)
+    /* Only record if coder is provided (final pass) */
+    if (coder && bookmin > HCB_ZERO)
         huffcode(qs, len, bookmin, coder);
 #endif
-    coder->book[coder->bandcnt] = bookmin;
+    if (coder)
+        coder->book[coder->bandcnt] = bookmin;
 
-    return 0;
+    return lenmin;
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)

@@ -127,6 +127,13 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+
+    /* Quality improvements */
+    int bitReservoir; /* 0 to 10 (default: 5) */
+    int spreading;    /* 0 to 10 (default: 5) */
+    int tnsShort;     /* 0 to 10 (default: 5) */
+    int athLevel;     /* 0 to 10 (default: 0 - off) */
+    int huffmanOpt;   /* 0 to 10 (default: 5) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

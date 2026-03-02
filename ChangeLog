@@ -1,5 +1,12 @@
 1.31.1 (Mar 03, 2025)
 
+	[ Jules ]
+	* Major quality improvements: Bit Reservoir, Industry-standard ATH suppression, and Frequency Spreading
+	* Enabled TNS (Temporal Noise Shaping) for short blocks to reduce pre-echo
+	* Smooth adaptive block switching and bandwidth heuristics for low sample rates (8-32kHz)
+	* Adaptive Quantization Bias for upper frequencies
+	* Added CLI flags for granular quality control (--bit-reservoir, --spreading, --tns-short, --ath-level)
+
 	[ Fabian Greffrath ]
 	* Reduce autoconf requirement back down to 2.69
 	* Reformat configure.ac for the ac2ver.exe hack to work

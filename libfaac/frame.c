@@ -125,6 +125,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
 
+    hEncoder->config.bitReservoir = config->bitReservoir;
+    hEncoder->config.spreading = config->spreading;
+    hEncoder->config.tnsShort = config->tnsShort;
+
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     switch( hEncoder->config.inputFormat )
@@ -162,7 +166,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
+        faac_real bw_fac = g_bw.fac;
+        /* Smoothly adjust bandwidth multiplier based on sample rate */
+        if (hEncoder->sampleRate < 32000)
+        {
+            faac_real boost = 1.0 + 0.4 * (32000.0 - hEncoder->sampleRate) / (32000.0 - 8000.0);
+            bw_fac *= boost;
+        }
+
+        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * bw_fac / 50000.0;
         if (config->bandWidth > g_bw.freq)
             config->bandWidth = g_bw.freq;
 
@@ -206,6 +218,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.spreading = config->spreading;
+    hEncoder->aacquantCfg.athLevel = config->athLevel;
+    hEncoder->aacquantCfg.huffmanOpt = config->huffmanOpt;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -238,7 +253,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
                                   unsigned long *inputSamples,
                                   unsigned long *maxOutputBytes)
 {
-    unsigned int channel;
+    unsigned int channel, i;
     faacEncStruct* hEncoder;
 
     if (numChannels > MAX_CHANNELS)
@@ -258,6 +273,23 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
+    hEncoder->bitResMax = 6144 * numChannels;
+    hEncoder->bitResLevel = hEncoder->bitResMax;
+
+    /* Initialize ATH table for this instance */
+    for (i = 0; i < BLOCK_LEN_LONG; i++)
+    {
+        faac_real freq = (faac_real)i * (faac_real)sampleRate / (BLOCK_LEN_LONG * 2.0);
+        faac_real fkHz = freq / 1000.0;
+        faac_real ath;
+        if (fkHz < 0.1) fkHz = 0.1;
+        ath = 3.64 * FAAC_POW(fkHz, -0.8)
+              - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
+              + 0.001 * FAAC_POW(fkHz, 4.0);
+
+        hEncoder->ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
+    }
+
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
@@ -269,7 +301,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
     hEncoder->config.jointmode = JOINT_IS;
-    hEncoder->config.pnslevel = 4;
+    hEncoder->config.pnslevel = 5;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
@@ -280,6 +312,12 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->psymodel =
       (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
+
+    hEncoder->config.bitReservoir = 5;
+    hEncoder->config.spreading = 5;
+    hEncoder->config.tnsShort = 5;
+    hEncoder->config.athLevel = 5;
+    hEncoder->config.huffmanOpt = 5;
 
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
@@ -559,7 +597,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel],
+                      hEncoder->config.tnsShort);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -583,8 +622,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
+        /* Reset PNS state if block type changed (standard practice to avoid warbling) */
+        if (coderInfo[channel].block_type != hEncoder->psyInfo[channel].prev_block_type)
+        {
+            memset(hEncoder->psyInfo[channel].pns_state, 0, sizeof(hEncoder->psyInfo[channel].pns_state));
+            hEncoder->psyInfo[channel].prev_block_type = coderInfo[channel].block_type;
+        }
+
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state, hEncoder->ath_table);
     }
 
 #ifdef DRM
@@ -646,7 +692,41 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int usedbits = frameBytes * 8;
+        faac_real fix;
+
+        if (usedbits <= 0)
+            return frameBytes;
+
+        if (hEncoder->config.bitReservoir > 0)
+        {
+            faac_real totalpe = 0;
+            int bit_allocation;
+            int bitres_des;
+
+            for (channel = 0; channel < numChannels; channel++)
+                totalpe += hEncoder->psyInfo[channel].pe;
+
+            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW, numChannels, hEncoder->config.bitRate, hEncoder->config.bitReservoir);
+            bitres_des = (desbits * 3 / 2); // limit to 150% of avg bits
+
+            if (bit_allocation > bitres_des)
+                bit_allocation = bitres_des;
+            if (bit_allocation < desbits / 2)
+                bit_allocation = desbits / 2;
+
+            hEncoder->bitResLevel += desbits - usedbits;
+            if (hEncoder->bitResLevel > hEncoder->bitResMax)
+                hEncoder->bitResLevel = hEncoder->bitResMax;
+            if (hEncoder->bitResLevel < 0)
+                hEncoder->bitResLevel = 0;
+
+            fix = (faac_real)(bit_allocation + (hEncoder->bitResLevel - hEncoder->bitResMax / 2) / 8) / (faac_real)usedbits;
+        }
+        else
+        {
+            fix = (faac_real)desbits / (faac_real)usedbits;
+        }
 
         if (fix < 0.9)
             fix += 0.1;

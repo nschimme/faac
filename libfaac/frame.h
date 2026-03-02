@@ -49,6 +49,10 @@ typedef struct {
 
     unsigned int usedBytes;
 
+    /* bit reservoir */
+    int bitResLevel;
+    int bitResMax;
+
     /* frame number */
     unsigned int frameNum;
     unsigned int flushFrame;
@@ -83,6 +87,9 @@ typedef struct {
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
+
+    /* ATH Table */
+    faac_real ath_table[BLOCK_LEN_LONG];
 
     /* FFT Tables */
     FFT_Tables	fft_tables;

@@ -201,6 +201,12 @@ static help_t help_advanced[] = {
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
+    {"--bit-reservoir X\tBit reservoir level (0-10, default 5).\n"},
+    {"--no-bit-reservoir\tDisable bit reservoir.\n"},
+    {"--spreading X\tFrequency spreading level (0-10, default 5).\n"},
+    {"--tns-short X\tTNS sensitivity for short blocks (0-10, default 5).\n"},
+    {"--ath-level X\tATH suppression level (0-10, default 0).\n"},
+    {"--huffman-opt X\tHuffman optimization level (0-10, default 5).\n"},
     {0}
 };
 
@@ -464,6 +470,11 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = SHORTCTL_NORMAL;
+    static int bitReservoir = 5;
+    static int spreading = 5;
+    static int tnsShort = 5;
+    static int athLevel = 5;
+    static int huffmanOpt = 5;
 
     FILE *outfile = NULL;
 
@@ -517,6 +528,14 @@ int main(int argc, char *argv[])
     while (1)
     {
         static struct option long_options[] = {
+            {"bit-reservoir", 1, NULL, 'V'},
+            {"no-bit-reservoir", 0, &bitReservoir, 0},
+            {"no-spreading", 0, NULL, 'S'},
+            {"no-tns-short", 0, NULL, 'T'},
+            {"spreading", 1, NULL, 'S'},
+            {"tns-short", 1, NULL, 'T'},
+            {"ath-level", 1, NULL, 'G'},
+            {"huffman-opt", 1, NULL, 'H'},
             {"help", 0, 0, 'h'},
             {"help-qual", 0, 0, HELP_QUAL},
             {"help-io", 0, 0, HELP_IO},
@@ -776,6 +795,24 @@ int main(int argc, char *argv[])
         case 'X':
             rawEndian = 0;
             break;
+        case 'V':
+            if (optarg) bitReservoir = atoi(optarg);
+            else bitReservoir = 0;
+            break;
+        case 'S':
+            if (optarg) spreading = atoi(optarg);
+            else spreading = 0;
+            break;
+        case 'T':
+            if (optarg) tnsShort = atoi(optarg);
+            else tnsShort = 0;
+            break;
+        case 'G':
+            if (optarg) athLevel = atoi(optarg);
+            break;
+        case 'H':
+            if (optarg) huffmanOpt = atoi(optarg);
+            break;
         case 'v':
             verbose = atoi(optarg);
             break;
@@ -783,7 +820,6 @@ int main(int argc, char *argv[])
         case HELP_IO:
         case HELP_MP4:
         case HELP_ADVANCED:
-        case 'H':
         case 'h':
             help(c);
             return 1;
@@ -946,6 +982,11 @@ int main(int argc, char *argv[])
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
     myFormat->bandWidth = cutOff;
+    myFormat->bitReservoir = bitReservoir;
+    myFormat->spreading = spreading;
+    myFormat->tnsShort = tnsShort;
+    myFormat->athLevel = athLevel;
+    myFormat->huffmanOpt = huffmanOpt;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))
