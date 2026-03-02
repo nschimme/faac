@@ -74,7 +74,7 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter);
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
 
 /*****************************************************/
@@ -127,12 +127,7 @@ void TnsInit(faacEncStruct* hEncoder)
 /*****************************************************/
 /* TnsEncode:                                        */
 /*****************************************************/
-void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
-               int numberOfBands,       /* Number of bands per window */
-               int maxSfb,              /* max_sfb */
-               enum WINDOW_TYPE blockType,   /* block type */
-               int* sfbOffsetTable,     /* Scalefactor band offset table */
-               faac_real* spec)            /* Spectral data array */
+void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)            /* Spectral data array */
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -204,7 +199,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);      /* Filter */
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
         }
     }
 }
@@ -215,12 +210,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 /* This is a stripped-down version of TnsEncode()    */
 /* which performs TNS analysis filtering only        */
 /*****************************************************/
-void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
-                         int numberOfBands,          /* Number of bands per window */
-                         int maxSfb,                 /* max_sfb */
-                         enum WINDOW_TYPE blockType, /* block type */
-                         int* sfbOffsetTable,        /* Scalefactor band offset table */
-                         faac_real* spec)               /* Spectral data array */
+void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)               /* Spectral data array */
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand;    /* Bands over which to apply TNS */
@@ -265,7 +255,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
         }
     }
 }
@@ -280,14 +270,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
     int i,j,k=0;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
-    faac_real* temp;
-
-    temp = (faac_real *)AllocMemory(length * sizeof (faac_real));
 
     /* Determine loop parameters for given direction */
     if (filter->direction) {
@@ -330,7 +317,6 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
             }
         }
     }
-    if (temp) FreeMemory(temp);
 }
 
 
