@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
+#include "util.h"
 #include "huff2.h"
 #include "cpu_compute.h"
 
@@ -74,7 +75,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -160,6 +161,20 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
     bandqual[sfb] = target * quality;
+  }
+
+  if (spreading)
+  {
+      faac_real spread[MAX_SCFAC_BANDS];
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          faac_real s = bandqual[sfb];
+          if (sfb > 0) s = max(s, bandqual[sfb - 1] * 0.3);
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandqual[sfb + 1] * 0.2);
+          spread[sfb] = s;
+      }
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+          bandqual[sfb] = spread[sfb];
   }
 }
 
@@ -277,7 +292,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }

@@ -31,6 +31,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int spreading;
 } AACQuantCfg;
 
 enum {
