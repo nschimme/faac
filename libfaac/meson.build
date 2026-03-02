@@ -23,6 +23,18 @@ if (cpu_family in ['x86', 'x86_64'])
         )
         quantize_simd_libs += quantize_avx
     endif
+elif (cpu_family in ['arm', 'aarch64'])
+    neon_flag = (cc.get_argument_syntax() == 'msvc') ? [] : ['-mfpu=neon']
+    # AArch64 usually has NEON by default, but -mfpu=neon is for 32-bit ARM
+    if cpu_family == 'aarch64'
+        neon_flag = []
+    endif
+
+    quantize_neon = static_library('quantize_neon', 'quantize_neon.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + neon_flag
+    )
+    quantize_simd_libs += quantize_neon
 endif
 
 common_src = [

@@ -43,6 +43,10 @@ extern void quantize_avx2(const faac_real * __restrict xr, int * __restrict xi, 
 #endif
 #endif
 
+#if defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
+extern void quantize_neon(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
+
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 static QuantizeFunc qfunc = quantize_scalar;
 
@@ -65,16 +69,17 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 void QuantizeInit(void)
 {
-#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
     unsigned int caps = get_cpu_caps();
     const char *no_simd = getenv("FAAC_NO_SIMD");
-    const char *no_avx2 = getenv("FAAC_NO_AVX2");
 
     if (no_simd && atoi(no_simd))
     {
         qfunc = quantize_scalar;
         return;
     }
+
+#if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
+    const char *no_avx2 = getenv("FAAC_NO_AVX2");
 
     if ((caps & CPU_CAP_AVX2) && !(no_avx2 && atoi(no_avx2)))
 #ifdef HAVE_AVX2
@@ -84,6 +89,10 @@ void QuantizeInit(void)
 #endif
     else if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;
+    else
+#elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
+    if (caps & CPU_CAP_NEON)
+        qfunc = quantize_neon;
     else
 #endif
         qfunc = quantize_scalar;
