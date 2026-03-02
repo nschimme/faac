@@ -9,33 +9,24 @@ on:
 
 jobs:
   test:
-    name: Multi-Matrix Qualitative Validation
+    name: Multi-Matrix Perceptual Validation
     runs-on: ubuntu-latest
 
     steps:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc faad gstreamer1.0-tools libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libglib2.0-dev autoconf automake libtool
+          sudo apt-get install -y meson ninja-build bc faad
           pip install meson
+
+      - name: Install ViSQOL
+        run: |
+          cargo install visqol
 
       - name: Checkout PR branch
         uses: actions/checkout@v3
         with:
           path: optimized
-
-      - name: Build and Install gstpeaq
-        run: |
-          wget https://github.com/HSU-ANT/gstpeaq/releases/download/version-0.6.1/gstpeaq-0.6.1.tar.gz
-          tar -xzf gstpeaq-0.6.1.tar.gz
-          cd gstpeaq-0.6.1
-          ./configure --prefix=/usr
-          make
-          sudo make install
-          # Verify installation
-          export GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0
-          gst-inspect-1.0 peaq || echo "PEAQ plugin not found"
-          which peaq || echo "peaq utility not found"
 
       - name: Checkout Base branch
         uses: actions/checkout@v3
@@ -62,12 +53,10 @@ jobs:
 
       - name: Run Baseline Matrix
         run: |
-          export GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0
           python3 optimized/tests/run_benchmarks.py baseline/build/frontend/faac baseline baseline.json
 
       - name: Run Optimized Matrix
         run: |
-          export GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0
           python3 optimized/tests/run_benchmarks.py optimized/build/frontend/faac optimized optimized.json
 
       - name: Generate Multi-Dimensional Report
@@ -87,5 +76,5 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: qualitative-report
+          name: perceptual-report
           path: report.txt

@@ -8,7 +8,7 @@ def compare(base_file, opt_file):
         opt = json.load(f)
 
     print("=" * 105)
-    print(f"{'Test Case':<25} | {'Spdup':<6} | {'ODG Delta':<10} | {'MSE Chg':<8} | {'Status'}")
+    print(f"{'Test Case':<25} | {'Spdup':<6} | {'MOS Delta':<10} | {'MSE Chg':<8} | {'Status'}")
     print("-" * 105)
 
     base_m = base["matrix"]
@@ -19,27 +19,26 @@ def compare(base_file, opt_file):
             b, o = base_m[k], opt_m[k]
             speedup = b["time"] / o["time"] if o["time"] > 0 else 0
 
-            b_odg = b.get("odg")
-            o_odg = o.get("odg")
-            odg_delta = (o_odg - b_odg) if (o_odg is not None and b_odg is not None) else None
+            b_mos = b.get("mos")
+            o_mos = o.get("mos")
+            mos_delta = (o_mos - b_mos) if (o_mos is not None and b_mos is not None) else None
 
-            # MSE is only compared if available in both
             b_mse = b.get("mse", 0)
             o_mse = o.get("mse", 0)
             mse_chg = ((o_mse / b_mse) - 1) * 100 if b_mse > 0 else 0
 
             # Status:
-            # - PASS: Speedup > 0.9, ODG delta > -0.2 (perceptually equivalent)
-            # - FAIL: ODG delta < -0.5 (significant degradation)
+            # - PASS: Speedup > 0.9, MOS delta > -0.2 (perceptually equivalent)
+            # - FAIL: MOS delta < -0.5 (significant degradation)
             status = "PASS"
-            if odg_delta is not None and odg_delta < -0.2: status = "WARN (PERC)"
-            if odg_delta is not None and odg_delta < -0.5: status = "FAIL (QUAL)"
+            if mos_delta is not None and mos_delta < -0.2: status = "WARN (PERC)"
+            if mos_delta is not None and mos_delta < -0.5: status = "FAIL (QUAL)"
             if speedup < 0.9: status = "SLOW " + status
 
-            odg_str = f"{odg_delta:>+10.2f}" if odg_delta is not None else "   N/A    "
+            mos_str = f"{mos_delta:>+10.2f}" if mos_delta is not None else "   N/A    "
             mse_str = f"{mse_chg:>+7.1f}%" if (b_mse > 0 or o_mse > 0) else "  N/A   "
 
-            print(f"{k:<25} | {speedup:>5.2f}x | {odg_str} | {mse_str} | {status}")
+            print(f"{k:<25} | {speedup:>5.2f}x | {mos_str} | {mse_str} | {status}")
 
     # Overall Summary
     total_base = sum(f["time"] for f in base_m.values())

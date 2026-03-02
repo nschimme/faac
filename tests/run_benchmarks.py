@@ -24,15 +24,15 @@ def get_binary_size(path):
         return os.path.getsize(path)
     return 0
 
-def run_peaq(ref_wav, deg_wav):
-    """Run peaq utility and parse ODG score."""
+def run_visqol(ref_wav, deg_wav, rate):
+    """Run ViSQOL and parse MOS score."""
     try:
-        # The gstpeaq build provides a standalone 'peaq' utility
-        # Usage: peaq {REFFILE} {TESTFILE}
-        cmd = ["peaq", ref_wav, deg_wav]
+        # ViSQOL has subcommands for different rates
+        mode = "wideband" if rate <= 16000 else "fullband"
+        cmd = ["visqol", mode, "--reference", ref_wav, "--degraded", deg_wav]
         proc = subprocess.run(cmd, capture_output=True, text=True)
-        # Parse ODG from output: "Objective Difference Grade: -0.123"
-        match = re.search(r"Objective Difference Grade:\s+([-.\d]+)", proc.stdout)
+        # Parse MOS-LQO from output: "MOS-LQO: 4.123"
+        match = re.search(r"MOS-LQO:\s+([-.\d]+)", proc.stdout)
         if match:
             return float(match.group(1))
     except:
@@ -67,19 +67,17 @@ def run_benchmark(faac_path, precision, scalar=True):
                     proc = subprocess.run(cmd, env=env, check=True, capture_output=True, text=True)
                     elapsed = time.time() - start_time
 
-                    # Qualitative: PEAQ ODG
-                    odg = None
+                    # Qualitative: ViSQOL MOS
+                    mos = None
                     try:
-                        # Decode back to WAV for comparison
                         subprocess.run(["faad", "-o", deg_wav, output_path], capture_output=True)
                         if os.path.exists(deg_wav):
-                            odg = run_peaq(input_path, deg_wav)
+                            mos = run_visqol(input_path, deg_wav, rate)
                     except:
                         pass
                     finally:
                         if os.path.exists(deg_wav): os.remove(deg_wav)
 
-                    # Parse debug metrics if PRINTSTAT was enabled
                     mse_match = re.search(r"MSE: ([\d.]+)", proc.stdout)
                     mse = float(mse_match.group(1)) if mse_match else 0
 
@@ -87,10 +85,10 @@ def run_benchmark(faac_path, precision, scalar=True):
                         "time": elapsed,
                         "md5": get_md5(output_path),
                         "mse": mse,
-                        "odg": odg
+                        "mos": mos
                     }
-                    odg_str = f"ODG: {odg:>+5.2f}" if odg is not None else ""
-                    print(f"{key:<25}: {elapsed:>5.2f}s {odg_str}")
+                    mos_str = f"MOS: {mos:>4.2f}" if mos is not None else ""
+                    print(f"{key:<25}: {elapsed:>5.2f}s {mos_str}")
                 except subprocess.CalledProcessError as e:
                     print(f"Error running {key}: {e.stderr}")
 
