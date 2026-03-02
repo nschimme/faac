@@ -192,6 +192,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 
 }
+#endif
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
@@ -299,7 +300,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
-#endif
 
 int BlocQuant(struct faacEncStruct *hEncoder, CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state)
 {
