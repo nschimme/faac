@@ -43,9 +43,6 @@ extern void quantize_avx2(const faac_real * __restrict xr, int * __restrict xi, 
 #endif
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-static QuantizeFunc qfunc = quantize_scalar;
-
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
