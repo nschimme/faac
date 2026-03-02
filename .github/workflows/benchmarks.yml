@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
       - name: Install dependencies (Linux)
@@ -28,7 +28,17 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install meson ninja faad2
-          pip3 install meson
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pip install meson ninja
+
+      - name: Install ViSQOL (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          # Use cargo to install visqol tool
+          cargo install visqol
 
       - name: Checkout PR branch
         uses: actions/checkout@v3
@@ -46,6 +56,7 @@ jobs:
           python3 optimized/tests/generate_waves.py
 
       - name: Build and Run Matrix
+        shell: bash
         run: |
           echo "## Summary Report for ${{ matrix.os }}" > report.md
           for precision in single double; do
@@ -66,16 +77,34 @@ jobs:
             ninja -C build
             cd ..
 
-            LIB_EXT="so"
-            FAAD_BIN="faad"
+            # Platform-specific paths
+            LIB_PATH="baseline/build/libfaac/libfaac.so"
+            FAAC_PATH="baseline/build/frontend/faac"
+            PERC_FLAG=""
+
             if [ "${{ runner.os }}" == "macOS" ]; then
-              LIB_EXT="dylib"
-              FAAD_BIN="faad" # faad2 formula provides 'faad' binary
+              LIB_PATH="baseline/build/libfaac/libfaac.dylib"
+            elif [ "${{ runner.os }}" == "Windows" ]; then
+              LIB_PATH="baseline/build/libfaac/libfaac.dll"
+              FAAC_PATH="baseline/build/frontend/faac.exe"
             fi
 
-            # Note: We pass the faad binary name to run_benchmarks.py to ensure it works cross-platform
-            python3 optimized/tests/run_benchmarks.py baseline/build/frontend/faac baseline/build/libfaac/libfaac.$LIB_EXT ${precision}_base ${precision}_base.json
-            python3 optimized/tests/run_benchmarks.py optimized/build/frontend/faac optimized/build/libfaac/libfaac.$LIB_EXT ${precision}_opt ${precision}_opt.json
+            if [ "${{ runner.os }}" == "Linux" ]; then
+              PERC_FLAG="--perceptual"
+            fi
+
+            python3 optimized/tests/run_benchmarks.py $FAAC_PATH $LIB_PATH ${precision}_base ${precision}_base.json $PERC_FLAG
+
+            # Re-set paths for optimized build
+            if [ "${{ runner.os }}" == "Windows" ]; then
+                LIB_PATH="optimized/build/libfaac/libfaac.dll"
+                FAAC_PATH="optimized/build/frontend/faac.exe"
+            else
+                LIB_PATH="optimized/build/libfaac/libfaac.$([[ "${{ runner.os }}" == "macOS" ]] && echo "dylib" || echo "so")"
+                FAAC_PATH="optimized/build/frontend/faac"
+            fi
+
+            python3 optimized/tests/run_benchmarks.py $FAAC_PATH $LIB_PATH ${precision}_opt ${precision}_opt.json $PERC_FLAG
 
             python3 optimized/tests/compare_results.py ${precision}_base.json ${precision}_opt.json >> report.md
           done
