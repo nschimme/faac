@@ -19,15 +19,20 @@ def get_md5(filename):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def get_binary_size(path):
+    if os.path.exists(path):
+        return os.path.getsize(path)
+    return 0
+
 def run_peaq(ref_wav, deg_wav):
-    """Run gst-peaq and parse ODG score."""
+    """Run peaq utility and parse ODG score."""
     try:
-        # Expected pipeline: gst-launch-1.0 -v peaq name=p reference-file=ref.wav degraded-file=deg.wav ! fakesink
-        # We assume the maintainer has installed gst-peaq and we can parse its output
-        cmd = ["gst-launch-1.0", "-v", "peaq", f"reference-file={ref_wav}", f"degraded-file={deg_wav}", "!", "fakesink"]
+        # The gstpeaq build provides a standalone 'peaq' utility
+        # Usage: peaq {REFFILE} {TESTFILE}
+        cmd = ["peaq", ref_wav, deg_wav]
         proc = subprocess.run(cmd, capture_output=True, text=True)
-        # Parse ODG from output (example pattern)
-        match = re.search(r"ODG:\s+([-.\d]+)", proc.stdout + proc.stderr)
+        # Parse ODG from output: "Objective Difference Grade: -0.123"
+        match = re.search(r"Objective Difference Grade:\s+([-.\d]+)", proc.stdout)
         if match:
             return float(match.group(1))
     except:
@@ -41,7 +46,7 @@ def run_benchmark(faac_path, precision, scalar=True):
     env["FAAC_DUMP_MSE"] = "1"
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    results = {"matrix": {}, "binary_size": os.path.getsize(faac_path) if os.path.exists(faac_path) else 0}
+    results = {"matrix": {}, "binary_size": get_binary_size(faac_path)}
 
     print(f"--- Matrix Tests {precision} precision (Scalar: {scalar}) ---")
 

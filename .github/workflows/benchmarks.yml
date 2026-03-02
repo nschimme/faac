@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc faad gstreamer1.0-tools libgstreamer1.0-dev libglib2.0-dev
+          sudo apt-get install -y meson ninja-build bc faad gstreamer1.0-tools libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libglib2.0-dev autoconf automake libtool
           pip install meson
 
       - name: Checkout PR branch
@@ -24,11 +24,10 @@ jobs:
         with:
           path: optimized
 
-      - name: Build and Install gst-peaq
+      - name: Build and Install gstpeaq
         run: |
-          # Use the non-auth HTTPS URL directly
-          git clone https://github.com/HSU-ANT/gst-peaq.git
-          cd gst-peaq
+          git clone https://github.com/HSU-ANT/gstpeaq.git
+          cd gstpeaq
           ./autogen.sh
           ./configure --prefix=/usr
           make
@@ -36,6 +35,7 @@ jobs:
           # Verify installation
           export GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0
           gst-inspect-1.0 peaq || echo "PEAQ plugin not found"
+          which peaq || echo "peaq utility not found"
 
       - name: Checkout Base branch
         uses: actions/checkout@v3
@@ -78,7 +78,7 @@ jobs:
       - name: Check for Regressions
         run: |
           # Pass if overall CPU reduction > 10%
-          REDUCTION=$(grep "OVERALL CPU REDUCTION" report.txt | grep -oE "[0-9.]+")
+          REDUCTION=$(grep "OVERALL CPU REDUCTION" report.txt | grep -oE "[0-9.]+" | head -1)
           if (( $(echo "$REDUCTION < 10" | bc -l) )); then
             echo "CPU optimization target not met"
             exit 1
