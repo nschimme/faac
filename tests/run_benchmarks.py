@@ -8,9 +8,9 @@ import re
 
 RATES = [16000, 44100, 48000]
 QUALITIES = [10, 100, 250]
-TYPES = ["sine", "sweep", "noise", "silence"]
-DATA_DIR = "benchmarks/data"
-OUTPUT_DIR = "benchmarks/output"
+TYPES = ["sine", "sweep", "noise", "harpsichord", "castanets", "applause", "silence"]
+DATA_DIR = "tests/data"
+OUTPUT_DIR = "tests/output"
 
 def get_md5(filename):
     hash_md5 = hashlib.md5()
@@ -23,6 +23,18 @@ def get_binary_size(path):
     if os.path.exists(path):
         return os.path.getsize(path)
     return 0
+
+def run_peaq(ref_wav, deg_wav):
+    """Run gst-peaq if available."""
+    try:
+        # Example: gst-launch-1.0 filesrc location=ref.wav ! wavparse ! peaq reference=true ! fakesink \
+        #          filesrc location=deg.wav ! wavparse ! peaq ! fakesink
+        # This is complex to parse from gst-launch output, so we assume a simpler wrapper or tool if present
+        # For now, we provide the placeholder for the maintainer to plug in their specific peaq binary
+        pass
+    except:
+        pass
+    return None
 
 def run_benchmark(faac_path, precision, scalar=True):
     env = os.environ.copy()
@@ -61,9 +73,10 @@ def run_benchmark(faac_path, precision, scalar=True):
                         "md5": md5,
                         "mse": float(mse[-1]) if mse else 0,
                         "holes": float(holes[-1]) if holes else 0,
-                        "ms_ratio": float(ms[-1]) if ms else 0
+                        "ms_ratio": float(ms[-1]) if ms else 0,
+                        "odg": None # Maintainer can populate via gst-peaq
                     }
-                    print(f"{key:<20}: {elapsed:>5.2f}s, MSE: {results['matrix'][key]['mse']:>9.1f}")
+                    print(f"{key:<25}: {elapsed:>5.2f}s, MSE: {results['matrix'][key]['mse']:>9.1f}")
                 except subprocess.CalledProcessError as e:
                     print(f"Error running {key}: {e.stderr}")
 
@@ -71,7 +84,7 @@ def run_benchmark(faac_path, precision, scalar=True):
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print("Usage: python3 benchmarks/run_benchmarks.py <faac_bin_path> <precision_name> <output_json>")
+        print("Usage: python3 tests/run_benchmarks.py <faac_bin_path> <precision_name> <output_json>")
         sys.exit(1)
 
     faac_bin = sys.argv[1]

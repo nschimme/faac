@@ -5,7 +5,7 @@ on:
     branches: [ "master" ]
     paths:
       - 'libfaac/**'
-      - 'benchmarks/**'
+      - 'tests/**'
 
 jobs:
   benchmark:
@@ -32,7 +32,7 @@ jobs:
 
       - name: Generate Multi-Rate Test Suite
         run: |
-          python3 optimized/benchmarks/generate_waves.py
+          python3 optimized/tests/generate_waves.py
 
       - name: Build Baseline
         run: |
@@ -48,15 +48,15 @@ jobs:
 
       - name: Run Baseline Matrix
         run: |
-          python3 optimized/benchmarks/run_benchmarks.py baseline/build/frontend/faac baseline baseline.json
+          python3 optimized/tests/run_tests.py baseline/build/frontend/faac baseline baseline.json
 
       - name: Run Optimized Matrix
         run: |
-          python3 optimized/benchmarks/run_benchmarks.py optimized/build/frontend/faac optimized optimized.json
+          python3 optimized/tests/run_tests.py optimized/build/frontend/faac optimized optimized.json
 
       - name: Compare Results
         run: |
-          python3 optimized/benchmarks/compare_results.py baseline.json optimized.json > report.txt
+          python3 optimized/tests/compare_results.py baseline.json optimized.json > report.txt
           cat report.txt
 
       - name: Upload Matrix Report

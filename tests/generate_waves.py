@@ -53,6 +53,58 @@ def generate_wave(filename, duration_sec, sample_rate, func_name):
                     data.append(struct.pack('<hh', ival, ival))
                 wav_file.writeframesraw(b"".join(data))
 
+        elif func_name == "harpsichord":
+            # Impulsive harmonics
+            random.seed(42)
+            for i in range(0, num_samples, buffer_size):
+                chunk_size = min(buffer_size, num_samples - i)
+                data = []
+                for j in range(i, i + chunk_size):
+                    t = j / sample_rate
+                    # Pulse every 0.5s
+                    env = math.exp(-10 * (t % 0.5))
+                    val = 0
+                    for harm in [1, 2, 3, 5, 8]:
+                        val += math.sin(2.0 * math.pi * 440 * harm * t) * (1.0/harm)
+                    val *= env
+                    ival = max(-32768, min(32767, int(val * 16384)))
+                    data.append(struct.pack('<hh', ival, ival))
+                wav_file.writeframesraw(b"".join(data))
+
+        elif func_name == "castanets":
+            # Sharp transients
+            random.seed(42)
+            for i in range(0, num_samples, buffer_size):
+                chunk_size = min(buffer_size, num_samples - i)
+                data = []
+                for j in range(i, i + chunk_size):
+                    t = j / sample_rate
+                    # Click every 0.25s
+                    pos = t % 0.25
+                    env = math.exp(-100 * pos) if pos < 0.05 else 0
+                    val = random.uniform(-1, 1) * env
+                    ival = max(-32768, min(32767, int(val * 32767)))
+                    data.append(struct.pack('<hh', ival, ival))
+                wav_file.writeframesraw(b"".join(data))
+
+        elif func_name == "applause":
+            # Dense modulated noise
+            random.seed(42)
+            for i in range(0, num_samples, buffer_size):
+                chunk_size = min(buffer_size, num_samples - i)
+                data = []
+                for j in range(i, i + chunk_size):
+                    t = j / sample_rate
+                    # Multiple overlapping noise pulses
+                    val = 0
+                    for p in range(5):
+                        env = math.exp(-20 * ((t + p*0.07) % 0.3))
+                        val += random.uniform(-1, 1) * env
+                    val *= 0.4
+                    ival = max(-32768, min(32767, int(val * 32767)))
+                    data.append(struct.pack('<hh', ival, ival))
+                wav_file.writeframesraw(b"".join(data))
+
         elif func_name == "silence":
             data = struct.pack('<hh', 0, 0) * buffer_size
             for i in range(0, num_samples, buffer_size):
@@ -68,8 +120,6 @@ if __name__ == "__main__":
 
     for rate in rates:
         print(f"Generating {rate}Hz suite...")
-        generate_wave(f"benchmarks/data/sine_{rate}.wav", duration, rate, "sine")
-        generate_wave(f"benchmarks/data/sweep_{rate}.wav", duration, rate, "sweep")
-        generate_wave(f"benchmarks/data/noise_{rate}.wav", duration, rate, "noise")
-        generate_wave(f"benchmarks/data/silence_{rate}.wav", duration, rate, "silence")
+        for t in ["sine", "sweep", "noise", "harpsichord", "castanets", "applause", "silence"]:
+            generate_wave(f"tests/data/{t}_{rate}.wav", duration, rate, t)
     print("Done.")
