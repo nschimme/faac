@@ -121,7 +121,6 @@ static void PsyCheckShort(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_real
   }
 
   psyInfo->pe = 0;
-  if (psydata->eng[0])
   {
       for (sfb = 0; sfb < lastband; sfb++)
       {

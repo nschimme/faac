@@ -27,11 +27,11 @@
 
 #define MAGIC_NUMBER_REAL ((faac_real)0.4054)
 
-void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic_val)
 {
 #ifdef FAAC_PRECISION_DOUBLE
     const __m128d sfac = _mm_set1_pd(sfacfix);
-    const __m128d magic = _mm_set1_pd(MAGIC_NUMBER_REAL);
+    const __m128d magic = _mm_set1_pd(magic_val);
     const __m128d zero = _mm_setzero_pd();
     // Mask to clear the sign bit for absolute value: 0x7FFFFFFFFFFFFFFF
     const __m128i abs_mask_i = _mm_set_epi32(0x7FFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF);
@@ -111,7 +111,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     }
 #else
     const __m128 sfac = _mm_set1_ps(sfacfix);
-    const __m128 magic = _mm_set1_ps((float)MAGIC_NUMBER_REAL);
+    const __m128 magic = _mm_set1_ps((float)magic_val);
     const __m128 zero = _mm_setzero_ps();
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
@@ -169,7 +169,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         faac_real tmp = FAAC_FABS(val);
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-        int q = (int)(tmp + MAGIC_NUMBER_REAL);
+        int q = (int)(tmp + magic_val);
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
