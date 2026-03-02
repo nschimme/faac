@@ -55,7 +55,7 @@ unsigned int MinBitrate()
 }
 
 /* Calculate bit_allocation based on PE and target bitrate */
-unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int bitRatePerChannel)
+unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int bitRatePerChannel, int bitResLevel)
 {
     faac_real pew1;
     faac_real pew2;
@@ -63,13 +63,13 @@ unsigned int BitAllocation(faac_real pe, int short_block, int numChannels, int b
     faac_real max_bits = 6144.0 * numChannels;
     faac_real bitrate_fac;
 
-    /* Bitrate-aware factor: more conservative at low bitrates */
+    /* Bitrate-aware and level-aware factor */
+    bitrate_fac = (faac_real)bitResLevel / 5.0;
+
     if (bitRatePerChannel < 32000)
-        bitrate_fac = 0.8;
+        bitrate_fac *= 0.8;
     else if (bitRatePerChannel > 64000)
-        bitrate_fac = 1.2;
-    else
-        bitrate_fac = 1.0;
+        bitrate_fac *= 1.2;
 
     if (short_block) {
         pew1 = 0.6 * bitrate_fac;

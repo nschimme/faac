@@ -289,7 +289,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
       (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
-    hEncoder->config.bitReservoir = 1;
+    hEncoder->config.bitReservoir = 5;
     hEncoder->config.spreading = 5;
     hEncoder->config.tnsShort = 5;
 
@@ -665,7 +665,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (usedbits <= 0)
             return frameBytes;
 
-        if (hEncoder->config.bitReservoir)
+        if (hEncoder->config.bitReservoir > 0)
         {
             faac_real totalpe = 0;
             int bit_allocation;
@@ -674,7 +674,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             for (channel = 0; channel < numChannels; channel++)
                 totalpe += hEncoder->psyInfo[channel].pe;
 
-            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW, numChannels, hEncoder->config.bitRate);
+            bit_allocation = BitAllocation(totalpe, coderInfo[0].block_type == ONLY_SHORT_WINDOW, numChannels, hEncoder->config.bitRate, hEncoder->config.bitReservoir);
             bitres_des = (desbits * 3 / 2); // limit to 150% of avg bits
 
             if (bit_allocation > bitres_des)

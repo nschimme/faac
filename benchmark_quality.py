@@ -43,9 +43,9 @@ def main():
 
         configs = [
             ("New (Default)", []),
-            ("New (Level 10)", ["--spreading", "10", "--tns-short", "10"]),
+            ("New (Aggressive)", ["--bit-reservoir", "10", "--spreading", "10", "--tns-short", "10"]),
             ("Old (All Off)", ["--no-bit-reservoir", "--spreading", "0", "--tns-short", "0"]),
-            ("No Reservoir", ["--no-bit-reservoir"]),
+            ("No Reservoir", ["--bit-reservoir", "0"]),
             ("No Spreading", ["--spreading", "0"]),
             ("No TNS Short", ["--tns-short", "0"]),
         ]
