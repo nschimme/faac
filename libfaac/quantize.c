@@ -373,38 +373,39 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       coderInfo->band_maxq[coderInfo->bandcnt] = maxq;
+      coderInfo->band_offset[coderInfo->bandcnt] = start;
 
       /* Store quantized spectrum for final Huffman pass */
-      int spectrum_offset = coderInfo->sfb_offset[sb];
+      int spec_offset = coderInfo->sfb_offset[sb];
       if (coderInfo->block_type == ONLY_SHORT_WINDOW)
       {
           /* Adjust for grouping and window size in short blocks */
           for (win = 0; win < gsize; win++)
-              memcpy(coderInfo->quantized_spectra + (win_offset + win) * BLOCK_LEN_SHORT + spectrum_offset,
+              memcpy(coderInfo->quantized_spectra + (win_offset + win) * BLOCK_LEN_SHORT + spec_offset,
                      xitab + win * end, end * sizeof(int));
       }
       else
       {
-          memcpy(coderInfo->quantized_spectra + spectrum_offset, xitab, end * sizeof(int));
+          memcpy(coderInfo->quantized_spectra + spec_offset, xitab, end * sizeof(int));
       }
 
+      /* Viable Huffman book selection to optimize performance */
       int book;
-      for (book = 0; book <= 11; book++) {
+      for (book = 0; book <= 11; book++)
+          coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
+
+      if (maxq == 0) {
+          coderInfo->huff_bits[coderInfo->bandcnt][0] = 0;
+      } else {
           int start_book = 1;
-          if (maxq == 0) {
-              coderInfo->huff_bits[coderInfo->bandcnt][book] = (book == 0) ? 0 : -1;
-              continue;
-          }
           if (maxq >= 13) start_book = 11;
           else if (maxq >= 8) start_book = 9;
           else if (maxq >= 5) start_book = 7;
           else if (maxq >= 3) start_book = 5;
           else if (maxq >= 2) start_book = 3;
 
-          if (book >= start_book || book == 0)
+          for (book = start_book; book <= 11; book++)
               coderInfo->huff_bits[coderInfo->bandcnt][book] = huffcode(xitab, gsize * end, book, 0);
-          else
-              coderInfo->huff_bits[coderInfo->bandcnt][book] = -1;
       }
 
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;

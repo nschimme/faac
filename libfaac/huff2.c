@@ -76,7 +76,7 @@ int huffcode(int *qs /* quantized spectrum */,
 {
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
-    hcode16_t *book;
+    hcode16_t *book = NULL;
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
@@ -93,7 +93,9 @@ int huffcode(int *qs /* quantized spectrum */,
     else
         datacnt = 0;
 
-    book = hmap[bnum];
+    if (bnum >= 1 && bnum <= 11)
+        book = hmap[bnum];
+
     switch (bnum)
     {
     case HCB_ZERO:
@@ -497,7 +499,7 @@ int huffbook(CoderInfo *coder,
 void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
 {
     int group, band, book;
-    int section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
+    int section_overhead = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 15;
     int best_books[MAX_SCFAC_BANDS];
 
     /* Initialize Trellis nodes */
@@ -508,18 +510,13 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
     coder->datacnt = 0;
 
     /* Process groups independently */
+    int win_offset = 0;
     for (group = 0; group < coder->groups.n; group++)
     {
         int first_band = group * coder->sfbn;
         int group_size = coder->groups.len[group];
-        int spectrum_offset = 0;
-        if (coder->block_type == ONLY_SHORT_WINDOW)
-        {
-            for (int i = 0; i < group; i++)
-                spectrum_offset += coder->groups.len[i] * BLOCK_LEN_SHORT;
-        }
 
-        /* Forward pass */
+        /* Forward pass using pre-calculated bits */
         for (band = first_band; band < (group + 1) * coder->sfbn; band++)
         {
             int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
@@ -601,7 +598,7 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
             if (best_book < 0) best_book = 0;
         }
 
-        /* Final Forward pass for the group: encode spectral data */
+        /* Final pass: actually encode spectral data into bitstream buffer */
         for (band = first_band; band < (group + 1) * coder->sfbn; band++)
         {
             int is_non_spectral = (coder->book[band] >= 13 && coder->book[band] < HCB_NONE);
@@ -609,22 +606,20 @@ void huff_trellis(CoderInfo *coder, int (*cost)[12], int (*path)[12])
                 int chosen_book = best_books[band];
                 coder->book[band] = chosen_book;
 
-                int sb = band % coder->sfbn;
-                int start = coder->sfb_offset[sb];
-                int end = coder->sfb_offset[sb + 1];
-                int len = end - start;
+                if (chosen_book > 0) {
+                    int sb = band % coder->sfbn;
+                    int start = coder->sfb_offset[sb];
+                    int end = coder->sfb_offset[sb + 1];
+                    int len = end - start;
 
-                if (coder->block_type == ONLY_SHORT_WINDOW && group_size > 1) {
-                    int tmp_qs[BLOCK_LEN_LONG];
-                    for (int w = 0; w < group_size; w++)
-                        memcpy(tmp_qs + w * len, coder->quantized_spectra + spectrum_offset + w * BLOCK_LEN_SHORT + start, len * sizeof(int));
-                    huffcode(tmp_qs, group_size * len, chosen_book, coder);
-                } else {
-                    int *qs = coder->quantized_spectra + spectrum_offset + start;
-                    huffcode(qs, group_size * len, chosen_book, coder);
+                    for (int w = 0; w < group_size; w++) {
+                        int *qs = coder->quantized_spectra + (win_offset + w) * BLOCK_LEN_SHORT + start;
+                        huffcode(qs, len, chosen_book, coder);
+                    }
                 }
             }
         }
+        win_offset += group_size;
     }
 }
 
