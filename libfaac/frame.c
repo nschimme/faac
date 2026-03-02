@@ -32,6 +32,8 @@
 #include "tns.h"
 #include "stereo.h"
 
+extern psymodel_t psymodel_mdct;
+
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -44,6 +46,7 @@ static char *libCopyright =
   "This software is based on the ISO MPEG-4 reference source code.\n";
 
 static const psymodellist_t psymodellist[] = {
+  {&psymodel_mdct, "mdct-based psychoacoustic (default)"},
   {&psymodel2, "knipsycho psychoacoustic"},
   {NULL}
 };
@@ -228,12 +231,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
               &hEncoder->aacquantCfg);
 
     // reset psymodel
-    hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
+    if (hEncoder->psymodel)
+        hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
+
     if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
-		config->psymodelidx = (sizeof(psymodellist) / sizeof(psymodellist[0])) - 2;
+        config->psymodelidx = 0;
 
     hEncoder->config.psymodelidx = config->psymodelidx;
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
+
     hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
 			hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short,
@@ -294,8 +300,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
-    hEncoder->psymodel =
-      (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
+    hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
     hEncoder->config.bitReservoir = 5;
@@ -330,6 +335,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     /* Initialize coder functions */
 	fft_initialize( &hEncoder->fft_tables );
+    hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
 
 	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
@@ -352,7 +358,8 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     unsigned int channel;
 
     /* Deinitialize coder functions */
-    hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
+    if (hEncoder->psymodel)
+        hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
 
     FilterBankEnd(hEncoder);
 
@@ -613,7 +620,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->psyInfo[channel].prev_block_type = coderInfo[channel].block_type;
         }
 
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+        BlocQuant(hEncoder, &coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state);
     }
 

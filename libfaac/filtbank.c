@@ -34,6 +34,7 @@ Copyright(c)1996.
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "coder.h"
 #include "filtbank.h"
@@ -351,4 +352,3 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
     if (xr) FreeMemory(xr);
     if (xi) FreeMemory(xi);
 }
-

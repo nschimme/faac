@@ -43,7 +43,6 @@ extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, 
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 static QuantizeFunc qfunc = quantize_scalar;
-static faac_real ath_table[BLOCK_LEN_LONG];
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
@@ -63,7 +62,6 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 void QuantizeInit(void)
 {
-    int i;
 #if (defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)) && defined(CPUSSE)
     unsigned int caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -71,24 +69,12 @@ void QuantizeInit(void)
     else
 #endif
         qfunc = quantize_scalar;
-
-    /* Precompute ATH table using standard Terhardt formula */
-    for (i = 0; i < BLOCK_LEN_LONG; i++)
-    {
-        faac_real freq = (faac_real)i * 18000.0 / BLOCK_LEN_LONG; // approx center freq
-        faac_real fkHz = freq / 1000.0;
-        faac_real ath;
-        if (fkHz < 0.1) fkHz = 0.1;
-        ath = 3.64 * FAAC_POW(fkHz, -0.8)
-              - 6.5 * FAAC_EXP(-0.6 * FAAC_POW(fkHz - 3.3, 2.0))
-              + 0.001 * FAAC_POW(fkHz, 4.0);
-
-        ath_table[i] = FAAC_POW(10.0, (ath - 20.0) / 10.0);
-    }
 }
 #define NOISEFLOOR 0.4
 
-// band sound masking
+#if 0
+/* bmask is deprecated, but kept here (commented out) for legacy reference if needed.
+   The Psychoacoustic model should now be accessed via the psymodel interface. */
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality, int spreading, int athLevel,
                   faac_real * __restrict tonality, faac_real * __restrict bandlvl_stable)
@@ -205,20 +191,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandenrg[sfb] = spread[sfb];
   }
 
-  if (athLevel > 0)
-  {
-      /* High-precision ATH suppression using precomputed table */
-      faac_real sensitivity = athLevel * 0.1;
-      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
-      {
-          int bcenter = (coderInfo->sfb_offset[sfb] + coderInfo->sfb_offset[sfb + 1]) >> 1;
-          if (bcenter >= BLOCK_LEN_LONG) bcenter = BLOCK_LEN_LONG - 1;
-
-          if (bandenrg[sfb] < ath_table[bcenter] * sensitivity)
-              bandlvl[sfb] = 0.0;
-      }
-  }
 }
+#endif
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
@@ -327,7 +301,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state)
+int BlocQuant(struct faacEncStruct *hEncoder, CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int *pns_state)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -353,8 +327,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             faac_real bandlvl_stable[MAX_SCFAC_BANDS];
 
-            /* Optimized single-pass masking calculation */
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
+            /* Optimized single-pass masking calculation via psychoacoustic model */
+            hEncoder->psymodel->PsyMask(&hEncoder->gpsyInfo, &hEncoder->psyInfo[coder - hEncoder->coderInfo], coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->spreading, aacquantCfg->athLevel,
                   aacquantCfg->tonality + (cnt * MAX_SCFAC_BANDS / coder->groups.n),
                   bandlvl_stable);
