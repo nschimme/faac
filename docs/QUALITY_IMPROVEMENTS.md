@@ -31,5 +31,5 @@ These improvements utilize existing tools defined in the AAC standard to maximiz
 ## Next "Low Hanging Fruit"
 
 Given the current IOT/NVR constraints, the following items are recommended for future work:
-1. **Huffman Codebook Selection Optimization**: Refining how spectral lines are grouped into sections can improve coding efficiency by 3-7%.
-3. **LTP (Long Term Prediction)**: While computationally more expensive, LTP can significantly improve quality for tonal signals (like sirens or consistent motor hums) at low bitrates.
+1. **Huffman Sectioning (Band Merging)**: Further grouping adjacent bands into larger Huffman sections can save header bits, improving efficiency by another 2-4%.
+2. **LTP (Long Term Prediction)**: While computationally more expensive, LTP can significantly improve quality for tonal signals (like sirens or consistent motor hums) at low bitrates.

@@ -410,7 +410,8 @@ int huffbook(CoderInfo *coder,
 {
     int cnt;
     int maxq = 0;
-    int bookmin, lenmin;
+    int bookmin = HCB_ZERO;
+    int lenmin = 0;
     int b;
 
     for (cnt = 0; cnt < len; cnt++)
@@ -453,13 +454,13 @@ int huffbook(CoderInfo *coder,
     }
     else
     {
-#define BOOKMIN(n) { bookmin=n; lenmin=huffcode(qs,len,bookmin,0); if(huffcode(qs,len,bookmin+1,0)<lenmin) bookmin++; }
+#define BOOKMIN(n) { bookmin=n; lenmin=huffcode(qs,len,bookmin,0); if(huffcode(qs,len,bookmin+1,0)<lenmin) { bookmin++; lenmin=huffcode(qs,len,bookmin,0); } }
         if (maxq < 2) BOOKMIN(1)
         else if (maxq < 3) BOOKMIN(3)
         else if (maxq < 5) BOOKMIN(5)
-        else if (maxq >= 5 && maxq < 8) BOOKMIN(7)
-        else if (maxq >= 8 && maxq < 13) BOOKMIN(9)
-        else bookmin = HCB_ESC;
+        else if (maxq < 8) BOOKMIN(7)
+        else if (maxq < 13) BOOKMIN(9)
+        else { bookmin = HCB_ESC; lenmin = huffcode(qs, len, bookmin, 0); }
     }
 
 #ifdef DRM

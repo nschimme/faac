@@ -171,7 +171,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         bandlvl_stable[sfb] = target;
   }
 
-  /* Standard-aligned frequency spreading (energy domain) */
+  /* Standard-aligned frequency spreading (masking domain) */
   if (spreading > 0)
   {
       faac_real spread[MAX_SCFAC_BANDS];
@@ -180,13 +180,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
          Scaled by level (5 = default). */
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          faac_real s = bandenrg[sfb];
-          if (sfb > 0) s = max(s, bandenrg[sfb - 1] * 0.02 * spreading); // ~17dB masking-up
-          if (sfb < coderInfo->sfbn - 1) s = max(s, bandenrg[sfb + 1] * 0.01 * spreading); // ~20dB masking-down
+          faac_real s = bandlvl[sfb];
+          if (sfb > 0) s = max(s, bandlvl[sfb - 1] * 0.02 * spreading); // ~17dB masking-up
+          if (sfb < coderInfo->sfbn - 1) s = max(s, bandlvl[sfb + 1] * 0.01 * spreading); // ~20dB masking-down
           spread[sfb] = s;
       }
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
-          bandenrg[sfb] = spread[sfb];
+          bandlvl[sfb] = spread[sfb];
   }
 
   if (athLevel > 0)
@@ -264,9 +264,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           int prev_pns = pns_state[coderInfo->bandcnt];
           faac_real thr = pnsthr;
-          if (prev_pns) thr *= 2.0;
+          faac_real ton_thr = 1.8;
+          if (prev_pns) {
+              thr *= 2.0;
+              ton_thr *= 1.5;
+          }
 
-          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < 1.8))
+          if ((bandlvl_stable[sb] < thr) || (tonality[sb] < ton_thr))
           {
               pns_state[coderInfo->bandcnt] = 1;
               coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
@@ -307,6 +311,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       coderInfo->band_widths[coderInfo->bandcnt] = gsize * end;
       coderInfo->quant_spec_idx += gsize * end;
+      /* Assign a temporary book for reservoir calculation */
+      coderInfo->book[coderInfo->bandcnt] = HCB_ESC;
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
@@ -350,6 +356,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
+        memset(coder->band_widths, 0, sizeof(coder->band_widths));
+
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
@@ -370,7 +378,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         coder->bandcnt = 0;
         for (band = 0; band < saved_bandcnt; band++)
         {
-            huffbook(coder, coder->quantized_spectrum + spec_idx, coder->band_widths[band], aacquantCfg->huffmanOpt);
+            if (coder->book[band] != HCB_PNS)
+                huffbook(coder, coder->quantized_spectrum + spec_idx, coder->band_widths[band], aacquantCfg->huffmanOpt);
             spec_idx += coder->band_widths[band];
             coder->bandcnt++;
         }
