@@ -28,6 +28,10 @@ else
     config_h.set('FAAC_PRECISION_SINGLE', 1)
 endif
 
+if get_option('buildtype') == 'debug'
+    add_project_arguments('-DPRINTSTAT', language: 'c')
+endif
+
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']

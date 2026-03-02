@@ -1168,6 +1168,7 @@ int main(int argc, char *argv[])
 
                 fflush(stderr);
 
+#ifdef PRINTSTAT
                 if (getenv("FAAC_DUMP_MSE")) {
                     double total_mse = 0;
                     faacEncStruct *s = (faacEncStruct*)hEncoder;
@@ -1187,6 +1188,7 @@ int main(int argc, char *argv[])
                         total_mse, (total_holes / total_sfb) * 100.0, hf_loss, (ms_used / ms_total) * 100.0);
                     fflush(stdout);
                 }
+#endif
 
 #ifdef _WIN32
                 if (frames != 0)

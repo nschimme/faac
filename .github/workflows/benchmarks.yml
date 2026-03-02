@@ -1,4 +1,4 @@
-name: Performance Benchmarks
+name: Efficiency & Perceptual Tests
 
 on:
   pull_request:
@@ -8,16 +8,27 @@ on:
       - 'tests/**'
 
 jobs:
-  benchmark:
-    name: Multi-Matrix Efficiency & Quality
+  test:
+    name: Multi-Matrix Qualitative Validation
     runs-on: ubuntu-latest
 
     steps:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build
+          sudo apt-get install -y meson ninja-build bc faad gstreamer1.0-tools libgstreamer1.0-dev
           pip install meson
+
+      - name: Build and Install gst-peaq
+        run: |
+          git clone https://github.com/HSU-ANT/gst-peaq.git
+          cd gst-peaq
+          ./autogen.sh
+          ./configure
+          make
+          sudo make install
+          # Refresh GStreamer registry
+          gst-inspect-1.0 peaq
 
       - name: Checkout PR branch
         uses: actions/checkout@v3
@@ -33,34 +44,44 @@ jobs:
       - name: Generate Multi-Rate Test Suite
         run: |
           python3 optimized/tests/generate_waves.py
+          python3 optimized/tests/fetch_sqam.py
 
-      - name: Build Baseline
+      - name: Build Baseline (Debug for Metrics)
         run: |
           cd baseline
-          meson setup build -Dfloating-point=double
+          meson setup build -Dfloating-point=double --buildtype=debug
           ninja -C build
 
-      - name: Build Optimized
+      - name: Build Optimized (Debug for Metrics)
         run: |
           cd optimized
-          meson setup build -Dfloating-point=double
+          meson setup build -Dfloating-point=double --buildtype=debug
           ninja -C build
 
       - name: Run Baseline Matrix
         run: |
-          python3 optimized/tests/run_tests.py baseline/build/frontend/faac baseline baseline.json
+          python3 optimized/tests/run_benchmarks.py baseline/build/frontend/faac baseline baseline.json
 
       - name: Run Optimized Matrix
         run: |
-          python3 optimized/tests/run_tests.py optimized/build/frontend/faac optimized optimized.json
+          python3 optimized/tests/run_benchmarks.py optimized/build/frontend/faac optimized optimized.json
 
-      - name: Compare Results
+      - name: Generate Multi-Dimensional Report
         run: |
           python3 optimized/tests/compare_results.py baseline.json optimized.json > report.txt
           cat report.txt
 
-      - name: Upload Matrix Report
+      - name: Check for Regressions
+        run: |
+          # Pass if overall CPU reduction > 10% and no major ODG drops
+          REDUCTION=$(grep "OVERALL CPU REDUCTION" report.txt | grep -oE "[0-9.]+")
+          if (( $(echo "$REDUCTION < 10" | bc -l) )); then
+            echo "CPU optimization target not met"
+            exit 1
+          fi
+
+      - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: multi-rate-matrix-report
+          name: qualitative-report
           path: report.txt

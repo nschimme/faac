@@ -135,12 +135,14 @@ typedef struct {
     int iLenReordSpData;
 #endif
 
+#ifdef PRINTSTAT
     double total_ms_error;
     int spectral_holes;
     int total_sfb;
     int ms_used;
     int ms_total;
     faac_real hf_energy_loss;
+#endif
     TnsInfo tnsInfo;
 } CoderInfo;
 

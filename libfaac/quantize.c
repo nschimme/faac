@@ -238,6 +238,7 @@ static void qlevel(CoderInfo *coderInfo,
       xi = xitab;
       for (win = 0; win < gsize; win++)
       {
+#ifdef PRINTSTAT
           if (sfacfix > 1e-10) {
               for (cnt = 0; cnt < end; cnt++)
               {
@@ -256,6 +257,7 @@ static void qlevel(CoderInfo *coderInfo,
                   coderInfo->total_ms_error += xr[cnt] * xr[cnt];
               }
           }
+#endif
 
 #ifdef __SSE2__
           if (sse2)
@@ -302,6 +304,7 @@ static void qlevel(CoderInfo *coderInfo,
       }
       huffbook(coderInfo, xitab, gsize * end);
 
+#ifdef PRINTSTAT
       // Health Check: Track Spectral Holes
       coderInfo->total_sfb++;
       if (coderInfo->book[coderInfo->bandcnt] == HCB_ZERO) {
@@ -320,6 +323,7 @@ static void qlevel(CoderInfo *coderInfo,
               coderInfo->hf_energy_loss += band_enrg;
           }
       }
+#endif
 
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
@@ -332,10 +336,12 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
     faac_real *gxr;
 
     coder->global_gain = 0;
+#ifdef PRINTSTAT
     coder->total_ms_error = 0.0;
     coder->spectral_holes = 0;
     coder->total_sfb = 0;
     coder->hf_energy_loss = 0.0;
+#endif
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
