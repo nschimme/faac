@@ -176,6 +176,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psyInfo[channel].prevSamples =
       (faac_real *) AllocMemory(size * sizeof(faac_real));
     memset(psyInfo[channel].prevSamples, 0, size * sizeof(faac_real));
+    memset(psyInfo[channel].pns_state, 0, sizeof(psyInfo[channel].pns_state));
+    memset(psyInfo[channel].prev_pns_sf, 0, sizeof(psyInfo[channel].prev_pns_sf));
   }
 
   size = BLOCK_LEN_SHORT;

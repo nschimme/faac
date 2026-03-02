@@ -45,6 +45,8 @@ typedef struct {
 
 	int block_type;
     faac_real pe;
+    int pns_state[MAX_SCFAC_BANDS];
+    int prev_pns_sf[MAX_SCFAC_BANDS];
 
         void *data;
 } PsyInfo;

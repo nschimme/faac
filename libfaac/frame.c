@@ -607,7 +607,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 #endif
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), hEncoder->psyInfo[channel].pns_state, hEncoder->psyInfo[channel].prev_pns_sf);
     }
 
 #ifdef DRM
