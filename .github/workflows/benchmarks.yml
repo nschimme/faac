@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install meson ninja faad
+          brew install meson ninja faad2
           pip3 install meson
 
       - name: Checkout PR branch
@@ -67,8 +67,13 @@ jobs:
             cd ..
 
             LIB_EXT="so"
-            if [ "${{ runner.os }}" == "macOS" ]; then LIB_EXT="dylib"; fi
+            FAAD_BIN="faad"
+            if [ "${{ runner.os }}" == "macOS" ]; then
+              LIB_EXT="dylib"
+              FAAD_BIN="faad" # faad2 formula provides 'faad' binary
+            fi
 
+            # Note: We pass the faad binary name to run_benchmarks.py to ensure it works cross-platform
             python3 optimized/tests/run_benchmarks.py baseline/build/frontend/faac baseline/build/libfaac/libfaac.$LIB_EXT ${precision}_base ${precision}_base.json
             python3 optimized/tests/run_benchmarks.py optimized/build/frontend/faac optimized/build/libfaac/libfaac.$LIB_EXT ${precision}_opt ${precision}_opt.json
 

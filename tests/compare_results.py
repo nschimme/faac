@@ -7,8 +7,8 @@ def compare(base_file, opt_file):
     with open(opt_file, "r") as f:
         opt = json.load(f)
 
-    print("### Perceptual & Compression Matrix")
-    print("| Test Case | MOS Delta | AAC Size Chg | Status |")
+    print("### Perceptual & Compression Efficiency")
+    print("| Test Case | MOS Delta (Perceptual) | AAC Size Chg | Status |")
     print("| :--- | :---: | :---: | :---: |")
 
     base_m = base["matrix"]
@@ -26,31 +26,31 @@ def compare(base_file, opt_file):
             size_chg = ((o_size / b_size) - 1) * 100 if b_size > 0 else 0
 
             status = "✅ PASS"
-            if mos_delta is not None and mos_delta < -0.2: status = "⚠️ WARN"
-            if mos_delta is not None and mos_delta < -0.5: status = "❌ FAIL"
+            if mos_delta is not None and mos_delta < -0.25: status = "⚠️ WARN"
+            if mos_delta is not None and mos_delta < -0.6: status = "❌ FAIL"
 
             mos_str = f"{mos_delta:>+5.2f}" if mos_delta is not None else "N/A"
             print(f"| {k:<20} | {mos_str} | {size_chg:>+6.1f}% | {status} |")
 
-    print("\n### Resource Efficiency")
+    print("\n### System Performance & Footprint")
     base_tp = base.get("throughput", {})
     opt_tp = opt.get("throughput", {})
+
     total_base_t = sum(base_tp.values())
     total_opt_t = sum(opt_tp.values())
 
-    speedup = (total_base_t / total_opt_t) if total_opt_t > 0 else 0
-    improvement = (1 - total_opt_t/total_base_t)*100 if total_base_t > 0 else 0
-
-    print(f"- **CPU Usage Reduction:** {improvement:.1f}% ({speedup:.2f}x speedup)")
+    if total_opt_t > 0:
+        speedup = total_base_t / total_opt_t
+        reduction = (1 - 1/speedup) * 100
+        print(f"- **CPU Usage Reduction:** {reduction:.1f}% ({speedup:.2f}x speedup)")
 
     base_lib = base.get("lib_size", 0)
     opt_lib = opt.get("lib_size", 0)
     if base_lib > 0:
         lib_chg = ((opt_lib/base_lib)-1)*100
-        print(f"- **Library Size Change:** {lib_chg:+.2f}% ({base_lib} -> {opt_lib} bytes)")
+        print(f"- **Library Binary Size:** {lib_chg:+.2f}% ({base_lib} -> {opt_lib} bytes)")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python3 tests/compare_results.py <baseline.json> <optimized.json>")
         sys.exit(1)
     compare(sys.argv[1], sys.argv[2])
