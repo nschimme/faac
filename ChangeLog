@@ -1,5 +1,10 @@
 1.31.1 (Mar 03, 2025)
 
+	[ Jules ]
+	* Quality improvements: bit reservoir, frequency spreading, TNS for short blocks
+	* Better block switching sensitivity for low sample rates
+	* Add CLI flags for new quality features
+
 	[ Fabian Greffrath ]
 	* Reduce autoconf requirement back down to 2.69
 	* Reformat configure.ac for the ac2ver.exe hack to work
