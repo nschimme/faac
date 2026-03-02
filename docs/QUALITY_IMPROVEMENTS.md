@@ -14,6 +14,7 @@ The following features have been added to improve perceived audio quality in FAA
 5. **Adaptive Quantization Bias**: Dynamically adjusts rounding (0.405 -> 0.38) for upper frequencies to reduce ringing, aligning with standard AAC-LC optimizations.
 6. **Conservative M/S Decision**: Refined mid/side decision logic to ensure stable stereo imaging and bit efficiency.
 7. **ATH Suppression**: Industry-standard Absolute Threshold of Hearing (ATH) model (Terhardt approximation) suppresses inaudible noise to save bits.
+8. **Improved PNS**: Perceptual Noise Substitution now uses tonality detection to identify noise-like bands more accurately, improving efficiency at low bitrates.
 
 ## Iterative Improvement Process
 
@@ -30,6 +31,5 @@ These improvements utilize existing tools defined in the AAC standard to maximiz
 ## Next "Low Hanging Fruit"
 
 Given the current IOT/NVR constraints, the following items are recommended for future work:
-1. **Improved PNS (Perceptual Noise Substitution)**: FAAC's current PNS is very basic. Identifying noise-like bands and using the PNS tool more effectively can save significant bits at low bitrates without perceived loss.
-2. **Huffman Codebook Selection Optimization**: Refining how spectral lines are grouped into sections can improve coding efficiency by 3-7%.
+1. **Huffman Codebook Selection Optimization**: Refining how spectral lines are grouped into sections can improve coding efficiency by 3-7%.
 3. **LTP (Long Term Prediction)**: While computationally more expensive, LTP can significantly improve quality for tonal signals (like sirens or consistent motor hums) at low bitrates.

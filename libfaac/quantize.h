@@ -33,6 +33,7 @@ typedef struct
     int pnslevel;
     int spreading;
     int athLevel;
+    faac_real tonality[MAX_SCFAC_BANDS];
 } AACQuantCfg;
 
 enum {

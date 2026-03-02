@@ -6,6 +6,5 @@
 - Add HE AAC (hans-juergen, Oct 17, 2004)
 
 Future Work (Quality):
-- Improved PNS (Perceptual Noise Substitution) - see docs/QUALITY_IMPROVEMENTS.md
 - Huffman codebook selection optimization
 - LTP (Long Term Prediction) for tonal signals
