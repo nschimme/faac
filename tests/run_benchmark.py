@@ -25,6 +25,7 @@ import json
 import re
 import tempfile
 import shutil
+import hashlib
 
 EXTERNAL_DATA_DIR = "tests/data/external"
 OUTPUT_DIR = "tests/output"
@@ -50,16 +51,23 @@ def get_binary_size(path):
         return os.path.getsize(path)
     return 0
 
+def get_md5(path):
+    if not os.path.exists(path):
+        return ""
+    hash_md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
 def run_visqol(ref_wav, deg_wav, mode):
     """Run ViSQOL CLI and parse MOS score."""
     try:
-        cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav]
-
         if mode == "speech":
-            cmd.append("--use_speech_mode")
+            cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "wideband"]
         else:
             model_path = os.path.abspath("model/libsvm_nu_svr_model.txt")
-            cmd.extend(["--similarity_to_quality_model", model_path])
+            cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path]
 
         proc = subprocess.run(cmd, capture_output=True, text=True)
         match = re.search(r"MOS-LQO:\s+([0-9.]+)", proc.stdout)
@@ -128,6 +136,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                     results["matrix"][key] = {
                         "mos": mos,
                         "size": aac_size,
+                        "md5": get_md5(output_path),
                         "thresh": cfg["thresh"],
                         "scenario": name,
                         "filename": sample

@@ -11,6 +11,27 @@ When evaluating encoder changes, we aim for an optimal balance between:
 
 A gain in one area must not come at a "catastrophic" cost to another (e.g., a 10% speedup that drops MOS by 0.5 is a failure).
 
+## Metrics Definition
+
+### Qualitative Metrics
+*   **MOS (Mean Opinion Score)**: An objective estimate of perceptual audio quality. We use ViSQOL v3, which maps internal similarity metrics to a 1.0 - 5.0 scale (higher is better).
+    *   **Goal**: Ensure audio remains clear and free of artifacts like "underwater" effects or metallic ringing, especially at low bitrates.
+*   **Bitstream Consistency**: Measures how often the candidate encoder produces bit-identical output to the baseline.
+    *   **Goal**: Pure refactors or performance optimizations should ideally maintain 100% consistency. Changes to psychoacoustic models will naturally lower this.
+
+### Quantitative Metrics
+*   **Throughput (CPU)**: Measured as the time taken to encode a set of reference samples.
+    *   **Goal**: Maintain or improve encoding speed. FAAC's niche is high-efficiency encoding for resource-constrained hardware.
+*   **Binary Size**: The footprint of `libfaac.so`.
+    *   **Goal**: Keep the library small enough to fit in minimal NVR or IoT firmware images.
+*   **Output Size (Bitrate Accuracy)**: The size of the resulting `.aac` file.
+    *   **Goal**: Ensure the encoder respects quality/bitrate targets and doesn't "bloat" the output with inefficient coding.
+
+## Dataset Sources
+*   **PMLT2014**: [MPEG AAC/HE-AAC/AAC-ELD Listening Test](https://listening-test.coresv.net/) - High-quality audio and speech.
+*   **SoundExpert**: [SoundExpert Research Project](https://soundexpert.org/sound-samples) - Diverse music and instrument samples.
+*   **TCD-VOIP**: [TCD-VoIP Dataset](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - Comprehensive speech samples with various degradations.
+
 ## Prerequisites & Installation
 
 ### Debian/Ubuntu
