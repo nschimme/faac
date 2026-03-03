@@ -581,7 +581,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+        BlocQuant(&hEncoder->gpsyInfo, &coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg), hEncoder->sampleRate);
     }
 

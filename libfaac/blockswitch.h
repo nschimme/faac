@@ -55,9 +55,16 @@ typedef struct {
 	faac_real *hannWindow;
 	faac_real *hannWindowS;
 
-	/* MDCT scratch buffers */
-	faac_real *mdctXr;
-	faac_real *mdctXi;
+	/* Precomputed ATH */
+	faac_real ath_long[NSFB_LONG];
+	faac_real ath_short[NSFB_SHORT];
+
+	/* Precomputed sfacfix LUT (-100 to 100) */
+	faac_real sfacfix_lut[201];
+
+	/* Precomputed inverse widths */
+	faac_real inv_width_long[NSFB_LONG];
+	faac_real inv_width_short[NSFB_SHORT];
 
 	void *data;
 } GlobalPsyInfo;

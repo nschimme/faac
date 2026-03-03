@@ -123,7 +123,7 @@ def compare(base_file, cand_file):
         missing_data = True
 
     # 2. System Efficiency Summary
-    print("\n### 🚀 System Efficiency Summary")
+    print("\n### 🚀 System Efficiency (Throughput)")
     base_tp = base.get("throughput", {})
     cand_tp = cand.get("throughput", {})
 

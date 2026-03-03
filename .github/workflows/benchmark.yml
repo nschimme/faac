@@ -67,7 +67,7 @@ jobs:
       - name: Build and Run Matrix
         shell: bash
         run: |
-          echo "## Summary Report for ubuntu-22.04" > report.md
+          echo "## Performance & Perceptual Report (ubuntu-22.04)" > report.md
           for precision in single double; do
             echo "---" >> report.md
             echo "### Precision: $precision" >> report.md
@@ -115,7 +115,7 @@ jobs:
 
       - name: PR Feedback
         if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
