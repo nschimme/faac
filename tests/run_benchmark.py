@@ -51,54 +51,24 @@ def get_binary_size(path):
     return 0
 
 def run_visqol(ref_wav, deg_wav, mode):
-    """Run ViSQOL and parse MOS score."""
+    """Run ViSQOL CLI and parse MOS score."""
     try:
-        from visqol import visqol_lib_py
-        from visqol.pb2 import visqol_config_pb2
-        from visqol.pb2 import similarity_result_pb2
+        cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav]
 
-        config = visqol_config_pb2.VisqolConfig()
         if mode == "speech":
-            config.audio.sample_rate = 16000
-            config.options.use_speech_scoring = True
-            config.options.svr_model_path = os.path.abspath("model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite")
+            cmd.append("--use_speech_mode")
         else:
-            config.audio.sample_rate = 48000
-            config.options.use_speech_scoring = False
-            config.options.full_band_expectation = True
-            config.options.svr_model_path = os.path.abspath("model/libsvm_nu_svr_model.txt")
+            model_path = os.path.abspath("model/libsvm_nu_svr_model.txt")
+            cmd.extend(["--similarity_to_quality_model", model_path])
 
-        api = visqol_lib_py.VisqolApi()
-        api.Create(config)
-
-        # Load audio files
-        def read_wav(path):
-            import wave
-            import numpy as np
-            with wave.open(path, 'rb') as wf:
-                params = wf.getparams()
-                frames = wf.readframes(params.nframes)
-                audio = np.frombuffer(frames, dtype=np.int16).astype(np.float64)
-                if params.nchannels > 1:
-                    audio = audio.reshape(-1, params.nchannels)
-                    if mode == "speech":
-                        audio = audio.mean(axis=1)
-                return audio
-
-        ref_audio = read_wav(ref_wav)
-        deg_audio = read_wav(deg_wav)
-
-        # ViSQOL expects 1D arrays for speech, but can handle stereo for audio v3.
-        # To be safe and compatible with both, we try passing as is and fallback to mono.
-        try:
-            result = api.Measure(ref_audio, deg_audio)
-        except:
-            if ref_audio.ndim > 1: ref_audio = ref_audio.mean(axis=1)
-            if deg_audio.ndim > 1: deg_audio = deg_audio.mean(axis=1)
-            result = api.Measure(ref_audio, deg_audio)
-        return result.moslqo
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        match = re.search(r"MOS-LQO:\s+([0-9.]+)", proc.stdout)
+        if match:
+            return float(match.group(1))
+        else:
+            print(f"ViSQOL CLI output error: {proc.stdout} {proc.stderr}")
     except Exception as e:
-        print(f"ViSQOL error: {e}")
+        print(f"ViSQOL CLI execution error: {e}")
         pass
     return None
 

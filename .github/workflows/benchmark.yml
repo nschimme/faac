@@ -40,15 +40,17 @@ jobs:
           disk-cache: ${{ github.workflow }}
           repository-cache: true
 
-      - name: Install ViSQOL
+      - name: Build ViSQOL
         run: |
           if [ ! -d visqol-repo ]; then
             git clone --depth 1 https://github.com/google/visqol.git visqol-repo
           fi
-          mkdir -p model
-          cp -r visqol-repo/model/* model/
           cd visqol-repo
-          pip install .
+          bazel build -c opt :visqol
+          sudo cp bazel-bin/visqol /usr/local/bin/visqol
+          mkdir -p ../model
+          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
+          cp model/libsvm_nu_svr_model.txt ../model/
 
       - name: Cache Datasets
         id: cache-datasets
