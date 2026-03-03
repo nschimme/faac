@@ -106,7 +106,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          if (toteng > 0.0 && (volchg / toteng * quality) > 3.0)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;
@@ -145,6 +145,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
+    memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
   }
 

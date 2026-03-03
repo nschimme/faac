@@ -25,7 +25,7 @@ jobs:
       - name: Setup Bazel
         uses: abhinavsingh/setup-bazel@v3
         with:
-          version: 5.1.0
+          version: 5.3.2
 
       - name: Cache Pip and ViSQOL
         uses: actions/cache@v4
@@ -39,15 +39,15 @@ jobs:
       - name: Install ViSQOL (Linux only)
         run: |
           if [ ! -d visqol ]; then
-            git clone https://github.com/google/visqol.git
+            git clone --depth 1 https://github.com/google/visqol.git
           fi
           cd visqol
+          # setup.py will run bazel, we need to ensure it uses the right one
           pip install .
-          cd ..
-          mkdir -p model
-          if [ ! -f model/libsvm_nu_svr_model.txt ]; then
-            curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
-          fi
+          # Ensure models are bundled where the script expects them if pip install doesn't do it
+          mkdir -p ../model
+          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
+          cp model/libsvm_nu_svr_model.txt ../model/
 
       - name: Cache Datasets
         id: cache-datasets
