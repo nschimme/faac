@@ -61,12 +61,12 @@ def run_visqol(ref_wav, deg_wav, mode):
         if mode == "speech":
             config.audio.sample_rate = 16000
             config.options.use_speech_scoring = True
-            config.options.svr_model_path = os.path.abspath("model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite")
+            config.options.svr_model_path = os.path.abspath("visqol/model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite")
         else:
             config.audio.sample_rate = 48000
             config.options.use_speech_scoring = False
             config.options.full_band_expectation = True
-            config.options.svr_model_path = os.path.abspath("model/libsvm_nu_svr_model.txt")
+            config.options.svr_model_path = os.path.abspath("visqol/model/libsvm_nu_svr_model.txt")
 
         api = visqol_lib_py.VisqolApi()
         api.Create(config)

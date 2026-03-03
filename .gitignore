@@ -41,6 +41,7 @@ Makefile*
 /build/
 /tests/data/external/
 /tests/output/
+/visqol/
 /model/
 /*.json
 /baseline/
