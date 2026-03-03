@@ -28,6 +28,7 @@ import hashlib
 
 try:
     import visqol_py
+    from visqol_py import ViSQOLMode
     HAS_VISQOL = True
 except ImportError:
     HAS_VISQOL = False
@@ -66,7 +67,9 @@ def run_visqol(ref_wav, deg_wav, mode):
         return None
     try:
         # visqol-py handles model paths and configuration internally.
-        visqol = visqol_py.ViSQOL(mode=mode)
+        # mode should be 'audio' or 'speech'
+        v_mode = ViSQOLMode.AUDIO if mode == 'audio' else ViSQOLMode.SPEECH
+        visqol = visqol_py.ViSQOL(mode=v_mode)
         result = visqol.measure(ref_wav, deg_wav)
         return float(result.moslqo)
     except Exception as e:

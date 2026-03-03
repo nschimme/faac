@@ -46,7 +46,8 @@ Install ViSQOL and Python dependencies (recommended within a virtual environment
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install numpy
+pip install --upgrade pip setuptools wheel
+pip install numpy protobuf==3.20.3
 pip install git+https://github.com/diggerdu/visqol-py.git
 ```
 
