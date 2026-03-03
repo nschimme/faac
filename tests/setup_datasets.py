@@ -27,7 +27,8 @@ import re
 
 DATASETS = {
     "PMLT2014": "https://github.com/nschimme/PMLT2014/archive/refs/tags/PMLT2014.zip",
-    "TCD-VOIP": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip"
+    "TCD-VOIP": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip",
+    "SoundExpert": "https://github.com/nschimme/SoundExpert/archive/refs/tags/SoundExpert.zip"
 }
 
 BASE_DATA_DIR = "tests/data/external"
@@ -100,6 +101,24 @@ def setup_tcd_voip():
         output = os.path.join(dest_dir, filename)
         resample(wav, output, 16000, chans, start=start, duration=7)
 
+def setup_soundexpert():
+    src_dir = os.path.join(TEMP_DIR, "SoundExpert-SoundExpert")
+    dest_dir = os.path.join(BASE_DATA_DIR, "audio")
+
+    wav_files = []
+    for root, dirs, files in os.walk(src_dir):
+        for f in files:
+            if f.endswith(".wav"):
+                wav_files.append(os.path.join(root, f))
+
+    print(f"Found {len(wav_files)} valid SoundExpert audio files.")
+    for wav in wav_files:
+        dur, chans = get_info(wav)
+        start = max(0, (dur - 7) / 2)
+        filename = os.path.basename(wav)
+        output = os.path.join(dest_dir, filename)
+        resample(wav, output, 48000, chans, start=start, duration=7)
+
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
         for name, url in DATASETS.items():
@@ -107,6 +126,7 @@ if __name__ == "__main__":
 
         setup_pmlt()
         setup_tcd_voip()
+        setup_soundexpert()
 
         if os.path.exists(TEMP_DIR):
             shutil.rmtree(TEMP_DIR)

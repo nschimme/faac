@@ -22,11 +22,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cache Pip and ViSQOL
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            model
+          key: ${{ runner.os }}-pip-visqol-v1
+
       - name: Install ViSQOL (Linux only)
         run: |
           pip install git+https://github.com/diggerdu/visqol-py.git
           mkdir -p model
-          curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
+          if [ ! -f model/libsvm_nu_svr_model.txt ]; then
+            curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
+          fi
 
       - name: Cache Datasets
         id: cache-datasets

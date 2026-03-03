@@ -78,13 +78,18 @@ def run_visqol(ref_wav, deg_wav, mode):
             with wave.open(path, 'rb') as wf:
                 params = wf.getparams()
                 frames = wf.readframes(params.nframes)
-                return np.frombuffer(frames, dtype=np.int16).astype(np.float)
+                return np.frombuffer(frames, dtype=np.int16).astype(float)
 
         ref_audio = read_wav(ref_wav)
         deg_audio = read_wav(deg_wav)
 
         # ViSQOL expects 1D arrays
-        result = api.Measure(ref_audio.tolist(), deg_audio.tolist())
+        # Some versions of visqol-py api expect list, some expect numpy array.
+        # Based on logs, it might be failing due to type mismatch or Bazel build issues.
+        try:
+            result = api.Measure(ref_audio.tolist(), deg_audio.tolist())
+        except:
+            result = api.Measure(ref_audio, deg_audio)
         return result.moslqo
     except Exception as e:
         print(f"ViSQOL error: {e}")
