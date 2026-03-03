@@ -1,6 +1,6 @@
 """
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2026 Nils Schimmelmann
+ * Copyright (C) 2025 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -99,7 +99,8 @@ def setup_tcd_voip():
         start = max(0, (dur - 7) / 2)
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 16000, chans, start=start, duration=7)
+        # ViSQOL speech mode requires 16k mono
+        resample(wav, output, 16000, 1, start=start, duration=7)
 
 def setup_soundexpert():
     src_dir = os.path.join(TEMP_DIR, "SoundExpert-SoundExpert")

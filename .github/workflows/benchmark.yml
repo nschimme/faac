@@ -18,21 +18,32 @@ jobs:
 
 
       - name: Checkout PR branch
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Setup Bazel
+        uses: abhinavsingh/setup-bazel@v3
+        with:
+          version: 5.1.0
+
       - name: Cache Pip and ViSQOL
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
             model
-          key: ${{ runner.os }}-pip-visqol-v1
+            ~/.cache/bazel
+          key: ${{ runner.os }}-pip-visqol-v2
 
       - name: Install ViSQOL (Linux only)
         run: |
-          pip install git+https://github.com/diggerdu/visqol-py.git
+          if [ ! -d visqol ]; then
+            git clone https://github.com/google/visqol.git
+          fi
+          cd visqol
+          pip install .
+          cd ..
           mkdir -p model
           if [ ! -f model/libsvm_nu_svr_model.txt ]; then
             curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
@@ -40,7 +51,7 @@ jobs:
 
       - name: Cache Datasets
         id: cache-datasets
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: tests/data/external
           key: ${{ runner.os }}-datasets-v3
