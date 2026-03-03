@@ -582,7 +582,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 #endif
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), hEncoder->sampleRate);
     }
 
 #ifdef DRM

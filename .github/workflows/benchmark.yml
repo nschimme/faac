@@ -1,0 +1,114 @@
+name: Efficiency & Perceptual Matrix
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test:
+    name: ubuntu-latest - Matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build bc faad ffmpeg
+
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install ViSQOL (Linux only)
+        run: |
+          pip install git+https://github.com/diggerdu/visqol-py.git
+          mkdir -p model
+          curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
+
+      - name: Cache Datasets
+        id: cache-datasets
+        uses: actions/cache@v3
+        with:
+          path: tests/data/external
+          key: ${{ runner.os }}-datasets-v3
+
+      - name: Setup Datasets
+        if: steps.cache-datasets.outputs.cache-hit != 'true'
+        run: |
+          python3 tests/setup_datasets.py
+
+      - name: Build and Run Matrix
+        shell: bash
+        run: |
+          echo "## Summary Report for ubuntu-latest" > report.md
+          for precision in single double; do
+            echo "---" >> report.md
+            echo "### Precision: $precision" >> report.md
+
+            # 1. Build Optimized (Current branch)
+            rm -rf build_opt
+            meson setup build_opt -Dfloating-point=$precision --buildtype=release
+            ninja -C build_opt
+
+            # Optimized paths
+            LIB_PATH_OPT="build_opt/libfaac/libfaac.so"
+            FAAC_PATH_OPT="build_opt/frontend/faac"
+
+            PERC_FLAG="--perceptual"
+
+            python3 tests/run_benchmark.py $FAAC_PATH_OPT $LIB_PATH_OPT ${precision}_opt ${precision}_opt.json $PERC_FLAG
+
+            # 2. Build Baseline
+            git checkout ${{ github.base_ref }}
+            rm -rf build_base
+            meson setup build_base -Dfloating-point=$precision --buildtype=release
+            ninja -C build_base
+
+            # Baseline paths
+            LIB_PATH_BASE="build_base/libfaac/libfaac.so"
+            FAAC_PATH_BASE="build_base/frontend/faac"
+
+            # Restore benchmark scripts from PR branch
+            git checkout ${{ github.sha }} -- tests/run_benchmark.py tests/compare_results.py tests/setup_datasets.py
+
+            python3 tests/run_benchmark.py $FAAC_PATH_BASE $LIB_PATH_BASE ${precision}_base ${precision}_base.json $PERC_FLAG
+
+            # Return to PR branch for next iteration and comparison
+            git checkout ${{ github.sha }}
+
+            python3 tests/compare_results.py ${precision}_base.json ${precision}_opt.json >> report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          done
+          cat report.md
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-ubuntu-latest
+          path: report.md
+
+      - name: PR Feedback
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('report.md')) {
+              const report = fs.readFileSync('report.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              })
+            }
+
+      - name: Check for Regressions
+        if: always()
+        run: |
+          if [ "${{ env.REGRESSION_DETECTED }}" == "1" ]; then
+            echo "Regressions or missing data detected. Failing job."
+            exit 1
+          fi

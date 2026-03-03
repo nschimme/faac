@@ -55,7 +55,11 @@ typedef struct {
 	faac_real *hannWindow;
 	faac_real *hannWindowS;
 
-        void *data;
+	/* MDCT scratch buffers */
+	faac_real *mdctXr;
+	faac_real *mdctXi;
+
+	void *data;
 } GlobalPsyInfo;
 
 typedef struct 

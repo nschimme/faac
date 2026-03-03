@@ -1,3 +1,22 @@
+"""
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""
+
 import os
 import subprocess
 import urllib.request
@@ -59,7 +78,8 @@ def setup_pmlt():
     for i, wav in enumerate(wav_files):
         dur, chans = get_info(wav)
         start = max(0, (dur - 7) / 2)
-        output = os.path.join(dest_dir, f"music_{i}.wav")
+        filename = os.path.basename(wav)
+        output = os.path.join(dest_dir, filename)
         resample(wav, output, 48000, chans, start=start, duration=7)
 
 def setup_tcd_voip():
@@ -76,7 +96,8 @@ def setup_tcd_voip():
     for i, wav in enumerate(wav_files):
         dur, chans = get_info(wav)
         start = max(0, (dur - 7) / 2)
-        output = os.path.join(dest_dir, f"speech_{i}.wav")
+        filename = os.path.basename(wav)
+        output = os.path.join(dest_dir, filename)
         resample(wav, output, 16000, chans, start=start, duration=7)
 
 if __name__ == "__main__":
