@@ -376,7 +376,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int useLfe = hEncoder->config.useLfe;
     unsigned int useTns = hEncoder->config.useTns;
     unsigned int jointmode = hEncoder->config.jointmode;
-    unsigned int bandWidth = hEncoder->config.bandWidth;
     unsigned int shortctl = hEncoder->config.shortctl;
 #ifndef DRM
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
@@ -469,17 +468,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 
 		/* Psychoacoustics */
-		/* Update buffers and run FFT on new samples */
+		/* Update buffers and run transient detection on new samples */
 		/* LFE psychoacoustic can run without it */
 		if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
 		{
 			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
 					&hEncoder->gpsyInfo,
 					&hEncoder->psyInfo[channel],
 					hEncoder->next3SampleBuff[channel],
-					bandWidth,
-					hEncoder->srInfo->cb_width_short,
 					hEncoder->srInfo->num_cb_short);
 		}
     }
@@ -581,8 +577,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+        BlocQuant(&hEncoder->gpsyInfo, &coderInfo[channel], hEncoder->freqBuff[channel],
+                  &(hEncoder->aacquantCfg), hEncoder->sampleRate);
     }
 
 #ifdef DRM

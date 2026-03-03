@@ -72,8 +72,8 @@ void rfft( FFT_Tables *fft_tables, faac_real *x, int logm )
 
     int nfft = 0;
 
-    kiss_fft_scalar fin[1 << MAXLOGR];
-    kiss_fft_cpx    fout[1 << MAXLOGR];
+    kiss_fft_scalar fin[1 << MAXLOGR] = {0};
+    kiss_fft_cpx    fout[1 << MAXLOGR] = {0};
 
     if ( logm > MAXLOGR )
 	{
@@ -124,8 +124,8 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm )
 {
     int nfft = 0;
 
-    kiss_fft_cpx    fin[1 << MAXLOGM];
-    kiss_fft_cpx    fout[1 << MAXLOGM];
+    kiss_fft_cpx    fin[1 << MAXLOGM] = {{0}};
+    kiss_fft_cpx    fout[1 << MAXLOGM] = {{0}};
 
     if ( logm > MAXLOGM )
 	{

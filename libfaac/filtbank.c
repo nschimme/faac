@@ -46,7 +46,6 @@ Copyright(c)1996.
 
 static void		CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
 static faac_real	Izero				( faac_real x);
-static void		MDCT				( FFT_Tables *fft_tables, faac_real *data, int N );
 
 
 
@@ -87,6 +86,7 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->sin_window_short) FreeMemory(hEncoder->sin_window_short);
     if (hEncoder->kbd_window_long) FreeMemory(hEncoder->kbd_window_long);
     if (hEncoder->kbd_window_short) FreeMemory(hEncoder->kbd_window_short);
+
 }
 
 void FilterBank(faacEncStruct* hEncoder,
@@ -250,7 +250,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     }
 }
 
-static void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
+void MDCT( FFT_Tables *fft_tables, faac_real *data, int N )
 {
     faac_real *xi, *xr;
     faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */

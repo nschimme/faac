@@ -38,3 +38,13 @@ Makefile*
 *.user
 /libfaac/win32_ver.h
 /libfaac/faac.pc
+/build_*/
+/tests/__pycache__/
+/tests/data/external/
+/tests/output/
+/tests/results/
+/tests/assets/
+/visqol*/
+/baseline/
+/opt_build/
+/base_src/

@@ -23,6 +23,7 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "faac_real.h"
 
 #if defined(HAVE_IMMINTRIN_H) && defined(CPUSSE)
 # include <immintrin.h>
@@ -63,96 +64,126 @@
 #define MAGIC_NUMBER  0.4054
 #define NOISEFLOOR 0.4
 
-// Phase 2-4: MDCT-based Psychoacoustic Model
-static void bmask(CoderInfo *coderInfo, faac_real *xr0, faac_real *bandqual,
-                  int gnum, faac_real quality)
+// MDCT-based Psychoacoustic Model
+static void bmask(GlobalPsyInfo *gpsyInfo, CoderInfo *coderInfo, const faac_real *xr0, faac_real *bandqual,
+                  faac_real *enrg, faac_real *maxe,
+                  int gnum, faac_real quality, int rate)
 {
-  int sfb, start, end, cnt, win;
+  int sfb, start, end, win;
   int gsize = coderInfo->groups.len[gnum];
-  faac_real *xr;
-  faac_real enrg[NSFB_LONG];
+  const faac_real *xr;
   faac_real thr[NSFB_LONG];
-  faac_real tonality[NSFB_LONG];
   faac_real total_enrg = 0.0;
   int num_bands = coderInfo->sfbn;
+  int enrgcnt = 0;
 
-  // Phase 2: Energy Estimation & Tonality Check
+  // 1. Energy and Peak Estimation
+  // Standard AAC psychoacoustic energy estimation in MDCT domain.
+  // Re-ordered loops and removed redundant start offset lookups for better cache locality and performance (Portable improvement).
   for (sfb = 0; sfb < num_bands; sfb++) {
-      start = coderInfo->sfb_offset[sfb];
-      end = coderInfo->sfb_offset[sfb + 1];
-      int width = end - start;
-      faac_real max_e = 0.0;
-
       enrg[sfb] = 0.0;
-      xr = xr0;
-      for (win = 0; win < gsize; win++) {
-          for (cnt = start; cnt < end; cnt++) {
-              faac_real e = xr[cnt] * xr[cnt];
-              enrg[sfb] += e;
-              if (e > max_e) max_e = e;
-          }
-          xr += BLOCK_LEN_SHORT;
-      }
-      total_enrg += enrg[sfb];
-
-      // Tonality estimator: Peak-to-Average ratio
-      if (enrg[sfb] > 1e-6) {
-          faac_real avg_e = enrg[sfb] / (width * gsize);
-          tonality[sfb] = max_e / avg_e;
-      } else {
-          tonality[sfb] = 1.0;
-      }
+      maxe[sfb] = 0.0;
   }
 
-  if (total_enrg < 1.0) {
+  xr = xr0;
+  for (win = 0; win < gsize; win++) {
+      int line = 0;
+      for (sfb = 0; sfb < num_bands; sfb++) {
+          int end_line = coderInfo->sfb_offset[sfb + 1];
+          for (; line < end_line; line++) {
+              faac_real e = xr[line] * xr[line];
+              enrg[sfb] += e;
+              if (maxe[sfb] < e) maxe[sfb] = e;
+          }
+      }
+      xr += BLOCK_LEN_SHORT;
+  }
+
+  for (sfb = 0; sfb < num_bands; sfb++) {
+      total_enrg += enrg[sfb];
+      maxe[sfb] *= gsize;
+  }
+  enrgcnt = coderInfo->sfb_offset[num_bands] * gsize;
+
+  // 2. Silence detection matching baseline
+  if (total_enrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt)) {
       for (sfb = 0; sfb < num_bands; sfb++) bandqual[sfb] = 0.0;
       return;
   }
 
-  // Phase 3: Masking Curve (Simplified Spreading)
+  int last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+
+  // 3. Masking Threshold Calculation
+  // Pre-calculate constant factor to remove divisions from the loop
+  faac_real inv_total_enrg_last = (total_enrg > 1e-9) ? (faac_real)last / total_enrg : 0.0;
+
   for (sfb = 0; sfb < num_bands; sfb++) {
-      // Internal masking (within band)
-      faac_real tone_fact = (tonality[sfb] > 5.0) ? 0.0005 : 0.00125;
-      thr[sfb] = enrg[sfb] * tone_fact;
+      start = coderInfo->sfb_offset[sfb];
+      end = coderInfo->sfb_offset[sfb + 1];
 
-      // Spreading from previous band
-      if (sfb > 0) {
-          faac_real spread = enrg[sfb-1] * 0.0005;
-          if (spread > thr[sfb]) thr[sfb] = spread;
+      faac_real target;
+      if (inv_total_enrg_last > 0.0) {
+          faac_real inv_width = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gpsyInfo->inv_width_short[sfb] : gpsyInfo->inv_width_long[sfb];
+          faac_real inv_avgenrg = inv_total_enrg_last * inv_width;
+          faac_real rel_avg = enrg[sfb] * inv_avgenrg;
+          faac_real rel_max = maxe[sfb] * inv_avgenrg;
+
+          target = 0.2 * FAAC_POW(rel_avg, 0.4) + 0.36 * FAAC_POW(rel_max, 0.4);
+      } else {
+          target = 0.01;
       }
 
-      // Spreading from next band
-      if (sfb < num_bands - 1) {
-          faac_real spread = enrg[sfb+1] * 0.0001;
-          if (spread > thr[sfb]) thr[sfb] = spread;
-      }
+      // 4. Heuristic frequency weighting matching validated baseline performance.
+      faac_real freq_scale = 10.0 / (1.0 + ((faac_real)(start+end)/last));
+      target *= freq_scale;
 
-      thr[sfb] *= quality;
+      if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+          target *= 1.5;
 
-      // Phase 4: Calculating bandqual_sq
-      bandqual[sfb] = thr[sfb] / (coderInfo->sfb_offset[sfb+1] - coderInfo->sfb_offset[sfb]);
+      thr[sfb] = target * quality;
+
+      // 5. ATH incorporation using precomputed LUT (ISO/IEC 13818-7 recommendation: Absolute Threshold of Hearing).
+      faac_real ath_thr = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gpsyInfo->ath_short[sfb] : gpsyInfo->ath_long[sfb];
+      if (thr[sfb] < ath_thr) thr[sfb] = ath_thr;
+  }
+
+  // 6. Subtle spreading function
+  // Implements frequency-domain masking spreading (ISO/IEC 13818-7 deviation: simplified for CPU performance).
+  for (sfb = 1; sfb < num_bands; sfb++) {
+      faac_real spread = thr[sfb-1] * 0.1;
+      if (thr[sfb] < spread) thr[sfb] = spread;
+  }
+  for (sfb = num_bands - 2; sfb >= 0; sfb--) {
+      faac_real spread = thr[sfb+1] * 0.05;
+      if (thr[sfb] < spread) thr[sfb] = spread;
+  }
+
+  for (sfb = 0; sfb < num_bands; sfb++) {
+      bandqual[sfb] = thr[sfb];
   }
 }
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-static void qlevel(CoderInfo *coderInfo,
+static void qlevel(GlobalPsyInfo *gpsyInfo,
+                   CoderInfo *coderInfo,
                    const faac_real *xr0,
-                   const faac_real *bandqual_sq,
+                   const faac_real *bandqual,
+                   const faac_real *enrg,
                    int gnum,
                    int pnslevel
                   )
 {
     int sb, cnt;
+    /* 2^0.25 (1.50515 dB) step from ISO/IEC 13818-7 AAC specs */
 #if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    /* 2^0.25 (1.50515 dB) step from AAC specs */
     static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
 #else
-    static const faac_real sfstep = 20 / 1.50515;
+    static const faac_real sfstep = 20.0 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
 #ifndef DRM
-    faac_real pnsthr_sq = (0.1 * pnslevel) * (0.1 * pnslevel);
+    faac_real pnsthr = 0.1 * pnslevel;
 #endif
 #ifdef __SSE2__
     int cpuid[4];
@@ -173,6 +204,7 @@ static void qlevel(CoderInfo *coderInfo,
     {
       faac_real sfacfix;
       int sfac;
+      faac_real rmsx;
       faac_real etot;
       int ALIGN16_BEG xitab[8 * MAXSHORTBAND] ALIGN16_END;
       int *xi;
@@ -189,28 +221,19 @@ static void qlevel(CoderInfo *coderInfo,
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
 
-      etot = 0.0;
-      xr = xr0;
-      for (win = 0; win < gsize; win++)
-      {
-          for (cnt = start; cnt < end; cnt++)
-          {
-              faac_real e = xr[cnt] * xr[cnt];
-              etot += e;
-          }
-          xr += BLOCK_LEN_SHORT;
-      }
-      etot /= (faac_real)gsize;
-      faac_real rmsx_sq = etot / (end - start);
+      /* Reuse precalculated energy from bmask (Portable performance improvement) */
+      etot = enrg[sb] / (faac_real)gsize;
+      faac_real inv_width = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gpsyInfo->inv_width_short[sb] : gpsyInfo->inv_width_long[sb];
+      rmsx = FAAC_SQRT(etot * inv_width);
 
-      if ((rmsx_sq < (NOISEFLOOR * NOISEFLOOR)) || (!bandqual_sq[sb]))
+      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
 #ifndef DRM
-      if (bandqual_sq[sb] < (pnsthr_sq * rmsx_sq))
+      if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -220,16 +243,15 @@ static void qlevel(CoderInfo *coderInfo,
       }
 #endif
 
-      sfac = FAAC_LRINT(0.5 * FAAC_LOG10(bandqual_sq[sb] / rmsx_sq) * sfstep);
+      /* Calculates the scalefactor (sfac) according to ISO/IEC 13818-7: 2^0.25 steps. */
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
 
-      // Protect against Huffman overflow and underflow
+      // Protect against Huffman overflow and underflow (-100 to 100 range)
       if (sfac < -100) sfac = -100;
       if (sfac > 100) sfac = 100;
 
-      if ((SF_OFFSET - sfac) < 10)
-          sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      /* Use precomputed sfacfix LUT to save pow calls */
+      sfacfix = gpsyInfo->sfacfix_lut[sfac + 100];
 
       xr = xr0 + start;
       end -= start;
@@ -284,9 +306,9 @@ static void qlevel(CoderInfo *coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(GlobalPsyInfo *gpsyInfo, CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg, int rate)
 {
-    faac_real bandlvl_sq[MAX_SCFAC_BANDS];
+    faac_real bandlvl[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -307,9 +329,12 @@ int BlocQuant(CoderInfo *coder, faac_real *xr, AACQuantCfg *aacquantCfg)
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl_sq, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl_sq, cnt, aacquantCfg->pnslevel);
+            faac_real enrg[NSFB_LONG];
+            faac_real maxe[NSFB_LONG];
+
+            bmask(gpsyInfo, coder, gxr, bandlvl, enrg, maxe, cnt,
+                  (faac_real)aacquantCfg->quality/DEFQUAL, rate);
+            qlevel(gpsyInfo, coder, gxr, bandlvl, enrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

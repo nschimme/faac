@@ -1,0 +1,149 @@
+name: Efficiency & Perceptual
+
+on:
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - "libfaac/**"
+      - "tests/**"
+  push:
+    branches: [ "master" ]
+    paths:
+      - "libfaac/**"
+      - "tests/**"
+
+jobs:
+  benchmark:
+    name: ${{ matrix.arch }} / ${{ matrix.precision }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64]
+        precision: [single, double]
+        include:
+          - arch: amd64
+            os: ubuntu-22.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build bc faad ffmpeg
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install numpy
+        run: pip install numpy
+
+      - name: Cache ViSQOL Repo
+        id: cache-visqol
+        uses: actions/cache@v4
+        with:
+          path: build_visqol
+          key: ${{ runner.os }}-visqol-v2
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.8.1
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Build ViSQOL
+        run: |
+          if [ ! -d build_visqol ]; then
+            git clone --depth 1 https://github.com/google/visqol.git build_visqol
+          fi
+          cd build_visqol
+          bazel build -c opt :visqol
+          sudo cp bazel-bin/visqol /usr/local/bin/visqol
+          mkdir -p ../tests/assets/model
+          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../tests/assets/model/
+          cp model/libsvm_nu_svr_model.txt ../tests/assets/model/
+
+      - name: Cache Datasets
+        id: cache-datasets
+        uses: actions/cache@v4
+        with:
+          path: tests/data/external
+          key: ${{ runner.os }}-datasets-v4
+
+      - name: Setup Datasets
+        if: steps.cache-datasets.outputs.cache-hit != 'true'
+        run: |
+          python3 tests/setup_datasets.py
+
+      - name: Run Benchmark (Candidate)
+        run: |
+          mkdir -p tests/results
+          meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
+          ninja -C build_cand
+          LIB_PATH="build_cand/libfaac/libfaac.so"
+          FAAC_PATH="build_cand/frontend/faac"
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 100
+
+      - name: Run Benchmark (Baseline)
+        run: |
+          git checkout ${{ github.base_ref || 'master' }}
+          meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
+          ninja -C build_base
+          LIB_PATH="build_base/libfaac/libfaac.so"
+          FAAC_PATH="build_base/frontend/faac"
+          # Restore benchmark scripts from PR branch
+          git checkout ${{ github.sha }} -- tests/
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 100
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.arch }}-${{ matrix.precision }}
+          path: tests/results/*.json
+
+  report:
+    name: Consolidated Report
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: tests/results
+          pattern: results-*
+          merge-multiple: true
+
+      - name: Generate Report
+        id: generate
+        run: |
+          python3 tests/compare_results.py tests/results > report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          cat report.md
+
+      - name: PR Feedback
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('report.md')) {
+              const report = fs.readFileSync('report.md', 'utf8');
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              })
+            }
+
+      - name: Check for Regressions
+        run: |
+          if [ "${{ env.REGRESSION_DETECTED }}" == "1" ]; then
+            echo "Regressions or missing data detected. Failing job."
+            exit 1
+          fi
