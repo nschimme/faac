@@ -122,8 +122,9 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                             v_ref = os.path.join(tmpdir, "vref.wav")
                             v_deg = os.path.join(tmpdir, "vdeg.wav")
 
-                            subprocess.run(["ffmpeg", "-y", "-i", input_path, "-ar", str(v_rate), v_ref], capture_output=True)
-                            subprocess.run(["ffmpeg", "-y", "-i", deg_wav, "-ar", str(v_rate), v_deg], capture_output=True)
+                            v_channels = 1 if cfg["mode"] == "speech" else 2
+                            subprocess.run(["ffmpeg", "-y", "-i", input_path, "-ar", str(v_rate), "-ac", str(v_channels), "-sample_fmt", "s16", v_ref], capture_output=True)
+                            subprocess.run(["ffmpeg", "-y", "-i", deg_wav, "-ar", str(v_rate), "-ac", str(v_channels), "-sample_fmt", "s16", v_deg], capture_output=True)
 
                             mos = run_visqol(v_ref, v_deg, cfg["mode"])
 
