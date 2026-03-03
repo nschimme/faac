@@ -1,4 +1,4 @@
-# FAAC Perceptual Benchmark Suite
+# FAAC Benchmark Suite
 
 This directory contains scripts and tools for evaluating the perceptual quality and efficiency of the FAAC encoder using ViSQOL (Virtual Speech Quality Objective Listener).
 
@@ -28,9 +28,9 @@ A gain in one area must not come at a "catastrophic" cost to another (e.g., a 10
     *   **Goal**: Ensure the encoder respects quality/bitrate targets and doesn't "bloat" the output with inefficient coding.
 
 ## Dataset Sources
-*   **PMLT2014**: [MPEG AAC/HE-AAC/AAC-ELD Listening Test](https://listening-test.coresv.net/) - High-quality audio and speech.
-*   **SoundExpert**: [SoundExpert Research Project](https://soundexpert.org/sound-samples) - Diverse music and instrument samples.
-*   **TCD-VOIP**: [TCD-VoIP Dataset](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - Comprehensive speech samples with various degradations.
+*   **Public Multiformat Listening Test @ 96 kbps (July 2014)**: [PMLT2014](https://listening-test.coresv.net/) - A multi-codec listening test (AAC, Vorbis, Opus, MP3) designed to identify quality differences at typical streaming bitrates.
+*   **SoundExpert Sound samples**: [SoundExpert](https://soundexpert.org/sound-samples) - A selection of excerpts from the EBU SQAM (Sound Quality Assessment Material) CD, including castanets, glockenspiel, and harpsichord, used for high-precision transparency testing.
+*   **TCD-VoIP (Sigmedia-VoIP) Listener Test Database**: [TCD-VOIP](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - A research database of degraded speech specifically designed for assessing quality in VoIP applications, featuring degradations like packet loss (chop), clipping, and echo.
 
 ## Prerequisites & Installation
 

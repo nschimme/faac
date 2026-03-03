@@ -1,5 +1,5 @@
 """
- * FAAC - Freeware Advanced Audio Coder
+ * FAAC Benchmark Suite
  * Copyright (C) 2025 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -77,7 +77,7 @@ def setup_pmlt():
             if f.endswith("48k.wav") and not re.search(r"48k\.\d+\.wav$", f):
                 wav_files.append(os.path.join(root, f))
 
-    print(f"Found {len(wav_files)} valid PMLT audio files.")
+    print(f"Found {len(wav_files)} valid Public Multiformat Listening Test audio files.")
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
@@ -96,7 +96,7 @@ def setup_tcd_voip():
             if f.endswith(".wav") and ("Test Set" in root or "chop" in root):
                 wav_files.append(os.path.join(root, f))
 
-    print(f"Found {len(wav_files)} valid TCD speech files.")
+    print(f"Found {len(wav_files)} valid TCD-VoIP speech files.")
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)

@@ -1,5 +1,5 @@
 """
- * FAAC - Freeware Advanced Audio Coder
+ * FAAC Benchmark Suite
  * Copyright (C) 2025 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
