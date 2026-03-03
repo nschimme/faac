@@ -23,6 +23,7 @@ import os
 import re
 
 def analyze_pair(base_file, cand_file):
+    print(f"Analyzing pair:\n  Base: {base_file}\n  Candidate: {cand_file}")
     try:
         with open(base_file, "r") as f:
             base = json.load(f)
@@ -33,16 +34,18 @@ def analyze_pair(base_file, cand_file):
         with open(cand_file, "r") as f:
             cand = json.load(f)
     except:
+        print(f"  Error: Could not load candidate file {cand_file}")
         return None
 
     suite_results = {
         "has_regression": False,
         "missing_data": False,
-        "mos_delta": 0,
+        "mos_delta_sum": 0,
         "mos_count": 0,
         "tp_reduction": 0,
         "lib_size_chg": 0,
-        "failures": [],
+        "regressions": [],
+        "opportunities": [],
         "all_cases": []
     }
 
@@ -50,6 +53,7 @@ def analyze_pair(base_file, cand_file):
     cand_m = cand.get("matrix", {})
 
     if cand_m:
+        print(f"  Found {len(cand_m)} test cases.")
         for k in sorted(cand_m.keys()):
             o = cand_m[k]
             b = base_m.get(k, {})
@@ -73,10 +77,11 @@ def analyze_pair(base_file, cand_file):
                 suite_results["missing_data"] = True
 
             status = "✅"
+            delta = 0
             if o_mos is not None:
                 if b_mos is not None:
                     delta = o_mos - b_mos
-                    suite_results["mos_delta"] += delta
+                    suite_results["mos_delta_sum"] += delta
                     suite_results["mos_count"] += 1
 
                 if o_mos < (thresh - 0.5):
@@ -95,12 +100,29 @@ def analyze_pair(base_file, cand_file):
             b_mos_str = f"{b_mos:.2f}" if b_mos is not None else "N/A"
             delta_mos = f"{(o_mos - b_mos):+.2f}" if (o_mos is not None and b_mos is not None) else "N/A"
 
-            case_info = f"| {display_name} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {size_chg} |"
-            suite_results["all_cases"].append(case_info)
-            if status in ["🤮", "📉", "❌"]:
-                suite_results["failures"].append(case_info)
+            case_data = {
+                "display_name": display_name,
+                "status": status,
+                "mos": o_mos,
+                "b_mos": b_mos,
+                "delta": delta,
+                "size_chg": size_chg,
+                "line": f"| {display_name} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {size_chg} |"
+            }
+
+            suite_results["all_cases"].append(case_data)
+            if status == "❌":
+                suite_results["regressions"].append(case_data)
+            elif status in ["🤮", "📉"]:
+                suite_results["opportunities"].append(case_data)
     else:
         suite_results["missing_data"] = True
+
+    # Sort regressions by delta (worst first)
+    suite_results["regressions"].sort(key=lambda x: x["delta"])
+
+    # Sort opportunities by absolute MOS (lowest quality first)
+    suite_results["opportunities"].sort(key=lambda x: x["mos"] if x["mos"] is not None else 6.0)
 
     # Throughput
     base_tp = base.get("throughput", {})
@@ -109,8 +131,6 @@ def analyze_pair(base_file, cand_file):
     total_cand_t = sum(cand_tp.values())
     if total_cand_t > 0 and total_base_t > 0:
         suite_results["tp_reduction"] = (1 - total_cand_t / total_base_t) * 100
-        suite_results["base_t"] = total_base_t
-        suite_results["cand_t"] = total_cand_t
     else:
         suite_results["missing_data"] = True
 
@@ -119,8 +139,6 @@ def analyze_pair(base_file, cand_file):
     cand_lib = cand.get("lib_size", 0)
     if cand_lib > 0 and base_lib > 0:
         suite_results["lib_size_chg"] = ((cand_lib/base_lib)-1)*100
-        suite_results["base_lib"] = base_lib
-        suite_results["cand_lib"] = cand_lib
     else:
         suite_results["missing_data"] = True
 
@@ -132,9 +150,9 @@ def main():
         sys.exit(1)
 
     results_dir = sys.argv[1]
+    print(f"Scanning {results_dir} for benchmark results...")
     files = os.listdir(results_dir)
 
-    # Identify suites by looking for _cand.json files
     suites = {}
     for f in files:
         if f.endswith("_cand.json"):
@@ -161,7 +179,7 @@ def main():
             all_suite_data[name] = data
             if data["has_regression"]: overall_regression = True
             if data["missing_data"]: overall_missing = True
-            total_mos_delta += data["mos_delta"]
+            total_mos_delta += data["mos_delta_sum"]
             total_mos_count += data["mos_count"]
             total_tp_reduction += data["tp_reduction"]
             total_lib_chg += data["lib_size_chg"]
@@ -170,52 +188,56 @@ def main():
     avg_tp_reduction = total_tp_reduction / len(all_suite_data) if all_suite_data else 0
     avg_lib_chg = total_lib_chg / len(all_suite_data) if all_suite_data else 0
 
-    # Header & Summary
+    # Output report to stdout (will be captured by GHA)
+    report = []
     if overall_regression:
-        print("## ❌ Quality Regression Detected")
+        report.append("## ❌ Quality Regression Detected")
     elif avg_mos_delta > 0.01 or avg_tp_reduction > 5:
-        print("## 🚀 Perceptual & Efficiency Improvement")
+        report.append("## 🚀 Perceptual & Efficiency Improvement")
     else:
-        print("## 📊 Benchmark Summary")
+        report.append("## 📊 Benchmark Summary")
 
-    print(f"- **Avg MOS Delta:** {avg_mos_delta:+.3f}")
-    print(f"- **Avg Throughput Improvement:** {avg_tp_reduction:+.1f}%")
-    print(f"- **Avg Binary Size Change:** {avg_lib_chg:+.2f}%")
+    report.append(f"- **Avg MOS Delta:** {avg_mos_delta:+.3f}")
+    report.append(f"- **Avg Throughput Improvement:** {avg_tp_reduction:+.1f}%")
+    report.append(f"- **Avg Binary Size Change:** {avg_lib_chg:+.2f}%")
 
-    # Grouped Suites Details
-    print("\n### 🛠️ Test Suites (Arch/Precision)")
-    for name, data in sorted(all_suite_data.items()):
+    report.append("\n### 🛠️ Test Suites (Arch/Precision)")
+
+    # Sort suites: regressions first
+    sorted_suite_names = sorted(all_suite_data.keys(), key=lambda n: (not all_suite_data[n]["has_regression"], n))
+
+    for name in sorted_suite_names:
+        data = all_suite_data[name]
         status_icon = "❌" if data["has_regression"] else "✅"
         if data["missing_data"]: status_icon = "⚠️"
 
-        avg_mos = data["mos_delta"] / data["mos_count"] if data["mos_count"] > 0 else 0
+        avg_mos = data["mos_delta_sum"] / data["mos_count"] if data["mos_count"] > 0 else 0
 
-        print(f"\n#### {status_icon} {name}")
-        print(f"- MOS Δ: {avg_mos:+.3f}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
+        report.append(f"\n#### {status_icon} {name}")
+        report.append(f"- MOS Δ: {avg_mos:+.3f}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
 
-        regressions = [f for f in data["failures"] if "❌" in f]
-        opportunities = [f for f in data["failures"] if "❌" not in f]
+        if data["regressions"]:
+            report.append("<details open><summary><b>❌ Regressions</b></summary>\n")
+            report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            report.append("| :--- | :---: | :---: | :---: | :---: |")
+            for r in data["regressions"]: report.append(r["line"])
+            report.append("\n</details>")
 
-        if regressions:
-            print("<details open><summary><b>❌ Regressions</b></summary>\n")
-            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            print("| :--- | :---: | :---: | :---: | :---: |")
-            for r in regressions: print(r)
-            print("\n</details>")
-
-        if opportunities:
-            print("<details><summary><b>💡 Opportunities/Warnings</b></summary>\n")
-            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            print("| :--- | :---: | :---: | :---: | :---: |")
-            for o in opportunities: print(o)
-            print("\n</details>")
+        if data["opportunities"]:
+            report.append("<details><summary><b>💡 Opportunities/Warnings</b></summary>\n")
+            report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            report.append("| :--- | :---: | :---: | :---: | :---: |")
+            for o in data["opportunities"]: report.append(o["line"])
+            report.append("\n</details>")
 
         if data["all_cases"]:
-            print(f"<details><summary><b>View All {len(data['all_cases'])} cases</b></summary>\n")
-            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            print("| :--- | :---: | :---: | :---: | :---: |")
-            for c in data["all_cases"]: print(c)
-            print("\n</details>")
+            report.append(f"<details><summary><b>View All {len(data['all_cases'])} cases</b></summary>\n")
+            report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            report.append("| :--- | :---: | :---: | :---: | :---: |")
+            for c in data["all_cases"]: report.append(c["line"])
+            report.append("\n</details>")
+
+    print("\n".join(report))
 
     if overall_regression or overall_missing:
         sys.exit(1)

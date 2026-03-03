@@ -77,6 +77,7 @@ def setup_pmlt():
 
     print(f"Found {len(wav_files)} valid PMLT audio files.")
     for i, wav in enumerate(wav_files):
+        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
         start = max(0, (dur - 7) / 2)
         filename = os.path.basename(wav)
@@ -95,6 +96,7 @@ def setup_tcd_voip():
 
     print(f"Found {len(wav_files)} valid TCD speech files.")
     for i, wav in enumerate(wav_files):
+        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
         start = max(0, (dur - 7) / 2)
         filename = os.path.basename(wav)
@@ -113,7 +115,8 @@ def setup_soundexpert():
                 wav_files.append(os.path.join(root, f))
 
     print(f"Found {len(wav_files)} valid SoundExpert audio files.")
-    for wav in wav_files:
+    for i, wav in enumerate(wav_files):
+        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
         start = max(0, (dur - 7) / 2)
         filename = os.path.basename(wav)

@@ -83,19 +83,24 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
     }
 
     if run_perceptual:
+        print(f"Starting perceptual benchmark for {precision}...")
         for name, cfg in SCENARIOS.items():
             data_subdir = "speech" if cfg["mode"] == "speech" else "audio"
             data_dir = os.path.join(EXTERNAL_DATA_DIR, data_subdir)
-            if not os.path.exists(data_dir): continue
+            if not os.path.exists(data_dir):
+                print(f"  [Scenario: {name}] Data directory {data_dir} not found, skipping.")
+                continue
 
             all_samples = sorted([f for f in os.listdir(data_dir) if f.endswith(".wav")])
             num_to_run = max(1, int(len(all_samples) * coverage / 100.0))
             step = len(all_samples) / num_to_run
             samples = [all_samples[int(i * step)] for i in range(num_to_run)]
 
-            for sample in samples:
+            print(f"  [Scenario: {name}] Running {len(samples)} samples (coverage {coverage}%)...")
+            for i, sample in enumerate(samples):
                 input_path = os.path.join(data_dir, sample)
                 key = f"{name}_{sample}"
+                print(f"    ({i+1}/{len(samples)}) Processing {sample}...", end="", flush=True)
                 output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
 
                 try:
@@ -118,6 +123,8 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
 
                             mos = run_visqol(v_ref, v_deg, cfg["mode"])
 
+                    mos_str = f"{mos:.2f}" if mos is not None else "N/A"
+                    print(f" done. (MOS: {mos_str})")
                     results["matrix"][key] = {
                         "mos": mos,
                         "size": aac_size,
@@ -128,6 +135,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                 except:
                     pass
 
+    print(f"Measuring throughput for {precision}...")
     speech_dir = os.path.join(EXTERNAL_DATA_DIR, "speech")
     if os.path.exists(speech_dir):
         samples = sorted([f for f in os.listdir(speech_dir) if f.endswith(".wav")])
