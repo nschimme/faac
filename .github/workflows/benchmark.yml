@@ -22,19 +22,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Bazel
-        uses: abhinavsingh/setup-bazel@v3
-        with:
-          version: 5.3.2
+      - name: Install Python Dependencies
+        run: |
+          pip install numpy
 
-      - name: Cache Pip and ViSQOL
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.8.1
+        with:
+          bazelisk-cache: true
+          disk-cache: ${{ github.workflow }}
+          repository-cache: true
+
+      - name: Cache Pip
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/pip
-            model
-            ~/.cache/bazel
-          key: ${{ runner.os }}-pip-visqol-v2
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v1
+
+      - name: Cache ViSQOL Models
+        id: cache-models
+        uses: actions/cache@v4
+        with:
+          path: model
+          key: ${{ runner.os }}-visqol-models-v1
 
       - name: Install ViSQOL (Linux only)
         run: |
@@ -42,12 +52,12 @@ jobs:
             git clone --depth 1 https://github.com/google/visqol.git
           fi
           cd visqol
-          # setup.py will run bazel, we need to ensure it uses the right one
           pip install .
-          # Ensure models are bundled where the script expects them if pip install doesn't do it
-          mkdir -p ../model
-          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
-          cp model/libsvm_nu_svr_model.txt ../model/
+          if [ "${{ steps.cache-models.outputs.cache-hit }}" != "true" ]; then
+            mkdir -p ../model
+            cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
+            cp model/libsvm_nu_svr_model.txt ../model/
+          fi
 
       - name: Cache Datasets
         id: cache-datasets
