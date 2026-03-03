@@ -27,8 +27,7 @@ import tempfile
 import hashlib
 
 try:
-    import visqol
-    from visqol.pb2 import visqol_config_pb2
+    import visqol_py
     HAS_VISQOL = True
 except ImportError:
     HAS_VISQOL = False
@@ -37,7 +36,6 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 EXTERNAL_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "external")
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
-ASSETS_DIR = os.path.join(SCRIPT_DIR, "assets")
 
 SCENARIOS = {
     "voip": {"mode": "speech", "rate": 16000, "visqol_rate": 16000, "q": 15, "thresh": 2.5},
@@ -67,26 +65,10 @@ def run_visqol(ref_wav, deg_wav, mode):
         print(" ViSQOL Python API not available.")
         return None
     try:
-        config = visqol_config_pb2.VisqolConfig()
-        if mode == "speech":
-            config.audio.sample_rate = 16000
-            config.options.use_speech_scoring = True
-        else:
-            config.audio.sample_rate = 48000
-            config.options.use_speech_scoring = False
-            model_path = os.path.join(ASSETS_DIR, "model", "libsvm_nu_svr_model.txt")
-            if os.path.exists(model_path):
-                config.options.svr_model_path = model_path
-            else:
-                # Fallback to current working directory if assets not found
-                model_path_fallback = os.path.abspath("model/libsvm_nu_svr_model.txt")
-                if os.path.exists(model_path_fallback):
-                    config.options.svr_model_path = model_path_fallback
-
-        api = visqol.VisqolApi()
-        api.Create(config)
-        similarity_result = api.Measure(ref_wav, deg_wav)
-        return float(similarity_result.moslqo)
+        # visqol-py handles model paths and configuration internally.
+        visqol = visqol_py.ViSQOL(mode=mode)
+        result = visqol.measure(ref_wav, deg_wav)
+        return float(result.moslqo)
     except Exception as e:
         print(f" ViSQOL API error: {e}")
         pass

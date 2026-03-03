@@ -42,8 +42,10 @@ sudo apt-get update
 sudo apt-get install -y meson ninja-build bc faad ffmpeg
 ```
 
-Install ViSQOL and Python dependencies:
+Install ViSQOL and Python dependencies (recommended within a virtual environment):
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install numpy
 pip install git+https://github.com/diggerdu/visqol-py.git
 ```
