@@ -51,10 +51,6 @@ typedef struct {
 typedef struct {
 	faac_real sampleRate;
 
-	/* Hann window */
-	faac_real *hannWindow;
-	faac_real *hannWindowS;
-
 	/* Precomputed ATH */
 	faac_real ath_long[NSFB_LONG];
 	faac_real ath_short[NSFB_SHORT];
@@ -81,9 +77,8 @@ void (*PsyCalculate) (ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
 		PsyInfo *psyInfo, int *cb_width_long, int num_cb_long,
 		int *cb_width_short, int num_cb_short,
 		unsigned int numChannels, faac_real quality);
-void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-		faac_real *newSamples, unsigned int bandwidth,
-		int *cb_width_short, int num_cb_short);
+void (*PsyBufferUpdate) (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+		faac_real *newSamples, int num_cb_short);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 } psymodel_t;

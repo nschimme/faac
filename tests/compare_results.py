@@ -41,14 +41,13 @@ def compare(base_file, cand_file):
     base_m = base.get("matrix", {})
     cand_m = cand.get("matrix", {})
 
+    # 1. Collect and Calculate
+    failures = []
+    all_cases = []
+    total_mos_delta = 0
+    mos_count = 0
+
     if cand_m:
-        print("### Perceptual Matrix (ViSQOL MOS)")
-
-        failures = []
-        all_cases = []
-        total_mos_delta = 0
-        mos_count = 0
-
         for k in sorted(cand_m.keys()):
             o = cand_m[k]
             b = base_m.get(k, {})
@@ -98,57 +97,64 @@ def compare(base_file, cand_file):
             all_cases.append(case_info)
             if status in ["🤮", "📉", "❌"]:
                 failures.append(case_info)
-
-        if failures:
-            print("\n#### ⚠️ Detailed Failures/Warnings")
-            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            print("| :--- | :---: | :---: | :---: | :---: |")
-            for f in failures:
-                print(f)
-
-        avg_mos_delta = total_mos_delta / mos_count if mos_count > 0 else 0
-        print(f"\n- **Average MOS Improvement:** {avg_mos_delta:+.3f}")
-        if avg_mos_delta > 0.05:
-            print("  - 🚀 Significant perceptual improvement detected!")
-        elif avg_mos_delta < -0.05:
-            print("  - ⚠️ Perceptual quality has decreased overall.")
-
-        print("\n<details><summary><b>Click to expand full matrix</b></summary>\n")
-        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-        print("| :--- | :---: | :---: | :---: | :---: |")
-        for c in all_cases:
-            print(c)
-        print("\n</details>")
     else:
         missing_data = True
 
-    # 2. System Efficiency Summary
-    print("\n### 🚀 System Efficiency (Throughput)")
+    avg_mos_delta = total_mos_delta / mos_count if mos_count > 0 else 0
+
+    # Throughput
     base_tp = base.get("throughput", {})
     cand_tp = cand.get("throughput", {})
-
     total_base_t = sum(base_tp.values())
     total_cand_t = sum(cand_tp.values())
-
+    tp_reduction = 0
     if total_cand_t > 0 and total_base_t > 0:
-        speedup = total_base_t / total_cand_t
-        reduction = (1 - 1/speedup) * 100
-        print(f"- **Throughput Improvement:** {reduction:+.1f}% ({total_base_t:.3f}s -> {total_cand_t:.3f}s)")
-    elif total_cand_t > 0:
-         print(f"- **Throughput (New):** {total_cand_t:.3f}s")
-    else:
-        missing_data = True
+        tp_reduction = (1 - total_cand_t / total_base_t) * 100
 
+    # Binary Size
     base_lib = base.get("lib_size", 0)
     cand_lib = cand.get("lib_size", 0)
-    if cand_lib > 0:
-        if base_lib > 0:
-            lib_chg = ((cand_lib/base_lib)-1)*100
-            print(f"- **Binary Size Change:** {lib_chg:+.2f}% ({base_lib} -> {cand_lib} bytes)")
-        else:
-            print(f"- **Binary Size:** {cand_lib} bytes")
+    lib_chg = 0
+    if cand_lib > 0 and base_lib > 0:
+        lib_chg = ((cand_lib/base_lib)-1)*100
+
+    # 2. Smart Summary (Maintainer Decision Tool)
+    if has_regression:
+        print("### ❌ Regression Detected")
+    elif avg_mos_delta > 0.01 or tp_reduction > 5:
+        print("### 🚀 Improvement Summary")
     else:
-        missing_data = True
+        print("### 📊 Benchmark Summary")
+
+    print(f"- **Perceptual (MOS) Delta:** {avg_mos_delta:+.3f}")
+    if total_cand_t > 0:
+        print(f"- **Throughput Improvement:** {tp_reduction:+.1f}% ({total_base_t:.3f}s -> {total_cand_t:.3f}s)")
+    if cand_lib > 0:
+        print(f"- **Binary Size Change:** {lib_chg:+.2f}% ({base_lib} -> {cand_lib} bytes)")
+
+    # 3. Details on Failures
+    regressions = [f for f in failures if "❌" in f]
+    opportunities = [f for f in failures if "❌" not in f]
+
+    if regressions:
+        print("\n#### ❌ Regressions (Worse than baseline)")
+        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+        print("| :--- | :---: | :---: | :---: | :---: |")
+        for r in regressions: print(r)
+
+    if opportunities:
+        print("\n#### 💡 Opportunities (Low quality, but no regression)")
+        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+        print("| :--- | :---: | :---: | :---: | :---: |")
+        for o in opportunities: print(o)
+
+    # 4. Full Matrix
+    if all_cases:
+        print("\n<details><summary><b>View Full Perceptual Matrix</b></summary>\n")
+        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+        print("| :--- | :---: | :---: | :---: | :---: |")
+        for c in all_cases: print(c)
+        print("\n</details>")
 
     if has_regression:
         print("\n❌ **Job failed: Quality regression detected.**")

@@ -1,9 +1,21 @@
-- fix scalefactor encoding check (-60 .. 60)
-- test DRM
-- optimize quantization bias
-- optimize codebook list (section_data)
-- optimize CPE windows grouping
-- Add bit reservoir control
-- Add resampler and downmixer (hans-juergen, Oct 17, 2004)
-- Add HE AAC (hans-juergen, Oct 17, 2004)
-- Test TNS(arcen, Apr 8th, 2012)
+# FAAC TODO
+
+## 1. High Priority: Audio Quality & Specialization (IoT/NVR/VoIP Focus)
+- **Bit Reservoir Control**: Implement functional bit reservoir to allow stable bitrate distribution and provide extra bits for sharp transients.
+- **CBR/ABR Bandwidth Capping**: Implement aggressive frequency bandwidth caps (3.5kHz - 5.5kHz) for low-bitrate encoding (<24kbps per channel) to eliminate metallic ringing.
+- **Adaptive Quantization Rounding**: Implement tonality-aware magic number adjustment. Reduce bias from 0.4054 to ~0.30 for high-frequency noise-like bands to remove "metallic shimmer".
+- **Short-block TNS (Temporal Noise Shaping)**: Enable and tune TNS for short blocks to suppress pre-echo artifacts in transient-heavy signals.
+
+## 2. Medium Priority: Performance & Optimization
+- **Fixed-point Transition**: Research transform-only hybrid fixed-point pipeline for extreme low-power embedded cores (e.g. Ingenic T31X/MIPS).
+- **Trellis-based Huffman Pass**: Implement Trellis-based codebook selection to globally minimize bit cost.
+
+## 3. Library Size Optimization
+- **Modular Compilation**: Support disabling unused modules (DRM, TNS, PNS) via Meson to minimize binary footprint for memory-constrained devices.
+- **Symbol Stripping & LTO**: Standardize Link-Time Optimization and symbol visibility for production IoT builds.
+
+## 4. Low Priority: Compatibility & Maintenance
+- **Resampler and Downmixer integration**: Official support for input preprocessing.
+- **DRM Testing**: Comprehensive verification of Digital Radio Mondiale mode.
+- **HE-AAC Support**: Spectral Band Replication (SBR) integration research.
+- **Optimize CPE Windows Grouping**: Improve joint-channel coding gain.

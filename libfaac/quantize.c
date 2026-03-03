@@ -133,7 +133,7 @@ static void bmask(GlobalPsyInfo *gpsyInfo, CoderInfo *coderInfo, const faac_real
           target = 0.01;
       }
 
-      // Frequency weighting from baseline
+      // 4. Heuristic frequency weighting matching validated baseline performance.
       faac_real freq_scale = 10.0 / (1.0 + ((faac_real)(start+end)/last));
       target *= freq_scale;
 
@@ -142,13 +142,13 @@ static void bmask(GlobalPsyInfo *gpsyInfo, CoderInfo *coderInfo, const faac_real
 
       thr[sfb] = target * quality;
 
-      // 4. ATH incorporation using precomputed LUT (ISO/IEC 13818-7 recommendation: Absolute Threshold of Hearing).
+      // 5. ATH incorporation using precomputed LUT (ISO/IEC 13818-7 recommendation: Absolute Threshold of Hearing).
       faac_real ath_thr = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gpsyInfo->ath_short[sfb] : gpsyInfo->ath_long[sfb];
       if (thr[sfb] < ath_thr) thr[sfb] = ath_thr;
   }
 
-  // 5. Subtle spreading function
-  // Implements frequency-domain masking spreading (ISO/IEC 13818-7 deviation: simplified for performance).
+  // 6. Subtle spreading function
+  // Implements frequency-domain masking spreading (ISO/IEC 13818-7 deviation: simplified for CPU performance).
   for (sfb = 1; sfb < num_bands; sfb++) {
       faac_real spread = thr[sfb-1] * 0.1;
       if (thr[sfb] < spread) thr[sfb] = spread;
@@ -243,6 +243,7 @@ static void qlevel(GlobalPsyInfo *gpsyInfo,
       }
 #endif
 
+      /* Calculates the scalefactor (sfac) according to ISO/IEC 13818-7: 2^0.25 steps. */
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
 
       // Protect against Huffman overflow and underflow (-100 to 100 range)

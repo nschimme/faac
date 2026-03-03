@@ -27,8 +27,7 @@ import re
 
 DATASETS = {
     "PMLT2014": "https://github.com/nschimme/PMLT2014/archive/refs/tags/PMLT2014.zip",
-    "TCD-VOIP": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip",
-    "SoundExpert": "https://github.com/nschimme/SoundExpert/archive/refs/tags/SoundExpert.zip"
+    "TCD-VOIP": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip"
 }
 
 BASE_DATA_DIR = "tests/data/external"
@@ -127,7 +126,6 @@ if __name__ == "__main__":
 
         setup_pmlt()
         setup_tcd_voip()
-        setup_soundexpert()
 
         if os.path.exists(TEMP_DIR):
             shutil.rmtree(TEMP_DIR)

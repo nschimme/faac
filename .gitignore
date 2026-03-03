@@ -38,10 +38,10 @@ Makefile*
 *.user
 /libfaac/win32_ver.h
 /libfaac/faac.pc
-/build/
+/build*/
 /tests/data/external/
 /tests/output/
-/visqol/
+/visqol*/
 /model/
 /*.json
 /baseline/
