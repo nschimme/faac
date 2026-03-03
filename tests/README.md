@@ -2,13 +2,28 @@
 
 This directory contains scripts and tools for evaluating the perceptual quality and efficiency of the FAAC encoder using ViSQOL (Virtual Speech Quality Objective Listener).
 
-## Prerequisites
+## Philosophy: The "Golden Triangle"
 
-- **ViSQOL**: Must be installed and available in your PATH.
-- **FFmpeg**: For audio resampling and transcoding.
-- **FAAD2**: For decoding AAC files back to WAV for comparison.
-- **Python 3**: With `numpy` installed.
-- **Meson & Ninja**: For building FAAC.
+When evaluating encoder changes, we aim for an optimal balance between:
+1. **Perceptual Quality (MOS)**: Measured via ViSQOL. A score above the scenario threshold is required.
+2. **Throughput (CPU)**: Performance should not regress. FAAC is optimized for low-power IoT/NVR/VoIP devices.
+3. **Binary Size**: Minimal footprint is critical for embedded firmware.
+
+A gain in one area must not come at a "catastrophic" cost to another (e.g., a 10% speedup that drops MOS by 0.5 is a failure).
+
+## Prerequisites & Installation
+
+### Debian/Ubuntu
+
+Install core build and analysis dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install -y meson ninja-build bc faad ffmpeg python3-numpy
+```
+
+For detailed dependency information and manual installation of ViSQOL, please refer to:
+- [ViSQOL Installation Guide](https://github.com/google/visqol#installation)
+- [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
 
 ## Setup Datasets
 
