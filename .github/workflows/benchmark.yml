@@ -45,23 +45,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Cache venv
-        id: cache-venv
-        uses: actions/cache@v4
-        with:
-          path: venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('tests/*.py') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-
-
       - name: Install Python dependencies
         run: |
-          if [ ! -d venv ]; then
-            python3 -m venv venv
-          fi
-          source venv/bin/activate
           pip install --upgrade pip setuptools wheel
-          pip install numpy
+          pip install numpy "protobuf<4.0.0"
           if [ ! -d build_visqol ]; then
             git clone --depth 1 https://github.com/diggerdu/visqol-py.git build_visqol
           fi
@@ -77,12 +64,10 @@ jobs:
       - name: Setup Datasets
         if: steps.cache-datasets.outputs.cache-hit != 'true'
         run: |
-          source venv/bin/activate
           python3 tests/setup_datasets.py
 
       - name: Run Benchmark (Candidate)
         run: |
-          source venv/bin/activate
           mkdir -p tests/results
           meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_cand
@@ -92,7 +77,6 @@ jobs:
 
       - name: Run Benchmark (Baseline)
         run: |
-          source venv/bin/activate
           git checkout ${{ github.base_ref || 'master' }}
           meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_base

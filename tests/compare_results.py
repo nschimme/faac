@@ -26,14 +26,14 @@ def analyze_pair(base_file, cand_file):
         with open(base_file, "r") as f:
             base = json.load(f)
     except Exception as e:
-        print(f"  Warning: Could not load baseline file {base_file}: {e}")
+        sys.stderr.write(f"  Warning: Could not load baseline file {base_file}: {e}\n")
         base = {}
 
     try:
         with open(cand_file, "r") as f:
             cand = json.load(f)
     except Exception as e:
-        print(f"  Error: Could not load candidate file {cand_file}: {e}")
+        sys.stderr.write(f"  Error: Could not load candidate file {cand_file}: {e}\n")
         return None
 
     suite_results = {
@@ -114,11 +114,12 @@ def analyze_pair(base_file, cand_file):
                         "b_mos": b_mos,
                         "delta": delta
                     })
-
             else:
-                status = "❓"
+                status = "❌" # Missing MOS is a failure
                 suite_results["missing_mos_count"] += 1
+                suite_results["has_regression"] = True
                 suite_results["missing_data"] = True
+                delta = -10.0 # Force to top of regressions
 
             mos_str = f"{o_mos:.2f}" if o_mos is not None else "N/A"
             b_mos_str = f"{b_mos:.2f}" if b_mos is not None else "N/A"
@@ -144,10 +145,10 @@ def analyze_pair(base_file, cand_file):
     else:
         suite_results["missing_data"] = True
 
-    # Sort regressions by delta (worst first)
+    # Sorts
     suite_results["regressions"].sort(key=lambda x: x["delta"])
-
-    # Sort opportunities by absolute MOS (lowest quality first)
+    suite_results["new_wins"].sort(key=lambda x: x["delta"], reverse=True)
+    suite_results["significant_wins"].sort(key=lambda x: x["delta"], reverse=True)
     suite_results["opportunities"].sort(key=lambda x: x["mos"] if x["mos"] is not None else 6.0)
 
     # Throughput
@@ -188,7 +189,7 @@ def main():
                 suites[suite_name] = (os.path.join(results_dir, base_f), os.path.join(results_dir, f))
 
     if not suites:
-        print("No result pairs found in directory.")
+        sys.stderr.write("No result pairs found in directory.\n")
         sys.exit(1)
 
     all_suite_data = {}
@@ -241,17 +242,42 @@ def main():
     else:
         report.append("## 📊 Benchmark Summary")
 
-    report.append(f"**Maintainer Summary:**")
-    report.append(f"- Regressions: {total_regressions}")
-    report.append(f"- New Wins: {total_new_wins}")
-    report.append(f"- Significant Wins: {total_significant_wins}")
-    report.append(f"- Bitstream Consistency: {bit_exact_percent:.1f}% ({total_bit_exact}/{total_cases_all} identical)")
-    report.append(f"- Avg MOS Delta: {avg_mos_delta_str}")
-    report.append(f"- Avg Throughput: {avg_tp_reduction:+.1f}%")
-    report.append(f"- Avg Binary Size: {avg_lib_chg:+.2f}%")
+    report.append("\n### Maintainer Summary")
+    report.append("| Metric | Value |")
+    report.append("| :--- | :--- |")
+
+    # Regressions
+    reg_status = "0 ✅" if total_regressions == 0 else f"{total_regressions} ❌"
+    report.append(f"| **Regressions** | {reg_status} |")
+
+    # Wins
+    if total_new_wins > 0:
+        report.append(f"| **New Wins** | {total_new_wins} 🆕 |")
+    if total_significant_wins > 0:
+        report.append(f"| **Significant Wins** | {total_significant_wins} 🌟 |")
+
+    # Consistency
+    consist_status = f"{bit_exact_percent:.1f}% ({total_bit_exact}/{total_cases_all})"
+    if bit_exact_percent == 100.0:
+        consist_status += " (Bit-Identical)"
+    report.append(f"| **Consistency** | {consist_status} |")
+
+    # Throughput
+    if abs(avg_tp_reduction) > 0.1:
+        tp_icon = "🚀" if avg_tp_reduction > 1.0 else "📉" if avg_tp_reduction < -1.0 else ""
+        report.append(f"| **Throughput** | {avg_tp_reduction:+.1f}% {tp_icon} |")
+
+    # Binary Size
+    if abs(avg_lib_chg) > 0.01:
+        size_icon = "📉" if avg_lib_chg < -0.1 else "📈" if avg_lib_chg > 0.1 else ""
+        report.append(f"| **Library Size** | {avg_lib_chg:+.2f}% {size_icon} |")
+
+    # Avg MOS Delta
+    if total_mos_count > 0 and abs(total_mos_delta / total_mos_count) > 0.001:
+        report.append(f"| **Avg MOS Delta** | {avg_mos_delta_str} |")
 
     if total_missing_mos > 0:
-        report.append(f"- ⚠️ **Warning**: {total_missing_mos} MOS scores were missing/failed.")
+        report.append(f"\n⚠️ **Warning**: {total_missing_mos} MOS scores were missing/failed (treated as ❌).")
 
     # 1. Immediate Details: Regressions
     if total_regressions > 0:
@@ -306,7 +332,7 @@ def main():
 
     report.append("\n</details>")
 
-    print("\n".join(report))
+    sys.stdout.write("\n".join(report) + "\n")
 
     if overall_regression or overall_missing:
         sys.exit(1)
