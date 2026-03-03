@@ -5,6 +5,7 @@ on:
     branches: [ "master" ]
     paths:
       - "libfaac/**"
+      - "tests/**"
 
 jobs:
   test:
@@ -29,7 +30,7 @@ jobs:
         id: cache-visqol
         uses: actions/cache@v4
         with:
-          path: visqol
+          path: visqol-repo
           key: ${{ runner.os }}-visqol-repo-v1
 
       - name: Setup Bazel
@@ -41,10 +42,12 @@ jobs:
 
       - name: Install ViSQOL
         run: |
-          if [ ! -d visqol ]; then
-            git clone --depth 1 https://github.com/google/visqol.git
+          if [ ! -d visqol-repo ]; then
+            git clone --depth 1 https://github.com/google/visqol.git visqol-repo
           fi
-          cd visqol
+          mkdir -p model
+          cp -r visqol-repo/model/* model/
+          cd visqol-repo
           pip install .
 
       - name: Cache Datasets
@@ -67,18 +70,18 @@ jobs:
             echo "---" >> report.md
             echo "### Precision: $precision" >> report.md
 
-            # 1. Build Optimized (Current branch)
-            rm -rf build_opt
-            meson setup build_opt -Dfloating-point=$precision --buildtype=release
-            ninja -C build_opt
+            # 1. Build Candidate (Current branch)
+            rm -rf build_cand
+            meson setup build_cand -Dfloating-point=$precision --buildtype=release
+            ninja -C build_cand
 
-            # Optimized paths
-            LIB_PATH_OPT="build_opt/libfaac/libfaac.so"
-            FAAC_PATH_OPT="build_opt/frontend/faac"
+            # Candidate paths
+            LIB_PATH_CAND="build_cand/libfaac/libfaac.so"
+            FAAC_PATH_CAND="build_cand/frontend/faac"
 
             PERC_FLAG="--perceptual"
 
-            python3 tests/run_benchmark.py $FAAC_PATH_OPT $LIB_PATH_OPT ${precision}_opt ${precision}_opt.json $PERC_FLAG
+            python3 tests/run_benchmark.py $FAAC_PATH_CAND $LIB_PATH_CAND ${precision}_cand ${precision}_cand.json $PERC_FLAG
 
             # 2. Build Baseline
             git checkout ${{ github.base_ref }}
@@ -98,7 +101,7 @@ jobs:
             # Return to PR branch for next iteration and comparison
             git checkout ${{ github.sha }}
 
-            python3 tests/compare_results.py ${precision}_base.json ${precision}_opt.json >> report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+            python3 tests/compare_results.py ${precision}_base.json ${precision}_cand.json >> report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
           done
           cat report.md
 

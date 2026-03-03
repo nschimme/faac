@@ -20,7 +20,7 @@
 import json
 import sys
 
-def compare(base_file, opt_file):
+def compare(base_file, cand_file):
     try:
         with open(base_file, "r") as f:
             base = json.load(f)
@@ -28,10 +28,10 @@ def compare(base_file, opt_file):
         base = {}
 
     try:
-        with open(opt_file, "r") as f:
-            opt = json.load(f)
+        with open(cand_file, "r") as f:
+            cand = json.load(f)
     except:
-        print("Error: Could not load optimized results.")
+        print("Error: Could not load candidate results.")
         sys.exit(1)
 
     has_regression = False
@@ -39,9 +39,9 @@ def compare(base_file, opt_file):
 
     # 1. Perceptual Matrix (if present)
     base_m = base.get("matrix", {})
-    opt_m = opt.get("matrix", {})
+    cand_m = cand.get("matrix", {})
 
-    if opt_m:
+    if cand_m:
         print("### Perceptual Matrix (ViSQOL MOS)")
 
         failures = []
@@ -49,8 +49,8 @@ def compare(base_file, opt_file):
         total_mos_delta = 0
         mos_count = 0
 
-        for k in sorted(opt_m.keys()):
-            o = opt_m[k]
+        for k in sorted(cand_m.keys()):
+            o = cand_m[k]
             b = base_m.get(k, {})
 
             filename = o.get("filename", k)
@@ -125,28 +125,28 @@ def compare(base_file, opt_file):
     # 2. System Efficiency Summary
     print("\n### 🚀 System Efficiency Summary")
     base_tp = base.get("throughput", {})
-    opt_tp = opt.get("throughput", {})
+    cand_tp = cand.get("throughput", {})
 
     total_base_t = sum(base_tp.values())
-    total_opt_t = sum(opt_tp.values())
+    total_cand_t = sum(cand_tp.values())
 
-    if total_opt_t > 0 and total_base_t > 0:
-        speedup = total_base_t / total_opt_t
+    if total_cand_t > 0 and total_base_t > 0:
+        speedup = total_base_t / total_cand_t
         reduction = (1 - 1/speedup) * 100
-        print(f"- **Throughput Improvement:** {reduction:+.1f}% ({total_base_t:.3f}s -> {total_opt_t:.3f}s)")
-    elif total_opt_t > 0:
-         print(f"- **Throughput (New):** {total_opt_t:.3f}s")
+        print(f"- **Throughput Improvement:** {reduction:+.1f}% ({total_base_t:.3f}s -> {total_cand_t:.3f}s)")
+    elif total_cand_t > 0:
+         print(f"- **Throughput (New):** {total_cand_t:.3f}s")
     else:
         missing_data = True
 
     base_lib = base.get("lib_size", 0)
-    opt_lib = opt.get("lib_size", 0)
-    if opt_lib > 0:
+    cand_lib = cand.get("lib_size", 0)
+    if cand_lib > 0:
         if base_lib > 0:
-            lib_chg = ((opt_lib/base_lib)-1)*100
-            print(f"- **Binary Size Change:** {lib_chg:+.2f}% ({base_lib} -> {opt_lib} bytes)")
+            lib_chg = ((cand_lib/base_lib)-1)*100
+            print(f"- **Binary Size Change:** {lib_chg:+.2f}% ({base_lib} -> {cand_lib} bytes)")
         else:
-            print(f"- **Binary Size:** {opt_lib} bytes")
+            print(f"- **Binary Size:** {cand_lib} bytes")
     else:
         missing_data = True
 
