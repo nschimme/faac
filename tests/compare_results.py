@@ -19,8 +19,10 @@
 
 import json
 import sys
+import os
+import re
 
-def compare(base_file, cand_file):
+def analyze_pair(base_file, cand_file):
     try:
         with open(base_file, "r") as f:
             base = json.load(f)
@@ -31,21 +33,21 @@ def compare(base_file, cand_file):
         with open(cand_file, "r") as f:
             cand = json.load(f)
     except:
-        print("Error: Could not load candidate results.")
-        sys.exit(1)
+        return None
 
-    has_regression = False
-    missing_data = False
+    suite_results = {
+        "has_regression": False,
+        "missing_data": False,
+        "mos_delta": 0,
+        "mos_count": 0,
+        "tp_reduction": 0,
+        "lib_size_chg": 0,
+        "failures": [],
+        "all_cases": []
+    }
 
-    # 1. Perceptual Matrix (if present)
     base_m = base.get("matrix", {})
     cand_m = cand.get("matrix", {})
-
-    # 1. Collect and Calculate
-    failures = []
-    all_cases = []
-    total_mos_delta = 0
-    mos_count = 0
 
     if cand_m:
         for k in sorted(cand_m.keys()):
@@ -63,19 +65,19 @@ def compare(base_file, cand_file):
             o_size = o.get("size")
             b_size = b.get("size")
 
+            size_chg = "N/A"
             if o_size is not None and b_size is not None:
                 size_chg_val = (o_size - b_size) / b_size * 100
                 size_chg = f"{size_chg_val:+.2f}%"
-            else:
-                size_chg = "N/A"
-                if o_size is None: missing_data = True
+            elif o_size is None:
+                suite_results["missing_data"] = True
 
             status = "✅"
             if o_mos is not None:
                 if b_mos is not None:
                     delta = o_mos - b_mos
-                    total_mos_delta += delta
-                    mos_count += 1
+                    suite_results["mos_delta"] += delta
+                    suite_results["mos_count"] += 1
 
                 if o_mos < (thresh - 0.5):
                     status = "🤮" # Awful
@@ -84,87 +86,139 @@ def compare(base_file, cand_file):
 
                 if b_mos is not None and (o_mos - b_mos) < -0.1:
                     status = "❌" # Regression
-                    has_regression = True
+                    suite_results["has_regression"] = True
             else:
                 status = "❓"
-                missing_data = True
+                suite_results["missing_data"] = True
 
             mos_str = f"{o_mos:.2f}" if o_mos is not None else "N/A"
             b_mos_str = f"{b_mos:.2f}" if b_mos is not None else "N/A"
             delta_mos = f"{(o_mos - b_mos):+.2f}" if (o_mos is not None and b_mos is not None) else "N/A"
 
             case_info = f"| {display_name} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {size_chg} |"
-            all_cases.append(case_info)
+            suite_results["all_cases"].append(case_info)
             if status in ["🤮", "📉", "❌"]:
-                failures.append(case_info)
+                suite_results["failures"].append(case_info)
     else:
-        missing_data = True
-
-    avg_mos_delta = total_mos_delta / mos_count if mos_count > 0 else 0
+        suite_results["missing_data"] = True
 
     # Throughput
     base_tp = base.get("throughput", {})
     cand_tp = cand.get("throughput", {})
     total_base_t = sum(base_tp.values())
     total_cand_t = sum(cand_tp.values())
-    tp_reduction = 0
     if total_cand_t > 0 and total_base_t > 0:
-        tp_reduction = (1 - total_cand_t / total_base_t) * 100
+        suite_results["tp_reduction"] = (1 - total_cand_t / total_base_t) * 100
+        suite_results["base_t"] = total_base_t
+        suite_results["cand_t"] = total_cand_t
+    else:
+        suite_results["missing_data"] = True
 
     # Binary Size
     base_lib = base.get("lib_size", 0)
     cand_lib = cand.get("lib_size", 0)
-    lib_chg = 0
     if cand_lib > 0 and base_lib > 0:
-        lib_chg = ((cand_lib/base_lib)-1)*100
-
-    # 2. Smart Summary (Maintainer Decision Tool)
-    if has_regression:
-        print("### ❌ Regression Detected")
-    elif avg_mos_delta > 0.01 or tp_reduction > 5:
-        print("### 🚀 Improvement Summary")
+        suite_results["lib_size_chg"] = ((cand_lib/base_lib)-1)*100
+        suite_results["base_lib"] = base_lib
+        suite_results["cand_lib"] = cand_lib
     else:
-        print("### 📊 Benchmark Summary")
+        suite_results["missing_data"] = True
 
-    print(f"- **Perceptual (MOS) Delta:** {avg_mos_delta:+.3f}")
-    if total_cand_t > 0:
-        print(f"- **Throughput Improvement:** {tp_reduction:+.1f}% ({total_base_t:.3f}s -> {total_cand_t:.3f}s)")
-    if cand_lib > 0:
-        print(f"- **Binary Size Change:** {lib_chg:+.2f}% ({base_lib} -> {cand_lib} bytes)")
+    return suite_results
 
-    # 3. Details on Failures
-    regressions = [f for f in failures if "❌" in f]
-    opportunities = [f for f in failures if "❌" not in f]
-
-    if regressions:
-        print("\n#### ❌ Regressions (Worse than baseline)")
-        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-        print("| :--- | :---: | :---: | :---: | :---: |")
-        for r in regressions: print(r)
-
-    if opportunities:
-        print("\n#### 💡 Opportunities (Low quality, but no regression)")
-        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-        print("| :--- | :---: | :---: | :---: | :---: |")
-        for o in opportunities: print(o)
-
-    # 4. Full Matrix
-    if all_cases:
-        print("\n<details><summary><b>View Full Perceptual Matrix</b></summary>\n")
-        print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-        print("| :--- | :---: | :---: | :---: | :---: |")
-        for c in all_cases: print(c)
-        print("\n</details>")
-
-    if has_regression:
-        print("\n❌ **Job failed: Quality regression detected.**")
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 tests/compare_results.py <results_dir>")
         sys.exit(1)
-    if missing_data:
-        print("\n❌ **Job failed: Missing benchmark data (MOS, CPU, or Size).**")
+
+    results_dir = sys.argv[1]
+    files = os.listdir(results_dir)
+
+    # Identify suites by looking for _cand.json files
+    suites = {}
+    for f in files:
+        if f.endswith("_cand.json"):
+            suite_name = f[:-10]
+            base_f = suite_name + "_base.json"
+            if base_f in files:
+                suites[suite_name] = (os.path.join(results_dir, base_f), os.path.join(results_dir, f))
+
+    if not suites:
+        print("No result pairs found in directory.")
+        sys.exit(1)
+
+    all_suite_data = {}
+    overall_regression = False
+    overall_missing = False
+    total_mos_delta = 0
+    total_mos_count = 0
+    total_tp_reduction = 0
+    total_lib_chg = 0
+
+    for name, (base, cand) in sorted(suites.items()):
+        data = analyze_pair(base, cand)
+        if data:
+            all_suite_data[name] = data
+            if data["has_regression"]: overall_regression = True
+            if data["missing_data"]: overall_missing = True
+            total_mos_delta += data["mos_delta"]
+            total_mos_count += data["mos_count"]
+            total_tp_reduction += data["tp_reduction"]
+            total_lib_chg += data["lib_size_chg"]
+
+    avg_mos_delta = total_mos_delta / total_mos_count if total_mos_count > 0 else 0
+    avg_tp_reduction = total_tp_reduction / len(all_suite_data) if all_suite_data else 0
+    avg_lib_chg = total_lib_chg / len(all_suite_data) if all_suite_data else 0
+
+    # Header & Summary
+    if overall_regression:
+        print("## ❌ Quality Regression Detected")
+    elif avg_mos_delta > 0.01 or avg_tp_reduction > 5:
+        print("## 🚀 Perceptual & Efficiency Improvement")
+    else:
+        print("## 📊 Benchmark Summary")
+
+    print(f"- **Avg MOS Delta:** {avg_mos_delta:+.3f}")
+    print(f"- **Avg Throughput Improvement:** {avg_tp_reduction:+.1f}%")
+    print(f"- **Avg Binary Size Change:** {avg_lib_chg:+.2f}%")
+
+    # Grouped Suites Details
+    print("\n### 🛠️ Test Suites (Arch/Precision)")
+    for name, data in sorted(all_suite_data.items()):
+        status_icon = "❌" if data["has_regression"] else "✅"
+        if data["missing_data"]: status_icon = "⚠️"
+
+        avg_mos = data["mos_delta"] / data["mos_count"] if data["mos_count"] > 0 else 0
+
+        print(f"\n#### {status_icon} {name}")
+        print(f"- MOS Δ: {avg_mos:+.3f}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
+
+        regressions = [f for f in data["failures"] if "❌" in f]
+        opportunities = [f for f in data["failures"] if "❌" not in f]
+
+        if regressions:
+            print("<details open><summary><b>❌ Regressions</b></summary>\n")
+            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            print("| :--- | :---: | :---: | :---: | :---: |")
+            for r in regressions: print(r)
+            print("\n</details>")
+
+        if opportunities:
+            print("<details><summary><b>💡 Opportunities/Warnings</b></summary>\n")
+            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            print("| :--- | :---: | :---: | :---: | :---: |")
+            for o in opportunities: print(o)
+            print("\n</details>")
+
+        if data["all_cases"]:
+            print(f"<details><summary><b>View All {len(data['all_cases'])} cases</b></summary>\n")
+            print("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+            print("| :--- | :---: | :---: | :---: | :---: |")
+            for c in data["all_cases"]: print(c)
+            print("\n</details>")
+
+    if overall_regression or overall_missing:
         sys.exit(1)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python3 tests/compare_results.py <base_json> <cand_json>")
-        sys.exit(1)
-    compare(sys.argv[1], sys.argv[2])
+    main()

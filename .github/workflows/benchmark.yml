@@ -8,12 +8,22 @@ on:
       - "tests/**"
 
 jobs:
-  test:
-    name: ubuntu-22.04
-    runs-on: ubuntu-22.04
+  benchmark:
+    name: ${{ matrix.arch }} / ${{ matrix.precision }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+        precision: [single, double]
+        include:
+          - arch: amd64
+            os: ubuntu-22.04
+          - arch: arm64
+            os: ubuntu-22.04-arm64
 
     steps:
-      - name: Install dependencies (Linux)
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y meson ninja-build bc faad ffmpeg
@@ -64,57 +74,56 @@ jobs:
         run: |
           python3 tests/setup_datasets.py
 
-      - name: Build and Run Matrix
-        shell: bash
+      - name: Run Benchmark (Candidate)
         run: |
-          echo "## Performance & Perceptual Report (ubuntu-22.04)" > report.md
-          for precision in single double; do
-            echo "---" >> report.md
-            echo "### Precision: $precision" >> report.md
+          mkdir -p results
+          meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
+          ninja -C build_cand
+          LIB_PATH="build_cand/libfaac/libfaac.so"
+          FAAC_PATH="build_cand/frontend/faac"
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 20
 
-            # 1. Build Candidate (Current branch)
-            rm -rf build_cand
-            meson setup build_cand -Dfloating-point=$precision --buildtype=release
-            ninja -C build_cand
+      - name: Run Benchmark (Baseline)
+        run: |
+          git checkout ${{ github.base_ref }}
+          meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
+          ninja -C build_base
+          LIB_PATH="build_base/libfaac/libfaac.so"
+          FAAC_PATH="build_base/frontend/faac"
+          # Restore benchmark scripts from PR branch
+          git checkout ${{ github.sha }} -- tests/run_benchmark.py tests/setup_datasets.py
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 20
 
-            # Candidate paths
-            LIB_PATH_CAND="build_cand/libfaac/libfaac.so"
-            FAAC_PATH_CAND="build_cand/frontend/faac"
-
-            PERC_FLAG="--perceptual"
-
-            python3 tests/run_benchmark.py $FAAC_PATH_CAND $LIB_PATH_CAND ${precision}_cand ${precision}_cand.json $PERC_FLAG
-
-            # 2. Build Baseline
-            git checkout ${{ github.base_ref }}
-            rm -rf build_base
-            meson setup build_base -Dfloating-point=$precision --buildtype=release
-            ninja -C build_base
-
-            # Baseline paths
-            LIB_PATH_BASE="build_base/libfaac/libfaac.so"
-            FAAC_PATH_BASE="build_base/frontend/faac"
-
-            # Restore benchmark scripts from PR branch
-            git checkout ${{ github.sha }} -- tests/run_benchmark.py tests/compare_results.py tests/setup_datasets.py
-
-            python3 tests/run_benchmark.py $FAAC_PATH_BASE $LIB_PATH_BASE ${precision}_base ${precision}_base.json $PERC_FLAG
-
-            # Return to PR branch for next iteration and comparison
-            git checkout ${{ github.sha }}
-
-            python3 tests/compare_results.py ${precision}_base.json ${precision}_cand.json >> report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
-          done
-          cat report.md
-
-      - name: Upload Test Report
+      - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
-          name: report-ubuntu-22.04
-          path: report.md
+          name: results-${{ matrix.arch }}-${{ matrix.precision }}
+          path: results/*.json
+
+  report:
+    name: Consolidated Report
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: all_results
+          pattern: results-*
+          merge-multiple: true
+
+      - name: Generate Report
+        id: generate
+        run: |
+          python3 tests/compare_results.py all_results > report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          cat report.md
 
       - name: PR Feedback
-        if: always() && github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -130,7 +139,6 @@ jobs:
             }
 
       - name: Check for Regressions
-        if: always()
         run: |
           if [ "${{ env.REGRESSION_DETECTED }}" == "1" ]; then
             echo "Regressions or missing data detected. Failing job."
