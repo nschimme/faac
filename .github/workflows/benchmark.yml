@@ -26,6 +26,21 @@ jobs:
         run: |
           pip install numpy
 
+      - name: Cache Pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v2
+
+      - name: Cache ViSQOL Repo and Models
+        id: cache-visqol
+        uses: actions/cache@v4
+        with:
+          path: |
+            visqol
+            model
+          key: ${{ runner.os }}-visqol-v2
+
       - name: Setup Bazel
         uses: bazel-contrib/setup-bazel@0.8.1
         with:
@@ -33,31 +48,18 @@ jobs:
           disk-cache: ${{ github.workflow }}
           repository-cache: true
 
-      - name: Cache Pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-v1
-
-      - name: Cache ViSQOL Models
-        id: cache-models
-        uses: actions/cache@v4
-        with:
-          path: model
-          key: ${{ runner.os }}-visqol-models-v1
-
       - name: Install ViSQOL (Linux only)
         run: |
           if [ ! -d visqol ]; then
             git clone --depth 1 https://github.com/google/visqol.git
           fi
+          if [ ! -d model ]; then
+            mkdir -p model
+            cp visqol/model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite model/
+            cp visqol/model/libsvm_nu_svr_model.txt model/
+          fi
           cd visqol
           pip install .
-          if [ "${{ steps.cache-models.outputs.cache-hit }}" != "true" ]; then
-            mkdir -p ../model
-            cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
-            cp model/libsvm_nu_svr_model.txt ../model/
-          fi
 
       - name: Cache Datasets
         id: cache-datasets
