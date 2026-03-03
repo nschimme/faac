@@ -106,8 +106,10 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                 output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
 
                 try:
+                    t_start = time.time()
                     subprocess.run([faac_path, "-q", str(cfg["q"]), "-o", output_path, input_path],
                                    env=env, check=True, capture_output=True)
+                    t_duration = time.time() - t_start
 
                     mos = None
                     aac_size = os.path.getsize(output_path)
@@ -130,6 +132,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                     results["matrix"][key] = {
                         "mos": mos,
                         "size": aac_size,
+                        "time": t_duration,
                         "md5": get_md5(output_path),
                         "thresh": cfg["thresh"],
                         "scenario": name,

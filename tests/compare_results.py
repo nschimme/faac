@@ -20,6 +20,7 @@
 import json
 import sys
 import os
+from collections import defaultdict
 
 def analyze_pair(base_file, cand_file):
     try:
@@ -44,13 +45,16 @@ def analyze_pair(base_file, cand_file):
         "missing_mos_count": 0,
         "tp_reduction": 0,
         "lib_size_chg": 0,
+        "bitrate_chg_sum": 0,
+        "bitrate_count": 0,
         "regressions": [],
         "new_wins": [],
         "significant_wins": [],
         "opportunities": [],
         "bit_exact_count": 0,
         "total_cases": 0,
-        "all_cases": []
+        "all_cases": [],
+        "scenario_stats": defaultdict(lambda: {"tp_sum_cand": 0, "tp_sum_base": 0, "count": 0})
     }
 
     base_m = base.get("matrix", {})
@@ -73,6 +77,14 @@ def analyze_pair(base_file, cand_file):
             o_size = o.get("size")
             b_size = b.get("size")
 
+            o_time = o.get("time")
+            b_time = b.get("time")
+
+            if o_time is not None and b_time is not None and b_time > 0:
+                suite_results["scenario_stats"][scenario]["tp_sum_cand"] += o_time
+                suite_results["scenario_stats"][scenario]["tp_sum_base"] += b_time
+                suite_results["scenario_stats"][scenario]["count"] += 1
+
             o_md5 = o.get("md5", "")
             b_md5 = b.get("md5", "")
 
@@ -83,6 +95,8 @@ def analyze_pair(base_file, cand_file):
             if o_size is not None and b_size is not None:
                 size_chg_val = (o_size - b_size) / b_size * 100
                 size_chg = f"{size_chg_val:+.2f}%"
+                suite_results["bitrate_chg_sum"] += size_chg_val
+                suite_results["bitrate_count"] += 1
             elif o_size is None:
                 suite_results["missing_data"] = True
 
@@ -159,7 +173,13 @@ def analyze_pair(base_file, cand_file):
     if total_cand_t > 0 and total_base_t > 0:
         suite_results["tp_reduction"] = (1 - total_cand_t / total_base_t) * 100
     else:
-        suite_results["missing_data"] = True
+        # If overall throughput is missing, try to aggregate from scenarios
+        cand_t_sum = sum(s["tp_sum_cand"] for s in suite_results["scenario_stats"].values())
+        base_t_sum = sum(s["tp_sum_base"] for s in suite_results["scenario_stats"].values())
+        if cand_t_sum > 0 and base_t_sum > 0:
+            suite_results["tp_reduction"] = (1 - cand_t_sum / base_t_sum) * 100
+        else:
+            suite_results["missing_data"] = True
 
     # Binary Size
     base_lib = base.get("lib_size", 0)
@@ -200,12 +220,17 @@ def main():
     total_missing_mos = 0
     total_tp_reduction = 0
     total_lib_chg = 0
+    total_bitrate_chg = 0
+    total_bitrate_count = 0
 
     total_regressions = 0
     total_new_wins = 0
     total_significant_wins = 0
     total_bit_exact = 0
     total_cases_all = 0
+
+    # For worst-case scenario throughput
+    scenario_tp_deltas = []
 
     for name, (base, cand) in sorted(suites.items()):
         data = analyze_pair(base, cand)
@@ -218,6 +243,8 @@ def main():
             total_missing_mos += data["missing_mos_count"]
             total_tp_reduction += data["tp_reduction"]
             total_lib_chg += data["lib_size_chg"]
+            total_bitrate_chg += data["bitrate_chg_sum"]
+            total_bitrate_count += data["bitrate_count"]
 
             total_regressions += len(data["regressions"])
             total_new_wins += len(data["new_wins"])
@@ -225,14 +252,27 @@ def main():
             total_bit_exact += data["bit_exact_count"]
             total_cases_all += data["total_cases"]
 
+            for sc_name, sc_data in data["scenario_stats"].items():
+                if sc_data["tp_sum_base"] > 0:
+                    delta = (1 - sc_data["tp_sum_cand"] / sc_data["tp_sum_base"]) * 100
+                    scenario_tp_deltas.append((f"{name} / {sc_name}", delta))
+
     avg_mos_delta_str = f"{(total_mos_delta / total_mos_count):+.3f}" if total_mos_count > 0 else "N/A"
     avg_tp_reduction = total_tp_reduction / len(all_suite_data) if all_suite_data else 0
     avg_lib_chg = total_lib_chg / len(all_suite_data) if all_suite_data else 0
+    avg_bitrate_chg = total_bitrate_chg / total_bitrate_count if total_bitrate_count > 0 else 0
     bit_exact_percent = (total_bit_exact / total_cases_all * 100) if total_cases_all > 0 else 0
+
+    # Worst-case throughput
+    worst_tp_scen, worst_tp_delta = (None, 0)
+    if scenario_tp_deltas:
+        worst_tp_scen, worst_tp_delta = min(scenario_tp_deltas, key=lambda x: x[1])
 
     report = []
     if overall_regression:
         report.append("## ❌ Quality Regression Detected")
+    elif worst_tp_delta < -5.0:
+        report.append("## ⚠️ Performance Regression Detected")
     elif overall_missing:
         report.append("## ❌ Incomplete/Missing Data Detected")
     elif bit_exact_percent == 100.0:
@@ -265,12 +305,20 @@ def main():
     # Throughput
     if abs(avg_tp_reduction) > 0.1:
         tp_icon = "🚀" if avg_tp_reduction > 1.0 else "📉" if avg_tp_reduction < -1.0 else ""
-        report.append(f"| **Throughput** | {avg_tp_reduction:+.1f}% {tp_icon} |")
+        report.append(f"| **Throughput (Avg)** | {avg_tp_reduction:+.1f}% {tp_icon} |")
+
+    if worst_tp_delta < -1.0:
+        report.append(f"| **Worst-case TP Δ** | {worst_tp_delta:.1f}% ({worst_tp_scen}) ⚠️ |")
 
     # Binary Size
     if abs(avg_lib_chg) > 0.01:
         size_icon = "📉" if avg_lib_chg < -0.1 else "📈" if avg_lib_chg > 0.1 else ""
         report.append(f"| **Library Size** | {avg_lib_chg:+.2f}% {size_icon} |")
+
+    # Bitrate Accuracy
+    if abs(avg_bitrate_chg) > 0.1:
+        bitrate_icon = "📉" if avg_bitrate_chg < -1.0 else "📈" if avg_bitrate_chg > 1.0 else ""
+        report.append(f"| **Bitrate (Size Δ)** | {avg_bitrate_chg:+.2f}% {bitrate_icon} |")
 
     # Avg MOS Delta
     if total_mos_count > 0 and abs(total_mos_delta / total_mos_count) > 0.001:
