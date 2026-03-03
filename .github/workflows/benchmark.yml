@@ -9,8 +9,8 @@ on:
 
 jobs:
   test:
-    name: ubuntu-latest
-    runs-on: ubuntu-latest
+    name: ubuntu-22.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Install dependencies (Linux)
@@ -67,7 +67,7 @@ jobs:
       - name: Build and Run Matrix
         shell: bash
         run: |
-          echo "## Summary Report for ubuntu-latest" > report.md
+          echo "## Summary Report for ubuntu-22.04" > report.md
           for precision in single double; do
             echo "---" >> report.md
             echo "### Precision: $precision" >> report.md
@@ -110,7 +110,7 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: report-ubuntu-latest
+          name: report-ubuntu-22.04
           path: report.md
 
       - name: PR Feedback

@@ -159,6 +159,6 @@ def compare(base_file, cand_file):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python3 tests/compare_results.py <base_json> <opt_json>")
+        print("Usage: python3 tests/compare_results.py <base_json> <cand_json>")
         sys.exit(1)
     compare(sys.argv[1], sys.argv[2])
