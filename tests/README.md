@@ -39,12 +39,20 @@ A gain in one area must not come at a "catastrophic" cost to another (e.g., a 10
 Install core build and analysis dependencies:
 ```bash
 sudo apt-get update
-sudo apt-get install -y meson ninja-build bc faad ffmpeg python3-numpy
+sudo apt-get install -y meson ninja-build bc faad ffmpeg
 ```
 
-For detailed dependency information and manual installation of ViSQOL, please refer to:
-- [ViSQOL Installation Guide](https://github.com/google/visqol#installation)
+Install ViSQOL and Python dependencies:
+```bash
+pip install numpy
+pip install git+https://github.com/diggerdu/visqol-py.git
+```
+
+For detailed dependency information, please refer to:
+- [visqol-py Repository](https://github.com/diggerdu/visqol-py)
 - [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
+
+**Note**: ViSQOL is currently most reliable on **Ubuntu 22.04**.
 
 ## Setup Datasets
 
@@ -67,28 +75,28 @@ This will download the datasets to `tests/data/external/` and prepare them (resa
 2. **Run the Benchmark Script**:
    ```bash
    python3 tests/run_benchmark.py \
-     build/frontend/faac \
-     build/libfaac/libfaac.so \
+     build_cand/frontend/faac \
+     build_cand/libfaac/libfaac.so \
      my_test_run \
-     results/my_test_run_cand.json \
+     tests/results/my_test_run_cand.json \
      --perceptual \
-     --coverage 20
+     --coverage 100
    ```
 
    - `precision_name`: A label for the run (e.g., `single_cand`).
    - `--perceptual`: Enables ViSQOL MOS calculation (slow).
-   - `--coverage X`: Only runs X% of the dataset (useful for quick local tests).
+   - `--coverage X`: Percentage of the dataset to run (set to `100` for full verification).
 
 ## Comparing Results
 
 To generate a report comparing a candidate run against a baseline:
 
 1. **Run a baseline**:
-   Generate `results/my_test_run_base.json` using a known good version of FAAC.
+   Generate `tests/results/my_test_run_base.json` using a known good version of FAAC.
 
 2. **Generate the Report**:
    ```bash
-   python3 tests/compare_results.py results/
+   python3 tests/compare_results.py tests/results/
    ```
 
    The script will look for pairs of `*_base.json` and `*_cand.json` in the specified directory and output a Markdown summary with regressions highlighted at the top.

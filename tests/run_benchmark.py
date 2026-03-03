@@ -1,6 +1,6 @@
 """
  * FAAC Benchmark Suite
- * Copyright (C) 2025 Nils Schimmelmann
+ * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,13 @@ import json
 import re
 import tempfile
 import hashlib
+
+try:
+    import visqol
+    from visqol.pb2 import visqol_config_pb2
+    HAS_VISQOL = True
+except ImportError:
+    HAS_VISQOL = False
 
 # Paths relative to script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -55,36 +62,33 @@ def get_md5(path):
     return hash_md5.hexdigest()
 
 def run_visqol(ref_wav, deg_wav, mode):
-    """Run ViSQOL CLI and parse MOS score."""
+    """Run ViSQOL via Python API and return MOS score."""
+    if not HAS_VISQOL:
+        print(" ViSQOL Python API not available.")
+        return None
     try:
+        config = visqol_config_pb2.VisqolConfig()
         if mode == "speech":
-            cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "wideband"]
+            config.audio.sample_rate = 16000
+            config.options.use_speech_scoring = True
         else:
-            # Check for local assets first, otherwise rely on system default
+            config.audio.sample_rate = 48000
+            config.options.use_speech_scoring = False
             model_path = os.path.join(ASSETS_DIR, "model", "libsvm_nu_svr_model.txt")
             if os.path.exists(model_path):
-                cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path]
+                config.options.svr_model_path = model_path
             else:
-                # Try relative to CWD as fallback for some environments
+                # Fallback to current working directory if assets not found
                 model_path_fallback = os.path.abspath("model/libsvm_nu_svr_model.txt")
                 if os.path.exists(model_path_fallback):
-                    cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path_fallback]
-                else:
-                    cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband"]
+                    config.options.svr_model_path = model_path_fallback
 
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        if proc.returncode != 0:
-            print(f" ViSQOL failed (rc {proc.returncode}): {proc.stderr.strip()}")
-            return None
-
-        match = re.search(r"MOS-LQO:\s+([0-9.]+)", proc.stdout)
-        if match:
-            return float(match.group(1))
-        else:
-            match = re.search(r"([0-9.]+)", proc.stdout)
-            if match: return float(match.group(1))
+        api = visqol.VisqolApi()
+        api.Create(config)
+        similarity_result = api.Measure(ref_wav, deg_wav)
+        return float(similarity_result.moslqo)
     except Exception as e:
-        print(f" ViSQOL execution error: {e}")
+        print(f" ViSQOL API error: {e}")
         pass
     return None
 

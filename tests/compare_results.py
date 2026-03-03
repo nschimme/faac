@@ -1,6 +1,6 @@
 """
  * FAAC Benchmark Suite
- * Copyright (C) 2025 Nils Schimmelmann
+ * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,7 +22,6 @@ import sys
 import os
 
 def analyze_pair(base_file, cand_file):
-    print(f"Analyzing pair:\n  Base: {base_file}\n  Candidate: {cand_file}")
     try:
         with open(base_file, "r") as f:
             base = json.load(f)
@@ -59,7 +58,6 @@ def analyze_pair(base_file, cand_file):
 
     if cand_m:
         suite_results["total_cases"] = len(cand_m)
-        print(f"  Found {len(cand_m)} test cases.")
         for k in sorted(cand_m.keys()):
             o = cand_m[k]
             b = base_m.get(k, {})
@@ -177,10 +175,8 @@ def main():
     results_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(SCRIPT_DIR, "results")
 
     if not os.path.exists(results_dir):
-        print(f"Results directory {results_dir} not found.")
         sys.exit(1)
 
-    print(f"Scanning {results_dir} for benchmark results...")
     files = os.listdir(results_dir)
 
     suites = {}

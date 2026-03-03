@@ -112,8 +112,8 @@ jobs:
           CC: ${{ matrix.config.compiler }}
           CFLAGS: ${{ matrix.config.cflags }}
         run: |
-          mkdir -p build temp
-          cd build
+          mkdir -p build_ci temp
+          cd build_ci
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
 
@@ -123,8 +123,8 @@ jobs:
           CC: ${{ matrix.config.compiler }}
           CFLAGS: ${{ matrix.config.cflags }}
         run: |
-          meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
-          meson install -C build
+          meson setup build_ci -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
+          meson install -C build_ci
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v4

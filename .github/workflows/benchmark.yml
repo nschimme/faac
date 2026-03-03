@@ -14,6 +14,7 @@ on:
 
 jobs:
   benchmark:
+    # NOTE: ViSQOL currently only supports ubuntu-22.04 for reliable Python API execution.
     name: ${{ matrix.arch }} / ${{ matrix.precision }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -36,34 +37,34 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install numpy
-        run: pip install numpy
-
-      - name: Cache ViSQOL Repo
-        id: cache-visqol
+      - name: Cache Pip
         uses: actions/cache@v4
         with:
-          path: visqol-repo
-          key: ${{ runner.os }}-visqol-repo-v1
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }} # Or just a static key if no reqs
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.8.1
-        with:
-          bazelisk-cache: true
-          disk-cache: ${{ github.workflow }}
-          repository-cache: true
-
-      - name: Build ViSQOL
+      - name: Install Python dependencies
         run: |
-          if [ ! -d visqol-repo ]; then
-            git clone --depth 1 https://github.com/google/visqol.git visqol-repo
-          fi
-          cd visqol-repo
-          bazel build -c opt :visqol
-          sudo cp bazel-bin/visqol /usr/local/bin/visqol
-          mkdir -p ../tests/assets/model
-          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../tests/assets/model/
-          cp model/libsvm_nu_svr_model.txt ../tests/assets/model/
+          pip install numpy
+          pip install git+https://github.com/diggerdu/visqol-py.git
+
+      - name: Cache ViSQOL Model Assets
+        id: cache-visqol-assets
+        uses: actions/cache@v4
+        with:
+          path: tests/assets/model
+          key: ${{ runner.os }}-visqol-assets-v1
+
+      - name: Setup ViSQOL Assets
+        if: steps.cache-visqol-assets.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p tests/assets/model
+          git clone --depth 1 https://github.com/google/visqol.git build_visqol_tmp
+          cp build_visqol_tmp/model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite tests/assets/model/
+          cp build_visqol_tmp/model/libsvm_nu_svr_model.txt tests/assets/model/
+          rm -rf build_visqol_tmp
 
       - name: Cache Datasets
         id: cache-datasets
@@ -84,7 +85,7 @@ jobs:
           ninja -C build_cand
           LIB_PATH="build_cand/libfaac/libfaac.so"
           FAAC_PATH="build_cand/frontend/faac"
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 20
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 100
 
       - name: Run Benchmark (Baseline)
         run: |
@@ -95,7 +96,7 @@ jobs:
           FAAC_PATH="build_base/frontend/faac"
           # Restore benchmark scripts from PR branch
           git checkout ${{ github.sha }} -- tests/
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 20
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 100
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
