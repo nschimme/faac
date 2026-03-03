@@ -26,9 +26,18 @@ import wave
 import re
 
 DATASETS = {
-    "PMLT2014": "https://github.com/nschimme/PMLT2014/archive/refs/tags/PMLT2014.zip",
-    "TCD-VOIP": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip",
-    "SoundExpert": "https://github.com/nschimme/SoundExpert/archive/refs/tags/SoundExpert.zip"
+    "PMLT2014": {
+        "url": "https://github.com/nschimme/PMLT2014/archive/refs/tags/PMLT2014.zip",
+        "name": "Public Multiformat Listening Test @ 96 kbps (July 2014)"
+    },
+    "TCD-VOIP": {
+        "url": "https://github.com/nschimme/TCD-VOIP/archive/refs/tags/harte2015tcd.zip",
+        "name": "TCD-VoIP (Sigmedia-VoIP) Listener Test Database"
+    },
+    "SoundExpert": {
+        "url": "https://github.com/nschimme/SoundExpert/archive/refs/tags/SoundExpert.zip",
+        "name": "SoundExpert Sound samples"
+    }
 }
 
 # Paths relative to script directory
@@ -68,6 +77,7 @@ def resample(input_path, output_path, rate, channels, start=0, duration=7):
     subprocess.run(cmd, check=True, capture_output=True)
 
 def setup_pmlt():
+    dataset_info = DATASETS["PMLT2014"]
     src_dir = os.path.join(TEMP_DIR, "PMLT2014-PMLT2014")
     dest_dir = os.path.join(BASE_DATA_DIR, "audio")
 
@@ -77,7 +87,7 @@ def setup_pmlt():
             if f.endswith("48k.wav") and not re.search(r"48k\.\d+\.wav$", f):
                 wav_files.append(os.path.join(root, f))
 
-    print(f"Found {len(wav_files)} valid Public Multiformat Listening Test audio files.")
+    print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
@@ -87,6 +97,7 @@ def setup_pmlt():
         resample(wav, output, 48000, chans, start=start, duration=7)
 
 def setup_tcd_voip():
+    dataset_info = DATASETS["TCD-VOIP"]
     src_dir = os.path.join(TEMP_DIR, "TCD-VOIP-harte2015tcd")
     dest_dir = os.path.join(BASE_DATA_DIR, "speech")
 
@@ -96,7 +107,7 @@ def setup_tcd_voip():
             if f.endswith(".wav") and ("Test Set" in root or "chop" in root):
                 wav_files.append(os.path.join(root, f))
 
-    print(f"Found {len(wav_files)} valid TCD-VoIP speech files.")
+    print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
@@ -107,6 +118,7 @@ def setup_tcd_voip():
         resample(wav, output, 16000, 1, start=start, duration=7)
 
 def setup_soundexpert():
+    dataset_info = DATASETS["SoundExpert"]
     src_dir = os.path.join(TEMP_DIR, "SoundExpert-SoundExpert")
     dest_dir = os.path.join(BASE_DATA_DIR, "audio")
 
@@ -116,7 +128,7 @@ def setup_soundexpert():
             if f.endswith(".wav"):
                 wav_files.append(os.path.join(root, f))
 
-    print(f"Found {len(wav_files)} valid SoundExpert audio files.")
+    print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
@@ -127,8 +139,8 @@ def setup_soundexpert():
 
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
-        for name, url in DATASETS.items():
-            download_and_extract(name, url)
+        for name, info in DATASETS.items():
+            download_and_extract(name, info["url"])
 
         setup_pmlt()
         setup_tcd_voip()

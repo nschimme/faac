@@ -24,7 +24,6 @@ import sys
 import json
 import re
 import tempfile
-import shutil
 import hashlib
 
 # Paths relative to script directory
@@ -58,8 +57,6 @@ def get_md5(path):
 def run_visqol(ref_wav, deg_wav, mode):
     """Run ViSQOL CLI and parse MOS score."""
     try:
-        # Default ViSQOL behavior relies on models in a standard location or passed via flag.
-        # We try 'wideband' and 'fullband' subcommands which are standard in newer ViSQOL.
         if mode == "speech":
             cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "wideband"]
         else:
@@ -68,19 +65,26 @@ def run_visqol(ref_wav, deg_wav, mode):
             if os.path.exists(model_path):
                 cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path]
             else:
-                cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband"]
+                # Try relative to CWD as fallback for some environments
+                model_path_fallback = os.path.abspath("model/libsvm_nu_svr_model.txt")
+                if os.path.exists(model_path_fallback):
+                    cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path_fallback]
+                else:
+                    cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband"]
 
         proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            print(f" ViSQOL failed (rc {proc.returncode}): {proc.stderr.strip()}")
+            return None
+
         match = re.search(r"MOS-LQO:\s+([0-9.]+)", proc.stdout)
         if match:
             return float(match.group(1))
         else:
-            # Fallback for older ViSQOL or different output format
             match = re.search(r"([0-9.]+)", proc.stdout)
             if match: return float(match.group(1))
-            print(f"ViSQOL CLI output error: {proc.stdout} {proc.stderr}")
     except Exception as e:
-        print(f"ViSQOL CLI execution error: {e}")
+        print(f" ViSQOL execution error: {e}")
         pass
     return None
 
@@ -180,6 +184,7 @@ if __name__ == "__main__":
     data = run_benchmark(sys.argv[1], sys.argv[2], sys.argv[3], coverage=coverage, run_perceptual=do_perc)
 
     # Ensure results directory exists
-    os.makedirs(os.path.dirname(os.path.abspath(sys.argv[4])), exist_ok=True)
-    with open(sys.argv[4], "w") as f:
+    output_json = os.path.abspath(sys.argv[4])
+    os.makedirs(os.path.dirname(output_json), exist_ok=True)
+    with open(output_json, "w") as f:
         json.dump(data, f, indent=2)

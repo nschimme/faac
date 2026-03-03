@@ -42,6 +42,7 @@ def analyze_pair(base_file, cand_file):
         "missing_data": False,
         "mos_delta_sum": 0,
         "mos_count": 0,
+        "missing_mos_count": 0,
         "tp_reduction": 0,
         "lib_size_chg": 0,
         "regressions": [],
@@ -96,7 +97,7 @@ def analyze_pair(base_file, cand_file):
                     suite_results["mos_count"] += 1
 
                 if o_mos < (thresh - 0.5):
-                    status = "🤢" # Awful
+                    status = "🤮" # Awful
                 elif o_mos < thresh:
                     status = "📉" # Bad/Poor
 
@@ -118,6 +119,7 @@ def analyze_pair(base_file, cand_file):
 
             else:
                 status = "❓"
+                suite_results["missing_mos_count"] += 1
                 suite_results["missing_data"] = True
 
             mos_str = f"{o_mos:.2f}" if o_mos is not None else "N/A"
@@ -139,7 +141,7 @@ def analyze_pair(base_file, cand_file):
                 suite_results["regressions"].append(case_data)
             elif status == "🌟":
                 suite_results["significant_wins"].append(case_data)
-            elif status in ["🤢", "📉"]:
+            elif status in ["🤮", "📉"]:
                 suite_results["opportunities"].append(case_data)
     else:
         suite_results["missing_data"] = True
@@ -171,7 +173,6 @@ def analyze_pair(base_file, cand_file):
     return suite_results
 
 def main():
-    # If a directory is provided, use it. Otherwise look for 'results' under script dir.
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     results_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(SCRIPT_DIR, "results")
 
@@ -199,6 +200,7 @@ def main():
     overall_missing = False
     total_mos_delta = 0
     total_mos_count = 0
+    total_missing_mos = 0
     total_tp_reduction = 0
     total_lib_chg = 0
 
@@ -216,6 +218,7 @@ def main():
             if data["missing_data"]: overall_missing = True
             total_mos_delta += data["mos_delta_sum"]
             total_mos_count += data["mos_count"]
+            total_missing_mos += data["missing_mos_count"]
             total_tp_reduction += data["tp_reduction"]
             total_lib_chg += data["lib_size_chg"]
 
@@ -225,81 +228,87 @@ def main():
             total_bit_exact += data["bit_exact_count"]
             total_cases_all += data["total_cases"]
 
-    avg_mos_delta = total_mos_delta / total_mos_count if total_mos_count > 0 else 0
+    avg_mos_delta_str = f"{(total_mos_delta / total_mos_count):+.3f}" if total_mos_count > 0 else "N/A"
     avg_tp_reduction = total_tp_reduction / len(all_suite_data) if all_suite_data else 0
     avg_lib_chg = total_lib_chg / len(all_suite_data) if all_suite_data else 0
     bit_exact_percent = (total_bit_exact / total_cases_all * 100) if total_cases_all > 0 else 0
 
-    # Output report to stdout (will be captured by GHA)
     report = []
     if overall_regression:
         report.append("## ❌ Quality Regression Detected")
-    elif total_new_wins > 0 or total_significant_wins > 0 or avg_mos_delta > 0.01 or avg_tp_reduction > 5:
+    elif overall_missing:
+        report.append("## ❌ Incomplete/Missing Data Detected")
+    elif bit_exact_percent == 100.0:
+        report.append("## ✅ Refactor Verified (Bit-Identical)")
+    elif total_new_wins > 0 or total_significant_wins > 0 or (total_mos_count > 0 and (total_mos_delta/total_mos_count) > 0.01) or avg_tp_reduction > 5:
         report.append("## 🚀 Perceptual & Efficiency Improvement")
     else:
         report.append("## 📊 Benchmark Summary")
 
-    report.append(f"**High-level Summary:**")
+    report.append(f"**Maintainer Summary:**")
     report.append(f"- Regressions: {total_regressions}")
-    report.append(f"- New Wins (Passed threshold): {total_new_wins}")
-    report.append(f"- Significant MOS Wins (Δ > 0.1): {total_significant_wins}")
+    report.append(f"- New Wins: {total_new_wins}")
+    report.append(f"- Significant Wins: {total_significant_wins}")
     report.append(f"- Bitstream Consistency: {bit_exact_percent:.1f}% ({total_bit_exact}/{total_cases_all} identical)")
-    report.append(f"- Avg MOS Delta: {avg_mos_delta:+.3f}")
-    report.append(f"- Avg Throughput Improvement: {avg_tp_reduction:+.1f}%")
-    report.append(f"- Avg Binary Size Change: {avg_lib_chg:+.2f}%")
+    report.append(f"- Avg MOS Delta: {avg_mos_delta_str}")
+    report.append(f"- Avg Throughput: {avg_tp_reduction:+.1f}%")
+    report.append(f"- Avg Binary Size: {avg_lib_chg:+.2f}%")
 
-    report.append("\n### 🛠️ Test Suites (Arch/Precision)")
+    if total_missing_mos > 0:
+        report.append(f"- ⚠️ **Warning**: {total_missing_mos} MOS scores were missing/failed.")
 
-    # Sort suites: regressions first
-    sorted_suite_names = sorted(all_suite_data.keys(), key=lambda n: (not all_suite_data[n]["has_regression"], n))
+    # 1. Immediate Details: Regressions
+    if total_regressions > 0:
+        report.append("\n### ❌ Regression Details")
+        for name, data in sorted(all_suite_data.items()):
+            if data["regressions"]:
+                report.append(f"#### {name}")
+                report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+                report.append("| :--- | :---: | :---: | :---: | :---: |")
+                for r in data["regressions"]: report.append(r["line"])
 
-    for name in sorted_suite_names:
-        data = all_suite_data[name]
-        status_icon = "❌" if data["has_regression"] else "✅"
-        if data["missing_data"]: status_icon = "⚠️"
+    # 2. Collapsible Additional Details
+    report.append("\n<details><summary><b>View Additional Suite Details & Wins</b></summary>\n")
 
-        avg_mos = data["mos_delta_sum"] / data["mos_count"] if data["mos_count"] > 0 else 0
+    for name, data in sorted(all_suite_data.items()):
+        status_icon = "✅"
+        if data["has_regression"]: status_icon = "❌"
+        elif data["missing_data"]: status_icon = "❌"
+
+        avg_mos_suite = f"{(data['mos_delta_sum'] / data['mos_count']):+.3f}" if data["mos_count"] > 0 else "N/A"
         suite_bit_exact_percent = (data["bit_exact_count"] / data["total_cases"] * 100) if data["total_cases"] > 0 else 0
 
         report.append(f"\n#### {status_icon} {name}")
-        report.append(f"- MOS Δ: {avg_mos:+.3f}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
-        report.append(f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}%")
-
-        if data["regressions"]:
-            report.append("<details open><summary><b>❌ Regressions ({})</b></summary>\n".format(len(data["regressions"])))
-            report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            report.append("| :--- | :---: | :---: | :---: | :---: |")
-            for r in data["regressions"]: report.append(r["line"])
-            report.append("\n</details>")
+        report.append(f"- MOS Δ: {avg_mos_suite}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
+        report.append(f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}% ({data['bit_exact_count']}/{data['total_cases']})")
 
         if data["new_wins"]:
-            report.append("<details><summary><b>🆕 New Wins ({})</b></summary>\n".format(len(data["new_wins"])))
+            report.append("\n**🆕 New Wins**")
             report.append("| Test Case | MOS (Base) | Delta |")
             report.append("| :--- | :---: | :---: |")
             for w in data["new_wins"]:
                 report.append("| {} | {:.2f} ({:.2f}) | {:+.2f} |".format(w["display_name"], w["mos"], w["b_mos"], w["delta"]))
-            report.append("\n</details>")
 
         if data["significant_wins"]:
-            report.append("<details><summary><b>🌟 Significant Wins ({})</b></summary>\n".format(len(data["significant_wins"])))
+            report.append("\n**🌟 Significant Wins**")
             report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
             report.append("| :--- | :---: | :---: | :---: | :---: |")
             for w in data["significant_wins"]: report.append(w["line"])
-            report.append("\n</details>")
 
         if data["opportunities"]:
-            report.append("<details><summary><b>💡 Opportunities/Warnings ({})</b></summary>\n".format(len(data["opportunities"])))
+            report.append("\n**💡 Opportunities/Warnings**")
             report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
             report.append("| :--- | :---: | :---: | :---: | :---: |")
             for o in data["opportunities"]: report.append(o["line"])
-            report.append("\n</details>")
 
         if data["all_cases"]:
-            report.append(f"<details><summary><b>View All {len(data['all_cases'])} cases</b></summary>\n")
+            report.append(f"\n<details><summary>View all {len(data['all_cases'])} cases for {name}</summary>\n")
             report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
             report.append("| :--- | :---: | :---: | :---: | :---: |")
             for c in data["all_cases"]: report.append(c["line"])
             report.append("\n</details>")
+
+    report.append("\n</details>")
 
     print("\n".join(report))
 
