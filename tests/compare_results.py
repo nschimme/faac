@@ -25,9 +25,14 @@ def compare(base_file, opt_file):
             b_mos = b.get("mos")
             thresh = o.get("thresh", 1.0)
 
-            o_size = o.get("size", 1)
-            b_size = b.get("size", 1)
-            size_chg = (o_size - b_size) / b_size * 100 if b_size else 0
+            o_size = o.get("size")
+            b_size = b.get("size")
+
+            if o_size is not None and b_size is not None:
+                size_chg_val = (o_size - b_size) / b_size * 100
+                size_chg = f"{size_chg_val:+.2f}%"
+            else:
+                size_chg = "N/A"
 
             status = "✅"
             if o_mos is not None:
@@ -36,7 +41,6 @@ def compare(base_file, opt_file):
                 elif o_mos < thresh:
                     status = "📉" # Bad/Poor
 
-                # Check for regressions
                 if b_mos is not None and (o_mos - b_mos) < -0.1:
                     status = "❌" # Regression
             else:
@@ -46,7 +50,7 @@ def compare(base_file, opt_file):
             b_mos_str = f"{b_mos:.2f}" if b_mos is not None else "N/A"
             delta_mos = f"{(o_mos - b_mos):+.2f}" if (o_mos is not None and b_mos is not None) else "N/A"
 
-            case_info = f"| {k} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {size_chg:+.2f}% |"
+            case_info = f"| {k} | {status} | {mos_str} ({b_mos_str}) | {delta_mos} | {size_chg} |"
             all_cases.append(case_info)
             if status in ["🤮", "📉", "❌"]:
                 failures.append(case_info)

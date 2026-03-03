@@ -38,3 +38,11 @@ Makefile*
 *.user
 /libfaac/win32_ver.h
 /libfaac/faac.pc
+/build/
+/tests/data/external/
+/tests/output/
+/model/
+/*.json
+/baseline/
+/opt_build/
+/base_src/

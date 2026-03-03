@@ -3,6 +3,9 @@ name: Efficiency & Perceptual Matrix
 on:
   pull_request:
     branches: [ "master" ]
+    paths:
+      - 'libfaac/**'
+      - 'tests/**'
 
 jobs:
   test:
@@ -36,13 +39,15 @@ jobs:
         run: |
           # Use cargo to install visqol tool
           cargo install visqol
+          mkdir -p model
+          curl -L https://raw.githubusercontent.com/google/visqol/master/model/libsvm_nu_svr_model.txt -o model/libsvm_nu_svr_model.txt
 
       - name: Cache Datasets
         id: cache-datasets
         uses: actions/cache@v3
         with:
           path: tests/data/external
-          key: ${{ runner.os }}-datasets-v1
+          key: ${{ runner.os }}-datasets-v3
 
       - name: Setup Datasets
         if: steps.cache-datasets.outputs.cache-hit != 'true'
@@ -60,6 +65,9 @@ jobs:
           ref: ${{ github.base_ref }}
           path: baseline
 
+      - name: Generate Multi-Rate Test Suite
+        run: |
+          python3 optimized/tests/generate_waves.py
 
       - name: Build and Run Matrix
         shell: bash
