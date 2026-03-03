@@ -1,16 +1,21 @@
 name: Efficiency & Perceptual
 
 on:
-  workflow_run:
-    workflows: ["Continuous Integration"]
-    types:
-      - completed
+  pull_request:
+    branches: [ "master" ]
+    paths:
+      - "libfaac/**"
+      - "tests/**"
+  push:
+    branches: [ "master" ]
+    paths:
+      - "libfaac/**"
+      - "tests/**"
 
 jobs:
   benchmark:
     name: ${{ matrix.arch }} / ${{ matrix.precision }}
     runs-on: ${{ matrix.os }}
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
       fail-fast: false
       matrix:
@@ -26,10 +31,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y meson ninja-build bc faad ffmpeg
 
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
 
       - name: Install numpy
@@ -57,16 +61,16 @@ jobs:
           cd visqol-repo
           bazel build -c opt :visqol
           sudo cp bazel-bin/visqol /usr/local/bin/visqol
-          mkdir -p ../model
-          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../model/
-          cp model/libsvm_nu_svr_model.txt ../model/
+          mkdir -p ../tests/assets/model
+          cp model/lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite ../tests/assets/model/
+          cp model/libsvm_nu_svr_model.txt ../tests/assets/model/
 
       - name: Cache Datasets
         id: cache-datasets
         uses: actions/cache@v4
         with:
           path: tests/data/external
-          key: ${{ runner.os }}-datasets-v3
+          key: ${{ runner.os }}-datasets-v4
 
       - name: Setup Datasets
         if: steps.cache-datasets.outputs.cache-hit != 'true'
@@ -75,29 +79,29 @@ jobs:
 
       - name: Run Benchmark (Candidate)
         run: |
-          mkdir -p results
+          mkdir -p tests/results
           meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_cand
           LIB_PATH="build_cand/libfaac/libfaac.so"
           FAAC_PATH="build_cand/frontend/faac"
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 20
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 20
 
       - name: Run Benchmark (Baseline)
         run: |
-          git checkout ${{ github.event.workflow_run.base_sha || 'master' }}
+          git checkout ${{ github.base_ref || 'master' }}
           meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_base
           LIB_PATH="build_base/libfaac/libfaac.so"
           FAAC_PATH="build_base/frontend/faac"
           # Restore benchmark scripts from PR branch
-          git checkout ${{ github.event.workflow_run.head_sha }} -- tests/run_benchmark.py tests/setup_datasets.py
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 20
+          git checkout ${{ github.sha }} -- tests/
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 20
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.arch }}-${{ matrix.precision }}
-          path: results/*.json
+          path: tests/results/*.json
 
   report:
     name: Consolidated Report
@@ -107,33 +111,30 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Download all results
         uses: actions/download-artifact@v4
         with:
-          path: all_results
+          path: tests/results
           pattern: results-*
           merge-multiple: true
 
       - name: Generate Report
         id: generate
         run: |
-          python3 tests/compare_results.py all_results > report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          python3 tests/compare_results.py tests/results > report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
           cat report.md
 
       - name: PR Feedback
-        if: github.event.workflow_run.event == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const pr_number = ${{ github.event.workflow_run.pull_requests[0].number }};
             if (fs.existsSync('report.md')) {
               const report = fs.readFileSync('report.md', 'utf8');
               github.rest.issues.createComment({
-                issue_number: pr_number,
+                issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: report

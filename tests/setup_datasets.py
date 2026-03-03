@@ -31,8 +31,10 @@ DATASETS = {
     "SoundExpert": "https://github.com/nschimme/SoundExpert/archive/refs/tags/SoundExpert.zip"
 }
 
-BASE_DATA_DIR = "tests/data/external"
-TEMP_DIR = "tests/data/temp"
+# Paths relative to script directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "external")
+TEMP_DIR = os.path.join(SCRIPT_DIR, "data", "temp")
 
 def download_and_extract(name, url):
     os.makedirs(TEMP_DIR, exist_ok=True)

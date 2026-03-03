@@ -20,21 +20,21 @@
 import json
 import sys
 import os
-import re
 
 def analyze_pair(base_file, cand_file):
     print(f"Analyzing pair:\n  Base: {base_file}\n  Candidate: {cand_file}")
     try:
         with open(base_file, "r") as f:
             base = json.load(f)
-    except:
+    except Exception as e:
+        print(f"  Warning: Could not load baseline file {base_file}: {e}")
         base = {}
 
     try:
         with open(cand_file, "r") as f:
             cand = json.load(f)
-    except:
-        print(f"  Error: Could not load candidate file {cand_file}")
+    except Exception as e:
+        print(f"  Error: Could not load candidate file {cand_file}: {e}")
         return None
 
     suite_results = {
@@ -96,7 +96,7 @@ def analyze_pair(base_file, cand_file):
                     suite_results["mos_count"] += 1
 
                 if o_mos < (thresh - 0.5):
-                    status = "🤮" # Awful
+                    status = "🤢" # Awful
                 elif o_mos < thresh:
                     status = "📉" # Bad/Poor
 
@@ -139,7 +139,7 @@ def analyze_pair(base_file, cand_file):
                 suite_results["regressions"].append(case_data)
             elif status == "🌟":
                 suite_results["significant_wins"].append(case_data)
-            elif status in ["🤮", "📉"]:
+            elif status in ["🤢", "📉"]:
                 suite_results["opportunities"].append(case_data)
     else:
         suite_results["missing_data"] = True
@@ -171,11 +171,14 @@ def analyze_pair(base_file, cand_file):
     return suite_results
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 tests/compare_results.py <results_dir>")
+    # If a directory is provided, use it. Otherwise look for 'results' under script dir.
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    results_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(SCRIPT_DIR, "results")
+
+    if not os.path.exists(results_dir):
+        print(f"Results directory {results_dir} not found.")
         sys.exit(1)
 
-    results_dir = sys.argv[1]
     print(f"Scanning {results_dir} for benchmark results...")
     files = os.listdir(results_dir)
 

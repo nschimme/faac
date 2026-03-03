@@ -27,8 +27,11 @@ import tempfile
 import shutil
 import hashlib
 
-EXTERNAL_DATA_DIR = "tests/data/external"
-OUTPUT_DIR = "tests/output"
+# Paths relative to script directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+EXTERNAL_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "external")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
+ASSETS_DIR = os.path.join(SCRIPT_DIR, "assets")
 
 SCENARIOS = {
     "voip": {"mode": "speech", "rate": 16000, "visqol_rate": 16000, "q": 15, "thresh": 2.5},
@@ -37,14 +40,6 @@ SCENARIOS = {
     "music_std": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 120, "thresh": 4.0},
     "music_high": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 250, "thresh": 4.3}
 }
-
-def get_info(wav_path):
-    try:
-        cmd = ["ffprobe", "-v", "error", "-show_entries", "stream=channels", "-of", "default=noprint_wrappers=1:nokey=1", wav_path]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        return int(res.stdout.strip())
-    except:
-        return 2
 
 def get_binary_size(path):
     if os.path.exists(path):
@@ -63,17 +58,26 @@ def get_md5(path):
 def run_visqol(ref_wav, deg_wav, mode):
     """Run ViSQOL CLI and parse MOS score."""
     try:
+        # Default ViSQOL behavior relies on models in a standard location or passed via flag.
+        # We try 'wideband' and 'fullband' subcommands which are standard in newer ViSQOL.
         if mode == "speech":
             cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "wideband"]
         else:
-            model_path = os.path.abspath("model/libsvm_nu_svr_model.txt")
-            cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path]
+            # Check for local assets first, otherwise rely on system default
+            model_path = os.path.join(ASSETS_DIR, "model", "libsvm_nu_svr_model.txt")
+            if os.path.exists(model_path):
+                cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband", "--similarity_to_quality_model", model_path]
+            else:
+                cmd = ["visqol", "--reference_file", ref_wav, "--degraded_file", deg_wav, "fullband"]
 
         proc = subprocess.run(cmd, capture_output=True, text=True)
         match = re.search(r"MOS-LQO:\s+([0-9.]+)", proc.stdout)
         if match:
             return float(match.group(1))
         else:
+            # Fallback for older ViSQOL or different output format
+            match = re.search(r"([0-9.]+)", proc.stdout)
+            if match: return float(match.group(1))
             print(f"ViSQOL CLI output error: {proc.stdout} {proc.stderr}")
     except Exception as e:
         print(f"ViSQOL CLI execution error: {e}")
@@ -101,7 +105,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
 
             all_samples = sorted([f for f in os.listdir(data_dir) if f.endswith(".wav")])
             num_to_run = max(1, int(len(all_samples) * coverage / 100.0))
-            step = len(all_samples) / num_to_run
+            step = len(all_samples) / num_to_run if num_to_run > 0 else 1
             samples = [all_samples[int(i * step)] for i in range(num_to_run)]
 
             print(f"  [Scenario: {name}] Running {len(samples)} samples (coverage {coverage}%)...")
@@ -141,7 +145,8 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                         "scenario": name,
                         "filename": sample
                     }
-                except:
+                except Exception as e:
+                    print(f" failed: {e}")
                     pass
 
     print(f"Measuring throughput for {precision}...")
@@ -173,5 +178,8 @@ if __name__ == "__main__":
         coverage = int(sys.argv[idx+1])
 
     data = run_benchmark(sys.argv[1], sys.argv[2], sys.argv[3], coverage=coverage, run_perceptual=do_perc)
+
+    # Ensure results directory exists
+    os.makedirs(os.path.dirname(os.path.abspath(sys.argv[4])), exist_ok=True)
     with open(sys.argv[4], "w") as f:
         json.dump(data, f, indent=2)
