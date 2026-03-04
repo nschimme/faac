@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc faad ffmpeg
+          sudo apt-get install -y meson ninja-build bc ffmpeg
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,11 +48,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install numpy "protobuf<4.0.0"
-          if [ ! -d build_visqol ]; then
-            git clone --depth 1 https://github.com/diggerdu/visqol-py.git build_visqol
-          fi
-          pip install ./build_visqol
+          pip install -r tests/requirements.txt
 
       - name: Cache Datasets
         id: cache-datasets

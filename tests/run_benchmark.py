@@ -28,9 +28,16 @@ import hashlib
 
 try:
     import visqol_py
+    from visqol_py import ViSQOLMode
     HAS_VISQOL = True
 except ImportError:
     HAS_VISQOL = False
+
+try:
+    import ffmpeg
+    HAS_FFMPEG = True
+except ImportError:
+    HAS_FFMPEG = False
 
 # Paths relative to script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +51,11 @@ SCENARIOS = {
     "music_std": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 120, "thresh": 4.0},
     "music_high": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 250, "thresh": 4.3}
 }
+
+def get_visqol_mode(mode_str):
+    if not HAS_VISQOL:
+        return None
+    return ViSQOLMode.SPEECH if mode_str == "speech" else ViSQOLMode.AUDIO
 
 def get_binary_size(path):
     if os.path.exists(path):
@@ -59,14 +71,11 @@ def get_md5(path):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def run_visqol(ref_wav, deg_wav, mode):
-    """Run ViSQOL via Python API and return MOS score."""
-    if not HAS_VISQOL:
-        print(" ViSQOL Python API not available.")
+def run_visqol(visqol, ref_wav, deg_wav):
+    """Run ViSQOL via provided API instance and return MOS score."""
+    if visqol is None:
         return None
     try:
-        # visqol-py handles model paths and configuration internally.
-        visqol = visqol_py.ViSQOL(mode=mode)
         result = visqol.measure(ref_wav, deg_wav)
         return float(result.moslqo)
     except Exception as e:
@@ -99,6 +108,15 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
             samples = [all_samples[int(i * step)] for i in range(num_to_run)]
 
             print(f"  [Scenario: {name}] Running {len(samples)} samples (coverage {coverage}%)...")
+            # Reuse ViSQOL instance per scenario for efficiency
+            visqol = None
+            if HAS_VISQOL:
+                try:
+                    mode = get_visqol_mode(cfg["mode"])
+                    visqol = visqol_py.ViSQOL(mode=mode)
+                except Exception as e:
+                    print(f"    Failed to initialize ViSQOL: {e}")
+
             for i, sample in enumerate(samples):
                 input_path = os.path.join(data_dir, sample)
                 key = f"{name}_{sample}"
@@ -114,19 +132,24 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                     mos = None
                     aac_size = os.path.getsize(output_path)
 
-                    with tempfile.TemporaryDirectory() as tmpdir:
-                        deg_wav = os.path.join(tmpdir, "deg.wav")
-                        subprocess.run(["faad", "-o", deg_wav, output_path], capture_output=True)
-                        if os.path.exists(deg_wav):
-                            v_rate = cfg["visqol_rate"]
+                    if not HAS_FFMPEG:
+                        print(" ffmpeg-python not available.")
+                    else:
+                        with tempfile.TemporaryDirectory() as tmpdir:
                             v_ref = os.path.join(tmpdir, "vref.wav")
                             v_deg = os.path.join(tmpdir, "vdeg.wav")
-
+                            v_rate = cfg["visqol_rate"]
                             v_channels = 1 if cfg["mode"] == "speech" else 2
-                            subprocess.run(["ffmpeg", "-y", "-i", input_path, "-ar", str(v_rate), "-ac", str(v_channels), "-sample_fmt", "s16", v_ref], capture_output=True)
-                            subprocess.run(["ffmpeg", "-y", "-i", deg_wav, "-ar", str(v_rate), "-ac", str(v_channels), "-sample_fmt", "s16", v_deg], capture_output=True)
 
-                            mos = run_visqol(v_ref, v_deg, cfg["mode"])
+                            try:
+                                # Use ffmpeg-python to decode AAC and prepare files for ViSQOL
+                                ffmpeg.input(input_path).output(v_ref, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
+                                ffmpeg.input(output_path).output(v_deg, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
+
+                                if os.path.exists(v_ref) and os.path.exists(v_deg):
+                                    mos = run_visqol(visqol, v_ref, v_deg)
+                            except ffmpeg.Error as e:
+                                print(f" FFmpeg error: {e.stderr.decode() if e.stderr else e}")
 
                     mos_str = f"{mos:.2f}" if mos is not None else "N/A"
                     print(f" done. (MOS: {mos_str})")

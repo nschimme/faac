@@ -24,6 +24,7 @@ import zipfile
 import shutil
 import wave
 import re
+import ffmpeg
 
 DATASETS = {
     "PMLT2014": {
@@ -68,13 +69,15 @@ def get_info(wav_path):
 
 def resample(input_path, output_path, rate, channels, start=0, duration=7):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    cmd = [
-        "ffmpeg", "-y", "-ss", str(start), "-t", str(duration),
-        "-i", input_path,
-        "-ar", str(rate), "-ac", str(channels), "-sample_fmt", "s16",
-        output_path
-    ]
-    subprocess.run(cmd, check=True, capture_output=True)
+    try:
+        (
+            ffmpeg
+            .input(input_path, ss=start, t=duration)
+            .output(output_path, ar=rate, ac=channels, sample_fmt='s16')
+            .run(quiet=True, overwrite_output=True)
+        )
+    except ffmpeg.Error as e:
+        print(f" FFmpeg error during setup: {e.stderr.decode() if e.stderr else e}")
 
 def setup_pmlt():
     dataset_info = DATASETS["PMLT2014"]

@@ -39,20 +39,25 @@ A gain in one area must not come at a "catastrophic" cost to another (e.g., a 10
 Install core build and analysis dependencies:
 ```bash
 sudo apt-get update
-sudo apt-get install -y meson ninja-build bc faad ffmpeg
+sudo apt-get install -y meson ninja-build bc ffmpeg
 ```
 
-Install ViSQOL and Python dependencies (recommended within a virtual environment):
+Install Python dependencies (recommended within a virtual environment):
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install numpy "protobuf<4.0.0"
-pip install git+https://github.com/diggerdu/visqol-py.git
+pip install -r tests/requirements.txt
 ```
 
-For detailed dependency information, please refer to:
+Python dependencies include:
+- `numpy`: Numerical processing.
+- `protobuf==3.20.3`: Required for ViSQOL API compatibility.
+- `ffmpeg-python`: Python bindings for FFmpeg, used for audio decoding and preparation.
+- `visqol-py`: Python wrapper for the ViSQOL objective audio quality metric.
+
+For detailed information, see:
 - [visqol-py Repository](https://github.com/diggerdu/visqol-py)
-- [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
+- [ffmpeg-python Repository](https://github.com/kkroening/ffmpeg-python)
 
 **Note**: ViSQOL is currently most reliable on **Ubuntu 22.04**.
 
@@ -88,6 +93,16 @@ This will download the datasets to `tests/data/external/` and prepare them (resa
    - `precision_name`: A label for the run (e.g., `single_cand`).
    - `--perceptual`: Enables ViSQOL MOS calculation (slow).
    - `--coverage X`: Percentage of the dataset to run (set to `100` for full verification).
+
+## CI/CD Benchmarking
+
+This suite is integrated into the GitHub Actions workflow (`.github/workflows/benchmark.yml`). On every pull request and push to the `master` branch, the following steps are performed:
+1.  **Environment Setup**: Installs system dependencies and Python requirements from `tests/requirements.txt`.
+2.  **Dataset Caching**: External datasets are cached to accelerate subsequent runs.
+3.  **Candidate Build & Benchmark**: The code in the current branch is built and benchmarked across all scenarios.
+4.  **Baseline Build & Benchmark**: The code from the target branch (e.g., `master`) is built and benchmarked using the same scripts.
+5.  **Consolidated Report**: Results are compared using `tests/compare_results.py`, and a detailed Markdown report is posted as a PR comment.
+6.  **Regression Check**: The workflow fails if significant regressions in MOS, throughput, or binary size are detected.
 
 ## Comparing Results
 
