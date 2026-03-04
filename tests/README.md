@@ -23,6 +23,17 @@ We evaluate every contribution against three competing pillars. To remain as app
 | **VoIP** | Speech (16k) | TCD-VOIP | `-q 15` | Clear communication at low bitrates (~15kbps). |
 | **NVR** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity voice recording (~25kbps). |
 | **Music** | Audio (48k) | PMLT / SoundExpert | `-q 60-250` | Full-range transparency for storage & streaming. |
+| **Throughput** | Efficiency | Synthetic Signals | N/A | Stability test using 10-minute Sine/Sweep/Noise/Silence. |
+
+---
+
+## Dataset Sources
+
+We are grateful to the following projects for providing high-quality research material:
+
+*   **TCD-VoIP (Sigmedia-VoIP)**: [Listener Test Database](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - A research database specifically designed for assessing quality in VoIP applications.
+*   **Public Multiformat Listening Test (PMLT2014)**: [July 2014 Results](https://listening-test.coresv.net/) - A comprehensive multi-codec test suite.
+*   **SoundExpert**: [Sound samples](https://soundexpert.org/sound-samples) - High-precision excerpts from the EBU SQAM CD for transparency testing.
 
 ---
 
