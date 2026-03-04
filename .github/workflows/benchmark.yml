@@ -108,6 +108,10 @@ jobs:
         id: generate
         run: |
           python3 tests/compare_results.py tests/results > report.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          if [ ! -s report.md ]; then
+            echo "Error: report.md is empty"
+            exit 1
+          fi
           cat report.md
 
       - name: PR Feedback
@@ -118,13 +122,15 @@ jobs:
           script: |
             const fs = require('fs');
             if (fs.existsSync('report.md')) {
-              const report = fs.readFileSync('report.md', 'utf8');
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: report
-              })
+              const report = fs.readFileSync('report.md', 'utf8').trim();
+              if (report.length > 0) {
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: report
+                })
+              }
             }
 
       - name: Check for Regressions

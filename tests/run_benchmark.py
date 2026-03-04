@@ -110,14 +110,14 @@ def worker_init(cpu_id_queue):
         except Exception as e:
             print(f" Failed to pin process {os.getpid()} to CPU {cpu_id}: {e}")
 
-def process_sample(faac_path, name, cfg, sample, data_dir, precision, env):
+def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
     input_path = os.path.join(data_dir, sample)
     key = f"{name}_{sample}"
     output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
 
     try:
         t_start = time.time()
-        subprocess.run([faac_path, "-q", str(cfg["q"]), "-o", output_path, input_path],
+        subprocess.run([faac_bin_path, "-q", str(cfg["q"]), "-o", output_path, input_path],
                        env=env, check=True, capture_output=True)
         t_duration = time.time() - t_start
 
@@ -155,7 +155,7 @@ def process_sample(faac_path, name, cfg, sample, data_dir, precision, env):
         print(f" failed: {e}")
         return None
 
-def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=False):
+def run_benchmark(faac_bin_path, lib_path, precision, coverage=100, run_perceptual=False):
     env = os.environ.copy()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -196,7 +196,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                 initializer=worker_init,
                 initargs=(cpu_id_queue,)
             ) as executor:
-                futures = {executor.submit(process_sample, faac_path, name, cfg, sample, data_dir, precision, env): sample for sample in samples}
+                futures = {executor.submit(process_sample, faac_bin_path, name, cfg, sample, data_dir, precision, env): sample for sample in samples}
                 for i, future in enumerate(concurrent.futures.as_completed(futures)):
                     result = future.result()
                     if result:
@@ -223,13 +223,13 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
 
             # Warmup
             try:
-                subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
+                subprocess.run([faac_bin_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
 
                 # Multiple runs to average noise
                 durations = []
                 for _ in range(5):
                     start_time = time.time()
-                    subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
+                    subprocess.run([faac_bin_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
                     durations.append(time.time() - start_time)
 
                 results["throughput"]["overall"] = sum(durations) / len(durations)
