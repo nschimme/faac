@@ -24,7 +24,7 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel && \
 
 # Copy the MOS computation scripts and config
 COPY config.py /app/config.py
-COPY compute_mos.py /app/compute_mos.py
+COPY phase2_mos.py /app/phase2_mos.py
 
 # Default command
-ENTRYPOINT ["python3", "/app/compute_mos.py"]
+ENTRYPOINT ["python3", "/app/phase2_mos.py"]

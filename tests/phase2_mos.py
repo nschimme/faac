@@ -37,7 +37,9 @@ def compute_single_mos(key, entry, aac_dir, external_data_dir):
     data_subdir = "speech" if cfg["mode"] == "speech" else "audio"
     ref_input_path = os.path.join(external_data_dir, data_subdir, filename)
 
-    aac_files = [f for f in os.listdir(aac_dir) if (f.startswith(key + "_single.aac") or f.startswith(key + "_double.aac"))]
+    # The output filename is f"{key}_{precision}.aac" where precision includes arch and stage
+    # Using startswith(key) is safe because key includes the full .wav filename
+    aac_files = [f for f in os.listdir(aac_dir) if f.startswith(key) and f.endswith(".aac")]
     if not aac_files:
         return key, None
 
@@ -68,7 +70,7 @@ def compute_single_mos(key, entry, aac_dir, external_data_dir):
 
 def main():
     if len(sys.argv) < 4:
-        print("Usage: python3 compute_mos.py <results_json> <aac_dir> <external_data_dir>")
+        print("Usage: python3 phase2_mos.py <results_json> <aac_dir> <external_data_dir>")
         sys.exit(1)
 
     results_path = sys.argv[1]

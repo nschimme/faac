@@ -130,7 +130,7 @@ def run_benchmark(
     }
 
     if run_perceptual:
-        print(f"Starting encoding benchmark for {precision}...")
+        print(f"Starting Phase 1 (Encoding) for {precision}...")
         # Detect number of CPUs for parallelization
         num_cpus = os.cpu_count() or 1
         print(f"Parallelizing across {num_cpus} threads.")
@@ -243,7 +243,7 @@ def run_benchmark(
 if __name__ == "__main__":
     if len(sys.argv) < 5:
         print(
-            "Usage: python3 tests/run_benchmark.py <faac_bin_path> <lib_path> <precision_name> <output_json> [--skip-mos] [--coverage 100]")
+            "Usage: python3 phase1_encode.py <faac_bin_path> <lib_path> <precision_name> <output_json> [--skip-mos] [--coverage 100]")
         sys.exit(1)
 
     do_perc = "--skip-mos" not in sys.argv
