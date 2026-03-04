@@ -1,11 +1,20 @@
 name: Benchmark
 
 on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "libfaac/**"
+      - "tests/**"
   pull_request:
     branches: [ "master" ]
     paths:
       - "libfaac/**"
       - "tests/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   benchmark:
@@ -66,9 +75,13 @@ jobs:
       - name: Determine Baseline SHA
         id: baseline-sha
         run: |
-          git checkout ${{ github.base_ref || 'master' }}
-          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          git checkout ${{ github.sha }}
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            git checkout ${{ github.base_ref }}
+            echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+            git checkout ${{ github.sha }}
+          fi
 
       - name: Restore Baseline Results
         id: cache-baseline
@@ -97,6 +110,7 @@ jobs:
           key: ${{ runner.os }}-baseline-${{ matrix.precision }}-${{ steps.baseline-sha.outputs.sha }}-${{ hashFiles('tests/*.py', 'tests/requirements.txt') }}
 
       - name: Run Benchmark (Candidate)
+        if: github.event_name == 'pull_request'
         run: |
           git checkout ${{ github.sha }}
           mkdir -p tests/results
@@ -107,6 +121,7 @@ jobs:
           python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --coverage 100
 
       - name: Upload Results
+        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.arch }}-${{ matrix.precision }}
@@ -119,7 +134,7 @@ jobs:
     env:
       BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
       CAND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    if: always()
+    if: always() && github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
