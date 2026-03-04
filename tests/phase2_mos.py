@@ -21,13 +21,17 @@ import os
 import sys
 import json
 import tempfile
-import ffmpeg
-import visqol_py
-from visqol_py import ViSQOLMode
 import concurrent.futures
 import multiprocessing
-import sys
-import os
+
+try:
+    import ffmpeg
+    import visqol_py
+    from visqol_py import ViSQOLMode
+    HAS_VISQOL = True
+except ImportError:
+    HAS_VISQOL = False
+
 # Ensure the current directory is in the path for config import
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import SCENARIOS
@@ -36,9 +40,15 @@ from config import SCENARIOS
 _process_visqol_instances = {}
 
 def get_process_visqol(mode_str):
+    if not HAS_VISQOL:
+        return None
     if mode_str not in _process_visqol_instances:
-        mode = ViSQOLMode.SPEECH if mode_str == "speech" else ViSQOLMode.AUDIO
-        _process_visqol_instances[mode_str] = visqol_py.ViSQOL(mode=mode)
+        try:
+            mode = ViSQOLMode.SPEECH if mode_str == "speech" else ViSQOLMode.AUDIO
+            _process_visqol_instances[mode_str] = visqol_py.ViSQOL(mode=mode)
+        except Exception as e:
+            print(f" Failed to initialize ViSQOL: {e}")
+            _process_visqol_instances[mode_str] = None
     return _process_visqol_instances[mode_str]
 
 def compute_single_mos(key, entry, aac_dir, external_data_dir):
@@ -80,6 +90,9 @@ def compute_single_mos(key, entry, aac_dir, external_data_dir):
         v_channels = 1 if cfg["mode"] == "speech" else 2
 
         try:
+            if not HAS_VISQOL:
+                return key, None
+
             ffmpeg.input(ref_input_path).output(
                 v_ref, ar=v_rate, ac=v_channels, sample_fmt='s16').run(
                 quiet=True, overwrite_output=True)
@@ -89,8 +102,9 @@ def compute_single_mos(key, entry, aac_dir, external_data_dir):
 
             if os.path.exists(v_ref) and os.path.exists(v_deg):
                 visqol = get_process_visqol(cfg["mode"])
-                result = visqol.measure(v_ref, v_deg)
-                return key, float(result.moslqo)
+                if visqol:
+                    result = visqol.measure(v_ref, v_deg)
+                    return key, float(result.moslqo)
         except Exception as e:
             print(f"  Error computing MOS for {key}: {e}")
 

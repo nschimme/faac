@@ -69,13 +69,6 @@ def main():
         # Strategy 2: Container (Docker/Podman)
         print("Local ViSQOL not found. Attempting container strategy...")
 
-        # Enforce amd64 for the containerized ViSQOL
-        arch = platform.machine().lower()
-        if arch not in ["x86_64", "amd64"]:
-            print(f">>> ERROR: ViSQOL container only supports amd64 (detected: {arch})")
-            print("Please install ViSQOL dependencies locally if you are on a different architecture.")
-            sys.exit(1)
-
         container_tool = None
         for tool in ["docker", "podman"]:
             try:

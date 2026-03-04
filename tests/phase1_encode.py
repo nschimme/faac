@@ -27,16 +27,9 @@ import hashlib
 import concurrent.futures
 import multiprocessing
 
-try:
-    import ffmpeg
-    HAS_FFMPEG = True
-except ImportError:
-    HAS_FFMPEG = False
-
-try:
-    from config import SCENARIOS
-except ImportError:
-    from .config import SCENARIOS
+# Ensure the current directory is in the path for config import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import SCENARIOS
 
 # Paths relative to script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -88,7 +81,8 @@ def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
         aac_size = os.path.getsize(output_path)
         actual_bitrate = None
 
-        if HAS_FFMPEG:
+        try:
+            import ffmpeg
             try:
                 probe = ffmpeg.probe(input_path)
                 duration = float(probe['format']['duration'])
@@ -97,6 +91,8 @@ def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
                     actual_bitrate = (aac_size * 8) / (duration * 1000)
             except Exception as e:
                 print(f" Failed to probe duration for {sample}: {e}")
+        except ImportError:
+            pass
 
         return key, {
             "mos": mos,

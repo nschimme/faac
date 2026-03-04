@@ -87,13 +87,13 @@ python3 tests/phase1_encode.py build/frontend/faac build/libfaac/libfaac.so my_r
 This phase uses ViSQOL to compute the perceptual Mean Opinion Score. It can be performed either via Docker or directly.
 
 **Strategy A: Docker (Recommended)**
-This is used by the CI and isolates the complex ViSQOL dependencies.
+    This is used by the CI and isolates the complex ViSQOL dependencies. It also supports Arm64 Macs via amd64 emulation.
 ```bash
 # Build the image (only needed once or when scripts change)
-docker build -t faac-visqol -f tests/Dockerfile.visqol tests/
+    docker build --platform linux/amd64 -t faac-visqol -f tests/Dockerfile.visqol tests/
 
 # Run the MOS computation
-docker run --rm \
+    docker run --rm --platform linux/amd64 \
   -v $(pwd)/tests/results:/results \
   -v $(pwd)/tests/output:/output \
   -v $(pwd)/tests/data/external:/data \
