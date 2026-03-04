@@ -125,8 +125,8 @@ To provide a high-value signal for merge decisions, the suite evaluates FAAC acr
 | Scenario | Mode | Source | Config | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | **VoIP** | Speech (16kHz) | TCD-VOIP | `-q 15` | Low-bitrate (~15kbps) mono speech. Tests resilience to artifacts in communication. |
-| **NVR** | Audio (48kHz) | SoundExpert | `-q 30` | Mid-bitrate (~40kbps) stereo security audio. Focuses on environmental clarity. |
-| **Music (Low/Std/High)** | Audio (48kHz) | PMLT2014 | `-q 60/120/250` | Full-range stereo music. Evaluates transparency across various bitrates. |
+| **NVR** | Speech (16kHz) | TCD-VOIP | `-q 30` | Higher-quality mono speech (~25kbps). Simulates recording scenarios. |
+| **Music (Low/Std/High)** | Audio (48kHz) | PMLT2014 / SoundExpert | `-q 60/120/250` | Full-range stereo audio. Evaluates transparency across various bitrates. |
 
 ### Parallel Execution
 Benchmarks are parallelized across all CPU cores using `ThreadPoolExecutor`. This is critical for ViSQOL analysis, which is the most intensive part of the suite.

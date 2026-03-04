@@ -49,7 +49,7 @@ OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 
 SCENARIOS = {
     "voip": {"mode": "speech", "rate": 16000, "visqol_rate": 16000, "q": 15, "thresh": 2.5},
-    "nvr": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 30, "thresh": 3.0},
+    "nvr": {"mode": "speech", "rate": 16000, "visqol_rate": 16000, "q": 30, "thresh": 3.0},
     "music_low": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 60, "thresh": 3.5},
     "music_std": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 120, "thresh": 4.0},
     "music_high": {"mode": "audio", "rate": 48000, "visqol_rate": 48000, "q": 250, "thresh": 4.3}
