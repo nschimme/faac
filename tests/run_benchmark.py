@@ -280,30 +280,20 @@ def run_benchmark(
         except BaseException:
             pass
 
-    speech_dir = os.path.join(EXTERNAL_DATA_DIR, "speech")
-    if os.path.exists(speech_dir):
-        samples = sorted([f for f in os.listdir(
-            speech_dir) if f.endswith(".wav")])
-        if samples:
-            # Use a representative sample for throughput
-            input_path = os.path.join(speech_dir, samples[0])
-            output_path = os.path.join(
-                OUTPUT_DIR, f"throughput_{precision}.aac")
+    tp_dir = os.path.join(EXTERNAL_DATA_DIR, "throughput")
+    if os.path.exists(tp_dir):
+        tp_samples = sorted(
+            [f for f in os.listdir(tp_dir) if f.endswith(".wav")])
+        if tp_samples:
+            overall_durations = []
+            for sample in tp_samples:
+                input_path = os.path.join(tp_dir, sample)
+                output_path = os.path.join(
+                    OUTPUT_DIR, f"tp_{sample}_{precision}.aac")
 
-            # Warmup
-            try:
-                subprocess.run([faac_bin_path,
-                                "-o",
-                                output_path,
-                                input_path],
-                               env=env,
-                               check=True,
-                               capture_output=True)
-
-                # Multiple runs to average noise
-                durations = []
-                for _ in range(5):
-                    start_time = time.time()
+                print(f"  Benchmarking throughput with {sample}...")
+                try:
+                    # Warmup
                     subprocess.run([faac_bin_path,
                                     "-o",
                                     output_path,
@@ -311,12 +301,30 @@ def run_benchmark(
                                    env=env,
                                    check=True,
                                    capture_output=True)
-                    durations.append(time.time() - start_time)
 
+                    # Multiple runs to average noise
+                    durations = []
+                    for _ in range(3):
+                        start_time = time.perf_counter()
+                        subprocess.run([faac_bin_path,
+                                        "-o",
+                                        output_path,
+                                        input_path],
+                                       env=env,
+                                       check=True,
+                                       capture_output=True)
+                        durations.append(time.perf_counter() - start_time)
+
+                    avg_dur = sum(durations) / len(durations)
+                    results["throughput"][sample] = avg_dur
+                    overall_durations.append(avg_dur)
+                except BaseException as e:
+                    print(f"    Throughput benchmark failed for {sample}: {e}")
+                    pass
+
+            if overall_durations:
                 results["throughput"]["overall"] = sum(
-                    durations) / len(durations)
-            except BaseException:
-                pass
+                    overall_durations) / len(overall_durations)
 
     return results
 

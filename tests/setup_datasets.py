@@ -210,6 +210,37 @@ def setup_soundexpert():
             loop=loop)
 
 
+def setup_throughput_signals():
+    """Generate 10-minute test signals for throughput measurement."""
+    dest_dir = os.path.join(BASE_DATA_DIR, "throughput")
+    os.makedirs(dest_dir, exist_ok=True)
+
+    signals = {
+        "sine": "sine=f=440:d=600",
+        "sweep": "aevalsrc='sin(2*PI*(100+(20000-100)/(2*600)*t)*t)':d=600",
+        "noise": "anoisesrc=d=600",
+        "silence": "anullsrc=d=600"
+    }
+
+    print(f"Generating 10-minute throughput signals...")
+    for name, filter_str in signals.items():
+        output_path = os.path.join(dest_dir, f"{name}.wav")
+        if not os.path.exists(output_path):
+            print(f"  Generating {name}.wav...")
+            try:
+                # Note: aevalsrc is also a lavfi filter
+                (
+                    ffmpeg
+                    .input(filter_str, format='lavfi')
+                    .output(output_path, ar=48000, ac=2, sample_fmt='s16')
+                    .run(quiet=True, overwrite_output=True)
+                )
+            except ffmpeg.Error as e:
+                print(
+                    f" FFmpeg error during signal generation: {
+                        e.stderr.decode() if e.stderr else e}")
+
+
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
         for name, info in DATASETS.items():
@@ -218,9 +249,13 @@ if __name__ == "__main__":
         setup_pmlt()
         setup_tcd_voip()
         setup_soundexpert()
+        setup_throughput_signals()
 
         if os.path.exists(TEMP_DIR):
             shutil.rmtree(TEMP_DIR)
     else:
+        # Always check for throughput signals as they are vital for stable
+        # metrics
+        setup_throughput_signals()
         print("Datasets already setup.")
     print("Done.")

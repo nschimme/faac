@@ -132,6 +132,15 @@ To provide a high-value signal for merge decisions, the suite evaluates FAAC acr
 | **NVR** | Speech (16kHz) | TCD-VOIP | `-q 30` | Higher-quality mono speech (~25kbps). Simulates recording scenarios. |
 | **Music (Low/Std/High)** | Audio (48kHz) | PMLT2014 / SoundExpert | `-q 60/120/250` | Full-range stereo audio. Evaluates transparency across various bitrates. |
 
+### Throughput Benchmarking
+To ensure stable and accurate performance metrics, the suite generates four 10-minute synthetic test signals:
+- **Sine**: Pure tone (440Hz).
+- **Sweep**: Frequency sweep from 100Hz to 20kHz.
+- **Noise**: White noise.
+- **Silence**: Digital silence.
+
+These signals are used exclusively for throughput measurement, which is conducted on a dedicated, isolated CPU core with multi-run averaging.
+
 ### Parallel Execution
 Benchmarks are parallelized across all CPU cores using `ProcessPoolExecutor` with explicit CPU pinning (`os.sched_setaffinity`). This ensures true hardware isolation for each task, providing highly stable MOS and throughput metrics.
 

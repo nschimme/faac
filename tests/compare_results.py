@@ -61,7 +61,9 @@ def analyze_pair(base_file, cand_file):
             lambda: {
                 "tp_sum_cand": 0,
                 "tp_sum_base": 0,
-                "count": 0})}
+                "count": 0}),
+        "base_tp": base.get("throughput", {}),
+        "cand_tp": cand.get("throughput", {})}
 
     base_m = base.get("matrix", {})
     cand_m = cand.get("matrix", {})
@@ -336,6 +338,24 @@ def main():
         tp_icon = "🚀" if avg_tp_reduction > 1.0 else "📉" if avg_tp_reduction < -1.0 else ""
         report.append(
             f"| **Throughput (Avg)** | {avg_tp_reduction:+.1f}% {tp_icon} |")
+
+    # Per-signal throughput deltas if available
+    tp_details = []
+    if all_suite_data:
+        first_data = list(all_suite_data.values())[0]
+        base_tp = first_data.get("base_tp", {})
+        cand_tp = first_data.get("cand_tp", {})
+        for signal in sorted(cand_tp.keys()):
+            if signal == "overall":
+                continue
+            if signal in base_tp and base_tp[signal] > 0:
+                delta = (1 - cand_tp[signal] / base_tp[signal]) * 100
+                icon = "🚀" if delta > 1.0 else "📉" if delta < -1.0 else ""
+                tp_details.append(
+                    f"{signal.split('.')[0]}: {delta:+.1f}% {icon}")
+
+    if tp_details:
+        report.append(f"| **TP Breakdown** | {', '.join(tp_details)} |")
 
     if worst_tp_delta < -1.0:
         report.append(
