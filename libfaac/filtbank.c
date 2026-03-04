@@ -259,6 +259,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
 
 void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_real *xi )
 {
+    faac_real *twiddles;
     faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
     faac_real freq = TWOPI / N;
     int i;
@@ -268,6 +269,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     const int N4 = N >> 2;
     const int N8 = N >> 3;
 
+    twiddles = (faac_real*)AllocMemory(2 * N4 * sizeof(faac_real));
+
     /* Base pointers for address simplification */
     faac_real *base0 = data + N4;
     faac_real *base1 = data + (N4 - 1);
@@ -276,7 +279,6 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     /* prepare for recurrence relation in pre-twiddle */
     cfreq = FAAC_COS(freq);
     sfreq = FAAC_SIN(freq);
-
     c = FAAC_COS(freq * 0.125);
     s = FAAC_SIN(freq * 0.125);
 
@@ -286,7 +288,6 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
 
     /* Phase 1: i < N/8 */
     for (i = 0; i < N8; i++) {
-
         /* calculate real and imaginary parts of g(n) or G(p) */
 
         /* use second form of e(n) for n = N / 2 - 1 - 2i */
@@ -299,6 +300,10 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
 
+        /* Store twiddle factors for post-twiddle pass */
+        twiddles[2*i] = c;
+        twiddles[2*i + 1] = s;
+
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
         c = c * cfreq - s * sfreq;
@@ -310,7 +315,6 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
 
     /* Phase 2: i >= N/8 */
     for (; i < N4; i++) {
-
         /* calculate real and imaginary parts of g(n) or G(p) */
 
         /* use first form of e(n) for n = N / 2 - 1 - 2i */
@@ -322,6 +326,10 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         /* calculate pre-twiddled FFT input */
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
+
+        /* Store twiddle factors */
+        twiddles[2*i] = c;
+        twiddles[2*i + 1] = s;
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -342,10 +350,6 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         break;
     }
 
-    /* prepare for recurrence relations in post-twiddle */
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
-
     /* Base pointers for output mapping */
     faac_real *base_even0 = data;
     faac_real *base_odd0  = data + (N2 - 1);
@@ -356,8 +360,10 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
 
     /* post-twiddle FFT output and then get output data */
     for (i = 0; i < N4; i++) {
+        /* get post-twiddled FFT output using cached twiddle factors */
+        c = twiddles[2*i];
+        s = twiddles[2*i + 1];
 
-        /* get post-twiddled FFT output */
         tempr = 2. * (xr[i] * c + xi[i] * s);
         tempi = 2. * (xi[i] * c - xr[i] * s);
 
@@ -367,11 +373,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         base_even1[n2] = -tempi;  /* second half even */
         base_odd1[-n2] =  tempr;  /* second half odd */
 
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
-
         n2 += 2;
     }
+
+    if (twiddles) FreeMemory(twiddles);
 }
