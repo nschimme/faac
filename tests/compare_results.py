@@ -329,15 +329,16 @@ def main():
     if total_missing_mos > 0:
         report.append(f"\n⚠️ **Warning**: {total_missing_mos} MOS scores were missing/failed (treated as ❌).")
 
-    # 1. Immediate Details: Regressions
+    # 1. Collapsible Details: Regressions
     if total_regressions > 0:
-        report.append("\n### ❌ Regression Details")
+        report.append("\n<details><summary><b>❌ View Regression Details ({})</b></summary>\n".format(total_regressions))
         for name, data in sorted(all_suite_data.items()):
             if data["regressions"]:
-                report.append(f"#### {name}")
+                report.append(f"\n#### {name}")
                 report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
                 report.append("| :--- | :---: | :---: | :---: | :---: |")
                 for r in data["regressions"]: report.append(r["line"])
+        report.append("\n</details>")
 
     # 2. Collapsible Additional Details
     report.append("\n<details><summary><b>View Additional Suite Details & Wins</b></summary>\n")
