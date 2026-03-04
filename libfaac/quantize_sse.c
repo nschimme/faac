@@ -23,7 +23,6 @@
 
 #include <immintrin.h>
 #include "faac_real.h"
-#include "cpu_compute.h"
 
 #define MAGIC_NUMBER 0.4054
 
@@ -32,52 +31,34 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-    // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
 
-    /* NOTE on Alignment:
-     * We use unaligned load/store instructions (_mm_loadu_ps, _mm_loadu_pd, _mm_storeu_si128)
-     * because modern CPUs (Intel Nehalem/Sandy Bridge, AMD Bulldozer and later) handle
-     * unaligned memory access with negligible performance penalty compared to aligned access.
-     * This avoids the complexity of ensuring 16-byte alignment for spectral buffers and
-     * allows for a more portable and robust implementation across various callers.
-     */
-
-    // Process 4 elements per iteration
     for (; cnt <= n - 4; cnt += 4)
     {
 #ifdef FAAC_PRECISION_SINGLE
         __m128 x_orig = _mm_loadu_ps((const float*)&xr[cnt]);
 #else
-        // Convert 4 doubles to 4 floats via two 128-bit loads
         __m128 low  = _mm_cvtpd_ps(_mm_loadu_pd(&xr[cnt]));
         __m128 high = _mm_cvtpd_ps(_mm_loadu_pd(&xr[cnt + 2]));
         __m128 x_orig = _mm_movelh_ps(low, high);
 #endif
-        // Capture sign and Absolute value
         __m128 sign_mask = _mm_cmplt_ps(x_orig, zero);
         __m128 x = _mm_and_ps(x_orig, abs_mask);
 
-        // Math: (x * sfac)^0.75 + magic
-        // Logic: sqrt( (x*sfac) * sqrt(x*sfac) )
         x = _mm_mul_ps(x, sfac);
         x = _mm_mul_ps(x, _mm_sqrt_ps(x));
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
 
-        // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
 
-        // Bitwise Sign Fix: (val ^ mask) - mask
-        // sign_mask is all ones for negative, all zeros for positive
         __m128i m_int = _mm_castps_si128(sign_mask);
         xi_vec = _mm_sub_epi32(_mm_xor_si128(xi_vec, m_int), m_int);
 
         _mm_storeu_si128((__m128i*)&xi[cnt], xi_vec);
     }
 
-    // Safe scalar remainder loop for widths not multiple of 4
     for (; cnt < n; cnt++)
     {
 	faac_real val = xr[cnt];

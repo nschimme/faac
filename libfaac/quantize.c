@@ -34,24 +34,11 @@
 
 #define MAGIC_NUMBER  0.4054
 
-/* Portable C Refactor:
- * We use __restrict pointers and linear memory access patterns to encourage
- * modern compilers to perform safe auto-vectorization. This approach yields
- * performance gains on non-x86 platforms (e.g., ARM64) without requiring
- * hand-written SIMD code.
- */
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
-// Forward declarations for quantization functions
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #if defined(HAVE_SSE2)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
-
-// Typedef for the quantization function pointer
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-
-// Function pointer for runtime SIMD dispatch
-static QuantizeFunc qfunc = quantize_scalar;
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
@@ -70,6 +57,8 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
     }
 }
 
+static QuantizeFunc qfunc = quantize_scalar;
+
 void QuantizeInit(void)
 {
 #if defined(HAVE_SSE2)
@@ -82,13 +71,6 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
-/* Algorithmic Optimization:
- * Shared band energy calculations between bmask and qlevel.
- * By avoiding redundant spectral iterations, the bottleneck "hot" section
- * of the encoder is significantly streamlined.
- */
-
-// band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
@@ -180,7 +162,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 }
 
 enum {MAXSHORTBAND = 36};
-// use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
@@ -191,7 +172,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 {
     int sb;
 #if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    /* 2^0.25 (1.50515 dB) step from AAC specs */
     static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
 #else
     static const faac_real sfstep = 20 / 1.50515;
@@ -207,12 +187,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      /* NOTE on Alignment:
-       * The explicit alignment for xitab was removed because modern CPUs
-       * (Intel Nehalem/Sandy Bridge+) handle unaligned SIMD access with
-       * negligible performance penalty. This simplifies the code while
-       * maintaining high performance.
-       */
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
@@ -286,9 +260,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->bandcnt = 0;
     coder->datacnt = 0;
 #ifdef DRM
-    coder->iLenReordSpData = 0; /* init length of reordered spectral data */
-    coder->iLenLongestCW = 0; /* init length of longest codeword */
-    coder->cur_cw = 0; /* init codeword counter */
+    coder->iLenReordSpData = 0;
+    coder->iLenLongestCW = 0;
+    coder->cur_cw = 0;
 #endif
 
     {
@@ -319,7 +293,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -355,7 +328,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 {
-    // find max short frame band
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
     int cnt;
     int l;
@@ -371,7 +343,6 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     if (aacquantCfg->pnslevel)
         *bw = (faac_real)l * rate / (BLOCK_LEN_SHORT << 1);
 
-    // find max long frame band
     max = *bw * (BLOCK_LEN_LONG << 1) / rate;
     l = 0;
     for (cnt = 0; cnt < sr->num_cb_long; cnt++)
@@ -394,7 +365,6 @@ static void calce(faac_real * __restrict xr, const int * __restrict bands, faac_
     int sfb;
     int l;
 
-    // mute lines above cutoff freq
     for (l = maxl; l < bands[maxsfb]; l++)
         xr[l] = 0.0;
 
