@@ -59,9 +59,9 @@ jobs:
           path: .venv
           key: ${{ runner.os }}-venv-${{ hashFiles('tests/requirements.txt') }}
 
-      - name: Cache Datasets
+      - name: Restore Datasets
         id: cache-datasets
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: tests/data/external
           key: ${{ runner.os }}-datasets-v4
@@ -72,27 +72,57 @@ jobs:
           . .venv/bin/activate
           python3 tests/setup_datasets.py
 
+      - name: Save Datasets
+        if: steps.cache-datasets.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: tests/data/external
+          key: ${{ runner.os }}-datasets-v4
+
+      - name: Determine Baseline SHA
+        id: baseline-sha
+        run: |
+          git checkout ${{ github.base_ref || 'master' }}
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          git checkout ${{ github.sha }}
+
+      - name: Restore Baseline Results
+        id: cache-baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json
+          key: ${{ runner.os }}-baseline-${{ matrix.precision }}-${{ steps.baseline-sha.outputs.sha }}-${{ hashFiles('tests/*.py', 'tests/requirements.txt') }}
+
+      - name: Run Benchmark (Baseline)
+        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        run: |
+          . .venv/bin/activate
+          git checkout ${{ steps.baseline-sha.outputs.sha }}
+          meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
+          ninja -C build_base
+          LIB_PATH="build_base/libfaac/libfaac.so"
+          FAAC_PATH="build_base/frontend/faac"
+          # Restore benchmark scripts and config from PR branch to ensure consistent comparison logic
+          git checkout ${{ github.sha }} -- tests/
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --coverage 100
+
+      - name: Save Baseline Results
+        if: always() && steps.cache-baseline.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json
+          key: ${{ runner.os }}-baseline-${{ matrix.precision }}-${{ steps.baseline-sha.outputs.sha }}-${{ hashFiles('tests/*.py', 'tests/requirements.txt') }}
+
       - name: Run Benchmark (Candidate)
         run: |
           . .venv/bin/activate
+          git checkout ${{ github.sha }}
           mkdir -p tests/results
           meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_cand
           LIB_PATH="build_cand/libfaac/libfaac.so"
           FAAC_PATH="build_cand/frontend/faac"
           python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --coverage 100
-
-      - name: Run Benchmark (Baseline)
-        run: |
-          . .venv/bin/activate
-          git checkout ${{ github.base_ref || 'master' }}
-          meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
-          ninja -C build_base
-          LIB_PATH="build_base/libfaac/libfaac.so"
-          FAAC_PATH="build_base/frontend/faac"
-          # Restore benchmark scripts from PR branch
-          git checkout ${{ github.sha }} -- tests/
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --coverage 100
 
       - name: Upload Results
         uses: actions/upload-artifact@v4
