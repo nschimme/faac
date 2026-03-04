@@ -52,7 +52,7 @@ SCENARIOS = {
         "visqol_rate": 16000,
         "q": 15,
         "thresh": 2.5},
-    "nvr": {
+    "vss": {
         "mode": "speech",
         "rate": 16000,
         "visqol_rate": 16000,

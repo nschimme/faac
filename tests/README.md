@@ -1,6 +1,6 @@
 # FAAC Benchmark Suite
 
-FAAC is the high-efficiency encoder for the resource-constrained world. From hobbyist IoT projects to professional surveillance (NVR) and embedded VoIP, we prioritize performance where every cycle and byte matters.
+FAAC is the high-efficiency encoder for the resource-constrained world. From hobbyist IoT projects to professional surveillance (VSS) and embedded VoIP, we prioritize performance where every cycle and byte matters.
 
 This suite provides the objective data necessary to ensure that every change moves us closer to our **Northstar**: the optimal balance of quality, speed, and size.
 
@@ -21,7 +21,7 @@ We evaluate every contribution against three competing pillars. While high-bitra
 | Scenario | Mode | Source | Config | Project Goal |
 | :--- | :--- | :--- | :--- | :--- |
 | **VoIP** | Speech (16k) | TCD-VOIP | `-q 15` | Clear communication at low bitrates (~15kbps). |
-| **NVR** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity voice recording (~25kbps). |
+| **VSS** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity Video Surveillance Systems recording (~25kbps). |
 | **Music** | Audio (48k) | PMLT / SoundExpert | `-q 60-250` | Full-range transparency for storage & streaming. |
 | **Throughput** | Efficiency | Synthetic Signals | N/A | Stability test using 10-minute Sine/Sweep/Noise/Silence. |
 

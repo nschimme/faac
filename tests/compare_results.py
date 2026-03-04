@@ -457,7 +457,15 @@ def main():
 
     report.append("\n</details>")
 
-    sys.stdout.write("\n".join(report) + "\n")
+    output = "\n".join(report)
+
+    # GitHub comment limit is 65536. We'll truncate with a buffer for the job link.
+    MAX_LEN = 64000
+    if len(output) > MAX_LEN:
+        sys.stderr.write(f"  Warning: Report too long ({len(output)} bytes), truncating.\n")
+        output = output[:MAX_LEN] + "\n\n... (Report Truncated due to GitHub limit) ..."
+
+    sys.stdout.write(output + "\n")
 
     if overall_regression or overall_missing:
         sys.exit(1)

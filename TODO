@@ -1,6 +1,6 @@
 # FAAC TODO
 
-## 1. High Priority: Audio Quality & Specialization (IoT/NVR/VoIP Focus)
+## 1. High Priority: Audio Quality & Specialization (IoT/VSS/VoIP Focus)
 - **Bit Reservoir Control**: Implement functional bit reservoir to allow stable bitrate distribution and provide extra bits for sharp transients.
 - **CBR/ABR Bandwidth Capping**: Implement aggressive frequency bandwidth caps (3.5kHz - 5.5kHz) for low-bitrate encoding (<24kbps per channel) to eliminate metallic ringing.
 - **Adaptive Quantization Rounding**: Implement tonality-aware magic number adjustment. Reduce bias from 0.4054 to ~0.30 for high-frequency noise-like bands to remove "metallic shimmer".

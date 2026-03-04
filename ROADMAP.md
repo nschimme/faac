@@ -1,9 +1,9 @@
 # FAAC Roadmap
 
-## 1. High Priority: Audio Quality & Specialization (IoT/NVR/VoIP)
+## 1. High Priority: Audio Quality & Specialization (IoT/VSS/VoIP)
 - **CBR/ABR Bandwidth Capping**: Implement aggressive frequency bandwidth caps (3.5kHz - 5.5kHz) for low-bitrate encoding (<24kbps per channel) to eliminate metallic ringing in security camera and VoIP streams.
 - **Adaptive Quantization Rounding**: Implement tonality-aware magic number adjustment. Reduce rounding bias from 0.4054 to ~0.30 for noise-like high-frequency bands to remove "metallic shimmer".
-- **Short-block TNS (Temporal Noise Shaping)**: Enable and tune TNS for short blocks to suppress pre-echo artifacts in transient-heavy signals (e.g. glass breaking, gunshots for NVR).
+- **Short-block TNS (Temporal Noise Shaping)**: Enable and tune TNS for short blocks to suppress pre-echo artifacts in transient-heavy signals (e.g. glass breaking, gunshots for Video Surveillance Systems).
 - **Bit Reservoir Control**: Implement functional bit reservoir to allow stable bitrate distribution while providing extra bits for sharp transients in surveillance scenarios.
 
 ## 2. Medium Priority: Performance & Optimization
@@ -12,7 +12,7 @@
 
 ## 3. Library Size Optimization
 - **Modular Compilation**: Support disabling unused modules (DRM, TNS, PNS) via Meson to minimize binary footprint for memory-constrained IoT devices.
-- **LTO and Symbol Control**: Enable aggressive size-optimized builds for integration into minimal NVR/IoT firmware.
+- **LTO and Symbol Control**: Enable aggressive size-optimized builds for integration into minimal VSS/IoT firmware.
 
 ## 4. Low Priority: Compatibility & Maintenance
 - **Resampler and Downmixer integration**: Official support for input preprocessing.
