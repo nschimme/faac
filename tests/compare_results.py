@@ -50,6 +50,8 @@ def analyze_pair(base_file, cand_file):
         "lib_size_chg": 0,
         "bitrate_chg_sum": 0,
         "bitrate_count": 0,
+        "bitrate_acc_sum": 0,
+        "bitrate_acc_count": 0,
         "regressions": [],
         "new_wins": [],
         "significant_wins": [],
@@ -84,6 +86,14 @@ def analyze_pair(base_file, cand_file):
 
             o_size = o.get("size")
             b_size = b.get("size")
+
+            o_bitrate = o.get("bitrate")
+            o_target = o.get("bitrate_target")
+
+            if o_bitrate is not None and o_target is not None and o_target > 0:
+                acc = (1.0 - abs(o_bitrate - o_target) / o_target) * 100
+                suite_results["bitrate_acc_sum"] += acc
+                suite_results["bitrate_acc_count"] += 1
 
             o_time = o.get("time")
             b_time = b.get("time")
@@ -247,6 +257,8 @@ def main():
     total_lib_chg = 0
     total_bitrate_chg = 0
     total_bitrate_count = 0
+    total_bitrate_acc_sum = 0
+    total_bitrate_acc_count = 0
 
     total_regressions = 0
     total_new_wins = 0
@@ -272,6 +284,8 @@ def main():
             total_lib_chg += data["lib_size_chg"]
             total_bitrate_chg += data["bitrate_chg_sum"]
             total_bitrate_count += data["bitrate_count"]
+            total_bitrate_acc_sum += data["bitrate_acc_sum"]
+            total_bitrate_acc_count += data["bitrate_acc_count"]
 
             total_regressions += len(data["regressions"])
             total_new_wins += len(data["new_wins"])
@@ -292,6 +306,9 @@ def main():
     avg_lib_chg = total_lib_chg / len(all_suite_data) if all_suite_data else 0
     avg_bitrate_chg = total_bitrate_chg / \
         total_bitrate_count if total_bitrate_count > 0 else 0
+    avg_bitrate_acc = total_bitrate_acc_sum / \
+        total_bitrate_acc_count if total_bitrate_acc_count > 0 else 0
+
     bit_exact_percent = (
         total_bit_exact /
         total_cases_all *
@@ -373,12 +390,19 @@ def main():
         report.append(
             f"| **Library Size** | {avg_lib_chg:+.2f}% {size_icon} |")
 
-    # Bitrate Accuracy
+
+    # Bitrate Δ
     if abs(avg_bitrate_chg) > 0.1:
         bitrate_icon = "📉" if avg_bitrate_chg < - \
             1.0 else "📈" if avg_bitrate_chg > 1.0 else ""
         report.append(
-            f"| **Bitrate (Size Δ)** | {avg_bitrate_chg:+.2f}% {bitrate_icon} |")
+            f"| **Bitrate Δ** | {avg_bitrate_chg:+.2f}% {bitrate_icon} |")
+
+    # Bitrate Accuracy
+    if total_bitrate_acc_count > 0:
+        acc_icon = "🎯" if avg_bitrate_acc > 95 else "⚠️" if avg_bitrate_acc < 80 else ""
+        report.append(
+            f"| **Bitrate Accuracy** | {avg_bitrate_acc:.1f}% {acc_icon} |")
 
     # Avg MOS Delta
     if total_mos_count > 0 and abs(total_mos_delta / total_mos_count) > 0.001:

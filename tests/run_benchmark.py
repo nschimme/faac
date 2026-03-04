@@ -50,31 +50,31 @@ SCENARIOS = {
         "mode": "speech",
         "rate": 16000,
         "visqol_rate": 16000,
-        "q": 15,
+        "bitrate": 16,
         "thresh": 2.5},
     "vss": {
         "mode": "speech",
         "rate": 16000,
         "visqol_rate": 16000,
-        "q": 30,
+        "bitrate": 40,
         "thresh": 3.0},
     "music_low": {
         "mode": "audio",
         "rate": 48000,
         "visqol_rate": 48000,
-        "q": 60,
+        "bitrate": 64,
         "thresh": 3.5},
     "music_std": {
         "mode": "audio",
         "rate": 48000,
         "visqol_rate": 48000,
-        "q": 120,
+        "bitrate": 128,
         "thresh": 4.0},
     "music_high": {
         "mode": "audio",
         "rate": 48000,
         "visqol_rate": 48000,
-        "q": 250,
+        "bitrate": 256,
         "thresh": 4.3}}
 
 
@@ -146,21 +146,28 @@ def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
     key = f"{name}_{sample}"
     output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
 
+    # Determine encoding parameters
+    cmd = [faac_bin_path, "-o", output_path, input_path]
+    cmd.extend(["-b", str(cfg["bitrate"])])
+
     try:
         t_start = time.time()
-        subprocess.run([faac_bin_path,
-                        "-q",
-                        str(cfg["q"]),
-                        "-o",
-                        output_path,
-                        input_path],
-                       env=env,
-                       check=True,
-                       capture_output=True)
+        subprocess.run(cmd, env=env, check=True, capture_output=True)
         t_duration = time.time() - t_start
 
         mos = None
         aac_size = os.path.getsize(output_path)
+        actual_bitrate = None
+
+        if HAS_FFMPEG:
+            try:
+                probe = ffmpeg.probe(input_path)
+                duration = float(probe['format']['duration'])
+                if duration > 0:
+                    # kbps = (bytes * 8) / (seconds * 1000)
+                    actual_bitrate = (aac_size * 8) / (duration * 1000)
+            except Exception as e:
+                print(f" Failed to probe duration for {sample}: {e}")
 
         if HAS_FFMPEG:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -190,6 +197,8 @@ def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
         return key, {
             "mos": mos,
             "size": aac_size,
+            "bitrate": actual_bitrate,
+            "bitrate_target": cfg.get("bitrate"),
             "time": t_duration,
             "md5": get_md5(output_path),
             "thresh": cfg["thresh"],

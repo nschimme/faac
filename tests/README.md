@@ -20,9 +20,9 @@ We evaluate every contribution against three competing pillars. While high-bitra
 
 | Scenario | Mode | Source | Config | Project Goal |
 | :--- | :--- | :--- | :--- | :--- |
-| **VoIP** | Speech (16k) | TCD-VOIP | `-q 15` | Clear communication at low bitrates (~15kbps). |
-| **VSS** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity Video Surveillance Systems recording (~25kbps). |
-| **Music** | Audio (48k) | PMLT / SoundExpert | `-q 60-250` | Full-range transparency for storage & streaming. |
+| **VoIP** | Speech (16k) | TCD-VOIP | `-b 16` | Clear communication at low bitrates (16kbps). |
+| **VSS** | Speech (16k) | TCD-VOIP | `-b 40` | High-fidelity Video Surveillance Systems recording (40kbps). |
+| **Music** | Audio (48k) | PMLT / SoundExpert | `-b 64-256` | Full-range transparency for storage & streaming. |
 | **Throughput** | Efficiency | Synthetic Signals | N/A | Stability test using 10-minute Sine/Sweep/Noise/Silence. |
 
 ---
@@ -37,7 +37,8 @@ We evaluate every contribution against three competing pillars. While high-bitra
 | **Consistency** | Percentage of test cases where bitstreams are MD5-identical to the baseline. | |
 | **Throughput** | Normalized encoding speed improvement against baseline. Higher % indicates faster execution. | |
 | **Library Size** | Binary footprint of `libfaac.so`. Delta measured against baseline. Critical for embedded VSS/IoT targets. | |
-| **Bitrate Δ** | Percentage change in generated file size against baseline, indicating shifts in bitrate control accuracy or bit-budget allocation. | |
+| **Bitrate Δ** | Percentage change in generated file size against baseline. Relative shift in bits used for the same target. | |
+| **Bitrate Accuracy** | The closeness of the achieved bitrate to the specified target (ABR mode). Measures the encoder's ability to respect the user-defined bitrate budget. | |
 
 ---
 
