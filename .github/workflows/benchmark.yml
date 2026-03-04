@@ -121,6 +121,9 @@ jobs:
     name: Consolidated Report
     needs: benchmark
     runs-on: ubuntu-latest
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      CAND_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     if: always()
     steps:
       - name: Checkout
@@ -137,9 +140,9 @@ jobs:
         id: generate
         run: |
           # Summary report for PR comment (high-signal only)
-          python3 tests/compare_results.py tests/results --summary-only > report-summary.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          python3 tests/compare_results.py tests/results --summary-only --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-summary.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
           # Full report for artifact (all details)
-          python3 tests/compare_results.py tests/results > report-full.md || true
+          python3 tests/compare_results.py tests/results --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-full.md || true
           if [ ! -s report-summary.md ]; then
             echo "Error: report-summary.md is empty"
             exit 1
@@ -163,7 +166,8 @@ jobs:
               let report = fs.readFileSync('report-summary.md', 'utf8').trim();
               if (report.length > 0) {
                 const jobUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-                report += `\n\n---\n[View Detailed Job Log and Full Report](${jobUrl})`;
+                const readmeUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/blob/${process.env.GITHUB_SHA}/tests/README.md`;
+                report += `\n\n---\n[View Detailed Job Log and Full Report](${jobUrl}) | [What Is This?](${readmeUrl})`;
                 github.rest.issues.createComment({
                   issue_number: context.issue.number,
                   owner: context.repo.owner,

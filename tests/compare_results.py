@@ -223,6 +223,20 @@ def main():
     if summary_only:
         sys.argv.remove("--summary-only")
 
+    base_sha = None
+    if "--base-sha" in sys.argv:
+        idx = sys.argv.index("--base-sha")
+        base_sha = sys.argv[idx + 1]
+        sys.argv.pop(idx + 1)
+        sys.argv.pop(idx)
+
+    cand_sha = None
+    if "--cand-sha" in sys.argv:
+        idx = sys.argv.index("--cand-sha")
+        cand_sha = sys.argv[idx + 1]
+        sys.argv.pop(idx + 1)
+        sys.argv.pop(idx)
+
     results_dir = sys.argv[1] if len(
         sys.argv) > 1 else os.path.join(
         SCRIPT_DIR, "results")
@@ -334,7 +348,14 @@ def main():
     else:
         report.append("## 📊 Benchmark Summary")
 
-    report.append("\n### Maintainer Summary")
+    if not summary_only and (base_sha or cand_sha):
+        report.append("\n### Environment")
+        if base_sha:
+            report.append(f"- **Baseline SHA**: `{base_sha}`")
+        if cand_sha:
+            report.append(f"- **Candidate SHA**: `{cand_sha}`")
+
+    report.append("\n### Summary")
     report.append("| Metric | Value |")
     report.append("| :--- | :--- |")
 
