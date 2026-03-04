@@ -22,7 +22,6 @@ import subprocess
 import time
 import sys
 import json
-import tempfile
 import hashlib
 import concurrent.futures
 import multiprocessing

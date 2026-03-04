@@ -63,8 +63,6 @@ sudo apt-get update && sudo apt-get install -y meson ninja-build bc ffmpeg
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r tests/requirements.txt
-# Optional: Install ViSQOL dependencies if you want to compute MOS locally without Docker
-pip install -r tests/requirements_visqol.txt
 ```
 
 ### 2. Prepare Datasets
@@ -73,38 +71,26 @@ Downloads samples and generates 10-minute synthetic throughput signals (Sine, Sw
 python3 tests/setup_datasets.py
 ```
 
-### 3. Run a Benchmark (Two Phases)
+### 3. Run a Benchmark
 
-The benchmark is split into two phases for efficiency and flexibility.
-
-#### Phase 1: Encoding and Basic Metrics
-This phase performs the actual encoding and measures throughput and library size.
+You can run the full benchmark using the user-friendly entrypoint:
 ```bash
-python3 tests/phase1_encode.py build/frontend/faac build/libfaac/libfaac.so my_run tests/results/my_run.json --coverage 100
+python3 tests/run_benchmark.py build/frontend/faac build/libfaac/libfaac.so my_run tests/results/my_run.json --coverage 100
 ```
 
-#### Phase 2: Perceptual Quality (MOS)
-This phase uses ViSQOL to compute the perceptual Mean Opinion Score. It can be performed either via Docker or directly.
+This script manages everything for you:
+1.  **Phase 1**: Encodes samples and measures throughput and library size.
+2.  **Phase 2**: Computes perceptual quality (MOS). It automatically attempts to use your local ViSQOL installation or falls back to containerized execution via **Docker** or **Podman**.
 
-**Strategy A: Docker (Recommended)**
-    This is used by the CI and isolates the complex ViSQOL dependencies. It also supports Arm64 Macs via amd64 emulation.
+#### Note on Arm64 (Apple Silicon) Macs
+The perceptual benchmark is fully supported on Arm64 Macs. If a local installation is missing, the script will utilize Docker/Podman to run the benchmark within an `amd64` container via emulation. (Note: Ensure Docker/Podman is configured to support `linux/amd64` emulation, which is the default on most modern installations).
+
+#### Local ViSQOL Setup (Advanced)
+If you prefer not to use Docker/Podman, you can install the dependencies locally:
 ```bash
-# Build the image (only needed once or when scripts change)
-    docker build --platform linux/amd64 -t faac-visqol -f tests/Dockerfile.visqol tests/
-
-# Run the MOS computation
-    docker run --rm --platform linux/amd64 \
-  -v $(pwd)/tests/results:/results \
-  -v $(pwd)/tests/output:/output \
-  -v $(pwd)/tests/data/external:/data \
-  faac-visqol /results/my_run.json /output /data
+pip install -r tests/requirements_visqol.txt
 ```
-
-**Strategy B: Local Python**
-If you have installed the dependencies from `tests/requirements_visqol.txt`.
-```bash
-python3 tests/phase2_mos.py tests/results/my_run.json tests/output tests/data/external
-```
+The benchmark script will then prioritize your local installation.
 
 ### 5. Compare Results
 Generate a high-signal summary comparing your candidate against a baseline.

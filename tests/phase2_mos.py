@@ -138,7 +138,8 @@ def main():
             key, mos = future.result()
             if mos is not None:
                 matrix[key]["mos"] = mos
-            print(f"  ({i+1}/{total}) {key}: {mos if mos is not None else 'N/A'}")
+            mos_str = f"{mos:.2f}" if mos is not None else "N/A"
+            print(f"  ({i+1}/{total}) {key}: {mos_str}")
 
     with open(results_path, 'w') as f:
         json.dump(data, f, indent=2)
