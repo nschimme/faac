@@ -1,4 +1,4 @@
-project('faac', 'c', version: '1.31.1')
+project('faac', 'c', version: '1.31.1', default_options: ['default_library=both'])
 
 add_global_arguments('-DHAVE_CONFIG_H', language: 'c')
 
@@ -35,7 +35,6 @@ else
     if doSse
         c_args += ['-msse2']
     endif
-    c_args += ['-fvisibility=hidden']
 endif
 
 configure_file(
