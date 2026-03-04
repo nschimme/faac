@@ -67,17 +67,25 @@ def get_info(wav_path):
     except:
         return 0, 2
 
-def resample(input_path, output_path, rate, channels, start=None, duration=None):
+def resample(input_path, output_path, rate, channels, start=None, duration=None, loop=False):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     try:
-        args = {}
-        if start is not None: args['ss'] = start
-        if duration is not None: args['t'] = duration
+        input_args = {}
+        output_args = {}
+
+        if loop:
+            # Loop input indefinitely, then trim to requested duration
+            input_args['stream_loop'] = -1
+
+        if start is not None:
+            output_args['ss'] = start
+        if duration is not None:
+            output_args['t'] = duration
 
         (
             ffmpeg
-            .input(input_path, **args)
-            .output(output_path, ar=rate, ac=channels, sample_fmt='s16')
+            .input(input_path, **input_args)
+            .output(output_path, ar=rate, ac=channels, sample_fmt='s16', **output_args)
             .run(quiet=True, overwrite_output=True)
         )
     except ffmpeg.Error as e:
@@ -100,8 +108,14 @@ def setup_pmlt():
         dur, chans = get_info(wav)
 
         # ViSQOL recommends 5-10 second samples.
-        # Use full sample if <= 10s, otherwise trim to 7s center.
-        if dur <= 10.0:
+        # 1. < 5s: loop to 5s
+        # 2. 5-10s: use full
+        # 3. > 10s: trim to 7s center
+        loop = False
+        if dur < 5.0:
+            loop = True
+            start, duration = 0, 5
+        elif dur <= 10.0:
             start, duration = None, None
         else:
             start = (dur - 7) / 2
@@ -109,7 +123,7 @@ def setup_pmlt():
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=duration)
+        resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
 
 def setup_tcd_voip():
     dataset_info = DATASETS["TCD-VOIP"]
@@ -127,7 +141,11 @@ def setup_tcd_voip():
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
 
-        if dur <= 10.0:
+        loop = False
+        if dur < 5.0:
+            loop = True
+            start, duration = 0, 5
+        elif dur <= 10.0:
             start, duration = None, None
         else:
             start = (dur - 7) / 2
@@ -136,7 +154,7 @@ def setup_tcd_voip():
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         # ViSQOL speech mode requires 16k mono
-        resample(wav, output, 16000, 1, start=start, duration=duration)
+        resample(wav, output, 16000, 1, start=start, duration=duration, loop=loop)
 
 def setup_soundexpert():
     dataset_info = DATASETS["SoundExpert"]
@@ -154,7 +172,11 @@ def setup_soundexpert():
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
 
-        if dur <= 10.0:
+        loop = False
+        if dur < 5.0:
+            loop = True
+            start, duration = 0, 5
+        elif dur <= 10.0:
             start, duration = None, None
         else:
             start = (dur - 7) / 2
@@ -162,7 +184,7 @@ def setup_soundexpert():
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=duration)
+        resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
 
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
