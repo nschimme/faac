@@ -86,6 +86,75 @@ def run_visqol(visqol, ref_wav, deg_wav):
         pass
     return None
 
+# Process-local storage for ViSQOL instances
+_process_visqol_instances = {}
+
+def get_process_visqol(mode_str):
+    if not HAS_VISQOL:
+        return None
+    if mode_str not in _process_visqol_instances:
+        try:
+            mode = get_visqol_mode(mode_str)
+            _process_visqol_instances[mode_str] = visqol_py.ViSQOL(mode=mode)
+        except Exception as e:
+            print(f" Failed to initialize ViSQOL in process {os.getpid()}: {e}")
+            _process_visqol_instances[mode_str] = None
+    return _process_visqol_instances[mode_str]
+
+def worker_init(cpu_id_queue):
+    """Pin the worker process to a specific CPU core for consistent benchmarks."""
+    cpu_id = cpu_id_queue.get()
+    if hasattr(os, "sched_setaffinity"):
+        try:
+            os.sched_setaffinity(0, [cpu_id])
+        except Exception as e:
+            print(f" Failed to pin process {os.getpid()} to CPU {cpu_id}: {e}")
+
+def process_sample(faac_path, name, cfg, sample, data_dir, precision, env):
+    input_path = os.path.join(data_dir, sample)
+    key = f"{name}_{sample}"
+    output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
+
+    try:
+        t_start = time.time()
+        subprocess.run([faac_path, "-q", str(cfg["q"]), "-o", output_path, input_path],
+                       env=env, check=True, capture_output=True)
+        t_duration = time.time() - t_start
+
+        mos = None
+        aac_size = os.getsize(output_path)
+
+        if HAS_FFMPEG:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                v_ref = os.path.join(tmpdir, "vref.wav")
+                v_deg = os.path.join(tmpdir, "vdeg.wav")
+                v_rate = cfg["visqol_rate"]
+                v_channels = 1 if cfg["mode"] == "speech" else 2
+
+                try:
+                    # Use ffmpeg-python to decode AAC and prepare files for ViSQOL
+                    ffmpeg.input(input_path).output(v_ref, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
+                    ffmpeg.input(output_path).output(v_deg, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
+
+                    if os.path.exists(v_ref) and os.path.exists(v_deg):
+                        visqol = get_process_visqol(cfg["mode"])
+                        mos = run_visqol(visqol, v_ref, v_deg)
+                except ffmpeg.Error as e:
+                    print(f" FFmpeg error for {sample}: {e.stderr.decode() if e.stderr else e}")
+
+        return key, {
+            "mos": mos,
+            "size": aac_size,
+            "time": t_duration,
+            "md5": get_md5(output_path),
+            "thresh": cfg["thresh"],
+            "scenario": name,
+            "filename": sample
+        }
+    except Exception as e:
+        print(f" failed: {e}")
+        return None
+
 def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=False):
     env = os.environ.copy()
 
@@ -95,75 +164,6 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
         "throughput": {},
         "lib_size": get_binary_size(lib_path)
     }
-
-    # Process-local storage for ViSQOL instances
-    process_local = {}
-
-    def get_process_visqol(mode_str):
-        if not HAS_VISQOL:
-            return None
-        if mode_str not in process_local:
-            try:
-                mode = get_visqol_mode(mode_str)
-                process_local[mode_str] = visqol_py.ViSQOL(mode=mode)
-            except Exception as e:
-                print(f" Failed to initialize ViSQOL in process {os.getpid()}: {e}")
-                process_local[mode_str] = None
-        return process_local[mode_str]
-
-    def worker_init(cpu_id_queue):
-        """Pin the worker process to a specific CPU core for consistent benchmarks."""
-        cpu_id = cpu_id_queue.get()
-        if hasattr(os, "sched_setaffinity"):
-            try:
-                os.sched_setaffinity(0, [cpu_id])
-            except Exception as e:
-                print(f" Failed to pin process {os.getpid()} to CPU {cpu_id}: {e}")
-
-    def process_sample(name, cfg, sample, data_dir, precision):
-        input_path = os.path.join(data_dir, sample)
-        key = f"{name}_{sample}"
-        output_path = os.path.join(OUTPUT_DIR, f"{key}_{precision}.aac")
-
-        try:
-            t_start = time.time()
-            subprocess.run([faac_path, "-q", str(cfg["q"]), "-o", output_path, input_path],
-                           env=env, check=True, capture_output=True)
-            t_duration = time.time() - t_start
-
-            mos = None
-            aac_size = os.path.getsize(output_path)
-
-            if HAS_FFMPEG:
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    v_ref = os.path.join(tmpdir, "vref.wav")
-                    v_deg = os.path.join(tmpdir, "vdeg.wav")
-                    v_rate = cfg["visqol_rate"]
-                    v_channels = 1 if cfg["mode"] == "speech" else 2
-
-                    try:
-                        # Use ffmpeg-python to decode AAC and prepare files for ViSQOL
-                        ffmpeg.input(input_path).output(v_ref, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
-                        ffmpeg.input(output_path).output(v_deg, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
-
-                        if os.path.exists(v_ref) and os.path.exists(v_deg):
-                            visqol = get_process_visqol(cfg["mode"])
-                            mos = run_visqol(visqol, v_ref, v_deg)
-                    except ffmpeg.Error as e:
-                        print(f" FFmpeg error for {sample}: {e.stderr.decode() if e.stderr else e}")
-
-            return key, {
-                "mos": mos,
-                "size": aac_size,
-                "time": t_duration,
-                "md5": get_md5(output_path),
-                "thresh": cfg["thresh"],
-                "scenario": name,
-                "filename": sample
-            }
-        except Exception as e:
-            print(f" failed: {e}")
-            return None
 
     if run_perceptual:
         print(f"Starting perceptual benchmark for {precision}...")
@@ -196,7 +196,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                 initializer=worker_init,
                 initargs=(cpu_id_queue,)
             ) as executor:
-                futures = {executor.submit(process_sample, name, cfg, sample, data_dir, precision): sample for sample in samples}
+                futures = {executor.submit(process_sample, faac_path, name, cfg, sample, data_dir, precision, env): sample for sample in samples}
                 for i, future in enumerate(concurrent.futures.as_completed(futures)):
                     result = future.result()
                     if result:

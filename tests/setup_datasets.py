@@ -132,6 +132,10 @@ def setup_tcd_voip():
 
     wav_files = []
     for root, dirs, files in os.walk(src_dir):
+        # Do not use any wave files if they're in a "ref" folder
+        if "ref" in root.split(os.sep):
+            continue
+
         for f in files:
             if f.endswith(".wav") and ("Test Set" in root or "chop" in root):
                 wav_files.append(os.path.join(root, f))
