@@ -80,7 +80,7 @@ jobs:
           ninja -C build_cand
           LIB_PATH="build_cand/libfaac/libfaac.so"
           FAAC_PATH="build_cand/frontend/faac"
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --perceptual --coverage 100
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --coverage 100
 
       - name: Run Benchmark (Baseline)
         run: |
@@ -92,7 +92,7 @@ jobs:
           FAAC_PATH="build_base/frontend/faac"
           # Restore benchmark scripts from PR branch
           git checkout ${{ github.sha }} -- tests/
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --perceptual --coverage 100
+          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --coverage 100
 
       - name: Upload Results
         uses: actions/upload-artifact@v4

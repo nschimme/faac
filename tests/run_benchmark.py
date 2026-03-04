@@ -206,7 +206,7 @@ def run_benchmark(
         lib_path,
         precision,
         coverage=100,
-        run_perceptual=False):
+        run_perceptual=True):
     env = os.environ.copy()
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -324,10 +324,10 @@ def run_benchmark(
 if __name__ == "__main__":
     if len(sys.argv) < 5:
         print(
-            "Usage: python3 tests/run_benchmark.py <faac_bin_path> <lib_path> <precision_name> <output_json> [--perceptual] [--coverage 100]")
+            "Usage: python3 tests/run_benchmark.py <faac_bin_path> <lib_path> <precision_name> <output_json> [--skip-mos] [--coverage 100]")
         sys.exit(1)
 
-    do_perc = "--perceptual" in sys.argv
+    do_perc = "--skip-mos" not in sys.argv
     coverage = 100
     if "--coverage" in sys.argv:
         idx = sys.argv.index("--coverage")

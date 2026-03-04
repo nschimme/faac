@@ -91,7 +91,7 @@ This will download the datasets to `tests/data/external/` and prepare them (resa
    ```
 
    - `precision_name`: A label for the run (e.g., `single_cand`).
-   - `--perceptual`: Enables ViSQOL MOS calculation (slow).
+   - `--skip-mos`: Disables ViSQOL MOS calculation (faster). Perceptual quality is calculated by default.
    - `--coverage X`: Percentage of the dataset to run (set to `100` for full verification).
 
 ## CI/CD Benchmarking

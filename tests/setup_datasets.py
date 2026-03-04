@@ -137,7 +137,14 @@ def setup_pmlt():
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
+        resample(
+            wav,
+            output,
+            48000,
+            chans,
+            start=start,
+            duration=duration,
+            loop=loop)
 
 
 def setup_tcd_voip():
@@ -164,7 +171,14 @@ def setup_tcd_voip():
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         # ViSQOL speech mode requires 16k mono
-        resample(wav, output, 16000, 1, start=start, duration=duration, loop=loop)
+        resample(
+            wav,
+            output,
+            16000,
+            1,
+            start=start,
+            duration=duration,
+            loop=loop)
 
 
 def setup_soundexpert():
@@ -186,7 +200,14 @@ def setup_soundexpert():
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
+        resample(
+            wav,
+            output,
+            48000,
+            chans,
+            start=start,
+            duration=duration,
+            loop=loop)
 
 
 if __name__ == "__main__":
