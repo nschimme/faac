@@ -179,8 +179,9 @@ def analyze_pair(base_file, cand_file):
     # Throughput
     base_tp = base.get("throughput", {})
     cand_tp = cand.get("throughput", {})
-    total_base_t = sum(base_tp.values())
-    total_cand_t = sum(cand_tp.values())
+    # Exclude "overall" to avoid double-counting in manual summation
+    total_base_t = sum(v for k, v in base_tp.items() if k != "overall")
+    total_cand_t = sum(v for k, v in cand_tp.items() if k != "overall")
     if total_cand_t > 0 and total_base_t > 0:
         suite_results["tp_reduction"] = (1 - total_cand_t / total_base_t) * 100
     else:

@@ -2,16 +2,16 @@
 
 FAAC is the high-efficiency encoder for the resource-constrained world. From hobbyist IoT projects to professional surveillance (NVR) and embedded VoIP, we prioritize performance where every cycle and byte matters.
 
-Our **Northstar** is the optimal balance of quality, speed, and size. This suite provides the objective data necessary to ensure that every change moves us closer to that goal without breaking the project's delicate equilibrium.
+This suite provides the objective data necessary to ensure that every change moves us closer to our **Northstar**: the optimal balance of quality, speed, and size.
 
 ---
 
 ## The "Golden Triangle" Philosophy
 
-We evaluate every contribution against three competing pillars. To remain as approachable and distributable as possible for the global open-source community, we focus on **non-patent encumbered** areas and the standard LC-AAC profile.
+We evaluate every contribution against three competing pillars. While high-bitrate encoders like **FDK-AAC** or **Opus** target multi-channel, high-fidelity entertainment, FAAC focuses on remaining approachable and distributable for the global open-source community. We prioritize **non-patent encumbered** areas and the standard Low Complexity (LC-AAC) profile.
 
-1.  **Audio Fidelity**: We target transparent audio quality for our specific bitrates. We use objective metrics like ViSQOL (MOS) to ensure psychoacoustic improvements truly benefit the listener without introducing "metallic" ringing or "underwater" artifacts.
-2.  **Computational Efficiency**: FAAC must remain fast. We optimize for low-power ARM and MIPS cores where encoding speed is a critical requirement. We aim to be the go-to encoder for devices with limited CPU budgets.
+1.  **Audio Fidelity**: We target transparent audio quality for our bitrates. We use objective metrics like ViSQOL (MOS) to ensure psychoacoustic improvements truly benefit the listener without introducing "metallic" ringing or "underwater" artifacts.
+2.  **Computational Efficiency**: FAAC must remain fast. We optimize for low-power ARM and MIPS cores where encoding speed is a critical requirement. Every CPU cycle saved is a win for our users.
 3.  **Minimal Footprint**: Binary size is a feature. We ensure the library remains small enough to fit within restrictive embedded firmware and IoT storage environments.
 
 ---
@@ -66,11 +66,8 @@ Generate a high-signal summary comparing your candidate against a baseline.
 python3 tests/compare_results.py tests/results/
 ```
 
----
+## Who This Suite Helps
 
-## CI/CD Architecture
-
-Our GitHub Actions environment is hardened for measurement precision:
-*   **Hardware Isolation**: Worker processes are pinned to unique CPU cores (`os.sched_setaffinity`) to eliminate measurement jitter.
-*   **Robust Throughput**: We use 10-minute synthetic signals and multi-run averaging to provide a rock-solid performance signal.
-*   **Intelligent Caching**: We cache the entire build environment and baseline results to provide rapid feedback to contributors.
+*   **Maintainers**: Provides the confidence to merge PRs by proving that a change improves the encoder—or at least doesn't cause a regression.
+*   **Developers**: Offers rapid, automated feedback during implementation. Hardware isolation (CPU pinning) and robust synthetic signals ensure your metrics are stable and reliable.
+*   **Users**: Ensures that every new version of FAAC remains a reliable choice for their critical firmware and communication projects.
