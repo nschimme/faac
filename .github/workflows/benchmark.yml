@@ -186,7 +186,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-report-full
-          path: report-full.md
+          path: |
+            report-full.md
+            tests/results/*.json
 
       - name: PR Feedback
         if: always() && github.event_name == 'pull_request'
