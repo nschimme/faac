@@ -37,18 +37,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Cache Pip
-        uses: actions/cache@v4
+      - name: Restore Venv
+        id: cache-venv
+        uses: actions/cache/restore@v4
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-v6
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('tests/requirements.txt') }}
 
       - name: Install Python dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -r tests/requirements.txt
+
+      - name: Save Venv
+        if: always() && steps.cache-venv.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('tests/requirements.txt') }}
 
       - name: Cache Datasets
         id: cache-datasets
@@ -60,10 +69,12 @@ jobs:
       - name: Setup Datasets
         if: steps.cache-datasets.outputs.cache-hit != 'true'
         run: |
+          . .venv/bin/activate
           python3 tests/setup_datasets.py
 
       - name: Run Benchmark (Candidate)
         run: |
+          . .venv/bin/activate
           mkdir -p tests/results
           meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_cand
@@ -73,6 +84,7 @@ jobs:
 
       - name: Run Benchmark (Baseline)
         run: |
+          . .venv/bin/activate
           git checkout ${{ github.base_ref || 'master' }}
           meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_base

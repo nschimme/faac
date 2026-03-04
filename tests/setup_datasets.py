@@ -18,7 +18,6 @@
 """
 
 import os
-import subprocess
 import urllib.request
 import zipfile
 import shutil
@@ -46,6 +45,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DATA_DIR = os.path.join(SCRIPT_DIR, "data", "external")
 TEMP_DIR = os.path.join(SCRIPT_DIR, "data", "temp")
 
+
 def download_and_extract(name, url):
     os.makedirs(TEMP_DIR, exist_ok=True)
     zip_path = os.path.join(TEMP_DIR, f"{name}.zip")
@@ -57,6 +57,7 @@ def download_and_extract(name, url):
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(TEMP_DIR)
 
+
 def get_info(wav_path):
     try:
         with wave.open(wav_path, 'rb') as f:
@@ -64,10 +65,18 @@ def get_info(wav_path):
             rate = f.getframerate()
             channels = f.getnchannels()
             return frames / float(rate), channels
-    except:
+    except BaseException:
         return 0, 2
 
-def resample(input_path, output_path, rate, channels, start=None, duration=None, loop=False):
+
+def resample(
+        input_path,
+        output_path,
+        rate,
+        channels,
+        start=None,
+        duration=None,
+        loop=False):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     try:
         input_args = {}
@@ -82,14 +91,32 @@ def resample(input_path, output_path, rate, channels, start=None, duration=None,
         if duration is not None:
             output_args['t'] = duration
 
-        (
-            ffmpeg
-            .input(input_path, **input_args)
-            .output(output_path, ar=rate, ac=channels, sample_fmt='s16', **output_args)
-            .run(quiet=True, overwrite_output=True)
-        )
+        (ffmpeg .input(input_path,
+                       **input_args) .output(output_path,
+                                             ar=rate,
+                                             ac=channels,
+                                             sample_fmt='s16',
+                                             **output_args) .run(quiet=True,
+                                                                 overwrite_output=True))
     except ffmpeg.Error as e:
-        print(f" FFmpeg error during setup: {e.stderr.decode() if e.stderr else e}")
+        print(
+            f" FFmpeg error during setup: {
+                e.stderr.decode() if e.stderr else e}")
+
+
+def get_tier_params(dur):
+    """
+    Determine resampling parameters based on ViSQOL recommendations (5-10s).
+    1. < 5s: loop to 5s
+    2. 5-10s: use full sample
+    3. > 10s: trim to 10s center segment
+    """
+    if dur < 5.0:
+        return 0, 5, True
+    if dur <= 10.0:
+        return None, None, False
+    return (dur - 10) / 2, 10, False
+
 
 def setup_pmlt():
     dataset_info = DATASETS["PMLT2014"]
@@ -104,26 +131,14 @@ def setup_pmlt():
 
     print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
-        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
+        print(f"  [{i + 1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-
-        # ViSQOL recommends 5-10 second samples.
-        # 1. < 5s: loop to 5s
-        # 2. 5-10s: use full
-        # 3. > 10s: trim to 10s center
-        loop = False
-        if dur < 5.0:
-            loop = True
-            start, duration = 0, 5
-        elif dur <= 10.0:
-            start, duration = None, None
-        else:
-            start = (dur - 10) / 2
-            duration = 10
+        start, duration, loop = get_tier_params(dur)
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
+
 
 def setup_tcd_voip():
     dataset_info = DATASETS["TCD-VOIP"]
@@ -142,23 +157,15 @@ def setup_tcd_voip():
 
     print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
-        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
+        print(f"  [{i + 1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-
-        loop = False
-        if dur < 5.0:
-            loop = True
-            start, duration = 0, 5
-        elif dur <= 10.0:
-            start, duration = None, None
-        else:
-            start = (dur - 10) / 2
-            duration = 10
+        start, duration, loop = get_tier_params(dur)
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         # ViSQOL speech mode requires 16k mono
         resample(wav, output, 16000, 1, start=start, duration=duration, loop=loop)
+
 
 def setup_soundexpert():
     dataset_info = DATASETS["SoundExpert"]
@@ -173,22 +180,14 @@ def setup_soundexpert():
 
     print(f"Found {len(wav_files)} valid samples for {dataset_info['name']}.")
     for i, wav in enumerate(wav_files):
-        print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
+        print(f"  [{i + 1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-
-        loop = False
-        if dur < 5.0:
-            loop = True
-            start, duration = 0, 5
-        elif dur <= 10.0:
-            start, duration = None, None
-        else:
-            start = (dur - 10) / 2
-            duration = 10
+        start, duration, loop = get_tier_params(dur)
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         resample(wav, output, 48000, chans, start=start, duration=duration, loop=loop)
+
 
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
