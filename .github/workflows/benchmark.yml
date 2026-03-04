@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: tests/data/external
-          key: ${{ runner.os }}-datasets-v4
+          key: ${{ runner.os }}-datasets-${{ hashFiles('tests/setup_datasets.py') }}
 
       - name: Setup Datasets
         if: steps.cache-datasets.outputs.cache-hit != 'true'
@@ -66,7 +66,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: tests/data/external
-          key: ${{ runner.os }}-datasets-v4
+          key: ${{ runner.os }}-datasets-${{ hashFiles('tests/setup_datasets.py') }}
 
       - name: Determine Baseline SHA
         id: baseline-sha

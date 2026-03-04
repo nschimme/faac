@@ -27,13 +27,27 @@ We evaluate every contribution against three competing pillars. While high-bitra
 
 ---
 
+## Metric Definitions
+
+| Metric | Definition | Reference |
+| :--- | :--- | :--- |
+| **MOS** | Mean Opinion Score (LQO). Predicted perceptual quality from 1.0 (Bad) to 5.0 (Excellent), computed via the **ViSQOL** model. | [ITU-T P.800](https://www.itu.int/rec/T-REC-P.800), [ViSQOL](https://github.com/google/visqol) |
+| **Regressions** | Critical failure or a drop in MOS ≥ 0.1 compared to the baseline commit. Significant throughput drops (>10%) or increased binary size also warrant review. | |
+| **Significant Win** | An improvement in MOS ≥ 0.1 compared to the baseline commit. | |
+| **Consistency** | Percentage of test cases where bitstreams are MD5-identical to the baseline. | |
+| **Throughput** | Normalized encoding speed improvement against baseline. Higher % indicates faster execution. | |
+| **Library Size** | Binary footprint of `libfaac.so`. Delta measured against baseline. Critical for embedded VSS/IoT targets. | |
+| **Bitrate Δ** | Percentage change in generated file size against baseline, indicating shifts in bitrate control accuracy or bit-budget allocation. | |
+
+---
+
 ## Dataset Sources
 
 We are grateful to the following projects for providing high-quality research material:
 
-*   **TCD-VoIP (Sigmedia-VoIP)**: [Listener Test Database](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - A research database specifically designed for assessing quality in VoIP applications.
-*   **Public Multiformat Listening Test (PMLT2014)**: [July 2014 Results](https://listening-test.coresv.net/) - A comprehensive multi-codec test suite.
-*   **SoundExpert**: [Sound samples](https://soundexpert.org/sound-samples) - High-precision excerpts from the EBU SQAM CD for transparency testing.
+*   **TCD-VoIP (Sigmedia-VoIP)**: [Listener Test Database](https://www.sigmedia.tv/datasets/tcd_voip_ltd/) - Specifically designed for assessing quality in VoIP applications.
+*   **PMLT2014**: [Public Multiformat Listening Test](https://listening-test.coresv.net/) - A comprehensive multi-codec benchmark.
+*   **SoundExpert**: [Sound Samples](https://soundexpert.org/sound-samples) - High-precision EBU SQAM CD excerpts for transparency testing.
 
 ---
 
