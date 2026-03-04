@@ -286,20 +286,22 @@ def main():
     report.append("| Metric | Value |")
     report.append("| :--- | :--- |")
 
-    # Regressions
+    # Regressions (Always shown)
     reg_status = "0 ✅" if total_regressions == 0 else f"{total_regressions} ❌"
     report.append(f"| **Regressions** | {reg_status} |")
 
-    # Wins
+    # New Wins (Only if baseline < threshold and candidate >= threshold)
     if total_new_wins > 0:
         report.append(f"| **New Wins** | {total_new_wins} 🆕 |")
+
+    # Significant Wins (MOS delta > 0.1)
     if total_significant_wins > 0:
         report.append(f"| **Significant Wins** | {total_significant_wins} 🌟 |")
 
-    # Consistency
+    # Bitstream Consistency (Against baseline)
     consist_status = f"{bit_exact_percent:.1f}% ({total_bit_exact}/{total_cases_all})"
     if bit_exact_percent == 100.0:
-        consist_status += " (Bit-Identical)"
+        consist_status += " (MD5 Match)"
     report.append(f"| **Consistency** | {consist_status} |")
 
     # Throughput
