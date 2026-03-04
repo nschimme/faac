@@ -208,6 +208,11 @@ def analyze_pair(base_file, cand_file):
 
 def main():
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    summary_only = "--summary-only" in sys.argv
+    if summary_only:
+        sys.argv.remove("--summary-only")
+
     results_dir = sys.argv[1] if len(
         sys.argv) > 1 else os.path.join(
         SCRIPT_DIR, "results")
@@ -383,88 +388,82 @@ def main():
         report.append(
             f"\n⚠️ **Warning**: {total_missing_mos} MOS scores were missing/failed (treated as ❌).")
 
-    # 1. Collapsible Details: Regressions
-    if total_regressions > 0:
+    if not summary_only:
+        # 1. Collapsible Details: Regressions
+        if total_regressions > 0:
+            report.append(
+                "\n<details><summary><b>❌ View Regression Details ({})</b></summary>\n".format(total_regressions))
+            for name, data in sorted(all_suite_data.items()):
+                if data["regressions"]:
+                    report.append(f"\n#### {name}")
+                    report.append(
+                        "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+                    report.append("| :--- | :---: | :---: | :---: | :---: |")
+                    for r in data["regressions"]:
+                        report.append(r["line"])
+            report.append("\n</details>")
+
+        # 2. Collapsible Additional Details
         report.append(
-            "\n<details><summary><b>❌ View Regression Details ({})</b></summary>\n".format(total_regressions))
+            "\n<details><summary><b>View Additional Suite Details & Wins</b></summary>\n")
+
         for name, data in sorted(all_suite_data.items()):
-            if data["regressions"]:
-                report.append(f"\n#### {name}")
+            status_icon = "✅"
+            if data["has_regression"]:
+                status_icon = "❌"
+            elif data["missing_data"]:
+                status_icon = "❌"
+
+            avg_mos_suite = f"{(data['mos_delta_sum'] /
+                                data['mos_count']):+.3f}" if data["mos_count"] > 0 else "N/A"
+            suite_bit_exact_percent = (
+                data["bit_exact_count"] /
+                data["total_cases"] *
+                100) if data["total_cases"] > 0 else 0
+
+            report.append(f"\n#### {status_icon} {name}")
+            report.append(
+                f"- MOS Δ: {avg_mos_suite}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
+            report.append(
+                f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}%")
+
+            if data["new_wins"]:
+                report.append("\n**🆕 New Wins**")
+                report.append("| Test Case | MOS (Base) | Delta |")
+                report.append("| :--- | :---: | :---: |")
+                for w in data["new_wins"]:
+                    report.append("| {} | {:.2f} ({:.2f}) | {:+.2f} |".format(
+                        w["display_name"], w["mos"], w["b_mos"], w["delta"]))
+
+            if data["significant_wins"]:
+                report.append("\n**🌟 Significant Wins**")
                 report.append(
                     "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
                 report.append("| :--- | :---: | :---: | :---: | :---: |")
-                for r in data["regressions"]:
-                    report.append(r["line"])
+                for w in data["significant_wins"]:
+                    report.append(w["line"])
+
+            if data["opportunities"]:
+                report.append("\n**💡 Opportunities**")
+                report.append(
+                    "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+                report.append("| :--- | :---: | :---: | :---: | :---: |")
+                for o in data["opportunities"]:
+                    report.append(o["line"])
+
+            if data["all_cases"]:
+                report.append(
+                    f"\n<details><summary>View all {len(data['all_cases'])} cases for {name}</summary>\n")
+                report.append(
+                    "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
+                report.append("| :--- | :---: | :---: | :---: | :---: |")
+                for c in data["all_cases"]:
+                    report.append(c["line"])
+                report.append("\n</details>")
+
         report.append("\n</details>")
 
-    # 2. Collapsible Additional Details
-    report.append(
-        "\n<details><summary><b>View Additional Suite Details & Wins</b></summary>\n")
-
-    for name, data in sorted(all_suite_data.items()):
-        status_icon = "✅"
-        if data["has_regression"]:
-            status_icon = "❌"
-        elif data["missing_data"]:
-            status_icon = "❌"
-
-        avg_mos_suite = f"{(data['mos_delta_sum'] /
-                            data['mos_count']):+.3f}" if data["mos_count"] > 0 else "N/A"
-        suite_bit_exact_percent = (
-            data["bit_exact_count"] /
-            data["total_cases"] *
-            100) if data["total_cases"] > 0 else 0
-
-        report.append(f"\n#### {status_icon} {name}")
-        report.append(
-            f"- MOS Δ: {avg_mos_suite}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
-        report.append(
-            f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}%")
-
-        if data["new_wins"]:
-            report.append("\n**🆕 New Wins**")
-            report.append("| Test Case | MOS (Base) | Delta |")
-            report.append("| :--- | :---: | :---: |")
-            for w in data["new_wins"]:
-                report.append("| {} | {:.2f} ({:.2f}) | {:+.2f} |".format(
-                    w["display_name"], w["mos"], w["b_mos"], w["delta"]))
-
-        if data["significant_wins"]:
-            report.append("\n**🌟 Significant Wins**")
-            report.append(
-                "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            report.append("| :--- | :---: | :---: | :---: | :---: |")
-            for w in data["significant_wins"]:
-                report.append(w["line"])
-
-        if data["opportunities"]:
-            report.append("\n**💡 Opportunities**")
-            report.append(
-                "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            report.append("| :--- | :---: | :---: | :---: | :---: |")
-            for o in data["opportunities"]:
-                report.append(o["line"])
-
-        if data["all_cases"]:
-            report.append(
-                f"\n<details><summary>View all {len(data['all_cases'])} cases for {name}</summary>\n")
-            report.append(
-                "| Test Case | Status | MOS (Base) | Delta | Size Δ |")
-            report.append("| :--- | :---: | :---: | :---: | :---: |")
-            for c in data["all_cases"]:
-                report.append(c["line"])
-            report.append("\n</details>")
-
-    report.append("\n</details>")
-
     output = "\n".join(report)
-
-    # GitHub comment limit is 65536. We'll truncate with a buffer for the job link.
-    MAX_LEN = 64000
-    if len(output) > MAX_LEN:
-        sys.stderr.write(f"  Warning: Report too long ({len(output)} bytes), truncating.\n")
-        output = output[:MAX_LEN] + "\n\n... (Report Truncated due to GitHub limit) ..."
-
     sys.stdout.write(output + "\n")
 
     if overall_regression or overall_missing:
