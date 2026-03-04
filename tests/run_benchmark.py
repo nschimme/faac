@@ -122,7 +122,7 @@ def process_sample(faac_bin_path, name, cfg, sample, data_dir, precision, env):
         t_duration = time.time() - t_start
 
         mos = None
-        aac_size = os.getsize(output_path)
+        aac_size = os.path.getsize(output_path)
 
         if HAS_FFMPEG:
             with tempfile.TemporaryDirectory() as tmpdir:

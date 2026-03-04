@@ -299,7 +299,7 @@ def main():
         report.append(f"| **Significant Wins** | {total_significant_wins} 🌟 |")
 
     # Bitstream Consistency (Against baseline)
-    consist_status = f"{bit_exact_percent:.1f}% ({total_bit_exact}/{total_cases_all})"
+    consist_status = f"{bit_exact_percent:.1f}%"
     if bit_exact_percent == 100.0:
         consist_status += " (MD5 Match)"
     report.append(f"| **Consistency** | {consist_status} |")
@@ -353,7 +353,7 @@ def main():
 
         report.append(f"\n#### {status_icon} {name}")
         report.append(f"- MOS Δ: {avg_mos_suite}, TP Δ: {data['tp_reduction']:+.1f}%, Size Δ: {data['lib_size_chg']:+.2f}%")
-        report.append(f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}% ({data['bit_exact_count']}/{data['total_cases']})")
+        report.append(f"- Bitstream Consistency: {suite_bit_exact_percent:.1f}%")
 
         if data["new_wins"]:
             report.append("\n**🆕 New Wins**")
@@ -369,7 +369,7 @@ def main():
             for w in data["significant_wins"]: report.append(w["line"])
 
         if data["opportunities"]:
-            report.append("\n**💡 Opportunities/Warnings**")
+            report.append("\n**💡 Opportunities**")
             report.append("| Test Case | Status | MOS (Base) | Delta | Size Δ |")
             report.append("| :--- | :---: | :---: | :---: | :---: |")
             for o in data["opportunities"]: report.append(o["line"])
