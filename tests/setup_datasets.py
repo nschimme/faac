@@ -67,12 +67,16 @@ def get_info(wav_path):
     except:
         return 0, 2
 
-def resample(input_path, output_path, rate, channels, start=0, duration=7):
+def resample(input_path, output_path, rate, channels, start=None, duration=None):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     try:
+        args = {}
+        if start is not None: args['ss'] = start
+        if duration is not None: args['t'] = duration
+
         (
             ffmpeg
-            .input(input_path, ss=start, t=duration)
+            .input(input_path, **args)
             .output(output_path, ar=rate, ac=channels, sample_fmt='s16')
             .run(quiet=True, overwrite_output=True)
         )
@@ -94,10 +98,18 @@ def setup_pmlt():
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-        start = max(0, (dur - 7) / 2)
+
+        # ViSQOL recommends 5-10 second samples.
+        # Use full sample if <= 10s, otherwise trim to 7s center.
+        if dur <= 10.0:
+            start, duration = None, None
+        else:
+            start = (dur - 7) / 2
+            duration = 7
+
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=7)
+        resample(wav, output, 48000, chans, start=start, duration=duration)
 
 def setup_tcd_voip():
     dataset_info = DATASETS["TCD-VOIP"]
@@ -114,11 +126,17 @@ def setup_tcd_voip():
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-        start = max(0, (dur - 7) / 2)
+
+        if dur <= 10.0:
+            start, duration = None, None
+        else:
+            start = (dur - 7) / 2
+            duration = 7
+
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
         # ViSQOL speech mode requires 16k mono
-        resample(wav, output, 16000, 1, start=start, duration=7)
+        resample(wav, output, 16000, 1, start=start, duration=duration)
 
 def setup_soundexpert():
     dataset_info = DATASETS["SoundExpert"]
@@ -135,10 +153,16 @@ def setup_soundexpert():
     for i, wav in enumerate(wav_files):
         print(f"  [{i+1}/{len(wav_files)}] Processing {os.path.basename(wav)}...")
         dur, chans = get_info(wav)
-        start = max(0, (dur - 7) / 2)
+
+        if dur <= 10.0:
+            start, duration = None, None
+        else:
+            start = (dur - 7) / 2
+            duration = 7
+
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
-        resample(wav, output, 48000, chans, start=start, duration=7)
+        resample(wav, output, 48000, chans, start=start, duration=duration)
 
 if __name__ == "__main__":
     if not os.path.exists(BASE_DATA_DIR):
