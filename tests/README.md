@@ -125,3 +125,6 @@ To generate a report comparing a candidate run against a baseline:
 - **Music Scenarios**: 48kHz stereo, quality levels `60`, `120`, and `250`.
 
 The suite uses ViSQOL v3. Audio mode uses the 48kHz music model, while speech mode uses the default wideband speech model.
+
+### Parallel Execution
+Benchmarks are automatically parallelized across all available CPU cores using Python's `ThreadPoolExecutor`. This significantly reduces the time required for perceptual analysis (ViSQOL), which is the most computationally intensive part of the suite.
