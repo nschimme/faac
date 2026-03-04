@@ -60,8 +60,8 @@ We are grateful to the following projects for providing high-quality research ma
 sudo apt-get update && sudo apt-get install -y meson ninja-build bc ffmpeg
 
 # Python
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r tests/requirements.txt
 ```
 
