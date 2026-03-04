@@ -1,0 +1,7 @@
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+// band sound masking
+// use band quality levels to quantize a group of windows
+        // fixme: move SF range check to quantizer
+    // find max short frame band
+    // find max long frame band
+    // mute lines above cutoff freq
