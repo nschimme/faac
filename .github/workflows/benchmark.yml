@@ -122,8 +122,10 @@ jobs:
           script: |
             const fs = require('fs');
             if (fs.existsSync('report.md')) {
-              const report = fs.readFileSync('report.md', 'utf8').trim();
+              let report = fs.readFileSync('report.md', 'utf8').trim();
               if (report.length > 0) {
+                const jobUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+                report += `\n\n---\n[View Detailed Job Log](${jobUrl})`;
                 github.rest.issues.createComment({
                   issue_number: context.issue.number,
                   owner: context.repo.owner,
