@@ -27,6 +27,7 @@ import tempfile
 import hashlib
 import concurrent.futures
 import threading
+import multiprocessing
 
 try:
     import visqol_py
@@ -95,22 +96,29 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
         "lib_size": get_binary_size(lib_path)
     }
 
-    # Thread-local storage for ViSQOL instances to ensure thread-safety
-    thread_local = threading.local()
+    # Process-local storage for ViSQOL instances
+    process_local = {}
 
-    def get_thread_visqol(mode_str):
+    def get_process_visqol(mode_str):
         if not HAS_VISQOL:
             return None
-        if not hasattr(thread_local, "visqol_instances"):
-            thread_local.visqol_instances = {}
-        if mode_str not in thread_local.visqol_instances:
+        if mode_str not in process_local:
             try:
                 mode = get_visqol_mode(mode_str)
-                thread_local.visqol_instances[mode_str] = visqol_py.ViSQOL(mode=mode)
+                process_local[mode_str] = visqol_py.ViSQOL(mode=mode)
             except Exception as e:
-                print(f" Failed to initialize ViSQOL in thread: {e}")
-                thread_local.visqol_instances[mode_str] = None
-        return thread_local.visqol_instances[mode_str]
+                print(f" Failed to initialize ViSQOL in process {os.getpid()}: {e}")
+                process_local[mode_str] = None
+        return process_local[mode_str]
+
+    def worker_init(cpu_id_queue):
+        """Pin the worker process to a specific CPU core for consistent benchmarks."""
+        cpu_id = cpu_id_queue.get()
+        if hasattr(os, "sched_setaffinity"):
+            try:
+                os.sched_setaffinity(0, [cpu_id])
+            except Exception as e:
+                print(f" Failed to pin process {os.getpid()} to CPU {cpu_id}: {e}")
 
     def process_sample(name, cfg, sample, data_dir, precision):
         input_path = os.path.join(data_dir, sample)
@@ -139,7 +147,7 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                         ffmpeg.input(output_path).output(v_deg, ar=v_rate, ac=v_channels, sample_fmt='s16').run(quiet=True, overwrite_output=True)
 
                         if os.path.exists(v_ref) and os.path.exists(v_deg):
-                            visqol = get_thread_visqol(cfg["mode"])
+                            visqol = get_process_visqol(cfg["mode"])
                             mos = run_visqol(visqol, v_ref, v_deg)
                     except ffmpeg.Error as e:
                         print(f" FFmpeg error for {sample}: {e.stderr.decode() if e.stderr else e}")
@@ -177,7 +185,17 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
 
             print(f"  [Scenario: {name}] Processing {len(samples)} samples (coverage {coverage}%)...")
 
-            with concurrent.futures.ThreadPoolExecutor(max_workers=num_cpus) as executor:
+            # Pin each process to a unique CPU core
+            manager = multiprocessing.Manager()
+            cpu_id_queue = manager.Queue()
+            for cpu_id in range(num_cpus):
+                cpu_id_queue.put(cpu_id)
+
+            with concurrent.futures.ProcessPoolExecutor(
+                max_workers=num_cpus,
+                initializer=worker_init,
+                initargs=(cpu_id_queue,)
+            ) as executor:
                 futures = {executor.submit(process_sample, name, cfg, sample, data_dir, precision): sample for sample in samples}
                 for i, future in enumerate(concurrent.futures.as_completed(futures)):
                     result = future.result()
@@ -188,17 +206,33 @@ def run_benchmark(faac_path, lib_path, precision, coverage=100, run_perceptual=F
                         print(f"    ({i+1}/{len(samples)}) {data['filename']} done. (MOS: {mos_str})")
 
     print(f"Measuring throughput for {precision}...")
+    # Pin current process to a single core for accurate throughput measurement
+    if hasattr(os, "sched_setaffinity"):
+        try:
+            os.sched_setaffinity(0, [0])
+        except:
+            pass
+
     speech_dir = os.path.join(EXTERNAL_DATA_DIR, "speech")
     if os.path.exists(speech_dir):
         samples = sorted([f for f in os.listdir(speech_dir) if f.endswith(".wav")])
         if samples:
+            # Use a representative sample for throughput
             input_path = os.path.join(speech_dir, samples[0])
             output_path = os.path.join(OUTPUT_DIR, f"throughput_{precision}.aac")
-            start_time = time.time()
+
+            # Warmup
             try:
-                for _ in range(3):
+                subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
+
+                # Multiple runs to average noise
+                durations = []
+                for _ in range(5):
+                    start_time = time.time()
                     subprocess.run([faac_path, "-o", output_path, input_path], env=env, check=True, capture_output=True)
-                results["throughput"]["overall"] = (time.time() - start_time) / 3
+                    durations.append(time.time() - start_time)
+
+                results["throughput"]["overall"] = sum(durations) / len(durations)
             except:
                 pass
 
