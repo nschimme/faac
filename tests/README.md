@@ -1,40 +1,28 @@
 # FAAC Benchmark Suite
 
-This suite provides the objective data necessary to evaluate encoder improvements and ensure high-quality releases. By standardizing our metrics, we establish a **Northstar** for the project: shipping better audio, faster, with a smaller footprint.
+FAAC is the high-efficiency encoder for the resource-constrained world. From hobbyist IoT projects to professional surveillance (NVR) and embedded VoIP, we prioritize performance where every cycle and byte matters.
 
-## Our Customers & Use Cases
-
-FAAC provides high-efficiency AAC encoding for resource-constrained environments where every cycle and byte matters.
-
-1.  **IoT & Surveillance (NVR)**: Manufacturers building low-power cameras and recording devices. They require reliable, clear audio recording that fits within minimal storage and power budgets.
-2.  **Embedded Communication (VoIP)**: Developers of residential intercoms, industrial headsets, and low-bandwidth communication systems. They need resilient, low-latency speech encoding that maintains intelligibility even over unstable networks.
-3.  **Transparency Focus**: While FAAC does not compete with FDK-AAC or Opus on raw audio quality at high bitrates, our users expect transparent, artifact-free performance within our targeted operational ranges.
-
-## Who This Suite Helps
-
-*   **Maintainers**: Provides the confidence to merge PRs by proving that a change improves the encoder—or at least doesn't cause a quality or performance regression.
-*   **Developers**: Offers rapid, automated feedback during the implementation of new psychoacoustic models or performance optimizations.
-*   **End Users**: Ensures that every new version of FAAC remains a reliable choice for their critical firmware and communication products.
+Our **Northstar** is the optimal balance of quality, speed, and size. This suite provides the objective data necessary to ensure that every change moves us closer to that goal without breaking the project's delicate equilibrium.
 
 ---
 
 ## The "Golden Triangle" Philosophy
 
-Every change is evaluated against three competing pillars. A gain in one must not come at a catastrophic cost to the others.
+We evaluate every contribution against three competing pillars. To remain as approachable and distributable as possible for the global open-source community, we focus on **non-patent encumbered** areas and the standard LC-AAC profile.
 
-1.  **Audio Fidelity**: Our Northstar is delivering transparent audio quality for our target bitrates. We use objective metrics like ViSQOL (MOS) to ensure that psychoacoustic improvements truly benefit the listener.
-2.  **Computational Efficiency**: FAAC must remain fast. We optimize for low-power ARM and MIPS cores where encoding speed is a critical requirement, not just a preference.
-3.  **Minimal Footprint**: Binary size is a feature. We ensure the library remains small enough to fit within the most restrictive embedded firmware and IoT storage environments.
+1.  **Audio Fidelity**: We target transparent audio quality for our specific bitrates. We use objective metrics like ViSQOL (MOS) to ensure psychoacoustic improvements truly benefit the listener without introducing "metallic" ringing or "underwater" artifacts.
+2.  **Computational Efficiency**: FAAC must remain fast. We optimize for low-power ARM and MIPS cores where encoding speed is a critical requirement. We aim to be the go-to encoder for devices with limited CPU budgets.
+3.  **Minimal Footprint**: Binary size is a feature. We ensure the library remains small enough to fit within restrictive embedded firmware and IoT storage environments.
 
 ---
 
 ## Benchmarking Scenarios
 
-| Scenario | Mode | Source | Config | Business Goal |
+| Scenario | Mode | Source | Config | Project Goal |
 | :--- | :--- | :--- | :--- | :--- |
 | **VoIP** | Speech (16k) | TCD-VOIP | `-q 15` | Clear communication at low bitrates (~15kbps). |
-| **NVR** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity surveillance recording (~25kbps). |
-| **Music** | Audio (48k) | PMLT / SoundExpert | `-q 60-250` | Full-range stereo transparency for storage & streaming. |
+| **NVR** | Speech (16k) | TCD-VOIP | `-q 30` | High-fidelity voice recording (~25kbps). |
+| **Music** | Audio (48k) | PMLT / SoundExpert | `-q 60-250` | Full-range transparency for storage & streaming. |
 
 ---
 
@@ -42,7 +30,7 @@ Every change is evaluated against three competing pillars. A gain in one must no
 
 ### 1. Install Dependencies
 ```bash
-# System
+# System (Ubuntu/Debian)
 sudo apt-get update && sudo apt-get install -y meson ninja-build bc ffmpeg
 
 # Python
@@ -50,7 +38,7 @@ pip install -r tests/requirements.txt
 ```
 
 ### 2. Prepare Datasets
-Downloads samples and generates 10-minute synthetic throughput signals.
+Downloads samples and generates 10-minute synthetic throughput signals (Sine, Sweep, Noise, Silence).
 ```bash
 python3 tests/setup_datasets.py
 ```
@@ -58,11 +46,11 @@ python3 tests/setup_datasets.py
 ### 3. Run a Benchmark
 Perceptual analysis is enabled by default. Use `--skip-mos` for faster iteration during local development.
 ```bash
-python3 tests/run_benchmark.py <faac_bin> <lib_path> <run_label> <output.json>
+python3 tests/run_benchmark.py build/frontend/faac build/libfaac/libfaac.so my_run tests/results/my_run.json
 ```
 
 ### 4. Compare Results
-Generate a high-signal summary comparing a candidate against a baseline.
+Generate a high-signal summary comparing your candidate against a baseline.
 ```bash
 python3 tests/compare_results.py tests/results/
 ```
@@ -71,7 +59,7 @@ python3 tests/compare_results.py tests/results/
 
 ## CI/CD Architecture
 
-To provide deterministic hardware metrics, our GitHub Actions environment utilizes:
+Our GitHub Actions environment is hardened for measurement precision:
 *   **Hardware Isolation**: Worker processes are pinned to unique CPU cores (`os.sched_setaffinity`) to eliminate measurement jitter.
-*   **Synthetic Benchmarking**: 10-minute Sine, Sweep, Noise, and Silence signals provide rock-solid throughput data.
-*   **Intelligent Caching**: Successfully generated environments and baseline results are cached to ensure fast feedback loops.
+*   **Robust Throughput**: We use 10-minute synthetic signals and multi-run averaging to provide a rock-solid performance signal.
+*   **Intelligent Caching**: We cache the entire build environment and baseline results to provide rapid feedback to contributors.
