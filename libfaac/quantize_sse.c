@@ -21,19 +21,32 @@
 #include "config.h"
 #endif
 
-#include <immintrin.h>
 #include "faac_real.h"
+#include "cpu_compute.h"
+
+#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
+#include <immintrin.h>
+#endif
 
 #define MAGIC_NUMBER 0.4054
 
 void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
+#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
     // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
+
+    /* NOTE on Alignment:
+     * We use unaligned load/store instructions (_mm_loadu_ps, _mm_loadu_pd, _mm_storeu_si128)
+     * because modern CPUs (Intel Nehalem/Sandy Bridge, AMD Bulldozer and later) handle
+     * unaligned memory access with negligible performance penalty compared to aligned access.
+     * This avoids the complexity of ensuring 16-byte alignment for spectral buffers and
+     * allows for a more portable and robust implementation across various callers.
+     */
 
     // Process 4 elements per iteration
     for (; cnt <= n - 4; cnt += 4)
@@ -61,6 +74,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         __m128i xi_vec = _mm_cvttps_epi32(x);
 
         // Bitwise Sign Fix: (val ^ mask) - mask
+        // sign_mask is all ones for negative, all zeros for positive
         __m128i m_int = _mm_castps_si128(sign_mask);
         xi_vec = _mm_sub_epi32(_mm_xor_si128(xi_vec, m_int), m_int);
 
@@ -77,4 +91,19 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
         xi[cnt] = (val < 0) ? -q : q;
     }
+#else
+    // Fallback if SIMD headers or support is missing
+    int cnt;
+    for (cnt = 0; cnt < n; cnt++)
+    {
+        faac_real val = xr[cnt];
+        faac_real tmp = FAAC_FABS(val);
+
+        tmp *= sfacfix;
+        tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+
+        int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
+        xi[cnt] = (val < 0) ? -q : q;
+    }
+#endif
 }
