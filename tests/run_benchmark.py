@@ -1,12 +1,27 @@
 """
- * FAAC Benchmark Suite - User-Friendly Entrypoint
+ * FAAC Benchmark Suite
  * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import os
 import sys
 import subprocess
 import argparse
+import platform
 
 def main():
     parser = argparse.ArgumentParser(description="FAAC Benchmark Suite")
@@ -51,20 +66,43 @@ def main():
         ]
         subprocess.run(cmd_phase2, check=True)
     except ImportError:
-        # Strategy 2: Docker
-        print("Local ViSQOL not found. Attempting Docker strategy...")
-        try:
-            subprocess.run(["docker", "--version"], check=True, capture_output=True)
+        # Strategy 2: Container (Docker/Podman)
+        print("Local ViSQOL not found. Attempting container strategy...")
 
+        # Enforce amd64 for the containerized ViSQOL
+        arch = platform.machine().lower()
+        if arch not in ["x86_64", "amd64"]:
+            print(f">>> ERROR: ViSQOL container only supports amd64 (detected: {arch})")
+            print("Please install ViSQOL dependencies locally if you are on a different architecture.")
+            sys.exit(1)
+
+        container_tool = None
+        for tool in ["docker", "podman"]:
+            try:
+                subprocess.run([tool, "--version"], check=True, capture_output=True)
+                container_tool = tool
+                break
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                continue
+
+        if not container_tool:
+            print(">>> ERROR: No container tool (docker/podman) found.")
+            print("Please either:")
+            print("  1. Install ViSQOL dependencies: pip install -r tests/requirements_visqol.txt")
+            print("  2. Install Docker or Podman and ensure the daemon/service is running.")
+            print("  3. Run with --skip-mos if you only need encoding metrics.")
+            sys.exit(1)
+
+        try:
             # Build if needed
-            print("Building faac-visqol Docker image...")
+            print(f"Building faac-visqol image using {container_tool} (forcing amd64)...")
             subprocess.run([
-                "docker", "build", "-t", "faac-visqol", "-f",
+                container_tool, "build", "--platform", "linux/amd64", "-t", "faac-visqol", "-f",
                 os.path.join(script_dir, "Dockerfile.visqol"), script_dir
             ], check=True)
 
             # Run
-            print("Running MOS computation in Docker...")
+            print(f"Running MOS computation in {container_tool} (forcing amd64)...")
             # We need absolute paths for volume mounting
             abs_output = os.path.abspath(args.output)
             abs_results_dir = os.path.dirname(abs_output)
@@ -72,21 +110,17 @@ def main():
             abs_output_dir = os.path.abspath(os.path.join(script_dir, "output"))
             abs_data_dir = os.path.abspath(os.path.join(script_dir, "data", "external"))
 
-            cmd_docker = [
-                "docker", "run", "--rm",
+            cmd_container = [
+                container_tool, "run", "--rm", "--platform", "linux/amd64",
                 "-v", f"{abs_results_dir}:/results",
                 "-v", f"{abs_output_dir}:/output",
                 "-v", f"{abs_data_dir}:/data",
                 "faac-visqol", f"/results/{results_file}", "/output", "/data"
             ]
-            subprocess.run(cmd_docker, check=True)
+            subprocess.run(cmd_container, check=True)
 
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print(">>> ERROR: Perceptual quality computation failed.")
-            print("Please either:")
-            print("  1. Install ViSQOL dependencies: pip install -r tests/requirements_visqol.txt")
-            print("  2. Install Docker and ensure the daemon is running.")
-            print("  3. Run with --skip-mos if you only need encoding metrics.")
+        except subprocess.CalledProcessError as e:
+            print(f">>> ERROR: {container_tool} execution failed: {e}")
             sys.exit(1)
 
     print(">>> Benchmark complete.")

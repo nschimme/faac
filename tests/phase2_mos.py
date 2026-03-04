@@ -1,6 +1,20 @@
 """
- * FAAC Benchmark Suite - MOS Computation Script (Python API strategy)
+ * FAAC Benchmark Suite
  * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import os
@@ -12,10 +26,11 @@ import visqol_py
 from visqol_py import ViSQOLMode
 import concurrent.futures
 import multiprocessing
-try:
-    from config import SCENARIOS
-except ImportError:
-    from .config import SCENARIOS
+import sys
+import os
+# Ensure the current directory is in the path for config import
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config import SCENARIOS
 
 # Process-local storage for ViSQOL instances
 _process_visqol_instances = {}
@@ -37,13 +52,26 @@ def compute_single_mos(key, entry, aac_dir, external_data_dir):
     data_subdir = "speech" if cfg["mode"] == "speech" else "audio"
     ref_input_path = os.path.join(external_data_dir, data_subdir, filename)
 
-    # The output filename is f"{key}_{precision}.aac" where precision includes arch and stage
-    # Using startswith(key) is safe because key includes the full .wav filename
-    aac_files = [f for f in os.listdir(aac_dir) if f.startswith(key) and f.endswith(".aac")]
-    if not aac_files:
-        return key, None
+    # Results JSON filename usually follows the pattern: {arch}_{precision}_{stage}.json
+    # We can derive the precision suffix from the results filename
+    results_filename = os.path.basename(results_path)
+    precision_suffix = ""
+    if "_base.json" in results_filename:
+        precision_suffix = results_filename.replace("_base.json", "_base.aac")
+    elif "_cand.json" in results_filename:
+        precision_suffix = results_filename.replace("_cand.json", "_cand.aac")
 
-    aac_path = os.path.join(aac_dir, aac_files[0])
+    # Target file is f"{key}_{arch}_{precision}_{stage}.aac"
+    target_filename = f"{key}_{precision_suffix}"
+    aac_path = os.path.join(aac_dir, target_filename)
+
+    if not os.path.exists(aac_path):
+        # Fallback to startswith if precision suffix derivation fails or file not found
+        aac_files = [f for f in os.listdir(aac_dir) if f.startswith(key) and f.endswith(".aac")]
+        if not aac_files:
+            return key, None
+        aac_path = os.path.join(aac_dir, aac_files[0])
+
 
     with tempfile.TemporaryDirectory() as tmpdir:
         v_ref = os.path.join(tmpdir, "vref.wav")
@@ -73,6 +101,7 @@ def main():
         print("Usage: python3 phase2_mos.py <results_json> <aac_dir> <external_data_dir>")
         sys.exit(1)
 
+    global results_path
     results_path = sys.argv[1]
     aac_dir = sys.argv[2]
     external_data_dir = sys.argv[3]
@@ -99,7 +128,7 @@ def main():
 
     with open(results_path, 'w') as f:
         json.dump(data, f, indent=2)
-    print("MOS computation complete.")
+    print("Phase 2 (MOS) complete.")
 
 if __name__ == "__main__":
     main()

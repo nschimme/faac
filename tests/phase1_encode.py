@@ -149,9 +149,7 @@ def run_benchmark(
             step = len(all_samples) / num_to_run if num_to_run > 0 else 1
             samples = [all_samples[int(i * step)] for i in range(num_to_run)]
 
-            print(
-                f"  [Scenario: {name}] Processing {
-                    len(samples)} samples (coverage {coverage}%)...")
+            print(f"  [Scenario: {name}] Processing {len(samples)} samples (coverage {coverage}%)...")
 
             # Pin each process to a unique CPU core
             manager = multiprocessing.Manager()
