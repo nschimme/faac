@@ -43,7 +43,7 @@
 
 // Forward declarations for quantization functions
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
+#if defined(HAVE_SSE2)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
@@ -72,7 +72,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 void QuantizeInit(void)
 {
-#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
+#if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;

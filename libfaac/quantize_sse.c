@@ -21,18 +21,14 @@
 #include "config.h"
 #endif
 
+#include <immintrin.h>
 #include "faac_real.h"
 #include "cpu_compute.h"
-
-#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
-#include <immintrin.h>
-#endif
 
 #define MAGIC_NUMBER 0.4054
 
 void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
-#if defined(SSE2_ARCH) && defined(HAVE_IMMINTRIN_H)
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
@@ -91,19 +87,4 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
         xi[cnt] = (val < 0) ? -q : q;
     }
-#else
-    // Fallback if SIMD headers or support is missing
-    int cnt;
-    for (cnt = 0; cnt < n; cnt++)
-    {
-        faac_real val = xr[cnt];
-        faac_real tmp = FAAC_FABS(val);
-
-        tmp *= sfacfix;
-        tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
-        int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
-        xi[cnt] = (val < 0) ? -q : q;
-    }
-#endif
 }
