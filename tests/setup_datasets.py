@@ -110,7 +110,7 @@ def setup_pmlt():
         # ViSQOL recommends 5-10 second samples.
         # 1. < 5s: loop to 5s
         # 2. 5-10s: use full
-        # 3. > 10s: trim to 7s center
+        # 3. > 10s: trim to 10s center
         loop = False
         if dur < 5.0:
             loop = True
@@ -118,8 +118,8 @@ def setup_pmlt():
         elif dur <= 10.0:
             start, duration = None, None
         else:
-            start = (dur - 7) / 2
-            duration = 7
+            start = (dur - 10) / 2
+            duration = 10
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
@@ -148,8 +148,8 @@ def setup_tcd_voip():
         elif dur <= 10.0:
             start, duration = None, None
         else:
-            start = (dur - 7) / 2
-            duration = 7
+            start = (dur - 10) / 2
+            duration = 10
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
@@ -179,8 +179,8 @@ def setup_soundexpert():
         elif dur <= 10.0:
             start, duration = None, None
         else:
-            start = (dur - 7) / 2
-            duration = 7
+            start = (dur - 10) / 2
+            duration = 10
 
         filename = os.path.basename(wav)
         output = os.path.join(dest_dir, filename)
