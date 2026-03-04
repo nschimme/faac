@@ -63,6 +63,8 @@ sudo apt-get update && sudo apt-get install -y meson ninja-build bc ffmpeg
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r tests/requirements.txt
+# Optional: Install ViSQOL dependencies if you want to compute MOS locally without Docker
+pip install -r tests/requirements_visqol.txt
 ```
 
 ### 2. Prepare Datasets
@@ -71,13 +73,40 @@ Downloads samples and generates 10-minute synthetic throughput signals (Sine, Sw
 python3 tests/setup_datasets.py
 ```
 
-### 3. Run a Benchmark
-Perceptual analysis and full test suite coverage are enabled by default. Use `--skip-mos` or `--coverage 10` for faster iteration during local development.
+### 3. Run a Benchmark (Two Phases)
+
+The benchmark is split into two phases for efficiency and flexibility.
+
+#### Phase 1: Encoding and Basic Metrics
+This phase performs the actual encoding and measures throughput and library size.
 ```bash
-python3 tests/run_benchmark.py build/frontend/faac build/libfaac/libfaac.so my_run tests/results/my_run.json
+python3 tests/phase1_encode.py build/frontend/faac build/libfaac/libfaac.so my_run tests/results/my_run.json --coverage 100
 ```
 
-### 4. Compare Results
+#### Phase 2: Perceptual Quality (MOS)
+This phase uses ViSQOL to compute the perceptual Mean Opinion Score. It can be performed either via Docker or directly.
+
+**Strategy A: Docker (Recommended)**
+This is used by the CI and isolates the complex ViSQOL dependencies.
+```bash
+# Build the image (only needed once or when scripts change)
+docker build -t faac-visqol -f tests/Dockerfile.visqol tests/
+
+# Run the MOS computation
+docker run --rm \
+  -v $(pwd)/tests/results:/results \
+  -v $(pwd)/tests/output:/output \
+  -v $(pwd)/tests/data/external:/data \
+  faac-visqol /results/my_run.json /output /data
+```
+
+**Strategy B: Local Python**
+If you have installed the dependencies from `tests/requirements_visqol.txt`.
+```bash
+python3 tests/phase2_mos.py tests/results/my_run.json tests/output tests/data/external
+```
+
+### 5. Compare Results
 Generate a high-signal summary comparing your candidate against a baseline.
 ```bash
 python3 tests/compare_results.py tests/results/

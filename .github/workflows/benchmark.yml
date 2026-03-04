@@ -47,34 +47,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'tests/requirements.txt'
 
-      - name: Restore Python Virtual Environment
-        id: cache-venv
-        uses: actions/cache/restore@v4
-        with:
-          path: .venv
-          key: ${{ matrix.os }}-venv-${{ hashFiles('tests/requirements.txt') }}
-          restore-keys: |
-            ${{ matrix.os }}-venv-
-
-      - name: Setup Virtual Environment
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+      - name: Install Python dependencies
         run: |
-          python3 -m venv .venv
-          . .venv/bin/activate
           pip install --upgrade pip setuptools wheel
           pip install -r tests/requirements.txt
-
-      - name: Save Python Virtual Environment
-        if: steps.cache-venv.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: .venv
-          key: ${{ matrix.os }}-venv-${{ hashFiles('tests/requirements.txt') }}
-
-      - name: Activate Virtual Environment
-        run: |
-          echo "${{ github.workspace }}/.venv/bin" >> $GITHUB_PATH
 
       - name: Restore Datasets
         id: cache-datasets
@@ -95,15 +74,26 @@ jobs:
           path: tests/data/external
           key: ${{ runner.os }}-datasets-${{ hashFiles('tests/setup_datasets.py') }}
 
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Build ViSQOL Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: tests
+          file: tests/Dockerfile.visqol
+          tags: faac-visqol:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
       - name: Determine Baseline SHA
         id: baseline-sha
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
             echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
           else
-            git checkout ${{ github.base_ref }}
-            echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-            git checkout ${{ github.sha }}
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Restore Baseline Results
@@ -113,35 +103,54 @@ jobs:
           path: tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json
           key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.precision }}-${{ steps.baseline-sha.outputs.sha }}-${{ hashFiles('tests/*.py', 'tests/requirements.txt') }}
 
-      - name: Run Benchmark (Baseline)
+      - name: Run Phase 1 (Baseline Encoding)
         if: steps.cache-baseline.outputs.cache-hit != 'true'
         run: |
           git checkout ${{ steps.baseline-sha.outputs.sha }}
+          mkdir -p tests/results
           meson setup build_base -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_base
-          LIB_PATH="build_base/libfaac/libfaac.so"
-          FAAC_PATH="build_base/frontend/faac"
+          LIB_PATH="${{ github.workspace }}/build_base/libfaac/libfaac.so"
+          FAAC_PATH="${{ github.workspace }}/build_base/frontend/faac"
           # Restore benchmark scripts and config from PR branch to ensure consistent comparison logic
           git checkout ${{ github.sha }} -- tests/
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --coverage 100
+          python3 tests/phase1_encode.py "$FAAC_PATH" "$LIB_PATH" "${{ matrix.arch }}_${{ matrix.precision }}_base" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json" --coverage 100
+
+      - name: Run Phase 2 (Baseline MOS)
+        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/tests/results:/results \
+            -v ${{ github.workspace }}/tests/output:/output \
+            -v ${{ github.workspace }}/tests/data/external:/data \
+            faac-visqol /results/${{ matrix.arch }}_${{ matrix.precision }}_base.json /output /data
 
       - name: Save Baseline Results
-        if: always() && steps.cache-baseline.outputs.cache-hit != 'true'
+        if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: tests/results/${{ matrix.arch }}_${{ matrix.precision }}_base.json
           key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.precision }}-${{ steps.baseline-sha.outputs.sha }}-${{ hashFiles('tests/*.py', 'tests/requirements.txt') }}
 
-      - name: Run Benchmark (Candidate)
+      - name: Run Phase 1 (Candidate Encoding)
         if: github.event_name == 'pull_request'
         run: |
           git checkout ${{ github.sha }}
           mkdir -p tests/results
           meson setup build_cand -Dfloating-point=${{ matrix.precision }} --buildtype=release
           ninja -C build_cand
-          LIB_PATH="build_cand/libfaac/libfaac.so"
-          FAAC_PATH="build_cand/frontend/faac"
-          python3 tests/run_benchmark.py $FAAC_PATH $LIB_PATH "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --coverage 100
+          LIB_PATH="${{ github.workspace }}/build_cand/libfaac/libfaac.so"
+          FAAC_PATH="${{ github.workspace }}/build_cand/frontend/faac"
+          python3 tests/phase1_encode.py "$FAAC_PATH" "$LIB_PATH" "${{ matrix.arch }}_${{ matrix.precision }}_cand" "tests/results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json" --coverage 100
+
+      - name: Run Phase 2 (Candidate MOS)
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/tests/results:/results \
+            -v ${{ github.workspace }}/tests/output:/output \
+            -v ${{ github.workspace }}/tests/data/external:/data \
+            faac-visqol /results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json /output /data
 
       - name: Upload Results
         if: github.event_name == 'pull_request'
@@ -165,7 +174,7 @@ jobs:
       - name: Download all results
         uses: actions/download-artifact@v4
         with:
-          path: tests/results
+          path: results
           pattern: results-*
           merge-multiple: true
 
@@ -173,9 +182,9 @@ jobs:
         id: generate
         run: |
           # Summary report for PR comment (high-signal only)
-          python3 tests/compare_results.py tests/results --summary-only --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-summary.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
+          python3 tests/compare_results.py results --summary-only --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-summary.md || echo "REGRESSION_DETECTED=1" >> $GITHUB_ENV
           # Full report for artifact (all details)
-          python3 tests/compare_results.py tests/results --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-full.md || true
+          python3 tests/compare_results.py results --base-sha "${{ env.BASE_SHA }}" --cand-sha "${{ env.CAND_SHA }}" > report-full.md || true
           if [ ! -s report-summary.md ]; then
             echo "Error: report-summary.md is empty"
             exit 1
@@ -188,7 +197,7 @@ jobs:
           name: benchmark-report-full
           path: |
             report-full.md
-            tests/results/*.json
+            results/*.json
 
       - name: PR Feedback
         if: always() && github.event_name == 'pull_request'
