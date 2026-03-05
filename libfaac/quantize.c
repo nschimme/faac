@@ -155,8 +155,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
       /* DEVIATION: Refined ATH scaling for low-bitrate VSS/VoIP */
       /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
-      if (is_low_bitrate && (freq_fac > 0.5)) { /* Above ~2.0kHz at 16kHz */
-          target *= 0.5; /* Reduce threshold (allowing more noise) to save bits */
+      if (is_low_bitrate && (freq_fac > 1.0)) { /* Above ~4.0kHz at 16kHz */
+          target *= 0.7; /* Reduce threshold (allowing more noise) to save bits */
       }
 
       bandqual[sfb] = target * quality;
@@ -189,13 +189,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     int i;
 
     /* Initialize last active scalefactor from previous groups if applicable */
+    /* ISO/IEC 14496-3 Section 4.6.2: DPCM chain starts from global_gain or last book */
     for (i = coderInfo->bandcnt - 1; i >= 0; i--) {
-        int book = coderInfo->book[i];
-        if (book && book != HCB_PNS) {
+        if (coderInfo->book[i]) {
             lastsf_active = coderInfo->sf[i];
             break;
         }
     }
+    if (lastsf_active < 0) lastsf_active = coderInfo->global_gain;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -211,8 +212,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
-          int book = coderInfo->book[coderInfo->bandcnt];
-          if (book && book != HCB_PNS)
+          if (coderInfo->book[coderInfo->bandcnt])
               lastsf_active = coderInfo->sf[coderInfo->bandcnt];
           coderInfo->bandcnt++;
           continue;
@@ -319,7 +319,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
-            if ((book != HCB_ZERO) && (book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+            if (book && (book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
             {
                 coder->global_gain = coder->sf[cnt];
                 break;
@@ -329,30 +329,23 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastsf = coder->global_gain;
         lastis = 0;
 
+        /* Unified DPCM Chain for ISO/IEC 14496-3 compliance */
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
             if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
             {
                 int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book && (book != HCB_PNS))
+            else if (book)
             {
                 int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;
             }

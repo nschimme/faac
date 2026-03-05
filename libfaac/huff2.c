@@ -538,79 +538,61 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     int diff, length;
     int lastsf;
     int lastis;
-    int lastpns;
     int initpns = 1;
 
     lastsf = coder->global_gain;
     lastis = 0;
-    lastpns = coder->global_gain - 90;
 
-    // fixme: move range check to quantizer
+    /* Unified bitstream writer for ISO/IEC 14496-3 compliance */
     for (cnt = 0; cnt < coder->bandcnt; cnt++)
     {
         int book = coder->book[cnt];
 
-        if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
+        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
         {
             diff = coder->sf[cnt] - lastis;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
+            if (diff > 60) diff = 60;
+            if (diff < -60) diff = -60;
             length = book12[60 + diff].len;
-
             bits += length;
-
             lastis += diff;
-
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
         else if (book == HCB_PNS)
         {
-            diff = coder->sf[cnt] - lastpns;
+            diff = coder->sf[cnt] - lastsf;
 
             if (initpns)
             {
                 initpns = 0;
-
                 length = 9;
                 bits += length;
-                lastpns += diff;
-
+                lastsf += diff;
                 if (write)
                     PutBit(stream, diff + 256, length);
                 continue;
             }
 
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
-
+            if (diff > 60) diff = 60;
+            if (diff < -60) diff = -60;
             length = book12[60 + diff].len;
             bits += length;
-            lastpns += diff;
-
+            lastsf += diff;
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
         else if (book)
         {
             diff = coder->sf[cnt] - lastsf;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
+            if (diff > 60) diff = 60;
+            if (diff < -60) diff = -60;
             length = book12[60 + diff].len;
-
             bits += length;
             lastsf += diff;
-
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
-
     }
     return bits;
 }
