@@ -40,6 +40,12 @@ extern "C" {
 #include <faaccfg.h>
 
 typedef struct {
+    /* quantizer specific config */
+    AACQuantCfg aacquantCfg;
+
+    /* FFT Tables */
+    FFT_Tables	fft_tables;
+
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -81,11 +87,6 @@ typedef struct {
 
     psymodel_t *psymodel;
 
-    /* quantizer specific config */
-    AACQuantCfg aacquantCfg;
-
-    /* FFT Tables */
-    FFT_Tables	fft_tables;
 } faacEncStruct;
 
 #ifdef __cplusplus
