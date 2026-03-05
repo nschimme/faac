@@ -2,7 +2,7 @@
 
 ## Tier 1: High Velocity (Minimal change, maximum quality lift)
 - [x] Optimize quantization bias: Implement adaptive rounding (MAGIC_NUMBER) based on tonality and frequency (Addresses "shimmering").
-- [ ] Refine ATH scaling for VoIP/VSS: Improve speech clarity in low-bitrate 16kHz modes. (Ranked higher due to VoIP MOS bottlenecks).
+- [x] Refine ATH scaling for VoIP/VSS: Improve speech clarity in low-bitrate 16kHz modes. (Ranked higher due to VoIP MOS bottlenecks).
 - [x] Tune transient detection sensitivity in `blockswitch.c`: Reduce pre-echo artifacts.
 
 ## Tier 2: Strategic Quality Shifts (Addressing low MOS plateaus)

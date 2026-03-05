@@ -191,12 +191,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     if (idx > 63) idx = 63;
 
     faac_real ath_floor = (faac_real)coderInfo->ath_lut[idx];
+    /* ath_lut provides amplitude. Square it to match the energy domain of bandqual. */
+    ath_floor *= ath_floor;
 
     /* DEVIATION: Refined ATH scaling for VoIP/VSS quality levels (< 0.6).
        Increasing the floor for low bitrates prevents bit-bloat on
        perceptually masked high-frequency components. */
     if (quality < 0.6) {
-        ath_floor *= 1.2;
+        ath_floor *= 1.44; /* 1.2^2 scaling */
     }
 
     if (bqual < ath_floor) {

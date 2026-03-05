@@ -43,10 +43,10 @@ Analysis of high-performance encoders (FDK-AAC, Apple AAC, Fraunhofer).
 ## 4. Post-Implementation Benchmark Analysis
 Analysis of the current results (Avg MOS Delta: +0.023) reveals specific areas where FAAC still struggles:
 
-### Low MOS in VoIP (16kbps) & VSS (40kbps)
+### Low MOS in VoIP (16kbps) & VSS (40kbps) [PARTIALLY ADDRESSED]
 - **Observation**: VoIP samples average ~3.1 MOS, with some "Noise" and "Echo" samples dipping below 3.0.
-- **Theory (Bit Starvation)**: FAAC lacks a **Bit Reservoir**. At low bitrates, complex frames are forced into high quantization error because they cannot "borrow" bits from previous silent or simple frames.
-- **Theory (ATH Misalignment)**: The Absolute Threshold of Hearing (ATH) used in the psychoacoustic model is likely tuned for 44.1/48kHz. In 16kHz VoIP modes, it may be too aggressive, discarding low-level speech components that are perceptually significant at that bandwidth.
+- **Action**: Implemented a frequency-dependent **Absolute Threshold of Hearing (ATH)** floor. This prevents the encoder from wasting bits on high-frequency noise that is below the human hearing threshold, particularly in low-bitrate 16kHz modes.
+- **Theory (Bit Starvation)**: FAAC still lacks a **Bit Reservoir**. At low bitrates, complex frames are forced into high quantization error because they cannot "borrow" bits from previous silent or simple frames. This remains a major Tier 2 bottleneck.
 
 ### Complexity/Quality Plateaus in Music (64kbps)
 - **Observation**: Certain speech-heavy music samples (e.g., German male speech) plateau at ~3.3 MOS even at 64kbps.
