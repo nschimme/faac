@@ -193,11 +193,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        /* DEVIATION: Lower gain threshold for short windows to better preserve
-           speech transients and reduce pre-echo on percussive hits.
-           ISO/IEC 14496-3 Section 4.6.8.2 suggests a threshold but modern
-           encoders use adaptive thresholds for better MOS. */
-        faac_real threshold = (blockType == ONLY_SHORT_WINDOW) ? 1.2 : DEF_TNS_GAIN_THRESH;
+        /* DEVIATION: Use a conservative threshold for TNS activation to balance
+           perceptual gains against bit overhead and computational cost.
+           Modern encoders often use ~1.4 for long blocks. */
+        faac_real threshold = DEF_TNS_GAIN_THRESH;
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
@@ -288,58 +287,34 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /********************************************************/
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
 {
-    int i,j,k=0;
+    int i,j;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
-    faac_real* temp;
+    faac_real temp[BLOCK_LEN_LONG];
 
     if (length <= 0)
         return;
+    if (length > BLOCK_LEN_LONG)
+        length = BLOCK_LEN_LONG;
 
-    temp = (faac_real *)AllocMemory(length * sizeof (faac_real));
+    memcpy(temp, spec, length * sizeof(faac_real));
 
     /* Determine loop parameters for given direction */
     if (filter->direction) {
-
-        /* Startup, initial state is zero */
-        temp[length-1]=spec[length-1];
-        for (i=length-2;i>(length-1-order);i--) {
-            temp[i]=spec[i];
-            k++;
-            for (j=1;j<=k;j++) {
-                spec[i]+=temp[i+j]*a[j];
+        for (i=length-1; i>=0; i--) {
+            int k = min(order, length - 1 - i);
+            for (j=1; j<=k; j++) {
+                spec[i] += temp[i+j] * a[j];
             }
         }
-
-        /* Now filter the rest */
-        for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
-        }
-
-
     } else {
-
-        /* Startup, initial state is zero */
-        temp[0]=spec[0];
-        for (i=1;i<order;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=i;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
-        }
-
-        /* Now filter the rest */
-        for (i=order;i<length;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
+        for (i=0; i<length; i++) {
+            int k = min(order, i);
+            for (j=1; j<=k; j++) {
+                spec[i] += temp[i-j] * a[j];
             }
         }
     }
-    if (temp) FreeMemory(temp);
 }
 
 
@@ -378,14 +353,22 @@ static void QuantizeReflectionCoeffs(int fOrder,
 {
     faac_real iqfac,iqfac_m;
     int i;
+    int maxIndex = (1 << (coeffRes - 1)) - 1;
+    int minIndex = -(1 << (coeffRes - 1));
 
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
 
     /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+        int index = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
+
+        /* Clamp to range to prevent bitstream corruption and decoder instability */
+        if (index > maxIndex) index = maxIndex;
+        if (index < minIndex) index = minIndex;
+
+        indexArray[i] = index;
+        kArray[i] = FAAC_SIN((faac_real)index/((index>=0)?iqfac:iqfac_m));
     }
 }
 
@@ -402,11 +385,18 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
     int order,index;
 
     for (order=0;order<=maxOrder;order++) {
-        rArray[order]=0.0;
-        for (index=0;index<dataSize;index++) {
-            rArray[order]+=data[index]*data[index+order];
+        faac_real sum = 0.0;
+        int limit = dataSize - order;
+        for (index=0;index<=limit-4;index+=4) {
+            sum += data[index]*data[index+order];
+            sum += data[index+1]*data[index+1+order];
+            sum += data[index+2]*data[index+2+order];
+            sum += data[index+3]*data[index+3+order];
         }
-        dataSize--;
+        for (;index<limit;index++) {
+            sum += data[index]*data[index+order];
+        }
+        rArray[order]=sum;
     }
 }
 
