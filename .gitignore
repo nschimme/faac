@@ -41,6 +41,5 @@ Makefile*
 /.venv/
 /results/
 /build_*/
-/faac-benchmark/
 /faac_base
 /libfaac_base.so

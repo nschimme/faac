@@ -34,11 +34,6 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannels);
 static int WriteADTSHeader(faacEncStruct* hEncoder,
                            BitStream *bitStream,
                            int writeFlag);
@@ -147,6 +142,12 @@ static int WriteFAACStr(BitStream *bitStream, char *version, int write)
 }
 #endif
 
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannel);
+
 int WriteBitstream(faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
@@ -211,9 +212,9 @@ int WriteBitstream(faacEncStruct* hEncoder,
     }
 
     /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate && hEncoder->sampleRate)
     {
-        int avgBits = numChannel * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int avgBits = (int)((double)numChannel * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
         int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
         if (currentReservoir > hEncoder->maxBitReservoir) {
             numFillBits = currentReservoir - hEncoder->maxBitReservoir;
@@ -250,11 +251,11 @@ int WriteBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannel)
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannel)
 {
     int channel;
     int bits = 0;
@@ -310,9 +311,9 @@ static int CountBitstream(faacEncStruct* hEncoder,
     }
 
     /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate && hEncoder->sampleRate)
     {
-        int avgBits = numChannel * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int avgBits = (int)((double)numChannel * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
         int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
         if (currentReservoir > hEncoder->maxBitReservoir) {
             numFillBits = currentReservoir - hEncoder->maxBitReservoir;
@@ -881,7 +882,9 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    SetMemory(bitStream->data, 0, size);
+    if (bitStream->data) {
+        SetMemory(bitStream->data, 0, size);
+    }
 
     return bitStream;
 }
@@ -906,14 +909,16 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+    if (bitStream->data) {
+        idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+        numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
-    if (numUsed == 0)
-        bitStream->data[idx] = 0;
+        if (numUsed == 0)
+            bitStream->data[idx] = 0;
 #endif
-    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+            (BYTE_NUMBIT-numUsed-numBit);
+    }
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 

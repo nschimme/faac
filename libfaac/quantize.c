@@ -87,13 +87,18 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
   faac_real ath_adj = (quality < 0.6) ? 1.05 : 1.0;
 
-  for (win = 0; win < gsize; win++)
-  {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
-      {
-          totenrg += xr[cnt] * xr[cnt];
-      }
+  if (!coderInfo->energies_valid) {
+    for (win = 0; win < gsize; win++)
+    {
+        xr = xr0 + win * BLOCK_LEN_SHORT;
+        for (cnt = 0; cnt < total_len; cnt++)
+        {
+            totenrg += xr[cnt] * xr[cnt];
+        }
+    }
+    coderInfo->total_energies[gnum] = totenrg;
+  } else {
+    totenrg = coderInfo->total_energies[gnum];
   }
   enrgcnt = gsize * total_len;
 
@@ -117,42 +122,53 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
     faac_real avge, maxe;
     faac_real target;
+    int band_idx = gnum * coderInfo->sfbn + sfb;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
+    if (!coderInfo->energies_valid) {
+        avge = 0.0;
+        maxe = 0.0;
+        for (win = 0; win < gsize; win++)
         {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
+            xr = xr0 + win * BLOCK_LEN_SHORT + start;
+            int n = end - start;
+            for (cnt = 0; cnt < n; cnt++)
+            {
+                faac_real val = xr[cnt];
+                faac_real e = val * val;
+                avge += e;
+                if (maxe < e)
+                    maxe = e;
+            }
         }
-    }
-    bandenrg[sfb] = avge;
-    maxe *= gsize;
+        bandenrg[sfb] = avge;
+        maxe *= gsize;
+        coderInfo->band_energies[band_idx] = avge;
+        coderInfo->max_energies[band_idx] = maxe;
 
 #define NOISETONE 0.2
-    avgenrg = (totenrg / last) * (end - start);
+        avgenrg = (totenrg / last) * (end - start);
 
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-        target *= 1.5;
+        if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+            target *= 1.5;
 
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+        target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-  /* Refined ATH Scaling: Boost masking thresholds for low-quality settings
-     to reduce spectral holes in low-bitrate scenarios (VoIP/VSS). */
-    target *= ath_adj;
+        /* Refined ATH Scaling: Boost masking thresholds for low-quality settings.
+           DEVIATION: Custom scaling used to reduce spectral holes and improve MOS in
+           low-bitrate scenarios (VoIP/VSS) where standard ATH would be too aggressive. */
+        target *= ath_adj;
+        coderInfo->band_targets[band_idx] = target;
+    } else {
+        avge = coderInfo->band_energies[band_idx];
+        bandenrg[sfb] = avge;
+        target = coderInfo->band_targets[band_idx];
+    }
 
     bandqual[sfb] = target * quality;
   }
@@ -226,6 +242,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
     int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
     faac_real freq_factor = (faac_real)aacquantCfg->sample_rate / (4 * blk_len);
+    /* DEVIATION: Replaced dynamic alloca with fixed-size stack array.
+       WHY: Guarantees thread-safety and prevents stack exhaustion in high-channel-count
+       or deep-call-stack environments while remaining well within AAC's 1024-coefficient limit. */
+    int xitab[1024];
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -234,7 +254,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real rmsx;
       faac_real etot;
       faac_real magic = MAGIC_NUMBER;
-      int *xitab;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -263,8 +282,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          /* ISO/IEC 14496-3: PNS energy assignment.
-             Use direct assignment to avoid cumulative errors. */
+          /* ISO/IEC 14496-3 Section 4.6.12: PNS energy assignment.
+             DEVIATION: Use direct assignment (=) instead of legacy cumulative updates (+=).
+             WHY: Ensures state integrity during iterative 2-pass rate control, preventing
+             energy level "drift" between quantization attempts. */
           coderInfo->sf[coderInfo->bandcnt] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
@@ -278,12 +299,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      /* Performance Optimization: Allocate xitab once per band using alloca. */
-      xitab = (int *)alloca(gsize * n * sizeof(int));
       xi = xitab;
 
-      /* Adaptive Quantization Rounding: Reduce metallic ringing for high frequencies
-         by lowering the rounding bias above 10kHz. */
+      /* Adaptive Quantization Rounding: Reduce metallic ringing for high frequencies.
+         DEVIATION: Magic number reduced from 0.4054 to 0.30 for frequencies > 10kHz.
+         This preserves high-frequency texture and air, which FAAC's legacy fixed rounding
+         tended to collapse into audible "shimmer". */
       if ((start + end) * freq_factor > 10000) magic = 0.30;
 
       if (sfacfix <= 0.0)
@@ -301,7 +322,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       huffbook(coderInfo, xitab, gsize * n);
       /* ISO/IEC 14496-3 Section 4.6.2: Scalefactor encoding.
-         Set scalefactor directly to avoid cumulative errors in two-pass quantization. */
+         DEVIATION: Use direct assignment (=) instead of legacy cumulative updates (+=).
+         WHY: Critical for iterative rate control stability; ensures that re-running
+         the quantization pass for the same frame results in a predictable bit budget. */
       coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
@@ -351,6 +374,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         if (coder->global_gain > 255) coder->global_gain = 255;
 
         clamp_sf(coder, coder->bandcnt);
+        coder->energies_valid = 1;
         return 1;
     }
     return 0;
