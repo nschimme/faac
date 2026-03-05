@@ -43,3 +43,15 @@ Makefile*
 /build_*/
 /faac_base
 /libfaac_base.so
+/bin/
+/visqol_src/
+/visqol_build*.log
+/test.aac
+/test2.aac
+/test_long.aac
+/test.wav
+/test_long.wav
+/debug_log.txt
+/j
+/jules_test.aac
+/jules_final.aac

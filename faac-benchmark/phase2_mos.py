@@ -23,8 +23,8 @@ except ImportError:
     }
 
 # Update these paths as needed for your environment
-VISQOL_BIN = os.environ.get("VISQOL_BIN", "/app/visqol/bazel-bin/visqol")
-MODEL_DIR = os.environ.get("VISQOL_MODEL_DIR", "/app/visqol/model")
+VISQOL_BIN = os.environ.get("VISQOL_BIN", "/app/visqol_src/bazel-bin/visqol")
+MODEL_DIR = os.environ.get("VISQOL_MODEL_DIR", "/app/visqol_src/model")
 
 def compute_single_mos(key, entry, aac_dir, external_data_dir, results_path):
     scenario_name = entry.get("scenario")
