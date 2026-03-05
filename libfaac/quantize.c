@@ -162,8 +162,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
     if (quality < 0.6) {
         faac_real freq_fac = (faac_real)(start + end) / last;
-        if (freq_fac > 0.7) { /* Above ~2.8kHz at 16kHz */
-            target *= 1.5; /* Lift masking threshold to save bits for critical mid-range */
+        if (freq_fac > 0.5) { /* Above ~2.0kHz at 16kHz */
+            target *= 0.5; /* Reduce threshold (allowing more noise) to save bits */
         }
     }
 

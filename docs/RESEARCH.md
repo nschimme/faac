@@ -21,22 +21,25 @@ An audit of developer forums and the FAAC archive reveals several persistent qua
 
 ---
 
-## 2. Modern AAC-LC Architectural "Secrets"
+## 2. Modern AAC-LC Architectural "Secrets" vs. FAAC Heuristics
 
-Analysis of modern high-performance encoders (FDK-AAC, Apple AAC) identifies several key logic patterns that provide high quality gains with minimal code complexity.
+Analysis of modern high-performance encoders (FDK-AAC, Apple AAC, Fraunhofer) identifies several key logic patterns that provide high quality gains. However, many of these are too complex for FAAC's minimal-LoC architecture.
 
-### A. Adaptive Quantization Rounding (AQR)
-*   **Secret:** Instead of a static magic number (0.4054), modern encoders use tonality-aware rounding. By reducing the rounding bias (e.g., to ~0.30) for high-frequency or noisy bands, the encoder can preserve more detail without increasing the bit budget.
+### A. Rate-Distortion Optimization (RDO)
+*   **Modern Secret:** Modern encoders perform a search (often via Trellis or Lagrangian multipliers) to find the combination of scalefactors and Huffman codebooks that minimize distortion for a given bit count.
+*   **FAAC Heuristic (Scalefactor Capping):** FAAC uses a simple one-pass quantizer. We achieve a similar benefit (preventing metallic spectral holes) by capping the delta between adjacent scalefactors. This provides 80% of the benefit of RDO with 0.1% of the code complexity.
+
+### B. Spectral Band Replication (SBR) & Noise Filling
+*   **Modern Secret:** HE-AAC uses SBR to reconstruct high frequencies. Modern LC encoders also use "Noise Filling" to fill spectral holes with controlled noise rather than allowing periodic quantization artifacts (metallic ringing).
+*   **FAAC Heuristic (ATH Scaling Refinement):** Instead of complex noise filling, we refine the Absolute Threshold of Hearing (ATH) to "lift" masking thresholds in the high frequencies at low bitrates. This forces the encoder to prioritize bits on the critical 2-4kHz range, preventing the bit starvation that causes metallic artifacts in the first place.
+
+### C. Adaptive Quantization Rounding (AQR)
+*   **Modern Secret:** Tonality-aware rounding. By reducing rounding bias (e.g., to ~0.30) for high-frequency or noisy bands, encoders preserve more detail.
 *   **FAAC Status:** Recently implemented AQR in `libfaac/quantize.c`.
 
-### B. Refined ATH Scaling
-*   **Secret:** The Absolute Threshold of Hearing (ATH) should not be a static curve. Modern encoders scale the ATH based on the target bitrate. At 40 kbps (VSS), the ATH is "lifted" more aggressively in the high frequencies to prevent the encoder from wasting bits on inaudible details, allowing it to focus on the 2kHz-8kHz range where human hearing is most sensitive.
-
-### C. Scalefactor Capping
-*   **Secret:** Preventing extreme jumps in scalefactors (the "quantization step") between adjacent bands. Large jumps create "spectral holes" that the ear perceives as metallic artifacts. Capping the delta between scalefactors ensures a smoother spectral envelope.
-
 ### D. Responsive TNS (Temporal Noise Shaping)
-*   **Secret:** Effective TNS can mask pre-echo even when block switching is suboptimal. Modern encoders use TNS aggressively on both long and short windows to "shape" quantization noise into the temporal envelope of the signal.
+*   **Modern Secret:** Effective TNS can mask pre-echo even when block switching is suboptimal. Modern encoders use TNS aggressively on both long and short windows.
+*   **FAAC Status:** TNS is implemented for long windows. Expanding to short windows (Tier 2) is a key roadmap item.
 
 ---
 
