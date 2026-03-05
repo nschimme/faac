@@ -45,7 +45,7 @@ Analysis of modern high-performance encoders (FDK-AAC, Apple AAC) identifies sev
 To solve the metallic ringing at 40 kbps/16kHz (VSS) with the smallest possible LoC increase, the following strategy is recommended:
 
 1.  **Refined ATH Scaling:** Implement a bitrate-aware ATH adjustment in `bmask`. This is a ~5-10 line change that provides significant MOS lift by focusing bits on the most critical frequency ranges.
-2.  **Scalefactor Capping:** Implement a simple cap on scalefactor deltas in `qlevel`. This prevents the "metallic" artifacts caused by extreme quantization deltas.
+2.  **Scalefactor Capping:** Implement a simple cap on scalefactor deltas in `qlevel`. This prevents the "metallic" artifacts caused by extreme quantization deltas. While modern encoders like FDK-AAC or Apple AAC use complex Rate-Distortion Optimization (RDO) or Bit Reservoir management, these methods require thousands of LoC. Capping provides a high MOS gain to LoC ratio by addressing the root cause of metallic ringing (spectral holes from extreme quantization) at the source.
 3.  **Transient Detection Tuning:** Lower the energy change threshold in `PsyCheckShort` for low-bitrate scenarios to trigger short windows more reliably.
 
 ---

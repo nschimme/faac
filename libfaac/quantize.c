@@ -241,8 +241,19 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       /* We must cap sfac *before* quantization to avoid gain mismatch */
       {
           int cur_sf = SF_OFFSET - sfac;
-          if (coderInfo->bandcnt > 0) {
-              int lastsf = coderInfo->sf[coderInfo->bandcnt - 1];
+          int lastsf = -1;
+          int i;
+
+          /* Find last active scalefactor to cap against */
+          for (i = coderInfo->bandcnt - 1; i >= 0; i--) {
+              int book = coderInfo->book[i];
+              if (book && book != HCB_PNS) {
+                  lastsf = coderInfo->sf[i];
+                  break;
+              }
+          }
+
+          if (lastsf >= 0) {
               if (cur_sf > (lastsf + 60)) cur_sf = lastsf + 60;
               if (cur_sf < (lastsf - 60)) cur_sf = lastsf - 60;
           }
@@ -269,8 +280,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               xi += end;
           }
       }
+
+      /* Store result in sf[] before huffbook increments bandcnt */
+      coderInfo->sf[coderInfo->bandcnt] = SF_OFFSET - sfac;
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
+      coderInfo->bandcnt++;
     }
 }
 

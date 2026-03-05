@@ -15,7 +15,7 @@ Tier 1: High Velocity (Minimal change, maximum quality lift)
 
 Tier 2: Standard Alignment (Improving compliance for stability)
 - [ ] Expand TNS to short windows in `TnsEncode` (libfaac/tns.c) for better pre-echo control.
-- [ ] Fix scalefactor range check (-60 to 60) in bitstream encoding.
+- [x] Fix scalefactor range check (-60 to 60) in bitstream encoding.
 
 Tier 3: Strategic Shifts (Larger changes like bit-reservoir or TNS expansion)
 - [ ] Add Bit Reservoir control (requires significant bitstream and rate control changes).
