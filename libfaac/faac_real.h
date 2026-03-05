@@ -25,6 +25,7 @@
 #endif
 
 #include <math.h>
+#include <stdint.h>
 
 #ifdef FAAC_PRECISION_SINGLE
 typedef float faac_real;

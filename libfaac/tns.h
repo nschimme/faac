@@ -36,11 +36,13 @@ Copyright (c) 1997.
 extern "C" {
 #endif /* __cplusplus */
 
+struct faacEncStruct;
 
-void TnsInit(faacEncStruct* hEncoder);
-void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
+void TnsInit(struct faacEncStruct* hEncoder);
+void TnsEnd(struct faacEncStruct* hEncoder);
+void TnsEncode(struct faacEncStruct* hEncoder, TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
                int* sfbOffsetTable,faac_real* spec);
-void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
+void TnsEncodeFilterOnly(struct faacEncStruct* hEncoder, TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec);
 
 #ifdef __cplusplus
