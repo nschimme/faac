@@ -106,7 +106,9 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          /* ISO/IEC 14496-3: Adaptive block switching.
+             Lowered threshold (3.0 -> 2.2) to better capture transients in speech. */
+          if ((volchg / toteng * quality) > 2.2)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;

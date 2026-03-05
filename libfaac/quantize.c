@@ -158,11 +158,55 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   /* Refined ATH Scaling: Boost masking thresholds for low-quality settings
      to reduce spectral holes in low-bitrate scenarios (VoIP/VSS). */
   if (quality < 0.6) {
-      target *= 1.2;
+      target *= 1.05;
   }
 
     bandqual[sfb] = target * quality;
   }
+}
+
+/* ISO/IEC 14496-3 Section 4.6.2: Scalefactor differential clamping.
+   Ensures diffs are in [-60, 60] range across spectral, intensity, and PNS chains. */
+static void clamp_sf(CoderInfo *coder, int bandcnt) {
+    int cnt, lastsf, lastis, lastpns;
+    int initpns = 1;
+
+    lastsf = coder->global_gain;
+    lastis = 0;
+    lastpns = coder->global_gain - 90;
+
+    for (cnt = 0; cnt < bandcnt; cnt++) {
+        int book = coder->book[cnt];
+        if (!book) continue;
+
+        if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
+            int diff = coder->sf[cnt] - lastis;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            lastis += diff;
+            coder->sf[cnt] = lastis;
+        } else if (book == HCB_PNS) {
+            int diff = coder->sf[cnt] - lastpns;
+            if (initpns) {
+                initpns = 0;
+                /* ISO/IEC 14496-3: First PNS band uses 9-bit direct encoding (diff + 256).
+                   Ensure it stays in range [-256, 255] to avoid state desync. */
+                if (diff < -256) diff = -256;
+                if (diff > 255) diff = 255;
+            } else {
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
+            }
+            lastpns += diff;
+            coder->sf[cnt] = lastpns;
+        } else {
+            int diff = coder->sf[cnt] - lastsf;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            lastsf += diff;
+            coder->sf[cnt] = lastsf;
+        }
+    }
 }
 
 enum {MAXSHORTBAND = 36};
@@ -222,7 +266,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
+          /* ISO/IEC 14496-3: PNS energy assignment.
+             Use direct assignment to avoid cumulative errors. */
+          coderInfo->sf[coderInfo->bandcnt] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
@@ -283,9 +329,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 #endif
 
     {
-        int lastis;
-        int lastsf;
-
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
@@ -308,37 +351,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             }
         }
 
-        lastsf = coder->global_gain;
-        lastis = 0;
-        // fixme: move SF range check to quantizer
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-            {
-                int diff = coder->sf[cnt] - lastis;
+        /* ISO/IEC 14496-3 Section 4.6.2: global_gain is an 8-bit unsigned integer. */
+        if (coder->global_gain < 0) coder->global_gain = 0;
+        if (coder->global_gain > 255) coder->global_gain = 255;
 
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_ESC)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
-        }
+        clamp_sf(coder, coder->bandcnt);
         return 1;
     }
     return 0;
