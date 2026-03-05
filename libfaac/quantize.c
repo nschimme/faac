@@ -290,6 +290,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         int lastis;
         int lastsf;
         int lastpns;
+        int initpns;
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
@@ -316,7 +317,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastsf = coder->global_gain;
         lastis = 0;
         lastpns = coder->global_gain - 90;
-        int initpns = 1;
+        initpns = 1;
 
         /* ISO/IEC 14496-3 Section 4.6.2.3.2: Scalefactors are Huffman coded
            relative to the previous scalefactor using book 12, which covers
