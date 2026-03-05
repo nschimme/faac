@@ -104,7 +104,9 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          /* DEVIATION: Adaptive transient threshold for better low-bitrate response */
+          faac_real switch_thr = (quality < 0.6) ? 2.2 : 3.0;
+          if ((volchg / toteng * quality) > switch_thr)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;

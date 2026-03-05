@@ -158,6 +158,15 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    /* DEVIATION: Refined ATH scaling for low-bitrate VSS/VoIP */
+    /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
+    if (quality < 0.6) {
+        faac_real freq_fac = (faac_real)(start + end) / last;
+        if (freq_fac > 0.7) { /* Above ~2.8kHz at 16kHz */
+            target *= 1.5; /* Lift masking threshold to save bits for critical mid-range */
+        }
+    }
+
     bandqual[sfb] = target * quality;
   }
 }
@@ -247,7 +256,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+
+      /* DEVIATION: Scalefactor Capping to prevent metallic spectral holes */
+      /* ISO/IEC 14496-3 Section 4.6.2: Smooth scalefactor deltas */
+      sfac = SF_OFFSET - sfac;
+      if (coderInfo->bandcnt > 0) {
+          int lastsf = coderInfo->sf[coderInfo->bandcnt - 1];
+          if (sfac > (lastsf + 60)) sfac = lastsf + 60;
+          if (sfac < (lastsf - 60)) sfac = lastsf - 60;
+      }
+      coderInfo->sf[coderInfo->bandcnt++] = sfac;
     }
 }
 
@@ -285,9 +303,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
-            if (!book)
-                continue;
-            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+            if ((book != HCB_ZERO) && (book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
             {
                 coder->global_gain = coder->sf[cnt];
                 break;
@@ -296,7 +312,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
+
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -312,7 +328,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book && (book != HCB_PNS))
             {
                 int diff = coder->sf[cnt] - lastsf;
 
