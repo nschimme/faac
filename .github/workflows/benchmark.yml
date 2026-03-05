@@ -29,6 +29,17 @@ jobs:
       tag: ${{ steps.get-hash.outputs.tag }}
       image: ghcr.io/${{ github.repository_owner }}/faac-visqol
     steps:
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -67,6 +78,15 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/faac-visqol:${{ steps.get-hash.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Purge Old Hash Images
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: faac-visqol
+          cut-off: 7d
+          keep-at-least: 5
+          account-type: personal
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   benchmark:
     name: ${{ matrix.arch }} / ${{ matrix.precision }}
