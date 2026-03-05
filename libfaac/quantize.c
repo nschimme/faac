@@ -34,15 +34,15 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+/* ISO/IEC 14496-3 Section 4.6.3: Quantization */
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -50,6 +50,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         faac_real tmp = FAAC_FABS(val);
 
         tmp *= sfacfix;
+        /* x_quant = int( |x| * 2^(0.25 * (sf - global_gain)) + magic ) */
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
@@ -239,10 +240,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          /* DEVIATION: Adaptive quantization rounding used to preserve high-frequency transients.
+             Lower rounding bias (~0.30) for high-frequency bands (start > 512) or short windows
+             reduces "metallic" shimmering and over-quantization artifacts. */
+          faac_real magic = MAGIC_NUMBER;
+          if (coderInfo->block_type == ONLY_SHORT_WINDOW || start > (BLOCK_LEN_LONG / 2)) {
+              magic = 0.30;
+          }
+
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }

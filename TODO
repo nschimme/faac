@@ -1,9 +1,22 @@
-- fix scalefactor encoding check (-60 .. 60)
-- test DRM
-- optimize quantization bias
-- optimize codebook list (section_data)
-- optimize CPE windows grouping
-- Add bit reservoir control
-- Add resampler and downmixer (hans-juergen, Oct 17, 2004)
-- Add HE AAC (hans-juergen, Oct 17, 2004)
-- Test TNS(arcen, Apr 8th, 2012)
+# FAAC TODO List (Stack-Ranked by MOS/LoC Ratio)
+
+## Tier 1: High Velocity (Minimal change, maximum quality lift)
+- [x] Optimize quantization bias: Implement adaptive rounding (MAGIC_NUMBER) based on tonality and frequency (Addresses "shimmering").
+- [ ] Refine ATH scaling for VoIP/VSS: Improve speech clarity in low-bitrate 16kHz modes.
+- [x] Tune transient detection sensitivity in `blockswitch.c`: Reduce pre-echo artifacts.
+
+## Tier 2: Standard Alignment & Efficiency
+- [ ] Implement MDCT-based Psychoacoustic Model (PAM): Reduce CPU by 30-40% and improve masking alignment.
+- [ ] Fix scalefactor encoding check (-60 .. 60).
+- [ ] Optimize CPE windows grouping: Improve efficiency for stereo signals.
+- [ ] Add stereo mode decision hysteresis: Stabilize stereo image in complex soundstages.
+
+## Tier 3: Strategic Shifts
+- [ ] Add bit reservoir control: Better handling of transients and complex passages.
+- [ ] Test and optimize TNS (Temporal Noise Shaping): Improve quality for short windows.
+- [ ] Add resampler and downmixer.
+- [ ] Add HE-AAC support.
+
+## Maintenance & Legacy
+- [ ] Test DRM support.
+- [ ] Optimize codebook list (section_data).
