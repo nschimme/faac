@@ -1166,6 +1166,7 @@ int main(int argc, char *argv[])
                 }
 
                 fflush(stderr);
+
 #ifdef _WIN32
                 if (frames != 0)
                 {

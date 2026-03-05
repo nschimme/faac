@@ -1,0 +1,18 @@
+{
+  "sine.wav": {
+    "time": 11.17047643661499,
+    "md5": "89281130eee03546206bc82a3b9c51bb"
+  },
+  "sweep.wav": {
+    "time": 7.3685009479522705,
+    "md5": "0bfcca894d7941a92213ea9a7d187fad"
+  },
+  "noise.wav": {
+    "time": 12.588382720947266,
+    "md5": "7a5d63dd683d3b9106ae13dc2fb4adfa"
+  },
+  "silence.wav": {
+    "time": 5.439316511154175,
+    "md5": "2edb8ed1a2616b2768142f7670ed31e1"
+  }
+}

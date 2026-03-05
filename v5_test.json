@@ -1,0 +1,180 @@
+{
+  "matrix": {
+    "sine_16000_q10": {
+      "aac_size": 16021,
+      "mos": null
+    },
+    "sweep_16000_q10": {
+      "aac_size": 83207,
+      "mos": null
+    },
+    "noise_16000_q10": {
+      "aac_size": 20387,
+      "mos": null
+    },
+    "harpsichord_16000_q10": {
+      "aac_size": 139424,
+      "mos": null
+    },
+    "castanets_16000_q10": {
+      "aac_size": 19027,
+      "mos": null
+    },
+    "applause_16000_q10": {
+      "aac_size": 21203,
+      "mos": null
+    },
+    "silence_16000_q10": {
+      "aac_size": 10357,
+      "mos": null
+    },
+    "sine_16000_q100": {
+      "aac_size": 16070,
+      "mos": null
+    },
+    "sweep_16000_q100": {
+      "aac_size": 95179,
+      "mos": null
+    },
+    "noise_16000_q100": {
+      "aac_size": 20387,
+      "mos": null
+    },
+    "harpsichord_16000_q100": {
+      "aac_size": 195970,
+      "mos": null
+    },
+    "castanets_16000_q100": {
+      "aac_size": 19031,
+      "mos": null
+    },
+    "applause_16000_q100": {
+      "aac_size": 21599,
+      "mos": null
+    },
+    "silence_16000_q100": {
+      "aac_size": 10357,
+      "mos": null
+    },
+    "sine_16000_q250": {
+      "aac_size": 16072,
+      "mos": null
+    },
+    "sweep_16000_q250": {
+      "aac_size": 96866,
+      "mos": null
+    },
+    "noise_16000_q250": {
+      "aac_size": 20387,
+      "mos": null
+    },
+    "harpsichord_16000_q250": {
+      "aac_size": 221091,
+      "mos": null
+    },
+    "castanets_16000_q250": {
+      "aac_size": 19025,
+      "mos": null
+    },
+    "applause_16000_q250": {
+      "aac_size": 21602,
+      "mos": null
+    },
+    "silence_16000_q250": {
+      "aac_size": 10357,
+      "mos": null
+    },
+    "sine_48000_q10": {
+      "aac_size": 116678,
+      "mos": null
+    },
+    "sweep_48000_q10": {
+      "aac_size": 233234,
+      "mos": null
+    },
+    "noise_48000_q10": {
+      "aac_size": 67419,
+      "mos": null
+    },
+    "harpsichord_48000_q10": {
+      "aac_size": 184920,
+      "mos": null
+    },
+    "castanets_48000_q10": {
+      "aac_size": 45074,
+      "mos": null
+    },
+    "applause_48000_q10": {
+      "aac_size": 62914,
+      "mos": null
+    },
+    "silence_48000_q10": {
+      "aac_size": 32399,
+      "mos": null
+    },
+    "sine_48000_q100": {
+      "aac_size": 110151,
+      "mos": null
+    },
+    "sweep_48000_q100": {
+      "aac_size": 257559,
+      "mos": null
+    },
+    "noise_48000_q100": {
+      "aac_size": 67419,
+      "mos": null
+    },
+    "harpsichord_48000_q100": {
+      "aac_size": 282747,
+      "mos": null
+    },
+    "castanets_48000_q100": {
+      "aac_size": 45094,
+      "mos": null
+    },
+    "applause_48000_q100": {
+      "aac_size": 56784,
+      "mos": null
+    },
+    "silence_48000_q100": {
+      "aac_size": 32399,
+      "mos": null
+    },
+    "sine_48000_q250": {
+      "aac_size": 119083,
+      "mos": null
+    },
+    "sweep_48000_q250": {
+      "aac_size": 257579,
+      "mos": null
+    },
+    "noise_48000_q250": {
+      "aac_size": 67456,
+      "mos": null
+    },
+    "harpsichord_48000_q250": {
+      "aac_size": 338956,
+      "mos": null
+    },
+    "castanets_48000_q250": {
+      "aac_size": 45108,
+      "mos": null
+    },
+    "applause_48000_q250": {
+      "aac_size": 53633,
+      "mos": null
+    },
+    "silence_48000_q250": {
+      "aac_size": 32399,
+      "mos": null
+    }
+  },
+  "throughput": {
+    "sine_16000": 0.3759195804595947,
+    "noise_16000": 1.0342621803283691,
+    "sine_48000": 1.907050371170044,
+    "noise_48000": 1.9748749732971191
+  },
+  "lib_size": 147736,
+  "bin_size": 95384
+}
