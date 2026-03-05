@@ -72,19 +72,19 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real ath_adj)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
-  int last;
+  const int last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
   faac_real avgenrg;
-  faac_real powm = 0.4;
+  const faac_real powm = 0.4;
   faac_real totenrg = 0.0;
-  int gsize = coderInfo->groups.len[gnum];
+  const int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
-  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  const int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  const int enrgcnt = gsize * total_len;
 
   for (win = 0; win < gsize; win++)
   {
@@ -94,7 +94,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
 
   if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
@@ -106,6 +105,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
       return;
   }
+
+  const faac_real avgenrg_base = totenrg / last;
+  const faac_real block_gain = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 1.5 : 1.0;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
@@ -120,7 +122,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
+        const int n = end - start;
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
@@ -133,35 +135,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
+    avgenrg = avgenrg_base * (end - start);
+
 #define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-
-        target *= 1.5;
-    }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    target *= block_gain;
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* DEVIATION: Refined ATH scaling for VoIP quality.
-       At low bitrates (low quality settings), we increase masking thresholds
-       to prioritize critical bands, reducing "spectral holes" in high-mids. */
-    if (quality < 0.6)
-        target *= 1.2;
+    /* Apply Ath adjustment (hoisted) */
+    target *= ath_adj;
 
     bandqual[sfb] = target * quality;
   }
@@ -185,11 +169,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #else
     static const faac_real sfstep = 20 / 1.50515;
 #endif
-    int gsize = coderInfo->groups.len[gnum];
+    const int gsize = coderInfo->groups.len[gnum];
 #ifndef DRM
-    faac_real pnsthr = 0.1 * pnslevel;
+    const faac_real pnsthr = 0.1 * pnslevel;
 #endif
 
+    const int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    const faac_real freq_factor = (faac_real)sample_rate / (4.0 * blk_len);
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
       faac_real sfacfix;
@@ -198,10 +184,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real etot;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
-      int start, end;
+      const int start = coderInfo->sfb_offset[sb];
+      const int end = coderInfo->sfb_offset[sb+1];
+      const int width = end - start;
       const faac_real *xr;
       int win;
-      faac_real magic = MAGIC_NUMBER;
+      faac_real magic = (faac_real)MAGIC_NUMBER;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -209,11 +197,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      start = coderInfo->sfb_offset[sb];
-      end = coderInfo->sfb_offset[sb+1];
-
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
+      rmsx = FAAC_SQRT(etot / width);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -238,8 +223,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
          reduces metallic ringing artifacts. Frequency calculation accounts
          for transform length to avoid 8x error on short blocks. */
       {
-          int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-          if ((start + end) * sample_rate / (4 * blk_len) > 10000)
+          const faac_real freq_hz = (faac_real)(start + end) * freq_factor;
+          if (freq_hz > 10000.0)
               magic = 0.30;
       }
 
@@ -249,22 +234,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      end -= start;
       xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          memset(xi, 0, gsize * width * sizeof(int));
       }
       else
       {
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix, magic);
-              xi += end;
+              qfunc(xr, xi, width, sfacfix, magic);
+              xi += width;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
+      huffbook(coderInfo, xitab, gsize * width);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
@@ -286,93 +270,95 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->cur_cw = 0; /* init codeword counter */
 #endif
 
+    int lastis;
+    int lastsf;
+    int lastpns;
+    int initpns;
+    const faac_real quality_norm = (faac_real)aacquantCfg->quality / DEFQUAL;
+
+    /* DEVIATION: Refined ATH scaling for VoIP quality.
+       At low bitrates (low quality settings), we increase masking thresholds
+       to prioritize critical bands, reducing "spectral holes" in high-mids. */
+    const faac_real ath_adj = (quality_norm < 0.6) ? 1.2 : 1.0;
+
+    gxr = xr;
+    for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
-        int lastis;
-        int lastsf;
-        int lastpns;
-        int initpns;
-
-        gxr = xr;
-        for (cnt = 0; cnt < coder->groups.n; cnt++)
-        {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->sample_rate);
-            gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
-        }
-
-        coder->global_gain = 0;
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if (!book)
-                continue;
-            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
-            {
-                coder->global_gain = coder->sf[cnt];
-                break;
-            }
-        }
-
-        lastsf = coder->global_gain;
-        lastis = 0;
-        lastpns = coder->global_gain - 90;
-        initpns = 1;
-
-        /* ISO/IEC 14496-3 Section 4.6.2.3.2: Scalefactors are Huffman coded
-           relative to the previous scalefactor using book 12, which covers
-           the range [-60, 60]. Clamping here ensures encoder/decoder sync. */
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-            {
-                int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_PNS)
-            {
-                int diff = coder->sf[cnt] - lastpns;
-
-                if (initpns)
-                {
-                    initpns = 0;
-                    /* No clamping for first PNS band as it uses 9-bit direct encoding (diff + 256) */
-                }
-                else
-                {
-                    if (diff < -60)
-                        diff = -60;
-                    if (diff > 60)
-                        diff = 60;
-                }
-
-                lastpns += diff;
-                coder->sf[cnt] = lastpns;
-            }
-            else if (book)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
-        }
-        return 1;
+        bmask(coder, gxr, bandlvl, bandenrg, cnt, quality_norm, ath_adj);
+        qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->sample_rate);
+        gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
-    return 0;
+
+    coder->global_gain = 0;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if (!book)
+            continue;
+        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+        {
+            coder->global_gain = coder->sf[cnt];
+            break;
+        }
+    }
+
+    lastsf = coder->global_gain;
+    lastis = 0;
+    lastpns = coder->global_gain - 90;
+    initpns = 1;
+
+    /* ISO/IEC 14496-3 Section 4.6.2.3.2: Scalefactors are Huffman coded
+       relative to the previous scalefactor using book 12, which covers
+       the range [-60, 60]. Clamping here ensures encoder/decoder sync. */
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+        {
+            int diff = coder->sf[cnt] - lastis;
+
+            if (diff < -60)
+                diff = -60;
+            if (diff > 60)
+                diff = 60;
+
+            lastis += diff;
+            coder->sf[cnt] = lastis;
+        }
+        else if (book == HCB_PNS)
+        {
+            int diff = coder->sf[cnt] - lastpns;
+
+            if (initpns)
+            {
+                initpns = 0;
+                /* No clamping for first PNS band as it uses 9-bit direct encoding (diff + 256) */
+            }
+            else
+            {
+                if (diff < -60)
+                    diff = -60;
+                if (diff > 60)
+                    diff = 60;
+            }
+
+            lastpns += diff;
+            coder->sf[cnt] = lastpns;
+        }
+        else if (book)
+        {
+            int diff = coder->sf[cnt] - lastsf;
+
+            if (diff < -60)
+                diff = -60;
+            if (diff > 60)
+                diff = 60;
+
+            lastsf += diff;
+            coder->sf[cnt] = lastsf;
+        }
+    }
+    return 1;
 }
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)

@@ -75,6 +75,9 @@ void rfft( FFT_Tables *fft_tables, faac_real *x, int logm )
     kiss_fft_scalar fin[1 << MAXLOGR];
     kiss_fft_cpx    fout[1 << MAXLOGR];
 
+    memset(fin, 0, sizeof(fin));
+    memset(fout, 0, sizeof(fout));
+
     if ( logm > MAXLOGR )
 	{
 		fprintf(stderr, "fft size too big\n");
@@ -126,6 +129,9 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm )
 
     kiss_fft_cpx    fin[1 << MAXLOGM];
     kiss_fft_cpx    fout[1 << MAXLOGM];
+
+    memset(fin, 0, sizeof(fin));
+    memset(fout, 0, sizeof(fout));
 
     if ( logm > MAXLOGM )
 	{
