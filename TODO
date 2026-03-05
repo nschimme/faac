@@ -19,5 +19,5 @@ Tier 2: Standard Alignment
 - [ ] Verify tnsMinBandNumber/tnsMaxBands for all sample rates per 14496-3
 
 Tier 3: Strategic Shifts
-- [x] Implement adaptive TNS activation thresholding (Speech vs Music/Transient)
+- [x] Implement adaptive TNS activation thresholding (Bitrate-aware, v19)
 - [ ] Support multiple TNS filters per window

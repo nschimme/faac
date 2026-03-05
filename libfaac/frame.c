@@ -559,7 +559,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel],
+                      hEncoder->config.bitRate);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
