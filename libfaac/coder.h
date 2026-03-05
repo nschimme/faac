@@ -136,6 +136,13 @@ typedef struct {
 #endif
 
     TnsInfo tnsInfo;
+
+    /* Performance: Pre-calculated energies to avoid redundant computation */
+    faac_real band_energies[MAX_SCFAC_BANDS];
+    faac_real max_energies[MAX_SCFAC_BANDS];
+    faac_real band_targets[MAX_SCFAC_BANDS];
+    faac_real total_energies[MAX_SHORT_WINDOWS];
+    int energies_valid;
 } CoderInfo;
 
 typedef struct {

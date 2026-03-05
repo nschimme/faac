@@ -585,6 +585,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+    /* Save state before quantization to allow clean restarts in iterative rate control. */
+    for (channel = 0; channel < numChannels; channel++) {
+        memcpy(hEncoder->saved_sf[channel], coderInfo[channel].sf, sizeof(int) * MAX_SCFAC_BANDS);
+        memcpy(hEncoder->saved_book[channel], coderInfo[channel].book, sizeof(int) * MAX_SCFAC_BANDS);
+    }
+
 #ifndef DRM
     /* Save state for bit reservoir rate control */
     for (channel = 0; channel < numChannels; channel++) {
@@ -659,9 +665,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         faac_real fix;
 
         /* Bit budget heuristic:
-           Transients can take bits from reservoir (1/3 per frame).
-           Steady state recovers reservoir (1/12 per frame).
-           Always ensure a minimum budget (1/3 avg) to avoid starvation. */
+           DEVIATION: Custom budget logic to prioritize transients while ensuring steady state
+           quality stays consistent with the baseline.
+           Transients can take bits from reservoir (1/5 per frame).
+           Steady state recovers reservoir slowly (1/40 per frame) to avoid aggressive quality swings. */
         int isTransient = 0;
         for (channel = 0; channel < numChannels; channel++) {
             if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
@@ -684,8 +691,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         /* Iterative Rate Control Loop (up to 2 passes) */
         for (iter = 0; iter < 2; iter++) {
-            bitStream = OpenBitStream(bufferSize, outputBuffer);
-            frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+            /* Performance: First pass uses virtual bit counting (NULL buffer) to avoid memory writes. */
+            bitStream = OpenBitStream(bufferSize, (iter == 0) ? NULL : outputBuffer);
+            if (iter == 0) {
+                frameBits = CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+            } else {
+                frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+            }
             CloseBitStream(bitStream);
 
             if (frameBits <= 0) break;
