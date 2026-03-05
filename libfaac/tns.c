@@ -147,30 +147,24 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
+        /* DEVIATION: Limit order for short windows to reduce bit overhead in
+           low-bitrate scenarios (VoIP/VSS). Order 4 is sufficient for
+           transient temporal shaping without bitstarving the quantizer. */
+        order = 4;
         break;
 
     default:
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        stopBand = numberOfBands;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         order = tnsInfo->tnsMaxOrderLong;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
     }
 
-    /* Make sure that start and stop bands < maxSfb */
-    /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
-
+    /* Ensure valid band range */
+    startBand = min(startBand, stopBand);
     lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
@@ -193,10 +187,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        /* DEVIATION: Use a conservative threshold for TNS activation to balance
-           perceptual gains against bit overhead and computational cost.
-           Modern encoders often use ~1.4 for long blocks. */
-        faac_real threshold = DEF_TNS_GAIN_THRESH;
+        /* DEVIATION: Use conservative thresholds to balance perceptual gains
+           against bit overhead. Short windows are particularly bit-hungry. */
+        faac_real threshold = (blockType == ONLY_SHORT_WINDOW) ? 1.6 : DEF_TNS_GAIN_THRESH;
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
