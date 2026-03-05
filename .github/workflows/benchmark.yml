@@ -1,0 +1,176 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ "master" ]
+    paths:
+      - "frontend/**"
+      - "libfaac/**"
+      - ".github/workflows/benchmark.yml"
+      - "meson.build"
+  pull_request:
+    branches: [ "*" ]
+    paths:
+      - "frontend/**"
+      - "libfaac/**"
+      - ".github/workflows/benchmark.yml"
+      - "meson.build"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64]
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build bc ffmpeg
+
+      - name: Checkout Candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+
+      - name: Build Candidate
+        run: |
+          cd candidate
+          meson setup build_cand --buildtype=release
+          ninja -C build_cand
+
+      - name: Determine Baseline SHA
+        id: baseline-sha
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Baseline and candidate are timed in this same job, on this same runner,
+      # so they are only comparable if a restored baseline was ALSO measured on
+      # this hardware. runner.os is just "Linux" and says nothing about the CPU,
+      # and the ubuntu-latest fleet is heterogeneous -- so fold a CPU
+      # fingerprint into the key. Different hardware now misses and re-measures
+      # the baseline here rather than silently reporting a cross-machine delta
+      # as a throughput regression.
+      - name: Fingerprint Runner Hardware
+        id: hw
+        run: |
+          # lscpu covers x86 and arm64 uniformly; the /proc/cpuinfo lines are an
+          # x86 fallback. Model + ISA flags + core count is what actually moves
+          # these timings. Every probe tolerates absence: a degraded fingerprint
+          # only costs a re-measured baseline, but a failed step costs the run.
+          fp=$( { lscpu 2>/dev/null | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
+                    || grep -E '^(model name|flags)' /proc/cpuinfo 2>/dev/null | head -2 \
+                    || echo "cpu unknown"; \
+                  uname -m; nproc; } | sha256sum | cut -c1-16)
+          echo "fp=$fp" >> $GITHUB_OUTPUT
+          echo "CPU fingerprint: $fp"
+          lscpu 2>/dev/null | grep -E '^(Model name|CPU\(s\)):' || true
+
+      - name: Restore Baseline Results
+        id: cache-baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: results/${{ matrix.arch }}_base.json
+          # No restore-keys: a partial-match fallback would reintroduce exactly
+          # the cross-hardware pairing this key exists to prevent.
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+
+      - name: Checkout Baseline
+        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.baseline-sha.outputs.sha }}
+          path: baseline
+
+      - name: Build Baseline
+        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        run: |
+          cd baseline
+          meson setup build_base --buildtype=release
+          ninja -C build_base
+
+      - name: Run Benchmark (Baseline)
+        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        uses: nschimme/faac-benchmark@master
+        with:
+          faac-bin: ./baseline/build_base/frontend/faac
+          libfaac-so: ./baseline/build_base/libfaac/libfaac.so
+          run-name: ${{ matrix.arch }}_base
+          output-json: ./results/${{ matrix.arch }}_base.json
+
+      - name: Save Baseline Results
+        if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: results/${{ matrix.arch }}_base.json
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+
+      - name: Run Benchmark (Candidate)
+        if: github.event_name == 'pull_request'
+        uses: nschimme/faac-benchmark@master
+        with:
+          faac-bin: ./candidate/build_cand/frontend/faac
+          libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
+          run-name: ${{ matrix.arch }}_cand
+          output-json: ./results/${{ matrix.arch }}_cand.json
+
+      - name: Upload Results
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.arch }}
+          path: results/*.json
+
+  report:
+    name: Consolidated Report
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          pattern: results-*
+          merge-multiple: true
+
+      - name: Generate Report
+        id: generate
+        uses: nschimme/faac-benchmark/report@master
+        with:
+          results-path: ./results
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          cand-sha: ${{ github.event.pull_request.head.sha }}
+          summary-only: false
+
+      - name: Upload Full Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report-full
+          path: report.md
+
+      - name: Post Summary to PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md
