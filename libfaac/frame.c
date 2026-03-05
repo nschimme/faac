@@ -682,8 +682,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (targetBits > (avgBits * 15) / 10) targetBits = (avgBits * 15) / 10;
         if (targetBits < (avgBits * 8) / 10) targetBits = (avgBits * 8) / 10;
 
-        /* Iterative Rate Control Loop (up to 3 passes) */
-        for (iter = 0; iter < 3; iter++) {
+        /* Iterative Rate Control Loop (up to 2 passes) */
+        for (iter = 0; iter < 2; iter++) {
             bitStream = OpenBitStream(bufferSize, outputBuffer);
             frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
             CloseBitStream(bitStream);
@@ -691,7 +691,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             if (frameBits <= 0) break;
 
             fix = (faac_real)targetBits / (faac_real)frameBits;
-            if (FAAC_FABS(fix - 1.0) < 0.02) break;
+            /* Performance: Exit early if we are within 5% of target */
+            if (FAAC_FABS(fix - 1.0) < 0.05) break;
 
             /* Damping factor 0.7 for stable convergence */
             if (fix < 0.7) fix = 0.7;
