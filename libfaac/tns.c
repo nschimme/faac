@@ -148,10 +148,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
-        /* DEVIATION: Limit order for short windows to reduce bit overhead in
-           low-bitrate scenarios (VoIP/VSS). Order 4 is sufficient for
-           transient temporal shaping without bitstarving the quantizer. */
-        order = 4;
+        /* DEVIATION: Cap TNS order at 4 for short windows to ensure minimal bit
+           overhead in low-bitrate speech scenarios (VoIP/VSS). Order 4 still
+           provides effective temporal noise shaping for transients. */
+        order = min(tnsInfo->tnsMaxOrderShort, 4);
         break;
 
     default:
@@ -163,8 +163,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         break;
     }
 
-    /* Ensure valid band range */
-    startBand = min(startBand, stopBand);
+    /* Standard compliance: ensure bands are within valid range */
+    startBand = min(startBand, maxSfb);
+    stopBand = min(stopBand, maxSfb);
+    startBand = max(0, startBand);
+    stopBand = max(0, stopBand);
+
     lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
@@ -187,20 +191,37 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        /* DEVIATION: Use conservative thresholds to balance perceptual gains
-           against bit overhead. Short windows are particularly bit-hungry. */
-        faac_real threshold = (blockType == ONLY_SHORT_WINDOW) ? 1.6 : DEF_TNS_GAIN_THRESH;
+        /* DEVIATION: Increase gain threshold for short windows to 2.0 to ensure
+           TNS only activates on severe transients, preserving bit reservoir
+           for spectral quantization in low-bitrate modes. */
+        faac_real threshold = (blockType == ONLY_SHORT_WINDOW) ? 2.0 : DEF_TNS_GAIN_THRESH;
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
-            tnsFilter->coefCompress = 0;
             tnsFilter->length = lengthInBands;
+
+            /* ISO/IEC 14496-3 Section 4.6.8.3: Coefficient Quantization */
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
+
+            /* DEVIATION: Implement coefficient compression to save bits. If all
+               quantized indices are small, they can be represented with fewer bits. */
+            tnsFilter->coefCompress = 0;
+            if (truncatedOrder > 0) {
+                int i;
+                int canCompress = 1;
+                for (i = 1; i <= truncatedOrder; i++) {
+                    if (FAAC_FABS(tnsFilter->index[i]) > 3) {
+                        canCompress = 0;
+                        break;
+                    }
+                }
+                tnsFilter->coefCompress = canCompress;
+            }
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
             TnsInvFilter(length,&spec[startIndex],tnsFilter);      /* Filter */
         }
