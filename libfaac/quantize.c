@@ -72,6 +72,28 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
+void ATHInit(CoderInfo *coderInfo, unsigned long sampleRate)
+{
+    int i;
+    coderInfo->sample_rate = sampleRate;
+
+    for (i = 0; i < 64; i++)
+    {
+        /* ATH(f) = 3.64 * (f^-0.8) - 6.5 * exp(-0.6 * (f - 3.3)^2) + 10^-3 * (f^4)
+           f in kHz. Ref: Terhardt (1979) */
+        faac_real f = (faac_real)i * 0.4;
+        if (f < 0.02) f = 0.02;
+
+        faac_real ath = 3.64 * FAAC_POW(f, -0.8);
+        ath -= 6.5 * FAAC_EXP(-0.6 * (f - 3.3) * (f - 3.3));
+        ath += 0.001 * FAAC_POW(f, 4.0);
+
+        /* 92dB offset to map dB SPL to normalized amplitude domain.
+           Ref: standard ATH scaling for 16-bit PCM. */
+        coderInfo->ath_lut[i] = (faac_real)FAAC_POW(10.0, (ath - 92.0) / 20.0);
+    }
+}
+
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
@@ -159,7 +181,29 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
+    faac_real bqual = target * quality;
+
+    /* Apply Absolute Threshold of Hearing (ATH).
+       Ref: ISO/IEC 14496-3 Section 4.5.2.1.2.
+       The ATH floor is scaled relative to the signal energy domain. */
+    faac_real freq = (faac_real)(start + end) * (faac_real)coderInfo->sample_rate / (4.0 * (faac_real)last);
+    int idx = (int)(freq * 0.0025); /* freq / 400Hz */
+    if (idx > 63) idx = 63;
+
+    faac_real ath_floor = (faac_real)coderInfo->ath_lut[idx];
+
+    /* DEVIATION: Refined ATH scaling for VoIP/VSS quality levels (< 0.6).
+       Increasing the floor for low bitrates prevents bit-bloat on
+       perceptually masked high-frequency components. */
+    if (quality < 0.6) {
+        ath_floor *= 1.2;
+    }
+
+    if (bqual < ath_floor) {
+        bqual = ath_floor;
+    }
+
+    bandqual[sfb] = bqual;
   }
 }
 

@@ -224,6 +224,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 			hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
 			hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short,
 			hEncoder->srInfo->num_cb_short);
+    for (i = 0; i < hEncoder->numChannels; i++) {
+        ATHInit(&hEncoder->coderInfo[i], hEncoder->sampleRate);
+    }
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -319,6 +322,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     TnsInit(hEncoder);
 
     QuantizeInit();
+    for (channel = 0; channel < numChannels; channel++) {
+        ATHInit(&hEncoder->coderInfo[channel], hEncoder->sampleRate);
+    }
 
     /* Return handle */
     return hEncoder;

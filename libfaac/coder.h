@@ -112,6 +112,9 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    faac_real ath_lut[64];
+    unsigned long sample_rate;
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
