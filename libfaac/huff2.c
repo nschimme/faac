@@ -79,7 +79,7 @@ static int huffcode(int *qs /* quantized spectrum */,
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
-    int data;
+    int data = 0;
     int idx;
     int datacnt;
 #ifdef DRM
@@ -545,7 +545,9 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     lastis = 0;
     lastpns = coder->global_gain - 90;
 
-    // fixme: move range check to quantizer
+    /* ISO/IEC 14496-3 Section 4.6.2.3.2: Scalefactors are Huffman coded
+       relative to the previous scalefactor using book 12, which covers
+       the range [-60, 60]. Range check is performed in the quantizer. */
     for (cnt = 0; cnt < coder->bandcnt; cnt++)
     {
         int book = coder->book[cnt];
@@ -553,10 +555,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
         {
             diff = coder->sf[cnt] - lastis;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
             length = book12[60 + diff].len;
 
             bits += length;
@@ -583,11 +581,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
                 continue;
             }
 
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
-
             length = book12[60 + diff].len;
             bits += length;
             lastpns += diff;
@@ -598,10 +591,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         else if (book)
         {
             diff = coder->sf[cnt] - lastsf;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
             length = book12[60 + diff].len;
 
             bits += length;
