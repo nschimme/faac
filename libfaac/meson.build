@@ -14,6 +14,13 @@ if config_h.get('HAVE_SSE2')
         c_args: c_args + sse2_flag
     )
     quantize_simd_libs += quantize_sse
+
+    avx2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:AVX2'] : ['-mavx2', '-mfma']
+    quantize_avx = static_library('quantize_avx', 'quantize_avx.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + avx2_flag
+    )
+    quantize_simd_libs += quantize_avx
 endif
 
 common_src = [

@@ -18,6 +18,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +40,9 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 
 #if defined(HAVE_SSE2)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
+#ifdef HAVE_AVX2
+extern void quantize_avx2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
@@ -59,13 +66,24 @@ static QuantizeFunc qfunc = quantize_scalar;
 
 void QuantizeInit(void)
 {
-#if defined(HAVE_SSE2)
+#if defined(HAVE_SSE2) || defined(HAVE_AVX2)
     CPUCaps caps = get_cpu_caps();
-    if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
-    else
 #endif
-        qfunc = quantize_scalar;
+#ifdef HAVE_AVX2
+    if (caps & CPU_CAP_AVX2)
+    {
+        qfunc_ptr = quantize_avx2;
+        return;
+    }
+#endif
+#ifdef HAVE_SSE2
+    if (caps & CPU_CAP_SSE2)
+    {
+        qfunc = quantize_sse2;
+        return;
+    }
+#endif
+    qfunc = quantize_scalar;
 }
 #define NOISEFLOOR 0.4
 
