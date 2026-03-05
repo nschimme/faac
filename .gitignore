@@ -38,3 +38,9 @@ Makefile*
 *.user
 /libfaac/win32_ver.h
 /libfaac/faac.pc
+/.venv/
+/results/
+/build_*/
+/faac-benchmark/
+/faac_base
+/libfaac_base.so

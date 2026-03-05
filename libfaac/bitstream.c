@@ -210,12 +210,23 @@ int WriteBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
+    /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
+    if (hEncoder->config.bitRate)
+    {
+        int avgBits = numChannel * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
+        if (currentReservoir > hEncoder->maxBitReservoir) {
+            numFillBits = currentReservoir - hEncoder->maxBitReservoir;
+        } else {
+            numFillBits = 0;
+        }
     } else {
         numFillBits = 0;
+    }
+
+    /* Save room for ID_END terminator */
+    if (bits + numFillBits < (8 - LEN_SE_ID) ) {
+        numFillBits = 8 - LEN_SE_ID - bits;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
@@ -300,12 +311,23 @@ static int CountBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
+    /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
+    if (hEncoder->config.bitRate)
+    {
+        int avgBits = numChannel * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
+        if (currentReservoir > hEncoder->maxBitReservoir) {
+            numFillBits = currentReservoir - hEncoder->maxBitReservoir;
+        } else {
+            numFillBits = 0;
+        }
     } else {
         numFillBits = 0;
+    }
+
+    /* Save room for ID_END terminator */
+    if (bits + numFillBits < (8 - LEN_SE_ID) ) {
+        numFillBits = 8 - LEN_SE_ID - bits;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
