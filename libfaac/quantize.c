@@ -34,15 +34,14 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -158,6 +157,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+  /* Refined ATH Scaling: Boost masking thresholds for low-quality settings
+     to reduce spectral holes in low-bitrate scenarios (VoIP/VSS). */
+  if (quality < 0.6) {
+      target *= 1.2;
+  }
+
     bandqual[sfb] = target * quality;
   }
 }
@@ -169,7 +174,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   const AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -181,7 +186,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
 #ifndef DRM
-    faac_real pnsthr = 0.1 * pnslevel;
+    faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
 #endif
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
@@ -190,6 +195,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      faac_real magic = MAGIC_NUMBER;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
@@ -233,6 +239,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       end -= start;
       xi = xitab;
+      /* Adaptive Quantization Rounding: Reduce metallic ringing for high frequencies
+         by lowering the rounding bias above 10kHz. */
+      {
+          int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+          int f = (coderInfo->sfb_offset[sb] + coderInfo->sfb_offset[sb+1]) * aacquantCfg->sample_rate / (4 * blk_len);
+          if (f > 10000) magic = 0.30;
+      }
+
       if (sfacfix <= 0.0)
       {
           memset(xi, 0, gsize * end * sizeof(int));
@@ -242,7 +256,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }
@@ -279,7 +293,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

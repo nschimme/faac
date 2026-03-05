@@ -211,6 +211,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.sample_rate = hEncoder->sampleRate;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -585,12 +586,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
 #ifndef DRM
-    /* Save state for bit reservoir two-pass quantization */
-    int saved_sf[MAX_CHANNELS][MAX_SCFAC_BANDS];
-    int saved_book[MAX_CHANNELS][MAX_SCFAC_BANDS];
+    /* Save state for bit reservoir rate control */
     for (channel = 0; channel < numChannels; channel++) {
-        memcpy(saved_sf[channel], coderInfo[channel].sf, sizeof(int) * MAX_SCFAC_BANDS);
-        memcpy(saved_book[channel], coderInfo[channel].book, sizeof(int) * MAX_SCFAC_BANDS);
+        memcpy(hEncoder->saved_sf[channel], coderInfo[channel].sf, sizeof(int) * MAX_SCFAC_BANDS);
+        memcpy(hEncoder->saved_book[channel], coderInfo[channel].book, sizeof(int) * MAX_SCFAC_BANDS);
     }
 #endif
 
@@ -656,9 +655,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int avgBits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int targetBits = avgBits;
         int frameBits;
+        int iter;
         faac_real fix;
 
-        /* Heuristic: allow transient frames to take up to 2.5x avg bits if reservoir permits */
+        /* Bit budget heuristic:
+           Transients can take bits from reservoir (1/3 per frame).
+           Steady state recovers reservoir (1/12 per frame).
+           Always ensure a minimum budget (1/3 avg) to avoid starvation. */
         int isTransient = 0;
         for (channel = 0; channel < numChannels; channel++) {
             if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
@@ -670,58 +673,47 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (isTransient) {
             targetBits += hEncoder->bitReservoir / 3;
         } else {
-            /* For steady state, try to recover reservoir */
             targetBits -= hEncoder->bitReservoir / 12;
         }
 
-        /* Clamp targetBits to avoid huge swings and respect standard buffer limits */
         if (targetBits > avgBits * 3) targetBits = avgBits * 3;
         if (targetBits < avgBits / 3) targetBits = avgBits / 3;
 
-        /* Write the AAC bitstream to count bits */
-        bitStream = OpenBitStream(bufferSize, outputBuffer);
-        frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-        CloseBitStream(bitStream);
+        /* Iterative Rate Control Loop (up to 3 passes) */
+        for (iter = 0; iter < 3; iter++) {
+            bitStream = OpenBitStream(bufferSize, outputBuffer);
+            frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+            CloseBitStream(bitStream);
 
-        /* Adjust quality to hit targetBits */
-        fix = (faac_real)targetBits / (faac_real)frameBits;
+            fix = (faac_real)targetBits / (faac_real)frameBits;
+            if (FAAC_FABS(fix - 1.0) < 0.03) break;
 
-        /* Damping factors to prevent oscillation */
-        if (fix < 0.8) fix = 0.8;
-        if (fix > 1.2) fix = 1.2;
-        fix = (fix - 1.0) * 0.5 + 1.0;
+            /* Damping factor 0.7 for stable convergence */
+            if (fix < 0.7) fix = 0.7;
+            if (fix > 1.3) fix = 1.3;
+            fix = (fix - 1.0) * 0.7 + 1.0;
 
-        hEncoder->aacquantCfg.quality *= fix;
-        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
+            hEncoder->aacquantCfg.quality *= fix;
+            if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
 
-        /* Re-quantize with adjusted quality if delta is significant */
-        if (FAAC_FABS(fix - 1.0) > 0.05) {
             for (channel = 0; channel < numChannels; channel++) {
-                /* Restore state before second pass */
-                memcpy(coderInfo[channel].sf, saved_sf[channel], sizeof(int) * MAX_SCFAC_BANDS);
-                memcpy(coderInfo[channel].book, saved_book[channel], sizeof(int) * MAX_SCFAC_BANDS);
+                memcpy(coderInfo[channel].sf, hEncoder->saved_sf[channel], sizeof(int) * MAX_SCFAC_BANDS);
+                memcpy(coderInfo[channel].book, hEncoder->saved_book[channel], sizeof(int) * MAX_SCFAC_BANDS);
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                           &(hEncoder->aacquantCfg));
             }
         }
 
-        /* Final bitstream write */
+        /* Final pass: Write bitstream and update reservoir */
         bitStream = OpenBitStream(bufferSize, outputBuffer);
         frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
         frameBytes = CloseBitStream(bitStream);
 
-        /* Update bit reservoir */
         hEncoder->bitReservoir += (avgBits - frameBits);
-
-        /* ISO/IEC 14496-3 Section 4.6.2: Clamp reservoir to [0, maxBitReservoir] */
         if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
-        if (hEncoder->bitReservoir > hEncoder->maxBitReservoir) {
-            /* DEVIATION: If reservoir exceeds max, we must use fill bits or increase quality.
-               Since quality is already maxed for this frame if we got here, we'll use fill bits later in bitstream.c.
-               But we clamp the logical reservoir value here. */
+        if (hEncoder->bitReservoir > hEncoder->maxBitReservoir)
             hEncoder->bitReservoir = hEncoder->maxBitReservoir;
-        }
     } else {
         /* Write the AAC bitstream for VBR */
         bitStream = OpenBitStream(bufferSize, outputBuffer);
