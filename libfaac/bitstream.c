@@ -258,13 +258,11 @@ static int CountBitstream(faacEncStruct* hEncoder,
 {
     int channel;
     int bits = 0;
-    int bitsLeftAfterFill, numFillBits;
+    int numFillBits;
 
 
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 0);
-    }else{
-        bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
 /* sur: faad2 complains about scalefactor error if we are writing FAAC String */
@@ -331,10 +329,12 @@ static int CountBitstream(faacEncStruct* hEncoder,
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
-    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
-    numFillBits += 6;
-    bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
-    bits += (numFillBits - bitsLeftAfterFill);
+    if (numFillBits > 0) {
+        int bitsLeftAfterFill;
+        numFillBits += 6;
+        bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
+        bits += (numFillBits - bitsLeftAfterFill);
+    }
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
@@ -342,7 +342,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
-    hEncoder->usedBytes = bit2byte(bits);
+    hEncoder->usedBytes = (bits + 7) >> 3;
 
     if (hEncoder->usedBytes > bitStream->size)
     {
