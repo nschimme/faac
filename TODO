@@ -7,3 +7,17 @@
 - Add resampler and downmixer (hans-juergen, Oct 17, 2004)
 - Add HE AAC (hans-juergen, Oct 17, 2004)
 - Test TNS(arcen, Apr 8th, 2012)
+
+TNS IMPROVEMENTS (Tiered TODO):
+Tier 1: High Velocity
+- [ ] Fix windowSize bug in libfaac/tns.c:TnsEncode (default case uses BLOCK_LEN_SHORT)
+- [ ] Enable TNS for ONLY_SHORT_WINDOW in libfaac/tns.c
+- [ ] Align CLI (main.c) default with GUI (maingui.c): Enable TNS by default
+
+Tier 2: Standard Alignment
+- [ ] Implement ISO/IEC 14496-3 Section 4.6.8.3 coefficient compression
+- [ ] Verify tnsMinBandNumber/tnsMaxBands for all sample rates per 14496-3
+
+Tier 3: Strategic Shifts
+- [ ] Implement adaptive TNS activation thresholding (Speech vs Music)
+- [ ] Support multiple TNS filters per window

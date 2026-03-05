@@ -141,13 +141,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     int startIndex,length;
     faac_real gain;
 
+    // ISO/IEC 14496-3 Section 4.6.8.2: TNS Filtering Decision
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
@@ -160,7 +156,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -193,7 +189,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        /* DEVIATION: Lower gain threshold for short windows to better preserve
+           speech transients and reduce pre-echo on percussive hits.
+           ISO/IEC 14496-3 Section 4.6.8.2 suggests a threshold but modern
+           encoders use adaptive thresholds for better MOS. */
+        faac_real threshold = (blockType == ONLY_SHORT_WINDOW) ? 1.2 : DEF_TNS_GAIN_THRESH;
+
+        if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -360,6 +362,7 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 /* QuantizeReflectionCoeffs:                         */
 /*   Quantize the given array of reflection coeffs   */
 /*   to the specified resolution in bits.            */
+/*   ISO/IEC 14496-3 Section 4.6.8.3                 */
 /*****************************************************/
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
