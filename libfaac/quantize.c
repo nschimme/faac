@@ -59,8 +59,25 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 static QuantizeFunc qfunc = quantize_scalar;
 
+static faac_real sfac_lut[256];
+
 void QuantizeInit(void)
 {
+    int i;
+#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
+    const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
+#else
+    const faac_real sfstep = 20 / 1.50515;
+#endif
+
+    /* Initialize scalefactor gain LUT for O(1) quantization */
+    for (i = 0; i < 256; i++) {
+        if ((SF_OFFSET - i) < 10)
+            sfac_lut[i] = 0.0;
+        else
+            sfac_lut[i] = FAAC_POW(10, i / sfstep);
+    }
+
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -72,19 +89,18 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+static void bmask(CoderInfo * __restrict coderInfo, const faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
-  int *cb_offset = coderInfo->sfb_offset;
+  int * __restrict cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
-  faac_real powm = 0.4;
+  const faac_real powm = 0.4;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
@@ -95,9 +111,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)(gsize * total_len)))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -109,11 +124,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 
   {
-    int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
+    const int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
+    const int offset = is_short ? BLOCK_LEN_SHORT : 0;
     last = is_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-    faac_real last_inv = 1.0 / (faac_real)last;
-    faac_real totenrg_last = totenrg * last_inv;
-    int is_low_bitrate = (quality < 0.6);
+    const faac_real last_inv = 1.0 / (faac_real)last;
+    const faac_real totenrg_last = totenrg * last_inv;
 
     for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
     {
@@ -127,12 +142,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       maxe = 0.0;
       for (win = 0; win < gsize; win++)
       {
-          xr = xr0 + win * BLOCK_LEN_SHORT + start;
-          int n = end - start;
+          xr = xr0 + win * offset + start;
+          const int n = end - start;
           for (cnt = 0; cnt < n; cnt++)
           {
-              faac_real val = xr[cnt];
-              faac_real e = val * val;
+              const faac_real val = xr[cnt];
+              const faac_real e = val * val;
               avge += e;
               if (maxe < e)
                   maxe = e;
@@ -150,21 +165,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       if (is_short)
           target *= 1.5;
 
-      faac_real freq_fac = (faac_real)(start + end) * last_inv;
+      const faac_real freq_fac = (faac_real)(start + end) * last_inv;
       target *= 10.0 / (1.0 + freq_fac);
-
-      /* DEVIATION: Refined ATH scaling for low-bitrate VSS/VoIP */
-      /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
-      if (is_low_bitrate && (freq_fac > 1.25)) { /* Above ~5.0kHz at 16kHz */
-          target *= 0.9; /* Conservative threshold shift to save bits for critical bands */
-      }
 
       bandqual[sfb] = target * quality;
     }
   }
 }
 
-enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -185,23 +193,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
-    int lastsf_spec = -1;
-    int i;
-
-    /* Initialize spectral predictor from previous groups in current frame */
-    for (i = 0; i < coderInfo->bandcnt; i++) {
-        int book = coderInfo->book[i];
-        if (book && book != HCB_PNS && book != HCB_INTENSITY && book != HCB_INTENSITY2)
-            lastsf_spec = coderInfo->sf[i];
-    }
-
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
       faac_real sfacfix;
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -209,10 +207,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
-          int book = coderInfo->book[coderInfo->bandcnt];
-          if (book && book != HCB_PNS && book != HCB_INTENSITY && book != HCB_INTENSITY2)
-              lastsf_spec = coderInfo->sf[coderInfo->bandcnt];
-
           coderInfo->bandcnt++;
           continue;
       }
@@ -241,26 +235,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-
-      /* DEVIATION: Scalefactor Capping to prevent metallic spectral holes */
-      /* ISO/IEC 14496-3 Section 4.6.2: Smooth scalefactor deltas */
-      /* We must cap sfac *before* quantization to avoid gain mismatch */
-      {
-          int cur_sf = SF_OFFSET - sfac;
-
-          if (lastsf_spec >= 0) {
-              if (cur_sf > (lastsf_spec + 60)) cur_sf = lastsf_spec + 60;
-              if (cur_sf < (lastsf_spec - 60)) cur_sf = lastsf_spec - 60;
-          }
-
-          sfac = SF_OFFSET - cur_sf;
-          lastsf_spec = cur_sf;
-      }
-
-      if ((SF_OFFSET - sfac) < 10)
-          sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      if (sfac < 0) sfac = 0;
+      if (sfac > 255) sfac = 255;
+      sfacfix = sfac_lut[sfac];
 
       end -= start;
       xi = xitab;
@@ -277,11 +254,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               xi += end;
           }
       }
-
-      /* Store result in sf[] before huffbook increments bandcnt */
-      coderInfo->sf[coderInfo->bandcnt] = SF_OFFSET - sfac;
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->bandcnt++;
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 

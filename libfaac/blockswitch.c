@@ -82,7 +82,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
   /* DEVIATION: Adaptive transient threshold for better low-bitrate response */
-  faac_real switch_thr = (quality < 0.6) ? 2.2 : 3.0;
+  faac_real switch_thr = (quality < 0.6) ? 2.7 : 3.0;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
