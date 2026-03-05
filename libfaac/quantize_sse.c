@@ -24,8 +24,6 @@
 #include <immintrin.h>
 #include "faac_real.h"
 
-#define MAGIC_NUMBER 0.4054
-
 void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic_val)
 {
     const __m128 zero = _mm_setzero_ps();

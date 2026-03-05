@@ -40,6 +40,20 @@ Analysis of high-performance encoders (FDK-AAC, Apple AAC, Fraunhofer).
 
 ---
 
-## 4. Standard Alignment (ISO/IEC 14496-3)
+## 4. Post-Implementation Benchmark Analysis
+Analysis of the current results (Avg MOS Delta: +0.023) reveals specific areas where FAAC still struggles:
+
+### Low MOS in VoIP (16kbps) & VSS (40kbps)
+- **Observation**: VoIP samples average ~3.1 MOS, with some "Noise" and "Echo" samples dipping below 3.0.
+- **Theory (Bit Starvation)**: FAAC lacks a **Bit Reservoir**. At low bitrates, complex frames are forced into high quantization error because they cannot "borrow" bits from previous silent or simple frames.
+- **Theory (ATH Misalignment)**: The Absolute Threshold of Hearing (ATH) used in the psychoacoustic model is likely tuned for 44.1/48kHz. In 16kHz VoIP modes, it may be too aggressive, discarding low-level speech components that are perceptually significant at that bandwidth.
+
+### Complexity/Quality Plateaus in Music (64kbps)
+- **Observation**: Certain speech-heavy music samples (e.g., German male speech) plateau at ~3.3 MOS even at 64kbps.
+- **Theory (TNS Inefficiency)**: The lack of robust **Temporal Noise Shaping (TNS)** means that quantization noise is not being shaped to follow the temporal envelope of the signal. This is particularly audible in speech where pitch periods create rapid energy fluctuations.
+
+---
+
+## 5. Standard Alignment (ISO/IEC 14496-3)
 - All implementations will follow **Section 4.6.2 (Scalefactor Decoding)** and **Section 4.6.3 (Quantization)**.
 - Deviations for "Golden Triangle" targets (like custom AQR) will be explicitly documented in the source as per protocol.
