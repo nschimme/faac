@@ -22,7 +22,7 @@ Analysis of high-performance encoders (FDK-AAC, Apple AAC, Fraunhofer).
 
 ### Adaptive Quantization Rounding (AQR)
 - **Mechanism**: Instead of a fixed 0.4054, modern encoders use a tonality-aware and frequency-dependent rounding bias.
-- **Secret**: Reducing the rounding bias to ~0.30 for high-frequency bands or non-tonal (noise-like) regions preserves high-frequency energy and eliminates metallic ringing with zero increase in bit budget.
+- **Secret**: Reducing the rounding bias to ~0.35 for high-frequency bands or non-tonal (noise-like) regions preserves high-frequency energy and eliminates metallic ringing with zero increase in bit budget.
 
 ### Refined Psychoacoustic Thresholds (PAM)
 - **Mechanism**: Many modern encoders (like FDK) have moved toward MDCT-based psychoacoustic models that derive masking thresholds directly from the MDCT coefficients rather than a separate FFT.
@@ -45,7 +45,7 @@ Analysis of the current results (Avg MOS Delta: +0.023) reveals specific areas w
 
 ### Low MOS in VoIP (16kbps) & VSS (40kbps) [PARTIALLY ADDRESSED]
 - **Observation**: VoIP samples average ~3.1 MOS, with some "Noise" and "Echo" samples dipping below 3.0.
-- **Action**: Implemented a frequency-dependent **Absolute Threshold of Hearing (ATH)** floor. This prevents the encoder from wasting bits on high-frequency noise that is below the human hearing threshold, particularly in low-bitrate 16kHz modes.
+- **Action**: Implemented a frequency-dependent **Absolute Threshold of Hearing (ATH)** floor with a 1.25x scaling boost for low-bitrate modes. This prevents the encoder from wasting bits on high-frequency noise that is below the human hearing threshold, particularly in low-bitrate 16kHz modes.
 - **Theory (Bit Starvation)**: FAAC still lacks a **Bit Reservoir**. At low bitrates, complex frames are forced into high quantization error because they cannot "borrow" bits from previous silent or simple frames. This remains a major Tier 2 bottleneck.
 
 ### Complexity/Quality Plateaus in Music (64kbps)

@@ -198,7 +198,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
        Increasing the floor for low bitrates prevents bit-bloat on
        perceptually masked high-frequency components. */
     if (quality < 0.6) {
-        ath_floor *= 1.44; /* 1.2^2 scaling */
+        ath_floor *= 1.25; /* ~1.12^2 scaling */
     }
 
     if (bqual < ath_floor) {
@@ -287,11 +287,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
       {
           /* DEVIATION: Adaptive quantization rounding used to preserve high-frequency transients.
-             Lower rounding bias (~0.30) for high-frequency bands (start > 512) or short windows
+             Lower rounding bias (~0.35) for high-frequency bands (start > 768) or short windows
              reduces "metallic" shimmering and over-quantization artifacts. */
           faac_real magic = MAGIC_NUMBER;
-          if (coderInfo->block_type == ONLY_SHORT_WINDOW || start > (BLOCK_LEN_LONG / 2)) {
-              magic = 0.30;
+          if (coderInfo->block_type == ONLY_SHORT_WINDOW || start > (BLOCK_LEN_LONG * 3 / 4)) {
+              magic = 0.35;
           }
 
           for (win = 0; win < gsize; win++)
