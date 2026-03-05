@@ -148,7 +148,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
         order = tnsInfo->tnsMaxOrderShort;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
@@ -159,7 +158,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
@@ -172,6 +170,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     stopBand = min(stopBand,maxSfb);
     startBand = max(startBand,0);
     stopBand = max(stopBand,0);
+
+    lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
@@ -187,6 +187,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+
+        if (length <= 0)
+            continue;
+
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         /* DEVIATION: Lower gain threshold for short windows to better preserve
@@ -288,6 +292,9 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
     faac_real* temp;
+
+    if (length <= 0)
+        return;
 
     temp = (faac_real *)AllocMemory(length * sizeof (faac_real));
 
