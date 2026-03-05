@@ -7,3 +7,16 @@
 - Add resampler and downmixer (hans-juergen, Oct 17, 2004)
 - Add HE AAC (hans-juergen, Oct 17, 2004)
 - Test TNS(arcen, Apr 8th, 2012)
+
+Tier 1: High Velocity (Minimal change, maximum quality lift)
+- [x] Implement Refined ATH Scaling in `bmask` (libfaac/quantize.c) to reduce metallic ringing at 40kbps.
+- [x] Implement Scalefactor Capping in `qlevel` (libfaac/quantize.c) to prevent extreme quantization deltas.
+- [x] Refine Transient Detection threshold in `PsyCheckShort` (libfaac/blockswitch.c) for better responsiveness.
+
+Tier 2: Standard Alignment (Improving compliance for stability)
+- [ ] Expand TNS to short windows in `TnsEncode` (libfaac/tns.c) for better pre-echo control.
+- [x] Fix scalefactor range check (-60 to 60) in bitstream encoding.
+
+Tier 3: Strategic Shifts (Larger changes like bit-reservoir or TNS expansion)
+- [ ] Add Bit Reservoir control (requires significant bitstream and rate control changes).
+- [ ] Modularize psychoacoustic model for easier testing and tuning.
