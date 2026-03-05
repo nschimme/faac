@@ -280,7 +280,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_IS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
@@ -671,13 +671,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 
         if (isTransient) {
-            targetBits += hEncoder->bitReservoir / 3;
+            /* Transients: use a portion of the reservoir (1/5 per frame) */
+            targetBits += hEncoder->bitReservoir / 5;
         } else {
-            targetBits -= hEncoder->bitReservoir / 12;
+            /* Steady state: recover reservoir very slowly to maintain quality parity with baseline */
+            targetBits -= hEncoder->bitReservoir / 40;
         }
 
-        if (targetBits > avgBits * 3) targetBits = avgBits * 3;
-        if (targetBits < avgBits / 3) targetBits = avgBits / 3;
+        /* Clamp targetBits: ensure standard compliance and avoid audible artifacts (floor at 80% avg) */
+        if (targetBits > (avgBits * 15) / 10) targetBits = (avgBits * 15) / 10;
+        if (targetBits < (avgBits * 8) / 10) targetBits = (avgBits * 8) / 10;
 
         /* Iterative Rate Control Loop (up to 3 passes) */
         for (iter = 0; iter < 3; iter++) {
@@ -685,8 +688,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
             CloseBitStream(bitStream);
 
+            if (frameBits <= 0) break;
+
             fix = (faac_real)targetBits / (faac_real)frameBits;
-            if (FAAC_FABS(fix - 1.0) < 0.03) break;
+            if (FAAC_FABS(fix - 1.0) < 0.02) break;
 
             /* Damping factor 0.7 for stable convergence */
             if (fix < 0.7) fix = 0.7;
