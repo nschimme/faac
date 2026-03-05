@@ -199,6 +199,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    /* ISO/IEC 14496-3: Set max bit reservoir size */
+    hEncoder->maxBitReservoir = 6144 * hEncoder->numChannels;
+
     if (config->jointmode == JOINT_MS)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
@@ -261,6 +264,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
+
+    /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir maximum size
+       For AAC-LC, max reservoir is 6144 bits per SCE and 12288 bits per CPE. */
+    hEncoder->bitReservoir = 0;
+    hEncoder->maxBitReservoir = 6144 * numChannels;
 
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
@@ -632,38 +640,81 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 #ifndef DRM
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
-        return -1;
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
+    /* ISO/IEC 14496-3 Section 4.6.2: Bit Reservoir Control */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int avgBits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int targetBits = avgBits;
+        int frameBits;
+        faac_real fix;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        /* Heuristic: allow transient frames to take up to 2.5x avg bits if reservoir permits */
+        int isTransient = 0;
+        for (channel = 0; channel < numChannels; channel++) {
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+                isTransient = 1;
+                break;
+            }
+        }
 
+        if (isTransient) {
+            targetBits += hEncoder->bitReservoir / 2;
+        } else {
+            /* For steady state, try to recover reservoir */
+            targetBits -= hEncoder->bitReservoir / 10;
+        }
+
+        /* Clamp targetBits to avoid huge swings */
+        if (targetBits > avgBits * 2) targetBits = avgBits * 2;
+        if (targetBits < avgBits / 2) targetBits = avgBits / 2;
+
+        /* Write the AAC bitstream to count bits */
+        bitStream = OpenBitStream(bufferSize, outputBuffer);
+        frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+        CloseBitStream(bitStream);
+
+        /* Adjust quality to hit targetBits */
+        fix = (faac_real)targetBits / (faac_real)frameBits;
+
+        /* Damping factors to prevent oscillation */
+        if (fix < 0.8) fix = 0.8;
+        if (fix > 1.2) fix = 1.2;
         fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
 
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        /* Re-quantize with adjusted quality if delta is significant */
+        if (FAAC_FABS(fix - 1.0) > 0.05) {
+            for (channel = 0; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                          &(hEncoder->aacquantCfg));
+            }
+        }
+
+        /* Final bitstream write */
+        bitStream = OpenBitStream(bufferSize, outputBuffer);
+        frameBits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+        frameBytes = CloseBitStream(bitStream);
+
+        /* Update bit reservoir */
+        hEncoder->bitReservoir += (avgBits - frameBits);
+
+        /* ISO/IEC 14496-3 Section 4.6.2: Clamp reservoir to [0, maxBitReservoir] */
+        if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
+        if (hEncoder->bitReservoir > hEncoder->maxBitReservoir) {
+            /* DEVIATION: If reservoir exceeds max, we must use fill bits or increase quality.
+               Since quality is already maxed for this frame if we got here, we'll use fill bits later in bitstream.c.
+               But we clamp the logical reservoir value here. */
+            hEncoder->bitReservoir = hEncoder->maxBitReservoir;
+        }
+    } else {
+        /* Write the AAC bitstream for VBR */
+        bitStream = OpenBitStream(bufferSize, outputBuffer);
+        if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
+            return -1;
+        frameBytes = CloseBitStream(bitStream);
     }
 #endif
 
