@@ -247,7 +247,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      /* ISO/IEC 14496-3 Section 4.6.2: Scalefactor encoding.
+         Set scalefactor directly to avoid cumulative errors in two-pass quantization. */
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 

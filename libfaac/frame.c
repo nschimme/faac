@@ -584,6 +584,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+#ifndef DRM
+    /* Save state for bit reservoir two-pass quantization */
+    int saved_sf[MAX_CHANNELS][MAX_SCFAC_BANDS];
+    int saved_book[MAX_CHANNELS][MAX_SCFAC_BANDS];
+    for (channel = 0; channel < numChannels; channel++) {
+        memcpy(saved_sf[channel], coderInfo[channel].sf, sizeof(int) * MAX_SCFAC_BANDS);
+        memcpy(saved_book[channel], coderInfo[channel].book, sizeof(int) * MAX_SCFAC_BANDS);
+    }
+#endif
+
 #ifdef DRM
     /* loop the quantization until the desired bit-rate is reached */
     diff = 1; /* to enter while loop */
@@ -658,15 +668,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 
         if (isTransient) {
-            targetBits += hEncoder->bitReservoir / 2;
+            targetBits += hEncoder->bitReservoir / 3;
         } else {
             /* For steady state, try to recover reservoir */
-            targetBits -= hEncoder->bitReservoir / 10;
+            targetBits -= hEncoder->bitReservoir / 12;
         }
 
-        /* Clamp targetBits to avoid huge swings */
-        if (targetBits > avgBits * 2) targetBits = avgBits * 2;
-        if (targetBits < avgBits / 2) targetBits = avgBits / 2;
+        /* Clamp targetBits to avoid huge swings and respect standard buffer limits */
+        if (targetBits > avgBits * 3) targetBits = avgBits * 3;
+        if (targetBits < avgBits / 3) targetBits = avgBits / 3;
 
         /* Write the AAC bitstream to count bits */
         bitStream = OpenBitStream(bufferSize, outputBuffer);
@@ -688,6 +698,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* Re-quantize with adjusted quality if delta is significant */
         if (FAAC_FABS(fix - 1.0) > 0.05) {
             for (channel = 0; channel < numChannels; channel++) {
+                /* Restore state before second pass */
+                memcpy(coderInfo[channel].sf, saved_sf[channel], sizeof(int) * MAX_SCFAC_BANDS);
+                memcpy(coderInfo[channel].book, saved_book[channel], sizeof(int) * MAX_SCFAC_BANDS);
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                           &(hEncoder->aacquantCfg));
             }
