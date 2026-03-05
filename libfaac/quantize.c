@@ -34,15 +34,15 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+/* ISO/IEC 14496-3 Section 4.6.3: Quantization */
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -50,6 +50,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         faac_real tmp = FAAC_FABS(val);
 
         tmp *= sfacfix;
+        /* x_quant = int( |x| * 2^(0.25 * (sf - global_gain)) + magic ) */
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
@@ -70,6 +71,28 @@ void QuantizeInit(void)
         qfunc = quantize_scalar;
 }
 #define NOISEFLOOR 0.4
+
+void ATHInit(CoderInfo *coderInfo, unsigned long sampleRate)
+{
+    int i;
+    coderInfo->sample_rate = sampleRate;
+
+    for (i = 0; i < 64; i++)
+    {
+        /* ATH(f) = 3.64 * (f^-0.8) - 6.5 * exp(-0.6 * (f - 3.3)^2) + 10^-3 * (f^4)
+           f in kHz. Ref: Terhardt (1979) */
+        faac_real f = (faac_real)i * 0.4;
+        if (f < 0.02) f = 0.02;
+
+        faac_real ath = 3.64 * FAAC_POW(f, -0.8);
+        ath -= 6.5 * FAAC_EXP(-0.6 * (f - 3.3) * (f - 3.3));
+        ath += 0.001 * FAAC_POW(f, 4.0);
+
+        /* 92dB offset to map dB SPL to normalized amplitude domain.
+           Ref: standard ATH scaling for 16-bit PCM. */
+        coderInfo->ath_lut[i] = (faac_real)FAAC_POW(10.0, (ath - 92.0) / 20.0);
+    }
+}
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -158,7 +181,31 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
+    faac_real bqual = target * quality;
+
+    /* Apply Absolute Threshold of Hearing (ATH).
+       Ref: ISO/IEC 14496-3 Section 4.5.2.1.2.
+       The ATH floor is scaled relative to the signal energy domain. */
+    faac_real freq = (faac_real)(start + end) * (faac_real)coderInfo->sample_rate / (4.0 * (faac_real)last);
+    int idx = (int)(freq * 0.0025); /* freq / 400Hz */
+    if (idx > 63) idx = 63;
+
+    faac_real ath_floor = (faac_real)coderInfo->ath_lut[idx];
+    /* ath_lut provides amplitude. Square it to match the energy domain of bandqual. */
+    ath_floor *= ath_floor;
+
+    /* DEVIATION: Refined ATH scaling for VoIP/VSS quality levels (< 0.6).
+       Increasing the floor for low bitrates prevents bit-bloat on
+       perceptually masked high-frequency components. */
+    if (quality < 0.6) {
+        ath_floor *= 1.25; /* ~1.12^2 scaling */
+    }
+
+    if (bqual < ath_floor) {
+        bqual = ath_floor;
+    }
+
+    bandqual[sfb] = bqual;
   }
 }
 
@@ -239,10 +286,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          /* DEVIATION: Adaptive quantization rounding used to preserve high-frequency transients.
+             Lower rounding bias (~0.35) for high-frequency bands (start > 768) or short windows
+             reduces "metallic" shimmering and over-quantization artifacts. */
+          faac_real magic = MAGIC_NUMBER;
+          if (coderInfo->block_type == ONLY_SHORT_WINDOW || start > (BLOCK_LEN_LONG * 3 / 4)) {
+              magic = 0.35;
+          }
+
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }

@@ -46,5 +46,6 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
+void ATHInit(CoderInfo *coderInfo, unsigned long sampleRate);
 
 #endif
