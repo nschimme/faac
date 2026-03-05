@@ -1,9 +1,29 @@
-- fix scalefactor encoding check (-60 .. 60)
-- test DRM
-- optimize quantization bias
-- optimize codebook list (section_data)
-- optimize CPE windows grouping
-- Add bit reservoir control
-- Add resampler and downmixer (hans-juergen, Oct 17, 2004)
-- Add HE AAC (hans-juergen, Oct 17, 2004)
-- Test TNS(arcen, Apr 8th, 2012)
+# FAAC TODO: Stack-Ranked Improvements (Golden Triangle Ratio)
+
+## Tier 1: High Velocity (Minimal Change, Maximum Quality Lift)
+1. **[PRIORITY] Bit Reservoir Implementation (MOS Gain: High | LoC: Low)**
+   - Goal: Smooth bit distribution for speech/transients, particularly for 16/40 kbps scenarios.
+   - Status: Active.
+2. **Adaptive Quantization Rounding (MOS Gain: Mid | LoC: Low)**
+   - Goal: Reduce metallic "shimmer" by varying the 0.4054 magic number based on frequency bands.
+3. **Refined ATH Scaling (MOS Gain: Mid | LoC: Low)**
+   - Goal: Improve transparency for silence/low-level signals.
+
+## Tier 2: Standard Alignment (Stability & Compliance)
+4. **Fix Scalefactor Differential Encoding (Stability: High | LoC: Low)**
+   - Goal: Ensure all scalefactor differences are within the ISO/IEC 14496-3 [-60, 60] range.
+5. **CPE Window Grouping Optimization (Quality: Mid | LoC: Mid)**
+   - Goal: Better stereo imaging for complex soundstages.
+6. **Codebook List Optimization (Efficiency: Mid | LoC: Low)**
+   - Goal: Slightly smaller binary size and faster Huffman encoding.
+
+## Tier 3: Strategic Shifts (Large Structural Changes)
+7. **Temporal Noise Shaping (TNS) Expansion (Quality: High | LoC: High)**
+   - Goal: Improve transient preservation in speech.
+8. **MDCT-based Psychoacoustic Model (Efficiency: High | LoC: High)**
+   - Goal: 30-40% CPU reduction by deriving masking thresholds directly from MDCT coefficients.
+9. **Fixed-Point Transition (Portability: High | LoC: High)**
+   - Goal: Support for DSPs and low-power embedded processors.
+
+---
+*Ranked by "Ratio": MOS Gain per Line of Code.*
