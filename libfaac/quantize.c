@@ -171,7 +171,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   )
 {
     int sb;
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
+#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600) && false
     /* 2^0.25 (1.50515 dB) step from AAC specs */
     static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
 #else
