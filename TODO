@@ -9,9 +9,9 @@
 - Test TNS(arcen, Apr 8th, 2012)
 
 Tier 1: High Velocity (Minimal change, maximum quality lift)
-- [ ] Implement Refined ATH Scaling in `bmask` (libfaac/quantize.c) to reduce metallic ringing at 40kbps.
-- [ ] Implement Scalefactor Capping in `qlevel` (libfaac/quantize.c) to prevent extreme quantization deltas.
-- [ ] Refine Transient Detection threshold in `PsyCheckShort` (libfaac/blockswitch.c) for better responsiveness.
+- [x] Implement Refined ATH Scaling in `bmask` (libfaac/quantize.c) to reduce metallic ringing at 40kbps.
+- [x] Implement Scalefactor Capping in `qlevel` (libfaac/quantize.c) to prevent extreme quantization deltas.
+- [x] Refine Transient Detection threshold in `PsyCheckShort` (libfaac/blockswitch.c) for better responsiveness.
 
 Tier 2: Standard Alignment (Improving compliance for stability)
 - [ ] Expand TNS to short windows in `TnsEncode` (libfaac/tns.c) for better pre-echo control.

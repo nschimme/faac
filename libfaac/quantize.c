@@ -235,6 +235,20 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+
+      /* DEVIATION: Scalefactor Capping to prevent metallic spectral holes */
+      /* ISO/IEC 14496-3 Section 4.6.2: Smooth scalefactor deltas */
+      /* We must cap sfac *before* quantization to avoid gain mismatch */
+      {
+          int cur_sf = SF_OFFSET - sfac;
+          if (coderInfo->bandcnt > 0) {
+              int lastsf = coderInfo->sf[coderInfo->bandcnt - 1];
+              if (cur_sf > (lastsf + 60)) cur_sf = lastsf + 60;
+              if (cur_sf < (lastsf - 60)) cur_sf = lastsf - 60;
+          }
+          sfac = SF_OFFSET - cur_sf;
+      }
+
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
@@ -256,16 +270,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-
-      /* DEVIATION: Scalefactor Capping to prevent metallic spectral holes */
-      /* ISO/IEC 14496-3 Section 4.6.2: Smooth scalefactor deltas */
-      sfac = SF_OFFSET - sfac;
-      if (coderInfo->bandcnt > 0) {
-          int lastsf = coderInfo->sf[coderInfo->bandcnt - 1];
-          if (sfac > (lastsf + 60)) sfac = lastsf + 60;
-          if (sfac < (lastsf - 60)) sfac = lastsf - 60;
-      }
-      coderInfo->sf[coderInfo->bandcnt++] = sfac;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 
