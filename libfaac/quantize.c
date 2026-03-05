@@ -34,15 +34,14 @@
 
 #define MAGIC_NUMBER  0.4054
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -158,6 +157,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    /* DEVIATION: Refined ATH scaling for VoIP quality.
+       At low bitrates (low quality settings), we increase masking thresholds
+       to prioritize critical bands, reducing "spectral holes" in high-mids. */
+    if (quality < 0.6)
+        target *= 1.2;
+
     bandqual[sfb] = target * quality;
   }
 }
@@ -169,7 +174,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   int sample_rate
                   )
 {
     int sb;
@@ -195,6 +201,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int start, end;
       const faac_real *xr;
       int win;
+      faac_real magic = MAGIC_NUMBER;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -225,6 +232,17 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 #endif
 
+      /* DEVIATION: Adaptive quantization rounding used to preserve high-frequency
+         transients with lower LoC than standard bit-reservoir control.
+         Reducing rounding bias for high-frequency bands (approx > 10kHz)
+         reduces metallic ringing artifacts. Frequency calculation accounts
+         for transform length to avoid 8x error on short blocks. */
+      {
+          int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+          if ((start + end) * sample_rate / (4 * blk_len) > 10000)
+              magic = 0.30;
+      }
+
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
@@ -242,7 +260,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }
@@ -271,13 +289,14 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     {
         int lastis;
         int lastsf;
+        int lastpns;
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->sample_rate);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -296,7 +315,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
+        lastpns = coder->global_gain - 90;
+        int initpns = 1;
+
+        /* ISO/IEC 14496-3 Section 4.6.2.3.2: Scalefactors are Huffman coded
+           relative to the previous scalefactor using book 12, which covers
+           the range [-60, 60]. Clamping here ensures encoder/decoder sync. */
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -312,7 +336,27 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book == HCB_PNS)
+            {
+                int diff = coder->sf[cnt] - lastpns;
+
+                if (initpns)
+                {
+                    initpns = 0;
+                    /* No clamping for first PNS band as it uses 9-bit direct encoding (diff + 256) */
+                }
+                else
+                {
+                    if (diff < -60)
+                        diff = -60;
+                    if (diff > 60)
+                        diff = 60;
+                }
+
+                lastpns += diff;
+                coder->sf[cnt] = lastpns;
+            }
+            else if (book)
             {
                 int diff = coder->sf[cnt] - lastsf;
 

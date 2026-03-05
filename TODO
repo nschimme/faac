@@ -1,9 +1,22 @@
-- fix scalefactor encoding check (-60 .. 60)
+# FAAC TODO List
+
+## Tier 1: High Velocity (Minimal change, maximum quality lift)
+- [x] **Fix Scalefactor Clamping (-60..60)**: Currently causes massive step-size errors; sounds like harsh ringing/clipping.
+- [x] **Adaptive Quantization Rounding**: Implement tonality-aware rounding bias (reducing from 0.4054 to ~0.30 for high-frequency bands) to eliminate metallic ringing.
+- [x] **Refined ATH Scaling**: Adjust Absolute Threshold of Hearing for VoIP (16kbps) vs Music bitrates to improve speech clarity.
+
+## Tier 2: Standard Alignment (Improving compliance for stability)
+- [ ] **Standard-compliant Scalefactor Encoding**: Fully align with ISO/IEC 14496-3 Section 4.6.2.
+- [ ] **Frequency-selective Transient Detection**: Restore/Refine transient detection in `blockswitch.c` to eliminate pre-echo artifacts.
+- [ ] **Optimize CPE windows grouping**: Improve stereo image stability.
+
+## Tier 3: Strategic Shifts (Architectural improvements)
+- [ ] **Bit Reservoir Control**: Implement proper bit reservoir to handle complex segments without frame drops.
+- [ ] **TNS (Temporal Noise Shaping) Expansion**: Test and expand TNS support (arcen, Apr 8th, 2012).
+- [ ] **HE-AAC Support**: Strategic addition of High-Efficiency AAC (hans-juergen, Oct 17, 2004).
+
+---
+*Historical tasks (to be re-evaluated):*
 - test DRM
-- optimize quantization bias
 - optimize codebook list (section_data)
-- optimize CPE windows grouping
-- Add bit reservoir control
-- Add resampler and downmixer (hans-juergen, Oct 17, 2004)
-- Add HE AAC (hans-juergen, Oct 17, 2004)
-- Test TNS(arcen, Apr 8th, 2012)
+- Add resampler and downmixer
