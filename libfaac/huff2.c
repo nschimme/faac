@@ -538,12 +538,13 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     int diff, length;
     int lastsf;
     int lastis;
+    int lastpns;
     int initpns = 1;
 
     lastsf = coder->global_gain;
     lastis = 0;
+    lastpns = coder->global_gain - 90;
 
-    /* Unified bitstream writer for ISO/IEC 14496-3 compliance */
     for (cnt = 0; cnt < coder->bandcnt; cnt++)
     {
         int book = coder->book[cnt];
@@ -561,14 +562,14 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         }
         else if (book == HCB_PNS)
         {
-            diff = coder->sf[cnt] - lastsf;
+            diff = coder->sf[cnt] - lastpns;
 
             if (initpns)
             {
                 initpns = 0;
                 length = 9;
                 bits += length;
-                lastsf += diff;
+                lastpns += diff;
                 if (write)
                     PutBit(stream, diff + 256, length);
                 continue;
@@ -578,7 +579,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (diff < -60) diff = -60;
             length = book12[60 + diff].len;
             bits += length;
-            lastsf += diff;
+            lastpns += diff;
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
