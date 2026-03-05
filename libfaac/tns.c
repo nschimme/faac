@@ -28,6 +28,7 @@ Copyright (c) 1997.
  */
 
 #include <math.h>
+#include <string.h>
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
@@ -198,32 +199,46 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
+            faac_real k_orig[TNS_MAX_ORDER+1];
+
             windowData->numFilters++;
-            tnsInfo->tnsDataPresent=1;
+            tnsInfo->tnsDataPresent = 1;
             tnsFilter->direction = 0;
             tnsFilter->length = lengthInBands;
 
             /* ISO/IEC 14496-3 Section 4.6.8.3: Coefficient Quantization */
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+            /* Save original coefficients from Levinson-Durbin */
+            memcpy(k_orig, k, (order + 1) * sizeof(faac_real));
+
+            /* Try 4-bit quantization first */
+            QuantizeReflectionCoeffs(order, DEF_TNS_COEFF_RES, k, tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order, DEF_TNS_COEFF_THRESH, k);
             tnsFilter->order = truncatedOrder;
 
-            /* DEVIATION: Implement coefficient compression to save bits. If all
-               quantized indices are small, they can be represented with fewer bits. */
+            /* ISO/IEC 14496-3 Section 4.6.8.3: Coefficient Compression
+               If all quantized indices are small, re-quantizing with 3 bits reduces bitstream overhead. */
             tnsFilter->coefCompress = 0;
             if (truncatedOrder > 0) {
                 int i;
                 int canCompress = 1;
+                /* Check if 4-bit indices fit in 3-bit range [-4, 3] */
                 for (i = 1; i <= truncatedOrder; i++) {
-                    if (FAAC_FABS(tnsFilter->index[i]) > 3) {
+                    if (tnsFilter->index[i] > 3 || tnsFilter->index[i] < -4) {
                         canCompress = 0;
                         break;
                     }
                 }
-                tnsFilter->coefCompress = canCompress;
+
+                if (canCompress) {
+                    tnsFilter->coefCompress = 1;
+                    /* Re-quantize original coeffs with 3 bits to match the reduced bit-depth scale */
+                    QuantizeReflectionCoeffs(truncatedOrder, DEF_TNS_COEFF_RES - 1, k_orig, tnsFilter->index);
+                    memcpy(k, k_orig, (truncatedOrder + 1) * sizeof(faac_real));
+                }
             }
-            StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);      /* Filter */
+
+            StepUp(truncatedOrder, k, a);    /* Compute predictor coefficients */
+            TnsInvFilter(length, &spec[startIndex], tnsFilter);      /* Filter */
         }
     }
 }
@@ -299,11 +314,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
+static void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter)
 {
-    int i,j;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    int i, j;
+    int order = filter->order;
+    faac_real* a = filter->aCoeffs;
     faac_real temp[BLOCK_LEN_LONG];
 
     if (length <= 0)
@@ -313,20 +328,25 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
 
     memcpy(temp, spec, length * sizeof(faac_real));
 
-    /* Determine loop parameters for given direction */
-    if (filter->direction) {
-        for (i=length-1; i>=0; i--) {
+    /* ISO/IEC 14496-3 Section 4.6.8.4.3: Inverse Filtering */
+    /* Portable implementation avoiding architecture-specific intrinsics or unrolling */
+    if (filter->direction) { /* backward filtering */
+        for (i = length - 1; i >= 0; i--) {
+            faac_real sum = 0;
             int k = min(order, length - 1 - i);
-            for (j=1; j<=k; j++) {
-                spec[i] += temp[i+j] * a[j];
+            for (j = 1; j <= k; j++) {
+                sum += temp[i + j] * a[j];
             }
+            spec[i] += sum;
         }
-    } else {
-        for (i=0; i<length; i++) {
+    } else { /* forward filtering */
+        for (i = 0; i < length; i++) {
+            faac_real sum = 0;
             int k = min(order, i);
-            for (j=1; j<=k; j++) {
-                spec[i] += temp[i-j] * a[j];
+            for (j = 1; j <= k; j++) {
+                sum += temp[i - j] * a[j];
             }
+            spec[i] += sum;
         }
     }
 }
@@ -358,7 +378,6 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 /* QuantizeReflectionCoeffs:                         */
 /*   Quantize the given array of reflection coeffs   */
 /*   to the specified resolution in bits.            */
-/*   ISO/IEC 14496-3 Section 4.6.8.3                 */
 /*****************************************************/
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
@@ -398,16 +417,12 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 {
     int order,index;
 
+    /* ISO/IEC 14496-3 Section 4.6.8.4.1: Autocorrelation */
+    /* Pure portable implementation */
     for (order=0;order<=maxOrder;order++) {
         faac_real sum = 0.0;
         int limit = dataSize - order;
-        for (index=0;index<=limit-4;index+=4) {
-            sum += data[index]*data[index+order];
-            sum += data[index+1]*data[index+1+order];
-            sum += data[index+2]*data[index+2+order];
-            sum += data[index+3]*data[index+3+order];
-        }
-        for (;index<limit;index++) {
+        for (index=0;index<limit;index++) {
             sum += data[index]*data[index+order];
         }
         rArray[order]=sum;
