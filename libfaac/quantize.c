@@ -108,66 +108,59 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       return;
   }
 
-  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
-    faac_real target;
+    int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
+    last = is_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    faac_real last_inv = 1.0 / (faac_real)last;
+    faac_real totenrg_last = totenrg * last_inv;
+    int is_low_bitrate = (quality < 0.6);
 
-    start = cb_offset[sfb];
-    end = cb_offset[sfb + 1];
-
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
+    for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
     {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    maxe *= gsize;
+      faac_real avge, maxe;
+      faac_real target;
+
+      start = cb_offset[sfb];
+      end = cb_offset[sfb + 1];
+
+      avge = 0.0;
+      maxe = 0.0;
+      for (win = 0; win < gsize; win++)
+      {
+          xr = xr0 + win * BLOCK_LEN_SHORT + start;
+          int n = end - start;
+          for (cnt = 0; cnt < n; cnt++)
+          {
+              faac_real val = xr[cnt];
+              faac_real e = val * val;
+              avge += e;
+              if (maxe < e)
+                  maxe = e;
+          }
+      }
+      bandenrg[sfb] = avge;
+      maxe *= gsize;
 
 #define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
+      avgenrg = totenrg_last * (faac_real)(end - start);
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+      target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+      target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
-        target *= 1.5;
+      if (is_short)
+          target *= 1.5;
+
+      faac_real freq_fac = (faac_real)(start + end) * last_inv;
+      target *= 10.0 / (1.0 + freq_fac);
+
+      /* DEVIATION: Refined ATH scaling for low-bitrate VSS/VoIP */
+      /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
+      if (is_low_bitrate && (freq_fac > 0.5)) { /* Above ~2.0kHz at 16kHz */
+          target *= 0.5; /* Reduce threshold (allowing more noise) to save bits */
+      }
+
+      bandqual[sfb] = target * quality;
     }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
-
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
-
-    /* DEVIATION: Refined ATH scaling for low-bitrate VSS/VoIP */
-    /* ISO/IEC 14496-3 Section 4.6.2: Lift threshold to reduce metallic ringing */
-    if (quality < 0.6) {
-        faac_real freq_fac = (faac_real)(start + end) / last;
-        if (freq_fac > 0.5) { /* Above ~2.0kHz at 16kHz */
-            target *= 0.5; /* Reduce threshold (allowing more noise) to save bits */
-        }
-    }
-
-    bandqual[sfb] = target * quality;
   }
 }
 
@@ -192,6 +185,17 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
+    int lastsf_active = -1;
+    int i;
+
+    /* Initialize last active scalefactor from previous groups if applicable */
+    for (i = coderInfo->bandcnt - 1; i >= 0; i--) {
+        int book = coderInfo->book[i];
+        if (book && book != HCB_PNS) {
+            lastsf_active = coderInfo->sf[i];
+            break;
+        }
+    }
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -207,6 +211,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
+          int book = coderInfo->book[coderInfo->bandcnt];
+          if (book && book != HCB_PNS)
+              lastsf_active = coderInfo->sf[coderInfo->bandcnt];
           coderInfo->bandcnt++;
           continue;
       }
@@ -241,23 +248,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       /* We must cap sfac *before* quantization to avoid gain mismatch */
       {
           int cur_sf = SF_OFFSET - sfac;
-          int lastsf = -1;
-          int i;
 
-          /* Find last active scalefactor to cap against */
-          for (i = coderInfo->bandcnt - 1; i >= 0; i--) {
-              int book = coderInfo->book[i];
-              if (book && book != HCB_PNS) {
-                  lastsf = coderInfo->sf[i];
-                  break;
-              }
-          }
-
-          if (lastsf >= 0) {
-              if (cur_sf > (lastsf + 60)) cur_sf = lastsf + 60;
-              if (cur_sf < (lastsf - 60)) cur_sf = lastsf - 60;
+          if (lastsf_active >= 0) {
+              if (cur_sf > (lastsf_active + 60)) cur_sf = lastsf_active + 60;
+              if (cur_sf < (lastsf_active - 60)) cur_sf = lastsf_active - 60;
           }
           sfac = SF_OFFSET - cur_sf;
+          lastsf_active = cur_sf;
       }
 
       if ((SF_OFFSET - sfac) < 10)
