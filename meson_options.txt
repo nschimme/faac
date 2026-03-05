@@ -13,3 +13,4 @@ option('floating-point',
     type: 'combo',
     choices: ['single', 'double'],
     value: 'double')
+

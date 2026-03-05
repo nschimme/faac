@@ -60,6 +60,19 @@ CPUCaps get_cpu_caps(void)
         if (edx & (1 << 26)) // SSE2
             caps |= CPU_CAP_SSE2;
     }
+
+    if (max_leaf >= 7) {
+# ifdef _MSC_VER
+        __cpuidex(cpu_info, 7, 0);
+        ebx = (unsigned int)cpu_info[1];
+# else
+        unsigned int eax_7, ebx_7, ecx_7, edx_7;
+        __cpuid_count(7, 0, eax_7, ebx_7, ecx_7, edx_7);
+        ebx = ebx_7;
+# endif
+        if (ebx & (1 << 5)) // AVX2
+            caps |= CPU_CAP_AVX2;
+    }
 #endif
 
     return caps;
