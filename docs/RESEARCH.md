@@ -20,11 +20,17 @@
 ## 2. Modern AAC-LC Encoder "Secrets" (FDK-AAC, Apple AAC)
 
 ### Adaptive Quantization Rounding
-- Instead of a fixed `0.4054` rounding bias (standard magic number), modern encoders use tonality-aware adjustments.
-- For noisy/high-frequency bands, a lower bias (~0.30) reduces metallic artifacts.
+- **Mechanism**: Instead of a fixed `0.4054` rounding bias (the theoretical optimum for a specific spectral distribution), modern encoders use tonality-aware adjustments.
+- **Secret**: For noisy or high-frequency bands (>10kHz), a lower bias (~0.30) effectively biases the quantizer toward zero for low-energy coefficients. This acts as a "soft threshold" that eliminates the "metallic shimmer" caused by oscillating low-level coefficients.
+- **Optimization**: Pure tonal components benefit from a bias closer to `0.5` to minimize quantization noise modulation.
 
 ### Refined ATH Scaling
-- The Absolute Threshold of Hearing (ATH) should be scaled according to the bitrate. At low bitrates (VoIP), more aggressive ATH masking can save bits for more critical bands.
+- **Mechanism**: The Absolute Threshold of Hearing (ATH) defines the lower bound of human hearing.
+- **Secret**: At low bitrates (VoIP), modern encoders (Apple/FDK) aggressively lift the ATH in non-critical bands. This prevents "spectral holes" in the high-mids by forcing the encoder to spend bits on more perceptually significant speech components.
+
+### Architectural Secrets: Bit Reservoir & Two-Loop Search
+- **Bit Reservoir**: Modern encoders rarely operate in strict CBR. They use a bit reservoir to "borrow" bits from simple frames for use in complex transients, drastically reducing pre-echo.
+- **Two-Loop Search (TLS)**: High-performance encoders iterate the quantization process. An outer loop adjusts scalefactors to meet distortion targets, while an inner loop adjusts the global gain to meet bit-budget constraints. FAAC currently uses a single-pass estimation.
 
 ### Scalefactor Capping
 - Preventing excessively large scalefactor jumps (clamping to -60..60 delta) is mandatory for standard compliance but must be integrated into the quantization loop to avoid step-size errors.
