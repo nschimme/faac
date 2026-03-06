@@ -62,8 +62,9 @@
 /* 2RFP: COP2(18) rs=30 rt=1 rd=vrs sa=vrd funct (fmt=0) */
 #define MXU2_FSQRTW(vrd, vrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
+/* VTRUNCSWS: Page 113 says funct=10 (01010). fmt=0. Bits 5:0 = 10100 = 20. */
 #define MXU2_VTRUNCSWS(vrd, vrs) \
-    ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 16\n\t"
+    ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
 
 /* 3RVEC: COP2(18) rs=22 rt=vrt rd=vrs sa=vrd funct(0x38=56) */
 #define MXU2_ANDV(vrd, vrs, vrt) \
@@ -79,7 +80,7 @@
 #define MXU2_MFCPUW(vrd, rs_val) \
     ".word (18 << 26) | (30 << 21) | (0 << 16) | (" #rs_val " << 11) | (" #vrd " << 6) | 62\n\t"
 
-/* CFCMXU rd, mcsrs : COP2(18) rs=30 rt=1 rd=rd sa=mcsrs funct=61 */
+/* CFCMXU rd, mcsrs : COP2(18) rs=30 rt=1 rd=rd sa=mcsrs funct=30 fmt=1 (Bits 5:0 = 61) */
 #define MXU2_CFCMXU(rd, mcsrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #rd " << 11) | (" #mcsrs " << 6) | 61\n\t"
 
@@ -93,9 +94,9 @@ static void mxu_crash_handler(int sig)
 
 static inline void enable_mxu_kernel(void)
 {
-    if (prctl(PR_SET_MXU, 1, 0, 0, 0) < 0) {
-        prctl(31, 1, 0, 0, 0);
-    }
+    /* Try common Ingenic prctl codes to enable MXU/MXU2 */
+    prctl(PR_SET_MXU, 1, 0, 0, 0);
+    prctl(31, 1, 0, 0, 0);
 }
 
 static inline int check_mxu1_support(void)
@@ -114,13 +115,20 @@ static inline int check_mxu1_support(void)
     if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
         enable_mxu_kernel();
 
-        int val = 1;
+        /* Attempt to enable MXU engine via XR16 (setting bit 0) */
+        int enable_val = 1;
         __asm__ __volatile__ (
             "move $t0, %0\n\t"
-            MXU_S32I2M(16, 8)
+            MXU_S32I2M(16, 8) // XR16 = $t0
             "nop; nop; nop\n\t"
+            : : "r"(enable_val) : "$t0"
+        );
+
+        /* Verify by reading XR0 (should always be 0) */
+        int val = 0xdead;
+        __asm__ __volatile__ (
             "li $t0, 0xdead\n\t"
-            MXU_S32M2I(8, 0) // Read XR0 (always 0)
+            MXU_S32M2I(8, 0) // $t0 = XR0
             "move %0, $t0\n\t"
             : "=r"(val) : : "$t0"
         );
@@ -150,22 +158,24 @@ static inline int check_mxu2_support(void)
     if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
         enable_mxu_kernel();
 
-        int val = 3;
+        /* Attempt to enable MXU2 engine via XR16 (setting bit 1 as well) */
+        int enable_val = 3;
         __asm__ __volatile__ (
             "move $t0, %0\n\t"
-            MXU_S32I2M(16, 8)
+            MXU_S32I2M(16, 8) // XR16 = $t0
             "nop; nop; nop\n\t"
-            : : "r"(val) : "$t0"
+            : : "r"(enable_val) : "$t0"
         );
 
-        int mir = 0xdead;
+        /* Attempt to read MIR register. */
+        int mir = 0;
         __asm__ __volatile__ (
             "li $t0, 0\n\t"
-            MXU2_CFCMXU(8, 0)
+            MXU2_CFCMXU(8, 0) // Read MIR (reg 0) into $t0
             "move %0, $t0\n\t"
             : "=r"(mir) : : "$t0"
         );
-        if (mir != 0xdead && mir != 0) supported = 1;
+        if (mir != 0) supported = 1;
     }
 
     sigaction(SIGILL, &old_sa_ill, NULL);
@@ -178,16 +188,21 @@ static inline int check_mxu2_support(void)
 static inline unsigned int get_mips_prid(void)
 {
     unsigned int prid = 0;
-    struct sigaction sa, old_sa;
+    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    if (sigaction(SIGILL, &sa, &old_sa) == 0) {
-        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-            __asm__ __volatile__ ("mfc0 %0, $15" : "=r"(prid));
-        }
-        sigaction(SIGILL, &old_sa, NULL);
+    sigaction(SIGILL, &sa, &old_sa_ill);
+    sigaction(SIGBUS, &sa, &old_sa_bus);
+    sigaction(SIGSEGV, &sa, &old_sa_segv);
+
+    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+        __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
     }
+
+    sigaction(SIGILL, &old_sa_ill, NULL);
+    sigaction(SIGBUS, &old_sa_bus, NULL);
+    sigaction(SIGSEGV, &old_sa_segv, NULL);
     return prid;
 }
 #endif

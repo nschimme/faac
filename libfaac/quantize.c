@@ -25,6 +25,9 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#if defined(__mips__)
+#include "quantize_mxu.h"
+#endif
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -60,6 +63,10 @@ static QuantizeFunc qfunc = quantize_scalar;
 void QuantizeInit(void)
 {
     CPUCaps caps = get_cpu_caps();
+#if defined(__mips__)
+    unsigned int prid = get_mips_prid();
+    fprintf(stderr, "MIPS PRID: 0x%08x, Caps: 0x%x\n", prid, caps);
+#endif
 #if defined(HAVE_SSE2)
     if (caps & CPU_CAP_SSE2)
     {
