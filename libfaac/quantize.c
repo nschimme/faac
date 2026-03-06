@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -33,16 +32,15 @@
                      + __GNUC_PATCHLEVEL__)
 #endif
 
-#define MAGIC_NUMBER  0.4054
-
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
+    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -247,7 +245,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      faac_real magic = MAGIC_NUMBER;
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -304,7 +301,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, n, sfacfix, magic);
+              qfunc(xr, xi, n, sfacfix);
               xi += n;
           }
       }
