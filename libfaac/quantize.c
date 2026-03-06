@@ -65,7 +65,7 @@ void QuantizeInit(void)
     if (caps & CPU_CAP_SSE2)
     {
         qfunc = quantize_sse2;
-        qfunc_id = "SSE2";
+        fprintf(stderr, "Quantizer: SSE2\n");
         return;
     }
 #endif
@@ -73,22 +73,16 @@ void QuantizeInit(void)
     if (caps & CPU_CAP_MXU2)
     {
         qfunc = quantize_mxu2;
-        qfunc_id = "MXU2";
+        fprintf(stderr, "Quantizer: MXU2\n");
         return;
     }
     if (caps & CPU_CAP_MXU1)
     {
-        qfunc_id = "MXU";
-        /* MXU1 path not yet implemented, falls back to scalar */
+        fprintf(stderr, "Quantizer: MXU (unimplemented, using Scalar)\n");
     }
 #endif
     qfunc = quantize_scalar;
-    qfunc_id = "Scalar";
-}
-
-const char *QuantizeGetId(void)
-{
-    return qfunc_id;
+    fprintf(stderr, "Quantizer: Scalar\n");
 }
 #define NOISEFLOOR 0.4
 

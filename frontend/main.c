@@ -1003,7 +1003,6 @@ int main(int argc, char *argv[])
     }
     else
         fprintf(stderr, "Quantization quality: %ld\n", quantqual);
-    fprintf(stderr, "Quantizer: %s\n", faacEncGetQuantizer(hEncoder));
     fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);

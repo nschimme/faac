@@ -21,10 +21,6 @@
  * Registers must be passed as literal numbers.
  */
 
-/*
- * Instruction Encoding: Major(31:26) rs(25:21) rt(20:16) rd(15:11) sa(10:6) funct(5:0)
- */
-
 /* LU1QX vrd, index(base) : SPECIAL2(0x1c) base index 0 vrd 7 */
 #define MXU2_LU1QX(vrd, index, base) \
     ".word (0x1c << 26) | (" #base " << 21) | (" #index " << 16) | (0 << 11) | (" #vrd " << 6) | 7\n\t"
@@ -49,9 +45,9 @@
 
 /* 3RVEC: COP2(0x12) 22 vrt vrs vrd funct */
 #define MXU2_ANDV(vrd, vrs, vrt) \
-    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 56\n\t"
+    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 60\n\t"
 #define MXU2_XORV(vrd, vrs, vrt) \
-    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 59\n\t"
+    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 63\n\t"
 
 /* 3RINT-1: COP2(0x12) 17 vrt vrs vrd funct */
 #define MXU2_SUBW(vrd, vrs, vrt) \
@@ -59,7 +55,7 @@
 
 /* 2RINT: COP2(0x12) 30 0 rs vrd funct */
 #define MXU2_MFCPUW(vrd, rs) \
-    ".word (0x12 << 26) | (30 << 21) | (0 << 16) | (" #rs " << 11) | (" #vrd " << 6) | 62\n\t"
+    ".word (0x12 << 26) | (30 << 21) | (0 << 16) | (" #rs " << 11) | (" #vrd " << 6) | 63\n\t"
 
 /* CFCMXU rd, mcsrs : COP2(0x12) 30 1 rd mcsrs 61 */
 #define MXU2_CFCMXU(rd, mcsrs) \
@@ -129,7 +125,6 @@ static inline int check_mxu2_support(void)
         if (sigsetjmp(mxu2_jmpbuf, 1) == 0) {
             // Enable MXU Rounding (XR16 = 3)
             int val = 3;
-            (void)val;
             __asm__ __volatile__ (
                 "move $t0, %0\n\t"
                 MXU_S32I2M(16, 8)
@@ -139,13 +134,13 @@ static inline int check_mxu2_support(void)
 
             // Try to read MXU2 MIR
             int mir = 0;
-            (void)mir;
             __asm__ __volatile__ (
                 "li $t0, 0\n\t"
                 MXU2_CFCMXU(8, 0)
                 "move %0, $t0\n\t"
                 : "=r"(mir) : : "$t0"
             );
+            (void)mir;
             supported = 1;
         }
         sigaction(SIGILL, &old_sa, NULL);
