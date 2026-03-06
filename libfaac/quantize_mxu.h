@@ -8,17 +8,17 @@
  * version 2.1 of the License, or (at your option) any later version.
  */
 
-#ifndef MXU2_ASM_H
-#define MXU2_ASM_H
+#ifndef QUANTIZE_MXU_H
+#define QUANTIZE_MXU_H
+
+#include <stddef.h>
+#include <signal.h>
+#include <setjmp.h>
 
 /*
  * MXU2 instruction macros for MIPS inline assembly using .word encoding.
  * These macros expand to string literals that can be used in __asm__ blocks.
  * Registers must be passed as literal numbers.
- *
- * Register numbers for GPRs:
- * $zero: 0, $at: 1, $v0: 2, $v1: 3, $a0: 4, $a1: 5, $a2: 6, $a3: 7
- * $t0: 8, $t1: 9, $t2: 10, $t3: 11, $t4: 12, $t5: 13, $t6: 14, $t7: 15
  */
 
 /*
@@ -73,4 +73,49 @@
 #define MXU_S32I2M(xra, rb) \
     ".word (0x1c << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 0x2f\n\t"
 
-#endif /* MXU2_ASM_H */
+#if defined(__mips__)
+static sigjmp_buf mxu2_jmpbuf;
+static void mxu2_sigill_handler(int sig)
+{
+    siglongjmp(mxu2_jmpbuf, 1);
+}
+
+static inline int check_mxu2_support(void)
+{
+    struct sigaction sa, old_sa;
+    int supported = 0;
+
+    sa.sa_handler = mxu2_sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGILL, &sa, &old_sa) == 0) {
+        if (sigsetjmp(mxu2_jmpbuf, 1) == 0) {
+            // Enable MXU first (XR16 = 3)
+            int val = 3;
+            __asm__ __volatile__ (
+                "move $t0, %0\n\t"
+                MXU_S32I2M(16, 8) // XR16 = $t0 (8 is $t0)
+                "nop\n\t"
+                "nop\n\t"
+                "nop\n\t"
+                : : "r"(val) : "$t0"
+            );
+
+            // Try to read MXU2 MIR
+            int mir = 0;
+            __asm__ __volatile__ (
+                MXU2_CFCMXU(8, 0) // $t0 = vr0 (MIR is 0)
+                "move %0, $t0\n\t"
+                : "=r"(mir) : : "$t0"
+            );
+            (void)mir;
+            supported = 1;
+        }
+        sigaction(SIGILL, &old_sa, NULL);
+    }
+    return supported;
+}
+#endif
+
+#endif /* QUANTIZE_MXU_H */
