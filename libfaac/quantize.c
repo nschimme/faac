@@ -67,7 +67,7 @@ void QuantizeInit(void)
     unsigned int prid = get_mips_prid();
     char info[2048] = {0};
     get_cpu_info(info, sizeof(info));
-    fprintf(stderr, "MIPS PRID: 0x%08x, Caps: 0x%x\n%s", prid, caps, info);
+    fprintf(stderr, "MIPS PRID: 0x%08x, Caps: 0x%x\nCPU Info:\n%s", prid, caps, info);
 #endif
 #if defined(HAVE_SSE2)
     if (caps & CPU_CAP_SSE2)

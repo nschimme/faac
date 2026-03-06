@@ -30,16 +30,19 @@
 
 /* MXU1 Instructions (SPECIAL2 R-type, Major=0x1C) */
 /* S32I2M XRa, rb : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(47) */
+/* Bits: 31:26=28, 25:21=0, 20:16=rb, 15:11=0, 10:6=xra, 5:0=47 */
 #define MXU_S32I2M(xra, rb) \
-    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 47\n\t"
+    ".word (28 << 26) | (" #rb " << 16) | (" #xra " << 6) | 47\n\t"
 
 /* S32M2I rb, XRa : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(46) */
+/* Bits: 31:26=28, 25:21=0, 20:16=rb, 15:11=0, 10:6=xra, 5:0=46 */
 #define MXU_S32M2I(rb, xra) \
-    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 46\n\t"
+    ".word (28 << 26) | (" #rb " << 16) | (" #xra " << 6) | 46\n\t"
 
 /* S32CPS XRa, XRb, XRc : Major(28) rs(0) rt(xrc) rd(xrb) sa(xra) funct(7) */
+/* Bits: 31:26=28, 25:21=0, 20:16=xrc, 15:11=xrb, 10:6=xra, 5:0=7 */
 #define MXU_S32CPS(xra, xrb, xrc) \
-    ".word (28 << 26) | (0 << 21) | (" #xrc " << 14) | (" #xrb " << 10) | (" #xra " << 6) | 7\n\t"
+    ".word (28 << 26) | (" #xrc " << 16) | (" #xrb " << 11) | (" #xra " << 6) | 7\n\t"
 
 
 /* MXU2 Instructions (COP2/SPECIAL2 R-type) */
@@ -95,6 +98,23 @@ static inline void enable_mxu_kernel(void)
 {
     prctl(PR_SET_MXU, 1, 0, 0, 0);
     prctl(31, 1, 0, 0, 0);
+}
+
+static inline void get_cpu_info(char *buf, size_t len)
+{
+    FILE *f = fopen("/proc/cpuinfo", "r");
+    buf[0] = '\0';
+    if (!f) {
+        strncpy(buf, "Error: cannot open /proc/cpuinfo\n", len);
+        return;
+    }
+    char line[1024];
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "cpu model") || strstr(line, "ASEs implemented") || strstr(line, "BogoMIPS")) {
+            strncat(buf, line, len - strlen(buf) - 1);
+        }
+    }
+    fclose(f);
 }
 
 static inline int check_mxu1_support(void)
@@ -198,27 +218,17 @@ static inline int check_mxu2_support(void)
 static inline unsigned int get_mips_prid(void)
 {
     unsigned int prid = 0;
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "processor") && strstr(line, ":")) {
-                /* Try to find more specific info if needed */
-            }
-        }
-        fclose(f);
-    }
-
     struct sigaction sa, old_sa_ill;
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
-    sigaction(SIGILL, &sa, &old_sa_ill, NULL);
 
-    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-        __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
+    if (sigaction(SIGILL, &sa, &old_sa_ill) == 0) {
+        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+            __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
+        }
+        sigaction(SIGILL, &old_sa_ill, NULL);
     }
-    sigaction(SIGILL, &old_sa_ill, NULL);
     return prid;
 }
 #endif
