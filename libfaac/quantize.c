@@ -70,7 +70,8 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate,
+                  faac_real * __restrict bandtonal)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -131,6 +132,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
+    // Derive tonality proxy: PAPR = max_sample_e / avg_sample_e
+    {
+        faac_real avg_sample_e = avge / (faac_real)(gsize * (end - start) > 0 ? gsize * (end - start) : 1);
+        faac_real max_sample_e = maxe / (faac_real)gsize;
+        bandtonal[sfb] = max_sample_e / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
+    }
+
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -155,8 +163,15 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    if (sampleRate <= 16000)
-        target *= 1.25;
+    /* ISO/IEC 14496-3 Section 4.6.2: Psychoacoustics
+     * Custom deviation: Refined ATH scaling for low-bitrate modes (sampleRate <= 16kHz).
+     * Applies a 1.25x scaling boost to the speech band (300Hz - 4kHz) to improve clarity.
+     */
+    if (sampleRate <= 16000) {
+        faac_real freq = (faac_real)(start + end) * sampleRate / (4.0 * last);
+        if (freq >= 300.0 && freq <= 4000.0)
+            target *= 1.25;
+    }
 
     bandqual[sfb] = target * quality;
   }
@@ -240,9 +255,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          /* ISO/IEC 14496-3 Section 4.6.3: Quantization
+           * Custom deviation: Adaptive Quantization Rounding (AQR).
+           * Uses a reduced rounding bias (0.34 vs standard 0.4054) for high-frequency bands
+           * or non-tonal regions to reduce quantization hiss and shimmer.
+           */
           faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0)
-              magic = 0.29;
+          if (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.2)
+              magic = 0.34;
 
           for (win = 0; win < gsize; win++)
           {
@@ -281,29 +301,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            int sfb;
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, sampleRate);
-
-            // Derive tonality proxy: maxe / avge
-            for (sfb = 0; sfb < coder->sfbn; sfb++) {
-                int start = coder->sfb_offset[sfb];
-                int end = coder->sfb_offset[sfb+1];
-                int gsize = coder->groups.len[cnt];
-                int n = (end - start) * gsize;
-                faac_real avge = bandenrg[sfb] / (n > 0 ? n : 1);
-
-                faac_real maxe = 0.0;
-                int win, l;
-                for (win = 0; win < gsize; win++) {
-                    const faac_real *xr_win = gxr + win * BLOCK_LEN_SHORT + start;
-                    for (l = 0; l < (end - start); l++) {
-                        faac_real e = xr_win[l] * xr_win[l];
-                        if (maxe < e) maxe = e;
-                    }
-                }
-                bandtonal[sfb] = maxe / (avge > 0.000001 ? avge : 0.000001);
-            }
+                  (faac_real)aacquantCfg->quality/DEFQUAL, sampleRate, bandtonal);
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, bandtonal);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
