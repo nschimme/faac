@@ -76,6 +76,11 @@ void QuantizeInit(void)
         qfunc_id = "MXU2";
         return;
     }
+    if (caps & CPU_CAP_MXU1)
+    {
+        qfunc_id = "MXU";
+        /* MXU1 path not yet implemented, falls back to scalar */
+    }
 #endif
     qfunc = quantize_scalar;
     qfunc_id = "Scalar";

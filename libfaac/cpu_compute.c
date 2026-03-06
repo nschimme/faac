@@ -69,6 +69,8 @@ CPUCaps get_cpu_caps(void)
 #if defined(__mips__)
     if (check_mxu2_support())
         caps |= CPU_CAP_MXU2;
+    else if (check_mxu1_support())
+        caps |= CPU_CAP_MXU1;
 #endif
 
     return caps;

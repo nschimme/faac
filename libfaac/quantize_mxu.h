@@ -45,7 +45,7 @@
 #define MXU2_FSQRTW(vrd, vrs) \
     ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
 #define MXU2_VTRUNCSWS(vrd, vrs) \
-    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
+    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 16\n\t"
 
 /* 3RVEC: COP2(0x12) 22 vrt vrs vrd funct */
 #define MXU2_ANDV(vrd, vrs, vrt) \
@@ -80,6 +80,42 @@ static void mxu2_sigill_handler(int sig)
     siglongjmp(mxu2_jmpbuf, 1);
 }
 
+static inline int check_mxu1_support(void)
+{
+    struct sigaction sa, old_sa;
+    int supported = 0;
+
+    sa.sa_handler = mxu2_sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGILL, &sa, &old_sa) == 0) {
+        if (sigsetjmp(mxu2_jmpbuf, 1) == 0) {
+            // Try to enable MXU (XR16 = 1)
+            int val = 1;
+            __asm__ __volatile__ (
+                "move $t0, %0\n\t"
+                MXU_S32I2M(16, 8)
+                "nop; nop; nop\n\t"
+                : : "r"(val) : "$t0"
+            );
+
+            // Read back XR16 to confirm it stuck
+            int back = 0;
+            __asm__ __volatile__ (
+                "li $t0, 0\n\t"
+                ".word (0x1c << 26) | (0 << 21) | (8 << 16) | (0 << 11) | (16 << 6) | 0x2e\n\t"
+                "move %0, $t0\n\t"
+                : "=r"(back) : : "$t0"
+            );
+            if (back & 1)
+                supported = 1;
+        }
+        sigaction(SIGILL, &old_sa, NULL);
+    }
+    return supported;
+}
+
 static inline int check_mxu2_support(void)
 {
     struct sigaction sa, old_sa;
@@ -91,25 +127,25 @@ static inline int check_mxu2_support(void)
 
     if (sigaction(SIGILL, &sa, &old_sa) == 0) {
         if (sigsetjmp(mxu2_jmpbuf, 1) == 0) {
-            // Enable MXU first (XR16 = 3)
+            // Enable MXU Rounding (XR16 = 3)
             int val = 3;
+            (void)val;
             __asm__ __volatile__ (
                 "move $t0, %0\n\t"
-                MXU_S32I2M(16, 8) // XR16 = $t0 (8 is $t0)
-                "nop\n\t"
-                "nop\n\t"
-                "nop\n\t"
+                MXU_S32I2M(16, 8)
+                "nop; nop; nop\n\t"
                 : : "r"(val) : "$t0"
             );
 
             // Try to read MXU2 MIR
             int mir = 0;
+            (void)mir;
             __asm__ __volatile__ (
-                MXU2_CFCMXU(8, 0) // $t0 = vr0 (MIR is 0)
+                "li $t0, 0\n\t"
+                MXU2_CFCMXU(8, 0)
                 "move %0, $t0\n\t"
                 : "=r"(mir) : : "$t0"
             );
-            (void)mir;
             supported = 1;
         }
         sigaction(SIGILL, &old_sa, NULL);

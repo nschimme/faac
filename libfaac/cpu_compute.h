@@ -27,7 +27,8 @@
 typedef enum {
     CPU_CAP_NONE = 0,
     CPU_CAP_SSE2 = (1 << 0),
-    CPU_CAP_MXU2 = (1 << 1)
+    CPU_CAP_MXU1 = (1 << 1),
+    CPU_CAP_MXU2 = (1 << 2)
 } CPUCaps;
 
 CPUCaps get_cpu_caps(void);
