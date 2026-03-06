@@ -56,7 +56,6 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
-static const char *qfunc_id = "Scalar";
 
 void QuantizeInit(void)
 {
@@ -82,7 +81,7 @@ void QuantizeInit(void)
     }
 #endif
     qfunc = quantize_scalar;
-    fprintf(stderr, "Quantizer: Scalar\n");
+    fprintf(stderr, "Quantizer: Scalar (Caps: 0x%x)\n", caps);
 }
 #define NOISEFLOOR 0.4
 
