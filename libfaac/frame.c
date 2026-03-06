@@ -403,6 +403,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	{
 		faac_real *tmp;
 
+        coderInfo[channel].energies_valid = 0;
+
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));

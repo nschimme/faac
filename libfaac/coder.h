@@ -126,6 +126,10 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+    int energies_valid;
+    faac_real cached_enrg[MAX_SCFAC_BANDS];
+    faac_real cached_thr[MAX_SCFAC_BANDS];
+
 #ifdef DRM
     int num_data_cw[FRAME_LEN];
     int cur_cw;
