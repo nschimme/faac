@@ -15,6 +15,7 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/prctl.h>
+#include <stdio.h>
 
 #ifndef PR_SET_MXU
 #define PR_SET_MXU 30
@@ -22,12 +23,6 @@
 
 /*
  * MXU instruction macros for MIPS inline assembly using .word encoding.
- * These macros expand to string literals that can be used in __asm__ blocks.
- * Registers must be passed as literal numbers.
- */
-
-/*
- * Instruction Encoding: Major(31:26) rs(25:21) rt(20:16) rd(15:11) sa(10:6) funct(5:0)
  */
 
 /* MXU2 LU1QX vrd, index(base) : SPECIAL2(0x1c) rs=base rt=index rd=0 sa=vrd funct=7 */
@@ -97,25 +92,17 @@ static inline int check_mxu1_support(void)
     if (sigaction(SIGILL, &sa, &old_sa) == 0) {
         if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
             prctl(PR_SET_MXU, 1, 0, 0, 0);
+            prctl(31, 1, 0, 0, 0);
 
-            // Try to enable MXU (XR16 = 1)
             int val = 1;
             __asm__ __volatile__ (
                 "move $t0, %0\n\t"
-                MXU_S32I2M(16, 8)
+                MXU_S32I2M(16, 8) // XR16 = 1
                 "nop; nop; nop\n\t"
+                ".word 0x70000010\n\t" // S32LDD XR0, $zero, 0
                 : : "r"(val) : "$t0"
             );
-
-            // Read back XR16 to confirm it stuck
-            int back = 0;
-            __asm__ __volatile__ (
-                MXU_S32M2I(8, 16)
-                "move %0, $t0\n\t"
-                : "=r"(back) : : "$t0"
-            );
-            if (back & 1)
-                supported = 1;
+            supported = 1;
         }
         sigaction(SIGILL, &old_sa, NULL);
     }
@@ -134,8 +121,8 @@ static inline int check_mxu2_support(void)
     if (sigaction(SIGILL, &sa, &old_sa) == 0) {
         if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
             prctl(PR_SET_MXU, 1, 0, 0, 0);
+            prctl(31, 1, 0, 0, 0);
 
-            // Enable MXU (Enable + Rounding)
             int val = 3;
             __asm__ __volatile__ (
                 "move $t0, %0\n\t"
@@ -144,16 +131,15 @@ static inline int check_mxu2_support(void)
                 : : "r"(val) : "$t0"
             );
 
-            // Try to read MXU2 MIR
             int mir = 0;
             __asm__ __volatile__ (
-                "li $t0, 0\n\t"
+                "li $t0, 0xdead\n\t"
                 MXU2_CFCMXU(8, 0)
                 "move %0, $t0\n\t"
                 : "=r"(mir) : : "$t0"
             );
-            (void)mir;
-            supported = 1;
+            if (mir != 0xdead && mir != 0)
+                supported = 1;
         }
         sigaction(SIGILL, &old_sa, NULL);
     }

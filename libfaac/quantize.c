@@ -69,6 +69,10 @@ void QuantizeInit(void)
     }
 #endif
 #if defined(__mips__)
+    if (caps & (CPU_CAP_MXU1 | CPU_CAP_MXU2))
+    {
+        QuantizeInitMXU();
+    }
     if (caps & CPU_CAP_MXU2)
     {
         qfunc = quantize_mxu2;
