@@ -216,11 +216,11 @@ void fft_terminate( FFT_Tables *fft_tables )
 	fft_tables->reordertbl	= NULL;
 }
 
-static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
+static void reorder( FFT_Tables *fft_tables, faac_real *x, int logm)
 {
 	int i;
 	int size = 1 << logm;
-	const unsigned short *r;
+	unsigned short *r;	//size
 
 
 	if ( fft_tables->reordertbl[logm] == NULL ) // create bit reversing table
@@ -252,13 +252,9 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 		if (j <= i)
 			continue;
 
-		tmp = xr[i];
-		xr[i] = xr[j];
-		xr[j] = tmp;
-
-		tmp = xi[i];
-		xi[i] = xi[j];
-		xi[j] = tmp;
+		tmp = x[i];
+		x[i] = x[j];
+		x[j] = tmp;
 	}
 }
 
@@ -344,7 +340,8 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 
 	check_tables( fft_tables, logm);
 
-	reorder2( fft_tables, xr, xi, logm);
+	reorder( fft_tables, xr, logm);
+	reorder( fft_tables, xi, logm);
 
 	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }
