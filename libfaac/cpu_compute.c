@@ -21,6 +21,7 @@
 #include "config.h"
 #endif
 
+#include <stddef.h>
 #include "cpu_compute.h"
 #include <signal.h>
 #include <setjmp.h>
@@ -82,6 +83,7 @@ CPUCaps get_cpu_caps(void)
         if (sigsetjmp(jmpbuf, 1) == 0) {
             // Enable MXU first
             int val = 3;
+            (void)val;
             __asm__ __volatile__ (
                 "move $t0, %0\n\t"
                 MXU_S32I2M(16, 8) // XR16 = $t0 (8 is $t0)
@@ -93,6 +95,7 @@ CPUCaps get_cpu_caps(void)
 
             // Try to read MXU2 MIR
             int mir = 0;
+            (void)mir;
             __asm__ __volatile__ (
                 MXU2_CFCMXU(8, 0) // $t0 = vr0 (MIR is 0)
                 "move %0, $t0\n\t"

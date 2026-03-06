@@ -13,95 +13,64 @@
 
 /*
  * MXU2 instruction macros for MIPS inline assembly using .word encoding.
- * Based on XBurst® Instruction Set Architecture Programming Manual (MXU2).
+ * These macros expand to string literals that can be used in __asm__ blocks.
+ * Registers must be passed as literal numbers.
+ *
+ * Register numbers for GPRs:
+ * $zero: 0, $at: 1, $v0: 2, $v1: 3, $a0: 4, $a1: 5, $a2: 6, $a3: 7
+ * $t0: 8, $t1: 9, $t2: 10, $t3: 11, $t4: 12, $t5: 13, $t6: 14, $t7: 15
  */
 
-/* MXU2 Opcodes and Function codes */
-#define MXU2_OP_SPECIAL2 0x1c
-#define MXU2_OP_COP2     0x12
+/*
+ * Instruction Encoding: Major(31:26) rs(25:21) rt(20:16) rd(15:11) sa(10:6) funct(5:0)
+ */
 
-/* 3RINT funct0 values (from bits [5:0]) */
-#define MXU2_3RINT_SUB 0x2e /* Row 101, Col 110 (SUBW) */
-
-/* 3RVEC funct0 values (from bits [5:0]) */
-#define MXU2_3RVEC_AND 0x38 /* Row 111, Col 000 (ANDV) */
-#define MXU2_3RVEC_XOR 0x3b /* Row 111, Col 011 (XORV) */
-
-/* 3RFP funct0 values (from bits [5:1]) */
-#define MXU2_3RFP_FADD 0x00 /* Row 000, Col 00 (FADDW) */
-#define MXU2_3RFP_FMUL 0x02 /* Row 000, Col 10 (FMULW) */
-#define MXU2_3RFP_FCLT 0x0a /* Row 010, Col 10 (FCLTW) */
-
-/* 2RINT funct0 values (from bits [5:0]) */
-#define MXU2_2RINT_MFCPU 0x3e /* Row 111, Col 110 (MFCPUW) */
-
-/* 2RFP funct0 values (from bits [5:1]) */
-#define MXU2_2RFP_FSQRT    0x00 /* Row 000, Col 00 (FSQRTW) */
-#define MXU2_2RFP_VTRUNCS  0x08 /* Row 010, Col 00 (VTRUNCSWS) */
-#define MXU2_2RFP_CFCMXU   0x1e /* Row 111, Col 10 (CFCMXU, bit 0 is fmt) */
-
-/* Register field macros */
-#define _MXU2_RS(r)  (((r) & 0x1f) << 21)
-#define _MXU2_RT(r)  (((r) & 0x1f) << 16)
-#define _MXU2_RD(r)  (((r) & 0x1f) << 11)
-#define _MXU2_SA(r)  (((r) & 0x1f) << 6)
-
-/* Instruction generation macros */
-
-/* LU1QX vrd, index(base) : SPECIAL2, rs=base, rt=index, rd=0, sa=vrd, funct=7 */
+/* LU1QX vrd, index(base) : SPECIAL2(0x1c) base index 0 vrd 7 */
 #define MXU2_LU1QX(vrd, index, base) \
-    .word (MXU2_OP_SPECIAL2 << 26) | _MXU2_RS(base) | _MXU2_RT(index) | _MXU2_RD(0) | _MXU2_SA(vrd) | 7
+    ".word (0x1c << 26) | (" #base " << 21) | (" #index " << 16) | (0 << 11) | (" #vrd " << 6) | 7\n\t"
 
-/* SU1QX vrd, index(base) : SPECIAL2, rs=base, rt=index, rd=4, sa=vrd, funct=7 */
+/* SU1QX vrd, index(base) : SPECIAL2(0x1c) base index 4 vrd 7 */
 #define MXU2_SU1QX(vrd, index, base) \
-    .word (MXU2_OP_SPECIAL2 << 26) | _MXU2_RS(base) | _MXU2_RT(index) | _MXU2_RD(4) | _MXU2_SA(vrd) | 7
+    ".word (0x1c << 26) | (" #base " << 21) | (" #index " << 16) | (4 << 11) | (" #vrd " << 6) | 7\n\t"
 
-/* FADDW vrd, vrs, vrt : COP2, rs=24, rt=vrt, rd=vrs, sa=vrd, funct=0 (0*2+0) */
+/* 3RFP: COP2(0x12) 24 vrt vrs vrd funct (fmt=0 for single precision) */
 #define MXU2_FADDW(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(24) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 0
-
-/* FMULW vrd, vrs, vrt : COP2, rs=24, rt=vrt, rd=vrs, sa=vrd, funct=4 (2*2+0) */
+    ".word (0x12 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
 #define MXU2_FMULW(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(24) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 4
-
-/* FCLTW vrd, vrs, vrt : COP2, rs=24, rt=vrt, rd=vrs, sa=vrd, funct=20 (10*2+0) */
+    ".word (0x12 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 4\n\t"
 #define MXU2_FCLTW(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(24) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 20
+    ".word (0x12 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
 
-/* FSQRTW vrd, vrs : COP2, rs=30, rt=1, rd=vrs, sa=vrd, funct=0*2+0 = 0 */
+/* 2RFP: COP2(0x12) 30 1 vrs vrd funct (fmt=0) */
 #define MXU2_FSQRTW(vrd, vrs) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(30) | _MXU2_RT(1) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 0
-
-/* VTRUNCSWS vrd, vrs : COP2, rs=30, rt=1, rd=vrs, sa=vrd, funct=10*2+0 = 20 */
+    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
 #define MXU2_VTRUNCSWS(vrd, vrs) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(30) | _MXU2_RT(1) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 20
+    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
 
-/* ANDV vrd, vrs, vrt : COP2, rs=22, rt=vrt, rd=vrs, sa=vrd, funct=0x38 */
+/* 3RVEC: COP2(0x12) 22 vrt vrs vrd funct */
 #define MXU2_ANDV(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(22) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 0x38
-
-/* XORV vrd, vrs, vrt : COP2, rs=22, rt=vrt, rd=vrs, sa=vrd, funct=0x3b */
+    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 56\n\t"
 #define MXU2_XORV(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(22) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 0x3b
+    ".word (0x12 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 59\n\t"
 
-/* SUBW vrd, vrs, vrt : COP2, rs=17, rt=vrt, rd=vrs, sa=vrd, funct=11*4+2 = 46 */
+/* 3RINT-1: COP2(0x12) 17 vrt vrs vrd funct */
 #define MXU2_SUBW(vrd, vrs, vrt) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(17) | _MXU2_RT(vrt) | _MXU2_RD(vrs) | _MXU2_SA(vrd) | 46
+    ".word (0x12 << 26) | (17 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 46\n\t"
 
-/* MFCPUW vrd, rs : COP2, rs=30, rt=0, rd=rs, sa=vrd, funct=15*4+2 = 62 */
+/* 2RINT: COP2(0x12) 30 0 rs vrd funct */
 #define MXU2_MFCPUW(vrd, rs) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(30) | _MXU2_RT(0) | _MXU2_RD(rs) | _MXU2_SA(vrd) | 62
+    ".word (0x12 << 26) | (30 << 21) | (0 << 16) | (" #rs " << 11) | (" #vrd " << 6) | 62\n\t"
 
-/* CFCMXU rd, mcsrs : COP2, rs=30, rt=1, rd=rd, sa=mcsrs, funct=30*2+1 = 61 */
+/* CFCMXU rd, mcsrs : COP2(0x12) 30 1 rd mcsrs 61 */
 #define MXU2_CFCMXU(rd, mcsrs) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(30) | _MXU2_RT(1) | _MXU2_RD(rd) | _MXU2_SA(mcsrs) | 61
+    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #rd " << 11) | (" #mcsrs " << 6) | 61\n\t"
 
-/* MFFPUW vrd, fs : COP2, rs=30, rt=1, rd=fs, sa=vrd, funct=31*2+0 = 62 */
+/* MFFPUW vrd, fs : COP2(0x12) 30 1 fs vrd 62 */
 #define MXU2_MFFPUW(vrd, fs) \
-    .word (MXU2_OP_COP2 << 26) | _MXU2_RS(30) | _MXU2_RT(1) | _MXU2_RD(fs) | _MXU2_SA(vrd) | 62
+    ".word (0x12 << 26) | (30 << 21) | (1 << 16) | (" #fs " << 11) | (" #vrd " << 6) | 62\n\t"
 
-/* S32I2M XRa, rb : SPECIAL2, rb in rt(20:16), XRa in rd(10:6), funct=0x2f */
+/* S32I2M XRa, rb : SPECIAL2(0x1c) 0 rb 0 XRa 0x2f */
 #define MXU_S32I2M(xra, rb) \
-    .word (MXU2_OP_SPECIAL2 << 26) | _MXU2_RT(rb) | _MXU2_SA(xra) | 0x0000002f
+    ".word (0x1c << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 0x2f\n\t"
 
 #endif /* MXU2_ASM_H */

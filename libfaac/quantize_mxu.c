@@ -22,29 +22,30 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     const float magic_val = (float)MAGIC_NUMBER;
 
     if (n >= 4) {
+        int loop_cnt = n >> 2;
         __asm__ __volatile__ (
             ".set push\n\t"
             ".set noreorder\n\t"
 
             // Load constants into GPRs
-            "lw $t4, %2\n\t"        // sfacfix
-            "li $t5, 0x7FFFFFFF\n\t" // abs_mask
-            "lw $t6, %3\n\t"        // magic
-            "move $t7, $zero\n\t"   // zero
+            "lw $t4, %[sfac]\n\t"
+            "li $t5, 0x7FFFFFFF\n\t"
+            "lw $t6, %[magic]\n\t"
+            "move $t7, $zero\n\t"
 
             // Fill MXU2 registers with replicated constants
-            MXU2_MFCPUW(1, 12)      // vr1 = sfacfix (using $t4)
-            MXU2_MFCPUW(2, 13)      // vr2 = abs_mask (using $t5)
-            MXU2_MFCPUW(3, 14)      // vr3 = magic (using $t6)
-            MXU2_MFCPUW(4, 15)      // vr4 = zero (using $t7)
+            MXU2_MFCPUW(1, 12)      // vr1 = sfacfix (using $t4=12)
+            MXU2_MFCPUW(2, 13)      // vr2 = abs_mask (using $t5=13)
+            MXU2_MFCPUW(3, 14)      // vr3 = magic (using $t6=14)
+            MXU2_MFCPUW(4, 15)      // vr4 = zero (using $t7=15)
 
-            "move $t0, %0\n\t"      // xr pointer
-            "move $t1, %1\n\t"      // xi pointer
-            "move $t2, %4\n\t"      // loop count (n/4)
+            "move $t0, %[ptr_xr]\n\t"
+            "move $t1, %[ptr_xi]\n\t"
+            "move $t2, %[loop_cnt]\n\t"
 
             "1:\n\t"
             // Load 4 floats
-            MXU2_LU1QX(5, 0, 8)     // vr5 = *xr (using $t0, index $zero)
+            MXU2_LU1QX(5, 0, 8)     // vr5 = *xr (using $t0=8, index $zero=0)
 
             // sign_mask = x < 0
             MXU2_FCLTW(6, 5, 4)     // vr6 = vr5 < vr4 (zero)
@@ -55,11 +56,9 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             // x = x * sfac
             MXU2_FMULW(5, 5, 1)     // vr5 = vr5 * vr1 (sfac)
 
-            // x = x * sqrt(x)
+            // x = x^0.75: x = sqrt(x * sqrt(x))
             MXU2_FSQRTW(7, 5)       // vr7 = sqrt(vr5)
             MXU2_FMULW(5, 5, 7)     // vr5 = vr5 * vr7
-
-            // x = sqrt(x)
             MXU2_FSQRTW(5, 5)       // vr5 = sqrt(vr5)
 
             // x = x + magic
@@ -73,9 +72,9 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             MXU2_SUBW(7, 7, 6)      // vr7 = vr7 - vr6
 
             // Store 4 ints
-            MXU2_SU1QX(7, 0, 9)     // *xi = vr7 (using $t1, index $zero)
+            MXU2_SU1QX(7, 0, 9)     // *xi = vr7 (using $t1=9, index $zero=0)
 
-            // Increment pointers
+            // Increment pointers and loop
             "addiu $t0, $t0, 16\n\t"
             "addiu $t1, $t1, 16\n\t"
             "addiu $t2, $t2, -1\n\t"
@@ -84,13 +83,14 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
 
             ".set pop\n\t"
             :
-            : "r"(xr), "r"(xi), "m"(sfacfix), "m"(magic_val), "r"(n >> 2)
+            : [ptr_xr] "r"(xr), [ptr_xi] "r"(xi),
+              [sfac] "m"(sfacfix), [magic] "m"(magic_val), [loop_cnt] "r"(loop_cnt)
             : "$t0", "$t1", "$t2", "$t4", "$t5", "$t6", "$t7", "memory"
         );
-        cnt = (n >> 2) << 2;
+        cnt = loop_cnt << 2;
     }
 
-    // Scalar remainder
+    // Scalar remainder loop
     for (; cnt < n; cnt++)
     {
         faac_real val = xr[cnt];
