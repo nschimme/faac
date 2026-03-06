@@ -84,6 +84,18 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  int base_idx = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gnum * NSFB_SHORT : 0;
+
+  if (coderInfo->energies_valid)
+  {
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          int idx = base_idx + sfb;
+          bandenrg[sfb] = coderInfo->cached_enrg[idx];
+          bandqual[sfb] = coderInfo->cached_thr[idx] * quality;
+      }
+      return;
+  }
 
   for (win = 0; win < gsize; win++)
   {
@@ -99,8 +111,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
+          int idx = base_idx + sfb;
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
+          coderInfo->cached_enrg[idx] = 0.0;
+          coderInfo->cached_thr[idx] = 0.0;
       }
 
       return;
@@ -155,6 +170,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    {
+        int idx = base_idx + sfb;
+        coderInfo->cached_enrg[idx] = avge; /* avge is the sum across gsize windows */
+        coderInfo->cached_thr[idx] = target;
+    }
 
     bandqual[sfb] = target * quality;
   }
@@ -278,6 +299,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
+
+        coder->energies_valid = 1;
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
