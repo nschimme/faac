@@ -249,6 +249,24 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
+void QuantizeSaveState(CoderInfo *coderInfo)
+{
+    coderInfo->saved_global_gain = coderInfo->global_gain;
+    memcpy(coderInfo->saved_sf, coderInfo->sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(coderInfo->saved_book, coderInfo->book, sizeof(int) * MAX_SCFAC_BANDS);
+    coderInfo->saved_bandcnt = coderInfo->bandcnt;
+    coderInfo->saved_datacnt = coderInfo->datacnt;
+}
+
+void QuantizeRestoreState(CoderInfo *coderInfo)
+{
+    coderInfo->global_gain = coderInfo->saved_global_gain;
+    memcpy(coderInfo->sf, coderInfo->saved_sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(coderInfo->book, coderInfo->saved_book, sizeof(int) * MAX_SCFAC_BANDS);
+    coderInfo->bandcnt = coderInfo->saved_bandcnt;
+    coderInfo->datacnt = coderInfo->saved_datacnt;
+}
+
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
