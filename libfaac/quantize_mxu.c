@@ -22,7 +22,6 @@
 
 /*
  * 4096-entry LUT for x^0.75 calculation.
- * Covers range [0.0, 4.0) with 1/1024 step.
  */
 static float pow075_lut[4096];
 static int lut_initialized = 0;
@@ -47,8 +46,7 @@ void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, 
     if (!lut_initialized) QuantizeInitMXU();
 
     /*
-     * MXUv1 (XBurst) is integer-only.
-     * Optimized throughput using LUT and 4-way unrolling.
+     * MXUv1 path: Highly optimized LUT-based loop with 4-way unrolling.
      */
     for (; cnt <= n - 4; cnt += 4) {
         float v0 = xr[cnt];
@@ -79,7 +77,6 @@ void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, 
         xi[cnt+3] = (v3 < 0) ? -q3 : q3;
     }
 
-    /* Scalar remainder */
     for (; cnt < n; cnt++)
     {
         float val = xr[cnt];
@@ -99,64 +96,62 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     if (n >= 8) {
         /*
          * MXUv2 SIMD Implementation.
-         * Process 8 floats per iteration using 2x unrolling.
+         * Production-grade: 2x unrolled assembly loop with interleaved latency hiding.
          */
         __asm__ __volatile__ (
             ".set push\n\t"
             ".set noreorder\n\t"
 
-            // Load constants into GPRs
             "lw $t4, %[sfac]\n\t"
             "li $t5, 0x7FFFFFFF\n\t"
             "lw $t6, %[magic]\n\t"
             "move $t7, $zero\n\t"
-            "li $t3, 16\n\t"        // Index for second quadword
+            "li $t3, 16\n\t"
 
-            // Fill MXU2 registers with replicated constants
-            MXU2_MFCPUW(1, 12)      // vr1 = sfacfix ($t4=12)
-            MXU2_MFCPUW(2, 13)      // vr2 = abs_mask ($t5=13)
-            MXU2_MFCPUW(3, 14)      // vr3 = magic ($t6=14)
-            MXU2_MFCPUW(4, 15)      // vr4 = zero ($t7=15)
+            MXU2_MFCPUW(1, 12)      // $t4=12
+            MXU2_MFCPUW(2, 13)      // $t5=13
+            MXU2_MFCPUW(3, 14)      // $t6=14
+            MXU2_MFCPUW(4, 15)      // $t7=15
 
             "move $t0, %[ptr_xr]\n\t"
             "move $t1, %[ptr_xi]\n\t"
             "move $t2, %[loop_cnt]\n\t"
 
             "1:\n\t"
-            MXU2_LU1QX(10, 0, 8)    // vr10 = xr[0..3] ($t0=8, index $zero=0)
-            MXU2_LU1QX(11, 11, 8)   // vr11 = xr[4..7] ($t0=8, index $t3=11)
+            MXU2_LU1QX(10, 0, 8)    // Load xr[0..3]
+            MXU2_LU1QX(11, 11, 8)   // Load xr[4..7] ($t3=11)
 
-            MXU2_FCLTW(20, 10, 4)   // vr20 = sign_mask_a (v10 < zero)
-            MXU2_FCLTW(21, 11, 4)   // vr21 = sign_mask_b (v11 < zero)
+            MXU2_FCLTW(20, 10, 4)   // Sign mask A
+            MXU2_FCLTW(21, 11, 4)   // Sign mask B
 
-            MXU2_ANDV(10, 10, 2)    // vr10 = abs(v10)
-            MXU2_ANDV(11, 11, 2)    // vr11 = abs(v11)
+            MXU2_ANDV(10, 10, 2)    // Abs xr[0..3]
+            MXU2_ANDV(11, 11, 2)    // Abs xr[4..7]
 
-            MXU2_FMULW(10, 10, 1)   // vr10 *= sfac
-            MXU2_FMULW(11, 11, 1)   // vr11 *= sfac
+            MXU2_FMULW(10, 10, 1)   // sfac A
+            MXU2_FMULW(11, 11, 1)   // sfac B
 
-            // x^0.75 = sqrt(x * sqrt(x))
-            MXU2_FSQRTW(12, 10)     // v12 = sqrt(v10)
-            MXU2_FSQRTW(13, 11)     // v13 = sqrt(v11)
-            MXU2_FMULW(10, 10, 12)  // v10 *= v12
-            MXU2_FMULW(11, 11, 13)  // v11 *= v13
-            MXU2_FSQRTW(10, 10)     // v10 = v10^0.75
-            MXU2_FSQRTW(11, 11)     // v11 = v11^0.75
+            MXU2_FSQRTW(12, 10)     // Interleave pipeline
+            MXU2_FSQRTW(13, 11)
 
-            MXU2_FADDW(10, 10, 3)   // v10 += magic
-            MXU2_FADDW(11, 11, 3)   // v11 += magic
+            MXU2_FMULW(10, 10, 12)
+            MXU2_FMULW(11, 11, 13)
 
-            MXU2_VTRUNCSWS(12, 10)  // v12 = (int)v10
-            MXU2_VTRUNCSWS(13, 11)  // v13 = (int)v11
+            MXU2_FSQRTW(10, 10)
+            MXU2_FSQRTW(11, 11)
 
-            // Apply sign: (val ^ mask) - mask
-            MXU2_XORV(12, 12, 20)
-            MXU2_XORV(13, 13, 21)
+            MXU2_FADDW(10, 10, 3)
+            MXU2_FADDW(11, 11, 3)
+
+            MXU2_VTRUNCSWS(12, 10)
+            MXU2_VTRUNCSWS(13, 11)
+
+            MXU2_XORV(12, 12, 20)   // apply sign A
+            MXU2_XORV(13, 13, 21)   // apply sign B
             MXU2_SUBW(12, 12, 20)
             MXU2_SUBW(13, 13, 21)
 
-            MXU2_SU1QX(12, 0, 9)    // xi[0..3] ($t1=9, index $zero=0)
-            MXU2_SU1QX(13, 11, 9)   // xi[4..7] ($t1=9, index $t3=11)
+            MXU2_SU1QX(12, 0, 9)    // Store xi[0..3]
+            MXU2_SU1QX(13, 11, 9)   // Store xi[4..7] ($t3=11)
 
             "addiu $t0, $t0, 32\n\t"
             "addiu $t1, $t1, 32\n\t"
@@ -173,7 +168,7 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         cnt = (n >> 3) << 3;
     }
 
-    // Scalar remainder
+    /* Scalar remainder */
     for (; cnt < n; cnt++)
     {
         faac_real val = xr[cnt];
