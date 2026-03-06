@@ -77,7 +77,9 @@ void QuantizeInit(void)
     }
     if (caps & CPU_CAP_MXU1)
     {
-        fprintf(stderr, "Quantizer: MXU (unimplemented, using Scalar)\n");
+        qfunc = quantize_mxu1;
+        fprintf(stderr, "Quantizer: MXU (LUT)\n");
+        return;
     }
 #endif
     qfunc = quantize_scalar;

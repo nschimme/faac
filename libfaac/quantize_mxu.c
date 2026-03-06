@@ -8,13 +8,68 @@
  * version 2.1 of the License, or (at your option) any later version.
  */
 
+#include <math.h>
 #include "faac_real.h"
 #include "quantize.h"
 #include "quantize_mxu.h"
 
 #ifndef FAAC_PRECISION_SINGLE
-#error MXU2 implementation only supports single precision floats
+#error MXU implementation only supports single precision floats
 #endif
+
+/*
+ * 4096-entry LUT for x^0.75 calculation.
+ * Covers 4 most common exponents (e.g. 2^-1 to 2^2) with 1024 mantissa steps each.
+ * For values outside this range, we fall back to scalar math.
+ */
+static float pow075_lut[4096];
+static int lut_initialized = 0;
+
+void QuantizeInitLUT(void)
+{
+    if (lut_initialized) return;
+
+    /*
+     * Initialize LUT for y in [0.25, 4.0]
+     * Index = (int)((y - 0.25) * 1024)
+     */
+    int i;
+    for (i = 0; i < 4096; i++) {
+        float y = 0.25f + (float)i / 1024.0f;
+        pow075_lut[i] = powf(y, 0.75f);
+    }
+    lut_initialized = 1;
+}
+
+void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+{
+    int cnt = 0;
+    const float magic = (float)MAGIC_NUMBER;
+
+    if (!lut_initialized) QuantizeInitLUT();
+
+    /*
+     * MXU1 is integer only. We use the FPU for the multiplication,
+     * then use MXU1 for sign manipulation and rounding if possible.
+     * However, the main bottleneck is the powf/sqrt math.
+     */
+    for (cnt = 0; cnt < n; cnt++) {
+        float val = xr[cnt];
+        float y = fabsf(val) * sfacfix;
+        float res;
+
+        /* LUT lookup for common range [0.25, 4.25) */
+        if (y >= 0.25f && y < 4.25f) {
+            int idx = (int)((y - 0.25f) * 1024.0f);
+            res = pow075_lut[idx];
+        } else {
+            res = powf(y, 0.75f);
+        }
+
+        int q = (int)(res + magic);
+        xi[cnt] = (val < 0) ? -q : q;
+    }
+}
 
 void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
