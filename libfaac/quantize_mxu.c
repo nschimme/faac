@@ -158,6 +158,7 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             "addiu $t2, $t2, -1\n\t"
             "bnez $t2, 1b\n\t"
             "nop\n\t"
+            "sync\n\t"
 
             ".set pop\n\t"
             :
