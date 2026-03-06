@@ -32,15 +32,14 @@
                      + __GNUC_PATCHLEVEL__)
 #endif
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
-    const faac_real magic = MAGIC_NUMBER;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -71,7 +70,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -156,6 +155,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    if (sampleRate <= 16000)
+        target *= 1.25;
+
     bandqual[sfb] = target * quality;
   }
 }
@@ -167,7 +169,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   const faac_real * __restrict bandtonal
                   )
 {
     int sb;
@@ -237,10 +240,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          faac_real magic = MAGIC_NUMBER;
+          if (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0)
+              magic = 0.29;
+
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              qfunc(xr, xi, end, sfacfix, magic);
               xi += end;
           }
       }
@@ -249,10 +256,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int sampleRate)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real bandtonal[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -273,9 +281,31 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
+            int sfb;
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, sampleRate);
+
+            // Derive tonality proxy: maxe / avge
+            for (sfb = 0; sfb < coder->sfbn; sfb++) {
+                int start = coder->sfb_offset[sfb];
+                int end = coder->sfb_offset[sfb+1];
+                int gsize = coder->groups.len[cnt];
+                int n = (end - start) * gsize;
+                faac_real avge = bandenrg[sfb] / (n > 0 ? n : 1);
+
+                faac_real maxe = 0.0;
+                int win, l;
+                for (win = 0; win < gsize; win++) {
+                    const faac_real *xr_win = gxr + win * BLOCK_LEN_SHORT + start;
+                    for (l = 0; l < (end - start); l++) {
+                        faac_real e = xr_win[l] * xr_win[l];
+                        if (maxe < e) maxe = e;
+                    }
+                }
+                bandtonal[sfb] = maxe / (avge > 0.000001 ? avge : 0.000001);
+            }
+
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, bandtonal);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
