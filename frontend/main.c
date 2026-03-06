@@ -435,9 +435,7 @@ int main(int argc, char *argv[])
     unsigned int objectType = LOW;
     int jointmode = -1;
     int pnslevel = -1;
-    /* ISO/IEC 14496-3 Section 4.6.8: TNS is enabled by default to improve transient
-       preservation and speech quality, consistent with modern AAC-LC encoders. */
-    static int useTns = 1;
+    static int useTns = 0;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
     int cutOff = -1;

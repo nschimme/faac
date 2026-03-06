@@ -143,15 +143,22 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* ISO/IEC 14496-3 Section 4.6.8: TNS for short windows.
-           DEVIATION: Disable TNS for short windows to save bits and reduce
-           complexity, as benefits are marginal for 128-sample blocks. */
         tnsInfo->tnsDataPresent = 0;
         return;
 
+        numberOfWindows = MAX_SHORT_WINDOWS;
+        windowSize = BLOCK_LEN_SHORT;
+        startBand = tnsInfo->tnsMinBandNumberShort;
+        stopBand = numberOfBands;
+        lengthInBands = stopBand-startBand;
+        order = tnsInfo->tnsMaxOrderShort;
+        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        break;
+
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_LONG;
+        windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -184,12 +191,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        /* ISO/IEC 14496-3 Section 4.6.8.2: TNS filtering decision.
-           Using standard gain threshold 1.4 for all windows to avoid
-           noisy artifacts from aggressive filtering. */
-        faac_real threshold = 1.4;
-
-        if (gain > threshold) {  /* Use TNS */
+        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
