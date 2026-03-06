@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -83,7 +84,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
-  faac_real ath_adj = (quality < 0.6) ? 1.05 : 1.0;
 
   if (!coderInfo->energies_valid) {
     for (win = 0; win < gsize; win++)
@@ -157,10 +157,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
         target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-        /* Refined ATH Scaling: Boost masking thresholds for low-quality settings.
-           DEVIATION: Custom scaling used to reduce spectral holes and improve MOS in
-           low-bitrate scenarios (VoIP/VSS) where standard ATH would be too aggressive. */
-        target *= ath_adj;
         coderInfo->band_targets[band_idx] = target;
     } else {
         avge = coderInfo->band_energies[band_idx];
@@ -238,8 +234,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
 #endif
 
-    int blk_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-    faac_real freq_factor = (faac_real)aacquantCfg->sample_rate / (4 * blk_len);
     /* DEVIATION: Replaced dynamic alloca with fixed-size stack array.
        WHY: Guarantees thread-safety and prevents stack exhaustion in high-channel-count
        or deep-call-stack environments while remaining well within AAC's 1024-coefficient limit. */
@@ -298,12 +292,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
       xi = xitab;
-
-      /* Adaptive Quantization Rounding: Reduce metallic ringing for high frequencies.
-         DEVIATION: Magic number reduced from 0.4054 to 0.30 for frequencies > 10kHz.
-         This preserves high-frequency texture and air, which FAAC's legacy fixed rounding
-         tended to collapse into audible "shimmer". */
-      if ((start + end) * freq_factor > 10000) magic = 0.30;
 
       if (sfacfix <= 0.0)
       {

@@ -34,6 +34,11 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannels);
 static int WriteADTSHeader(faacEncStruct* hEncoder,
                            BitStream *bitStream,
                            int writeFlag);
@@ -142,12 +147,6 @@ static int WriteFAACStr(BitStream *bitStream, char *version, int write)
 }
 #endif
 
-int CountBitstream(faacEncStruct* hEncoder,
-                   CoderInfo *coderInfo,
-                   ChannelInfo *channelInfo,
-                   BitStream *bitStream,
-                   int numChannel);
-
 int WriteBitstream(faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
@@ -158,8 +157,12 @@ int WriteBitstream(faacEncStruct* hEncoder,
     int bits = 0;
     int bitsLeftAfterFill, numFillBits;
 
-    if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannel) < 0)
-        return -1;
+    /* DEVIATION: Optimization - Bypass redundant CountBitstream if bit count is already known.
+       In 2-pass rate control mode, usedBytes is already populated by the estimation pass. */
+    if (hEncoder->usedBytes == 0) {
+        if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannel) < 0)
+            return -1;
+    }
 
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 1);
@@ -211,23 +214,12 @@ int WriteBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
-    if (hEncoder->config.bitRate && hEncoder->sampleRate)
-    {
-        int avgBits = (int)((double)numChannel * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
-        int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
-        if (currentReservoir > hEncoder->maxBitReservoir) {
-            numFillBits = currentReservoir - hEncoder->maxBitReservoir;
-        } else {
-            numFillBits = 0;
-        }
+    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
+    /* Save room for ID_END terminator */
+    if (bits < (8 - LEN_SE_ID) ) {
+        numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
-    }
-
-    /* Save room for ID_END terminator */
-    if (bits + numFillBits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
@@ -259,11 +251,13 @@ int CountBitstream(faacEncStruct* hEncoder,
 {
     int channel;
     int bits = 0;
-    int numFillBits;
+    int bitsLeftAfterFill, numFillBits;
 
 
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 0);
+    }else{
+        bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
 /* sur: faad2 complains about scalefactor error if we are writing FAAC String */
@@ -310,32 +304,19 @@ int CountBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* ISO/IEC 14496-3 Section 4.6.2.1: Bit reservoir overflow control */
-    if (hEncoder->config.bitRate && hEncoder->sampleRate)
-    {
-        int avgBits = (int)((double)numChannel * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
-        int currentReservoir = hEncoder->bitReservoir + (avgBits - bits);
-        if (currentReservoir > hEncoder->maxBitReservoir) {
-            numFillBits = currentReservoir - hEncoder->maxBitReservoir;
-        } else {
-            numFillBits = 0;
-        }
+    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
+    /* Save room for ID_END terminator */
+    if (bits < (8 - LEN_SE_ID) ) {
+        numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
     }
 
-    /* Save room for ID_END terminator */
-    if (bits + numFillBits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
-    }
-
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
-    if (numFillBits > 0) {
-        int bitsLeftAfterFill;
-        numFillBits += 6;
-        bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
-        bits += (numFillBits - bitsLeftAfterFill);
-    }
+    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
+    numFillBits += 6;
+    bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
+    bits += (numFillBits - bitsLeftAfterFill);
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
@@ -343,7 +324,7 @@ int CountBitstream(faacEncStruct* hEncoder,
     /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
-    hEncoder->usedBytes = (bits + 7) >> 3;
+    hEncoder->usedBytes = bit2byte(bits);
 
     if (hEncoder->usedBytes > bitStream->size)
     {
@@ -882,9 +863,8 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    if (bitStream->data) {
+    if (buffer)
         SetMemory(bitStream->data, 0, size);
-    }
 
     return bitStream;
 }

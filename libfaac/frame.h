@@ -76,14 +76,6 @@ typedef struct {
     PsyInfo psyInfo[MAX_CHANNELS];
     GlobalPsyInfo gpsyInfo;
 
-    /* Bit reservoir */
-    int bitReservoir;
-    int maxBitReservoir;
-
-    /* Saved state for two-pass quantization */
-    int saved_sf[MAX_CHANNELS][MAX_SCFAC_BANDS];
-    int saved_book[MAX_CHANNELS][MAX_SCFAC_BANDS];
-
     /* Configuration data */
     faacEncConfiguration config;
 
@@ -91,6 +83,10 @@ typedef struct {
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
+    int bitReservoir;
+    int maxBitReservoir;
+    int saved_sf[MAX_CHANNELS][MAX_SCFAC_BANDS];
+    int saved_book[MAX_CHANNELS][MAX_SCFAC_BANDS];
 
     /* FFT Tables */
     FFT_Tables	fft_tables;

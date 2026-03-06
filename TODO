@@ -4,10 +4,6 @@
 1. **[PRIORITY] Bit Reservoir Implementation (MOS Gain: High | LoC: Low)**
    - Goal: Smooth bit distribution for speech/transients, particularly for 16/40 kbps scenarios.
    - Status: Active.
-2. **Adaptive Quantization Rounding (MOS Gain: Mid | LoC: Low)**
-   - Goal: Reduce metallic "shimmer" by varying the 0.4054 magic number based on frequency bands.
-3. **Refined ATH Scaling (MOS Gain: Mid | LoC: Low)**
-   - Goal: Improve transparency for silence/low-level signals.
 
 ## Tier 2: Standard Alignment (Stability & Compliance)
 4. **Fix Scalefactor Differential Encoding (Stability: High | LoC: Low)**
