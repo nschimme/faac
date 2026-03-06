@@ -76,7 +76,7 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* rArray, int* indexArray);
 static int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
-static void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter);
+static void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
 
 
 /*****************************************************/
@@ -135,7 +135,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               int bitRate)             /* Total per-channel bitrate in bps */
+               faac_real* temp)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -161,7 +161,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         /* DEVIATION: Cap order at 12 for long windows to preserve bits at lower bitrates. */
-        order = (bitRate > 0 && bitRate < 48000) ? 8 : min(tnsInfo->tnsMaxOrderLong, 12);
+        order = 12;
         startBand = min(startBand, tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand, tnsInfo->tnsMaxBandsLong);
         break;
@@ -176,17 +176,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
-    /* DEVIATION: Bitrate-adaptive thresholds (v20).
-       Prevents quantizer starvation at low bitrates by requiring higher prediction gain. */
+    /* DEVIATION: Adaptive activation threshold (v20).
+       TNS activation threshold is fixed at 2.0 (standard recommendation)
+       but increased for short windows (+1.0) to balance side-info bit consumption. */
     faac_real threshold = 2.0;
-    if (bitRate > 0) {
-        if (bitRate < 16000) threshold = 6.0;
-        else if (bitRate < 32000) threshold = 4.0;
-        else if (bitRate < 48000) threshold = 3.5;
-        else if (bitRate < 64000) threshold = 3.0;
-    }
-
-    /* Short windows incur higher side-info overhead relative to their duration. */
     if (blockType == ONLY_SHORT_WINDOW) threshold += 1.0;
 
     /* Perform analysis and filtering for each window */
@@ -240,7 +233,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             }
 
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);      /* Filter */
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
         }
     }
 }
@@ -256,7 +249,8 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          int maxSfb,                 /* max_sfb */
                          enum WINDOW_TYPE blockType, /* block type */
                          int* sfbOffsetTable,        /* Scalefactor band offset table */
-                         faac_real* spec)               /* Spectral data array */
+                         faac_real* spec,               /* Spectral data array */
+                         faac_real* temp)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand;    /* Bands over which to apply TNS */
@@ -293,7 +287,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
             startIndex = w * windowSize + sfbOffsetTable[startBand];
             length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
-            TnsInvFilter(length,&spec[startIndex],tnsFilter);
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
         }
     }
 }
@@ -307,15 +301,13 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   within the TnsFilterData structure.                */
 /*   Optimized FIR filter implementation using pointers.*/
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter)
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
     int i,j;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
-    faac_real temp[BLOCK_LEN_LONG]; /* Optimized: Stack allocated to avoid heap latency */
 
     if (length <= 0) return;
-    if (length > BLOCK_LEN_LONG) length = BLOCK_LEN_LONG;
     memcpy(temp, spec, length * sizeof(faac_real));
 
     /* Determine loop parameters for given direction */
