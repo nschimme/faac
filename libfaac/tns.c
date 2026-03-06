@@ -122,6 +122,8 @@ void TnsInit(faacEncStruct* hEncoder)
         }
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
+        /* Store bitrate per channel for adaptive thresholds */
+        tnsInfo->bitRate = hEncoder->config.bitRate;
     }
 }
 
@@ -135,7 +137,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+               faac_real* temp)             /* Shared scratch buffer */
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -161,7 +163,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         /* DEVIATION: Cap order at 12 for long windows to preserve bits at lower bitrates. */
-        order = 12;
+        order = (tnsInfo->bitRate > 0 && tnsInfo->bitRate < 48000) ? 8 : min(tnsInfo->tnsMaxOrderLong, 12);
         startBand = min(startBand, tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand, tnsInfo->tnsMaxBandsLong);
         break;
@@ -176,9 +178,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
-    /* DEVIATION: Adaptive activation threshold (v20).
-       TNS activation threshold is fixed at 2.0 (standard recommendation)
-       but increased for short windows (+1.0) to balance side-info bit consumption. */
+    /* DEVIATION: TNS activation threshold (v20).
+       Standard recommended value 2.0 used as base. Short blocks require
+       higher prediction gain (threshold 3.0) to justify bit overhead. */
     faac_real threshold = 2.0;
     if (blockType == ONLY_SHORT_WINDOW) threshold += 1.0;
 
@@ -197,7 +199,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (length <= order) continue;
 
-        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
+        gain = LevinsonDurbin(order, length, &spec[startIndex], k);
 
         if (gain > threshold) {  /* Use TNS */
             int truncatedOrder;
@@ -250,7 +252,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          enum WINDOW_TYPE blockType, /* block type */
                          int* sfbOffsetTable,        /* Scalefactor band offset table */
                          faac_real* spec,               /* Spectral data array */
-                         faac_real* temp)
+                         faac_real* temp)             /* Shared scratch buffer */
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand;    /* Bands over which to apply TNS */

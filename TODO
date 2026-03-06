@@ -19,17 +19,4 @@ Tier 2: Standard Alignment
 
 Tier 3: Strategic Shifts
 - [x] Implement adaptive TNS activation thresholding (Bitrate-aware, v20)
-
-TNS IMPROVEMENTS (Tiered TODO):
-Tier 1: High Velocity
-- [x] Fix windowSize bug in libfaac/tns.c:TnsEncode
-- [x] Enable TNS for ONLY_SHORT_WINDOW in libfaac/tns.c
-- [x] Align CLI (main.c) default with GUI: Enable TNS by default
-- [x] Optimize TnsInvFilter and Autocorrelation for performance
-
-Tier 2: Standard Alignment
-- [x] Implement ISO/IEC 14496-3 Section 4.6.8.3 coefficient compression
-
-Tier 3: Strategic Shifts
-- [x] Implement adaptive TNS activation thresholding (Bitrate-aware, v20)
 - Test TNS(arcen, Apr 8th, 2012)
