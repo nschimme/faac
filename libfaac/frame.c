@@ -258,6 +258,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
+    /* ISO/IEC 14496-3 Section 4.6.2: Bit Reservoir initialization */
+    hEncoder->bitResMax = 6144 * numChannels;
+    hEncoder->bitResLevel = hEncoder->bitResMax;
+
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
@@ -366,10 +370,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     int sb, frameBytes;
     unsigned int offset;
     BitStream *bitStream; /* bitstream used for writing the frame to */
-#ifdef DRM
-    int desbits, diff;
-    faac_real fix;
-#endif
 
     /* local copy's of parameters */
     ChannelInfo *channelInfo = hEncoder->channelInfo;
@@ -380,11 +380,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int jointmode = hEncoder->config.jointmode;
     unsigned int bandWidth = hEncoder->config.bandWidth;
     unsigned int shortctl = hEncoder->config.shortctl;
-#ifndef DRM
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
-#endif
 
-    /* Increase frame number */
     hEncoder->frameNum++;
 
     if (samplesInput == 0)
@@ -576,45 +573,73 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-#ifdef DRM
-    /* loop the quantization until the desired bit-rate is reached */
-    diff = 1; /* to enter while loop */
-    hEncoder->aacquantCfg.quality = 120; /* init quality setting */
-    while (diff > 0) { /* if too many bits, do it again */
-#endif
-    for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg), hEncoder->sampleRate);
+    /* ISO/IEC 14496-3 Section 4.6.2: Rate Control & Bit Reservoir */
+    {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int maxbits = desbits + hEncoder->bitResLevel;
+        int pass = 0;
+        int actual_bits;
+        faac_real fix = 1.0;
+
+        /* Reset energy caching for new frame */
+        for (channel = 0; channel < numChannels; channel++) {
+            coderInfo[channel].energies_valid = 0;
+        }
+
+        /* Iterative Rate Control Loop (Max 2 passes for efficiency) */
+        while (pass < 2) {
+            for (channel = 0; channel < numChannels; channel++) {
+                QuantizeSaveState(&coderInfo[channel]);
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                          &(hEncoder->aacquantCfg), hEncoder->sampleRate);
+                coderInfo[channel].energies_valid = 1;
+            }
+
+            /* Virtual bit counting (NULL buffer) */
+            BitStream *tempBS = OpenBitStream(0, NULL);
+            actual_bits = CountBitstream(hEncoder, coderInfo, channelInfo, tempBS, numChannels);
+            CloseBitStream(tempBS);
+
+            if (pass == 0 && actual_bits > maxbits * 1.05) {
+                /* Pass 1: Budget exceeded. Scale quality down and re-quantize. */
+                fix = (faac_real)maxbits / (faac_real)actual_bits;
+                /* Square-root adjustment for stable convergence */
+                fix = FAAC_SQRT(fix);
+                hEncoder->aacquantCfg.quality *= fix;
+
+                for (channel = 0; channel < numChannels; channel++) {
+                    QuantizeRestoreState(&coderInfo[channel]);
+                }
+                pass++;
+            } else {
+                /* Pass 2 or within budget: proceed to final bitstream writing */
+                break;
+            }
+        }
+
+        /* Final bitstream writing */
+        bitStream = OpenBitStream(bufferSize, outputBuffer);
+        actual_bits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+        frameBytes = CloseBitStream(bitStream);
+
+        /* Update Reservoir */
+        hEncoder->bitResLevel += (desbits - actual_bits);
+        if (hEncoder->bitResLevel > hEncoder->bitResMax)
+            hEncoder->bitResLevel = hEncoder->bitResMax;
+        if (hEncoder->bitResLevel < 0)
+            hEncoder->bitResLevel = 0;
+
+        /* Legacy feed-forward adjustment for long-term bitrate tracking */
+        fix = (faac_real)desbits / (faac_real)actual_bits;
+        if (fix < 0.9) fix += 0.1;
+        else if (fix > 1.1) fix -= 0.1;
+        else fix = 1.0;
+
+        hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.5 + 1.0;
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
     }
 
-#ifdef DRM
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-    WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* now calculate desired bits and compare with actual encoded bits */
-    desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate);
-
-    diff = ((frameBytes - 1 /* CRC */) * 8) - desbits;
-
-    /* do linear correction according to relative difference */
-    fix = (faac_real) desbits / ((frameBytes - 1 /* CRC */) * 8);
-
-    /* speed up convergence. A value of 0.92 gives approx up to 10 iterations */
-    if (fix > 0.92)
-        fix = 0.92;
-
-    hEncoder->aacquantCfg.quality *= fix;
-
-    /* quality should not go lower than 1, set diff to exit loop */
-    if (hEncoder->aacquantCfg.quality <= 1)
-        diff = -1;
-    }
-#endif
 
     // fix max_sfb in CPE mode
     for (channel = 0; channel < numChannels; channel++)
@@ -631,41 +656,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                         cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
 		}
     }
-#ifndef DRM
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
-        return -1;
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
-    }
-#endif
 
     return frameBytes;
 }

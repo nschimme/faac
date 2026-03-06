@@ -1318,6 +1318,9 @@ static void calc_CRC(BitStream *bitStream, int len)
     //unsigned char r = ~0;  /* Initialize to all ones */
     unsigned char crc = ~0;  /* Initialize to all ones */
 
+    if (!bitStream->data)
+        return;
+
     /* CRC polynome used x^8 + x^4 + x^3 + x^2 +1 */
 
     unsigned int cb         = len / 8;

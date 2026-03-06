@@ -55,7 +55,8 @@ extern "C" {
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
 #define MAX_SHORT_WINDOWS 8
-#define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
+#define MAX_SCFAC_BANDS (NSFB_LONG + 1)
+#define MAX_TOTAL_BANDS 128
 
 enum WINDOW_TYPE {
     ONLY_LONG_WINDOW,
@@ -106,11 +107,24 @@ typedef struct {
     int desired_block_type;
 
     int global_gain;
-    int sf[MAX_SCFAC_BANDS];
-    int book[MAX_SCFAC_BANDS];
+    int sf[MAX_TOTAL_BANDS];
+    int book[MAX_TOTAL_BANDS];
     int bandcnt;
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
+
+    /* Saved state for re-quantization */
+    int saved_global_gain;
+    int saved_sf[MAX_TOTAL_BANDS];
+    int saved_book[MAX_TOTAL_BANDS];
+    int saved_bandcnt;
+    int saved_datacnt;
+
+    /* Per-band caching for iterative passes */
+    int energies_valid;
+    faac_real cached_bandenrg[MAX_TOTAL_BANDS];
+    faac_real cached_bandqual[MAX_TOTAL_BANDS];
+    faac_real cached_bandtonal[MAX_TOTAL_BANDS];
 
     struct {
         int n;

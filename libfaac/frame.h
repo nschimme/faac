@@ -49,6 +49,10 @@ typedef struct {
 
     unsigned int usedBytes;
 
+    /* Bit Reservoir state */
+    int bitResLevel;    /* Current bits in reservoir */
+    int bitResMax;      /* Max reservoir capacity (bits) */
+
     /* frame number */
     unsigned int frameNum;
     unsigned int flushFrame;

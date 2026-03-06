@@ -56,6 +56,24 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 static QuantizeFunc qfunc = quantize_scalar;
 
+void QuantizeSaveState(CoderInfo *coderInfo)
+{
+    coderInfo->saved_global_gain = coderInfo->global_gain;
+    memcpy(coderInfo->saved_sf, coderInfo->sf, sizeof(int) * MAX_TOTAL_BANDS);
+    memcpy(coderInfo->saved_book, coderInfo->book, sizeof(int) * MAX_TOTAL_BANDS);
+    coderInfo->saved_bandcnt = coderInfo->bandcnt;
+    coderInfo->saved_datacnt = coderInfo->datacnt;
+}
+
+void QuantizeRestoreState(CoderInfo *coderInfo)
+{
+    coderInfo->global_gain = coderInfo->saved_global_gain;
+    memcpy(coderInfo->sf, coderInfo->saved_sf, sizeof(int) * MAX_TOTAL_BANDS);
+    memcpy(coderInfo->book, coderInfo->saved_book, sizeof(int) * MAX_TOTAL_BANDS);
+    coderInfo->bandcnt = coderInfo->saved_bandcnt;
+    coderInfo->datacnt = coderInfo->saved_datacnt;
+}
+
 void QuantizeInit(void)
 {
 #if defined(HAVE_SSE2)
@@ -301,8 +319,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, sampleRate, bandtonal);
+            faac_real quality_scale = (faac_real)aacquantCfg->quality/DEFQUAL;
+
+            if (!coder->energies_valid) {
+                bmask(coder, gxr, bandlvl, bandenrg, cnt, quality_scale, sampleRate, bandtonal);
+                memcpy(coder->cached_bandqual + cnt * NSFB_SHORT, bandlvl, coder->sfbn * sizeof(faac_real));
+                memcpy(coder->cached_bandenrg + cnt * NSFB_SHORT, bandenrg, coder->sfbn * sizeof(faac_real));
+                memcpy(coder->cached_bandtonal + cnt * NSFB_SHORT, bandtonal, coder->sfbn * sizeof(faac_real));
+            } else {
+                memcpy(bandenrg, coder->cached_bandenrg + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
+                memcpy(bandtonal, coder->cached_bandtonal + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
+                // Rescale quality floor from cached targets
+                for (int sfb = 0; sfb < coder->sfbn; sfb++) {
+                    bandlvl[sfb] = coder->cached_bandqual[cnt * NSFB_SHORT + sfb] * quality_scale;
+                }
+            }
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, bandtonal);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
