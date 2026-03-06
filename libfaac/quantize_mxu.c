@@ -12,12 +12,21 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <sys/prctl.h>
+#include <errno.h>
+#include <unistd.h>
 #include "faac_real.h"
 #include "quantize.h"
 #include "quantize_mxu.h"
 
 #ifndef FAAC_PRECISION_SINGLE
 #error MXU implementation only supports single precision floats
+#endif
+
+#ifndef PR_SET_MXU
+#define PR_SET_MXU 30
 #endif
 
 /*
@@ -38,6 +47,177 @@ void QuantizeInitMXU(void)
     lut_initialized = 1;
 }
 
+#if defined(__mips__)
+static sigjmp_buf mxu_jmpbuf;
+static void mxu_crash_handler(int sig)
+{
+    siglongjmp(mxu_jmpbuf, 1);
+}
+
+static inline void enable_mxu_kernel(void)
+{
+    int ret1 = prctl(PR_SET_MXU, 1, 0, 0, 0);
+    int ret2 = prctl(31, 1, 0, 0, 0);
+    if (ret1 < 0 && ret2 < 0) {
+        fprintf(stderr, "MXU: Failed to enable via prctl (30/31): %s\n", strerror(errno));
+    } else {
+        fprintf(stderr, "MXU: Kernel enablement (prctl 30/31) reported success.\n");
+    }
+}
+
+int check_mxu1_support(void)
+{
+    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
+    int supported = 0;
+    int xburst = 0;
+
+    FILE *f = fopen("/proc/cpuinfo", "r");
+    if (f) {
+        char line[1024];
+        while (fgets(line, sizeof(line), f)) {
+            if (strstr(line, "Xburst") || strstr(line, "Ingenic")) {
+                xburst = 1;
+                break;
+            }
+        }
+        fclose(f);
+    }
+
+    if (!xburst) return 0;
+
+    sa.sa_handler = mxu_crash_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    sigaction(SIGILL, &sa, &old_sa_ill);
+    sigaction(SIGBUS, &sa, &old_sa_bus);
+    sigaction(SIGSEGV, &sa, &old_sa_segv);
+
+    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+        enable_mxu_kernel();
+
+        int enable_val = 3;
+        /* Force engine activation via S32I2M XR16, $t0 */
+        __asm__ __volatile__ (
+            "move $t0, %0\n\t"
+            ".word 0x7008042f\n\t"
+            "nop; nop; nop\n\t"
+            : : "r"(enable_val) : "$t0"
+        );
+
+        /* Try reading XR0 (always 0) using S32M2I $t0, XR0 */
+        int val = 0xdead;
+        __asm__ __volatile__ (
+            "li $t0, 0xbeef\n\t"
+            ".word 0x7008002e\n\t"
+            "move %0, $t0\n\t"
+            : "=r"(val) : : "$t0"
+        );
+        if (val == 0) supported = 1;
+    }
+
+    sigaction(SIGILL, &old_sa_ill, NULL);
+    sigaction(SIGBUS, &old_sa_bus, NULL);
+    sigaction(SIGSEGV, &old_sa_segv, NULL);
+
+    fprintf(stderr, "MXU: Instruction probe for MXU1 (XBurst core): %s\n", supported ? "SUCCESS" : "FAILED");
+    return supported;
+}
+
+int check_mxu2_support(void)
+{
+    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
+    int supported = 0;
+    int xburst = 0;
+
+    FILE *f = fopen("/proc/cpuinfo", "r");
+    if (f) {
+        char line[1024];
+        while (fgets(line, sizeof(line), f)) {
+            if (strstr(line, "Xburst") || strstr(line, "Ingenic")) {
+                xburst = 1;
+                break;
+            }
+        }
+        fclose(f);
+    }
+
+    if (!xburst) return 0;
+
+    sa.sa_handler = mxu_crash_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    sigaction(SIGILL, &sa, &old_sa_ill);
+    sigaction(SIGBUS, &sa, &old_sa_bus);
+    sigaction(SIGSEGV, &sa, &old_sa_segv);
+
+    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+        enable_mxu_kernel();
+
+        int enable_val = 3;
+        /* Force engine activation via S32I2M XR16, $t0 */
+        __asm__ __volatile__ (
+            "move $t0, %0\n\t"
+            ".word 0x7008042f\n\t"
+            "nop; nop; nop\n\t"
+            : : "r"(enable_val) : "$t0"
+        );
+
+        int mir = 0;
+        __asm__ __volatile__ (
+            "li $t0, 0\n\t"
+            /* Try reading MIR using CFCMXU $t0, MIR */
+            ".word 0x4908003d\n\t"
+            "move %0, $t0\n\t"
+            : "=r"(mir) : : "$t0"
+        );
+        if (mir != 0) supported = 1;
+    }
+
+    sigaction(SIGILL, &old_sa_ill, NULL);
+    sigaction(SIGBUS, &old_sa_bus, NULL);
+    sigaction(SIGSEGV, &old_sa_segv, NULL);
+
+    fprintf(stderr, "MXU: Instruction probe for MXU2 (XBurst core): %s\n", supported ? "SUCCESS" : "FAILED");
+    return supported;
+}
+
+void get_cpu_info(char *buf, size_t len)
+{
+    FILE *f = fopen("/proc/cpuinfo", "r");
+    buf[0] = '\0';
+    if (!f) {
+        strncpy(buf, "Error: cannot open /proc/cpuinfo", len);
+        return;
+    }
+    char line[1024];
+    while (fgets(line, sizeof(line), f)) {
+        if (strstr(line, "cpu model") || strstr(line, "ASEs implemented") || strstr(line, "BogoMIPS")) {
+            strncat(buf, line, len - strlen(buf) - 1);
+        }
+    }
+    fclose(f);
+}
+
+unsigned int get_mips_prid(void)
+{
+    unsigned int prid = 0;
+    struct sigaction sa, old_sa_ill;
+    sa.sa_handler = mxu_crash_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGILL, &sa, &old_sa_ill) == 0) {
+        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+            __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
+        }
+        sigaction(SIGILL, &old_sa_ill, NULL);
+    }
+    return prid;
+}
+#endif
+
 void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     int cnt = 0;
@@ -45,9 +225,6 @@ void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, 
 
     if (!lut_initialized) QuantizeInitMXU();
 
-    /*
-     * MXUv1 path: Highly optimized LUT-based loop with 4-way unrolling.
-     */
     for (; cnt <= n - 4; cnt += 4) {
         float v0 = xr[cnt];
         float v1 = xr[cnt+1];
@@ -96,10 +273,6 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     const float magic_val = (float)MAGIC_NUMBER;
 
     if (n >= 8) {
-        /*
-         * MXUv2 SIMD Implementation.
-         * Production-grade: 2x unrolled assembly loop with interleaved latency hiding.
-         */
         __asm__ __volatile__ (
             ".set push\n\t"
             ".set noreorder\n\t"

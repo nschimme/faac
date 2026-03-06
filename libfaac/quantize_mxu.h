@@ -12,37 +12,24 @@
 #define QUANTIZE_MXU_H
 
 #include <stddef.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <sys/prctl.h>
-#include <stdio.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
-
-#ifndef PR_SET_MXU
-#define PR_SET_MXU 30
-#endif
+#include "faac_real.h"
 
 /*
  * MXU instruction macros for MIPS inline assembly using .word encoding.
  */
 
-/* MXU1 Instructions (SPECIAL2 R-type, Major=0x1C) */
+/* MXU1 Instructions (SPECIAL2 R-type, Major=28=0x1C) */
 /* S32I2M XRa, rb : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(47) */
-/* Bits: 31:26=28, 25:21=0, 20:16=rb, 15:11=0, 10:6=xra, 5:0=47 */
 #define MXU_S32I2M(xra, rb) \
-    ".word (28 << 26) | (" #rb " << 16) | (" #xra " << 6) | 47\n\t"
+    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 47\n\t"
 
 /* S32M2I rb, XRa : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(46) */
-/* Bits: 31:26=28, 25:21=0, 20:16=rb, 15:11=0, 10:6=xra, 5:0=46 */
 #define MXU_S32M2I(rb, xra) \
-    ".word (28 << 26) | (" #rb " << 16) | (" #xra " << 6) | 46\n\t"
+    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 46\n\t"
 
 /* S32CPS XRa, XRb, XRc : Major(28) rs(0) rt(xrc) rd(xrb) sa(xra) funct(7) */
-/* Bits: 31:26=28, 25:21=0, 20:16=xrc, 15:11=xrb, 10:6=xra, 5:0=7 */
 #define MXU_S32CPS(xra, xrb, xrc) \
-    ".word (28 << 26) | (" #xrc " << 16) | (" #xrb " << 11) | (" #xra " << 6) | 7\n\t"
+    ".word (28 << 26) | (0 << 21) | (" #xrc " << 16) | (" #xrb " << 11) | (" #xra " << 6) | 7\n\t"
 
 
 /* MXU2 Instructions (COP2/SPECIAL2 R-type) */
@@ -86,151 +73,15 @@
 #define MXU2_CFCMXU(rd, mcsrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #rd " << 11) | (" #mcsrs " << 6) | 61\n\t"
 
-
 #if defined(__mips__)
-static sigjmp_buf mxu_jmpbuf;
-static void mxu_crash_handler(int sig)
-{
-    siglongjmp(mxu_jmpbuf, 1);
-}
+void QuantizeInitMXU(void);
+void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
-static inline void enable_mxu_kernel(void)
-{
-    prctl(PR_SET_MXU, 1, 0, 0, 0);
-    prctl(31, 1, 0, 0, 0);
-}
-
-static inline void get_cpu_info(char *buf, size_t len)
-{
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    buf[0] = '\0';
-    if (!f) {
-        strncpy(buf, "Error: cannot open /proc/cpuinfo\n", len);
-        return;
-    }
-    char line[1024];
-    while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "cpu model") || strstr(line, "ASEs implemented") || strstr(line, "BogoMIPS")) {
-            strncat(buf, line, len - strlen(buf) - 1);
-        }
-    }
-    fclose(f);
-}
-
-static inline int check_mxu1_support(void)
-{
-    /* First try parsing /proc/cpuinfo */
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "ASEs implemented") && strstr(line, " mxu")) {
-                fclose(f);
-                return 1;
-            }
-        }
-        fclose(f);
-    }
-
-    /* Fallback to instruction probe */
-    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
-    int supported = 0;
-    sa.sa_handler = mxu_crash_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGILL, &sa, &old_sa_ill);
-    sigaction(SIGBUS, &sa, &old_sa_bus);
-    sigaction(SIGSEGV, &sa, &old_sa_segv);
-
-    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-        enable_mxu_kernel();
-        int enable_val = 3;
-        __asm__ __volatile__ (
-            "move $t0, %0\n\t"
-            MXU_S32I2M(16, 8)
-            "nop; nop; nop\n\t"
-            : : "r"(enable_val) : "$t0"
-        );
-        int val = 0xdead;
-        __asm__ __volatile__ (
-            "li $t0, 0xdead\n\t"
-            MXU_S32M2I(8, 0)
-            "move %0, $t0\n\t"
-            : "=r"(val) : : "$t0"
-        );
-        if (val == 0) supported = 1;
-    }
-    sigaction(SIGILL, &old_sa_ill, NULL);
-    sigaction(SIGBUS, &old_sa_bus, NULL);
-    sigaction(SIGSEGV, &old_sa_segv, NULL);
-    return supported;
-}
-
-static inline int check_mxu2_support(void)
-{
-    /* First try parsing /proc/cpuinfo */
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "ASEs implemented") && strstr(line, " mxu2")) {
-                fclose(f);
-                return 1;
-            }
-        }
-        fclose(f);
-    }
-
-    /* Fallback to instruction probe */
-    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
-    int supported = 0;
-    sa.sa_handler = mxu_crash_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGILL, &sa, &old_sa_ill);
-    sigaction(SIGBUS, &sa, &old_sa_bus);
-    sigaction(SIGSEGV, &sa, &old_sa_segv);
-
-    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-        enable_mxu_kernel();
-        int enable_val = 3;
-        __asm__ __volatile__ (
-            "move $t0, %0\n\t"
-            MXU_S32I2M(16, 8)
-            "nop; nop; nop\n\t"
-            : : "r"(enable_val) : "$t0"
-        );
-        int mir = 0;
-        __asm__ __volatile__ (
-            "li $t0, 0\n\t"
-            MXU2_CFCMXU(8, 0)
-            "move %0, $t0\n\t"
-            : "=r"(mir) : : "$t0"
-        );
-        if (mir != 0) supported = 1;
-    }
-    sigaction(SIGILL, &old_sa_ill, NULL);
-    sigaction(SIGBUS, &old_sa_bus, NULL);
-    sigaction(SIGSEGV, &old_sa_segv, NULL);
-    return supported;
-}
-
-static inline unsigned int get_mips_prid(void)
-{
-    unsigned int prid = 0;
-    struct sigaction sa, old_sa_ill;
-    sa.sa_handler = mxu_crash_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-
-    if (sigaction(SIGILL, &sa, &old_sa_ill) == 0) {
-        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-            __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
-        }
-        sigaction(SIGILL, &old_sa_ill, NULL);
-    }
-    return prid;
-}
+int check_mxu1_support(void);
+int check_mxu2_support(void);
+void get_cpu_info(char *buf, size_t len);
+unsigned int get_mips_prid(void);
 #endif
 
 #endif /* QUANTIZE_MXU_H */
