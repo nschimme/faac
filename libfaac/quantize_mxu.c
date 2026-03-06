@@ -54,10 +54,12 @@ void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, 
         float v2 = xr[cnt+2];
         float v3 = xr[cnt+3];
 
-        float y0 = (v0 < 0 ? -v0 : v0) * sfacfix;
-        float y1 = (v1 < 0 ? -v1 : v1) * sfacfix;
-        float y2 = (v2 < 0 ? -v2 : v2) * sfacfix;
-        float y3 = (v3 < 0 ? -v3 : v3) * sfacfix;
+        float y0, y1, y2, y3;
+
+        y0 = (v0 < 0 ? -v0 : v0) * sfacfix;
+        y1 = (v1 < 0 ? -v1 : v1) * sfacfix;
+        y2 = (v2 < 0 ? -v2 : v2) * sfacfix;
+        y3 = (v3 < 0 ? -v3 : v3) * sfacfix;
 
         float r0, r1, r2, r3;
 
