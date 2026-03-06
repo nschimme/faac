@@ -19,9 +19,9 @@
 void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     int cnt = 0;
-    const float magic_val = (float)MAGIC_NUMBER;
 
     if (n >= 4) {
+        const float magic_val = (float)MAGIC_NUMBER;
         /*
          * Load constants into MXU2 registers once.
          */

@@ -9,3 +9,4 @@ faacEncEncode                    @4
 faacEncClose                     @5
 faacEncGetDecoderSpecificInfo	 @6
 faacEncGetVersion				 @7
+faacEncGetQuantizer              @8

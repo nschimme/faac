@@ -87,7 +87,7 @@ int FAACAPI faacEncEncode(faacEncHandle hEncoder, int32_t * inputBuffer, unsigne
 
 int FAACAPI faacEncClose(faacEncHandle hEncoder);
 
-const char* FAACAPI faacEncGetQuantizer(faacEncHandle hEncoder);
+const char * FAACAPI faacEncGetQuantizer(faacEncHandle hEncoder);
 
 
 #pragma pack(pop)
