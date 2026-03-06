@@ -106,9 +106,13 @@ typedef struct {
     int desired_block_type;
 
     int global_gain;
+    int saved_global_gain;
     int sf[MAX_SCFAC_BANDS];
+    int saved_sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
+    int saved_book[MAX_SCFAC_BANDS];
     int bandcnt;
+    int saved_bandcnt;
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
@@ -125,6 +129,7 @@ typedef struct {
         int len;
     } s[DATASIZE];
     int datacnt;
+    int saved_datacnt;
 
 #ifdef DRM
     int num_data_cw[FRAME_LEN];
