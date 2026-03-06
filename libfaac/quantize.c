@@ -56,6 +56,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
+static const char *qfunc_id = "Scalar";
 
 void QuantizeInit(void)
 {
@@ -64,6 +65,7 @@ void QuantizeInit(void)
     if (caps & CPU_CAP_SSE2)
     {
         qfunc = quantize_sse2;
+        qfunc_id = "SSE2";
         return;
     }
 #endif
@@ -71,10 +73,17 @@ void QuantizeInit(void)
     if (caps & CPU_CAP_MXU2)
     {
         qfunc = quantize_mxu2;
+        qfunc_id = "MXU2";
         return;
     }
 #endif
     qfunc = quantize_scalar;
+    qfunc_id = "Scalar";
+}
+
+const char *QuantizeGetId(void)
+{
+    return qfunc_id;
 }
 #define NOISEFLOOR 0.4
 
