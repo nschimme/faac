@@ -38,3 +38,8 @@ Makefile*
 *.user
 /libfaac/win32_ver.h
 /libfaac/faac.pc
+/build_*/
+/install_*/
+/results/*.json
+/.venv/
+/output/
