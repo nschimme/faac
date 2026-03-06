@@ -153,7 +153,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     // Derive tonality proxy: PAPR = max_sample_e / avg_sample_e
     {
         faac_real avg_sample_e = avge / (faac_real)(gsize * (end - start) > 0 ? gsize * (end - start) : 1);
-        faac_real max_sample_e = maxe / (faac_real)gsize;
+        faac_real max_sample_e = maxe;
         bandtonal[sfb] = max_sample_e / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
     }
 
@@ -275,12 +275,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           /* ISO/IEC 14496-3 Section 4.6.3: Quantization
            * Custom deviation: Adaptive Quantization Rounding (AQR).
-           * Uses a reduced rounding bias (0.34 vs standard 0.4054) for high-frequency bands
+           * Uses a reduced rounding bias (0.35 vs standard 0.4054) for high-frequency bands
            * or non-tonal regions to reduce quantization hiss and shimmer.
            */
           faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.2)
-              magic = 0.34;
+          if (sb >= (int)(coderInfo->sfbn * 0.6) || bandtonal[sb] < 2.0)
+              magic = 0.35;
 
           for (win = 0; win < gsize; win++)
           {
@@ -323,13 +323,16 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
             if (!coder->energies_valid) {
                 bmask(coder, gxr, bandlvl, bandenrg, cnt, quality_scale, sampleRate, bandtonal);
-                memcpy(coder->cached_bandqual + cnt * NSFB_SHORT, bandlvl, coder->sfbn * sizeof(faac_real));
+                // Cache unscaled quality targets for pass-2 rescaling
+                for (int sfb = 0; sfb < coder->sfbn; sfb++) {
+                    coder->cached_bandqual[cnt * NSFB_SHORT + sfb] = bandlvl[sfb] / (quality_scale > 1e-5 ? quality_scale : 1e-5);
+                }
                 memcpy(coder->cached_bandenrg + cnt * NSFB_SHORT, bandenrg, coder->sfbn * sizeof(faac_real));
                 memcpy(coder->cached_bandtonal + cnt * NSFB_SHORT, bandtonal, coder->sfbn * sizeof(faac_real));
             } else {
                 memcpy(bandenrg, coder->cached_bandenrg + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
                 memcpy(bandtonal, coder->cached_bandtonal + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
-                // Rescale quality floor from cached targets
+                // Rescale quality floor from cached targets using current quality_scale
                 for (int sfb = 0; sfb < coder->sfbn; sfb++) {
                     bandlvl[sfb] = coder->cached_bandqual[cnt * NSFB_SHORT + sfb] * quality_scale;
                 }

@@ -599,6 +599,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             BitStream *tempBS = OpenBitStream(0, NULL);
             actual_bits = CountBitstream(hEncoder, coderInfo, channelInfo, tempBS, numChannels);
             CloseBitStream(tempBS);
+            if (actual_bits < 0) return -1;
 
             if (pass == 0 && actual_bits > maxbits * 1.05) {
                 /* Pass 1: Budget exceeded. Scale quality down and re-quantize. */
@@ -620,6 +621,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* Final bitstream writing */
         bitStream = OpenBitStream(bufferSize, outputBuffer);
         actual_bits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+        if (actual_bits < 0) {
+            CloseBitStream(bitStream);
+            return -1;
+        }
         frameBytes = CloseBitStream(bitStream);
 
         /* Update Reservoir */
