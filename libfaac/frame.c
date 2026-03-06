@@ -324,7 +324,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     return hEncoder;
 }
 
-const char * FAACAPI faacEncGetQuantizer(faacEncHandle hpEncoder)
+FAACAPI const char * faacEncGetQuantizer(faacEncHandle hpEncoder)
 {
     return QuantizeGetId();
 }
