@@ -183,12 +183,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* ISO/IEC 14496-3 Section 4.6.2: Psychoacoustics
      * Custom deviation: Refined ATH scaling for low-bitrate modes (sampleRate <= 16kHz).
-     * Applies a 1.25x scaling boost to the speech band (300Hz - 4kHz) to improve clarity.
+     * Applies a 0.75x multiplier to the masking threshold in the speech band (300Hz - 4kHz)
+     * to improve clarity and preserve detail.
      */
     if (sampleRate <= 16000) {
         faac_real freq = (faac_real)(start + end) * sampleRate / (4.0 * last);
         if (freq >= 300.0 && freq <= 4000.0)
-            target *= 1.25;
+            target *= 0.75;
     }
 
     bandqual[sfb] = target * quality;
@@ -275,12 +276,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           /* ISO/IEC 14496-3 Section 4.6.3: Quantization
            * Custom deviation: Adaptive Quantization Rounding (AQR).
-           * Uses a reduced rounding bias (0.35 vs standard 0.4054) for high-frequency bands
+           * Uses a reduced rounding bias (0.33 vs standard 0.4054) for high-frequency bands
            * or non-tonal regions to reduce quantization hiss and shimmer.
            */
           faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.6) || bandtonal[sb] < 2.0)
-              magic = 0.35;
+          if (sb >= (int)(coderInfo->sfbn * 0.6) || bandtonal[sb] < 2.5)
+              magic = 0.33;
 
           for (win = 0; win < gsize; win++)
           {

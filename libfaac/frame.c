@@ -621,11 +621,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* Final bitstream writing */
         bitStream = OpenBitStream(bufferSize, outputBuffer);
         actual_bits = WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-        if (actual_bits < 0) {
-            CloseBitStream(bitStream);
-            return -1;
-        }
         frameBytes = CloseBitStream(bitStream);
+        if (actual_bits < 0) return -1;
 
         /* Update Reservoir */
         hEncoder->bitResLevel += (desbits - actual_bits);
@@ -636,11 +633,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         /* Legacy feed-forward adjustment for long-term bitrate tracking */
         fix = (faac_real)desbits / (faac_real)actual_bits;
-        if (fix < 0.9) fix += 0.1;
-        else if (fix > 1.1) fix -= 0.1;
-        else fix = 1.0;
 
-        hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.5 + 1.0;
+        /* If we used significantly fewer bits than desired, scale quality up */
+        if (actual_bits < (int)(desbits * 0.8)) {
+            hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
+        } else {
+            if (fix < 0.9) fix += 0.1;
+            else if (fix > 1.1) fix -= 0.1;
+            else fix = 1.0;
+            hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.5 + 1.0;
+        }
         if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
     }
