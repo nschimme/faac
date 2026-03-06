@@ -318,8 +318,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     TnsInit(hEncoder);
 
-    QuantizeInit();
-
     /* Return handle */
     return hEncoder;
 }
