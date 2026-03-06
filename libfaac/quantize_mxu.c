@@ -96,10 +96,10 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     int cnt = 0;
     const float magic_val = (float)MAGIC_NUMBER;
 
-    if (n >= 4) {
+    if (n >= 8) {
         /*
          * MXUv2 SIMD Implementation.
-         * Process 4 floats per iteration.
+         * Process 8 floats per iteration using 2x unrolling.
          */
         __asm__ __volatile__ (
             ".set push\n\t"
@@ -110,6 +110,7 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             "li $t5, 0x7FFFFFFF\n\t"
             "lw $t6, %[magic]\n\t"
             "move $t7, $zero\n\t"
+            "li $t3, 16\n\t"        // Index for second quadword
 
             // Fill MXU2 registers with replicated constants
             MXU2_MFCPUW(1, 12)      // vr1 = sfacfix ($t4=12)
@@ -122,27 +123,43 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             "move $t2, %[loop_cnt]\n\t"
 
             "1:\n\t"
-            MXU2_LU1QX(5, 0, 8)     // vr5 = *xr ($t0=8)
-            MXU2_FCLTW(6, 5, 4)     // vr6 = sign_mask (vr5 < zero)
-            MXU2_ANDV(5, 5, 2)      // vr5 = abs(vr5)
-            MXU2_FMULW(5, 5, 1)     // vr5 *= sfac
+            MXU2_LU1QX(10, 0, 8)    // vr10 = xr[0..3] ($t0=8, index $zero=0)
+            MXU2_LU1QX(11, 11, 8)   // vr11 = xr[4..7] ($t0=8, index $t3=11)
 
-            // x = x^0.75: x = sqrt(x * sqrt(x))
-            MXU2_FSQRTW(7, 5)       // vr7 = sqrt(vr5)
-            MXU2_FMULW(5, 5, 7)     // vr5 *= vr7
-            MXU2_FSQRTW(5, 5)       // vr5 = sqrt(vr5)
+            MXU2_FCLTW(20, 10, 4)   // vr20 = sign_mask_a (v10 < zero)
+            MXU2_FCLTW(21, 11, 4)   // vr21 = sign_mask_b (v11 < zero)
 
-            MXU2_FADDW(5, 5, 3)     // vr5 += magic
-            MXU2_VTRUNCSWS(7, 5)    // vr7 = (int)vr5
+            MXU2_ANDV(10, 10, 2)    // vr10 = abs(v10)
+            MXU2_ANDV(11, 11, 2)    // vr11 = abs(v11)
+
+            MXU2_FMULW(10, 10, 1)   // vr10 *= sfac
+            MXU2_FMULW(11, 11, 1)   // vr11 *= sfac
+
+            // x^0.75 = sqrt(x * sqrt(x))
+            MXU2_FSQRTW(12, 10)     // v12 = sqrt(v10)
+            MXU2_FSQRTW(13, 11)     // v13 = sqrt(v11)
+            MXU2_FMULW(10, 10, 12)  // v10 *= v12
+            MXU2_FMULW(11, 11, 13)  // v11 *= v13
+            MXU2_FSQRTW(10, 10)     // v10 = v10^0.75
+            MXU2_FSQRTW(11, 11)     // v11 = v11^0.75
+
+            MXU2_FADDW(10, 10, 3)   // v10 += magic
+            MXU2_FADDW(11, 11, 3)   // v11 += magic
+
+            MXU2_VTRUNCSWS(12, 10)  // v12 = (int)v10
+            MXU2_VTRUNCSWS(13, 11)  // v13 = (int)v11
 
             // Apply sign: (val ^ mask) - mask
-            MXU2_XORV(7, 7, 6)      // apply sign
-            MXU2_SUBW(7, 7, 6)
+            MXU2_XORV(12, 12, 20)
+            MXU2_XORV(13, 13, 21)
+            MXU2_SUBW(12, 12, 20)
+            MXU2_SUBW(13, 13, 21)
 
-            MXU2_SU1QX(7, 0, 9)     // *xi = vr7 ($t1=9)
+            MXU2_SU1QX(12, 0, 9)    // xi[0..3] ($t1=9, index $zero=0)
+            MXU2_SU1QX(13, 11, 9)   // xi[4..7] ($t1=9, index $t3=11)
 
-            "addiu $t0, $t0, 16\n\t"
-            "addiu $t1, $t1, 16\n\t"
+            "addiu $t0, $t0, 32\n\t"
+            "addiu $t1, $t1, 32\n\t"
             "addiu $t2, $t2, -1\n\t"
             "bnez $t2, 1b\n\t"
             "nop\n\t"
@@ -150,10 +167,10 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             ".set pop\n\t"
             :
             : [ptr_xr] "r"(xr), [ptr_xi] "r"(xi),
-              [sfac] "m"(sfacfix), [magic] "m"(magic_val), [loop_cnt] "r"(n >> 2)
-            : "$t0", "$t1", "$t2", "$t4", "$t5", "$t6", "$t7", "memory"
+              [sfac] "m"(sfacfix), [magic] "m"(magic_val), [loop_cnt] "r"(n >> 3)
+            : "$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$t6", "$t7", "memory"
         );
-        cnt = (n >> 2) << 2;
+        cnt = (n >> 3) << 3;
     }
 
     // Scalar remainder
