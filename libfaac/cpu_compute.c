@@ -22,6 +22,9 @@
 #endif
 
 #include "cpu_compute.h"
+#include <signal.h>
+#include <setjmp.h>
+#include "mxu2_asm.h"
 
 #if defined(SSE2_ARCH)
 # ifdef _MSC_VER
@@ -29,6 +32,14 @@
 # elif defined(__GNUC__) || defined(__clang__)
 #  include <cpuid.h>
 # endif
+#endif
+
+#if defined(__mips__)
+static sigjmp_buf jmpbuf;
+static void sigill_handler(int sig)
+{
+    siglongjmp(jmpbuf, 1);
+}
 #endif
 
 CPUCaps get_cpu_caps(void)
@@ -59,6 +70,39 @@ CPUCaps get_cpu_caps(void)
 # endif
         if (edx & (1 << 26)) // SSE2
             caps |= CPU_CAP_SSE2;
+    }
+#endif
+
+#if defined(__mips__)
+    struct sigaction sa, old_sa;
+    sa.sa_handler = sigill_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    if (sigaction(SIGILL, &sa, &old_sa) == 0) {
+        if (sigsetjmp(jmpbuf, 1) == 0) {
+            // Enable MXU first
+            int val = 3;
+            __asm__ __volatile__ (
+                "move $t0, %0\n\t"
+                MXU_S32I2M(16, 8) // XR16 = $t0 (8 is $t0)
+                "nop\n\t"
+                "nop\n\t"
+                "nop\n\t"
+                : : "r"(val) : "$t0"
+            );
+
+            // Try to read MXU2 MIR
+            int mir = 0;
+            __asm__ __volatile__ (
+                MXU2_CFCMXU(8, 0) // $t0 = vr0 (MIR is 0)
+                "move %0, $t0\n\t"
+                : "=r"(mir) : : "$t0"
+            );
+
+            // If we didn't crash, it's MXU2
+            caps |= CPU_CAP_MXU2;
+        }
+        sigaction(SIGILL, &old_sa, NULL);
     }
 #endif
 

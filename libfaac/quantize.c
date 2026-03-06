@@ -59,13 +59,22 @@ static QuantizeFunc qfunc = quantize_scalar;
 
 void QuantizeInit(void)
 {
-#if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
+#if defined(HAVE_SSE2)
     if (caps & CPU_CAP_SSE2)
+    {
         qfunc = quantize_sse2;
-    else
+        return;
+    }
 #endif
-        qfunc = quantize_scalar;
+#if defined(__mips__)
+    if (caps & CPU_CAP_MXU2)
+    {
+        qfunc = quantize_mxu2;
+        return;
+    }
+#endif
+    qfunc = quantize_scalar;
 }
 #define NOISEFLOOR 0.4
 
