@@ -97,15 +97,20 @@ int check_mxu1_support(void)
         enable_mxu_kernel();
 
         int enable_val = 3;
-        /* Force engine activation via S32I2M XR16, $t0 */
+        /* Force engine activation via S32I2M XR16, $t0
+           Encoding: Major(28) rs(0) rt(8) rd(0) sa(16) funct(47) = 0x7008042f
+        */
         __asm__ __volatile__ (
             "move $t0, %0\n\t"
             ".word 0x7008042f\n\t"
             "nop; nop; nop\n\t"
+            "sync\n\t"
             : : "r"(enable_val) : "$t0"
         );
 
-        /* Try reading XR0 (always 0) using S32M2I $t0, XR0 */
+        /* Try reading XR0 (always 0) using S32M2I $t0, XR0
+           Encoding: Major(28) rs(0) rt(8) rd(0) sa(0) funct(46) = 0x7008002e
+        */
         int val = 0xdead;
         __asm__ __volatile__ (
             "li $t0, 0xbeef\n\t"
@@ -161,14 +166,17 @@ int check_mxu2_support(void)
             "move $t0, %0\n\t"
             ".word 0x7008042f\n\t"
             "nop; nop; nop\n\t"
+            "sync\n\t"
             : : "r"(enable_val) : "$t0"
         );
 
         int mir = 0;
         __asm__ __volatile__ (
             "li $t0, 0\n\t"
-            /* Try reading MIR using CFCMXU $t0, MIR */
-            ".word 0x4908003d\n\t"
+            /* Try reading MIR using CFCMXU $t0, MIR (reg 0)
+               Encoding from docs: Major(18) rs(30) rt(8) rd(0) sa(30) funct(61) = 0x4bc8f03d
+            */
+            ".word 0x4bc8f03d\n\t"
             "move %0, $t0\n\t"
             : "=r"(mir) : : "$t0"
         );
