@@ -124,20 +124,28 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       return;
   }
 
+  /* Hoist block-type and sampling-rate dependent constants */
+  last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+  const faac_real last_inv = 1.0 / (faac_real)last;
+  const faac_real totenrg_last = totenrg * last_inv;
+  const faac_real ath_adj = (sampleRate <= 16000) ? 0.8 : 1.0;
+  const faac_real freq_factor = (faac_real)sampleRate * 0.25 * last_inv;
+
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge, maxe;
     faac_real target;
+    int n;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
+    n = end - start;
 
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
@@ -149,41 +157,25 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     }
     bandenrg[sfb] = avge;
 
-    // ISO/IEC 14496-3 Section 4.6.2: Scalefactor determination
-    // Calculate tonality as peak-to-average energy ratio
-    faac_real avg_sample_e = avge / (faac_real)(gsize * (end - start) > 0 ? gsize * (end - start) : 1);
+    // ISO/IEC 14496-3 Section 4.6.2: Scalefactor determination.
+    // Calculate tonality as peak-to-average energy ratio.
+    faac_real avg_sample_e = avge / (faac_real)(gsize * n > 0 ? gsize * n : 1);
     bandtonal[sfb] = maxe / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
 
     maxe *= gsize;
+    avgenrg = totenrg_last * n;
 
 #define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.36 * FAAC_POW(maxe/avgenrg, powm);
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW) target *= 1.5;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-
-        target *= 1.5;
-    }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
-
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+    target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));
 
     if (sampleRate <= 16000) {
         // Refined ATH Scaling (VoIP/VSS): 1.25x scaling boost for 16kHz modes to prioritize speech clarity.
-        target *= 0.8; // effectively 1.25x boost as target is threshold (lower = more sensitive/more bits)
-        faac_real freq = (faac_real)(start + end) * sampleRate / (4.0 * last);
+        // ISO/IEC 14496-3 Section 4.6.2.1: Deviation - Frequency-dependent ATH floor adjustment.
+        target *= ath_adj; // effectively 1.25x boost as target is threshold (lower = more sensitive/more bits)
+        faac_real freq = (faac_real)(start + end) * freq_factor;
         if (freq >= 300.0 && freq <= 4000.0) target *= 0.8;
     }
 
@@ -209,9 +201,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #else
     static const faac_real sfstep = 20 / 1.50515;
 #endif
-    int gsize = coderInfo->groups.len[gnum];
+    const int gsize = coderInfo->groups.len[gnum];
+    const faac_real gsize_inv = 1.0 / (faac_real)gsize;
 #ifndef DRM
-    faac_real pnsthr = 0.1 * pnslevel;
+    const faac_real pnsthr = 0.1 * pnslevel;
 #endif
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
@@ -220,9 +213,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[1024];
       int *xi;
-      int start, end;
+      int start, end, n;
       const faac_real *xr;
       int win;
 
@@ -234,9 +227,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
+      n = end - start;
 
-      etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
+      etot = bandenrg[sb] * gsize_inv;
+      const int blk_len = gsize * n;
+      rmsx = FAAC_SQRT(etot / n);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -248,39 +243,38 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+          coderInfo->sf[coderInfo->bandcnt] = FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
       }
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 10)
+      if ((SF_OFFSET - sfac) < 0)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      end -= start;
       xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          memset(xi, 0, blk_len * sizeof(int));
       }
       else
       {
           // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or non-tonal regions to reduce shimmer.
+          // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
           faac_real magic = (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0) ? 0.33 : MAGIC_NUMBER;
 
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix, magic);
-              xi += end;
+              qfunc(xr, xi, n, sfacfix, magic);
+              xi += n;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      huffbook(coderInfo, xitab, blk_len);
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 
@@ -305,11 +299,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     {
         int lastis;
         int lastsf;
+        const faac_real qs = (faac_real)aacquantCfg->quality/DEFQUAL;
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            faac_real qs = (faac_real)aacquantCfg->quality/DEFQUAL;
             int ofs = cnt * NSFB_SHORT;
 
             if (!coder->energies_valid) {
@@ -348,32 +342,45 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
+        int lastpns = coder->global_gain - 90;
+        int firstpns = 1;
+
+        // ISO/IEC 14496-3 Section 4.6.2: Scalefactors must be differentially encoded in the range [-60, 60].
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
             if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
             {
                 int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastis += diff;
+                if (lastis < -255) lastis = -255;
+                if (lastis > 255) lastis = 255;
                 coder->sf[cnt] = lastis;
+            }
+            else if (book == HCB_PNS)
+            {
+                int diff = coder->sf[cnt] - lastpns;
+                if (firstpns) {
+                    if (diff < -256) diff = -256;
+                    if (diff > 255) diff = 255;
+                    firstpns = 0;
+                } else {
+                    if (diff < -60) diff = -60;
+                    if (diff > 60) diff = 60;
+                }
+                lastpns += diff;
+                coder->sf[cnt] = lastpns;
             }
             else if (book > 0 && book <= 11)
             {
                 int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastsf += diff;
+                if (lastsf < 0) lastsf = 0;
+                if (lastsf > 255) lastsf = 255;
                 coder->sf[cnt] = lastsf;
             }
         }
