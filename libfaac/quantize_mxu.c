@@ -11,10 +11,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/prctl.h>
+#include <unistd.h>
 #include "faac_real.h"
 #include "quantize.h"
 #include "quantize_mxu.h"
@@ -23,7 +23,7 @@
 #error MXU implementation only supports single precision floats
 #endif
 
-/* MXU2 SIMD Floating Point Macros for T31 (Hand-encoded) */
+/* MXU2 SIMD Floating Point Macros for T31 (XBurst core) */
 #define MXU2_LU1QX(vrd, idx, base) \
     ".word (28 << 26) | (" #base " << 21) | (" #idx " << 16) | (0 << 11) | (" #vrd " << 6) | 7\n\t"
 #define MXU2_SU1QX(vrd, idx, base) \
@@ -65,6 +65,19 @@ void QuantizeInitMXU(void)
 static sigjmp_buf mxu_jmpbuf;
 static void mxu_crash_handler(int sig) { siglongjmp(mxu_jmpbuf, 1); }
 
+static void enable_mxu_engine(void)
+{
+    prctl(30, 1, 0, 0, 0); // PR_SET_MXU
+    prctl(31, 1, 0, 0, 0);
+    __asm__ __volatile__ (
+        "li $t0, 3\n\t"
+        ".word 0x7008042f\n\t" // S32I2M XR16, 3
+        "nop; nop; nop; nop; nop\n\t"
+        "sync\n\t"
+        : : : "$t0", "memory"
+    );
+}
+
 int check_mxu1_support(void)
 {
     struct sigaction sa, osa;
@@ -74,14 +87,17 @@ int check_mxu1_support(void)
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGILL, &sa, &osa) == 0) {
         if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-            prctl(30, 1, 0, 0, 0); // PR_SET_MXU
-            prctl(31, 1, 0, 0, 0);
-            __asm__ __volatile__ ("li $t0, 3\n\t.word 0x7008042f\n\t" : : : "$t0");
+            enable_mxu_engine();
             int tv = 0x55AAAA55, rv = 0;
-            __asm__ __volatile__ ("move $t0, %1\n\t.word 0x7008006f\n\t"
-                "nop; nop; nop\n\t.word 0x7008002e\n\tmove %0, $t0\n\t"
-                : "=r"(rv) : "r"(tv) : "$t0");
-            if (rv == 0) supported = 1; // Corrected probe logic
+            __asm__ __volatile__ (
+                "move $t0, %1\n\t"
+                ".word 0x7008006f\n\t" // S32I2M XR1, $t0
+                "nop; nop; nop\n\t"
+                ".word 0x7008002e\n\t" // S32M2I $t0, XR0 (always 0)
+                "move %0, $t0\n\t"
+                : "=r"(rv) : "r"(tv) : "$t0"
+            );
+            if (rv == 0) supported = 1;
         }
         sigaction(SIGILL, &osa, NULL);
     }
@@ -97,33 +113,19 @@ int check_mxu2_support(void)
     sigemptyset(&sa.sa_mask);
     if (sigaction(SIGILL, &sa, &osa) == 0) {
         if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-            prctl(30, 1, 0, 0, 0);
-            prctl(31, 1, 0, 0, 0);
-            __asm__ __volatile__ ("li $t0, 3\n\t.word 0x7008042f\n\t" : : : "$t0");
+            enable_mxu_engine();
             int mir = 0;
-            __asm__ __volatile__ ("li $t0, 0\n\t.word 0x4bc1403d\n\tmove %0, $t0\n\t"
-                : "=r"(mir) : : "$t0");
+            __asm__ __volatile__ (
+                "li $t0, 0\n\t"
+                ".word 0x4bc1403d\n\t" // CFCMXU $t0, MIR
+                "move %0, $t0\n\t"
+                : "=r"(mir) : : "$t0"
+            );
             if (mir != 0) supported = 1;
         }
         sigaction(SIGILL, &osa, NULL);
     }
     return supported;
-}
-
-unsigned int get_mips_prid(void)
-{
-    unsigned int prid = 0;
-    struct sigaction sa, osa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = mxu_crash_handler;
-    sigemptyset(&sa.sa_mask);
-    if (sigaction(SIGILL, &sa, &osa) == 0) {
-        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-            __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
-        }
-        sigaction(SIGILL, &osa, NULL);
-    }
-    return prid;
 }
 #endif
 

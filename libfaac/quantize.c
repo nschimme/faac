@@ -90,7 +90,7 @@ void QuantizeInit(void)
     }
 #endif
     qfunc = quantize_scalar;
-    fprintf(stderr, "Quantizer: Scalar\n");
+    fprintf(stderr, "Quantizer: Scalar (Caps: 0x%x)\n", caps);
 }
 #define NOISEFLOOR 0.4
 
