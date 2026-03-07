@@ -69,22 +69,8 @@ int check_mxu1_support(void)
 {
     struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
     int supported = 0;
-    int xburst = 0;
 
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "Xburst") || strstr(line, "Ingenic")) {
-                xburst = 1;
-                break;
-            }
-        }
-        fclose(f);
-    }
-
-    if (!xburst) return 0;
-
+    memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -97,9 +83,7 @@ int check_mxu1_support(void)
         enable_mxu_kernel();
 
         int enable_val = 3;
-        /* Force engine activation via S32I2M XR16, $t0
-           Encoding: Major(28) rs(0) rt(8) rd(0) sa(16) funct(47) = 0x7008042f
-        */
+        /* Force engine activation via S32I2M XR16, $t0 (encoding 0x7008042f) */
         __asm__ __volatile__ (
             "move $t0, %0\n\t"
             ".word 0x7008042f\n\t"
@@ -108,24 +92,26 @@ int check_mxu1_support(void)
             : : "r"(enable_val) : "$t0"
         );
 
-        /* Try reading XR0 (always 0) using S32M2I $t0, XR0
-           Encoding: Major(28) rs(0) rt(8) rd(0) sa(0) funct(46) = 0x7008002e
-        */
-        int val = 0xdead;
+        /* Perform a round-trip test with XR1: $t0 -> XR1 -> $t0 */
+        int test_val = 0x55AAAA55;
+        int result_val = 0;
         __asm__ __volatile__ (
-            "li $t0, 0xbeef\n\t"
-            ".word 0x7008002e\n\t"
+            "move $t0, %1\n\t"
+            ".word 0x7008006f\n\t" /* S32I2M XR1, $t0 */
+            "nop; nop; nop\n\t"
+            "li $t0, 0\n\t"
+            ".word 0x7008006e\n\t" /* S32M2I $t0, XR1 */
             "move %0, $t0\n\t"
-            : "=r"(val) : : "$t0"
+            : "=r"(result_val) : "r"(test_val) : "$t0"
         );
-        if (val == 0) supported = 1;
+        if (result_val == test_val) supported = 1;
     }
 
     sigaction(SIGILL, &old_sa_ill, NULL);
     sigaction(SIGBUS, &old_sa_bus, NULL);
     sigaction(SIGSEGV, &old_sa_segv, NULL);
 
-    fprintf(stderr, "MXU: Instruction probe for MXU1 (XBurst core): %s\n", supported ? "SUCCESS" : "FAILED");
+    fprintf(stderr, "MXU: Instruction probe for MXU1: %s\n", supported ? "SUCCESS" : "FAILED");
     return supported;
 }
 
@@ -133,22 +119,8 @@ int check_mxu2_support(void)
 {
     struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
     int supported = 0;
-    int xburst = 0;
 
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    if (f) {
-        char line[1024];
-        while (fgets(line, sizeof(line), f)) {
-            if (strstr(line, "Xburst") || strstr(line, "Ingenic")) {
-                xburst = 1;
-                break;
-            }
-        }
-        fclose(f);
-    }
-
-    if (!xburst) return 0;
-
+    memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
@@ -174,9 +146,9 @@ int check_mxu2_support(void)
         __asm__ __volatile__ (
             "li $t0, 0\n\t"
             /* Try reading MIR using CFCMXU $t0, MIR (reg 0)
-               Encoding from docs: Major(18) rs(30) rt(8) rd(0) sa(30) funct(61) = 0x4bc8f03d
+               Encoding from docs: Major(18) rs(30) rt(1) rd(8) sa(0) funct(61) = 0x4bc1403d
             */
-            ".word 0x4bc8f03d\n\t"
+            ".word 0x4bc1403d\n\t"
             "move %0, $t0\n\t"
             : "=r"(mir) : : "$t0"
         );
@@ -187,7 +159,7 @@ int check_mxu2_support(void)
     sigaction(SIGBUS, &old_sa_bus, NULL);
     sigaction(SIGSEGV, &old_sa_segv, NULL);
 
-    fprintf(stderr, "MXU: Instruction probe for MXU2 (XBurst core): %s\n", supported ? "SUCCESS" : "FAILED");
+    fprintf(stderr, "MXU: Instruction probe for MXU2: %s\n", supported ? "SUCCESS" : "FAILED");
     return supported;
 }
 
@@ -212,6 +184,7 @@ unsigned int get_mips_prid(void)
 {
     unsigned int prid = 0;
     struct sigaction sa, old_sa_ill;
+    memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;

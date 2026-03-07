@@ -18,7 +18,7 @@
  * MXU instruction macros for MIPS inline assembly using .word encoding.
  */
 
-/* MXU1 Instructions (SPECIAL2 R-type, Major=28=0x1C) */
+/* MXU1 Instructions (SPECIAL2 R-type, Major=28) */
 /* S32I2M XRa, rb : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(47) */
 #define MXU_S32I2M(xra, rb) \
     ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 47\n\t"
@@ -28,8 +28,9 @@
     ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 46\n\t"
 
 /* S32CPS XRa, XRb, XRc : Major(28) rs(0) rt(xrc) rd(xrb) sa(xra) funct(7) */
+/* Fields are 4-bit wide for registers XR0-XR15: XRc(17:14), XRb(13:10), XRa(9:6) */
 #define MXU_S32CPS(xra, xrb, xrc) \
-    ".word (28 << 26) | (0 << 21) | (" #xrc " << 16) | (" #xrb " << 11) | (" #xra " << 6) | 7\n\t"
+    ".word (28 << 26) | (0 << 21) | (" #xrc " << 14) | (" #xrb " << 10) | (" #xra " << 6) | 7\n\t"
 
 
 /* MXU2 Instructions (COP2/SPECIAL2 R-type) */
@@ -69,7 +70,9 @@
 #define MXU2_MFCPUW(vrd, rs_idx) \
     ".word (18 << 26) | (30 << 21) | (0 << 16) | (" #rs_idx " << 11) | (" #vrd " << 6) | 62\n\t"
 
-/* CFCMXU rd, mcsrs : COP2(18) rs=30 rt=1 rd=rd sa=mcsrs funct=61 */
+/* CFCMXU rd, mcsrs : COP2(18) rs=30 rt=1 rd=rd sa=mcsrs funct=61
+   According to docs: 010010 11110 00001 rd mcsrs 11110 1
+*/
 #define MXU2_CFCMXU(rd, mcsrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #rd " << 11) | (" #mcsrs " << 6) | 61\n\t"
 
