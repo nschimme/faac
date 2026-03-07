@@ -19,6 +19,8 @@ void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, 
 void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 int check_mxu1_support(void);
 int check_mxu2_support(void);
+void get_cpu_info(char *buf, size_t len);
+unsigned int get_mips_prid(void);
 #endif
 
 #endif /* QUANTIZE_MXU_H */
