@@ -15,68 +15,49 @@
 #include "faac_real.h"
 
 /*
- * MXU instruction macros for MIPS inline assembly using .word encoding.
+ * We include local copies of Ingenic headers to ensure bit-correctness
+ * of macros while maintaining portability for non-Ingenic environments.
+ */
+#if defined(__mips__)
+#include "mxu_media.h"
+
+/*
+ * Map Ingenic macros to our project's SIMD interface.
+ * T31 core uses MXU2 for SIMD Floating Point.
  */
 
-/* MXU1 Instructions (SPECIAL2 R-type, Major=28) */
-/* S32I2M XRa, rb : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(47) */
-#define MXU_S32I2M(xra, rb) \
-    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 47\n\t"
-
-/* S32M2I rb, XRa : Major(28) rs(0) rt(rb) rd(0) sa(xra) funct(46) */
-#define MXU_S32M2I(rb, xra) \
-    ".word (28 << 26) | (0 << 21) | (" #rb " << 16) | (0 << 11) | (" #xra " << 6) | 46\n\t"
-
-/* S32CPS XRa, XRb, XRc : Major(28) rs(0) rt(xrc) rd(xrb) sa(xra) funct(7) */
-/* Fields are 4-bit wide for registers XR0-XR15: XRc(17:14), XRb(13:10), XRa(9:6) */
-#define MXU_S32CPS(xra, xrb, xrc) \
-    ".word (28 << 26) | (0 << 21) | (" #xrc " << 14) | (" #xrb " << 10) | (" #xra " << 6) | 7\n\t"
-
-
-/* MXU2 Instructions (COP2/SPECIAL2 R-type) */
-/* LU1QX vrd, index(base) : Major(28) rs=base rt=index rd=0 sa=vrd funct=7 */
-#define MXU2_LU1QX(vrd, index, base) \
+/* MXU2 SIMD Floating Point (using documented opcodes since mxu_media.h is integer-focused) */
+#define MXU2_LU1QX_BITFIELD(vrd, index, base) \
     ".word (28 << 26) | (" #base " << 21) | (" #index " << 16) | (0 << 11) | (" #vrd " << 6) | 7\n\t"
-
-/* SU1QX vrd, index(base) : Major(28) rs=base rt=index rd=4 sa=vrd funct=7 */
-#define MXU2_SU1QX(vrd, index, base) \
+#define MXU2_SU1QX_BITFIELD(vrd, index, base) \
     ".word (28 << 26) | (" #base " << 21) | (" #index " << 16) | (4 << 11) | (" #vrd " << 6) | 7\n\t"
 
-/* 3RFP: COP2(18) rs=24 rt=vrt rd=vrs sa=vrd funct (fmt=0) */
-#define MXU2_FADDW(vrd, vrs, vrt) \
+/* Arithmetic */
+#define MXU2_FADDW_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
-#define MXU2_FMULW(vrd, vrs, vrt) \
+#define MXU2_FMULW_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 4\n\t"
-#define MXU2_FCLTW(vrd, vrs, vrt) \
+#define MXU2_FCLTW_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
-
-/* 2RFP: COP2(18) rs=30 rt=1 rd=vrs sa=vrd funct (fmt=0) */
-#define MXU2_FSQRTW(vrd, vrs) \
+#define MXU2_FSQRTW_BITFIELD(vrd, vrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
-#define MXU2_VTRUNCSWS(vrd, vrs) \
+#define MXU2_VTRUNCSWS_BITFIELD(vrd, vrs) \
     ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
 
-/* 3RVEC: COP2(18) rs=22 rt=vrt rd=vrs sa=vrd funct(56) */
-#define MXU2_ANDV(vrd, vrs, vrt) \
+/* Logical */
+#define MXU2_ANDV_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 56\n\t"
-#define MXU2_XORV(vrd, vrs, vrt) \
+#define MXU2_XORV_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 59\n\t"
 
-/* 3RINT-1: COP2(18) rs=17 rt=vrt rd=vrs sa=vrd funct(46) */
-#define MXU2_SUBW(vrd, vrs, vrt) \
+/* Integer fallback for sign apply */
+#define MXU2_SUBW_BITFIELD(vrd, vrs, vrt) \
     ".word (18 << 26) | (17 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 46\n\t"
 
-/* 2RINT: COP2(18) rs=30 rt=0 rd=rs_idx sa=vrd funct(62) */
-#define MXU2_MFCPUW(vrd, rs_idx) \
+/* Transfers */
+#define MXU2_MFCPUW_BITFIELD(vrd, rs_idx) \
     ".word (18 << 26) | (30 << 21) | (0 << 16) | (" #rs_idx " << 11) | (" #vrd " << 6) | 62\n\t"
 
-/* CFCMXU rd, mcsrs : COP2(18) rs=30 rt=1 rd=rd sa=mcsrs funct=61
-   According to docs: 010010 11110 00001 rd mcsrs 11110 1
-*/
-#define MXU2_CFCMXU(rd, mcsrs) \
-    ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #rd " << 11) | (" #mcsrs " << 6) | 61\n\t"
-
-#if defined(__mips__)
 void QuantizeInitMXU(void);
 void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
