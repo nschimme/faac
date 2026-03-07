@@ -25,6 +25,9 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#if defined(__mips__)
+#include "quantize_mxu.h"
+#endif
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -59,13 +62,41 @@ static QuantizeFunc qfunc = quantize_scalar;
 
 void QuantizeInit(void)
 {
-#if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
-    if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
-    else
+#if defined(__mips__)
+    unsigned int prid = get_mips_prid();
+    char info[2048] = {0};
+    get_cpu_info(info, sizeof(info));
+    fprintf(stderr, "MIPS PRID: 0x%08x, Caps: 0x%x\nCPU Info:\n%s", prid, caps, info);
 #endif
-        qfunc = quantize_scalar;
+#if defined(HAVE_SSE2)
+    if (caps & CPU_CAP_SSE2)
+    {
+        qfunc = quantize_sse2;
+        fprintf(stderr, "Quantizer: SSE2\n");
+        return;
+    }
+#endif
+#if defined(__mips__)
+    if (caps & (CPU_CAP_MXU1 | CPU_CAP_MXU2))
+    {
+        QuantizeInitMXU();
+    }
+    if (caps & CPU_CAP_MXU2)
+    {
+        qfunc = quantize_mxu2;
+        fprintf(stderr, "Quantizer: MXU2\n");
+        return;
+    }
+    if (caps & CPU_CAP_MXU1)
+    {
+        qfunc = quantize_mxu1;
+        fprintf(stderr, "Quantizer: MXU (LUT)\n");
+        return;
+    }
+#endif
+    qfunc = quantize_scalar;
+    fprintf(stderr, "Quantizer: Scalar (Caps: 0x%x)\n", caps);
 }
 #define NOISEFLOOR 0.4
 

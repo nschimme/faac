@@ -16,6 +16,14 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += quantize_sse
 endif
 
+if host_machine.cpu_family().startswith('mips')
+    quantize_mxu = static_library('quantize_mxu', 'quantize_mxu.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args
+    )
+    quantize_simd_libs += quantize_mxu
+endif
+
 common_src = [
     'bitstream.c',
     'bitstream.h',

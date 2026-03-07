@@ -53,4 +53,10 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
 
+#if defined(__mips__)
+void QuantizeInitMXU(void);
+void quantize_mxu1(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+#endif
+
 #endif

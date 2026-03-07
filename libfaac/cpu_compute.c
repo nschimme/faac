@@ -31,6 +31,10 @@
 # endif
 #endif
 
+#if defined(__mips__)
+#include "quantize_mxu.h"
+#endif
+
 CPUCaps get_cpu_caps(void)
 {
     CPUCaps caps = CPU_CAP_NONE;
@@ -60,6 +64,13 @@ CPUCaps get_cpu_caps(void)
         if (edx & (1 << 26)) // SSE2
             caps |= CPU_CAP_SSE2;
     }
+#endif
+
+#if defined(__mips__)
+    if (check_mxu2_support())
+        caps |= CPU_CAP_MXU2;
+    else if (check_mxu1_support())
+        caps |= CPU_CAP_MXU1;
 #endif
 
     return caps;
