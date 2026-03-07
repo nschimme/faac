@@ -322,7 +322,11 @@ int CountBitstream(faacEncStruct* hEncoder,
 
     hEncoder->usedBytes = bit2byte(bits);
 
-    if (bitStream->data && hEncoder->usedBytes > bitStream->size)
+    /* Zero-overhead virtual bit counting for iterative rate control */
+    if (bitStream->data == NULL)
+        return bits;
+
+    if (hEncoder->usedBytes > bitStream->size)
     {
         fprintf(stderr, "frame buffer overrun\n");
         return -1;
@@ -859,8 +863,7 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    if (bitStream->data)
-        SetMemory(bitStream->data, 0, size);
+    SetMemory(bitStream->data, 0, size);
 
     return bitStream;
 }
@@ -885,16 +888,14 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    if (bitStream->data) {
-        idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-        numUsed = bitStream->currentBit % BYTE_NUMBIT;
+    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+    numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
-        if (numUsed == 0)
-            bitStream->data[idx] = 0;
+    if (numUsed == 0)
+        bitStream->data[idx] = 0;
 #endif
-        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-            (BYTE_NUMBIT-numUsed-numBit);
-    }
+    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+        (BYTE_NUMBIT-numUsed-numBit);
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -1317,9 +1318,6 @@ static void calc_CRC(BitStream *bitStream, int len)
     //int i;
     //unsigned char r = ~0;  /* Initialize to all ones */
     unsigned char crc = ~0;  /* Initialize to all ones */
-
-    if (!bitStream->data)
-        return;
 
     /* CRC polynome used x^8 + x^4 + x^3 + x^2 +1 */
 

@@ -119,7 +119,7 @@ int CountBitstream(faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
                    BitStream *bitStream,
-                   int numChannel);
+                   int numChannels);
 
 BitStream *OpenBitStream(int size, unsigned char *buffer);
 

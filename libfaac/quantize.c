@@ -56,22 +56,22 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 static QuantizeFunc qfunc = quantize_scalar;
 
-void QuantizeSaveState(CoderInfo *coderInfo)
+void QuantizeSaveState(CoderInfo *coder)
 {
-    coderInfo->saved_global_gain = coderInfo->global_gain;
-    memcpy(coderInfo->saved_sf, coderInfo->sf, sizeof(int) * MAX_TOTAL_BANDS);
-    memcpy(coderInfo->saved_book, coderInfo->book, sizeof(int) * MAX_TOTAL_BANDS);
-    coderInfo->saved_bandcnt = coderInfo->bandcnt;
-    coderInfo->saved_datacnt = coderInfo->datacnt;
+    coder->saved_global_gain = coder->global_gain;
+    memcpy(coder->saved_sf, coder->sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(coder->saved_book, coder->book, sizeof(int) * MAX_SCFAC_BANDS);
+    coder->saved_bandcnt = coder->bandcnt;
+    coder->saved_datacnt = coder->datacnt;
 }
 
-void QuantizeRestoreState(CoderInfo *coderInfo)
+void QuantizeRestoreState(CoderInfo *coder)
 {
-    coderInfo->global_gain = coderInfo->saved_global_gain;
-    memcpy(coderInfo->sf, coderInfo->saved_sf, sizeof(int) * MAX_TOTAL_BANDS);
-    memcpy(coderInfo->book, coderInfo->saved_book, sizeof(int) * MAX_TOTAL_BANDS);
-    coderInfo->bandcnt = coderInfo->saved_bandcnt;
-    coderInfo->datacnt = coderInfo->saved_datacnt;
+    coder->global_gain = coder->saved_global_gain;
+    memcpy(coder->sf, coder->saved_sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(coder->book, coder->saved_book, sizeof(int) * MAX_SCFAC_BANDS);
+    coder->bandcnt = coder->saved_bandcnt;
+    coder->datacnt = coder->saved_datacnt;
 }
 
 void QuantizeInit(void)
@@ -88,8 +88,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate,
-                  faac_real * __restrict bandtonal)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate, faac_real * __restrict bandtonal)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -119,6 +118,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       {
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
+          bandtonal[sfb] = 0.0;
       }
 
       return;
@@ -148,14 +148,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         }
     }
     bandenrg[sfb] = avge;
-    maxe *= gsize;
 
-    // Derive tonality proxy: PAPR = max_sample_e / avg_sample_e
-    {
-        faac_real avg_sample_e = avge / (faac_real)(gsize * (end - start) > 0 ? gsize * (end - start) : 1);
-        faac_real max_sample_e = maxe;
-        bandtonal[sfb] = max_sample_e / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
-    }
+    // ISO/IEC 14496-3 Section 4.6.2: Scalefactor determination
+    // Calculate tonality as peak-to-average energy ratio
+    faac_real avg_sample_e = avge / (faac_real)(gsize * (end - start) > 0 ? gsize * (end - start) : 1);
+    bandtonal[sfb] = maxe / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
+
+    maxe *= gsize;
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
@@ -181,15 +180,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* ISO/IEC 14496-3 Section 4.6.2: Psychoacoustics
-     * Custom deviation: Refined ATH scaling for low-bitrate modes (sampleRate <= 16kHz).
-     * Applies a 0.75x multiplier to the masking threshold in the speech band (300Hz - 4kHz)
-     * to improve clarity and preserve detail.
-     */
     if (sampleRate <= 16000) {
+        // Refined ATH Scaling (VoIP/VSS): 1.25x scaling boost for 16kHz modes to prioritize speech clarity.
+        target *= 0.8; // effectively 1.25x boost as target is threshold (lower = more sensitive/more bits)
         faac_real freq = (faac_real)(start + end) * sampleRate / (4.0 * last);
-        if (freq >= 300.0 && freq <= 4000.0)
-            target *= 0.75;
+        if (freq >= 300.0 && freq <= 4000.0) target *= 0.8;
     }
 
     bandqual[sfb] = target * quality;
@@ -274,14 +269,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          /* ISO/IEC 14496-3 Section 4.6.3: Quantization
-           * Custom deviation: Adaptive Quantization Rounding (AQR).
-           * Uses a reduced rounding bias (0.33 vs standard 0.4054) for high-frequency bands
-           * or non-tonal regions to reduce quantization hiss and shimmer.
-           */
-          faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.6) || bandtonal[sb] < 2.5)
-              magic = 0.33;
+          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or non-tonal regions to reduce shimmer.
+          faac_real magic = (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0) ? 0.33 : MAGIC_NUMBER;
 
           for (win = 0; win < gsize; win++)
           {
@@ -320,22 +309,23 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            faac_real quality_scale = (faac_real)aacquantCfg->quality/DEFQUAL;
+            faac_real qs = (faac_real)aacquantCfg->quality/DEFQUAL;
+            int ofs = cnt * NSFB_SHORT;
 
             if (!coder->energies_valid) {
-                bmask(coder, gxr, bandlvl, bandenrg, cnt, quality_scale, sampleRate, bandtonal);
-                // Cache unscaled quality targets for pass-2 rescaling
-                for (int sfb = 0; sfb < coder->sfbn; sfb++) {
-                    coder->cached_bandqual[cnt * NSFB_SHORT + sfb] = bandlvl[sfb] / (quality_scale > 1e-5 ? quality_scale : 1e-5);
+                bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal);
+                // Cache energies and tonality for 2nd pass
+                for (int i = 0; i < coder->sfbn; i++) {
+                    coder->cached_bandqual[ofs + i] = bandlvl[i] / (qs > 1e-5 ? qs : 1e-5);
                 }
-                memcpy(coder->cached_bandenrg + cnt * NSFB_SHORT, bandenrg, coder->sfbn * sizeof(faac_real));
-                memcpy(coder->cached_bandtonal + cnt * NSFB_SHORT, bandtonal, coder->sfbn * sizeof(faac_real));
+                memcpy(coder->cached_bandenrg + ofs, bandenrg, coder->sfbn * sizeof(faac_real));
+                memcpy(coder->cached_bandtonal + ofs, bandtonal, coder->sfbn * sizeof(faac_real));
             } else {
-                memcpy(bandenrg, coder->cached_bandenrg + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
-                memcpy(bandtonal, coder->cached_bandtonal + cnt * NSFB_SHORT, coder->sfbn * sizeof(faac_real));
-                // Rescale quality floor from cached targets using current quality_scale
-                for (int sfb = 0; sfb < coder->sfbn; sfb++) {
-                    bandlvl[sfb] = coder->cached_bandqual[cnt * NSFB_SHORT + sfb] * quality_scale;
+                // Use cached values
+                memcpy(bandenrg, coder->cached_bandenrg + ofs, coder->sfbn * sizeof(faac_real));
+                memcpy(bandtonal, coder->cached_bandtonal + ofs, coder->sfbn * sizeof(faac_real));
+                for (int i = 0; i < coder->sfbn; i++) {
+                    bandlvl[i] = coder->cached_bandqual[ofs + i] * qs;
                 }
             }
 
@@ -347,7 +337,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
-            if (!book)
+            if (!book || book == HCB_PNS)
                 continue;
             if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
             {
@@ -374,7 +364,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book > 0 && book <= 11)
             {
                 int diff = coder->sf[cnt] - lastsf;
 
