@@ -863,7 +863,8 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    SetMemory(bitStream->data, 0, size);
+    if (bitStream->data && size > 0)
+        SetMemory(bitStream->data, 0, size);
 
     return bitStream;
 }
@@ -886,16 +887,18 @@ static int WriteByte(BitStream *bitStream,
                      unsigned long data,
                      int numBit)
 {
-    long numUsed,idx;
+    if (bitStream->data && bitStream->size > 0) {
+        long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+        idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+        numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
-    if (numUsed == 0)
-        bitStream->data[idx] = 0;
+        if (numUsed == 0)
+            bitStream->data[idx] = 0;
 #endif
-    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+            (BYTE_NUMBIT-numUsed-numBit);
+    }
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -1315,6 +1318,7 @@ static const unsigned char _crctable[256] =
 
 static void calc_CRC(BitStream *bitStream, int len)
 {
+    if (!bitStream->data) return;
     //int i;
     //unsigned char r = ~0;  /* Initialize to all ones */
     unsigned char crc = ~0;  /* Initialize to all ones */

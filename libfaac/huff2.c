@@ -562,8 +562,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             bits += length;
 
             lastis += diff;
-            if (lastis < -255) lastis = -255;
-            if (lastis > 255) lastis = 255;
 
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
@@ -575,8 +573,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (initpns)
             {
                 initpns = 0;
-                if (diff < -256) diff = -256;
-                if (diff > 255) diff = 255;
 
                 length = 9;
                 bits += length;
@@ -599,7 +595,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
-        else if (book > 0 && book <= 11)
+        else if (book)
         {
             diff = coder->sf[cnt] - lastsf;
             if (diff > 60)
@@ -610,8 +606,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
 
             bits += length;
             lastsf += diff;
-            if (lastsf < 0) lastsf = 0;
-            if (lastsf > 255) lastsf = 255;
 
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);

@@ -585,13 +585,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     diff = 1; /* to enter while loop */
     hEncoder->aacquantCfg.quality = 120; /* init quality setting */
     while (diff > 0) { /* if too many bits, do it again */
-#endif
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg), hEncoder->sampleRate);
     }
-
-#ifdef DRM
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
     WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
@@ -618,24 +615,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->aacquantCfg.quality <= 1)
         diff = -1;
     }
-#endif
-
-    // fix max_sfb in CPE mode
-    for (channel = 0; channel < numChannels; channel++)
-    {
-		if (channelInfo[channel].present
-				&& (channelInfo[channel].cpe)
-				&& (channelInfo[channel].ch_is_left))
-		{
-			CoderInfo *cil, *cir;
-
-			cil = &coderInfo[channel];
-			cir = &coderInfo[channelInfo[channel].paired_ch];
-
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
-		}
-    }
-#ifndef DRM
+#else
     /* Iterative Rate Control Loop with Bit Reservoir */
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
@@ -701,6 +681,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
     }
 #endif
+
+    // fix max_sfb in CPE mode
+    for (channel = 0; channel < numChannels; channel++)
+    {
+		if (channelInfo[channel].present
+				&& (channelInfo[channel].cpe)
+				&& (channelInfo[channel].ch_is_left))
+		{
+			CoderInfo *cil, *cir;
+
+			cil = &coderInfo[channel];
+			cir = &coderInfo[channelInfo[channel].paired_ch];
+
+                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+		}
+    }
 
     return frameBytes;
 }
