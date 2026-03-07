@@ -327,25 +327,24 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
+        /* ISO/IEC 14496-3 Section 4.6.2: Differential encoding of scalefactors. */
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
-            int book = coder->book[cnt];
-            if (!book || book == HCB_PNS)
-                continue;
-            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+            if (coder->book[cnt] > 0)
             {
                 coder->global_gain = coder->sf[cnt];
                 break;
             }
         }
+        if (coder->global_gain < 0) coder->global_gain = 0;
+        if (coder->global_gain > 255) coder->global_gain = 255;
 
         lastsf = coder->global_gain;
         lastis = 0;
         int lastpns = coder->global_gain - 90;
-        int firstpns = 1;
+        int initpns = 1;
 
-        // ISO/IEC 14496-3 Section 4.6.2: Scalefactors must be differentially encoded in the range [-60, 60].
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -362,10 +361,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             else if (book == HCB_PNS)
             {
                 int diff = coder->sf[cnt] - lastpns;
-                if (firstpns) {
+                if (initpns) {
+                    /* First PNS band uses 9-bit absolute encoding (diff + 256) */
                     if (diff < -256) diff = -256;
                     if (diff > 255) diff = 255;
-                    firstpns = 0;
+                    initpns = 0;
                 } else {
                     if (diff < -60) diff = -60;
                     if (diff > 60) diff = 60;

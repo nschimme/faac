@@ -667,14 +667,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->bitResLevel < 0) hEncoder->bitResLevel = 0;
 
         /* Adjust quality for future frames based on actual bits used */
-        fix = (faac_real)desbits / (faac_real)actual_bits;
-        if (actual_bits < (int)(desbits * 0.8)) {
-            hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
-        } else {
-            if (fix < 0.9) fix += 0.1;
-            else if (fix > 1.1) fix -= 0.1;
-            else fix = 1.0;
-            hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.5 + 1.0;
+        /* Use frameBytes*8 for the true bit count including all overheads */
+        int total_bits = frameBytes * 8;
+        if (total_bits > 0) {
+            fix = (faac_real)desbits / (faac_real)total_bits;
+            if (total_bits < (int)(desbits * 0.8)) {
+                hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
+            } else {
+                if (fix < 0.9) fix += 0.05;
+                else if (fix > 1.1) fix -= 0.05;
+                else fix = 1.0;
+                hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.25 + 1.0;
+            }
         }
 
         if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;

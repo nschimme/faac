@@ -160,6 +160,10 @@ int WriteBitstream(faacEncStruct* hEncoder,
     if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannel) < 0)
         return -1;
 
+    /* Reset bitstream state for actual writing after counting */
+    bitStream->currentBit = 0;
+    bitStream->numBit = 0;
+
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 1);
     }else{
@@ -323,8 +327,12 @@ int CountBitstream(faacEncStruct* hEncoder,
     hEncoder->usedBytes = bit2byte(bits);
 
     /* Zero-overhead virtual bit counting for iterative rate control */
-    if (bitStream->data == NULL)
+    if (bitStream->data == NULL) {
+        /* Reset count in bitstream structure to prevent accumulation in multiple calls */
+        bitStream->currentBit = 0;
+        bitStream->numBit = 0;
         return bits;
+    }
 
     if (hEncoder->usedBytes > bitStream->size)
     {
