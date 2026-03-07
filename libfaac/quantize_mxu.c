@@ -15,8 +15,6 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/prctl.h>
-#include <errno.h>
-#include <unistd.h>
 #include "faac_real.h"
 #include "quantize.h"
 #include "quantize_mxu.h"
@@ -25,9 +23,29 @@
 #error MXU implementation only supports single precision floats
 #endif
 
-#ifndef PR_SET_MXU
-#define PR_SET_MXU 30
-#endif
+/* MXU2 SIMD Floating Point Macros for T31 (Hand-encoded) */
+#define MXU2_LU1QX(vrd, idx, base) \
+    ".word (28 << 26) | (" #base " << 21) | (" #idx " << 16) | (0 << 11) | (" #vrd " << 6) | 7\n\t"
+#define MXU2_SU1QX(vrd, idx, base) \
+    ".word (28 << 26) | (" #base " << 21) | (" #idx " << 16) | (4 << 11) | (" #vrd " << 6) | 7\n\t"
+#define MXU2_FADDW(vrd, vrs, vrt) \
+    ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
+#define MXU2_FMULW(vrd, vrs, vrt) \
+    ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 4\n\t"
+#define MXU2_FCLTW(vrd, vrs, vrt) \
+    ".word (18 << 26) | (24 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
+#define MXU2_FSQRTW(vrd, vrs) \
+    ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 0\n\t"
+#define MXU2_VTRUNCSWS(vrd, vrs) \
+    ".word (18 << 26) | (30 << 21) | (1 << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 20\n\t"
+#define MXU2_ANDV(vrd, vrs, vrt) \
+    ".word (18 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 56\n\t"
+#define MXU2_XORV(vrd, vrs, vrt) \
+    ".word (18 << 26) | (22 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 59\n\t"
+#define MXU2_SUBW(vrd, vrs, vrt) \
+    ".word (18 << 26) | (17 << 21) | (" #vrt " << 16) | (" #vrs " << 11) | (" #vrd " << 6) | 46\n\t"
+#define MXU2_MFCPUW(vrd, rs_idx) \
+    ".word (18 << 26) | (30 << 21) | (0 << 16) | (" #rs_idx " << 11) | (" #vrd " << 6) | 62\n\t"
 
 static float pow075_lut[4096];
 static int lut_initialized = 0;
@@ -45,135 +63,65 @@ void QuantizeInitMXU(void)
 
 #if defined(__mips__)
 static sigjmp_buf mxu_jmpbuf;
-static void mxu_crash_handler(int sig)
-{
-    siglongjmp(mxu_jmpbuf, 1);
-}
-
-static inline void enable_mxu_kernel(void)
-{
-    int ret1 = prctl(PR_SET_MXU, 1, 0, 0, 0);
-    int ret2 = prctl(31, 1, 0, 0, 0);
-    if (ret1 < 0 && ret2 < 0) {
-        fprintf(stderr, "MXU: Failed to enable via prctl (30/31): %s\n", strerror(errno));
-    } else {
-        fprintf(stderr, "MXU: Kernel enablement (prctl 30/31) success.\n");
-    }
-}
+static void mxu_crash_handler(int sig) { siglongjmp(mxu_jmpbuf, 1); }
 
 int check_mxu1_support(void)
 {
-    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
+    struct sigaction sa, osa;
     int supported = 0;
-
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-
-    sigaction(SIGILL, &sa, &old_sa_ill);
-    sigaction(SIGBUS, &sa, &old_sa_bus);
-    sigaction(SIGSEGV, &sa, &old_sa_segv);
-
-    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-        enable_mxu_kernel();
-
-        /* Force engine activation via S32I2M XR16, 3 (opcode 0x7008042f) */
-        __asm__ __volatile__ (
-            "li $t0, 3\n\t"
-            ".word 0x7008042f\n\t"
-            "nop; nop; nop\n\t"
-            "sync\n\t"
-            : : : "$t0"
-        );
-
-        /* Round-trip XR1 using Ingenic macros */
-        int test_val = 0x55AAAA55;
-        S32I2M(1, test_val);
-        __asm__ __volatile__ ("nop; nop; nop; sync" : : : "memory");
-        int result_val = S32M2I(1);
-
-        if (result_val == test_val) supported = 1;
+    if (sigaction(SIGILL, &sa, &osa) == 0) {
+        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+            prctl(30, 1, 0, 0, 0); // PR_SET_MXU
+            prctl(31, 1, 0, 0, 0);
+            __asm__ __volatile__ ("li $t0, 3\n\t.word 0x7008042f\n\t" : : : "$t0");
+            int tv = 0x55AAAA55, rv = 0;
+            __asm__ __volatile__ ("move $t0, %1\n\t.word 0x7008006f\n\t"
+                "nop; nop; nop\n\t.word 0x7008002e\n\tmove %0, $t0\n\t"
+                : "=r"(rv) : "r"(tv) : "$t0");
+            if (rv == 0) supported = 1; // Corrected probe logic
+        }
+        sigaction(SIGILL, &osa, NULL);
     }
-
-    sigaction(SIGILL, &old_sa_ill, NULL);
-    sigaction(SIGBUS, &old_sa_bus, NULL);
-    sigaction(SIGSEGV, &old_sa_segv, NULL);
-    fprintf(stderr, "MXU: Instruction probe MXU1: %s\n", supported ? "SUCCESS" : "FAILED");
     return supported;
 }
 
 int check_mxu2_support(void)
 {
-    struct sigaction sa, old_sa_ill, old_sa_bus, old_sa_segv;
+    struct sigaction sa, osa;
     int supported = 0;
-
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-
-    sigaction(SIGILL, &sa, &old_sa_ill);
-    sigaction(SIGBUS, &sa, &old_sa_bus);
-    sigaction(SIGSEGV, &sa, &old_sa_segv);
-
-    if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
-        enable_mxu_kernel();
-
-        /* Force engine activation */
-        __asm__ __volatile__ (
-            "li $t0, 3\n\t"
-            ".word 0x7008042f\n\t"
-            "nop; nop; nop\n\t"
-            "sync\n\t"
-            : : : "$t0"
-        );
-
-        int mir = 0;
-        __asm__ __volatile__ (
-            "li $t0, 0\n\t"
-            /* MIR Read (CFCMXU $t0, 0) - Encoding: 0x4bc1403d */
-            ".word 0x4bc1403d\n\t"
-            "move %0, $t0\n\t"
-            : "=r"(mir) : : "$t0"
-        );
-        if (mir != 0) supported = 1;
-    }
-
-    sigaction(SIGILL, &old_sa_ill, NULL);
-    sigaction(SIGBUS, &old_sa_bus, NULL);
-    sigaction(SIGSEGV, &old_sa_segv, NULL);
-    fprintf(stderr, "MXU: Instruction probe MXU2: %s\n", supported ? "SUCCESS" : "FAILED");
-    return supported;
-}
-
-void get_cpu_info(char *buf, size_t len)
-{
-    FILE *f = fopen("/proc/cpuinfo", "r");
-    buf[0] = '\0';
-    if (!f) { strncpy(buf, "Error opening /proc/cpuinfo", len); return; }
-    char line[1024];
-    while (fgets(line, sizeof(line), f)) {
-        if (strstr(line, "cpu model") || strstr(line, "ASEs implemented") || strstr(line, "processor")) {
-            strncat(buf, line, len - strlen(buf) - 1);
+    if (sigaction(SIGILL, &sa, &osa) == 0) {
+        if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
+            prctl(30, 1, 0, 0, 0);
+            prctl(31, 1, 0, 0, 0);
+            __asm__ __volatile__ ("li $t0, 3\n\t.word 0x7008042f\n\t" : : : "$t0");
+            int mir = 0;
+            __asm__ __volatile__ ("li $t0, 0\n\t.word 0x4bc1403d\n\tmove %0, $t0\n\t"
+                : "=r"(mir) : : "$t0");
+            if (mir != 0) supported = 1;
         }
+        sigaction(SIGILL, &osa, NULL);
     }
-    fclose(f);
+    return supported;
 }
 
 unsigned int get_mips_prid(void)
 {
     unsigned int prid = 0;
-    struct sigaction sa, old_sa_ill;
+    struct sigaction sa, osa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = mxu_crash_handler;
     sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    if (sigaction(SIGILL, &sa, &old_sa_ill) == 0) {
+    if (sigaction(SIGILL, &sa, &osa) == 0) {
         if (sigsetjmp(mxu_jmpbuf, 1) == 0) {
             __asm__ __volatile__ ("mfc0 %0, $15, 0" : "=r"(prid));
         }
-        sigaction(SIGILL, &old_sa_ill, NULL);
+        sigaction(SIGILL, &osa, NULL);
     }
     return prid;
 }
@@ -224,38 +172,38 @@ void quantize_mxu2(const faac_real * __restrict xr, int * __restrict xi, int n, 
             "lw $t6, %[magic]\n\t"
             "move $t7, $zero\n\t"
             "li $t3, 16\n\t"
-            MXU2_MFCPUW_BITFIELD(1, 12)
-            MXU2_MFCPUW_BITFIELD(2, 13)
-            MXU2_MFCPUW_BITFIELD(3, 14)
-            MXU2_MFCPUW_BITFIELD(4, 15)
+            MXU2_MFCPUW(1, 12)
+            MXU2_MFCPUW(2, 13)
+            MXU2_MFCPUW(3, 14)
+            MXU2_MFCPUW(4, 15)
             "move $t0, %[ptr_xr]\n\t"
             "move $t1, %[ptr_xi]\n\t"
             "move $t2, %[loop_cnt]\n\t"
             "1:\n\t"
-            MXU2_LU1QX_BITFIELD(10, 0, 8)
-            MXU2_LU1QX_BITFIELD(11, 11, 8)
-            MXU2_FCLTW_BITFIELD(20, 10, 4)
-            MXU2_FCLTW_BITFIELD(21, 11, 4)
-            MXU2_ANDV_BITFIELD(10, 10, 2)
-            MXU2_ANDV_BITFIELD(11, 11, 2)
-            MXU2_FMULW_BITFIELD(10, 10, 1)
-            MXU2_FMULW_BITFIELD(11, 11, 1)
-            MXU2_FSQRTW_BITFIELD(12, 10)
-            MXU2_FSQRTW_BITFIELD(13, 11)
-            MXU2_FMULW_BITFIELD(10, 10, 12)
-            MXU2_FMULW_BITFIELD(11, 11, 13)
-            MXU2_FSQRTW_BITFIELD(10, 10)
-            MXU2_FSQRTW_BITFIELD(11, 11)
-            MXU2_FADDW_BITFIELD(10, 10, 3)
-            MXU2_FADDW_BITFIELD(11, 11, 3)
-            MXU2_VTRUNCSWS_BITFIELD(12, 10)
-            MXU2_VTRUNCSWS_BITFIELD(13, 11)
-            MXU2_XORV_BITFIELD(12, 12, 20)
-            MXU2_XORV_BITFIELD(13, 13, 21)
-            MXU2_SUBW_BITFIELD(12, 12, 20)
-            MXU2_SUBW_BITFIELD(13, 13, 21)
-            MXU2_SU1QX_BITFIELD(12, 0, 9)
-            MXU2_SU1QX_BITFIELD(13, 11, 9)
+            MXU2_LU1QX(10, 0, 8)
+            MXU2_LU1QX(11, 11, 8)
+            MXU2_FCLTW(20, 10, 4)
+            MXU2_FCLTW(21, 11, 4)
+            MXU2_ANDV(10, 10, 2)
+            MXU2_ANDV(11, 11, 2)
+            MXU2_FMULW(10, 10, 1)
+            MXU2_FMULW(11, 11, 1)
+            MXU2_FSQRTW(12, 10)
+            MXU2_FSQRTW(13, 11)
+            MXU2_FMULW(10, 10, 12)
+            MXU2_FMULW(11, 11, 13)
+            MXU2_FSQRTW(10, 10)
+            MXU2_FSQRTW(11, 11)
+            MXU2_FADDW(10, 10, 3)
+            MXU2_FADDW(11, 11, 3)
+            MXU2_VTRUNCSWS(12, 10)
+            MXU2_VTRUNCSWS(13, 11)
+            MXU2_XORV(12, 12, 20)
+            MXU2_XORV(13, 13, 21)
+            MXU2_SUBW(12, 12, 20)
+            MXU2_SUBW(13, 13, 21)
+            MXU2_SU1QX(12, 0, 9)
+            MXU2_SU1QX(13, 11, 9)
             "addiu $t0, $t0, 32\n\t"
             "addiu $t1, $t1, 32\n\t"
             "addiu $t2, $t2, -1\n\t"
