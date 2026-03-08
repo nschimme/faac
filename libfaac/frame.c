@@ -641,16 +641,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             actual_bits = CountBitstream(hEncoder, coderInfo, channelInfo, tempBS, numChannels);
             CloseBitStream(tempBS);
 
-            if (actual_bits < 0) return -1;
+            if (actual_bits < 0) {
+                /* Buffer overflow in CountBitstream: reduce quality significantly and retry */
+                hEncoder->aacquantCfg.quality *= 0.7;
+                pass++;
+                continue;
+            }
 
             if (actual_bits > maxbits * 1.001) {
                 /* Too many bits: reduce quality and retry quantization */
                 fix = (faac_real)maxbits / (faac_real)actual_bits;
+                /* Speed up convergence but maintain stability */
+                if (fix > 0.98) fix = 0.98;
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
-            } else if (actual_bits > 0 && actual_bits < desbits * 0.999) {
+            } else if (actual_bits > 0 && actual_bits < desbits * 0.995) {
                 /* Too few bits: increase quality and retry */
                 fix = (faac_real)desbits / (faac_real)actual_bits;
+                if (fix < 1.02) fix = 1.02;
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
             } else {

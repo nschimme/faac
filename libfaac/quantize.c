@@ -128,7 +128,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
   const faac_real last_inv = 1.0 / (faac_real)last;
   const faac_real totenrg_last = totenrg * last_inv;
-  const faac_real ath_adj = (sampleRate <= 16000) ? 0.8 : 1.0;
   const faac_real freq_factor = (faac_real)sampleRate * 0.25 * last_inv;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -173,24 +172,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));
 
     if (sampleRate <= 16000) {
-        // Refined ATH Scaling (VoIP/VSS): 1.25x scaling boost for 16kHz modes to prioritize speech clarity.
-        // ISO/IEC 14496-3 Section 4.6.2.1: Deviation - Frequency-dependent ATH floor adjustment.
-        target *= ath_adj; // effectively 1.25x boost as target is threshold (lower = more sensitive/more bits)
+        /* Corrected ATH Scaling: Increase target (bits) for low-SR and speech range. */
+        target *= 1.2;
         faac_real freq = (faac_real)(start + end) * freq_factor;
-        if (freq >= 300.0 && freq <= 4000.0) target *= 0.8;
+        if (freq >= 300.0 && freq <= 4000.0) target *= 1.25;
     }
 
     bandqual[sfb] = target * quality;
-  }
-
-  /* ISO/IEC 14496-3 Section 4.6.2.2: Spreading function.
-   * Authorized Expansion: Low-complexity upward masking.
-   * Model how strong energy in one band masks the following band by raising its threshold. */
-  for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
-      faac_real spread = bandqual[sfb - 1] * 0.2;
-      if (bandqual[sfb] < spread) {
-          bandqual[sfb] = spread;
-      }
   }
 }
 
@@ -261,10 +249,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 0)
-          sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      if (sfac > 150) sfac = 150;
+      sfacfix = FAAC_POW(10, sfac / sfstep);
 
       xi = xitab;
       if (sfacfix <= 0.0)
