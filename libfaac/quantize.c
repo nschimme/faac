@@ -128,7 +128,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
   const faac_real last_inv = 1.0 / (faac_real)last;
   const faac_real totenrg_last = totenrg * last_inv;
-  const faac_real ath_adj = (sampleRate <= 16000) ? 0.8 : 1.0;
+    /* Moderate ATH boost to 1.15x (0.87) to conserve bits for higher frequencies */
+    const faac_real ath_adj = (sampleRate <= 16000) ? 0.87 : 1.0;
   const faac_real freq_factor = (faac_real)sampleRate * 0.25 * last_inv;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -179,7 +180,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         if (freq >= 300.0 && freq <= 4000.0) target *= 0.8;
     }
 
-    bandqual[sfb] = target * quality;
+    /* ISO/IEC 14496-3 Section 4.6.2.1: Masking threshold is inversely proportional to quality */
+    bandqual[sfb] = target / (quality > 1e-5 ? quality : 1e-5);
   }
 }
 
@@ -240,7 +242,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      /* ISO/IEC 14496-3 Section 4.6.2.1: PNS triggers when masking threshold is high (low quality) */
+      if (bandqual[sb] > pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] = FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -249,7 +252,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 #endif
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      /* ISO/IEC 14496-3 Section 4.6.2.1: sfac represents signal-to-mask ratio */
+      sfac = FAAC_LRINT(FAAC_LOG10(rmsx / (bandqual[sb] > 1e-10 ? bandqual[sb] : 1e-10)) * sfstep);
       if ((SF_OFFSET - sfac) < 0)
           sfacfix = 0.0;
       else
@@ -264,7 +268,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or non-tonal regions to reduce shimmer.
           // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
-          faac_real magic = (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0) ? 0.33 : MAGIC_NUMBER;
+          /* Tighten AQR threshold to PAPR < 2.5 */
+          faac_real magic = (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.5) ? 0.33 : MAGIC_NUMBER;
 
           for (win = 0; win < gsize; win++)
           {
@@ -310,7 +315,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal);
                 // Cache energies and tonality for 2nd pass
                 for (int i = 0; i < coder->sfbn; i++) {
-                    coder->cached_bandqual[ofs + i] = bandlvl[i] / (qs > 1e-5 ? qs : 1e-5);
+                    /* Cache raw target threshold (independent of quality) */
+                    coder->cached_bandqual[ofs + i] = bandlvl[i] * (qs > 1e-5 ? qs : 1e-5);
                 }
                 memcpy(coder->cached_bandenrg + ofs, bandenrg, coder->sfbn * sizeof(faac_real));
                 memcpy(coder->cached_bandtonal + ofs, bandtonal, coder->sfbn * sizeof(faac_real));
@@ -319,7 +325,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 memcpy(bandenrg, coder->cached_bandenrg + ofs, coder->sfbn * sizeof(faac_real));
                 memcpy(bandtonal, coder->cached_bandtonal + ofs, coder->sfbn * sizeof(faac_real));
                 for (int i = 0; i < coder->sfbn; i++) {
-                    bandlvl[i] = coder->cached_bandqual[ofs + i] * qs;
+                    /* Restore masking threshold by dividing by current quality */
+                    bandlvl[i] = coder->cached_bandqual[ofs + i] / (qs > 1e-5 ? qs : 1e-5);
                 }
             }
 

@@ -643,12 +643,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             if (actual_bits < 0) return -1;
 
-            if (pass == 0 && actual_bits > maxbits * 1.05) {
-                /* Too many bits: reduce quality and retry quantization */
-                fix = (faac_real)maxbits / (faac_real)actual_bits;
-                fix = FAAC_SQRT(fix); /* Authorized Expansion: Square-Root Convergence */
-                hEncoder->aacquantCfg.quality *= fix;
-                pass++;
+            if (pass == 0) {
+                if (actual_bits > maxbits * 1.05) {
+                    /* Too many bits: reduce quality and retry quantization */
+                    fix = (faac_real)maxbits / (faac_real)actual_bits;
+                    fix = FAAC_SQRT(fix);
+                    hEncoder->aacquantCfg.quality *= fix;
+                    pass++;
+                } else if (actual_bits < (int)(desbits * 0.7)) {
+                    /* Significantly under budget: increase quality and retry */
+                    fix = (faac_real)desbits / (faac_real)actual_bits;
+                    if (fix > 1.5) fix = 1.5;
+                    hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
+                    pass++;
+                } else {
+                    break;
+                }
             } else {
                 break;
             }
@@ -677,7 +687,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 if (fix < 0.9) fix += 0.05;
                 else if (fix > 1.1) fix -= 0.05;
                 else fix = 1.0;
-                hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.25 + 1.0;
+                /* Bolder feedback (0.5 scaling) to track signal complexity faster */
+                hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.5 + 1.0;
             }
         }
 
