@@ -186,7 +186,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
    * Authorized Expansion: Low-complexity upward masking.
    * Model how strong energy in one band masks the following band. */
   for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
-      faac_real spread = bandqual[sfb - 1] * 0.25;
+      faac_real spread = bandqual[sfb - 1] * 0.2;
       if (bandqual[sfb] < spread) {
           bandqual[sfb] = spread;
       }
@@ -272,19 +272,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for noisy or high-frequency regions to reduce shimmer.
-          // Correct AQR Logic: Tone-like (tonal > 2.0) gets standard bias. High-freq or noisy regions get reduced bias.
-          // Authorized Expansion: Robustness for high-energy broadband noise.
+          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or noisy regions to reduce shimmer.
           // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
           faac_real magic = MAGIC_NUMBER;
           if (sb >= (int)(coderInfo->sfbn * 0.6)) {
-              magic = 0.38;
-          } else if (bandtonal[sb] < 2.5) {
-              /* Use broader tonality range for transition to protect broadband noise clarity */
-              faac_real weight = (bandtonal[sb] - 1.5) * 1.0;
+              magic = 0.33;
+          } else if (bandtonal[sb] > 3.0) {
+              /* Smoothly transition bias: 0.4054 (tonal) -> 0.33 (noisy) as PAPR increases.
+               * Tonal (low PAPR < 3.0) gets standard bias. Noisy (high PAPR > 5.0) gets reduced bias. */
+              faac_real weight = (bandtonal[sb] - 3.0) * 0.5;
               if (weight < 0.0) weight = 0.0;
               if (weight > 1.0) weight = 1.0;
-              magic = 0.38 + weight * (MAGIC_NUMBER - 0.38);
+              magic = MAGIC_NUMBER - weight * (MAGIC_NUMBER - 0.33);
           }
 
           for (win = 0; win < gsize; win++)
