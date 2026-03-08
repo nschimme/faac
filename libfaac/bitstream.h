@@ -115,6 +115,11 @@ int WriteBitstream(faacEncStruct* hEncoder,
                    BitStream *bitStream,
                    int numChannels);
 
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannels);
 
 BitStream *OpenBitStream(int size, unsigned char *buffer);
 
