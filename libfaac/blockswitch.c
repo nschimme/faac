@@ -106,7 +106,8 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          /* Transient Sensitivity Tuning: Trigger short windows more aggressively to confine quantization noise. */
+          if ((volchg / (toteng > 1e-10 ? toteng : 1e-10) * quality) > 1.4)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;

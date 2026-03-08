@@ -145,10 +145,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
@@ -161,7 +157,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -194,7 +190,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        faac_real tns_thresh = (blockType == ONLY_SHORT_WINDOW) ? 1.2 : DEF_TNS_GAIN_THRESH;
+        if (gain > tns_thresh) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
