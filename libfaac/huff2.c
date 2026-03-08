@@ -545,7 +545,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     lastis = 0;
     lastpns = coder->global_gain - 90;
 
-    // fixme: move range check to quantizer
     for (cnt = 0; cnt < coder->bandcnt; cnt++)
     {
         int book = coder->book[cnt];
@@ -595,7 +594,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
-        else if (book)
+        else if (book > 0 && book <= 11)
         {
             diff = coder->sf[cnt] - lastsf;
             if (diff > 60)
