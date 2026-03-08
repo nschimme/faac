@@ -262,9 +262,19 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or non-tonal regions to reduce shimmer.
+          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for noisy or high-frequency regions to reduce shimmer.
+          // Correct AQR Logic: Tone-like (tonal > 2.0) gets standard bias. High-freq or noisy regions get reduced bias.
+          // Authorized Expansion: Smoother transition for tonality.
           // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
-          faac_real magic = (sb >= (int)(coderInfo->sfbn * 0.7) || bandtonal[sb] < 2.0) ? 0.33 : MAGIC_NUMBER;
+          faac_real magic = MAGIC_NUMBER;
+          if (sb >= (int)(coderInfo->sfbn * 0.6)) {
+              magic = 0.38;
+          } else if (bandtonal[sb] < 2.0) {
+              /* Smoothly interpolate bias between 0.38 (noisy) and MAGIC_NUMBER (tonal) */
+              faac_real weight = (bandtonal[sb] - 1.0);
+              if (weight < 0.0) weight = 0.0;
+              magic = 0.38 + weight * (MAGIC_NUMBER - 0.38);
+          }
 
           for (win = 0; win < gsize; win++)
           {

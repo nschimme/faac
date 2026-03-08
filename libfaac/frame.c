@@ -643,10 +643,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             if (actual_bits < 0) return -1;
 
-            if (pass == 0 && actual_bits > maxbits * 1.05) {
+            if (actual_bits > maxbits * 1.02) {
                 /* Too many bits: reduce quality and retry quantization */
                 fix = (faac_real)maxbits / (faac_real)actual_bits;
                 fix = FAAC_SQRT(fix); /* Authorized Expansion: Square-Root Convergence */
+                hEncoder->aacquantCfg.quality *= fix;
+                pass++;
+            } else if (actual_bits < desbits * 0.90 && hEncoder->bitResLevel < hEncoder->bitResMax * 0.5) {
+                /* Too few bits and reservoir low: increase quality and retry */
+                fix = (faac_real)desbits / (faac_real)actual_bits;
+                fix = FAAC_SQRT(fix);
+                if (fix > 1.5) fix = 1.5;
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
             } else {
@@ -671,13 +678,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int total_bits = frameBytes * 8;
         if (total_bits > 0) {
             fix = (faac_real)desbits / (faac_real)total_bits;
-            if (total_bits < (int)(desbits * 0.8)) {
+            /* Aggressive response to maintain target bitrate */
+            if (fix < 0.8 || fix > 1.25) {
                 hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
             } else {
-                if (fix < 0.9) fix += 0.05;
-                else if (fix > 1.1) fix -= 0.05;
-                else fix = 1.0;
-                hEncoder->aacquantCfg.quality *= (fix - 1.0) * 0.25 + 1.0;
+                hEncoder->aacquantCfg.quality *= fix;
             }
         }
 
