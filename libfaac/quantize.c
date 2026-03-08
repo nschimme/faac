@@ -158,7 +158,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
 
     // ISO/IEC 14496-3 Section 4.6.2: Scalefactor determination.
-    // Calculate tonality as peak-to-average energy ratio.
+    // Calculate tonality as peak-to-average energy ratio (PAPR).
+    // Correct PAPR calculation: use raw max energy of a single sample (maxe) vs avg energy of all samples in group.
     faac_real avg_sample_e = avge / (faac_real)(gsize * n > 0 ? gsize * n : 1);
     bandtonal[sfb] = maxe / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
 
@@ -184,7 +185,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   /* ISO/IEC 14496-3 Section 4.6.2.2: Spreading function.
    * Authorized Expansion: Low-complexity upward masking.
-   * Model how strong energy in one band masks the following band. */
+   * Model how strong energy in one band masks the following band by raising its threshold. */
   for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
       faac_real spread = bandqual[sfb - 1] * 0.2;
       if (bandqual[sfb] < spread) {
@@ -272,18 +273,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for high-frequency or noisy regions to reduce shimmer.
+          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for noisy or high-frequency regions to reduce shimmer.
+          // Correct AQR Logic: Tone-like (high PAPR > 2.5) gets standard bias. Noisy (low PAPR < 1.5) gets reduced bias.
           // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
           faac_real magic = MAGIC_NUMBER;
           if (sb >= (int)(coderInfo->sfbn * 0.6)) {
               magic = 0.33;
-          } else if (bandtonal[sb] > 3.0) {
-              /* Smoothly transition bias: 0.4054 (tonal) -> 0.33 (noisy) as PAPR increases.
-               * Tonal (low PAPR < 3.0) gets standard bias. Noisy (high PAPR > 5.0) gets reduced bias. */
-              faac_real weight = (bandtonal[sb] - 3.0) * 0.5;
+          } else if (bandtonal[sb] < 2.5) {
+              /* Smoothly transition bias: 0.33 (noisy) -> 0.4054 (tonal) as PAPR increases. */
+              faac_real weight = (bandtonal[sb] - 1.5) * 1.0;
               if (weight < 0.0) weight = 0.0;
               if (weight > 1.0) weight = 1.0;
-              magic = MAGIC_NUMBER - weight * (MAGIC_NUMBER - 0.33);
+              magic = 0.33 + weight * (MAGIC_NUMBER - 0.33);
           }
 
           for (win = 0; win < gsize; win++)
