@@ -181,6 +181,16 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     bandqual[sfb] = target * quality;
   }
+
+  /* ISO/IEC 14496-3 Section 4.6.2.2: Spreading function.
+   * Authorized Expansion: Low-complexity upward masking.
+   * Model how strong energy in one band masks the following band. */
+  for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
+      faac_real spread = bandqual[sfb - 1] * 0.25;
+      if (bandqual[sfb] < spread) {
+          bandqual[sfb] = spread;
+      }
+  }
 }
 
 enum {MAXSHORTBAND = 36};
@@ -264,15 +274,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           // Adaptive Quantization Rounding (AQR): Reduce rounding bias for noisy or high-frequency regions to reduce shimmer.
           // Correct AQR Logic: Tone-like (tonal > 2.0) gets standard bias. High-freq or noisy regions get reduced bias.
-          // Authorized Expansion: Smoother transition for tonality.
+          // Authorized Expansion: Robustness for high-energy broadband noise.
           // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
           faac_real magic = MAGIC_NUMBER;
           if (sb >= (int)(coderInfo->sfbn * 0.6)) {
               magic = 0.38;
-          } else if (bandtonal[sb] < 2.0) {
-              /* Smoothly interpolate bias between 0.38 (noisy) and MAGIC_NUMBER (tonal) */
-              faac_real weight = (bandtonal[sb] - 1.0);
+          } else if (bandtonal[sb] < 2.5) {
+              /* Use broader tonality range for transition to protect broadband noise clarity */
+              faac_real weight = (bandtonal[sb] - 1.5) * 1.0;
               if (weight < 0.0) weight = 0.0;
+              if (weight > 1.0) weight = 1.0;
               magic = 0.38 + weight * (MAGIC_NUMBER - 0.38);
           }
 

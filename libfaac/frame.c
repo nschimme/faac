@@ -643,17 +643,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             if (actual_bits < 0) return -1;
 
-            if (actual_bits > maxbits * 1.02) {
+            if (actual_bits > maxbits * 1.01) {
                 /* Too many bits: reduce quality and retry quantization */
                 fix = (faac_real)maxbits / (faac_real)actual_bits;
                 fix = FAAC_SQRT(fix); /* Authorized Expansion: Square-Root Convergence */
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
-            } else if (actual_bits < desbits * 0.90 && hEncoder->bitResLevel < hEncoder->bitResMax * 0.5) {
-                /* Too few bits and reservoir low: increase quality and retry */
+            } else if (actual_bits < desbits * 0.99) {
+                /* Too few bits: increase quality and retry */
                 fix = (faac_real)desbits / (faac_real)actual_bits;
                 fix = FAAC_SQRT(fix);
-                if (fix > 1.5) fix = 1.5;
+                if (fix > 1.6) fix = 1.6;
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
             } else {
