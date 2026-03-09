@@ -112,6 +112,20 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    /* Rate control state persistence */
+    int saved_global_gain;
+    int saved_sf[MAX_SCFAC_BANDS];
+    int saved_book[MAX_SCFAC_BANDS];
+    int saved_bandcnt;
+    int saved_datacnt;
+
+    /* Energy caching for iterative passes */
+    int energies_valid;
+    faac_real cached_bandenrg[MAX_SCFAC_BANDS];
+    faac_real cached_bandqual[MAX_SCFAC_BANDS];
+    faac_real cached_bandtonal[MAX_SCFAC_BANDS];
+    faac_real cached_bandsfm[MAX_SCFAC_BANDS];
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];

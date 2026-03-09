@@ -34,11 +34,11 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannels);
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannels);
 static int WriteADTSHeader(faacEncStruct* hEncoder,
                            BitStream *bitStream,
                            int writeFlag);
@@ -160,6 +160,10 @@ int WriteBitstream(faacEncStruct* hEncoder,
     if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannel) < 0)
         return -1;
 
+    /* Reset bitstream state for actual writing after counting */
+    bitStream->currentBit = 0;
+    bitStream->numBit = 0;
+
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 1);
     }else{
@@ -239,11 +243,11 @@ int WriteBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannel)
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannel)
 {
     int channel;
     int bits = 0;
@@ -321,6 +325,14 @@ static int CountBitstream(faacEncStruct* hEncoder,
     bits += ByteAlign(bitStream, 0, bits);
 
     hEncoder->usedBytes = bit2byte(bits);
+
+    /* Zero-overhead virtual bit counting for iterative rate control */
+    if (bitStream->data == NULL) {
+        /* Reset count in bitstream structure to prevent accumulation in multiple calls */
+        bitStream->currentBit = 0;
+        bitStream->numBit = 0;
+        return bits;
+    }
 
     if (hEncoder->usedBytes > bitStream->size)
     {
@@ -859,7 +871,8 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    SetMemory(bitStream->data, 0, size);
+    if (bitStream->data && size > 0)
+        SetMemory(bitStream->data, 0, size);
 
     return bitStream;
 }
@@ -882,16 +895,18 @@ static int WriteByte(BitStream *bitStream,
                      unsigned long data,
                      int numBit)
 {
-    long numUsed,idx;
+    if (bitStream->data && bitStream->size > 0) {
+        long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+        idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+        numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
-    if (numUsed == 0)
-        bitStream->data[idx] = 0;
+        if (numUsed == 0)
+            bitStream->data[idx] = 0;
 #endif
-    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+            (BYTE_NUMBIT-numUsed-numBit);
+    }
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -1311,6 +1326,7 @@ static const unsigned char _crctable[256] =
 
 static void calc_CRC(BitStream *bitStream, int len)
 {
+    if (!bitStream->data) return;
     //int i;
     //unsigned char r = ~0;  /* Initialize to all ones */
     unsigned char crc = ~0;  /* Initialize to all ones */
