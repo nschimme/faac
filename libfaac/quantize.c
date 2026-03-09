@@ -171,8 +171,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
     avgenrg = totenrg_last * n;
 
-#define NOISETONE 1.2
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.5 * FAAC_POW(maxe/avgenrg, powm);
+#define NOISETONE 0.8
+      target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.25 * FAAC_POW(maxe/avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW) target *= 1.5;
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));

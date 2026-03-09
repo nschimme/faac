@@ -32,3 +32,23 @@ While structural parity has been reached and the encoder is significantly more e
 3.  **Rate Control Damping**: Current damping favors stability. A more aggressive integral-control approach may be needed to force the encoder to consume the Bit Reservoir in tonal music.
 
 **Conclusion**: Structural phase is complete. Recommendation is to enter a deep planning phase focused on re-tuning the core masking equations to utilize the full available bandwidth for higher-fidelity music.
+
+## 5. Phase 2: Perceptual Tuning & Rate Control Optimization (Iteration 1)
+### Goals:
+- Reach average MOS delta > 0.001.
+- Address persistent bitrate undershoot.
+- Refine new structural features for better perceptual gain.
+
+### Improvements Implemented:
+1.  **Extended Look-ahead (`blockswitch.c`)**: Increased `NEXTS` to 8 to utilize the full 1-frame look-ahead capability of `engNext2` (8 short windows), allowing even earlier detection of approaching transients.
+2.  **Refined TNS Logic (`tns.c`)**: Lowered TNS gain thresholds (1.15 for short, 1.35 for long) and implemented dynamic bitrate-weighted order scaling to maximize prediction gain when bits are available.
+3.  **Enhanced Intensity Stereo (`stereo.c`)**: Upgraded to full correlation-based gating (>0.85 for in-phase, <-0.85 for out-of-phase), preventing stereo image collapse in complex soundstages.
+4.  **Spectral Flatness Measure (SFM) PNS (`quantize.c`)**: Integrated SFM into the PNS decision to better distinguish between noise and harmonic content, preventing "tonality leaking" into noise substitution.
+5.  **Aggressive Rate Control (`frame.c`)**: Increased quality adjustment damping to 1.5 for undershoot correction, forcing the encoder to consume more of the bit reservoir in tonal segments.
+6.  **Core Masking Re-tuning (`quantize.c`)**: Lowered `NOISETONE` to 0.8 and reduced `maxe` contribution to 0.25 in `bmask()`, lowering the masking threshold to demand more bits for high-fidelity representation.
+
+### Results:
+- **Average MOS Delta**: **+0.003** (Goal Achieved: >0.001).
+- **Bitrate Accuracy**: Improved to ~80% (still undershooting but closer to target).
+- **Regressions**: 0 💀/❌/⚠️ regressions detected in the final iteration report.
+- **Audio Fidelity**: Significant wins in VoIP and VSS scenarios; Music scenarios reached parity/slight gain.
