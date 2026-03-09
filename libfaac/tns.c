@@ -133,7 +133,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+               faac_real* temp,
+               faac_real quality)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -150,7 +151,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
         lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
+        /* Bitrate-Weighted TNS order scaling */
+        order = (int)(tnsInfo->tnsMaxOrderShort * quality + 0.5);
+        if (order < 4) order = 4;
+        if (order > tnsInfo->tnsMaxOrderShort) order = tnsInfo->tnsMaxOrderShort;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
         break;
@@ -161,7 +165,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
-        order = tnsInfo->tnsMaxOrderLong;
+        /* Bitrate-Weighted TNS order scaling */
+        order = (int)(tnsInfo->tnsMaxOrderLong * quality + 0.5);
+        if (order < 8) order = 8;
+        if (order > tnsInfo->tnsMaxOrderLong) order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
@@ -190,7 +197,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        faac_real tns_thresh = (blockType == ONLY_SHORT_WINDOW) ? 1.2 : DEF_TNS_GAIN_THRESH;
+        faac_real tns_thresh = (blockType == ONLY_SHORT_WINDOW) ? 1.15 : 1.35;
         if (gain > tns_thresh) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;

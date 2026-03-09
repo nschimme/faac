@@ -74,7 +74,8 @@ static struct {
 
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
-  enum {PREVS = 2, NEXTS = 2};
+  /* 1-frame look-ahead: utilize the full engNext2 (8 windows) buffer */
+  enum {PREVS = 2, NEXTS = 8};
   psydata_t *psydata = psyInfo->data;
   int lastband = psydata->lastband;
   int firstband = 2;

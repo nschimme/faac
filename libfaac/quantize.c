@@ -171,32 +171,26 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
     avgenrg = totenrg_last * n;
 
-#define NOISETONE 0.8
-      target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.25 * FAAC_POW(maxe/avgenrg, powm);
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW) target *= 1.5;
+#define NOISETONE 0.2
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    {
+        target *= 1.5;
+    }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));
 
     if (sampleRate <= 16000) {
         // Refined ATH Scaling (VoIP/VSS): 1.25x scaling boost for 16kHz modes to prioritize speech clarity.
         // ISO/IEC 14496-3 Section 4.6.2.1: Deviation - Frequency-dependent ATH floor adjustment.
-        target *= ath_adj; // effectively 1.25x boost as target is threshold (lower = more sensitive/more bits)
+        target *= ath_adj;
         faac_real freq = (faac_real)(start + end) * freq_factor;
         if (freq >= 300.0 && freq <= 4000.0) target *= 0.8;
     }
 
     bandqual[sfb] = target * quality;
-  }
-
-  /* ISO/IEC 14496-3 Section 4.6.2.2: Spreading function.
-   * Authorized Expansion: Low-complexity upward masking.
-   * Model how strong energy in one band masks the following band. */
-  for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
-      /* Tuning: Increased spreading to 0.5 to demand more bits. */
-      faac_real spread = bandqual[sfb - 1] * 0.5;
-      if (bandqual[sfb] < spread) {
-          bandqual[sfb] = spread;
-      }
   }
 }
 
@@ -258,12 +252,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      /* Enhanced PNS Thresholding: Use PAPR to better distinguish between noise and harmonic content.
-       * Noise-like signals have low PAPR. Tonal signals have high PAPR. */
+      /* Enhanced PNS Thresholding: Use Peak-to-Average Power Ratio (PAPR) as a tonality proxy.
+       * Noise-like signals have low PAPR (< 3.0). Tonal signals have high PAPR.
+       * This prevents noise substitution in bands with strong harmonic components. */
       if ((bandqual[sb] < pnsthr) && (bandtonal[sb] < 3.0))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] = FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+          coderInfo->sf[coderInfo->bandcnt] += FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
       }
@@ -284,10 +279,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           // Adaptive Quantization Rounding (AQR): Frequency-dependent rounding bias.
           faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.6)) {
-              magic = 0.38;
-          } else if (bandtonal[sb] < 2.5) {
+          if (sb >= (int)(coderInfo->sfbn * 0.8)) {
               magic = 0.39;
+          } else if (bandtonal[sb] < 2.0) {
+              magic = 0.40;
           }
 
           for (win = 0; win < gsize; win++)
