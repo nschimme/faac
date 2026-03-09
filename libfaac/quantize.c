@@ -89,29 +89,20 @@ void QuantizeInit(void)
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate,
-                  faac_real * __restrict bandtonal, faac_real * __restrict bandsfm)
+                  faac_real * __restrict bandtonal, faac_real * __restrict bandsfm, faac_real totenrg)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
   faac_real powm = 0.4;
-  faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
-  {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
-      {
-          totenrg += xr[cnt] * xr[cnt];
-      }
-  }
-  enrgcnt = gsize * total_len;
+  enrgcnt = 8 * total_len;
 
   if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
@@ -172,8 +163,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     avgenrg = totenrg_last * n;
 
 #define NOISETONE 0.2
+#define MAXE_CONTRIB 0.36 /* (1.0 - NOISETONE) * 0.45 */
     target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    target += MAXE_CONTRIB * FAAC_POW(maxe/avgenrg, powm);
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -265,7 +257,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 0)
+      if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -277,23 +269,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          // Adaptive Quantization Rounding (AQR): Frequency-dependent rounding bias.
-          faac_real magic = MAGIC_NUMBER;
-          if (sb >= (int)(coderInfo->sfbn * 0.8)) {
-              magic = 0.39;
-          } else if (bandtonal[sb] < 2.0) {
-              magic = 0.40;
-          }
-
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, n, sfacfix, magic);
+              qfunc(xr, xi, n, sfacfix, MAGIC_NUMBER);
               xi += n;
           }
       }
       huffbook(coderInfo, xitab, blk_len);
-      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
@@ -305,6 +289,13 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real bandsfm[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
+    faac_real totenrg = 0.0;
+    int total_len = coder->sfb_offset[coder->sfbn];
+
+    /* Calculate total frame energy for normalization across groups */
+    for (cnt = 0; cnt < 1024; cnt++) {
+        totenrg += xr[cnt] * xr[cnt];
+    }
 
     coder->global_gain = 0;
 
@@ -327,7 +318,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             int ofs = cnt * NSFB_SHORT;
 
             if (!coder->energies_valid) {
-                bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal, bandsfm);
+                bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal, bandsfm, totenrg);
                 // Cache energies and tonality for 2nd pass
                 for (int i = 0; i < coder->sfbn; i++) {
                     coder->cached_bandqual[ofs + i] = bandlvl[i] / (qs > 1e-5 ? qs : 1e-5);
