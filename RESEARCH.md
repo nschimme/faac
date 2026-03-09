@@ -15,15 +15,15 @@ This phase successfully achieved a significant average MOS delta of **+0.010** (
 2.  **Bitrate-Weighted TNS Scaling (`tns.c`)**:
     Dynamic scaling of TNS filter orders based on frame quality. This allows high-bitrate frames to leverage max prediction gain (order 20) while conserving bits in lower-quality segments.
 3.  **Phase-Aware Intensity Stereo (`stereo.c`)**:
-    Introduced a correlation-based gating mechanism (>0.85). This prevents Intensity Stereo from collapsing the soundstage in out-of-phase or complex acoustic environments.
+    Introduced a correlation-based gating mechanism (>0.85). This ensures Intensity Stereo is only activated when signals are highly coherent, preventing soundstage collapse.
 4.  **Enhanced PNS Decision (`quantize.c`)**:
     Refined Perceptual Noise Substitution logic using Peak-to-Average Power Ratio (PAPR) as a tonality proxy. This ensures harmonic content is preserved while noise-like bands are efficiently coded.
 5.  **Stable Psychoacoustic Normalization (`quantize.c`)**:
-    Fixed the `totenrg` calculation to use the full 1024-sample frame energy, providing a stable reference for masking thresholds across all window groups.
+    Aligned masking thresholds with baseline-stable proportions and fixed uninitialized memory usage in the perceptual model.
 
 ## 3. Critical Fixes & Stability
-- **Scalefactor Accumulation**: Restored `+=` logic for scalefactor updates in `qlevel`, ensuring that stereo coding information from previous stages is correctly preserved.
-- **Normalization Alignment**: Synchronized `NOISETONE` and `MAXE_CONTRIB` constants with baseline-stable proportions to prevent bit-allocation instability.
+- **Scalefactor Accumulation**: Restored `+=` logic for Perceptual Noise Substitution (PNS) updates, ensuring that stereo coding information is correctly preserved across encoding stages.
+- **Normalization Alignment**: Synchronized bit-allocation constants with baseline behavior to prevent bit-budget instability in quiet passages.
 - **Rate Control**: Maintained stable quality adjustment damping to ensure reliable convergence toward target bitrates.
 
 ## 4. Final Performance Metrics (Candidate vs. Baseline)
