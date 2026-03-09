@@ -168,7 +168,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
         if (!config->quantqual)
         {
-            config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
+            config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1050;
             if (config->quantqual > 100)
                 config->quantqual = (config->quantqual - 100) * 3.0 + 100;
         }
@@ -629,7 +629,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             QuantizeSaveState(&coderInfo[channel]);
         }
 
-        while (pass < 2) {
+        while (pass < 5) {
             for (channel = 0; channel < numChannels; channel++) {
                 QuantizeRestoreState(&coderInfo[channel]);
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg), hEncoder->sampleRate);
@@ -646,14 +646,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             if (actual_bits > maxbits * 1.01) {
                 /* Too many bits: reduce quality and retry quantization */
                 fix = (faac_real)maxbits / (faac_real)actual_bits;
-                fix = FAAC_SQRT(fix); /* Authorized Expansion: Square-Root Convergence */
+                fix = FAAC_SQRT(fix);
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
             } else if (actual_bits < desbits * 0.99) {
                 /* Too few bits: increase quality and retry */
                 fix = (faac_real)desbits / (faac_real)actual_bits;
                 fix = FAAC_SQRT(fix);
-                if (fix > 1.6) fix = 1.6;
+                if (fix > 2.0) fix = 2.0;
                 hEncoder->aacquantCfg.quality *= fix;
                 pass++;
             } else {
@@ -678,11 +678,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int total_bits = frameBytes * 8;
         if (total_bits > 0) {
             fix = (faac_real)desbits / (faac_real)total_bits;
-            /* Aggressive response to maintain target bitrate */
-            if (fix < 0.8 || fix > 1.25) {
-                hEncoder->aacquantCfg.quality *= FAAC_SQRT(fix);
+            /* Iteration 11 Tuning: High damping for stability at high quality levels. */
+            if (fix > 1.0) {
+                hEncoder->aacquantCfg.quality *= (1.0 + (fix - 1.0) * 0.9);
             } else {
-                hEncoder->aacquantCfg.quality *= fix;
+                hEncoder->aacquantCfg.quality *= (1.0 - (1.0 - fix) * 0.9);
             }
         }
 

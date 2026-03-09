@@ -124,6 +124,7 @@ typedef struct {
     faac_real cached_bandenrg[MAX_SCFAC_BANDS];
     faac_real cached_bandqual[MAX_SCFAC_BANDS];
     faac_real cached_bandtonal[MAX_SCFAC_BANDS];
+    faac_real cached_bandsfm[MAX_SCFAC_BANDS];
 
     struct {
         int n;

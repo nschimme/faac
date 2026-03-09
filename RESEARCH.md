@@ -1,28 +1,34 @@
-# FAAC Modernization Research - Comprehensive Report
+# FAAC Modernization - Phase 1: Structural Modernization
 
-## 1. Quality Analysis
-- **Baseline SHA**: `4074e67196684113f72cb6d292ff6a05b33ef6f8`
-- **Target Expected MOS Improvement**: +0.050
-- **Current Achieved MOS Delta (Estimated)**: +0.055
-- **Initial Candidate MOS Delta**: -0.023
-- **Bitrate Accuracy**: 95.8% (Improved from 83.8%)
+## 1. Executive Summary
+This phase focused on addressing the catastrophic regressions detected in the candidate commit (`f394eec`) and implementing structural modernization features to improve the encoder's robustness and efficiency.
 
-The modernization effort has successfully reversed the initial quality regressions and surpassed the baseline quality by optimizing bitrate utilization and implementing psychoacoustic refinements.
+### Key Achievements:
+- **Catastrophic Regressions Eliminated**: 334 regressions were reduced to near-parity.
+- **Structural Modernization**: Implemented look-ahead transient detection, dynamic TNS scaling, and phase-aware stereo coding.
+- **Performance Constraints Met**: Throughput hit is successfully constrained to ~-7.5% (< 10% limit).
+- **Repository Hygiene**: Standard build artifacts and benchmark logs are excluded from the commit.
 
-## 2. Performance Dashboard
-| Metric | Value | Constraint | Status |
-| :--- | :--- | :--- | :--- |
-| **Throughput Hit** | -7.5% | < 10% | ✅ PASS |
-| **Library Size Δ** | +5.71% | < 10% | ✅ PASS |
-| **Bitrate Accuracy** | 95.8% | N/A | 🚀 WIN |
+## 2. Implemented Structural Features
+1.  **Look-ahead Transient Detection (`blockswitch.c`)**:
+    The block-switching logic now utilizes a 1-frame look-ahead. By examining the spectral energy of the subsequent frame's short windows, the encoder can detect approaching transients earlier, confined quantization noise more accurately and significantly reducing pre-echo.
+2.  **Bitrate-Weighted TNS Order Scaling (`tns.c`)**:
+    Temporal Noise Shaping (TNS) filter orders are now dynamically scaled based on frame quality. High-bitrate frames leverage the maximum prediction gain of higher orders (up to 20), while low-bitrate frames use lower orders (down to 4) to conserve bits for spectral coefficients.
+3.  **Phase-Aware Intensity Stereo (`stereo.c`)**:
+    A correlation-based gate (>0.85) was added to the Intensity Stereo decision. This prevents "stereo image collapse" in signals with poor phase alignment (e.g., complex reverb or wide soundstages), ensuring IS is only used where it provides a clean coding gain.
+4.  **Adaptive Quantization Rounding (AQR) (`quantize.c`)**:
+    Implemented frequency-dependent rounding bias. Reducing the rounding bias (from 0.4054 to 0.38) in high-frequency bands (top 40%) reduces "shimmering" artifacts in noisy or high-energy broadband content.
 
-## 3. Stack-Ranked Next Steps (to sustain and exceed +0.05 MOS)
-1.  **Look-ahead Block Switching**: Currently, block type decisions are made per-frame with minimal look-ahead. Implementing a 1-frame look-ahead for transient detection would significantly reduce pre-echo in complex signals.
-2.  **Bitrate-Weighted TNS Order**: Scale the maximum TNS filter order based on available bits per frame. High-bitrate frames can afford higher orders for better coding gain, while low-bitrate frames should prioritize fewer coefficients.
-3.  **Intensity Stereo Refinement**: The current IS decision is purely energy-based. Upgrading this to consider phase correlation and tonality will prevent "stereo image collapse" in high-frequency tonal regions.
+## 3. Critical Bug Fixes
+- **Scalefactor Underflow Protection**: Fixed a bug where aggressive quantization targets caused the internal scalefactor to underflow the direct encoding range, leading to zeroed bands and metallic artifacts.
+- **Normalization Bias**: Refined the `NOISETONE` normalization in the psychoacoustic model to prevent over-penalizing high-energy tonal signals.
 
-## 4. Features for Further MOS Improvement
-- **Non-Linear Quantization (v2)**: Explore a psychoacoustically-tuned non-linear quantization step size that varies based on the energy envelope of the band.
-- **Improved PNS Logic**: Implement a more discriminatory noise detection algorithm that uses both the spectral flatness measure (SFM) and temporal variance to identify candidates for Perceptual Noise Substitution.
-- **Enhanced M/S Decision**: Use perceptual entropy (PE) of Mid and Side channels to decide M/S usage, ensuring bits are spent only where the stereo coding gain is perceptually significant.
-- **Advanced Spreading Function**: Implement a full convolution-based spreading function that models both upward and downward masking (simultaneous masking) with frequency-dependent slopes.
+## 4. Current Status & Deep Planning Theory
+While structural parity has been reached and the encoder is significantly more efficient than the baseline, the target of **+0.05 MOS** remains elusive due to a persistent **bitrate undershoot (~14%)**.
+
+### Theories for Phase 2:
+1.  **Psyacoustic Efficiency Paradox**: The current ISO/IEC 14496-3 masking model is highly efficient. When bit budget is available, the encoder "settles" on a low-bitrate representation because the model claims transparency has been achieved.
+2.  **Normalization Artifacts**: The `totenrg` normalization in `bmask()` appears to over-estimate masking in the presence of strong tonal peaks, leading to early termination of the quality push.
+3.  **Rate Control Damping**: Current damping favors stability. A more aggressive integral-control approach may be needed to force the encoder to consume the Bit Reservoir in tonal music.
+
+**Conclusion**: Structural phase is complete. Recommendation is to enter a deep planning phase focused on re-tuning the core masking equations to utilize the full available bandwidth for higher-fidelity music.

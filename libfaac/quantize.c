@@ -88,7 +88,8 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate, faac_real * __restrict bandtonal)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, int sampleRate,
+                  faac_real * __restrict bandtonal, faac_real * __restrict bandsfm)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -119,6 +120,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
           bandtonal[sfb] = 0.0;
+      bandsfm[sfb] = 0.0;
       }
 
       return;
@@ -135,6 +137,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
     faac_real avge, maxe;
     faac_real target;
+    faac_real log_sum = 0.0;
     int n;
 
     start = cb_offset[sfb];
@@ -162,11 +165,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     faac_real avg_sample_e = avge / (faac_real)(gsize * n > 0 ? gsize * n : 1);
     bandtonal[sfb] = maxe / (avg_sample_e > 1e-10 ? avg_sample_e : 1e-10);
 
+    /* Enhanced PNS Thresholding: SFM is too slow, we use bandtonal (PAPR) instead. */
+    bandsfm[sfb] = 0.0;
+
     maxe *= gsize;
     avgenrg = totenrg_last * n;
 
-#define NOISETONE 0.2
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.36 * FAAC_POW(maxe/avgenrg, powm);
+#define NOISETONE 1.2
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.5 * FAAC_POW(maxe/avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW) target *= 1.5;
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));
@@ -186,7 +192,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
    * Authorized Expansion: Low-complexity upward masking.
    * Model how strong energy in one band masks the following band. */
   for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
-      faac_real spread = bandqual[sfb - 1] * 0.25;
+      /* Tuning: Increased spreading to 0.5 to demand more bits. */
+      faac_real spread = bandqual[sfb - 1] * 0.5;
       if (bandqual[sfb] < spread) {
           bandqual[sfb] = spread;
       }
@@ -201,7 +208,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandenrg,
                    int gnum,
                    int pnslevel,
-                   const faac_real * __restrict bandtonal
+                   const faac_real * __restrict bandtonal,
+                   const faac_real * __restrict bandsfm
                   )
 {
     int sb;
@@ -250,7 +258,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      /* Enhanced PNS Thresholding: Use PAPR to better distinguish between noise and harmonic content.
+       * Noise-like signals have low PAPR. Tonal signals have high PAPR. */
+      if ((bandqual[sb] < pnsthr) && (bandtonal[sb] < 3.0))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] = FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -272,19 +282,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          // Adaptive Quantization Rounding (AQR): Reduce rounding bias for noisy or high-frequency regions to reduce shimmer.
-          // Correct AQR Logic: Tone-like (tonal > 2.0) gets standard bias. High-freq or noisy regions get reduced bias.
-          // Authorized Expansion: Robustness for high-energy broadband noise.
-          // ISO/IEC 14496-3 Section 4.6.3: Deviation - Non-static rounding bias.
+          // Adaptive Quantization Rounding (AQR): Frequency-dependent rounding bias.
           faac_real magic = MAGIC_NUMBER;
           if (sb >= (int)(coderInfo->sfbn * 0.6)) {
               magic = 0.38;
           } else if (bandtonal[sb] < 2.5) {
-              /* Use broader tonality range for transition to protect broadband noise clarity */
-              faac_real weight = (bandtonal[sb] - 1.5) * 1.0;
-              if (weight < 0.0) weight = 0.0;
-              if (weight > 1.0) weight = 1.0;
-              magic = 0.38 + weight * (MAGIC_NUMBER - 0.38);
+              magic = 0.39;
           }
 
           for (win = 0; win < gsize; win++)
@@ -304,6 +307,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
     faac_real bandtonal[MAX_SCFAC_BANDS];
+    faac_real bandsfm[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -328,23 +332,25 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             int ofs = cnt * NSFB_SHORT;
 
             if (!coder->energies_valid) {
-                bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal);
+                bmask(coder, gxr, bandlvl, bandenrg, cnt, qs, sampleRate, bandtonal, bandsfm);
                 // Cache energies and tonality for 2nd pass
                 for (int i = 0; i < coder->sfbn; i++) {
                     coder->cached_bandqual[ofs + i] = bandlvl[i] / (qs > 1e-5 ? qs : 1e-5);
                 }
                 memcpy(coder->cached_bandenrg + ofs, bandenrg, coder->sfbn * sizeof(faac_real));
                 memcpy(coder->cached_bandtonal + ofs, bandtonal, coder->sfbn * sizeof(faac_real));
+                memcpy(coder->cached_bandsfm + ofs, bandsfm, coder->sfbn * sizeof(faac_real));
             } else {
                 // Use cached values
                 memcpy(bandenrg, coder->cached_bandenrg + ofs, coder->sfbn * sizeof(faac_real));
                 memcpy(bandtonal, coder->cached_bandtonal + ofs, coder->sfbn * sizeof(faac_real));
+                memcpy(bandsfm, coder->cached_bandsfm + ofs, coder->sfbn * sizeof(faac_real));
                 for (int i = 0; i < coder->sfbn; i++) {
                     bandlvl[i] = coder->cached_bandqual[ofs + i] * qs;
                 }
             }
 
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, bandtonal);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, bandtonal, bandsfm);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
