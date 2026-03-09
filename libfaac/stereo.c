@@ -59,6 +59,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         end = cl->sfb_offset[sfb + 1];
 
         enrgs = enrgd = enrgl = enrgr = 0.0;
+        faac_real dot_prod = 0.0;
         for (win = wstart; win < wend; win++)
         {
             faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
@@ -76,19 +77,24 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                 enrgd += diff * diff;
                 enrgl += lx * lx;
                 enrgr += rx * rx;
+                dot_prod += lx * rx;
             }
         }
+
+        /* Correlation-based gating: Ensure high coherence before activating IS. */
+        faac_real norm = FAAC_SQRT(enrgl * enrgr);
+        faac_real correlation = (norm > 1e-10) ? (dot_prod / norm) : 0.0;
 
         ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (enrgs >= ethr)
+        if (enrgs >= ethr && correlation > 0.85)
         {
             hcb = HCB_INTENSITY;
             vfix = FAAC_SQRT(efix / enrgs);
         }
-        else if (enrgd >= ethr)
+        else if (enrgd >= ethr && correlation < -0.85)
         {
             hcb = HCB_INTENSITY2;
             vfix = FAAC_SQRT(efix / enrgd);
