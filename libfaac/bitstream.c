@@ -322,6 +322,9 @@ static int CountBitstream(faacEncStruct* hEncoder,
 
     hEncoder->usedBytes = bit2byte(bits);
 
+    if (bitStream->data == NULL)
+        return bits;
+
     if (hEncoder->usedBytes > bitStream->size)
     {
         fprintf(stderr, "frame buffer overrun\n");
@@ -859,7 +862,9 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->currentBit = 0;
 #endif
     bitStream->data = buffer;
-    SetMemory(bitStream->data, 0, size);
+    if (bitStream->data) {
+        SetMemory(bitStream->data, 0, size);
+    }
 
     return bitStream;
 }
@@ -884,14 +889,16 @@ static int WriteByte(BitStream *bitStream,
 {
     long numUsed,idx;
 
-    idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
-    numUsed = bitStream->currentBit % BYTE_NUMBIT;
+    if (bitStream->data) {
+        idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
+        numUsed = bitStream->currentBit % BYTE_NUMBIT;
 #ifndef DRM
-    if (numUsed == 0)
-        bitStream->data[idx] = 0;
+        if (numUsed == 0)
+            bitStream->data[idx] = 0;
 #endif
-    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+            (BYTE_NUMBIT-numUsed-numBit);
+    }
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -907,6 +914,12 @@ int PutBit(BitStream *bitStream,
 
     if (numBit == 0)
         return 0;
+
+    if (bitStream->data == NULL) {
+        bitStream->currentBit += numBit;
+        bitStream->numBit = bitStream->currentBit;
+        return 0;
+    }
 
     /* write bits in packets according to buffer byte boundaries */
     num = 0;
@@ -1316,6 +1329,9 @@ static void calc_CRC(BitStream *bitStream, int len)
     unsigned char crc = ~0;  /* Initialize to all ones */
 
     /* CRC polynome used x^8 + x^4 + x^3 + x^2 +1 */
+
+    if (bitStream->data == NULL)
+        return;
 
     unsigned int cb         = len / 8;
     unsigned int taillen    = len & 0x7;
