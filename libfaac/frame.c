@@ -32,12 +32,6 @@
 #include "tns.h"
 #include "stereo.h"
 
-typedef struct {
-    faac_real band_energy[NSFB_LONG];
-    faac_real band_tonality[NSFB_LONG];
-    faac_real spectral_flatness;
-    faac_real transient_score;
-} frame_analysis_t;
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -62,6 +56,10 @@ static const struct {
     faac_real fac;
     faac_real freq;
 } g_bw = {0.42, 18000};
+
+static const faac_real TRANSIENT_THRESHOLD = 2.0f;
+static const faac_real HF_ENERGY_THRESHOLD = 1e-6f;  /* fraction of frame energy */
+
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
@@ -468,7 +466,7 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
         faac_real total_transient_score = 0;
         faac_real total_spectral_flatness = 0;
         faac_real eps = 1e-9;
-        int sfb;
+        int i;
 
         memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
         memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
@@ -483,12 +481,12 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
             int sfbn = coderInfo[channel].sfbn;
 
             if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-                for (sfb = 0; sfb < sfbn; sfb++) {
+                for (i = 0; i < sfbn; i++) {
                     faac_real b_sum = 0;
                     faac_real b_abs_sum = 0;
                     faac_real b_en = 0;
-                    int width = hEncoder->srInfo->cb_width_short[sfb];
-                    int start = coderInfo[channel].sfb_offset[sfb];
+                    int width = hEncoder->srInfo->cb_width_short[i];
+                    int start = coderInfo[channel].sfb_offset[i];
                     int w, k;
 
                     for (w = 0; w < 8; w++) {
@@ -504,16 +502,16 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
                         }
                     }
                     energy_ch += b_en;
-                    analysis->band_energy[sfb] += b_en;
-                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                    analysis->band_energy[i] += b_en;
+                    analysis->band_tonality[i] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
                 }
             } else {
-                for (sfb = 0; sfb < sfbn; sfb++) {
+                for (i = 0; i < sfbn; i++) {
                     faac_real b_sum = 0;
                     faac_real b_abs_sum = 0;
                     faac_real b_en = 0;
-                    int start = coderInfo[channel].sfb_offset[sfb];
-                    int end = coderInfo[channel].sfb_offset[sfb+1];
+                    int start = coderInfo[channel].sfb_offset[i];
+                    int end = coderInfo[channel].sfb_offset[i+1];
                     int k;
 
                     for (k = start; k < end; k++) {
@@ -526,8 +524,8 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
                         abs_sum_ch += aval;
                     }
                     energy_ch += b_en;
-                    analysis->band_energy[sfb] += b_en;
-                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                    analysis->band_energy[i] += b_en;
+                    analysis->band_tonality[i] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
                 }
             }
 
@@ -545,11 +543,92 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
         /* Average across channels */
         analysis->transient_score = total_transient_score / numChannels;
         analysis->spectral_flatness = total_spectral_flatness / numChannels;
-        for (sfb = 0; sfb < NSFB_LONG; sfb++) {
-            analysis->band_energy[sfb] /= numChannels;
-            analysis->band_tonality[sfb] /= numChannels;
+        for (i = 0; i < NSFB_LONG; i++) {
+            analysis->band_energy[i] /= numChannels;
+            analysis->band_tonality[i] /= numChannels;
         }
     }
+
+    if (analysis) {
+        /* Improved Transient Detection */
+        if (analysis->transient_score > TRANSIENT_THRESHOLD) {
+            for (channel = 0; channel < numChannels; channel++) {
+                if (coderInfo[channel].block_type == ONLY_LONG_WINDOW) {
+                    coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+                }
+                coderInfo[channel].desired_block_type = ONLY_SHORT_WINDOW;
+            }
+        }
+
+        /* High-Frequency Bandwidth Detection */
+        for (channel = 0; channel < numChannels; channel++) {
+            faac_real frame_energy = 0;
+            faac_real hf_energy = 0;
+            int sfbn = coderInfo[channel].sfbn;
+            int hf_start_sfb = (sfbn * 70) / 100;
+            int i;
+
+            for (i = 0; i < sfbn; i++) {
+                frame_energy += analysis->band_energy[i];
+                if (i >= hf_start_sfb) {
+                    hf_energy += analysis->band_energy[i];
+                }
+            }
+
+            if (frame_energy > 0 && (hf_energy / frame_energy) < HF_ENERGY_THRESHOLD) {
+                int last_valid_sfb = 0;
+                for (i = hf_start_sfb - 1; i >= 0; i--) {
+                    if (analysis->band_energy[i] > (frame_energy * 1e-7)) {
+                        last_valid_sfb = i + 1;
+                        break;
+                    }
+                }
+                if (last_valid_sfb > 0 && last_valid_sfb < sfbn) {
+                    coderInfo[channel].sfbn = last_valid_sfb;
+                }
+            }
+        }
+    }
+
+    /* Improved Transient Detection */
+    if (analysis->transient_score > TRANSIENT_THRESHOLD) {
+        for (channel = 0; channel < numChannels; channel++) {
+            if (coderInfo[channel].block_type == ONLY_LONG_WINDOW) {
+                coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+            }
+            coderInfo[channel].desired_block_type = ONLY_SHORT_WINDOW;
+        }
+    }
+
+    /* High-Frequency Bandwidth Detection */
+    for (channel = 0; channel < numChannels; channel++) {
+        faac_real frame_energy = 0;
+        faac_real hf_energy = 0;
+        int sfbn = coderInfo[channel].sfbn;
+        int hf_start_sfb = (sfbn * 70) / 100;
+        int i;
+
+        for (i = 0; i < sfbn; i++) {
+            frame_energy += analysis->band_energy[i];
+            if (i >= hf_start_sfb) {
+                hf_energy += analysis->band_energy[i];
+            }
+        }
+
+        if (frame_energy > 0 && (hf_energy / frame_energy) < HF_ENERGY_THRESHOLD) {
+            int last_valid_sfb = 0;
+            for (i = hf_start_sfb - 1; i >= 0; i--) {
+                if (analysis->band_energy[i] > (frame_energy * 1e-7)) {
+                    last_valid_sfb = i + 1;
+                    break;
+                }
+            }
+            if (last_valid_sfb > 0 && last_valid_sfb < sfbn) {
+                coderInfo[channel].sfbn = last_valid_sfb;
+            }
+        }
+    }
+
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
@@ -574,12 +653,12 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
     }
 }
 
-static void quantize_bands_internal(faacEncStruct *hEncoder)
+static void quantize_bands_internal(faacEncStruct *hEncoder, frame_analysis_t *analysis)
 {
     unsigned int channel;
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         BlocQuant(&hEncoder->coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), analysis);
     }
 }
 
@@ -615,7 +694,7 @@ static void quantize_bands(faacEncStruct *hEncoder, unsigned int jointmode, fram
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-    quantize_bands_internal(hEncoder);
+    quantize_bands_internal(hEncoder, analysis);
 
     fix_cpe_max_sfb(hEncoder);
 }
@@ -848,7 +927,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* DRM loop: iteratively adjust quality via quantization and bitstream writing */
         hEncoder->aacquantCfg.quality = 120; /* init quality setting */
         while (diff > 0) {
-            quantize_bands_internal(hEncoder);
+            quantize_bands_internal(hEncoder, &analysis);
 
             /* Write the AAC bitstream */
             BitStream *bitStream = OpenBitStream(bufferSize, outputBuffer);

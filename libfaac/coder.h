@@ -146,6 +146,13 @@ typedef struct {
   int cb_width_short[NSFB_SHORT];
 } SR_INFO;
 
+typedef struct {
+    faac_real band_energy[NSFB_LONG];
+    faac_real band_tonality[NSFB_LONG];
+    faac_real spectral_flatness;
+    faac_real transient_score;
+} frame_analysis_t;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
