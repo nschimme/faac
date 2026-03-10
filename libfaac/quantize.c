@@ -171,9 +171,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
     avgenrg = totenrg_last * n;
 
-#define NOISETONE 0.2
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+#define NOISETONE 1.2
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm) + 0.5 * FAAC_POW(maxe/avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW) target *= 1.5;
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end) * last_inv));
@@ -194,7 +193,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
    * Model how strong energy in one band masks the following band. */
   for (sfb = 1; sfb < coderInfo->sfbn; sfb++) {
       /* Tuning: Increased spreading to 0.5 to demand more bits. */
-      faac_real spread = bandqual[sfb - 1] * 0.5;
+      faac_real spread = bandqual[sfb - 1] * 0.25;
       if (bandqual[sfb] < spread) {
           bandqual[sfb] = spread;
       }
@@ -272,7 +271,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 0)
+      if (sfac > 150) sfac = 150; if ((SF_OFFSET - sfac) < 0)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -300,7 +299,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, blk_len);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 

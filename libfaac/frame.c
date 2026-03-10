@@ -681,7 +681,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = (faac_real)desbits / (faac_real)total_bits;
             /* Iteration 11 Tuning: High damping for stability at high quality levels. */
             if (fix > 1.0) {
-                hEncoder->aacquantCfg.quality *= (1.0 + (fix - 1.0) * 0.9);
+                hEncoder->aacquantCfg.quality *= (1.0 + (fix - 1.0) * 1.5);
             } else {
                 hEncoder->aacquantCfg.quality *= (1.0 - (1.0 - fix) * 0.9);
             }
