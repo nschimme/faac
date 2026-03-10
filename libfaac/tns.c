@@ -168,7 +168,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         /* Bitrate-Weighted TNS order scaling */
         order = (int)(tnsInfo->tnsMaxOrderLong * quality + 0.5);
         if (order < 8) order = 8;
-        if (order > tnsInfo->tnsMaxOrderLong) order = tnsInfo->tnsMaxOrderLong;
+        if (order > tnsMaxOrderLongLow) order = tnsMaxOrderLongLow;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
