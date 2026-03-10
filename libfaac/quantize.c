@@ -231,7 +231,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          faac_real magic = MAGIC_NUMBER - (faac_real)0.0754 * (sb > 25) * (coderInfo->sfbn > 40);
+          faac_real ratio = (faac_real)sb / coderInfo->sfbn;
+          faac_real magic = MAGIC_NUMBER - (faac_real)0.1054 * ratio * ratio * (coderInfo->sfbn > 45);
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
