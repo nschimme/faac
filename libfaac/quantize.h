@@ -33,6 +33,14 @@ typedef struct
     int pnslevel;
 } AACQuantCfg;
 
+typedef struct {
+    int sf[MAX_SCFAC_BANDS];
+    int book[MAX_SCFAC_BANDS];
+    int global_gain;
+    int bandcnt;
+    int datacnt;
+} QuantizeState;
+
 #ifdef FAAC_PRECISION_SINGLE
 #define MAGIC_NUMBER 0.4054f
 #else
@@ -52,5 +60,8 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
+
+void QuantizeSaveState(CoderInfo *coder, QuantizeState *state);
+void QuantizeRestoreState(CoderInfo *coder, QuantizeState *state);
 
 #endif

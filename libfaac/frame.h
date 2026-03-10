@@ -49,6 +49,9 @@ typedef struct {
 
     unsigned int usedBytes;
 
+    int reservoirBits;
+    int maxReservoirBits;
+
     /* frame number */
     unsigned int frameNum;
     unsigned int flushFrame;

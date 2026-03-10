@@ -67,6 +67,25 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
+
+void QuantizeSaveState(CoderInfo *coder, QuantizeState *state)
+{
+    memcpy(state->sf, coder->sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(state->book, coder->book, sizeof(int) * MAX_SCFAC_BANDS);
+    state->global_gain = coder->global_gain;
+    state->bandcnt = coder->bandcnt;
+    state->datacnt = coder->datacnt;
+}
+
+void QuantizeRestoreState(CoderInfo *coder, QuantizeState *state)
+{
+    memcpy(coder->sf, state->sf, sizeof(int) * MAX_SCFAC_BANDS);
+    memcpy(coder->book, state->book, sizeof(int) * MAX_SCFAC_BANDS);
+    coder->global_gain = state->global_gain;
+    coder->bandcnt = state->bandcnt;
+    coder->datacnt = state->datacnt;
+}
+
 #define NOISEFLOOR 0.4
 
 // band sound masking
