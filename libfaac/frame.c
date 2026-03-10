@@ -568,9 +568,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int pass = 0;
         faac_real fix;
 
+        /* Backup MDCT coefficients and coderInfo */
+        memcpy(hEncoder->backupCoderInfo, coderInfo, numChannels * sizeof(CoderInfo));
+        for (channel = 0; channel < numChannels; channel++) {
+            memcpy(hEncoder->freqBuffBackup[channel], hEncoder->freqBuff[channel], 2*FRAME_LEN*sizeof(faac_real));
+        }
+
+        /* now calculate desired bits */
+        desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+                / hEncoder->sampleRate);
+
         /* loop the quantization until the desired bit-rate is reached */
-        hEncoder->aacquantCfg.quality = 120; /* init quality setting */
         do {
+            /* Restore state for next iteration */
+            memcpy(coderInfo, hEncoder->backupCoderInfo, numChannels * sizeof(CoderInfo));
+            for (channel = 0; channel < numChannels; channel++) {
+                memcpy(hEncoder->freqBuff[channel], hEncoder->freqBuffBackup[channel], 2*FRAME_LEN*sizeof(faac_real));
+            }
+
             for (channel = 0; channel < numChannels; channel++) {
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                           &(hEncoder->aacquantCfg));
@@ -578,29 +593,35 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             /* Write the AAC bitstream (virtual pass to count bits) */
             bitStream = OpenBitStream(bufferSize, NULL);
-            WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-            bits = bitStream->numBit;
+            bits = CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
             CloseBitStream(bitStream);
 
-            /* now calculate desired bits and compare with actual encoded bits */
-            desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-                    / hEncoder->sampleRate);
+            if (bits < 0) { /* error in bit counting */
+                break;
+            }
 
             diff = bits - desbits;
 
             /* do linear correction according to relative difference */
-            fix = (faac_real) desbits / bits;
+            fix = (faac_real) desbits / (faac_real)bits;
 
-            /* speed up convergence. */
-            if (fix > 0.92)
-                fix = 0.92;
-            if (fix < 0.5)
-                fix = 0.5;
+            /* damped correction */
+            fix = (fix - 1.0) * 0.5 + 1.0;
+            if (fix > 2.0) fix = 2.0;
+            if (fix < 0.5) fix = 0.5;
 
+            /* If we were over the budget, we must decrease quality */
+            /* If we were under, we can increase it. */
             hEncoder->aacquantCfg.quality *= fix;
+
+            if (hEncoder->aacquantCfg.quality > maxqual)
+                hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < 1)
+                hEncoder->aacquantCfg.quality = 1;
+
             pass++;
 
-        } while (diff > 0 && pass < 10 && hEncoder->aacquantCfg.quality > 1);
+        } while (pass < 10 && (diff > (desbits/100) || (diff < 0 && -diff > (desbits/10))));
     } else {
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
@@ -633,10 +654,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate > 0)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
+        int desbits = (int)((faac_real)numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate);
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
         if (fix < 0.9)
