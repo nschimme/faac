@@ -687,7 +687,8 @@ static int WriteSpectralData(CoderInfo *coderInfo,
             int data = coderInfo->s[i].data;
             int len = coderInfo->s[i].len;
             if (len > 0) {
-                PutBit(bitStream, data, len);
+                if (bitStream->data)
+                    PutBit(bitStream, data, len);
                 bits += len;
             }
         }
@@ -792,7 +793,8 @@ BitStream *OpenBitStream(int size, unsigned char *buffer)
     bitStream->numBit = 0;
     bitStream->currentBit = 0;
     bitStream->data = buffer;
-    SetMemory(bitStream->data, 0, size);
+    if (bitStream->data)
+        SetMemory(bitStream->data, 0, size);
 
     return bitStream;
 }
@@ -819,10 +821,12 @@ static int WriteByte(BitStream *bitStream,
 
     idx = (bitStream->currentBit / BYTE_NUMBIT) % bitStream->size;
     numUsed = bitStream->currentBit % BYTE_NUMBIT;
-    if (numUsed == 0)
-        bitStream->data[idx] = 0;
-    bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
-        (BYTE_NUMBIT-numUsed-numBit);
+    if (bitStream->data) {
+        if (numUsed == 0)
+            bitStream->data[idx] = 0;
+        bitStream->data[idx] |= (data & ((1<<numBit)-1)) <<
+            (BYTE_NUMBIT-numUsed-numBit);
+    }
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
@@ -833,6 +837,11 @@ int PutBit(BitStream *bitStream,
            unsigned long data,
            int numBit)
 {
+    if (bitStream->data == NULL) {
+        bitStream->currentBit += numBit;
+        bitStream->numBit = bitStream->currentBit;
+        return 0;
+    }
     int num,maxNum,curNum;
     unsigned long bits;
 

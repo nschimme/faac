@@ -357,7 +357,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
-    int sb, frameBytes;
+    int sb, frameBytes, bits;
     unsigned int offset;
     BitStream *bitStream; /* bitstream used for writing the frame to */
     /* local copy's of parameters */
@@ -563,9 +563,49 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-    for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+    if (hEncoder->config.bitRate > 0) {
+        int desbits, diff;
+        int pass = 0;
+        faac_real fix;
+
+        /* loop the quantization until the desired bit-rate is reached */
+        hEncoder->aacquantCfg.quality = 120; /* init quality setting */
+        do {
+            for (channel = 0; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                          &(hEncoder->aacquantCfg));
+            }
+
+            /* Write the AAC bitstream (virtual pass to count bits) */
+            bitStream = OpenBitStream(bufferSize, NULL);
+            WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+            bits = bitStream->numBit;
+            CloseBitStream(bitStream);
+
+            /* now calculate desired bits and compare with actual encoded bits */
+            desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+                    / hEncoder->sampleRate);
+
+            diff = bits - desbits;
+
+            /* do linear correction according to relative difference */
+            fix = (faac_real) desbits / bits;
+
+            /* speed up convergence. */
+            if (fix > 0.92)
+                fix = 0.92;
+            if (fix < 0.5)
+                fix = 0.5;
+
+            hEncoder->aacquantCfg.quality *= fix;
+            pass++;
+
+        } while (diff > 0 && pass < 10 && hEncoder->aacquantCfg.quality > 1);
+    } else {
+        for (channel = 0; channel < numChannels; channel++) {
+            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                      &(hEncoder->aacquantCfg));
+        }
     }
 
     // fix max_sfb in CPE mode
