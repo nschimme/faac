@@ -178,9 +178,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
-#ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
-#endif
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -212,8 +210,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-#ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      if (pnslevel && (bandqual[sb] < pnsthr))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -221,7 +218,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           coderInfo->bandcnt++;
           continue;
       }
-#endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
@@ -416,11 +412,12 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     maxsfb = cfg->max_cbs;
     fastmin = ((maxsfb - MINSFB) * 3) >> 2;
 
-#ifdef DRM
-    coderInfo->groups.n = 1;
-    coderInfo->groups.len[0] = 8;
-    return;
-#endif
+    if (cfg->bitRate && (cfg->bitRate < 40000))
+    {
+        coderInfo->groups.n = 1;
+        coderInfo->groups.len[0] = 8;
+        return;
+    }
 
 #if PRINTSTAT
     frames++;
