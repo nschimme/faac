@@ -55,7 +55,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         hEncoder->freqBuff[channel] = (faac_real*)AllocMemory(2*FRAME_LEN*sizeof(faac_real));
-        hEncoder->freqBuffBackup[channel] = (faac_real*)AllocMemory(2*FRAME_LEN*sizeof(faac_real));
         hEncoder->overlapBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
         SetMemory(hEncoder->overlapBuff[channel], 0, FRAME_LEN*sizeof(faac_real));
     }
@@ -85,7 +84,6 @@ void FilterBankEnd(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
-        if (hEncoder->freqBuffBackup[channel]) FreeMemory(hEncoder->freqBuffBackup[channel]);
         if (hEncoder->overlapBuff[channel]) FreeMemory(hEncoder->overlapBuff[channel]);
     }
 

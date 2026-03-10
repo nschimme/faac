@@ -357,7 +357,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
-    int sb, frameBytes, bits;
+    int sb, frameBytes;
     unsigned int offset;
     BitStream *bitStream; /* bitstream used for writing the frame to */
     /* local copy's of parameters */
@@ -563,70 +563,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-    if (hEncoder->config.bitRate > 0) {
-        int desbits, diff;
-        int pass = 0;
-        faac_real fix;
-
-        /* Backup MDCT coefficients and coderInfo */
-        memcpy(hEncoder->backupCoderInfo, coderInfo, numChannels * sizeof(CoderInfo));
-        for (channel = 0; channel < numChannels; channel++) {
-            memcpy(hEncoder->freqBuffBackup[channel], hEncoder->freqBuff[channel], 2*FRAME_LEN*sizeof(faac_real));
-        }
-
-        /* now calculate desired bits */
-        desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-                / hEncoder->sampleRate);
-
-        /* loop the quantization until the desired bit-rate is reached */
-        do {
-            /* Restore state for next iteration */
-            memcpy(coderInfo, hEncoder->backupCoderInfo, numChannels * sizeof(CoderInfo));
-            for (channel = 0; channel < numChannels; channel++) {
-                memcpy(hEncoder->freqBuff[channel], hEncoder->freqBuffBackup[channel], 2*FRAME_LEN*sizeof(faac_real));
-            }
-
-            for (channel = 0; channel < numChannels; channel++) {
-                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                          &(hEncoder->aacquantCfg));
-            }
-
-            /* Write the AAC bitstream (virtual pass to count bits) */
-            bitStream = OpenBitStream(bufferSize, NULL);
-            bits = CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-            CloseBitStream(bitStream);
-
-            if (bits < 0) { /* error in bit counting */
-                break;
-            }
-
-            diff = bits - desbits;
-
-            /* do linear correction according to relative difference */
-            fix = (faac_real) desbits / (faac_real)bits;
-
-            /* damped correction */
-            fix = (fix - 1.0) * 0.5 + 1.0;
-            if (fix > 2.0) fix = 2.0;
-            if (fix < 0.5) fix = 0.5;
-
-            /* If we were over the budget, we must decrease quality */
-            /* If we were under, we can increase it. */
-            hEncoder->aacquantCfg.quality *= fix;
-
-            if (hEncoder->aacquantCfg.quality > maxqual)
-                hEncoder->aacquantCfg.quality = maxqual;
-            if (hEncoder->aacquantCfg.quality < 1)
-                hEncoder->aacquantCfg.quality = 1;
-
-            pass++;
-
-        } while (pass < 10 && (diff > (desbits/100) || (diff < 0 && -diff > (desbits/10))));
-    } else {
-        for (channel = 0; channel < numChannels; channel++) {
-            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                      &(hEncoder->aacquantCfg));
-        }
+    for (channel = 0; channel < numChannels; channel++) {
+        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                  &(hEncoder->aacquantCfg));
     }
 
     // fix max_sfb in CPE mode
@@ -654,20 +593,20 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate > 0)
+    if (hEncoder->config.bitRate)
     {
-        int desbits = (int)((faac_real)numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate);
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
-        if (fix < 0.95)
-            fix += 0.05;
-        else if (fix > 1.05)
-            fix -= 0.05;
+        if (fix < 0.9)
+            fix += 0.1;
+        else if (fix > 1.1)
+            fix -= 0.1;
         else
             fix = 1.0;
 
-        fix = (fix - 1.0) * 0.2 + 1.0;
+        fix = (fix - 1.0) * 0.5 + 1.0;
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;

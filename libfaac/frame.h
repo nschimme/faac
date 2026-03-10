@@ -66,12 +66,10 @@ typedef struct {
     faac_real *kbd_window_long;
     faac_real *kbd_window_short;
     faac_real *freqBuff[MAX_CHANNELS];
-    faac_real *freqBuffBackup[MAX_CHANNELS];
     faac_real *overlapBuff[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];
-    CoderInfo backupCoderInfo[MAX_CHANNELS];
     ChannelInfo channelInfo[MAX_CHANNELS];
 
     /* Psychoacoustics data */
