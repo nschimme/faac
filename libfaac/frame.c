@@ -33,10 +33,10 @@
 #include "stereo.h"
 
 typedef struct {
-    float band_energy[NSFB_LONG];
-    float band_tonality[NSFB_LONG];
-    float spectral_flatness;
-    float transient_score;
+    faac_real band_energy[NSFB_LONG];
+    faac_real band_tonality[NSFB_LONG];
+    faac_real spectral_flatness;
+    faac_real transient_score;
 } frame_analysis_t;
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
@@ -302,6 +302,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
+    for (channel = 0; channel < MAX_CHANNELS; channel++) {
+        hEncoder->last_frame_energy[channel] = 0.0;
+    }
+
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -387,34 +391,11 @@ static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, fra
 
 static void compute_masking(faacEncStruct *hEncoder, frame_analysis_t *analysis)
 {
-    unsigned int channel;
-    CoderInfo *coderInfo = hEncoder->coderInfo;
-    int num_cb_long = hEncoder->srInfo->num_cb_long;
-
     /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(hEncoder->channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
         hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
         hEncoder->srInfo->cb_width_short,
         hEncoder->srInfo->num_cb_short, hEncoder->numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
-
-    /* Populate band_energy for frame_analysis_t (Commit 2/Phase 1) */
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-            faac_real *xr = hEncoder->freqBuff[channel];
-            int sfb;
-            for (sfb = 0; sfb < num_cb_long; sfb++) {
-                int start = coderInfo[channel].sfb_offset[sfb];
-                int end = coderInfo[channel].sfb_offset[sfb+1];
-                int cnt;
-                faac_real e = 0.0;
-                for (cnt = start; cnt < end; cnt++) {
-                    e += xr[cnt] * xr[cnt];
-                }
-                /* Use first channel as representative for now or accumulate */
-                analysis->band_energy[sfb] += (float)e;
-            }
-        }
-    }
 }
 
 static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsigned int shortctl, frame_analysis_t *analysis)
@@ -479,6 +460,94 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
+
+    /* Frame analysis metrics (Phase 1) */
+    {
+        faac_real total_transient_score = 0;
+        faac_real total_spectral_flatness = 0;
+        faac_real eps = 1e-9;
+        int sfb;
+
+        memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
+        memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
+        analysis->spectral_flatness = 0;
+        analysis->transient_score = 0;
+
+        for (channel = 0; channel < numChannels; channel++) {
+            faac_real energy_ch = 0;
+            faac_real log_sum_ch = 0;
+            faac_real abs_sum_ch = 0;
+            faac_real *xr = hEncoder->freqBuff[channel];
+            int sfbn = coderInfo[channel].sfbn;
+
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+                for (sfb = 0; sfb < sfbn; sfb++) {
+                    faac_real b_sum = 0;
+                    faac_real b_abs_sum = 0;
+                    faac_real b_en = 0;
+                    int width = hEncoder->srInfo->cb_width_short[sfb];
+                    int start = coderInfo[channel].sfb_offset[sfb];
+                    int w, k;
+
+                    for (w = 0; w < 8; w++) {
+                        faac_real *window_xr = xr + w * BLOCK_LEN_SHORT;
+                        for (k = 0; k < width; k++) {
+                            faac_real val = window_xr[start + k];
+                            faac_real aval = (faac_real)FAAC_FABS(val);
+                            b_sum += val;
+                            b_abs_sum += aval;
+                            b_en += val * val;
+                            log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
+                            abs_sum_ch += aval;
+                        }
+                    }
+                    energy_ch += b_en;
+                    analysis->band_energy[sfb] += b_en;
+                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                }
+            } else {
+                for (sfb = 0; sfb < sfbn; sfb++) {
+                    faac_real b_sum = 0;
+                    faac_real b_abs_sum = 0;
+                    faac_real b_en = 0;
+                    int start = coderInfo[channel].sfb_offset[sfb];
+                    int end = coderInfo[channel].sfb_offset[sfb+1];
+                    int k;
+
+                    for (k = start; k < end; k++) {
+                        faac_real val = xr[k];
+                        faac_real aval = (faac_real)FAAC_FABS(val);
+                        b_sum += val;
+                        b_abs_sum += aval;
+                        b_en += val * val;
+                        log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
+                        abs_sum_ch += aval;
+                    }
+                    energy_ch += b_en;
+                    analysis->band_energy[sfb] += b_en;
+                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                }
+            }
+
+            /* Per-channel metrics */
+            {
+                faac_real geom_mean = (faac_real)FAAC_EXP(log_sum_ch / FRAME_LEN);
+                faac_real arith_mean = abs_sum_ch / FRAME_LEN;
+                total_spectral_flatness += geom_mean / (arith_mean + eps);
+
+                total_transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + eps);
+                hEncoder->last_frame_energy[channel] = energy_ch;
+            }
+        }
+
+        /* Average across channels */
+        analysis->transient_score = total_transient_score / numChannels;
+        analysis->spectral_flatness = total_spectral_flatness / numChannels;
+        for (sfb = 0; sfb < NSFB_LONG; sfb++) {
+            analysis->band_energy[sfb] /= numChannels;
+            analysis->band_tonality[sfb] /= numChannels;
         }
     }
 
