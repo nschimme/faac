@@ -25,11 +25,11 @@
 #include "faac_real.h"
 #include "quantize.h"
 
-void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic_val)
+void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix, faac_real magic)
 {
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
-    const __m128 magic = _mm_set1_ps(magic_val);
+    const __m128 magic_vec = _mm_set1_ps(magic);
     // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
@@ -54,7 +54,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_mul_ps(x, sfac);
         x = _mm_mul_ps(x, _mm_sqrt_ps(x));
         x = _mm_sqrt_ps(x);
-        x = _mm_add_ps(x, magic);
+        x = _mm_add_ps(x, magic_vec);
 
         // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
@@ -73,7 +73,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         faac_real tmp = FAAC_FABS(val);
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-        int q = (int)(tmp + magic_val);
+        int q = (int)(tmp + magic);
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
