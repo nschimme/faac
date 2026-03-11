@@ -145,9 +145,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        /* sur: TNS for short blocks */
+
+
 
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
@@ -161,7 +161,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -178,7 +178,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     startBand = max(startBand,0);
     stopBand = max(stopBand,0);
 
-    tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
+         /* default TNS not used */
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {

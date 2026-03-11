@@ -18,6 +18,10 @@
 ****************************************************************************/
 
 #include "bitstream.h"
+#include "coder.h"
+
+#ifndef HUFF2_H
+#define HUFF2_H
 
 enum {
     HCB_ZERO = 0,
@@ -31,5 +35,8 @@ enum {
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
+int huff_count_bits(int *qs, int len, int bnum);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
+
+#endif

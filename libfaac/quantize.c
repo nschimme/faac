@@ -26,11 +26,7 @@
 #include "huff2.h"
 #include "cpu_compute.h"
 
-#ifdef __GNUC__
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
-#endif
+static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int start, faac_real sfacfix, faac_real *distortion, int *xi_out);
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
@@ -51,14 +47,21 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
+        if (q > 8191) q = 8191;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
+static faac_real xi_pow_table[1024];
 
 void QuantizeInit(void)
 {
+    int i;
+    for (i = 0; i < 1024; i++) {
+        xi_pow_table[i] = (faac_real)FAAC_POW((faac_real)i, 1.33333333f);
+    }
+
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -67,10 +70,8 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
-#define NOISEFLOOR 0.4
 
-// band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandlvl,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
@@ -82,7 +83,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
@@ -93,16 +93,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < (1e-15 * (faac_real)gsize * total_len))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          bandqual[sfb] = 0.0;
+          bandlvl[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -132,16 +130,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
-#define NOISETONE 0.2
+#define NOISETONE 0.5
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
         last = BLOCK_LEN_SHORT;
         avgenrg = totenrg / last;
         avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-
+        target = NOISETONE * FAAC_POW(avge/(avgenrg+1e-15), powm) + (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/(avgenrg+1e-15), powm);
         target *= 1.5;
     }
     else
@@ -149,317 +144,316 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         last = BLOCK_LEN_LONG;
         avgenrg = totenrg / last;
         avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = NOISETONE * FAAC_POW(avge/(avgenrg+1e-15), powm) + (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/(avgenrg+1e-15), powm);
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
-
-    bandqual[sfb] = target * quality;
+    bandlvl[sfb] = target * quality;
   }
 }
 
-enum {MAXSHORTBAND = 36};
-// use band quality levels to quantize a group of windows
+static void compute_band_bit_targets(CoderInfo *coderInfo, faac_real *bandlvl, faac_real *bandenrg, int frame_target_bits, int *band_bits, int gsize)
+{
+    int b;
+    faac_real total_difficulty = 0.0;
+    faac_real difficulty[MAX_SCFAC_BANDS];
+    int sfbn = coderInfo->sfbn;
+    int base_band = coderInfo->bandcnt;
+
+    int group_samples = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? gsize * BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    int group_target_bits = (int)((faac_real)frame_target_bits * group_samples / FRAME_LEN);
+
+    if (group_target_bits <= 0) {
+        for (b = 0; b < sfbn; b++) band_bits[b] = 0;
+        return;
+    }
+
+    for (b = 0; b < sfbn; b++) {
+        faac_real threshold = bandlvl[b] * coderInfo->adj_thr[base_band + b];
+        faac_real smr = bandenrg[b] / (threshold * threshold + 1e-12);
+        difficulty[b] = (smr > 1.1) ? (faac_real)FAAC_LOG10(smr) : 0.05f;
+        total_difficulty += difficulty[b];
+    }
+
+    if (total_difficulty <= 0) {
+        for (b = 0; b < sfbn; b++) band_bits[b] = group_target_bits / sfbn;
+        return;
+    }
+
+    for (b = 0; b < sfbn; b++) {
+        band_bits[b] = (int)(group_target_bits * difficulty[b] / total_difficulty);
+        if (band_bits[b] < gsize) band_bits[b] = gsize;
+    }
+}
+
+static faac_real rd_cost(faac_real distortion, int bits, faac_real lambda, int target_bits, faac_real etot)
+{
+    faac_real cost = distortion + lambda * bits;
+    if (target_bits > 0 && bits > target_bits) {
+        /* Heuristic penalty to stay close to budget without sacrificing transparency */
+        cost += (faac_real)(bits - target_bits) * lambda * 5.0f;
+    }
+    return cost;
+}
+
 static void qlevel(CoderInfo * __restrict coderInfo,
-                   const faac_real * __restrict xr0,
-                   const faac_real * __restrict bandqual,
+                   const faac_real * __restrict bandlvl,
                    const faac_real * __restrict bandenrg,
+                   const faac_real * __restrict xr0,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   int *band_bits,
+                   faac_real *prev_scf,
+                   faac_real *prev_band_energy,
+                   int bitRate,
+                   int *lastsf,
+                   int *lastpns
                   )
 {
     int sb;
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    /* 2^0.25 (1.50515 dB) step from AAC specs */
-    static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
-#else
-    static const faac_real sfstep = 20 / 1.50515;
-#endif
+    static const faac_real sfstep = 13.287712f;
     int gsize = coderInfo->groups.len[gnum];
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
+    faac_real bitrate_index = (faac_real)bitRate / 16000.0;
+    int trial_xi_raw[7][1024 + 64];
+    int *trial_xi[7] = {trial_xi_raw[0], trial_xi_raw[1], trial_xi_raw[2], trial_xi_raw[3], trial_xi_raw[4], trial_xi_raw[5], trial_xi_raw[6]};
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
-      faac_real sfacfix;
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
-      int *xi;
       int start, end;
-      const faac_real *xr;
-      int win;
+      faac_real quality = bandlvl[sb] * coderInfo->adj_thr[coderInfo->bandcnt];
 
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
-      {
+      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE) {
           coderInfo->bandcnt++;
           continue;
       }
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
-
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
-      {
+      if (end <= start || etot < 1e-15) {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
+      rmsx = FAAC_SQRT(etot / (end - start));
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
-      {
+      if (quality < pnsthr && quality > 0) {
+          int trial_sf = 100 + FAAC_LRINT(sfstep * FAAC_LOG10(rmsx / 1e-6));
+          if (trial_sf > 155) trial_sf = 155;
+          if (trial_sf < 0) trial_sf = 0;
+
+          int diff = trial_sf - *lastpns;
+          if (diff < -60) diff = -60;
+          if (diff > 60) diff = 60;
+          *lastpns += diff;
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+          coderInfo->sf[coderInfo->bandcnt] = *lastpns;
           coderInfo->bandcnt++;
           continue;
       }
 #endif
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 10)
-          sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+      faac_real bps = (faac_real)band_bits[sb] / (gsize * (end - start));
+      sfac = 100 + FAAC_LRINT(sfstep * FAAC_LOG10(rmsx / (bps + 0.15)));
 
-      end -= start;
-      xi = xitab;
-      if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
-      }
-      else
-      {
-          for (win = 0; win < gsize; win++)
-          {
-              xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
-              xi += end;
+          faac_real d[7], f[7], c[7];
+          int b[7], trials[7];
+          int n = end - start;
+          int i, best_idx = 3;
+          /* Lambda calibrated for high-quality music at 64kbps/ch */
+          faac_real lambda = 0.0001 * etot * FAAC_POW(2.0, -bitrate_index / 4.0);
+
+          for (i = 0; i < 7; i++) {
+              int t_sfac = sfac + (i - 3) * 2;
+
+              if (*lastsf != -1) {
+                  int diff = t_sfac - *lastsf;
+                  if (diff < -60) diff = -60;
+                  if (diff > 60) diff = 60;
+                  trials[i] = *lastsf + diff;
+              } else {
+                  trials[i] = t_sfac;
+              }
+              if (trials[i] < 0) trials[i] = 0;
+              if (trials[i] > 255) trials[i] = 255;
+
+              f[i] = (faac_real)FAAC_POW(2.0, 0.25 * (100 - trials[i]));
+              b[i] = quantize_and_count_bits(xr0, gsize, n, start, f[i], &d[i], trial_xi[i]);
+              c[i] = rd_cost(d[i], b[i], lambda, band_bits[sb], etot);
+              if (i == 0 || c[i] < c[best_idx]) best_idx = i;
           }
+          *lastsf = trials[best_idx];
+          if (best_idx != 0) memcpy(trial_xi[0], trial_xi[best_idx], gsize * n * sizeof(int));
       }
-      huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+
+      huffbook(coderInfo, trial_xi[0], gsize * (end - start));
+      coderInfo->sf[coderInfo->bandcnt] = *lastsf;
+      prev_scf[coderInfo->bandcnt] = (faac_real)coderInfo->sf[coderInfo->bandcnt];
+      prev_band_energy[coderInfo->bandcnt] = bandenrg[sb];
+      coderInfo->bandcnt++;
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+static int quantize_and_count_bits(const faac_real * xr0, int gsize, int end, int start, faac_real sfacfix, faac_real * distortion, int * xi_out)
+{
+    int win;
+    int total_len = gsize * end;
+    int * p_xi = xi_out;
+    faac_real local_distortion = 0;
+    int any_nonzero = 0;
+
+    if (sfacfix <= 0.0) {
+        memset(xi_out, 0, total_len * sizeof(int));
+        for (win = 0; win < gsize; win++) {
+            const faac_real * xr = xr0 + win * BLOCK_LEN_SHORT + start;
+            int i;
+            for (i = 0; i < end; i++) local_distortion += xr[i] * xr[i];
+        }
+        *distortion = local_distortion;
+        return 0;
+    }
+
+    faac_real inv_sfacfix = 1.0f / (sfacfix + 1e-20f);
+    for (win = 0; win < gsize; win++) {
+        const faac_real * xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        qfunc(xr, p_xi, end, sfacfix);
+        int i;
+        for (i = 0; i < end; i++) {
+            int q = (p_xi[i] < 0) ? -p_xi[i] : p_xi[i];
+            faac_real q_val = (q == 0) ? 0 : (q < 1024 ? xi_pow_table[q] : (faac_real)FAAC_POW((faac_real)q, 1.33333333f));
+            if (q > 0) any_nonzero = 1;
+            q_val *= inv_sfacfix;
+            faac_real diff = FAAC_FABS(xr[i]) - q_val;
+            local_distortion += diff * diff;
+        }
+        p_xi += end;
+    }
+    *distortion = local_distortion;
+    if (!any_nonzero) return 0;
+
+    int maxq = 0;
+    for (win = 0; win < total_len; win++) {
+        int q = (xi_out[win] < 0) ? -xi_out[win] : xi_out[win];
+        if (maxq < q) maxq = q;
+    }
+    int bookmin;
+    if (maxq < 2) bookmin = 1; else if (maxq < 3) bookmin = 3; else if (maxq < 5) bookmin = 5;
+    else if (maxq < 8) bookmin = 7; else if (maxq < 13) bookmin = 9; else bookmin = 11;
+
+    int len = huff_count_bits(xi_out, total_len, bookmin);
+    if (bookmin < 11) {
+        int len2 = huff_count_bits(xi_out, total_len, bookmin + 1);
+        if (len2 < len) len = len2;
+    }
+    return (int)(len * 1.05 + 11);
+}
+
+int BlocQuant(CoderInfo * coder, faac_real * xr, AACQuantCfg *aacquantCfg, int frame_target_bits, faac_real *prev_scf, faac_real *prev_band_energy)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
+    int band_bits[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
-
-    coder->global_gain = 0;
+    int lastsf = -1;
+    int lastpns = 100;
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
 #ifdef DRM
-    coder->iLenReordSpData = 0; /* init length of reordered spectral data */
-    coder->iLenLongestCW = 0; /* init length of longest codeword */
-    coder->cur_cw = 0; /* init codeword counter */
+    coder->iLenReordSpData = 0; coder->iLenLongestCW = 0; coder->cur_cw = 0;
 #endif
 
+    gxr = xr;
+    for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
-        int lastis;
-        int lastsf;
-
-        gxr = xr;
-        for (cnt = 0; cnt < coder->groups.n; cnt++)
-        {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
-            gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
-        }
-
-        coder->global_gain = 0;
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if (!book)
-                continue;
-            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
-            {
-                coder->global_gain = coder->sf[cnt];
-                break;
-            }
-        }
-
-        lastsf = coder->global_gain;
-        lastis = 0;
-        // fixme: move SF range check to quantizer
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-            {
-                int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_ESC)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
-        }
-        return 1;
+        bmask(coder, gxr, bandlvl, bandenrg, cnt, (faac_real)aacquantCfg->quality/DEFQUAL);
+        compute_band_bit_targets(coder, bandlvl, bandenrg, frame_target_bits, band_bits, coder->groups.len[cnt]);
+        qlevel(coder, bandlvl, bandenrg, gxr, cnt, aacquantCfg->pnslevel, band_bits, prev_scf, prev_band_energy, aacquantCfg->bitRate, &lastsf, &lastpns);
+        gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
-    return 0;
+
+    coder->global_gain = 0;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++) {
+        int book = coder->book[cnt];
+        if (book && book != HCB_INTENSITY && book != HCB_INTENSITY2 && book != HCB_PNS) {
+            coder->global_gain = coder->sf[cnt];
+            break;
+        }
+    }
+    if (coder->global_gain == 0 && coder->bandcnt > 0) coder->global_gain = coder->sf[0];
+    if (coder->global_gain == 0) coder->global_gain = 100;
+
+    return 1;
 }
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 {
-    // find max short frame band
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
-    int cnt;
-    int l;
-
-    l = 0;
-    for (cnt = 0; cnt < sr->num_cb_short; cnt++)
-    {
-        if (l >= max)
-            break;
-        l += sr->cb_width_short[cnt];
-    }
+    int cnt, l = 0;
+    for (cnt = 0; cnt < sr->num_cb_short; cnt++) { if (l >= max) break; l += sr->cb_width_short[cnt]; }
     aacquantCfg->max_cbs = cnt;
-    if (aacquantCfg->pnslevel)
-        *bw = (faac_real)l * rate / (BLOCK_LEN_SHORT << 1);
+    if (aacquantCfg->pnslevel) *bw = (faac_real)l * rate / (BLOCK_LEN_SHORT << 1);
 
-    // find max long frame band
     max = *bw * (BLOCK_LEN_LONG << 1) / rate;
     l = 0;
-    for (cnt = 0; cnt < sr->num_cb_long; cnt++)
-    {
-        if (l >= max)
-            break;
-        l += sr->cb_width_long[cnt];
-    }
-    aacquantCfg->max_cbl = cnt;
-    aacquantCfg->max_l = l;
-
+    for (cnt = 0; cnt < sr->num_cb_long; cnt++) { if (l >= max) break; l += sr->cb_width_long[cnt]; }
+    aacquantCfg->max_cbl = cnt; aacquantCfg->max_l = l;
     *bw = (faac_real)l * rate / (BLOCK_LEN_LONG << 1);
 }
 
-enum {MINSFB = 2};
-
-static void calce(faac_real * __restrict xr, const int * __restrict bands, faac_real e[NSFB_SHORT], int maxsfb,
-                  int maxl)
-{
-    int sfb;
-    int l;
-
-    // mute lines above cutoff freq
-    for (l = maxl; l < bands[maxsfb]; l++)
-        xr[l] = 0.0;
-
-    for (sfb = MINSFB; sfb < maxsfb; sfb++)
-    {
-        e[sfb] = 0;
-        for (l = bands[sfb]; l < bands[sfb + 1]; l++)
-            e[sfb] += xr[l] * xr[l];
-    }
-}
-
-static void resete(faac_real min[NSFB_SHORT], faac_real max[NSFB_SHORT],
-                   faac_real e[NSFB_SHORT], int maxsfb)
-{
-    int sfb;
-    for (sfb = MINSFB; sfb < maxsfb; sfb++)
-        min[sfb] = max[sfb] = e[sfb];
-}
-
-#define PRINTSTAT 0
-#if PRINTSTAT
-static int groups = 0;
-static int frames = 0;
-#endif
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 {
-    int win, sfb;
-    faac_real e[NSFB_SHORT];
-    faac_real min[NSFB_SHORT];
-    faac_real max[NSFB_SHORT];
+    int win, sfb, win0, fastmin, maxsfb, maxl, l;
+    faac_real e[NSFB_SHORT], min[NSFB_SHORT], max[NSFB_SHORT];
     const faac_real thr = 3.0;
-    int win0;
-    int fastmin;
-    int maxsfb, maxl;
 
-    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
-    {
-        coderInfo->groups.n = 1;
-        coderInfo->groups.len[0] = 1;
-        return;
+    if (coderInfo->block_type != ONLY_SHORT_WINDOW) {
+        coderInfo->groups.n = 1; coderInfo->groups.len[0] = 1; return;
+    }
+    maxl = cfg->max_l / 8; maxsfb = cfg->max_cbs; fastmin = ((maxsfb - 2) * 3) >> 2;
+#ifdef DRM
+    coderInfo->groups.n = 1; coderInfo->groups.len[0] = 8; return;
+#endif
+
+    for (l = maxl; l < coderInfo->sfb_offset[maxsfb]; l++) xr[l] = 0.0;
+    for (sfb = 2; sfb < maxsfb; sfb++) {
+        e[sfb] = 0;
+        for (l = coderInfo->sfb_offset[sfb]; l < coderInfo->sfb_offset[sfb + 1]; l++) e[sfb] += xr[l] * xr[l];
     }
 
-    maxl = cfg->max_l / 8;
-    maxsfb = cfg->max_cbs;
-    fastmin = ((maxsfb - MINSFB) * 3) >> 2;
-
-#ifdef DRM
-    coderInfo->groups.n = 1;
-    coderInfo->groups.len[0] = 8;
-    return;
-#endif
-
-#if PRINTSTAT
-    frames++;
-#endif
-    calce(xr, coderInfo->sfb_offset, e, maxsfb, maxl);
-    resete(min, max, e, maxsfb);
-    win0 = 0;
-    coderInfo->groups.n = 0;
-    for (win = 1; win < MAX_SHORT_WINDOWS; win++)
-    {
+    for (sfb = 2; sfb < maxsfb; sfb++) min[sfb] = max[sfb] = e[sfb];
+    win0 = 0; coderInfo->groups.n = 0;
+    for (win = 1; win < MAX_SHORT_WINDOWS; win++) {
         int fast = 0;
-
-        calce(xr + win * BLOCK_LEN_SHORT, coderInfo->sfb_offset, e, maxsfb, maxl);
-        for (sfb = MINSFB; sfb < maxsfb; sfb++)
-        {
-            if (min[sfb] > e[sfb])
-                min[sfb] = e[sfb];
-            if (max[sfb] < e[sfb])
-                max[sfb] = e[sfb];
-
-            if (max[sfb] > thr * min[sfb])
-                fast++;
+        faac_real *xr_win = xr + win * BLOCK_LEN_SHORT;
+        for (l = maxl; l < coderInfo->sfb_offset[maxsfb]; l++) xr_win[l] = 0.0;
+        for (sfb = 2; sfb < maxsfb; sfb++) {
+            faac_real en = 0;
+            for (l = coderInfo->sfb_offset[sfb]; l < coderInfo->sfb_offset[sfb + 1]; l++) en += xr_win[l] * xr_win[l];
+            if (min[sfb] > en) min[sfb] = en;
+            if (max[sfb] < en) max[sfb] = en;
+            if (max[sfb] > thr * min[sfb]) fast++;
         }
-        if (fast > fastmin)
-        {
+        if (fast > fastmin) {
             coderInfo->groups.len[coderInfo->groups.n++] = win - win0;
             win0 = win;
-            resete(min, max, e, maxsfb);
+            for (sfb = 2; sfb < maxsfb; sfb++) {
+                faac_real en = 0;
+                for (l = coderInfo->sfb_offset[sfb]; l < coderInfo->sfb_offset[sfb + 1]; l++) en += xr_win[l] * xr_win[l];
+                min[sfb] = max[sfb] = en;
+            }
         }
     }
     coderInfo->groups.len[coderInfo->groups.n++] = win - win0;
-#if PRINTSTAT
-    groups += coderInfo->groups.n;
-#endif
 }
 
-void BlocStat(void)
-{
-#if PRINTSTAT
-    printf("frames:%d; groups:%d; g/f:%f\n", frames, groups, (faac_real)groups/frames);
-#endif
-}
+void BlocStat(void) {}

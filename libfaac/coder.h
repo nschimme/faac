@@ -106,6 +106,7 @@ typedef struct {
     int desired_block_type;
 
     int global_gain;
+    faac_real adj_thr[MAX_SCFAC_BANDS];
     int sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
     int bandcnt;
@@ -133,10 +134,20 @@ typedef struct {
 
     int iLenLongestCW;
     int iLenReordSpData;
+    int vcb11;
 #endif
 
     TnsInfo tnsInfo;
 } CoderInfo;
+
+typedef struct {
+    faac_real band_energy[NSFB_LONG];
+    faac_real band_tonality[NSFB_LONG];
+    faac_real spectral_flatness;
+    faac_real transient_score;
+    faac_real total_energy;
+    faac_real hf_energy;
+} frame_analysis_t;
 
 typedef struct {
   unsigned long sampling_rate;  /* the following entries are for this sampling rate */
