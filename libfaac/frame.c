@@ -60,7 +60,7 @@ static const struct {
 static void detect_transient(frame_analysis_t *analysis, CoderInfo *coderInfo, int numChannels)
 {
     int channel, i;
-    const faac_real TRANSIENT_FORCE_THRESHOLD = 3.5f;
+    const faac_real TRANSIENT_FORCE_THRESHOLD = 2.5f;
     int transient = 0;
 
     if (analysis) {
@@ -225,7 +225,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     int i;
-    int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
@@ -303,6 +302,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
+    int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
     if (config->quantqual > maxqual)
         config->quantqual = maxqual;
     if (config->quantqual < MINQUAL)
@@ -550,6 +550,17 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
+    /* Reset CoderInfo per frame */
+    for (channel = 0; channel < numChannels; channel++) {
+        int sfb;
+        for (sfb = 0; sfb < MAX_SCFAC_BANDS; sfb++) {
+            coderInfo[channel].book[sfb] = HCB_NONE;
+            coderInfo[channel].sf[sfb] = 0;
+        }
+        coderInfo[channel].bandcnt = 0;
+        coderInfo[channel].datacnt = 0;
+    }
+
     /* Improved Transient Detection: Phase 2 */
     detect_transient(analysis, coderInfo, numChannels);
 
@@ -619,6 +630,7 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
         memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
         analysis->spectral_flatness = 0;
         analysis->transient_score = 0;
+        analysis->total_energy = 0;
 
         for (channel = 0; channel < numChannels; channel++) {
             faac_real energy_ch = 0;
@@ -747,6 +759,7 @@ static void quantize_bands_internal(faacEncStruct *hEncoder, int frame_target_bi
     }
 }
 
+#ifndef DRM
 static void fix_cpe_max_sfb(faacEncStruct *hEncoder)
 {
     unsigned int channel;
@@ -769,7 +782,6 @@ static void fix_cpe_max_sfb(faacEncStruct *hEncoder)
     }
 }
 
-#ifndef DRM
 static void quantize_bands(faacEncStruct *hEncoder, unsigned int jointmode, frame_analysis_t *analysis, int frame_target_bits)
 {
     CoderInfo *coderInfo = hEncoder->coderInfo;
@@ -793,7 +805,6 @@ static int write_bitstream(faacEncStruct *hEncoder, unsigned int bufferSize, uns
     CoderInfo *coderInfo = hEncoder->coderInfo;
     ChannelInfo *channelInfo = hEncoder->channelInfo;
     unsigned int numChannels = hEncoder->numChannels;
-    int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
@@ -804,30 +815,7 @@ static int write_bitstream(faacEncStruct *hEncoder, unsigned int bufferSize, uns
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
-    }
+    /* Quality is now handled by RD optimization in quantization */
 
     return frameBytes;
 }
@@ -860,16 +848,21 @@ static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsign
     adjust_reservoir(analysis, hEncoder->coderInfo, hEncoder->numChannels);
 
     int frame_target_bits = 0;
+    int base_bits = 0;
     if (hEncoder->config.bitRate) {
-        int base_bits = (int)(hEncoder->config.bitRate * 1024 / hEncoder->sampleRate);
-        frame_target_bits = base_bits;
+        base_bits = (int)((faac_real)hEncoder->numChannels * hEncoder->config.bitRate * 1024 / hEncoder->sampleRate);
+        /* Account for ADTS header overhead (approx 56 bits) and bit counting bias */
+        int payload_base_bits = (int)(base_bits * 1.06) - 56;
+        if (payload_base_bits < 0) payload_base_bits = 0;
+
+        frame_target_bits = payload_base_bits;
         frame_target_bits += (hEncoder->reservoirBits - hEncoder->reservoirTarget) / 8;
 
-        if (frame_target_bits < (int)(0.75 * base_bits)) frame_target_bits = (int)(0.75 * base_bits);
-        if (frame_target_bits > (int)(1.25 * base_bits)) frame_target_bits = (int)(1.25 * base_bits);
+        if (frame_target_bits < (int)(0.75 * payload_base_bits)) frame_target_bits = (int)(0.75 * payload_base_bits);
+        if (frame_target_bits > (int)(1.25 * payload_base_bits)) frame_target_bits = (int)(1.25 * payload_base_bits);
     }
 
-    const faac_real SILENCE_THRESHOLD = 1e-5;
+    const faac_real SILENCE_THRESHOLD = 1e-18;
     if (analysis && analysis->total_energy < SILENCE_THRESHOLD) {
         int channel, sfb;
         for (channel = 0; channel < hEncoder->numChannels; channel++) {
@@ -1044,8 +1037,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* DRM loop: iteratively adjust quality via quantization and bitstream writing */
         hEncoder->aacquantCfg.quality = 120; /* init quality setting */
         while (diff > 0) {
-            int frame_target_bits_drm = (int) ((faac_real) hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            int base_bits_drm = (int) ((faac_real) hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
                     / hEncoder->sampleRate);
+            int frame_target_bits_drm = (int)(base_bits_drm * 1.06) - 8; /* DRM CRC is approx 8 bits */
+            if (frame_target_bits_drm < 0) frame_target_bits_drm = 0;
+
             quantize_bands_internal(hEncoder, frame_target_bits_drm);
 
             /* Write the AAC bitstream */
@@ -1083,14 +1079,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->config.bitRate && frameBytes > 0)
         {
-            int base_bits = (int)(hEncoder->config.bitRate * 1024 / hEncoder->sampleRate);
-            int frame_target_bits = base_bits;
-            frame_target_bits += (hEncoder->reservoirBits - hEncoder->reservoirTarget) / 8;
-
-            if (frame_target_bits < (int)(0.75 * base_bits)) frame_target_bits = (int)(0.75 * base_bits);
-            if (frame_target_bits > (int)(1.25 * base_bits)) frame_target_bits = (int)(1.25 * base_bits);
-
-            hEncoder->reservoirBits += (frame_target_bits - frameBytes * 8);
+            int base_bits = (int)((faac_real)hEncoder->numChannels * hEncoder->config.bitRate * 1024 / hEncoder->sampleRate);
+            hEncoder->reservoirBits += (base_bits - frameBytes * 8);
 
             if (hEncoder->reservoirBits < 0) hEncoder->reservoirBits = 0;
             if (hEncoder->reservoirBits > hEncoder->maxReservoirBits) hEncoder->reservoirBits = hEncoder->maxReservoirBits;

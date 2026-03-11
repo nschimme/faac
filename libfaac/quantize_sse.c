@@ -30,6 +30,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
+    const __m128 max_q = _mm_set1_ps(8191.0f);
     // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
@@ -56,6 +57,9 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
 
+        // Clamp to 8191
+        x = _mm_min_ps(x, max_q);
+
         // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
 
@@ -74,6 +78,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
         int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
+        if (q > 8191) q = 8191;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
