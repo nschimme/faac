@@ -904,10 +904,9 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
-    int currentBit = (int)bitStream->currentBit;
-    int bitOffset = currentBit & 7;
-    int sizeMask = (int)bitStream->size - 1;
-    unsigned char *ptr = bitStream->data;
+    unsigned int currentBit = (unsigned int)bitStream->currentBit;
+    unsigned int bitOffset = currentBit & 7;
+    unsigned char *ptr = bitStream->data + (currentBit >> 3);
 
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
@@ -915,23 +914,25 @@ int PutBit(BitStream *bitStream,
     data &= (1UL << numBit) - 1;
 
     if (bitOffset + numBit <= 8) {
-        int idx = (currentBit >> 3) & sizeMask;
-        if (bitOffset == 0) ptr[idx] = 0;
-        ptr[idx] |= (unsigned char)(data << (8 - bitOffset - numBit));
+        if (bitOffset == 0) *ptr = 0;
+        *ptr |= (unsigned char)(data << (8 - bitOffset - numBit));
     } else {
-        int idx = (currentBit >> 3) & sizeMask;
-        while (numBit > 0) {
-            int curNum = (8 - bitOffset < numBit) ? (8 - bitOffset) : numBit;
-            unsigned long bits = (data >> (numBit - curNum)) & ((1UL << curNum) - 1);
+        /* Multi-byte write */
+        /* First partial byte */
+        int firstBits = 8 - bitOffset;
+        if (bitOffset == 0) *ptr = 0;
+        *ptr++ |= (unsigned char)(data >> (numBit - firstBits));
+        numBit -= firstBits;
 
-            if (bitOffset == 0) ptr[idx] = 0;
-            ptr[idx] |= (unsigned char)(bits << (8 - bitOffset - curNum));
+        /* Full bytes */
+        while (numBit >= 8) {
+            *ptr++ = (unsigned char)((data >> (numBit - 8)) & 0xFF);
+            numBit -= 8;
+        }
 
-            numBit -= curNum;
-            if (numBit > 0) {
-                idx = (idx + 1) & sizeMask;
-                bitOffset = 0;
-            }
+        /* Last partial byte */
+        if (numBit > 0) {
+            *ptr = (unsigned char)((data & ((1UL << numBit) - 1)) << (8 - numBit));
         }
     }
 
