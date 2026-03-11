@@ -10,7 +10,11 @@
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the http://www.gnu.org/licenses/.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <stdio.h>
@@ -20,21 +24,19 @@
 #include "huff2.h"
 #include "bitstream.h"
 
-#ifdef DRM
-static int vcb11;
-#endif
 
 static int escape(int x, int *code)
 {
     int preflen = 0;
     int base = 32;
 
-    *code = 0;
     if (x >= 8192)
     {
+        fprintf(stderr, "%s(%d): x_quant >= 8192\n", __FILE__, __LINE__);
         return 0;
     }
 
+    *code = 0;
     while (base <= x)
     {
         base <<= 1;
@@ -63,7 +65,17 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode_internal(int *qs /* quantized spectrum */,
+static int huffcode(int *qs /* quantized spectrum */,
+                    int len,
+                    int bnum,
+                    CoderInfo *coder);
+
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    return huffcode(qs, len, bnum, NULL);
+}
+
+static int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)
@@ -87,35 +99,34 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
     else
         datacnt = 0;
 
-    if (bnum == HCB_ZERO || bnum == HCB_INTENSITY || bnum == HCB_INTENSITY2)
-    {
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            if (coder) {
-                coder->s[datacnt].data = 0;
-                coder->s[datacnt++].len = 0;
-#ifdef DRM
-                coder->num_data_cw[coder->cur_cw++] = 1;
-#endif
-            }
-        }
-        if (coder) coder->datacnt = datacnt;
-        return 0;
-    }
-
-    if (bnum < 1 || bnum > 11) return -1;
-
     book = hmap[bnum];
-    data = 0;
     switch (bnum)
     {
+#ifdef DRM
+    case HCB_ZERO:
+    case HCB_INTENSITY:
+    case HCB_INTENSITY2:
+        if (coder)
+        {
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                coder->s[datacnt].data = 0;
+                coder->s[datacnt++].len = 0;
+                coder->num_data_cw[coder->cur_cw++] = 1;
+            }
+        }
+        break;
+#endif
     case 1:
     case 2:
         for(ofs = 0; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01)) return -1;
+            if (idx < 0 || idx >= arrlen(book01))
+            {
+                return -1;
+            }
             blen = book[idx].len;
             if (coder)
             {
@@ -133,10 +144,14 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03)) return -1;
+            if (idx < 0 || idx >= arrlen(book03))
+            {
+                return -1;
+            }
             blen = book[idx].len;
             if (!coder)
             {
+                // add sign bits
                 for(cnt = 0; cnt < 4; cnt++)
                     if(qp[cnt])
                         blen++;
@@ -144,6 +159,7 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
             else
             {
                 data = book[idx].data;
+                // add sign bits
                 for(cnt = 0; cnt < 4; cnt++)
                 {
                     if(qp[cnt])
@@ -167,7 +183,10 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05)) return -1;
+            if (idx < 0 || idx >= arrlen(book05))
+            {
+                return -1;
+            }
             blen = book[idx].len;
             if (coder)
             {
@@ -185,7 +204,10 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07)) return -1;
+            if (idx < 0 || idx >= arrlen(book07))
+            {
+                return -1;
+            }
             blen = book[idx].len;
             if (!coder)
             {
@@ -219,7 +241,10 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09)) return -1;
+            if (idx < 0 || idx >= arrlen(book09))
+            {
+                return -1;
+            }
             blen = book[idx].len;
             if (!coder)
             {
@@ -251,13 +276,21 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             int x0, x1;
+
             qp = qs+ofs;
+
             x0 = abs(qp[0]);
             x1 = abs(qp[1]);
-            if (x0 > 16) x0 = 16;
-            if (x1 > 16) x1 = 16;
+            if (x0 > 16)
+                x0 = 16;
+            if (x1 > 16)
+                x1 = 16;
             idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11)) return -1;
+            if (idx < 0 || idx >= arrlen(book11))
+            {
+                return -1;
+            }
+
             blen = book[idx].len;
             if (!coder)
             {
@@ -281,13 +314,16 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
 #ifdef DRM
-                coder->num_data_cw[coder->cur_cw] = 1;
+                if (coder)
+                {
+                    coder->num_data_cw[coder->cur_cw] = 1;
+                }
                 drmbits = blen;
 #endif
             }
             bits += blen;
 
-            if (abs(qp[0]) >= 16)
+            if (x0 >= 16)
             {
                 blen = escape(abs(qp[0]), &data);
                 if (coder)
@@ -295,15 +331,20 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
 #ifdef DRM
-                    coder->num_data_cw[coder->cur_cw]++;
+                    if (coder)
+                    {
+                        coder->num_data_cw[coder->cur_cw]++;
+                    }
                     drmbits += blen;
-                    if (maxesc < data) maxesc = data;
+
+                    if (maxesc < data)
+                        maxesc = data;
 #endif
                 }
                 bits += blen;
             }
 
-            if (abs(qp[1]) >= 16)
+            if (x1 >= 16)
             {
                 blen = escape(abs(qp[1]), &data);
                 if (coder)
@@ -311,56 +352,80 @@ static int huffcode_internal(int *qs /* quantized spectrum */,
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
 #ifdef DRM
-                    coder->num_data_cw[coder->cur_cw]++;
+                    if (coder)
+                    {
+                        coder->num_data_cw[coder->cur_cw]++;
+                    }
                     drmbits += blen;
-                    if (maxesc < data) maxesc = data;
+
+                    if (maxesc < data)
+                        maxesc = data;
 #endif
                 }
                 bits += blen;
             }
 #ifdef DRM
-            if (coder) {
+            if (coder)
+            {
                 coder->iLenReordSpData += drmbits;
                 if (coder->iLenLongestCW < drmbits)
                     coder->iLenLongestCW = drmbits;
+
                 coder->cur_cw++;
             }
 #endif
         }
 #ifdef DRM
-        if (maxesc <= 15) vcb11 = 16;
-        else if (maxesc <= 31) vcb11 = 17;
-        else if (maxesc <= 47) vcb11 = 18;
-        else if (maxesc <= 63) vcb11 = 19;
-        else if (maxesc <= 95) vcb11 = 20;
-        else if (maxesc <= 127) vcb11 = 21;
-        else if (maxesc <= 159) vcb11 = 22;
-        else if (maxesc <= 191) vcb11 = 23;
-        else if (maxesc <= 223) vcb11 = 24;
-        else if (maxesc <= 255) vcb11 = 25;
-        else if (maxesc <= 319) vcb11 = 26;
-        else if (maxesc <= 383) vcb11 = 27;
-        else if (maxesc <= 511) vcb11 = 28;
-        else if (maxesc <= 767) vcb11 = 29;
-        else if (maxesc <= 1023) vcb11 = 30;
-        else if (maxesc <= 2047) vcb11 = 31;
+        /* VCB11: check which codebook should be used using max escape sequence */
+        /* 8.5.3.1.3, table 157 */
+        if (coder) {
+            if (maxesc <= 15)
+                coder->vcb11 = 16;
+            else if (maxesc <= 31)
+                coder->vcb11 = 17;
+            else if (maxesc <= 47)
+                coder->vcb11 = 18;
+            else if (maxesc <= 63)
+                coder->vcb11 = 19;
+            else if (maxesc <= 95)
+                coder->vcb11 = 20;
+            else if (maxesc <= 127)
+                coder->vcb11 = 21;
+            else if (maxesc <= 159)
+                coder->vcb11 = 22;
+            else if (maxesc <= 191)
+                coder->vcb11 = 23;
+            else if (maxesc <= 223)
+                coder->vcb11 = 24;
+            else if (maxesc <= 255)
+                coder->vcb11 = 25;
+            else if (maxesc <= 319)
+                coder->vcb11 = 26;
+            else if (maxesc <= 383)
+                coder->vcb11 = 27;
+            else if (maxesc <= 511)
+                coder->vcb11 = 28;
+            else if (maxesc <= 767)
+                coder->vcb11 = 29;
+            else if (maxesc <= 1023)
+                coder->vcb11 = 30;
+            else if (maxesc <= 2047)
+                coder->vcb11 = 31;
+            /* else: codebook 11 -> it is already 11 */
+        }
 #endif
         break;
     default:
+        fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
         return -1;
     }
 
-    if (coder) coder->datacnt = datacnt;
+    if (coder)
+        coder->datacnt = datacnt;
+
     return bits;
 }
 
-int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
-                    CoderInfo *coder)
-{
-    return huffcode_internal(qs, len, bnum, coder);
-}
 
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
@@ -377,7 +442,7 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode_internal(qs,len,bookmin,0);if(huffcode_internal(qs,len,bookmin+1,0)<lenmin)bookmin++;
+#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
 
     if (maxq < 1)
     {
@@ -410,74 +475,17 @@ int huffbook(CoderInfo *coder,
     }
 
 #ifdef DRM
-    vcb11 = 0;
-    huffcode_internal(qs, len, bookmin, coder);
-    if (vcb11)
-        bookmin = vcb11;
+    coder->vcb11 = 0;
+    huffcode(qs, len, bookmin, coder);
+    if (coder->vcb11)
+        bookmin = coder->vcb11;
 #else
     if (bookmin > HCB_ZERO)
-        huffcode_internal(qs, len, bookmin, coder);
+        huffcode(qs, len, bookmin, coder);
 #endif
     coder->book[coder->bandcnt] = bookmin;
 
     return 0;
-}
-
-int huff_count_bits(int *qs, int len, int *pbook)
-{
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
-
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
-    }
-
-#define BOOKMIN2(n) { \
-    int l0 = huffcode_internal(qs,len,n,0); \
-    int l1 = huffcode_internal(qs,len,n+1,0); \
-    if (l0 < 0) { bookmin = n+1; lenmin = l1; } \
-    else if (l1 < 0) { bookmin = n; lenmin = l0; } \
-    else if (l1 < l0) { bookmin = n+1; lenmin = l1; } \
-    else { bookmin = n; lenmin = l0; } \
-}
-
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN2(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN2(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN2(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN2(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN2(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
-        lenmin = huffcode_internal(qs, len, bookmin, NULL);
-    }
-
-    if (pbook) *pbook = bookmin;
-    return lenmin;
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
@@ -621,7 +629,6 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             length = book12[60 + diff].len;
 
             bits += length;
-
             lastsf += diff;
 
             if (write)
