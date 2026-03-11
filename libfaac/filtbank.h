@@ -45,7 +45,7 @@ void			FilterBankInit		( faacEncStruct* hEncoder );
 
 void			FilterBankEnd		( faacEncStruct* hEncoder );
 
-void			MDCT				( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_real *xi );
+void			MDCT_pre			( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_real *xi, const faac_real * __restrict twid_c, const faac_real * __restrict twid_s );
 
 void			FilterBank( faacEncStruct* hEncoder,
 						CoderInfo *coderInfo,
