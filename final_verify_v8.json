@@ -1,0 +1,222 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_06_CHOP_FA.wav": {
+      "mos": 2.10283,
+      "size": 8037,
+      "bitrate": 7.1327556070496865,
+      "bitrate_target": 16,
+      "time": 0.026898622512817383,
+      "md5": "3a7cadde4f3a1a31160270c0c1cf88c4",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_06_CHOP_FA.wav"
+    },
+    "voip_C_08_COMPSPKR_MK.wav": {
+      "mos": 2.20851,
+      "size": 9115,
+      "bitrate": 10.179381587212955,
+      "bitrate_target": 16,
+      "time": 0.024173974990844727,
+      "md5": "2b3432158d2aa0e72274653c881e35ec",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_08_COMPSPKR_MK.wav"
+    },
+    "voip_C_03_COMPSPKR_MK.wav": {
+      "mos": 2.40119,
+      "size": 9414,
+      "bitrate": 9.883707119846642,
+      "bitrate_target": 16,
+      "time": 0.02705073356628418,
+      "md5": "0f9d58fd69abc030a9dccf03ae8a1ef6",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_03_COMPSPKR_MK.wav"
+    },
+    "voip_C_01_CHOP_FA.wav": {
+      "mos": 2.5816,
+      "size": 7257,
+      "bitrate": 6.712985526772678,
+      "bitrate_target": 16,
+      "time": 0.027168989181518555,
+      "md5": "6f40b40f48d29ccca196664b37197a3d",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_FA.wav"
+    },
+    "voip_C_11_CHOP_FA.wav": {
+      "mos": 3.25159,
+      "size": 6892,
+      "bitrate": 6.780388032595447,
+      "bitrate_target": 16,
+      "time": 0.027059078216552734,
+      "md5": "549482c12c4d44aa594611886dbbc178",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_11_CHOP_FA.wav"
+    },
+    "voip_C_16_NOISE_FA.wav": {
+      "mos": 2.8658,
+      "size": 8519,
+      "bitrate": 7.856873750027093,
+      "bitrate_target": 16,
+      "time": 0.028952598571777344,
+      "md5": "4d03b5172f3f30b421a94962180bf1c5",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_16_NOISE_FA.wav"
+    },
+    "voip_C_13_COMPSPKR_MK.wav": {
+      "mos": 2.69492,
+      "size": 8076,
+      "bitrate": 7.67680608365019,
+      "bitrate_target": 16,
+      "time": 0.02809762954711914,
+      "md5": "5a61b43041bad0eb78f62b0000efcee3",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_13_COMPSPKR_MK.wav"
+    },
+    "voip_C_20_NOISE_MK.wav": {
+      "mos": 1.0,
+      "size": 8298,
+      "bitrate": 8.208285491647663,
+      "bitrate_target": 16,
+      "time": 0.024515628814697266,
+      "md5": "c8d407a4e3d5302d3a7424c70fb99d85",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_20_NOISE_MK.wav"
+    },
+    "vss_C_06_CHOP_FA.wav": {
+      "mos": 1.0,
+      "size": 12614,
+      "bitrate": 11.194796469743032,
+      "bitrate_target": 40,
+      "time": 0.032236337661743164,
+      "md5": "12bf410b73366cabc2b3c097f62dd793",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_06_CHOP_FA.wav"
+    },
+    "vss_C_03_COMPSPKR_MK.wav": {
+      "mos": 3.37552,
+      "size": 15147,
+      "bitrate": 15.902752469122273,
+      "bitrate_target": 40,
+      "time": 0.03062152862548828,
+      "md5": "edf97b8da9f5c25ebdacba5bc76a1901",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_03_COMPSPKR_MK.wav"
+    },
+    "vss_C_08_COMPSPKR_MK.wav": {
+      "mos": 3.40549,
+      "size": 14599,
+      "bitrate": 16.303762127451666,
+      "bitrate_target": 40,
+      "time": 0.029393672943115234,
+      "md5": "c10d395fa9ed99ef280ef119c00ac707",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_08_COMPSPKR_MK.wav"
+    },
+    "vss_C_01_CHOP_FA.wav": {
+      "mos": 2.89284,
+      "size": 10951,
+      "bitrate": 10.130068141613283,
+      "bitrate_target": 40,
+      "time": 0.03280377388000488,
+      "md5": "80c6e7d19e00d8b32a3b3cd9a9f3f765",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_01_CHOP_FA.wav"
+    },
+    "vss_C_11_CHOP_FA.wav": {
+      "mos": 3.36708,
+      "size": 10131,
+      "bitrate": 9.96693429457697,
+      "bitrate_target": 40,
+      "time": 0.029761552810668945,
+      "md5": "6b981f00c628049c3c2cc7cdf6d38d03",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_11_CHOP_FA.wav"
+    },
+    "vss_C_13_COMPSPKR_MK.wav": {
+      "mos": 3.2908,
+      "size": 12273,
+      "bitrate": 11.666349809885931,
+      "bitrate_target": 40,
+      "time": 0.03132486343383789,
+      "md5": "9a87eecdf81e7f82bca96061eb622195",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_13_COMPSPKR_MK.wav"
+    },
+    "vss_C_20_NOISE_MK.wav": {
+      "mos": 2.04823,
+      "size": 13656,
+      "bitrate": 13.508357034699985,
+      "bitrate_target": 40,
+      "time": 0.03714394569396973,
+      "md5": "652c220262314bf60f8784c3d07d678e",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_20_NOISE_MK.wav"
+    },
+    "vss_C_16_NOISE_FA.wav": {
+      "mos": 2.28196,
+      "size": 14000,
+      "bitrate": 12.911871405139019,
+      "bitrate_target": 40,
+      "time": 0.048398494720458984,
+      "md5": "acfd28f4348d0f9cbeb3857cd39fb90c",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_16_NOISE_FA.wav"
+    },
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 3.28495,
+      "size": 78590,
+      "bitrate": 80.19238417243761,
+      "bitrate_target": 64,
+      "time": 0.1447443962097168,
+      "md5": "6881b5640304c3ddb55bc5b818e7e4fd",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    },
+    "music_std_12-German-male-speech.441.16b48k.wav": {
+      "mos": 4.11374,
+      "size": 112344,
+      "bitrate": 114.6345999168893,
+      "bitrate_target": 128,
+      "time": 0.16594624519348145,
+      "md5": "ae5b9c9d19a893251f3c28c66a6255b6",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    },
+    "music_high_12-German-male-speech.441.16b48k.wav": {
+      "mos": 4.56182,
+      "size": 183068,
+      "bitrate": 186.80060294795533,
+      "bitrate_target": 256,
+      "time": 0.17947149276733398,
+      "md5": "e7b53d91f52088b50191a62bca336193",
+      "thresh": 4.3,
+      "scenario": "music_high",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 12.947456843333688,
+    "silence.wav": 8.731800290999672,
+    "sine.wav": 12.292446087000522,
+    "sweep.wav": 10.46109039566727,
+    "overall": 11.108198404250288
+  },
+  "lib_size": 177896
+}

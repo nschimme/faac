@@ -4,16 +4,16 @@
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
+ * License as published by the Free Software Foundation, either
  * version 2.1 of the License, or (at your option) any later version.
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * You should have received a copy of the GNU General Public License
+ * along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
@@ -57,31 +57,24 @@ static const struct {
     faac_real freq;
 } g_bw = {0.42, 18000};
 
-static void detect_transient(frame_analysis_t *analysis, CoderInfo *coderInfo, int numChannels)
+static void detect_transient_time(frame_analysis_t *analysis, CoderInfo *coderInfo, int numChannels)
 {
-    int channel, i;
+    int channel;
     const faac_real TRANSIENT_FORCE_THRESHOLD = 2.5f;
     int transient = 0;
 
-    if (analysis) {
-        if (analysis->transient_score > TRANSIENT_FORCE_THRESHOLD) {
-            transient = 1;
-        } else {
-            for (i = 1; i < NSFB_LONG; i++) {
-                if (analysis->band_energy[i] > 2.5 * (analysis->band_energy[i-1] + 1e-9)) {
-                    transient = 1;
-                    break;
-                }
-            }
-        }
+    if (analysis && analysis->transient_score > TRANSIENT_FORCE_THRESHOLD) {
+        transient = 1;
     }
 
     if (transient) {
         for (channel = 0; channel < numChannels; channel++) {
+            /* Use proper transition block (START) if currently in LONG */
             if (coderInfo[channel].block_type == ONLY_LONG_WINDOW) {
                 coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+            } else {
+                coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
             }
-            coderInfo[channel].desired_block_type = ONLY_SHORT_WINDOW;
         }
     }
 }
@@ -549,6 +542,7 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
     unsigned int numChannels = hEncoder->numChannels;
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+    detect_transient_time(analysis, coderInfo, numChannels);
 
     /* Reset CoderInfo per frame */
     for (channel = 0; channel < numChannels; channel++) {
@@ -560,9 +554,6 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
         coderInfo[channel].bandcnt = 0;
         coderInfo[channel].datacnt = 0;
     }
-
-    /* Improved Transient Detection: Phase 2 */
-    detect_transient(analysis, coderInfo, numChannels);
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -852,14 +843,21 @@ static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsign
     if (hEncoder->config.bitRate) {
         base_bits = (int)((faac_real)hEncoder->numChannels * hEncoder->config.bitRate * 1024 / hEncoder->sampleRate);
         /* Account for ADTS header overhead (approx 56 bits) and bit counting bias */
-        int payload_base_bits = (int)(base_bits * 1.06) - 56;
+        /* Increased multiplier to 1.10 to center bitrate bias and allow for quality growth */
+        int payload_base_bits = (int)(base_bits * 1.10) - 56;
         if (payload_base_bits < 0) payload_base_bits = 0;
 
         frame_target_bits = payload_base_bits;
-        frame_target_bits += (hEncoder->reservoirBits - hEncoder->reservoirTarget) / 8;
+        /* Smoother reservoir usage to prevent bitrate oscillation */
+        faac_real reservoir_correction = (faac_real)(hEncoder->reservoirBits - hEncoder->reservoirTarget) / 8.0f;
+        if (analysis && analysis->transient_score > 1.5f) {
+             reservoir_correction += (faac_real)hEncoder->reservoirTarget / 6.0f;
+        }
+        frame_target_bits += (int)reservoir_correction;
 
-        if (frame_target_bits < (int)(0.75 * payload_base_bits)) frame_target_bits = (int)(0.75 * payload_base_bits);
-        if (frame_target_bits > (int)(1.25 * payload_base_bits)) frame_target_bits = (int)(1.25 * payload_base_bits);
+        /* Loosened constraints to allow more bitrate flexibility for MOS preservation */
+        if (frame_target_bits < (int)(0.50 * payload_base_bits)) frame_target_bits = (int)(0.50 * payload_base_bits);
+        if (frame_target_bits > (int)(2.00 * payload_base_bits)) frame_target_bits = (int)(2.00 * payload_base_bits);
     }
 
     const faac_real SILENCE_THRESHOLD = 1e-18;
