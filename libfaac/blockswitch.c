@@ -318,7 +318,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 	   2 * psyInfo->sizeS * sizeof(faac_real));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    MDCT_pre( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi, gpsyInfo->mdct_twiddle_c[1], gpsyInfo->mdct_twiddle_s[1]);
+    MDCT( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi, gpsyInfo->mdct_twiddle_c[1], gpsyInfo->mdct_twiddle_s[1]);
 
     // shift bufs
     tmp = psydata->engPrev[win];
