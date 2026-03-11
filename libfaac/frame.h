@@ -89,6 +89,13 @@ typedef struct {
 
     /* Frame analysis persistence */
     faac_real last_frame_energy[MAX_CHANNELS];
+    faac_real prev_scf[MAX_CHANNELS][MAX_SCFAC_BANDS];
+    faac_real prev_band_energy[MAX_CHANNELS][MAX_SCFAC_BANDS];
+
+    /* Bit reservoir */
+    int reservoirBits;
+    int maxReservoirBits;
+    int reservoirTarget;
 } faacEncStruct;
 
 #ifdef __cplusplus
