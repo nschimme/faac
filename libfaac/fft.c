@@ -270,7 +270,7 @@ static void fft_proc(
 		int size)	
 {
 	int step, shift, pos;
-	int exp, estep;
+	int estep;
 
 	/* First stage: step = 1
 	   Twiddle factor W_N^0 is always (1, 0).
@@ -278,8 +278,7 @@ static void fft_proc(
 	*/
 	for (pos = 0; pos < size; pos += 2)
 	{
-		faac_real v2r, v2i;
-		faac_real v1r, v1i;
+		faac_real v2r, v2i, v1r, v1i;
 
 		v1r = xr[pos];
 		v1i = xi[pos];
@@ -340,7 +339,7 @@ static void fft_proc(
 			faac_real * __restrict pxi1 = &xi[pos];
 			faac_real * __restrict pxr2 = &xr[pos + step];
 			faac_real * __restrict pxi2 = &xi[pos + step];
-			exp = 0;
+			int exp = 0;
 			for (shift = 0; shift < step; shift++)
 			{
 				faac_real v2r, v2i, v1r, v1i;

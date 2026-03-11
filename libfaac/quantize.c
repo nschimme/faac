@@ -371,26 +371,44 @@ static int quantize_and_count_bits(const faac_real * __restrict xr0, int gsize, 
         qfunc(xr, p_xi, end, sfacfix);
 
         int i;
-        for (i = 0; i < end; i++) {
-            faac_real q_val;
-            faac_real diff;
-            int q = (p_xi[i] < 0) ? -p_xi[i] : p_xi[i];
+        if (approx_bits) {
+            for (i = 0; i < end; i++) {
+                faac_real q_val;
+                faac_real diff;
+                int q = (p_xi[i] < 0) ? -p_xi[i] : p_xi[i];
 
-            if (q == 0) {
-                q_val = 0;
-            } else {
-                if (q < 1024) {
+                if (q == 0) {
+                    q_val = 0;
+                } else if (q < 1024) {
                     q_val = xi_pow_table[q];
-                    if (approx_bits) bits += log2_table[q];
+                    bits += log2_table[q];
                 } else {
                     faac_real abs_xi = (faac_real)q;
                     q_val = (faac_real)FAAC_POW(abs_xi, 1.33333333f);
-                    if (approx_bits) bits += (float)(log(abs_xi + 1.0) / log(2.0));
+                    bits += (float)(log(abs_xi + 1.0) / log(2.0));
                 }
                 q_val *= inv_sfacfix;
+                diff = FAAC_FABS(xr[i]) - q_val;
+                local_distortion += diff * diff;
             }
-            diff = FAAC_FABS(xr[i]) - q_val;
-            local_distortion += diff * diff;
+        } else {
+            for (i = 0; i < end; i++) {
+                faac_real q_val;
+                faac_real diff;
+                int q = (p_xi[i] < 0) ? -p_xi[i] : p_xi[i];
+
+                if (q == 0) {
+                    q_val = 0;
+                } else if (q < 1024) {
+                    q_val = xi_pow_table[q];
+                } else {
+                    faac_real abs_xi = (faac_real)q;
+                    q_val = (faac_real)FAAC_POW(abs_xi, 1.33333333f);
+                }
+                q_val *= inv_sfacfix;
+                diff = FAAC_FABS(xr[i]) - q_val;
+                local_distortion += diff * diff;
+            }
         }
         p_xi += end;
     }

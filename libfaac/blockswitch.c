@@ -47,21 +47,23 @@ typedef struct
 psydata_t;
 
 
-static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
+static void Hann(GlobalPsyInfo * gpsyInfo, faac_real * __restrict inSamples, int size)
 {
   int i;
+  const faac_real * __restrict window;
 
   /* Applying Hann window */
   if (size == BLOCK_LEN_LONG * 2)
   {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindow[i];
+    window = gpsyInfo->hannWindow;
   }
   else
   {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindowS[i];
+    window = gpsyInfo->hannWindowS;
   }
+
+  for (i = 0; i < size; i++)
+    inSamples[i] *= window[i];
 }
 
 #define PRINTSTAT 0
@@ -271,17 +273,19 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 }
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    faac_real *newSamples, unsigned int bandwidth,
-			    int *cb_width_short, int num_cb_short)
+			    faac_real * __restrict newSamples, unsigned int bandwidth,
+			    const int * __restrict cb_width_short, int num_cb_short)
 {
   int win;
-  faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;
-  faac_real *transBuffS = gpsyInfo->sharedWorkBuffShort;
+  faac_real * __restrict transBuff = gpsyInfo->sharedWorkBuffLong;
+  faac_real * __restrict transBuffS = gpsyInfo->sharedWorkBuffShort;
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
   int sfb;
+  int bandS;
 
-  psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
+  bandS = psyInfo->sizeS * bandwidth * 2 / (int)gpsyInfo->sampleRate;
+  psydata->bandS = bandS;
 
   memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
   memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
@@ -315,14 +319,14 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
       if (first < 1)
           first = 1;
 
-      if (first >= psydata->bandS) // band out of range
+      if (first >= bandS) // band out of range
           break;
 
       e = 0.0;
       for (l = first; l < last; l++)
           e += transBuffS[l] * transBuffS[l];
 
-      psydata->engNext2[win][sfb] = e;
+      psydata->engNext2[win][sfb] = (psyfloat)e;
     }
     psydata->lastband = sfb;
     for (; sfb < num_cb_short; sfb++)
