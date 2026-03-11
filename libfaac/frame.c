@@ -90,23 +90,25 @@ static void apply_tonality_mask(frame_analysis_t *analysis, CoderInfo *coderInfo
             int metric_sfb = sfb % sfbn;
             if (metric_sfb < NSFB_LONG) {
                 if (analysis->band_tonality[metric_sfb] > TONAL_THRESHOLD) {
-                    coderInfo[channel].adj_thr[sfb] = 0.85f;
+                    coderInfo[channel].adj_thr[sfb] = 0.95f; /* Stabilization: tonal */
                 } else {
-                    coderInfo[channel].adj_thr[sfb] = 1.05f;
+                    coderInfo[channel].adj_thr[sfb] = 1.02f; /* Stabilization: noise */
                 }
             }
         }
     }
 }
 
-static void limit_hf(frame_analysis_t *analysis, CoderInfo *coderInfo, int numChannels)
+static void limit_hf(faacEncStruct *hEncoder, frame_analysis_t *analysis, CoderInfo *coderInfo, int numChannels)
 {
     int channel, i;
     const faac_real HF_LIMIT_THRESHOLD = 1e-7f;
 
     if (!analysis) return;
 
-    if (analysis->total_energy > 0 && (analysis->hf_energy / analysis->total_energy) < HF_LIMIT_THRESHOLD) {
+    /* Restrict HF band limiting to very low bitrates (<48kbps total) */
+    if (hEncoder->config.bitRate < 48000 &&
+        analysis->total_energy > 0 && (analysis->hf_energy / analysis->total_energy) < HF_LIMIT_THRESHOLD) {
         for (channel = 0; channel < numChannels; channel++) {
             if (coderInfo[channel].block_type == ONLY_LONG_WINDOW) {
                 int sfbn = coderInfo[channel].sfbn;
@@ -135,8 +137,7 @@ static void adjust_reservoir(frame_analysis_t *analysis, CoderInfo *coderInfo, i
 
     if (!analysis) return;
 
-    complexity = (analysis->transient_score - 1.0f) * 0.1f
-               + (analysis->spectral_flatness - 0.2f) * 0.3f;
+    complexity = (analysis->transient_score - 1.0f) * 0.1f + (1.0f - 0.2f) * 0.3f;
 
     if (complexity < 0) complexity = 0;
     complexity *= COMPLEXITY_SCALE;
@@ -458,7 +459,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 
 static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, frame_analysis_t *analysis)
 {
-    unsigned int channel, i;
+    unsigned int channel;
     ChannelInfo *channelInfo = hEncoder->channelInfo;
 
     /* Psychoacoustics */
@@ -466,17 +467,6 @@ static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, fra
     /* LFE psychoacoustic can run without it */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
     {
-        faac_real energy_ch = 0;
-        for (i = 0; i < FRAME_LEN; i++) {
-            faac_real val = hEncoder->next3SampleBuff[channel][i];
-            energy_ch += val * val;
-        }
-
-        if (analysis) {
-             analysis->transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + 1e-9);
-        }
-        hEncoder->last_frame_energy[channel] = energy_ch;
-
         if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
         {
             hEncoder->psymodel->PsyBufferUpdate(
@@ -488,10 +478,6 @@ static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, fra
                 hEncoder->srInfo->cb_width_short,
                 hEncoder->srInfo->num_cb_short);
         }
-    }
-
-    if (analysis) {
-        analysis->transient_score /= hEncoder->numChannels;
     }
 }
 
@@ -575,14 +561,13 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
     /* Frame analysis metrics (Phase 1 Improved) */
     if (analysis) {
         faac_real total_transient_score = 0;
-        faac_real total_spectral_flatness = 0;
         faac_real eps = 1e-9;
         int i;
         int max_sfbn = (coderInfo[0].block_type == ONLY_SHORT_WINDOW) ? hEncoder->srInfo->num_cb_short : hEncoder->srInfo->num_cb_long;
 
         memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
         memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
-        analysis->spectral_flatness = 0;
+        analysis->spectral_flatness = 1.0f; /* Disabled for stabilization */
         analysis->transient_score = 0;
 
         for (channel = 0; channel < numChannels; channel++) {
@@ -654,10 +639,6 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
 
             /* Per-channel metrics */
             {
-                faac_real geom_mean = (faac_real)FAAC_EXP(log_sum_ch / FRAME_LEN);
-                faac_real arith_mean = abs_sum_ch / FRAME_LEN;
-                total_spectral_flatness += geom_mean / (arith_mean + eps);
-
                 total_transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + eps);
                 hEncoder->last_frame_energy[channel] = energy_ch;
             }
@@ -665,7 +646,6 @@ static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsign
 
         /* Average across channels */
         analysis->transient_score = total_transient_score / numChannels;
-        analysis->spectral_flatness = total_spectral_flatness / numChannels;
         analysis->total_energy = 0;
         analysis->hf_energy = 0;
 
@@ -820,7 +800,7 @@ static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsign
     analysis_finish(hEncoder, useTns, shortctl, analysis);
 
     apply_tonality_mask(analysis, hEncoder->coderInfo, hEncoder->numChannels);
-    limit_hf(analysis, hEncoder->coderInfo, hEncoder->numChannels);
+    limit_hf(hEncoder, analysis, hEncoder->coderInfo, hEncoder->numChannels);
     adjust_reservoir(analysis, hEncoder->coderInfo, hEncoder->numChannels);
 
     quantize_bands(hEncoder, jointmode, analysis);
@@ -975,7 +955,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         analysis_finish(hEncoder, useTns, shortctl, &analysis);
 
         apply_tonality_mask(&analysis, hEncoder->coderInfo, hEncoder->numChannels);
-        limit_hf(&analysis, hEncoder->coderInfo, hEncoder->numChannels);
+        limit_hf(hEncoder, &analysis, hEncoder->coderInfo, hEncoder->numChannels);
         adjust_reservoir(&analysis, hEncoder->coderInfo, hEncoder->numChannels);
 
         AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, hEncoder->numChannels,
