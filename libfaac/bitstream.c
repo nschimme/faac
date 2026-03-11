@@ -89,9 +89,6 @@ static int WriteAACFillBits(BitStream* bitStream,
                             int writeFlag);
 static int FindGroupingBits(CoderInfo *coderInfo);
 static long BufferNumBit(BitStream *bitStream);
-static int WriteByte(BitStream *bitStream,
-                     unsigned long data,
-                     int numBit);
 static int ByteAlign(BitStream* bitStream,
                      int writeFlag, int bitsSoFar);
 #ifdef DRM
