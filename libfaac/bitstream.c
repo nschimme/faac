@@ -249,7 +249,6 @@ static int CountBitstream(faacEncStruct* hEncoder,
     int bits = 0;
     int bitsLeftAfterFill, numFillBits;
 
-
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 0);
     }else{
@@ -902,23 +901,38 @@ int PutBit(BitStream *bitStream,
            unsigned long data,
            int numBit)
 {
-    int num,maxNum,curNum;
-    unsigned long bits;
-
     if (numBit == 0)
         return 0;
 
-    /* write bits in packets according to buffer byte boundaries */
-    num = 0;
-    maxNum = BYTE_NUMBIT - bitStream->currentBit % BYTE_NUMBIT;
-    while (num < numBit) {
-        curNum = min(numBit-num,maxNum);
-        bits = data>>(numBit-num-curNum);
-        if (WriteByte(bitStream, bits, curNum)) {
-            return 1;
+    int currentBit = (int)bitStream->currentBit;
+    int bitOffset = currentBit & 7;
+    int sizeMask = (int)bitStream->size - 1;
+    unsigned char *ptr = bitStream->data;
+
+    bitStream->currentBit += numBit;
+    bitStream->numBit = bitStream->currentBit;
+
+    data &= (1UL << numBit) - 1;
+
+    if (bitOffset + numBit <= 8) {
+        int idx = (currentBit >> 3) & sizeMask;
+        if (bitOffset == 0) ptr[idx] = 0;
+        ptr[idx] |= (unsigned char)(data << (8 - bitOffset - numBit));
+    } else {
+        int idx = (currentBit >> 3) & sizeMask;
+        while (numBit > 0) {
+            int curNum = (8 - bitOffset < numBit) ? (8 - bitOffset) : numBit;
+            unsigned long bits = (data >> (numBit - curNum)) & ((1UL << curNum) - 1);
+
+            if (bitOffset == 0) ptr[idx] = 0;
+            ptr[idx] |= (unsigned char)(bits << (8 - bitOffset - curNum));
+
+            numBit -= curNum;
+            if (numBit > 0) {
+                idx = (idx + 1) & sizeMask;
+                bitOffset = 0;
+            }
         }
-        num += curNum;
-        maxNum = BYTE_NUMBIT;
     }
 
     return 0;

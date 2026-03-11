@@ -257,7 +257,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     }
 }
 
-void MDCT_pre( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_real *xi, const faac_real * __restrict twid_c, const faac_real * __restrict twid_s )
+void MDCT_pre( FFT_Tables * __restrict fft_tables, faac_real * __restrict data, int N, faac_real * __restrict xr, faac_real * __restrict xi, const faac_real * __restrict twid_c, const faac_real * __restrict twid_s )
 {
     int i;
     const int N2 = N >> 1;
