@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  See the http://www.gnu.org/licenses/.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -25,6 +25,8 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+
+static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int start, faac_real sfacfix, faac_real *distortion);
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -56,72 +58,15 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
-
-static const faac_real TONAL_THRESHOLD = 0.1f;
-static const faac_real TONAL_ADJUST_TONAL = 0.7f;
-static const faac_real TONAL_ADJUST_NOISE = 1.05f;
-static const faac_real COMPLEXITY_SCALE = 0.05f;
-static const faac_real LAMBDA = 0.2f;
-
-static faac_real calculate_distortion(const faac_real *xr0, int gsize, int start, int end, int *xitab, int sfac)
-{
-    faac_real distortion = 0;
-    int win, i;
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
-#else
-    static const faac_real sfstep = 20 / 1.50515;
-#endif
-    faac_real i_sfacfix = FAAC_POW(10.0, -(faac_real)sfac / sfstep);
-
-    for (win = 0; win < gsize; win++) {
-        const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int *xi = xitab + win * (end - start);
-        for (i = 0; i < (end - start); i++) {
-            faac_real val = xr[i];
-            int q = (xi[i] < 0) ? -xi[i] : xi[i];
-            faac_real qv43 = FAAC_POW((faac_real)q, 4.0/3.0);
-            faac_real q_val = qv43 * i_sfacfix;
-            if (xi[i] < 0) q_val = -q_val;
-            faac_real err = val - q_val;
-            distortion += err * err;
-        }
-    }
-    return distortion;
-}
-
-static int quantize_and_count_bits(const faac_real *xr0, int gsize, int start, int end, int sfac, int *xitab)
-{
-    faac_real sfacfix;
-    int win;
-    int *xi = xitab;
-
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
-#else
-    static const faac_real sfstep = 20 / 1.50515;
-#endif
-
-    if ((SF_OFFSET - sfac) < 10)
-        sfacfix = 0.0;
-    else
-        sfacfix = FAAC_POW(10, (faac_real)sfac / sfstep);
-
-    if (sfacfix <= 0.0) {
-        memset(xitab, 0, gsize * (end - start) * sizeof(int));
-    } else {
-        for (win = 0; win < gsize; win++) {
-            const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
-            qfunc(xr, xi, end - start, sfacfix);
-            xi += end - start;
-        }
-    }
-
-    return huff_count_bits(xitab, gsize * (end - start), NULL);
-}
+static faac_real xi_pow_table[1024];
 
 void QuantizeInit(void)
 {
+    int i;
+    for (i = 0; i < 1024; i++) {
+        xi_pow_table[i] = (faac_real)FAAC_POW((faac_real)i, 1.33333333f);
+    }
+
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -244,14 +189,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #ifndef DRM
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
+    const faac_real LAMBDA = 0.5f;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
+      faac_real sfacfix;
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * 128];
+      int xitab[FRAME_LEN + 32];
+      int *xi;
+      memset(xitab, 0, sizeof(xitab));
       int start, end;
+      const faac_real *xr;
+      int win;
+      faac_real quality = bandqual[sb] * coderInfo->adj_thr[coderInfo->bandcnt];
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -263,16 +215,20 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
+      if (end <= start) {
+          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          continue;
+      }
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < NOISEFLOOR) || (!quality))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
 #ifndef DRM
-      if (bandqual[sb] < pnsthr)
+      if (quality < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -282,63 +238,134 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 #endif
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(quality / rmsx) * sfstep);
 
-      /* Small Local Quantizer Search */
+      /* Local search: try sfac and sfac + 1 */
       {
-          int xitab_q1[8 * 128];
-          int bits0, bits1;
-          faac_real dist0, dist1;
-          faac_real cost0, cost1;
+          faac_real d0, d1, c0, c1;
+          int b0, b1;
+          faac_real f0, f1;
 
-          bits0 = quantize_and_count_bits(xr0, gsize, start, end, sfac, xitab);
-          dist0 = calculate_distortion(xr0, gsize, start, end, xitab, sfac);
-          cost0 = dist0 + LAMBDA * (faac_real)bits0;
+          f0 = ((SF_OFFSET - sfac) < 10) ? 0.0f : FAAC_POW(10, sfac / sfstep);
+          b0 = quantize_and_count_bits(xr0, gsize, end - start, start, f0, &d0);
+          c0 = d0 + LAMBDA * b0;
 
-          if (sfac < 150) {
-              bits1 = quantize_and_count_bits(xr0, gsize, start, end, sfac + 1, xitab_q1);
-              dist1 = calculate_distortion(xr0, gsize, start, end, xitab_q1, sfac + 1);
-              cost1 = dist1 + LAMBDA * (faac_real)bits1;
+          f1 = ((SF_OFFSET - (sfac + 1)) < 10) ? 0.0f : FAAC_POW(10, (sfac + 1) / sfstep);
+          b1 = quantize_and_count_bits(xr0, gsize, end - start, start, f1, &d1);
+          c1 = d1 + LAMBDA * b1;
 
-              if (cost1 < cost0 && bits1 >= 0) {
-                  sfac = sfac + 1;
-                  memcpy(xitab, xitab_q1, gsize * (end - start) * sizeof(int));
-              }
+          if (c1 < c0) {
+              sfac++;
+              sfacfix = f1;
+          } else {
+              sfacfix = f0;
           }
       }
 
       end -= start;
+      xi = xitab;
+      if (sfacfix <= 0.0)
+      {
+          memset(xi, 0, gsize * end * sizeof(int));
+      }
+      else
+      {
+          for (win = 0; win < gsize; win++)
+          {
+              xr = xr0 + win * BLOCK_LEN_SHORT + start;
+              qfunc(xr, xi, end, sfacfix);
+              xi += end;
+          }
+      }
       huffbook(coderInfo, xitab, gsize * end);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, frame_analysis_t *analysis)
+static faac_real calculate_distortion(const faac_real *xr, const int *xi, int n, faac_real sfacfix)
+{
+    faac_real distortion = 0;
+    int i;
+    faac_real inv_sfacfix = (sfacfix > 0) ? 1.0f / sfacfix : 0;
+
+    for (i = 0; i < n; i++) {
+        faac_real q_val;
+        faac_real diff;
+
+        if (xi[i] == 0) {
+            q_val = 0;
+        } else {
+            faac_real abs_xi = (faac_real)abs(xi[i]);
+            q_val = abs_xi * FAAC_SQRT(abs_xi);
+            q_val *= inv_sfacfix;
+        }
+
+        diff = FAAC_FABS(xr[i]) - q_val;
+        distortion += diff * diff;
+    }
+    return distortion;
+}
+
+static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int start, faac_real sfacfix, faac_real *distortion)
+{
+    int xi[FRAME_LEN + 32];
+    int *p_xi = xi;
+    memset(xi, 0, sizeof(xi));
+    int win;
+    int total_len = gsize * end;
+    int maxq = 0;
+    int bookmin, lenmin;
+
+    if (sfacfix <= 0.0) {
+        memset(xi, 0, total_len * sizeof(int));
+        *distortion = 0;
+        for (win = 0; win < gsize; win++) {
+            const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
+            int i;
+            for (i = 0; i < end; i++) *distortion += xr[i] * xr[i];
+        }
+        return 0;
+    }
+
+    *distortion = 0;
+    for (win = 0; win < gsize; win++) {
+        const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        qfunc(xr, p_xi, end, sfacfix);
+        *distortion += calculate_distortion(xr, p_xi, end, sfacfix);
+        p_xi += end;
+    }
+
+    for (win = 0; win < total_len; win++) {
+        int q = abs(xi[win]);
+        if (maxq < q) maxq = q;
+    }
+
+    if (maxq < 1) return 0;
+
+    if (maxq < 2) bookmin = 1;
+    else if (maxq < 3) bookmin = 3;
+    else if (maxq < 5) bookmin = 5;
+    else if (maxq < 8) bookmin = 7;
+    else if (maxq < 13) bookmin = 9;
+    else bookmin = 11;
+
+    if (bookmin < 11) {
+        lenmin = huff_count_bits(xi, total_len, bookmin);
+        int len2 = huff_count_bits(xi, total_len, bookmin + 1);
+        if (len2 < lenmin) lenmin = len2;
+    } else {
+        lenmin = huff_count_bits(xi, total_len, 11);
+    }
+
+    return lenmin;
+}
+
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
-    faac_real complexity = 0;
-
-    if (analysis) {
-        faac_real frame_energy = 0;
-        faac_real hf_energy = 0;
-        int hf_start_sfb = (NSFB_LONG * 70) / 100;
-        int sfb;
-
-        for (sfb = 0; sfb < NSFB_LONG; sfb++) {
-            frame_energy += analysis->band_energy[sfb];
-            if (sfb >= hf_start_sfb) {
-                hf_energy += analysis->band_energy[sfb];
-            }
-        }
-
-        complexity = analysis->transient_score
-                   + analysis->spectral_flatness
-                   + (frame_energy > 1e-6 ? (hf_energy / frame_energy) : 0);
-        complexity *= COMPLEXITY_SCALE;
-    }
 
     coder->global_gain = 0;
 
@@ -357,26 +384,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            int sfb;
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-
-            if (analysis) {
-                for (sfb = 0; sfb < coder->sfbn; sfb++) {
-                    /* Tonality-driven masking threshold adjustment */
-                    if (sfb < NSFB_LONG) {
-                        if (analysis->band_tonality[sfb] > TONAL_THRESHOLD) {
-                            bandlvl[sfb] *= TONAL_ADJUST_TONAL;
-                        } else {
-                            bandlvl[sfb] *= TONAL_ADJUST_NOISE;
-                        }
-                    }
-
-                    /* Bit reservoir / Complexity adjustment */
-                    bandlvl[sfb] += complexity;
-                }
-            }
-
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
