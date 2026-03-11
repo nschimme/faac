@@ -105,6 +105,8 @@ typedef struct
   long size;            /* buffer size in bytes */
   long currentBit;      /* current bit position in bit stream */
   long numByte;         /* number of bytes read/written (only file) */
+  unsigned int cache;   /* bit accumulation cache */
+  int cache_bits;       /* number of bits in cache */
 } BitStream;
 
 

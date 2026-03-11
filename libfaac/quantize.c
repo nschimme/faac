@@ -73,21 +73,20 @@ void QuantizeInit(void)
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
-  int sfb, start, end, cnt;
-  int *cb_offset = coderInfo->sfb_offset;
+  int sfb, cnt;
+  const int * __restrict cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
   faac_real powm = 0.4;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
-  const faac_real *xr;
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
   {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
+      const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT;
       for (cnt = 0; cnt < total_len; cnt++)
       {
           totenrg += xr[cnt] * xr[cnt];
@@ -110,16 +109,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
     faac_real avge, maxe;
     faac_real target;
+    int start, end, n;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
+    n = end - start;
 
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
+        const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT + start;
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
