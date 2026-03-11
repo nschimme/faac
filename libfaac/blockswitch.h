@@ -61,6 +61,10 @@ typedef struct {
 	faac_real *mdctXr;              /* MDCT pre-twiddle work buffer (xr) */
 	faac_real *mdctXi;              /* MDCT pre-twiddle work buffer (xi) */
 
+	/* MDCT twiddle tables */
+	faac_real *mdct_twiddle_c[2]; // 0: long, 1: short
+	faac_real *mdct_twiddle_s[2];
+
         void *data;
 } GlobalPsyInfo;
 

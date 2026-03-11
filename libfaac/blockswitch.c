@@ -128,6 +128,24 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 {
   unsigned int channel;
   int i, j, size;
+  int N_long = 2 * BLOCK_LEN_LONG;
+  int N_short = 2 * BLOCK_LEN_SHORT;
+  faac_real freq_long = (faac_real)(2.0 * M_PI / N_long);
+  faac_real freq_short = (faac_real)(2.0 * M_PI / N_short);
+
+  gpsyInfo->mdct_twiddle_c[0] = (faac_real*)AllocMemory((N_long >> 2) * sizeof(faac_real));
+  gpsyInfo->mdct_twiddle_s[0] = (faac_real*)AllocMemory((N_long >> 2) * sizeof(faac_real));
+  gpsyInfo->mdct_twiddle_c[1] = (faac_real*)AllocMemory((N_short >> 2) * sizeof(faac_real));
+  gpsyInfo->mdct_twiddle_s[1] = (faac_real*)AllocMemory((N_short >> 2) * sizeof(faac_real));
+
+  for (i = 0; i < (N_long >> 2); i++) {
+      gpsyInfo->mdct_twiddle_c[0][i] = FAAC_COS(freq_long * (i + 0.125f));
+      gpsyInfo->mdct_twiddle_s[0][i] = FAAC_SIN(freq_long * (i + 0.125f));
+  }
+  for (i = 0; i < (N_short >> 2); i++) {
+      gpsyInfo->mdct_twiddle_c[1][i] = FAAC_COS(freq_short * (i + 0.125f));
+      gpsyInfo->mdct_twiddle_s[1][i] = FAAC_SIN(freq_short * (i + 0.125f));
+  }
 
   gpsyInfo->hannWindow =
     (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
@@ -187,6 +205,11 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
 {
   unsigned int channel;
   int j;
+
+  if (gpsyInfo->mdct_twiddle_c[0]) FreeMemory(gpsyInfo->mdct_twiddle_c[0]);
+  if (gpsyInfo->mdct_twiddle_s[0]) FreeMemory(gpsyInfo->mdct_twiddle_s[0]);
+  if (gpsyInfo->mdct_twiddle_c[1]) FreeMemory(gpsyInfo->mdct_twiddle_c[1]);
+  if (gpsyInfo->mdct_twiddle_s[1]) FreeMemory(gpsyInfo->mdct_twiddle_s[1]);
 
   if (gpsyInfo->hannWindow)
     FreeMemory(gpsyInfo->hannWindow);
@@ -295,7 +318,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 	   2 * psyInfo->sizeS * sizeof(faac_real));
 
     Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    MDCT( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi);
+    MDCT( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi, gpsyInfo->mdct_twiddle_c[1], gpsyInfo->mdct_twiddle_s[1]);
 
     // shift bufs
     tmp = psydata->engPrev[win];

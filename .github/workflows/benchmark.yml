@@ -115,10 +115,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Checkout Code
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
-
       - name: Download all results
         uses: actions/download-artifact@v4
         with:
@@ -148,3 +144,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh pr comment ${{ github.event.pull_request.number }} --body-file summary.md
+
