@@ -263,16 +263,15 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 }
 
 static void fft_proc(
-		faac_real *xr,
-		faac_real *xi,
-		fftfloat *refac, 
-		fftfloat *imfac, 
+		faac_real * __restrict xr,
+		faac_real * __restrict xi,
+		const fftfloat * __restrict refac,
+		const fftfloat * __restrict imfac,
 		int size)	
 {
 	int step, shift, pos;
 	int exp, estep;
 
-	estep = size >> 1;
 	/* First stage: step = 1
 	   Twiddle factor W_N^0 is always (1, 0).
 	   Eliminate all multiplications and table lookups.
@@ -280,17 +279,18 @@ static void fft_proc(
 	for (pos = 0; pos < size; pos += 2)
 	{
 		faac_real v2r, v2i;
-		int x1 = pos;
-		int x2 = pos + 1;
+		faac_real v1r, v1i;
 
-		v2r = xr[x2];
-		v2i = xi[x2];
+		v1r = xr[pos];
+		v1i = xi[pos];
+		v2r = xr[pos + 1];
+		v2i = xi[pos + 1];
 
-		xr[x2] = xr[x1] - v2r;
-		xr[x1] += v2r;
+		xr[pos] = v1r + v2r;
+		xr[pos + 1] = v1r - v2r;
 
-		xi[x2] = xi[x1] - v2i;
-		xi[x1] += v2i;
+		xi[pos] = v1i + v2i;
+		xi[pos + 1] = v1i - v2i;
 	}
 
 	/* Second stage: step = 2
@@ -301,32 +301,31 @@ static void fft_proc(
 	if (size >= 4) {
 		for (pos = 0; pos < size; pos += 4)
 		{
-			faac_real v2r, v2i;
-			int x1 = pos;
-			int x2 = pos + 2;
+			faac_real v1r, v1i, v2r, v2i;
 
 			/* shift = 0: Rotation by 0 degrees */
-			v2r = xr[x2];
-			v2i = xi[x2];
+			v1r = xr[pos];
+			v1i = xi[pos];
+			v2r = xr[pos + 2];
+			v2i = xi[pos + 2];
 
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
+			xr[pos] = v1r + v2r;
+			xr[pos + 2] = v1r - v2r;
 
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			xi[pos] = v1i + v2i;
+			xi[pos + 2] = v1i - v2i;
 
 			/* shift = 1: Rotation by -90 degrees */
-			x1++;
-			x2++;
+			v1r = xr[pos + 1];
+			v1i = xi[pos + 1];
+			v2r = xi[pos + 3];   /* v2 * (0 - i) -> v2i - i*v2r */
+			v2i = -xr[pos + 3];
 
-			v2r = xi[x2];
-			v2i = -xr[x2];
+			xr[pos + 1] = v1r + v2r;
+			xr[pos + 3] = v1r - v2r;
 
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
-
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			xi[pos + 1] = v1i + v2i;
+			xi[pos + 3] = v1i - v2i;
 		}
 	}
 
@@ -334,32 +333,33 @@ static void fft_proc(
 	estep = size >> 2;
 	for (step = 4; step < size; step *= 2)
 	{
-		int x1;
-		int x2 = 0;
 		estep >>= 1;
 		for (pos = 0; pos < size; pos += (2 * step))
 		{
-			x1 = x2;
-			x2 += step;
+			faac_real * __restrict pxr1 = &xr[pos];
+			faac_real * __restrict pxi1 = &xi[pos];
+			faac_real * __restrict pxr2 = &xr[pos + step];
+			faac_real * __restrict pxi2 = &xi[pos + step];
 			exp = 0;
 			for (shift = 0; shift < step; shift++)
 			{
-				faac_real v2r, v2i;
+				faac_real v2r, v2i, v1r, v1i;
+				faac_real tr = refac[exp];
+				faac_real ti = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				v2r = pxr2[shift] * tr - pxi2[shift] * ti;
+				v2i = pxr2[shift] * ti + pxi2[shift] * tr;
 
-				xr[x2] = xr[x1] - v2r;
-				xr[x1] += v2r;
+				v1r = pxr1[shift];
+				v1i = pxi1[shift];
 
-				xi[x2] = xi[x1] - v2i;
+				pxr2[shift] = v1r - v2r;
+				pxr1[shift] = v1r + v2r;
 
-				xi[x1] += v2i;
+				pxi2[shift] = v1i - v2i;
+				pxi1[shift] = v1i + v2i;
 
 				exp += estep;
-
-				x1++;
-				x2++;
 			}
 		}
 	}

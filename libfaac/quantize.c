@@ -189,9 +189,9 @@ static void compute_band_bit_targets(CoderInfo *coderInfo, faac_real *bandqual, 
     }
 
     for (b = 0; b < sfbn; b++) {
-        faac_real mask = bandqual[b] * coderInfo->adj_thr[base_band + b];
-        if (mask < 1e-9) mask = 1e-9;
-        difficulty[b] = bandenrg[b] / mask;
+        /* In FAAC, bandqual is a "bits needed" quality level, not a noise floor. */
+        /* tonal adj_thr < 1.0 increases bits, noise adj_thr > 1.0 reduces bits. */
+        difficulty[b] = bandqual[b] / (coderInfo->adj_thr[base_band + b] + 1e-9);
         total_difficulty += difficulty[b];
     }
 
@@ -242,7 +242,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     faac_real pnsthr = 0.1 * pnslevel;
 #endif
     faac_real bitrate_index = (faac_real)bitRate / 16000.0;
-    faac_real lambda = 0.05 * FAAC_POW(2.0, bitrate_index / 2.0);
+    faac_real lambda = 0.03 * FAAC_POW(2.0, bitrate_index / 2.0);
 
     if (bitRate > 100000) lambda *= 0.5; /* Scale down lambda for high bitrates to prioritize quality */
 
@@ -294,12 +294,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       sfac = FAAC_LRINT(FAAC_LOG10(quality / rmsx) * sfstep);
 
-      /* Quantization Reuse logic: Loosened for Phase 3 Throughput targets */
+      /* Quantization Reuse logic: Must account for existing stereo offsets */
       if (prev_scf[coderInfo->bandcnt] >= 0) {
-          faac_real scf_diff = FAAC_FABS(prev_scf[coderInfo->bandcnt] - (SF_OFFSET - sfac));
+          int current_sf = coderInfo->sf[coderInfo->bandcnt] + (SF_OFFSET - sfac);
+          faac_real scf_diff = FAAC_FABS(prev_scf[coderInfo->bandcnt] - (faac_real)current_sf);
           faac_real energy_diff = FAAC_FABS(prev_band_energy[coderInfo->bandcnt] - bandenrg[sb]) / (bandenrg[sb] + 1e-9);
-          if (scf_diff < 0.1 && energy_diff < 0.05) {
-              sfacfix = ((SF_OFFSET - sfac) < 10) ? 0.0f : FAAC_POW(10, sfac / sfstep);
+          if (scf_diff < 0.2 && energy_diff < 0.10) {
+              sfacfix = FAAC_POW(2.0, 0.25 * (100.0 - (faac_real)current_sf));
               quantize_and_count_bits(xr0, gsize, end - start, start, sfacfix, &rmsx, 0, trial_xi[0]);
               goto skip_rd;
           }
@@ -312,16 +313,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           faac_real f0, f1;
           int n = end - start;
           int s1;
+          int base_sf = coderInfo->sf[coderInfo->bandcnt];
 
-          f0 = ((SF_OFFSET - sfac) < 10) ? 0.0f : FAAC_POW(10, sfac / sfstep);
+          f0 = FAAC_POW(2.0, 0.25 * (100.0 - (faac_real)(base_sf + SF_OFFSET - sfac)));
           b0 = quantize_and_count_bits(xr0, gsize, n, start, f0, &d0, 1, trial_xi[1]);
           c0 = rd_cost(d0, b0, lambda, band_bits[sb]);
-
 
           if (b0 > band_bits[sb]) s1 = sfac - 1; /* Try less bits */
           else s1 = sfac + 1; /* Try more bits */
 
-          f1 = ((SF_OFFSET - s1) < 10) ? 0.0f : FAAC_POW(10, s1 / sfstep);
+          f1 = FAAC_POW(2.0, 0.25 * (100.0 - (faac_real)(base_sf + SF_OFFSET - s1)));
           b1 = quantize_and_count_bits(xr0, gsize, n, start, f1, &d1, 1, trial_xi[2]);
           c1 = rd_cost(d1, b1, lambda, band_bits[sb]);
 
@@ -338,34 +339,35 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 skip_rd:
       end -= start;
       huffbook(coderInfo, trial_xi[0], gsize * end);
-      prev_scf[coderInfo->bandcnt] = (faac_real)(SF_OFFSET - sfac);
+      coderInfo->sf[coderInfo->bandcnt] += SF_OFFSET - sfac;
+      prev_scf[coderInfo->bandcnt] = (faac_real)coderInfo->sf[coderInfo->bandcnt];
       prev_band_energy[coderInfo->bandcnt] = bandenrg[sb];
-      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
+      coderInfo->bandcnt++;
     }
 }
 
-static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int start, faac_real sfacfix, faac_real *distortion, int approx_bits, int *xi_out)
+static int quantize_and_count_bits(const faac_real * __restrict xr0, int gsize, int end, int start, faac_real sfacfix, faac_real * __restrict distortion, int approx_bits, int * __restrict xi_out)
 {
     int win;
     int total_len = gsize * end;
     faac_real inv_sfacfix = (sfacfix > 0) ? 1.0f / sfacfix : 0;
-    int *p_xi = xi_out;
+    int * __restrict p_xi = xi_out;
+    faac_real local_distortion = 0;
 
     if (sfacfix <= 0.0) {
         memset(xi_out, 0, total_len * sizeof(int));
-        *distortion = 0;
         for (win = 0; win < gsize; win++) {
-            const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
+            const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT + start;
             int i;
-            for (i = 0; i < end; i++) *distortion += xr[i] * xr[i];
+            for (i = 0; i < end; i++) local_distortion += xr[i] * xr[i];
         }
+        *distortion = local_distortion;
         return 0;
     }
 
-    *distortion = 0;
     faac_real bits = 0;
     for (win = 0; win < gsize; win++) {
-        const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT + start;
         qfunc(xr, p_xi, end, sfacfix);
 
         int i;
@@ -388,16 +390,17 @@ static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int
                 q_val *= inv_sfacfix;
             }
             diff = FAAC_FABS(xr[i]) - q_val;
-            *distortion += diff * diff;
+            local_distortion += diff * diff;
         }
         p_xi += end;
     }
+    *distortion = local_distortion;
 
-    if (approx_bits) return (int)(bits * 1.1 + 4);
+    if (approx_bits) return (int)(bits * 1.1 + 8);
 
     int maxq = 0;
     for (win = 0; win < total_len; win++) {
-        int q = abs(xi_out[win]);
+        int q = (xi_out[win] < 0) ? -xi_out[win] : xi_out[win];
         if (maxq < q) maxq = q;
     }
 
@@ -419,7 +422,7 @@ static int quantize_and_count_bits(const faac_real *xr0, int gsize, int end, int
         lenmin = huff_count_bits(xi_out, total_len, 11);
     }
 
-    return lenmin;
+    return lenmin + 4; /* Scalefactor delta bits estimate */
 }
 
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, int frame_target_bits, faac_real *prev_scf, faac_real *prev_band_energy)
