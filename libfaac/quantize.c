@@ -240,13 +240,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           int best_xi[8 * MAXSHORTBAND];
           int cand_xi[8 * MAXSHORTBAND];
           int n = end - start;
+          int sf_init = coderInfo->sf[coderInfo->bandcnt];
 
-          for (sf_cand = sfac - 1; sf_cand <= sfac + 1; sf_cand++)
+          for (sf_cand = sfac - 4; sf_cand <= sfac + 4; sf_cand++)
           {
               faac_real dist = 0.0;
               int bits = 0;
               faac_real cost;
               faac_real sfix;
+              faac_real inv_sfix_with_init;
 
               if ((SF_OFFSET - sf_cand) < 10)
                   sfix = 0.0;
@@ -261,16 +263,20 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               else
               {
                   int *xi_ptr = cand_xi;
-                  faac_real inv_sfix = 1.0 / sfix;
+                  /* Decoder uses sf_final = sf_init + 100 - sf_cand.
+                     Dequant scaling factor is 2^(0.25 * (sf_final - 100)) = 2^(0.25 * (sf_init - sf_cand)).
+                  */
+                  inv_sfix_with_init = FAAC_POW(2.0, 0.25 * (sf_init - sf_cand));
+
                   for (win = 0; win < gsize; win++)
                   {
                       xr = xr0 + win * BLOCK_LEN_SHORT + start;
                       qfunc(xr, xi_ptr, n, sfix);
-                      /* Calculate Distortion (MSE weighted by inverse of bandqual) */
+                      /* Calculate Total Distortion (MSE) for the group */
                       for (cnt = 0; cnt < n; cnt++)
                       {
                           faac_real q_val = (xi_ptr[cnt] >= 0 && xi_ptr[cnt] < 8192) ? pow43_lookup[xi_ptr[cnt]] : (xi_ptr[cnt] < 0 && -xi_ptr[cnt] < 8192) ? -pow43_lookup[-xi_ptr[cnt]] : 0;
-                          faac_real diff = xr[cnt] - q_val * inv_sfix;
+                          faac_real diff = xr[cnt] - q_val * inv_sfix_with_init;
                           dist += diff * diff;
                       }
                       xi_ptr += n;
@@ -295,8 +301,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   bits = (bmin == HCB_ZERO) ? 0 : huff_count_bits(cand_xi, gsize * n, bmin);
               }
 
-              /* Cost J = D / bandqual + lambda * R */
-              cost = (dist / (bandqual[sb] + 1e-6)) + lambda * (faac_real)bits;
+              /* Cost J = (TotalDistortion / (T^2 * gsize + eps)) + lambda * Bits
+                 where T is bandqual (masking threshold amplitude).
+                 This is effectively the Noise-to-Mask Ratio (NMR) for the group. */
+              cost = (dist / (bandqual[sb] * bandqual[sb] * gsize + 1e-12)) + lambda * (faac_real)bits;
 
               if (cost < min_cost)
               {

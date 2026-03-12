@@ -514,17 +514,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
-    if (hEncoder->config.bitRate)
-    {
-        /* In ABR mode, force long blocks if reservoir is low to save bits */
-        if (hEncoder->reservoirBits < hEncoder->reservoirTarget / 4)
-        {
-            for (channel = 0; channel < numChannels; channel++)
-                coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-        }
-    }
-
-    /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
     {
 		for (channel = 0; channel < numChannels; channel++)
@@ -610,14 +599,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     while (diff > 0) { /* if too many bits, do it again */
 #endif
     {
-        faac_real lambda = 1.0; // Default lambda
+        faac_real lambda = 0.5; // Optimized base lambda
 
         if (hEncoder->config.bitRate)
         {
             /* Estimate lambda based on bit reservoir status */
             faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
 
-            lambda = 1.0 * FAAC_POW(2.0, (0.5 - reservoirFill) * 8.0);
+            /* NMR-based RD cost:
+               Optimized base lambda = 0.1.
+               Smaller lambda = higher quality / higher bits. */
+            lambda = 0.1 * FAAC_POW(2.0, (0.5 - reservoirFill) * 10.0);
 
             if (lambda < 0.0001) lambda = 0.0001;
             if (lambda > 100.0) lambda = 100.0;
