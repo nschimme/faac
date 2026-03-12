@@ -57,6 +57,13 @@ extern "C" {
 #define MAX_SHORT_WINDOWS 8
 #define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
 
+typedef struct {
+    faac_real band_energy[NSFB_LONG];
+    faac_real band_tonality[NSFB_LONG];
+    faac_real spectral_flatness;
+    faac_real transient_score;
+} frame_analysis_t;
+
 enum WINDOW_TYPE {
     ONLY_LONG_WINDOW,
     LONG_SHORT_WINDOW,
@@ -106,7 +113,6 @@ typedef struct {
     int desired_block_type;
 
     int global_gain;
-    faac_real adj_thr[MAX_SCFAC_BANDS];
     int sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
     int bandcnt;
@@ -117,6 +123,8 @@ typedef struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
     } groups;
+
+    faac_real thr_adj[NSFB_LONG];
 
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
@@ -134,20 +142,10 @@ typedef struct {
 
     int iLenLongestCW;
     int iLenReordSpData;
-    int vcb11;
 #endif
 
     TnsInfo tnsInfo;
 } CoderInfo;
-
-typedef struct {
-    faac_real band_energy[NSFB_LONG];
-    faac_real band_tonality[NSFB_LONG];
-    faac_real spectral_flatness;
-    faac_real transient_score;
-    faac_real total_energy;
-    faac_real hf_energy;
-} frame_analysis_t;
 
 typedef struct {
   unsigned long sampling_rate;  /* the following entries are for this sampling rate */
