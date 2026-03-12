@@ -28,6 +28,7 @@ enum {
     HCB_NONE
 };
 
+int huff_count_bits(int *qs, int len, int bnum);
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);

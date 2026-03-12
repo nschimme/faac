@@ -179,6 +179,14 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bitRate = config->bitRate;
 
+    /* Update Bit Reservoir parameters for new bitrate */
+    {
+        int bits_per_frame = (int)((faac_real)hEncoder->config.bitRate * hEncoder->numChannels * FRAME_LEN / hEncoder->sampleRate);
+        hEncoder->maxReservoirBits = bits_per_frame * 4;
+        hEncoder->reservoirTarget = hEncoder->maxReservoirBits / 2;
+        hEncoder->reservoirBits = hEncoder->reservoirTarget;
+    }
+
     if (!config->bandWidth)
     {
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
@@ -319,6 +327,14 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     TnsInit(hEncoder);
 
     QuantizeInit();
+
+    /* Bit Reservoir Initialization */
+    {
+        int bits_per_frame = (int)((faac_real)hEncoder->config.bitRate * numChannels * FRAME_LEN / hEncoder->sampleRate);
+        hEncoder->maxReservoirBits = bits_per_frame * 4;
+        hEncoder->reservoirTarget = hEncoder->maxReservoirBits / 2;
+        hEncoder->reservoirBits = hEncoder->reservoirTarget;
+    }
 
     /* Return handle */
     return hEncoder;
@@ -498,6 +514,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
+    if (hEncoder->config.bitRate)
+    {
+        /* In ABR mode, force long blocks if reservoir is low to save bits */
+        if (hEncoder->reservoirBits < hEncoder->reservoirTarget / 2)
+        {
+            for (channel = 0; channel < numChannels; channel++)
+                coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        }
+    }
+
+    /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
     {
 		for (channel = 0; channel < numChannels; channel++)
@@ -582,9 +609,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.quality = 120; /* init quality setting */
     while (diff > 0) { /* if too many bits, do it again */
 #endif
-    for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+    {
+        faac_real lambda = 0.1; // Default lambda
+
+        if (hEncoder->config.bitRate)
+        {
+            /* Estimate lambda based on bit reservoir status */
+            faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
+
+            lambda = 0.1 * FAAC_POW(2.0, (0.5 - reservoirFill) * 4.0);
+
+            if (lambda < 0.001) lambda = 0.001;
+            if (lambda > 10.0) lambda = 10.0;
+        }
+
+        for (channel = 0; channel < numChannels; channel++) {
+            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                      &(hEncoder->aacquantCfg), lambda);
+        }
     }
 
 #ifdef DRM
@@ -641,29 +683,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    /* Adjust quality to get correct average bitrate */
+    /* Adjust bit reservoir */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int bits_per_frame = (int)((faac_real)hEncoder->config.bitRate * numChannels * FRAME_LEN / hEncoder->sampleRate);
+        int usedBits = frameBytes * 8;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        hEncoder->reservoirBits += (bits_per_frame - usedBits);
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
     }
 #endif
 

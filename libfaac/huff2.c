@@ -403,6 +403,11 @@ static int huffcode(int *qs /* quantized spectrum */,
 }
 
 
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    return huffcode(qs, len, bnum, NULL);
+}
+
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
