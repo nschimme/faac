@@ -277,11 +277,26 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   }
               }
 
-              /* Estimate Bits */
-              bits = huff_count_bits(cand_xi, gsize * n, HCB_ESC); // Use HCB_ESC as conservative estimate
+              /* Estimate Bits with optimal book selection */
+              {
+                  int j, maxq = 0;
+                  int bmin, lmin;
+                  for (j = 0; j < gsize * n; j++) {
+                      int q = abs(cand_xi[j]);
+                      if (maxq < q) maxq = q;
+                  }
+                  if (maxq < 1) { bmin = HCB_ZERO; lmin = 0; }
+                  else if (maxq < 2) { bmin = 1; lmin = huff_count_bits(cand_xi, gsize * n, 1); if (huff_count_bits(cand_xi, gsize * n, 2) < lmin) bmin = 2; }
+                  else if (maxq < 3) { bmin = 3; lmin = huff_count_bits(cand_xi, gsize * n, 3); if (huff_count_bits(cand_xi, gsize * n, 4) < lmin) bmin = 4; }
+                  else if (maxq < 5) { bmin = 5; lmin = huff_count_bits(cand_xi, gsize * n, 5); if (huff_count_bits(cand_xi, gsize * n, 6) < lmin) bmin = 6; }
+                  else if (maxq < 8) { bmin = 7; lmin = huff_count_bits(cand_xi, gsize * n, 7); if (huff_count_bits(cand_xi, gsize * n, 8) < lmin) bmin = 8; }
+                  else if (maxq < 13) { bmin = 9; lmin = huff_count_bits(cand_xi, gsize * n, 9); if (huff_count_bits(cand_xi, gsize * n, 10) < lmin) bmin = 10; }
+                  else { bmin = HCB_ESC; }
+                  bits = (bmin == HCB_ZERO) ? 0 : huff_count_bits(cand_xi, gsize * n, bmin);
+              }
 
-              /* Cost J = D + lambda * R */
-              cost = (dist / bandqual[sb]) + lambda * (faac_real)bits;
+              /* Cost J = D / bandqual + lambda * R */
+              cost = (dist / (bandqual[sb] + 1e-6)) + lambda * (faac_real)bits;
 
               if (cost < min_cost)
               {
@@ -308,6 +323,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real *gxr;
 
     coder->global_gain = 0;
+    memset(coder->sf, 0, sizeof(coder->sf));
+    for (cnt = 0; cnt < MAX_SCFAC_BANDS; cnt++) coder->book[cnt] = HCB_NONE;
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
