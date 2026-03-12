@@ -57,13 +57,6 @@ extern "C" {
 #define MAX_SHORT_WINDOWS 8
 #define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
 
-typedef struct {
-    faac_real band_energy[NSFB_LONG];
-    faac_real band_tonality[NSFB_LONG];
-    faac_real spectral_flatness;
-    faac_real transient_score;
-} frame_analysis_t;
-
 enum WINDOW_TYPE {
     ONLY_LONG_WINDOW,
     LONG_SHORT_WINDOW,
@@ -118,13 +111,12 @@ typedef struct {
     int bandcnt;
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
+    faac_real thr_adj[NSFB_LONG];
 
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
     } groups;
-
-    faac_real thr_adj[NSFB_LONG];
 
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
@@ -134,6 +126,9 @@ typedef struct {
         int len;
     } s[DATASIZE];
     int datacnt;
+
+    int xitab[1024]; /* Persistent buffer for quantization spectral data */
+    int txi[1024];   /* Auxiliary buffer for RD search */
 
 #ifdef DRM
     int num_data_cw[FRAME_LEN];

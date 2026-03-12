@@ -11,8 +11,8 @@
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    General Public License for more details.
 
     You should have received a copy of the GNU General Public License
     along with this program.  See <http://www.gnu.org/licenses/>.
@@ -206,7 +206,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int start, end;
       const faac_real *xr;
       int win;
-      int xitab[1024];
+      int *xitab = coderInfo->xitab;
+      int *txi = coderInfo->txi;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -246,23 +247,23 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      end -= start;
+      int sfb_width = end - start;
       if (sfacfix <= 0.0)
       {
           memset(xitab, 0, 1024 * sizeof(int));
       }
       else
       {
-          int *xi = xitab;
+          int *xi_ptr = xitab;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
-              xi += end;
+              qfunc(xr, xi_ptr, sfb_width, sfacfix);
+              xi_ptr += sfb_width;
           }
       }
 
-      int total_points = gsize * end;
+      int total_points = gsize * sfb_width;
       if (total_points > 1024) total_points = 1024;
 
       /* Local RD Search */
@@ -270,15 +271,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int best_bnum = huff_find_best_book(xitab, total_points);
 
       if (best_bnum > 0 && best_bnum <= 11) {
-          const faac_real LAMBDA = 10.0;
+          const faac_real LAMBDA = 0.2;
           faac_real best_cost = 0;
 
           /* Calculate best_cost for original sfac */
           for (win = 0; win < gsize; win++) {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              for (int i = 0; i < end; i++) {
+              for (int i = 0; i < sfb_width; i++) {
                   faac_real x = FAAC_FABS(xr[i]);
-                  int q = xitab[win * end + i];
+                  int q = xitab[win * sfb_width + i];
                   if (q < 0) q = -q;
                   if (q > 8191) q = 8191;
                   faac_real x_q = pow43_lookup[q] / sfacfix;
@@ -290,22 +291,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
           /* Trial sfac + 1 */
           int trial_sfac = sfac + 1;
-          if (trial_sfac < 150) {
+          if (trial_sfac < 150 && best_cost > 1e-4) {
               faac_real trial_sfacfix = FAAC_POW(10, trial_sfac / sfstep);
-              int txi[1024];
               int *ptxi = txi;
               for (win = 0; win < gsize; win++) {
                   xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  qfunc(xr, ptxi, end, trial_sfacfix);
-                  ptxi += end;
+                  qfunc(xr, ptxi, sfb_width, trial_sfacfix);
+                  ptxi += sfb_width;
               }
               int trial_bnum = huff_find_best_book(txi, total_points);
               faac_real cost = 0;
               for (win = 0; win < gsize; win++) {
                   xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  for (int i = 0; i < end; i++) {
+                  for (int i = 0; i < sfb_width; i++) {
                       faac_real x = FAAC_FABS(xr[i]);
-                      int q = txi[win * end + i];
+                      int q = txi[win * sfb_width + i];
                       if (q < 0) q = -q;
                       if (q > 8191) q = 8191;
                       faac_real x_q = pow43_lookup[q] / trial_sfacfix;
@@ -323,12 +323,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       huffbook(coderInfo, xitab, total_points);
-      int current_sf = coderInfo->sf[coderInfo->bandcnt];
-      int delta_sf = (SF_OFFSET - best_sfac);
-      int new_sf = current_sf + delta_sf;
-      if (new_sf < 0) new_sf = 0;
-      if (new_sf > 255) new_sf = 255;
-      coderInfo->sf[coderInfo->bandcnt++] = new_sf;
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - best_sfac;
     }
 }
 
@@ -341,8 +336,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     coder->global_gain = 0;
 
+    /* Reset coder state for fresh quantization */
     coder->bandcnt = 0;
     coder->datacnt = 0;
+    memset(coder->sf, 0, sizeof(coder->sf));
+    memset(coder->book, 0, sizeof(coder->book));
+
 #ifdef DRM
     coder->iLenReordSpData = 0; /* init length of reordered spectral data */
     coder->iLenLongestCW = 0; /* init length of longest codeword */

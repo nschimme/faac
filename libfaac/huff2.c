@@ -71,46 +71,6 @@ static int escape(int x, int *code)
 static int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
-                    CoderInfo *coder);
-
-int huff_count_bits(int *qs, int len, int bnum)
-{
-    if (bnum <= 0) return 0;
-    return huffcode(qs, len, bnum, NULL);
-}
-
-int huff_find_best_book(int *qs, int len)
-{
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
-
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
-    }
-
-    if (maxq < 1) return 0;
-
-    if (maxq < 2) bookmin = 1;
-    else if (maxq < 3) bookmin = 3;
-    else if (maxq < 5) bookmin = 5;
-    else if (maxq < 8) bookmin = 7;
-    else if (maxq < 13) bookmin = 9;
-    else return 11;
-
-    lenmin = huff_count_bits(qs, len, bookmin);
-    if (huff_count_bits(qs, len, bookmin + 1) < lenmin)
-        bookmin++;
-
-    return bookmin;
-}
-
-static int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
                     CoderInfo *coder)
 {
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
@@ -139,13 +99,11 @@ static int huffcode(int *qs /* quantized spectrum */,
     case HCB_ZERO:
     case HCB_INTENSITY:
     case HCB_INTENSITY2:
-        if (coder) {
-            for(ofs = 0; ofs < len; ofs += 4)
-            {
-                coder->s[datacnt].data = 0;
-                coder->s[datacnt++].len = 0;
-                coder->num_data_cw[coder->cur_cw++] = 1;
-            }
+        for(ofs = 0; ofs < len; ofs += 4)
+        {
+            coder->s[datacnt].data = 0;
+            coder->s[datacnt++].len = 0;
+            coder->num_data_cw[coder->cur_cw++] = 1;
         }
         break;
 #endif
@@ -444,6 +402,40 @@ static int huffcode(int *qs /* quantized spectrum */,
     return bits;
 }
 
+int huff_find_best_book(int *qs, int len)
+{
+    int cnt;
+    int maxq = 0;
+
+    for (cnt = 0; cnt < len; cnt++)
+    {
+        int q = abs(qs[cnt]);
+        if (maxq < q)
+            maxq = q;
+    }
+
+    if (maxq < 1)
+        return HCB_ZERO;
+    if (maxq < 2)
+        return 1;
+    if (maxq < 3)
+        return 3;
+    if (maxq < 5)
+        return 5;
+    if (maxq < 8)
+        return 7;
+    if (maxq < 13)
+        return 9;
+
+    return HCB_ESC;
+}
+
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    if (bnum == HCB_ZERO)
+        return 0;
+    return huffcode(qs, len, bnum, NULL);
+}
 
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
