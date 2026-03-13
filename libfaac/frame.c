@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -207,7 +208,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
-    hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.quality = config->quantqual * 1.15;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -295,6 +296,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
+    for (channel = 0; channel < MAX_CHANNELS; channel++) {
+        hEncoder->last_frame_energy[channel] = 0.0;
+    }
+
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -302,6 +307,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].block_type = ONLY_LONG_WINDOW;
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
+
+        for (int i = 0; i < NSFB_LONG; i++)
+            hEncoder->coderInfo[channel].thr_adj[i] = 1.0;
 
         hEncoder->sampleBuff[channel] = NULL;
     }
@@ -354,6 +362,259 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     return 0;
 }
 
+/* Pipeline Stages */
+
+static void analysis_update(faacEncStruct *hEncoder)
+{
+    unsigned int channel;
+    unsigned int bandWidth = hEncoder->config.bandWidth;
+    unsigned int numChannels = hEncoder->numChannels;
+
+    for (channel = 0; channel < numChannels; channel++)
+    {
+        if (!hEncoder->channelInfo[channel].lfe || hEncoder->channelInfo[channel].cpe)
+        {
+            hEncoder->psymodel->PsyBufferUpdate(
+                &hEncoder->fft_tables,
+                &hEncoder->gpsyInfo,
+                &hEncoder->psyInfo[channel],
+                hEncoder->next3SampleBuff[channel],
+                bandWidth,
+                hEncoder->srInfo->cb_width_short,
+                hEncoder->srInfo->num_cb_short);
+        }
+    }
+
+    hEncoder->psymodel->PsyCalculate(hEncoder->channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
+        hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
+        hEncoder->srInfo->cb_width_short,
+        hEncoder->srInfo->num_cb_short, hEncoder->numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
+
+    hEncoder->psymodel->BlockSwitch(hEncoder->coderInfo, hEncoder->psyInfo, numChannels);
+
+    /* force block type */
+    if (hEncoder->config.shortctl == SHORTCTL_NOSHORT)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+            hEncoder->coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+    }
+    else if ((hEncoder->frameNum <= 4) || (hEncoder->config.shortctl == SHORTCTL_NOLONG))
+    {
+        for (channel = 0; channel < numChannels; channel++)
+            hEncoder->coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+    }
+}
+
+static void compute_masking(faacEncStruct *hEncoder)
+{
+    /* FilterBank + SFB Init */
+    unsigned int channel;
+    unsigned int numChannels = hEncoder->numChannels;
+
+    for (channel = 0; channel < numChannels; channel++) {
+        FilterBank(hEncoder, &hEncoder->coderInfo[channel], hEncoder->sampleBuff[channel],
+            hEncoder->freqBuff[channel], hEncoder->overlapBuff[channel], MOVERLAPPED);
+    }
+
+    for (channel = 0; channel < numChannels; channel++) {
+        int sb;
+        unsigned int offset = 0;
+        hEncoder->channelInfo[channel].msInfo.is_present = 0;
+        if (hEncoder->coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+            hEncoder->coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
+            for (sb = 0; sb < hEncoder->coderInfo[channel].sfbn; sb++) {
+                hEncoder->coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_short[sb];
+            }
+            hEncoder->coderInfo[channel].sfb_offset[sb] = offset;
+            BlocGroup(hEncoder->freqBuff[channel], hEncoder->coderInfo + channel, &hEncoder->aacquantCfg);
+        } else {
+            hEncoder->coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
+            hEncoder->coderInfo[channel].groups.n = 1;
+            hEncoder->coderInfo[channel].groups.len[0] = 1;
+            for (sb = 0; sb < hEncoder->coderInfo[channel].sfbn; sb++) {
+                hEncoder->coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_long[sb];
+            }
+            hEncoder->coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
+}
+
+static void analysis_finish(faacEncStruct *hEncoder, frame_analysis_t *analysis)
+{
+    unsigned int channel;
+    unsigned int numChannels = hEncoder->numChannels;
+    faac_real total_transient_score = 0;
+    faac_real total_spectral_flatness = 0;
+    faac_real eps = 1e-9;
+    int sfb;
+
+    for (channel = 0; channel < numChannels; channel++) {
+        memset(hEncoder->coderInfo[channel].sf, 0, sizeof(hEncoder->coderInfo[channel].sf));
+        for (int i = 0; i < MAX_SCFAC_BANDS; i++) hEncoder->coderInfo[channel].book[i] = HCB_NONE;
+    }
+    memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
+    memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
+    analysis->spectral_flatness = 0;
+    analysis->transient_score = 0;
+
+    for (channel = 0; channel < numChannels; channel++) {
+        faac_real energy_ch = 0;
+        faac_real log_sum_ch = 0;
+        faac_real abs_sum_ch = 0;
+        faac_real *xr = hEncoder->freqBuff[channel];
+        int sfbn = hEncoder->coderInfo[channel].sfbn;
+
+        if (hEncoder->coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+            for (sfb = 0; sfb < sfbn; sfb++) {
+                faac_real b_sum = 0;
+                faac_real b_abs_sum = 0;
+                faac_real b_en = 0;
+                int width = hEncoder->srInfo->cb_width_short[sfb];
+                int start = hEncoder->coderInfo[channel].sfb_offset[sfb];
+                int w, k;
+
+                for (w = 0; w < 8; w++) {
+                    faac_real *window_xr = xr + w * BLOCK_LEN_SHORT;
+                    for (k = 0; k < width; k++) {
+                        faac_real val = window_xr[start + k];
+                        faac_real aval = (faac_real)FAAC_FABS(val);
+                        b_sum += val;
+                        b_abs_sum += aval;
+                        b_en += val * val;
+                        log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
+                        abs_sum_ch += aval;
+                    }
+                }
+                energy_ch += b_en;
+                analysis->band_energy[sfb] += b_en;
+                analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+            }
+        } else {
+            for (sfb = 0; sfb < sfbn; sfb++) {
+                faac_real b_sum = 0;
+                faac_real b_abs_sum = 0;
+                faac_real b_en = 0;
+                int start = hEncoder->coderInfo[channel].sfb_offset[sfb];
+                int end = hEncoder->coderInfo[channel].sfb_offset[sfb+1];
+                int k;
+
+                for (k = start; k < end; k++) {
+                    faac_real val = xr[k];
+                    faac_real aval = (faac_real)FAAC_FABS(val);
+                    b_sum += val;
+                    b_abs_sum += aval;
+                    b_en += val * val;
+                    log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
+                    abs_sum_ch += aval;
+                }
+                energy_ch += b_en;
+                analysis->band_energy[sfb] += b_en;
+                analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+            }
+        }
+
+        /* Per-channel metrics */
+        {
+            faac_real geom_mean = (faac_real)FAAC_EXP(log_sum_ch / FRAME_LEN);
+            faac_real arith_mean = abs_sum_ch / FRAME_LEN;
+            total_spectral_flatness += geom_mean / (arith_mean + eps);
+
+            total_transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + eps);
+            hEncoder->last_frame_energy[channel] = energy_ch;
+        }
+    }
+
+    /* Average across channels */
+    analysis->transient_score = total_transient_score / numChannels;
+    analysis->spectral_flatness = total_spectral_flatness / numChannels;
+    for (sfb = 0; sfb < NSFB_LONG; sfb++) {
+        analysis->band_energy[sfb] /= numChannels;
+        analysis->band_tonality[sfb] /= numChannels;
+    }
+}
+
+static void quantize_bands(faacEncStruct *hEncoder)
+{
+    unsigned int channel;
+    unsigned int numChannels = hEncoder->numChannels;
+
+    /* Restored Standard Order: TNS before Stereo */
+    for (channel = 0; channel < numChannels; channel++) {
+        if (!hEncoder->channelInfo[channel].lfe && hEncoder->config.useTns) {
+            TnsEncode(&(hEncoder->coderInfo[channel].tnsInfo), hEncoder->coderInfo[channel].sfbn, hEncoder->coderInfo[channel].sfbn,
+                      hEncoder->coderInfo[channel].block_type, hEncoder->coderInfo[channel].sfb_offset,
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+        } else {
+            hEncoder->coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+        }
+    }
+
+    AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, numChannels,
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, hEncoder->config.jointmode);
+
+    /* BlocQuant */
+    for (channel = 0; channel < numChannels; channel++) {
+        BlocQuant(&hEncoder->coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->aacquantCfg);
+    }
+
+    /* Fix SFB limit for CPE */
+    for (channel = 0; channel < numChannels; channel++) {
+        if (hEncoder->channelInfo[channel].present && hEncoder->channelInfo[channel].cpe && hEncoder->channelInfo[channel].ch_is_left) {
+            int paired = hEncoder->channelInfo[channel].paired_ch;
+            hEncoder->coderInfo[channel].sfbn = hEncoder->coderInfo[paired].sfbn = max(hEncoder->coderInfo[channel].sfbn, hEncoder->coderInfo[paired].sfbn);
+        }
+    }
+
+    /* LFE bandwidth */
+    for (channel = 0; channel < numChannels; channel++) {
+        if (!hEncoder->channelInfo[channel].cpe && hEncoder->channelInfo[channel].lfe) hEncoder->coderInfo[channel].sfbn = 3;
+    }
+}
+
+static int write_bitstream(faacEncStruct *hEncoder, unsigned int bufferSize, unsigned char *outputBuffer, int *frameBytes)
+{
+    BitStream *bitStream = OpenBitStream(bufferSize, outputBuffer);
+    if (WriteBitstream(hEncoder, hEncoder->coderInfo, hEncoder->channelInfo, bitStream, hEncoder->numChannels) < 0) return -1;
+    *frameBytes = CloseBitStream(bitStream);
+
+    /* Quality adjustment for CBR-ish */
+    if (hEncoder->config.bitRate) {
+        int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
+        int desbits = hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        faac_real fix = (faac_real)desbits / (faac_real)(*frameBytes * 8);
+        if (fix < 0.9) fix += 0.1; else if (fix > 1.1) fix -= 0.1; else fix = 1.0;
+        fix = (fix - 1.0) * 0.8 + 1.0;
+        hEncoder->aacquantCfg.quality *= fix;
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
+    }
+
+    return 0;
+}
+
+static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsigned char *outputBuffer, frame_analysis_t *analysis)
+{
+    int frameBytes = 0;
+
+    analysis_update(hEncoder);
+
+    if (hEncoder->frameNum <= 3)
+        return 0;
+
+    compute_masking(hEncoder);
+    analysis_finish(hEncoder, analysis);
+
+
+
+    quantize_bands(hEncoder);
+
+    if (write_bitstream(hEncoder, bufferSize, outputBuffer, &frameBytes) < 0) return -1;
+
+    return frameBytes;
+}
+
 int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
                           unsigned int samplesInput,
@@ -363,26 +624,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
-    int sb, frameBytes;
-    unsigned int offset;
-    BitStream *bitStream; /* bitstream used for writing the frame to */
-#ifdef DRM
-    int desbits, diff;
-    faac_real fix;
-#endif
+    int frameBytes = 0;
 
     /* local copy's of parameters */
     ChannelInfo *channelInfo = hEncoder->channelInfo;
-    CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int useLfe = hEncoder->config.useLfe;
-    unsigned int useTns = hEncoder->config.useTns;
-    unsigned int jointmode = hEncoder->config.jointmode;
-    unsigned int bandWidth = hEncoder->config.bandWidth;
-    unsigned int shortctl = hEncoder->config.shortctl;
-#ifndef DRM
-    int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
-#endif
 
     /* Increase frame number */
     hEncoder->frameNum++;
@@ -469,201 +716,63 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
                 hEncoder->next3SampleBuff[channel][i] = 0.0;
 		}
-
-		/* Psychoacoustics */
-		/* Update buffers and run FFT on new samples */
-		/* LFE psychoacoustic can run without it */
-		if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
-		{
-			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
-					&hEncoder->gpsyInfo,
-					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel],
-					bandWidth,
-					hEncoder->srInfo->cb_width_short,
-					hEncoder->srInfo->num_cb_short);
-		}
-    }
-
-    if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
-        return 0;
-
-    /* Psychoacoustics */
-    hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
-        hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
-        hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
-
-    hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
-
-    /* force block type */
-    if (shortctl == SHORTCTL_NOSHORT)
-    {
-		for (channel = 0; channel < numChannels; channel++)
-		{
-			coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-		}
-    }
-    else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG))
-    {
-		for (channel = 0; channel < numChannels; channel++)
-		{
-			coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
-		}
-    }
-
-    /* AAC Filterbank, MDCT with overlap and add */
-    for (channel = 0; channel < numChannels; channel++) {
-        FilterBank(hEncoder,
-            &coderInfo[channel],
-            hEncoder->sampleBuff[channel],
-            hEncoder->freqBuff[channel],
-            hEncoder->overlapBuff[channel],
-            MOVERLAPPED);
-    }
-
-    for (channel = 0; channel < numChannels; channel++) {
-        channelInfo[channel].msInfo.is_present = 0;
-
-        if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
-
-            offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
-                coderInfo[channel].sfb_offset[sb] = offset;
-                offset += hEncoder->srInfo->cb_width_short[sb];
-            }
-            coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
-        } else {
-            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
-
-            coderInfo[channel].groups.n = 1;
-            coderInfo[channel].groups.len[0] = 1;
-
-            offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
-                coderInfo[channel].sfb_offset[sb] = offset;
-                offset += hEncoder->srInfo->cb_width_long[sb];
-            }
-            coderInfo[channel].sfb_offset[sb] = offset;
-        }
-    }
-
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if ((!channelInfo[channel].lfe) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
-        }
-    }
-
-    for (channel = 0; channel < numChannels; channel++) {
-      // reduce LFE bandwidth
-		if (!channelInfo[channel].cpe && channelInfo[channel].lfe)
-		{
-                    coderInfo[channel].sfbn = 3;
-		}
-	}
-
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
-#ifdef DRM
-    /* loop the quantization until the desired bit-rate is reached */
-    diff = 1; /* to enter while loop */
-    hEncoder->aacquantCfg.quality = 120; /* init quality setting */
-    while (diff > 0) { /* if too many bits, do it again */
-#endif
-    for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
     }
 
 #ifdef DRM
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-    WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* now calculate desired bits and compare with actual encoded bits */
-    desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate);
-
-    diff = ((frameBytes - 1 /* CRC */) * 8) - desbits;
-
-    /* do linear correction according to relative difference */
-    fix = (faac_real) desbits / ((frameBytes - 1 /* CRC */) * 8);
-
-    /* speed up convergence. A value of 0.92 gives approx up to 10 iterations */
-    if (fix > 0.92)
-        fix = 0.92;
-
-    hEncoder->aacquantCfg.quality *= fix;
-
-    /* quality should not go lower than 1, set diff to exit loop */
-    if (hEncoder->aacquantCfg.quality <= 1)
-        diff = -1;
-    }
-#endif
-
-    // fix max_sfb in CPE mode
-    for (channel = 0; channel < numChannels; channel++)
     {
-		if (channelInfo[channel].present
-				&& (channelInfo[channel].cpe)
-				&& (channelInfo[channel].ch_is_left))
-		{
-			CoderInfo *cil, *cir;
 
-			cil = &coderInfo[channel];
-			cir = &coderInfo[channelInfo[channel].paired_ch];
+        frame_analysis_t analysis;
+        int diff = 1;
 
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
-		}
+        memset(&analysis, 0, sizeof(frame_analysis_t));
+
+        analysis_update(hEncoder);
+
+        if (hEncoder->frameNum <= 3) {
+            return 0;
+        }
+
+        compute_masking(hEncoder);
+        analysis_finish(hEncoder, &analysis);
+
+
+
+        /* DRM loop: iteratively adjust quality via quantization and bitstream writing */
+        while (diff > 0) {
+            quantize_bands(hEncoder);
+
+            /* Write the AAC bitstream */
+            BitStream *bitStream = OpenBitStream(bufferSize, outputBuffer);
+            WriteBitstream(hEncoder, hEncoder->coderInfo, hEncoder->channelInfo, bitStream, hEncoder->numChannels);
+
+            /* Close the bitstream and return the number of bytes written */
+            frameBytes = CloseBitStream(bitStream);
+
+            /* now calculate desired bits and compare with actual encoded bits */
+            int desbits = (int) ((faac_real) hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+                    / hEncoder->sampleRate);
+
+            diff = ((frameBytes - 1 /* CRC */) * 8) - desbits;
+
+            /* do linear correction according to relative difference */
+            faac_real fix = (faac_real) desbits / ((frameBytes - 1 /* CRC */) * 8);
+
+            /* speed up convergence. A value of 0.92 gives approx up to 10 iterations */
+            if (fix > 0.92)
+                fix = 0.92;
+
+            hEncoder->aacquantCfg.quality *= fix;
+
+            /* quality should not go lower than 1, set diff to exit loop */
+            if (hEncoder->aacquantCfg.quality <= 1)
+                diff = -1;
+        }
     }
-#ifndef DRM
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
-        return -1;
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+#else
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        frame_analysis_t analysis;
+        memset(&analysis, 0, sizeof(frame_analysis_t));
+        frameBytes = encode_frame(hEncoder, bufferSize, outputBuffer, &analysis);
     }
 #endif
 

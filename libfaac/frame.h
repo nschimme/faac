@@ -86,6 +86,9 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* Frame analysis persistence */
+    faac_real last_frame_energy[MAX_CHANNELS];
 } faacEncStruct;
 
 #ifdef __cplusplus
