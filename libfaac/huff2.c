@@ -79,7 +79,7 @@ static int huffcode(int *qs /* quantized spectrum */,
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
-    int data;
+    int data = 0;
     int idx;
     int datacnt;
 #ifdef DRM
@@ -99,11 +99,14 @@ static int huffcode(int *qs /* quantized spectrum */,
     case HCB_ZERO:
     case HCB_INTENSITY:
     case HCB_INTENSITY2:
-        for(ofs = 0; ofs < len; ofs += 4)
+        if (coder)
         {
-            coder->s[datacnt].data = 0;
-            coder->s[datacnt++].len = 0;
-            coder->num_data_cw[coder->cur_cw++] = 1;
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                coder->s[datacnt].data = 0;
+                coder->s[datacnt++].len = 0;
+                coder->num_data_cw[coder->cur_cw++] = 1;
+            }
         }
         break;
 #endif
@@ -346,11 +349,14 @@ static int huffcode(int *qs /* quantized spectrum */,
                 bits += blen;
             }
 #ifdef DRM
-            coder->iLenReordSpData += drmbits;
-            if (coder->iLenLongestCW < drmbits)
-                coder->iLenLongestCW = drmbits;
+            if (coder)
+            {
+                coder->iLenReordSpData += drmbits;
+                if (coder->iLenLongestCW < drmbits)
+                    coder->iLenLongestCW = drmbits;
 
-            coder->cur_cw++;
+                coder->cur_cw++;
+            }
 #endif
         }
 #ifdef DRM
