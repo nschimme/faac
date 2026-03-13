@@ -34,6 +34,8 @@
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
+static faac_real pow43_lookup[8192];
+
 #if defined(HAVE_SSE2)
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
@@ -57,15 +59,11 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 static QuantizeFunc qfunc = quantize_scalar;
 
-static faac_real pow43_lookup[8192];
-
 void QuantizeInit(void)
 {
     int i;
     for (i = 0; i < 8192; i++)
-    {
         pow43_lookup[i] = FAAC_POW((faac_real)i, 4.0/3.0);
-    }
 
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
@@ -196,7 +194,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[BLOCK_LEN_LONG];
       int start, end;
       const faac_real *xr;
       int win, cnt;
@@ -237,23 +235,22 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           int sf_cand;
           int best_sf = sfac;
           faac_real min_cost = 1e30;
-          int best_xi[8 * MAXSHORTBAND];
-          int cand_xi[8 * MAXSHORTBAND];
+          int best_xi[BLOCK_LEN_LONG];
+          int cand_xi[BLOCK_LEN_LONG];
           int n = end - start;
-          int sf_init = coderInfo->sf[coderInfo->bandcnt];
 
+          /* Search range +/- 4 scalefactors. Clamped to [0, 255] absolute. */
           for (sf_cand = sfac - 4; sf_cand <= sfac + 4; sf_cand++)
           {
               faac_real dist = 0.0;
               int bits = 0;
               faac_real cost;
               faac_real sfix;
-              faac_real inv_sfix_with_init;
 
-              if ((SF_OFFSET - sf_cand) < 10)
-                  sfix = 0.0;
-              else
-                  sfix = FAAC_POW(10, sf_cand / sfstep);
+              if (sf_cand < -155) continue;
+              if (sf_cand > 100) continue;
+
+              sfix = FAAC_POW(10, sf_cand / sfstep);
 
               if (sfix <= 0.0)
               {
@@ -263,20 +260,20 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               else
               {
                   int *xi_ptr = cand_xi;
-                  /* Decoder uses sf_final = sf_init + 100 - sf_cand.
-                     Dequant scaling factor is 2^(0.25 * (sf_final - 100)) = 2^(0.25 * (sf_init - sf_cand)).
-                  */
-                  inv_sfix_with_init = FAAC_POW(2.0, 0.25 * (sf_init - sf_cand));
-
+                  faac_real inv_sfix = 1.0 / sfix;
                   for (win = 0; win < gsize; win++)
                   {
                       xr = xr0 + win * BLOCK_LEN_SHORT + start;
                       qfunc(xr, xi_ptr, n, sfix);
-                      /* Calculate Total Distortion (MSE) for the group */
                       for (cnt = 0; cnt < n; cnt++)
                       {
-                          faac_real q_val = (xi_ptr[cnt] >= 0 && xi_ptr[cnt] < 8192) ? pow43_lookup[xi_ptr[cnt]] : (xi_ptr[cnt] < 0 && -xi_ptr[cnt] < 8192) ? -pow43_lookup[-xi_ptr[cnt]] : 0;
-                          faac_real diff = xr[cnt] - q_val * inv_sfix_with_init;
+                          int q = xi_ptr[cnt];
+                          faac_real q_val;
+                          if (q >= 0 && q < 8192) q_val = pow43_lookup[q];
+                          else if (q < 0 && -q < 8192) q_val = -pow43_lookup[-q];
+                          else q_val = FAAC_POW(FAAC_FABS((faac_real)q), 4.0/3.0);
+
+                          faac_real diff = xr[cnt] - q_val * inv_sfix;
                           dist += diff * diff;
                       }
                       xi_ptr += n;
@@ -286,25 +283,24 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               /* Estimate Bits with optimal book selection */
               {
                   int j, maxq = 0;
-                  int bmin, lmin;
+                  int bmin;
                   for (j = 0; j < gsize * n; j++) {
                       int q = abs(cand_xi[j]);
                       if (maxq < q) maxq = q;
                   }
-                  if (maxq < 1) { bmin = HCB_ZERO; lmin = 0; }
-                  else if (maxq < 2) { bmin = 1; lmin = huff_count_bits(cand_xi, gsize * n, 1); if (huff_count_bits(cand_xi, gsize * n, 2) < lmin) bmin = 2; }
-                  else if (maxq < 3) { bmin = 3; lmin = huff_count_bits(cand_xi, gsize * n, 3); if (huff_count_bits(cand_xi, gsize * n, 4) < lmin) bmin = 4; }
-                  else if (maxq < 5) { bmin = 5; lmin = huff_count_bits(cand_xi, gsize * n, 5); if (huff_count_bits(cand_xi, gsize * n, 6) < lmin) bmin = 6; }
-                  else if (maxq < 8) { bmin = 7; lmin = huff_count_bits(cand_xi, gsize * n, 7); if (huff_count_bits(cand_xi, gsize * n, 8) < lmin) bmin = 8; }
-                  else if (maxq < 13) { bmin = 9; lmin = huff_count_bits(cand_xi, gsize * n, 9); if (huff_count_bits(cand_xi, gsize * n, 10) < lmin) bmin = 10; }
-                  else { bmin = HCB_ESC; }
+                  if (maxq < 1) bmin = HCB_ZERO;
+                  else if (maxq < 2) { bmin = 1; if (huff_count_bits(cand_xi, gsize * n, 2) < huff_count_bits(cand_xi, gsize * n, 1)) bmin = 2; }
+                  else if (maxq < 3) { bmin = 3; if (huff_count_bits(cand_xi, gsize * n, 4) < huff_count_bits(cand_xi, gsize * n, 3)) bmin = 4; }
+                  else if (maxq < 5) { bmin = 5; if (huff_count_bits(cand_xi, gsize * n, 6) < huff_count_bits(cand_xi, gsize * n, 5)) bmin = 6; }
+                  else if (maxq < 8) { bmin = 7; if (huff_count_bits(cand_xi, gsize * n, 8) < huff_count_bits(cand_xi, gsize * n, 7)) bmin = 8; }
+                  else if (maxq < 13) { bmin = 9; if (huff_count_bits(cand_xi, gsize * n, 10) < huff_count_bits(cand_xi, gsize * n, 9)) bmin = 10; }
+                  else bmin = HCB_ESC;
+
                   bits = (bmin == HCB_ZERO) ? 0 : huff_count_bits(cand_xi, gsize * n, bmin);
               }
 
-              /* Cost J = (TotalDistortion / (T^2 * gsize + eps)) + lambda * Bits
-                 where T is bandqual (masking threshold amplitude).
-                 This is effectively the Noise-to-Mask Ratio (NMR) for the group. */
-              cost = (dist / (bandqual[sb] * bandqual[sb] * gsize + 1e-12)) + lambda * (faac_real)bits;
+              /* Group NMR Cost J = Distortion / (Threshold^2 * gsize + epsilon) + lambda * Bits */
+              cost = dist / (bandqual[sb] * bandqual[sb] * (faac_real)gsize + 1e-12) + lambda * (faac_real)bits;
 
               if (cost < min_cost)
               {
@@ -331,8 +327,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real *gxr;
 
     coder->global_gain = 0;
-    memset(coder->sf, 0, sizeof(coder->sf));
-    for (cnt = 0; cnt < MAX_SCFAC_BANDS; cnt++) coder->book[cnt] = HCB_NONE;
 
     coder->bandcnt = 0;
     coder->datacnt = 0;

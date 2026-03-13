@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -411,6 +412,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->flushFrame > 4)
         return 0;
 
+    /* Reset coder info for the new frame */
+    for (channel = 0; channel < numChannels; channel++)
+    {
+        int b;
+        for (b = 0; b < MAX_SCFAC_BANDS; b++)
+        {
+            hEncoder->coderInfo[channel].book[b] = HCB_NONE;
+            hEncoder->coderInfo[channel].sf[b] = 0;
+        }
+    }
+
     /* Determine the channel configuration */
     GetChannelInfo(channelInfo, numChannels, useLfe);
 
@@ -592,33 +604,71 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-#ifdef DRM
-    /* loop the quantization until the desired bit-rate is reached */
-    diff = 1; /* to enter while loop */
-    hEncoder->aacquantCfg.quality = 120; /* init quality setting */
-    while (diff > 0) { /* if too many bits, do it again */
-#endif
     {
-        faac_real lambda = 0.5; // Optimized base lambda
+        faac_real lambda = 0.01;
+        faac_real saved_quality = hEncoder->aacquantCfg.quality;
 
         if (hEncoder->config.bitRate)
         {
+            /* Use neutral quality for RD thresholds to keep lambda scale consistent across bitrates.
+               Only apply this in non-DRM mode to avoid breaking iterative rate control. */
+#ifndef DRM
+            hEncoder->aacquantCfg.quality = 100;
+#endif
+
             /* Estimate lambda based on bit reservoir status */
             faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
 
-            /* NMR-based RD cost:
-               Optimized base lambda = 0.1.
-               Smaller lambda = higher quality / higher bits. */
-            lambda = 0.1 * FAAC_POW(2.0, (0.5 - reservoirFill) * 10.0);
+            /* Base lambda 0.01. Range: [0.0001, 1.0]. */
+            lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
 
             if (lambda < 0.0001) lambda = 0.0001;
-            if (lambda > 100.0) lambda = 100.0;
+            if (lambda > 1.0) lambda = 1.0;
         }
 
-        for (channel = 0; channel < numChannels; channel++) {
-            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                      &(hEncoder->aacquantCfg), lambda);
+#ifdef DRM
+        /* loop the quantization until the desired bit-rate is reached */
+        diff = 1; /* to enter while loop */
+        hEncoder->aacquantCfg.quality = 120; /* init quality setting */
+        while (diff > 0) { /* if too many bits, do it again */
+#endif
+            for (channel = 0; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                          &(hEncoder->aacquantCfg), lambda);
+            }
+
+#ifdef DRM
+            /* Write the AAC bitstream */
+            bitStream = OpenBitStream(bufferSize, outputBuffer);
+            WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels);
+
+            /* Close the bitstream and return the number of bytes written */
+            frameBytes = CloseBitStream(bitStream);
+
+            /* now calculate desired bits and compare with actual encoded bits */
+            desbits = (int) ((faac_real) numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+                    / hEncoder->sampleRate);
+
+            diff = ((frameBytes - 1 /* CRC */) * 8) - desbits;
+
+            /* do linear correction according to relative difference */
+            fix = (faac_real) desbits / ((frameBytes - 1 /* CRC */) * 8);
+
+            /* speed up convergence. A value of 0.92 gives approx up to 10 iterations */
+            if (fix > 0.92)
+                fix = 0.92;
+
+            hEncoder->aacquantCfg.quality *= fix;
+
+            /* quality should not go lower than 1, set diff to exit loop */
+            if (hEncoder->aacquantCfg.quality <= 1)
+                diff = -1;
         }
+#endif
+
+#ifndef DRM
+        hEncoder->aacquantCfg.quality = saved_quality;
+#endif
     }
 
 #ifdef DRM

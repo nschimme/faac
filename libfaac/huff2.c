@@ -402,7 +402,6 @@ static int huffcode(int *qs /* quantized spectrum */,
     return bits;
 }
 
-
 int huff_count_bits(int *qs, int len, int bnum)
 {
     return huffcode(qs, len, bnum, NULL);
