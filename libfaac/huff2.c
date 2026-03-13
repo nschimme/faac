@@ -366,6 +366,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 #ifdef DRM
         /* VCB11: check which codebook should be used using max escape sequence */
         /* 8.5.3.1.3, table 157 */
+        if (coder) {
         if (maxesc <= 15)
             vcb11 = 16;
         else if (maxesc <= 31)
@@ -399,6 +400,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         else if (maxesc <= 2047)
             vcb11 = 31;
         /* else: codebook 11 -> it is already 11 */
+        }
 #endif
         break;
     default:

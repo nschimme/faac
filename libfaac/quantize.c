@@ -319,8 +319,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   if (bits < 0) continue;
               }
 
-              /* Perceptual NMR Cost: J = Distortion / (PerceptualThreshold + epsilon) + lambda * Bits */
-              cost = dist / (bandqual[sb] * bandqual[sb] + 1e-15) + lambda * (faac_real)bits;
+              /* Perceptual NMR Cost: J = (Distortion * QualityMultiplier^2) / (GroupEnergy + epsilon) + lambda * Bits */
+              cost = (dist * bandqual[sb] * bandqual[sb]) / (bandenrg[sb] + 1e-15) + lambda * (faac_real)bits;
 
               if (cost < min_cost)
               {
