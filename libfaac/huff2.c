@@ -87,10 +87,9 @@ static int huffcode(int *qs /* quantized spectrum */,
     int maxesc = 0;
 #endif
 
+    datacnt = 0;
     if (coder)
         datacnt = coder->datacnt;
-    else
-        datacnt = 0;
 
     book = hmap[bnum];
     switch (bnum)
@@ -121,6 +120,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (coder)
             {
                 data = book[idx].data;
@@ -142,6 +142,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 // add sign bits
@@ -181,6 +182,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (coder)
             {
                 data = book[idx].data;
@@ -202,6 +204,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 for(cnt = 0; cnt < 2; cnt++)
@@ -239,6 +242,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 for(cnt = 0; cnt < 2; cnt++)
@@ -462,7 +466,8 @@ int huffbook(CoderInfo *coder,
 
 #ifdef DRM
     vcb11 = 0;
-    huffcode(qs, len, bookmin, coder);
+    if (coder)
+        huffcode(qs, len, bookmin, coder);
     if (vcb11)
         bookmin = vcb11;
 #else

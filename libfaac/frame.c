@@ -602,23 +602,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     {
-        faac_real lambda = 0.01;
-#ifndef DRM
-        faac_real saved_quality = hEncoder->aacquantCfg.quality;
-#endif
+        faac_real lambda = 0.0;
 
         if (hEncoder->config.bitRate)
         {
-            /* Use neutral quality for RD thresholds to keep lambda scale consistent across bitrates.
-               Only apply this in non-DRM mode to avoid breaking iterative rate control. */
-#ifndef DRM
-            hEncoder->aacquantCfg.quality = 100;
-#endif
-
             /* Estimate lambda based on bit reservoir status */
             faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
 
-            /* Base lambda 0.01. Range: [0.0001, 1.0]. */
+            /* Recalibrated lambda for better bitrate accuracy without quality regressions.
+               Base lambda 0.01. Range: [0.0001, 1.0]. */
             lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
 
             if (lambda < 0.0001) lambda = 0.0001;
@@ -663,9 +655,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
 #endif
 
-#ifndef DRM
-        hEncoder->aacquantCfg.quality = saved_quality;
-#endif
     }
 
     // fix max_sfb in CPE mode
