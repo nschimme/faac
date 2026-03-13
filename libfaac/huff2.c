@@ -79,7 +79,7 @@ static int huffcode(int *qs /* quantized spectrum */,
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
-    int data;
+    int data = 0;
     int idx;
     int datacnt;
 #ifdef DRM
@@ -87,10 +87,9 @@ static int huffcode(int *qs /* quantized spectrum */,
     int maxesc = 0;
 #endif
 
+    datacnt = 0;
     if (coder)
         datacnt = coder->datacnt;
-    else
-        datacnt = 0;
 
     book = hmap[bnum];
     switch (bnum)
@@ -99,11 +98,14 @@ static int huffcode(int *qs /* quantized spectrum */,
     case HCB_ZERO:
     case HCB_INTENSITY:
     case HCB_INTENSITY2:
-        for(ofs = 0; ofs < len; ofs += 4)
+        if (coder)
         {
-            coder->s[datacnt].data = 0;
-            coder->s[datacnt++].len = 0;
-            coder->num_data_cw[coder->cur_cw++] = 1;
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                coder->s[datacnt].data = 0;
+                coder->s[datacnt++].len = 0;
+                coder->num_data_cw[coder->cur_cw++] = 1;
+            }
         }
         break;
 #endif
@@ -118,6 +120,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (coder)
             {
                 data = book[idx].data;
@@ -139,6 +142,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 // add sign bits
@@ -178,6 +182,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (coder)
             {
                 data = book[idx].data;
@@ -199,6 +204,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 for(cnt = 0; cnt < 2; cnt++)
@@ -236,6 +242,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 return -1;
             }
             blen = book[idx].len;
+            data = 0;
             if (!coder)
             {
                 for(cnt = 0; cnt < 2; cnt++)
@@ -346,16 +353,20 @@ static int huffcode(int *qs /* quantized spectrum */,
                 bits += blen;
             }
 #ifdef DRM
-            coder->iLenReordSpData += drmbits;
-            if (coder->iLenLongestCW < drmbits)
-                coder->iLenLongestCW = drmbits;
+            if (coder)
+            {
+                coder->iLenReordSpData += drmbits;
+                if (coder->iLenLongestCW < drmbits)
+                    coder->iLenLongestCW = drmbits;
 
-            coder->cur_cw++;
+                coder->cur_cw++;
+            }
 #endif
         }
 #ifdef DRM
         /* VCB11: check which codebook should be used using max escape sequence */
         /* 8.5.3.1.3, table 157 */
+        if (coder) {
         if (maxesc <= 15)
             vcb11 = 16;
         else if (maxesc <= 31)
@@ -389,6 +400,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         else if (maxesc <= 2047)
             vcb11 = 31;
         /* else: codebook 11 -> it is already 11 */
+        }
 #endif
         break;
     default:
@@ -402,6 +414,10 @@ static int huffcode(int *qs /* quantized spectrum */,
     return bits;
 }
 
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    return huffcode(qs, len, bnum, NULL);
+}
 
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
@@ -452,7 +468,8 @@ int huffbook(CoderInfo *coder,
 
 #ifdef DRM
     vcb11 = 0;
-    huffcode(qs, len, bookmin, coder);
+    if (coder)
+        huffcode(qs, len, bookmin, coder);
     if (vcb11)
         bookmin = vcb11;
 #else
