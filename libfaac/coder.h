@@ -111,6 +111,7 @@ typedef struct {
     int bandcnt;
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
+    faac_real thr_adj[NSFB_LONG];
 
     struct {
         int n;
