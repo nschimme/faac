@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -361,89 +362,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     return 0;
 }
 
-/* Phase 2 Modular Hooks */
-
-static void detect_transient(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    const faac_real TRANSIENT_THRESHOLD = 5.0;
-    if (analysis->transient_score > TRANSIENT_THRESHOLD) {
-        /* Force short block for NEXT frame */
-        for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
-             hEncoder->psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
-        }
-    }
-}
-
-static void apply_tonality_mask(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    unsigned int channel;
-    int sfb;
-    const faac_real TONAL_THRESHOLD = 0.5;
-
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        CoderInfo *coder = &hEncoder->coderInfo[channel];
-        for (sfb = 0; sfb < coder->sfbn; sfb++) {
-            if (analysis->band_tonality[sfb] > TONAL_THRESHOLD) {
-                coder->thr_adj[sfb] = 0.90;
-            } else {
-                coder->thr_adj[sfb] = 1.10;
-            }
-        }
-    }
-}
-
-static void limit_hf(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    unsigned int channel;
-    int sfb;
-    const faac_real HF_THRESHOLD = 1e-4;
-    int max_sfb = 0;
-
-    for (sfb = 0; sfb < NSFB_LONG; sfb++) {
-        if (analysis->band_energy[sfb] > HF_THRESHOLD) {
-            max_sfb = sfb + 1;
-        }
-    }
-
-    if (max_sfb > 0) {
-        for (channel = 0; channel < hEncoder->numChannels; channel++) {
-            CoderInfo *coder = &hEncoder->coderInfo[channel];
-            if (coder->sfbn > max_sfb) {
-                coder->sfbn = max_sfb;
-            }
-        }
-    }
-}
-
-static void adjust_reservoir(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    faac_real hf_energy = 0;
-    faac_real complexity;
-    int sfb;
-    int start_hf = 30;
-
-    for (sfb = start_hf; sfb < NSFB_LONG; sfb++) {
-        hf_energy += analysis->band_energy[sfb];
-    }
-
-    complexity = analysis->transient_score * analysis->spectral_flatness;
-    if (hf_energy > 1.0) complexity *= 1.1;
-
-    if (complexity > 2.0) {
-        hEncoder->aacquantCfg.quality *= 1.01;
-    } else if (complexity < 0.5) {
-        hEncoder->aacquantCfg.quality *= 0.99;
-    }
-
-    if (hEncoder->aacquantCfg.quality > 1000) hEncoder->aacquantCfg.quality = 1000;
-    if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
-}
-
-static void quantizer_search_tweak(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    /* RD search is currently integrated inside BlocQuant/qlevel */
-}
-
 /* Pipeline Stages */
 
 static void analysis_update(faacEncStruct *hEncoder)
@@ -532,6 +450,10 @@ static void analysis_finish(faacEncStruct *hEncoder, frame_analysis_t *analysis)
     faac_real eps = 1e-9;
     int sfb;
 
+    for (channel = 0; channel < numChannels; channel++) {
+        memset(hEncoder->coderInfo[channel].sf, 0, sizeof(hEncoder->coderInfo[channel].sf));
+        for (int i = 0; i < MAX_SCFAC_BANDS; i++) hEncoder->coderInfo[channel].book[i] = HCB_NONE;
+    }
     memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
     memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
     analysis->spectral_flatness = 0;
@@ -618,7 +540,7 @@ static void quantize_bands(faacEncStruct *hEncoder)
     unsigned int channel;
     unsigned int numChannels = hEncoder->numChannels;
 
-    /* Perform TNS analysis and filtering (Restored standard order: TNS before Stereo) */
+    /* Restored Standard Order: TNS before Stereo */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->channelInfo[channel].lfe && hEncoder->config.useTns) {
             TnsEncode(&(hEncoder->coderInfo[channel].tnsInfo), hEncoder->coderInfo[channel].sfbn, hEncoder->coderInfo[channel].sfbn,
@@ -629,7 +551,6 @@ static void quantize_bands(faacEncStruct *hEncoder)
         }
     }
 
-    /* Joint Stereo processing */
     AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, hEncoder->config.jointmode);
 
@@ -685,12 +606,7 @@ static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsign
     compute_masking(hEncoder);
     analysis_finish(hEncoder, analysis);
 
-    /* Modular Behavioral Pipeline (Task 6) - Disabled as they caused MOS regressions */
-    // detect_transient(hEncoder, analysis);
-    // apply_tonality_mask(hEncoder, analysis);
-    // limit_hf(hEncoder, analysis);
-    // adjust_reservoir(hEncoder, analysis);
-    // quantizer_search_tweak(hEncoder, analysis);
+
 
     quantize_bands(hEncoder);
 
@@ -804,7 +720,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 #ifdef DRM
     {
-        unsigned int jointmode = hEncoder->config.jointmode;
+
         frame_analysis_t analysis;
         int diff = 1;
 
@@ -819,12 +735,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         compute_masking(hEncoder);
         analysis_finish(hEncoder, &analysis);
 
-        /* Modular Behavioral Pipeline - Disabled */
-        // detect_transient(hEncoder, &analysis);
-        // apply_tonality_mask(hEncoder, &analysis);
-        // limit_hf(hEncoder, &analysis);
-        // adjust_reservoir(hEncoder, &analysis);
-        // quantizer_search_tweak(hEncoder, &analysis);
+
 
         /* DRM loop: iteratively adjust quality via quantization and bitstream writing */
         while (diff > 0) {

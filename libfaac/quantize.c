@@ -203,11 +203,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
-      int *xi;
       int start, end;
       const faac_real *xr;
       int win;
+      int xitab[1024];
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -239,19 +238,22 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      if (sfac > 150) sfac = 150;
+      if (sfac < -150) sfac = -150;
+
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
       end -= start;
-      xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          memset(xitab, 0, 1024 * sizeof(int));
       }
       else
       {
+          int *xi = xitab;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -259,8 +261,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               xi += end;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+
+      int total_points = gsize * end;
+      if (total_points > 1024) total_points = 1024;
+
+      huffbook(coderInfo, xitab, total_points);
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 
@@ -275,6 +281,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
+    memset(coder->sf, 0, sizeof(coder->sf));
+    for (int i = 0; i < MAX_SCFAC_BANDS; i++) coder->book[i] = HCB_NONE;
 #ifdef DRM
     coder->iLenReordSpData = 0; /* init length of reordered spectral data */
     coder->iLenLongestCW = 0; /* init length of longest codeword */

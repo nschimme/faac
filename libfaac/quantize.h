@@ -34,9 +34,9 @@ typedef struct
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
-#define MAGIC_NUMBER 0.4054f
+#define MAGIC_NUMBER 0.42f
 #else
-#define MAGIC_NUMBER 0.4054
+#define MAGIC_NUMBER 0.42
 #endif
 
 enum {
