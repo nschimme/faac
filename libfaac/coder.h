@@ -127,9 +127,6 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
-    int xitab[1024]; /* Persistent buffer for quantization spectral data */
-    int txi[1024];   /* Auxiliary buffer for RD search */
-
 #ifdef DRM
     int num_data_cw[FRAME_LEN];
     int cur_cw;

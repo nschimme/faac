@@ -402,40 +402,6 @@ static int huffcode(int *qs /* quantized spectrum */,
     return bits;
 }
 
-int huff_find_best_book(int *qs, int len)
-{
-    int cnt;
-    int maxq = 0;
-
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
-    }
-
-    if (maxq < 1)
-        return HCB_ZERO;
-    if (maxq < 2)
-        return 1;
-    if (maxq < 3)
-        return 3;
-    if (maxq < 5)
-        return 5;
-    if (maxq < 8)
-        return 7;
-    if (maxq < 13)
-        return 9;
-
-    return HCB_ESC;
-}
-
-int huff_count_bits(int *qs, int len, int bnum)
-{
-    if (bnum == HCB_ZERO)
-        return 0;
-    return huffcode(qs, len, bnum, NULL);
-}
 
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,

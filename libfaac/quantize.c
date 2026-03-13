@@ -11,11 +11,11 @@
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    General Public License for more details.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  See <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -38,19 +38,6 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
-static faac_real pow43_lookup[8192];
-
-static void init_pow43(void)
-{
-    static int init = 0;
-    if (!init) {
-        for (int i = 0; i < 8192; i++) {
-            pow43_lookup[i] = (faac_real)pow((double)i, 4.0/3.0);
-        }
-        init = 1;
-    }
-}
-
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
@@ -64,7 +51,6 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
-        if (q > 8191) q = 8191;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
@@ -73,7 +59,6 @@ static QuantizeFunc qfunc = quantize_scalar;
 
 void QuantizeInit(void)
 {
-    init_pow43();
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -171,7 +156,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality * coderInfo->thr_adj[sfb];
+    bandqual[sfb] = target * quality;
   }
 }
 
@@ -203,11 +188,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      int xitab[8 * MAXSHORTBAND];
+      int *xi;
       int start, end;
       const faac_real *xr;
       int win;
-      int *xitab = coderInfo->xitab;
-      int *txi = coderInfo->txi;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -239,91 +224,28 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if (sfac > 150) sfac = 150;
-      if (sfac < -150) sfac = -150;
-
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      int sfb_width = end - start;
+      end -= start;
+      xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xitab, 0, 1024 * sizeof(int));
+          memset(xi, 0, gsize * end * sizeof(int));
       }
       else
       {
-          int *xi_ptr = xitab;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi_ptr, sfb_width, sfacfix);
-              xi_ptr += sfb_width;
+              qfunc(xr, xi, end, sfacfix);
+              xi += end;
           }
       }
-
-      int total_points = gsize * sfb_width;
-      if (total_points > 1024) total_points = 1024;
-
-      /* Local RD Search */
-      int best_sfac = sfac;
-      int best_bnum = huff_find_best_book(xitab, total_points);
-
-      if (best_bnum > 0 && best_bnum <= 11) {
-          const faac_real LAMBDA = 0.2;
-          faac_real best_cost = 0;
-
-          /* Calculate best_cost for original sfac */
-          for (win = 0; win < gsize; win++) {
-              xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              for (int i = 0; i < sfb_width; i++) {
-                  faac_real x = FAAC_FABS(xr[i]);
-                  int q = xitab[win * sfb_width + i];
-                  if (q < 0) q = -q;
-                  if (q > 8191) q = 8191;
-                  faac_real x_q = pow43_lookup[q] / sfacfix;
-                  faac_real err = x - x_q;
-                  best_cost += err * err;
-              }
-          }
-          best_cost += LAMBDA * (faac_real)huff_count_bits(xitab, total_points, best_bnum);
-
-          /* Trial sfac + 1 */
-          int trial_sfac = sfac + 1;
-          if (trial_sfac < 150 && best_cost > 1e-4) {
-              faac_real trial_sfacfix = FAAC_POW(10, trial_sfac / sfstep);
-              int *ptxi = txi;
-              for (win = 0; win < gsize; win++) {
-                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  qfunc(xr, ptxi, sfb_width, trial_sfacfix);
-                  ptxi += sfb_width;
-              }
-              int trial_bnum = huff_find_best_book(txi, total_points);
-              faac_real cost = 0;
-              for (win = 0; win < gsize; win++) {
-                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  for (int i = 0; i < sfb_width; i++) {
-                      faac_real x = FAAC_FABS(xr[i]);
-                      int q = txi[win * sfb_width + i];
-                      if (q < 0) q = -q;
-                      if (q > 8191) q = 8191;
-                      faac_real x_q = pow43_lookup[q] / trial_sfacfix;
-                      faac_real err = x - x_q;
-                      cost += err * err;
-                  }
-              }
-              cost += LAMBDA * (faac_real)huff_count_bits(txi, total_points, trial_bnum);
-
-              if (cost < best_cost) {
-                  best_sfac = trial_sfac;
-                  memcpy(xitab, txi, total_points * sizeof(int));
-              }
-          }
-      }
-
-      huffbook(coderInfo, xitab, total_points);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - best_sfac;
+      huffbook(coderInfo, xitab, gsize * end);
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
@@ -336,12 +258,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     coder->global_gain = 0;
 
-    /* Reset coder state for fresh quantization */
     coder->bandcnt = 0;
     coder->datacnt = 0;
-    memset(coder->sf, 0, sizeof(coder->sf));
-    memset(coder->book, 0, sizeof(coder->book));
-
 #ifdef DRM
     coder->iLenReordSpData = 0; /* init length of reordered spectral data */
     coder->iLenLongestCW = 0; /* init length of longest codeword */

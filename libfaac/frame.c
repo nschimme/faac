@@ -315,6 +315,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
+        for (int i = 0; i < NSFB_LONG; i++)
+            hEncoder->coderInfo[channel].thr_adj[i] = 1.0;
+
         hEncoder->sampleBuff[channel] = NULL;
     }
 
@@ -366,255 +369,12 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     return 0;
 }
 
-static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, frame_analysis_t *analysis)
-{
-    unsigned int channel;
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-
-    /* Psychoacoustics */
-    /* Update buffers and run FFT on new samples */
-    /* LFE psychoacoustic can run without it */
-    for (channel = 0; channel < hEncoder->numChannels; channel++)
-    {
-        if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
-        {
-            hEncoder->psymodel->PsyBufferUpdate(
-                &hEncoder->fft_tables,
-                &hEncoder->gpsyInfo,
-                &hEncoder->psyInfo[channel],
-                hEncoder->next3SampleBuff[channel],
-                bandWidth,
-                hEncoder->srInfo->cb_width_short,
-                hEncoder->srInfo->num_cb_short);
-        }
-    }
-}
-
-static void compute_masking(faacEncStruct *hEncoder, frame_analysis_t *analysis)
-{
-    /* Psychoacoustics */
-    hEncoder->psymodel->PsyCalculate(hEncoder->channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
-        hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
-        hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short, hEncoder->numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
-}
-
-static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsigned int shortctl, frame_analysis_t *analysis)
-{
-    unsigned int channel;
-    int sb;
-    unsigned int offset;
-    CoderInfo *coderInfo = hEncoder->coderInfo;
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-    unsigned int numChannels = hEncoder->numChannels;
-
-    hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
-
-    /* force block type */
-    if (shortctl == SHORTCTL_NOSHORT)
-    {
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-        }
-    }
-    else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG))
-    {
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
-        }
-    }
-
-    /* AAC Filterbank, MDCT with overlap and add */
-    for (channel = 0; channel < numChannels; channel++) {
-        FilterBank(hEncoder,
-            &coderInfo[channel],
-            hEncoder->sampleBuff[channel],
-            hEncoder->freqBuff[channel],
-            hEncoder->overlapBuff[channel],
-            MOVERLAPPED);
-    }
-
-    for (channel = 0; channel < numChannels; channel++) {
-        channelInfo[channel].msInfo.is_present = 0;
-
-        if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
-
-            offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
-                coderInfo[channel].sfb_offset[sb] = offset;
-                offset += hEncoder->srInfo->cb_width_short[sb];
-            }
-            coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
-        } else {
-            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
-
-            coderInfo[channel].groups.n = 1;
-            coderInfo[channel].groups.len[0] = 1;
-
-            offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
-                coderInfo[channel].sfb_offset[sb] = offset;
-                offset += hEncoder->srInfo->cb_width_long[sb];
-            }
-            coderInfo[channel].sfb_offset[sb] = offset;
-        }
-    }
-
-    /* Frame analysis metrics (Phase 1) */
-    {
-        faac_real total_transient_score = 0;
-        faac_real total_spectral_flatness = 0;
-        faac_real eps = 1e-9;
-        int sfb;
-
-        memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
-        memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
-        analysis->spectral_flatness = 0;
-        analysis->transient_score = 0;
-
-        for (channel = 0; channel < numChannels; channel++) {
-            faac_real energy_ch = 0;
-            faac_real log_sum_ch = 0;
-            faac_real abs_sum_ch = 0;
-            faac_real *xr = hEncoder->freqBuff[channel];
-            int sfbn = coderInfo[channel].sfbn;
-
-            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-                for (sfb = 0; sfb < sfbn; sfb++) {
-                    faac_real b_sum = 0;
-                    faac_real b_abs_sum = 0;
-                    faac_real b_en = 0;
-                    int width = hEncoder->srInfo->cb_width_short[sfb];
-                    int start = coderInfo[channel].sfb_offset[sfb];
-                    int w, k;
-
-                    for (w = 0; w < 8; w++) {
-                        faac_real *window_xr = xr + w * BLOCK_LEN_SHORT;
-                        for (k = 0; k < width; k++) {
-                            faac_real val = window_xr[start + k];
-                            faac_real aval = (faac_real)FAAC_FABS(val);
-                            b_sum += val;
-                            b_abs_sum += aval;
-                            b_en += val * val;
-                            log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
-                            abs_sum_ch += aval;
-                        }
-                    }
-                    energy_ch += b_en;
-                    analysis->band_energy[sfb] += b_en;
-                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
-                }
-            } else {
-                for (sfb = 0; sfb < sfbn; sfb++) {
-                    faac_real b_sum = 0;
-                    faac_real b_abs_sum = 0;
-                    faac_real b_en = 0;
-                    int start = coderInfo[channel].sfb_offset[sfb];
-                    int end = coderInfo[channel].sfb_offset[sfb+1];
-                    int k;
-
-                    for (k = start; k < end; k++) {
-                        faac_real val = xr[k];
-                        faac_real aval = (faac_real)FAAC_FABS(val);
-                        b_sum += val;
-                        b_abs_sum += aval;
-                        b_en += val * val;
-                        log_sum_ch += (faac_real)FAAC_LOG(aval + eps);
-                        abs_sum_ch += aval;
-                    }
-                    energy_ch += b_en;
-                    analysis->band_energy[sfb] += b_en;
-                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
-                }
-            }
-
-            /* Per-channel metrics */
-            {
-                faac_real geom_mean = (faac_real)FAAC_EXP(log_sum_ch / FRAME_LEN);
-                faac_real arith_mean = abs_sum_ch / FRAME_LEN;
-                total_spectral_flatness += geom_mean / (arith_mean + eps);
-
-                total_transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + eps);
-                hEncoder->last_frame_energy[channel] = energy_ch;
-            }
-        }
-
-        /* Average across channels */
-        analysis->transient_score = total_transient_score / numChannels;
-        analysis->spectral_flatness = total_spectral_flatness / numChannels;
-        for (sfb = 0; sfb < NSFB_LONG; sfb++) {
-            analysis->band_energy[sfb] /= numChannels;
-            analysis->band_tonality[sfb] /= numChannels;
-        }
-    }
-
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if ((!channelInfo[channel].lfe) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
-        }
-    }
-
-    for (channel = 0; channel < numChannels; channel++) {
-      // reduce LFE bandwidth
-        if (!channelInfo[channel].cpe && channelInfo[channel].lfe)
-        {
-                    coderInfo[channel].sfbn = 3;
-        }
-    }
-}
-
-static void quantize_bands_internal(faacEncStruct *hEncoder)
-{
-    unsigned int channel;
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        BlocQuant(&hEncoder->coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
-    }
-}
-
-static void fix_cpe_max_sfb(faacEncStruct *hEncoder)
-{
-    unsigned int channel;
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-    CoderInfo *coderInfo = hEncoder->coderInfo;
-
-    for (channel = 0; channel < hEncoder->numChannels; channel++)
-    {
-        if (channelInfo[channel].present
-                && (channelInfo[channel].cpe)
-                && (channelInfo[channel].ch_is_left))
-        {
-            CoderInfo *cil, *cir;
-
-            cil = &coderInfo[channel];
-            cir = &coderInfo[channelInfo[channel].paired_ch];
-
-            cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
-        }
-    }
-}
-
 #define TRANSIENT_THRESHOLD 5.0
 #define TONAL_THRESHOLD     0.6
 #define HF_ENERGY_THRESHOLD 1e-6
 
 static void detect_transient_pre(faacEncStruct *hEncoder)
 {
-    /* Use the transient score from the PREVIOUS frame to affect the CURRENT frame's MDCT.
-       This ensures the window type declared in the bitstream matches the transform.
-    */
     if (hEncoder->last_transient_score > TRANSIENT_THRESHOLD) {
         unsigned int channel;
         for (channel = 0; channel < hEncoder->numChannels; channel++) {
@@ -636,15 +396,14 @@ static void apply_tonality_mask(frame_analysis_t *analysis, faacEncStruct *hEnco
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         CoderInfo *coder = &hEncoder->coderInfo[ch];
         int sfb;
-        /* Initialize all bands to neutral bias */
         for (sfb = 0; sfb < NSFB_LONG; sfb++) {
             coder->thr_adj[sfb] = 1.0;
         }
         for (sfb = 0; sfb < coder->sfbn; sfb++) {
             if (analysis->band_tonality[sfb] > TONAL_THRESHOLD) {
-                coder->thr_adj[sfb] = 0.85; /* More bits for tonal bands */
+                coder->thr_adj[sfb] = 0.85;
             } else {
-                coder->thr_adj[sfb] = 1.15; /* Fewer bits for noisy bands */
+                coder->thr_adj[sfb] = 1.15;
             }
         }
     }
@@ -657,8 +416,6 @@ static void limit_hf(frame_analysis_t *analysis, faacEncStruct *hEncoder)
         CoderInfo *coder = &hEncoder->coderInfo[ch];
         int sfb;
         int max_sfb = coder->sfbn;
-
-        /* Start from top bands and find the first band with significant energy */
         for (sfb = coder->sfbn - 1; sfb >= 10; sfb--) {
             if (analysis->band_energy[sfb] < HF_ENERGY_THRESHOLD) {
                 max_sfb = sfb;
@@ -670,316 +427,308 @@ static void limit_hf(frame_analysis_t *analysis, faacEncStruct *hEncoder)
     }
 }
 
+static void analysis_update(faacEncStruct *hEncoder, unsigned int bandWidth, frame_analysis_t *analysis)
+{
+    unsigned int channel;
+    ChannelInfo *channelInfo = hEncoder->channelInfo;
+
+    for (channel = 0; channel < hEncoder->numChannels; channel++)
+    {
+        if (!channelInfo[channel].lfe || channelInfo[channel].cpe)
+        {
+            hEncoder->psymodel->PsyBufferUpdate(
+                &hEncoder->fft_tables,
+                &hEncoder->gpsyInfo,
+                &hEncoder->psyInfo[channel],
+                hEncoder->next3SampleBuff[channel],
+                bandWidth,
+                hEncoder->srInfo->cb_width_short,
+                hEncoder->srInfo->num_cb_short);
+        }
+    }
+}
+
+static void compute_masking(faacEncStruct *hEncoder, frame_analysis_t *analysis)
+{
+    hEncoder->psymodel->PsyCalculate(hEncoder->channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
+        hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
+        hEncoder->srInfo->cb_width_short,
+        hEncoder->srInfo->num_cb_short, hEncoder->numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
+}
+
+static void analysis_finish(faacEncStruct *hEncoder, unsigned int useTns, unsigned int shortctl, frame_analysis_t *analysis)
+{
+    unsigned int channel;
+    int sb;
+    unsigned int offset;
+    CoderInfo *coderInfo = hEncoder->coderInfo;
+    ChannelInfo *channelInfo = hEncoder->channelInfo;
+    unsigned int numChannels = hEncoder->numChannels;
+
+    hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+
+    if (shortctl == SHORTCTL_NOSHORT)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+            coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+    }
+    else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG))
+    {
+        for (channel = 0; channel < numChannels; channel++)
+            coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+    }
+
+    for (channel = 0; channel < numChannels; channel++) {
+        FilterBank(hEncoder, &coderInfo[channel], hEncoder->sampleBuff[channel],
+            hEncoder->freqBuff[channel], hEncoder->overlapBuff[channel], MOVERLAPPED);
+    }
+
+    for (channel = 0; channel < numChannels; channel++) {
+        channelInfo[channel].msInfo.is_present = 0;
+        if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
+            offset = 0;
+            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+                coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_short[sb];
+            }
+            coderInfo[channel].sfb_offset[sb] = offset;
+            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
+        } else {
+            coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
+            coderInfo[channel].groups.n = 1;
+            coderInfo[channel].groups.len[0] = 1;
+            offset = 0;
+            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+                coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_long[sb];
+            }
+            coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
+
+    {
+        faac_real total_transient_score = 0;
+        faac_real total_spectral_flatness = 0;
+        faac_real eps = 1e-9;
+        int sfb;
+        memset(analysis->band_energy, 0, sizeof(analysis->band_energy));
+        memset(analysis->band_tonality, 0, sizeof(analysis->band_tonality));
+        for (channel = 0; channel < numChannels; channel++) {
+            faac_real energy_ch = 0;
+            faac_real log_sum_ch = 0;
+            faac_real abs_sum_ch = 0;
+            faac_real *xr = hEncoder->freqBuff[channel];
+            int sfbn = coderInfo[channel].sfbn;
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+                for (sfb = 0; sfb < sfbn; sfb++) {
+                    faac_real b_sum = 0, b_abs_sum = 0, b_en = 0;
+                    int width = hEncoder->srInfo->cb_width_short[sfb];
+                    int start = coderInfo[channel].sfb_offset[sfb];
+                    for (int w = 0; w < 8; w++) {
+                        faac_real *window_xr = xr + w * BLOCK_LEN_SHORT;
+                        for (int k = 0; k < width; k++) {
+                            faac_real val = window_xr[start + k];
+                            faac_real aval = (faac_real)FAAC_FABS(val);
+                            b_sum += val; b_abs_sum += aval; b_en += val * val;
+                            log_sum_ch += (faac_real)FAAC_LOG(aval + eps); abs_sum_ch += aval;
+                        }
+                    }
+                    energy_ch += b_en;
+                    analysis->band_energy[sfb] += b_en;
+                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                }
+            } else {
+                for (sfb = 0; sfb < sfbn; sfb++) {
+                    faac_real b_sum = 0, b_abs_sum = 0, b_en = 0;
+                    int start = coderInfo[channel].sfb_offset[sfb];
+                    int end = coderInfo[channel].sfb_offset[sfb+1];
+                    for (int k = start; k < end; k++) {
+                        faac_real val = xr[k];
+                        faac_real aval = (faac_real)FAAC_FABS(val);
+                        b_sum += val; b_abs_sum += aval; b_en += val * val;
+                        log_sum_ch += (faac_real)FAAC_LOG(aval + eps); abs_sum_ch += aval;
+                    }
+                    energy_ch += b_en;
+                    analysis->band_energy[sfb] += b_en;
+                    analysis->band_tonality[sfb] += (faac_real)FAAC_FABS(b_sum) / (b_abs_sum + eps);
+                }
+            }
+            total_spectral_flatness += (faac_real)FAAC_EXP(log_sum_ch / FRAME_LEN) / (abs_sum_ch / FRAME_LEN + eps);
+            total_transient_score += energy_ch / (hEncoder->last_frame_energy[channel] + eps);
+            hEncoder->last_frame_energy[channel] = energy_ch;
+        }
+        analysis->transient_score = total_transient_score / numChannels;
+        analysis->spectral_flatness = total_spectral_flatness / numChannels;
+        for (sfb = 0; sfb < NSFB_LONG; sfb++) {
+            analysis->band_energy[sfb] /= numChannels;
+            analysis->band_tonality[sfb] /= numChannels;
+        }
+    }
+
+    for (channel = 0; channel < numChannels; channel++) {
+        if ((!channelInfo[channel].lfe) && (useTns)) {
+            TnsEncode(&(coderInfo[channel].tnsInfo), coderInfo[channel].sfbn, coderInfo[channel].sfbn,
+                      coderInfo[channel].block_type, coderInfo[channel].sfb_offset,
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+        } else {
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+        }
+    }
+
+    for (channel = 0; channel < numChannels; channel++) {
+        if (!channelInfo[channel].cpe && channelInfo[channel].lfe) coderInfo[channel].sfbn = 3;
+    }
+}
+
+static void quantize_bands_internal(faacEncStruct *hEncoder)
+{
+    for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
+        BlocQuant(&hEncoder->coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
+    }
+}
+
+static void fix_cpe_max_sfb(faacEncStruct *hEncoder)
+{
+    ChannelInfo *channelInfo = hEncoder->channelInfo;
+    CoderInfo *coderInfo = hEncoder->coderInfo;
+    for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++)
+    {
+        if (channelInfo[channel].present && (channelInfo[channel].cpe) && (channelInfo[channel].ch_is_left))
+        {
+            CoderInfo *cil = &coderInfo[channel];
+            CoderInfo *cir = &coderInfo[channelInfo[channel].paired_ch];
+            cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+        }
+    }
+}
+
 #ifndef DRM
 static void quantize_bands(faacEncStruct *hEncoder, unsigned int jointmode, frame_analysis_t *analysis)
 {
-    CoderInfo *coderInfo = hEncoder->coderInfo;
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-    unsigned int numChannels = hEncoder->numChannels;
-
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
+    AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, hEncoder->numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
     quantize_bands_internal(hEncoder);
-
     fix_cpe_max_sfb(hEncoder);
 }
-#endif
 
-#ifndef DRM
 static int write_bitstream(faacEncStruct *hEncoder, unsigned int bufferSize, unsigned char *outputBuffer)
 {
-    BitStream *bitStream;
-    int frameBytes;
-    CoderInfo *coderInfo = hEncoder->coderInfo;
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-    unsigned int numChannels = hEncoder->numChannels;
-    int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
-
-    /* Write the AAC bitstream */
-    bitStream = OpenBitStream(bufferSize, outputBuffer);
-
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
-        return -1;
-
-    /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
+    BitStream *bitStream = OpenBitStream(bufferSize, outputBuffer);
+    if (WriteBitstream(hEncoder, hEncoder->coderInfo, hEncoder->channelInfo, bitStream, hEncoder->numChannels) < 0) return -1;
+    int frameBytes = CloseBitStream(bitStream);
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
+        int desbits = hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
+        if (fix < 0.9) fix += 0.1; else if (fix > 1.1) fix -= 0.1; else fix = 1.0;
         fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
         hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
     }
-
     return frameBytes;
 }
 
-/*
- * Phase 1 encoder refactor.
- *
- * These wrapper stages mirror the original FAAC execution order.
- * The ordering MUST NOT change because psychoacoustic decisions
- * depend on earlier stages and the goal is bitstream identity.
- */
 static faac_real adjust_reservoir(frame_analysis_t *analysis, faacEncStruct *hEncoder)
 {
-    /* Complexity based on spectral flatness (inverse) and transient activity */
     faac_real complexity = (1.0 - analysis->spectral_flatness) + (analysis->transient_score / 10.0);
-    faac_real scale = 0.05;
-    faac_real factor = (1.0 + complexity * scale);
-
-    /* Bias quality slightly based on complexity.
-       Lowering quality (allowed error) increases bit allocation.
-    */
+    faac_real factor = (1.0 + complexity * 0.05);
     hEncoder->aacquantCfg.quality /= factor;
     return factor;
 }
 
 static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsigned char *outputBuffer, frame_analysis_t *analysis)
 {
-    unsigned int useTns = hEncoder->config.useTns;
-    unsigned int jointmode = hEncoder->config.jointmode;
-    unsigned int bandWidth = hEncoder->config.bandWidth;
-    unsigned int shortctl = hEncoder->config.shortctl;
-    faac_real complexity_factor = 1.0;
-
-    analysis_update(hEncoder, bandWidth, analysis);
-
-    if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
-        return 0;
-
+    analysis_update(hEncoder, hEncoder->config.bandWidth, analysis);
+    if (hEncoder->frameNum <= 3) return 0;
     compute_masking(hEncoder, analysis);
-
-    /* Behavioral hooks (Phase 2) - Part A: Before MDCT */
     detect_transient_pre(hEncoder);
-
-    analysis_finish(hEncoder, useTns, shortctl, analysis);
-
-    /* Behavioral hooks (Phase 2) - Part B: After MDCT */
+    analysis_finish(hEncoder, hEncoder->config.useTns, hEncoder->config.shortctl, analysis);
     detect_transient_post(analysis, hEncoder);
     apply_tonality_mask(analysis, hEncoder);
     limit_hf(analysis, hEncoder);
-    complexity_factor = adjust_reservoir(analysis, hEncoder);
-
-    quantize_bands(hEncoder, jointmode, analysis);
-
+    faac_real complexity_factor = adjust_reservoir(analysis, hEncoder);
+    quantize_bands(hEncoder, hEncoder->config.jointmode, analysis);
     int bytes = write_bitstream(hEncoder, bufferSize, outputBuffer);
-
-    /* Remove complexity bias while preserving rate control adjustments */
     hEncoder->aacquantCfg.quality *= complexity_factor;
-
-#ifdef FAAC_DEBUG_ANALYSIS
-    dump_analysis(analysis);
-#endif
-#ifdef FAAC_DEBUG_BITS
-    dump_bits(analysis);
-#endif
-
     return bytes;
 }
 #endif
 
-#ifdef FAAC_DEBUG_ANALYSIS
-static void dump_analysis(frame_analysis_t *analysis)
-{
-    /* placeholder for future instrumentation */
-}
-#endif
-
-#ifdef FAAC_DEBUG_BITS
-static void dump_bits(frame_analysis_t *analysis)
-{
-    /* placeholder for future instrumentation */
-}
-#endif
-
-int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
-                          int32_t *inputBuffer,
-                          unsigned int samplesInput,
-                          unsigned char *outputBuffer,
-                          unsigned int bufferSize
-                          )
+int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigned int samplesInput, unsigned char *outputBuffer, unsigned int bufferSize)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
-    int frameBytes;
-
-    /* local copy's of parameters */
-    ChannelInfo *channelInfo = hEncoder->channelInfo;
-    unsigned int numChannels = hEncoder->numChannels;
-    unsigned int useLfe = hEncoder->config.useLfe;
-
-    /* Increase frame number */
+    int frameBytes = 0;
     hEncoder->frameNum++;
-
-    if (samplesInput == 0)
-        hEncoder->flushFrame++;
-
-    /* After 4 flush frames all samples have been encoded,
-       return 0 bytes written */
-    if (hEncoder->flushFrame > 4)
-        return 0;
-
-    /* Determine the channel configuration */
-    GetChannelInfo(channelInfo, numChannels, useLfe);
-
-    /* Update current sample buffers */
-    for (channel = 0; channel < numChannels; channel++)
-	{
+    if (samplesInput == 0) hEncoder->flushFrame++;
+    if (hEncoder->flushFrame > 4) return 0;
+    GetChannelInfo(hEncoder->channelInfo, hEncoder->numChannels, hEncoder->config.useLfe);
+    for (channel = 0; channel < hEncoder->numChannels; channel++) {
 		faac_real *tmp;
-
-
-		if (!hEncoder->sampleBuff[channel])
-			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
-
+		if (!hEncoder->sampleBuff[channel]) hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 		tmp = hEncoder->sampleBuff[channel];
-
-		hEncoder->sampleBuff[channel]	= hEncoder->next3SampleBuff[channel];
-		hEncoder->next3SampleBuff[channel]	= tmp;
-
-        if (samplesInput == 0)
-        {
-            /* start flushing*/
-            for (i = 0; i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
-        }
-        else
-        {
-			int samples_per_channel = samplesInput/numChannels;
-
-            /* handle the various input formats and channel remapping */
-            switch( hEncoder->config.inputFormat )
-			{
-                case FAAC_INPUT_16BIT:
-					{
+		hEncoder->sampleBuff[channel] = hEncoder->next3SampleBuff[channel];
+		hEncoder->next3SampleBuff[channel] = tmp;
+        if (samplesInput == 0) {
+            for (i = 0; i < FRAME_LEN; i++) hEncoder->next3SampleBuff[channel][i] = 0.0;
+        } else {
+			int samples_per_channel = samplesInput/hEncoder->numChannels;
+            switch( hEncoder->config.inputFormat ) {
+                case FAAC_INPUT_16BIT: {
 						short *input_channel = (short*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
-							input_channel += numChannels;
+							input_channel += hEncoder->numChannels;
 						}
-					}
-                    break;
-
-                case FAAC_INPUT_32BIT:
-					{
+                    } break;
+                case FAAC_INPUT_32BIT: {
 						int32_t *input_channel = (int32_t*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (1.0/256) * (faac_real)*input_channel;
-							input_channel += numChannels;
+							input_channel += hEncoder->numChannels;
 						}
-					}
-                    break;
-
-                case FAAC_INPUT_FLOAT:
-					{
+                    } break;
+                case FAAC_INPUT_FLOAT: {
 						float *input_channel = (float*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
-							input_channel += numChannels;
+							input_channel += hEncoder->numChannels;
 						}
-					}
-                    break;
-
-                default:
-                    return -1; /* invalid input format */
-                    break;
+                    } break;
+                default: return -1;
             }
-
-            for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
+            for (i = (int)(samplesInput/hEncoder->numChannels); i < FRAME_LEN; i++) hEncoder->next3SampleBuff[channel][i] = 0.0;
 		}
     }
 
 #ifdef DRM
     {
-        unsigned int useTns = hEncoder->config.useTns;
-        unsigned int jointmode = hEncoder->config.jointmode;
-        unsigned int bandWidth = hEncoder->config.bandWidth;
-        unsigned int shortctl = hEncoder->config.shortctl;
         frame_analysis_t analysis;
         int diff = 1;
-
         memset(&analysis, 0, sizeof(frame_analysis_t));
-
-        analysis_update(hEncoder, bandWidth, &analysis);
-
-        if (hEncoder->frameNum <= 3) {
-            return 0;
-        }
-
+        analysis_update(hEncoder, hEncoder->config.bandWidth, &analysis);
+        if (hEncoder->frameNum <= 3) return 0;
         compute_masking(hEncoder, &analysis);
-
-        /* Behavioral hooks (Phase 2) - Part A: Before MDCT */
         detect_transient_pre(hEncoder);
-
-        analysis_finish(hEncoder, useTns, shortctl, &analysis);
-
+        analysis_finish(hEncoder, hEncoder->config.useTns, hEncoder->config.shortctl, &analysis);
         fix_cpe_max_sfb(hEncoder);
-
-        /* Behavioral hooks (Phase 2) - Part B: After MDCT */
         detect_transient_post(&analysis, hEncoder);
         apply_tonality_mask(&analysis, hEncoder);
         limit_hf(&analysis, hEncoder);
-        /* adjust_reservoir is skipped for DRM as it has its own iterative rate control */
-
-        AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, hEncoder->numChannels,
-                  (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
-        /* DRM loop: iteratively adjust quality via quantization and bitstream writing */
-        hEncoder->aacquantCfg.quality = 120; /* init quality setting */
         while (diff > 0) {
             quantize_bands_internal(hEncoder);
-
-            /* Write the AAC bitstream */
             BitStream *bitStream = OpenBitStream(bufferSize, outputBuffer);
             WriteBitstream(hEncoder, hEncoder->coderInfo, hEncoder->channelInfo, bitStream, hEncoder->numChannels);
-
-            /* Close the bitstream and return the number of bytes written */
             frameBytes = CloseBitStream(bitStream);
-
-            /* now calculate desired bits and compare with actual encoded bits */
-            int desbits = (int) ((faac_real) hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-                    / hEncoder->sampleRate);
-
-            diff = ((frameBytes - 1 /* CRC */) * 8) - desbits;
-
-            /* do linear correction according to relative difference */
-            faac_real fix = (faac_real) desbits / ((frameBytes - 1 /* CRC */) * 8);
-
-            /* speed up convergence. A value of 0.92 gives approx up to 10 iterations */
-            if (fix > 0.92)
-                fix = 0.92;
-
+            int desbits = (int) ((faac_real) hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate);
+            diff = ((frameBytes - 1) * 8) - desbits;
+            faac_real fix = (faac_real) desbits / ((frameBytes - 1) * 8);
+            if (fix > 0.92) fix = 0.92;
             hEncoder->aacquantCfg.quality *= fix;
-
-            /* quality should not go lower than 1, set diff to exit loop */
-            if (hEncoder->aacquantCfg.quality <= 1)
-                diff = -1;
+            if (hEncoder->aacquantCfg.quality <= 1) diff = -1;
         }
     }
 #else
@@ -989,221 +738,39 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         frameBytes = encode_frame(hEncoder, bufferSize, outputBuffer, &analysis);
     }
 #endif
-
     return frameBytes;
 }
 
-
 #ifdef DRM
-/* Scalefactorband data table for 960 transform length */
-/* all parameters which are different from the 1024 transform length table are
-   marked with an "x" */
-static SR_INFO srInfo[12+1] =
-{
-    { 96000, 40/*x*/, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28,
-            36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 0/*x*/
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28/*x*/
-        }
-    }, { 88200, 40/*x*/, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28,
-            36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 0/*x*/
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28/*x*/
-        }
-    }, { 64000, 45/*x*/, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 12, 12, 12, 16, 16, 16, 20, 24, 24, 28,
-            36, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
-            40, 40, 40, 16/*x*/, 0/*x*/
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28/*x*/
-        }
-    }, { 48000, 49, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32/*x*/
-        }, {
-            4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 12, 16, 16, 8/*x*/
-        }
-    }, { 44100, 49, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32/*x*/
-        }, {
-            4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 12, 16, 16, 8/*x*/
-        }
-    }, { 32000, 49/*x*/, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28,
-            28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 0/*x*/, 0/*x*/
-        },{
-            4,  4,  4,  4,  4,  8,  8,  8,  12, 12, 12, 16, 16, 16
-        }
-    }, { 24000, 46/*x*/, 15,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32,
-            36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 0/*x*/
-        }, {
-            4,  4,  4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 16, 16, 12/*x*/
-        }
-    }, { 22050, 46/*x*/, 15,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32,
-            36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 0/*x*/
-        }, {
-            4,  4,  4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 16, 16, 12/*x*/
-        }
-    }, { 16000, 42/*x*/, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0/*x*/
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12/*x*/
-        }
-    }, { 12000, 42/*x*/, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0/*x*/
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12/*x*/
-        }
-    }, { 11025, 42/*x*/, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0/*x*/
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12/*x*/
-        }
-    }, { 8000, 40, 15,
-        {
-            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16,
-            16, 16, 16, 16, 16, 16, 20, 20, 20, 20, 24, 24, 24, 28,
-            28, 32, 36, 36, 40, 44, 48, 52, 56, 60, 64, 16/*x*/
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 12/*x*/
-        }
-    },
+static SR_INFO srInfo[12+1] = {
+    { 96000, 40, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28, 36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28 } },
+    { 88200, 40, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28, 36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28 } },
+    { 64000, 45, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 12, 12, 16, 16, 16, 20, 24, 24, 28, 36, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 16, 0 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28 } },
+    { 48000, 49, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 8 } },
+    { 44100, 49, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 8 } },
+    { 32000, 49, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0, 0 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 16 } },
+    { 24000, 46, 15, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 16, 16, 12 } },
+    { 22050, 46, 15, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 16, 16, 12 } },
+    { 16000, 42, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12 } },
+    { 12000, 42, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12 } },
+    { 11025, 42, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 0 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 12 } },
+    { 8000, 40, 15, { 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 20, 20, 20, 20, 24, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 56, 60, 64, 16 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 12 } },
     { -1 }
 };
 #else
-/* Scalefactorband data table for 1024 transform length */
-static SR_INFO srInfo[12+1] =
-{
-    { 96000, 41, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28,
-            36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 36
-        }
-    }, { 88200, 41, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28,
-            36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 36
-        }
-    }, { 64000, 47, 12,
-        {
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            8, 8, 8, 8, 12, 12, 12, 16, 16, 16, 20, 24, 24, 28,
-            36, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
-            40, 40, 40, 40, 40
-        },{
-            4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 32
-        }
-    }, { 48000, 49, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 96
-        }, {
-            4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 12, 16, 16, 16
-        }
-    }, { 44100, 49, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 96
-        }, {
-            4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 12, 16, 16, 16
-        }
-    }, { 32000, 51, 14,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28,
-            28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
-            32, 32, 32, 32, 32, 32, 32, 32, 32
-        },{
-            4,  4,  4,  4,  4,  8,  8,  8,  12, 12, 12, 16, 16, 16
-        }
-    }, { 24000, 47, 15,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32,
-            36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 64
-        }, {
-            4,  4,  4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 16, 16, 20
-        }
-    }, { 22050, 47, 15,
-        {
-            4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  8,  8,  8,  8,  8,  8,  8,
-            8,  8,  8,  12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32,
-            36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 64
-        }, {
-            4,  4,  4,  4,  4,  4,  4,  8,  8,  8, 12, 12, 16, 16, 20
-        }
-    }, { 16000, 43, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20
-        }
-    }, { 12000, 43, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20
-        }
-    }, { 11025, 43, 15,
-        {
-            8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12,
-            12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24,
-            24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20
-        }
-    }, { 8000, 40, 15,
-        {
-            12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16,
-            16, 16, 16, 16, 16, 16, 20, 20, 20, 20, 24, 24, 24, 28,
-            28, 32, 36, 36, 40, 44, 48, 52, 56, 60, 64, 80
-        }, {
-            4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 20
-        }
-    },
+static SR_INFO srInfo[12+1] = {
+    { 96000, 41, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28, 36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 36 } },
+    { 88200, 41, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28, 36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 36 } },
+    { 64000, 47, 12, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 12, 12, 16, 16, 16, 20, 24, 24, 28, 36, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40 }, { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 32 } },
+    { 48000, 49, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 96 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 16 } },
+    { 44100, 49, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 96 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 16 } },
+    { 32000, 51, 14, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 20, 20, 24, 24, 28, 28, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32 }, { 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 12, 16, 16, 16 } },
+    { 24000, 47, 15, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 16, 16, 20 } },
+    { 22050, 47, 15, { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 16, 16, 16, 20, 20, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 52, 64, 64, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 12, 12, 16, 16, 20 } },
+    { 16000, 43, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20 } },
+    { 12000, 43, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20 } },
+    { 11025, 43, 15, { 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 20, 20, 20, 24, 24, 28, 28, 32, 36, 40, 40, 44, 48, 52, 56, 60, 64, 64, 64 }, { 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 12, 12, 16, 20, 20 } },
+    { 8000, 40, 15, { 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 16, 16, 16, 16, 16, 16, 16, 20, 20, 20, 20, 24, 24, 24, 28, 28, 32, 36, 36, 40, 44, 48, 52, 56, 60, 64, 80 }, { 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 20 } },
     { -1 }
 };
 #endif
