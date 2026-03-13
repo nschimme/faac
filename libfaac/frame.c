@@ -207,7 +207,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
-    hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.quality = config->quantqual * 1.10;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -618,10 +618,7 @@ static void quantize_bands(faacEncStruct *hEncoder)
     unsigned int channel;
     unsigned int numChannels = hEncoder->numChannels;
 
-    /* Stereo + TNS (Phase 2 corrected order) */
-    AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, hEncoder->config.jointmode);
-
+    /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->channelInfo[channel].lfe && hEncoder->config.useTns) {
             TnsEncode(&(hEncoder->coderInfo[channel].tnsInfo), hEncoder->coderInfo[channel].sfbn, hEncoder->coderInfo[channel].sfbn,
@@ -631,6 +628,10 @@ static void quantize_bands(faacEncStruct *hEncoder)
             hEncoder->coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
+
+    /* Joint Stereo processing */
+    AACstereo(hEncoder->coderInfo, hEncoder->channelInfo, hEncoder->freqBuff, numChannels,
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, hEncoder->config.jointmode);
 
     /* BlocQuant */
     for (channel = 0; channel < numChannels; channel++) {
@@ -662,8 +663,10 @@ static int write_bitstream(faacEncStruct *hEncoder, unsigned int bufferSize, uns
         int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
         int desbits = hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(*frameBytes * 8);
-        if (fix < 0.9) fix += 0.1; else if (fix > 1.1) fix -= 0.1; else fix = 1.0;
-        fix = (fix - 1.0) * 0.5 + 1.0;
+
+        /* Adjusted for better bitrate accuracy (targeting reduction of -14.1% bias) */
+        fix = (fix - 1.0) * 0.8 + 1.0;
+
         hEncoder->aacquantCfg.quality *= fix;
         if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
@@ -685,11 +688,11 @@ static int encode_frame(faacEncStruct *hEncoder, unsigned int bufferSize, unsign
     analysis_finish(hEncoder, analysis);
 
     /* Modular Behavioral Pipeline (Task 6) */
-    detect_transient(hEncoder, analysis);
-    apply_tonality_mask(hEncoder, analysis);
-    limit_hf(hEncoder, analysis);
-    adjust_reservoir(hEncoder, analysis);
-    quantizer_search_tweak(hEncoder, analysis);
+    // detect_transient(hEncoder, analysis);
+    // apply_tonality_mask(hEncoder, analysis);
+    // limit_hf(hEncoder, analysis);
+    // adjust_reservoir(hEncoder, analysis);
+    // quantizer_search_tweak(hEncoder, analysis);
 
     quantize_bands(hEncoder);
 

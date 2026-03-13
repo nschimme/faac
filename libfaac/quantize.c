@@ -265,66 +265,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int total_points = gsize * end;
       if (total_points > 1024) total_points = 1024;
 
-      /* Local RD Search */
-      int best_sfac = sfac;
-      int best_bnum = huff_find_best_book(xitab, total_points);
-
-      if (best_bnum > 0 && best_bnum <= 11) {
-          const faac_real LAMBDA = 10.0;
-          faac_real best_cost = 0;
-
-          /* Calculate best_cost for original sfac */
-          for (win = 0; win < gsize; win++) {
-              xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              for (int i = 0; i < end; i++) {
-                  faac_real x = FAAC_FABS(xr[i]);
-                  int q = xitab[win * end + i];
-                  if (q < 0) q = -q;
-                  if (q > 8191) q = 8191;
-                  faac_real x_q = pow43_lookup[q] / sfacfix;
-                  faac_real err = x - x_q;
-                  best_cost += err * err;
-              }
-          }
-          best_cost += LAMBDA * (faac_real)huff_count_bits(xitab, total_points, best_bnum);
-
-          /* Trial sfac + 1 */
-          int trial_sfac = sfac + 1;
-          if (trial_sfac < 150) {
-              faac_real trial_sfacfix = FAAC_POW(10, trial_sfac / sfstep);
-              int txi[1024];
-              int *ptxi = txi;
-              for (win = 0; win < gsize; win++) {
-                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  qfunc(xr, ptxi, end, trial_sfacfix);
-                  ptxi += end;
-              }
-              int trial_bnum = huff_find_best_book(txi, total_points);
-              faac_real cost = 0;
-              for (win = 0; win < gsize; win++) {
-                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                  for (int i = 0; i < end; i++) {
-                      faac_real x = FAAC_FABS(xr[i]);
-                      int q = txi[win * end + i];
-                      if (q < 0) q = -q;
-                      if (q > 8191) q = 8191;
-                      faac_real x_q = pow43_lookup[q] / trial_sfacfix;
-                      faac_real err = x - x_q;
-                      cost += err * err;
-                  }
-              }
-              cost += LAMBDA * (faac_real)huff_count_bits(txi, total_points, trial_bnum);
-
-              if (cost < best_cost) {
-                  best_sfac = trial_sfac;
-                  memcpy(xitab, txi, total_points * sizeof(int));
-              }
-          }
-      }
-
       huffbook(coderInfo, xitab, total_points);
       int current_sf = coderInfo->sf[coderInfo->bandcnt];
-      int delta_sf = (SF_OFFSET - best_sfac);
+      int delta_sf = (SF_OFFSET - sfac);
       int new_sf = current_sf + delta_sf;
       if (new_sf < 0) new_sf = 0;
       if (new_sf > 255) new_sf = 255;
