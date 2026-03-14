@@ -41,6 +41,7 @@ typedef struct
   faac_real prev_mag[512];
   int short_block_counter;
   int calm_frame_counter;
+  int consecutive_short_counter;
   faac_real last_subwindow_energy;
   int is_first_frame;
   faac_real lookahead_score;
@@ -61,19 +62,24 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   faac_real score = psydata->lookahead_score;
 
-  /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
-  /* Threshold adjusted for quality to avoid bit starvation at low bitrates.
-     Use a milder curve to balance speech quality.
+  /* Step 5: Bitrate-aware Threshold Scaling */
+  /* quality 1.0 roughly corresponds to 128 kbps aggregate (64kbps/ch)
+     Scaling thresholds based on user recommendation:
+     - < 96k: +0.05
+     - < 64k: +0.10
+     - < 48k: +0.15
    */
-  faac_real dynamic_threshold = 0.6; /* Base threshold for music */
-  if (quality < 0.6)
-    dynamic_threshold += 0.8 * (0.6 - quality); /* Bitrate-aware scaling */
+  faac_real threshold = 0.55;
+  if (quality < 0.75) threshold += 0.05;
+  if (quality < 0.50) threshold += 0.10;
+  if (quality < 0.375) threshold += 0.15;
 
-  int transient_detected = (score > dynamic_threshold);
+  int transient_detected = (score > threshold);
 
+  /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
   if (transient_detected)
   {
-    psydata->short_block_counter = 2;
+    psydata->short_block_counter = 3; /* Detection frame + 2 forced = 3 total */
     psydata->calm_frame_counter = 0;
   }
   else
@@ -81,20 +87,38 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
     psydata->calm_frame_counter += 1;
   }
 
+  int use_short = 0;
   if (psydata->short_block_counter > 0)
   {
-    psyInfo->block_type = ONLY_SHORT_WINDOW;
+    use_short = 1;
     psydata->short_block_counter -= 1;
   }
   else if (psydata->calm_frame_counter >= 2)
   {
-    psyInfo->block_type = ONLY_LONG_WINDOW;
+    use_short = 0;
   }
   else
   {
       /* Require two consecutive calm frames before switching back to long blocks */
-      psyInfo->block_type = ONLY_SHORT_WINDOW;
+      use_short = 1;
   }
+
+  /* Safety Safeguard: Force return to long after 6 frames unless strong transient */
+  if (use_short)
+  {
+      psydata->consecutive_short_counter++;
+      if (psydata->consecutive_short_counter > 6 && score < (threshold + 0.2))
+      {
+          use_short = 0;
+          psydata->consecutive_short_counter = 0;
+      }
+  }
+  else
+  {
+      psydata->consecutive_short_counter = 0;
+  }
+
+  psyInfo->block_type = use_short ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 
 #if PRINTSTAT
   frames.tot++;
@@ -264,13 +288,11 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   const int is_first = psydata->is_first_frame;
   faac_real current_mag[512];
 
-  /* energy_feature should be 0 for steady-state (ratio=1.0) */
-  faac_real energy_feature = (max_energy_ratio - 1.5) * (1.0 / 1.5);
-  if (energy_feature < 0.0) energy_feature = 0.0;
+  faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
   if (energy_feature > 1.0) energy_feature = 1.0;
 
   /* Early exit for stationary frames to save power/CPU */
-  if (energy_feature < 0.05 && psydata->short_block_counter == 0 && !is_first)
+  if (max_energy_ratio < 1.1 && psydata->short_block_counter == 0 && !is_first)
   {
       psydata->lookahead_score = 0.0;
       /* Do NOT zero prev_mag here as it would cause a false transient in the next frame.
@@ -332,11 +354,11 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
   faac_real normalized_flux = flux / (sum_mag + eps);
 
-  /* Step 3: Combine Detectors using quadratic mean for better trigger separation */
-  faac_real score = FAAC_SQRT(0.7 * energy_feature * energy_feature + 0.3 * normalized_flux * normalized_flux);
+  /* Step 3: Combine Detectors */
+  faac_real score = 0.6 * energy_feature + 0.4 * normalized_flux;
 
-  /* Step 4: Tonality Protection - only compute if score is potentially triggering */
-  if (score > 0.4 && sum_mag > eps)
+  /* Step 4: Noise Suppression (using SFM) */
+  if (sum_mag > eps)
   {
     faac_real sum_log_mag = 0.0;
     for (i = 0; i <= bin_limit; i++)
@@ -345,17 +367,12 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
     faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
     faac_real arith_mean = sum_mag * inv_n;
-    /* tonality = geometric_mean / arithmetic_mean (SFM)
-       SFM -> 0.0 for pure tones, 1.0 for noise
-     */
-    faac_real tonality = geom_mean / (arith_mean + log_eps);
+    /* SFM -> 0.0 for pure tones, 1.0 for noise */
+    faac_real sfm = geom_mean / (arith_mean + log_eps);
 
-    /* Step 4: Tonality Protection.
-       If signal is highly tonal (SFM < 0.2), suppress transient detection
-       to avoid false triggers on sustained tones.
-     */
-    if (tonality < 0.2)
-        score *= (tonality * 5.0); /* 0.0..1.0 multiplier */
+    /* if SFM > 0.6 (noise), reduce transient score */
+    if (sfm > 0.6)
+        score *= 0.75;
   }
 
   if (is_first) score = 0.0;
