@@ -29,6 +29,7 @@
 #include "bitstream.h"
 #include "filtbank.h"
 #include "util.h"
+#include "huff2.h"
 #include "tns.h"
 #include "stereo.h"
 
@@ -389,14 +390,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++)
     {
-        memset(hEncoder->coderInfo[channel].sf, 0, sizeof(int) * MAX_SCFAC_BANDS);
-        memset(hEncoder->coderInfo[channel].book, 0, sizeof(int) * MAX_SCFAC_BANDS);
+        int b;
+        for (b = 0; b < MAX_SCFAC_BANDS; b++) {
+            hEncoder->coderInfo[channel].book[b] = HCB_NONE;
+            hEncoder->coderInfo[channel].sf[b] = 0;
+        }
     }
 
     /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
+
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));

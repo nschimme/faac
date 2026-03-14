@@ -76,11 +76,14 @@ typedef struct {
     PsyInfo psyInfo[MAX_CHANNELS];
     GlobalPsyInfo gpsyInfo;
 
-    /* Configuration data */
-    faacEncConfiguration config;
-
     int reservoirBits;
     int maxReservoirBits;
+
+    int quantXi[MAX_CHANNELS][BLOCK_LEN_LONG];
+    int quantXiCand[MAX_CHANNELS][BLOCK_LEN_LONG];
+
+    /* Configuration data */
+    faacEncConfiguration config;
 
     psymodel_t *psymodel;
 
