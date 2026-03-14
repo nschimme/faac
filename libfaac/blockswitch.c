@@ -236,86 +236,106 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 }
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    faac_real *newSamples, unsigned int bandwidth,
+			    faac_real * __restrict newSamples, unsigned int bandwidth,
 			    int *cb_width_short, int num_cb_short)
 {
   int win, i;
-  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  psydata_t * __restrict psydata = (psydata_t *)psyInfo->data;
+  const faac_real * __restrict win1024 = gpsyInfo->hannWindow1024;
+  const faac_real eps = (faac_real)1e-9;
+  const faac_real log_eps = (faac_real)1e-12;
 
   /* Step 1: Subwindow Energy Analysis */
   faac_real max_energy_ratio = 0.0;
   faac_real prev_e = psydata->last_subwindow_energy;
+  const faac_real * __restrict s_ptr = newSamples;
 
   for (win = 0; win < 8; win++)
   {
     faac_real e = 0.0;
     for (i = 0; i < 128; i++)
     {
-      faac_real s = newSamples[win * 128 + i];
+      faac_real s = *s_ptr++;
       e += s * s;
     }
     if (win == 0 && psydata->is_first_frame) prev_e = e;
 
-    faac_real ratio = e / (prev_e + 1e-9);
+    faac_real ratio = e / (prev_e + eps);
     if (ratio > max_energy_ratio) max_energy_ratio = ratio;
     prev_e = e;
   }
   psydata->last_subwindow_energy = prev_e; /* Energy of win 7 */
 
-  faac_real energy_feature = max_energy_ratio / 3.0;
+  faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
   if (energy_feature > 1.0) energy_feature = 1.0;
 
-  /* Step 2: Spectral Flux */
+  /* Step 2: Spectral Flux & Step 4: Tonality (Single spectral pass) */
   faac_real fft_buf[1024];
-  memcpy(fft_buf, newSamples, 1024 * sizeof(faac_real));
   for (i = 0; i < 1024; i++)
-    fft_buf[i] *= gpsyInfo->hannWindow1024[i];
+    fft_buf[i] = newSamples[i] * win1024[i];
 
   rfft(fft_tables, fft_buf, 10);
 
   faac_real current_mag[512];
   faac_real sum_mag = 0.0;
   faac_real flux = 0.0;
+  faac_real sum_log_mag = 0.0;
 
-  current_mag[0] = FAAC_FABS(fft_buf[0]);
-  for (i = 1; i < 512; i++)
-  {
-    current_mag[i] = FAAC_SQRT(fft_buf[i] * fft_buf[i] + fft_buf[i + 512] * fft_buf[i + 512]);
-  }
-
-  int bin_limit = (int)FAAC_FLOOR(bandwidth / (gpsyInfo->sampleRate / 1024.0));
+  /* Invariant hoisted */
+  const faac_real bin_width = gpsyInfo->sampleRate * (1.0 / 1024.0);
+  int bin_limit = (int)FAAC_FLOOR(bandwidth / bin_width);
   if (bin_limit > 511) bin_limit = 511;
 
-  for (i = 0; i <= bin_limit; i++)
+  const faac_real * __restrict prev_mag = psydata->prev_mag;
+  const int is_first = psydata->is_first_frame;
+
+  /* Optimized spectral pass */
+  current_mag[0] = FAAC_FABS(fft_buf[0]);
+  sum_mag = current_mag[0];
+  sum_log_mag = FAAC_LOG(current_mag[0] + log_eps);
+  if (!is_first) {
+      faac_real diff = current_mag[0] - prev_mag[0];
+      if (diff > 0) flux = diff;
+  }
+
+  for (i = 1; i <= bin_limit; i++)
   {
-    sum_mag += current_mag[i];
-    if (!psydata->is_first_frame)
+    faac_real re = fft_buf[i];
+    faac_real im = fft_buf[i + 512];
+    faac_real mag = FAAC_SQRT(re * re + im * im);
+    current_mag[i] = mag;
+    sum_mag += mag;
+    sum_log_mag += FAAC_LOG(mag + log_eps);
+    if (!is_first)
     {
-      faac_real diff = current_mag[i] - psydata->prev_mag[i];
+      faac_real diff = mag - prev_mag[i];
       if (diff > 0) flux += diff;
     }
   }
-  faac_real normalized_flux = flux / (sum_mag + 1e-9);
+  /* Fill rest of current_mag for state update if bin_limit < 511 */
+  for (; i < 512; i++) {
+    faac_real re = fft_buf[i];
+    faac_real im = fft_buf[i + 512];
+    current_mag[i] = FAAC_SQRT(re * re + im * im);
+  }
+
+  faac_real normalized_flux = flux / (sum_mag + eps);
 
   /* Step 4: Tonality Protection */
   faac_real tonality = 1.0;
-  if (sum_mag > 1e-9)
+  if (sum_mag > eps)
   {
-    faac_real sum_log_mag = 0.0;
-    for (i = 0; i <= bin_limit; i++)
-    {
-      sum_log_mag += FAAC_LOG(current_mag[i] + (faac_real)1e-12);
-    }
-    faac_real geom_mean = FAAC_EXP(sum_log_mag / (faac_real)(bin_limit + 1));
-    faac_real arith_mean = sum_mag / (faac_real)(bin_limit + 1);
-    tonality = geom_mean / (arith_mean + 1e-12);
+    faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
+    faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
+    faac_real arith_mean = sum_mag * inv_n;
+    tonality = geom_mean / (arith_mean + log_eps);
   }
 
   /* Step 3: Combine Detectors */
   faac_real score = 0.6 * energy_feature + 0.4 * normalized_flux;
   if (tonality < 0.2) score *= 0.7;
 
-  if (psydata->is_first_frame) score = 0.0;
+  if (is_first) score = 0.0;
 
   /* Store for PsyCheckShort (immediate lookahead) */
   psydata->lookahead_score = score;
