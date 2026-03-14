@@ -271,7 +271,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               }
           }
 
-          // Distortion
+          // Fused Distortion and maxq pass
           faac_real i_sfacfix = (cand_sfacfix > 0) ? 1.0 / cand_sfacfix : 0;
           for (win = 0; win < gsize; win++)
           {
@@ -279,58 +279,63 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               const int * __restrict xi = cand_xi + win * width;
               for (i = 0; i < width; i++)
               {
-                  int q_val = xi[i];
-                  int q_idx = abs(q_val);
+                  int q_idx = abs(xi[i]);
                   faac_real xr_q;
+
                   if (q_idx < 8192)
                       xr_q = pow43_lookup[q_idx] * i_sfacfix;
                   else
                       xr_q = FAAC_POW((faac_real)q_idx, 4.0/3.0) * i_sfacfix;
 
-                  if (q_val < 0) xr_q = -xr_q;
+                  if (xi[i] < 0) xr_q = -xr_q;
                   faac_real err = xr[i] - xr_q;
                   cand_dist += err * err;
                   if (q_idx > maxq) maxq = q_idx;
               }
           }
 
-          // Bits
-          if (maxq == 0) cand_book = HCB_ZERO;
-          else if (maxq < 2) cand_book = 1;
-          else if (maxq < 3) cand_book = 3;
-          else if (maxq < 5) cand_book = 5;
-          else if (maxq < 8) cand_book = 7;
-          else if (maxq < 13) cand_book = 9;
-          else cand_book = HCB_ESC;
+          faac_real err_weight = 1.0 / (bandqual[sb] * bandqual[sb] * gsize * width + 1e-15);
+          faac_real dist_cost = cand_dist * err_weight;
 
-          if (cand_book != HCB_ZERO)
+          // Pruning: skip bit counting if distortion alone exceeds best known cost
+          if (dist_cost < best_cost)
           {
-              cand_bits = huff_count_bits(cand_xi, gsize * width, cand_book);
-              if (cand_book < 11 && (cand_book & 1))
+              // Bits estimation
+              if (maxq == 0) cand_book = HCB_ZERO;
+              else if (maxq < 2) cand_book = 1;
+              else if (maxq < 3) cand_book = 3;
+              else if (maxq < 5) cand_book = 5;
+              else if (maxq < 8) cand_book = 7;
+              else if (maxq < 13) cand_book = 9;
+              else cand_book = HCB_ESC;
+
+              if (cand_book != HCB_ZERO)
               {
-                  int bnext_bits = huff_count_bits(cand_xi, gsize * width, cand_book + 1);
-                  if (bnext_bits < cand_bits)
+                  cand_bits = huff_count_bits(cand_xi, gsize * width, cand_book);
+                  if (cand_book < 11 && (cand_book & 1))
                   {
-                      cand_bits = bnext_bits;
-                      cand_book++;
+                      int bnext_bits = huff_count_bits(cand_xi, gsize * width, cand_book + 1);
+                      if (bnext_bits < cand_bits)
+                      {
+                          cand_bits = bnext_bits;
+                          cand_book++;
+                      }
                   }
               }
-          }
 
-          faac_real cost;
-          if (cand_bits < 0 || maxq >= 8192)
-              cost = 1e37;
-          else {
-              faac_real err_weight = 1.0 / (bandqual[sb] * bandqual[sb] * gsize * width + 1e-15);
-              cost = cand_dist * err_weight + lambda * (faac_real)cand_bits;
-          }
+              faac_real cost;
+              if (cand_bits < 0 || maxq >= 8192)
+                  cost = 1e37;
+              else
+                  cost = dist_cost + lambda * (faac_real)cand_bits;
 
-          if (cost < best_cost)
-          {
-              best_cost = cost;
-              best_sf = cand_sf;
-              best_book = cand_book;
-              memcpy(best_xi, cand_xi, gsize * width * sizeof(int));
+              if (cost < best_cost)
+              {
+                  best_cost = cost;
+                  best_sf = cand_sf;
+                  best_book = cand_book;
+                  memcpy(best_xi, cand_xi, gsize * width * sizeof(int));
+              }
           }
       }
 

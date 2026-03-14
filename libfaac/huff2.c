@@ -95,8 +95,10 @@ int huffcode(int *qs /* quantized spectrum */,
             if (coder)
             {
                 data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
         }
@@ -133,8 +135,10 @@ int huffcode(int *qs /* quantized spectrum */,
                             data |= 1;
                     }
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
         }
@@ -153,8 +157,10 @@ int huffcode(int *qs /* quantized spectrum */,
             if (coder)
             {
                 data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
         }
@@ -189,8 +195,10 @@ int huffcode(int *qs /* quantized spectrum */,
                             data |= 1;
                     }
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
         }
@@ -225,8 +233,10 @@ int huffcode(int *qs /* quantized spectrum */,
                             data |= 1;
                     }
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
         }
@@ -270,8 +280,10 @@ int huffcode(int *qs /* quantized spectrum */,
                             data |= 1;
                     }
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (datacnt < DATASIZE) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
             }
             bits += blen;
 
@@ -280,8 +292,10 @@ int huffcode(int *qs /* quantized spectrum */,
                 blen = escape(abs(qp[0]), &data);
                 if (coder)
                 {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
+                    if (datacnt < DATASIZE) {
+                        coder->s[datacnt].data = data;
+                        coder->s[datacnt++].len = blen;
+                    }
                 }
                 bits += blen;
             }
@@ -291,8 +305,10 @@ int huffcode(int *qs /* quantized spectrum */,
                 blen = escape(abs(qp[1]), &data);
                 if (coder)
                 {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
+                    if (datacnt < DATASIZE) {
+                        coder->s[datacnt].data = data;
+                        coder->s[datacnt++].len = blen;
+                    }
                 }
                 bits += blen;
             }
