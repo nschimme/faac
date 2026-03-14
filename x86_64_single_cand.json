@@ -1,0 +1,255 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_std_12-German-male-speech.441.16b48k.wav": {
+      "mos": 4.53686,
+      "size": 134717,
+      "bitrate": 137.46376661863187,
+      "bitrate_target": 128,
+      "time": 0.14953875541687012,
+      "md5": "c6a3947b5b74db99735de6ea11a6006f",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    },
+    "music_std_Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "mos": 4.58154,
+      "size": 158321,
+      "bitrate": 126.6568,
+      "bitrate_target": 128,
+      "time": 0.17837285995483398,
+      "md5": "c4149e2dba91ff9f80ef6cc16a5b9b05",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "Shinsho_pool_3min45_4min4.16b48k.wav"
+    },
+    "voip_C_04_CHOP_FA.wav": {
+      "mos": 3.13797,
+      "size": 17914,
+      "bitrate": 15.382909526547683,
+      "bitrate_target": 16,
+      "time": 0.03034353256225586,
+      "md5": "34e141d83041a6c2e4f54ba85aca2989",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_04_CHOP_FA.wav"
+    },
+    "voip_C_02_CHOP_FA.wav": {
+      "mos": 3.3246,
+      "size": 16018,
+      "bitrate": 15.198695329873981,
+      "bitrate_target": 16,
+      "time": 0.02828502655029297,
+      "md5": "467aaabb4244b356c92d6c4c3d7b354c",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_02_CHOP_FA.wav"
+    },
+    "voip_C_03_CHOP_FA.wav": {
+      "mos": 3.11003,
+      "size": 17063,
+      "bitrate": 15.329023065629428,
+      "bitrate_target": 16,
+      "time": 0.029611587524414062,
+      "md5": "b867af6edd26790fc3931cea0711ec92",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_03_CHOP_FA.wav"
+    },
+    "voip_C_01_CHOP_FA.wav": {
+      "mos": 3.26528,
+      "size": 16273,
+      "bitrate": 15.053109201759927,
+      "bitrate_target": 16,
+      "time": 0.028870820999145508,
+      "md5": "f69207850ebbe03f9e5fecbcd0c1e7a1",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_FA.wav"
+    },
+    "voip_C_05_CHOP_FA.wav": {
+      "mos": 3.13857,
+      "size": 19812,
+      "bitrate": 15.8496,
+      "bitrate_target": 16,
+      "time": 0.03257465362548828,
+      "md5": "0dff53502532922e954399e97b7724cd",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_05_CHOP_FA.wav"
+    },
+    "voip_C_06_CHOP_FA.wav": {
+      "mos": 2.96657,
+      "size": 17214,
+      "bitrate": 15.277249598078052,
+      "bitrate_target": 16,
+      "time": 0.029017925262451172,
+      "md5": "c5b6713a00903916b043f6a513576ade",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_06_CHOP_FA.wav"
+    },
+    "voip_C_08_CHOP_FA.wav": {
+      "mos": 3.16444,
+      "size": 17163,
+      "bitrate": 15.652864464848943,
+      "bitrate_target": 16,
+      "time": 0.030151844024658203,
+      "md5": "27b956e7973d04d4df29f47eab347ab3",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_08_CHOP_FA.wav"
+    },
+    "voip_C_07_CHOP_FA.wav": {
+      "mos": 3.25605,
+      "size": 17470,
+      "bitrate": 15.266183317631317,
+      "bitrate_target": 16,
+      "time": 0.03043532371520996,
+      "md5": "5c8cb231628616d30e6934d0d17d8520",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_07_CHOP_FA.wav"
+    },
+    "voip_C_09_CHOP_FA.wav": {
+      "mos": 2.99957,
+      "size": 15486,
+      "bitrate": 15.756443597914606,
+      "bitrate_target": 16,
+      "time": 0.027153730392456055,
+      "md5": "3f234fd78874aa6d387dbb0088a13dbf",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_09_CHOP_FA.wav"
+    },
+    "voip_C_10_CHOP_FA.wav": {
+      "mos": 3.26216,
+      "size": 16636,
+      "bitrate": 15.083784319836795,
+      "bitrate_target": 16,
+      "time": 0.029000282287597656,
+      "md5": "9691cafb6094a225f63a61f6a7b80c5d",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_10_CHOP_FA.wav"
+    },
+    "voip_C_11_CHOP_FA.wav": {
+      "mos": 3.28848,
+      "size": 15179,
+      "bitrate": 14.933184844278335,
+      "bitrate_target": 16,
+      "time": 0.027154207229614258,
+      "md5": "52bf31aae3bdce31ea42d7a91b2eda52",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_11_CHOP_FA.wav"
+    },
+    "voip_C_12_CHOP_FA.wav": {
+      "mos": 3.36359,
+      "size": 17293,
+      "bitrate": 15.258703877092124,
+      "bitrate_target": 16,
+      "time": 0.030547380447387695,
+      "md5": "684fdfc0d728ba0677dd3d6ef6920caf",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_12_CHOP_FA.wav"
+    },
+    "voip_C_13_CHOP_FA.wav": {
+      "mos": 3.15286,
+      "size": 17261,
+      "bitrate": 15.306333393374253,
+      "bitrate_target": 16,
+      "time": 0.028937101364135742,
+      "md5": "1de5bc40a65e2fee4b69aa72304a2f7e",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_13_CHOP_FA.wav"
+    },
+    "voip_C_14_CHOP_FA.wav": {
+      "mos": 3.2485,
+      "size": 15039,
+      "bitrate": 15.504996866447247,
+      "bitrate_target": 16,
+      "time": 0.0254364013671875,
+      "md5": "21da08e09f28eee1cf3d5963ed5bba86",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_14_CHOP_FA.wav"
+    },
+    "voip_C_15_CHOP_FA.wav": {
+      "mos": 3.11769,
+      "size": 15562,
+      "bitrate": 15.596116504854368,
+      "bitrate_target": 16,
+      "time": 0.02639150619506836,
+      "md5": "0a8f032da30eb51c74a8a8d26acac6ed",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_15_CHOP_FA.wav"
+    },
+    "voip_C_16_NOISE_FA.wav": {
+      "mos": 2.7995,
+      "size": 17571,
+      "bitrate": 16.20532088997841,
+      "bitrate_target": 16,
+      "time": 0.030428647994995117,
+      "md5": "af98aed457da7f9538662ce0518fb363",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_16_NOISE_FA.wav"
+    },
+    "voip_C_18_ECHO_FA.wav": {
+      "mos": 2.93724,
+      "size": 20869,
+      "bitrate": 16.6952,
+      "bitrate_target": 16,
+      "time": 0.031528472900390625,
+      "md5": "304a296ec038312fa6f6c3438d4221ba",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_18_ECHO_FA.wav"
+    },
+    "voip_C_20_CHOP_FA.wav": {
+      "mos": 3.31081,
+      "size": 17609,
+      "bitrate": 15.37631151678878,
+      "bitrate_target": 16,
+      "time": 0.028908729553222656,
+      "md5": "2fb20ff4965fbdd804735c92382d92d8",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_20_CHOP_FA.wav"
+    },
+    "voip_C_21_NOISE_FA.wav": {
+      "mos": 3.14097,
+      "size": 18188,
+      "bitrate": 15.598627787307032,
+      "bitrate_target": 16,
+      "time": 0.02959752082824707,
+      "md5": "9f805bce763d3dc5d43a063591386d0f",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_21_NOISE_FA.wav"
+    },
+    "voip_C_23_ECHO_FA.wav": {
+      "mos": 3.17843,
+      "size": 16437,
+      "bitrate": 15.419324577861163,
+      "bitrate_target": 16,
+      "time": 0.02756190299987793,
+      "md5": "7671dd7bc3628f06239de448f07faf09",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_23_ECHO_FA.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 11.05518747800003,
+    "silence.wav": 9.415228451000075,
+    "sine.wav": 10.877394740666508,
+    "sweep.wav": 10.065205862666517,
+    "overall": 10.353254133083283
+  },
+  "lib_size": 158936
+}

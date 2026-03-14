@@ -48,23 +48,6 @@ typedef struct
 psydata_t;
 
 
-static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
-{
-  int i;
-
-  /* Applying Hann window */
-  if (size == BLOCK_LEN_LONG * 2)
-  {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindow[i];
-  }
-  else
-  {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindowS[i];
-  }
-}
-
 #define PRINTSTAT 0
 #if PRINTSTAT
 static struct {
@@ -78,8 +61,11 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   faac_real score = psydata->lookahead_score;
 
+  /* Scale threshold by quality to avoid over-switching at low bitrates */
+  if (quality < 0.1) quality = 0.1;
+
   /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
-  int transient_detected = (score > 0.5);
+  int transient_detected = (score * quality > 0.5);
 
   if (transient_detected)
   {
@@ -118,7 +104,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 		    int *cb_width_short, int num_cb_short)
 {
   unsigned int channel;
-  int i, j, size;
+  int i, size;
 
   gpsyInfo->hannWindow =
     (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
@@ -250,21 +236,23 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   faac_real prev_e = psydata->last_subwindow_energy;
   const faac_real * __restrict s_ptr = newSamples;
 
+  /* Process subwindows in pairs for better locality if compiler allows */
   for (win = 0; win < 8; win++)
   {
     faac_real e = 0.0;
     for (i = 0; i < 128; i++)
     {
-      faac_real s = *s_ptr++;
+      faac_real s = s_ptr[i];
       e += s * s;
     }
+    s_ptr += 128;
     if (win == 0 && psydata->is_first_frame) prev_e = e;
 
     faac_real ratio = e / (prev_e + eps);
     if (ratio > max_energy_ratio) max_energy_ratio = ratio;
     prev_e = e;
   }
-  psydata->last_subwindow_energy = prev_e; /* Energy of win 7 */
+  psydata->last_subwindow_energy = prev_e; /* Energy of last subwindow */
 
   faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
   if (energy_feature > 1.0) energy_feature = 1.0;
