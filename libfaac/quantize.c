@@ -206,6 +206,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
+
+      // Fast exit for low energy bands
+      if (etot < 1e-9)
+      {
+          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          continue;
+      }
+
       rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
@@ -234,7 +242,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real lambda = aacquantCfg->lambda;
       int i;
 
-      for (i = 0; i < BLOCK_LEN_LONG; i++) best_xi[i] = 0;
+      memset(best_xi, 0, sizeof(best_xi));
 
       for (int cand_sf = sfac - 1; cand_sf <= sfac + 1; cand_sf++)
       {
@@ -252,7 +260,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
           if (cand_sfacfix <= 0.0)
           {
-              for (i = 0; i < gsize * width; i++) cand_xi[i] = 0;
+              memset(cand_xi, 0, gsize * width * sizeof(int));
           }
           else
           {
@@ -268,9 +276,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
+              const int * __restrict xi = cand_xi + win * width;
               for (i = 0; i < width; i++)
               {
-                  int q_val = cand_xi[win * width + i];
+                  int q_val = xi[i];
                   int q_idx = abs(q_val);
                   faac_real xr_q;
                   if (q_idx < 8192)
@@ -321,7 +330,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               best_cost = cost;
               best_sf = cand_sf;
               best_book = cand_book;
-              for (i = 0; i < gsize * width; i++) best_xi[i] = cand_xi[i];
+              memcpy(best_xi, cand_xi, gsize * width * sizeof(int));
           }
       }
 
