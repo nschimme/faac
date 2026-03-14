@@ -263,7 +263,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_IS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
@@ -540,12 +540,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((!channelInfo[channel].lfe) && (useTns)) {
+            faac_real tnsGainThresh = (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) ?
+                DEF_TNS_GAIN_THRESH_SHORT : DEF_TNS_GAIN_THRESH;
+
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong,
+                      tnsGainThresh);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
