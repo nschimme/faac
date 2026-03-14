@@ -63,11 +63,11 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 
   /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
   /* Threshold adjusted for quality to avoid bit starvation at low bitrates.
-     Use a steeper curve for dynamic thresholding at low qualities.
+     Use a milder curve to balance speech quality.
    */
-  faac_real dynamic_threshold = 0.6;
+  faac_real dynamic_threshold = 0.6; /* Base threshold for music */
   if (quality < 0.6)
-    dynamic_threshold += 0.8 * (0.6 - quality);
+    dynamic_threshold += 0.8 * (0.6 - quality); /* Bitrate-aware scaling */
 
   int transient_detected = (score > dynamic_threshold);
 
@@ -261,19 +261,21 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   }
   psydata->last_subwindow_energy = prev_e; /* Energy of last subwindow */
 
+  const int is_first = psydata->is_first_frame;
+  faac_real current_mag[512];
+
   /* energy_feature should be 0 for steady-state (ratio=1.0) */
   faac_real energy_feature = (max_energy_ratio - 1.5) * (1.0 / 1.5);
   if (energy_feature < 0.0) energy_feature = 0.0;
   if (energy_feature > 1.0) energy_feature = 1.0;
 
-  const int is_first = psydata->is_first_frame;
-  faac_real current_mag[512];
-
   /* Early exit for stationary frames to save power/CPU */
   if (energy_feature < 0.05 && psydata->short_block_counter == 0 && !is_first)
   {
       psydata->lookahead_score = 0.0;
-      memset(current_mag, 0, 512 * sizeof(faac_real)); /* dummy update for consistency */
+      /* Do NOT zero prev_mag here as it would cause a false transient in the next frame.
+         The spectral flux calculation needs a valid baseline.
+       */
       psydata->is_first_frame = 0;
       psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
       return;
@@ -343,11 +345,17 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
     faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
     faac_real arith_mean = sum_mag * inv_n;
-    faac_real tonality_val = geom_mean / (arith_mean + log_eps);
+    /* tonality = geometric_mean / arithmetic_mean (SFM)
+       SFM -> 0.0 for pure tones, 1.0 for noise
+     */
+    faac_real tonality = geom_mean / (arith_mean + log_eps);
 
-    /* Nonlinear tonality suppression: more aggressive for pure tones */
-    if (tonality_val < 0.2)
-        score *= (tonality_val * 5.0); /* 0.0..1.0 multiplier */
+    /* Step 4: Tonality Protection.
+       If signal is highly tonal (SFM < 0.2), suppress transient detection
+       to avoid false triggers on sustained tones.
+     */
+    if (tonality < 0.2)
+        score *= (tonality * 5.0); /* 0.0..1.0 multiplier */
   }
 
   if (is_first) score = 0.0;
