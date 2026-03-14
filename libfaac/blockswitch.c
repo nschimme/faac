@@ -44,6 +44,7 @@ typedef struct
   int consecutive_short_counter;
   faac_real last_subwindow_energy;
   int is_first_frame;
+  int stale_mag;
   faac_real lookahead_score;
 }
 psydata_t;
@@ -62,16 +63,17 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   faac_real score = psydata->lookahead_score;
 
-  /* Step 5: Bitrate-Based Short Block Suppression */
-  /* quality 1.0 roughly corresponds to 128 kbps aggregate (64kbps/ch)
-     Threshold logic from user:
-     - base: 0.55
-     - < 56k (qual < 0.4375): penalty +0.25
-     - < 40k (qual < 0.3125): penalty +0.35
+  /* Step 1: Bitrate-Based Short Block Suppression */
+  /* quality 1.0 corresponds to 128 kbps aggregate.
+     Use tiered penalties to prevent bit starvation at low bitrates.
    */
   faac_real threshold = 0.55;
-  if (quality < 0.4375) threshold += 0.25;
-  if (quality < 0.3125) threshold += 0.35;
+  if (quality < 0.1875)      /* < 24k (VOIP) */
+    threshold += 0.45;
+  else if (quality < 0.3125) /* < 40k (VSS) */
+    threshold += 0.35;
+  else if (quality < 0.4375) /* < 56k */
+    threshold += 0.25;
 
   int transient_detected = (score > threshold);
 
@@ -102,9 +104,9 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       use_short = 1;
   }
 
-  /* Step 5: Maximum Short Block Duration (Safeguard) */
-  /* Limit short block sequences to avoid prolonged inefficiency.
-     If > 4 frames and no strong transient, force return to long.
+  /* Step 3: Maximum Short Block Duration (Safeguard) */
+  /* Limit short block sequences to 4 frames unless a strong transient occurs.
+     If safeguard triggers, clear short_block_counter to stop the sequence.
    */
   if (use_short)
   {
@@ -113,6 +115,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       {
           use_short = 0;
           psydata->consecutive_short_counter = 0;
+          psydata->short_block_counter = 0;
       }
   }
   else
@@ -288,21 +291,22 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   psydata->last_subwindow_energy = prev_e; /* Energy of last subwindow */
 
   const int is_first = psydata->is_first_frame;
-  faac_real current_mag[512];
-
-  faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
-  if (energy_feature > 1.0) energy_feature = 1.0;
 
   /* Step 2: Energy Pre-Gate (CPU Optimization) */
   /* Most frames do not contain transients. skip spectral flux if energy ratio is low. */
   if (max_energy_ratio < 1.6 && psydata->short_block_counter == 0 && !is_first)
   {
       psydata->lookahead_score = 0.0;
-      /* Do NOT zero prev_mag here as it would cause a false transient in the next frame. */
+      /* Mark previous magnitude as stale so next flux calculation is relative to 0 */
+      psydata->stale_mag = 1;
       psydata->is_first_frame = 0;
       psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
       return;
   }
+
+  faac_real current_mag[512];
+  faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
+  if (energy_feature > 1.0) energy_feature = 1.0;
 
   /* Step 2: Spectral Flux & Step 4: Tonality (Single spectral pass) */
   faac_real fft_buf[1024];
@@ -320,19 +324,17 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   if (bin_limit > 511) bin_limit = 511;
 
   const faac_real * __restrict prev_mag = psydata->prev_mag;
+  const int skip_flux = (is_first || psydata->stale_mag);
 
   /* Optimized spectral pass.
      rfft layout in libfaac/fft.c:
      xr contains the real parts [0..1023]
-     rfft calls fft with zeroed xi, then:
-     memcpy(xr + 512, xi, 512) copies the first 512 imaginary bins into the second half of xr.
-     Bins 0 and 512 (RN/2) have no imaginary part for real FFT.
-     Actually, index 512 in xr would be the imaginary part of bin 0 (which is 0).
-     Let's use bin 0 to 511.
+     memcpy(xr + 512, xi, 512) copies imaginary parts into the second half.
+     Bins 0 and 512 are purely real.
   */
   current_mag[0] = FAAC_FABS(fft_buf[0]);
   sum_mag = current_mag[0];
-  if (!is_first) {
+  if (!skip_flux) {
       faac_real diff = current_mag[0] - prev_mag[0];
       if (diff > 0) flux = diff;
   }
@@ -345,7 +347,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     current_mag[i] = mag;
     if (i <= bin_limit) {
       sum_mag += mag;
-      if (!is_first)
+      if (!skip_flux)
       {
         faac_real diff = mag - prev_mag[i];
         if (diff > 0) flux += diff;
@@ -362,18 +364,22 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   if (sum_mag > eps)
   {
     faac_real sum_log_mag = 0.0;
-    for (i = 0; i <= bin_limit; i++)
-        sum_log_mag += FAAC_LOG(current_mag[i] + log_eps);
+    /* Use a preliminary threshold to avoid expensive LOG calls on very quiet frames */
+    if (score > 0.3)
+    {
+      for (i = 0; i <= bin_limit; i++)
+          sum_log_mag += FAAC_LOG(current_mag[i] + log_eps);
 
-    faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
-    faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
-    faac_real arith_mean = sum_mag * inv_n;
-    /* SFM -> 0.0 for pure tones, 1.0 for noise */
-    faac_real sfm = geom_mean / (arith_mean + log_eps);
+      faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
+      faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
+      faac_real arith_mean = sum_mag * inv_n;
+      /* SFM -> 0.0 for pure tones, 1.0 for noise */
+      faac_real sfm = geom_mean / (arith_mean + log_eps);
 
-    /* if SFM > 0.6 (noise), reduce transient score */
-    if (sfm > 0.6)
-        score *= 0.75;
+      /* if SFM > 0.6 (noise), reduce transient score */
+      if (sfm > 0.6)
+          score *= 0.75;
+    }
   }
 
   if (is_first) score = 0.0;
@@ -384,6 +390,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   /* Update State */
   memcpy(psydata->prev_mag, current_mag, 512 * sizeof(faac_real));
   psydata->is_first_frame = 0;
+  psydata->stale_mag = 0;
 
   psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
 }
