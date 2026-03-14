@@ -79,6 +79,9 @@ typedef struct {
     /* Configuration data */
     faacEncConfiguration config;
 
+    int reservoirBits;
+    int maxReservoirBits;
+
     psymodel_t *psymodel;
 
     /* quantizer specific config */

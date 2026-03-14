@@ -287,6 +287,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
+    hEncoder->maxReservoirBits = (int)(numChannels * 512); // Heuristic
+    hEncoder->reservoirBits = hEncoder->maxReservoirBits / 2;
+
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -384,11 +387,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Determine the channel configuration */
     GetChannelInfo(channelInfo, numChannels, useLfe);
 
+    for (channel = 0; channel < numChannels; channel++)
+    {
+        memset(hEncoder->coderInfo[channel].sf, 0, sizeof(int) * MAX_SCFAC_BANDS);
+        memset(hEncoder->coderInfo[channel].book, 0, sizeof(int) * MAX_SCFAC_BANDS);
+    }
+
     /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
-
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
@@ -482,6 +490,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+
+    if (hEncoder->config.bitRate)
+    {
+        faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
+        hEncoder->aacquantCfg.lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
+    }
+    else
+    {
+        hEncoder->aacquantCfg.lambda = 0;
+    }
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -590,6 +608,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
+
+    if (hEncoder->config.bitRate)
+    {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        hEncoder->reservoirBits += (desbits - frameBytes * 8);
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
+    }
 
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)

@@ -809,6 +809,13 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
+    if (!bitStream->data)
+    {
+        bitStream->currentBit += numBit;
+        bitStream->numBit = bitStream->currentBit;
+        return 0;
+    }
+
     /* Hoist bitstream state for faster access */
     unsigned int currentBit = (unsigned int)bitStream->currentBit;
     unsigned int bitOffset = currentBit & 7;

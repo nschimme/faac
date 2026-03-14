@@ -56,18 +56,18 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
+int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)
 {
-    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
+    static hcode16_t * const hmap[12] = {(hcode16_t *)0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
     hcode16_t *book;
     int cnt;
     int bits = 0, blen;
     int ofs, *qp;
-    int data;
+    int data = 0;
     int idx;
     int datacnt;
 
@@ -75,6 +75,8 @@ static int huffcode(int *qs /* quantized spectrum */,
         datacnt = coder->datacnt;
     else
         datacnt = 0;
+
+    data = 0;
 
     book = hmap[bnum];
     switch (bnum)
@@ -360,6 +362,11 @@ int huffbook(CoderInfo *coder,
     coder->book[coder->bandcnt] = bookmin;
 
     return 0;
+}
+
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    return huffcode(qs, len, bnum, NULL);
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
