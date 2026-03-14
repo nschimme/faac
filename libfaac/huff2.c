@@ -334,7 +334,54 @@ int huffcode(int *qs /* quantized spectrum */,
 
 int huff_count_bits(int *qs, int len, int bnum)
 {
-    return huffcode(qs, len, bnum, NULL, NULL);
+    int cnt;
+    int maxq = 0;
+    int bookmin, lenmin;
+
+    for (cnt = 0; cnt < len; cnt++)
+    {
+        int q = abs(qs[cnt]);
+        if (maxq < q)
+            maxq = q;
+    }
+
+#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+
+    if (maxq < 1)
+    {
+        bookmin = HCB_ZERO;
+        lenmin = 0;
+    }
+    else if (maxq < 2)
+    {
+        BOOKMIN(1);
+    }
+    else if (maxq < 3)
+    {
+        BOOKMIN(3);
+    }
+    else if (maxq < 5)
+    {
+        BOOKMIN(5);
+    }
+    else if (maxq < 8)
+    {
+        BOOKMIN(7);
+    }
+    else if (maxq < 13)
+    {
+        BOOKMIN(9);
+    }
+    else
+    {
+        bookmin = HCB_ESC;
+    }
+
+    if (bookmin > HCB_ZERO)
+        huffcode(qs, len, bookmin, coder);
+    coder->book[coder->bandcnt] = bookmin;
+
+    return 0;
 }
 
 
