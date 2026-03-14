@@ -54,6 +54,7 @@ typedef struct {
 	/* Hann window */
 	faac_real *hannWindow;
 	faac_real *hannWindowS;
+	faac_real *hannWindow1024;
 
 	/* shared work buffers */
 	faac_real *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns) */
