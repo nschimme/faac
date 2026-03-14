@@ -61,11 +61,15 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   faac_real score = psydata->lookahead_score;
 
-  /* Scale threshold by quality to avoid over-switching at low bitrates */
-  if (quality < 0.1) quality = 0.1;
-
   /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
-  int transient_detected = (score * quality > 0.5);
+  /* Threshold adjusted for quality to avoid bit starvation at low bitrates.
+     Use a steeper curve for dynamic thresholding at low qualities.
+   */
+  faac_real dynamic_threshold = 0.6;
+  if (quality < 0.6)
+    dynamic_threshold += 0.8 * (0.6 - quality);
+
+  int transient_detected = (score > dynamic_threshold);
 
   if (transient_detected)
   {
@@ -235,8 +239,8 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   faac_real max_energy_ratio = 0.0;
   faac_real prev_e = psydata->last_subwindow_energy;
   const faac_real * __restrict s_ptr = newSamples;
+  const faac_real energy_floor = (faac_real)1e-7;
 
-  /* Process subwindows in pairs for better locality if compiler allows */
   for (win = 0; win < 8; win++)
   {
     faac_real e = 0.0;
@@ -248,14 +252,32 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     s_ptr += 128;
     if (win == 0 && psydata->is_first_frame) prev_e = e;
 
-    faac_real ratio = e / (prev_e + eps);
-    if (ratio > max_energy_ratio) max_energy_ratio = ratio;
+    if (e > energy_floor)
+    {
+      faac_real ratio = e / (prev_e + eps);
+      if (ratio > max_energy_ratio) max_energy_ratio = ratio;
+    }
     prev_e = e;
   }
   psydata->last_subwindow_energy = prev_e; /* Energy of last subwindow */
 
-  faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
+  /* energy_feature should be 0 for steady-state (ratio=1.0) */
+  faac_real energy_feature = (max_energy_ratio - 1.5) * (1.0 / 1.5);
+  if (energy_feature < 0.0) energy_feature = 0.0;
   if (energy_feature > 1.0) energy_feature = 1.0;
+
+  const int is_first = psydata->is_first_frame;
+  faac_real current_mag[512];
+
+  /* Early exit for stationary frames to save power/CPU */
+  if (energy_feature < 0.05 && psydata->short_block_counter == 0 && !is_first)
+  {
+      psydata->lookahead_score = 0.0;
+      memset(current_mag, 0, 512 * sizeof(faac_real)); /* dummy update for consistency */
+      psydata->is_first_frame = 0;
+      psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
+      return;
+  }
 
   /* Step 2: Spectral Flux & Step 4: Tonality (Single spectral pass) */
   faac_real fft_buf[1024];
@@ -264,10 +286,8 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
   rfft(fft_tables, fft_buf, 10);
 
-  faac_real current_mag[512];
   faac_real sum_mag = 0.0;
   faac_real flux = 0.0;
-  faac_real sum_log_mag = 0.0;
 
   /* Invariant hoisted */
   const faac_real bin_width = gpsyInfo->sampleRate * (1.0 / 1024.0);
@@ -275,53 +295,60 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   if (bin_limit > 511) bin_limit = 511;
 
   const faac_real * __restrict prev_mag = psydata->prev_mag;
-  const int is_first = psydata->is_first_frame;
 
-  /* Optimized spectral pass */
+  /* Optimized spectral pass.
+     rfft layout in libfaac/fft.c:
+     xr contains the real parts [0..1023]
+     rfft calls fft with zeroed xi, then:
+     memcpy(xr + 512, xi, 512) copies the first 512 imaginary bins into the second half of xr.
+     Bins 0 and 512 (RN/2) have no imaginary part for real FFT.
+     Actually, index 512 in xr would be the imaginary part of bin 0 (which is 0).
+     Let's use bin 0 to 511.
+  */
   current_mag[0] = FAAC_FABS(fft_buf[0]);
   sum_mag = current_mag[0];
-  sum_log_mag = FAAC_LOG(current_mag[0] + log_eps);
   if (!is_first) {
       faac_real diff = current_mag[0] - prev_mag[0];
       if (diff > 0) flux = diff;
   }
 
-  for (i = 1; i <= bin_limit; i++)
+  for (i = 1; i < 512; i++)
   {
     faac_real re = fft_buf[i];
     faac_real im = fft_buf[i + 512];
     faac_real mag = FAAC_SQRT(re * re + im * im);
     current_mag[i] = mag;
-    sum_mag += mag;
-    sum_log_mag += FAAC_LOG(mag + log_eps);
-    if (!is_first)
-    {
-      faac_real diff = mag - prev_mag[i];
-      if (diff > 0) flux += diff;
+    if (i <= bin_limit) {
+      sum_mag += mag;
+      if (!is_first)
+      {
+        faac_real diff = mag - prev_mag[i];
+        if (diff > 0) flux += diff;
+      }
     }
-  }
-  /* Fill rest of current_mag for state update if bin_limit < 511 */
-  for (; i < 512; i++) {
-    faac_real re = fft_buf[i];
-    faac_real im = fft_buf[i + 512];
-    current_mag[i] = FAAC_SQRT(re * re + im * im);
   }
 
   faac_real normalized_flux = flux / (sum_mag + eps);
 
-  /* Step 4: Tonality Protection */
-  faac_real tonality = 1.0;
-  if (sum_mag > eps)
+  /* Step 3: Combine Detectors using quadratic mean for better trigger separation */
+  faac_real score = FAAC_SQRT(0.7 * energy_feature * energy_feature + 0.3 * normalized_flux * normalized_flux);
+
+  /* Step 4: Tonality Protection - only compute if score is potentially triggering */
+  if (score > 0.4 && sum_mag > eps)
   {
+    faac_real sum_log_mag = 0.0;
+    for (i = 0; i <= bin_limit; i++)
+        sum_log_mag += FAAC_LOG(current_mag[i] + log_eps);
+
     faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
     faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
     faac_real arith_mean = sum_mag * inv_n;
-    tonality = geom_mean / (arith_mean + log_eps);
-  }
+    faac_real tonality_val = geom_mean / (arith_mean + log_eps);
 
-  /* Step 3: Combine Detectors */
-  faac_real score = 0.6 * energy_feature + 0.4 * normalized_flux;
-  if (tonality < 0.2) score *= 0.7;
+    /* Nonlinear tonality suppression: more aggressive for pure tones */
+    if (tonality_val < 0.2)
+        score *= (tonality_val * 5.0); /* 0.0..1.0 multiplier */
+  }
 
   if (is_first) score = 0.0;
 
