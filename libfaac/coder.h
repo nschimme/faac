@@ -28,11 +28,29 @@
 extern "C" {
 #endif /* __cplusplus */
 
+/* Allow encoding of Digital Radio Mondiale (DRM) */
+//#define DRM
+
+/* Allow encoding of Digital Radio Mondiale (DRM) with transform length 1024 */
+//#define DRM_1024
+
 #define MAX_CHANNELS 64
 
-#define FRAME_LEN 1024
-#define BLOCK_LEN_LONG 1024
-#define BLOCK_LEN_SHORT 128
+#ifdef DRM
+#ifdef DRM_1024
+# define FRAME_LEN 1024
+# define BLOCK_LEN_LONG 1024
+# define BLOCK_LEN_SHORT 128
+#else
+# define FRAME_LEN 960
+# define BLOCK_LEN_LONG 960
+# define BLOCK_LEN_SHORT 120
+#endif /* DRM_1024 */
+#else
+# define FRAME_LEN 1024
+# define BLOCK_LEN_LONG 1024
+# define BLOCK_LEN_SHORT 128
+#endif
 
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
@@ -47,8 +65,7 @@ enum WINDOW_TYPE {
 };
 
 #define TNS_MAX_ORDER 20
-#define DEF_TNS_GAIN_THRESH 1.20
-#define DEF_TNS_GAIN_THRESH_SHORT 1.20
+#define DEF_TNS_GAIN_THRESH 1.4
 #define DEF_TNS_COEFF_THRESH 0.1
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
@@ -109,6 +126,14 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+#ifdef DRM
+    int num_data_cw[FRAME_LEN];
+    int cur_cw;
+    int all_sfb;
+
+    int iLenLongestCW;
+    int iLenReordSpData;
+#endif
 
     TnsInfo tnsInfo;
 } CoderInfo;

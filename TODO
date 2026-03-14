@@ -1,4 +1,5 @@
 - fix scalefactor encoding check (-60 .. 60)
+- test DRM
 - optimize quantization bias
 - optimize codebook list (section_data)
 - optimize CPE windows grouping
