@@ -62,17 +62,16 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   faac_real score = psydata->lookahead_score;
 
-  /* Step 5: Bitrate-aware Threshold Scaling */
+  /* Step 5: Bitrate-Based Short Block Suppression */
   /* quality 1.0 roughly corresponds to 128 kbps aggregate (64kbps/ch)
-     Scaling thresholds based on user recommendation:
-     - < 96k: +0.05
-     - < 64k: +0.10
-     - < 48k: +0.15
+     Threshold logic from user:
+     - base: 0.55
+     - < 56k (qual < 0.4375): penalty +0.25
+     - < 40k (qual < 0.3125): penalty +0.35
    */
   faac_real threshold = 0.55;
-  if (quality < 0.75) threshold += 0.05;
-  if (quality < 0.50) threshold += 0.10;
-  if (quality < 0.375) threshold += 0.15;
+  if (quality < 0.4375) threshold += 0.25;
+  if (quality < 0.3125) threshold += 0.35;
 
   int transient_detected = (score > threshold);
 
@@ -103,11 +102,14 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       use_short = 1;
   }
 
-  /* Safety Safeguard: Force return to long after 6 frames unless strong transient */
+  /* Step 5: Maximum Short Block Duration (Safeguard) */
+  /* Limit short block sequences to avoid prolonged inefficiency.
+     If > 4 frames and no strong transient, force return to long.
+   */
   if (use_short)
   {
       psydata->consecutive_short_counter++;
-      if (psydata->consecutive_short_counter > 6 && score < (threshold + 0.2))
+      if (psydata->consecutive_short_counter > 4 && score < (threshold + 0.2))
       {
           use_short = 0;
           psydata->consecutive_short_counter = 0;
@@ -291,13 +293,12 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   faac_real energy_feature = max_energy_ratio * (1.0 / 3.0);
   if (energy_feature > 1.0) energy_feature = 1.0;
 
-  /* Early exit for stationary frames to save power/CPU */
-  if (max_energy_ratio < 1.1 && psydata->short_block_counter == 0 && !is_first)
+  /* Step 2: Energy Pre-Gate (CPU Optimization) */
+  /* Most frames do not contain transients. skip spectral flux if energy ratio is low. */
+  if (max_energy_ratio < 1.6 && psydata->short_block_counter == 0 && !is_first)
   {
       psydata->lookahead_score = 0.0;
-      /* Do NOT zero prev_mag here as it would cause a false transient in the next frame.
-         The spectral flux calculation needs a valid baseline.
-       */
+      /* Do NOT zero prev_mag here as it would cause a false transient in the next frame. */
       psydata->is_first_frame = 0;
       psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
       return;
