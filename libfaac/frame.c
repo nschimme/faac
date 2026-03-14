@@ -391,6 +391,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
     {
         int b;
+        hEncoder->coderInfo[channel].datacnt = 0;
         for (b = 0; b < MAX_SCFAC_BANDS; b++) {
             hEncoder->coderInfo[channel].book[b] = HCB_NONE;
             hEncoder->coderInfo[channel].sf[b] = 0;
@@ -639,7 +640,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0;
 
         fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
 

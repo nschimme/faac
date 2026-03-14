@@ -59,7 +59,8 @@ static int escape(int x, int *code)
 int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
-                    CoderInfo *coder)
+                    CoderInfo *coder,
+                    BitStream *bitStream)
 {
     static hcode16_t * const hmap[12] = {(hcode16_t *)0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
@@ -77,6 +78,11 @@ int huffcode(int *qs /* quantized spectrum */,
         datacnt = 0;
 
     data = 0;
+
+    if (bitStream) {
+        bitStream->numBit = 0;
+        bitStream->currentBit = 0;
+    }
 
     book = hmap[bnum];
     switch (bnum)
@@ -98,6 +104,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, book[idx].data, blen);
             bits += blen;
         }
         break;
@@ -136,6 +144,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, data, blen);
             bits += blen;
         }
         break;
@@ -156,6 +166,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, book[idx].data, blen);
             bits += blen;
         }
         break;
@@ -192,6 +204,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, data, blen);
             bits += blen;
         }
         break;
@@ -228,6 +242,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, data, blen);
             bits += blen;
         }
         break;
@@ -273,6 +289,8 @@ int huffcode(int *qs /* quantized spectrum */,
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
             }
+            if (bitStream)
+                PutBit(bitStream, data, blen);
             bits += blen;
 
             if (x0 >= 16)
@@ -283,6 +301,8 @@ int huffcode(int *qs /* quantized spectrum */,
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
                 }
+                if (bitStream)
+                    PutBit(bitStream, data, blen);
                 bits += blen;
             }
 
@@ -294,6 +314,8 @@ int huffcode(int *qs /* quantized spectrum */,
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
                 }
+                if (bitStream)
+                    PutBit(bitStream, data, blen);
                 bits += blen;
             }
         }
@@ -312,62 +334,9 @@ int huffcode(int *qs /* quantized spectrum */,
 
 int huff_count_bits(int *qs, int len, int bnum)
 {
-    return huffcode(qs, len, bnum, NULL);
+    return huffcode(qs, len, bnum, NULL, NULL);
 }
 
-int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
-             int len)
-{
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
-
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
-    }
-
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
-
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
-    }
-
-    if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
-    coder->book[coder->bandcnt] = bookmin;
-
-    return 0;
-}
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {

@@ -79,9 +79,6 @@ typedef struct {
     int reservoirBits;
     int maxReservoirBits;
 
-    int quantXi[MAX_CHANNELS][BLOCK_LEN_LONG];
-    int quantXiCand[MAX_CHANNELS][BLOCK_LEN_LONG];
-
     /* Configuration data */
     faacEncConfiguration config;
 
