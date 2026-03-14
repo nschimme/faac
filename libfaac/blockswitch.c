@@ -46,6 +46,7 @@ typedef struct
   int is_first_frame;
   int stale_mag;
   faac_real lookahead_score;
+  faac_real last_score;
 }
 psydata_t;
 
@@ -64,23 +65,17 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   faac_real score = psydata->lookahead_score;
 
   /* Step 1: Bitrate-Based Short Block Suppression */
-  /* quality 1.0 corresponds to 128 kbps aggregate.
-     Use tiered penalties to prevent bit starvation at low bitrates.
-   */
   faac_real threshold = 0.55;
-  if (quality < 0.1875)      /* < 24k (VOIP) */
-    threshold += 0.45;
-  else if (quality < 0.3125) /* < 40k (VSS) */
-    threshold += 0.35;
-  else if (quality < 0.4375) /* < 56k */
-    threshold += 0.25;
+  if (quality < 0.3125) threshold += 0.35;
+  else if (quality < 0.4375) threshold += 0.25;
 
-  int transient_detected = (score > threshold);
+  /* Rule 2: Hybrid Activation Hysteresis */
+  int transient_detected = (score > threshold && psydata->last_score > threshold) || (score > threshold + 0.3);
 
-  /* Step 5, 6, 7: Block Switching Decision & Hysteresis */
+  /* Step 6, 7: Block Switching Decision & Hysteresis */
   if (transient_detected)
   {
-    psydata->short_block_counter = 3; /* Detection frame + 2 forced = 3 total */
+    psydata->short_block_counter = 2; /* Detection frame + 1 forced = 2 total */
     psydata->calm_frame_counter = 0;
   }
   else
@@ -100,22 +95,22 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   }
   else
   {
-      /* Require two consecutive calm frames before switching back to long blocks */
       use_short = 1;
   }
 
-  /* Step 3: Maximum Short Block Duration (Safeguard) */
-  /* Limit short block sequences to 4 frames unless a strong transient occurs.
-     If safeguard triggers, clear short_block_counter to stop the sequence.
-   */
+  /* Rule 5: Maximum Short Block Duration (Safeguard) */
   if (use_short)
   {
       psydata->consecutive_short_counter++;
-      if (psydata->consecutive_short_counter > 4 && score < (threshold + 0.2))
+      if (psydata->consecutive_short_counter > 4 && score < (threshold + 0.4))
       {
           use_short = 0;
           psydata->consecutive_short_counter = 0;
           psydata->short_block_counter = 0;
+      }
+      else if (score < (threshold * 0.5))
+      {
+          use_short = 0;
       }
   }
   else
@@ -123,6 +118,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       psydata->consecutive_short_counter = 0;
   }
 
+  psydata->last_score = score;
   psyInfo->block_type = use_short ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 
 #if PRINTSTAT
@@ -256,7 +252,8 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 			    faac_real * __restrict newSamples, unsigned int bandwidth,
-			    int *cb_width_short, int num_cb_short)
+			    int *cb_width_short, int num_cb_short,
+			    faac_real quality)
 {
   int win, i;
   psydata_t * __restrict psydata = (psydata_t *)psyInfo->data;
@@ -292,12 +289,12 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
   const int is_first = psydata->is_first_frame;
 
-  /* Step 2: Energy Pre-Gate (CPU Optimization) */
-  /* Most frames do not contain transients. skip spectral flux if energy ratio is low. */
-  if (max_energy_ratio < 1.6 && psydata->short_block_counter == 0 && !is_first)
+  /* Rule 4: Tiered Energy Pre-Gate (CPU Optimization) */
+  faac_real gate_threshold = (quality < 0.15625) ? 2.0 : 1.6;
+
+  if (max_energy_ratio < gate_threshold && psydata->short_block_counter == 0 && !is_first)
   {
       psydata->lookahead_score = 0.0;
-      /* Mark previous magnitude as stale so next flux calculation is relative to 0 */
       psydata->stale_mag = 1;
       psydata->is_first_frame = 0;
       psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
@@ -324,7 +321,6 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   if (bin_limit > 511) bin_limit = 511;
 
   const faac_real * __restrict prev_mag = psydata->prev_mag;
-  const int skip_flux = (is_first || psydata->stale_mag);
 
   /* Optimized spectral pass.
      rfft layout in libfaac/fft.c:
@@ -334,8 +330,9 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   */
   current_mag[0] = FAAC_FABS(fft_buf[0]);
   sum_mag = current_mag[0];
-  if (!skip_flux) {
-      faac_real diff = current_mag[0] - prev_mag[0];
+  {
+      faac_real p_mag = (is_first || psydata->stale_mag) ? 0.0 : prev_mag[0];
+      faac_real diff = current_mag[0] - p_mag;
       if (diff > 0) flux = diff;
   }
 
@@ -347,11 +344,9 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     current_mag[i] = mag;
     if (i <= bin_limit) {
       sum_mag += mag;
-      if (!skip_flux)
-      {
-        faac_real diff = mag - prev_mag[i];
-        if (diff > 0) flux += diff;
-      }
+      faac_real p_mag = (is_first || psydata->stale_mag) ? 0.0 : prev_mag[i];
+      faac_real diff = mag - p_mag;
+      if (diff > 0) flux += diff;
     }
   }
 
@@ -360,12 +355,11 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   /* Step 3: Combine Detectors */
   faac_real score = 0.6 * energy_feature + 0.4 * normalized_flux;
 
-  /* Step 4: Noise Suppression (using SFM) */
+  /* Rule 1: Enhanced Noise Suppression (Tiered SFM) */
   if (sum_mag > eps)
   {
     faac_real sum_log_mag = 0.0;
-    /* Use a preliminary threshold to avoid expensive LOG calls on very quiet frames */
-    if (score > 0.3)
+    if (score > 0.35)
     {
       for (i = 0; i <= bin_limit; i++)
           sum_log_mag += FAAC_LOG(current_mag[i] + log_eps);
@@ -373,14 +367,20 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
       faac_real inv_n = 1.0 / (faac_real)(bin_limit + 1);
       faac_real geom_mean = FAAC_EXP(sum_log_mag * inv_n);
       faac_real arith_mean = sum_mag * inv_n;
-      /* SFM -> 0.0 for pure tones, 1.0 for noise */
       faac_real sfm = geom_mean / (arith_mean + log_eps);
 
-      /* if SFM > 0.6 (noise), reduce transient score */
-      if (sfm > 0.6)
-          score *= 0.75;
+      if (sfm > 0.8)
+          score *= 0.50;
+      else if (sfm > 0.6)
+          score *= 0.65;
     }
   }
+
+  /* Rule 3: Bitrate-Based Score Scaling */
+  if (quality <= 0.15625)
+      score *= 0.75;
+  else if (quality <= 0.3125)
+      score *= 0.85;
 
   if (is_first) score = 0.0;
 

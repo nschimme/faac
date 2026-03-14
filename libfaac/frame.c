@@ -468,7 +468,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 					hEncoder->next3SampleBuff[channel],
 					bandWidth,
 					hEncoder->srInfo->cb_width_short,
-					hEncoder->srInfo->num_cb_short);
+					hEncoder->srInfo->num_cb_short,
+					(faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
 		}
     }
 
