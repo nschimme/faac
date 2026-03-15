@@ -32,14 +32,8 @@
 
 typedef struct
 {
-  /* transient detector state */
-  faac_real prev_energy;
   faac_real prev_sub_energies[32];
-  faac_real prev_subwindow_energy;
-
-  /* Two-stage transient status for lookahead alignment */
-  int next_transient;
-  int curr_transient;
+  faac_real prev_subwindow_hpf_energy;
   int short_todo;
 }
 psydata_t;
@@ -48,8 +42,6 @@ psydata_t;
 static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
 {
   int i;
-
-  /* Applying Hann window */
   if (size == BLOCK_LEN_LONG * 2)
   {
     for (i = 0; i < size; i++)
@@ -70,7 +62,6 @@ static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-
   if (psydata->short_todo > 0)
       psyInfo->block_type = ONLY_SHORT_WINDOW;
   else
@@ -130,57 +121,40 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
 {
   unsigned int channel;
 
-  if (gpsyInfo->hannWindow)
-    FreeMemory(gpsyInfo->hannWindow);
-  if (gpsyInfo->hannWindow1024)
-    FreeMemory(gpsyInfo->hannWindow1024);
-  if (gpsyInfo->hannWindowS)
-    FreeMemory(gpsyInfo->hannWindowS);
+  if (gpsyInfo->hannWindow) FreeMemory(gpsyInfo->hannWindow);
+  if (gpsyInfo->hannWindow1024) FreeMemory(gpsyInfo->hannWindow1024);
+  if (gpsyInfo->hannWindowS) FreeMemory(gpsyInfo->hannWindowS);
 
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].prevSamples)
-      FreeMemory(psyInfo[channel].prevSamples);
-  }
-
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].data)
-      FreeMemory(psyInfo[channel].data);
+    if (psyInfo[channel].prevSamples) FreeMemory(psyInfo[channel].prevSamples);
+    if (psyInfo[channel].data) FreeMemory(psyInfo[channel].data);
   }
 }
 
-/* Do psychoacoustical analysis */
 static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
-			 PsyInfo * psyInfo, int *cb_width_long, int
-			 num_cb_long, int *cb_width_short,
-			 int num_cb_short, unsigned int numChannels,
-			 faac_real quality
-			)
+			 PsyInfo * psyInfo, int *cb_width_long, int num_cb_long,
+			 int *cb_width_short, int num_cb_short, unsigned int numChannels,
+			 faac_real quality)
 {
   unsigned int channel;
-
   for (channel = 0; channel < numChannels; channel++)
   {
     if (channelInfo[channel].present)
     {
-      if (channelInfo[channel].cpe &&
-	  channelInfo[channel].ch_is_left)
-      {				/* CPE */
-
+      if (channelInfo[channel].cpe && channelInfo[channel].ch_is_left)
+      {
 	int leftChan = channel;
 	int rightChan = channelInfo[channel].paired_ch;
-
 	PsyCheckShort(&psyInfo[leftChan], quality);
 	PsyCheckShort(&psyInfo[rightChan], quality);
       }
-      else if (!channelInfo[channel].cpe &&
-	       channelInfo[channel].lfe)
-      {				/* LFE */
+      else if (!channelInfo[channel].cpe && channelInfo[channel].lfe)
+      {
 	psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       }
       else if (!channelInfo[channel].cpe)
-      {				/* SCE */
+      {
 	PsyCheckShort(&psyInfo[channel], quality);
       }
     }
@@ -192,126 +166,88 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 			    int *cb_width_short, int num_cb_short)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  int i, win;
-  faac_real total_energy = 0;
-  int is_transient = 0;
-  faac_real flux = 0;
-  faac_real max_sub_ratio = 0;
-  faac_real norm_var = 100.0;
-
-  faac_real last_sub_e = psydata->prev_subwindow_energy;
+  int i, win, is_transient = 0;
+  faac_real last_s = psyInfo->prevSamples[BLOCK_LEN_LONG - 1];
+  faac_real last_sub_hpf_e = psydata->prev_subwindow_hpf_energy;
   int sub_win_triggered = 0;
+
   for (win = 0; win < 8; win++)
   {
-      faac_real sub_e = 0;
-      int j;
-      for (j = 0; j < 128; j++)
+      faac_real sub_hpf_e = 0;
+      for (int j = 0; j < 128; j++)
       {
           faac_real s = newSamples[win * 128 + j];
-          sub_e += s * s;
+          faac_real hpf_s = s - last_s;
+          sub_hpf_e += hpf_s * hpf_s;
+          last_s = s;
       }
-      if (sub_e > 10.0 * last_sub_e && sub_e > 1000.0)
+      if (sub_hpf_e > 10.0 * last_sub_hpf_e && sub_hpf_e > 2000.0)
           sub_win_triggered = 1;
-      last_sub_e = sub_e;
-      total_energy += sub_e;
+      last_sub_hpf_e = sub_hpf_e;
   }
-  psydata->prev_subwindow_energy = last_sub_e;
+  psydata->prev_subwindow_hpf_energy = last_sub_hpf_e;
 
   if (sub_win_triggered)
   {
       faac_real fft_buf[BLOCK_LEN_LONG];
-      int sub_energies_idx = 0;
-      int start_bin = (int)(5000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
+      faac_real low_flux = 0, high_flux = 0;
+      int split_bin = (int)(4000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
       int end_bin = (int)(16000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
+      int sub_energies_idx = 0;
       if (end_bin > BLOCK_LEN_LONG / 2) end_bin = BLOCK_LEN_LONG / 2;
       memcpy(fft_buf, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
       Hann(gpsyInfo, fft_buf, BLOCK_LEN_LONG);
       rfft(fft_tables, fft_buf, 10);
-      for (i = start_bin; i < end_bin; i += 16)
+      for (i = 1; i < end_bin; i += 16)
       {
           faac_real sub_energy = 0;
-          faac_real ratio;
-          int j;
-          for (j = i; j < i + 16 && j < end_bin; j++)
-          {
-              faac_real mag_sq = fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
-              sub_energy += mag_sq;
-          }
-          ratio = sub_energy / (psydata->prev_sub_energies[sub_energies_idx] + 1e-9);
-          if (ratio > 1.0)
-              flux += (ratio - 1.0);
-          if (ratio > max_sub_ratio)
-              max_sub_ratio = ratio;
+          for (int j = i; j < i + 16 && j < end_bin; j++) sub_energy += fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
+          faac_real ratio = sub_energy / (psydata->prev_sub_energies[sub_energies_idx] + 1e-9);
+          if (ratio > 1.0) { if (i < split_bin) low_flux += (ratio - 1.0); else high_flux += (ratio - 1.0); }
           psydata->prev_sub_energies[sub_energies_idx] = sub_energy;
           sub_energies_idx++;
       }
-      faac_real sum_sq = 0;
-      faac_real sq_sum = 0;
-      int n_bins = BLOCK_LEN_LONG / 2 - 1;
+      faac_real sum_sq = 0, sq_sum = 0;
       for (i = 1; i < BLOCK_LEN_LONG / 2; i++)
       {
           faac_real mag_sq = fft_buf[i] * fft_buf[i] + fft_buf[512 + i] * fft_buf[512 + i];
-          sum_sq += mag_sq * mag_sq;
-          sq_sum += mag_sq;
+          sum_sq += mag_sq * mag_sq; sq_sum += mag_sq;
       }
-      norm_var = (sum_sq * n_bins) / (sq_sum * sq_sum + 1e-15);
+      faac_real norm_var = (sum_sq * (BLOCK_LEN_LONG / 2 - 1)) / (sq_sum * sq_sum + 1e-15);
+      if (norm_var < 3.5 && high_flux > 2.0 * low_flux && high_flux > 15.0) is_transient = 1;
   }
   else
   {
-      faac_real scale = total_energy / (psydata->prev_energy + 1e-15);
-      if (scale > 1.0) scale = 1.0;
-      int idx;
-      for (idx = 0; idx < 32; idx++)
-          psydata->prev_sub_energies[idx] *= scale;
+      for (int idx = 0; idx < 32; idx++) psydata->prev_sub_energies[idx] *= 0.5;
   }
-  psydata->prev_energy = total_energy;
-  psydata->curr_transient = psydata->next_transient;
-  if (sub_win_triggered && norm_var < 3.0 && (flux > 50.0 || max_sub_ratio > 40.0))
-      is_transient = 1;
-  psydata->next_transient = is_transient;
-  if (psydata->curr_transient)
-      psydata->short_todo = 2;
-  else if (psydata->short_todo > 0)
-      psydata->short_todo--;
-  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
+
+  /* Asymmetric trigger: 1-frame sequence for VOIP efficiency */
+  if (is_transient) psydata->short_todo = 1;
+  else if (psydata->short_todo > 0) psydata->short_todo--;
+
+  memcpy(psyInfo->prevSamples, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
-      desire = ONLY_SHORT_WINDOW;
-  }
+  for (channel = 0; channel < numChannels; channel++) if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW) desire = ONLY_SHORT_WINDOW;
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
-    if (desire == ONLY_SHORT_WINDOW
-	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
+    if (desire == ONLY_SHORT_WINDOW || coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
     {
-      if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
-	coderInfo[channel].block_type = LONG_SHORT_WINDOW;
-      else
-	coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+      if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW) coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+      else coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
     else
     {
-      if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW)
-	coderInfo[channel].block_type = SHORT_LONG_WINDOW;
-      else
-	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+      if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW) coderInfo[channel].block_type = SHORT_LONG_WINDOW;
+      else coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
   }
 }
 
-psymodel_t psymodel2 =
-{
-  PsyInit,
-  PsyEnd,
-  PsyCalculate,
-  PsyBufferUpdate,
-  BlockSwitch
-};
+psymodel_t psymodel2 = { PsyInit, PsyEnd, PsyCalculate, PsyBufferUpdate, BlockSwitch };

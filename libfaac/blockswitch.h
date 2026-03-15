@@ -54,6 +54,7 @@ typedef struct {
 	/* Hann window */
 	faac_real *hannWindow;
 	faac_real *hannWindow1024;
+	faac_real *hannWindow1024;
 	faac_real *hannWindowS;
 
 	/* shared work buffers */
