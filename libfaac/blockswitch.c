@@ -215,8 +215,8 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           faac_real s = newSamples[win * 128 + j];
           sub_e += s * s;
       }
-      /* Stage 1 thresholding */
-      if (sub_e > 2.0 * last_sub_e && sub_e > 0.05)
+      /* Conservative jump requirement to avoid speech regressions */
+      if (sub_e > 6.0 * last_sub_e && sub_e > 0.1)
           sub_win_triggered = 1;
       last_sub_e = sub_e;
       total_energy += sub_e;
@@ -276,18 +276,15 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
       faac_real norm_var = (sum_sq * n_bins) / (sq_sum * sq_sum + 1e-15);
 
-      /* Stage 2 tuning: balanced for MOS gains and speech stability */
-      if ((norm_var < 20.0 && (flux > 10.0 || max_sub_ratio > 10.0)) ||
-          (norm_var < 60.0 && (flux > 40.0 || max_sub_ratio > 30.0)))
+      /* Strict Stage 2 trigger: Requires low tonality (norm_var < 5.0) and high flux */
+      if (norm_var < 5.0 && (flux > 20.0 || max_sub_ratio > 15.0))
       {
           is_transient = 1;
       }
   }
   else
   {
-      /* Pre-gate not tripped: update sub-energy baseline by scaling with total energy ratio
-         to keep it reasonably fresh without an expensive FFT.
-      */
+      /* Pre-gate not tripped: update sub-energy baseline */
       faac_real scale = total_energy / (psydata->prev_energy + 1e-15);
       if (scale > 1.0) scale = 1.0;
       int idx;
@@ -297,11 +294,11 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
   psydata->prev_energy = total_energy;
 
-  /* Asymmetric trigger/release: 2-frame "desire=SHORT" sequence
-     produces a complete LONG_START -> ONLY_SHORT -> SHORT_LONG window set.
+  /* Asymmetric trigger: 1-frame "desire=SHORT" sequence
+     to save bits in VOIP while still handling transients.
   */
   if (is_transient)
-      psydata->short_todo = 2;
+      psydata->short_todo = 1;
   else if (psydata->short_todo > 0)
       psydata->short_todo--;
 
@@ -313,10 +310,6 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
 
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
