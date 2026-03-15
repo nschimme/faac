@@ -312,6 +312,15 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
+    /* Initialize Bit Reservoir */
+    if (hEncoder->config.bitRate) {
+        int bits_per_frame = (int)((faac_real)numChannels * hEncoder->config.bitRate * FRAME_LEN / sampleRate);
+        hEncoder->maxReservoirBits = bits_per_frame * 4;
+        hEncoder->reservoirTarget = hEncoder->maxReservoirBits / 2;
+        hEncoder->reservoirBits = hEncoder->reservoirTarget;
+        hEncoder->lambda = 0.01;
+    }
+
     /* Return handle */
     return hEncoder;
 }
@@ -540,8 +549,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((!channelInfo[channel].lfe) && (useTns)) {
-            TnsEncode(&coderInfo[channel], 0.01, hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            TnsEncode(&coderInfo[channel].tnsInfo, coderInfo[channel].sfbn, coderInfo[channel].sfbn, coderInfo[channel].block_type, coderInfo[channel].sfb_offset, hEncoder->freqBuff[channel], hEncoder->lambda, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        } else {
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 
@@ -585,29 +595,36 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    /* Adjust quality to get correct average bitrate */
+    /* Update Bit Reservoir and Lambda Adaptation */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int bits_per_frame = (int)((faac_real)numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int actual_bits = frameBytes * 8;
+        faac_real reservoirFill;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        hEncoder->reservoirBits += (bits_per_frame - actual_bits);
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
+        /* Log-linear lambda adaptation: lambda = 0.01 * 10^(1.0 - 2.0 * fill) */
+        hEncoder->lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
+        if (hEncoder->lambda < 0.0001) hEncoder->lambda = 0.0001;
+        if (hEncoder->lambda > 1.0) hEncoder->lambda = 1.0;
 
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        /* Standard legacy adjustment to prevent long-term drift */
+        {
+            faac_real fix = (faac_real)bits_per_frame / actual_bits;
+            if (fix < 0.9) fix += 0.1;
+            else if (fix > 1.1) fix -= 0.1;
+            else fix = 1.0;
+            fix = (fix - 1.0) * 0.5 + 1.0;
+            hEncoder->aacquantCfg.quality *= fix;
+            if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
+        }
     }
 
     return frameBytes;

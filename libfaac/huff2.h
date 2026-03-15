@@ -31,7 +31,5 @@ enum {
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
-int huff_count_bits(int *qs, int len, int *book);
-int huffcode(int *qs, int len, int bnum, CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
