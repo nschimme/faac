@@ -816,40 +816,20 @@ int PutBit(BitStream *bitStream,
         return 0;
     }
 
-    /* Hoist bitstream state for faster access */
-    unsigned int currentBit = (unsigned int)bitStream->currentBit;
-    unsigned int bitOffset = currentBit & 7;
-    unsigned char *ptr = bitStream->data + (currentBit >> 3);
+    while (numBit > 0) {
+        int bitOffset = bitStream->currentBit & 7;
+        int bitsToFill = 8 - bitOffset;
+        int bits = (numBit < bitsToFill) ? numBit : bitsToFill;
 
-    /* Update bitstream state immediately */
-    bitStream->currentBit += numBit;
-    bitStream->numBit = bitStream->currentBit;
+        if (bitOffset == 0)
+            bitStream->data[bitStream->currentBit >> 3] = 0;
 
-    /* Mask input data to ensure no extra bits are set */
-    data &= (1UL << numBit) - 1;
+        bitStream->data[bitStream->currentBit >> 3] |=
+            (unsigned char)((data >> (numBit - bits)) & ((1 << bits) - 1)) << (bitsToFill - bits);
 
-    /* Fast path: bit write fits within the current byte */
-    if (bitOffset + numBit <= 8) {
-        if (bitOffset == 0) *ptr = 0;
-        *ptr |= (unsigned char)(data << (8 - bitOffset - numBit));
-    } else {
-        /* General case: multi-byte write */
-        /* Handle first partial byte */
-        int firstBits = 8 - bitOffset;
-        if (bitOffset == 0) *ptr = 0;
-        *ptr++ |= (unsigned char)(data >> (numBit - firstBits));
-        numBit -= firstBits;
-
-        /* Handle full bytes */
-        while (numBit >= 8) {
-            *ptr++ = (unsigned char)((data >> (numBit - 8)) & 0xFF);
-            numBit -= 8;
-        }
-
-        /* Handle remaining bits in last byte */
-        if (numBit > 0) {
-            *ptr = (unsigned char)((data & ((1UL << numBit) - 1)) << (8 - numBit));
-        }
+        bitStream->currentBit += bits;
+        bitStream->numBit = bitStream->currentBit;
+        numBit -= bits;
     }
 
     return 0;

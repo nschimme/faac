@@ -316,8 +316,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               }
           }
 
-          faac_real err_weight = 1.0 / (bandqual[sb] * bandqual[sb] + 1e-15);
-          faac_real cost = (cand_dist / (gsize * width)) * err_weight + lambda * (faac_real)cand_bits;
+          faac_real err_weight = bandqual[sb] * bandqual[sb] + 1e-15;
+          faac_real cost = cand_dist / err_weight + lambda * (faac_real)cand_bits;
 
           if (cost < best_cost)
           {
