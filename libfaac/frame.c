@@ -29,6 +29,7 @@
 #include "bitstream.h"
 #include "filtbank.h"
 #include "util.h"
+#include "huff2.h"
 #include "tns.h"
 #include "stereo.h"
 
@@ -287,6 +288,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
+    hEncoder->maxReservoirBits = (int)(numChannels * 512); // Heuristic
+    hEncoder->reservoirBits = hEncoder->maxReservoirBits / 2;
+
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -383,6 +387,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Determine the channel configuration */
     GetChannelInfo(channelInfo, numChannels, useLfe);
+
+    for (channel = 0; channel < numChannels; channel++)
+    {
+        int b;
+        hEncoder->coderInfo[channel].datacnt = 0;
+        for (b = 0; b < MAX_SCFAC_BANDS; b++) {
+            hEncoder->coderInfo[channel].book[b] = HCB_NONE;
+            hEncoder->coderInfo[channel].sf[b] = 0;
+        }
+    }
 
     /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
@@ -482,6 +496,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+
+    if (hEncoder->config.bitRate)
+    {
+        faac_real reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
+        hEncoder->aacquantCfg.lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
+    }
+    else
+    {
+        hEncoder->aacquantCfg.lambda = 0;
+    }
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -591,6 +615,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
+    if (hEncoder->config.bitRate)
+    {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        hEncoder->reservoirBits += (desbits - frameBytes * 8);
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
+    }
+
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
@@ -606,7 +640,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0;
 
         fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
 
