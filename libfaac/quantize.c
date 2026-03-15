@@ -11,7 +11,7 @@
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
@@ -188,7 +188,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real etot;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
-      int start, end;
+      int start, end, width;
       const faac_real *xr;
       int win;
 
@@ -200,9 +200,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
+      width = end - start;
 
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
+      rmsx = FAAC_SQRT(etot / width);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -220,27 +221,28 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      end -= start;
       xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          memset(xi, 0, gsize * width * sizeof(int));
       }
       else
       {
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
-              xi += end;
+              qfunc(xr, xi, width, sfacfix);
+              xi += width;
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
+
+      huffbook(coderInfo, xitab, gsize * width);
       coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }

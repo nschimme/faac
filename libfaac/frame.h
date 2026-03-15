@@ -86,6 +86,12 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* Bit Reservoir and Rate Control */
+    int reservoirBits;
+    int maxReservoirBits;
+    int reservoirTarget;
+    faac_real lambda;
 } faacEncStruct;
 
 #ifdef __cplusplus

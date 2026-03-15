@@ -54,8 +54,7 @@ libfaac = library('faac', common_src,
     link_with: quantize_simd_libs,
     vs_module_defs: 'libfaac.def',
     install: true,
-    version: '0.0.0',
-    gnu_symbol_visibility: 'hidden'
+    version: '0.0.0'
 )
 
 

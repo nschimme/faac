@@ -76,6 +76,23 @@ static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,i
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
+static int TnsCountFilterBits(TnsFilterData* tnsFilter, int blockType, int resInBits)
+{
+    int bits = 0;
+    int len_tns_length = (blockType == ONLY_SHORT_WINDOW) ? 4 : 6;
+    int len_tns_order = (blockType == ONLY_SHORT_WINDOW) ? 3 : 5;
+
+    if (tnsFilter->order > 0) {
+        bits += 1; /* coef_res */
+        bits += len_tns_length;
+        bits += len_tns_order;
+        bits += 1; /* direction */
+        bits += 1; /* coef_compress */
+        bits += tnsFilter->order * (resInBits - tnsFilter->coefCompress);
+    }
+
+    return bits;
+}
 
 /*****************************************************/
 /* InitTns:                                          */
@@ -127,47 +144,43 @@ void TnsInit(faacEncStruct* hEncoder)
 /*****************************************************/
 /* TnsEncode:                                        */
 /*****************************************************/
-void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
-               int numberOfBands,       /* Number of bands per window */
-               int maxSfb,              /* max_sfb */
-               enum WINDOW_TYPE blockType,   /* block type */
-               int* sfbOffsetTable,     /* Scalefactor band offset table */
-               faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+void TnsEncode(CoderInfo* coderInfo, faac_real lambda, faac_real* spec, faac_real* temp)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
     int w;
     int startIndex,length;
-    faac_real gain;
+    faac_real gain_thresh;
+    TnsInfo* tnsInfo = &coderInfo->tnsInfo;
+    int numberOfBands = coderInfo->sfbn;
+    int maxSfb = coderInfo->sfbn;
+    enum WINDOW_TYPE blockType = (enum WINDOW_TYPE)coderInfo->block_type;
+    int* sfbOffsetTable = coderInfo->sfb_offset;
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        lengthInBands = max(0, stopBand - startBand);
+        order = tnsInfo->tnsMaxOrderShort;
+        gain_thresh = DEF_TNS_GAIN_THRESH_SHORT;
         break;
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
-        order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        lengthInBands = max(0, stopBand - startBand);
+        order = tnsInfo->tnsMaxOrderLong;
+        gain_thresh = DEF_TNS_GAIN_THRESH_LONG;
         break;
     }
 
@@ -182,6 +195,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
+        faac_real energy = 0.0;
+        faac_real logSum = 0.0;
+        int i;
+        faac_real sfm;
 
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
@@ -192,20 +209,45 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
-        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        if (length <= 0) continue;
+
+        /* Energy gate and SFM calculation */
+        for (i = 0; i < length; i++) {
+            faac_real val2 = spec[startIndex + i] * spec[startIndex + i] + 1e-15;
+            energy += val2;
+            logSum += log(val2);
+        }
+
+        if (energy < 1e-9) continue;
+
+        sfm = exp(logSum / length) / (energy / length);
+
+        faac_real predGain = LevinsonDurbin(order,length,&spec[startIndex],k);
+
+        /* Only use TNS if prediction gain is significant and signal is not too tonal (SFM > 0.1) */
+        if (predGain > gain_thresh && sfm > 0.1) {
             int truncatedOrder;
-            windowData->numFilters++;
-            tnsInfo->tnsDataPresent=1;
-            tnsFilter->direction = 0;
             tnsFilter->coefCompress = 0;
-            tnsFilter->length = lengthInBands;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
-            StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
+
+            int sideBits = TnsCountFilterBits(tnsFilter, blockType, DEF_TNS_COEFF_RES);
+            faac_real savings = (faac_real)length * 0.5 * (log(predGain) / log(2.0)) * sfm;
+
+            faac_real rd_bias = (blockType == ONLY_SHORT_WINDOW) ? 10.0 : 20.0;
+            if (savings > (faac_real)sideBits * (1.0 + lambda * 1000.0) + rd_bias) {
+                windowData->numFilters++;
+                tnsInfo->tnsDataPresent=1;
+                tnsFilter->direction = 0;
+                tnsFilter->coefCompress = 0;
+                tnsFilter->length = lengthInBands;
+                StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
+                TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
+            } else {
+                tnsFilter->order = 0;
+            }
         }
     }
 }
@@ -373,7 +415,14 @@ static void QuantizeReflectionCoeffs(int fOrder,
     /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
         indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
+
+        if (indexArray[i] > 7) indexArray[i] = 7;
+        if (indexArray[i] < -8) indexArray[i] = -8;
+
         kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+
+        if (kArray[i] > 0.8) kArray[i] = 0.8;
+        if (kArray[i] < -0.8) kArray[i] = -0.8;
     }
 }
 
@@ -429,8 +478,8 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     /* predictor coefficients.                       */
     aPtr = aArray1;
     aLastPtr = aArray2;
-    /* If there is no signal energy, return */
-    if (!signal) {
+    /* Energy gate to preserve throughput on silence */
+    if (signal < 1e-9) {
         kArray[0]=1.0;
         for (order=1;order<=fOrder;order++) {
             kArray[order]=0.0;
