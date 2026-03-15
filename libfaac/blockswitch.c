@@ -36,6 +36,10 @@ typedef struct
   faac_real prev_energy;
   faac_real prev_sub_energies[32];
   faac_real prev_subwindow_energy;
+
+  /* Two-stage transient status for lookahead alignment */
+  int next_transient;
+  int curr_transient;
   int short_todo;
 }
 psydata_t;
@@ -67,11 +71,6 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
 
-  /* Lookahead alignment: PsyBufferUpdate analyzes the frame that will follow
-     the current one being MDCT'd. Setting ONLY_SHORT here will cause
-     BlockSwitch to set LONG_START for the current frame, correctly aligning
-     the subsequent EIGHT_SHORT block with the attack.
-  */
   if (psydata->short_todo > 0)
       psyInfo->block_type = ONLY_SHORT_WINDOW;
   else
@@ -161,15 +160,10 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 {
   unsigned int channel;
 
-  // limit switching threshold
-  if (quality < 0.4)
-      quality = 0.4;
-
   for (channel = 0; channel < numChannels; channel++)
   {
     if (channelInfo[channel].present)
     {
-
       if (channelInfo[channel].cpe &&
 	  channelInfo[channel].ch_is_left)
       {				/* CPE */
@@ -183,7 +177,6 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
       else if (!channelInfo[channel].cpe &&
 	       channelInfo[channel].lfe)
       {				/* LFE */
-        // Only set block type and it should be OK
 	psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       }
       else if (!channelInfo[channel].cpe)
@@ -202,8 +195,10 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   int i, win;
   faac_real total_energy = 0;
   int is_transient = 0;
+  faac_real flux = 0;
+  faac_real max_sub_ratio = 0;
+  faac_real norm_var = 100.0;
 
-  /* Stage 1: Sub-window Energy Pre-gate */
   faac_real last_sub_e = psydata->prev_subwindow_energy;
   int sub_win_triggered = 0;
   for (win = 0; win < 8; win++)
@@ -215,8 +210,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           faac_real s = newSamples[win * 128 + j];
           sub_e += s * s;
       }
-      /* Conservative jump requirement to avoid speech regressions */
-      if (sub_e > 6.0 * last_sub_e && sub_e > 0.1)
+      if (sub_e > 10.0 * last_sub_e && sub_e > 1000.0)
           sub_win_triggered = 1;
       last_sub_e = sub_e;
       total_energy += sub_e;
@@ -225,23 +219,14 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 
   if (sub_win_triggered)
   {
-      /* Stage 2: Spectral Analysis */
       faac_real fft_buf[BLOCK_LEN_LONG];
-      faac_real flux = 0;
-      faac_real max_sub_ratio = 0;
       int sub_energies_idx = 0;
       int start_bin = (int)(5000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
       int end_bin = (int)(16000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
-
       if (end_bin > BLOCK_LEN_LONG / 2) end_bin = BLOCK_LEN_LONG / 2;
-
       memcpy(fft_buf, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
       Hann(gpsyInfo, fft_buf, BLOCK_LEN_LONG);
-
-      /* Verified: rfft output is in natural frequency order. */
       rfft(fft_tables, fft_buf, 10);
-
-      /* Sub-band Energy Flux (5-16kHz) */
       for (i = start_bin; i < end_bin; i += 16)
       {
           faac_real sub_energy = 0;
@@ -252,18 +237,14 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
               faac_real mag_sq = fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
               sub_energy += mag_sq;
           }
-
           ratio = sub_energy / (psydata->prev_sub_energies[sub_energies_idx] + 1e-9);
           if (ratio > 1.0)
               flux += (ratio - 1.0);
           if (ratio > max_sub_ratio)
               max_sub_ratio = ratio;
-
           psydata->prev_sub_energies[sub_energies_idx] = sub_energy;
           sub_energies_idx++;
       }
-
-      /* Tonal Veto: Variance-based approximation (Sum-of-Squares vs Square-of-Sums) */
       faac_real sum_sq = 0;
       faac_real sq_sum = 0;
       int n_bins = BLOCK_LEN_LONG / 2 - 1;
@@ -273,35 +254,25 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           sum_sq += mag_sq * mag_sq;
           sq_sum += mag_sq;
       }
-
-      faac_real norm_var = (sum_sq * n_bins) / (sq_sum * sq_sum + 1e-15);
-
-      /* Strict Stage 2 trigger: Requires low tonality (norm_var < 5.0) and high flux */
-      if (norm_var < 5.0 && (flux > 20.0 || max_sub_ratio > 15.0))
-      {
-          is_transient = 1;
-      }
+      norm_var = (sum_sq * n_bins) / (sq_sum * sq_sum + 1e-15);
   }
   else
   {
-      /* Pre-gate not tripped: update sub-energy baseline */
       faac_real scale = total_energy / (psydata->prev_energy + 1e-15);
       if (scale > 1.0) scale = 1.0;
       int idx;
       for (idx = 0; idx < 32; idx++)
           psydata->prev_sub_energies[idx] *= scale;
   }
-
   psydata->prev_energy = total_energy;
-
-  /* Asymmetric trigger: 1-frame "desire=SHORT" sequence
-     to save bits in VOIP while still handling transients.
-  */
-  if (is_transient)
-      psydata->short_todo = 1;
+  psydata->curr_transient = psydata->next_transient;
+  if (sub_win_triggered && norm_var < 3.0 && (flux > 50.0 || max_sub_ratio > 40.0))
+      is_transient = 1;
+  psydata->next_transient = is_transient;
+  if (psydata->curr_transient)
+      psydata->short_todo = 2;
   else if (psydata->short_todo > 0)
       psydata->short_todo--;
-
   memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
 }
 
@@ -309,17 +280,14 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
 {
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
-
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
   }
-
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
-
     if (desire == ONLY_SHORT_WINDOW
 	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
     {
