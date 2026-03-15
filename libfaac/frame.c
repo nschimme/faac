@@ -263,7 +263,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_IS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
@@ -537,19 +537,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering (Standard AAC: before Joint Stereo) */
+    /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((!channelInfo[channel].lfe) && (useTns)) {
-            faac_real tnsGainThresh = (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) ?
-                DEF_TNS_GAIN_THRESH_SHORT : DEF_TNS_GAIN_THRESH;
-
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong,
-                      tnsGainThresh);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -598,15 +594,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        int tnsBits = 0;
-        for (channel = 0; channel < numChannels; channel++) {
-            if (coderInfo[channel].tnsInfo.tnsDataPresent) {
-                tnsBits += (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) ? 60 : 40;
-            }
-        }
-
-        int desbits = (numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate) - tnsBits;
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
         if (fix < 0.9)
