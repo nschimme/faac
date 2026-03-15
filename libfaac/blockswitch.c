@@ -32,8 +32,19 @@
 
 typedef struct
 {
+  /* transient detector state */
   faac_real prev_sub_energies[32];
   faac_real prev_subwindow_hpf_energy;
+
+  /* Two-stage metrics for lookahead alignment */
+  faac_real next_low_flux;
+  faac_real next_high_flux;
+  faac_real next_norm_var;
+
+  faac_real curr_low_flux;
+  faac_real curr_high_flux;
+  faac_real curr_norm_var;
+
   int short_todo;
 }
 psydata_t;
@@ -62,6 +73,25 @@ static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
+  int is_transient = 0;
+
+  /* Stage 2 Discrimination with Quality Scaling:
+     transients have high high_flux and low tonality.
+     Scale threshold by 1/quality (stricter at low bitrate/quality).
+  */
+  faac_real sens = quality > 0.1 ? quality : 0.1;
+
+  if (psydata->curr_norm_var < 4.0 &&
+      (psydata->curr_high_flux > 10.0 / sens && psydata->curr_high_flux > 1.5 * psydata->curr_low_flux))
+  {
+      is_transient = 1;
+  }
+
+  if (is_transient)
+      psydata->short_todo = 2;
+  else if (psydata->short_todo > 0)
+      psydata->short_todo--;
+
   if (psydata->short_todo > 0)
       psyInfo->block_type = ONLY_SHORT_WINDOW;
   else
@@ -97,6 +127,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
     memset(psydata, 0, sizeof(psydata_t));
+    psydata->curr_norm_var = 100.0;
+    psydata->next_norm_var = 100.0;
     psyInfo[channel].data = psydata;
   }
 
@@ -120,11 +152,9 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-
   if (gpsyInfo->hannWindow) FreeMemory(gpsyInfo->hannWindow);
   if (gpsyInfo->hannWindow1024) FreeMemory(gpsyInfo->hannWindow1024);
   if (gpsyInfo->hannWindowS) FreeMemory(gpsyInfo->hannWindowS);
-
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].prevSamples) FreeMemory(psyInfo[channel].prevSamples);
@@ -166,7 +196,7 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 			    int *cb_width_short, int num_cb_short)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  int i, win, is_transient = 0;
+  int i, win;
   faac_real last_s = psyInfo->prevSamples[BLOCK_LEN_LONG - 1];
   faac_real last_sub_hpf_e = psydata->prev_subwindow_hpf_energy;
   int sub_win_triggered = 0;
@@ -181,11 +211,15 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           sub_hpf_e += hpf_s * hpf_s;
           last_s = s;
       }
-      if (sub_hpf_e > 10.0 * last_sub_hpf_e && sub_hpf_e > 2000.0)
+      if (sub_hpf_e > 6.0 * last_sub_hpf_e && sub_hpf_e > 500.0)
           sub_win_triggered = 1;
       last_sub_hpf_e = sub_hpf_e;
   }
   psydata->prev_subwindow_hpf_energy = last_sub_hpf_e;
+
+  psydata->curr_low_flux = psydata->next_low_flux;
+  psydata->curr_high_flux = psydata->next_high_flux;
+  psydata->curr_norm_var = psydata->next_norm_var;
 
   if (sub_win_triggered)
   {
@@ -213,17 +247,17 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
           faac_real mag_sq = fft_buf[i] * fft_buf[i] + fft_buf[512 + i] * fft_buf[512 + i];
           sum_sq += mag_sq * mag_sq; sq_sum += mag_sq;
       }
-      faac_real norm_var = (sum_sq * (BLOCK_LEN_LONG / 2 - 1)) / (sq_sum * sq_sum + 1e-15);
-      if (norm_var < 3.5 && high_flux > 2.0 * low_flux && high_flux > 15.0) is_transient = 1;
+      psydata->next_norm_var = (sum_sq * (BLOCK_LEN_LONG / 2 - 1)) / (sq_sum * sq_sum + 1e-15);
+      psydata->next_low_flux = low_flux;
+      psydata->next_high_flux = high_flux;
   }
   else
   {
+      psydata->next_low_flux = 0;
+      psydata->next_high_flux = 0;
+      psydata->next_norm_var = 100.0;
       for (int idx = 0; idx < 32; idx++) psydata->prev_sub_energies[idx] *= 0.5;
   }
-
-  /* Asymmetric trigger: 1-frame sequence for VOIP efficiency */
-  if (is_transient) psydata->short_todo = 1;
-  else if (psydata->short_todo > 0) psydata->short_todo--;
 
   memcpy(psyInfo->prevSamples, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
 }
