@@ -69,7 +69,8 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 #define SPREAD_UP 0.10
-#define SPREAD_DN 0.03
+#define SPREAD_DN 0.06
+#define SPREAD_FLOOR 0.75
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -174,12 +175,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
    * The two thresholds correspond to typical psychoacoustic masking
    * slopes on the Bark scale:
    *   SPREAD_UP  0.10  -> ~10 dB upward masking per scalefactor band
-   *   SPREAD_DN  0.03  -> ~15 dB downward masking per scalefactor band
+   *   SPREAD_DN  0.06  -> ~12 dB downward masking per scalefactor band
    *
    * We apply a floor to the scaling to prevent over-aggressive
    * bit reduction which can lead to audible artifacts in noise or
    * transient regions.
    * --------------------------------------------------------------- */
+
+  /* Skip spreading for short windows — inter-band energy ratios
+   * reflect temporal variation, not frequency masking. */
+  if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      return;
 
   {
     const faac_real inv_spread_up = 1.0 / SPREAD_UP;
@@ -211,7 +217,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         }
       }
 
-      if (scale < 0.5) scale = 0.5;
+      if (scale < SPREAD_FLOOR) scale = SPREAD_FLOOR;
       bandqual[sfb] *= scale;
     }
   }
