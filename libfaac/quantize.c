@@ -185,7 +185,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   /* Skip spreading for short windows — inter-band energy ratios
    * reflect temporal variation, not frequency masking. */
   if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-      return;
+    return;
 
   {
     const faac_real inv_spread_up = 1.0 / SPREAD_UP;
