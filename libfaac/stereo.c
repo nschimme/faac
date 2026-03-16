@@ -47,12 +47,8 @@ static float calc_cost(CoderInfo *coder, faac_real *spec, faac_real thr, int sta
         }
     }
 
-    // Better bit estimation:
-    // LR/MS both channels: n * bits_per_line * 2
-    // IS only one channel: n * bits_per_line + side_info
-    // We use a simple heuristic where one channel costs roughly 3 bits per line.
     if (mode == MODE_IS) {
-        bits = n * 3 + 10; // 10 bits for side info
+        bits = n * 3 + 10;
     } else {
         bits = n * 3 * 2;
     }
@@ -70,7 +66,6 @@ void AACstereo(faacEncHandle hpEncoder,
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     int chn;
 
-    // Initialization: Clear books and scalefactors for all active channels
     for (chn = 0; chn < maxchan; chn++) {
         if (!channel[chn].present)
             continue;
@@ -93,7 +88,6 @@ void AACstereo(faacEncHandle hpEncoder,
 
         if (!channel[chn].present)
             continue;
-        // Essential guard: only process channel pairs once, and only for CPE
         if (!((channel[chn].cpe) && (channel[chn].ch_is_left)))
             continue;
 
@@ -125,6 +119,8 @@ void AACstereo(faacEncHandle hpEncoder,
 
         float lambda = 0.15f * (hEncoder->config.quantqual / 100.0f);
         int intensity_stereo_enabled = (hEncoder->config.jointmode != JOINT_NONE);
+
+        faac_real M[FRAME_LEN], S[FRAME_LEN];
 
         for (group = 0; group < coder[chn].groups.n; group++) {
             int end_win = start_win + coder[chn].groups.len[group];
@@ -171,17 +167,20 @@ void AACstereo(faacEncHandle hpEncoder,
                 else if (band_center_freq > 6000 && energy_diff < 0.20 && FAAC_FABS(corr) < 0.30 && intensity_stereo_enabled)
                     band_mode = MODE_IS;
 
-                float final_costLR = 1e30f, final_costMS = 1e30f, final_costIS = 1e30f;
+                float final_costLR = 0, final_costMS = 0, final_costIS = 1e30f;
+                int need_cost = (band_mode == MODE_AMBIGUOUS);
 
-                if (band_mode == MODE_AMBIGUOUS) {
+                // If propose change mode, check costs for hysteresis even if not strictly ambiguous
+                int old_mode = hEncoder->last_ms_used[chn][sfcnt];
+                if (band_mode != MODE_AMBIGUOUS && band_mode != old_mode)
+                    need_cost = 1;
+
+                if (need_cost) {
                     final_costLR = calc_cost(coder + chn, s[chn] + start_win * BLOCK_LEN_SHORT, bandlvlL[sfb], start, end, gsize, lambda, MODE_LR) +
                                    calc_cost(coder + rch, s[rch] + start_win * BLOCK_LEN_SHORT, bandlvlr[sfb], start, end, gsize, lambda, MODE_LR);
 
                     faac_real thrMS = (bandlvlL[sfb] + bandlvlr[sfb]) * 0.5;
 
-                    faac_real M[FRAME_LEN], S[FRAME_LEN];
-                    memset(M, 0, sizeof(M));
-                    memset(S, 0, sizeof(S));
                     for (win = 0; win < gsize; win++) {
                         faac_real *sl = s[chn] + (start_win + win) * BLOCK_LEN_SHORT;
                         faac_real *sr = s[rch] + (start_win + win) * BLOCK_LEN_SHORT;
@@ -191,33 +190,31 @@ void AACstereo(faacEncHandle hpEncoder,
                         }
                     }
 
-                    final_costMS = (calc_cost(coder + chn, M, thrMS, start, end, gsize, lambda, MODE_MS) +
-                                    calc_cost(coder + rch, S, thrMS, start, end, gsize, lambda, MODE_MS)) * 0.98f;
+                    final_costMS = (calc_cost(coder + chn, M + 0, thrMS, start, end, gsize, lambda, MODE_MS) +
+                                    calc_cost(coder + rch, S + 0, thrMS, start, end, gsize, lambda, MODE_MS)) * 0.98f;
 
-                    if (band_center_freq > 6000 && energy_diff < 0.20 && intensity_stereo_enabled) {
-                        final_costIS = calc_cost(coder + chn, M, thrMS, start, end, gsize, lambda, MODE_IS);
+                    if (band_center_freq > 6000 && intensity_stereo_enabled) {
+                        final_costIS = calc_cost(coder + chn, M + 0, thrMS, start, end, gsize, lambda, MODE_IS);
+                    }
+
+                    if (band_mode == MODE_AMBIGUOUS) {
                         if (final_costIS < final_costLR && final_costIS < final_costMS) {
                             band_mode = MODE_IS;
                         } else {
                             band_mode = (final_costMS < final_costLR) ? MODE_MS : MODE_LR;
                         }
-                    } else {
-                        band_mode = (final_costMS < final_costLR) ? MODE_MS : MODE_LR;
+                    }
+
+                    // Apply hysteresis
+                    if (band_mode != old_mode) {
+                        float current_cost = (band_mode == MODE_LR) ? final_costLR : (band_mode == MODE_MS ? final_costMS : final_costIS);
+                        float old_cost = (old_mode == MODE_LR) ? final_costLR : (old_mode == MODE_MS ? final_costMS : final_costIS);
+                        if (current_cost > (old_cost * 0.95f)) {
+                            band_mode = old_mode;
+                        }
                     }
                 }
 
-                // Temporal Hysteresis
-                int old_mode = hEncoder->last_ms_used[chn][sfcnt]; // Mapping: 0=LR, 1=MS, 2=IS
-                if (band_mode != old_mode && (final_costLR < 1e20f)) {
-                    float current_cost = (band_mode == MODE_LR) ? final_costLR : (band_mode == MODE_MS ? final_costMS : final_costIS);
-                    float old_cost = (old_mode == MODE_LR) ? final_costLR : (old_mode == MODE_MS ? final_costMS : final_costIS);
-
-                    if (current_cost > (old_cost * 0.95f)) {
-                        band_mode = old_mode;
-                    }
-                }
-
-                // Apply mode
                 if (band_mode == MODE_MS) {
                     channel[chn].msInfo.ms_used[sfcnt] = 1;
                     for (win = start_win; win < end_win; win++) {
