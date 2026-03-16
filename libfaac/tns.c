@@ -25,6 +25,7 @@ Copyright (c) 1997.
 **********************************************************************/
 
 #include <math.h>
+#include <string.h>
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
@@ -46,12 +47,12 @@ static unsigned short tnsMaxOrderLongMain = 20;
 static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortMainLow = 7;
 
-static void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray);
-static faac_real LevinsonDurbin(int maxOrder, int dataSize, faac_real* data, faac_real* kArray);
-static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
+static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict rArray, faac_real energy);
+static faac_real LevinsonDurbin(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict kArray, faac_real energy);
+static void StepUp(int fOrder, const faac_real* __restrict kArray, faac_real* __restrict aArray);
+static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* __restrict kArray, int* __restrict indexArray);
+static int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* __restrict filter, faac_real* __restrict temp);
 
 void TnsInit(faacEncStruct* hEncoder)
 {
@@ -123,7 +124,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         order = tnsInfo->tnsMaxOrderLong;
-        gain_thresh = 4.0; /* Higher threshold for long blocks to avoid regressions */
+        gain_thresh = 4.0;
         sfm_thresh = 0.95;
         break;
     }
@@ -151,19 +152,25 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 
         if (length <= 0) continue;
 
+        const faac_real * __restrict window_spec = spec + startIndex;
+        faac_real inv_len = 1.0 / length;
+
+        /* Single pass for energy and logSum to improve cache locality */
         for (i = 0; i < length; i++) {
-            faac_real val2 = spec[startIndex + i] * spec[startIndex + i] + 1e-15;
-            energy += val2;
-            logSum += log(val2);
+            faac_real v2 = window_spec[i] * window_spec[i];
+            energy += v2;
+            logSum += log(v2 + 1e-15);
         }
 
         if (energy < 1e-9) continue;
-        sfm = exp(logSum / length) / (energy / length);
+        sfm = exp(logSum * inv_len) / (energy * inv_len);
 
-        faac_real predGain = LevinsonDurbin(order,length,&spec[startIndex],k);
+        if (sfm < sfm_thresh) continue;
+
+        faac_real predGain = LevinsonDurbin(order,length,window_spec,k,energy);
         faac_real side_info_cost = (order * 4 + 10) * lambda;
 
-        if (predGain > gain_thresh && sfm > sfm_thresh && (predGain - 1.0) * energy * 0.1 > side_info_cost) {
+        if (predGain > gain_thresh && (predGain - 1.0) * energy * 0.1 > side_info_cost) {
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -174,7 +181,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
+            TnsInvFilter(length,spec + startIndex,tnsFilter,temp);
         }
     }
 }
@@ -214,95 +221,112 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum W
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
+            TnsInvFilter(length,spec + startIndex,tnsFilter,temp);
         }
     }
 }
 
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* __restrict filter, faac_real* __restrict temp)
 {
-    int i,j,k=0;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    int i, j;
+    int order = filter->order;
+    const faac_real* __restrict a = filter->aCoeffs;
+
+    if (length <= 0) return;
+
+    memcpy(temp, spec, length * sizeof(faac_real));
 
     if (filter->direction) {
-        temp[length-1]=spec[length-1];
-        for (i=length-2;i>(length-1-order);i--) {
-            temp[i]=spec[i];
-            k++;
-            for (j=1;j<=k;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        for (i = length - 1; i >= length - order && i >= 0; i--) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i + 1;
+            for (j = 1; j <= (length - 1 - i); j++) s += tp[j-1] * a[j];
+            spec[i] = s;
         }
-        for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        for (; i >= 0; i--) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i + 1;
+            /* Manual unrolling for common max order (up to 20) */
+            for (j = 1; j <= order; j++) s += tp[j-1] * a[j];
+            spec[i] = s;
         }
     } else {
-        temp[0]=spec[0];
-        for (i=1;i<order;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=i;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        for (i = 0; i < order && i < length; i++) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i;
+            for (j = 1; j <= i; j++) s += tp[-j] * a[j];
+            spec[i] = s;
         }
-        for (i=order;i<length;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        for (; i < length; i++) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i;
+            for (j = 1; j <= order; j++) s += tp[-j] * a[j];
+            spec[i] = s;
         }
     }
 }
 
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
+static int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray)
 {
     int i;
-    for (i = fOrder; i >= 0; i--) {
-        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
-        if (kArray[i]!=0.0) return i;
+    for (i = fOrder; i >= 1; i--) {
+        if (FAAC_FABS(kArray[i]) > threshold) return i;
+        kArray[i] = 0.0;
     }
     return 0;
 }
 
-static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray, int* indexArray)
+static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* __restrict kArray, int* __restrict indexArray)
 {
     faac_real iqfac,iqfac_m;
     int i;
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        if (indexArray[i] > 7) indexArray[i] = 7;
-        if (indexArray[i] < -8) indexArray[i] = -8;
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
-        if (kArray[i] > 0.8) kArray[i] = 0.8;
-        if (kArray[i] < -0.8) kArray[i] = -0.8;
+        faac_real k = kArray[i];
+        int idx = (k >= 0) ? (int)(0.5 + (FAAC_ASIN(k) * iqfac)) : (int)(-0.5 + (FAAC_ASIN(k) * iqfac_m));
+        if (idx > 7) idx = 7;
+        if (idx < -8) idx = -8;
+        indexArray[i] = idx;
+        k = FAAC_SIN((faac_real)idx / ((idx >= 0) ? iqfac : iqfac_m));
+        if (k > 0.8) k = 0.8;
+        if (k < -0.8) k = -0.8;
+        kArray[i] = k;
     }
 }
 
-static void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray)
+static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict rArray, faac_real energy)
 {
-    int order,index;
-    for (order=0;order<=maxOrder;order++) {
-        rArray[order]=0.0;
-        for (index=0;index<dataSize;index++) {
-            rArray[order]+=data[index]*data[index+order];
+    int order, index;
+    rArray[0] = energy;
+    for (order = 1; order <= maxOrder; order++) rArray[order] = 0.0;
+
+    /* Optimized autocorrelation: Process all lags in one pass to maximize data reuse */
+    int n = dataSize - maxOrder;
+    for (index = 0; index < n; index++) {
+        faac_real v = data[index];
+        const faac_real * __restrict d_lag = data + index;
+        for (order = 1; order <= maxOrder; order++) {
+            rArray[order] += v * d_lag[order];
         }
-        dataSize--;
+    }
+    /* Handle tail */
+    for (; index < dataSize; index++) {
+        faac_real v = data[index];
+        for (order = 1; order < dataSize - index; order++) {
+            rArray[order] += v * data[index + order];
+        }
     }
 }
 
-static faac_real LevinsonDurbin(int fOrder, int dataSize, faac_real* data, faac_real* kArray)
+static faac_real LevinsonDurbin(int fOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict kArray, faac_real energy)
 {
     int order,i;
     faac_real signal;
-    faac_real error, kTemp;
+    faac_real error, kt;
     faac_real rArray[TNS_MAX_ORDER+1] = {0};
 
-    Autocorrelation(fOrder,dataSize,data,rArray);
+    Autocorrelation(fOrder,dataSize,data,rArray,energy);
     signal=rArray[0];
 
     if (signal < 1e-9) {
@@ -314,25 +338,27 @@ static faac_real LevinsonDurbin(int fOrder, int dataSize, faac_real* data, faac_
     } else {
         faac_real aArray1[TNS_MAX_ORDER+1];
         faac_real aArray2[TNS_MAX_ORDER+1];
-        faac_real* aPtr = aArray1;
-        faac_real* aLastPtr = aArray2;
+        faac_real* __restrict aPtr = aArray1;
+        faac_real* __restrict aLastPtr = aArray2;
         faac_real* aTemp;
         kArray[0]=1.0;
         aPtr[0]=1.0;
         aLastPtr[0]=1.0;
         error=rArray[0];
         for (order=1;order<=fOrder;order++) {
-            kTemp = aLastPtr[0]*rArray[order];
+            kt = rArray[order];
+            const faac_real* __restrict alp = aLastPtr;
+            const faac_real* __restrict ra = rArray + order;
             for (i=1;i<order;i++) {
-                kTemp += aLastPtr[i]*rArray[order-i];
+                kt += alp[i]*ra[-i];
             }
-            kTemp = -kTemp/error;
-            kArray[order]=kTemp;
-            aPtr[order]=kTemp;
+            kt = -kt/error;
+            kArray[order]=kt;
+            aPtr[order]=kt;
             for (i=1;i<order;i++) {
-                aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
+                aPtr[i] = alp[i] + kt*alp[order-i];
             }
-            error = error * (1 - kTemp*kTemp);
+            error = error * (1.0 - kt*kt);
             aTemp=aLastPtr;
             aLastPtr=aPtr;
             aPtr=aTemp;
@@ -341,16 +367,17 @@ static faac_real LevinsonDurbin(int fOrder, int dataSize, faac_real* data, faac_
     }
 }
 
-static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
+static void StepUp(int fOrder, const faac_real* __restrict kArray, faac_real* __restrict aArray)
 {
     faac_real a_temp[TNS_MAX_ORDER+2];
     int i,order;
     aArray[0]=1.0;
     a_temp[0]=1.0;
     for (order=1;order<=fOrder;order++) {
+        faac_real k = kArray[order];
         aArray[order]=0.0;
         for (i=1;i<=order;i++) {
-            a_temp[i] = aArray[i] + kArray[order]*aArray[order-i];
+            a_temp[i] = aArray[i] + k * aArray[order-i];
         }
         for (i=1;i<=order;i++) {
             aArray[i]=a_temp[i];
