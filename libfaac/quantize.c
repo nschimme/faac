@@ -195,7 +195,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-/* cfg is added so qlevel can use the precomputed ATH floor per band. */
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
@@ -206,6 +205,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   )
 {
     int sb;
+    const faac_real *ath_table = (coderInfo->block_type == ONLY_SHORT_WINDOW)
+                                 ? cfg->ath_short : cfg->ath_long;
 #if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
     /* 2^0.25 (1.50515 dB) step from AAC specs */
     static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
@@ -239,19 +240,28 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      /* Use the precomputed ATH-shaped floor for this band.
-       * For short blocks index into ath_short; for long into ath_long.
-       * Both tables are filled once in CalcBW() at configuration time.  */
-      faac_real floor = (coderInfo->block_type == ONLY_SHORT_WINDOW)
-                        ? cfg->ath_short[sb] : cfg->ath_long[sb];
+      faac_real bq = bandqual[sb];
 
-      if ((rmsx < floor) || (!bandqual[sb]))
+      if ((rmsx < NOISEFLOOR) || (!bq))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      /* Apply ATH as a floor adjustment to the existing masking threshold.
+       * If ATH is meaningfully above the current noise floor, use it to
+       * cap the quality (increase the quantization step). 0.5x scaling applied. */
+      {
+          faac_real ath_floor = ath_table[sb] * 0.5;
+          if (ath_floor > NOISEFLOOR)
+          {
+              faac_real ceiling = rmsx / ath_floor;
+              if (bq > ceiling)
+                  bq = ceiling;
+          }
+      }
+
+      if (bq < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -260,7 +270,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bq / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
