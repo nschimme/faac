@@ -87,7 +87,7 @@ typedef struct {
     /* FFT Tables */
     FFT_Tables	fft_tables;
 
-    int last_ms_used[MAX_SCFAC_BANDS];
+    int last_ms_used[MAX_CHANNELS][MAX_SCFAC_BANDS];
 } faacEncStruct;
 
 #ifdef __cplusplus

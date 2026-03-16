@@ -19,8 +19,9 @@
 
 #include "channels.h"
 #include "util.h"
+#include "faac.h"
 
-void AACstereo(void *hEncoder,
+void AACstereo(faacEncHandle hEncoder,
                CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],

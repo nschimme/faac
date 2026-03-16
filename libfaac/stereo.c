@@ -60,7 +60,7 @@ static float calc_cost(CoderInfo *coder, faac_real *spec, faac_real thr, int sta
     return (float)(distortion / (thr + 1e-20f)) + lambda * bits;
 }
 
-void AACstereo(void *hpEncoder,
+void AACstereo(faacEncHandle hpEncoder,
                CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
@@ -70,7 +70,7 @@ void AACstereo(void *hpEncoder,
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     int chn;
 
-    // Initialization
+    // Initialization: Clear books and scalefactors for all active channels
     for (chn = 0; chn < maxchan; chn++) {
         if (!channel[chn].present)
             continue;
@@ -93,10 +93,12 @@ void AACstereo(void *hpEncoder,
 
         if (!channel[chn].present)
             continue;
+        // Essential guard: only process channel pairs once, and only for CPE
         if (!((channel[chn].cpe) && (channel[chn].ch_is_left)))
             continue;
 
         rch = channel[chn].paired_ch;
+        if (rch <= chn) continue;
 
         if (coder[chn].block_type != coder[rch].block_type) {
             channel[chn].common_window = 0;
@@ -178,6 +180,8 @@ void AACstereo(void *hpEncoder,
                     faac_real thrMS = (bandlvlL[sfb] + bandlvlr[sfb]) * 0.5;
 
                     faac_real M[FRAME_LEN], S[FRAME_LEN];
+                    memset(M, 0, sizeof(M));
+                    memset(S, 0, sizeof(S));
                     for (win = 0; win < gsize; win++) {
                         faac_real *sl = s[chn] + (start_win + win) * BLOCK_LEN_SHORT;
                         faac_real *sr = s[rch] + (start_win + win) * BLOCK_LEN_SHORT;
@@ -203,7 +207,7 @@ void AACstereo(void *hpEncoder,
                 }
 
                 // Temporal Hysteresis
-                int old_mode = hEncoder->last_ms_used[sfcnt]; // Mapping: 0=LR, 1=MS, 2=IS
+                int old_mode = hEncoder->last_ms_used[chn][sfcnt]; // Mapping: 0=LR, 1=MS, 2=IS
                 if (band_mode != old_mode && (final_costLR < 1e20f)) {
                     float current_cost = (band_mode == MODE_LR) ? final_costLR : (band_mode == MODE_MS ? final_costMS : final_costIS);
                     float old_cost = (old_mode == MODE_LR) ? final_costLR : (old_mode == MODE_MS ? final_costMS : final_costIS);
@@ -243,7 +247,6 @@ void AACstereo(void *hpEncoder,
                         vfix = FAAC_SQRT(efix / (enrgs + 1e-20));
                     }
 
-                    // Store intensity ratio in right channel scalefactor
                     const faac_real step = 10/1.50515;
                     int sf = FAAC_LRINT(FAAC_LOG10(EL / (efix + 1e-20)) * step);
                     int pan = FAAC_LRINT(FAAC_LOG10(ER / (efix + 1e-20)) * step) - sf;
@@ -253,9 +256,9 @@ void AACstereo(void *hpEncoder,
                     } else if (pan < -30) {
                         coder[rch].book[sfcnt] = HCB_ZERO;
                     } else {
-                        coder[rch].book[sfcnt] = hcb;
                         coder[chn].sf[sfcnt] = sf;
                         coder[rch].sf[sfcnt] = -pan;
+                        coder[rch].book[sfcnt] = hcb;
 
                         for (win = start_win; win < end_win; win++) {
                             faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
@@ -271,7 +274,8 @@ void AACstereo(void *hpEncoder,
                     channel[chn].msInfo.ms_used[sfcnt] = 0;
                 }
 
-                hEncoder->last_ms_used[sfcnt] = band_mode;
+                hEncoder->last_ms_used[chn][sfcnt] = band_mode;
+                hEncoder->last_ms_used[rch][sfcnt] = band_mode;
                 sfcnt++;
             }
             start_win = end_win;

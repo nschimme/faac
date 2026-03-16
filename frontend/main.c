@@ -1024,8 +1024,11 @@ int main(int argc, char *argv[])
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
 
-    if (myFormat->jointmode != JOINT_NONE)
-        fprintf(stderr, " + Joint Stereo");
+    if (myFormat->jointmode != JOINT_NONE) {
+        fprintf(stderr, " + Joint Stereo (M/S + IS)");
+    } else {
+        fprintf(stderr, " + Joint Stereo (M/S only)");
+    }
     if (myFormat->pnslevel > 0)
         fprintf(stderr, " + PNS");
     fprintf(stderr, "\n");
