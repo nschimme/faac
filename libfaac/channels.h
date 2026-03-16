@@ -31,6 +31,8 @@ extern "C" {
 typedef struct {
     int is_present;
     int ms_used[MAX_SCFAC_BANDS];
+    int ms_used_last[MAX_SCFAC_BANDS];
+    int block_type_last;
 } MSInfo;
 
 typedef struct {
