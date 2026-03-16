@@ -27,8 +27,8 @@
 #include "fft.h"
 #include "util.h"
 
-#define MAXLOGM 9
-#define MAXLOGR 8
+#define MAXLOGM 10
+#define MAXLOGR 10
 
 void fft_initialize( FFT_Tables *fft_tables )
 {

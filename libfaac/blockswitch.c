@@ -15,8 +15,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * $Id: psychkni.c,v 1.19 2012/03/01 18:34:17 knik Exp $
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,19 +28,22 @@
 #include "filtbank.h"
 #include <faac.h>
 
-typedef float psyfloat;
-
 typedef struct
 {
-  /* bandwidth */
-  int bandS;
-  int lastband;
+  /* transient detector state */
+  faac_real prev_sub_energies[32];
+  faac_real prev_subwindow_hpf_energy;
 
-  /* band volumes */
-  psyfloat *engPrev[8];
-  psyfloat *eng[8];
-  psyfloat *engNext[8];
-  psyfloat *engNext2[8];
+  /* Two-stage metrics for lookahead alignment */
+  faac_real next_low_flux;
+  faac_real next_high_flux;
+  faac_real next_norm_var;
+
+  faac_real curr_low_flux;
+  faac_real curr_high_flux;
+  faac_real curr_norm_var;
+
+  int short_todo;
 }
 psydata_t;
 
@@ -50,12 +51,15 @@ psydata_t;
 static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
 {
   int i;
-
-  /* Applying Hann window */
   if (size == BLOCK_LEN_LONG * 2)
   {
     for (i = 0; i < size; i++)
       inSamples[i] *= gpsyInfo->hannWindow[i];
+  }
+  else if (size == BLOCK_LEN_LONG)
+  {
+    for (i = 0; i < size; i++)
+      inSamples[i] *= gpsyInfo->hannWindow1024[i];
   }
   else
   {
@@ -64,62 +68,31 @@ static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
   }
 }
 
-#define PRINTSTAT 0
-#if PRINTSTAT
-static struct {
-    int tot;
-    int s;
-} frames;
-#endif
-
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
-  enum {PREVS = 2, NEXTS = 2};
-  psydata_t *psydata = psyInfo->data;
-  int lastband = psydata->lastband;
-  int firstband = 2;
-  int sfb, win;
-  psyfloat *lasteng;
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  int is_transient = 0;
 
-  psyInfo->block_type = ONLY_LONG_WINDOW;
+  /* Stage 2 Discrimination with Quality Scaling:
+     transients have high high_flux and low tonality.
+  */
+  faac_real sens = quality > 0.1 ? quality : 0.1;
 
-  lasteng = NULL;
-  for (win = 0; win < PREVS + 8 + NEXTS; win++)
+  if (psydata->curr_norm_var < 4.0 &&
+      (psydata->curr_high_flux > 50.0 / sens && psydata->curr_high_flux > 1.5 * psydata->curr_low_flux))
   {
-      psyfloat *eng;
-
-      if (win < PREVS)
-          eng = psydata->engPrev[win + 8 - PREVS];
-      else if (win < (PREVS + 8))
-          eng = psydata->eng[win - PREVS];
-      else
-          eng = psydata->engNext[win - PREVS - 8];
-
-      if (lasteng)
-      {
-          faac_real toteng = 0.0;
-          faac_real volchg = 0.0;
-
-          for (sfb = firstband; sfb < lastband; sfb++)
-          {
-              toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
-              volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
-          }
-
-          if ((volchg / toteng * quality) > 3.0)
-          {
-              psyInfo->block_type = ONLY_SHORT_WINDOW;
-              break;
-          }
-      }
-      lasteng = eng;
+      is_transient = 1;
   }
 
-#if PRINTSTAT
-  frames.tot++;
-  if (psyInfo->block_type == ONLY_SHORT_WINDOW)
-      frames.s++;
-#endif
+  if (is_transient)
+      psydata->short_todo = 2;
+  else if (psydata->short_todo > 0)
+      psydata->short_todo--;
+
+  if (psydata->short_todo > 0)
+      psyInfo->block_type = ONLY_SHORT_WINDOW;
+  else
+      psyInfo->block_type = ONLY_LONG_WINDOW;
 }
 
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -127,16 +100,21 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 		    int *cb_width_short, int num_cb_short)
 {
   unsigned int channel;
-  int i, j, size;
+  int i, size;
 
   gpsyInfo->hannWindow =
     (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
+  gpsyInfo->hannWindow1024 =
+    (faac_real *) AllocMemory(BLOCK_LEN_LONG * sizeof(faac_real));
   gpsyInfo->hannWindowS =
     (faac_real *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(faac_real));
 
   for (i = 0; i < BLOCK_LEN_LONG * 2; i++)
     gpsyInfo->hannWindow[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
 					     (BLOCK_LEN_LONG * 2)));
+  for (i = 0; i < BLOCK_LEN_LONG; i++)
+    gpsyInfo->hannWindow1024[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
+					     (BLOCK_LEN_LONG)));
   for (i = 0; i < BLOCK_LEN_SHORT * 2; i++)
     gpsyInfo->hannWindowS[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
 					      (BLOCK_LEN_SHORT * 2)));
@@ -145,6 +123,9 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
+    memset(psydata, 0, sizeof(psydata_t));
+    psydata->curr_norm_var = 100.0;
+    psydata->next_norm_var = 100.0;
     psyInfo[channel].data = psydata;
   }
 
@@ -161,109 +142,46 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   size = BLOCK_LEN_SHORT;
   for (channel = 0; channel < numChannels; channel++)
   {
-    psydata_t *psydata = psyInfo[channel].data;
-
     psyInfo[channel].sizeS = size;
-
-    for (j = 0; j < 8; j++)
-    {
-      psydata->engPrev[j] =
-            (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
-      memset(psydata->engPrev[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->eng[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
-      memset(psydata->eng[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->engNext[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
-      memset(psydata->engNext[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->engNext2[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
-      memset(psydata->engNext2[j], 0, NSFB_SHORT * sizeof(psyfloat));
-    }
   }
 }
 
 static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-  int j;
-
-  if (gpsyInfo->hannWindow)
-    FreeMemory(gpsyInfo->hannWindow);
-  if (gpsyInfo->hannWindowS)
-    FreeMemory(gpsyInfo->hannWindowS);
-
+  if (gpsyInfo->hannWindow) FreeMemory(gpsyInfo->hannWindow);
+  if (gpsyInfo->hannWindow1024) FreeMemory(gpsyInfo->hannWindow1024);
+  if (gpsyInfo->hannWindowS) FreeMemory(gpsyInfo->hannWindowS);
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].prevSamples)
-      FreeMemory(psyInfo[channel].prevSamples);
+    if (psyInfo[channel].prevSamples) FreeMemory(psyInfo[channel].prevSamples);
+    if (psyInfo[channel].data) FreeMemory(psyInfo[channel].data);
   }
-
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    psydata_t *psydata = psyInfo[channel].data;
-
-    for (j = 0; j < 8; j++)
-    {
-        if (psydata->engPrev[j])
-            FreeMemory(psydata->engPrev[j]);
-        if (psydata->eng[j])
-            FreeMemory(psydata->eng[j]);
-        if (psydata->engNext[j])
-            FreeMemory(psydata->engNext[j]);
-        if (psydata->engNext2[j])
-            FreeMemory(psydata->engNext2[j]);
-    }
-  }
-
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].data)
-      FreeMemory(psyInfo[channel].data);
-  }
-
-#if PRINTSTAT
-  printf("short frames: %d/%d (%.2f %%)\n", frames.s, frames.tot, 100.0*frames.s/frames.tot);
-#endif
 }
 
-/* Do psychoacoustical analysis */
 static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
-			 PsyInfo * psyInfo, int *cb_width_long, int
-			 num_cb_long, int *cb_width_short,
-			 int num_cb_short, unsigned int numChannels,
-			 faac_real quality
-			)
+			 PsyInfo * psyInfo, int *cb_width_long, int num_cb_long,
+			 int *cb_width_short, int num_cb_short, unsigned int numChannels,
+			 faac_real quality)
 {
   unsigned int channel;
-
-  // limit switching threshold
-  if (quality < 0.4)
-      quality = 0.4;
-
   for (channel = 0; channel < numChannels; channel++)
   {
     if (channelInfo[channel].present)
     {
-
-      if (channelInfo[channel].cpe &&
-	  channelInfo[channel].ch_is_left)
-      {				/* CPE */
-
+      if (channelInfo[channel].cpe && channelInfo[channel].ch_is_left)
+      {
 	int leftChan = channel;
 	int rightChan = channelInfo[channel].paired_ch;
-
 	PsyCheckShort(&psyInfo[leftChan], quality);
 	PsyCheckShort(&psyInfo[rightChan], quality);
       }
-      else if (!channelInfo[channel].cpe &&
-	       channelInfo[channel].lfe)
-      {				/* LFE */
-        // Only set block type and it should be OK
+      else if (!channelInfo[channel].cpe && channelInfo[channel].lfe)
+      {
 	psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       }
       else if (!channelInfo[channel].cpe)
-      {				/* SCE */
+      {
 	PsyCheckShort(&psyInfo[channel], quality);
       }
     }
@@ -274,109 +192,102 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 			    faac_real *newSamples, unsigned int bandwidth,
 			    int *cb_width_short, int num_cb_short)
 {
-  int win;
-  faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;
-  faac_real *transBuffS = gpsyInfo->sharedWorkBuffShort;
-  psydata_t *psydata = psyInfo->data;
-  psyfloat *tmp;
-  int sfb;
-
-  psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
-
-  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
-  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  int i, win;
+  faac_real last_s = psyInfo->prevSamples[BLOCK_LEN_LONG - 1];
+  faac_real last_sub_hpf_e = psydata->prev_subwindow_hpf_energy;
+  int sub_win_triggered = 0;
 
   for (win = 0; win < 8; win++)
   {
-    int first = 0;
-    int last = 0;
+      faac_real sub_hpf_e = 0;
+      for (int j = 0; j < 128; j++)
+      {
+          faac_real s = newSamples[win * 128 + j];
+          faac_real hpf_s = s - last_s;
+          sub_hpf_e += hpf_s * hpf_s;
+          last_s = s;
+      }
+      if (sub_hpf_e > 6.0 * last_sub_hpf_e && sub_hpf_e > 500.0)
+          sub_win_triggered = 1;
+      last_sub_hpf_e = sub_hpf_e;
+  }
+  psydata->prev_subwindow_hpf_energy = last_sub_hpf_e;
 
-    memcpy(transBuffS, transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2,
-	   2 * psyInfo->sizeS * sizeof(faac_real));
+  psydata->curr_low_flux = psydata->next_low_flux;
+  psydata->curr_high_flux = psydata->next_high_flux;
+  psydata->curr_norm_var = psydata->next_norm_var;
 
-    Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    MDCT( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi);
+  if (sub_win_triggered)
+  {
+      faac_real fft_buf[BLOCK_LEN_LONG];
+      faac_real low_flux = 0, high_flux = 0;
+      int split_bin = (int)(4000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
+      int end_bin = (int)(16000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
+      int sub_energies_idx = 0;
+      if (end_bin > 512) end_bin = 512;
 
-    // shift bufs
-    tmp = psydata->engPrev[win];
-    psydata->engPrev[win] = psydata->eng[win];
-    psydata->eng[win] = psydata->engNext[win];
-    psydata->engNext[win] = psydata->engNext2[win];
-    psydata->engNext2[win] = tmp;
+      memcpy(fft_buf, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
+      Hann(gpsyInfo, fft_buf, BLOCK_LEN_LONG);
+      rfft(fft_tables, fft_buf, 10);
 
-    for (sfb = 0; sfb < num_cb_short; sfb++)
-    {
-      faac_real e;
-      int l;
+      for (i = 1; i < end_bin; i += 16)
+      {
+          faac_real sub_energy = 0;
+          for (int j = i; j < i + 16 && j < end_bin; j++)
+              sub_energy += fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
 
-      first = last;
-      last = first + cb_width_short[sfb];
+          faac_real ratio = sub_energy / (psydata->prev_sub_energies[sub_energies_idx] + 1e-9);
+          if (ratio > 1.0)
+          {
+              if (i < split_bin) low_flux += (ratio - 1.0);
+              else high_flux += (ratio - 1.0);
+          }
+          psydata->prev_sub_energies[sub_energies_idx] = sub_energy;
+          sub_energies_idx++;
+      }
 
-      if (first < 1)
-          first = 1;
-
-      if (first >= psydata->bandS) // band out of range
-          break;
-
-      e = 0.0;
-      for (l = first; l < last; l++)
-          e += transBuffS[l] * transBuffS[l];
-
-      psydata->engNext2[win][sfb] = e;
-    }
-    psydata->lastband = sfb;
-    for (; sfb < num_cb_short; sfb++)
-    {
-        psydata->engNext2[win][sfb] = 0;
-    }
+      faac_real sum_sq = 0, sq_sum = 0;
+      for (i = 1; i < 512; i++)
+      {
+          faac_real mag_sq = fft_buf[i] * fft_buf[i] + fft_buf[512 + i] * fft_buf[512 + i];
+          sum_sq += mag_sq * mag_sq; sq_sum += mag_sq;
+      }
+      psydata->next_norm_var = (sum_sq * 511.0) / (sq_sum * sq_sum + 1e-15);
+      psydata->next_low_flux = low_flux;
+      psydata->next_high_flux = high_flux;
+  }
+  else
+  {
+      psydata->next_low_flux = 0;
+      psydata->next_high_flux = 0;
+      psydata->next_norm_var = 100.0;
+      for (int idx = 0; idx < 32; idx++) psydata->prev_sub_energies[idx] *= 0.5;
   }
 
-  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
+  memcpy(psyInfo->prevSamples, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
-
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
-      desire = ONLY_SHORT_WINDOW;
-  }
-
+  for (channel = 0; channel < numChannels; channel++) if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW) desire = ONLY_SHORT_WINDOW;
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
-
-    if (desire == ONLY_SHORT_WINDOW
-	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
+    if (desire == ONLY_SHORT_WINDOW || coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
     {
-      if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
-	coderInfo[channel].block_type = LONG_SHORT_WINDOW;
-      else
-	coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+      if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW) coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+      else coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
     else
     {
-      if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW)
-	coderInfo[channel].block_type = SHORT_LONG_WINDOW;
-      else
-	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+      if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW) coderInfo[channel].block_type = SHORT_LONG_WINDOW;
+      else coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
   }
 }
 
-psymodel_t psymodel2 =
-{
-  PsyInit,
-  PsyEnd,
-  PsyCalculate,
-  PsyBufferUpdate,
-  BlockSwitch
-};
+psymodel_t psymodel2 = { PsyInit, PsyEnd, PsyCalculate, PsyBufferUpdate, BlockSwitch };
