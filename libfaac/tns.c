@@ -153,10 +153,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
         order = tnsInfo->tnsMaxOrderShort;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
@@ -164,10 +162,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
     }
 
@@ -177,6 +173,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     stopBand = min(stopBand,maxSfb);
     startBand = max(startBand,0);
     stopBand = max(stopBand,0);
+
+    lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
@@ -236,7 +234,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
@@ -245,7 +242,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
     }
 
@@ -430,7 +426,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     aPtr = aArray1;
     aLastPtr = aArray2;
     /* If there is no signal energy, return */
-    if (!signal) {
+    if (signal < 1e-9) {
         kArray[0]=1.0;
         for (order=1;order<=fOrder;order++) {
             kArray[order]=0.0;
