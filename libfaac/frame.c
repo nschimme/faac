@@ -618,14 +618,21 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->reservoirBits < 0)
             hEncoder->reservoirBits = 0;
 
-        /* Damped quality adjustment — move 50% toward target each frame */
+        /* Incremental quality adjustment based on reservoir level */
         {
             faac_real fill = (faac_real)hEncoder->reservoirBits /
                              hEncoder->maxReservoirBits;
-            /* target_quality rises when reservoir is full, falls when empty */
-            faac_real target = hEncoder->aacquantCfg.quality * (0.6 + 0.8 * fill);
-            hEncoder->aacquantCfg.quality +=
-                0.5 * (target - hEncoder->aacquantCfg.quality);
+
+			/* -0.5 (empty) to 0.5 (full) */
+            faac_real deviation = fill - 0.5; 
+
+    		/* Nudge quality: 
+       		   If reservoir is sinking (deviation < 0), quality decreases.
+       		   If reservoir is growing (deviation > 0), quality increases.
+       		   Scaling by 0.5–1.0 is usually safer to prevent oscillation.
+    		*/
+			hEncoder->aacquantCfg.quality += (deviation * 2.0);
+
             if (hEncoder->aacquantCfg.quality > maxqual)
                 hEncoder->aacquantCfg.quality = maxqual;
             if (hEncoder->aacquantCfg.quality < 10)
