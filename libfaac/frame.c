@@ -48,6 +48,15 @@ static const psymodellist_t psymodellist[] = {
   {NULL}
 };
 
+/* Calculate the target number of bits for a single frame across all channels. */
+static int calculate_target_bits(unsigned long bitRate,
+                                 unsigned int  numChannels,
+                                 unsigned long sampleRate)
+{
+    /* Use 64-bit math for intermediate to prevent overflow. */
+    return (int)((unsigned long long)bitRate * numChannels * FRAME_LEN / sampleRate);
+}
+
 static int calc_reservoir_max(unsigned long bitRate,
                               unsigned int  numChannels,
                               unsigned long sampleRate)
@@ -58,15 +67,14 @@ static int calc_reservoir_max(unsigned long bitRate,
     if (!bitRate || !sampleRate)
         return 6144 * (int)numChannels;
 
-    /* config.bitRate is bits/sec/channel. Calculate total bits per frame across all channels. */
-    total_frame_budget = (int)((faac_real)numChannels * (faac_real)bitRate * (faac_real)FRAME_LEN / (faac_real)sampleRate);
+    total_frame_budget = calculate_target_bits(bitRate, numChannels, sampleRate);
 
     /* MaxBitresSize takes per-channel bitrate. Scale resulting per-channel capacity to all channels. */
-    res = (int)MaxBitresSize(bitRate, sampleRate) * (int)numChannels;
+    res = (int)((unsigned long long)MaxBitresSize(bitRate, sampleRate) * numChannels);
 
     /* Apply caps for decoder compliance and control responsiveness. */
     if (res > ADTS_FRAMESIZE)            res = ADTS_FRAMESIZE;
-    if (res > 6 * total_frame_budget)    res = 6 * total_frame_budget;
+    if (res > (int)(6LL * total_frame_budget)) res = (int)(6LL * total_frame_budget);
     if (res < 1)                         res = 1;
     return res;
 }
@@ -635,10 +643,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
 
         /* --- 1. Target bits this frame under the ABR contract (TOTAL across all channels) --- */
-        int target_bits = (int)((faac_real)numChannels
-                                * hEncoder->config.bitRate
-                                * FRAME_LEN
-                                / hEncoder->sampleRate);
+        int target_bits = calculate_target_bits(hEncoder->config.bitRate,
+                                                numChannels,
+                                                hEncoder->sampleRate);
         int frame_bits = frameBytes * 8; /* TOTAL bits actually spent across all channels */
 
         /* --- 2. Update reservoir (TOTAL bits) ---
