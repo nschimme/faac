@@ -114,7 +114,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               if ((volchg / denom * quality) > 3.0)
               {
                   psyInfo->block_type = ONLY_SHORT_WINDOW;
-                  if ((volchg / toteng * quality) > 6.0)
+                  if (psyInfo->attackHold > 0 || (volchg / toteng * quality) > 12.0)
                       psyInfo->attackHold = toteng;
                   break;
               }
