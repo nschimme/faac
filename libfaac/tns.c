@@ -194,7 +194,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain > DEF_TNS_GAIN_THRESH && gain < DEF_TNS_GAIN_THRESH_HIGH) {  /* Use TNS */
+        if (gain > DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
