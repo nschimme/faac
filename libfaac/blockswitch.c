@@ -106,14 +106,23 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
           {
-              psyInfo->block_type = ONLY_SHORT_WINDOW;
-              break;
+              faac_real denom = toteng;
+              if (denom > psyInfo->attackHold * 4.0 && psyInfo->attackHold > 0)
+                  denom = psyInfo->attackHold * 2.0;
+
+              if ((volchg / denom * quality) > 3.0)
+              {
+                  psyInfo->block_type = ONLY_SHORT_WINDOW;
+                  psyInfo->attackHold = toteng;
+                  break;
+              }
           }
       }
       lasteng = eng;
   }
+
+  psyInfo->attackHold *= 0.5;
 
 #if PRINTSTAT
   frames.tot++;
@@ -146,6 +155,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].attackHold = 0.0;
   }
 
   size = BLOCK_LEN_LONG;

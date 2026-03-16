@@ -185,7 +185,7 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
             }
         }
 
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
+        if ((enrgd < enrgl) && (enrgd < enrgr) && ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd)))
         {
             enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;

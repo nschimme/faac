@@ -175,6 +175,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bitRate = config->bitRate;
 
+    if (hEncoder->config.bitRate) {
+        int bits_per_frame = (int)((faac_real)hEncoder->numChannels *
+            hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        hEncoder->maxReservoirBits = bits_per_frame * 6;
+        hEncoder->reservoirBits = hEncoder->maxReservoirBits / 2;
+    }
+
     if (!config->bandWidth)
     {
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
@@ -592,28 +599,30 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+    if (hEncoder->config.bitRate) {
+        int bits_per_frame = (int)((faac_real)numChannels *
+            hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int actual_bits = frameBytes * 8;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        hEncoder->reservoirBits += (bits_per_frame - actual_bits);
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        /* Damped quality adjustment — move 25% toward target each frame */
+        {
+            faac_real fill = (faac_real)hEncoder->reservoirBits /
+                             hEncoder->maxReservoirBits;
+            /* target_quality rises when reservoir is full, falls when empty */
+            faac_real target = hEncoder->aacquantCfg.quality * (0.75 + 0.5 * fill);
+            hEncoder->aacquantCfg.quality +=
+                0.25 * (target - hEncoder->aacquantCfg.quality);
+            if (hEncoder->aacquantCfg.quality > maxqual)
+                hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < 10)
+                hEncoder->aacquantCfg.quality = 10;
+        }
     }
 
     return frameBytes;
