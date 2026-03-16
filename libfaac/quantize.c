@@ -69,6 +69,39 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
+/* -----------------------------------------------------------------------
+ * ath_floor_from_hz – ATH-shaped amplitude floor for one frequency bin.
+ *
+ * Uses Terhardt's approximation of the absolute threshold of hearing:
+ *   ATH(f) = 3.64*f^-0.8 - 6.5*exp(-0.6*(f-3.3)^2) + 0.001*f^4  dB SPL
+ *   (f in kHz)
+ *
+ * The return value is an amplitude threshold in the same units as the
+ * encoder's internal signal (i.e. comparable to rmsx in qlevel()).  It
+ * is anchored so that ath_floor_from_hz(4000) == NOISEFLOOR, making it
+ * independent of the absolute input calibration level.  At frequencies
+ * where the ATH is higher than at 4 kHz the floor rises accordingly;
+ * at frequencies near 4 kHz it stays at NOISEFLOOR.
+ * ----------------------------------------------------------------------- */
+static faac_real ath_floor_from_hz(faac_real f_hz)
+{
+    /* Clamp to audible range to avoid pole at f=0. */
+    faac_real f = (f_hz < 50.0 ? (faac_real)50.0 : f_hz) * (faac_real)0.001; /* -> kHz */
+
+    faac_real ath_db = (faac_real)3.64  * FAAC_POW(f, (faac_real)-0.8)
+                     - (faac_real)6.5   * FAAC_EXP(
+                           (faac_real)-0.6 * (f - (faac_real)3.3)
+                                           * (f - (faac_real)3.3))
+                     + (faac_real)0.001 * f * f * f * f;
+
+    /* ATH at the reference frequency (4 kHz) ≈ -3.5 dB SPL. */
+    static const faac_real ath_ref_db = (faac_real)-3.5;
+
+    /* Convert dB difference to linear amplitude ratio, scale by NOISEFLOOR. */
+    return (faac_real)NOISEFLOOR
+           * FAAC_POW((faac_real)10.0, (ath_db - ath_ref_db) * (faac_real)0.05);
+}
+
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
@@ -162,12 +195,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
+/* cfg is added so qlevel can use the precomputed ATH floor per band. */
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   const AACQuantCfg * __restrict cfg
                   )
 {
     int sb;
@@ -204,7 +239,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      /* Use the precomputed ATH-shaped floor for this band.
+       * For short blocks index into ath_short; for long into ath_long.
+       * Both tables are filled once in CalcBW() at configuration time.  */
+      faac_real floor = (coderInfo->block_type == ONLY_SHORT_WINDOW)
+                        ? cfg->ath_short[sb] : cfg->ath_long[sb];
+
+      if ((rmsx < floor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
@@ -266,7 +307,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel,
+                   aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -350,6 +392,30 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     aacquantCfg->max_l = l;
 
     *bw = (faac_real)l * rate / (BLOCK_LEN_LONG << 1);
+
+    /* Fill per-band ATH noise floors.  These are computed here, once at
+     * encoder configuration time, so there is zero per-frame overhead.
+     * The center frequency of band sfb is estimated from cumulative band
+     * widths and the Nyquist relationship: f = bin * rate / (2 * N).   */
+    {
+        int sfb, l;
+        l = 0;
+        for (sfb = 0; sfb < sr->num_cb_long; sfb++) {
+            faac_real f = ((faac_real)(l + sr->cb_width_long[sfb] / 2))
+                          * (faac_real)rate
+                          / (faac_real)(BLOCK_LEN_LONG * 2);
+            aacquantCfg->ath_long[sfb] = ath_floor_from_hz(f);
+            l += sr->cb_width_long[sfb];
+        }
+        l = 0;
+        for (sfb = 0; sfb < sr->num_cb_short; sfb++) {
+            faac_real f = ((faac_real)(l + sr->cb_width_short[sfb] / 2))
+                          * (faac_real)rate
+                          / (faac_real)(BLOCK_LEN_SHORT * 2);
+            aacquantCfg->ath_short[sfb] = ath_floor_from_hz(f);
+            l += sr->cb_width_short[sfb];
+        }
+    }
 }
 
 enum {MINSFB = 2};
