@@ -62,8 +62,8 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
 /*************************/
 static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray);     /* Autocorrelation array */
+                     const faac_real* __restrict data,        /* Data array */
+                     faac_real* __restrict rArray);     /* Autocorrelation array */
 
 static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
                       int dataSize,        /* Size of the data array */
@@ -74,7 +74,7 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* filter, faac_real* __restrict temp);
 
 
 /*****************************************************/
@@ -191,21 +191,23 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         if (blockType == ONLY_SHORT_WINDOW) {
             int tonal_band_count = 0;
             int b;
+            const faac_real* __restrict window_spec = spec + (w * windowSize);
 
             if (transient_strength > 15.0) {
                 continue;
             }
 
             for (b = startBand; b < stopBand; b++) {
-                int first = sfbOffsetTable[b];
-                int last = sfbOffsetTable[b + 1];
-                int n = last - first;
+                const int first = sfbOffsetTable[b];
+                const int last = sfbOffsetTable[b + 1];
+                const int n = last - first;
                 if (n > 0) {
                     faac_real peak = 0.0;
                     faac_real sum = 0.0;
+                    const faac_real* __restrict p = window_spec + first;
                     int i;
-                    for (i = first; i < last; i++) {
-                        faac_real val = FAAC_FABS(spec[w * windowSize + i]);
+                    for (i = 0; i < n; i++) {
+                        const faac_real val = FAAC_FABS(*p++);
                         if (val > peak) peak = val;
                         sum += val;
                     }
@@ -307,11 +309,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* filter, faac_real* __restrict temp)
 {
     int i,j,k=0;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    const int order = filter->order;
+    const faac_real* __restrict a = filter->aCoeffs;
 
     /* Determine loop parameters for given direction */
     if (filter->direction) {
@@ -319,19 +321,23 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
         /* Startup, initial state is zero */
         temp[length-1]=spec[length-1];
         for (i=length-2;i>(length-1-order);i--) {
-            temp[i]=spec[i];
+            faac_real acc = spec[i];
+            temp[i]=acc;
             k++;
             for (j=1;j<=k;j++) {
-                spec[i]+=temp[i+j]*a[j];
+                acc += temp[i+j] * a[j];
             }
+            spec[i] = acc;
         }
 
         /* Now filter the rest */
         for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
+            faac_real acc = spec[i];
+            temp[i]=acc;
             for (j=1;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
+                acc += temp[i+j] * a[j];
             }
+            spec[i] = acc;
         }
 
 
@@ -340,18 +346,22 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
         /* Startup, initial state is zero */
         temp[0]=spec[0];
         for (i=1;i<order;i++) {
-            temp[i]=spec[i];
+            faac_real acc = spec[i];
+            temp[i]=acc;
             for (j=1;j<=i;j++) {
-                spec[i]+=temp[i-j]*a[j];
+                acc += temp[i-j] * a[j];
             }
+            spec[i] = acc;
         }
 
         /* Now filter the rest */
         for (i=order;i<length;i++) {
-            temp[i]=spec[i];
+            faac_real acc = spec[i];
+            temp[i]=acc;
             for (j=1;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
+                acc += temp[i-j] * a[j];
             }
+            spec[i] = acc;
         }
     }
 }
@@ -409,16 +419,19 @@ static void QuantizeReflectionCoeffs(int fOrder,
 /*****************************************************/
 static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray)      /* Autocorrelation array */
+                     const faac_real* __restrict data,        /* Data array */
+                     faac_real* __restrict rArray)      /* Autocorrelation array */
 {
     int order,index;
 
     for (order=0;order<=maxOrder;order++) {
-        rArray[order]=0.0;
+        faac_real acc = 0.0;
+        const faac_real * __restrict p1 = data;
+        const faac_real * __restrict p2 = data + order;
         for (index=0;index<dataSize;index++) {
-            rArray[order]+=data[index]*data[index+order];
+            acc += (*p1++) * (*p2++);
         }
+        rArray[order] = acc;
         dataSize--;
     }
 }
