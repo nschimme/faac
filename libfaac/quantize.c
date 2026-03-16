@@ -240,28 +240,17 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      faac_real bq = bandqual[sb];
+      /* Use the precomputed ATH-shaped floor for this band.
+       * Both tables are filled once in CalcBW() at configuration time.  */
+      faac_real floor = ath_table[sb];
 
-      if ((rmsx < NOISEFLOOR) || (!bq))
+      if ((rmsx < floor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
-      /* Apply ATH as a floor adjustment to the existing masking threshold.
-       * If ATH is meaningfully above the current noise floor, use it to
-       * cap the quality (increase the quantization step). 0.5x scaling applied. */
-      {
-          faac_real ath_floor = ath_table[sb] * 0.5;
-          if (ath_floor > NOISEFLOOR)
-          {
-              faac_real ceiling = rmsx / ath_floor;
-              if (bq > ceiling)
-                  bq = ceiling;
-          }
-      }
-
-      if (bq < pnsthr)
+      if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -270,7 +259,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bq / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
