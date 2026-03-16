@@ -15,8 +15,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * $Id: psychkni.c,v 1.19 2012/03/01 18:34:17 knik Exp $
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,12 +75,11 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 
   /* Stage 2 Discrimination with Quality Scaling:
      transients have high high_flux and low tonality.
-     Scale threshold by 1/quality (stricter at low bitrate/quality).
   */
   faac_real sens = quality > 0.1 ? quality : 0.1;
 
   if (psydata->curr_norm_var < 4.0 &&
-      (psydata->curr_high_flux > 10.0 / sens && psydata->curr_high_flux > 1.5 * psydata->curr_low_flux))
+      (psydata->curr_high_flux > 50.0 / sens && psydata->curr_high_flux > 1.5 * psydata->curr_low_flux))
   {
       is_transient = 1;
   }
@@ -228,26 +225,35 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
       int split_bin = (int)(4000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
       int end_bin = (int)(16000.0 * BLOCK_LEN_LONG / gpsyInfo->sampleRate);
       int sub_energies_idx = 0;
-      if (end_bin > BLOCK_LEN_LONG / 2) end_bin = BLOCK_LEN_LONG / 2;
+      if (end_bin > 512) end_bin = 512;
+
       memcpy(fft_buf, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
       Hann(gpsyInfo, fft_buf, BLOCK_LEN_LONG);
       rfft(fft_tables, fft_buf, 10);
+
       for (i = 1; i < end_bin; i += 16)
       {
           faac_real sub_energy = 0;
-          for (int j = i; j < i + 16 && j < end_bin; j++) sub_energy += fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
+          for (int j = i; j < i + 16 && j < end_bin; j++)
+              sub_energy += fft_buf[j] * fft_buf[j] + fft_buf[512 + j] * fft_buf[512 + j];
+
           faac_real ratio = sub_energy / (psydata->prev_sub_energies[sub_energies_idx] + 1e-9);
-          if (ratio > 1.0) { if (i < split_bin) low_flux += (ratio - 1.0); else high_flux += (ratio - 1.0); }
+          if (ratio > 1.0)
+          {
+              if (i < split_bin) low_flux += (ratio - 1.0);
+              else high_flux += (ratio - 1.0);
+          }
           psydata->prev_sub_energies[sub_energies_idx] = sub_energy;
           sub_energies_idx++;
       }
+
       faac_real sum_sq = 0, sq_sum = 0;
-      for (i = 1; i < BLOCK_LEN_LONG / 2; i++)
+      for (i = 1; i < 512; i++)
       {
           faac_real mag_sq = fft_buf[i] * fft_buf[i] + fft_buf[512 + i] * fft_buf[512 + i];
           sum_sq += mag_sq * mag_sq; sq_sum += mag_sq;
       }
-      psydata->next_norm_var = (sum_sq * (BLOCK_LEN_LONG / 2 - 1)) / (sq_sum * sq_sum + 1e-15);
+      psydata->next_norm_var = (sum_sq * 511.0) / (sq_sum * sq_sum + 1e-15);
       psydata->next_low_flux = low_flux;
       psydata->next_high_flux = high_flux;
   }
