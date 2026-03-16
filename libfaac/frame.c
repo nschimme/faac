@@ -486,7 +486,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
         hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
         hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
+        hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->config.quantqual / DEFQUAL);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
@@ -567,7 +567,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	}
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+              (faac_real)hEncoder->config.quantqual/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
@@ -610,14 +610,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->reservoirBits < 0)
             hEncoder->reservoirBits = 0;
 
-        /* Damped quality adjustment — move 25% toward target each frame */
+        /* Damped quality adjustment — move 50% toward target each frame */
         {
             faac_real fill = (faac_real)hEncoder->reservoirBits /
                              hEncoder->maxReservoirBits;
             /* target_quality rises when reservoir is full, falls when empty */
-            faac_real target = hEncoder->aacquantCfg.quality * (0.75 + 0.5 * fill);
+            faac_real target = hEncoder->aacquantCfg.quality * (0.6 + 0.8 * fill);
             hEncoder->aacquantCfg.quality +=
-                0.25 * (target - hEncoder->aacquantCfg.quality);
+                0.5 * (target - hEncoder->aacquantCfg.quality);
             if (hEncoder->aacquantCfg.quality > maxqual)
                 hEncoder->aacquantCfg.quality = maxqual;
             if (hEncoder->aacquantCfg.quality < 10)
