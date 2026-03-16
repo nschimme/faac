@@ -70,7 +70,7 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
