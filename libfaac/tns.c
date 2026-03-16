@@ -133,7 +133,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+               faac_real* temp,
+               faac_real transient_strength)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -145,15 +146,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        order = tnsInfo->tnsMaxOrderShort;
+        order = 4;
         startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
         break;
 
@@ -190,6 +187,38 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+
+        if (blockType == ONLY_SHORT_WINDOW) {
+            int tonal_band_count = 0;
+            int b;
+
+            if (transient_strength > 15.0) {
+                continue;
+            }
+
+            for (b = startBand; b < stopBand; b++) {
+                int first = sfbOffsetTable[b];
+                int last = sfbOffsetTable[b + 1];
+                int n = last - first;
+                if (n > 0) {
+                    faac_real peak = 0.0;
+                    faac_real sum = 0.0;
+                    int i;
+                    for (i = first; i < last; i++) {
+                        faac_real val = FAAC_FABS(spec[w * windowSize + i]);
+                        if (val > peak) peak = val;
+                        sum += val;
+                    }
+                    if (peak > 3.0 * (sum / n)) {
+                        tonal_band_count++;
+                    }
+                }
+            }
+            if (tonal_band_count < 3) {
+                continue;
+            }
+        }
+
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         if (gain > DEF_TNS_GAIN_THRESH) {  /* Use TNS */
