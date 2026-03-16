@@ -69,8 +69,8 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 #define SPREAD_UP 0.10
-#define SPREAD_DN 0.06
-#define SPREAD_FLOOR 0.75
+#define SPREAD_DN 0.10
+#define SPREAD_FLOOR 0.80
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -175,7 +175,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
    * The two thresholds correspond to typical psychoacoustic masking
    * slopes on the Bark scale:
    *   SPREAD_UP  0.10  -> ~10 dB upward masking per scalefactor band
-   *   SPREAD_DN  0.06  -> ~12 dB downward masking per scalefactor band
+   *   SPREAD_DN  0.10  -> ~10 dB downward masking per scalefactor band
    *
    * We apply a floor to the scaling to prevent over-aggressive
    * bit reduction which can lead to audible artifacts in noise or
