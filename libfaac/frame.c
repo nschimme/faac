@@ -195,8 +195,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->jointmode == JOINT_MS)
-        config->pnslevel = 0;
     if (config->pnslevel < 0)
         config->pnslevel = 0;
     if (config->pnslevel > 10)
@@ -365,7 +363,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int useLfe = hEncoder->config.useLfe;
     unsigned int useTns = hEncoder->config.useTns;
-    unsigned int jointmode = hEncoder->config.jointmode;
     unsigned int bandWidth = hEncoder->config.bandWidth;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
@@ -559,8 +556,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+    AACstereo(hEncoder, coderInfo, channelInfo, hEncoder->freqBuff, numChannels);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

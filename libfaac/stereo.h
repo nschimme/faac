@@ -20,10 +20,9 @@
 #include "channels.h"
 #include "util.h"
 
-void AACstereo(CoderInfo *coder,
+void AACstereo(void *hEncoder,
+               CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
-               int maxchan,
-               faac_real quality,
-               int mode
+               int maxchan
               );

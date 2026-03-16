@@ -192,9 +192,7 @@ static help_t help_mp4[] = {
 static help_t help_advanced[] = {
     {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
-    {"--joint 0\tDisable joint stereo coding.\n"},
-    {"--joint 1\tUse Mid/Side coding.\n"},
-    {"--joint 2\tUse Intensity Stereo coding.\n"},
+    {"--no-is\tDisable Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
@@ -523,7 +521,7 @@ int main(int argc, char *argv[])
             {"help-mp4", 0, 0, HELP_MP4},
             {"help-advanced", 0, 0, HELP_ADVANCED},
             {"raw", 0, 0, 'r'},
-            {"joint", required_argument, 0, OPT_JOINT},
+            {"no-is", 0, 0, 'n'},
             {"pns", required_argument, 0, OPT_PNS},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
@@ -779,6 +777,9 @@ int main(int argc, char *argv[])
         case 'v':
             verbose = atoi(optarg);
             break;
+        case 'n':
+            jointmode = JOINT_NONE;
+            break;
         case HELP_QUAL:
         case HELP_IO:
         case HELP_MP4:
@@ -1023,14 +1024,8 @@ int main(int argc, char *argv[])
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
 
-    switch(myFormat->jointmode) {
-    case JOINT_MS:
-        fprintf(stderr, " + M/S");
-        break;
-    case JOINT_IS:
-        fprintf(stderr, " + IS");
-        break;
-    }
+    if (myFormat->jointmode != JOINT_NONE)
+        fprintf(stderr, " + Joint Stereo");
     if (myFormat->pnslevel > 0)
         fprintf(stderr, " + PNS");
     fprintf(stderr, "\n");
