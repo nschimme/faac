@@ -195,8 +195,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->jointmode == JOINT_MS)
-        config->pnslevel = 0;
     if (config->pnslevel < 0)
         config->pnslevel = 0;
     if (config->pnslevel > 10)
@@ -260,7 +258,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.copyright = libCopyright;
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
-    hEncoder->config.jointmode = JOINT_IS;
+    hEncoder->config.jointmode = JOINT_MS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;

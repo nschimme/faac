@@ -20,6 +20,7 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <string.h>
 #include "stereo.h"
 #include "huff2.h"
 
@@ -136,8 +137,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
 
 static void midside(CoderInfo *coder, ChannelInfo *channel,
                     faac_real *sl0, faac_real *sr0, int *sfcnt,
-                    int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
+                    int wstart, int wend
                    )
 {
     int sfb;
@@ -160,11 +160,13 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
         int l, start, end;
         faac_real sum, diff;
         faac_real enrgs, enrgd, enrgl, enrgr;
+        faac_real dotlr;
 
         start = coder->sfb_offset[sfb];
         end = coder->sfb_offset[sfb + 1];
 
         enrgs = enrgd = enrgl = enrgr = 0.0;
+        dotlr = 0.0;
         for (win = wstart; win < wend; win++)
         {
             faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
@@ -175,70 +177,66 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
                 faac_real lx = sl[l];
                 faac_real rx = sr[l];
 
-                sum = 0.5 * (lx + rx);
-                diff = 0.5 * (lx - rx);
+                /* Sum and Difference signals */
+                sum = lx + rx;
+                diff = lx - rx;
 
                 enrgs += sum * sum;
                 enrgd += diff * diff;
                 enrgl += lx * lx;
                 enrgr += rx * rx;
+                dotlr += lx * rx;
             }
         }
 
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
+        /* Sophisticated M/S decision logic */
+        int allow_ms = 1;
+
+        /* Side channel safety: avoid collapsing wide stereo.
+           Using E_M = enrgs * 0.25 and E_S = enrgd * 0.25.
+           The constant 0.25 cancels out in the ratio. */
+        if (enrgd > (enrgs * 0.5))
+            allow_ms = 0;
+
+        /* Correlation safety: avoid anti-correlated channels */
+        if (dotlr < 0)
+            allow_ms = 0;
+
+        if (allow_ms)
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
+            /* Estimate perceptual cost using sqrt(Energy) as bit/noise proxy.
+               Signals transmitted in MS are 0.5 * (L+R) and 0.5 * (L-R).
+               Energy_Mid = 0.25 * enrgs, Energy_Side = 0.25 * enrgd. */
+            faac_real cost_lr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+            faac_real cost_ms = FAAC_SQRT(enrgs * 0.25) + FAAC_SQRT(enrgd * 0.25);
 
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
+            /* Apply 5% hysteresis bias favoring the current mode */
+            faac_real bias = 1.0;
+            if (coder->block_type == channel->msInfo.block_type_last)
+            {
+                if (channel->msInfo.ms_used_last[*sfcnt])
+                    bias = 1.05; /* Favor MS */
+                else
+                    bias = 0.95; /* Favor LR */
+            }
+            else
+            {
+                bias = 0.95; /* Default slight bias against MS for stability */
+            }
+
+            if (cost_ms < (cost_lr * bias))
             {
                 ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
-
-            if (ms)
-            {
                 for (win = wstart; win < wend; win++)
                 {
                     faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
                     faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
                     for (l = start; l < end; l++)
                     {
-                        if (phase == PH_IN)
-                        {
-                            sum = sl[l] + sr[l];
-                            diff = 0;
-                        }
-                        else
-                        {
-                            sum = 0;
-                            diff = sl[l] - sr[l];
-                        }
-
-                        sl[l] = 0.5 * sum;
-                        sr[l] = 0.5 * diff;
+                        faac_real sl_orig = sl[l];
+                        sl[l] = 0.5 * (sl[l] + sr[l]);
+                        sr[l] = 0.5 * (sl_orig - sr[l]);
                     }
-                }
-            }
-        }
-
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
-        {
-            for (win = wstart; win < wend; win++)
-            {
-                faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-                faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-                for (l = start; l < end; l++)
-                {
-                    if (enrgl < enrgr)
-                        sl[l] = 0.0;
-                    else
-                        sr[l] = 0.0;
                 }
             }
         }
@@ -258,30 +256,14 @@ void AACstereo(CoderInfo *coder,
               )
 {
     int chn;
-    static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
-    static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
-    faac_real thrmid, thrside;
     faac_real isthr;
 
-    thrmid = 1.0;
-    thrside = 0.0;
     isthr = 1.0;
 
     switch (mode)
     {
     case JOINT_MS:
-        thrmid = thr075 / quality;
-        if (thrmid > thrmax)
-            thrmid = thrmax;
-
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
-
-        thrmid += 1.0;
         break;
     case JOINT_IS:
         isthr = 0.18 / (quality * quality);
@@ -293,8 +275,6 @@ void AACstereo(CoderInfo *coder,
     }
 
     // convert into energy
-    thrmid *= thrmid;
-    thrside *= thrside;
     isthr *= isthr;
 
     for (chn = 0; chn < maxchan; chn++)
@@ -362,7 +342,7 @@ void AACstereo(CoderInfo *coder,
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
+                        start, end);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
@@ -371,5 +351,8 @@ void AACstereo(CoderInfo *coder,
             start = end;
         }
         skip:;
+        /* Update persistence for the next frame */
+        memcpy(channel[chn].msInfo.ms_used_last, channel[chn].msInfo.ms_used, sizeof(channel[chn].msInfo.ms_used));
+        channel[chn].msInfo.block_type_last = coder[chn].block_type;
     }
 }
