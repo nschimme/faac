@@ -315,7 +315,18 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize Bit Reservoir */
     if (hEncoder->config.bitRate) {
         int bits_per_frame = (int)((faac_real)numChannels * hEncoder->config.bitRate * FRAME_LEN / sampleRate);
-        hEncoder->maxReservoirBits = bits_per_frame * 4;
+
+        // Scale reservoir multiplier: 4x at high bitrates, up to 12x at low bitrates
+        int bitrate_per_channel = hEncoder->config.bitRate / numChannels;
+        int multiplier;
+        if (bitrate_per_channel < 32000)
+            multiplier = 12;
+        else if (bitrate_per_channel < 64000)
+            multiplier = 8;
+        else
+            multiplier = 4;
+
+        hEncoder->maxReservoirBits = bits_per_frame * multiplier;
         hEncoder->reservoirTarget = hEncoder->maxReservoirBits / 2;
         hEncoder->reservoirBits = hEncoder->reservoirTarget;
         hEncoder->lambda = 0.01;
@@ -609,22 +620,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->reservoirBits = 0;
 
         reservoirFill = (faac_real)hEncoder->reservoirBits / hEncoder->maxReservoirBits;
-        /* Log-linear lambda adaptation: lambda = 0.01 * 10^(1.0 - 2.0 * fill) */
+
+        /* 1. Update Lambda for TNS costing */
         hEncoder->lambda = 0.01 * FAAC_POW(10.0, 1.0 - 2.0 * reservoirFill);
         if (hEncoder->lambda < 0.0001) hEncoder->lambda = 0.0001;
         if (hEncoder->lambda > 1.0) hEncoder->lambda = 1.0;
 
-        /* Standard legacy adjustment to prevent long-term drift */
-        {
-            faac_real fix = (faac_real)bits_per_frame / actual_bits;
-            if (fix < 0.9) fix += 0.1;
-            else if (fix > 1.1) fix -= 0.1;
-            else fix = 1.0;
-            fix = (fix - 1.0) * 0.5 + 1.0;
-            hEncoder->aacquantCfg.quality *= fix;
-            if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
-            if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
-        }
+        /* 2. Direct Quality Mapping (Proactive Rate Control) */
+        // A fill of 0.5 (Target) should maintain base quality.
+        faac_real qualityScalar = 0.5 + reservoirFill;
+        hEncoder->aacquantCfg.quality = hEncoder->config.quantqual * qualityScalar;
+
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10) hEncoder->aacquantCfg.quality = 10;
     }
 
     return frameBytes;

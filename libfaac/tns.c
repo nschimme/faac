@@ -155,14 +155,18 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         const faac_real * __restrict window_spec = spec + startIndex;
         faac_real inv_len = 1.0 / length;
 
-        /* Single pass for energy and logSum to improve cache locality */
         for (i = 0; i < length; i++) {
-            faac_real v2 = window_spec[i] * window_spec[i];
-            energy += v2;
-            logSum += log(v2 + 1e-15);
+            energy += window_spec[i] * window_spec[i];
         }
 
-        if (energy < 1e-9) continue;
+        /* CPU Optimization: Early Exit on low energy */
+        if (energy < 1e-7) {
+            continue;
+        }
+
+        for (i = 0; i < length; i++) {
+            logSum += log(window_spec[i] * window_spec[i] + 1e-15);
+        }
         sfm = exp(logSum * inv_len) / (energy * inv_len);
 
         if (sfm < sfm_thresh) continue;
@@ -170,7 +174,10 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         faac_real predGain = LevinsonDurbin(order,length,window_spec,k,energy);
         faac_real side_info_cost = (order * 4 + 10) * lambda;
 
-        if (predGain > gain_thresh && (predGain - 1.0) * energy * 0.1 > side_info_cost) {
+        /* Soft-Gate: Reduce side info cost impact at high lambda (low bitrate) */
+        faac_real adjusted_cost = side_info_cost * (1.0 - (lambda * 0.5));
+
+        if (predGain > gain_thresh && (predGain - 1.0) * (energy + 1e-6) > adjusted_cost) {
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -246,7 +253,6 @@ static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* 
         for (; i >= 0; i--) {
             faac_real s = temp[i];
             const faac_real* __restrict tp = temp + i + 1;
-            /* Manual unrolling for common max order (up to 20) */
             for (j = 1; j <= order; j++) s += tp[j-1] * a[j];
             spec[i] = s;
         }
@@ -301,7 +307,6 @@ static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restr
     rArray[0] = energy;
     for (order = 1; order <= maxOrder; order++) rArray[order] = 0.0;
 
-    /* Optimized autocorrelation: Process all lags in one pass to maximize data reuse */
     int n = dataSize - maxOrder;
     for (index = 0; index < n; index++) {
         faac_real v = data[index];
@@ -310,7 +315,6 @@ static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restr
             rArray[order] += v * d_lag[order];
         }
     }
-    /* Handle tail */
     for (; index < dataSize; index++) {
         faac_real v = data[index];
         for (order = 1; order < dataSize - index; order++) {
