@@ -178,7 +178,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.bitRate) {
         int bits_per_frame = (int)((faac_real)hEncoder->numChannels *
             hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
-        hEncoder->maxReservoirBits = bits_per_frame * 6;
+        int bitrate_per_channel = hEncoder->config.bitRate / numChannels;
+        int multiplier;
+        if (bitrate_per_channel < 32000)
+            multiplier = 12;
+        else if (bitrate_per_channel < 64000)
+            multiplier = 8;
+        else
+            multiplier = 4;
+        hEncoder->maxReservoirBits = bits_per_frame * multiplier;
         hEncoder->reservoirBits = hEncoder->maxReservoirBits / 2;
     }
 
