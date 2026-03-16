@@ -137,7 +137,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
 static void midside(CoderInfo *coder, ChannelInfo *channel,
                     faac_real *sl0, faac_real *sr0, int *sfcnt,
                     int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
+                    faac_real thrmid
                    )
 {
     int sfb;
@@ -187,58 +187,16 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
-
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
-
-            if (ms)
-            {
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-                    faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-                    for (l = start; l < end; l++)
-                    {
-                        if (phase == PH_IN)
-                        {
-                            sum = sl[l] + sr[l];
-                            diff = 0;
-                        }
-                        else
-                        {
-                            sum = 0;
-                            diff = sl[l] - sr[l];
-                        }
-
-                        sl[l] = 0.5 * sum;
-                        sr[l] = 0.5 * diff;
-                    }
-                }
-            }
-        }
-
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
-        {
+            ms = 1;
             for (win = wstart; win < wend; win++)
             {
                 faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
                 faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
                 for (l = start; l < end; l++)
                 {
-                    if (enrgl < enrgr)
-                        sl[l] = 0.0;
-                    else
-                        sr[l] = 0.0;
+                    faac_real sl_orig = sl[l];
+                    sl[l] = 0.5 * (sl[l] + sr[l]);
+                    sr[l] = 0.5 * (sl_orig - sr[l]);
                 }
             }
         }
@@ -260,14 +218,11 @@ void AACstereo(CoderInfo *coder,
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
-    faac_real thrmid, thrside;
+    faac_real thrmid;
     faac_real isthr;
 
     thrmid = 1.0;
-    thrside = 0.0;
     isthr = 1.0;
 
     switch (mode)
@@ -276,10 +231,6 @@ void AACstereo(CoderInfo *coder,
         thrmid = thr075 / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
-
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
 
         thrmid += 1.0;
         break;
@@ -294,7 +245,6 @@ void AACstereo(CoderInfo *coder,
 
     // convert into energy
     thrmid *= thrmid;
-    thrside *= thrside;
     isthr *= isthr;
 
     for (chn = 0; chn < maxchan; chn++)
@@ -362,7 +312,7 @@ void AACstereo(CoderInfo *coder,
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
+                        start, end, thrmid);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
