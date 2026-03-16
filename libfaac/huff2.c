@@ -362,6 +362,9 @@ int huffbook(CoderInfo *coder,
     return 0;
 }
 
+#define INF_COST 1000000
+#define MAX_RUN 31
+
 static int huff_count_bits(int *qs, int len, int book)
 {
     if (book == HCB_ZERO)
@@ -369,7 +372,7 @@ static int huff_count_bits(int *qs, int len, int book)
         int i;
         for (i = 0; i < len; i++)
             if (qs[i])
-                return 1000000; // Impossible
+                return INF_COST; // Impossible
         return 0;
     }
     if (book == HCB_PNS || book == HCB_INTENSITY || book == HCB_INTENSITY2)
@@ -391,11 +394,11 @@ static int huff_count_bits(int *qs, int len, int book)
             if (q > maxq) maxq = q;
         }
         if (maxq > book_limit[book])
-            return 1000000; // Impossible
+            return INF_COST; // Impossible
 
         return huffcode(qs, len, book, NULL);
     }
-    return 1000000;
+    return INF_COST;
 }
 
 #define MAX_BOOKS (HCB_INTENSITY + 1)
@@ -407,6 +410,7 @@ typedef struct {
     int last_sf;
     int last_is;
     int last_pns;
+    int has_pns;
 } Node;
 
 void optimize_books(CoderInfo *coder)
@@ -416,10 +420,11 @@ void optimize_books(CoderInfo *coder)
     int cntbits;
     int group;
     int start_band = 0;
-    Node (*nodes)[MAX_BOOKS][32];
-    int group_last_sf = coder->global_gain;
-    int group_last_is = 0;
-    int group_last_pns = coder->global_gain - 90;
+    Node (*nodes)[MAX_BOOKS][MAX_RUN + 1];
+    int current_last_sf = coder->global_gain;
+    int current_last_is = 0;
+    int current_last_pns = coder->global_gain - 90;
+    int current_has_pns = 0;
 
     nodes = malloc(MAX_SCFAC_BANDS * sizeof(*nodes));
     if (!nodes) return;
@@ -445,7 +450,7 @@ void optimize_books(CoderInfo *coder)
         {
             for (run = 0; run <= maxcnt; run++)
             {
-                nodes[start_band][book][run].cost = 1000000;
+                nodes[start_band][book][run].cost = INF_COST;
             }
         }
 
@@ -461,12 +466,13 @@ void optimize_books(CoderInfo *coder)
 
             int spectral_bits = huff_count_bits(&coder->xi[coder->band_offset[start_band]],
                                                 coder->band_len[start_band], book);
-            if (spectral_bits < 1000000)
+            if (spectral_bits < INF_COST)
             {
                 int sf_bits = 0;
-                int last_sf = group_last_sf;
-                int last_is = group_last_is;
-                int last_pns = group_last_pns;
+                int last_sf = current_last_sf;
+                int last_is = current_last_is;
+                int last_pns = current_last_pns;
+                int has_pns = current_has_pns;
 
                 if (book == HCB_INTENSITY || book == HCB_INTENSITY2)
                 {
@@ -478,8 +484,17 @@ void optimize_books(CoderInfo *coder)
                 }
                 else if (book == HCB_PNS)
                 {
-                    sf_bits = 9; // PNS energy is always 9 bits for the first PNS band
-                    last_pns = coder->sf[start_band];
+                    if (!has_pns) {
+                        sf_bits = 9;
+                        last_pns = coder->sf[start_band];
+                        has_pns = 1;
+                    } else {
+                        int diff = coder->sf[start_band] - last_pns;
+                        if (diff < -60) diff = -60;
+                        if (diff > 60) diff = 60;
+                        sf_bits = book12[60 + diff].len;
+                        last_pns += diff;
+                    }
                 }
                 else if (book != HCB_ZERO)
                 {
@@ -495,6 +510,7 @@ void optimize_books(CoderInfo *coder)
                 nodes[start_band][book][1].last_sf = last_sf;
                 nodes[start_band][book][1].last_is = last_is;
                 nodes[start_band][book][1].last_pns = last_pns;
+                nodes[start_band][book][1].has_pns = has_pns;
             }
         }
 
@@ -502,7 +518,7 @@ void optimize_books(CoderInfo *coder)
         {
             for (book = 0; book < MAX_BOOKS; book++)
                 for (run = 0; run <= maxcnt; run++)
-                    nodes[b][book][run].cost = 1000000;
+                    nodes[b][book][run].cost = INF_COST;
 
             for (book = 0; book < MAX_BOOKS; book++)
             {
@@ -515,17 +531,18 @@ void optimize_books(CoderInfo *coder)
 
                 int spectral_bits = huff_count_bits(&coder->xi[coder->band_offset[b]],
                                                     coder->band_len[b], book);
-                if (spectral_bits >= 1000000) continue;
+                if (spectral_bits >= INF_COST) continue;
 
                 // Option 1: Continue previous run
                 for (run = 1; run < maxcnt; run++)
                 {
-                    if (nodes[b - 1][book][run].cost < 1000000)
+                    if (nodes[b - 1][book][run].cost < INF_COST)
                     {
                         int sf_bits = 0;
                         int last_sf = nodes[b - 1][book][run].last_sf;
                         int last_is = nodes[b - 1][book][run].last_is;
                         int last_pns = nodes[b - 1][book][run].last_pns;
+                        int has_pns = nodes[b - 1][book][run].has_pns;
                         if (book == HCB_INTENSITY || book == HCB_INTENSITY2)
                         {
                             int diff = coder->sf[b] - last_is;
@@ -541,6 +558,7 @@ void optimize_books(CoderInfo *coder)
                             if (diff > 60) diff = 60;
                             sf_bits = book12[60 + diff].len;
                             last_pns += diff;
+                            has_pns = 1;
                         }
                         else if (book != HCB_ZERO)
                         {
@@ -560,21 +578,23 @@ void optimize_books(CoderInfo *coder)
                             nodes[b][book][run + 1].last_sf = last_sf;
                             nodes[b][book][run + 1].last_is = last_is;
                             nodes[b][book][run + 1].last_pns = last_pns;
+                            nodes[b][book][run + 1].has_pns = has_pns;
                         }
                     }
                 }
 
                 // Option 2: Start new run (could be same book or different book)
-                for (int prev_book = 0; prev_book < MAX_BOOKS; prev_book++)
+                for (int pbk = 0; pbk < MAX_BOOKS; pbk++)
                 {
-                    for (int prev_run = 1; prev_run <= maxcnt; prev_run++)
+                    for (int prn = 1; prn <= maxcnt; prn++)
                     {
-                        if (nodes[b - 1][prev_book][prev_run].cost < 1000000)
+                        if (nodes[b - 1][pbk][prn].cost < INF_COST)
                         {
                             int sf_bits = 0;
-                            int last_sf = nodes[b - 1][prev_book][prev_run].last_sf;
-                            int last_is = nodes[b - 1][prev_book][prev_run].last_is;
-                            int last_pns = nodes[b - 1][prev_book][prev_run].last_pns;
+                            int last_sf = nodes[b - 1][pbk][prn].last_sf;
+                            int last_is = nodes[b - 1][pbk][prn].last_is;
+                            int last_pns = nodes[b - 1][pbk][prn].last_pns;
+                            int has_pns = nodes[b - 1][pbk][prn].has_pns;
                             if (book == HCB_INTENSITY || book == HCB_INTENSITY2)
                             {
                                 int diff = coder->sf[b] - last_is;
@@ -586,10 +606,10 @@ void optimize_books(CoderInfo *coder)
                             else if (book == HCB_PNS)
                             {
                                 // Correct AAC PNS logic: first PNS band in frame is 9 bits, subsequent are differential.
-                                // Let's simplify: if last_pns was updated, it's not the first.
-                                if (last_pns == (group_last_pns)) {
+                                if (!has_pns) {
                                     sf_bits = 9;
                                     last_pns = coder->sf[b];
+                                    has_pns = 1;
                                 } else {
                                     int diff = coder->sf[b] - last_pns;
                                     if (diff < -60) diff = -60;
@@ -607,15 +627,16 @@ void optimize_books(CoderInfo *coder)
                                 last_sf += diff;
                             }
 
-                            int new_cost = nodes[b - 1][prev_book][prev_run].cost + 4 + cntbits + spectral_bits + sf_bits;
+                            int new_cost = nodes[b - 1][pbk][prn].cost + 4 + cntbits + spectral_bits + sf_bits;
                             if (new_cost < nodes[b][book][1].cost)
                             {
                                 nodes[b][book][1].cost = new_cost;
-                                nodes[b][book][1].prev_book = prev_book;
-                                nodes[b][book][1].prev_run = prev_run;
+                                nodes[b][book][1].prev_book = pbk;
+                                nodes[b][book][1].prev_run = prn;
                                 nodes[b][book][1].last_sf = last_sf;
                                 nodes[b][book][1].last_is = last_is;
                                 nodes[b][book][1].last_pns = last_pns;
+                                nodes[b][book][1].has_pns = has_pns;
                             }
                         }
                     }
@@ -624,7 +645,7 @@ void optimize_books(CoderInfo *coder)
         }
 
         // Backtrack
-        int min_cost = 1000000;
+        int min_cost = INF_COST;
         int best_book = -1;
         int best_run = -1;
         for (book = 0; book < MAX_BOOKS; book++)
@@ -642,9 +663,10 @@ void optimize_books(CoderInfo *coder)
 
         if (best_book != -1)
         {
-            group_last_sf = nodes[end_band - 1][best_book][best_run].last_sf;
-            group_last_is = nodes[end_band - 1][best_book][best_run].last_is;
-            group_last_pns = nodes[end_band - 1][best_book][best_run].last_pns;
+            current_last_sf = nodes[end_band - 1][best_book][best_run].last_sf;
+            current_last_is = nodes[end_band - 1][best_book][best_run].last_is;
+            current_last_pns = nodes[end_band - 1][best_book][best_run].last_pns;
+            current_has_pns = nodes[end_band - 1][best_book][best_run].has_pns;
             b = end_band - 1;
             while (b >= start_band)
             {

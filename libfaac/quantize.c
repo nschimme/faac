@@ -191,14 +191,18 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       const faac_real *xr;
       int win;
 
+      start = coderInfo->sfb_offset[sb];
+      end = coderInfo->sfb_offset[sb+1];
+
+      coderInfo->band_offset[coderInfo->bandcnt] = coderInfo->xi_offset;
+      coderInfo->band_len[coderInfo->bandcnt] = gsize * (end - start);
+      coderInfo->xi_offset += gsize * (end - start);
+
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
           coderInfo->bandcnt++;
           continue;
       }
-
-      start = coderInfo->sfb_offset[sb];
-      end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
@@ -212,7 +216,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
+          coderInfo->sf[coderInfo->bandcnt] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
@@ -225,10 +229,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
       end -= start;
-      xi = &coderInfo->xi[coderInfo->xi_offset];
-      coderInfo->band_offset[coderInfo->bandcnt] = coderInfo->xi_offset;
-      coderInfo->band_len[coderInfo->bandcnt] = gsize * end;
-      coderInfo->xi_offset += gsize * end;
+      xi = &coderInfo->xi[coderInfo->band_offset[coderInfo->bandcnt]];
 
       if (sfacfix <= 0.0)
       {
@@ -243,7 +244,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               xi += end;
           }
       }
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 
@@ -259,11 +260,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->bandcnt = 0;
     coder->datacnt = 0;
     coder->xi_offset = 0;
+    memset(coder->xi, 0, sizeof(coder->xi));
 
     {
-        int lastis;
-        int lastsf;
-
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
@@ -275,37 +274,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         optimize_books(coder);
 
-        lastsf = coder->global_gain;
-        lastis = 0;
-        // fixme: move SF range check to quantizer
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-            {
-                int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_ESC)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
-        }
         return 1;
     }
     return 0;
