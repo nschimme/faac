@@ -617,10 +617,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
-
-        /* Accelerate downward correction for large overshoots */
-        if (fix < 1.0 && frameBytes * 8 > desbits * 1.15)
-            hEncoder->aacquantCfg.quality *= 0.92;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
     }

@@ -106,24 +106,14 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
+          if ((volchg / toteng * quality) > 3.0)
           {
-              faac_real denom = toteng;
-              if (denom > psyInfo->attackHold * 4.0 && psyInfo->attackHold > 0)
-                  denom = psyInfo->attackHold * 2.0;
-
-              if ((volchg / denom * quality) > 3.0)
-              {
-                  psyInfo->block_type = ONLY_SHORT_WINDOW;
-                  if (psyInfo->attackHold > 0 || (volchg / toteng * quality) > 12.0)
-                      psyInfo->attackHold = toteng;
-                  break;
-              }
+              psyInfo->block_type = ONLY_SHORT_WINDOW;
+              break;
           }
       }
       lasteng = eng;
   }
-
-  psyInfo->attackHold *= 0.5;
 
 #if PRINTSTAT
   frames.tot++;
