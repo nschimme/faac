@@ -2,7 +2,7 @@
     FAAC Stereo Refactor - Automatic Joint Stereo Decision System
 
     Copyright (C) 2017 Krzysztof Nikiel
-    Refactored by Jules
+    Refactored and Optimized by Jules
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,27 +33,66 @@ enum StereoMode
     MODE_AMBIGUOUS = 3
 };
 
-static float calc_cost(CoderInfo *coder, faac_real *spec, faac_real thr, int start, int end, int gsize, float lambda, int mode)
+static float calc_cost(faac_real *spec, faac_real thr, int start, int end, int gsize, float lambda, int mode)
 {
     int i, win;
     faac_real distortion = 0;
-    int bits = 0;
+    faac_real pe = 0;
     int n = end - start;
+    const faac_real inv_log2 = 1.4426950408889634;
 
     for (win = 0; win < gsize; win++) {
         faac_real *s = spec + win * BLOCK_LEN_SHORT + start;
         for (i = 0; i < n; i++) {
-            distortion += s[i] * s[i];
+            faac_real val2 = s[i] * s[i];
+            distortion += val2;
+            // Perceptual Entropy heuristic: bits proportional to log2(1 + SMR)
+            if (val2 > thr) {
+                pe += log(1.0 + val2 / (thr + 1e-20)) * inv_log2;
+            }
         }
     }
 
     if (mode == MODE_IS) {
-        bits = n * 3 + 10;
-    } else {
-        bits = n * 3 * 2;
+        pe = pe * 0.5 + 10; // Only one channel remains
     }
 
-    return (float)(distortion / (thr + 1e-20f)) + lambda * bits;
+    return (float)(distortion / (thr + 1e-20f)) + lambda * pe;
+}
+
+static inline int evaluate_ambiguous(CoderInfo *coder, int chn, int rch, int sfb, int start, int end, int start_win, int gsize,
+                                     faac_real *s[MAX_CHANNELS], faac_real bandlvlL, faac_real bandlvlr,
+                                     float lambda, int intensity_stereo_enabled, faac_real band_center_freq, faac_real energy_diff,
+                                     faac_real *M_buf, faac_real *S_buf,
+                                     float *out_LR, float *out_MS, float *out_IS)
+{
+    int l, win;
+    *out_LR = calc_cost(s[chn] + start_win * BLOCK_LEN_SHORT, bandlvlL, start, end, gsize, lambda, MODE_LR) +
+              calc_cost(s[rch] + start_win * BLOCK_LEN_SHORT, bandlvlr, start, end, gsize, lambda, MODE_LR);
+
+    faac_real thrMS = (bandlvlL + bandlvlr) * 0.5;
+
+    for (win = 0; win < gsize; win++) {
+        faac_real *sl = s[chn] + (start_win + win) * BLOCK_LEN_SHORT;
+        faac_real *sr = s[rch] + (start_win + win) * BLOCK_LEN_SHORT;
+        for (l = start; l < end; l++) {
+            M_buf[win * BLOCK_LEN_SHORT + l] = (sl[l] + sr[l]) * 0.5;
+            S_buf[win * BLOCK_LEN_SHORT + l] = (sl[l] - sr[l]) * 0.5;
+        }
+    }
+
+    *out_MS = (calc_cost(M_buf + start_win * BLOCK_LEN_SHORT, thrMS, start, end, gsize, lambda, MODE_MS) +
+               calc_cost(S_buf + start_win * BLOCK_LEN_SHORT, thrMS, start, end, gsize, lambda, MODE_MS)) * 0.98f;
+
+    *out_IS = 1e30f;
+    if (band_center_freq > 6000 && intensity_stereo_enabled) {
+        *out_IS = calc_cost(M_buf + start_win * BLOCK_LEN_SHORT, thrMS, start, end, gsize, lambda, MODE_IS);
+        if (*out_IS < *out_LR && *out_IS < *out_MS) {
+            return MODE_IS;
+        }
+    }
+
+    return (*out_MS < *out_LR) ? MODE_MS : MODE_LR;
 }
 
 void AACstereo(faacEncHandle hpEncoder,
@@ -65,6 +104,7 @@ void AACstereo(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     int chn;
+    faac_real M_frame[FRAME_LEN], S_frame[FRAME_LEN];
 
     for (chn = 0; chn < maxchan; chn++) {
         if (!channel[chn].present)
@@ -120,8 +160,6 @@ void AACstereo(faacEncHandle hpEncoder,
         float lambda = 0.15f * (hEncoder->config.quantqual / 100.0f);
         int intensity_stereo_enabled = (hEncoder->config.jointmode != JOINT_NONE);
 
-        faac_real M[FRAME_LEN], S[FRAME_LEN];
-
         for (group = 0; group < coder[chn].groups.n; group++) {
             int end_win = start_win + coder[chn].groups.len[group];
             int gsize = coder[chn].groups.len[group];
@@ -150,62 +188,38 @@ void AACstereo(faacEncHandle hpEncoder,
                     }
                 }
 
-                faac_real corr2 = (cross * cross) / (EL * ER + 1e-20);
-                faac_real corr = (cross > 0 ? 1 : -1) * FAAC_SQRT(corr2);
+                faac_real denom = EL * ER + 1e-20;
+                faac_real corr2 = (cross * cross) / denom;
                 faac_real EM = (EL + ER + 2 * cross) / 4;
                 faac_real ES = (EL + ER - 2 * cross) / 4;
                 faac_real side_ratio = ES / (EM + 1e-20);
-                faac_real energy_diff = FAAC_FABS(EL - ER) / (EL + ER + 1e-20);
+                faac_real energy_diff_ratio = FAAC_FABS(EL - ER) / (EL + ER + 1e-20);
                 faac_real band_center_freq = (faac_real)(start + end) * hEncoder->sampleRate / (2.0 * FRAME_LEN);
 
                 int band_mode = MODE_AMBIGUOUS;
 
-                if (corr > 0.85 && side_ratio < 0.15)
+                // Optimization: Avoid SQRT by using squared thresholds
+                // 0.85^2 = 0.7225
+                // 0.20^2 = 0.04
+                // 0.30^2 = 0.09
+                if (cross > 0 && corr2 > 0.7225 && side_ratio < 0.15)
                     band_mode = MODE_MS;
-                else if (corr < 0.20 || side_ratio > 0.50)
+                else if (corr2 < 0.04 || side_ratio > 0.50)
                     band_mode = MODE_LR;
-                else if (band_center_freq > 6000 && energy_diff < 0.20 && FAAC_FABS(corr) < 0.30 && intensity_stereo_enabled)
+                else if (band_center_freq > 6000 && energy_diff_ratio < 0.20 && corr2 < 0.09 && intensity_stereo_enabled)
                     band_mode = MODE_IS;
 
                 float final_costLR = 0, final_costMS = 0, final_costIS = 1e30f;
-                int need_cost = (band_mode == MODE_AMBIGUOUS);
-
-                // If propose change mode, check costs for hysteresis even if not strictly ambiguous
                 int old_mode = hEncoder->last_ms_used[chn][sfcnt];
-                if (band_mode != MODE_AMBIGUOUS && band_mode != old_mode)
-                    need_cost = 1;
 
-                if (need_cost) {
-                    final_costLR = calc_cost(coder + chn, s[chn] + start_win * BLOCK_LEN_SHORT, bandlvlL[sfb], start, end, gsize, lambda, MODE_LR) +
-                                   calc_cost(coder + rch, s[rch] + start_win * BLOCK_LEN_SHORT, bandlvlr[sfb], start, end, gsize, lambda, MODE_LR);
+                if (band_mode == MODE_AMBIGUOUS || band_mode != old_mode) {
+                    int decided = evaluate_ambiguous(coder, chn, rch, sfb, start, end, start_win, gsize, s, bandlvlL[sfb], bandlvlr[sfb],
+                                                     lambda, intensity_stereo_enabled, band_center_freq, energy_diff_ratio,
+                                                     M_frame, S_frame, &final_costLR, &final_costMS, &final_costIS);
 
-                    faac_real thrMS = (bandlvlL[sfb] + bandlvlr[sfb]) * 0.5;
+                    if (band_mode == MODE_AMBIGUOUS)
+                        band_mode = decided;
 
-                    for (win = 0; win < gsize; win++) {
-                        faac_real *sl = s[chn] + (start_win + win) * BLOCK_LEN_SHORT;
-                        faac_real *sr = s[rch] + (start_win + win) * BLOCK_LEN_SHORT;
-                        for (l = start; l < end; l++) {
-                            M[win * BLOCK_LEN_SHORT + l] = (sl[l] + sr[l]) * 0.5;
-                            S[win * BLOCK_LEN_SHORT + l] = (sl[l] - sr[l]) * 0.5;
-                        }
-                    }
-
-                    final_costMS = (calc_cost(coder + chn, M + 0, thrMS, start, end, gsize, lambda, MODE_MS) +
-                                    calc_cost(coder + rch, S + 0, thrMS, start, end, gsize, lambda, MODE_MS)) * 0.98f;
-
-                    if (band_center_freq > 6000 && intensity_stereo_enabled) {
-                        final_costIS = calc_cost(coder + chn, M + 0, thrMS, start, end, gsize, lambda, MODE_IS);
-                    }
-
-                    if (band_mode == MODE_AMBIGUOUS) {
-                        if (final_costIS < final_costLR && final_costIS < final_costMS) {
-                            band_mode = MODE_IS;
-                        } else {
-                            band_mode = (final_costMS < final_costLR) ? MODE_MS : MODE_LR;
-                        }
-                    }
-
-                    // Apply hysteresis
                     if (band_mode != old_mode) {
                         float current_cost = (band_mode == MODE_LR) ? final_costLR : (band_mode == MODE_MS ? final_costMS : final_costIS);
                         float old_cost = (old_mode == MODE_LR) ? final_costLR : (old_mode == MODE_MS ? final_costMS : final_costIS);
@@ -215,6 +229,7 @@ void AACstereo(faacEncHandle hpEncoder,
                     }
                 }
 
+                // Apply mode
                 if (band_mode == MODE_MS) {
                     channel[chn].msInfo.ms_used[sfcnt] = 1;
                     for (win = start_win; win < end_win; win++) {
@@ -245,26 +260,21 @@ void AACstereo(faacEncHandle hpEncoder,
                     }
 
                     const faac_real step = 10/1.50515;
-                    int sf = FAAC_LRINT(FAAC_LOG10(EL / (efix + 1e-20)) * step);
-                    int pan = FAAC_LRINT(FAAC_LOG10(ER / (efix + 1e-20)) * step) - sf;
+                    int pan = FAAC_LRINT(FAAC_LOG10(ER / (EL + 1e-20)) * step);
 
-                    if (pan > 30) {
-                        coder[chn].book[sfcnt] = HCB_ZERO;
-                    } else if (pan < -30) {
-                        coder[rch].book[sfcnt] = HCB_ZERO;
-                    } else {
-                        coder[chn].sf[sfcnt] = sf;
-                        coder[rch].sf[sfcnt] = -pan;
-                        coder[rch].book[sfcnt] = hcb;
+                    if (pan > 60) pan = 60;
+                    if (pan < -60) pan = -60;
 
-                        for (win = start_win; win < end_win; win++) {
-                            faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
-                            faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
-                            for (l = start; l < end; l++) {
-                                faac_real val = (hcb == HCB_INTENSITY) ? (sl[l] + sr[l]) : (sl[l] - sr[l]);
-                                sl[l] = val * vfix;
-                                sr[l] = 0;
-                            }
+                    coder[rch].book[sfcnt] = hcb;
+                    coder[rch].sf[sfcnt] = pan;
+
+                    for (win = start_win; win < end_win; win++) {
+                        faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
+                        faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                        for (l = start; l < end; l++) {
+                            faac_real val = (hcb == HCB_INTENSITY) ? (sl[l] + sr[l]) : (sl[l] - sr[l]);
+                            sl[l] = val * vfix;
+                            sr[l] = 0;
                         }
                     }
                 } else {
