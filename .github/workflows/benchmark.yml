@@ -4,11 +4,13 @@ on:
   push:
     branches: [ "master" ]
     paths:
+      - "frontend/**"
       - "libfaac/**"
       - ".github/workflows/benchmark.yml"
   pull_request:
     branches: [ "*" ]
     paths:
+      - "frontend/**"
       - "libfaac/**"
       - ".github/workflows/benchmark.yml"
 
