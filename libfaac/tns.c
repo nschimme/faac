@@ -142,11 +142,6 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
     int startIndex,length;
     faac_real gain;
 
-    if (tnsInfo->transient_strength > 15.0) {
-        tnsInfo->tnsDataPresent = 0;
-        return;
-    }
-
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
@@ -198,37 +193,7 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
-        /* Energy-based gating */
-        {
-            faac_real total_energy = 0.0;
-            int i;
-            for (i = 0; i < length; i++) {
-                total_energy += spec[startIndex + i] * spec[startIndex + i];
-            }
-            if (total_energy < 1e-9) {
-                continue;
-            }
-        }
-
-        /* Tonal detector gating */
-        {
-            int i, tonal_count = 0;
-            faac_real avg_mag = 0.0;
-            for (i = 0; i < length; i++) {
-                avg_mag += FAAC_FABS(spec[startIndex + i]);
-            }
-            avg_mag /= length;
-
-            for (i = 0; i < length; i++) {
-                if (FAAC_FABS(spec[startIndex + i]) > 3.0 * avg_mag) {
-                    tonal_count++;
-                }
-            }
-            if (tonal_count < 3) {
-                continue;
-            }
-        }
-
+        if (length <= 0) continue;
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
@@ -326,6 +291,8 @@ static void TnsInvFilter(int length, faac_real * __restrict spec, TnsFilterData 
     int order = filter->order;
     const faac_real * __restrict a = filter->aCoeffs;
 
+    if (order <= 0) return;
+
     /* Determine loop parameters for given direction */
     if (filter->direction) {
 
@@ -369,10 +336,11 @@ static void TnsInvFilter(int length, faac_real * __restrict spec, TnsFilterData 
         for (i=order;i<length;i++) {
             temp[i]=spec[i];
             faac_real s = spec[i];
+            faac_real sum = 0.0;
             for (j=1;j<=order;j++) {
-                s += temp[i-j]*a[j];
+                sum += temp[i-j]*a[j];
             }
-            spec[i] = s;
+            spec[i] = s + sum;
         }
     }
 }
@@ -438,16 +406,10 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
     for (i = 0; i <= maxOrder; i++)
         rArray[i] = 0.0;
 
-    for (i = 0; i < dataSize - maxOrder; i++) {
+    for (i = 0; i < dataSize; i++) {
         faac_real d = data[i];
-        for (j = 0; j <= maxOrder; j++) {
-            rArray[j] += d * data[i + j];
-        }
-    }
-
-    for (; i < dataSize; i++) {
-        faac_real d = data[i];
-        for (j = 0; j < dataSize - i; j++) {
+        int limit = min(maxOrder, dataSize - 1 - i);
+        for (j = 0; j <= limit; j++) {
             rArray[j] += d * data[i + j];
         }
     }
