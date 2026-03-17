@@ -76,6 +76,7 @@ typedef struct {
     int tnsMaxBandsShort;
     int tnsMaxOrderLong;
     int tnsMaxOrderShort;
+    faac_real transient_strength;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
