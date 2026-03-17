@@ -82,6 +82,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psyfloat *lasteng;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->transient_strength = 0.0;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
@@ -106,10 +107,17 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          if (toteng > 1e-9)
           {
-              psyInfo->block_type = ONLY_SHORT_WINDOW;
-              break;
+              faac_real strength = (volchg / toteng * quality);
+              if (strength > psyInfo->transient_strength) {
+                  psyInfo->transient_strength = strength;
+              }
+
+              if (strength > 3.0)
+              {
+                  psyInfo->block_type = ONLY_SHORT_WINDOW;
+              }
           }
       }
       lasteng = eng;
