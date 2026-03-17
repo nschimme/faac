@@ -196,10 +196,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         if (!config->quantqual)
         {
             faac_real br_per_ch = (faac_real)config->bitRate;
-            faac_real divisor = 300.0 + br_per_ch * (1280.0 - 300.0) / 48000.0;
+            /* Scale per-channel bitrate to 48kHz equivalent to estimate initial quality. */
+            faac_real effective_br = br_per_ch * 48000.0 / (faac_real)hEncoder->sampleRate;
+            faac_real divisor = 300.0 + effective_br * (1280.0 - 300.0) / 48000.0;
             if (divisor > 1280.0) divisor = 1280.0;
 
-            config->quantqual = br_per_ch * hEncoder->numChannels / divisor;
+            /* Start from a stereo-equivalent quality floor (2 channels). */
+            config->quantqual = effective_br * 2.0 / divisor;
             if (config->quantqual > 100.0)
                 config->quantqual = (config->quantqual - 100.0) * 3.0 + 100.0;
         }
@@ -668,28 +671,37 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (depth_scale > 1.0) depth_scale = 1.0;
         if (depth_scale < 0.05) depth_scale = 0.05;
 
-        /* --- 4. Reservoir term ---
+        /* --- 4. Content weight ---
+           Approaches 0 for silence frames, 1 for normal frames.
+           This prevents quality oscillation caused by frames that are
+           inherently bit-sparse regardless of quality setting.       */
+        faac_real content_weight = (faac_real)frame_bits / (faac_real)(target_bits / 2 + 1);
+        if (content_weight > 1.0) content_weight = 1.0;
+
+        /* --- 5. Reservoir term ---
            neutral = half-full is the steady-state target.
-           The slope 1.0 is approved when damped by depth_scale. */
+           The slope 0.05 prevents the reservoir from driving large oscillations. */
         int neutral = hEncoder->reservoir_max / 2;
         int delta   = hEncoder->reservoir_bits - neutral;
         faac_real fix = 1.0
-            + 1.0 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
+            + 0.05 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
 
-        /* --- 5. Proportional term ---
+        /* --- 6. Proportional term ---
            Catches short-term overshoot before the reservoir has time to accumulate.
-           The asymmetric [0.75, 1.5] clamp favors stable recovery.                 */
+           Suppressed during silence by content_weight.                             */
         faac_real prop = (faac_real)target_bits / (faac_real)(frame_bits + 1);
-        if      (prop < 0.75) prop = 0.75;
-        else if (prop > 1.5)  prop = 1.5;
+        if      (prop < 0.9) prop = 0.9;
+        else if (prop > 1.1) prop = 1.1;
         faac_real prop_weight = 0.5;
-        fix *= (prop - 1.0) * prop_weight + 1.0;
 
-        /* Safety clamp for control stability */
-        if (fix < 0.5)  fix = 0.5;
-        if (fix > 2.0)  fix = 2.0;
+        faac_real prop_contribution = (prop - 1.0) * prop_weight * content_weight;
+        fix *= (prop_contribution + 1.0);
 
-        /* --- 6. Apply and clamp --- */
+        /* Narrow safety clamp to eliminate overshoot/crash cycle */
+        if (fix < 0.92) fix = 0.92;
+        if (fix > 1.08) fix = 1.08;
+
+        /* --- 7. Apply and clamp --- */
         hEncoder->aacquantCfg.quality *= fix;
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
