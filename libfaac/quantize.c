@@ -15,8 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  See the GNU General Public License
-    for more details.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -57,14 +56,9 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
-static faac_real pow43[8192];
 
 void QuantizeInit(void)
 {
-    int i;
-    for (i = 0; i < 8192; i++) {
-        pow43[i] = FAAC_POW((faac_real)i, 4.0/3.0);
-    }
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -192,6 +186,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      int xitab[8 * MAXSHORTBAND];
+      int *xi;
       int start, end;
       const faac_real *xr;
       int win;
@@ -204,16 +200,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
-      int width = end - start;
-
-      if (width <= 0)
-      {
-          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
-          continue;
-      }
 
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (faac_real)width);
+      rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -225,117 +214,34 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot + 1e-20) * (0.5 * sfstep));
+              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
       }
 
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      if ((SF_OFFSET - sfac) < 10)
+          sfacfix = 0.0;
+      else
+          sfacfix = FAAC_POW(10, sfac / sfstep);
+
+      end -= start;
+      xi = xitab;
+      if (sfacfix <= 0.0)
       {
-          int sfac_best = 0;
-          faac_real cost_best = 1e30;
-          int xitab_best[FRAME_LEN + 16];
-          int xitab_tmp[FRAME_LEN + 16];
-          int bnum_best = HCB_ZERO;
-          faac_real lambda = 0.5;
-          int s;
-          int len = gsize * width;
-
-          sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-          sfac_best = sfac;
-          memset(xitab_best, 0, sizeof(xitab_best));
-
-          for (s = sfac; s <= sfac + 1; s++) {
-              faac_real dist = 0.0;
-              int bits = 0;
-              int maxq = 0;
-              int bnum = HCB_ZERO;
-              int cnt;
-              faac_real thr_sq = bandqual[sb] * bandqual[sb] * len + 1e-15;
-
-              if ((SF_OFFSET - s) < 10)
-                  sfacfix = 0.0;
-              else
-                  sfacfix = FAAC_POW(10, s / sfstep);
-
-              memset(xitab_tmp, 0, sizeof(xitab_tmp));
-              if (sfacfix > 0.0) {
-                  int *xi_ptr = xitab_tmp;
-                  for (win = 0; win < gsize; win++) {
-                      xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                      qfunc(xr, xi_ptr, width, sfacfix);
-                      xi_ptr += width;
-                  }
-
-                  faac_real iqfac = 1.0 / sfacfix;
-                  for (win = 0; win < gsize; win++) {
-                      xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                      int *xi_band = xitab_tmp + win * width;
-                      for (cnt = 0; cnt < width; cnt++) {
-                          int q = (xi_band[cnt] >= 0) ? xi_band[cnt] : -xi_band[cnt];
-                          faac_real qv = (q < 8192) ? pow43[q] : FAAC_POW((faac_real)q, 4.0/3.0);
-                          qv *= iqfac;
-                          if (xi_band[cnt] < 0) qv = -qv;
-                          faac_real d = xr[cnt] - qv;
-                          dist += d * d;
-                          if (maxq < q) maxq = q;
-                      }
-                  }
-              } else {
-                  for (win = 0; win < gsize; win++) {
-                      xr = xr0 + win * BLOCK_LEN_SHORT + start;
-                      for (cnt = 0; cnt < width; cnt++) {
-                          dist += xr[cnt] * xr[cnt];
-                      }
-                  }
-              }
-
-              faac_real dcost = dist / thr_sq;
-              if (dcost > cost_best) continue;
-
-              if (maxq < 1) { bnum = HCB_ZERO; bits = 0; }
-              else if (maxq < 2) {
-                  bnum = 1; bits = huff_count_bits(xitab_tmp, len, 1);
-                  int b2 = huff_count_bits(xitab_tmp, len, 2);
-                  if (b2 >= 0 && (bits < 0 || b2 < bits)) { bnum = 2; bits = b2; }
-              }
-              else if (maxq < 3) {
-                  bnum = 3; bits = huff_count_bits(xitab_tmp, len, 3);
-                  int b2 = huff_count_bits(xitab_tmp, len, 4);
-                  if (b2 >= 0 && (bits < 0 || b2 < bits)) { bnum = 4; bits = b2; }
-              }
-              else if (maxq < 5) {
-                  bnum = 5; bits = huff_count_bits(xitab_tmp, len, 5);
-                  int b2 = huff_count_bits(xitab_tmp, len, 6);
-                  if (b2 >= 0 && (bits < 0 || b2 < bits)) { bnum = 6; bits = b2; }
-              }
-              else if (maxq < 8) {
-                  bnum = 7; bits = huff_count_bits(xitab_tmp, len, 7);
-                  int b2 = huff_count_bits(xitab_tmp, len, 8);
-                  if (b2 >= 0 && (bits < 0 || b2 < bits)) { bnum = 8; bits = b2; }
-              }
-              else if (maxq < 13) {
-                  bnum = 9; bits = huff_count_bits(xitab_tmp, len, 9);
-                  int b2 = huff_count_bits(xitab_tmp, len, 10);
-                  if (b2 >= 0 && (bits < 0 || b2 < bits)) { bnum = 10; bits = b2; }
-              }
-              else { bnum = HCB_ESC; bits = huff_count_bits(xitab_tmp, len, HCB_ESC); }
-
-              if (bits < 0 && bnum > HCB_ZERO) continue;
-
-              faac_real cost = dcost + lambda * bits;
-              if (cost < cost_best) {
-                  cost_best = cost;
-                  sfac_best = s;
-                  bnum_best = bnum;
-                  memcpy(xitab_best, xitab_tmp, sizeof(xitab_best));
-              }
-          }
-
-          coderInfo->book[coderInfo->bandcnt] = bnum_best;
-          if (bnum_best > HCB_ZERO)
-              huffcode(xitab_best, len, bnum_best, coderInfo);
-          coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac_best;
+          memset(xi, 0, gsize * end * sizeof(int));
       }
+      else
+      {
+          for (win = 0; win < gsize; win++)
+          {
+              xr = xr0 + win * BLOCK_LEN_SHORT + start;
+              qfunc(xr, xi, end, sfacfix);
+              xi += end;
+          }
+      }
+      huffbook(coderInfo, xitab, gsize * end);
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
@@ -379,6 +285,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
+        // fixme: move SF range check to quantizer
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -414,6 +321,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 {
+    // find max short frame band
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
     int cnt;
     int l;
@@ -429,6 +337,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     if (aacquantCfg->pnslevel)
         *bw = (faac_real)l * rate / (BLOCK_LEN_SHORT << 1);
 
+    // find max long frame band
     max = *bw * (BLOCK_LEN_LONG << 1) / rate;
     l = 0;
     for (cnt = 0; cnt < sr->num_cb_long; cnt++)
@@ -451,6 +360,7 @@ static void calce(faac_real * __restrict xr, const int * __restrict bands, faac_
     int sfb;
     int l;
 
+    // mute lines above cutoff freq
     for (l = maxl; l < bands[maxsfb]; l++)
         xr[l] = 0.0;
 

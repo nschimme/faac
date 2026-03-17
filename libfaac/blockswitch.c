@@ -82,16 +82,6 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psyfloat *lasteng;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
-  psyInfo->transient_strength = 0.0;
-
-  /* Fast energy gate: skip if total frame energy is very low */
-  faac_real frame_energy = 0.0;
-  for (win = 0; win < 8; win++) {
-      for (sfb = 0; sfb < lastband; sfb++) {
-          frame_energy += psydata->eng[win][sfb];
-      }
-  }
-  if (frame_energy < 1e-7) return;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
@@ -109,40 +99,6 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       {
           faac_real toteng = 0.0;
           faac_real volchg = 0.0;
-          faac_real hpf_volchg = 0.0;
-
-          /* HPF pre-gate: only check bands > ~5kHz (sfb index > 8) */
-          for (sfb = 8; sfb < lastband; sfb++) {
-              hpf_volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
-          }
-
-          /* If HPF energy change is small, skip detailed calculation for this window */
-          if (hpf_volchg < 1e-6) {
-              lasteng = eng;
-              continue;
-          }
-
-          /* Spectral Flatness Measure (SFM) as a Tonal Veto */
-          faac_real sum = 0.0;
-          faac_real sum_log = 0.0;
-          int count = 0;
-          for (sfb = firstband; sfb < lastband; sfb++) {
-              if (eng[sfb] > 1e-9) {
-                  sum += eng[sfb];
-                  sum_log += log10(eng[sfb]);
-                  count++;
-              }
-          }
-          if (count > 0) {
-              faac_real gm = pow(10.0, sum_log / count);
-              faac_real am = sum / count;
-              faac_real sfm = gm / (am + 1e-15);
-              /* If signal is highly tonal (SFM < 0.1), veto transient detection for this window */
-              if (sfm < 0.1) {
-                  lasteng = eng;
-                  continue;
-              }
-          }
 
           for (sfb = firstband; sfb < lastband; sfb++)
           {
@@ -150,14 +106,10 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if (toteng < 1e-9) toteng = 1e-9;
-          faac_real strength = volchg / toteng * quality;
-          if (psyInfo->transient_strength < strength)
-              psyInfo->transient_strength = strength;
-
-          if (strength > 3.0)
+          if ((volchg / toteng * quality) > 3.0)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
+              break;
           }
       }
       lasteng = eng;
