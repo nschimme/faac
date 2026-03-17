@@ -193,7 +193,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             config->bandWidth = g_bw.freq;
 
         if (!config->quantqual)
-            config->quantqual = DEFQUAL;
+        {
+            config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
+            if (config->quantqual > 100)
+                config->quantqual = (config->quantqual - 100) * 3.0 + 100;
+        }
     }
 
     if (!config->quantqual)
@@ -657,19 +661,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->reservoir_bits = 0;
 
         /* Adjust quality for next frame using ratio of target to actual.
-           sqrt damping prevents overshoot on a single step.
-           content_ratio suppresses correction on silence/sparse frames where
-           actual_bits is tiny regardless of quality setting.                  */
-        faac_real content_ratio = (faac_real)actual_bits / (faac_real)(avg_bits + 1);
-        if (content_ratio > 1.0) content_ratio = 1.0;
-
+           sqrt damping prevents overshoot on a single step.                  */
         faac_real ratio = (faac_real)target_bits / (faac_real)(actual_bits + 1);
         ratio = FAAC_SQRT(ratio);
         if (ratio < 0.5) ratio = 0.5;
         if (ratio > 2.0) ratio = 2.0;
 
-        faac_real new_quality = hEncoder->aacquantCfg.quality
-                                * (1.0 + (ratio - 1.0) * content_ratio);
+        faac_real new_quality = hEncoder->aacquantCfg.quality * ratio;
         if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
         if (new_quality < (faac_real)MINQUAL)  new_quality = (faac_real)MINQUAL;
         hEncoder->aacquantCfg.quality = new_quality;
