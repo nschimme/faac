@@ -672,18 +672,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         /* --- 4. Reservoir term ---
            neutral = half-full is the steady-state target.
-           The slope 1.0 is approved when damped by depth_scale. */
+           The slope 0.15 prevents oscillation at high bitrates. */
         int neutral = hEncoder->reservoir_max / 2;
         int delta   = hEncoder->reservoir_bits - neutral;
         faac_real fix = 1.0
-            + 1.0 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
+            + 0.15 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
 
         /* --- 5. Proportional term ---
            Catches short-term overshoot before the reservoir has time to accumulate.
-           The asymmetric [0.75, 1.5] clamp favors stable recovery.                 */
+           Clamp widened to [0.5, 2.0] to restore aggressive correction on large errors. */
         faac_real prop = (faac_real)target_bits / (faac_real)(frame_bits + 1);
-        if      (prop < 0.75) prop = 0.75;
-        else if (prop > 1.5)  prop = 1.5;
+        if      (prop < 0.5) prop = 0.5;
+        else if (prop > 2.0) prop = 2.0;
         faac_real prop_weight = 0.5;
         fix *= (prop - 1.0) * prop_weight + 1.0;
 
