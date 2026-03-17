@@ -50,6 +50,37 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
+static int calc_reservoir_max(unsigned long bitRatePerChannel,
+                               unsigned int  numChannels,
+                               unsigned long sampleRate)
+{
+    int res;
+    int frame_budget;
+
+    if (!bitRatePerChannel || !sampleRate)
+        return 6144 * (int)numChannels;
+
+    frame_budget = (int)((unsigned long long)bitRatePerChannel
+                         * numChannels * FRAME_LEN / sampleRate);
+
+    res = (int)((unsigned long long)MaxBitresSize(bitRatePerChannel, sampleRate)
+                * numChannels);
+
+    if (res > ADTS_FRAMESIZE)              res = ADTS_FRAMESIZE;
+    if (res > (int)(6LL * frame_budget))   res = (int)(6LL * frame_budget);
+    if (res < 1)                           res = 1;
+    return res;
+}
+
+static int calculate_target_bits(unsigned long bitRatePerChannel,
+                                  unsigned int  numChannels,
+                                  unsigned long sampleRate)
+{
+    return (int)((unsigned long long)bitRatePerChannel
+                 * numChannels * FRAME_LEN / sampleRate);
+}
+
+
 // default bandwidth/samplerate ratio
 static const struct {
     faac_real fac;
@@ -163,11 +194,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             config->bandWidth = g_bw.freq;
 
         if (!config->quantqual)
-        {
-            config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
-            if (config->quantqual > 100)
-                config->quantqual = (config->quantqual - 100) * 3.0 + 100;
-        }
+            config->quantqual = DEFQUAL;
     }
 
     if (!config->quantqual)
@@ -225,6 +252,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 	for( i = 0; i < MAX_CHANNELS; i++ )
 		hEncoder->config.channel_map[i] = config->channel_map[i];
 
+    {
+        int new_max = calc_reservoir_max(hEncoder->config.bitRate,
+                                          hEncoder->numChannels,
+                                          hEncoder->sampleRate);
+        hEncoder->reservoir_max = new_max;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
+            hEncoder->reservoir_bits = hEncoder->reservoir_max;
+    }
+
     /* OK */
     return 1;
 }
@@ -265,6 +301,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
+    hEncoder->reservoir_max  = calc_reservoir_max(hEncoder->config.bitRate,
+                                                   numChannels, sampleRate);
+    hEncoder->reservoir_bits = hEncoder->reservoir_max / 2;
+
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
@@ -582,6 +622,58 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                         cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
 		}
     }
+    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
+
+        /* Count bits this frame will produce at current quality — essentially free
+           at 0.9% of frame time. This gives us an exact measurement before we commit
+           to writing, so quality correction for the next frame is based on exact
+           data rather than post-hoc frame size.                                      */
+        unsigned char count_buf[ADTS_FRAMESIZE];
+        BitStream *count_stream = OpenBitStream(ADTS_FRAMESIZE, count_buf);
+        int predicted_bits = CountBitstream(hEncoder, coderInfo, channelInfo,
+                                             count_stream, numChannels);
+        CloseBitStream(count_stream);
+
+        /* Compute what we WANT to spend this frame:
+           avg_bits = long-run average budget
+           reservoir adjustment: if reservoir is full, spend more; if empty, spend less */
+        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
+                                              numChannels, hEncoder->sampleRate);
+        int target_bits = avg_bits
+            + (hEncoder->reservoir_bits - hEncoder->reservoir_max / 2);
+        if (target_bits < avg_bits / 4)
+            target_bits = avg_bits / 4;
+        /* ADTS stream has a 56-bit header; RAW_STREAM and MP4 container mode
+           (which also uses RAW_STREAM) have no header, so the full frame budget
+           is available. ADTS_STREAM = 1, RAW_STREAM = 0 per faaccfg.h.         */
+        int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
+        if (target_bits > (ADTS_FRAMESIZE * 8) - header_bits)
+            target_bits = (ADTS_FRAMESIZE * 8) - header_bits;
+
+        /* Adjust quality for the NEXT frame using the ratio between what we will
+           produce and what we want to produce. Use sqrt damping to avoid overshoot.
+           This is a zero-lag correction: we know the exact error before committing. */
+        faac_real ratio = (faac_real)target_bits / (faac_real)(predicted_bits + 1);
+        ratio = FAAC_SQRT(ratio);   /* damp: geometric mean step */
+
+        /* Clamp ratio to prevent single-frame quality spikes */
+        if (ratio < 0.5) ratio = 0.5;
+        if (ratio > 2.0) ratio = 2.0;
+
+        faac_real new_quality = hEncoder->aacquantCfg.quality * ratio;
+        if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
+        if (new_quality < (faac_real)MINQUAL)  new_quality = (faac_real)MINQUAL;
+        hEncoder->aacquantCfg.quality = new_quality;
+
+        /* Update reservoir based on what we are ABOUT TO write (predicted_bits),
+           not what we wrote last frame. This is more accurate than post-hoc update. */
+        hEncoder->reservoir_bits += avg_bits - predicted_bits;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
+            hEncoder->reservoir_bits = hEncoder->reservoir_max;
+        if (hEncoder->reservoir_bits < 0)
+            hEncoder->reservoir_bits = 0;
+    }
+
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
 
@@ -590,31 +682,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
-    }
 
     return frameBytes;
 }
