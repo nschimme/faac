@@ -82,6 +82,16 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psyfloat *lasteng;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->transient_strength = 0.0;
+
+  /* Frame energy gate: skip if frame is extremely quiet */
+  faac_real frame_energy = 0.0;
+  for (win = 0; win < 8; win++) {
+      for (sfb = 0; sfb < lastband; sfb++) {
+          frame_energy += psydata->eng[win][sfb];
+      }
+  }
+  if (frame_energy < 1e-9) return;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
@@ -99,6 +109,40 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
       {
           faac_real toteng = 0.0;
           faac_real volchg = 0.0;
+          faac_real hpf_volchg = 0.0;
+
+          /* HPF pre-gate: only check bands above ~5kHz for immediate energy jump */
+          for (sfb = 8; sfb < lastband; sfb++) {
+              hpf_volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
+          }
+
+          /* If high-frequency energy change is very small, skip detailed analysis */
+          if (hpf_volchg < 1e-6) {
+              lasteng = eng;
+              continue;
+          }
+
+          /* Spectral Flatness Measure (SFM) as a Tonal Veto */
+          faac_real sum = 0.0;
+          faac_real sum_log = 0.0;
+          int count = 0;
+          for (sfb = firstband; sfb < lastband; sfb++) {
+              if (eng[sfb] > 1e-12) {
+                  sum += eng[sfb];
+                  sum_log += log10(eng[sfb]);
+                  count++;
+              }
+          }
+          if (count > 0) {
+              faac_real gm = pow(10.0, sum_log / count);
+              faac_real am = sum / count;
+              faac_real sfm = gm / (am + 1e-15);
+              /* If signal is highly tonal (SFM < 0.05), veto transient detection */
+              if (sfm < 0.05) {
+                  lasteng = eng;
+                  continue;
+              }
+          }
 
           for (sfb = firstband; sfb < lastband; sfb++)
           {

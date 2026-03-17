@@ -195,6 +195,16 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
 
         if (length <= 0) continue;
 
+        /* Conservative energy gating: skip TNS on silence/near-silence */
+        {
+            faac_real energy = 0.0;
+            int i;
+            for (i = 0; i < length; i++) {
+                energy += spec[startIndex + i] * spec[startIndex + i];
+            }
+            if (energy < 1e-12) continue;
+        }
+
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
