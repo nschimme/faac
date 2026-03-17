@@ -80,7 +80,6 @@ static int calculate_target_bits(unsigned long bitRatePerChannel,
                  * numChannels * FRAME_LEN / sampleRate);
 }
 
-
 // default bandwidth/samplerate ratio
 static const struct {
     faac_real fac;
@@ -622,58 +621,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                         cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
 		}
     }
-    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
-
-        /* Count bits this frame will produce at current quality — essentially free
-           at 0.9% of frame time. This gives us an exact measurement before we commit
-           to writing, so quality correction for the next frame is based on exact
-           data rather than post-hoc frame size.                                      */
-        unsigned char count_buf[ADTS_FRAMESIZE];
-        BitStream *count_stream = OpenBitStream(ADTS_FRAMESIZE, count_buf);
-        int predicted_bits = CountBitstream(hEncoder, coderInfo, channelInfo,
-                                             count_stream, numChannels);
-        CloseBitStream(count_stream);
-
-        /* Compute what we WANT to spend this frame:
-           avg_bits = long-run average budget
-           reservoir adjustment: if reservoir is full, spend more; if empty, spend less */
-        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
-                                              numChannels, hEncoder->sampleRate);
-        int target_bits = avg_bits
-            + (hEncoder->reservoir_bits - hEncoder->reservoir_max / 2);
-        if (target_bits < avg_bits / 4)
-            target_bits = avg_bits / 4;
-        /* ADTS stream has a 56-bit header; RAW_STREAM and MP4 container mode
-           (which also uses RAW_STREAM) have no header, so the full frame budget
-           is available. ADTS_STREAM = 1, RAW_STREAM = 0 per faaccfg.h.         */
-        int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
-        if (target_bits > (ADTS_FRAMESIZE * 8) - header_bits)
-            target_bits = (ADTS_FRAMESIZE * 8) - header_bits;
-
-        /* Adjust quality for the NEXT frame using the ratio between what we will
-           produce and what we want to produce. Use sqrt damping to avoid overshoot.
-           This is a zero-lag correction: we know the exact error before committing. */
-        faac_real ratio = (faac_real)target_bits / (faac_real)(predicted_bits + 1);
-        ratio = FAAC_SQRT(ratio);   /* damp: geometric mean step */
-
-        /* Clamp ratio to prevent single-frame quality spikes */
-        if (ratio < 0.5) ratio = 0.5;
-        if (ratio > 2.0) ratio = 2.0;
-
-        faac_real new_quality = hEncoder->aacquantCfg.quality * ratio;
-        if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
-        if (new_quality < (faac_real)MINQUAL)  new_quality = (faac_real)MINQUAL;
-        hEncoder->aacquantCfg.quality = new_quality;
-
-        /* Update reservoir based on what we are ABOUT TO write (predicted_bits),
-           not what we wrote last frame. This is more accurate than post-hoc update. */
-        hEncoder->reservoir_bits += avg_bits - predicted_bits;
-        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
-            hEncoder->reservoir_bits = hEncoder->reservoir_max;
-        if (hEncoder->reservoir_bits < 0)
-            hEncoder->reservoir_bits = 0;
-    }
-
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
 
@@ -682,6 +629,51 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
+
+    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
+
+        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
+                                              numChannels, hEncoder->sampleRate);
+
+        /* hEncoder->usedBytes is set by CountBitstream inside WriteBitstream
+           before any bits are written. It is the exact frame bit count.
+           This is identical to what a dry run would give us, at zero extra cost. */
+        int actual_bits = hEncoder->usedBytes * 8;
+
+        /* Target for this frame */
+        int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
+        int target_bits = avg_bits
+            + (hEncoder->reservoir_bits - hEncoder->reservoir_max / 2);
+        if (target_bits < avg_bits / 4)
+            target_bits = avg_bits / 4;
+        if (target_bits > (ADTS_FRAMESIZE * 8) - header_bits)
+            target_bits = (ADTS_FRAMESIZE * 8) - header_bits;
+
+        /* Update reservoir using exact actual bit count */
+        hEncoder->reservoir_bits += avg_bits - actual_bits;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
+            hEncoder->reservoir_bits = hEncoder->reservoir_max;
+        if (hEncoder->reservoir_bits < 0)
+            hEncoder->reservoir_bits = 0;
+
+        /* Adjust quality for next frame using ratio of target to actual.
+           sqrt damping prevents overshoot on a single step.
+           content_ratio suppresses correction on silence/sparse frames where
+           actual_bits is tiny regardless of quality setting.                  */
+        faac_real content_ratio = (faac_real)actual_bits / (faac_real)(avg_bits + 1);
+        if (content_ratio > 1.0) content_ratio = 1.0;
+
+        faac_real ratio = (faac_real)target_bits / (faac_real)(actual_bits + 1);
+        ratio = FAAC_SQRT(ratio);
+        if (ratio < 0.5) ratio = 0.5;
+        if (ratio > 2.0) ratio = 2.0;
+
+        faac_real new_quality = hEncoder->aacquantCfg.quality
+                                * (1.0 + (ratio - 1.0) * content_ratio);
+        if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
+        if (new_quality < (faac_real)MINQUAL)  new_quality = (faac_real)MINQUAL;
+        hEncoder->aacquantCfg.quality = new_quality;
+    }
 
     return frameBytes;
 }

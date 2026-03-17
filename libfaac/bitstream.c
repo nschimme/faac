@@ -34,7 +34,7 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-int CountBitstream(faacEncStruct* hEncoder,
+static int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
@@ -217,7 +217,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-int CountBitstream(faacEncStruct* hEncoder,
+static int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
