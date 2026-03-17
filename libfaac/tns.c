@@ -142,14 +142,26 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
     int startIndex,length;
     faac_real gain;
 
+    if (tnsInfo->transient_strength > 15.0) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
+
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
+
+        /* TNS not used for short blocks currently */
+        tnsInfo->tnsDataPresent = 0;
+        return;
+
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
         lengthInBands = stopBand-startBand;
-        order = 4;
+        order = tnsInfo->tnsMaxOrderShort;
+        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
@@ -159,6 +171,8 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
+        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
+        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
     }
 
@@ -215,9 +229,6 @@ void TnsEncode(TnsInfo* __restrict tnsInfo,       /* TNS info */
             }
         }
 
-        if (tnsInfo->transient_strength > 15.0) {
-            continue;
-        }
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
