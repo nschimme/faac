@@ -652,7 +652,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                                                 hEncoder->sampleRate);
         int frame_bits = frameBytes * 8; /* TOTAL bits actually spent across all channels */
 
-        /* --- 2. Update reservoir (TOTAL bits) ---
+        /* --- 2. Update reservoir accounting unconditionally ---
            Surplus (frame cheaper than target) fills the reservoir.
            Deficit (frame more expensive than target) drains it.
            Clamp strictly to [0, reservoir_max].                    */
@@ -662,44 +662,45 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->reservoir_bits < 0)
             hEncoder->reservoir_bits = 0;
 
-        /* --- 3. Depth scale ---
-           Ratio of one frame's budget to the total reservoir capacity.
-           Used to damp terms at low bitrates where variance is high. */
-        faac_real depth_scale = (faac_real)target_bits
-                                / (faac_real)hEncoder->reservoir_max;
-        if (depth_scale > 1.0) depth_scale = 1.0;
-        if (depth_scale < 0.05) depth_scale = 0.05;
+        /* Only adjust quality on frames with real audio content.
+           During silence, frame_bits << target_bits regardless of quality.
+           Applying quality adjustment here causes oscillation on CHOP/ECHO files. */
+        if (frame_bits >= target_bits / 8) {
+            /* --- 3. Depth scale ---
+               Ratio of one frame's budget to the total reservoir capacity.
+               Used to damp terms at low bitrates where variance is high. */
+            faac_real depth_scale = (faac_real)target_bits
+                                    / (faac_real)hEncoder->reservoir_max;
+            if (depth_scale > 1.0) depth_scale = 1.0;
+            if (depth_scale < 0.05) depth_scale = 0.05;
 
-        /* --- 4. Reservoir term ---
-           neutral = half-full is the steady-state target.
-           The slope 0.3 improves post-silence recovery speed. */
-        int neutral = hEncoder->reservoir_max / 2;
-        int delta   = hEncoder->reservoir_bits - neutral;
-        faac_real fix = 1.0
-            + 0.3 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
+            /* --- 4. Reservoir term ---
+               neutral = half-full is the steady-state target.
+               The slope 0.3 improves post-silence recovery speed. */
+            int neutral = hEncoder->reservoir_max / 2;
+            int delta   = hEncoder->reservoir_bits - neutral;
+            faac_real fix = 1.0
+                + 0.3 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
 
-        /* --- 5. Proportional term ---
-           Only apply proportional correction on frames with significant audio content.
-           During silence, frame_bits is tiny regardless of quality setting.
-           Applying prop correction here causes runaway quality oscillation. */
-        if (frame_bits >= target_bits / 3) {
+            /* --- 5. Proportional term ---
+               Catches short-term overshoot. Widened clamp [0.5, 2.0] for
+               fast convergence. */
             faac_real prop = (faac_real)target_bits / (faac_real)(frame_bits + 1);
             if      (prop < 0.5) prop = 0.5;
             else if (prop > 2.0) prop = 2.0;
-            faac_real prop_weight = 0.5;
-            fix *= (prop - 1.0) * prop_weight + 1.0;
+            fix *= (prop - 1.0) * 0.5 + 1.0;
+
+            /* Safety clamp for control stability */
+            if (fix < 0.5)  fix = 0.5;
+            if (fix > 2.0)  fix = 2.0;
+
+            /* --- 6. Apply and clamp --- */
+            hEncoder->aacquantCfg.quality *= fix;
+            if (hEncoder->aacquantCfg.quality > maxqual)
+                hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < MINQUAL)
+                hEncoder->aacquantCfg.quality = MINQUAL;
         }
-
-        /* Safety clamp for control stability */
-        if (fix < 0.5)  fix = 0.5;
-        if (fix > 2.0)  fix = 2.0;
-
-        /* --- 6. Apply and clamp --- */
-        hEncoder->aacquantCfg.quality *= fix;
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < MINQUAL)
-            hEncoder->aacquantCfg.quality = MINQUAL;
     }
 
     return frameBytes;
