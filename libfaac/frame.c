@@ -50,36 +50,6 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-static int calc_reservoir_max(unsigned long bitRatePerChannel,
-                               unsigned int  numChannels,
-                               unsigned long sampleRate)
-{
-    int res;
-    int frame_budget;
-
-    if (!bitRatePerChannel || !sampleRate)
-        return 6144 * (int)numChannels;
-
-    frame_budget = (int)((unsigned long long)bitRatePerChannel
-                         * numChannels * FRAME_LEN / sampleRate);
-
-    res = (int)((unsigned long long)MaxBitresSize(bitRatePerChannel, sampleRate)
-                * numChannels);
-
-    if (res > ADTS_FRAMESIZE)              res = ADTS_FRAMESIZE;
-    if (res > (int)(6LL * frame_budget))   res = (int)(6LL * frame_budget);
-    if (res < 1)                           res = 1;
-    return res;
-}
-
-static int calculate_target_bits(unsigned long bitRatePerChannel,
-                                  unsigned int  numChannels,
-                                  unsigned long sampleRate)
-{
-    return (int)((unsigned long long)bitRatePerChannel
-                 * numChannels * FRAME_LEN / sampleRate);
-}
-
 // default bandwidth/samplerate ratio
 static const struct {
     faac_real fac;
@@ -255,15 +225,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 	for( i = 0; i < MAX_CHANNELS; i++ )
 		hEncoder->config.channel_map[i] = config->channel_map[i];
 
-    {
-        int new_max = calc_reservoir_max(hEncoder->config.bitRate,
-                                          hEncoder->numChannels,
-                                          hEncoder->sampleRate);
-        hEncoder->reservoir_max = new_max;
-        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
-            hEncoder->reservoir_bits = hEncoder->reservoir_max;
-    }
-
     /* OK */
     return 1;
 }
@@ -304,10 +265,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
-    hEncoder->reservoir_max  = calc_reservoir_max(hEncoder->config.bitRate,
-                                                   numChannels, sampleRate);
-    hEncoder->reservoir_bits = hEncoder->reservoir_max / 2;
-
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
@@ -634,43 +591,29 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
+    /* Adjust quality to get correct average bitrate */
+    if (hEncoder->config.bitRate)
+    {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
+        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
-        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
-                                              numChannels, hEncoder->sampleRate);
+        if (fix < 0.9)
+            fix += 0.1;
+        else if (fix > 1.1)
+            fix -= 0.1;
+        else
+            fix = 1.0;
 
-        /* hEncoder->usedBytes is set by CountBitstream inside WriteBitstream
-           before any bits are written. It is the exact frame bit count.
-           This is identical to what a dry run would give us, at zero extra cost. */
-        int actual_bits = hEncoder->usedBytes * 8;
+        fix = (fix - 1.0) * 0.5 + 1.0;
+        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
-        /* Target for this frame */
-        int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
-        int target_bits = avg_bits
-            + (hEncoder->reservoir_bits - hEncoder->reservoir_max / 2);
-        if (target_bits < avg_bits / 4)
-            target_bits = avg_bits / 4;
-        if (target_bits > (ADTS_FRAMESIZE * 8) - header_bits)
-            target_bits = (ADTS_FRAMESIZE * 8) - header_bits;
+        hEncoder->aacquantCfg.quality *= fix;
 
-        /* Update reservoir using exact actual bit count */
-        hEncoder->reservoir_bits += avg_bits - actual_bits;
-        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
-            hEncoder->reservoir_bits = hEncoder->reservoir_max;
-        if (hEncoder->reservoir_bits < 0)
-            hEncoder->reservoir_bits = 0;
-
-        /* Adjust quality for next frame using ratio of target to actual.
-           sqrt damping prevents overshoot on a single step.                  */
-        faac_real ratio = (faac_real)target_bits / (faac_real)(actual_bits + 1);
-        ratio = FAAC_SQRT(ratio);
-        if (ratio < 0.5) ratio = 0.5;
-        if (ratio > 2.0) ratio = 2.0;
-
-        faac_real new_quality = hEncoder->aacquantCfg.quality * ratio;
-        if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
-        if (new_quality < (faac_real)MINQUAL)  new_quality = (faac_real)MINQUAL;
-        hEncoder->aacquantCfg.quality = new_quality;
+        if (hEncoder->aacquantCfg.quality > maxqual)
+            hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10)
+            hEncoder->aacquantCfg.quality = 10;
     }
 
     return frameBytes;
