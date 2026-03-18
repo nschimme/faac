@@ -230,37 +230,37 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         faac_real bpc = (faac_real)config->bitRate;
         unsigned long totalBitRate = config->bitRate * hEncoder->numChannels;
 
-        /* Improved Intelligent Model for fac and noise_floor:
-           Focus on preserving speech harmonics (low noise floor) and bandwidth.
+        /* Intelligent Model for fac and noise_floor (based on bitrate per channel):
+           Reach generous "mid" settings faster to avoid mono bitrate ceiling.
 
            bitrate_per_channel | fac  | noise_floor
            --------------------|------|------------
-           8,000               | 0.50 | 0.10
-           16,000              | 0.65 | 0.05
-           32,000              | 0.80 | 0.02
-           64,000              | 0.90 | 0.01
-           128,000+            | 0.98 | 0.01
+           8,000               | 0.42 | 0.40
+           16,000              | 0.50 | 0.20
+           32,000              | 0.75 | 0.10
+           64,000              | 0.85 | 0.05
+           128,000+            | 0.95 | 0.02
         */
         faac_real fac, nf;
 
         if (bpc < 16000) {
             faac_real a = (bpc - 8000) / 8000.0;
             if (a < 0) a = 0;
-            fac = 0.50 + a * (0.65 - 0.50);
-            nf = 0.10 - a * (0.10 - 0.05);
+            fac = 0.42 + a * (0.50 - 0.42);
+            nf = 0.40 - a * (0.40 - 0.20);
         } else if (bpc < 32000) {
             faac_real a = (bpc - 16000) / 16000.0;
-            fac = 0.65 + a * (0.80 - 0.65);
-            nf = 0.05 - a * (0.05 - 0.02);
+            fac = 0.50 + a * (0.75 - 0.50);
+            nf = 0.20 - a * (0.20 - 0.10);
         } else if (bpc < 64000) {
             faac_real a = (bpc - 32000) / 32000.0;
-            fac = 0.80 + a * (0.90 - 0.80);
-            nf = 0.02 - a * (0.02 - 0.01);
+            fac = 0.75 + a * (0.85 - 0.75);
+            nf = 0.10 - a * (0.10 - 0.05);
         } else {
             faac_real a = (bpc - 64000) / 64000.0;
             if (a > 1.0) a = 1.0;
-            fac = 0.90 + a * (0.98 - 0.90);
-            nf = 0.01;
+            fac = 0.85 + a * (0.95 - 0.85);
+            nf = 0.05 - a * (0.05 - 0.02);
         }
 
         if (!config->bandWidth)
@@ -736,9 +736,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int current_bits = CountBitstream(hEncoder, coderInfo, channelInfo, count_stream, numChannels);
 
         int iter = 0;
-        int max_iter = 4;
-        int tol = target_bits / 100; /* 1% tolerance */
-        if (tol < 16) tol = 16;
+        int max_iter = 10;
+        int tol = target_bits / 200; /* 0.5% tolerance */
+        if (tol < 8) tol = 8;
 
         /* Save best-so-far state */
         CoderInfoSnapshot best_snap[MAX_CHANNELS];
@@ -752,16 +752,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             faac_real ratio = (faac_real)target_bits / (faac_real)(current_bits + 1);
 
-            /* Dead zone detection: if current_bits didn't move from previous best, push harder. */
+            /* Dead zone detection: if current_bits didn't move, push harder. */
             if (iter > 0 && current_bits == best_bits) {
-                if (target_bits > current_bits) ratio = 10.0;
-                else ratio = 0.1;
+                if (target_bits > current_bits) ratio = 20.0;
+                else ratio = 0.05;
             } else {
                 /* Adaptive Proportional-Logarithmic scaling.
-                   k=1.5 provides fast convergence and stability. */
-                if (ratio > 10.0) ratio = 10.0;
-                else if (ratio < 0.1) ratio = 0.1;
-                else ratio = FAAC_POW(ratio, 1.5);
+                   k=2.0 provides good balance of speed and stability over 10 iterations. */
+                if (ratio > 20.0) ratio = 20.0;
+                else if (ratio < 0.05) ratio = 0.05;
+                else ratio = FAAC_POW(ratio, 2.0);
             }
 
             faac_real trial_quality = hEncoder->aacquantCfg.quality * ratio;
