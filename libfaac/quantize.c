@@ -75,7 +75,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
-  faac_real powm = 0.4;
+  faac_real powm = 0.35;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
@@ -130,7 +130,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
-#define NOISETONE 0.2
+#define NOISETONE 0.25
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
         last = BLOCK_LEN_SHORT;
@@ -152,7 +152,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
     }
 
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+    /* Target multiplier increased from 10.0 to 15.0 to boost sensitivity.
+       Frequency penalty reduced by 0.7x coefficient. */
+    target *= 15.0 / (1.0 + 0.7 * ((faac_real)(start+end)/last));
 
     bandqual[sfb] = target * quality;
   }
