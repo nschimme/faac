@@ -52,6 +52,9 @@ unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
 unsigned int BitAllocation(faac_real pe, int short_block);
+int calculate_target_bits(unsigned long bitRatePerChannel,
+                          unsigned int  numChannels,
+                          unsigned long sampleRate);
 
 #ifdef __cplusplus
 }

@@ -199,6 +199,10 @@ int WriteBitstream(faacEncStruct* hEncoder,
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
     /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
     numFillBits += 6;
+
+    if (hEncoder->config.bitRate && hEncoder->paddingBits > 0)
+        numFillBits += hEncoder->paddingBits;
+
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
     bits += (numFillBits - bitsLeftAfterFill);
 
@@ -294,6 +298,28 @@ static int CountBitstream(faacEncStruct* hEncoder,
 
     /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
+
+    hEncoder->paddingBits = 0;
+    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0)
+    {
+        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
+                                             hEncoder->numChannels,
+                                             hEncoder->sampleRate);
+        int audio_bits = bits;
+        int fill_bits = avg_bits - audio_bits;
+
+        if (fill_bits >= 7) {
+            /* Silence/sparse: pad to target, reservoir gets zero credit */
+            hEncoder->paddingBits = (unsigned int)fill_bits;
+            bits += fill_bits;
+        } else if (fill_bits < 0) {
+            /* Overspent: reservoir absorbs the debt */
+            hEncoder->reservoir_bits += fill_bits;
+            if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
+                hEncoder->reservoir_bits = -hEncoder->reservoir_max;
+        }
+        /* Surplus < 7 bits: reservoir gets no credit, bits are effectively lost to byte alignment */
+    }
 
     hEncoder->usedBytes = bit2byte(bits);
 

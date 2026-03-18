@@ -48,15 +48,6 @@ static const psymodellist_t psymodellist[] = {
   {NULL}
 };
 
-/* Calculate the target number of bits for a single frame across all channels. */
-static int calculate_target_bits(unsigned long bitRatePerChannel,
-                                 unsigned int  numChannels,
-                                 unsigned long sampleRate)
-{
-    /* Use 64-bit math for intermediate to prevent overflow. */
-    return (int)((unsigned long long)bitRatePerChannel * numChannels * FRAME_LEN / sampleRate);
-}
-
 static int calc_reservoir_max(unsigned long bitRatePerChannel,
                               unsigned int  numChannels,
                               unsigned long sampleRate)
@@ -223,7 +214,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
        Rule of thumb: ~1.5 bits/sample needed per Hz of bandwidth.
        bandwidth_hz <= bitrate_per_channel / 1.5                    */
     if (hEncoder->config.bitRate) {
-        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / 1.5);
+        faac_real bw_divisor;
+        if      (hEncoder->config.bitRate < 20000) bw_divisor = 15.0;
+        else if (hEncoder->config.bitRate < 56000) bw_divisor = 2.5;
+        else                                        bw_divisor = 1.5;
+        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / bw_divisor);
         if (hEncoder->config.bandWidth > bw_limit)
             hEncoder->config.bandWidth = bw_limit;
     }
@@ -327,7 +322,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->reservoir_max  = calc_reservoir_max(hEncoder->config.bitRate,
                                                   numChannels,
                                                   sampleRate);
-    hEncoder->reservoir_bits = 0;
+    hEncoder->reservoir_bits = hEncoder->reservoir_max / 2;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
@@ -666,7 +661,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
             hEncoder->reservoir_bits = -hEncoder->reservoir_max;
 
-        int target_bits = avg_bits + hEncoder->reservoir_bits / 4;
+        int target_bits = avg_bits + hEncoder->reservoir_bits / 2;
         if (target_bits < avg_bits / 4)
             target_bits = avg_bits / 4;
         if (target_bits > (int)(ADTS_FRAMESIZE * 8) - header_bits)
@@ -674,10 +669,32 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         faac_real ratio = FAAC_SQRT((faac_real)target_bits
                                     / (faac_real)(actual_bits + 1));
-        if (ratio < 0.5) ratio = 0.5;
-        if (ratio > 2.0) ratio = 2.0;
 
-        faac_real q = hEncoder->aacquantCfg.quality * ratio;
+        /* Allow faster quality recovery when reservoir is full.
+           A full reservoir means we have accumulated budget to spend —
+           let quality climb quickly to catch up after silence.
+           When reservoir is near zero, cap recovery to prevent instability. */
+        faac_real reservoir_fill = (faac_real)hEncoder->reservoir_bits
+                                   / (faac_real)(hEncoder->reservoir_max + 1);
+        faac_real max_ratio = 1.5 + reservoir_fill * 2.5; /* range [1.5, 4.0] */
+
+        if (ratio < 0.5)        ratio = 0.5;
+        if (ratio > max_ratio)  ratio = max_ratio;
+
+        /* Attenuate correction during silence/sparse frames.
+           When actual_bits << avg_bits the ratio would drive quality
+           to maxqual, causing severe overshoot on the next audio frame.
+           Scale the correction by how much audio content is present. */
+        faac_real content_ratio = (faac_real)actual_bits / (faac_real)(avg_bits + 1);
+        if (content_ratio > 1.0) content_ratio = 1.0;
+
+        faac_real effective_ratio;
+        if (ratio >= 1.0)
+            effective_ratio = 1.0 + (ratio - 1.0) * content_ratio;
+        else
+            effective_ratio = ratio; /* always correct overspend fully */
+
+        faac_real q = hEncoder->aacquantCfg.quality * effective_ratio;
         if (q > (faac_real)maxqual) q = (faac_real)maxqual;
         if (q < (faac_real)MINQUAL) q = (faac_real)MINQUAL;
         hEncoder->aacquantCfg.quality = q;
