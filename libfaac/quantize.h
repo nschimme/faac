@@ -43,7 +43,7 @@ enum {
     DEFQUAL = 100,
     MAXQUAL = 5000,
     MAXQUALADTS = MAXQUAL,
-    MINQUAL = 1,
+    MINQUAL = 10,
     SF_OFFSET = 100,
 };
 

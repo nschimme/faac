@@ -219,6 +219,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bandWidth = config->bandWidth;
 
+    /* Cap bandwidth to what the bitrate can actually support.
+       Rule of thumb: ~12.0 bits/sample needed per Hz of bandwidth at MINQUAL 10.
+       bandwidth_hz <= bitrate_per_channel / 12.0                    */
+    if (hEncoder->config.bitRate) {
+        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / 12.0);
+        if (hEncoder->config.bandWidth > bw_limit)
+            hEncoder->config.bandWidth = bw_limit;
+    }
+
     /* check bandwidth */
     if (hEncoder->config.bandWidth < 100)
 		hEncoder->config.bandWidth = 100;
@@ -699,19 +708,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (fix > 2.0)  fix = 2.0;
 
         /* --- 6. Apply and clamp --- */
-        faac_real new_quality = hEncoder->aacquantCfg.quality * fix;
-
-        /* Bitrate-dependent quality floor: scale down from 10 at low
-           bitrates so the rate control loop can reach the target.
-           At 16kbps mono 16kHz avg_bits ≈ 1024; at 16kbps mono 44.1kHz ≈ 371. */
-        faac_real min_quality = 10.0
-                                * (faac_real)target_bits / 10000.0;
-        if (min_quality > 10.0)    min_quality = 10.0;
-        if (min_quality < (faac_real)MINQUAL) min_quality = (faac_real)MINQUAL;
-
-        if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
-        if (new_quality < min_quality)        new_quality = min_quality;
-        hEncoder->aacquantCfg.quality = new_quality;
+        hEncoder->aacquantCfg.quality *= fix;
+        if (hEncoder->aacquantCfg.quality > maxqual)
+            hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < MINQUAL)
+            hEncoder->aacquantCfg.quality = MINQUAL;
     }
 
     return frameBytes;
