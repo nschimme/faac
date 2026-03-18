@@ -142,80 +142,46 @@ int WriteBitstream(faacEncStruct* hEncoder,
 
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 1);
-    }else{
-        bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
-/* sur: faad2 complains about scalefactor error if we are writing FAAC String */
     if (hEncoder->frameNum == 4)
       WriteFAACStr(bitStream, hEncoder->config.name, 1);
 
     for (channel = 0; channel < numChannel; channel++) {
-
         if (channelInfo[channel].present) {
-
-            /* Write out a single_channel_element */
             if (!channelInfo[channel].cpe) {
-
                 if (channelInfo[channel].lfe) {
-                    /* Write out lfe */
-                    bits += WriteLFE(&coderInfo[channel],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        1);
+                    bits += WriteLFE(&coderInfo[channel], &channelInfo[channel],
+                        bitStream, hEncoder->config.aacObjectType, 1);
                 } else {
-                    /* Write out sce */
-                    bits += WriteSCE(&coderInfo[channel],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        1);
+                    bits += WriteSCE(&coderInfo[channel], &channelInfo[channel],
+                        bitStream, hEncoder->config.aacObjectType, 1);
                 }
-
             } else {
-
                 if (channelInfo[channel].ch_is_left) {
-                    /* Write out cpe */
-                    bits += WriteCPE(&coderInfo[channel],
-                        &coderInfo[channelInfo[channel].paired_ch],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        1);
+                    bits += WriteCPE(&coderInfo[channel], &coderInfo[channelInfo[channel].paired_ch],
+                        &channelInfo[channel], bitStream, hEncoder->config.aacObjectType, 1);
                 }
             }
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
     if (bits < (8 - LEN_SE_ID) ) {
         numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
     }
 
-    /* Write AAC fill_elements, smallest fill element is 7 bits. */
-    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
     numFillBits += 6;
-
     if (hEncoder->config.bitRate && hEncoder->paddingBits > 0)
         numFillBits += hEncoder->paddingBits;
 
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
     bits += (numFillBits - bitsLeftAfterFill);
 
-    /* Write ID_END terminator */
     bits += LEN_SE_ID;
     PutBit(bitStream, ID_END, LEN_SE_ID);
 
-    /* Now byte align the bitstream */
-    /*
-     * This byte_alignment() is correct for both MPEG2 and MPEG4, although
-     * in MPEG4 the byte_alignment() is officially done before the new frame
-     * instead of at the end. But this is basically the same.
-     */
     bits += ByteAlign(bitStream, 1, bits);
 
     return bits;
@@ -233,92 +199,65 @@ static int CountBitstream(faacEncStruct* hEncoder,
 
     if(hEncoder->config.outputFormat == 1){
         bits += WriteADTSHeader(hEncoder, bitStream, 0);
-    }else{
-        bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
-/* sur: faad2 complains about scalefactor error if we are writing FAAC String */
     if (hEncoder->frameNum == 4)
       bits += WriteFAACStr(bitStream, hEncoder->config.name, 0);
 
     for (channel = 0; channel < numChannel; channel++) {
-
         if (channelInfo[channel].present) {
-
-            /* Write out a single_channel_element */
             if (!channelInfo[channel].cpe) {
-
                 if (channelInfo[channel].lfe) {
-                    /* Write out lfe */
-                    bits += WriteLFE(&coderInfo[channel],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        0);
+                    bits += WriteLFE(&coderInfo[channel], &channelInfo[channel],
+                        bitStream, hEncoder->config.aacObjectType, 0);
                 } else {
-                    /* Write out sce */
-                    bits += WriteSCE(&coderInfo[channel],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        0);
+                    bits += WriteSCE(&coderInfo[channel], &channelInfo[channel],
+                        bitStream, hEncoder->config.aacObjectType, 0);
                 }
-
             } else {
-
                 if (channelInfo[channel].ch_is_left) {
-                    /* Write out cpe */
-                    bits += WriteCPE(&coderInfo[channel],
-                        &coderInfo[channelInfo[channel].paired_ch],
-                        &channelInfo[channel],
-                        bitStream,
-                        hEncoder->config.aacObjectType,
-                        0);
+                    bits += WriteCPE(&coderInfo[channel], &coderInfo[channelInfo[channel].paired_ch],
+                        &channelInfo[channel], bitStream, hEncoder->config.aacObjectType, 0);
                 }
             }
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
     if (bits < (8 - LEN_SE_ID) ) {
         numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
     }
 
-    /* Write AAC fill_elements, smallest fill element is 7 bits. */
-    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
     numFillBits += 6;
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
     bits += (numFillBits - bitsLeftAfterFill);
 
-    /* Write ID_END terminator */
     bits += LEN_SE_ID;
-
-    /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
+    hEncoder->audioBits = bits;
     hEncoder->paddingBits = 0;
+
     if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0)
     {
         int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
                                              hEncoder->numChannels,
                                              hEncoder->sampleRate);
-        int audio_bits = bits;
-        int fill_bits = avg_bits - audio_bits;
+        int fill_bits = avg_bits - bits;
 
         if (fill_bits >= 7) {
             /* Silence/sparse: pad to target, reservoir gets zero credit */
             hEncoder->paddingBits = (unsigned int)fill_bits;
             bits += fill_bits;
-        } else if (fill_bits < 0) {
-            /* Overspent: reservoir absorbs the debt */
+        } else {
+            /* Audio frame: reservoir tracks surplus (<7 bits) or deficit */
             hEncoder->reservoir_bits += fill_bits;
-            if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
-                hEncoder->reservoir_bits = -hEncoder->reservoir_max;
+            if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
+                hEncoder->reservoir_bits = hEncoder->reservoir_max;
+            if (hEncoder->reservoir_bits < 0)
+                hEncoder->reservoir_bits = 0;
         }
-        /* Surplus < 7 bits: reservoir gets no credit, bits are effectively lost to byte alignment */
     }
 
     hEncoder->usedBytes = bit2byte(bits);

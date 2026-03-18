@@ -649,17 +649,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
-
         int avg_bits    = calculate_target_bits(hEncoder->config.bitRate,
                                                 numChannels, hEncoder->sampleRate);
-        int actual_bits = hEncoder->usedBytes * 8;
+        int audio_bits  = hEncoder->audioBits;
         int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
-
-        hEncoder->reservoir_bits += avg_bits - actual_bits;
-        if (hEncoder->reservoir_bits >  hEncoder->reservoir_max)
-            hEncoder->reservoir_bits =  hEncoder->reservoir_max;
-        if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
-            hEncoder->reservoir_bits = -hEncoder->reservoir_max;
 
         int target_bits = avg_bits + hEncoder->reservoir_bits / 2;
         if (target_bits < avg_bits / 4)
@@ -667,8 +660,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (target_bits > (int)(ADTS_FRAMESIZE * 8) - header_bits)
             target_bits = (int)(ADTS_FRAMESIZE * 8) - header_bits;
 
-        faac_real ratio = FAAC_SQRT((faac_real)target_bits
-                                    / (faac_real)(actual_bits + 1));
+        faac_real ratio = (faac_real)target_bits
+                                    / (faac_real)(audio_bits + 1.0);
 
         /* Allow faster quality recovery when reservoir is full.
            A full reservoir means we have accumulated budget to spend —
@@ -681,20 +674,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (ratio < 0.5)        ratio = 0.5;
         if (ratio > max_ratio)  ratio = max_ratio;
 
-        /* Attenuate correction during silence/sparse frames.
-           When actual_bits << avg_bits the ratio would drive quality
-           to maxqual, causing severe overshoot on the next audio frame.
-           Scale the correction by how much audio content is present. */
-        faac_real content_ratio = (faac_real)actual_bits / (faac_real)(avg_bits + 1);
-        if (content_ratio > 1.0) content_ratio = 1.0;
-
-        faac_real effective_ratio;
-        if (ratio >= 1.0)
-            effective_ratio = 1.0 + (ratio - 1.0) * content_ratio;
-        else
-            effective_ratio = ratio; /* always correct overspend fully */
-
-        faac_real q = hEncoder->aacquantCfg.quality * effective_ratio;
+        faac_real q = hEncoder->aacquantCfg.quality * ratio;
         if (q > (faac_real)maxqual) q = (faac_real)maxqual;
         if (q < (faac_real)MINQUAL) q = (faac_real)MINQUAL;
         hEncoder->aacquantCfg.quality = q;

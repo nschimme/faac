@@ -48,8 +48,9 @@ typedef struct {
     unsigned int sampleRateIdx;
 
     unsigned int usedBytes;
+    unsigned int audioBits;
     unsigned int paddingBits;
-    int reservoir_bits;   /* current fill level in bits, range [-reservoir_max, reservoir_max] */
+    int reservoir_bits;   /* current fill level in bits, range [0, reservoir_max] */
     int reservoir_max;    /* decoder buffer ceiling in bits, bitrate-dependent     */
 
     /* frame number */
