@@ -701,13 +701,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* --- 6. Apply and clamp --- */
         faac_real new_quality = hEncoder->aacquantCfg.quality * fix;
 
-        /* Bitrate-dependent quality floor: scale MINQUAL down at low
+        /* Bitrate-dependent quality floor: scale down from 10 at low
            bitrates so the rate control loop can reach the target.
-           At 16kbps mono avg_bits ≈ 150; at 128kbps stereo ≈ 2389.    */
-        faac_real min_quality = (faac_real)MINQUAL
-                                * (faac_real)target_bits / 600.0;
-        if (min_quality > (faac_real)MINQUAL) min_quality = (faac_real)MINQUAL;
-        if (min_quality < 1.0)               min_quality = 1.0;
+           At 16kbps mono 16kHz avg_bits ≈ 1024; at 16kbps mono 44.1kHz ≈ 371. */
+        faac_real min_quality = 10.0
+                                * (faac_real)target_bits / 10000.0;
+        if (min_quality > 10.0)    min_quality = 10.0;
+        if (min_quality < (faac_real)MINQUAL) min_quality = (faac_real)MINQUAL;
 
         if (new_quality > (faac_real)maxqual) new_quality = (faac_real)maxqual;
         if (new_quality < min_quality)        new_quality = min_quality;
