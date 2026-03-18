@@ -757,7 +757,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (current_bits < 0) current_bits = 8192 * 8;
 
         int iter = 0;
-        int max_iter = 4;
+        int max_iter = 1;
         int tol = target_bits / 100; /* 1% tolerance */
         if (tol < 16) tol = 16;
 
