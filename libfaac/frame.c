@@ -232,13 +232,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
         /* Intelligent Model for fac and noise_floor (based on bitrate per channel):
            fac (bandwidth scaling):
-             Low (16kbps): 0.40
+             Low (16kbps): 0.42
              Mid (64kbps): 0.70
              High (128kbps): 0.85
            noise_floor (band zeroing):
-             Low (16kbps): 0.6
+             Low (16kbps): 0.2
              Mid (64kbps): 0.1
-             High (128kbps): 0.02
+             High (128kbps): 0.05
         */
         faac_real fac = 0.70;
         faac_real nf = 0.1;
@@ -246,18 +246,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         if (bpc < 64000) {
             faac_real alpha = (bpc - 16000) / (64000 - 16000);
             if (alpha < 0) alpha = 0;
-            fac = 0.40 + alpha * (0.70 - 0.40);
-            nf = 0.6 - alpha * (0.6 - 0.1);
+            fac = 0.42 + alpha * (0.70 - 0.42);
+            nf = 0.2 - alpha * (0.2 - 0.1);
         } else {
             faac_real alpha = (bpc - 64000) / (128000 - 64000);
             if (alpha > 1.0) alpha = 1.0;
             fac = 0.70 + alpha * (0.85 - 0.70);
-            nf = 0.1 - alpha * (0.1 - 0.02);
+            nf = 0.1 - alpha * (0.1 - 0.05);
         }
 
         if (!config->bandWidth)
         {
-            config->bandWidth = (faac_real)totalBitRate * hEncoder->sampleRate * fac / 50000.0;
+            config->bandWidth = bpc * hEncoder->sampleRate * fac / 50000.0;
             if (config->bandWidth > g_bw.freq)
                 config->bandWidth = g_bw.freq;
         }
