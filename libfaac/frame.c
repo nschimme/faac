@@ -235,11 +235,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
            bitrate_per_channel | fac  | noise_floor
            --------------------|------|------------
-           8,000               | 0.50 | 0.15
-           16,000              | 0.70 | 0.10
-           32,000              | 0.80 | 0.05
-           64,000              | 0.88 | 0.01
-           128,000+            | 0.92 | 0.01
+           8,000               | 0.50 | 0.10
+           16,000              | 0.70 | 0.05
+           32,000              | 0.85 | 0.02
+           64,000              | 0.92 | 0.01
+           128,000+            | 0.95 | 0.01
         */
         faac_real fac, nf;
 
@@ -247,19 +247,19 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             faac_real a = (bpc - 8000) / 8000.0;
             if (a < 0) a = 0;
             fac = 0.50 + a * (0.70 - 0.50);
-            nf = 0.15 - a * (0.15 - 0.10);
+            nf = 0.10 - a * (0.10 - 0.05);
         } else if (bpc < 32000) {
             faac_real a = (bpc - 16000) / 16000.0;
-            fac = 0.70 + a * (0.80 - 0.70);
-            nf = 0.10 - a * (0.10 - 0.05);
+            fac = 0.70 + a * (0.85 - 0.70);
+            nf = 0.05 - a * (0.05 - 0.02);
         } else if (bpc < 64000) {
             faac_real a = (bpc - 32000) / 32000.0;
-            fac = 0.80 + a * (0.88 - 0.80);
-            nf = 0.05 - a * (0.05 - 0.01);
+            fac = 0.85 + a * (0.92 - 0.85);
+            nf = 0.02 - a * (0.02 - 0.01);
         } else {
             faac_real a = (bpc - 64000) / 64000.0;
             if (a > 1.0) a = 1.0;
-            fac = 0.88 + a * (0.92 - 0.88);
+            fac = 0.92 + a * (0.95 - 0.92);
             nf = 0.01;
         }
 
@@ -435,6 +435,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
+    /* Initialize Rate Control Buffers */
+    hEncoder->count_stream = OpenBitStream(8192, hEncoder->count_buf);
+    hEncoder->snapshots = AllocMemory(MAX_CHANNELS * sizeof(CoderInfoSnapshot));
+    hEncoder->best_snapshots = AllocMemory(MAX_CHANNELS * sizeof(CoderInfoSnapshot));
+
     /* Return handle */
     return hEncoder;
 }
@@ -461,8 +466,12 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     }
 
     /* Free handle */
-    if (hEncoder)
-		FreeMemory(hEncoder);
+    if (hEncoder) {
+        if (hEncoder->count_stream) CloseBitStream(hEncoder->count_stream);
+        if (hEncoder->snapshots) FreeMemory(hEncoder->snapshots);
+        if (hEncoder->best_snapshots) FreeMemory(hEncoder->best_snapshots);
+        FreeMemory(hEncoder);
+    }
 
     BlocStat();
 
@@ -712,38 +721,49 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                                               numChannels,
                                               hEncoder->sampleRate);
 
-        /* Frame target: spend what we have in reservoir above 50% fill */
-        int target_bits = avg_bits + (hEncoder->reservoir_bits - hEncoder->reservoir_max / 2);
+        /* Frame target: spend what we have in reservoir above 50% fill.
+           A more aggressive spending mechanism for high reservoir levels. */
+        int target_bits;
+        int reservoir_fill = hEncoder->reservoir_bits - hEncoder->reservoir_max / 2;
+        if (hEncoder->reservoir_bits > (int)(hEncoder->reservoir_max * 0.6)) {
+            /* Active spending: add 50% extra weight to the surplus */
+            target_bits = avg_bits + (int)(reservoir_fill * 1.5);
+        } else {
+            target_bits = avg_bits + reservoir_fill;
+        }
 
         /* Minimal quality floor to allow rate control to hit low targets. */
-        faac_real min_q = (faac_real)target_bits / 800.0;
-        if (min_q < 0.01) min_q = 0.01;
-        if (min_q > 1.0)  min_q = 1.0;
+        faac_real min_q = (faac_real)target_bits / 1000.0;
+        if (min_q < 0.001) min_q = 0.001;
+        if (min_q > 1.0)   min_q = 1.0;
 
         int header_bits = (hEncoder->config.outputFormat == 1) ? 56 : 0;
         if (target_bits < avg_bits / 4)       target_bits = avg_bits / 4;
-        if (target_bits > (ADTS_FRAMESIZE * 8) - (header_bits + 56))
-                                               target_bits = (ADTS_FRAMESIZE * 8) - (header_bits + 56);
+        if (target_bits > (8192 * 8) - (header_bits + 56))
+                                               target_bits = (8192 * 8) - (header_bits + 56);
 
         /* Initial trial quantization (warm start from previous frame's quality) */
+        BitStream *count_stream = (BitStream *)hEncoder->count_stream;
+        CoderInfoSnapshot *best_snapshots = (CoderInfoSnapshot *)hEncoder->best_snapshots;
+
         for (channel = 0; channel < numChannels; channel++) {
             restore_coder(&coderInfo[channel], &base_snap[channel]);
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->aacquantCfg);
         }
 
-        unsigned char count_buf[ADTS_FRAMESIZE];
-        BitStream *count_stream = OpenBitStream(ADTS_FRAMESIZE, count_buf);
+        count_stream->numBit = 0;
+        count_stream->currentBit = 0;
         int current_bits = CountBitstream(hEncoder, coderInfo, channelInfo, count_stream, numChannels);
+        if (current_bits < 0) current_bits = 8192 * 8;
 
         int iter = 0;
-        int max_iter = 5;
+        int max_iter = 4;
         int tol = target_bits / 100; /* 1% tolerance */
         if (tol < 16) tol = 16;
 
         /* Save best-so-far state */
-        CoderInfoSnapshot best_snap[MAX_CHANNELS];
         for (channel = 0; channel < numChannels; channel++)
-            snapshot_coder(&coderInfo[channel], &best_snap[channel]);
+            snapshot_coder(&coderInfo[channel], &best_snapshots[channel]);
         int best_bits = current_bits;
         faac_real best_quality = hEncoder->aacquantCfg.quality;
 
@@ -781,20 +801,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             count_stream->currentBit = 0;
             int trial_bits = CountBitstream(hEncoder, coderInfo, channelInfo, count_stream, numChannels);
 
+            if (trial_bits < 0) {
+                hEncoder->aacquantCfg.quality *= 0.5;
+                iter++;
+                continue;
+            }
+
             if (abs(trial_bits - target_bits) < abs(best_bits - target_bits)) {
                 best_bits = trial_bits;
                 best_quality = hEncoder->aacquantCfg.quality;
                 for (channel = 0; channel < numChannels; channel++)
-                    snapshot_coder(&coderInfo[channel], &best_snap[channel]);
+                    snapshot_coder(&coderInfo[channel], &best_snapshots[channel]);
             }
             current_bits = trial_bits;
             iter++;
         }
         hEncoder->aacquantCfg.quality = best_quality;
         for (channel = 0; channel < numChannels; channel++)
-            restore_coder(&coderInfo[channel], &best_snap[channel]);
-
-        CloseBitStream(count_stream);
+            restore_coder(&coderInfo[channel], &best_snapshots[channel]);
     } else {
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->aacquantCfg);
