@@ -67,11 +67,9 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
-#define NOISEFLOOR 0.4
-
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real noise_floor)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -95,7 +93,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((noise_floor * noise_floor) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -167,7 +165,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   faac_real noise_floor
                   )
 {
     int sb;
@@ -204,7 +203,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < noise_floor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
@@ -265,8 +264,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->noise_floor);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

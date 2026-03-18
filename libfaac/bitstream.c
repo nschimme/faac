@@ -34,11 +34,6 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannels);
 static int WriteADTSHeader(faacEncStruct* hEncoder,
                            BitStream *bitStream,
                            int writeFlag);
@@ -217,7 +212,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-static int CountBitstream(faacEncStruct* hEncoder,
+int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
