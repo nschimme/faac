@@ -215,7 +215,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
        bandwidth_hz <= bitrate_per_channel / 1.5                    */
     if (hEncoder->config.bitRate) {
         faac_real bw_divisor;
-        if      (hEncoder->config.bitRate < 20000) bw_divisor = 15.0;
+        if      (hEncoder->config.bitRate < 20000) bw_divisor = 12.0;
         else if (hEncoder->config.bitRate < 56000) bw_divisor = 2.5;
         else                                        bw_divisor = 1.5;
         unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / bw_divisor);
@@ -660,8 +660,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (target_bits > (int)(ADTS_FRAMESIZE * 8) - header_bits)
             target_bits = (int)(ADTS_FRAMESIZE * 8) - header_bits;
 
-        faac_real ratio = (faac_real)target_bits
-                                    / (faac_real)(audio_bits + 1.0);
+        faac_real ratio = FAAC_SQRT((faac_real)target_bits
+                                    / (faac_real)(audio_bits + 1.0));
 
         /* Allow faster quality recovery when reservoir is full.
            A full reservoir means we have accumulated budget to spend —

@@ -87,5 +87,8 @@ int calculate_target_bits(unsigned long bitRatePerChannel,
 {
     /* Use 64-bit math for intermediate to prevent overflow. */
     if (!sampleRate) return 0;
-    return (int)((unsigned long long)bitRatePerChannel * numChannels * FRAME_LEN / sampleRate);
+    int target = (int)((unsigned long long)bitRatePerChannel * numChannels * FRAME_LEN / sampleRate);
+    /* Safety cap at ~64k bits (8k bytes) to fit in ADTS. */
+    if (target > 65000) target = 65000;
+    return target;
 }
