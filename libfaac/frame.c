@@ -220,10 +220,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.bandWidth = config->bandWidth;
 
     /* Cap bandwidth to what the bitrate can actually support.
-       Rule of thumb: ~12.0 bits/sample needed per Hz of bandwidth at MINQUAL 10.
-       bandwidth_hz <= bitrate_per_channel / 12.0                    */
+       Rule of thumb: ~1.5 bits/sample needed per Hz of bandwidth.
+       bandwidth_hz <= bitrate_per_channel / 1.5                    */
     if (hEncoder->config.bitRate) {
-        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / 12.0);
+        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / 1.5);
         if (hEncoder->config.bandWidth > bw_limit)
             hEncoder->config.bandWidth = bw_limit;
     }
@@ -327,7 +327,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->reservoir_max  = calc_reservoir_max(hEncoder->config.bitRate,
                                                   numChannels,
                                                   sampleRate);
-    hEncoder->reservoir_bits = hEncoder->reservoir_max / 2;
+    hEncoder->reservoir_bits = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
@@ -416,7 +416,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
-    int sb, frameBytes;
+    int sb;
     unsigned int offset;
     BitStream *bitStream; /* bitstream used for writing the frame to */
 
@@ -650,72 +650,40 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         return -1;
 
     /* Close the bitstream and return the number of bytes written */
-    frameBytes = CloseBitStream(bitStream);
+    hEncoder->usedBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0) {
 
-        /* --- 1. Target bits this frame under the ABR contract (TOTAL bits across all channels) --- */
-        int target_bits = calculate_target_bits(hEncoder->config.bitRate,
-                                                numChannels,
-                                                hEncoder->sampleRate);
-        int frame_bits = frameBytes * 8; /* TOTAL bits actually spent across all channels */
+        int avg_bits    = calculate_target_bits(hEncoder->config.bitRate,
+                                                numChannels, hEncoder->sampleRate);
+        int actual_bits = hEncoder->usedBytes * 8;
+        int header_bits = (hEncoder->config.outputFormat == ADTS_STREAM) ? 56 : 0;
 
-        /* --- 2. Update reservoir accounting unconditionally ---
-           Surplus (frame cheaper than target) fills the reservoir.
-           Deficit (frame more expensive than target) drains it.
-           Clamp strictly to [0, reservoir_max].                    */
-        hEncoder->reservoir_bits += target_bits - frame_bits;
-        if (hEncoder->reservoir_bits > hEncoder->reservoir_max)
-            hEncoder->reservoir_bits = hEncoder->reservoir_max;
-        if (hEncoder->reservoir_bits < 0)
-            hEncoder->reservoir_bits = 0;
+        hEncoder->reservoir_bits += avg_bits - actual_bits;
+        if (hEncoder->reservoir_bits >  hEncoder->reservoir_max)
+            hEncoder->reservoir_bits =  hEncoder->reservoir_max;
+        if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
+            hEncoder->reservoir_bits = -hEncoder->reservoir_max;
 
-        /* Attenuate prop correction proportionally to audio content level.
-           During silence, frame_bits << target_bits and prop = 2.0 (clamped),
-           which would incorrectly drive quality to maxqual every frame.
-           Scaling by content_ratio naturally suppresses this without a hard threshold. */
-        faac_real content_ratio = (faac_real)frame_bits / (faac_real)(target_bits + 1);
-        if (content_ratio > 1.0) content_ratio = 1.0;
+        int target_bits = avg_bits + hEncoder->reservoir_bits / 4;
+        if (target_bits < avg_bits / 4)
+            target_bits = avg_bits / 4;
+        if (target_bits > (int)(ADTS_FRAMESIZE * 8) - header_bits)
+            target_bits = (int)(ADTS_FRAMESIZE * 8) - header_bits;
 
-        /* --- 3. Depth scale ---
-           Ratio of one frame's budget to the total reservoir capacity.
-           Used to damp terms at low bitrates where variance is high. */
-        faac_real depth_scale = (faac_real)target_bits
-                                / (faac_real)hEncoder->reservoir_max;
-        if (depth_scale > 1.0) depth_scale = 1.0;
-        if (depth_scale < 0.05) depth_scale = 0.05;
+        faac_real ratio = FAAC_SQRT((faac_real)target_bits
+                                    / (faac_real)(actual_bits + 1));
+        if (ratio < 0.5) ratio = 0.5;
+        if (ratio > 2.0) ratio = 2.0;
 
-        /* --- 4. Reservoir term ---
-           neutral = half-full is the steady-state target.
-           The slope 0.3 improves post-silence recovery speed. */
-        int neutral = hEncoder->reservoir_max / 2;
-        int delta   = hEncoder->reservoir_bits - neutral;
-        faac_real fix = 1.0
-            + 0.3 * depth_scale * (faac_real)delta / (faac_real)(neutral + 1);
-
-        /* --- 5. Proportional term ---
-           Catches short-term overshoot. Widened clamp [0.5, 2.0] for
-           fast convergence. Scaled by content_ratio to avoid ramp-up during silence. */
-        faac_real prop = (faac_real)target_bits / (faac_real)(frame_bits + 1);
-        if      (prop < 0.5) prop = 0.5;
-        else if (prop > 2.0) prop = 2.0;
-        faac_real prop_weight = 0.5;
-        fix *= (prop - 1.0) * prop_weight * content_ratio + 1.0;
-
-        /* Safety clamp for control stability */
-        if (fix < 0.5)  fix = 0.5;
-        if (fix > 2.0)  fix = 2.0;
-
-        /* --- 6. Apply and clamp --- */
-        hEncoder->aacquantCfg.quality *= fix;
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < MINQUAL)
-            hEncoder->aacquantCfg.quality = MINQUAL;
+        faac_real q = hEncoder->aacquantCfg.quality * ratio;
+        if (q > (faac_real)maxqual) q = (faac_real)maxqual;
+        if (q < (faac_real)MINQUAL) q = (faac_real)MINQUAL;
+        hEncoder->aacquantCfg.quality = q;
     }
 
-    return frameBytes;
+    return hEncoder->usedBytes;
 }
 
 
