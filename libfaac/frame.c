@@ -230,29 +230,37 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         faac_real bpc = (faac_real)config->bitRate;
         unsigned long totalBitRate = config->bitRate * hEncoder->numChannels;
 
-        /* Intelligent Model for fac and noise_floor (based on bitrate per channel):
-           fac (bandwidth scaling):
-             Low (16kbps): 0.42
-             Mid (64kbps): 0.70
-             High (128kbps): 0.85
-           noise_floor (band zeroing):
-             Low (16kbps): 0.2
-             Mid (64kbps): 0.1
-             High (128kbps): 0.05
-        */
-        faac_real fac = 0.70;
-        faac_real nf = 0.1;
+        /* Improved Intelligent Model for fac and noise_floor:
+           Reach generous "mid" settings faster to avoid mono bitrate ceiling.
 
-        if (bpc < 64000) {
-            faac_real alpha = (bpc - 16000) / (64000 - 16000);
-            if (alpha < 0) alpha = 0;
-            fac = 0.42 + alpha * (0.70 - 0.42);
-            nf = 0.2 - alpha * (0.2 - 0.1);
+           bitrate_per_channel | fac  | noise_floor
+           --------------------|------|------------
+           8,000               | 0.42 | 0.40
+           16,000              | 0.50 | 0.20
+           32,000              | 0.75 | 0.10
+           64,000              | 0.85 | 0.05
+           128,000+            | 0.95 | 0.02
+        */
+        faac_real fac, nf;
+
+        if (bpc < 16000) {
+            faac_real a = (bpc - 8000) / 8000.0;
+            if (a < 0) a = 0;
+            fac = 0.42 + a * (0.50 - 0.42);
+            nf = 0.40 - a * (0.40 - 0.20);
+        } else if (bpc < 32000) {
+            faac_real a = (bpc - 16000) / 16000.0;
+            fac = 0.50 + a * (0.75 - 0.50);
+            nf = 0.20 - a * (0.20 - 0.10);
+        } else if (bpc < 64000) {
+            faac_real a = (bpc - 32000) / 32000.0;
+            fac = 0.75 + a * (0.85 - 0.75);
+            nf = 0.10 - a * (0.10 - 0.05);
         } else {
-            faac_real alpha = (bpc - 64000) / (128000 - 64000);
-            if (alpha > 1.0) alpha = 1.0;
-            fac = 0.70 + alpha * (0.85 - 0.70);
-            nf = 0.1 - alpha * (0.1 - 0.05);
+            faac_real a = (bpc - 64000) / 64000.0;
+            if (a > 1.0) a = 1.0;
+            fac = 0.85 + a * (0.95 - 0.85);
+            nf = 0.05 - a * (0.05 - 0.02);
         }
 
         if (!config->bandWidth)
@@ -728,9 +736,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int current_bits = CountBitstream(hEncoder, coderInfo, channelInfo, count_stream, numChannels);
 
         int iter = 0;
-        int max_iter = 4;
-        int tol = target_bits / 100; /* 1% tolerance */
-        if (tol < 16) tol = 16;
+        int max_iter = 10;
+        int tol = target_bits / 200; /* 0.5% tolerance */
+        if (tol < 8) tol = 8;
 
         /* Save best-so-far state */
         CoderInfoSnapshot best_snap[MAX_CHANNELS];
