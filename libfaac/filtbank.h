@@ -41,6 +41,8 @@ void			FilterBankInit		( faacEncStruct* hEncoder );
 
 void			FilterBankEnd		( faacEncStruct* hEncoder );
 
+void			CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
+
 void			MDCT				( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_real *xi );
 
 void			FilterBank( faacEncStruct* hEncoder,

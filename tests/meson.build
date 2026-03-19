@@ -18,3 +18,9 @@ test('channels', test_channels)
 
 test_quantize = executable('test_quantize', 'test_quantize.c', kwargs: test_args)
 test('quantize', test_quantize)
+
+test_tns = executable('test_tns', 'test_tns.c', kwargs: test_args)
+test('tns', test_tns)
+
+test_mdct = executable('test_mdct', 'test_mdct.c', kwargs: test_args)
+test('mdct', test_mdct)

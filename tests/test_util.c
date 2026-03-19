@@ -71,12 +71,10 @@ void test_MaxBitresSize() {
     unsigned int size2 = MaxBitresSize(264600, 44100);
     assert(size2 == 0);
 
-    // If it's even higher, it wraps around (as per the code 6144 - unsigned int)
-    // Actually, (unsigned int)(...) happens first.
+    // If it's even higher, it should be clamped to 0
     // 529200 bps -> 12288 bits/frame
-    // 6144 - 12288 = (unsigned int)-6144
     unsigned int size3 = MaxBitresSize(529200, 44100);
-    assert(size3 > 6144); // This might be a bug in the code, but the test documents current behavior
+    assert(size3 == 0);
 }
 
 int main() {
