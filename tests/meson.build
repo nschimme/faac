@@ -9,3 +9,10 @@ test_api = executable('test_api', 'test_api.c',
     dependencies: [libm]
 )
 test('api_sanity', test_api)
+
+test_util = executable('test_util', 'test_util.c',
+    include_directories: ['..', '../libfaac'],
+    link_with: faac_internal,
+    dependencies: [libm]
+)
+test('util_sanity', test_util)

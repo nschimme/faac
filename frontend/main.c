@@ -35,7 +35,7 @@
 
 #include <stdio.h>
 
-int verbose = 1;
+extern int verbose;
 #define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
 
 /* the BSD derivatives don't define __unix__ */
@@ -421,6 +421,8 @@ static int *mkChanMap(int channels, int center, int lf)
     return map;
 }
 
+
+int verbose = 1;
 
 int main(int argc, char *argv[])
 {
