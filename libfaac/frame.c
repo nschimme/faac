@@ -203,6 +203,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 0;
     if (config->pnslevel > 10)
         config->pnslevel = 10;
+
+    hEncoder->config.pnslevel = config->pnslevel;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;

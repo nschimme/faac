@@ -53,8 +53,8 @@ enum stream_format
 
 enum {JOINT_NONE = 0, JOINT_MS, JOINT_IS};
 
-#ifndef MAX_CHANNELS
-#define MAX_CHANNELS 64
+#ifdef HAVE_CONFIG_H
+#include "config.h"
 #endif
 
 #pragma pack(push, 1)
