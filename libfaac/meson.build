@@ -46,12 +46,19 @@ common_src = [
     'util.h',
 ]
 
-libfaac = library('faac', common_src,
+faac_internal = static_library('faac_internal', common_src,
+    include_directories: ['..', '../include'],
+    c_args: c_args,
+    dependencies: [ libm ],
+    link_with: quantize_simd_libs,
+    pic: true
+)
+
+libfaac = library('faac',
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,
-    dependencies: [ libm ],
-    link_with: quantize_simd_libs,
+    link_whole: faac_internal,
     vs_module_defs: 'libfaac.def',
     install: true,
     version: '0.0.0',

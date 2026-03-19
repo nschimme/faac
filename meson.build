@@ -41,6 +41,7 @@ configure_file(
 subdir('docs')
 subdir('include')
 subdir('libfaac')
+subdir('tests')
 
 if get_option('frontend')
     subdir('frontend')
