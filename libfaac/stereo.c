@@ -22,6 +22,7 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
+#include "util.h"
 
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
@@ -302,22 +303,16 @@ void AACstereo(CoderInfo *coder,
 
     for (chn = 0; chn < maxchan; chn++)
     {
-        int group;
-        int bookcnt = 0;
+        int i;
         CoderInfo *cp = coder + chn;
 
         if (!channel[chn].present)
             continue;
 
-        for (group = 0; group < cp->groups.n; group++)
+        for (i = 0; i < MAX_SCFAC_BANDS; i++)
         {
-            int band;
-            for (band = 0; band < cp->sfbn; band++)
-            {
-                cp->book[bookcnt] = HCB_NONE;
-                cp->sf[bookcnt] = 0;
-                bookcnt++;
-            }
+            cp->book[i] = HCB_NONE;
+            cp->sf[i] = 0;
         }
     }
     for (chn = 0; chn < maxchan; chn++)

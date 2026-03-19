@@ -1177,14 +1177,6 @@ int main(int argc, char *argv[])
                 }
 
                 fflush(stderr);
-#ifdef _WIN32
-                if (frames != 0)
-                {
-                    sprintf(percent, "%.2f%% encoding %s",
-                            100.0 * currentFrame / frames, audioFileName);
-                    SetConsoleTitle(percent);
-                }
-#endif
             }
         }
 
