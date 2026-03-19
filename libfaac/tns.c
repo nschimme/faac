@@ -453,7 +453,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             }
             if (error == 0.0)
                 return 0;
-            kTemp = -kTemp/error;
+            kTemp = -kTemp / error;
             kArray[order]=kTemp;
             aPtr[order]=kTemp;
             for (i=1;i<order;i++) {
@@ -468,7 +468,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
         }
         if (error == 0.0)
             return 0;
-        return signal/error;    /* return the gain */
+        return signal / error;    /* return the gain */
     }
 }
 

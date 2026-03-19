@@ -50,4 +50,10 @@ typedef double faac_real;
 #define FAAC_FLOOR floor
 #endif
 
+#ifdef FAAC_PRECISION_SINGLE
+#define FAAC_EPSILON 1e-7f
+#else
+#define FAAC_EPSILON 1e-15
+#endif
+
 #endif /* FAAC_REAL_H */
