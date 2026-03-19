@@ -5,6 +5,7 @@ test('encoder_sanity', python, args: [test_script, faac_exe.full_path()], timeou
 
 test_api = executable('test_api', 'test_api.c',
     include_directories: '../include',
-    link_with: libfaac
+    link_with: libfaac,
+    dependencies: [libm]
 )
 test('api_sanity', test_api)

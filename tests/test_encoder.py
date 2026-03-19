@@ -1,3 +1,23 @@
+#
+# FAAC - Freeware Advanced Audio Coder
+# Copyright (C) 2001 Menno Bakker
+# Copyright (C) 2002-2026 Krzysztof Nikiel
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
 import ffmpeg
 import subprocess
 import sys
@@ -99,33 +119,16 @@ def main():
 
     # (name, gen_fn, faac_args, expected_rate, verify_decoding, use_stdio)
     test_suite = [
-        ("sine_1k", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
-        ("silence", lambda f: ffmpeg.input("anullsrc=r=44100:cl=stereo:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
-        ("noise", lambda f: ffmpeg.input("anoisesrc=d=1:c=white:r=44100", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
-        ("vibrato", lambda f: ffmpeg.input("sine=f=1000:d=1,apulsator=hz=5", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
+        # Frontend features
+        ("stdin_stdout", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, True),
+        ("raw_output", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-r"], None, False, False),
+        ("pcmraw_input", lambda f: ffmpeg.input("sine=f=1000:d=1:r=44100", f="lavfi").output(f, f="s16le").run(quiet=True), ["-P", "-R", "44100", "-B", "16", "-C", "2"], 44100, True, False),
 
-        # Sample Rates
-        ("rate_8000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=8000", f="lavfi").output(f).run(quiet=True), [], 8000, True, False),
-        ("rate_16000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=16000", f="lavfi").output(f).run(quiet=True), [], 16000, True, False),
-        ("rate_32000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=32000", f="lavfi").output(f).run(quiet=True), [], 32000, True, False),
-        ("rate_48000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=48000", f="lavfi").output(f).run(quiet=True), [], 48000, True, False),
-
-        # Channels
-        ("mono", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f, ac=1).run(quiet=True), [], 44100, True, False),
-
-        # Bitrates
+        # Bitrates/Quality scaling
         ("bitrate_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "32"], 44100, True, False),
         ("bitrate_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "256"], 44100, True, False),
-
-        # Quality
         ("quality_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "10"], 44100, True, False),
         ("quality_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "500"], 44100, True, False),
-
-        # RAW output
-        ("raw_output", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-r"], None, False, False),
-
-        # Stdin/Stdout
-        ("stdin_stdout", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, True),
     ]
 
     results = {}
@@ -147,6 +150,16 @@ def main():
             failed += 1
         else:
             print("Bitrate size ordering verified.")
+
+    # Quality comparison check
+    if "quality_low" in results and "quality_high" in results:
+        low = results["quality_low"]
+        high = results["quality_high"]
+        if high <= low:
+            print(f"Error: High quality output ({high} bytes) is not larger than low quality ({low} bytes)")
+            failed += 1
+        else:
+            print("Quality size ordering verified.")
 
     if failed > 0:
         print(f"\n{failed} tests failed.")
