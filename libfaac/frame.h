@@ -88,11 +88,14 @@ typedef struct {
     FFT_Tables	fft_tables;
 
     /* Rate Control */
-    int reservoir_bits;
-    int reservoir_max;
+    struct {
+        int bits;
+        int max;
+        int padding;
+        int avg;
+    } reservoir;
+
     int audioBits;
-    int paddingBits;
-    int avg_bits;
 } faacEncStruct;
 
 #ifdef __cplusplus
