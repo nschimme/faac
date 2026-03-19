@@ -188,12 +188,12 @@ int WriteBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
+    hEncoder->audioBits = bits;
+
+    /* Write requested padding bits plus minimum fill to avoid empty frames */
+    numFillBits = hEncoder->paddingBits;
+    if (bits + numFillBits < (8 - LEN_SE_ID)) {
         numFillBits = 8 - LEN_SE_ID - bits;
-    } else {
-        numFillBits = 0;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
@@ -275,12 +275,12 @@ static int CountBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
+    hEncoder->audioBits = bits;
+
+    /* Write requested padding bits plus minimum fill to avoid empty frames */
+    numFillBits = hEncoder->paddingBits;
+    if (bits + numFillBits < (8 - LEN_SE_ID)) {
         numFillBits = 8 - LEN_SE_ID - bits;
-    } else {
-        numFillBits = 0;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */

@@ -182,6 +182,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bandWidth = config->bandWidth;
 
+    /* Cap bandwidth to what the bitrate can actually support.
+       divisor=7.0 balances quality and overshoot for low bitrates. */
+    if (hEncoder->config.bitRate) {
+        faac_real bw_divisor;
+        if      (hEncoder->config.bitRate < 20000) bw_divisor = 7.0;
+        else if (hEncoder->config.bitRate < 56000) bw_divisor = 2.5;
+        else                                        bw_divisor = 1.5;
+        unsigned int bw_limit = (unsigned int)(hEncoder->config.bitRate / bw_divisor);
+        if (hEncoder->config.bandWidth > bw_limit)
+            hEncoder->config.bandWidth = bw_limit;
+    }
+
     // check bandwidth
     if (hEncoder->config.bandWidth < 100)
 		hEncoder->config.bandWidth = 100;
@@ -267,6 +279,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
     hEncoder->config.quantqual = 0;
+
+    hEncoder->reservoir_max  = 6144;
+    hEncoder->reservoir_bits = hEncoder->reservoir_max / 2;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
@@ -592,28 +607,57 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate && hEncoder->reservoir_max > 0)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int avg_bits = calculate_target_bits(hEncoder->config.bitRate,
+                                             numChannels, hEncoder->sampleRate);
+        int audio_bits = hEncoder->audioBits;
+        int target_bits, over;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        /* Standard ABR goal: spend avg_bits per frame.
+           We add surplus/deficit from previous frames via reservoir. */
+        target_bits = avg_bits + hEncoder->reservoir_bits / 2;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        /* Safety bounds for target_bits */
+        if (target_bits < avg_bits / 4)
+            target_bits = avg_bits / 4;
+        if (target_bits > (int)(ADTS_FRAMESIZE * 7))
+            target_bits = (int)(ADTS_FRAMESIZE * 7);
 
-        hEncoder->aacquantCfg.quality *= fix;
+        /* Calculate quality ratio based on actual coded bits. */
+        faac_real ratio = FAAC_SQRT((faac_real)target_bits / (faac_real)(audio_bits + 1.0));
+
+        /* Dynamic recovery clamp: faster catch-up when reservoir is healthy. */
+        faac_real reservoir_fill = (faac_real)hEncoder->reservoir_bits / (faac_real)hEncoder->reservoir_max;
+        if (reservoir_fill < 0) reservoir_fill = 0;
+        faac_real max_ratio = 1.5 + reservoir_fill * 2.5;
+
+        if (ratio < 0.25)       ratio = 0.25;
+        if (ratio > max_ratio)  ratio = max_ratio;
+
+        hEncoder->aacquantCfg.quality *= ratio;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
+
+        /* Update reservoir and compute padding for next frame.
+           We use the bits actually coded in THIS frame to determine surplus.
+           (audioBits + minimal overhead) vs target budget. */
+        int coded_bits = audio_bits + 16;
+        hEncoder->reservoir_bits += (avg_bits - coded_bits);
+
+        hEncoder->paddingBits = 0;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max) {
+            over = hEncoder->reservoir_bits - hEncoder->reservoir_max;
+            if (over >= 7) {
+                hEncoder->paddingBits = (unsigned int)over;
+                hEncoder->reservoir_bits = hEncoder->reservoir_max;
+            }
+        }
+        if (hEncoder->reservoir_bits < -hEncoder->reservoir_max)
+            hEncoder->reservoir_bits = -hEncoder->reservoir_max;
     }
 
     return frameBytes;

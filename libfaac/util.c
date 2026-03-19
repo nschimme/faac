@@ -79,3 +79,16 @@ unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate)
 {
     return 6144 - (unsigned int)((faac_real)bitRate/(faac_real)sampleRate*(faac_real)FRAME_LEN);
 }
+
+/* Calculate the target number of bits for a single frame across all channels. */
+int calculate_target_bits(unsigned long bitRatePerChannel,
+                          unsigned int  numChannels,
+                          unsigned long sampleRate)
+{
+    /* Use 64-bit math for intermediate to prevent overflow. */
+    if (!sampleRate) return 0;
+    int target = (int)((unsigned long long)bitRatePerChannel * numChannels * FRAME_LEN / sampleRate);
+    /* Safety cap at ~64k bits (8k bytes) to fit in ADTS. */
+    if (target > 65000) target = 65000;
+    return target;
+}
