@@ -69,22 +69,27 @@ jobs:
               cflags: -Wall,
               uclibc: true
             }
+          - {
+              name: Linux musl,
+              os: ubuntu-latest,
+              compiler: musl-gcc,
+              shell: bash,
+              options: -Dfloating-point=double -Ddefault_library=static,
+              cflags: -Wall -static,
+              musl: true
+            }
 
     steps:
-      - name: Install dependencies (Ubuntu)
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends meson-1.5 ffmpeg
+          sudo apt install -y --no-install-recommends meson-1.5 ffmpeg musl-tools
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        env:
-          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
         run: |
-          brew update || true
-          brew install \
-            meson ffmpeg
+          brew install meson ffmpeg
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -98,16 +103,11 @@ jobs:
             ${{ matrix.config.msys-env }}-python-pip
             ${{ matrix.config.msys-env }}-ffmpeg
 
-      - name: Install dependencies (MSVC)
+      - name: Install dependencies (Windows MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
           pip install meson ninja
-
-      - name: Install FFmpeg (Windows)
-        if: runner.os == 'Windows' && matrix.config.compiler == 'cl'
-        uses: crazy-max/ghaction-chocolatey@v3
-        with:
-          args: install ffmpeg
+          choco install ffmpeg
 
       - name: Set up MSVC
         if: matrix.config.compiler == 'cl'
@@ -120,7 +120,6 @@ jobs:
         run: |
           curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2024.05-1.tar.bz2 | tar -xj
           echo "$(pwd)/x86-64--uclibc--stable-2024.05-1/bin" >> $GITHUB_PATH
-          # Ensure dependencies are installed for the toolchain
           sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
 
       - uses: actions/checkout@v6
@@ -140,10 +139,6 @@ jobs:
           cd build
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
-
-      - name: Run tests (MSYS2)
-        if: matrix.config.shell == 'msys2 {0}'
-        run: |
           python3 -m pip install -r requirements.txt
           meson test -C build --print-errorlogs
 
@@ -155,10 +150,6 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
-
-      - name: Run tests
-        if: matrix.config.shell != 'msys2 {0}'
-        run: |
           meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
