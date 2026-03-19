@@ -33,3 +33,10 @@ test('blockswitch', test_blockswitch)
 
 test_quantize = executable('test_quantize', 'test_quantize.c', kwargs: test_args)
 test('quantize', test_quantize)
+
+test_api = executable('test_api', 'test_api.c',
+    include_directories: ['..', '../include'],
+    link_with: libfaac,
+    dependencies: [ libm ]
+)
+test('api', test_api)
