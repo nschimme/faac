@@ -63,7 +63,7 @@ jobs:
           - {
               name: Linux uClibc,
               os: ubuntu-latest,
-              compiler: x86_64-buildroot-linux-uclibc-gcc,
+              compiler: x86_64-linux-gcc,
               shell: bash,
               options: -Dfloating-point=double,
               cflags: -Wall,
@@ -95,13 +95,19 @@ jobs:
           install: >-
             ${{ matrix.config.msys-env }}-meson
             ${{ matrix.config.msys-env }}-gcc
+            ${{ matrix.config.msys-env }}-python-pip
+            ${{ matrix.config.msys-env }}-ffmpeg
 
       - name: Install dependencies (MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
           pip install meson ninja
-          # FFmpeg is needed for tests but difficult to install on-the-fly for MSVC job without choco or similar.
-          # We might skip tests on MSVC if ffmpeg is missing, but let's assume it might be there or add it if possible.
+
+      - name: Install FFmpeg (Windows)
+        if: runner.os == 'Windows' && matrix.config.compiler == 'cl'
+        uses: crazy-max/ghaction-chocolatey@v3
+        with:
+          args: install ffmpeg
 
       - name: Set up MSVC
         if: matrix.config.compiler == 'cl'
@@ -109,18 +115,26 @@ jobs:
         with:
           arch: x64
 
+      - name: Set up Python
+        if: matrix.config.shell != 'msys2 {0}'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Set up uClibc toolchain
         if: matrix.config.uclibc
         run: |
           curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2024.05-1.tar.bz2 | tar -xj
           echo "$(pwd)/x86-64--uclibc--stable-2024.05-1/bin" >> $GITHUB_PATH
+          # Ensure dependencies are installed for the toolchain
+          sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
 
       - uses: actions/checkout@v6
 
       - name: Install Python dependencies
         if: matrix.config.shell != 'msys2 {0}'
         run: |
-          python3 -m pip install --break-system-packages -r tests/requirements.txt || python3 -m pip install -r tests/requirements.txt
+          python -m pip install -r tests/requirements.txt
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -132,6 +146,12 @@ jobs:
           cd build
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
+
+      - name: Run tests (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
+        run: |
+          python -m pip install -r tests/requirements.txt
+          meson test -C build --print-errorlogs
 
       - name: Build (General)
         if: matrix.config.shell != 'msys2 {0}'
