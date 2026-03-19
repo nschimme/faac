@@ -70,7 +70,7 @@
 #undef verbose
 #endif
 
-#define fprintf if(verbose)fprintf
+#define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
 
 #define FALSE 0
 #define TRUE 1
@@ -811,7 +811,7 @@ int main(int argc, char *argv[])
     {
         if (dieMessage)
         {
-            fprintf(stderr, dieMessage, progName);
+            fprintf(stderr, "%s", dieMessage);
         }
         else
             help('h');
@@ -1183,10 +1183,13 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
                 if (frames != 0)
                 {
-                    char percent[MAX_PATH + 20];
+                    char percent[256];
+                    char truncatedName[128];
+                    strncpy(truncatedName, audioFileName ? audioFileName : "stdin", 127);
+                    truncatedName[127] = '\0';
                     sprintf(percent, "%.2f%% encoding %s",
-                            100.0 * currentFrame / frames, audioFileName);
-                    SetConsoleTitle(percent);
+                            100.0 * currentFrame / frames, truncatedName);
+                    SetConsoleTitleA(percent);
                 }
 #endif
             }
