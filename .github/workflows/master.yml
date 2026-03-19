@@ -164,13 +164,9 @@ jobs:
       - name: Build (General)
         if: matrix.config.shell != 'msys2 {0}'
         env:
-          CC: ${{ matrix.config.compiler }}
+          CC: ${{ matrix.config.uclibc && format('{0}/bootlin-uclibc/bin/x86_64-buildroot-linux-uclibc-gcc', github.workspace) || matrix.config.compiler }}
           CFLAGS: ${{ matrix.config.cflags }}
         run: |
-          # Use absolute path for uclibc compiler if needed
-          if [ "${{ matrix.config.uclibc }}" = "true" ]; then
-            export CC="${{ github.workspace }}/bootlin-uclibc/bin/x86_64-buildroot-linux-uclibc-gcc"
-          fi
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
 
