@@ -88,8 +88,12 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
         run: |
-          brew install meson ffmpeg
+          brew update || true
+          brew install \
+            meson ffmpeg
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -118,8 +122,8 @@ jobs:
       - name: Set up uClibc toolchain
         if: matrix.config.uclibc
         run: |
-          curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2024.05-1.tar.bz2 | tar -xj
-          echo "$(pwd)/x86-64--uclibc--stable-2024.05-1/bin" >> $GITHUB_PATH
+          curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2025.08-1.tar.xz | tar -xJ
+          echo "$(pwd)/x86-64--uclibc--stable-2025.08-1/bin" >> $GITHUB_PATH
           sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
 
       - uses: actions/checkout@v6
@@ -139,8 +143,6 @@ jobs:
           cd build
           meson setup .. -Dprefix=$(realpath ../temp) ${{ matrix.config.options }}
           meson install
-          python3 -m pip install -r requirements.txt
-          meson test -C build --print-errorlogs
 
       - name: Build (General)
         if: matrix.config.shell != 'msys2 {0}'
@@ -150,6 +152,16 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+
+      - name: Run tests
+        if: matrix.config.shell != 'msys2 {0}'
+        run: |
+          meson test -C build --print-errorlogs
+
+      - name: Run tests (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
+        run: |
+          python3 -m pip install -r requirements.txt
           meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
