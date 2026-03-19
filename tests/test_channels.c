@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
-#include "libfaac/channels.h"
+#include "../libfaac/channels.c"
 
 void test_GetChannelInfo_Mono() {
     ChannelInfo channels[1];

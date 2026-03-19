@@ -3,7 +3,6 @@
 #include <math.h>
 #include <string.h>
 #include "libfaac/coder.h"
-#include "libfaac/filtbank.h"
 #include "libfaac/fft.h"
 #include "../libfaac/filtbank.c"
 

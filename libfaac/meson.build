@@ -46,7 +46,7 @@ common_src = [
     'util.h',
 ]
 
-faac_internal = static_library('faac_internal', common_src,
+faac_static = static_library('faac_internal', common_src,
     include_directories: ['..', '../include'],
     c_args: c_args,
     dependencies: [ libm ],
@@ -54,11 +54,11 @@ faac_internal = static_library('faac_internal', common_src,
     pic: true
 )
 
-libfaac = library('faac',
+libfaac = shared_library('faac',
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,
-    link_whole: faac_internal,
+    link_whole: faac_static,
     vs_module_defs: 'libfaac.def',
     install: true,
     version: '0.0.0',

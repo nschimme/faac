@@ -819,8 +819,8 @@ int PutBit(BitStream *bitStream,
     bitStream->numBit = bitStream->currentBit;
 
     /* Mask input data to ensure no extra bits are set */
-    if (numBit < (int)(sizeof(unsigned long) * 8))
-        data &= (1UL << numBit) - 1;
+    /* Masking logic safe for numBit=0 and word-sized shifts */
+    data &= (numBit == 0) ? 0 : ((1UL << (numBit - 1)) << 1) - 1;
 
     /* Fast path: bit write fits within the current byte */
     if (bitOffset + numBit <= 8) {

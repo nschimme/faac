@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
-#include "libfaac/fft.h"
+#include "../libfaac/fft.c"
 
 void test_fft() {
     FFT_Tables tables;
