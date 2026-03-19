@@ -83,7 +83,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (efix > 1e-9)
+        if (efix > FAAC_EPSILON)
         {
             if (enrgs >= ethr)
             {
@@ -99,9 +99,8 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
 
         if (hcb != HCB_NONE)
         {
-            const faac_real eps = 1e-15;
-            int sf = FAAC_LRINT(FAAC_LOG10((enrgl + eps) / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10((enrgr + eps) / efix) * step) - sf;
+            int sf = FAAC_LRINT(FAAC_LOG10((enrgl + FAAC_EPSILON) / efix) * step);
+            int pan = FAAC_LRINT(FAAC_LOG10((enrgr + FAAC_EPSILON) / efix) * step) - sf;
 
             if (pan > 30)
             {

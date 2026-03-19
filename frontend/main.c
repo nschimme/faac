@@ -28,7 +28,6 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <fcntl.h>
-#include <io.h>
 #else
 #include <signal.h>
 #endif
@@ -416,7 +415,6 @@ static int *mkChanMap(int channels, int center, int lf)
     return map;
 }
 
-#define fprintf if(verbose)fprintf
 
 int main(int argc, char *argv[])
 {
@@ -492,14 +490,16 @@ int main(int argc, char *argv[])
     if (faacEncGetVersion(&faac_id_string, &faac_copyright_string) ==
         FAAC_CFG_VERSION)
     {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
-                faac_id_string);
+        if (verbose)
+            fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
+                    faac_id_string);
     }
     else
     {
-        fprintf(stderr, __FILE__ "(%d): wrong libfaac version "
-                "(expected %s, found %s)\n", __LINE__,
-                PACKAGE_VERSION, faac_id_string);
+        if (verbose)
+            fprintf(stderr, __FILE__ "(%d): wrong libfaac version "
+                    "(expected %s, found %s)\n", __LINE__,
+                    PACKAGE_VERSION, faac_id_string);
         return 1;
     }
 
@@ -766,7 +766,7 @@ int main(int argc, char *argv[])
             }
             break;
         case 'L':
-            fprintf(stderr, "%s", faac_copyright_string);
+            if (verbose) fprintf(stderr, "%s", faac_copyright_string);
             dieMessage = license;
             break;
         case 'X':
@@ -805,11 +805,12 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        if (dieMessage) {
-            fprintf(stderr, "%s", dieMessage);
-        } else {
-            help('?');
+        if (dieMessage)
+        {
+            if (verbose) fprintf(stderr, "%s", dieMessage);
         }
+        else
+            help('h');
         return 1;
     }
 
@@ -860,7 +861,7 @@ int main(int argc, char *argv[])
 
     if (infile == NULL)
     {
-        fprintf(stderr, "Couldn't open input file %s\n", audioFileName);
+        if (verbose) fprintf(stderr, "Couldn't open input file %s\n", audioFileName);
         return 1;
     }
 
@@ -870,7 +871,7 @@ int main(int argc, char *argv[])
 
     if (hEncoder == NULL)
     {
-        fprintf(stderr, "Couldn't open encoder instance for input file %s\n",
+        if (verbose) fprintf(stderr, "Couldn't open encoder instance for input file %s\n",
                 audioFileName);
         wav_close(infile);
         return 1;
@@ -885,7 +886,7 @@ int main(int argc, char *argv[])
                                        composer || composersort ||
                                        compilation))
     {
-        fprintf(stderr, "Metadata requires MP4 output!\n");
+        if (verbose) fprintf(stderr, "Metadata requires MP4 output!\n");
         return 1;
     }
 
@@ -902,7 +903,7 @@ int main(int argc, char *argv[])
     chanmap = mkChanMap(infile->channels, chanC, chanLF);
     if (chanmap)
     {
-        fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
+        if (verbose) fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
                 chanC, chanLF);
     }
 
@@ -924,11 +925,11 @@ int main(int argc, char *argv[])
     switch (shortctl)
     {
     case SHORTCTL_NOSHORT:
-        fprintf(stderr, "disabling short blocks\n");
+        if (verbose) fprintf(stderr, "disabling short blocks\n");
         myFormat->shortctl = shortctl;
         break;
     case SHORTCTL_NOLONG:
-        fprintf(stderr, "disabling long blocks\n");
+        if (verbose) fprintf(stderr, "disabling long blocks\n");
         myFormat->shortctl = shortctl;
         break;
     }
@@ -950,15 +951,13 @@ int main(int argc, char *argv[])
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))
     {
-        fprintf(stderr, "Unsupported output format!\n");
+        if (verbose) fprintf(stderr, "Unsupported output format!\n");
         return 1;
     }
 
 #ifdef _WIN32
-    if (_fileno(stdin) >= 0)
+    if (infile && infile->f == stdin && _fileno(stdin) >= 0)
         _setmode(_fileno(stdin), _O_BINARY);
-    if (aacFileName && !strcmp(aacFileName, "-") && _fileno(stdout) >= 0)
-        _setmode(_fileno(stdout), _O_BINARY);
 #endif
 
     /* initialize MP4 creation */
@@ -966,13 +965,13 @@ int main(int argc, char *argv[])
     {
         if (!strcmp(aacFileName, "-"))
         {
-            fprintf(stderr, "cannot encode MP4 to stdout\n");
+            if (verbose) fprintf(stderr, "cannot encode MP4 to stdout\n");
             return 1;
         }
 
         if (mp4atom_open(aacFileName, overwrite))
         {
-            fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
+            if (verbose) fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
             return 1;
         }
         mp4atom_head();
@@ -994,9 +993,14 @@ int main(int argc, char *argv[])
         }
         if (!outfile)
         {
-            fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
+            if (verbose) fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
             return 1;
         }
+
+#ifdef _WIN32
+        if (outfile == stdout && _fileno(stdout) >= 0)
+            _setmode(_fileno(stdout), _O_BINARY);
+#endif
     }
 
     cutOff = myFormat->bandWidth;
@@ -1004,60 +1008,60 @@ int main(int argc, char *argv[])
     bitRate = myFormat->bitRate;
     if (bitRate)
     {
-        fprintf(stderr, "Initial quantization quality: %ld\n", quantqual);
-        fprintf(stderr, "Average bitrate: %d kbps/channel\n",
+        if (verbose) fprintf(stderr, "Initial quantization quality: %ld\n", quantqual);
+        if (verbose) fprintf(stderr, "Average bitrate: %d kbps/channel\n",
                 (bitRate + 500) / 1000);
     }
     else
-        fprintf(stderr, "Quantization quality: %ld\n", quantqual);
-    fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
+        if (verbose) fprintf(stderr, "Quantization quality: %ld\n", quantqual);
+    if (verbose) fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (myFormat->pnslevel > 0)
-        fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
-    fprintf(stderr, "Object type: ");
+        if (verbose) fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
+    if (verbose) fprintf(stderr, "Object type: ");
     switch (objectType)
     {
     case LOW:
-        fprintf(stderr, "Low Complexity");
+        if (verbose) fprintf(stderr, "Low Complexity");
         break;
     case MAIN:
-        fprintf(stderr, "Main");
+        if (verbose) fprintf(stderr, "Main");
         break;
     case LTP:
-        fprintf(stderr, "LTP");
+        if (verbose) fprintf(stderr, "LTP");
         break;
     }
-    fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
+    if (verbose) fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
-        fprintf(stderr, " + TNS");
+        if (verbose) fprintf(stderr, " + TNS");
 
     switch(myFormat->jointmode) {
     case JOINT_MS:
-        fprintf(stderr, " + M/S");
+        if (verbose) fprintf(stderr, " + M/S");
         break;
     case JOINT_IS:
-        fprintf(stderr, " + IS");
+        if (verbose) fprintf(stderr, " + IS");
         break;
     }
     if (myFormat->pnslevel > 0)
-        fprintf(stderr, " + PNS");
-    fprintf(stderr, "\n");
+        if (verbose) fprintf(stderr, " + PNS");
+    if (verbose) fprintf(stderr, "\n");
 
-    fprintf(stderr, "Container format: ");
+    if (verbose) fprintf(stderr, "Container format: ");
     switch (container)
     {
     case NO_CONTAINER:
         switch (stream)
         {
         case RAW_STREAM:
-            fprintf(stderr, "Headerless AAC (RAW)\n");
+            if (verbose) fprintf(stderr, "Headerless AAC (RAW)\n");
             break;
         case ADTS_STREAM:
-            fprintf(stderr, "Transport Stream (ADTS)\n");
+            if (verbose) fprintf(stderr, "Transport Stream (ADTS)\n");
             break;
         }
         break;
     case MP4_CONTAINER:
-        fprintf(stderr, "MPEG-4 File Format (MP4)\n");
+        if (verbose) fprintf(stderr, "MPEG-4 File Format (MP4)\n");
         break;
     }
 
@@ -1071,15 +1075,15 @@ int main(int argc, char *argv[])
         frames = 0;
     currentFrame = 0;
 
-    fprintf(stderr, "Encoding %s to %s\n", audioFileName, aacFileName);
+    if (verbose) fprintf(stderr, "Encoding %s to %s\n", audioFileName, aacFileName);
     if (frames != 0)
     {
-        fprintf(stderr, "         frame         | bitrate | elapsed/estim | "
+        if (verbose) fprintf(stderr, "         frame         | bitrate | elapsed/estim | "
                 "play/CPU | ETA\n");
     }
     else
     {
-        fprintf(stderr, "  frame  | elapsed | play/CPU\n");
+        if (verbose) fprintf(stderr, "  frame  | elapsed | play/CPU\n");
     }
 
     /* encoding loop */
@@ -1150,7 +1154,7 @@ int main(int argc, char *argv[])
 
                 if (frames != 0)
                 {
-                    fprintf(stderr,
+                    if (verbose) fprintf(stderr,
                             "\r%7d/%-7d (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
                             currentFrame, frames, currentFrame * 100 / frames,
                             ((double) totalBytesWritten * 8.0 / 1000.0) /
@@ -1164,7 +1168,7 @@ int main(int argc, char *argv[])
                 }
                 else
                 {
-                    fprintf(stderr,
+                    if (verbose) fprintf(stderr,
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
@@ -1190,7 +1194,7 @@ int main(int argc, char *argv[])
 
         if (bytesWritten < 0)
         {
-            fprintf(stderr, "faacEncEncode() failed\n");
+            if (verbose) fprintf(stderr, "faacEncEncode() failed\n");
             break;
         }
 
@@ -1208,7 +1212,7 @@ int main(int argc, char *argv[])
             encoded_samples += frame_samples;
         }
     }
-    fprintf(stderr, "\n");
+    if (verbose) fprintf(stderr, "\n");
 
     if (container == MP4_CONTAINER)
     {
@@ -1253,16 +1257,16 @@ int main(int argc, char *argv[])
 
         if (verbose >= 2)
         {
-            fprintf(stderr, "%u frames\n", mp4config.frame.ents);
-            fprintf(stderr, "%u output samples\n", mp4config.samples);
-            fprintf(stderr, "max bitrate: %u\n", mp4config.bitrate.max);
-            fprintf(stderr, "avg bitrate: %u\n", mp4config.bitrate.avg);
-            fprintf(stderr, "max frame size: %u\n", mp4config.buffersize);
+            if (verbose) fprintf(stderr, "%u frames\n", mp4config.frame.ents);
+            if (verbose) fprintf(stderr, "%u output samples\n", mp4config.samples);
+            if (verbose) fprintf(stderr, "max bitrate: %u\n", mp4config.bitrate.max);
+            if (verbose) fprintf(stderr, "avg bitrate: %u\n", mp4config.bitrate.avg);
+            if (verbose) fprintf(stderr, "max frame size: %u\n", mp4config.buffersize);
         }
     }
     else
     {
-        if (outfile != stdout)
+        if (outfile && outfile != stdout)
             fclose(outfile);
     }
 

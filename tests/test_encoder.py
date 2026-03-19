@@ -3,8 +3,17 @@ import subprocess
 import sys
 import os
 import tempfile
+import json
 
-def run_test(faac_path, name, gen_fn, faac_args):
+def get_audio_info(path):
+    try:
+        probe = ffmpeg.probe(path)
+        return next(s for s in probe['streams'] if s['codec_type'] == 'audio')
+    except Exception as e:
+        print(f"Error probing {path}: {e}")
+        return None
+
+def run_test(faac_path, name, gen_fn, faac_args, expected_rate=None, verify_decoding=True, use_stdio=False):
     print(f"--- Running Test: {name} ---")
     with tempfile.TemporaryDirectory() as out_dir:
         wav_file = os.path.join(out_dir, "input.wav")
@@ -14,36 +23,65 @@ def run_test(faac_path, name, gen_fn, faac_args):
         try:
             gen_fn(wav_file)
 
-            cmd = [faac_path, "-o", aac_file] + faac_args + [wav_file]
-            print(f"Encoding: {' '.join(cmd)}")
-            subprocess.run(cmd, check=True, capture_output=True)
+            if use_stdio:
+                print(f"Encoding via stdin/stdout...")
+                with open(wav_file, "rb") as fin, open(aac_file, "wb") as fout:
+                    subprocess.run([faac_path, "-o", "-", "-"], stdin=fin, stdout=fout, check=True)
+            else:
+                cmd = [faac_path, "-o", aac_file] + faac_args + [wav_file]
+                print(f"Encoding: {' '.join(cmd)}")
+                subprocess.run(cmd, check=True, capture_output=True)
 
             if not os.path.exists(aac_file) or os.path.getsize(aac_file) == 0:
                 print(f"Error: Output AAC file is empty or not created.")
-                return False
+                return None
 
-            print(f"Decoding back with ffmpeg...")
-            (
-                ffmpeg
-                .input(aac_file)
-                .output(dec_file)
-                .overwrite_output()
-                .run(quiet=True)
-            )
+            # Skip bitstream validation for RAW output as ffprobe cannot identify it without extra flags
+            if "-r" not in faac_args and "--raw" not in faac_args:
+                # Validate bitstream with ffprobe even if not decoding
+                info = get_audio_info(aac_file)
+                if not info:
+                    print(f"Error: ffprobe failed to recognize output as a valid audio stream.")
+                    return None
 
-            if not os.path.exists(dec_file) or os.path.getsize(dec_file) == 0:
-                print(f"Error: Decoded WAV file is empty or not created.")
-                return False
+                if info['codec_name'].lower() != 'aac':
+                    print(f"Error: Expected aac codec, got {info['codec_name']}")
+                    return None
 
-            print(f"Test {name} passed.")
-            return True
+            if verify_decoding:
+                print(f"Decoding back with ffmpeg...")
+                (
+                    ffmpeg
+                    .input(aac_file)
+                    .output(dec_file)
+                    .overwrite_output()
+                    .run(quiet=True)
+                )
+
+                if not os.path.exists(dec_file) or os.path.getsize(dec_file) == 0:
+                    print(f"Error: Decoded WAV file is empty or not created.")
+                    return None
+
+                if expected_rate:
+                    dec_info = get_audio_info(dec_file)
+                    actual_rate = int(dec_info['sample_rate'])
+                    if actual_rate != expected_rate:
+                        print(f"Error: Expected sample rate {expected_rate}, got {actual_rate}")
+                        return None
+
+            size = os.path.getsize(aac_file)
+            print(f"Test {name} passed ({size} bytes).")
+            return size
 
         except ffmpeg.Error as e:
             print(f"FFmpeg error: {e.stderr.decode() if e.stderr else str(e)}")
-            return False
+            return None
         except subprocess.CalledProcessError as e:
             print(f"FAAC error: {e.stderr.decode() if e.stderr else str(e)}")
-            return False
+            return None
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return None
 
 def main():
     if len(sys.argv) < 2:
@@ -56,80 +94,59 @@ def main():
     try:
         subprocess.run(["ffmpeg", "-version"], check=True, capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("FFmpeg not found. Skipping tests.")
-        sys.exit(0)
+        print("FFmpeg not found. Aborting encoder tests.")
+        sys.exit(1)
 
-    tests = []
+    # (name, gen_fn, faac_args, expected_rate, verify_decoding, use_stdio)
+    test_suite = [
+        ("sine_1k", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
+        ("silence", lambda f: ffmpeg.input("anullsrc=r=44100:cl=stereo:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
+        ("noise", lambda f: ffmpeg.input("anoisesrc=d=1:c=white:r=44100", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
+        ("vibrato", lambda f: ffmpeg.input("sine=f=1000:d=1,apulsator=hz=5", f="lavfi").output(f).run(quiet=True), [], 44100, True, False),
 
-    # Basic signal types
-    tests.append(("sine_1k", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), []))
-    tests.append(("silence", lambda f: ffmpeg.input("anullsrc=r=44100:cl=stereo:d=1", f="lavfi").output(f).run(quiet=True), []))
-    tests.append(("noise", lambda f: ffmpeg.input("anoisesrc=d=1:c=white:r=44100", f="lavfi").output(f).run(quiet=True), []))
-    tests.append(("vibrato", lambda f: ffmpeg.input("sine=f=1000:d=1,apulsator=hz=5", f="lavfi").output(f).run(quiet=True), []))
+        # Sample Rates
+        ("rate_8000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=8000", f="lavfi").output(f).run(quiet=True), [], 8000, True, False),
+        ("rate_16000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=16000", f="lavfi").output(f).run(quiet=True), [], 16000, True, False),
+        ("rate_32000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=32000", f="lavfi").output(f).run(quiet=True), [], 32000, True, False),
+        ("rate_48000", lambda f: ffmpeg.input("sine=f=1000:d=1:r=48000", f="lavfi").output(f).run(quiet=True), [], 48000, True, False),
 
-    # Sample Rates
-    for rate in [8000, 16000, 32000, 48000]:
-        tests.append((f"rate_{rate}", lambda f, r=rate: ffmpeg.input(f"sine=f=1000:d=1:r={r}", f="lavfi").output(f).run(quiet=True), []))
+        # Channels
+        ("mono", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f, ac=1).run(quiet=True), [], 44100, True, False),
 
-    # Channels
-    tests.append(("mono", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f, ac=1).run(quiet=True), []))
+        # Bitrates
+        ("bitrate_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "32"], 44100, True, False),
+        ("bitrate_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "256"], 44100, True, False),
 
-    # Bitrates
-    tests.append(("bitrate_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "32"]))
-    tests.append(("bitrate_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-b", "256"]))
+        # Quality
+        ("quality_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "10"], 44100, True, False),
+        ("quality_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "500"], 44100, True, False),
 
-    # Quality
-    tests.append(("quality_low", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "10"]))
-    tests.append(("quality_high", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-q", "500"]))
+        # RAW output
+        ("raw_output", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-r"], None, False, False),
 
-    # RAW output (skip decoding verification for raw as it's harder to probe without extra info)
-    tests.append(("raw_output", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), ["-r"]))
+        # Stdin/Stdout
+        ("stdin_stdout", lambda f: ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(f).run(quiet=True), [], 44100, True, True),
+    ]
 
-    def run_raw_test(faac_path, name, gen_fn, faac_args):
-        print(f"--- Running Test: {name} ---")
-        with tempfile.TemporaryDirectory() as out_dir:
-            wav_file = os.path.join(out_dir, "input.wav")
-            aac_file = os.path.join(out_dir, "output.aac")
-            gen_fn(wav_file)
-            cmd = [faac_path, "-o", aac_file] + faac_args + [wav_file]
-            print(f"Encoding: {' '.join(cmd)}")
-            subprocess.run(cmd, check=True, capture_output=True)
-            if os.path.exists(aac_file) and os.path.getsize(aac_file) > 0:
-                print(f"Test {name} passed.")
-                return True
-            return False
-
-    # Bitrate and Quality tests are already appended.
-    # Let's handle raw separately to avoid the decoding failure.
-
-    # Test Stdin/Stdout
-    print("--- Running Test: stdin_stdout ---")
-    with tempfile.TemporaryDirectory() as out_dir:
-        wav_file = os.path.join(out_dir, "input.wav")
-        aac_file = os.path.join(out_dir, "output.aac")
-        ffmpeg.input("sine=f=1000:d=1", f="lavfi").output(wav_file).run(quiet=True)
-        try:
-            with open(wav_file, "rb") as fin, open(aac_file, "wb") as fout:
-                subprocess.run([faac_path, "-o", "-", "-"], stdin=fin, stdout=fout, check=True)
-            if os.path.getsize(aac_file) > 0:
-                print("Test stdin_stdout passed.")
-                tests.append(("stdin_stdout_result", lambda f: None, [])) # dummy for count
-            else:
-                print("Error: stdin_stdout produced empty output.")
-                sys.exit(1)
-        except Exception as e:
-            print(f"stdin_stdout failed: {e}")
-            sys.exit(1)
-
+    results = {}
     failed = 0
-    for name, gen_fn, args in tests:
-        if name == "stdin_stdout_result": continue
-        if name == "raw_output":
-            if not run_raw_test(faac_path, name, gen_fn, args):
-                failed += 1
-            continue
-        if not run_test(faac_path, name, gen_fn, args):
+    for test in test_suite:
+        name, gen_fn, args, rate, verify, stdio = test
+        size = run_test(faac_path, name, gen_fn, args, rate, verify, stdio)
+        if size is None:
             failed += 1
+        else:
+            results[name] = size
+
+    # Bitrate comparison check
+    if "bitrate_low" in results and "bitrate_high" in results:
+        low = results["bitrate_low"]
+        high = results["bitrate_high"]
+        if high <= low:
+            print(f"Error: High bitrate output ({high} bytes) is not larger than low bitrate ({low} bytes)")
+            failed += 1
+        else:
+            print("Bitrate size ordering verified.")
 
     if failed > 0:
         print(f"\n{failed} tests failed.")

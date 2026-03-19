@@ -95,7 +95,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt + FAAC_EPSILON))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -140,8 +140,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     avgenrg = (totenrg / last) * (end - start);
 
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    target = NOISETONE * FAAC_POW(avge / (avgenrg + FAAC_EPSILON), powm);
+    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe / (avgenrg + FAAC_EPSILON), powm);
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= 1.5;

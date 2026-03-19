@@ -106,7 +106,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if (toteng > 0.0 && (volchg / toteng * quality) > 3.0)
+          if (toteng > FAAC_EPSILON && (volchg / toteng * quality) > 3.0)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;
