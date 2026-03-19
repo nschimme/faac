@@ -32,7 +32,6 @@ typedef struct
     int max_l;
     int pnslevel;
     faac_real noise_floor;
-    faac_real ath_coeff[MAX_SCFAC_BANDS];
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE

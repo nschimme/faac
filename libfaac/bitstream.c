@@ -192,7 +192,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     hEncoder->audioBits = bits;
 
     /* 1. Calculate base padding needed for the bitrate floor */
-    numFillBits = hEncoder->reservoir.padding;
+    numFillBits = hEncoder->paddingBits;
 
     /* WHY: Physical writing only forces a fill element if the frame is too small
        for the AAC specification (8 bits minimum). This maximizes bit-efficiency
@@ -287,7 +287,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     /* Compute audioBits (spectral + headers) before padding */
 
     /* 1. Calculate base padding needed for the bitrate floor */
-    numFillBits = hEncoder->reservoir.padding;
+    numFillBits = hEncoder->paddingBits;
 
     /* 2. Physical Writing */
     if (bits + numFillBits < (8 - LEN_SE_ID)) {
@@ -307,7 +307,6 @@ static int CountBitstream(faacEncStruct* hEncoder,
     /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
-    hEncoder->audioBits = bits;
     hEncoder->usedBytes = bit2byte(bits);
 
     if (hEncoder->usedBytes > bitStream->size)

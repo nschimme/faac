@@ -244,49 +244,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     {
         unsigned long long avg_bits_ll = (unsigned long long)hEncoder->config.bitRate * hEncoder->numChannels * FRAME_LEN / hEncoder->sampleRate;
         if (avg_bits_ll > 65000) avg_bits_ll = 65000;
-        hEncoder->reservoir.avg = (int)avg_bits_ll;
-        hEncoder->reservoir.max = 2 * hEncoder->reservoir.avg;
-        hEncoder->reservoir.bits = hEncoder->reservoir.max;
-        hEncoder->audioBits = hEncoder->reservoir.avg; // initial seed
-        hEncoder->reservoir.padding = 0;
+        hEncoder->avg_bits = (int)avg_bits_ll;
+        hEncoder->reservoir_max = 2 * hEncoder->avg_bits;
+        hEncoder->reservoir_bits = hEncoder->reservoir_max;
+        hEncoder->audioBits = hEncoder->avg_bits; // initial seed
+        hEncoder->paddingBits = 0;
     }
 
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
-
-    /* Precalculate ATH frequency coefficients for performance */
-    {
-        int sb;
-        faac_real last;
-
-        /* Long windows */
-        last = (faac_real)BLOCK_LEN_LONG;
-        int offset = 0;
-        for (sb = 0; sb < hEncoder->srInfo->num_cb_long; sb++) {
-            int s = offset;
-            int e = offset + hEncoder->srInfo->cb_width_long[sb];
-            offset = e;
-
-            faac_real coeff = 15.0 / (1.0 + ((faac_real)(s + e) / last));
-            if (sb > 0) coeff *= 0.7;
-            hEncoder->aacquantCfg.ath_coeff[sb] = coeff;
-        }
-
-        /* Short windows (offset by NSFB_LONG) */
-        last = (faac_real)BLOCK_LEN_SHORT;
-        offset = 0;
-        for (sb = 0; sb < hEncoder->srInfo->num_cb_short; sb++) {
-            int s = offset;
-            int e = offset + hEncoder->srInfo->cb_width_short[sb];
-            offset = e;
-
-            faac_real coeff = (15.0 * 1.5) / (1.0 + ((faac_real)(s + e) / last));
-            if (sb > 0) coeff *= 0.7;
-            hEncoder->aacquantCfg.ath_coeff[NSFB_LONG + sb] = coeff;
-        }
-    }
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
@@ -454,8 +422,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
        quality "see-sawing" while still reacting quickly to complexity changes. */
     /* Predictive Rate Control */
     if (hEncoder->config.bitRate) {
-        faac_real ratio = sqrt((faac_real)hEncoder->reservoir.avg / (hEncoder->audioBits + 1.0));
-        faac_real max_ratio = 1.0 + ((faac_real)hEncoder->reservoir.bits / (hEncoder->reservoir.avg + 1.0));
+        faac_real ratio = sqrt((faac_real)hEncoder->avg_bits / (hEncoder->audioBits + 1.0));
+        faac_real max_ratio = 1.0 + ((faac_real)hEncoder->reservoir_bits / (hEncoder->avg_bits + 1.0));
 
         if (ratio < 0.25) ratio = 0.25;
         if (ratio > max_ratio) ratio = max_ratio;
@@ -693,20 +661,20 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Reservoir Update (Post-Encode) */
     if (hEncoder->config.bitRate) {
         /* Logical Accounting: Virtual Bit Floor */
-        int logicalPadding = hEncoder->reservoir.padding;
+        int logicalPadding = hEncoder->paddingBits;
         if (logicalPadding < 7) {
             logicalPadding = 7;
         }
 
         /* Update reservoir using the virtual cost */
-        hEncoder->reservoir.bits += (hEncoder->reservoir.avg - (hEncoder->audioBits + logicalPadding));
+        hEncoder->reservoir_bits += (hEncoder->avg_bits - (hEncoder->audioBits + logicalPadding));
 
-        if (hEncoder->reservoir.bits > hEncoder->reservoir.max) {
-            int overflow = hEncoder->reservoir.bits - (int)(hEncoder->reservoir.max * 0.8);
-            hEncoder->reservoir.padding = overflow;
-            hEncoder->reservoir.bits -= overflow;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max) {
+            int overflow = hEncoder->reservoir_bits - (int)(hEncoder->reservoir_max * 0.8);
+            hEncoder->paddingBits = overflow;
+            hEncoder->reservoir_bits -= overflow;
         } else {
-            hEncoder->reservoir.padding = 0;
+            hEncoder->paddingBits = 0;
         }
     }
 

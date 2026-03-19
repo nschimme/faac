@@ -70,34 +70,32 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real noise_floor,
-                  const faac_real * __restrict ath_coeff)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real noise_floor)
 {
   int sfb, start, end, cnt;
-  int * __restrict cb_offset = coderInfo->sfb_offset;
+  int *cb_offset = coderInfo->sfb_offset;
   int last;
+  faac_real avgenrg;
   /* WHY: A power factor of 0.35 (down from 0.4) improves quiet passage transparency
      by allowing more detail to be preserved in low-energy signals. */
   const faac_real powm = 0.30;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
+  const faac_real *xr;
   int win;
   int enrgcnt = 0;
-  int total_len = cb_offset[coderInfo->sfbn];
+  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
   {
-      const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT;
+      xr = xr0 + win * BLOCK_LEN_SHORT;
       for (cnt = 0; cnt < total_len; cnt++)
       {
           totenrg += xr[cnt] * xr[cnt];
       }
   }
   enrgcnt = gsize * total_len;
-  /* WHY: Hoist the noise floor threshold calculation out of the gate. */
-  const faac_real nf_threshold = (noise_floor * noise_floor) * (faac_real)enrgcnt;
-
-  if (totenrg < nf_threshold)
+  if (totenrg < ((noise_floor * noise_floor) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -110,8 +108,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   /* WHY: Hoist invariants that don't depend on the scalefactor band loop. */
   last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-  const faac_real inv_totenrg_last = (faac_real)last / totenrg;
-
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge, maxe;
@@ -125,7 +121,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
-        const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        xr = xr0 + win * BLOCK_LEN_SHORT + start;
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
@@ -139,19 +135,37 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
 
 #define NOISETONE 0.2
-    int ath_idx = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? (NSFB_LONG + sfb) : sfb;
-    const faac_real coeff = ath_coeff[ath_idx];
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    {
+        last = BLOCK_LEN_SHORT;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
 
-    /* WHY: Utilize hoisted energy normalization factor.
-       inv_avgenrg = 1.0 / ((totenrg / last) * n) = (last / totenrg) / n */
-    const faac_real inv_avgenrg = inv_totenrg_last / n;
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
-    target = NOISETONE * FAAC_POW(avge * inv_avgenrg, powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe * inv_avgenrg, powm);
+        target *= 1.5;
+    }
+    else
+    {
+        last = BLOCK_LEN_LONG;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
 
-    /* WHY: Use precalculated ATH coefficients to avoid divisions and complex logic
-       inside the band loop, significantly improving psychoacoustic throughput. */
-    bandqual[sfb] = target * quality * coeff;
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    }
+
+    /* WHY: The target multiplier is increased to 15.0 to align with more sensitive
+       modern psychoacoustic standards, ensuring better high-frequency retention. */
+    target *= 15.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    /* WHY: Apply a frequency penalty to non-zero bands to prevent masking thresholds
+       from rising too aggressively at high frequencies, which protects sibilance. */
+    if (sfb > 0)
+        target *= 0.7;
+
+    bandqual[sfb] = target * quality;
   }
 }
 
@@ -184,8 +198,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       faac_real rmsx;
       faac_real etot;
       int xitab[8 * MAXSHORTBAND];
-      int * __restrict xi;
+      int *xi;
       int start, end;
+      const faac_real *xr;
       int win;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
@@ -232,7 +247,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           for (win = 0; win < gsize; win++)
           {
-              const faac_real * __restrict xr = xr0 + win * BLOCK_LEN_SHORT + start;
+              xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
@@ -262,7 +277,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor, aacquantCfg->ath_coeff);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->noise_floor);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
