@@ -195,33 +195,26 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    /* WHY: Discrete steps for noise floor and bandwidth provide stable tuning
-       points that prevent oscillation in quality at critical bitrate boundaries. */
-    /* Intelligent Model: Discrete step table for nf and fac based on bpc */
+    /* Continuous perceptual model:
+       Exponential curves provide smooth transitions in nf and fac
+       to avoid audible discontinuities at bitrate boundaries. */
     {
-        unsigned long bpc = hEncoder->config.bitRate;
-        faac_real nf = 0.01;
-        faac_real fac = 1.0;
+        unsigned long bpc = hEncoder->config.bitRate / hEncoder->numChannels;
+        if (bpc < 8000) bpc = 8000;
+        if (bpc > 128000) bpc = 128000;
 
-        if (bpc <= 8000) {
-            nf = 0.10;
-            fac = 0.75;
-        } else if (bpc <= 16000) {
-            nf = 0.05;
-            fac = 0.85;
-        } else if (bpc <= 24000) {
-            nf = 0.03;
-            fac = 0.90;
-        } else if (bpc <= 32000) {
-            nf = 0.02;
-            fac = 0.95;
-        } else if (bpc >= 64000) {
-            nf = 0.01;
-            fac = 1.00;
-        }
-
+        faac_real nf = 0.01 + 0.14 * FAAC_EXP(-(bpc - 8000) / 20000.0);
+        if (nf < 0.01) nf = 0.01;
         hEncoder->aacquantCfg.noise_floor = nf;
-        hEncoder->config.bandWidth = fac * hEncoder->sampleRate * 0.42; // scale from default
+
+        faac_real fac = 0.95 - 0.45 * FAAC_EXP(-(bpc - 8000) / 30000.0);
+        if (fac > 0.95)
+            fac = 0.95;
+
+        /* Sample-rate-aware bandwidth */
+        faac_real nyquist = hEncoder->sampleRate * 0.5;
+        faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
+        hEncoder->config.bandWidth = fac * maxBandwidth;
     }
 
     if (config->jointmode == JOINT_MS)
