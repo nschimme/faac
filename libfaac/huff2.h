@@ -33,5 +33,3 @@ int huffbook(CoderInfo *coderInfo,
              int len);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
-
-int escape(int x, int *code);

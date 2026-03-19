@@ -3,8 +3,8 @@
 #include <math.h>
 #include <string.h>
 #include "libfaac/coder.h"
-#include "libfaac/filtbank.h"
 #include "libfaac/fft.h"
+#include "../libfaac/filtbank.c"
 
 void test_CalculateKBDWindow() {
     faac_real win[256];
@@ -15,8 +15,6 @@ void test_CalculateKBDWindow() {
     for(int i=1; i<128; i++) {
         assert(win[i] >= win[i-1]);
     }
-    // 2. Symmetry is usually handled outside CalculateKBDWindow,
-    // it only calculates the first half.
     assert(win[0] >= 0.0);
     assert(win[127] <= 1.0);
     assert(win[127] > 0.9);
@@ -34,20 +32,7 @@ void test_MDCT() {
     // DC signal
     for(int i=0; i<256; i++) data[i] = 1.0;
 
-    // MDCT of DC signal should be 0 because it's like a sine transform of sorts
-    // actually it's complicated. Let's just check it doesn't crash and gives something.
     MDCT(&tables, data, N, xr, xi);
-
-    // MDCT in FAAC doesn't seem to be a standard one-shot function,
-    // it fills in the data array with results.
-    // wait, looking at MDCT in filtbank.c:
-    /*
-        base_even0[n2] = -tempr;  / first half even /
-        base_odd0[-n2] =  tempi;  / first half odd /
-        base_even1[n2] = -tempi;  / second half even /
-        base_odd1[-n2] =  tempr;  / second half odd /
-    */
-    // It seems to be an in-place-ish transform that uses data as both in and out.
 
     fft_terminate(&tables);
 }

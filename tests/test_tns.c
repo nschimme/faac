@@ -3,7 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "libfaac/coder.h"
-#include "libfaac/tns.h"
+#include "../libfaac/tns.c"
 
 void test_Autocorrelation() {
     faac_real data[10] = {1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
@@ -35,7 +35,7 @@ void test_LevinsonDurbin() {
 
     gain = LevinsonDurbin(2, 5, data, k);
     assert(gain > 1.0);
-    // k[0] is always 1.0 in this implementation for some reason
+    // k[0] is always 1.0 in this implementation
     assert(k[0] == 1.0);
 }
 

@@ -60,21 +60,21 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
 /*************************/
 /* Function prototypes   */
 /*************************/
-void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
+static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
                      faac_real* data,        /* Data array */
                      faac_real* rArray);     /* Autocorrelation array */
 
-faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
+static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
                       int dataSize,        /* Size of the data array */
                       faac_real* data,        /* Data array */
                       faac_real* kArray);     /* Reflection coeff array */
 
-void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
+static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
 
 /*****************************************************/
@@ -282,7 +282,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
     int i,j,k=0;
     int order=filter->order;
@@ -382,7 +382,7 @@ static void QuantizeReflectionCoeffs(int fOrder,
 /*   Compute the autocorrelation function            */
 /*   estimate for the given data.                    */
 /*****************************************************/
-void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
+static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
                      faac_real* data,        /* Data array */
                      faac_real* rArray)      /* Autocorrelation array */
@@ -406,7 +406,7 @@ void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 /*   given data using LevinsonDurbin recursion.      */
 /*   Return the prediction gain.                     */
 /*****************************************************/
-faac_real LevinsonDurbin(int fOrder,          /* Filter order */
+static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                       int dataSize,        /* Size of the data array */
                       faac_real* data,        /* Data array */
                       faac_real* kArray)      /* Reflection coeff array */
@@ -458,6 +458,7 @@ faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                 aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
             }
             error = error * (1 - kTemp*kTemp);
+            if (error < 1e-10) error = 1e-10;
 
             /* Now make current iteration the last one */
             aTemp=aLastPtr;
@@ -474,7 +475,7 @@ faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 /*   Convert reflection coefficients into            */
 /*   predictor coefficients.                         */
 /*****************************************************/
-void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
+static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 {
     faac_real aTemp[TNS_MAX_ORDER+2];
     int i,order;

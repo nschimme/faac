@@ -3,8 +3,8 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
-#include "libfaac/huff2.h"
 #include "libfaac/coder.h"
+#include "../libfaac/huff2.c"
 
 void test_escape() {
     int code;

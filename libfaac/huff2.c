@@ -24,7 +24,7 @@
 #include "huff2.h"
 #include "bitstream.h"
 
-int escape(int x, int *code)
+static int escape(int x, int *code)
 {
     int preflen = 0;
     int base = 32;

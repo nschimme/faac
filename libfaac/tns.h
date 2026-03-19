@@ -32,33 +32,17 @@ Copyright (c) 1997.
 
 #include "faac_real.h"
 
-#include "frame.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 
+#include "frame.h"
 void TnsInit(faacEncStruct* hEncoder);
 void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
                int* sfbOffsetTable,faac_real* spec, faac_real* temp);
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp);
-
-/* Internal functions exposed for testing */
-void Autocorrelation(int maxOrder,
-                     int dataSize,
-                     faac_real* data,
-                     faac_real* rArray);
-
-faac_real LevinsonDurbin(int maxOrder,
-                         int dataSize,
-                         faac_real* data,
-                         faac_real* kArray);
-
-void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-
-void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
 
 #ifdef __cplusplus
 }
