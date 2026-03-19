@@ -32,6 +32,10 @@
 #include <signal.h>
 #endif
 
+#include <stdio.h>
+
+#define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
+
 /* the BSD derivatives don't define __unix__ */
 #if defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
 #define __unix__
@@ -65,8 +69,6 @@
 #include "input.h"
 
 #include <faac.h>
-
-#define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
 
 #define FALSE 0
 #define TRUE 1
@@ -418,6 +420,8 @@ static int *mkChanMap(int channels, int center, int lf)
 }
 
 
+int verbose = 1;
+
 int main(int argc, char *argv[])
 {
     int frames, currentFrame;
@@ -479,7 +483,6 @@ int main(int argc, char *argv[])
     char *faac_id_string;
     char *faac_copyright_string;
     static int ignorelen = 0;
-    int verbose = 1;
     static int overwrite = 0;
 
 #ifndef _WIN32
