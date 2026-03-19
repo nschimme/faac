@@ -61,9 +61,9 @@ jobs:
               cflags: /W4
             }
           - {
-              name: Linux uClibc (MIPS),
+              name: Linux uClibc,
               os: ubuntu-latest,
-              compiler: mipsel-unknown-linux-uclibc-gcc,
+              compiler: x86_64-buildroot-linux-uclibc-gcc,
               shell: bash,
               options: -Dfloating-point=double,
               cflags: -Wall,
@@ -111,20 +111,16 @@ jobs:
 
       - name: Set up uClibc toolchain
         if: matrix.config.uclibc
-        uses: taiki-e/setup-cross-toolchain-action@v1
-        with:
-          target: mipsel-unknown-linux-uclibc
+        run: |
+          curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2024.05-1.tar.bz2 | tar -xj
+          echo "$(pwd)/x86-64--uclibc--stable-2024.05-1/bin" >> $GITHUB_PATH
 
       - uses: actions/checkout@v6
 
       - name: Install Python dependencies
         if: matrix.config.shell != 'msys2 {0}'
         run: |
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            python3 -m pip install --break-system-packages -r tests/requirements.txt || python3 -m pip install -r tests/requirements.txt
-          else
-            python3 -m pip install --break-system-packages -r tests/requirements.txt
-          fi
+          python3 -m pip install --break-system-packages -r tests/requirements.txt || python3 -m pip install -r tests/requirements.txt
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
