@@ -138,7 +138,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
-#define NOISETONE 0.25
+#define NOISETONE 0.2
     int ath_idx = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? (NSFB_LONG + sfb) : sfb;
     const faac_real coeff = ath_coeff[ath_idx];
 
