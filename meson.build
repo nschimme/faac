@@ -28,6 +28,7 @@ else
 endif
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
+add_project_arguments('-DMAX_CHANNELS=@0@'.format(get_option('max-channels')), language: 'c')
 
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
