@@ -800,7 +800,7 @@ static long BufferNumBit(BitStream *bitStream)
     return bitStream->numBit;
 }
 
-static const unsigned long bitmask[] = {
+static const uint32_t bitmask[] = {
     0x00000000, 0x00000001, 0x00000003, 0x00000007,
     0x0000000f, 0x0000001f, 0x0000003f, 0x0000007f,
     0x000000ff, 0x000001ff, 0x000003ff, 0x000007ff,
@@ -813,7 +813,7 @@ static const unsigned long bitmask[] = {
 };
 
 int PutBit(BitStream *bitStream,
-           unsigned long data,
+           uint32_t data,
            int numBit)
 {
     /* write bits in packets according to buffer byte boundaries */

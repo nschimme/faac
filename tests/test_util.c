@@ -73,13 +73,13 @@ void test_MaxBitresSize() {
     unsigned int size = MaxBitresSize(128000, 44100);
     assert(size == 3172);
 
-    /* Reservoir depletion (logical zero floor) */
+    /* Reservoir depletion (logical safe minimum floor) */
     unsigned int size2 = MaxBitresSize(264600, 44100);
-    assert(size2 == 0);
+    assert(size2 == 1);
 
     /* Prevent unsigned underflow on extreme bitrates */
     unsigned int size3 = MaxBitresSize(529200, 44100);
-    assert(size3 == 0);
+    assert(size3 == 1);
 }
 
 int main() {
