@@ -596,11 +596,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        faac_real fix;
-        if (frameBytes > 0)
-            fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-        else
-            fix = 1.1;
+        /*
+         * If the frame is empty (e.g. total silence or small buffer failure),
+         * default to a small quality reduction (fix > 1.0) to encourage
+         * the rate controller to stay within targets without oscillating.
+         */
+        faac_real fix = (frameBytes > 0) ? (faac_real)desbits / (faac_real)(frameBytes * 8) : 1.1;
 
         if (fix < 0.9)
             fix += 0.1;
