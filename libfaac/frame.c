@@ -199,7 +199,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
        points that prevent oscillation in quality at critical bitrate boundaries. */
     /* Intelligent Model: Discrete step table for nf and fac based on bpc */
     {
-        unsigned long bpc = hEncoder->config.bitRate / hEncoder->numChannels;
+        unsigned long bpc = hEncoder->config.bitRate;
         faac_real nf = 0.01;
         faac_real fac = 1.0;
 
