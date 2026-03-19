@@ -24,3 +24,6 @@ test('tns', test_tns)
 
 test_mdct = executable('test_mdct', 'test_mdct.c', kwargs: test_args)
 test('mdct', test_mdct)
+
+test_huffman = executable('test_huffman', 'test_huffman.c', kwargs: test_args)
+test('huffman', test_huffman)
