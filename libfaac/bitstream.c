@@ -830,7 +830,7 @@ int PutBit(BitStream *bitStream,
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
-    /* Mask input data to ensure no extra bits are set; guard against shift-by-word-size UB */
+    /* Bit-mask input data; table avoids shift-by-word-size UB */
     data &= bitmask[numBit];
 
     /* Fast path: bit write fits within the current byte */

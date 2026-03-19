@@ -80,6 +80,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
         channelInfo[numChannels-numChannelsLeft].common_window = 0;
         channelInfo[numChannels-numChannelsLeft].ch_is_left = 1;
         channelInfo[numChannels-numChannelsLeft].paired_ch = numChannels-numChannelsLeft+1;
+        channelInfo[numChannels-numChannelsLeft].sce = 0;
         channelInfo[numChannels-numChannelsLeft].lfe = 0;
         numChannelsLeft--;
 
@@ -89,6 +90,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
         channelInfo[numChannels-numChannelsLeft].common_window = 0;
         channelInfo[numChannels-numChannelsLeft].ch_is_left = 0;
         channelInfo[numChannels-numChannelsLeft].paired_ch = numChannels-numChannelsLeft-1;
+        channelInfo[numChannels-numChannelsLeft].sce = 0;
         channelInfo[numChannels-numChannelsLeft].lfe = 0;
         numChannelsLeft--;
     }
@@ -99,6 +101,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
             channelInfo[numChannels-numChannelsLeft].present = 1;
             channelInfo[numChannels-numChannelsLeft].tag = lfeTag++;
             channelInfo[numChannels-numChannelsLeft].cpe = 0;
+            channelInfo[numChannels-numChannelsLeft].sce = 0;
             channelInfo[numChannels-numChannelsLeft].lfe = 1;
         } else {
             channelInfo[numChannels-numChannelsLeft].present = 1;

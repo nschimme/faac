@@ -458,7 +458,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                 aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
             }
             error = error * (1 - kTemp*kTemp);
-            /* Prevent division-by-zero or numerical instability with perfectly correlated signals */
+            /* Prevent numerical instability or division-by-zero with highly correlated signals */
             if (error < 1e-10) error = 1e-10;
 
             /* Now make current iteration the last one */

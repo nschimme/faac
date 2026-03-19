@@ -78,5 +78,6 @@ unsigned int BitAllocation(faac_real pe, int short_block)
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate)
 {
     unsigned int bitsPerFrame = (unsigned int)((faac_real)bitRate / (faac_real)sampleRate * (faac_real)FRAME_LEN);
+    /* Prevent unsigned underflow for logical reservoir depletion */
     return (bitsPerFrame > 6144) ? 0 : 6144 - bitsPerFrame;
 }
