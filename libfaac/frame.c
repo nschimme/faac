@@ -230,38 +230,37 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         faac_real bpc = (faac_real)config->bitRate;
         unsigned long totalBitRate = config->bitRate * hEncoder->numChannels;
 
-        /* Corrected Intelligent Model for fac and noise_floor (based on bitrate per channel):
-           Balance MOS and Bitrate Accuracy by focusing bits on audible bands.
+        /* Balanced Intelligent Model for fac and noise_floor (based on bitrate per channel):
+           Optimized to maximize throughput and fix undershooting.
+           Low constant noise_floor unlocks bit allocation potential.
 
            bitrate_per_channel | fac  | noise_floor
            --------------------|------|------------
-           8,000               | 0.50 | 0.10
-           16,000              | 0.70 | 0.05
-           32,000              | 0.85 | 0.02
-           64,000              | 0.92 | 0.01
-           128,000+            | 0.95 | 0.01
+           8,000               | 0.50 | 0.01
+           16,000              | 0.70 | 0.01
+           32,000              | 0.85 | 0.01
+           64,000              | 0.95 | 0.01
+           128,000+            | 0.98 | 0.01
         */
-        faac_real fac, nf;
+        faac_real fac;
 
         if (bpc < 16000) {
             faac_real a = (bpc - 8000) / 8000.0;
             if (a < 0) a = 0;
             fac = 0.50 + a * (0.70 - 0.50);
-            nf = 0.10 - a * (0.10 - 0.05);
         } else if (bpc < 32000) {
             faac_real a = (bpc - 16000) / 16000.0;
             fac = 0.70 + a * (0.85 - 0.70);
-            nf = 0.05 - a * (0.05 - 0.02);
         } else if (bpc < 64000) {
             faac_real a = (bpc - 32000) / 32000.0;
-            fac = 0.85 + a * (0.92 - 0.85);
-            nf = 0.02 - a * (0.02 - 0.01);
+            fac = 0.85 + a * (0.95 - 0.85);
         } else {
             faac_real a = (bpc - 64000) / 64000.0;
             if (a > 1.0) a = 1.0;
-            fac = 0.92 + a * (0.95 - 0.92);
-            nf = 0.01;
+            fac = 0.95 + a * (0.98 - 0.95);
         }
+
+        hEncoder->aacquantCfg.noise_floor = 0.01;
 
         if (!config->bandWidth)
         {
@@ -269,8 +268,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             if (config->bandWidth > g_bw.freq)
                 config->bandWidth = g_bw.freq;
         }
-
-        hEncoder->aacquantCfg.noise_floor = nf;
 
         if (!config->quantqual)
         {
@@ -726,8 +723,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int target_bits;
         int reservoir_fill = hEncoder->reservoir_bits - hEncoder->reservoir_max / 2;
         if (hEncoder->reservoir_bits > (int)(hEncoder->reservoir_max * 0.6)) {
-            /* Active spending: add 50% extra weight to the surplus */
-            target_bits = avg_bits + (int)(reservoir_fill * 1.5);
+            /* Aggressive active spending: drain surplus reservoir quickly */
+            target_bits = avg_bits + (reservoir_fill * 2);
         } else {
             target_bits = avg_bits + reservoir_fill;
         }
@@ -758,8 +755,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         int iter = 0;
         int max_iter = 1;
-        int tol = target_bits / 100; /* 1% tolerance */
-        if (tol < 16) tol = 16;
+        int tol = target_bits / 20; /* 5% tolerance to skip unnecessary refinements */
+        if (tol < 32) tol = 32;
 
         /* Save best-so-far state */
         for (channel = 0; channel < numChannels; channel++)
