@@ -2,20 +2,14 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include "libfaac/quantize.h"
-
-// We can't easily test the static quantize_scalar directly as it is not exported,
-// but we can call QuantizeInit() and then some other function that uses qfunc
-// or just re-implement a test for the logic.
-// However, the internal static library faac_internal should allow us to test
-// exported functions. BlocGroup and CalcBW are exported.
+#include "libfaac/coder.h"
+#include "../libfaac/quantize.c"
 
 void test_CalcBW() {
     AACQuantCfg cfg;
     SR_INFO sr;
     unsigned int bw = 15000;
 
-    // Mock SR_INFO
     memset(&sr, 0, sizeof(sr));
     sr.num_cb_short = 10;
     sr.num_cb_long = 40;
@@ -25,21 +19,32 @@ void test_CalcBW() {
     cfg.pnslevel = 0;
     CalcBW(&bw, 44100, &sr, &cfg);
 
-    // 15000 * (1024 * 2) / 44100 = 15000 * 2048 / 44100 = 696.59 lines
-    // For short frame: max = 696.59 / 8 = 87.07 lines
-    // sr.cb_width_short[i] = 4, so 87.07 / 4 = 21.76 bands
-    // But sr.num_cb_short = 10, so max 10 bands.
-    // cfg.max_cbs should be 10.
     assert(cfg.max_cbs == 10);
+    assert(cfg.max_cbl == 22);
+}
 
-    // For long frame: max = 696.59 lines
-    // sr.cb_width_long[i] = 32, so 696.59 / 32 = 21.76 bands
-    assert(cfg.max_cbl == 22); // Because it stops when l >= max. 21*32 = 672, 22*32 = 704.
+void test_quantize_scalar() {
+    faac_real xr[4] = {1.0, -2.0, 0.5, 0.0};
+    int xi[4];
+
+    // sfacfix = 1.0
+    quantize_scalar(xr, xi, 4, 1.0);
+
+    // logic: tmp = |val| * sfacfix; tmp = (tmp * sqrt(tmp))^(1/2) = tmp^(3/4)
+    // Wait, code says: tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+    // That is sqrt(tmp * tmp^0.5) = sqrt(tmp^1.5) = tmp^0.75.
+    // q = (int)(tmp + 0.4054)
+
+    // 1.0^0.75 = 1.0. q = floor(1.4054) = 1. xi[0] = 1.
+    assert(xi[0] == 1);
+    // 2.0^0.75 = 1.6817. q = floor(1.6817 + 0.4054) = floor(2.087) = 2. xi[1] = -2.
+    assert(xi[1] == -2);
 }
 
 int main() {
     QuantizeInit();
     test_CalcBW();
+    test_quantize_scalar();
     printf("test_quantize passed\n");
     return 0;
 }
