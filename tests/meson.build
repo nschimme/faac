@@ -18,3 +18,10 @@ test_fft = executable('test_fft', 'test_fft.c',
     dependencies: [ libm ]
 )
 test('fft', test_fft)
+
+test_channels = executable('test_channels', 'test_channels.c',
+    include_directories: ['..', '../include'],
+    link_with: faac_internal,
+    dependencies: [ libm ]
+)
+test('channels', test_channels)

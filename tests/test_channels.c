@@ -1,0 +1,32 @@
+#include <stdio.h>
+#include <assert.h>
+#include "libfaac/channels.h"
+
+void test_GetChannelInfo_Mono() {
+    ChannelInfo channels[1];
+    GetChannelInfo(channels, 1, 0);
+    assert(channels[0].present == 1);
+    assert(channels[0].cpe == 0);
+    assert(channels[0].lfe == 0);
+}
+
+void test_GetChannelInfo_Stereo() {
+    ChannelInfo channels[2];
+    GetChannelInfo(channels, 2, 0);
+    assert(channels[0].present == 1);
+    assert(channels[0].cpe == 1);
+    assert(channels[0].ch_is_left == 1);
+    assert(channels[0].paired_ch == 1);
+
+    assert(channels[1].present == 1);
+    assert(channels[1].cpe == 1);
+    assert(channels[1].ch_is_left == 0);
+    assert(channels[1].paired_ch == 0);
+}
+
+int main() {
+    test_GetChannelInfo_Mono();
+    test_GetChannelInfo_Stereo();
+    printf("test_channels passed\n");
+    return 0;
+}
