@@ -196,12 +196,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.quantqual = config->quantqual;
 
     /* WHY: Discrete steps for noise floor and bandwidth provide stable tuning
-       points that prevent oscillation in quality at critical bitrate boundaries.
-       NOTE: In FAAC, config.bitRate is defined as bits-per-second per channel.
-       The thresholds below are based on this per-channel (bpc) value. */
+       points that prevent oscillation in quality at critical bitrate boundaries. */
     /* Intelligent Model: Discrete step table for nf and fac based on bpc */
     {
-        unsigned long bpc = hEncoder->config.bitRate;
+        unsigned long bpc = hEncoder->config.bitRate / hEncoder->numChannels;
         faac_real nf = 0.01;
         faac_real fac = 1.0;
 
