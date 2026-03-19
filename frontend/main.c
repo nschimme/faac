@@ -63,11 +63,6 @@
 # define strcasecmp strcmp
 #endif
 
-#ifdef _WIN32
-# undef stderr
-# define stderr stdout
-#endif
-
 #include "input.h"
 
 #include <faac.h>
@@ -810,7 +805,11 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        fprintf(stderr, dieMessage, progName, progName, progName, progName);
+        if (dieMessage) {
+            fprintf(stderr, "%s", dieMessage);
+        } else {
+            help('?');
+        }
         return 1;
     }
 
@@ -956,8 +955,10 @@ int main(int argc, char *argv[])
     }
 
 #ifdef _WIN32
-    _setmode(_fileno(stdin), O_BINARY);
-    _setmode(_fileno(stdout), O_BINARY);
+    if (_fileno(stdin) >= 0)
+        _setmode(_fileno(stdin), _O_BINARY);
+    if (aacFileName && !strcmp(aacFileName, "-") && _fileno(stdout) >= 0)
+        _setmode(_fileno(stdout), _O_BINARY);
 #endif
 
     /* initialize MP4 creation */

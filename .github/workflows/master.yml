@@ -123,7 +123,8 @@ jobs:
         if: matrix.config.uclibc
         run: |
           curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2025.08-1.tar.xz | tar -xJ
-          echo "$(find $(pwd) -maxdepth 2 -name bin -type d)" >> $GITHUB_PATH
+          mv x86-64--uclibc--stable-2025.08-1 bootlin-uclibc
+          echo "${GITHUB_WORKSPACE}/bootlin-uclibc/bin" >> $GITHUB_PATH
           sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
 
       - uses: actions/checkout@v6
