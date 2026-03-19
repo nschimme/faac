@@ -66,10 +66,6 @@
 
 #include <faac.h>
 
-#ifdef verbose
-#undef verbose
-#endif
-
 #define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
 
 #define FALSE 0
@@ -1183,10 +1179,10 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
                 if (frames != 0)
                 {
-                    char percent[256];
-                    char truncatedName[128];
-                    strncpy(truncatedName, audioFileName ? audioFileName : "stdin", 127);
-                    truncatedName[127] = '\0';
+                    char percent[MAX_PATH + 20];
+                    char truncatedName[MAX_PATH];
+                    strncpy(truncatedName, audioFileName ? audioFileName : "stdin", MAX_PATH - 1);
+                    truncatedName[MAX_PATH - 1] = '\0';
                     sprintf(percent, "%.2f%% encoding %s",
                             100.0 * currentFrame / frames, truncatedName);
                     SetConsoleTitleA(percent);
