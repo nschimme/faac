@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
     unsigned long samplesInput, maxBytesOutput, totalBytesWritten = 0;
 
     faacEncConfigurationPtr myFormat;
-    unsigned int mpegVersion = MPEG2;
+    unsigned int mpegVersion = MPEG4;
     unsigned int objectType = LOW;
     int jointmode = -1;
     int pnslevel = -1;
@@ -936,6 +936,13 @@ int main(int argc, char *argv[])
         myFormat->useLfe = 1;
     if (jointmode >= 0)
         myFormat->jointmode = jointmode;
+
+    if (pnslevel > 0 && mpegVersion == MPEG2)
+    {
+        fprintf(stderr, "PNS not allowed in MPEG-2 mode, disabling PNS\n");
+        pnslevel = 0;
+    }
+
     if (pnslevel >= 0)
         myFormat->pnslevel = pnslevel;
     if (quantqual > 0)
