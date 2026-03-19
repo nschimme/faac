@@ -133,9 +133,8 @@ jobs:
         if: matrix.config.uclibc && steps.cache-uclibc.outputs.cache-hit != 'true'
         run: |
           curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2025.08-1.tar.xz | tar -xJ
-          # The tarball unpacks into a directory named 'x86_64--uclibc--stable-2025.08-1'
-          # (note the double hyphens in the name).
-          mv x86-64--uclibc--stable-2025.08-1 bootlin-uclibc
+          # Use wildcard to handle potential naming variations in extracted directory
+          mv x86[-_]64*uclibc*stable-2025.08-1 bootlin-uclibc
 
       - name: Configure uClibc path
         if: matrix.config.uclibc

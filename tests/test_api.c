@@ -68,30 +68,31 @@ void test_encode_max_signal(unsigned long samplerate, unsigned int channels) {
     config->inputFormat = FAAC_INPUT_FLOAT;
     faacEncSetConfiguration(h, config);
 
-    float *input = malloc(inputSamples * sizeof(float));
+    float *input_f = malloc(inputSamples * sizeof(float));
+    int32_t *input_i = (int32_t *)input_f;
     unsigned char *output = malloc(maxOutputBytes);
 
     // Full scale sine wave
     for (unsigned long i = 0; i < inputSamples; i++) {
-        input[i] = (float)sin(2.0 * M_PI * 1000.0 * i / samplerate);
+        input_f[i] = (float)sin(2.0 * M_PI * 1000.0 * i / samplerate);
     }
 
     for (int i = 0; i < 10; i++) {
-        int bytes = faacEncEncode(h, (int32_t*)input, inputSamples, output, maxOutputBytes);
+        int bytes = faacEncEncode(h, input_i, inputSamples, output, maxOutputBytes);
         assert(bytes >= 0);
     }
 
     // DC Offset (Full scale)
     for (unsigned long i = 0; i < inputSamples; i++) {
-        input[i] = 1.0f;
+        input_f[i] = 1.0f;
     }
 
     for (int i = 0; i < 5; i++) {
-        int bytes = faacEncEncode(h, (int32_t*)input, inputSamples, output, maxOutputBytes);
+        int bytes = faacEncEncode(h, input_i, inputSamples, output, maxOutputBytes);
         assert(bytes >= 0);
     }
 
-    free(input);
+    free(input_f);
     free(output);
     faacEncClose(h);
 }
@@ -110,11 +111,12 @@ void test_encode_silence(unsigned long samplerate, unsigned int channels) {
     config->inputFormat = FAAC_INPUT_FLOAT;
     faacEncSetConfiguration(h, config);
 
-    float *input = calloc(inputSamples, sizeof(float));
+    float *input_f = calloc(inputSamples, sizeof(float));
+    int32_t *input_i = (int32_t *)input_f;
     unsigned char *output = malloc(maxOutputBytes);
 
     for (int i = 0; i < 10; i++) {
-        int bytes = faacEncEncode(h, (int32_t*)input, inputSamples, output, maxOutputBytes);
+        int bytes = faacEncEncode(h, input_i, inputSamples, output, maxOutputBytes);
         assert(bytes >= 0);
     }
 
@@ -125,7 +127,7 @@ void test_encode_silence(unsigned long samplerate, unsigned int channels) {
         assert(bytes >= 0);
     } while (bytes > 0);
 
-    free(input);
+    free(input_f);
     free(output);
     faacEncClose(h);
 }
@@ -144,19 +146,20 @@ void test_encode_noise(unsigned long samplerate, unsigned int channels) {
     config->inputFormat = FAAC_INPUT_FLOAT;
     faacEncSetConfiguration(h, config);
 
-    float *input = malloc(inputSamples * sizeof(float));
+    float *input_f = malloc(inputSamples * sizeof(float));
+    int32_t *input_i = (int32_t *)input_f;
     unsigned char *output = malloc(maxOutputBytes);
 
     for (unsigned long i = 0; i < inputSamples; i++) {
-        input[i] = (float)((rand() % 20000) - 10000) / 10000.0f;
+        input_f[i] = (float)((rand() % 20000) - 10000) / 10000.0f;
     }
 
     for (int i = 0; i < 5; i++) {
-        int bytes = faacEncEncode(h, (int32_t*)input, inputSamples, output, maxOutputBytes);
+        int bytes = faacEncEncode(h, input_i, inputSamples, output, maxOutputBytes);
         assert(bytes >= 0);
     }
 
-    free(input);
+    free(input_f);
     free(output);
     faacEncClose(h);
 }
