@@ -195,33 +195,30 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    /* WHY: Discrete steps for noise floor and bandwidth provide stable tuning
-       points that prevent oscillation in quality at critical bitrate boundaries. */
-    /* Intelligent Model: Discrete step table for nf and fac based on bpc */
+    /* Continuous perceptual model:
+       Exponential curves provide smooth transitions in nf and fac
+       to avoid audible discontinuities at bitrate boundaries. */
     {
         unsigned long bpc = hEncoder->config.bitRate;
-        faac_real nf = 0.01;
-        faac_real fac = 1.0;
 
-        if (bpc <= 8000) {
-            nf = 0.10;
-            fac = 0.75;
-        } else if (bpc <= 16000) {
-            nf = 0.05;
-            fac = 0.85;
-        } else if (bpc <= 24000) {
-            nf = 0.03;
-            fac = 0.90;
-        } else if (bpc <= 32000) {
-            nf = 0.02;
+        /* Clamp bpc to prevent the exponent from blowing up or underflowing */
+        if (bpc < 8000) bpc = 8000;
+        if (bpc > 128000) bpc = 128000;
+
+        faac_real x = bpc - 8000.0;
+
+        /* Noise floor: Smooth decay from ~0.15 down to 0.01 */
+        hEncoder->aacquantCfg.noise_floor = 0.01 + 0.14 * FAAC_EXP(-x / 20000.0);
+
+        /* Bandwidth Factor: Smooth rise from 0.50 up to 0.95 */
+        faac_real fac = 0.95 - 0.45 * FAAC_EXP(-x / 30000.0);
+        if (fac > 0.95)
             fac = 0.95;
-        } else if (bpc >= 64000) {
-            nf = 0.01;
-            fac = 1.00;
-        }
 
-        hEncoder->aacquantCfg.noise_floor = nf;
-        hEncoder->config.bandWidth = fac * hEncoder->sampleRate * 0.42; // scale from default
+        /* Sample-rate-aware bandwidth */
+        faac_real nyquist = hEncoder->sampleRate * 0.5;
+        faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
+        hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
     }
 
     if (config->jointmode == JOINT_MS)
@@ -250,11 +247,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
 
-    /* Precalculate performance-critical coefficients */
+    /* Precalculate ATH frequency coefficients for performance */
     {
         int sb;
         faac_real last;
-        const faac_real sfstep = 20 / 1.50515;
 
         /* Long windows */
         last = (faac_real)BLOCK_LEN_LONG;
@@ -267,7 +263,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             faac_real coeff = 15.0 / (1.0 + ((faac_real)(s + e) / last));
             if (sb > 0) coeff *= 0.7;
             hEncoder->aacquantCfg.ath_coeff[sb] = coeff;
-            hEncoder->aacquantCfg.inv_n[sb] = 1.0 / (faac_real)(e - s);
         }
 
         /* Short windows (offset by NSFB_LONG) */
@@ -281,15 +276,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             faac_real coeff = (15.0 * 1.5) / (1.0 + ((faac_real)(s + e) / last));
             if (sb > 0) coeff *= 0.7;
             hEncoder->aacquantCfg.ath_coeff[NSFB_LONG + sb] = coeff;
-            hEncoder->aacquantCfg.inv_n[NSFB_LONG + sb] = 1.0 / (faac_real)(e - s);
-        }
-
-        /* Precalculate sfacfix lookup table */
-        for (i = 0; i < 256; i++) {
-            if ((SF_OFFSET - i) < 10)
-                hEncoder->aacquantCfg.sfacfix_tab[i] = 0.0;
-            else
-                hEncoder->aacquantCfg.sfacfix_tab[i] = FAAC_POW(10, (faac_real)i / sfstep);
         }
     }
 

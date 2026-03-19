@@ -71,7 +71,7 @@ void QuantizeInit(void)
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real noise_floor,
-                  const faac_real * __restrict ath_coeff, const faac_real * __restrict inv_n_tab)
+                  const faac_real * __restrict ath_coeff)
 {
   int sfb, start, end, cnt;
   int * __restrict cb_offset = coderInfo->sfb_offset;
@@ -109,9 +109,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 
   /* WHY: Hoist invariants that don't depend on the scalefactor band loop. */
-  const int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
-  last = is_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-  const int ath_base_idx = is_short ? NSFB_LONG : 0;
+  last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
   const faac_real inv_totenrg_last = (faac_real)last / totenrg;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -123,7 +121,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     end = cb_offset[sfb + 1];
 
     const int n = end - start;
-    if (n <= 0) continue;
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
@@ -141,14 +138,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     maxe *= gsize;
 
-#define NOISETONE 0.2
-    const int ath_idx = ath_base_idx + sfb;
+#define NOISETONE 0.25
+    int ath_idx = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? (NSFB_LONG + sfb) : sfb;
     const faac_real coeff = ath_coeff[ath_idx];
-    const faac_real inv_n = inv_n_tab[ath_idx];
 
     /* WHY: Utilize hoisted energy normalization factor.
        inv_avgenrg = 1.0 / ((totenrg / last) * n) = (last / totenrg) / n */
-    const faac_real inv_avgenrg = inv_totenrg_last * inv_n;
+    const faac_real inv_avgenrg = inv_totenrg_last / n;
 
     target = NOISETONE * FAAC_POW(avge * inv_avgenrg, powm);
     target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe * inv_avgenrg, powm);
@@ -167,9 +163,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandenrg,
                    int gnum,
                    int pnslevel,
-                   faac_real noise_floor,
-                   const faac_real * __restrict inv_n_tab,
-                   const faac_real * __restrict sfacfix_tab
+                   faac_real noise_floor
                   )
 {
     int sb;
@@ -189,7 +183,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      const faac_real inv_n = inv_n_tab[(coderInfo->block_type == ONLY_SHORT_WINDOW) ? (NSFB_LONG + sb) : sb];
       int xitab[8 * MAXSHORTBAND];
       int * __restrict xi;
       int start, end;
@@ -206,7 +199,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       /* WHY: Hoist division by gsize into a precalculated reciprocal. */
       etot = bandenrg[sb] * inv_gsize;
-      rmsx = FAAC_SQRT(etot * inv_n);
+      rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < noise_floor) || (!bandqual[sb]))
       {
@@ -224,9 +217,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if (sfac < 0) sfac = 0;
-      if (sfac > 255) sfac = 255;
-      sfacfix = sfacfix_tab[sfac];
+      if ((SF_OFFSET - sfac) < 10)
+          sfacfix = 0.0;
+      else
+          sfacfix = FAAC_POW(10, sfac / sfstep);
 
       end -= start;
       xi = xitab;
@@ -268,10 +262,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor, aacquantCfg->ath_coeff,
-                  aacquantCfg->inv_n);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->noise_floor,
-                   aacquantCfg->inv_n, aacquantCfg->sfacfix_tab);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor, aacquantCfg->ath_coeff);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->noise_floor);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
