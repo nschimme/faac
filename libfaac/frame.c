@@ -200,21 +200,25 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
        to avoid audible discontinuities at bitrate boundaries. */
     {
         unsigned long bpc = hEncoder->config.bitRate;
+
+        /* Clamp bpc to prevent the exponent from blowing up or underflowing */
         if (bpc < 8000) bpc = 8000;
         if (bpc > 128000) bpc = 128000;
 
-        faac_real nf = 0.01 + 0.14 * FAAC_EXP(-(bpc - 8000) / 20000.0);
-        if (nf < 0.01) nf = 0.01;
-        hEncoder->aacquantCfg.noise_floor = nf;
+        faac_real x = bpc - 8000.0;
 
-        faac_real fac = 0.95 - 0.45 * FAAC_EXP(-(bpc - 8000) / 30000.0);
+        /* Noise floor: Smooth decay from ~0.15 down to 0.01 */
+        hEncoder->aacquantCfg.noise_floor = 0.01 + 0.14 * FAAC_EXP(-x / 20000.0);
+
+        /* Bandwidth Factor: Smooth rise from 0.50 up to 0.95 */
+        faac_real fac = 0.95 - 0.45 * FAAC_EXP(-x / 30000.0);
         if (fac > 0.95)
             fac = 0.95;
 
         /* Sample-rate-aware bandwidth */
         faac_real nyquist = hEncoder->sampleRate * 0.5;
         faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
-        hEncoder->config.bandWidth = fac * maxBandwidth;
+        hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
     }
 
     if (config->jointmode == JOINT_MS)
