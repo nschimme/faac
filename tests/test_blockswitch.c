@@ -27,11 +27,11 @@ void test_PsyCheckShort() {
         psydata.engNext[i] = eng_quiet;
     }
 
-    // Stable signal
+    /* Steady-state signal should favor ONLY_LONG_WINDOW */
     PsyCheckShort(&psyInfo, 1.0);
     assert(psyInfo.block_type == ONLY_LONG_WINDOW);
 
-    // Transient in engNext[0]
+    /* High volume change ratio (transient) triggers ONLY_SHORT_WINDOW */
     psydata.engNext[0] = eng_loud;
     PsyCheckShort(&psyInfo, 1.0);
     assert(psyInfo.block_type == ONLY_SHORT_WINDOW);

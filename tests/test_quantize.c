@@ -10,6 +10,7 @@ void test_CalcBW() {
     SR_INFO sr;
     unsigned int bw = 15000;
 
+    /* Mock SR_INFO for fixed sample rate logic */
     memset(&sr, 0, sizeof(sr));
     sr.num_cb_short = 10;
     sr.num_cb_long = 40;
@@ -19,6 +20,7 @@ void test_CalcBW() {
     cfg.pnslevel = 0;
     CalcBW(&bw, 44100, &sr, &cfg);
 
+    /* Bandwidth limit accounting for transform length */
     assert(cfg.max_cbs == 10);
     assert(cfg.max_cbl == 22);
 }
@@ -27,17 +29,10 @@ void test_quantize_scalar() {
     faac_real xr[4] = {1.0, -2.0, 0.5, 0.0};
     int xi[4];
 
-    // sfacfix = 1.0
+    /* Verify non-linear quantization: q = sign(x) * floor((|x| * sfacfix)^0.75 + MAGIC) */
     quantize_scalar(xr, xi, 4, 1.0);
 
-    // logic: tmp = |val| * sfacfix; tmp = (tmp * sqrt(tmp))^(1/2) = tmp^(3/4)
-    // Wait, code says: tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-    // That is sqrt(tmp * tmp^0.5) = sqrt(tmp^1.5) = tmp^0.75.
-    // q = (int)(tmp + 0.4054)
-
-    // 1.0^0.75 = 1.0. q = floor(1.4054) = 1. xi[0] = 1.
     assert(xi[0] == 1);
-    // 2.0^0.75 = 1.6817. q = floor(1.6817 + 0.4054) = floor(2.087) = 2. xi[1] = -2.
     assert(xi[1] == -2);
 }
 

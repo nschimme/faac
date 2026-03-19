@@ -10,7 +10,7 @@ void test_Autocorrelation() {
     faac_real r[5];
 
     Autocorrelation(4, 5, data, r);
-    // Impulse at t=0, so R(0)=1, R(k)=0 for k>0
+    /* Unit impulse: R(0)=1, R(k)=0 */
     assert(fabs(r[0] - 1.0) < 1e-6);
     assert(fabs(r[1] - 0.0) < 1e-6);
     assert(fabs(r[2] - 0.0) < 1e-6);
@@ -19,10 +19,7 @@ void test_Autocorrelation() {
 
     faac_real data2[10] = {1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     Autocorrelation(2, 5, data2, r);
-    // dataSize = 5. All ones.
-    // R(0) = 1*1 + 1*1 + 1*1 + 1*1 + 1*1 = 5
-    // R(1) = 1*1 + 1*1 + 1*1 + 1*1 = 4
-    // R(2) = 1*1 + 1*1 + 1*1 = 3
+    /* Rectangular pulse: R(k) = (dataSize - k) */
     assert(fabs(r[0] - 5.0) < 1e-6);
     assert(fabs(r[1] - 4.0) < 1e-6);
     assert(fabs(r[2] - 3.0) < 1e-6);
@@ -34,8 +31,8 @@ void test_LevinsonDurbin() {
     faac_real gain;
 
     gain = LevinsonDurbin(2, 5, data, k);
+    /* Prediction gain must be positive for correlated signal */
     assert(gain > 1.0);
-    // k[0] is always 1.0 in this implementation
     assert(k[0] == 1.0);
 }
 
@@ -44,11 +41,8 @@ void test_StepUp() {
     faac_real a[3];
 
     StepUp(2, k, a);
+    /* Verify Levinson recursion: a_i(j) = a_{i-1}(j) + k_i * a_{i-1}(i-j) */
     assert(a[0] == 1.0);
-    // order 1: a[1] = a_old[1] + k[1]*a_old[0] = 0 + 0.5*1 = 0.5
-    // order 2:
-    // a[1] = a_old[1] + k[2]*a_old[1] = 0.5 + 0.5*0.5 = 0.75
-    // a[2] = a_old[2] + k[2]*a_old[0] = 0 + 0.5*1 = 0.5
     assert(fabs(a[1] - 0.75) < 1e-6);
     assert(fabs(a[2] - 0.5) < 1e-6);
 }

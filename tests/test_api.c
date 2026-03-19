@@ -21,9 +21,10 @@ void test_api_config(unsigned long samplerate, unsigned int channels, int tns, i
     config = faacEncGetCurrentConfiguration(h);
     assert(config != NULL);
 
+    /* Test configuration matrix for varied encoder parameters */
     config->bitRate = 128000 / channels;
     config->inputFormat = FAAC_INPUT_FLOAT;
-    config->outputFormat = 1; // ADTS
+    config->outputFormat = 1; /* ADTS */
     config->useTns = tns;
     config->pnslevel = pns;
     config->jointmode = joint;
@@ -52,7 +53,7 @@ void test_encode_max_signal(unsigned long samplerate, unsigned int channels) {
     int32_t *input_i = (int32_t *)input_f;
     unsigned char *output = malloc(maxOutputBytes);
 
-    // Full scale sine wave
+    /* 0 dBFS sine sweep (full dynamic range) */
     for (unsigned long i = 0; i < inputSamples; i++) {
         input_f[i] = (float)sin(2.0 * M_PI * 1000.0 * i / samplerate);
     }
@@ -62,7 +63,7 @@ void test_encode_max_signal(unsigned long samplerate, unsigned int channels) {
         assert(bytes >= 0);
     }
 
-    // DC Offset (Full scale)
+    /* Verify DC stability at full scale */
     for (unsigned long i = 0; i < inputSamples; i++) {
         input_f[i] = 1.0f;
     }
@@ -100,7 +101,7 @@ void test_encode_silence(unsigned long samplerate, unsigned int channels) {
         assert(bytes >= 0);
     }
 
-    // Flush
+    /* Verify encoder flush behavior */
     int bytes;
     do {
         bytes = faacEncEncode(h, NULL, 0, output, maxOutputBytes);
@@ -130,6 +131,7 @@ void test_encode_noise(unsigned long samplerate, unsigned int channels) {
     int32_t *input_i = (int32_t *)input_f;
     unsigned char *output = malloc(maxOutputBytes);
 
+    /* Perceptual model stress test with random signals */
     for (unsigned long i = 0; i < inputSamples; i++) {
         input_f[i] = (float)((rand() % 20000) - 10000) / 10000.0f;
     }
@@ -150,14 +152,10 @@ int main() {
 
     for (int r = 0; r < 4; r++) {
         for (int c = 0; c < 3; c++) {
-            // Test standard configurations
             test_api_config(rates[r], channels[c], 1, 4, 1);
+            test_api_config(rates[r], channels[c], 0, 0, 0);
+            test_api_config(rates[r], channels[c], 1, 10, 2);
 
-            // Toggle TNS/PNS/Joint
-            test_api_config(rates[r], channels[c], 0, 0, 0); // No extra tools
-            test_api_config(rates[r], channels[c], 1, 10, 2); // Max extra tools
-
-            // Functional encoding tests
             test_encode_silence(rates[r], channels[c]);
             test_encode_noise(rates[r], channels[c]);
             test_encode_max_signal(rates[r], channels[c]);

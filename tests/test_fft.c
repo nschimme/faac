@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <assert.h>
-#include <string.h>
 #include <math.h>
 #include "libfaac/fft.h"
 
@@ -12,15 +11,15 @@ void test_fft() {
     faac_real xi[8];
     int i;
 
-    // Impulse at t=0
+    /* Discrete unit impulse at origin */
     for (i = 0; i < 8; i++) {
         xr[i] = (i == 0) ? 1.0 : 0.0;
         xi[i] = 0.0;
     }
 
-    fft(&tables, xr, xi, 3); // log2(8) = 3
+    fft(&tables, xr, xi, 3);
 
-    // FFT of an impulse is all ones
+    /* FFT of unit impulse is a constant signal (magnitude 1.0) */
     for (i = 0; i < 8; i++) {
         assert(fabs(xr[i] - 1.0) < 1e-6);
         assert(fabs(xi[i] - 0.0) < 1e-6);
@@ -36,14 +35,13 @@ void test_rfft() {
     faac_real x[8];
     int i;
 
-    // Impulse at t=0
     for (i = 0; i < 8; i++) {
         x[i] = (i == 0) ? 1.0 : 0.0;
     }
 
     rfft(&tables, x, 3);
 
-    // rfft format: first half is real, second half is imaginary
+    /* RFFT output mapping: [Re(0...N/2-1), Im(0...N/2-1)] */
     for (i = 0; i < 4; i++) {
         assert(fabs(x[i] - 1.0) < 1e-6);
     }

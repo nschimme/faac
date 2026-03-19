@@ -3,6 +3,7 @@
 #include <math.h>
 #include <string.h>
 #include "libfaac/coder.h"
+#include "libfaac/filtbank.h"
 #include "libfaac/fft.h"
 #include "../libfaac/filtbank.c"
 
@@ -10,8 +11,7 @@ void test_CalculateKBDWindow() {
     faac_real win[256];
     CalculateKBDWindow(win, 4, 256);
 
-    // Check for some general properties of KBD window
-    // 1. Should be increasing in the first half
+    /* Verify Kaiser-Bessel Derived (KBD) properties: monotonic increasing in first half */
     for(int i=1; i<128; i++) {
         assert(win[i] >= win[i-1]);
     }
@@ -26,10 +26,10 @@ void test_MDCT() {
 
     int N = 256;
     faac_real data[256];
-    faac_real xr[64]; // N/4
+    faac_real xr[64];
     faac_real xi[64];
 
-    // DC signal
+    /* Stability check for DC signal transform */
     for(int i=0; i<256; i++) data[i] = 1.0;
 
     MDCT(&tables, data, N, xr, xi);
