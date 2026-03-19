@@ -138,18 +138,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     else
         last = BLOCK_LEN_LONG;
 
-    avgenrg = totenrg / last;
-    avgenrg *= end - start;
+    avgenrg = (totenrg / last) * (end - start);
 
-    if (avgenrg > 0.0)
-    {
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
-    else
-    {
-        target = 0.0;
-    }
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= 1.5;
@@ -202,7 +194,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = (end > start) ? FAAC_SQRT(etot / (end - start)) : 0.0;
+      rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {

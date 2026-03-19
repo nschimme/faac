@@ -61,9 +61,9 @@ jobs:
               cflags: /W4
             }
           - {
-              name: Linux uClibc,
+              name: Linux uClibc (MIPS),
               os: ubuntu-latest,
-              compiler: arm-unknown-linux-uclibceabi-gcc,
+              compiler: mipsel-unknown-linux-uclibc-gcc,
               shell: bash,
               options: -Dfloating-point=double,
               cflags: -Wall,
@@ -85,7 +85,6 @@ jobs:
           brew update || true
           brew install \
             meson ffmpeg
-          python3 -m venv venv
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -114,7 +113,7 @@ jobs:
         if: matrix.config.uclibc
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
-          target: arm-unknown-linux-uclibceabi
+          target: mipsel-unknown-linux-uclibc
 
       - uses: actions/checkout@v6
 
@@ -122,7 +121,7 @@ jobs:
         if: matrix.config.shell != 'msys2 {0}'
         run: |
           if [ "${{ runner.os }}" = "macOS" ]; then
-            ./venv/bin/pip install -r tests/requirements.txt
+            python3 -m pip install --break-system-packages -r tests/requirements.txt || python3 -m pip install -r tests/requirements.txt
           else
             python3 -m pip install --break-system-packages -r tests/requirements.txt
           fi
@@ -150,9 +149,6 @@ jobs:
       - name: Run tests
         if: matrix.config.shell != 'msys2 {0}'
         run: |
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            source venv/bin/activate
-          fi
           meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
