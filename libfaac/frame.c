@@ -195,6 +195,33 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    /* Intelligent Model: Discrete step table for nf and fac based on bpc */
+    {
+        unsigned long bpc = hEncoder->config.bitRate;
+        faac_real nf = 0.01;
+        faac_real fac = 1.0;
+
+        if (bpc <= 8000) {
+            nf = 0.10;
+            fac = 0.75;
+        } else if (bpc <= 16000) {
+            nf = 0.05;
+            fac = 0.85;
+        } else if (bpc <= 24000) {
+            nf = 0.03;
+            fac = 0.90;
+        } else if (bpc <= 32000) {
+            nf = 0.02;
+            fac = 0.95;
+        } else if (bpc >= 64000) {
+            nf = 0.01;
+            fac = 1.00;
+        }
+
+        hEncoder->aacquantCfg.noise_floor = nf;
+        hEncoder->config.bandWidth = fac * hEncoder->sampleRate * 0.42; // scale from default
+    }
+
     if (config->jointmode == JOINT_MS)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
@@ -204,6 +231,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    /* Initialize Rate Control values */
+    {
+        unsigned long long avg_bits_ll = (unsigned long long)hEncoder->config.bitRate * hEncoder->numChannels * FRAME_LEN / hEncoder->sampleRate;
+        if (avg_bits_ll > 65000) avg_bits_ll = 65000;
+        hEncoder->avg_bits = (int)avg_bits_ll;
+        hEncoder->reservoir_max = 2 * hEncoder->avg_bits;
+        hEncoder->reservoir_bits = hEncoder->reservoir_max;
+        hEncoder->audioBits = hEncoder->avg_bits; // initial seed
+        hEncoder->paddingBits = 0;
+    }
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -369,6 +408,20 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int bandWidth = hEncoder->config.bandWidth;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
+
+    /* Predictive Rate Control */
+    if (hEncoder->config.bitRate) {
+        faac_real ratio = sqrt((faac_real)hEncoder->avg_bits / (hEncoder->audioBits + 1.0));
+        faac_real max_ratio = 1.0 + ((faac_real)hEncoder->reservoir_bits / (hEncoder->avg_bits + 1.0));
+
+        if (ratio < 0.25) ratio = 0.25;
+        if (ratio > max_ratio) ratio = max_ratio;
+
+        hEncoder->aacquantCfg.quality *= ratio;
+
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < MINQUAL) hEncoder->aacquantCfg.quality = MINQUAL;
+    }
 
     /* Increase frame number */
     hEncoder->frameNum++;
@@ -591,29 +644,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+    /* Reservoir Update (Post-Encode) */
+    if (hEncoder->config.bitRate) {
+        /* Logical Accounting: Virtual Bit Floor */
+        int logicalPadding = hEncoder->paddingBits;
+        if (logicalPadding < 7) {
+            logicalPadding = 7;
+        }
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        /* Update reservoir using the virtual cost */
+        hEncoder->reservoir_bits += (hEncoder->avg_bits - (hEncoder->audioBits + logicalPadding));
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        if (hEncoder->reservoir_bits > hEncoder->reservoir_max) {
+            int overflow = hEncoder->reservoir_bits - (int)(hEncoder->reservoir_max * 0.8);
+            hEncoder->paddingBits = overflow;
+            hEncoder->reservoir_bits -= overflow;
+        } else {
+            hEncoder->paddingBits = 0;
+        }
     }
 
     return frameBytes;

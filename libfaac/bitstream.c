@@ -188,19 +188,25 @@ int WriteBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
-    } else {
-        numFillBits = 0;
+    /* Compute audioBits (spectral + headers) before padding */
+    hEncoder->audioBits = bits;
+
+    /* 1. Calculate base padding needed for the bitrate floor */
+    numFillBits = hEncoder->paddingBits;
+
+    /* 2. Physical Writing: Only force a 7-bit fill if the frame is physically
+          too small for AAC specs (8 bits minimum including terminator). */
+    if (bits + numFillBits < (8 - LEN_SE_ID)) {
+        numFillBits = (8 - LEN_SE_ID) - bits;
     }
 
     /* Write AAC fill_elements, smallest fill element is 7 bits. */
     /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
-    numFillBits += 6;
-    bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
-    bits += (numFillBits - bitsLeftAfterFill);
+    if (numFillBits >= 7) {
+        numFillBits += 6;
+        bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
+        bits += (numFillBits - bitsLeftAfterFill);
+    }
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
@@ -275,19 +281,22 @@ static int CountBitstream(faacEncStruct* hEncoder,
         }
     }
 
-    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
-    /* Save room for ID_END terminator */
-    if (bits < (8 - LEN_SE_ID) ) {
-        numFillBits = 8 - LEN_SE_ID - bits;
-    } else {
-        numFillBits = 0;
+    /* Compute audioBits (spectral + headers) before padding */
+
+    /* 1. Calculate base padding needed for the bitrate floor */
+    numFillBits = hEncoder->paddingBits;
+
+    /* 2. Physical Writing */
+    if (bits + numFillBits < (8 - LEN_SE_ID)) {
+        numFillBits = (8 - LEN_SE_ID) - bits;
     }
 
-    /* Write AAC fill_elements, smallest fill element is 7 bits. */
-    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
-    numFillBits += 6;
-    bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
-    bits += (numFillBits - bitsLeftAfterFill);
+    /* Write AAC fill_elements */
+    if (numFillBits >= 7) {
+        numFillBits += 6;
+        bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
+        bits += (numFillBits - bitsLeftAfterFill);
+    }
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
