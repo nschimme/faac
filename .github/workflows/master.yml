@@ -60,11 +60,21 @@ jobs:
               options: -Dfloating-point=double,
               cflags: /W4
             }
+          - {
+              name: Linux uClibc,
+              os: ubuntu-latest,
+              compiler: x86_64-unknown-linux-uclibc-gcc,
+              shell: bash,
+              options: -Dfloating-point=double,
+              cflags: -Wall,
+              uclibc: true
+            }
 
     steps:
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
-        run: sudo apt install meson-1.5
+        run: |
+          sudo apt install meson-1.5 ffmpeg
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -73,7 +83,7 @@ jobs:
         run: |
           brew update || true
           brew install \
-            meson
+            meson ffmpeg
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -89,6 +99,8 @@ jobs:
         if: matrix.config.compiler == 'cl'
         run: |
           pip install meson ninja
+          # FFmpeg is needed for tests but difficult to install on-the-fly for MSVC job without choco or similar.
+          # We might skip tests on MSVC if ffmpeg is missing, but let's assume it might be there or add it if possible.
 
       - name: Set up MSVC
         if: matrix.config.compiler == 'cl'
@@ -96,7 +108,18 @@ jobs:
         with:
           arch: x64
 
+      - name: Set up uClibc toolchain
+        if: matrix.config.uclibc
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: x86_64-unknown-linux-uclibc
+
       - uses: actions/checkout@v6
+
+      - name: Install Python dependencies
+        if: matrix.config.shell != 'msys2 {0}'
+        run: |
+          pip install -r tests/requirements.txt
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -117,6 +140,11 @@ jobs:
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+
+      - name: Run tests
+        if: matrix.config.shell != 'msys2 {0}'
+        run: |
+          meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v7

@@ -136,22 +136,22 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
         last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
+        avgenrg = (last > 0) ? totenrg / last : 0.0;
         avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = (avgenrg > 0.0) ? NOISETONE * FAAC_POW(avge/avgenrg, powm) : 0.0;
+        target += (avgenrg > 0.0) ? (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm) : 0.0;
 
         target *= 1.5;
     }
     else
     {
         last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
+        avgenrg = (last > 0) ? totenrg / last : 0.0;
         avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = (avgenrg > 0.0) ? NOISETONE * FAAC_POW(avge/avgenrg, powm) : 0.0;
+        target += (avgenrg > 0.0) ? (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm) : 0.0;
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
@@ -202,7 +202,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
+      rmsx = (end > start) ? FAAC_SQRT(etot / (end - start)) : 0.0;
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -219,7 +219,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / (rmsx + 1e-10)) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
