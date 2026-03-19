@@ -78,7 +78,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int last;
   /* WHY: A power factor of 0.35 (down from 0.4) improves quiet passage transparency
      by allowing more detail to be preserved in low-energy signals. */
-  const faac_real powm = 0.35;
+  const faac_real powm = 0.30;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   int win;

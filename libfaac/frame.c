@@ -204,23 +204,23 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         faac_real fac = 0.95;
 
         if (bpc <= 8000) {
-            nf = 0.10;
+            nf = 0.07;
             fac = 0.75;
         } else if (bpc <= 16000) {
-            nf = 0.05;
+            nf = 0.04;
             fac = 0.85;
         } else if (bpc <= 24000) {
-            nf = 0.03;
+            nf = 0.02;
             fac = 0.90;
         } else if (bpc <= 32000) {
-            nf = 0.02;
+            nf = 0.01;
             fac = 0.95;
         } else if (bpc <= 48000) {
-            nf = 0.01;
-            fac = 0.95;
+            nf = 0.005;
+            fac = 1.0;
         } else if (bpc >= 64000) {
-            nf = 0.01;
-            fac = 0.95;
+            nf = 0.005;
+            fac = 1.0;
         }
         hEncoder->aacquantCfg.noise_floor = nf;
 
