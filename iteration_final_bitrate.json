@@ -1,0 +1,35 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_14_NOISE_MK.wav": {
+      "mos": null,
+      "size": 17450,
+      "bitrate": 16.124164381928786,
+      "bitrate_target": 16,
+      "time": 0.010406732559204102,
+      "md5": "c49cb13a13dc95bba7633269b9d86c91",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_14_NOISE_MK.wav"
+    },
+    "voip_C_18_NOISE_FG.wav": {
+      "mos": null,
+      "size": 15948,
+      "bitrate": 16.135831159592126,
+      "bitrate_target": 16,
+      "time": 0.009992122650146484,
+      "md5": "2462712367433190faf77e77a804528e",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_18_NOISE_FG.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.7420992290014206,
+    "silence.wav": 2.4248810696662986,
+    "sine.wav": 2.6668855193347554,
+    "sweep.wav": 2.2867189753378625,
+    "overall": 2.530146198335084
+  },
+  "lib_size": 79000
+}
