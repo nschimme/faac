@@ -28,6 +28,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <fcntl.h>
+#include <io.h>
 #else
 #include <signal.h>
 #endif
@@ -953,6 +954,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unsupported output format!\n");
         return 1;
     }
+
+#ifdef _WIN32
+    _setmode(_fileno(stdin), _O_BINARY);
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
 
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)

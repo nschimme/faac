@@ -63,10 +63,10 @@ jobs:
           - {
               name: Linux uClibc,
               os: ubuntu-latest,
-              compiler: x86_64-linux-gcc,
+              compiler: x86_64-buildroot-linux-uclibc-gcc,
               shell: bash,
-              options: -Dfloating-point=double,
-              cflags: -Wall,
+              options: -Dfloating-point=double -Ddefault_library=static,
+              cflags: -Wall -static,
               uclibc: true
             }
           - {
@@ -84,7 +84,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt update
-          sudo apt install -y --no-install-recommends meson-1.5 ffmpeg musl-tools
+          sudo apt install -y --no-install-recommends meson-1.5 ffmpeg musl-tools xz-utils
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -161,7 +161,7 @@ jobs:
       - name: Run tests (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
         run: |
-          python3 -m pip install -r requirements.txt
+          python3 -m pip install --break-system-packages -r requirements.txt || python3 -m pip install -r requirements.txt
           meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
