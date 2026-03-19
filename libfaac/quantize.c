@@ -76,6 +76,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
+  /* WHY: A power factor of 0.35 (down from 0.4) improves quiet passage transparency
+     by allowing more detail to be preserved in low-energy signals. */
   faac_real powm = 0.35;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
@@ -153,8 +155,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
     }
 
+    /* WHY: The target multiplier is increased to 15.0 to align with more sensitive
+       modern psychoacoustic standards, ensuring better high-frequency retention. */
     target *= 15.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    /* WHY: Apply a frequency penalty to non-zero bands to prevent masking thresholds
+       from rising too aggressively at high frequencies, which protects sibilance. */
     if (sfb > 0)
         target *= 0.7;
 

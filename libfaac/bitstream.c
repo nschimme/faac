@@ -194,6 +194,9 @@ int WriteBitstream(faacEncStruct* hEncoder,
     /* 1. Calculate base padding needed for the bitrate floor */
     numFillBits = hEncoder->paddingBits;
 
+    /* WHY: Physical writing only forces a fill element if the frame is too small
+       for the AAC specification (8 bits minimum). This maximizes bit-efficiency
+       by avoiding unnecessary padding in the actual bitstream. */
     /* 2. Physical Writing: Only force a 7-bit fill if the frame is physically
           too small for AAC specs (8 bits minimum including terminator). */
     if (bits + numFillBits < (8 - LEN_SE_ID)) {

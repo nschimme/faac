@@ -195,6 +195,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    /* WHY: Discrete steps for noise floor and bandwidth provide stable tuning
+       points that prevent oscillation in quality at critical bitrate boundaries. */
     /* Intelligent Model: Discrete step table for nf and fac based on bpc */
     {
         unsigned long bpc = hEncoder->config.bitRate;
@@ -409,6 +411,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
+    /* WHY: Predictive rate control eliminates the need for expensive iterative quantization.
+       Using a damped square-root ratio provides a stable feedback loop that prevents
+       quality "see-sawing" while still reacting quickly to complexity changes. */
     /* Predictive Rate Control */
     if (hEncoder->config.bitRate) {
         faac_real ratio = sqrt((faac_real)hEncoder->avg_bits / (hEncoder->audioBits + 1.0));
@@ -644,6 +649,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
+    /* WHY: We use logical accounting (Virtual Bit Floor) to ensure the rate controller
+       always treats every frame as having a baseline cost (minimum fill element).
+       This stabilizes the feedback loop without wasting physical bits in the file. */
     /* Reservoir Update (Post-Encode) */
     if (hEncoder->config.bitRate) {
         /* Logical Accounting: Virtual Bit Floor */
