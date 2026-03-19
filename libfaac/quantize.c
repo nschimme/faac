@@ -94,9 +94,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       }
   }
   enrgcnt = gsize * total_len;
-  const faac_real nf_sq = noise_floor * noise_floor;
+  /* WHY: Hoist the noise floor threshold calculation out of the gate. */
+  const faac_real nf_threshold = (noise_floor * noise_floor) * (faac_real)enrgcnt;
 
-  if (totenrg < (nf_sq * (faac_real)enrgcnt))
+  if (totenrg < nf_threshold)
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -107,6 +108,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       return;
   }
 
+  /* WHY: Hoist invariants that don't depend on the scalefactor band loop. */
+  last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+  const faac_real inv_totenrg_last = (faac_real)last / totenrg;
+
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge, maxe;
@@ -115,7 +120,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
-    int n = end - start;
+    const int n = end - start;
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
@@ -135,13 +140,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 #define NOISETONE 0.2
     int ath_idx = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? (NSFB_LONG + sfb) : sfb;
-    faac_real coeff = ath_coeff[ath_idx];
+    const faac_real coeff = ath_coeff[ath_idx];
 
-    last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-
-    /* WHY: Hoist the common energy normalization factor.
-       avgenrg = (totenrg / last) * n */
-    faac_real inv_avgenrg = (faac_real)last / (totenrg * n);
+    /* WHY: Utilize hoisted energy normalization factor.
+       inv_avgenrg = 1.0 / ((totenrg / last) * n) = (last / totenrg) / n */
+    const faac_real inv_avgenrg = inv_totenrg_last / n;
 
     target = NOISETONE * FAAC_POW(avge * inv_avgenrg, powm);
     target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe * inv_avgenrg, powm);
@@ -171,6 +174,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
+    const faac_real inv_gsize = 1.0 / (faac_real)gsize;
     faac_real pnsthr = 0.1 * pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
@@ -193,7 +197,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
 
-      etot = bandenrg[sb] / (faac_real)gsize;
+      /* WHY: Hoist division by gsize into a precalculated reciprocal. */
+      etot = bandenrg[sb] * inv_gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < noise_floor) || (!bandqual[sb]))
