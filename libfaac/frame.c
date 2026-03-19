@@ -596,7 +596,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        faac_real fix;
+        if (frameBytes > 0)
+            fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        else
+            fix = 1.1;
 
         if (fix < 0.9)
             fix += 0.1;

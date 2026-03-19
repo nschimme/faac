@@ -83,18 +83,18 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (enrgs >= ethr)
+        if (enrgs > 0.0 && enrgs >= ethr)
         {
             hcb = HCB_INTENSITY;
             vfix = FAAC_SQRT(efix / enrgs);
         }
-        else if (enrgd >= ethr)
+        else if (enrgd > 0.0 && enrgd >= ethr)
         {
             hcb = HCB_INTENSITY2;
             vfix = FAAC_SQRT(efix / enrgd);
         }
 
-        if (hcb != HCB_NONE)
+        if (hcb != HCB_NONE && efix > 0.0)
         {
             int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
             int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
@@ -185,17 +185,17 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
             }
         }
 
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
+        if (max(enrgs, enrgd) > 0.0 && (min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
             enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;
 
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
+            if ((enrgl + enrgr) > 0.0 && (enrgs * thrmid * 2.0) >= (enrgl + enrgr))
             {
                 ms = 1;
                 phase = PH_IN;
             }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
+            else if ((enrgl + enrgr) > 0.0 && (enrgd * thrmid * 2.0) >= (enrgl + enrgr))
             {
                 ms = 1;
                 phase = PH_OUT;
@@ -227,7 +227,7 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
             }
         }
 
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
+        if (max(enrgl, enrgr) > 0.0 && min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
         {
             for (win = wstart; win < wend; win++)
             {
