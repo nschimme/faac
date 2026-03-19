@@ -285,6 +285,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     }
 
     /* Compute audioBits (spectral + headers) before padding */
+    hEncoder->audioBits = bits;
 
     /* 1. Calculate base padding needed for the bitrate floor */
     numFillBits = hEncoder->reservoir.padding;
@@ -307,7 +308,6 @@ static int CountBitstream(faacEncStruct* hEncoder,
     /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
-    hEncoder->audioBits = bits;
     hEncoder->usedBytes = bit2byte(bits);
 
     if (hEncoder->usedBytes > bitStream->size)

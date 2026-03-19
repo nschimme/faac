@@ -37,7 +37,6 @@ typedef float faac_real;
 #define FAAC_ASIN asinf
 #define FAAC_LRINT lrintf
 #define FAAC_FLOOR floorf
-#define FAAC_EXP expf
 #else
 typedef double faac_real;
 #define FAAC_SIN sin
@@ -49,7 +48,6 @@ typedef double faac_real;
 #define FAAC_ASIN asin
 #define FAAC_LRINT lrint
 #define FAAC_FLOOR floor
-#define FAAC_EXP exp
 #endif
 
 #endif /* FAAC_REAL_H */
