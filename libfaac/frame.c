@@ -199,7 +199,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
        Exponential curves provide smooth transitions in nf and fac
        to avoid audible discontinuities at bitrate boundaries. */
     {
-        unsigned long bpc = hEncoder->config.bitRate / hEncoder->numChannels;
+        unsigned long bpc = hEncoder->config.bitRate;
         if (bpc < 8000) bpc = 8000;
         if (bpc > 128000) bpc = 128000;
 
