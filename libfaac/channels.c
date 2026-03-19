@@ -66,6 +66,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
         channelInfo[numChannels-numChannelsLeft].present = 1;
         channelInfo[numChannels-numChannelsLeft].tag = sceTag++;
         channelInfo[numChannels-numChannelsLeft].cpe = 0;
+        channelInfo[numChannels-numChannelsLeft].sce = 1;
         channelInfo[numChannels-numChannelsLeft].lfe = 0;
         numChannelsLeft--;
     }
@@ -103,6 +104,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
             channelInfo[numChannels-numChannelsLeft].present = 1;
             channelInfo[numChannels-numChannelsLeft].tag = sceTag++;
             channelInfo[numChannels-numChannelsLeft].cpe = 0;
+            channelInfo[numChannels-numChannelsLeft].sce = 1;
             channelInfo[numChannels-numChannelsLeft].lfe = 0;
         }
         numChannelsLeft--;

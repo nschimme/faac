@@ -818,19 +818,19 @@ int PutBit(BitStream *bitStream,
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
-    /* Mask input data to ensure no extra bits are set */
-    /* Masking logic safe for numBit=0 and word-sized shifts */
-    data &= (numBit == 0) ? 0 : ((1UL << (numBit - 1)) << 1) - 1;
+    /* Mask input to specified width; avoid UB on word-sized shifts */
+    if (numBit > 0 && numBit < (int)(sizeof(unsigned long) * 8))
+        data &= (1UL << numBit) - 1;
 
     /* Fast path: bit write fits within the current byte */
     if (bitOffset + numBit <= 8) {
-        if (bitOffset == 0) *ptr = 0;
+        if (bitOffset == 0) *ptr = 0; /* New byte initialization */
         *ptr |= (unsigned char)(data << (8 - bitOffset - numBit));
     } else {
         /* General case: multi-byte write */
         /* Handle first partial byte */
         int firstBits = 8 - bitOffset;
-        if (bitOffset == 0) *ptr = 0;
+        if (bitOffset == 0) *ptr = 0; /* New byte initialization */
         *ptr++ |= (unsigned char)(data >> (numBit - firstBits));
         numBit -= firstBits;
 

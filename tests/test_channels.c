@@ -1,3 +1,22 @@
+/*
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include "../libfaac/channels.c"
@@ -8,8 +27,7 @@ void test_GetChannelInfo_Mono() {
     GetChannelInfo(channels, 1, 0);
     assert(channels[0].present == 1);
     assert(channels[0].cpe == 0);
-    // Note: libfaac doesn't set the .sce field explicitly in GetChannelInfo.
-    // It uses .cpe = 0 and .lfe = 0 to imply SCE.
+    assert(channels[0].sce == 1);
     assert(channels[0].lfe == 0);
 }
 
