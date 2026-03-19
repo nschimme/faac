@@ -48,7 +48,7 @@ enum {
 };
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
-void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
+void CalcBW(unsigned *bw, int rate, const SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);

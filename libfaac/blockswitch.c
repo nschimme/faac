@@ -123,8 +123,8 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 }
 
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
-		    unsigned int sampleRate, int *cb_width_long, int num_cb_long,
-		    int *cb_width_short, int num_cb_short)
+		    unsigned int sampleRate, const int *cb_width_long, int num_cb_long,
+		    const int *cb_width_short, int num_cb_short)
 {
   unsigned int channel;
   int i, j, size;
@@ -229,8 +229,8 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
 
 /* Do psychoacoustical analysis */
 static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
-			 PsyInfo * psyInfo, int *cb_width_long, int
-			 num_cb_long, int *cb_width_short,
+			 PsyInfo * psyInfo, const int *cb_width_long, int
+			 num_cb_long, const int *cb_width_short,
 			 int num_cb_short, unsigned int numChannels,
 			 faac_real quality
 			)
@@ -272,7 +272,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 
 static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 			    faac_real *newSamples, unsigned int bandwidth,
-			    int *cb_width_short, int num_cb_short)
+			    const int *cb_width_short, int num_cb_short)
 {
   int win;
   faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;

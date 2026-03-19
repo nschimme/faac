@@ -68,17 +68,17 @@ typedef struct
 {
 void (*PsyInit) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate,
-		int *cb_width_long, int num_cb_long,
-		int *cb_width_short, int num_cb_short);
+		const int *cb_width_long, int num_cb_long,
+		const int *cb_width_short, int num_cb_short);
 void (*PsyEnd) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 void (*PsyCalculate) (ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
-		PsyInfo *psyInfo, int *cb_width_long, int num_cb_long,
-		int *cb_width_short, int num_cb_short,
+		PsyInfo *psyInfo, const int *cb_width_long, int num_cb_long,
+		const int *cb_width_short, int num_cb_short,
 		unsigned int numChannels, faac_real quality);
 void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 		faac_real *newSamples, unsigned int bandwidth,
-		int *cb_width_short, int num_cb_short);
+		const int *cb_width_short, int num_cb_short);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 } psymodel_t;

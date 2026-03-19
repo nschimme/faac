@@ -138,12 +138,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     else
         last = BLOCK_LEN_LONG;
 
-    if (last <= 0)
-    {
-        bandqual[sfb] = 0.0;
-        continue;
-    }
-
     avgenrg = totenrg / last;
     avgenrg *= end - start;
 
@@ -325,7 +319,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     return 0;
 }
 
-void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
+void CalcBW(unsigned *bw, int rate, const SR_INFO *sr, AACQuantCfg *aacquantCfg)
 {
     // find max short frame band
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;

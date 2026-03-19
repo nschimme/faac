@@ -83,21 +83,21 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (enrgs >= ethr)
+        if (enrgs >= ethr && enrgs > 0.0)
         {
             hcb = HCB_INTENSITY;
             vfix = FAAC_SQRT(efix / enrgs);
         }
-        else if (enrgd >= ethr)
+        else if (enrgd >= ethr && enrgd > 0.0)
         {
             hcb = HCB_INTENSITY2;
             vfix = FAAC_SQRT(efix / enrgd);
         }
 
-        if (hcb != HCB_NONE)
+        if (hcb != HCB_NONE && efix > 0.0)
         {
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            int sf = (enrgl > 0.0) ? FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step) : -100;
+            int pan = (enrgr > 0.0) ? FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf : 100 - sf;
 
             if (pan > 30)
             {
