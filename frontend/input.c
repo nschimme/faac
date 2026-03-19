@@ -488,7 +488,9 @@ size_t wav_read_int24(pcmfile_t *sndf, int32_t *buf, size_t num, int *map)
 
 int wav_close(pcmfile_t *sndf)
 {
-  int i = fclose(sndf->f);
+  int i = 0;
+  if (sndf->f != stdin)
+    i = fclose(sndf->f);
   free(sndf);
   return i;
 }

@@ -63,7 +63,7 @@ jobs:
           - {
               name: Linux uClibc,
               os: ubuntu-latest,
-              compiler: x86_64-buildroot-linux-uclibc-gcc,
+              compiler: x86_64-linux-gcc,
               shell: bash,
               options: -Dfloating-point=double -Ddefault_library=static,
               cflags: -Wall -static,
@@ -123,7 +123,7 @@ jobs:
         if: matrix.config.uclibc
         run: |
           curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2025.08-1.tar.xz | tar -xJ
-          echo "$(pwd)/x86-64--uclibc--stable-2025.08-1/bin" >> $GITHUB_PATH
+          echo "$(find $(pwd) -maxdepth 2 -name bin -type d)" >> $GITHUB_PATH
           sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
 
       - uses: actions/checkout@v6

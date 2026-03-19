@@ -956,8 +956,8 @@ int main(int argc, char *argv[])
     }
 
 #ifdef _WIN32
-    _setmode(_fileno(stdin), _O_BINARY);
-    _setmode(_fileno(stdout), _O_BINARY);
+    _setmode(_fileno(stdin), O_BINARY);
+    _setmode(_fileno(stdout), O_BINARY);
 #endif
 
     /* initialize MP4 creation */
@@ -1261,7 +1261,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        fclose(outfile);
+        if (outfile != stdout)
+            fclose(outfile);
     }
 
     faacEncClose(hEncoder);
