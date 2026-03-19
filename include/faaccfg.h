@@ -53,8 +53,6 @@ enum stream_format
 
 enum {JOINT_NONE = 0, JOINT_MS, JOINT_IS};
 
-#define MAX_CHANNELS @MAX_CHANNELS@
-
 #pragma pack(push, 1)
 typedef struct faacEncConfiguration
 {
@@ -127,7 +125,7 @@ typedef struct faacEncConfiguration
 		WAVE 5.1		2, 0, 1, 4, 5, 3
 		AIFF 5.1		2, 0, 3, 1, 4, 5 
 	*/
-    int channel_map[MAX_CHANNELS];
+    int channel_map[64];
     int pnslevel;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
