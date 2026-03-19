@@ -95,7 +95,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt + FAAC_EPSILON))
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -134,17 +134,25 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    {
         last = BLOCK_LEN_SHORT;
-    else
-        last = BLOCK_LEN_LONG;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
 
-    avgenrg = (totenrg / last) * (end - start);
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
-    target = NOISETONE * FAAC_POW(avge / (avgenrg + FAAC_EPSILON), powm);
-    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe / (avgenrg + FAAC_EPSILON), powm);
-
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= 1.5;
+    }
+    else
+    {
+        last = BLOCK_LEN_LONG;
+        avgenrg = totenrg / last;
+        avgenrg *= end - start;
+
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+    }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
@@ -311,7 +319,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     return 0;
 }
 
-void CalcBW(unsigned *bw, int rate, const SR_INFO *sr, AACQuantCfg *aacquantCfg)
+void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 {
     // find max short frame band
     int max = *bw * (BLOCK_LEN_SHORT << 1) / rate;

@@ -54,7 +54,7 @@ typedef struct {
     unsigned int flushFrame;
 
     /* Scalefactorband data */
-    const SR_INFO *srInfo;
+    SR_INFO *srInfo;
 
     /* sample buffers of current next and next next frame*/
     faac_real *sampleBuff[MAX_CHANNELS];

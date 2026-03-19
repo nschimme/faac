@@ -22,7 +22,6 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
-#include "util.h"
 
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
@@ -84,24 +83,21 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (efix > FAAC_EPSILON)
+        if (enrgs >= ethr)
         {
-            if (enrgs >= ethr)
-            {
-                hcb = HCB_INTENSITY;
-                vfix = FAAC_SQRT(efix / enrgs);
-            }
-            else if (enrgd >= ethr)
-            {
-                hcb = HCB_INTENSITY2;
-                vfix = FAAC_SQRT(efix / enrgd);
-            }
+            hcb = HCB_INTENSITY;
+            vfix = FAAC_SQRT(efix / enrgs);
+        }
+        else if (enrgd >= ethr)
+        {
+            hcb = HCB_INTENSITY2;
+            vfix = FAAC_SQRT(efix / enrgd);
         }
 
         if (hcb != HCB_NONE)
         {
-            int sf = FAAC_LRINT(FAAC_LOG10((enrgl + FAAC_EPSILON) / (efix + FAAC_EPSILON)) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10((enrgr + FAAC_EPSILON) / (efix + FAAC_EPSILON)) * step) - sf;
+            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
+            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
 
             if (pan > 30)
             {
@@ -303,16 +299,22 @@ void AACstereo(CoderInfo *coder,
 
     for (chn = 0; chn < maxchan; chn++)
     {
-        int i;
+        int group;
+        int bookcnt = 0;
         CoderInfo *cp = coder + chn;
 
         if (!channel[chn].present)
             continue;
 
-        for (i = 0; i < MAX_SCFAC_BANDS; i++)
+        for (group = 0; group < cp->groups.n; group++)
         {
-            cp->book[i] = HCB_NONE;
-            cp->sf[i] = 0;
+            int band;
+            for (band = 0; band < cp->sfbn; band++)
+            {
+                cp->book[bookcnt] = HCB_NONE;
+                cp->sf[bookcnt] = 0;
+                bookcnt++;
+            }
         }
     }
     for (chn = 0; chn < maxchan; chn++)
@@ -354,9 +356,9 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder[chn].groups.n; group++)
+        for (group = 0; group < coder->groups.n; group++)
         {
-            int end = start + coder[chn].groups.len[group];
+            int end = start + coder->groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
