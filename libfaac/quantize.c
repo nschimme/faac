@@ -134,25 +134,31 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
         last = BLOCK_LEN_SHORT;
-        avgenrg = (last > 0) ? totenrg / last : 0.0;
-        avgenrg *= end - start;
+    else
+        last = BLOCK_LEN_LONG;
 
-        target = (avgenrg > 0.0) ? NOISETONE * FAAC_POW(avge/avgenrg, powm) : 0.0;
-        target += (avgenrg > 0.0) ? (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm) : 0.0;
+    if (last <= 0)
+    {
+        bandqual[sfb] = 0.0;
+        continue;
+    }
 
-        target *= 1.5;
+    avgenrg = totenrg / last;
+    avgenrg *= end - start;
+
+    if (avgenrg > 0.0)
+    {
+        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
     }
     else
     {
-        last = BLOCK_LEN_LONG;
-        avgenrg = (last > 0) ? totenrg / last : 0.0;
-        avgenrg *= end - start;
-
-        target = (avgenrg > 0.0) ? NOISETONE * FAAC_POW(avge/avgenrg, powm) : 0.0;
-        target += (avgenrg > 0.0) ? (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm) : 0.0;
+        target = 0.0;
     }
+
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+        target *= 1.5;
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
@@ -219,7 +225,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / (rmsx + 1e-10)) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else

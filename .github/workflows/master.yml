@@ -74,6 +74,7 @@ jobs:
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
+          sudo apt-get update
           sudo apt install meson-1.5 ffmpeg
 
       - name: Install dependencies (macOS)
@@ -119,7 +120,7 @@ jobs:
       - name: Install Python dependencies
         if: matrix.config.shell != 'msys2 {0}'
         run: |
-          pip install -r tests/requirements.txt
+          python3 -m pip install -r tests/requirements.txt
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
