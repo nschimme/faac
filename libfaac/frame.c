@@ -683,7 +683,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			cil = &coderInfo[channel];
 			cir = &coderInfo[channelInfo[channel].paired_ch];
 
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+                        cil->sfbn = cir->sfbn = (cil->sfbn > cir->sfbn) ? cil->sfbn : cir->sfbn;
 		}
     }
     /* Write the AAC bitstream */

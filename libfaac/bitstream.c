@@ -299,12 +299,10 @@ static int CountBitstream(faacEncStruct* hEncoder,
 
     if (hEncoder->usedBytes > bitStream->size)
     {
-        fprintf(stderr, "frame buffer overrun\n");
         return -1;
     }
     if (hEncoder->usedBytes >= ADTS_FRAMESIZE)
     {
-        fprintf(stderr, "frame size limit exceeded\n");
         return -1;
     }
 

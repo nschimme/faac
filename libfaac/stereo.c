@@ -299,22 +299,16 @@ void AACstereo(CoderInfo *coder,
 
     for (chn = 0; chn < maxchan; chn++)
     {
-        int group;
-        int bookcnt = 0;
+        int i;
         CoderInfo *cp = coder + chn;
 
         if (!channel[chn].present)
             continue;
 
-        for (group = 0; group < cp->groups.n; group++)
+        for (i = 0; i < MAX_SCFAC_BANDS; i++)
         {
-            int band;
-            for (band = 0; band < cp->sfbn; band++)
-            {
-                cp->book[bookcnt] = HCB_NONE;
-                cp->sf[bookcnt] = 0;
-                bookcnt++;
-            }
+            cp->book[i] = HCB_NONE;
+            cp->sf[i] = 0;
         }
     }
     for (chn = 0; chn < maxchan; chn++)
@@ -356,9 +350,9 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        for (group = 0; group < coder[chn].groups.n; group++)
         {
-            int end = start + coder->groups.len[group];
+            int end = start + coder[chn].groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,

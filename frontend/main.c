@@ -33,10 +33,10 @@
 #include <signal.h>
 #endif
 
-int verbose = 1;
 #include <stdio.h>
 
-#define fprintf(f, ...) do { if (verbose) fprintf(f, __VA_ARGS__); } while(0)
+int verbose = 1;
+#define fprintf(f, ...) do { if (verbose) (fprintf)(f, __VA_ARGS__); } while(0)
 
 /* the BSD derivatives don't define __unix__ */
 #if defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
