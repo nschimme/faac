@@ -45,9 +45,6 @@ Copyright(c)1996.
 #define  TWOPI       2*M_PI
 
 
-static faac_real	Izero				( faac_real x);
-
-
 void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int i, channel;

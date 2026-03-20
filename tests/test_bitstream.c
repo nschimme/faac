@@ -21,8 +21,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "libfaac/coder.h"
-#include "libfaac/bitstream.h"
+#include "coder.h"
+#include "bitstream.h"
 
 void test_PutBit() {
     unsigned char buffer[100];

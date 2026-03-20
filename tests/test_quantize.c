@@ -19,8 +19,8 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "libfaac/coder.h"
-#include "libfaac/quantize.h"
+#include "coder.h"
+#include "quantize.h"
 
 void test_CalcBW() {
     unsigned int bw = 16000;

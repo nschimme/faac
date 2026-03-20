@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "libfaac/channels.h"
+#include "channels.h"
 
 void test_GetChannelInfo_Mono() {
     ChannelInfo channels[1];

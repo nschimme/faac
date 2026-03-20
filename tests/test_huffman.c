@@ -20,8 +20,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "libfaac/coder.h"
-#include "libfaac/huff2.h"
+#include "coder.h"
+#include "huff2.h"
 
 void test_huffbook_selection() {
     CoderInfo coder;

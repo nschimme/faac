@@ -1,7 +1,7 @@
 /**********************************************************************
 
-This software module was originally developed by Texas Instruments
-and edited by         in the course of
+This software module was originally developed by
+and edited by Texas Instruments in the course of
 development of the MPEG-2 NBC/MPEG-4 Audio standard
 ISO/IEC 13818-7, 14496-1,2 and 3. This software module is an
 implementation of a part of one or more MPEG-2 NBC/MPEG-4 Audio tools

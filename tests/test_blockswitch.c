@@ -21,8 +21,8 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include "libfaac/coder.h"
-#include "libfaac/blockswitch.h"
+#include "coder.h"
+#include "blockswitch.h"
 
 void test_PsyCheckShort() {
     PsyInfo psyInfo;

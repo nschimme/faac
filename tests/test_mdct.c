@@ -21,7 +21,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-#include "libfaac/filtbank.h"
+#include "filtbank.h"
 
 void test_MDCT() {
     FFT_Tables fft_tables;

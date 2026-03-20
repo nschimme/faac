@@ -34,10 +34,6 @@
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
-#if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-#endif
-
 void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;

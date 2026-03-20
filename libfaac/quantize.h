@@ -53,6 +53,9 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
 
+#if defined(HAVE_SSE2)
+void quantize_sse2(const faac_real * xr, int * xi, int n, faac_real sfacfix);
+#endif
 void quantize_scalar(const faac_real * xr, int * xi, int n, faac_real sfacfix);
 void bmask(CoderInfo * coderInfo, faac_real * xr0, faac_real * bandqual,
                   faac_real * bandenrg, int gnum, faac_real quality);
