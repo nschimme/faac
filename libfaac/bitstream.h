@@ -119,7 +119,7 @@ int PutBit(BitStream *bitStream,
            uint32_t data,
            int numBit);
 
-int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag);
 

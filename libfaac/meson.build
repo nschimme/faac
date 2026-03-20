@@ -4,6 +4,12 @@ if host_machine.system() == 'windows' and meson.get_compiler('c').get_id() == 'g
     link_args += '-Wl,--add-stdcall-alias'
 endif
 
+if cc.get_id() == 'msvc'
+  # MSVC doesn't have a direct 'hidden' attribute equivalent in C
+  prod_visibility = '-DFAAC_INTERNAL=' 
+else
+  prod_visibility = '-DFAAC_INTERNAL=__attribute__((visibility("hidden")))'
+endif
 
 quantize_simd_libs = []
 
@@ -47,21 +53,9 @@ common_src = [
     'util.h',
 ]
 
-faac_static = static_library('faac_static',
-    common_src,
+libfaac = shared_library('faac', common_src,
     include_directories: ['..', '../include'],
-    c_args: c_args,
-    dependencies: [ libm ],
-    link_with: quantize_simd_libs,
-    pic: true
-)
-
-
-
-libfaac = shared_library('faac',
-    objects: faac_static.extract_all_objects(recursive: true),
-    include_directories: ['..', '../include'],
-    c_args: c_args,
+    c_args: c_args + [prod_visibility],
     link_args: link_args,
     dependencies: [ libm ],
     link_with: quantize_simd_libs,
@@ -72,8 +66,18 @@ libfaac = shared_library('faac',
 )
 
 if get_option('tests')
+    faac_static = static_library('faac_static',
+        common_src,
+        include_directories: ['..', '../include'],
+        c_args: c_args + ['-DFAAC_INTERNAL=extern'],
+        dependencies: [ libm ],
+        link_with: quantize_simd_libs,
+        pic: true
+    )
+
     faac_internal = declare_dependency(
         link_with: faac_static,
+        compile_args: ['-DFAAC_INTERNAL=extern'],
         include_directories: include_directories('.')
     )
 endif

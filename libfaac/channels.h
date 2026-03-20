@@ -49,7 +49,7 @@ typedef struct {
     MSInfo msInfo;
 } ChannelInfo;
 
-void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe);
+FAAC_INTERNAL void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe);
 
 #ifdef __cplusplus
 }

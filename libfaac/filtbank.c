@@ -226,7 +226,7 @@ static faac_real Izero(faac_real x)
     return(sum);
 }
 
-void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
+FAAC_INTERNAL void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
 {
     int i;
     faac_real IBeta;

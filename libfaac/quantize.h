@@ -54,12 +54,12 @@ void BlocStat(void);
 void QuantizeInit(void);
 
 #if defined(HAVE_SSE2)
-void quantize_sse2(const faac_real * xr, int * xi, int n, faac_real sfacfix);
+FAAC_INTERNAL void quantize_sse2(const faac_real * xr, int * xi, int n, faac_real sfacfix);
 #endif
-void quantize_scalar(const faac_real * xr, int * xi, int n, faac_real sfacfix);
-void bmask(CoderInfo * coderInfo, faac_real * xr0, faac_real * bandqual,
+FAAC_INTERNAL void quantize_scalar(const faac_real * xr, int * xi, int n, faac_real sfacfix);
+FAAC_INTERNAL void bmask(CoderInfo * coderInfo, faac_real * xr0, faac_real * bandqual,
                   faac_real * bandenrg, int gnum, faac_real quality);
-void qlevel(CoderInfo * coderInfo,
+FAAC_INTERNAL void qlevel(CoderInfo * coderInfo,
                    const faac_real * xr0,
                    const faac_real * bandqual,
                    const faac_real * bandenrg,

@@ -53,7 +53,7 @@ Copyright(c)1996.
 /*      2*N                2                2*(N-1)         0           */
 /*      2*N+1              1                2*N             0           */
 
-void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
+FAAC_INTERNAL void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
 {
     int sceTag = 0;
     int lfeTag = 0;
