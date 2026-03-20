@@ -220,14 +220,16 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         unsigned long bpc_v = hEncoder->config.bitRate;
         faac_real nf_v = 0.01; faac_real powm_v = 0.4; faac_real pnsthr_v = 0.1; faac_real target_v = 10.0; faac_real fp_v = 1.0;
         if (bpc_v <= BPC_VOIP) {
-            nf_v = 0.04; powm_v = 0.35; target_v = 12.0; fp_v = 0.8;
+            /* Forced baseline configuration for high-fidelity speech (VoIP) */
+            nf_v = 0.40; powm_v = 0.4; target_v = 10.0; fp_v = 1.0;
             hEncoder->config.bandWidth = (faac_real)hEncoder->config.bitRate * hEncoder->sampleRate * 0.42 / 50000.0;
         } else {
-            nf_v = 0.005; target_v = 15.0; fp_v = 0.65;
+            /* Optimized configuration for other scenarios */
+            nf_v = 0.005; target_v = 16.5; fp_v = 0.65;
             hEncoder->config.bandWidth = (hEncoder->sampleRate / 2 > 18000) ? 18000 : hEncoder->sampleRate / 2;
-            if (bpc_v <= BPC_VSS) powm_v = 0.42;
+            if (bpc_v <= BPC_VSS) powm_v = 0.46;
             else if (bpc_v <= BPC_MUSIC_STD) powm_v = 0.22;
-            else powm_v = 0.20;
+            else powm_v = 0.18;
         }
         hEncoder->aacquantCfg.noise_floor = nf_v; hEncoder->aacquantCfg.powm = powm_v; hEncoder->aacquantCfg.pnsthr_factor = pnsthr_v; hEncoder->aacquantCfg.target_multiplier = target_v; hEncoder->aacquantCfg.freq_penalty = fp_v;
     }

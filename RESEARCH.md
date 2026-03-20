@@ -197,6 +197,60 @@ Beat average MOS delta of +0.144 globally, focusing on `vss` and `music_std`.
   - vss: +0.0154
 - **Learnings**: Polarization has a sweet spot. Going too far (0.45/0.20) regresses both scenarios. Reverting to Iteration 58 settings as the current best.
 
+
+## Iteration 62: Infrastructure Repair & Polarization (vss=0.38, music=0.27/0.25)
+- **Strategy**: Refactored `quantize.c` to correctly handle grouping in both short and long blocks. Protected VoIP by matching baseline bandwidth factors.
+- **Results**:
+  - Subset Avg MOS Delta: +0.0564
+  - music_std: +0.0020
+  - vss: +0.0971
+  - VOIP Avg MOS Delta: -0.0679
+- **Learnings**: Corrected block handling unlocked massive gains for vss (+0.097). VoIP regressions are much smaller but still present.
+
+## Iteration 63-67: Exploring extreme polarization and secondary levers
+- **Strategy**: Push `powm` higher for VSS and lower for Music. Tweak `target_multiplier` and `freq_penalty`.
+- **Learnings**:
+  - Higher VSS `powm` (0.42) continues to help speech but starts to hit diminishing returns.
+  - Lower Music `powm` (0.22) improves transparency in busy segments but can introduce artifacts in simple tones.
+  - `freq_penalty` of 0.65 is a good balance for protecting sibilance while allowing enough high-end detail.
+
+## Iteration 68: Refined Global Leader (vss=0.42, music_std=0.22, music_high=0.20)
+- **Strategy**: Integrate block handling fixes and forced baseline bandwidth for VoIP.
+- **Results**:
+  - Subset Avg MOS Delta: +0.0573
+  - music_std: +0.0079
+  - vss: +0.0944
+  - VOIP: -0.0679 (significant improvement from previous regressions, nearing parity)
+- **Learnings**: This is the best overall balance found. Speech gains (+0.09) are robust.
+
+## Iteration 69: powm fine-tuning (vss=0.44, music_std=0.20, music_high=0.18)
+- **Results**: Subset Avg MOS Delta: +0.0535, vss: +0.0975, music_std: -0.0052
+- **Learnings**: Higher vss powm improved speech but regressed music more than expected.
+
+## Iteration 70: music_std powm=0.23
+- **Results**: Subset Avg MOS Delta: +0.0551, vss: +0.0975, music_std: -0.0015
+- **Learnings**: Raising music powm slightly helped stabilize it while keeping speech gains.
+
+## Iteration 71: vss powm=0.46, music_std=0.22, music_high=0.18
+- **Results**: Subset Avg MOS Delta: +0.0566, vss: +0.1000, music_std: -0.0012
+- **Learnings**: Reached +0.10 gain in vss. Music is very close to parity.
+
+## Iteration 72: vss powm=0.48, music_std=0.20, music_high=0.16
+- **Results**: Subset Avg MOS Delta: +0.0483, vss: +0.0885, music_std: -0.0052
+- **Learnings**: 0.48 for vss is too high, it started regressing. Sweet spot is around 0.46.
+
+## Iteration 73: target_multiplier=16.0 with Iter 71 powm
+- **Results**: Subset Avg MOS Delta: +0.0580, vss: +0.1036, music_std: -0.0027
+- **Learnings**: target_multiplier 16.0 provided the highest VSS gain yet.
+
+## Iteration 74: freq_penalty=0.60 with Iter 73 settings
+- **Results**: Subset Avg MOS Delta: +0.0562, vss: +0.1002, music_std: -0.0024
+- **Learnings**: freq_penalty 0.60 is slightly worse than 0.65.
+
+## Iteration 75: target_multiplier=17.0
+- **Results**: Subset Avg MOS Delta: +0.0550, vss: +0.1003, music_std: -0.0054
+- **Learnings**: 17.0 is too aggressive, regressed music.
+
 ## Iteration 76: Global Leader Polish (vss=0.46, target=16.0, music=0.22/0.20)
 - **Results**: Subset Avg MOS Delta: +0.0587, vss: +0.1036, music_std: -0.0012
 - **Learnings**: Combining the best individual findings led to the highest global MOS delta on the subset.

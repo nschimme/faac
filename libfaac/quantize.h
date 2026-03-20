@@ -19,13 +19,13 @@
 ****************************************************************************/
 
 #ifndef QUANTIZE_H
-#define QUANTIZE_H
 
 /* Bitrate thresholds (Bits Per Channel) */
 #define BPC_VOIP       16000
 #define BPC_VSS        40000
 #define BPC_MUSIC_STD  64000
 #define BPC_MUSIC_HIGH 128000
+#define QUANTIZE_H
 
 #include "coder.h"
 #include "faac_real.h"
