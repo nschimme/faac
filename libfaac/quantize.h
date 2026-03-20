@@ -21,6 +21,12 @@
 #ifndef QUANTIZE_H
 #define QUANTIZE_H
 
+/* Bitrate thresholds (Bits Per Channel) */
+#define BPC_VOIP       16000
+#define BPC_VSS        40000
+#define BPC_MUSIC_STD  64000
+#define BPC_MUSIC_HIGH 128000
+
 #include "coder.h"
 #include "faac_real.h"
 
@@ -30,12 +36,7 @@ typedef struct
     int max_cbl;
     int max_cbs;
     int max_l;
-    int pnslevel;
-    faac_real noise_floor;
-    faac_real powm;
-    faac_real pnsthr_factor;
-    faac_real target_multiplier;
-    faac_real freq_penalty;
+    int pnslevel; faac_real noise_floor; faac_real powm; faac_real pnsthr_factor; faac_real target_multiplier; faac_real freq_penalty;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
