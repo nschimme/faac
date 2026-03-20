@@ -8,3 +8,8 @@ option('floating-point',
     type: 'combo',
     choices: ['single', 'double'],
     value: 'double')
+
+option('tests',
+    description: 'Build unit tests',
+    type: 'boolean',
+    value: true)

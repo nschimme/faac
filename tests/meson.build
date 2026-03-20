@@ -6,8 +6,8 @@ test_env_args = {
     'dependencies': [ libm ]
 }
 
-# Internal component tests use the "Include-Source" pattern to access static functions.
-# They link against the internal static library to resolve other internal symbols.
+# Internal component tests use header inclusion to access internal functions.
+# They link against the internal static library to resolve these symbols.
 internal_tests = [
     'util',
     'bitstream',
