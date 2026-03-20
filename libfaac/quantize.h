@@ -67,4 +67,4 @@ FAAC_INTERNAL void qlevel(CoderInfo * coderInfo,
                    int pnslevel
                   );
 
-#endif
+#endif /* QUANTIZE_H */
