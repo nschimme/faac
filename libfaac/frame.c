@@ -202,27 +202,37 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
         faac_real nf = 0.01;
         faac_real fac = 0.95;
+        faac_real powm = 0.30;
+        faac_real pnsthr_factor = 0.1;
+        faac_real target_multiplier = 15.0;
+        faac_real freq_penalty = 0.7;
 
         if (bpc <= 8000) {
             nf = 0.07;
             fac = 0.75;
-        } else if (bpc <= 16000) {
+            powm = 0.30;
+        } else if (bpc <= 16000) { // voip
             nf = 0.04;
             fac = 0.85;
-        } else if (bpc <= 24000) {
-            nf = 0.02;
-            fac = 0.90;
-        } else if (bpc <= 32000) {
-            nf = 0.01;
-            fac = 0.95;
-        } else if (bpc <= 48000) {
+            powm = 0.30;
+        } else if (bpc <= 32000) { // music_low
             nf = 0.005;
             fac = 1.0;
-        } else if (bpc >= 64000) {
+            powm = 0.32;
+        } else if (bpc <= 40000) { // vss
             nf = 0.005;
             fac = 1.0;
+            powm = 0.33;
+        } else { // music_std and above
+            nf = 0.005;
+            fac = 1.0;
+            powm = 0.35;
         }
         hEncoder->aacquantCfg.noise_floor = nf;
+        hEncoder->aacquantCfg.powm = powm;
+        hEncoder->aacquantCfg.pnsthr_factor = pnsthr_factor;
+        hEncoder->aacquantCfg.target_multiplier = target_multiplier;
+        hEncoder->aacquantCfg.freq_penalty = freq_penalty;
 
         /* Sample-rate-aware bandwidth */
         faac_real nyquist = hEncoder->sampleRate * 0.5;

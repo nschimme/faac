@@ -70,7 +70,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, faac_real noise_floor)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, AACQuantCfg *aacquantCfg)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -78,7 +78,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   faac_real avgenrg;
   /* WHY: A power factor of 0.35 (down from 0.4) improves quiet passage transparency
      by allowing more detail to be preserved in low-energy signals. */
-  const faac_real powm = 0.30;
+  const faac_real powm = aacquantCfg->powm;
+  faac_real noise_floor = aacquantCfg->noise_floor;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
@@ -158,12 +159,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* WHY: The target multiplier is increased to 15.0 to align with more sensitive
        modern psychoacoustic standards, ensuring better high-frequency retention. */
-    target *= 15.0 / (1.0 + ((faac_real)(start+end)/last));
+    target *= aacquantCfg->target_multiplier / (1.0 + ((faac_real)(start+end)/last));
 
     /* WHY: Apply a frequency penalty to non-zero bands to prevent masking thresholds
        from rising too aggressively at high frequencies, which protects sibilance. */
     if (sfb > 0)
-        target *= 0.7;
+        target *= aacquantCfg->freq_penalty;
 
     bandqual[sfb] = target * quality;
   }
@@ -176,8 +177,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel,
-                   faac_real noise_floor
+                   AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -189,7 +189,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
     const faac_real inv_gsize = 1.0 / (faac_real)gsize;
-    faac_real pnsthr = 0.1 * pnslevel;
+    faac_real pnsthr = aacquantCfg->pnsthr_factor * aacquantCfg->pnslevel;
+    faac_real noise_floor = aacquantCfg->noise_floor;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -277,8 +278,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->noise_floor);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->noise_floor);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
