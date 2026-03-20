@@ -1,4 +1,4 @@
-project('faac', 'c', version: '1.31.1', default_options: ['default_library=both'])
+project('faac', 'c', version: '1.31.1', default_options: ['default_library=both', 'b_lto=true', 'b_pie=true'])
 
 add_global_arguments('-DHAVE_CONFIG_H', language: 'c')
 
@@ -41,6 +41,10 @@ configure_file(
 subdir('docs')
 subdir('include')
 subdir('libfaac')
+
+if get_option('tests')
+    subdir('tests')
+endif
 
 if get_option('frontend')
     subdir('frontend')
