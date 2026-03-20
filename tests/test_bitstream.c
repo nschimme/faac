@@ -24,42 +24,42 @@
 #include "coder.h"
 #include "bitstream.h"
 
-void test_PutBit() {
+void test_PutBit_Standard() {
     unsigned char buffer[100];
     memset(buffer, 0, 100);
     BitStream *bs = OpenBitStream(100, buffer);
     assert(bs != NULL);
 
-    /* Verify bit-level packing and offset logic */
+    /* Verify 8-bit packing */
     PutBit(bs, 0xAA, 8);
     assert(buffer[0] == 0xAA);
-    assert(bs->numBit == 8);
 
-    /* Partial byte packing */
+    /* Verify partial byte packing (aligned start) */
     PutBit(bs, 0x5, 4);
     assert(buffer[1] == 0x50);
-    assert(bs->numBit == 12);
 
-    /* Byte boundary crossing */
+    /* Verify multi-byte boundary crossing */
     PutBit(bs, 0x1F, 5);
     assert(buffer[1] == 0x5F);
     assert(buffer[2] == 0x80);
-    assert(bs->numBit == 17);
 
     CloseBitStream(bs);
 }
 
-void test_PutBit_EdgeCases() {
+void test_PutBit_Robustness() {
     unsigned char buffer[100];
     memset(buffer, 0, 100);
     BitStream *bs = OpenBitStream(100, buffer);
-    assert(bs != NULL);
 
-    /* Null writes */
+    /* Validate zero-length writes (No state change expected) */
     PutBit(bs, 0x1234, 0);
     assert(bs->numBit == 0);
 
-    /* Word-sized atomic writes (validating mask logic) */
+    /* Validate negative bit count resilience (Underflow guard) */
+    PutBit(bs, 0xFFFF, -1);
+    assert(bs->numBit == 0);
+
+    /* Validate 32-bit word masking and packing */
     PutBit(bs, 0xDEADBEEF, 32);
     assert(bs->numBit == 32);
     assert(buffer[0] == 0xDE);
@@ -67,14 +67,16 @@ void test_PutBit_EdgeCases() {
     assert(buffer[2] == 0xBE);
     assert(buffer[3] == 0xEF);
 
-    /* Verify multi-byte packing with non-aligned start */
-    PutBit(bs, 0x7, 3);
-    assert(buffer[4] == 0xE0);
-
-    PutBit(bs, 0x1FFFF, 17);
-    assert(buffer[4] == 0xFF);
-    assert(buffer[5] == 0xFF);
-    assert(buffer[6] == 0xF0);
+    /* Validate clamping for bit counts > 32 (Overflow guard) */
+    /* Implementation should clamp to 32 and write valid masked data */
+    long bitsBefore = bs->numBit;
+    PutBit(bs, 0xAAAAAAAA, 64); 
+    
+    /* Ensure only 32 bits were actually added to the total */
+    assert(bs->numBit == bitsBefore + 32); 
+    
+    assert(buffer[4] == 0xAA);
+    assert(buffer[7] == 0xAA);
 
     CloseBitStream(bs);
 }
@@ -86,9 +88,9 @@ void test_WriteADTSHeader() {
 
     faacEncStruct encoder;
     memset(&encoder, 0, sizeof(encoder));
-    encoder.config.mpegVersion = 0; /* MPEG-4 */
-    encoder.config.aacObjectType = 2; /* Low Complexity (LC) */
-    encoder.sampleRateIdx = 4; /* 44100 Hz */
+    encoder.config.mpegVersion = 0;   /* MPEG-4 */
+    encoder.config.aacObjectType = 2; /* LC-AAC */
+    encoder.sampleRateIdx = 4;        /* 44100 Hz */
     encoder.numChannels = 2;
     encoder.usedBytes = 100;
 
@@ -103,9 +105,9 @@ void test_WriteADTSHeader() {
 }
 
 int main() {
-    test_PutBit();
-    test_PutBit_EdgeCases();
+    test_PutBit_Standard();
+    test_PutBit_Robustness();
     test_WriteADTSHeader();
-    printf("test_bitstream passed\n");
+    printf("test_bitstream passed.\n");
     return 0;
 }

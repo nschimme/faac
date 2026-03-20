@@ -820,8 +820,12 @@ int PutBit(BitStream *bitStream,
 {
     /* write bits in packets according to buffer byte boundaries */
 
-    if (numBit == 0)
+    if (numBit <= 0)
         return 0;
+
+    /* Range guard: Prevent out-of-bounds access on bitmask table */
+    if (numBit > 32)
+        numBit = 32;
 
     /* Hoist bitstream state for faster access */
     unsigned int currentBit = (unsigned int)bitStream->currentBit;
@@ -832,7 +836,7 @@ int PutBit(BitStream *bitStream,
     bitStream->currentBit += numBit;
     bitStream->numBit = bitStream->currentBit;
 
-    /* Bit-mask input data; table avoids shift-by-word-size UB */
+    /* Mask input data to ensure no extra bits are set */
     data &= bitmask[numBit];
 
     /* Fast path: bit write fits within the current byte */
