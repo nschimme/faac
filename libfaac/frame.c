@@ -195,6 +195,51 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    /* Discrete steps for noise floor and bandwidth provide stable tuning
+       points that prevent oscillation in quality */
+    {
+        unsigned long bpc = hEncoder->config.bitRate;
+
+        faac_real nf = 0.01;
+        faac_real fac = 0.95;
+        faac_real powm_v = 0.30;
+        faac_real pnsthr_v = 0.1;
+        faac_real target_v = 15.0;
+        faac_real fp_v = 0.7;
+        if (bpc <= 8000) {
+            nf = 0.07;
+            fac = 0.75;
+        } else if (bpc <= 16000) { // voip
+            nf = 0.01;
+            fac = 0.90;
+            powm_v = 0.38;
+            fp_v = 0.75;
+        } else if (bpc <= 32000) { // music_low
+            nf = 0.01;
+            fac = 0.95;
+        } else if (bpc <= 48000) { // vss
+            nf = 0.005;
+            fac = 0.95;
+            fp_v = 0.75;
+        } else if (bpc <= 64000) { // music_std
+            nf = 0.003;
+            fac = 0.97;
+        } else { // music_high
+            nf = 0.001;
+            fac = 0.99;
+        }
+        hEncoder->aacquantCfg.noise_floor = nf;
+        hEncoder->aacquantCfg.powm = powm_v;
+        hEncoder->aacquantCfg.pnsthr_factor = pnsthr_v;
+        hEncoder->aacquantCfg.target_multiplier = target_v;
+        hEncoder->aacquantCfg.freq_penalty = fp_v;
+
+        /* Sample-rate-aware bandwidth */
+        faac_real nyquist = hEncoder->sampleRate * 0.5;
+        faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
+        hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
+    }
+
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
