@@ -119,11 +119,9 @@ int PutBit(BitStream *bitStream,
            uint32_t data,
            int numBit);
 
-#ifdef FAAC_TEST
-int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_PRIVATE int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag);
-#endif
 
 #ifdef __cplusplus
 }

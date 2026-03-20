@@ -34,7 +34,7 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-FAAC_PRIVATE_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_PRIVATE int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag);
 
@@ -312,7 +312,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-FAAC_PRIVATE_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_PRIVATE int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag)
 {

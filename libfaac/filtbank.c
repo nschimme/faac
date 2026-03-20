@@ -42,7 +42,7 @@ Copyright(c)1996.
 #include "fft.h"
 #include "util.h"
 
-FAAC_PRIVATE_INTERNAL void CalculateKBDWindow(faac_real* win, faac_real alpha, int length);
+FAAC_PRIVATE void CalculateKBDWindow(faac_real* win, faac_real alpha, int length);
 
 #define  TWOPI       2*M_PI
 
@@ -231,7 +231,7 @@ static faac_real Izero(faac_real x)
     return(sum);
 }
 
-FAAC_PRIVATE_INTERNAL void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
+FAAC_PRIVATE void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
 {
     int i;
     faac_real IBeta;

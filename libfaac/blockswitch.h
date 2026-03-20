@@ -101,9 +101,7 @@ void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 
 extern psymodel_t psymodel2;
 
-#ifdef FAAC_TEST
-void PsyCheckShort(PsyInfo * psyInfo, faac_real quality);
-#endif
+FAAC_PRIVATE void PsyCheckShort(PsyInfo * psyInfo, faac_real quality);
 
 #ifdef __cplusplus
 }

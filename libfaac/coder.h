@@ -23,34 +23,11 @@
 #define CODER_H
 
 #include "faac_real.h"
+#include "linkage.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
-
-#if defined(__GNUC__) && (__GNUC__ >= 4)
-#define FAAC_INTERNAL __attribute__((visibility("hidden")))
-#else
-#define FAAC_INTERNAL
-#endif
-
-/* For symbols that need to be accessible only by unit tests within the same project.
-   Defaulting to static ensures optimal inlining in production builds. */
-#ifdef FAAC_TEST
-#define FAAC_PRIVATE
-#else
-#define FAAC_PRIVATE static
-#endif
-
-/* Internal declaration macro that allows opting out of 'static' linkage when
-   public shared library visibility is required for internal components. */
-#ifdef FAAC_TEST
-#define FAAC_INTERNAL_DECLARE
-#define FAAC_PRIVATE_INTERNAL
-#else
-#define FAAC_INTERNAL_DECLARE FAAC_PRIVATE
-#define FAAC_PRIVATE_INTERNAL FAAC_PRIVATE
-#endif
 
 #define MAX_CHANNELS 64
 

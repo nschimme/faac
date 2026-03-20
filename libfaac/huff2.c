@@ -56,7 +56,7 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-FAAC_PRIVATE_INTERNAL int huffcode(int *qs /* quantized spectrum */,
+FAAC_PRIVATE int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)

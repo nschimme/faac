@@ -34,9 +34,7 @@ enum {
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
-#ifdef FAAC_TEST
-int huffcode(int *qs, int len, int bnum, CoderInfo *coder);
-#endif
+FAAC_PRIVATE int huffcode(int *qs, int len, int bnum, CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

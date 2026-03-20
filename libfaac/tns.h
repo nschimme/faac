@@ -44,14 +44,12 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE b
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp);
 
-#ifdef FAAC_TEST
-void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray);
-faac_real LevinsonDurbin(int maxOrder, int dataSize, faac_real* data, faac_real* kArray);
-void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* rArray, int* indexArray);
-int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
-void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
-#endif
+FAAC_PRIVATE void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray);
+FAAC_PRIVATE faac_real LevinsonDurbin(int maxOrder, int dataSize, faac_real* data, faac_real* kArray);
+FAAC_PRIVATE void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
+FAAC_PRIVATE void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* rArray, int* indexArray);
+FAAC_PRIVATE int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
+FAAC_PRIVATE void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
 
 #ifdef __cplusplus
 }
