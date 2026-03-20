@@ -24,6 +24,7 @@ foreach t : internal_tests
     exe = executable('test_' + t, 'test_' + t + '.c',
         include_directories: test_env_args['include_directories'],
         dependencies: test_env_args['dependencies'],
+        c_args: ['-DFAAC_TEST'],
         link_with: faac_static
     )
     test(t, exe)

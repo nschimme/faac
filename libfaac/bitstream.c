@@ -34,14 +34,15 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
+FAAC_PRIVATE_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
+                    BitStream *bitStream,
+                    int writeFlag);
+
 static int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
                           int numChannels);
-int WriteADTSHeader(faacEncStruct* hEncoder,
-                    BitStream *bitStream,
-                    int writeFlag);
 static int WriteCPE(CoderInfo *coderInfoL,
                     CoderInfo *coderInfoR,
                     ChannelInfo *channelInfo,
@@ -311,7 +312,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_PRIVATE_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag)
 {

@@ -1,7 +1,7 @@
 /**********************************************************************
 
 This software module was originally developed by Texas Instruments
-and edited by         in the course of
+and edited by Nils Schimmelmann in the course of
 development of the MPEG-2 NBC/MPEG-4 Audio standard
 ISO/IEC 13818-7, 14496-1,2 and 3. This software module is an
 implementation of a part of one or more MPEG-2 NBC/MPEG-4 Audio tools
@@ -44,12 +44,14 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE b
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp);
 
+#ifdef FAAC_TEST
 void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray);
 faac_real LevinsonDurbin(int maxOrder, int dataSize, faac_real* data, faac_real* kArray);
 void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* rArray, int* indexArray);
 int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
 void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
+#endif
 
 #ifdef __cplusplus
 }

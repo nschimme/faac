@@ -38,7 +38,7 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
-void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+FAAC_PRIVATE_INTERNAL void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
     int cnt;
@@ -70,7 +70,7 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+FAAC_PRIVATE_INTERNAL void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
@@ -162,7 +162,7 @@ void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_re
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
-void qlevel(CoderInfo * __restrict coderInfo,
+FAAC_PRIVATE_INTERNAL void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,

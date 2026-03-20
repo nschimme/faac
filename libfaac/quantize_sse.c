@@ -23,9 +23,10 @@
 
 #include <immintrin.h>
 #include "faac_real.h"
+#include "coder.h"
 #include "quantize.h"
 
-void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+FAAC_INTERNAL void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);

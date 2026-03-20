@@ -48,7 +48,7 @@ common_src = [
 
 faac_static = static_library('faac_internal', common_src,
     include_directories: ['..', '../include'],
-    c_args: c_args,
+    c_args: c_args + ['-DFAAC_TEST'],
     dependencies: [ libm ],
     link_with: quantize_simd_libs,
     pic: true
