@@ -200,7 +200,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     {
         unsigned long bpc = hEncoder->config.bitRate;
 
-        faac_real nf = hEncoder->aacquantCfg.noise_floor;
+        faac_real nf = 0.01;
         faac_real fac = 0.95;
         faac_real powm_v = 0.30;
         faac_real pnsthr_v = 0.1;
@@ -210,25 +210,22 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             nf = 0.07;
             fac = 0.75;
         } else if (bpc <= 16000) { // voip
-            nf = 0.04;
-            fac = 0.85;
-            powm_v = 0.31;
-        } else if (bpc <= 24000) {
-            nf = 0.02;
+            nf = 0.01;
             fac = 0.90;
+            powm_v = 0.35;
+            fp_v = 0.75;
         } else if (bpc <= 32000) { // music_low
-            nf = 0.05;
-            fac = 0.75;
-        } else if (bpc <= 48000) { // vss
-            nf = 0.005;
-            fac = 1.0;
-            fp_v = 0.65;
-            powm_v = 0.42;
-        } else if (bpc >= 64000) { // music_std
-            nf = 0.005;
+            nf = 0.01;
             fac = 0.95;
-        } else if (bpc >= 128000) { // music_high
-            nf = 0.005;
+        } else if (bpc <= 48000) { // vss
+            nf = 0.01;
+            fac = 0.95;
+            fp_v = 0.75;
+        } else if (bpc <= 64000) { // music_std
+            nf = 0.003;
+            fac = 0.98;
+        } else { // music_high
+            nf = 0.001;
             fac = 1.0;
         }
         hEncoder->aacquantCfg.noise_floor = nf;
