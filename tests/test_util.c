@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <math.h>
-#include "../libfaac/util.c"
+#include "libfaac/util.h"
 
 void test_GetSRIndex() {
     /* Nominal sample rate mappings */

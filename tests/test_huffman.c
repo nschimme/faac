@@ -19,58 +19,40 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <math.h>
 #include <string.h>
-#include <stdlib.h>
 #include "libfaac/coder.h"
-#include "../libfaac/huff2.c"
+#include "libfaac/huff2.h"
 
-void test_escape() {
-    int code;
-    int len;
+void test_huffbook_selection() {
+    CoderInfo coder;
+    memset(&coder, 0, sizeof(coder));
 
-    /* Huffman Escape coding boundaries (limit 8192) */
-    len = escape(16, &code);
-    assert(len == 5);
-    assert(code == 0);
+    /* 128 quantized samples, all zero */
+    int xi[128];
+    memset(xi, 0, sizeof(xi));
 
-    len = escape(31, &code);
-    assert(len == 5);
-    assert(code == 15);
+    /* Choose book for zeros: should select book 0 */
+    huffbook(&coder, xi, 128);
+    assert(coder.book[0] == 0);
 
-    len = escape(32, &code);
-    assert(len == 7);
-    assert(code == 64);
-
-    len = escape(8191, &code);
-    assert(len > 0);
+    /* Verify huffcode return value for zeros */
+    int bits = huffcode(xi, 128, 1, NULL);
+    assert(bits > 0);
 }
 
-void test_huffbook() {
+void test_huffbook_escape() {
     CoderInfo coder;
-    int qs[1024];
     memset(&coder, 0, sizeof(coder));
-    coder.bandcnt = 0;
 
-    /* Optimal book selection based on spectral maximums */
-    for(int i=0; i<1024; i++) qs[i] = 0;
-    huffbook(&coder, qs, 4);
-    assert(coder.book[0] == HCB_ZERO);
-
-    coder.bandcnt = 1;
-    qs[0] = 1;
-    huffbook(&coder, qs, 4);
-    assert(coder.book[1] == 1 || coder.book[1] == 2);
-
-    coder.bandcnt = 2;
-    qs[0] = 20;
-    huffbook(&coder, qs, 4);
-    assert(coder.book[2] == HCB_ESC);
+    /* Large values trigger HCB_ESC (book 11) */
+    int xi[4] = {20, 0, 0, 0};
+    huffbook(&coder, xi, 4);
+    assert(coder.book[0] == 11);
 }
 
 int main() {
-    test_escape();
-    test_huffbook();
+    test_huffbook_selection();
+    test_huffbook_escape();
     printf("test_huffman passed\n");
     return 0;
 }

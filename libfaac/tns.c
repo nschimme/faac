@@ -57,24 +57,6 @@ static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortMainLow = 7;
 
 
-/*************************/
-/* Function prototypes   */
-/*************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray);     /* Autocorrelation array */
-
-static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
-                      int dataSize,        /* Size of the data array */
-                      faac_real* data,        /* Data array */
-                      faac_real* kArray);     /* Reflection coeff array */
-
-static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-
-static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
 
 /*****************************************************/
@@ -282,7 +264,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
     int i,j,k=0;
     int order=filter->order;
@@ -342,7 +324,7 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
 /*   less than the specified threshold.  Return the  */
 /*   truncated filter order.                         */
 /*****************************************************/
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
+int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 {
     int i;
 
@@ -359,7 +341,7 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 /*   Quantize the given array of reflection coeffs   */
 /*   to the specified resolution in bits.            */
 /*****************************************************/
-static void QuantizeReflectionCoeffs(int fOrder,
+void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
                               faac_real* kArray,
                               int* indexArray)
@@ -382,7 +364,7 @@ static void QuantizeReflectionCoeffs(int fOrder,
 /*   Compute the autocorrelation function            */
 /*   estimate for the given data.                    */
 /*****************************************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
+void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
                      faac_real* data,        /* Data array */
                      faac_real* rArray)      /* Autocorrelation array */
@@ -406,7 +388,7 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 /*   given data using LevinsonDurbin recursion.      */
 /*   Return the prediction gain.                     */
 /*****************************************************/
-static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
+faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                       int dataSize,        /* Size of the data array */
                       faac_real* data,        /* Data array */
                       faac_real* kArray)      /* Reflection coeff array */
@@ -476,7 +458,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 /*   Convert reflection coefficients into            */
 /*   predictor coefficients.                         */
 /*****************************************************/
-static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
+void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 {
     faac_real aTemp[TNS_MAX_ORDER+2];
     int i,order;

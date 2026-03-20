@@ -53,4 +53,15 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
 
+void quantize_scalar(const faac_real * xr, int * xi, int n, faac_real sfacfix);
+void bmask(CoderInfo * coderInfo, faac_real * xr0, faac_real * bandqual,
+                  faac_real * bandenrg, int gnum, faac_real quality);
+void qlevel(CoderInfo * coderInfo,
+                   const faac_real * xr0,
+                   const faac_real * bandqual,
+                   const faac_real * bandenrg,
+                   int gnum,
+                   int pnslevel
+                  );
+
 #endif

@@ -22,7 +22,7 @@
 #include <math.h>
 #include <string.h>
 #include "libfaac/coder.h"
-#include "../libfaac/blockswitch.c"
+#include "libfaac/blockswitch.h"
 
 void test_PsyCheckShort() {
     PsyInfo psyInfo;

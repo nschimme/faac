@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "libfaac/coder.h"
-#include "../libfaac/bitstream.c"
+#include "libfaac/bitstream.h"
 
 void test_PutBit() {
     unsigned char buffer[100];

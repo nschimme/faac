@@ -39,9 +39,9 @@ static int CountBitstream(faacEncStruct* hEncoder,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
                           int numChannels);
-static int WriteADTSHeader(faacEncStruct* hEncoder,
-                           BitStream *bitStream,
-                           int writeFlag);
+int WriteADTSHeader(faacEncStruct* hEncoder,
+                    BitStream *bitStream,
+                    int writeFlag);
 static int WriteCPE(CoderInfo *coderInfoL,
                     CoderInfo *coderInfoR,
                     ChannelInfo *channelInfo,
@@ -311,9 +311,9 @@ static int CountBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-static int WriteADTSHeader(faacEncStruct* hEncoder,
-                           BitStream *bitStream,
-                           int writeFlag)
+int WriteADTSHeader(faacEncStruct* hEncoder,
+                    BitStream *bitStream,
+                    int writeFlag)
 {
     int bits = 56;
 

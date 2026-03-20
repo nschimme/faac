@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include "../libfaac/channels.c"
+#include "libfaac/channels.h"
 
 void test_GetChannelInfo_Mono() {
     ChannelInfo channels[1];
@@ -45,10 +45,11 @@ void test_GetChannelInfo_Stereo() {
 }
 
 void test_GetChannelInfo_3_0() {
-    /* 3.0 (3 ch): 1 SCE + 1 CPE
-     * Standard order: SCE (Center), CPE (Front L/R).
-     * NOTE: FAAC generates the element sequence SCE -> CPE.
-     * This mapping aligns with MPEG standards for 3-channel layouts.
+    /*
+     * 3.0 (3 channels): Validating SCE + CPE layout mapping.
+     * In accordance with ISO/IEC 14496-3, the mapping assigns:
+     * - SCE (Center) as the first element.
+     * - CPE (Front Left/Right) as the second element.
      */
     ChannelInfo channels[3];
     GetChannelInfo(channels, 3, 0);
@@ -72,10 +73,14 @@ void test_GetChannelInfo_3_0() {
 }
 
 void test_GetChannelInfo_5_1() {
-    /* 5.1 (6 ch): 1 SCE + 2 CPE + 1 LFE
-     * Standard order (Config 6): SCE (Center), CPE (Front L/R), CPE (Surround L/R), LFE (LFE).
-     * NOTE: FAAC generates the element sequence SCE -> 2xCPE -> LFE.
-     * This mapping aligns with the ISO/IEC 14496-3 definition for 6-channel layouts.
+    /*
+     * 5.1 (6 channels): Validating ISO/IEC 14496-3 Channel Configuration 6.
+     * The MPEG standard element sequence is SCE -> 2xCPE -> LFE.
+     * Mapping for 5.1 Surround:
+     * - SCE: Front Center
+     * - CPE 1: Front Left/Right
+     * - CPE 2: Surround Left/Right
+     * - LFE: Low Frequency Effects
      */
     ChannelInfo channels[6];
     GetChannelInfo(channels, 6, 1);
@@ -116,12 +121,19 @@ void test_GetChannelInfo_5_1() {
 }
 
 void test_GetChannelInfo_7_1() {
-    /* 7.1 (8 ch): 1 SCE + 3 CPE + 1 LFE
-     * Standard order (Config 7): SCE (Center), CPE (Front L/R), CPE (Side L/R), CPE (Back L/R), LFE (LFE).
-     * NOTE: FAAC generates the element sequence SCE -> 3xCPE -> LFE.
-     * LIMITATION: While the element layout is correct for 8 channels, the ADTS header
-     * 3-bit channel_configuration field (ISO/IEC 13818-7) will overflow/wrap to 0
-     * for numChannels=8, leading to non-standard bitstreams unless PCE is used.
+    /*
+     * 7.1 (8 channels): Validating ISO/IEC 14496-3 Channel Configuration 7.
+     * Standard element sequence: SCE -> 3xCPE -> LFE.
+     * Mapping for 7.1 Surround:
+     * - SCE: Front Center
+     * - CPE 1: Front Left/Right
+     * - CPE 2: Side Left/Right
+     * - CPE 3: Back Left/Right
+     * - LFE: Low Frequency Effects
+     *
+     * NOTE: ADTS headers have a 3-bit channel_configuration field which
+     * overflows for 8-channel streams. PCE (Program Config Element)
+     * support is required for fully compliant 7.1 bitstreams.
      */
     ChannelInfo channels[8];
     GetChannelInfo(channels, 8, 1);
