@@ -55,7 +55,8 @@ static struct {
 } frames;
 #endif
 
-FAAC_INTERNAL void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
+FAAC_INTERNAL
+void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;

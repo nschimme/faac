@@ -30,7 +30,6 @@ Copyright (c) 1997.
 
 #include "coder.h"
 #include "channels.h"
-#include "faac_real.h"
 #include "huff2.h"
 #include "bitstream.h"
 #include "util.h"
@@ -40,7 +39,8 @@ static int CountBitstream(faacEncStruct* hEncoder,
                           ChannelInfo *channelInfo,
                           BitStream *bitStream,
                           int numChannels);
-FAAC_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_INTERNAL
+int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag);
 static int WriteCPE(CoderInfo *coderInfoL,
@@ -312,7 +312,8 @@ static int CountBitstream(faacEncStruct* hEncoder,
     return bits;
 }
 
-FAAC_INTERNAL int WriteADTSHeader(faacEncStruct* hEncoder,
+FAAC_INTERNAL
+int WriteADTSHeader(faacEncStruct* hEncoder,
                     BitStream *bitStream,
                     int writeFlag)
 {

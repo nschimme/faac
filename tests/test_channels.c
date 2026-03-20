@@ -74,7 +74,7 @@ void test_GetChannelInfo_3_0() {
 
 void test_GetChannelInfo_5_1() {
     /*
-     * 5.1 (6 channels): Validating ISO/IEC 14496-3 Channel Configuration 6.
+     * 5.1 (6 channels): ISO/IEC 14496-3 Channel Configuration 6.
      * The MPEG standard element sequence is SCE -> 2xCPE -> LFE.
      * Mapping for 5.1 Surround:
      * - SCE: Front Center
@@ -122,7 +122,7 @@ void test_GetChannelInfo_5_1() {
 
 void test_GetChannelInfo_7_1() {
     /*
-     * 7.1 (8 channels): Validating ISO/IEC 14496-3 Channel Configuration 7.
+     * 7.1 (8 channels): ISO/IEC 14496-3 Channel Configuration 7.
      * Standard element sequence: SCE -> 3xCPE -> LFE.
      * Mapping for 7.1 Surround:
      * - SCE: Front Center
@@ -130,10 +130,6 @@ void test_GetChannelInfo_7_1() {
      * - CPE 2: Side Left/Right
      * - CPE 3: Back Left/Right
      * - LFE: Low Frequency Effects
-     *
-     * NOTE: ADTS headers have a 3-bit channel_configuration field which
-     * overflows for 8-channel streams. PCE (Program Config Element)
-     * support is required for fully compliant 7.1 bitstreams.
      */
     ChannelInfo channels[8];
     GetChannelInfo(channels, 8, 1);

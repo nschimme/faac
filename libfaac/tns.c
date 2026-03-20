@@ -264,6 +264,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
+FAAC_INTERNAL
 void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
     int i,j,k=0;
@@ -324,6 +325,7 @@ void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *t
 /*   less than the specified threshold.  Return the  */
 /*   truncated filter order.                         */
 /*****************************************************/
+FAAC_INTERNAL
 int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 {
     int i;
@@ -341,6 +343,7 @@ int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 /*   Quantize the given array of reflection coeffs   */
 /*   to the specified resolution in bits.            */
 /*****************************************************/
+FAAC_INTERNAL
 void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
                               faac_real* kArray,
@@ -364,6 +367,7 @@ void QuantizeReflectionCoeffs(int fOrder,
 /*   Compute the autocorrelation function            */
 /*   estimate for the given data.                    */
 /*****************************************************/
+FAAC_INTERNAL
 void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
                      faac_real* data,        /* Data array */
@@ -388,6 +392,7 @@ void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 /*   given data using LevinsonDurbin recursion.      */
 /*   Return the prediction gain.                     */
 /*****************************************************/
+FAAC_INTERNAL
 faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                       int dataSize,        /* Size of the data array */
                       faac_real* data,        /* Data array */
@@ -458,6 +463,7 @@ faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 /*   Convert reflection coefficients into            */
 /*   predictor coefficients.                         */
 /*****************************************************/
+FAAC_INTERNAL
 void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 {
     faac_real aTemp[TNS_MAX_ORDER+2];
