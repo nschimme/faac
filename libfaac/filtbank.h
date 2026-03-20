@@ -50,6 +50,10 @@ void			FilterBank( faacEncStruct* hEncoder,
 						faac_real *p_overlap,
 						int overlap_select );
 
+#ifdef FAAC_TEST
+void			CalculateKBDWindow	( faac_real* win, faac_real alpha, int length );
+#endif
+
 
 #ifdef __cplusplus
 }

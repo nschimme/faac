@@ -23,6 +23,7 @@
 #define CODER_H
 
 #include "faac_real.h"
+#include "linkage.h"
 
 #ifdef __cplusplus
 extern "C" {

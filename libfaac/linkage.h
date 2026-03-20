@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2001 Menno Bakker
+ * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,44 +15,25 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- * $Id: channels.h,v 1.7 2003/06/26 19:19:41 knik Exp $
  */
 
-#ifndef CHANNEL_H
-#define CHANNEL_H
+#ifndef LINKAGE_H
+#define LINKAGE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+#if defined(__GNUC__) || defined(__clang__)
+#define FAAC_HIDDEN __attribute__((visibility("hidden")))
+#define FAAC_UNUSED __attribute__((unused))
+#else
+#define FAAC_HIDDEN
+#define FAAC_UNUSED
+#endif
 
-#include "coder.h"
+#ifdef FAAC_TEST
+/* Internal linkage for test visibility without public API exposure */
+#define FAAC_PRIVATE FAAC_HIDDEN
+#else
+/* File-local scoping for maximum IPO and inlining performance */
+#define FAAC_PRIVATE static FAAC_UNUSED
+#endif
 
-typedef struct {
-    int is_present;
-    int ms_used[MAX_SCFAC_BANDS];
-} MSInfo;
-
-typedef enum {
-    ELEMENT_SCE,
-    ELEMENT_CPE,
-    ELEMENT_LFE
-} ElementType;
-
-typedef struct {
-    int tag;
-    int present;
-    int ch_is_left;
-    int paired_ch;
-    int common_window;
-    ElementType type;
-    MSInfo msInfo;
-} ChannelInfo;
-
-void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
-
-#endif /* CHANNEL_H */
+#endif /* LINKAGE_H */

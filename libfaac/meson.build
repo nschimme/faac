@@ -11,7 +11,8 @@ if config_h.get('HAVE_SSE2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag
+        c_args: c_args + sse2_flag,
+        pic: true
     )
     quantize_simd_libs += quantize_sse
 endif
@@ -46,7 +47,17 @@ common_src = [
     'util.h',
 ]
 
-libfaac = library('faac', common_src,
+if get_option('tests')
+    faac_static = static_library('faac_internal', common_src,
+        include_directories: ['..', '../include'],
+        c_args: c_args + ['-DFAAC_TEST'],
+        dependencies: [ libm ],
+        link_with: quantize_simd_libs,
+        pic: true
+    )
+endif
+
+libfaac = shared_library('faac', common_src,
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,

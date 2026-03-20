@@ -1,7 +1,7 @@
 /**********************************************************************
 
-This software module was originally developed by
-and edited by Texas Instruments in the course of
+This software module was originally developed by Texas Instruments
+and edited by Nils Schimmelmann in the course of
 development of the MPEG-2 NBC/MPEG-4 Audio standard
 ISO/IEC 13818-7, 14496-1,2 and 3. This software module is an
 implementation of a part of one or more MPEG-2 NBC/MPEG-4 Audio tools
@@ -31,6 +31,7 @@ Copyright (c) 1997.
 #define TNS_H
 
 #include "faac_real.h"
+#include "frame.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,13 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE b
                int* sfbOffsetTable,faac_real* spec, faac_real* temp);
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp);
+
+FAAC_PRIVATE void Autocorrelation(int maxOrder, int dataSize, faac_real* data, faac_real* rArray);
+FAAC_PRIVATE faac_real LevinsonDurbin(int maxOrder, int dataSize, faac_real* data, faac_real* kArray);
+FAAC_PRIVATE void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
+FAAC_PRIVATE void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* rArray, int* indexArray);
+FAAC_PRIVATE int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
+FAAC_PRIVATE void TnsInvFilter(int length, faac_real* spec, TnsFilterData* filter, faac_real *temp);
 
 #ifdef __cplusplus
 }
