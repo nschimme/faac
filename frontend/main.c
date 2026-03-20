@@ -427,7 +427,7 @@ static int *mkChanMap(int channels, int center, int lf)
     return map;
 }
 
-#define fprintf if(verbose)fprintf
+#define fprintf(f, ...) do { if (verbose) (fprintf)(f, __VA_ARGS__); } while(0)
 
 int main(int argc, char *argv[])
 {
@@ -816,7 +816,7 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        fprintf(stderr, dieMessage, progName, progName, progName, progName);
+        fprintf(stderr, dieMessage, progName);
         return 1;
     }
 
