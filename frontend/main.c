@@ -143,7 +143,7 @@ static help_t help_io[] = {
     "\t\tNot advised!!!, RAW AAC files are practically useless!!!\n"},
     {"-P\t\tRaw PCM input mode (default 44100Hz 16bit stereo).\n",
     "\t\tRaw PCM input mode (default: off, i.e. expecting a WAV header;\n"
-    "\t\tnecessary for input files or bitstreams without a header; using\n"
+    "\t\tnecessary for input streams or bitstreams without a header; using\n"
     "\t\tonly -P assumes the default values for -R, -B and -C in the\n"
     "\t\tinput file).\n"},
     {"-R <samplerate>\tRaw PCM input rate.\n",
@@ -255,6 +255,13 @@ char *license =
     "Copyright (c) 1997.\n"
     "\n"
     "For the changes made for the FAAC project the GNU Lesser General Public\n"
+    "License (LGPL), version 2 1991 applies:\n"
+    "\n"
+    "FAAC - Freeware Advanced Audio Coder\n"
+    "Copyright (C) 2001-2004 The individual contributors\n"
+    "\n"
+    "This library is free software; you can redistribute it and/or\n"
+    "modify it under the terms of the GNU Lesser General Public\n"
     "License (LGPL), version 2 1991 applies:\n"
     "\n"
     "FAAC - Freeware Advanced Audio Coder\n"
@@ -433,7 +440,7 @@ int main(int argc, char *argv[])
     faacEncConfigurationPtr myFormat;
     unsigned int mpegVersion = MPEG2;
     unsigned int objectType = LOW;
-    int jointmode = -1;
+    int jointmode = JOINT_MS;
     int pnslevel = -1;
     static int useTns = 0;
     enum container_format container = NO_CONTAINER;

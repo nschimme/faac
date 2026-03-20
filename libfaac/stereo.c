@@ -20,23 +20,28 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 #include "stereo.h"
 #include "huff2.h"
 
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
                    faac_real *sl0, faac_real *sr0, int *sfcnt,
-                   int wstart, int wend, faac_real phthr
+                   int wstart, int wend, faac_real phthr,
+                   int force_is_sfb, int mode
                   )
 {
     int sfb;
     int win;
     int sfmin;
 
-    if (!phthr)
+    if (!phthr && force_is_sfb < 0)
         return;
 
-    phthr = 1.0 / phthr;
+    if (phthr > 0)
+        phthr = 1.0 / phthr;
 
     if (cl->block_type == ONLY_SHORT_WINDOW)
         sfmin = 1;
@@ -54,6 +59,13 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         const faac_real step = 10/1.50515;
         faac_real ethr;
         faac_real vfix, efix;
+
+        int force_this_band = (force_is_sfb >= 0 && sfb >= force_is_sfb);
+
+        if (mode != JOINT_IS && !force_this_band) {
+            (*sfcnt)++;
+            continue;
+        }
 
         start = cl->sfb_offset[sfb];
         end = cl->sfb_offset[sfb + 1];
@@ -79,25 +91,34 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
             }
         }
 
-        ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
-        ethr *= ethr;
-        ethr *= phthr;
-        efix = enrgl + enrgr;
-        if (enrgs >= ethr)
+        if (force_this_band)
         {
             hcb = HCB_INTENSITY;
-            vfix = FAAC_SQRT(efix / enrgs);
+            vfix = (enrgs > 1e-10) ? sqrt((enrgl + enrgr) / enrgs) : 1.0;
         }
-        else if (enrgd >= ethr)
+        else if (phthr > 0)
         {
-            hcb = HCB_INTENSITY2;
-            vfix = FAAC_SQRT(efix / enrgd);
+            ethr = sqrt(enrgl) + sqrt(enrgr);
+            ethr *= ethr;
+            ethr *= phthr;
+            efix = enrgl + enrgr;
+            if (enrgs >= ethr)
+            {
+                hcb = HCB_INTENSITY;
+                vfix = sqrt(efix / enrgs);
+            }
+            else if (enrgd >= ethr)
+            {
+                hcb = HCB_INTENSITY2;
+                vfix = sqrt(efix / enrgd);
+            }
         }
 
         if (hcb != HCB_NONE)
         {
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            efix = max(enrgl + enrgr, 1e-10);
+            int sf = (int)lrint(log10(max(enrgl, 1e-10) / efix) * step);
+            int pan = (int)lrint(log10(max(enrgr, 1e-10) / efix) * step) - sf;
 
             if (pan > 30)
             {
@@ -111,9 +132,9 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                 (*sfcnt)++;
                 continue;
             }
+            cr->book[*sfcnt] = hcb;
             cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
-            cr->book[*sfcnt] = hcb;
 
             for (win = wstart; win < wend; win++)
             {
@@ -127,6 +148,7 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                         sum = sl[l] - sr[l];
 
                     sl[l] = sum * vfix;
+                    sr[l] = 0.0; /* Ensure right channel is zeroed for Intensity coding */
                 }
             }
         }
@@ -137,7 +159,8 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
 static void midside(CoderInfo *coder, ChannelInfo *channel,
                     faac_real *sl0, faac_real *sr0, int *sfcnt,
                     int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
+                    faac_real thrmid, faac_real thrside,
+                    int force_is_sfb
                    )
 {
     int sfb;
@@ -160,6 +183,12 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
         int l, start, end;
         faac_real sum, diff;
         faac_real enrgs, enrgd, enrgl, enrgr;
+
+        if (force_is_sfb >= 0 && sfb >= force_is_sfb) {
+            channel->msInfo.ms_used[*sfcnt] = 0;
+            (*sfcnt)++;
+            continue;
+        }
 
         start = coder->sfb_offset[sfb];
         end = coder->sfb_offset[sfb + 1];
@@ -187,58 +216,17 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
-
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
-
-            if (ms)
-            {
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-                    faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-                    for (l = start; l < end; l++)
-                    {
-                        if (phase == PH_IN)
-                        {
-                            sum = sl[l] + sr[l];
-                            diff = 0;
-                        }
-                        else
-                        {
-                            sum = 0;
-                            diff = sl[l] - sr[l];
-                        }
-
-                        sl[l] = 0.5 * sum;
-                        sr[l] = 0.5 * diff;
-                    }
-                }
-            }
-        }
-
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
-        {
+            ms = 1;
             for (win = wstart; win < wend; win++)
             {
                 faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
                 faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
                 for (l = start; l < end; l++)
                 {
-                    if (enrgl < enrgr)
-                        sl[l] = 0.0;
-                    else
-                        sr[l] = 0.0;
+                    faac_real lx = sl[l];
+                    faac_real rx = sr[l];
+                    sl[l] = 0.5 * (lx + rx);
+                    sr[l] = 0.5 * (lx - rx);
                 }
             }
         }
@@ -254,7 +242,8 @@ void AACstereo(CoderInfo *coder,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
                faac_real quality,
-               int mode
+               int mode,
+               unsigned long sampleRate
               )
 {
     int chn;
@@ -317,6 +306,7 @@ void AACstereo(CoderInfo *coder,
             }
         }
     }
+
     for (chn = 0; chn < maxchan; chn++)
     {
         int rch;
@@ -324,6 +314,7 @@ void AACstereo(CoderInfo *coder,
         int group;
         int sfcnt = 0;
         int start = 0;
+        int force_is_sfb = -1;
 
         if (!channel[chn].present)
             continue;
@@ -356,17 +347,34 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        /* Heuristic: Force IS for frequencies >= 5kHz at low bitrates */
+        if (quality < 0.6)
         {
-            int end = start + coder->groups.len[group];
-            switch(mode) {
-            case JOINT_MS:
-                midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
-                break;
-            case JOINT_IS:
-                stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
-                break;
+            int frame_len = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
+            int i;
+            float freq_thresh = 5000.0;
+
+            for (i = 0; i < coder[chn].sfbn; i++) {
+                float freq = (float)coder[chn].sfb_offset[i] * (float)sampleRate / (float)(frame_len * 2);
+                if (freq >= freq_thresh) {
+                    force_is_sfb = i;
+                    break;
+                }
+            }
+        }
+
+        for (group = 0; group < coder[chn].groups.n; group++)
+        {
+            int end = start + coder[chn].groups.len[group];
+            int group_sfcnt_start = sfcnt;
+
+            midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
+                    start, end, thrmid, thrside, force_is_sfb);
+
+            if (force_is_sfb >= 0 || mode == JOINT_IS) {
+                sfcnt = group_sfcnt_start;
+                stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt,
+                       start, end, (mode == JOINT_IS) ? isthr : 0, force_is_sfb, mode);
             }
             start = end;
         }
