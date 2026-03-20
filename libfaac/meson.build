@@ -54,11 +54,12 @@ faac_static = static_library('faac_internal', common_src,
     pic: true
 )
 
-libfaac = shared_library('faac',
+libfaac = shared_library('faac', common_src,
     include_directories: ['..', '../include'],
     c_args: c_args,
     link_args: link_args,
-    link_whole: faac_static,
+    dependencies: [ libm ],
+    link_with: quantize_simd_libs,
     vs_module_defs: 'libfaac.def',
     install: true,
     version: '0.0.0',
