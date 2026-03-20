@@ -212,21 +212,21 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         } else if (bpc <= 16000) { // voip
             nf = 0.01;
             fac = 0.90;
-            powm_v = 0.35;
+            powm_v = 0.38;
             fp_v = 0.75;
         } else if (bpc <= 32000) { // music_low
             nf = 0.01;
             fac = 0.95;
         } else if (bpc <= 48000) { // vss
-            nf = 0.01;
+            nf = 0.005;
             fac = 0.95;
             fp_v = 0.75;
         } else if (bpc <= 64000) { // music_std
             nf = 0.003;
-            fac = 0.98;
+            fac = 0.97;
         } else { // music_high
             nf = 0.001;
-            fac = 1.0;
+            fac = 0.99;
         }
         hEncoder->aacquantCfg.noise_floor = nf;
         hEncoder->aacquantCfg.powm = powm_v;
