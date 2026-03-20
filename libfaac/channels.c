@@ -65,9 +65,7 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
     if (numChannelsLeft != 2) {
         channelInfo[numChannels-numChannelsLeft].present = 1;
         channelInfo[numChannels-numChannelsLeft].tag = sceTag++;
-        channelInfo[numChannels-numChannelsLeft].cpe = 0;
-        channelInfo[numChannels-numChannelsLeft].sce = 1;
-        channelInfo[numChannels-numChannelsLeft].lfe = 0;
+        channelInfo[numChannels-numChannelsLeft].type = ELEMENT_SCE;
         numChannelsLeft--;
     }
 
@@ -76,22 +74,18 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
         /* Left channel info */
         channelInfo[numChannels-numChannelsLeft].present = 1;
         channelInfo[numChannels-numChannelsLeft].tag = cpeTag++;
-        channelInfo[numChannels-numChannelsLeft].cpe = 1;
         channelInfo[numChannels-numChannelsLeft].common_window = 0;
         channelInfo[numChannels-numChannelsLeft].ch_is_left = 1;
         channelInfo[numChannels-numChannelsLeft].paired_ch = numChannels-numChannelsLeft+1;
-        channelInfo[numChannels-numChannelsLeft].sce = 0;
-        channelInfo[numChannels-numChannelsLeft].lfe = 0;
+        channelInfo[numChannels-numChannelsLeft].type = ELEMENT_CPE;
         numChannelsLeft--;
 
         /* Right channel info */
         channelInfo[numChannels-numChannelsLeft].present = 1;
-        channelInfo[numChannels-numChannelsLeft].cpe = 1;
         channelInfo[numChannels-numChannelsLeft].common_window = 0;
         channelInfo[numChannels-numChannelsLeft].ch_is_left = 0;
         channelInfo[numChannels-numChannelsLeft].paired_ch = numChannels-numChannelsLeft-1;
-        channelInfo[numChannels-numChannelsLeft].sce = 0;
-        channelInfo[numChannels-numChannelsLeft].lfe = 0;
+        channelInfo[numChannels-numChannelsLeft].type = ELEMENT_CPE;
         numChannelsLeft--;
     }
 
@@ -100,15 +94,11 @@ void GetChannelInfo(ChannelInfo *channelInfo, int numChannels, int useLfe)
         if (useLfe) {
             channelInfo[numChannels-numChannelsLeft].present = 1;
             channelInfo[numChannels-numChannelsLeft].tag = lfeTag++;
-            channelInfo[numChannels-numChannelsLeft].cpe = 0;
-            channelInfo[numChannels-numChannelsLeft].sce = 0;
-            channelInfo[numChannels-numChannelsLeft].lfe = 1;
+            channelInfo[numChannels-numChannelsLeft].type = ELEMENT_LFE;
         } else {
             channelInfo[numChannels-numChannelsLeft].present = 1;
             channelInfo[numChannels-numChannelsLeft].tag = sceTag++;
-            channelInfo[numChannels-numChannelsLeft].cpe = 0;
-            channelInfo[numChannels-numChannelsLeft].sce = 1;
-            channelInfo[numChannels-numChannelsLeft].lfe = 0;
+            channelInfo[numChannels-numChannelsLeft].type = ELEMENT_SCE;
         }
         numChannelsLeft--;
     }

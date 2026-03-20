@@ -26,9 +26,7 @@ void test_GetChannelInfo_Mono() {
     /* ISO/IEC 14496-3: Single Channel Element (SCE) configuration */
     GetChannelInfo(channels, 1, 0);
     assert(channels[0].present == 1);
-    assert(channels[0].cpe == 0);
-    assert(channels[0].sce == 1);
-    assert(channels[0].lfe == 0);
+    assert(channels[0].type == ELEMENT_SCE);
 }
 
 void test_GetChannelInfo_Stereo() {
@@ -36,16 +34,14 @@ void test_GetChannelInfo_Stereo() {
     /* ISO/IEC 14496-3: Channel Pair Element (CPE) configuration */
     GetChannelInfo(channels, 2, 0);
     assert(channels[0].present == 1);
-    assert(channels[0].cpe == 1);
+    assert(channels[0].type == ELEMENT_CPE);
     assert(channels[0].ch_is_left == 1);
     assert(channels[0].paired_ch == 1);
-    assert(channels[0].sce == 0);
 
     assert(channels[1].present == 1);
-    assert(channels[1].cpe == 1);
+    assert(channels[1].type == ELEMENT_CPE);
     assert(channels[1].ch_is_left == 0);
     assert(channels[1].paired_ch == 0);
-    assert(channels[1].sce == 0);
 }
 
 void test_GetChannelInfo_3_0() {
@@ -59,20 +55,18 @@ void test_GetChannelInfo_3_0() {
 
     /* SCE (Center) */
     assert(channels[0].present == 1);
-    assert(channels[0].sce == 1);
-    assert(channels[0].cpe == 0);
-    assert(channels[0].lfe == 0);
+    assert(channels[0].type == ELEMENT_SCE);
     assert(channels[0].tag == 0);
 
     /* CPE (Left/Right) */
     assert(channels[1].present == 1);
-    assert(channels[1].cpe == 1);
+    assert(channels[1].type == ELEMENT_CPE);
     assert(channels[1].ch_is_left == 1);
     assert(channels[1].paired_ch == 2);
     assert(channels[1].tag == 0);
 
     assert(channels[2].present == 1);
-    assert(channels[2].cpe == 1);
+    assert(channels[2].type == ELEMENT_CPE);
     assert(channels[2].ch_is_left == 0);
     assert(channels[2].paired_ch == 1);
 }
@@ -88,36 +82,36 @@ void test_GetChannelInfo_5_1() {
 
     /* SCE (Center) */
     assert(channels[0].present == 1);
-    assert(channels[0].sce == 1);
+    assert(channels[0].type == ELEMENT_SCE);
     assert(channels[0].tag == 0);
 
     /* CPE 1 (Front L/R) */
     assert(channels[1].present == 1);
-    assert(channels[1].cpe == 1);
+    assert(channels[1].type == ELEMENT_CPE);
     assert(channels[1].ch_is_left == 1);
     assert(channels[1].paired_ch == 2);
     assert(channels[1].tag == 0);
 
     assert(channels[2].present == 1);
-    assert(channels[2].cpe == 1);
+    assert(channels[2].type == ELEMENT_CPE);
     assert(channels[2].ch_is_left == 0);
     assert(channels[2].paired_ch == 1);
 
     /* CPE 2 (Surround L/R) */
     assert(channels[3].present == 1);
-    assert(channels[3].cpe == 1);
+    assert(channels[3].type == ELEMENT_CPE);
     assert(channels[3].ch_is_left == 1);
     assert(channels[3].paired_ch == 4);
     assert(channels[3].tag == 1);
 
     assert(channels[4].present == 1);
-    assert(channels[4].cpe == 1);
+    assert(channels[4].type == ELEMENT_CPE);
     assert(channels[4].ch_is_left == 0);
     assert(channels[4].paired_ch == 3);
 
     /* LFE */
     assert(channels[5].present == 1);
-    assert(channels[5].lfe == 1);
+    assert(channels[5].type == ELEMENT_LFE);
     assert(channels[5].tag == 0);
 }
 
@@ -134,47 +128,47 @@ void test_GetChannelInfo_7_1() {
 
     /* SCE (Center) */
     assert(channels[0].present == 1);
-    assert(channels[0].sce == 1);
+    assert(channels[0].type == ELEMENT_SCE);
 
     /* CPE 1 (Front L/R) */
     assert(channels[1].present == 1);
-    assert(channels[1].cpe == 1);
+    assert(channels[1].type == ELEMENT_CPE);
     assert(channels[1].ch_is_left == 1);
     assert(channels[1].paired_ch == 2);
     assert(channels[1].tag == 0);
 
     assert(channels[2].present == 1);
-    assert(channels[2].cpe == 1);
+    assert(channels[2].type == ELEMENT_CPE);
     assert(channels[2].ch_is_left == 0);
     assert(channels[2].paired_ch == 1);
 
     /* CPE 2 (Side L/R) */
     assert(channels[3].present == 1);
-    assert(channels[3].cpe == 1);
+    assert(channels[3].type == ELEMENT_CPE);
     assert(channels[3].ch_is_left == 1);
     assert(channels[3].paired_ch == 4);
     assert(channels[3].tag == 1);
 
     assert(channels[4].present == 1);
-    assert(channels[4].cpe == 1);
+    assert(channels[4].type == ELEMENT_CPE);
     assert(channels[4].ch_is_left == 0);
     assert(channels[4].paired_ch == 3);
 
     /* CPE 3 (Back L/R) */
     assert(channels[5].present == 1);
-    assert(channels[5].cpe == 1);
+    assert(channels[5].type == ELEMENT_CPE);
     assert(channels[5].ch_is_left == 1);
     assert(channels[5].paired_ch == 6);
     assert(channels[5].tag == 2);
 
     assert(channels[6].present == 1);
-    assert(channels[6].cpe == 1);
+    assert(channels[6].type == ELEMENT_CPE);
     assert(channels[6].ch_is_left == 0);
     assert(channels[6].paired_ch == 5);
 
     /* LFE */
     assert(channels[7].present == 1);
-    assert(channels[7].lfe == 1);
+    assert(channels[7].type == ELEMENT_LFE);
 }
 
 int main() {
