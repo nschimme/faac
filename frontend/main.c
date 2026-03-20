@@ -192,9 +192,9 @@ static help_t help_mp4[] = {
 static help_t help_advanced[] = {
     {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
-    {"--joint 0\tDisable joint stereo coding.\n"},
-    {"--joint 1\tUse Mid/Side coding.\n"},
-    {"--joint 2\tUse Intensity Stereo coding.\n"},
+    {"--joint 0\tDisable joint stereo coding (Pure L/R).\n"},
+    {"--joint 1\tUse Mixed Mode stereo (M/S + IS) (default).\n"},
+    {"--joint 2\tUse Intensity Stereo coding for all bands.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
@@ -816,7 +816,7 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        fprintf(stderr, dieMessage, progName);
+        fprintf(stderr, dieMessage, progName, progName, progName, progName);
         return 1;
     }
 

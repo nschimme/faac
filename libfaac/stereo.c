@@ -22,6 +22,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "stereo.h"
 #include "huff2.h"
 #include "util.h"
@@ -89,20 +90,20 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
             vfix = (enrgs > 1e-10) ? FAAC_SQRT(efix / enrgs) : 1.0;
         }
 
-        int sf = (int)FAAC_LRINT(FAAC_LOG10(max(enrgl, 1e-10) / efix) * step);
-        int pan = (int)FAAC_LRINT(FAAC_LOG10(max(enrgr, 1e-10) / efix) * step) - sf;
+        int pan = (int)FAAC_LRINT(FAAC_LOG10(max(enrgr, 1e-10) / max(enrgl, 1e-10)) * step);
 
         /* Perceptual Heuristic: High-frequency coupling (collapse to mono above 10kHz) */
         if (freq > 10000.0) pan = 0;
 
         if (pan > 30) {
+            /* Right channel much louder than Left: send as L/R fallback (muted Left) */
             cl->book[*sfcnt] = HCB_ZERO;
         } else if (pan < -30) {
+            /* Left channel much louder than Right: send as L/R fallback (muted Right) */
             cr->book[*sfcnt] = HCB_ZERO;
         } else {
-            /* Signaling IS: Magnitude in Left channel SF, Position in Right channel SF */
+            /* Signaling IS: Position in Right channel SF, Left magnitude determined by carrier intensity */
             cr->book[*sfcnt] = hcb;
-            cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
 
             for (win = wstart; win < wend; win++)
@@ -127,8 +128,8 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
         {
             chi->msInfo.ms_used[*sfcnt] = 1;
-            /* Perceptual Heuristic: Side-channel masking (collapse to mono if Side < -14dB Mid) */
-            int zero_side = (enrgd_norm < 0.04 * enrgs_norm);
+            /* Perceptual Heuristic: Side-channel masking (collapse to mono if Side < -20dB Mid) */
+            int zero_side = (enrgd_norm < 0.01 * enrgs_norm);
 
             for (win = wstart; win < wend; win++)
             {
