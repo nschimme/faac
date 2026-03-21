@@ -255,6 +255,22 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    /* Precalculate ABR factors */
+    if (hEncoder->config.bitRate) {
+        hEncoder->desbits = hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
+
+        /* Unified bitrate scaling factor: SQRT(64000 / bpc) */
+        hEncoder->abr_scale = FAAC_SQRT(64000.0 / (faac_real)hEncoder->config.bitRate);
+        if (hEncoder->abr_scale < 0.8) hEncoder->abr_scale = 0.8;
+        if (hEncoder->abr_scale > 2.0) hEncoder->abr_scale = 2.0;
+
+        /* Adaptive responsiveness based on bitrate */
+        hEncoder->abr_responsiveness = 3.5 * hEncoder->abr_scale;
+        if (hEncoder->abr_responsiveness > 6.0) hEncoder->abr_responsiveness = 6.0;
+    }
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -645,19 +661,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int desbits = hEncoder->desbits;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        /* Bit reservoir management: include saved bits from previous frames */
+        int target_bits = desbits + hEncoder->bit_reservoir;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        /* Minimum frame size for 16kbps @ 16kHz mono is ~104 bits. */
+        if (target_bits < 104) target_bits = 104;
+
+        faac_real fix = (faac_real)target_bits / (faac_real)(frameBytes * 8);
+
+        /* Apply precalculated adaptive responsiveness */
+        fix = (fix - 1.0) * hEncoder->abr_responsiveness + 1.0;
+
+        /* Safety clamps for quality adjustment factor */
+        if (fix > 6.0) fix = 6.0;
+        if (fix < 0.1) fix = 0.1;
 
         hEncoder->aacquantCfg.quality *= fix;
 
@@ -665,6 +684,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
+
+        /* Update reservoir: bits we intended to use vs bits we actually used */
+        hEncoder->bit_reservoir += (desbits - (frameBytes * 8));
+
+        /* Clamp reservoir to prevent massive wind-up (max 32 frames approx 2s) */
+        if (hEncoder->bit_reservoir > (32 * desbits)) hEncoder->bit_reservoir = 32 * desbits;
+        if (hEncoder->bit_reservoir < (-32 * desbits)) hEncoder->bit_reservoir = -32 * desbits;
     }
 
     return frameBytes;

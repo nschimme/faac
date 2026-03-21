@@ -78,6 +78,11 @@ typedef struct {
 
     /* Configuration data */
     faacEncConfiguration config;
+    /* ABR and Rate Control state */
+    int bit_reservoir;
+    int desbits;
+    faac_real abr_scale;
+    faac_real abr_responsiveness;
 
     psymodel_t *psymodel;
 
