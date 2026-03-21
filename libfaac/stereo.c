@@ -114,16 +114,35 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
                 }
             }
         }
+
+        /* Iteration 114: Restored L/R Side-Channel Masking for LOW bitrates only.
+           If one channel is significantly quieter than the other, collapse to mono. */
+        if (quality < 0.6 && !chi->msInfo.ms_used[*sfcnt] && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
+        {
+            for (win = wstart; win < wend; win++)
+            {
+                faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+                faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+                for (l = start; l < end; l++)
+                {
+                    if (enrgl < enrgr)
+                        sl[l] = 0.0;
+                    else
+                        sr[l] = 0.0;
+                }
+            }
+        }
     }
     else if (mode == JOINT_MS)
     {
-        /* Iteration 88: Conservative M/S for low (64k).
-           Retaining extreme aggression only for xlow (32k). */
+        /* Iteration 111: Fixed M/S Decision Math.
+           Baseline uses 0.5 scaling before energy calculation, making enrgs/enrgd
+           4x smaller. Restoring 0.25 factor here to match baseline threshold. */
         faac_real ms_aggression = 1.0;
         if (quality < 0.35) ms_aggression = 2.0;
-        else if (quality < 0.5) ms_aggression = 1.1;
+        else if (quality < 0.6) ms_aggression = 1.1;
 
-        if ((min(enrgl, enrgr) * thrmid * ms_aggression) >= max(enrgs, enrgd))
+        if ((min(enrgl, enrgr) * thrmid * ms_aggression) >= (max(enrgs, enrgd) * 0.25))
         {
             chi->msInfo.ms_used[*sfcnt] = 1;
             for (win = wstart; win < wend; win++)
@@ -171,7 +190,7 @@ void AACstereo(CoderInfo *coder,
     thrside = sidemin / quality;
     if (thrside > sidemax) thrside = sidemax;
     thrmid = (thrmid + 1.0) * (thrmid + 1.0);
-    thrside = (thrside + 1.0) * (thrside + 1.0);
+    thrside *= thrside;
 
     isthr = 0.18 / (quality * quality);
     if (isthr > isthrmax) isthr = isthrmax;
@@ -233,7 +252,7 @@ void AACstereo(CoderInfo *coder,
             if (quality < 0.25) freq_thresh = 3000.0;
         else if (quality < 0.35) freq_thresh = 5000.0;
         else if (quality < 0.4) freq_thresh = 10000.0;
-        else if (quality < 0.6) freq_thresh = 15000.0;
+        else if (quality < 0.6) freq_thresh = 18000.0;
 
             int frame_len = (cl->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
             for (band = 0; band < cl->sfbn; band++) {

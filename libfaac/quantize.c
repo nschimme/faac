@@ -157,10 +157,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 60: Winning Vocal Strategy.
+    /* Iteration 115: Mono Vocal Boost Experiment.
        800Hz-5kHz range, adaptive boost based on quality tier.
-       Strictly restricted to Mid-channel (isLeft) in Joint Stereo. */
-    if (quality < 1.0 && numChannels > 1 && jointMode != JOINT_NONE && isLeft)
+       Now allows mild boost for mono signals at very low bitrates. */
+    if (quality < 1.0 && isLeft && (numChannels > 1 || quality < 0.4))
     {
         int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
         float f_start = (float)start * (float)sampleRate / (float)(frame_len * 2);
@@ -168,8 +168,15 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
         if (f_start > 800.0 && f_end < 5000.0) {
             faac_real boost_factor = 1.0;
-            if (quality < 0.35) boost_factor = 0.5;      /* Aggressive boost for xlow */
-            else if (quality < 0.6) boost_factor = 0.7;  /* Moderate boost for low */
+            if (numChannels > 1) {
+                if (quality < 0.35) boost_factor = 0.5;      /* Aggressive stereo boost */
+                else if (quality < 0.6) boost_factor = 0.8;  /* Conservative stereo boost */
+            } else {
+                /* Iteration 116: Progressive Mono Vocal Boost. */
+                if (quality < 0.25) boost_factor = 0.7;      /* High boost for 8-12k mono */
+                else if (quality < 0.4) boost_factor = 0.8;  /* Moderate boost for 16-24k mono */
+                else if (quality < 0.6) boost_factor = 0.9;  /* Mild boost for 32k mono */
+            }
 
             target *= boost_factor;
         }

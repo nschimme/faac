@@ -560,9 +560,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    /* Iteration 63: Removing redundant global boost.
-       Relying on the rate controller and targeted vocal boost. */
-    faac_real effective_quality = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
+    /* Iteration 117: Balanced Adaptive Quality Tiering.
+       Includes mild boost for constrained mono streams. */
+    faac_real q_val = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
+    faac_real effective_quality = q_val;
+    if (numChannels > 1 && jointmode == JOINT_MS) {
+        if (q_val < 0.2) effective_quality *= 1.50;      /* Ultra-low stereo boost */
+        else if (q_val < 0.4) effective_quality *= 1.35; /* X-low stereo boost */
+        else if (q_val < 0.7) effective_quality *= 1.15; /* Low stereo boost */
+    } else if (numChannels == 1) {
+        if (q_val < 0.3) effective_quality *= 1.10;      /* Mild mono boost for very low bitrates */
+    }
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               effective_quality, jointmode, hEncoder->sampleRate);
