@@ -50,12 +50,6 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-// default bandwidth/samplerate ratio
-static const struct {
-    faac_real fac;
-    faac_real freq;
-} g_bw = {0.42, 18000};
-
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
 {
@@ -156,12 +150,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         return 0;
 #endif
 
-    if (config->bitRate && !config->bandWidth)
+    if (config->bitRate)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
-        if (config->bandWidth > g_bw.freq)
-            config->bandWidth = g_bw.freq;
-
         if (!config->quantqual)
         {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
@@ -174,19 +164,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->quantqual = DEFQUAL;
 
     hEncoder->config.bitRate = config->bitRate;
-
-    if (!config->bandWidth)
-    {
-        config->bandWidth = g_bw.fac * hEncoder->sampleRate;
-    }
-
     hEncoder->config.bandWidth = config->bandWidth;
-
-    // check bandwidth
-    if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
-    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->quantqual > maxqual)
         config->quantqual = maxqual;
@@ -216,7 +194,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         #define FP_LO    0.75
         #define FP_HI    0.70
 
-        faac_real t = (hEncoder->config.bandWidth - ANCHOR_LO_BPC) / (ANCHOR_HI_BPC - ANCHOR_LO_BPC);
+        /* Use 64kbps as default for interpolation when bitrate is not specified (VBR) */
+        unsigned long bitRate = hEncoder->config.bitRate ? hEncoder->config.bitRate : 64000;
+        faac_real t = (bitRate - ANCHOR_LO_BPC) / (ANCHOR_HI_BPC - ANCHOR_LO_BPC);
         if (t < 0.0) t = 0.0;
         if (t > 1.0) t = 1.0;
 
@@ -236,9 +216,27 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         hEncoder->aacquantCfg.freq_penalty = fp;
 
         /* Sample-rate-aware bandwidth */
-        faac_real nyquist = hEncoder->sampleRate * 0.5;
-        faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
-        hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
+        if (!hEncoder->config.bandWidth) {
+            faac_real nyquist = hEncoder->sampleRate * 0.5;
+            faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
+            hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
+        }
+
+        /* Floor: prevents bandwidth falling below useful speech range.
+           Uses min(3500, 40% of Nyquist) to adapt to low sample rates. */
+        {
+            faac_real bw_floor = 3500;
+            faac_real nyquist_frac = (faac_real)hEncoder->sampleRate * 0.20;
+            if (nyquist_frac < bw_floor) bw_floor = nyquist_frac;
+            if (hEncoder->config.bandWidth < (unsigned int)bw_floor)
+                hEncoder->config.bandWidth = (unsigned int)bw_floor;
+        }
+
+        /* Caps: ensure bandwidth is within valid Nyquist limits */
+        if (hEncoder->config.bandWidth < 100)
+            hEncoder->config.bandWidth = 100;
+        if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
+            hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
         #undef NF_LO
         #undef NF_HI
@@ -322,7 +320,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
+    hEncoder->config.bandWidth = 0;
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
