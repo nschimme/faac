@@ -235,8 +235,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         /* Prevents bandwidth falling below useful speech range.
            Uses min(3500, 40% of Nyquist) to adapt to low sample rates. */
         unsigned int bw_floor = 3500;
-        unsigned int sr_frac  = (unsigned int)((faac_real)hEncoder->sampleRate * 0.20);
-        if (sr_frac < bw_floor) bw_floor = sr_frac;
+        unsigned int sr_frac  = (unsigned int)(nyquist * 0.4);
+        if (sr_frac < bw_floor)
+            bw_floor = sr_frac;
         if (hEncoder->config.bandWidth < bw_floor)
             hEncoder->config.bandWidth = bw_floor;
     }
