@@ -24,11 +24,13 @@ We implemented a `scale` factor based on the square root of the bitrate:
 
 ## Impact of Bandwidth Factor (`g_bw.fac`)
 The bandwidth factor determines how many spectral lines are coded.
-- **Bandwidth Consistency (0.42)**: High bitrate accuracy was achieved while maintaining the legacy bandwidth factor of 0.42 by removing the artificial quality ceiling at low bitrates.
+- **Bandwidth Consistency (0.42)**: High bitrate accuracy was achieved while maintaining the legacy bandwidth factor of 0.42 by removing the artificial quality ceiling at low bitrates and stabilizing the ABR responsiveness.
 - **Quality Ceiling Removal**: Increasing `MAX_QUAL` to 100,000 allowed the ABR loop to aggressively spend saved bits from the reservoir even in low-complexity scenarios, which was the final key to breaking the 95% barrier.
+- **Robust Normalized-Error ABR**: The ABR loop was refactored to use dimensionless normalized error, a quality dead-band (5%) for stability in music content, and error-driven gain ramps (1.0 to 4.0) to break the VoIP/VSS bitrate trap.
+- **PNS/Joint Stability**: Restored the legacy behavior of disabling PNS in JOINT_MS mode to maintain perceptual quality (MOS) consistency across bitrates.
 
 ## Summary of Accuracy Improvements (100% Coverage)
-| Scenario | Baseline Accuracy | Optimized Accuracy (Reservoir + Adaptive ABR + MAX_QUAL=100k) |
+| Scenario | Baseline Accuracy | Optimized Accuracy (Reservoir + Normalized ABR) |
 | :--- | :---: | :---: |
 | **VoIP (16kbps)** | ~81% | **~102.8%** |
 | **VSS (40kbps)** | ~86% | **~97.5%** |

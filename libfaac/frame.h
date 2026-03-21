@@ -78,6 +78,7 @@ typedef struct {
 
     /* Configuration data */
     faacEncConfiguration config;
+
     /* ABR and Rate Control state */
     int bit_reservoir;
     int desbits;
