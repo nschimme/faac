@@ -84,6 +84,11 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    /* Pseudo-SBR data */
+    int sbr_enabled;
+    int sbr_cutoff_sfb_long;
+    int sbr_cutoff_sfb_short;
+
     /* FFT Tables */
     FFT_Tables	fft_tables;
 } faacEncStruct;
