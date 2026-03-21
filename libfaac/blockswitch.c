@@ -247,6 +247,9 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 
   for (channel = 0; channel < numChannels; channel++)
   {
+    /* Fix: Explicit PE reset to prevent non-resetting watermark bug */
+    psyInfo[channel].pe = 0.0f;
+
     if (channelInfo[channel].present)
     {
 
@@ -265,7 +268,6 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
       {				/* LFE */
         // Only set block type and it should be OK
 	psyInfo[channel].block_type = ONLY_LONG_WINDOW;
-        psyInfo[channel].pe = 0.0f;
       }
       else if (!channelInfo[channel].cpe)
       {				/* SCE */

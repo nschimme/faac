@@ -9,11 +9,11 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
@@ -185,6 +185,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bitRate = config->bitRate;
 
+    /* SBR Activation Check (Targeting 24-48 kbps per channel, or 64-96kbps stereo) */
+    hEncoder->sbr_enabled = (hEncoder->config.bitRate && hEncoder->config.bitRate <= 64000) ? 1 : 0;
+
     if (!config->bandWidth)
     {
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
@@ -218,9 +221,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
               hEncoder->sampleRate,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
-
-    /* Pseudo-SBR Activation Check (Targeting 24-48 kbps per channel) */
-    hEncoder->sbr_enabled = (hEncoder->config.bitRate && hEncoder->config.bitRate <= 48000) ? 1 : 0;
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);

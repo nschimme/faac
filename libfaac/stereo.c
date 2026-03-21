@@ -19,85 +19,10 @@
 
 #define _USE_MATH_DEFINES
 
-#include <stdio.h>
 #include <math.h>
-#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
-static void ApplyPseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, ChannelInfo *channel, faac_real *freq, int ch, int g, int w_offset)
-{
-    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    int b, bin, w;
-    int block_len = (coder->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-
-    if (coder->frame_pe > 5.0f) return;
-    if (!hEncoder->sbr_enabled) return;
-
-    faac_real crossover_floor = 10000.0f;
-    int max_avail_bin = coder->sfb_offset[coder->sfbn];
-    faac_real max_avail_freq = (faac_real)max_avail_bin * hEncoder->sampleRate / (block_len * 2);
-    if (crossover_floor > max_avail_freq * 0.8f) crossover_floor = max_avail_freq * 0.8f;
-
-    for (b = 0; b < coder->sfbn; b++)
-    {
-        int b_start_bin = coder->sfb_offset[b];
-        int b_end_bin = coder->sfb_offset[b+1];
-        faac_real sfb_freq = (faac_real)b_start_bin * hEncoder->sampleRate / (block_len * 2);
-
-        if (sfb_freq >= crossover_floor)
-        {
-            int sfcnt = g * coder->sfbn + b;
-            if (channel[ch].cpe && !channel[ch].ch_is_left &&
-                (coder->book[sfcnt] == HCB_INTENSITY || coder->book[sfcnt] == HCB_INTENSITY2)) continue;
-
-            if (coder->book[sfcnt] == HCB_ZERO || coder->book[sfcnt] == HCB_NONE) continue;
-
-            int best_offset = 0;
-            faac_real max_corr = -1.0f;
-            for (int off = -32; off <= 32; off += 4) {
-                faac_real corr = 0;
-                for (w = 0; w < coder->groups.len[g]; w++) {
-                    faac_real *wfreq = freq + (w_offset + w) * block_len;
-                    faac_real *orig = hEncoder->origFreqBuff[ch] + (w_offset + w) * block_len;
-                    for (int i = b_start_bin; i < b_end_bin; i++) {
-                        int src = i / 2 + off;
-                        if (src < 0 || src >= block_len) continue;
-                        corr += (faac_real)fabs(wfreq[src] * orig[i]);
-                    }
-                }
-                if (corr > max_corr) { max_corr = corr; best_offset = off; }
-            }
-
-            for (w = 0; w < coder->groups.len[g]; w++)
-            {
-                faac_real *wfreq = freq + (w_offset + w) * block_len;
-                for (bin = b_start_bin; bin < b_end_bin; bin++)
-                {
-                    if (wfreq[bin] != 0) continue;
-
-                    int source_index = bin / 2 + best_offset;
-                    if (source_index < 0) source_index = 0;
-                    if (source_index >= block_len) source_index = block_len - 1;
-
-                    faac_real bin_f = (faac_real)bin * hEncoder->sampleRate / (block_len * 2);
-                    faac_real tilt_db = -12.0f * (bin_f - crossover_floor) / (16000.0f - crossover_floor);
-                    if (tilt_db > 0) tilt_db = 0;
-
-                    faac_real gain = (faac_real)pow(10.0, (tilt_db - 3.0f) / 20.0);
-
-                    faac_real src_val = wfreq[source_index];
-                    if (source_index > 0 && source_index < block_len - 1) {
-                        src_val = 0.25f * wfreq[source_index - 1] + 0.50f * wfreq[source_index] + 0.25f * wfreq[source_index + 1];
-                    }
-
-                    wfreq[bin] = src_val * gain;
-                    wfreq[bin] += ((rand() / (faac_real)RAND_MAX * 2.0f - 1.0f) * 0.005f);
-                }
-            }
-        }
-    }
-}
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
                    faac_real *sl0, faac_real *sr0, int *sfcnt,
@@ -432,9 +357,9 @@ void AACstereo(faacEncHandle hpEncoder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        for (group = 0; group < coder[chn].groups.n; group++)
         {
-            int end = start + coder->groups.len[group];
+            int end = start + coder[chn].groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
@@ -446,18 +371,81 @@ void AACstereo(faacEncHandle hpEncoder,
             }
             start = end;
         }
-        skip:;
-    }
 
-    /* Apply SBR to ALL channels (including CPE and SCE) */
-    for (chn = 0; chn < maxchan; chn++)
-    {
-        if (!channel[chn].present || channel[chn].lfe) continue;
-        int win_offset = 0;
-        for (int g = 0; g < coder[chn].groups.n; g++)
-        {
-            ApplyPseudoSBR(hpEncoder, &coder[chn], &channel[chn], s[chn], chn, g, win_offset);
-            win_offset += coder[chn].groups.len[g];
+        /* Pseudo-SBR Folding: Apply post-stereo but pre-quantization */
+        if (((faacEncStruct*)hpEncoder)->sbr_enabled) {
+            int block_len = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+            int crossover_bin = 0;
+            for (int b = 0; b < coder[chn].sfbn; b++) {
+                if ((faac_real)coder[chn].sfb_offset[b] * ((faacEncStruct*)hpEncoder)->sampleRate / (block_len * 2) >= 8000.0f) {
+                    crossover_bin = coder[chn].sfb_offset[b];
+                    break;
+                }
+            }
+
+            if (crossover_bin > 0 && coder[chn].frame_pe < 7.0f) {
+                int group_idx;
+                int group_offset = 0;
+                for (group_idx = 0; group_idx < coder[chn].groups.n; group_idx++) {
+                    int win_len = coder[chn].groups.len[group_idx];
+                    int best_offset = 0;
+                    faac_real max_corr = -1.0f;
+
+                    /* Harmonic Search (Once per group) */
+                    for (int off = -64; off <= 64; off += 4) {
+                        faac_real corr = 0;
+                        for (int w = 0; w < win_len; w++) {
+                            faac_real *win_s = s[chn] + (group_offset + w) * block_len;
+                            faac_real *win_orig = ((faacEncStruct*)hpEncoder)->origFreqBuff[chn] + (group_offset + w) * block_len;
+                            for (int i = crossover_bin; i < block_len; i++) {
+                                int src = i / 2 + off;
+                                if (src >= 0 && src < block_len)
+                                    corr += (faac_real)fabs(win_s[src] * win_orig[i]);
+                            }
+                        }
+                        if (corr > max_corr) { max_corr = corr; best_offset = off; }
+                    }
+
+                    /* Apply Folding with Cross-fade and Noise Injection */
+                    for (int w = 0; w < win_len; w++) {
+                        faac_real *win_s = s[chn] + (group_offset + w) * block_len;
+                        faac_real *win_sr = s[rch] + (group_offset + w) * block_len;
+                        for (int i = crossover_bin; i < block_len; i++) {
+                            int src = i / 2 + best_offset;
+                            if (src < 0) src = 0;
+                            if (src >= block_len) src = block_len - 1;
+
+                            faac_real bin_f = (faac_real)i * ((faacEncStruct*)hpEncoder)->sampleRate / (block_len * 2);
+                            faac_real tilt_db = -18.0f * (bin_f - 8000.0f) / (16000.0f - 8000.0f);
+                            if (tilt_db > 0) tilt_db = 0;
+                            faac_real gain = (faac_real)pow(10.0, (tilt_db - 12.0f) / 20.0);
+
+                            /* Cross-fade (4 bins) */
+                            faac_real mix = 1.0f;
+                            if (i < crossover_bin + 4) mix = (faac_real)(i - crossover_bin) / 4.0f;
+
+                            /* Source Folding */
+                            faac_real folded = win_s[src] * gain;
+
+                            /* Comfort Noise Injection (0.005f amplitude) */
+                    /* Note: Use localized pseudo-random noise to avoid srand/rand library side-effects */
+                    static unsigned int noise_seed = 0x12345678;
+                    noise_seed = noise_seed * 1103515245 + 12345;
+                    faac_real noise = (faac_real)((noise_seed / 65536) % 32768) / 32768.0f;
+                    folded += (noise * 2.0f - 1.0f) * 0.005f;
+
+                            win_s[i] = win_s[i] * (1.0f - mix) + folded * mix;
+
+                            /* If Intensity Stereo is NOT active, apply same folding to right channel */
+                            if (channel[chn].cpe && channel[chn].ch_is_left && mode != JOINT_IS) {
+                                win_sr[i] = win_sr[i] * (1.0f - mix) + win_sr[src] * gain * mix;
+                            }
+                        }
+                    }
+                    group_offset += win_len;
+                }
+            }
         }
+        skip:;
     }
 }
