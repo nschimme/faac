@@ -639,42 +639,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        /* Unified bitrate scaling factor.
-         * Frame-to-frame variance scales with 1/sqrt(bits_per_frame),
-         * so correction aggressiveness should scale with 1/sqrt(bpc).
-         * Reference point is 64kbps: scale=1.0 there, >1 below, <1 above. */
-        faac_real bpc = (faac_real)hEncoder->config.bitRate;
-        faac_real scale = FAAC_SQRT(64000.0 / bpc);
-        if (scale < 0.8) scale = 0.8;
-        if (scale > 2.0) scale = 2.0;
-
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
-        /* Adaptive cap: how much correction to allow per frame */
-        faac_real cap = 0.10 * scale;
-        if (cap > 0.20) cap = 0.20;
+        if (fix < 0.9)
+            fix += 0.1;
+        else if (fix > 1.1)
+            fix -= 0.1;
+        else
+            fix = 1.0;
 
-        /* Adaptive dampening: how much of the correction to actually apply */
-        faac_real damp = 0.50 * scale;
-        if (damp > 0.80) damp = 0.80;
-
-        /* Adaptive dead zone: don't chase small errors, especially at low bitrates
-         * where variance is inherently high */
-        faac_real dead = 0.05 * scale;
-        if (dead > 0.10) dead = 0.10;
-
-        /* Apply cap */
-        if (fix < (1.0 - cap))
-            fix = 1.0 - cap;
-        else if (fix > (1.0 + cap))
-            fix = 1.0 + cap;
-        else if (fix > (1.0 - dead) && fix < (1.0 + dead))
-            fix = 1.0;  /* within dead zone, no correction */
-
-        /* Apply dampening */
-        fix = (fix - 1.0) * damp + 1.0;
+        fix = (fix - 1.0) * 0.5 + 1.0;
+        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
 
