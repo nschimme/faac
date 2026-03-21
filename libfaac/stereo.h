@@ -17,6 +17,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#ifndef STEREO_H
+#define STEREO_H
+
 #include "channels.h"
 #include "util.h"
 
@@ -28,3 +31,5 @@ void AACstereo(CoderInfo *coder,
                int mode,
                unsigned long sampleRate
               );
+
+#endif

@@ -260,7 +260,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.copyright = libCopyright;
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
-    hEncoder->config.jointmode = JOINT_IS;
+    hEncoder->config.jointmode = JOINT_MS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
@@ -568,6 +568,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->aacquantCfg.numChannels = numChannels;
         hEncoder->aacquantCfg.isLeft = channelInfo[channel].ch_is_left;
         hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
+        hEncoder->aacquantCfg.jointMode = jointmode;
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

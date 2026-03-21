@@ -22,98 +22,84 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
+#include "util.h"
 
 
-static void stereo(CoderInfo *cl, CoderInfo *cr,
-                   faac_real *sl0, faac_real *sr0, int *sfcnt,
-                   int wstart, int wend, faac_real phthr
-                  )
+static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
+                              faac_real *sl0, faac_real *sr0, int *sfcnt,
+                              int sfb, int wstart, int wend,
+                              faac_real thrmid, faac_real thrside,
+                              faac_real phthr, int force_is_sfb,
+                              int mode, unsigned long sampleRate,
+                              faac_real quality)
 {
-    int sfb;
-    int win;
-    int sfmin;
+    int win, l;
+    int start = cl->sfb_offset[sfb];
+    int end = cl->sfb_offset[sfb + 1];
+    faac_real enrgl, enrgr, enrgs, enrgd;
+    faac_real sum;
 
-    if (!phthr)
-        return;
+    enrgl = enrgr = enrgs = enrgd = 0.0;
 
-    phthr = 1.0 / phthr;
-
-    if (cl->block_type == ONLY_SHORT_WINDOW)
-        sfmin = 1;
-    else
-        sfmin = 8;
-
-    (*sfcnt) += sfmin;
-
-    for (sfb = sfmin; sfb < cl->sfbn; sfb++)
+    for (win = wstart; win < wend; win++)
     {
-        int l, start, end;
-        faac_real sum, diff;
-        faac_real enrgs, enrgd, enrgl, enrgr;
-        int hcb = HCB_NONE;
+        faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+        faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+
+        for (l = start; l < end; l++)
+        {
+            faac_real lx = sl[l];
+            faac_real rx = sr[l];
+
+            enrgl += lx * lx;
+            enrgr += rx * rx;
+
+            /* Unscaled energy for tool selection. */
+            faac_real s_is = lx + rx;
+            faac_real d_is = lx - rx;
+            enrgs += s_is * s_is;
+            enrgd += d_is * d_is;
+        }
+    }
+
+    /* Decision logic: Intensity Stereo (IS) > Mid/Side (M/S) > L/R */
+    int use_is = (force_is_sfb >= 0 && sfb >= force_is_sfb);
+    if (!use_is && phthr > 1.0)
+    {
+        faac_real ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+        ethr *= ethr * phthr;
+        if (enrgs >= ethr || enrgd >= ethr)
+            use_is = 1;
+    }
+
+    if (use_is && (enrgl + enrgr) < 1e-9) use_is = 0;
+
+    if (use_is)
+    {
+        int hcb = HCB_INTENSITY;
+        faac_real vfix;
         const faac_real step = 10/1.50515;
-        faac_real ethr;
-        faac_real vfix, efix;
+        faac_real efix = max(enrgl + enrgr, 1e-10);
 
-        start = cl->sfb_offset[sfb];
-        end = cl->sfb_offset[sfb + 1];
-
-        enrgs = enrgd = enrgl = enrgr = 0.0;
-        for (win = wstart; win < wend; win++)
-        {
-            faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-            faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-
-            for (l = start; l < end; l++)
-            {
-                faac_real lx = sl[l];
-                faac_real rx = sr[l];
-
-                sum = lx + rx;
-                diff = lx - rx;
-
-                enrgs += sum * sum;
-                enrgd += diff * diff;
-                enrgl += lx * lx;
-                enrgr += rx * rx;
-            }
-        }
-
-        ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
-        ethr *= ethr;
-        ethr *= phthr;
-        efix = enrgl + enrgr;
-        if (enrgs >= ethr)
-        {
-            hcb = HCB_INTENSITY;
-            vfix = FAAC_SQRT(efix / enrgs);
-        }
-        else if (enrgd >= ethr)
-        {
+        if (enrgd > enrgs) {
             hcb = HCB_INTENSITY2;
-            vfix = FAAC_SQRT(efix / enrgd);
+            vfix = FAAC_SQRT(efix / max(enrgd, 1e-10));
+        } else {
+            hcb = HCB_INTENSITY;
+            vfix = FAAC_SQRT(efix / max(enrgs, 1e-10));
         }
 
-        if (hcb != HCB_NONE)
-        {
-            int sf = (int)FAAC_LRINT(FAAC_LOG10(max(enrgl, 1e-10) / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+        int sf = (int)FAAC_LRINT(FAAC_LOG10(max(enrgl, 1e-10) / efix) * step);
+        int pan = (int)FAAC_LRINT(FAAC_LOG10(max(enrgr, 1e-10) / efix) * step) - sf;
 
-            if (pan > 30)
-            {
-                cl->book[*sfcnt] = HCB_ZERO;
-                (*sfcnt)++;
-                continue;
-            }
-            if (pan < -30)
-            {
-                cr->book[*sfcnt] = HCB_ZERO;
-                (*sfcnt)++;
-                continue;
-            }
+        if (pan > 30) {
+            cl->book[*sfcnt] = HCB_ZERO;
+        } else if (pan < -30) {
+            cr->book[*sfcnt] = HCB_ZERO;
+        } else {
+            cr->book[*sfcnt] = hcb;
             cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
-            cr->book[*sfcnt] = hcb;
 
             for (win = wstart; win < wend; win++)
             {
@@ -127,104 +113,49 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                 }
             }
         }
-        (*sfcnt)++;
     }
-}
-
-static void midside(CoderInfo *coder, ChannelInfo *channel,
-                    faac_real *sl0, faac_real *sr0, int *sfcnt,
-                    int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
-                   )
-{
-    int sfb;
-    int win;
-    int sfmin;
-
-    if (coder->block_type == ONLY_SHORT_WINDOW)
-        sfmin = 1;
-    else
-        sfmin = 8;
-
-    for (sfb = 0; sfb < sfmin; sfb++)
+    else if (mode == JOINT_MS)
     {
-        channel->msInfo.ms_used[*sfcnt] = 0;
-        (*sfcnt)++;
-    }
-    for (sfb = sfmin; sfb < coder->sfbn; sfb++)
-    {
+        /* M/S Decision with Phase Dominance Gate 2 restored. */
+        faac_real ms_aggression = (quality < 0.35) ? 2.0 : 1.0;
         int ms = 0;
-        int l, start, end;
-        faac_real sum, diff;
-        faac_real enrgs, enrgd, enrgl, enrgr;
+        enum {PH_NONE, PH_IN, PH_OUT};
+        int phase = PH_NONE;
 
-        start = coder->sfb_offset[sfb];
-        end = coder->sfb_offset[sfb + 1];
-
-        enrgs = enrgd = enrgl = enrgr = 0.0;
-        for (win = wstart; win < wend; win++)
+        if ((min(enrgl, enrgr) * thrmid * ms_aggression) >= (max(enrgs, enrgd) * 0.25))
         {
-            faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-            faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-
-            for (l = start; l < end; l++)
-            {
-                faac_real lx = sl[l];
-                faac_real rx = sr[l];
-
-                sum = 0.5 * (lx + rx);
-                diff = 0.5 * (lx - rx);
-
-                enrgs += sum * sum;
-                enrgd += diff * diff;
-                enrgl += lx * lx;
-                enrgr += rx * rx;
+            if ((enrgs * 0.25 * thrmid * 2.0 * ms_aggression >= (enrgl + enrgr))) {
+                ms = 1; phase = PH_IN;
+            } else if ((enrgd * 0.25 * thrmid * 2.0 * ms_aggression >= (enrgl + enrgr))) {
+                ms = 1; phase = PH_OUT;
             }
         }
 
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
+        if (ms)
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
-
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
+            chi->msInfo.ms_used[*sfcnt] = 1;
+            for (win = wstart; win < wend; win++)
             {
-                ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
-
-            if (ms)
-            {
-                for (win = wstart; win < wend; win++)
+                faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+                faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+                for (l = start; l < end; l++)
                 {
-                    faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-                    faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-                    for (l = start; l < end; l++)
-                    {
-                        if (phase == PH_IN)
-                        {
-                            sum = sl[l] + sr[l];
-                            diff = 0;
-                        }
-                        else
-                        {
-                            sum = 0;
-                            diff = sl[l] - sr[l];
-                        }
-
-                        sl[l] = 0.5 * sum;
-                        sr[l] = 0.5 * diff;
+                    faac_real s_sum, s_diff;
+                    if (phase == PH_IN) {
+                        s_sum = sl[l] + sr[l];
+                        s_diff = 0;
+                    } else {
+                        s_sum = 0;
+                        s_diff = sl[l] - sr[l];
                     }
+                    sl[l] = 0.5 * s_sum;
+                    sr[l] = 0.5 * s_diff;
                 }
             }
         }
 
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
+        /* Side-channel masking (restricted to non-MS bands). */
+        if (!ms && quality < 0.6 && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             for (win = wstart; win < wend; win++)
             {
@@ -232,16 +163,11 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
                 faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
                 for (l = start; l < end; l++)
                 {
-                    if (enrgl < enrgr)
-                        sl[l] = 0.0;
-                    else
-                        sr[l] = 0.0;
+                    if (enrgl < enrgr) sl[l] = 0.0;
+                    else sr[l] = 0.0;
                 }
             }
         }
-
-        channel->msInfo.ms_used[*sfcnt] = ms;
-        (*sfcnt)++;
     }
 }
 
@@ -318,10 +244,8 @@ void AACstereo(CoderInfo *coder,
     for (chn = 0; chn < maxchan; chn++)
     {
         int rch;
-        int cnt;
         int group;
         int sfcnt = 0;
-        int start = 0;
 
         if (!channel[chn].present)
             continue;
@@ -340,7 +264,7 @@ void AACstereo(CoderInfo *coder,
             continue;
 
         channel[chn].common_window = 1;
-        for (cnt = 0; cnt < coder[chn].groups.n; cnt++)
+        for (int cnt = 0; cnt < coder[chn].groups.n; cnt++)
             if (coder[chn].groups.len[cnt] != coder[rch].groups.len[cnt])
             {
                 channel[chn].common_window = 0;
@@ -354,17 +278,44 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        /* Iteration 132 thresholds (Best Performer). */
+        int force_is_sfb = -1;
+        CoderInfo *cl = &coder[chn];
+        if (mode == JOINT_MS && quality < 0.7) {
+            float freq_thresh;
+            if      (quality < 0.25) freq_thresh = 3000.0f;
+            else if (quality < 0.35) freq_thresh = 5000.0f;
+            else if (quality < 0.40) freq_thresh = 10000.0f;
+            else                     freq_thresh = 15000.0f;
+
+            int frame_len = (cl->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
+            for (int band = 0; band < cl->sfbn; band++) {
+                float f = (float)cl->sfb_offset[band] * sampleRate / (float)(frame_len * 2);
+                if (f >= freq_thresh) {
+                    force_is_sfb = band;
+                    break;
+                }
+            }
+        }
+
+        sfcnt = 0;
+        int start = 0;
+        for (group = 0; group < cl->groups.n; group++)
         {
-            int end = start + coder->groups.len[group];
-            switch(mode) {
-            case JOINT_MS:
-                midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
-                break;
-            case JOINT_IS:
-                stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
-                break;
+            int end = start + cl->groups.len[group];
+            int sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
+
+            for (int band = 0; band < sfmin; band++)
+            {
+                channel[chn].msInfo.ms_used[sfcnt++] = 0;
+            }
+
+            for (int band = sfmin; band < cl->sfbn; band++)
+            {
+                apply_stereo_band(cl, &coder[rch], channel + chn, s[chn], s[rch], &sfcnt,
+                                  band, start, end, thrmid, thrside, (mode == JOINT_IS) ? isthr : 0.0,
+                                  force_is_sfb, mode, sampleRate, quality);
+                sfcnt++;
             }
             start = end;
         }

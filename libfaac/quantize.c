@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/> for more details.
 ****************************************************************************/
 
 #include <math.h>
@@ -220,18 +220,21 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
 
-      /* Vocal boost as quality offset to stay within rate controller. */
-      if ((aacquantCfg->quality < 60.0) && aacquantCfg->isLeft) {
+      /* Surgical Vocal Boost.
+         Restricted to JOINT_MS Mid-channel or Constrained Mono.
+         Provides ~3dB boost for quality < 60% to improve masking in 1-4kHz range. */
+      if ((aacquantCfg->quality < 60.0) && aacquantCfg->isLeft &&
+          (aacquantCfg->jointMode == JOINT_MS || aacquantCfg->numChannels == 1)) {
           int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
           float f_start = (float)start * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
           float f_end = (float)end * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
 
           if (f_start > 800.0 && f_end < 5000.0) {
               if (aacquantCfg->numChannels > 1) {
-                  if (aacquantCfg->quality < 35.0) sfac += 4; /* ~6dB boost */
-                  else sfac += 2; /* ~3dB boost */
+                  if (aacquantCfg->quality < 35.0) sfac += 2;
+                  else sfac += 1;
               } else {
-                  if (aacquantCfg->quality < 30.0) sfac += 1; /* ~1.5dB boost mono */
+                  if (aacquantCfg->quality < 30.0) sfac += 1;
               }
           }
       }
