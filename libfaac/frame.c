@@ -116,7 +116,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     int i;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
-    hEncoder->config.jointmode = config->jointmode;
+    hEncoder->config.jointmode = (hEncoder->numChannels > 1) ? config->jointmode : JOINT_NONE;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
     hEncoder->config.aacObjectType = config->aacObjectType;
@@ -560,21 +560,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    /* Iteration 35: Targeted global quality boost for 32k (xlow) */
-    faac_real q_val = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
-    faac_real effective_quality = q_val;
-    if (jointmode == JOINT_MS) {
-        if (q_val < 0.35) {
-            effective_quality *= 1.30; /* 30% boost for xlow */
-        } else if (q_val < 0.6) {
-            effective_quality *= 1.15; /* 15% boost for low */
-        }
-    }
+    /* Iteration 63: Removing redundant global boost.
+       Relying on the rate controller and targeted vocal boost. */
+    faac_real effective_quality = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               effective_quality, jointmode, hEncoder->sampleRate);
 
     for (channel = 0; channel < numChannels; channel++) {
+        hEncoder->aacquantCfg.numChannels = numChannels;
+        hEncoder->aacquantCfg.isLeft = channelInfo[channel].ch_is_left;
+        hEncoder->aacquantCfg.jointMode = jointmode;
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

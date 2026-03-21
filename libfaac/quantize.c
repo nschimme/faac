@@ -71,7 +71,8 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality, unsigned long sampleRate)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality,
+                  unsigned long sampleRate, int numChannels, int isLeft, int jointMode)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -156,16 +157,21 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 33: Targeted vocal boost for LOW bitrates only */
-    if (quality < 0.5)
+    /* Iteration 60: Winning Vocal Strategy.
+       800Hz-5kHz range, adaptive boost based on quality tier.
+       Strictly restricted to Mid-channel (isLeft) in Joint Stereo. */
+    if (quality < 1.0 && numChannels > 1 && jointMode != JOINT_NONE && isLeft)
     {
         int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
         float f_start = (float)start * (float)sampleRate / (float)(frame_len * 2);
         float f_end = (float)end * (float)sampleRate / (float)(frame_len * 2);
 
-        /* Vocal range roughly 600Hz to 6.5kHz */
-        if (f_start > 600.0 && f_end < 6500.0) {
-            target *= 0.5; /* Extreme boost (halve noise floor) */
+        if (f_start > 800.0 && f_end < 5000.0) {
+            faac_real boost_factor = 1.0;
+            if (quality < 0.4) boost_factor = 0.5;      /* 50% boost for xlow (32k) */
+            else if (quality < 0.7) boost_factor = 0.7; /* 30% boost for low (64k) */
+
+            target *= boost_factor;
         }
     }
 
@@ -278,7 +284,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->sampleRate);
+                  (faac_real)aacquantCfg->quality/DEFQUAL,
+                  aacquantCfg->sampleRate, aacquantCfg->numChannels,
+                  aacquantCfg->isLeft, aacquantCfg->jointMode);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
