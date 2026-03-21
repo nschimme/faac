@@ -211,8 +211,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         #define NF_HI    0.001
         #define FAC_LO   0.90
         #define FAC_HI   1.00
-        #define POWM_LO  0.20
-        #define POWM_HI  0.35
+        #define POWM_LO  0.27
+        #define POWM_HI  0.30
         #define FP_LO    0.75
         #define FP_HI    0.70
 
