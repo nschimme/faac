@@ -173,82 +173,79 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    {
-        /* All parameters interpolated between two anchor points.
-        * To tune: adjust the _LO and _HI values directly.
-        * LO anchor = 16kbps, HI anchor = 128kbps.
-        *
-        * nf uses log-space interpolation because it spans two decades
-        * (0.010 to 0.001) — linear interpolation overshoots the midrange. 
-        * Everything else is linear. */
+    /* All parameters interpolated between two anchor points.
+    * To tune: adjust the _LO and _HI values directly.
+    * LO anchor = 16kbps, HI anchor = 128kbps.
+    *
+    * nf uses log-space interpolation because it spans two decades
+    * (0.010 to 0.001) — linear interpolation overshoots the midrange.
+    * Everything else is linear. */
 
-        #define ANCHOR_LO_BPC  16000.0
-        #define ANCHOR_HI_BPC 128000.0
+    #define ANCHOR_LO  16000.0
+    #define ANCHOR_HI 128000.0
 
-        #define NF_LO    0.010
-        #define NF_HI    0.001
-        #define FAC_LO   0.90
-        #define FAC_HI   0.99
-        #define POWM_LO  0.27
-        #define POWM_HI  0.30
-        #define FP_LO    0.75
-        #define FP_HI    0.70
+    #define NF_LO    0.010
+    #define NF_HI    0.001
+    #define FAC_LO   0.90
+    #define FAC_HI   0.99
+    #define POWM_LO  0.27
+    #define POWM_HI  0.30
+    #define FP_LO    0.75
+    #define FP_HI    0.70
 
-        /* Use 64kbps as default for interpolation when bitrate is not specified (VBR) */
-        unsigned long bitRate = hEncoder->config.bitRate ? hEncoder->config.bitRate : 64000;
-        faac_real t = (bitRate - ANCHOR_LO_BPC) / (ANCHOR_HI_BPC - ANCHOR_LO_BPC);
-        if (t < 0.0) t = 0.0;
-        if (t > 1.0) t = 1.0;
+    faac_real t = (hEncoder->config.bitRate - (faac_real)ANCHOR_LO)
+                / ((faac_real)ANCHOR_HI - (faac_real)ANCHOR_LO);
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
 
-        #define INTERP(lo, hi)      ((lo) + t * ((hi) - (lo)))
-        #define INTERP_LOG(lo, hi)  FAAC_POW((lo), 1.0-t) * FAAC_POW((hi), t)
+    #define INTERP(lo, hi)      ((lo) + t * ((hi) - (lo)))
+    #define INTERP_LOG(lo, hi)  FAAC_POW((lo), 1.0-t) * FAAC_POW((hi), t)
 
-        faac_real nf   = INTERP_LOG(NF_LO,  NF_HI);
-        faac_real fac  = INTERP(FAC_LO,  FAC_HI);
-        faac_real powm = INTERP(POWM_LO, POWM_HI);
-        faac_real fp   = INTERP(FP_LO,   FP_HI);
+    faac_real nf   = INTERP_LOG(NF_LO,  NF_HI);
+    faac_real fac  = INTERP(FAC_LO,  FAC_HI);
+    faac_real powm = INTERP(POWM_LO, POWM_HI);
+    faac_real fp   = INTERP(FP_LO,   FP_HI);
 
-        #undef INTERP
-        #undef INTERP_LOG
+    #undef INTERP
+    #undef INTERP_LOG
 
-        hEncoder->aacquantCfg.noise_floor  = nf;
-        hEncoder->aacquantCfg.powm         = powm;
-        hEncoder->aacquantCfg.freq_penalty = fp;
+    hEncoder->aacquantCfg.noise_floor  = nf;
+    hEncoder->aacquantCfg.powm         = powm;
+    hEncoder->aacquantCfg.freq_penalty = fp;
 
-        /* Sample-rate-aware bandwidth */
-        if (!hEncoder->config.bandWidth) {
-            faac_real nyquist = hEncoder->sampleRate * 0.5;
-            faac_real maxBandwidth = (nyquist > 19000) ? 19000 : nyquist;
-            hEncoder->config.bandWidth = (int)(fac * maxBandwidth);
-        }
+    #undef NF_LO
+    #undef NF_HI
+    #undef FAC_LO
+    #undef FAC_HI
+    #undef POWM_LO
+    #undef POWM_HI
+    #undef FP_LO
+    #undef FP_HI
+    #undef ANCHOR_LO_BPC
+    #undef ANCHOR_HI_BPC
 
-        /* Floor: prevents bandwidth falling below useful speech range.
+    /* Bandwidth resolution */
+    if (!hEncoder->config.bandWidth) {
+        faac_real nyquist      = (faac_real)hEncoder->sampleRate * 0.5;
+
+        /* Cap at 20 kHz: AAC does not efficiently encode near Nyquist */
+        faac_real maxBandwidth = (nyquist > 20000.0) ? 20000.0 : nyquist;
+        hEncoder->config.bandWidth = (unsigned int)(fac * maxBandwidth);
+
+        /* Prevents bandwidth falling below useful speech range.
            Uses min(3500, 40% of Nyquist) to adapt to low sample rates. */
-        {
-            faac_real bw_floor = 3500;
-            faac_real nyquist_frac = (faac_real)hEncoder->sampleRate * 0.20;
-            if (nyquist_frac < bw_floor) bw_floor = nyquist_frac;
-            if (hEncoder->config.bandWidth < (unsigned int)bw_floor)
-                hEncoder->config.bandWidth = (unsigned int)bw_floor;
-        }
-
-        /* Caps: ensure bandwidth is within valid Nyquist limits */
-        if (hEncoder->config.bandWidth < 100)
-            hEncoder->config.bandWidth = 100;
-        if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-            hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-        #undef NF_LO
-        #undef NF_HI
-        #undef FAC_LO
-        #undef FAC_HI
-        #undef POWM_LO
-        #undef POWM_HI
-        #undef FP_LO
-        #undef FP_HI
-        #undef ANCHOR_LO_BPC
-        #undef ANCHOR_HI_BPC
+        unsigned int bw_floor = 3500;
+        unsigned int sr_frac  = (unsigned int)((faac_real)hEncoder->sampleRate * 0.20);
+        if (sr_frac < bw_floor) bw_floor = sr_frac;
+        if (hEncoder->config.bandWidth < bw_floor)
+            hEncoder->config.bandWidth = bw_floor;
     }
+
+    /* Ensure bandwidth is within valid Nyquist limits */
+    if (hEncoder->config.bandWidth < 100)
+        hEncoder->config.bandWidth = 100;
+    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
+        hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
