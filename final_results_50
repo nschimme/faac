@@ -1,0 +1,277 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 3.29202,
+      "size": 66946,
+      "bitrate": 68.31097278035384,
+      "bitrate_target": 64,
+      "time": 0.15636944770812988,
+      "md5": "5aa34bd88a4d83897c560529128e9832",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    },
+    "music_low_25-This-is-the-end.441.16b48k.wav": {
+      "mos": 1.0,
+      "size": 77984,
+      "bitrate": 67.92769529571703,
+      "bitrate_target": 64,
+      "time": 0.20151972770690918,
+      "md5": "5f018b69757df6d2c7c1304240f717c6",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "25-This-is-the-end.441.16b48k.wav"
+    },
+    "music_low_21-classic.441.16b48k.wav": {
+      "mos": 3.51011,
+      "size": 76280,
+      "bitrate": 63.19719349117788,
+      "bitrate_target": 64,
+      "time": 0.19735097885131836,
+      "md5": "8feffc9e0055c6d7aa5001dcdeddba2b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "21-classic.441.16b48k.wav"
+    },
+    "music_low_35_SQAM_glockenspiel_cut.16b48k.wav": {
+      "mos": 4.08081,
+      "size": 82939,
+      "bitrate": 66.3512,
+      "bitrate_target": 64,
+      "time": 0.20058321952819824,
+      "md5": "78ea9baf34e128a6c0ea49cbdccf10fa",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "35_SQAM_glockenspiel_cut.16b48k.wav"
+    },
+    "music_low_9-Have-big-expensive-car.441.16b48k.wav": {
+      "mos": 3.36876,
+      "size": 82165,
+      "bitrate": 67.71738571660956,
+      "bitrate_target": 64,
+      "time": 0.2059931755065918,
+      "md5": "10aef5ac80090ca00eb4977f8570b55d",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "9-Have-big-expensive-car.441.16b48k.wav"
+    },
+    "music_low_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+      "mos": 3.31123,
+      "size": 82394,
+      "bitrate": 65.9152,
+      "bitrate_target": 64,
+      "time": 0.2133481502532959,
+      "md5": "a0b202c2e353c7e48af58ae8753e502b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+    },
+    "music_low_Coral.16b48k.wav": {
+      "mos": 3.42729,
+      "size": 80074,
+      "bitrate": 64.0592,
+      "bitrate_target": 64,
+      "time": 0.2277669906616211,
+      "md5": "d55cb6ded14f8eab2899b571f5eb5f1c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Coral.16b48k.wav"
+    },
+    "music_low_Girl_In_The_Fire__Sample_.16b48k.wav": {
+      "mos": 2.50182,
+      "size": 77748,
+      "bitrate": 62.1984,
+      "bitrate_target": 64,
+      "time": 0.24120378494262695,
+      "md5": "b2957c95deeefe01104c60ce05c1c48a",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Girl_In_The_Fire__Sample_.16b48k.wav"
+    },
+    "music_low_Hey Tonight.16b48k.wav": {
+      "mos": 3.12765,
+      "size": 78826,
+      "bitrate": 63.0608,
+      "bitrate_target": 64,
+      "time": 0.21825814247131348,
+      "md5": "ee8002b841ad5224acad136aed495b5b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Hey Tonight.16b48k.wav"
+    },
+    "music_low_Jupiter, the Bringer of Jolity.16b48k.wav": {
+      "mos": 1.0,
+      "size": 78653,
+      "bitrate": 62.9224,
+      "bitrate_target": 64,
+      "time": 0.20983600616455078,
+      "md5": "ccdf921e496c18fda8e7c215c865934c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Jupiter, the Bringer of Jolity.16b48k.wav"
+    },
+    "music_low_NewYorkCity.16b48k.wav": {
+      "mos": 1.0,
+      "size": 81269,
+      "bitrate": 65.0152,
+      "bitrate_target": 64,
+      "time": 0.20575976371765137,
+      "md5": "82e4d7fbd99543fc27383a4fd5837493",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "NewYorkCity.16b48k.wav"
+    },
+    "music_low_Robots_old.16b48k.wav": {
+      "mos": 2.14236,
+      "size": 85138,
+      "bitrate": 68.1104,
+      "bitrate_target": 64,
+      "time": 0.20511865615844727,
+      "md5": "9f5bb22e2e96f86da7e4ae7c564a9c6c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Robots_old.16b48k.wav"
+    },
+    "music_low_Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "mos": 3.37189,
+      "size": 80252,
+      "bitrate": 64.2016,
+      "bitrate_target": 64,
+      "time": 0.16929173469543457,
+      "md5": "d37468c0037a402e888fec9932205ec1",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Shinsho_pool_3min45_4min4.16b48k.wav"
+    },
+    "music_low_SlavesOfFear.16b48k.wav": {
+      "mos": 4.36436,
+      "size": 80619,
+      "bitrate": 64.4952,
+      "bitrate_target": 64,
+      "time": 0.17330050468444824,
+      "md5": "3e3839f77effe73d142035e2af02c80b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "SlavesOfFear.16b48k.wav"
+    },
+    "music_low_Through The Fire And Flames.16b48k.wav": {
+      "mos": 3.24211,
+      "size": 82154,
+      "bitrate": 65.7232,
+      "bitrate_target": 64,
+      "time": 0.17425847053527832,
+      "md5": "d45392054db633c038a964f21de974ba",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Through The Fire And Flames.16b48k.wav"
+    },
+    "music_low_Waiting.16b48k.wav": {
+      "mos": 2.8692,
+      "size": 80402,
+      "bitrate": 64.3216,
+      "bitrate_target": 64,
+      "time": 0.17470884323120117,
+      "md5": "7d35cb282733d3ff113d074158a7f8bb",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Waiting.16b48k.wav"
+    },
+    "music_low_cst.wav": {
+      "mos": 2.50532,
+      "size": 53836,
+      "bitrate": 66.0570698678423,
+      "bitrate_target": 64,
+      "time": 0.13529062271118164,
+      "md5": "471c6314c8c8b30a6432c62a1d26bf66",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "cst.wav"
+    },
+    "music_low_bah.wav": {
+      "mos": 3.44524,
+      "size": 75923,
+      "bitrate": 64.06103445580912,
+      "bitrate_target": 64,
+      "time": 0.2164323329925537,
+      "md5": "1841bd6e6fa88703c9fe81325b157329",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "bah.wav"
+    },
+    "music_low_bonhemian_rhapsody.16b48k.wav": {
+      "mos": 3.54368,
+      "size": 78482,
+      "bitrate": 62.7856,
+      "bitrate_target": 64,
+      "time": 0.19620609283447266,
+      "md5": "64897b684a9e35ac3b256f3f7f6fd6d6",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "bonhemian_rhapsody.16b48k.wav"
+    },
+    "music_low_girl.16b48k.wav": {
+      "mos": 3.32272,
+      "size": 92598,
+      "bitrate": 74.0784,
+      "bitrate_target": 64,
+      "time": 0.18370461463928223,
+      "md5": "cec02022890fc696f08d0111b088d164",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "girl.16b48k.wav"
+    },
+    "music_low_lob.wav": {
+      "mos": 3.2503,
+      "size": 57775,
+      "bitrate": 65.16992048621104,
+      "bitrate_target": 64,
+      "time": 0.2270650863647461,
+      "md5": "ce75da23ec93823b1a69bb62aaadc08b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "lob.wav"
+    },
+    "music_low_hrp.wav": {
+      "mos": 4.28464,
+      "size": 71772,
+      "bitrate": 65.29781917547993,
+      "bitrate_target": 64,
+      "time": 0.28476977348327637,
+      "md5": "dd572558fc29905d2944df98b635c434",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "hrp.wav"
+    },
+    "music_low_qrt.wav": {
+      "mos": 1.58421,
+      "size": 79807,
+      "bitrate": 63.8456,
+      "bitrate_target": 64,
+      "time": 0.2860832214355469,
+      "md5": "fb84ae522f4d897899b7f37607627ce6",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "qrt.wav"
+    },
+    "music_low_take_your_finger_frin_my_head.16b48k.wav": {
+      "mos": 1.0,
+      "size": 80281,
+      "bitrate": 64.2248,
+      "bitrate_target": 64,
+      "time": 0.28785181045532227,
+      "md5": "32d46dfe6befa1f0a52839d4f8d2f0a2",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "take_your_finger_frin_my_head.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 8.38867014766826,
+    "silence.wav": 6.893885248001122,
+    "sine.wav": 8.009917828666707,
+    "sweep.wav": 7.694805415000398,
+    "overall": 7.746819659834122
+  },
+  "lib_size": 4096
+}
