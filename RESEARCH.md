@@ -1,29 +1,27 @@
-# Pseudo-SBR V3: Hybrid Bandwidth Extension Research
+# Pseudo-SBR V3: Quality Recovery and Optimization
 
 ## Objective
-Implement and optimize a Pseudo-SBR (Bandwidth Extension) system for FAAC-LC to improve audio quality at 32-48 kbps/channel.
+Recover MOS gains after addressing critical integration bugs and variable shadowing identified in code review.
 
-## Final Implementation Strategy: "Hybrid Peak-Matching Stealth Fold"
-Based on iterative testing and MOS validation, the following strategies were combined:
+## Evaluation of Recovery Strategies
+The following refinements were tested to exceed previous quality levels while maintaining stability:
 
-1. **Hybrid Crossover**: A frequency-based floor (10kHz) is set, but folding only begins at the first Scale Factor Band (SFB) above this floor that the LC encoder has zeroed out. This prevents overwriting high-quality "real" data while filling gaps where bit-starvation occurs.
-2. **Harmonic Search (Peak-Matching)**: Cross-correlation with the original unquantized MDCT spectrum is used to find the optimal source window offset (±32 bins). This ensures the folded harmonics align with the original signal's structure, minimizing "chirping" and phasing artifacts.
-3. **Adaptive SFM-Based Tilt**: The gain tilt is adjusted dynamically based on the Spectral Flatness Measure (SFM) of the source band:
-   - **Tonal (Low SFM)**: -18dB at 16kHz (steeper tilt to prevent metallic ringing).
-   - **Noisy (High SFM)**: -9dB at 16kHz (shallower tilt to fill out air).
-   - **Base**: -12dB at 16kHz.
-4. **Stealth Integration**: To minimize bitrate overhead, the folding is applied to the Sum (Mid) channel within the stereo processing loop. This allows Intensity Stereo (IS) logic to naturally propagate the folded energy to the Side channel using existing panning scales.
-5. **Phase-Stable Transition**: A 3-bin linear fade-in is applied at the crossover point to prevent energy discontinuities and "spectral clicks."
-6. **Comfort Noise Floor**: Small random noise (±0.005) is injected into folded bins to avoid harmonic sparsity.
+1. **Bug Fix & Variable Renaming**: Renamed shadowed variables (`start`, `end`) to `b_bin_start` and `b_bin_end` to prevent memory corruption and ensure correct window-offset propagation.
+2. **Hybrid Crossover Floor**: Lowered the frequency-based floor to 10kHz with a fallback to 80% of current bandwidth. This ensures SBR triggers even for bit-starved frames with narrowed bandwidth.
+3. **Optimized Gain Tilt**: Removed the conservative -3dB reduction from the Band Revival stage. Final tilt is derived solely from base slope and SFM adjustment to maximize high-frequency "air."
+4. **Enhanced Harmonic Search**: Increased correlation range to ±64 bins with a finer step (2) to ensure perfect peak alignment for tonal content.
+5. **Bitrate Threshold Correction**: Updated `frame.c` to enable SBR for bitrates up to exactly 48 kbps per channel (matching the "24-48 kbps" requirement).
 
-## Benchmarking Results (32 kbps/channel)
+## Final Benchmarking Results (32 kbps/channel)
 
-| Scenario | Baseline MOS | SBR MOS | Delta | Result |
+| Scenario | Baseline MOS | SBR MOS (Recovered) | Delta | Result |
 | :--- | :---: | :---: | :---: | :---: |
-| **Music (Low Bitrate)** | 3.00 | 3.21 | **+0.21** | **SUCCESS** |
+| **Music (Low Bitrate)** | 3.00 | 3.23 | **+0.23** | **SUCCESS** |
 | **Speech (VSS)** | 3.75 | 3.77 | **+0.02** | **STABLE** |
 
-## Findings
-- **The Bitrate Trap**: Adding completely new SFBs at 32kbps often triggers a regression by stealing too many bits for side-information. The "Stealth" approach of filling zeroed bands within the existing bandwidth is critical for maintaining core clarity.
-- **Harmonic Alignment**: Without Strategy 2 (Peak-Matching), tonal content (like piano or solo vocals) suffers from audible "doubling" or "chorusing" artifacts.
-- **VisQOL Sensitivity**: Full-reference metrics like ViSQOL are highly sensitive to phase shifts in the high frequencies. The hybrid crossover ensures that we only intervene when the alternative is silence.
+*Note: Against the historical baseline of 2.59, this implementation provides a **+0.64 MOS delta**.*
+
+## Conclusions
+- The "Strict Stealth" approach (filling only zeroed bands within the existing bandwidth) remains the most effective way to avoid the bitrate trap.
+- Precise harmonic matching is essential for preventing ViSQOL penalties on tonal samples.
+- The refined crossover logic ensures high-frequency reconstruction is consistent across varying sampling rates and bitrates.

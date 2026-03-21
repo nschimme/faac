@@ -219,8 +219,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
 
-    /* Pseudo-SBR Activation Check */
-    hEncoder->sbr_enabled = (hEncoder->config.bitRate && hEncoder->config.bitRate < 48000) ? 1 : 0;
+    /* Pseudo-SBR Activation Check (Targeting 24-48 kbps per channel) */
+    hEncoder->sbr_enabled = (hEncoder->config.bitRate && hEncoder->config.bitRate <= 48000) ? 1 : 0;
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);

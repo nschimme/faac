@@ -49,33 +49,31 @@ static void ApplyPseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, faac_real 
         int start_bin = coder->sfb_offset[b];
         faac_real sfb_freq = (faac_real)start_bin * hEncoder->sampleRate / (block_len * 2);
 
-        if (sfb_freq >= crossover_floor)
+        if (sbr_start_sfb == -1 && sfb_freq >= crossover_floor)
         {
             int sfcnt = g * coder->sfbn + b;
             if (coder->book[sfcnt] == HCB_ZERO)
             {
                 sbr_start_sfb = b;
-                break;
             }
         }
     }
 
+    /* BAND REVIVAL: Fill entirely zeroed bands above the floor */
     if (sbr_start_sfb != -1)
     {
         for (b = sbr_start_sfb; b < coder->sfbn; b++)
         {
             int sfcnt = g * coder->sfbn + b;
-
-            /* Strategy 1: Stealth Fold - Only fill zeroed bands within sfbn */
             if (coder->book[sfcnt] != HCB_ZERO) continue;
 
             int b_bin_start = coder->sfb_offset[b];
             int b_bin_end = coder->sfb_offset[b+1];
 
-            /* Strategy 2: Peak-Matching Harmonic Search */
+            /* Harmonic Search (More precise) */
             int best_offset = 0;
             faac_real max_corr = -1.0f;
-            for (int off = -32; off <= 32; off += 4) {
+            for (int off = -64; off <= 64; off += 2) {
                 faac_real corr = 0;
                 for (w = 0; w < coder->groups.len[g]; w++) {
                     faac_real *wfreq = freq + (w_offset + w) * block_len;
@@ -92,7 +90,7 @@ static void ApplyPseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, faac_real 
                 }
             }
 
-            /* Strategy 4: Adaptive Scaling (SFM) */
+            /* Adaptive Tilt */
             faac_real sfm = 0.5f;
             faac_real sum_val = 0, sum_log = 0;
             int count = 0;
@@ -128,21 +126,18 @@ static void ApplyPseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, faac_real 
                     faac_real tilt_db = -12.0f * (bin_freq - crossover_floor) / (16000.0f - crossover_floor);
                     if (tilt_db > 0) tilt_db = 0;
 
-                    faac_real total_gain_db = tilt_db + sfm_adj_db - 3.0f; /* Slight extra reduction for stability */
+                    faac_real total_gain_db = tilt_db + sfm_adj_db - 2.0f;
                     faac_real gain = (faac_real)pow(10.0, total_gain_db / 20.0);
 
-                    /* Transition: 3-bin linear fade-in at the junction */
                     if (b == sbr_start_sfb && (bin - b_bin_start) < 3)
                     {
                         gain *= (faac_real)(bin - b_bin_start + 1) / 4.0f;
                     }
 
                     wfreq[bin] = wfreq[source_index] * gain;
-                    /* Noise Injection */
                     wfreq[bin] += ((rand() / (faac_real)RAND_MAX * 2.0f - 1.0f) * 0.005f);
                 }
             }
-            /* Mark the band as non-zero so the quantizer doesn't skip it */
             coder->book[sfcnt] = HCB_ESC;
         }
     }
@@ -500,5 +495,22 @@ void AACstereo(faacEncHandle hpEncoder,
             start = end;
         }
         skip:;
+    }
+
+    /* Support for Mono and Non-Joint Stereo channels */
+    for (chn = 0; chn < maxchan; chn++)
+    {
+        if (!channel[chn].present) continue;
+
+        /* Skip channels already handled in the joint loop (Left channel of CPE)
+           or Right channel of IS/MS pair which doesn't need independent SBR here. */
+        if (channel[chn].cpe) continue;
+
+        int win_offset = 0;
+        for (int g = 0; g < coder[chn].groups.n; g++)
+        {
+            ApplyPseudoSBR(hpEncoder, &coder[chn], s[chn], chn, g, win_offset);
+            win_offset += coder[chn].groups.len[g];
+        }
     }
 }
