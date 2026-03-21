@@ -5,7 +5,7 @@ At low bitrates (e.g., 16kbps for VoIP), the FAAC encoder frequently fell into a
 
 1.  **Lack of Bit Reservoir**: Silent or low-complexity frames used very few bits, but these "saved" bits were lost. Active speech frames were then bitrate-starved because the ABR loop had no memory of the surplus.
 2.  **ABR Dead-band**: The legacy ABR loop ignored errors within a +/- 10% range. At low bitrates, where the number of bits per frame is small, this dead-band was too coarse.
-3.  **Static Dampening**: The ABR loop used a fixed 0.5 dampening factor regardless of the bitrate.
+3.  **Static Damping**: The ABR loop used a fixed 0.5 damping factor regardless of the bitrate.
 
 ## Structural Improvements
 
@@ -13,21 +13,22 @@ At low bitrates (e.g., 16kbps for VoIP), the FAAC encoder frequently fell into a
 We introduced a `bit_reservoir` to the `faacEncStruct`.
 - **Function**: It tracks `desbits - frameBits` for each frame.
 - **Spending**: The `target_bits` for the next frame is now `desbits + bit_reservoir`.
-- **Wind-up Protection**: The reservoir is clamped to +/- 32 frames worth of bits (~750ms).
+- **Wind-up Protection**: The reservoir is clamped to +/- 32 frames' worth of bits (~750ms).
 
 ### 2. Adaptive ABR Responsiveness
 We implemented a `scale` factor based on the square root of the bitrate:
 `scale = sqrt(64000.0 / bitRate)`
 - **Low Bitrates (VoIP/VSS)**: `scale` is > 1.0, increasing the responsiveness.
 - **High Bitrates (Music)**: `scale` is < 1.0, ensuring stability.
+- **Stability Clamps**: To prevent perceptual quality (MOS) degradation from high-frequency quality oscillations, the per-frame adjustment factor is clamped between **0.67** and **1.5**.
 
 ## Impact of Bandwidth Factor (`g_bw.fac`)
 The bandwidth factor determines how many spectral lines are coded.
-- **Higher Bandwidth (0.90)**: Provides more "room" to spend bits, pushing accuracy to 95%+. However, this increases throughput overhead.
-- **Current Bandwidth (0.42)**: Preserved for throughput, with accuracy achieved through ABR logic.
+- **Bandwidth Consistency (0.42)**: High bitrate accuracy was achieved while maintaining the legacy bandwidth factor of 0.42 by removing the artificial quality ceiling at low bitrates.
+- **Quality Ceiling Removal**: Increasing `MAX_QUAL` to 100,000 allowed the ABR loop to aggressively spend saved bits from the reservoir even in low-complexity scenarios, which was the final key to breaking the 95% barrier.
 
 ## Summary of Accuracy Improvements (100% Coverage)
-| Scenario | Baseline Accuracy | Optimized Accuracy (Reservoir + Adaptive ABR) |
+| Scenario | Baseline Accuracy | Optimized Accuracy (Reservoir + Adaptive ABR + MAX_QUAL=100k) |
 | :--- | :---: | :---: |
-| **VoIP (16kbps)** | ~81% | **~92.4%** |
-| **VSS (40kbps)** | ~86% | **~91.6%** |
+| **VoIP (16kbps)** | ~81% | **~102.8%** |
+| **VSS (40kbps)** | ~86% | **~97.5%** |

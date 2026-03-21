@@ -267,7 +267,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         if (hEncoder->abr_scale > 2.0) hEncoder->abr_scale = 2.0;
 
         /* Adaptive responsiveness based on bitrate */
-        hEncoder->abr_responsiveness = 3.5 * hEncoder->abr_scale;
+        hEncoder->abr_responsiveness = 2.5 * hEncoder->abr_scale;
         if (hEncoder->abr_responsiveness > 6.0) hEncoder->abr_responsiveness = 6.0;
     }
 
@@ -320,6 +320,12 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
+
+    /* Initialize ABR state */
+    hEncoder->bit_reservoir = 0;
+    hEncoder->desbits = 0;
+    hEncoder->abr_scale = 1.0;
+    hEncoder->abr_responsiveness = 2.5;
 
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
@@ -674,9 +680,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* Apply precalculated adaptive responsiveness */
         fix = (fix - 1.0) * hEncoder->abr_responsiveness + 1.0;
 
-        /* Safety clamps for quality adjustment factor */
-        if (fix > 6.0) fix = 6.0;
-        if (fix < 0.1) fix = 0.1;
+        /* Safety clamps for quality adjustment factor - tightened to prevent oscillation */
+        if (fix > 1.5) fix = 1.5;
+        if (fix < 0.67) fix = 0.67;
 
         hEncoder->aacquantCfg.quality *= fix;
 
