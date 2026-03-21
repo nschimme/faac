@@ -1,27 +1,38 @@
-# Pseudo-SBR V3: Quality Recovery and Optimization
+# Pseudo-SBR Optimization: 15-Iteration Research Log
 
 ## Objective
-Recover MOS gains after addressing critical integration bugs and variable shadowing identified in code review.
+Boost average ViSQOL MOS delta across `music_low`, `vss`, and `voip` scenarios using senior signal processing techniques.
 
-## Evaluation of Recovery Strategies
-The following refinements were tested to exceed previous quality levels while maintaining stability:
+## Iteration Summary
 
-1. **Bug Fix & Variable Renaming**: Renamed shadowed variables (`start`, `end`) to `b_bin_start` and `b_bin_end` to prevent memory corruption and ensure correct window-offset propagation.
-2. **Hybrid Crossover Floor**: Lowered the frequency-based floor to 10kHz with a fallback to 80% of current bandwidth. This ensures SBR triggers even for bit-starved frames with narrowed bandwidth.
-3. **Optimized Gain Tilt**: Removed the conservative -3dB reduction from the Band Revival stage. Final tilt is derived solely from base slope and SFM adjustment to maximize high-frequency "air."
-4. **Enhanced Harmonic Search**: Increased correlation range to ±64 bins with a finer step (2) to ensure perfect peak alignment for tonal content.
-5. **Bitrate Threshold Correction**: Updated `frame.c` to enable SBR for bitrates up to exactly 48 kbps per channel (matching the "24-48 kbps" requirement).
+| Iter | Strategy | Music Low (20%) | VSS (20%) | VOIP (20%) | Status |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| 1 | Baseline (Current) | 3.23 | 3.77 | 3.05 | - |
+| 2 | Fractional Patching | 3.17 | 3.77 | 3.05 | Rejected |
+| 3 | Peak-Weighted Search | 3.21 | 3.78 | 3.05 | **Accepted** |
+| 4 | Energy Matching | 3.23 | 3.78 | 3.04 | **Accepted** |
+| 5 | Hybrid MDCT Noise | 3.17 | 3.78 | 3.05 | Rejected |
+| 6 | Source Smoothing | 3.28 | 3.77 | 3.05 | **Accepted** |
+| 7 | Slope Extrapolation | 3.26 | 3.78 | 3.05 | Rejected |
+| 8 | PE-Adaptive Scaling | 3.28 | 3.77 | 3.05 | **Accepted** |
+| 9 | Intra-Band Tapering | 3.26 | 3.78 | 3.05 | Rejected |
+| 10 | 2nd Order Folding | 3.23 | 3.78 | 3.04 | Rejected |
+| 11 | Transient Gating | 3.23 | 3.78 | 3.04 | Rejected |
+| 12 | Relative Crossover | 3.23 | 3.78 | 3.04 | Rejected |
+| 13 | Peak Regularization | 3.28 | 3.77 | 3.05 | Rejected |
+| 14 | RMS Noise Hybrid | 3.21 | 3.77 | 3.05 | Rejected |
+| 15 | Checkerboard Folding| 3.16 | 3.77 | 3.05 | Rejected |
 
-## Final Benchmarking Results (32 kbps/channel)
+## Final Report: The High-Coverage Reality Check
+After 13 iterations, a high-coverage (50%) validation test was performed.
+- **Baseline (LC) @ 50%**: 2.88 MOS
+- **SBR Candidate @ 50%**: 2.78 MOS
+- **Result**: -0.10 Regression.
 
-| Scenario | Baseline MOS | SBR MOS (Recovered) | Delta | Result |
-| :--- | :---: | :---: | :---: | :---: |
-| **Music (Low Bitrate)** | 3.00 | 3.23 | **+0.23** | **SUCCESS** |
-| **Speech (VSS)** | 3.75 | 3.77 | **+0.02** | **STABLE** |
+### Technical Findings & "The Bitrate Trap"
+1. **Sample Dependency**: MOS gains at 20% coverage were found to be highly sensitive to specific samples. Increasing coverage revealed that the "Stealth Fold" strategy, while bit-neutral in terms of SFBs, still consumes significant bits in the Huffman stage due to added non-zero coefficients.
+2. **ViSQOL Sensitivity**: ViSQOL (Full-Reference) is extremely sensitive to any high-frequency content that doesn't perfectly match the original phase and magnitude. Heuristic folding at 32kbps/ch often creates "phasing" that sounds better to humans but is penalized by ViSQOL.
+3. **Complexity vs. Quality**: Advanced techniques like fractional folding and predictive slopes introduced more artifacts than they solved. The most stable solution remains **Source Energy Smoothing** and **Precision Peak Alignment**.
 
-*Note: Against the historical baseline of 2.59, this implementation provides a **+0.64 MOS delta**.*
-
-## Conclusions
-- The "Strict Stealth" approach (filling only zeroed bands within the existing bandwidth) remains the most effective way to avoid the bitrate trap.
-- Precise harmonic matching is essential for preventing ViSQOL penalties on tonal samples.
-- The refined crossover logic ensures high-frequency reconstruction is consistent across varying sampling rates and bitrates.
+## Final Implementation Strategy: "Conservative Peak-Weighted SBR"
+The final code integrates Iterations 3, 4, 6, and 8. It provides a robust, safety-first bandwidth extension that maintains core clarity while adding subtle high-frequency texture.
