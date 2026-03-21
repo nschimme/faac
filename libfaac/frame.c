@@ -65,97 +65,6 @@ static const struct {
 #define max(a,b) ((a) > (b) ? (a) : (b))
 #endif
 
-/**
- * Pseudo-SBR: Bandwidth Extension for FAAC-LC
- * Objective: Enhance low-bitrate quality via spectral folding.
- * Replicates high-frequency content in the MDCT domain.
- */
-static void PseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, faac_real *freq, int block_len)
-{
-    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    int old_sfbn = coder->sfbn;
-    int max_avail_sfbn = (block_len == FRAME_LEN) ? hEncoder->srInfo->num_cb_long : hEncoder->srInfo->num_cb_short;
-
-    /* Extension: 2 bands for long, 1 for short to minimize side-info overhead */
-    int num_ext = (block_len == FRAME_LEN) ? 2 : 1;
-    int new_sfbn = min(old_sfbn + num_ext, max_avail_sfbn);
-    int g, b, bin, w;
-
-    if (new_sfbn <= old_sfbn) return;
-
-    /* Expand sfbn and shift metadata for grouped windows to maintain alignment */
-    if (coder->groups.n > 1) {
-        for (g = coder->groups.n - 1; g >= 0; g--) {
-            int old_base = g * old_sfbn;
-            int new_base = g * new_sfbn;
-            for (b = old_sfbn - 1; b >= 0; b--) {
-                coder->book[new_base + b] = coder->book[old_base + b];
-                coder->sf[new_base + b] = coder->sf[old_base + b];
-            }
-            /* Initialize newly created bands */
-            for (b = old_sfbn; b < new_sfbn; b++) {
-                coder->book[new_base + b] = HCB_NONE;
-                coder->sf[new_base + b] = 0;
-            }
-        }
-    }
-    coder->sfbn = new_sfbn;
-
-    int win_offset = 0;
-    for (g = 0; g < coder->groups.n; g++)
-    {
-        for (b = old_sfbn; b < new_sfbn; b++)
-        {
-            int sfcnt = g * coder->sfbn + b;
-            int start = coder->sfb_offset[b];
-            int end = coder->sfb_offset[b+1];
-
-            for (w = 0; w < coder->groups.len[g]; w++)
-            {
-                faac_real *wfreq = freq + (win_offset + w) * block_len;
-
-                /* Adaptive Tilt Calculation via Spectral Flatness Measure (SFM) */
-                int src_start = start / 2;
-                int src_end = end / 2;
-                faac_real sum_e = 0, sum_log_e = 0;
-                int n_bins = src_end - src_start;
-                for (bin = src_start; bin < src_end; bin++) {
-                    faac_real e = wfreq[bin] * wfreq[bin] + 1e-10f;
-                    sum_e += e;
-                    sum_log_e += (faac_real)log(e);
-                }
-                faac_real sfm = (n_bins > 0) ? (faac_real)exp(sum_log_e / n_bins) / (sum_e / n_bins) : 0.3f;
-                faac_real tilt_target = (sfm < 0.1f) ? -18.0f : (sfm > 0.5f ? -9.0f : -12.0f);
-
-                for (bin = start; bin < end; bin++)
-                {
-                    int source_index = bin / 2;
-                    faac_real bin_freq = (faac_real)bin * hEncoder->sampleRate / (block_len * 2);
-                    faac_real crossover_freq = (faac_real)coder->sfb_offset[old_sfbn] * hEncoder->sampleRate / (block_len * 2);
-                    faac_real tilt_db = tilt_target * (bin_freq - crossover_freq) / (16000.0f - crossover_freq);
-                    if (tilt_db > 0) tilt_db = 0;
-
-                    /* Folding Operation with Economy scaling (0.4) */
-                    faac_real fold_val = wfreq[source_index] * (faac_real)pow(10.0, tilt_db / 20.0) * 0.4f;
-
-                    /* Phase alignment: 5-bin cross-fade at crossover point */
-                    if (b == old_sfbn && (bin - start) < 5) {
-                        faac_real alpha = (faac_real)(bin - start) / 5.0f;
-                        wfreq[bin] = wfreq[bin] * (1.0f - alpha) + fold_val * alpha;
-                    } else {
-                        wfreq[bin] = fold_val;
-                    }
-                    /* Noise Injection to prevent metallic harmonic artifacts */
-                    wfreq[bin] += ((rand() / (faac_real)RAND_MAX * 2.0f - 1.0f) * 0.005f);
-                }
-            }
-            /* Use a temporary book; BlocQuant/huffbook will optimize it */
-            coder->book[sfcnt] = HCB_NONE;
-            coder->sf[sfcnt] = 0;
-        }
-        win_offset += coder->groups.len[g];
-    }
-}
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
@@ -392,6 +301,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    for (channel = 0; channel < numChannels; channel++) hEncoder->origFreqBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
     for (channel = 0; channel < numChannels; channel++)
 	{
@@ -437,6 +347,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     /* Free remaining buffer memory */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
+        if (hEncoder->origFreqBuff[channel]) FreeMemory(hEncoder->origFreqBuff[channel]);
 		if (hEncoder->sampleBuff[channel])
 			FreeMemory(hEncoder->sampleBuff[channel]);
 		if (hEncoder->next3SampleBuff[channel])
@@ -613,6 +524,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->freqBuff[channel],
             hEncoder->overlapBuff[channel],
             MOVERLAPPED);
+        memcpy(hEncoder->origFreqBuff[channel], hEncoder->freqBuff[channel], FRAME_LEN * sizeof(faac_real));
     }
 
     for (channel = 0; channel < numChannels; channel++) {
@@ -665,52 +577,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
+    AACstereo(hEncoder, coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
-    /* Pseudo-SBR Application */
-    if (hEncoder->sbr_enabled)
-    {
-        int crossover_sfb[MAX_CHANNELS];
-        for (channel = 0; channel < numChannels; channel++) {
-            crossover_sfb[channel] = coderInfo[channel].sfbn;
-        }
-
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            int block_type = coderInfo[channel].block_type;
-            int block_len = (block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-            PseudoSBR(hEncoder, &coderInfo[channel], hEncoder->freqBuff[channel], block_len);
-        }
-
-        /* Intensity Stereo Extension for SBR bands */
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            if (channelInfo[channel].present && channelInfo[channel].cpe && channelInfo[channel].ch_is_left)
-            {
-                int lch = channel;
-                int rch = channelInfo[lch].paired_ch;
-                int g_idx;
-                for (g_idx = 0; g_idx < coderInfo[rch].groups.n; g_idx++)
-                {
-                    int last_real = crossover_sfb[rch] - 1;
-                    if (last_real < 0) continue;
-                    int r_last_sfcnt = g_idx * coderInfo[rch].sfbn + last_real;
-                    int r_last_book = coderInfo[rch].book[r_last_sfcnt];
-
-                    if (r_last_book == HCB_INTENSITY || r_last_book == HCB_INTENSITY2)
-                    {
-                        for (int b = crossover_sfb[rch]; b < coderInfo[rch].sfbn; b++)
-                        {
-                            int r_curr_sfcnt = g_idx * coderInfo[rch].sfbn + b;
-                            coderInfo[rch].book[r_curr_sfcnt] = r_last_book;
-                            coderInfo[rch].sf[r_curr_sfcnt] = coderInfo[rch].sf[r_last_sfcnt];
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

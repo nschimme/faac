@@ -19,10 +19,134 @@
 
 #define _USE_MATH_DEFINES
 
+#include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
+static void ApplyPseudoSBR(faacEncHandle hpEncoder, CoderInfo *coder, faac_real *freq, int ch, int g, int w_offset)
+{
+    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
+    int b, bin, w;
+    int block_len = (coder->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+
+    /* Strategy 3: Protection Floor */
+    if (coder->frame_pe > 5.0f) return;
+
+    /* 32kbps check - but we rely on hEncoder->sbr_enabled if set in frame.c */
+    if (!hEncoder->sbr_enabled) return;
+
+    /* Hybrid Crossover: Find the first zeroed SFB above 10kHz (or 80% of bandwidth) */
+    faac_real crossover_floor = 10000.0f;
+    int max_avail_bin = coder->sfb_offset[coder->sfbn];
+    faac_real max_avail_freq = (faac_real)max_avail_bin * hEncoder->sampleRate / (block_len * 2);
+    if (crossover_floor > max_avail_freq * 0.8f) crossover_floor = max_avail_freq * 0.8f;
+
+    int sbr_start_sfb = -1;
+    for (b = 0; b < coder->sfbn; b++)
+    {
+        int start_bin = coder->sfb_offset[b];
+        faac_real sfb_freq = (faac_real)start_bin * hEncoder->sampleRate / (block_len * 2);
+
+        if (sfb_freq >= crossover_floor)
+        {
+            int sfcnt = g * coder->sfbn + b;
+            if (coder->book[sfcnt] == HCB_ZERO)
+            {
+                sbr_start_sfb = b;
+                break;
+            }
+        }
+    }
+
+    if (sbr_start_sfb != -1)
+    {
+        for (b = sbr_start_sfb; b < coder->sfbn; b++)
+        {
+            int sfcnt = g * coder->sfbn + b;
+
+            /* Strategy 1: Stealth Fold - Only fill zeroed bands within sfbn */
+            if (coder->book[sfcnt] != HCB_ZERO) continue;
+
+            int b_bin_start = coder->sfb_offset[b];
+            int b_bin_end = coder->sfb_offset[b+1];
+
+            /* Strategy 2: Peak-Matching Harmonic Search */
+            int best_offset = 0;
+            faac_real max_corr = -1.0f;
+            for (int off = -32; off <= 32; off += 4) {
+                faac_real corr = 0;
+                for (w = 0; w < coder->groups.len[g]; w++) {
+                    faac_real *wfreq = freq + (w_offset + w) * block_len;
+                    faac_real *orig = hEncoder->origFreqBuff[ch] + (w_offset + w) * block_len;
+                    for (int i = b_bin_start; i < b_bin_end; i++) {
+                        int src = i / 2 + off;
+                        if (src < 0 || src >= block_len) continue;
+                        corr += (faac_real)fabs(wfreq[src] * orig[i]);
+                    }
+                }
+                if (corr > max_corr) {
+                    max_corr = corr;
+                    best_offset = off;
+                }
+            }
+
+            /* Strategy 4: Adaptive Scaling (SFM) */
+            faac_real sfm = 0.5f;
+            faac_real sum_val = 0, sum_log = 0;
+            int count = 0;
+            for (w = 0; w < coder->groups.len[g]; w++) {
+                faac_real *wfreq = freq + (w_offset + w) * block_len;
+                for (int i = b_bin_start; i < b_bin_end; i++) {
+                    int src = i / 2 + best_offset;
+                    if (src < 0 || src >= block_len) continue;
+                    faac_real val = (faac_real)fabs(wfreq[src]);
+                    sum_val += val;
+                    sum_log += (faac_real)log(val + 1e-10);
+                    count++;
+                }
+            }
+            if (count > 0) {
+                faac_real am = sum_val / count;
+                faac_real gm = (faac_real)exp(sum_log / count);
+                sfm = (am > 1e-10) ? gm / am : 0.5f;
+            }
+
+            faac_real sfm_adj_db = (sfm < 0.3f) ? -6.0f : (sfm > 0.7f) ? 3.0f : 0.0f;
+
+            for (w = 0; w < coder->groups.len[g]; w++)
+            {
+                faac_real *wfreq = freq + (w_offset + w) * block_len;
+                for (bin = b_bin_start; bin < b_bin_end; bin++)
+                {
+                    int source_index = bin / 2 + best_offset;
+                    if (source_index < 0) source_index = 0;
+                    if (source_index >= block_len) source_index = block_len - 1;
+
+                    faac_real bin_freq = (faac_real)bin * hEncoder->sampleRate / (block_len * 2);
+                    faac_real tilt_db = -12.0f * (bin_freq - crossover_floor) / (16000.0f - crossover_floor);
+                    if (tilt_db > 0) tilt_db = 0;
+
+                    faac_real total_gain_db = tilt_db + sfm_adj_db - 3.0f; /* Slight extra reduction for stability */
+                    faac_real gain = (faac_real)pow(10.0, total_gain_db / 20.0);
+
+                    /* Transition: 3-bin linear fade-in at the junction */
+                    if (b == sbr_start_sfb && (bin - b_bin_start) < 3)
+                    {
+                        gain *= (faac_real)(bin - b_bin_start + 1) / 4.0f;
+                    }
+
+                    wfreq[bin] = wfreq[source_index] * gain;
+                    /* Noise Injection */
+                    wfreq[bin] += ((rand() / (faac_real)RAND_MAX * 2.0f - 1.0f) * 0.005f);
+                }
+            }
+            /* Mark the band as non-zero so the quantizer doesn't skip it */
+            coder->book[sfcnt] = HCB_ESC;
+        }
+    }
+}
 
 static void stereo(CoderInfo *cl, CoderInfo *cr,
                    faac_real *sl0, faac_real *sr0, int *sfcnt,
@@ -249,7 +373,8 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
 }
 
 
-void AACstereo(CoderInfo *coder,
+void AACstereo(faacEncHandle hpEncoder,
+               CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
@@ -363,9 +488,13 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
                         start, end, thrmid, thrside);
+                /* Apply Pseudo-SBR to the Mid (Left) channel after M/S */
+                ApplyPseudoSBR(hpEncoder, coder + chn, s[chn], chn, group, start);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
+                /* Apply Pseudo-SBR to the Mid (Left) channel after Intensity Stereo */
+                ApplyPseudoSBR(hpEncoder, coder + chn, s[chn], chn, group, start);
                 break;
             }
             start = end;

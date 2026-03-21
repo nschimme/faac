@@ -107,6 +107,7 @@ typedef struct {
         int len;
     } s[DATASIZE];
     int datacnt;
+    faac_real frame_pe;
 
 
     TnsInfo tnsInfo;

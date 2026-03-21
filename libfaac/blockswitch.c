@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: psychkni.c,v 1.19 2012/03/01 18:34:17 knik Exp $
+ * : psychkni.c,v 1.19 2012/03/01 18:34:17 knik Exp $
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -82,6 +82,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
   psyfloat *lasteng;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->pe = 0.0f;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
@@ -106,7 +107,10 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          faac_real current_pe = volchg / (toteng + 1e-10f) * quality;
+          if (current_pe > psyInfo->pe) psyInfo->pe = current_pe;
+
+          if (current_pe > 3.0)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;
@@ -261,6 +265,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
       {				/* LFE */
         // Only set block type and it should be OK
 	psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+        psyInfo[channel].pe = 0.0f;
       }
       else if (!channelInfo[channel].cpe)
       {				/* SCE */
@@ -352,6 +357,9 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
+
+    /* Copy PE to CoderInfo for Pseudo-SBR V2 Strategy 3 */
+    coderInfo[channel].frame_pe = psyInfo[channel].pe;
 
     if (desire == ONLY_SHORT_WINDOW
 	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)

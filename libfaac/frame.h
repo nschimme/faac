@@ -67,6 +67,7 @@ typedef struct {
     faac_real *kbd_window_short;
     faac_real *freqBuff[MAX_CHANNELS];
     faac_real *overlapBuff[MAX_CHANNELS];
+    faac_real *origFreqBuff[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];
