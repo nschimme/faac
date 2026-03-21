@@ -198,41 +198,38 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* Discrete steps for noise floor and bandwidth provide stable tuning
        points that prevent oscillation in quality */
     {
+        // Unified scaling factor: 1.0 at reference bitrate, increases below it
         unsigned long bpc = hEncoder->config.bitRate;
+        faac_real ref_bpc = 64000.0;
+        faac_real scale = FAAC_SQRT(ref_bpc / bpc);  // >1 at low bitrates, <1 at high
+        if (scale < 0.7) scale = 0.7; // clamp high-bitrate end only
 
-        faac_real nf = 0.01;
-        faac_real fac = 0.95;
-        faac_real powm_v = 0.30;
-        faac_real pnsthr_v = 0.1;
-        faac_real target_v = 15.0;
-        faac_real fp_v = 0.7;
-        if (bpc <= 8000) {
-            nf = 0.07;
-            fac = 0.75;
-        } else if (bpc <= 16000) { // voip
-            nf = 0.01;
-            fac = 0.90;
-            powm_v = 0.38;
-            fp_v = 0.75;
-        } else if (bpc <= 32000) { // music_low
-            nf = 0.01;
-            fac = 0.95;
-        } else if (bpc <= 48000) { // vss
-            nf = 0.005;
-            fac = 0.95;
-            fp_v = 0.75;
-        } else if (bpc <= 64000) { // music_std
-            nf = 0.003;
-            fac = 0.97;
-        } else { // music_high
-            nf = 0.001;
-            fac = 0.99;
-        }
+        // Clamp to reasonable range
+        if (scale < 0.8) scale = 0.8;
+        if (scale > 2.0) scale = 2.0;
+
+        // Base values calibrated at reference bitrate (64kbps)
+        faac_real nf   = 0.003 * scale * scale;       // higher noise floor at low bitrates
+        faac_real fac = 1.0 - (0.08 * (scale - 0.7)); // tighter bandwidth at low bitrates
+        faac_real powm = 0.30 / scale;                // lower at low bitrates
+        faac_real fp = 0.70 + (0.05 * (scale - 1.0));
+
+        // Hard limits
+        if (nf > 0.07)  nf = 0.07;
+        if (nf < 0.001) nf = 0.001;
+        if (fac < 0.75) fac = 0.75;
+        if (fac > 1.00) fac = 1.00;
+        if (powm < 0.25) powm = 0.25;
+        if (powm > 0.40) powm = 0.40;
+        if (fp < 0.65) fp = 0.65;
+        if (fp > 0.80) fp = 0.80;
+
         hEncoder->aacquantCfg.noise_floor = nf;
-        hEncoder->aacquantCfg.powm = powm_v;
-        hEncoder->aacquantCfg.pnsthr_factor = pnsthr_v;
-        hEncoder->aacquantCfg.target_multiplier = target_v;
-        hEncoder->aacquantCfg.freq_penalty = fp_v;
+        hEncoder->aacquantCfg.powm = powm;
+        hEncoder->aacquantCfg.freq_penalty = fp;
+
+        hEncoder->aacquantCfg.pnsthr_factor = 0.1;
+        hEncoder->aacquantCfg.target_multiplier = 15.0;
 
         /* Sample-rate-aware bandwidth */
         faac_real nyquist = hEncoder->sampleRate * 0.5;
