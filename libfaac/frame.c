@@ -649,19 +649,39 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        int desbits     = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        int actual_bits = frameBytes * 8;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
+        /* Target incorporates accumulated reservoir deficit/surplus */
+        int target_bits = desbits + hEncoder->bit_reservoir;
+        if (target_bits < 104) target_bits = 104;
+
+        /* Normalized error: dimensionless, no bitrate-dependent constants.
+        Denominator is always desbits so scaling is consistent. */
+        faac_real err = (faac_real)(target_bits - actual_bits) / (faac_real)desbits;
+        if (err >  2.0) err =  2.0;
+        if (err < -0.9) err = -0.9;
+
+        faac_real fix;
+        if (FAAC_FABS(err) <= 0.10) {
+            /* Dead-band: absorbs natural frame-level variance in music.
+            This is what kept music_high at 99.7% in the baseline. */
             fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        } else {
+            /* Excess error beyond dead-band edge.
+            Gain ramps from ~0.5 at the edge (matching old baseline behavior)
+            up to 2.5 for large errors (VoIP silence->speech transitions).
+            No bitrate lookup needed: the ramp is driven by error magnitude. */
+            faac_real excess = FAAC_FABS(err) - 0.10;
+            faac_real gain = 0.5 + excess * 1.5;
+            if (gain > 2.5)
+                gain = 2.5;
+            fix = 1.0 + (err > 0 ? 1.0 : -1.0) * excess * gain;
+            if (fix > 4.0)
+                fix = 4.0;
+            if (fix < 0.25)
+                fix = 0.25;
+        }
 
         hEncoder->aacquantCfg.quality *= fix;
 
@@ -669,6 +689,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
+
+        /* Reservoir tracks cumulative mismatch vs desired bitrate.
+        Updated after quality adjustment so next frame's target reflects
+        this frame's actual spend. Clamped to ~0.5s of budget. */
+        hEncoder->bit_reservoir += (desbits - actual_bits);
+        int max_res = 8 * desbits;
+        if (hEncoder->bit_reservoir >  max_res)
+            hEncoder->bit_reservoir =  max_res;
+        if (hEncoder->bit_reservoir < -max_res)
+            hEncoder->bit_reservoir = -max_res;
     }
 
     return frameBytes;
