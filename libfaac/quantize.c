@@ -157,7 +157,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* WHY: The target multiplier is increased to 15.0 to align with more sensitive
        modern psychoacoustic standards, ensuring better high-frequency retention. */
-    target *= aacquantCfg->target_multiplier / (1.0 + ((faac_real)(start+end)/last));
+    target *= 15.0 / (1.0 + ((faac_real)(start+end)/last));
 
     /* WHY: Apply a frequency penalty to non-zero bands to prevent masking thresholds
        from rising too aggressively at high frequencies, which protects sibilance. */
@@ -187,7 +187,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
     const faac_real inv_gsize = 1.0 / (faac_real)gsize;
-    faac_real pnsthr = aacquantCfg->pnsthr_factor * aacquantCfg->pnslevel;
+    faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
     faac_real noise_floor = aacquantCfg->noise_floor;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
