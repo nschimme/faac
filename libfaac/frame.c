@@ -200,6 +200,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -276,6 +277,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 		hEncoder->config.channel_map[channel] = channel;
 
     hEncoder->config.outputFormat = ADTS_STREAM;
+
+    hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
 
     /*
         be compatible with software which assumes 24bit in 32bit PCM
@@ -557,8 +560,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
+    /* Iteration 35: Targeted global quality boost for 32k (xlow) */
+    faac_real q_val = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
+    faac_real effective_quality = q_val;
+    if (jointmode == JOINT_MS) {
+        if (q_val < 0.35) {
+            effective_quality *= 1.30; /* 30% boost for xlow */
+        } else if (q_val < 0.6) {
+            effective_quality *= 1.15; /* 15% boost for low */
+        }
+    }
+
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
+              effective_quality, jointmode, hEncoder->sampleRate);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

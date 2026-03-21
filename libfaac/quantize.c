@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -71,7 +71,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, unsigned long sampleRate)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -155,6 +155,19 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    /* Iteration 33: Targeted vocal boost for LOW bitrates only */
+    if (quality < 0.5)
+    {
+        int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
+        float f_start = (float)start * (float)sampleRate / (float)(frame_len * 2);
+        float f_end = (float)end * (float)sampleRate / (float)(frame_len * 2);
+
+        /* Vocal range roughly 600Hz to 6.5kHz */
+        if (f_start > 600.0 && f_end < 6500.0) {
+            target *= 0.5; /* Extreme boost (halve noise floor) */
+        }
+    }
 
     bandqual[sfb] = target * quality;
   }
@@ -265,7 +278,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->sampleRate);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }

@@ -32,19 +32,17 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
                               int sfb, int wstart, int wend,
                               faac_real thrmid, faac_real thrside,
                               faac_real phthr, int force_is_sfb,
-                              int mode, unsigned long sampleRate)
+                              int mode, unsigned long sampleRate,
+                              faac_real quality)
 {
     int win, l;
     int start = cl->sfb_offset[sfb];
     int end = cl->sfb_offset[sfb + 1];
     faac_real enrgl, enrgr, enrgs, enrgd;
     faac_real sum, diff;
-    int frame_len = (cl->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
-    float freq = (float)start * (float)sampleRate / (float)(frame_len * 2);
 
     enrgl = enrgr = enrgs = enrgd = 0.0;
 
-    /* Calculate energies for decision using original spectral data */
     for (win = wstart; win < wend; win++)
     {
         faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
@@ -75,6 +73,8 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
             use_is = 1;
     }
 
+    if (use_is && (enrgl + enrgr) < 1e-9) use_is = 0;
+
     if (use_is)
     {
         int hcb = HCB_INTENSITY;
@@ -87,23 +87,19 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
             vfix = FAAC_SQRT(efix / enrgd);
         } else {
             hcb = HCB_INTENSITY;
-            vfix = (enrgs > 1e-10) ? FAAC_SQRT(efix / enrgs) : 1.0;
+            vfix = FAAC_SQRT(efix / max(enrgs, 1e-10));
         }
 
-        int pan = (int)FAAC_LRINT(FAAC_LOG10(max(enrgr, 1e-10) / max(enrgl, 1e-10)) * step);
-
-        /* Perceptual Heuristic: High-frequency coupling (collapse to mono above 10kHz) */
-        if (freq > 10000.0) pan = 0;
+        int sf = (int)FAAC_LRINT(FAAC_LOG10(max(enrgl, 1e-10) / efix) * step);
+        int pan = (int)FAAC_LRINT(FAAC_LOG10(max(enrgr, 1e-10) / efix) * step) - sf;
 
         if (pan > 30) {
-            /* Right channel much louder than Left: send as L/R fallback (muted Left) */
             cl->book[*sfcnt] = HCB_ZERO;
         } else if (pan < -30) {
-            /* Left channel much louder than Right: send as L/R fallback (muted Right) */
             cr->book[*sfcnt] = HCB_ZERO;
         } else {
-            /* Signaling IS: Position in Right channel SF, Left magnitude determined by carrier intensity */
             cr->book[*sfcnt] = hcb;
+            cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
 
             for (win = wstart; win < wend; win++)
@@ -121,26 +117,26 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
     }
     else if (mode == JOINT_MS)
     {
-        /* Adjusted M/S Decision with side-channel masking */
-        faac_real enrgs_norm = enrgs * 0.25;
-        faac_real enrgd_norm = enrgd * 0.25;
-
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
+        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
             chi->msInfo.ms_used[*sfcnt] = 1;
-            /* Perceptual Heuristic: Side-channel masking (collapse to mono if Side < -20dB Mid) */
-            int zero_side = (enrgd_norm < 0.01 * enrgs_norm);
-
             for (win = wstart; win < wend; win++)
             {
                 faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
                 faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
                 for (l = start; l < end; l++)
                 {
-                    faac_real lx = sl[l];
-                    faac_real rx = sr[l];
-                    sl[l] = 0.5 * (lx + rx);
-                    sr[l] = zero_side ? 0.0 : 0.5 * (lx - rx);
+                    /* Legacy Destructive M/S Transform */
+                    faac_real s_sum, s_diff;
+                    if (enrgs >= enrgd) {
+                        s_sum = sl[l] + sr[l];
+                        s_diff = 0;
+                    } else {
+                        s_sum = 0;
+                        s_diff = sl[l] - sr[l];
+                    }
+                    sl[l] = 0.5 * s_sum;
+                    sr[l] = 0.5 * s_diff;
                 }
             }
         }
@@ -164,7 +160,6 @@ void AACstereo(CoderInfo *coder,
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside, isthr;
 
-    /* Calculate all possible thresholds regardless of mode to support Mixed Mode */
     thrmid = thr075 / quality;
     if (thrmid > thrmax) thrmid = thrmax;
     thrside = sidemin / quality;
@@ -178,6 +173,31 @@ void AACstereo(CoderInfo *coder,
 
     for (chn = 0; chn < maxchan; chn++)
     {
+        int group, band;
+        int bookcnt = 0;
+        CoderInfo *cp = coder + chn;
+
+        if (!channel[chn].present)
+            continue;
+
+        for (group = 0; group < cp->groups.n; group++)
+        {
+            for (band = 0; band < cp->sfbn; band++)
+            {
+                cp->book[bookcnt] = HCB_NONE;
+                cp->sf[bookcnt] = 0;
+                bookcnt++;
+            }
+        }
+        if (channel[chn].cpe && channel[chn].ch_is_left)
+        {
+            for (band = 0; band < MAX_SCFAC_BANDS; band++)
+                channel[chn].msInfo.ms_used[band] = 0;
+        }
+    }
+
+    for (chn = 0; chn < maxchan; chn++)
+    {
         int rch, group, band, sfcnt, start;
         CoderInfo *cl = coder + chn;
 
@@ -187,7 +207,6 @@ void AACstereo(CoderInfo *coder,
         rch = channel[chn].paired_ch;
         CoderInfo *cr = coder + rch;
 
-        /* Window consistency check */
         if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n)
             continue;
 
@@ -200,25 +219,12 @@ void AACstereo(CoderInfo *coder,
         channel[chn].msInfo.is_present = (mode == JOINT_MS);
         channel[rch].msInfo.is_present = (mode == JOINT_MS);
 
-        /* Initialize books and scalefactors */
-        int bookcnt = 0;
-        for (group = 0; group < cl->groups.n; group++) {
-            for (band = 0; band < cl->sfbn; band++) {
-                cl->book[bookcnt] = cr->book[bookcnt] = HCB_NONE;
-                cl->sf[bookcnt] = cr->sf[bookcnt] = 0;
-                channel[chn].msInfo.ms_used[bookcnt] = 0;
-                bookcnt++;
-            }
-        }
-
-        /* Calculate Forced IS threshold based on quality */
         int force_is_sfb = -1;
         if (quality < 0.7)
         {
-            float freq_thresh = 10000.0;
-            if (quality < 0.3) freq_thresh = 3500.0;
-            else if (quality < 0.5) freq_thresh = 4500.0;
-            else if (quality < 0.6) freq_thresh = 6000.0;
+            /* Iteration 40: Optimal thresholds found so far */
+            float freq_thresh = 18000.0;
+            if (quality < 0.3) freq_thresh = 5000.0;
 
             int frame_len = (cl->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
             for (band = 0; band < cl->sfbn; band++) {
@@ -245,7 +251,7 @@ void AACstereo(CoderInfo *coder,
             {
                 apply_stereo_band(cl, cr, channel + chn, s[chn], s[rch], &sfcnt,
                                   band, start, end, thrmid, thrside, (mode == JOINT_IS) ? isthr : 0.0,
-                                  force_is_sfb, mode, sampleRate);
+                                  force_is_sfb, mode, sampleRate, quality);
                 sfcnt++;
             }
             start = end;
