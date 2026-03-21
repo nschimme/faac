@@ -168,8 +168,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
         if (f_start > 800.0 && f_end < 5000.0) {
             faac_real boost_factor = 1.0;
-            if (quality < 0.4) boost_factor = 0.5;      /* 50% boost for xlow (32k) */
-            else if (quality < 0.7) boost_factor = 0.7; /* 30% boost for low (64k) */
+            if (quality < 0.35) boost_factor = 0.5;      /* Aggressive boost for xlow */
+            else if (quality < 0.6) boost_factor = 0.7;  /* Moderate boost for low */
 
             target *= boost_factor;
         }

@@ -1,0 +1,101 @@
+{
+  "sha": "v87_targeted",
+  "matrix": {
+    "music_low_liberate.16b48k.wav": {
+      "mos": 3.46375,
+      "size": 41184,
+      "bitrate": 65.80035812816324,
+      "bitrate_target": 64,
+      "time": 0.08363986015319824,
+      "md5": "0e07da0b22b70f67f307489cbee56fe1",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "liberate.16b48k.wav"
+    },
+    "music_low_4-Sound-English-male.441.16b48k.wav": {
+      "mos": 3.08162,
+      "size": 79451,
+      "bitrate": 70.40293765741052,
+      "bitrate_target": 64,
+      "time": 0.14725995063781738,
+      "md5": "1b559e4effbfcce9f9fb35089fbcd46b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "4-Sound-English-male.441.16b48k.wav"
+    },
+    "music_low_ExitMusic.16b48k.wav": {
+      "mos": 2.75911,
+      "size": 83071,
+      "bitrate": 66.4568,
+      "bitrate_target": 64,
+      "time": 0.15517711639404297,
+      "md5": "d7a2bd7beb6935e9bc9b3fe5d8a466d9",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "ExitMusic.16b48k.wav"
+    },
+    "music_low_21-classic.441.16b48k.wav": {
+      "mos": 3.44151,
+      "size": 76211,
+      "bitrate": 63.14002770262398,
+      "bitrate_target": 64,
+      "time": 0.15668606758117676,
+      "md5": "a0e2b7e1c837f80533af3b3c69a01087",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "21-classic.441.16b48k.wav"
+    },
+    "music_std_liberate.16b48k.wav": {
+      "mos": 4.44144,
+      "size": 82405,
+      "bitrate": 131.65983176843656,
+      "bitrate_target": 128,
+      "time": 0.07478570938110352,
+      "md5": "d5aa095e24ec18a7a4e091504530ae99",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "liberate.16b48k.wav"
+    },
+    "music_std_4-Sound-English-male.441.16b48k.wav": {
+      "mos": 4.1419,
+      "size": 158837,
+      "bitrate": 140.7482776640963,
+      "bitrate_target": 128,
+      "time": 0.13340210914611816,
+      "md5": "ba92a94cd33d864bbb1e44c0c624046e",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "4-Sound-English-male.441.16b48k.wav"
+    },
+    "music_std_21-classic.441.16b48k.wav": {
+      "mos": 4.18433,
+      "size": 155772,
+      "bitrate": 129.05549586402412,
+      "bitrate_target": 128,
+      "time": 0.13285493850708008,
+      "md5": "c78b8e4b3703885e5764607408fb9fc9",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "21-classic.441.16b48k.wav"
+    },
+    "music_std_ExitMusic.16b48k.wav": {
+      "mos": 4.30293,
+      "size": 170140,
+      "bitrate": 136.112,
+      "bitrate_target": 128,
+      "time": 0.1654675006866455,
+      "md5": "9b3d5883e865b259b9fcbeee5cfd3286",
+      "thresh": 4.0,
+      "scenario": "music_std",
+      "filename": "ExitMusic.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 8.754538858668335,
+    "silence.wav": 7.243043660334176,
+    "sine.wav": 8.043680299000698,
+    "sweep.wav": 7.559122303001156,
+    "overall": 7.900096280251091
+  },
+  "lib_size": 4096
+}

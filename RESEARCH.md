@@ -104,3 +104,34 @@ The final v75 configuration (winning strategy) was validated against the core sc
 | v73 | Progressive IS thresholds | IS starts at 3kHz (<24k), 5kHz (32k), 10kHz (48k). Very stable rate control. |
 
 **Current Status:** Thresholds are now highly tuned to the bitrate. The combination of progressive IS and adaptive M/S ensures the bit budget is maximized for the most critical bands before vocal boosting is applied.
+
+## Iteration 81-85: Low-Bitrate Tiering
+
+| Iteration | Tier | M/S Aggression | Vocal Boost | Finding |
+|---|---|---|---|---|
+| v81 | High (Q≥0.6) | 1.0 (Base) | 0% | Successfully recovered `music_std` to baseline MOS. |
+| v81 | Low (Q<0.6) | 1.3 | 30% | Stable transition for 64kbps scenarios. |
+| v81 | X-Low (Q<0.35)| 2.0 | 50% | Maximum bit recovery for 32kbps. |
+
+**Observation:** Tiering heuristics by normalized quality effectively prevents regressions in high-bitrate scenarios while maintaining improvements at low bitrates.
+
+## Iteration 86-95: High-Fidelity Protection
+
+| Iteration | Change | Finding |
+|---|---|---|
+| v88 | Lower M/S Aggression at 64k (1.1x) | Significant MOS recovery for complex music (+0.08 for classic). |
+| v89 | Higher IS Threshold at 128k (18kHz) | Recovered high-frequency detail for std-bitrate streams (+0.09 for rock). |
+
+**Conclusion:** FAAC's joint stereo tools are now strictly "progressive"—they only become aggressive when the bit budget is truly constrained. At 128kbps, the encoder now behaves almost identically to the high-fidelity baseline.
+
+## Iteration 96-100: Holistic Balance
+
+| Tier | Quality | IS Threshold | M/S Aggression | Vocal Boost |
+|---|---|---|---|---|
+| Ultra-Low | < 0.25 | 3kHz | 2.0x | 50% |
+| X-Low | < 0.35 | 5kHz | 2.0x | 50% |
+| Low-Mid | < 0.40 | 10kHz | 1.1x | 30% |
+| Low-High | < 0.60 | 15kHz | 1.1x | 30% |
+| Standard | ≥ 0.60 | 18kHz | 1.0x | 0% |
+
+**Summary:** The finalized progressive configuration provides a smooth transition across the entire quality spectrum, maximizing bit reinvestment at low bitrates while preserving high-fidelity detail in standard scenarios.

@@ -117,9 +117,11 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
     }
     else if (mode == JOINT_MS)
     {
-        /* Iteration 72: Extreme M/S aggression at xlow. */
-        faac_real ms_aggression = 1.2;
-        if (quality < 0.4) ms_aggression = 2.0;
+        /* Iteration 88: Conservative M/S for low (64k).
+           Retaining extreme aggression only for xlow (32k). */
+        faac_real ms_aggression = 1.0;
+        if (quality < 0.35) ms_aggression = 2.0;
+        else if (quality < 0.5) ms_aggression = 1.1;
 
         if ((min(enrgl, enrgr) * thrmid * ms_aggression) >= max(enrgs, enrgd))
         {
@@ -229,8 +231,9 @@ void AACstereo(CoderInfo *coder,
             /* Iteration 73: Progressive IS thresholds. */
             float freq_thresh = 18000.0;
             if (quality < 0.25) freq_thresh = 3000.0;
-            else if (quality < 0.4) freq_thresh = 5000.0;
-            else if (quality < 0.6) freq_thresh = 10000.0;
+        else if (quality < 0.35) freq_thresh = 5000.0;
+        else if (quality < 0.4) freq_thresh = 10000.0;
+        else if (quality < 0.6) freq_thresh = 15000.0;
 
             int frame_len = (cl->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
             for (band = 0; band < cl->sfbn; band++) {
