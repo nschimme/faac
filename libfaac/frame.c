@@ -116,7 +116,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     int i;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
-    hEncoder->config.jointmode = (hEncoder->numChannels > 1) ? config->jointmode : JOINT_NONE;
+    hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
     hEncoder->config.aacObjectType = config->aacObjectType;
@@ -195,12 +195,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    if (config->jointmode == JOINT_MS)
+        config->pnslevel = 0;
     if (config->pnslevel < 0)
         config->pnslevel = 0;
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
-    hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -259,7 +260,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.copyright = libCopyright;
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
-    hEncoder->config.jointmode = JOINT_MS;
+    hEncoder->config.jointmode = JOINT_IS;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
@@ -277,8 +278,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 		hEncoder->config.channel_map[channel] = channel;
 
     hEncoder->config.outputFormat = ADTS_STREAM;
-
-    hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
 
     /*
         be compatible with software which assumes 24bit in 32bit PCM
@@ -560,17 +559,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    /* Iteration 117: Balanced Adaptive Quality Tiering.
-       Includes mild boost for constrained mono streams. */
-    faac_real q_val = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
-    faac_real effective_quality = q_val;
-    if (numChannels > 1 && jointmode == JOINT_MS) {
-        if (q_val < 0.2) effective_quality *= 1.50;      /* Ultra-low stereo boost */
-        else if (q_val < 0.4) effective_quality *= 1.35; /* X-low stereo boost */
-        else if (q_val < 0.7) effective_quality *= 1.15; /* Low stereo boost */
-    } else if (numChannels == 1) {
-        if (q_val < 0.3) effective_quality *= 1.10;      /* Mild mono boost for very low bitrates */
-    }
+    faac_real effective_quality = (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL;
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               effective_quality, jointmode, hEncoder->sampleRate);
@@ -578,7 +567,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         hEncoder->aacquantCfg.numChannels = numChannels;
         hEncoder->aacquantCfg.isLeft = channelInfo[channel].ch_is_left;
-        hEncoder->aacquantCfg.jointMode = jointmode;
+        hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

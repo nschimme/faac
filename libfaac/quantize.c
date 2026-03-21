@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  See <http://www.gnu.org/licenses/>.
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -71,8 +71,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality,
-                  unsigned long sampleRate, int numChannels, int isLeft, int jointMode)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -157,31 +156,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 115: Mono Vocal Boost Experiment.
-       800Hz-5kHz range, adaptive boost based on quality tier.
-       Now allows mild boost for mono signals at very low bitrates. */
-    if (quality < 1.0 && isLeft && (numChannels > 1 || quality < 0.4))
-    {
-        int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
-        float f_start = (float)start * (float)sampleRate / (float)(frame_len * 2);
-        float f_end = (float)end * (float)sampleRate / (float)(frame_len * 2);
-
-        if (f_start > 800.0 && f_end < 5000.0) {
-            faac_real boost_factor = 1.0;
-            if (numChannels > 1) {
-                if (quality < 0.35) boost_factor = 0.5;      /* Aggressive stereo boost */
-                else if (quality < 0.6) boost_factor = 0.8;  /* Conservative stereo boost */
-            } else {
-                /* Iteration 116: Progressive Mono Vocal Boost. */
-                if (quality < 0.25) boost_factor = 0.7;      /* High boost for 8-12k mono */
-                else if (quality < 0.4) boost_factor = 0.8;  /* Moderate boost for 16-24k mono */
-                else if (quality < 0.6) boost_factor = 0.9;  /* Mild boost for 32k mono */
-            }
-
-            target *= boost_factor;
-        }
-    }
-
     bandqual[sfb] = target * quality;
   }
 }
@@ -193,7 +167,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -204,7 +178,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
-    faac_real pnsthr = 0.1 * pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -236,7 +209,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      if (bandqual[sb] < (0.1 * aacquantCfg->pnslevel))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -246,6 +219,23 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+
+      /* Vocal boost as quality offset to stay within rate controller. */
+      if ((aacquantCfg->quality < 60.0) && aacquantCfg->isLeft) {
+          int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
+          float f_start = (float)start * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
+          float f_end = (float)end * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
+
+          if (f_start > 800.0 && f_end < 5000.0) {
+              if (aacquantCfg->numChannels > 1) {
+                  if (aacquantCfg->quality < 35.0) sfac += 4; /* ~6dB boost */
+                  else sfac += 2; /* ~3dB boost */
+              } else {
+                  if (aacquantCfg->quality < 30.0) sfac += 1; /* ~1.5dB boost mono */
+              }
+          }
+      }
+
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
@@ -291,10 +281,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL,
-                  aacquantCfg->sampleRate, aacquantCfg->numChannels,
-                  aacquantCfg->isLeft, aacquantCfg->jointMode);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

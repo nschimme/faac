@@ -143,7 +143,7 @@ static help_t help_io[] = {
     "\t\tNot advised!!!, RAW AAC files are practically useless!!!\n"},
     {"-P\t\tRaw PCM input mode (default 44100Hz 16bit stereo).\n",
     "\t\tRaw PCM input mode (default: off, i.e. expecting a WAV header;\n"
-    "\t\tnecessary for input streams or bitstreams without a header; using\n"
+    "\t\tnecessary for input files or bitstreams without a header; using\n"
     "\t\tonly -P assumes the default values for -R, -B and -C in the\n"
     "\t\tinput file).\n"},
     {"-R <samplerate>\tRaw PCM input rate.\n",
@@ -192,9 +192,9 @@ static help_t help_mp4[] = {
 static help_t help_advanced[] = {
     {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
-    {"--joint 0\tDisable joint stereo coding (Pure L/R).\n"},
-    {"--joint 1\tUse Mixed Mode stereo (M/S + IS) (default).\n"},
-    {"--joint 2\tUse Intensity Stereo coding for all bands.\n"},
+    {"--joint 0\tDisable joint stereo coding.\n"},
+    {"--joint 1\tUse Mid/Side coding.\n"},
+    {"--joint 2\tUse Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
@@ -255,13 +255,6 @@ char *license =
     "Copyright (c) 1997.\n"
     "\n"
     "For the changes made for the FAAC project the GNU Lesser General Public\n"
-    "License (LGPL), version 2 1991 applies:\n"
-    "\n"
-    "FAAC - Freeware Advanced Audio Coder\n"
-    "Copyright (C) 2001-2004 The individual contributors\n"
-    "\n"
-    "This library is free software; you can redistribute it and/or\n"
-    "modify it under the terms of the GNU Lesser General Public\n"
     "License (LGPL), version 2 1991 applies:\n"
     "\n"
     "FAAC - Freeware Advanced Audio Coder\n"
@@ -427,7 +420,7 @@ static int *mkChanMap(int channels, int center, int lf)
     return map;
 }
 
-#define fprintf(f, ...) do { if (verbose) (fprintf)(f, __VA_ARGS__); } while(0)
+#define fprintf if(verbose)fprintf
 
 int main(int argc, char *argv[])
 {
@@ -440,7 +433,7 @@ int main(int argc, char *argv[])
     faacEncConfigurationPtr myFormat;
     unsigned int mpegVersion = MPEG2;
     unsigned int objectType = LOW;
-    int jointmode = JOINT_MS;
+    int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
     enum container_format container = NO_CONTAINER;

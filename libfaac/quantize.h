@@ -34,7 +34,6 @@ typedef struct
     unsigned long sampleRate;
     int numChannels;
     int isLeft;
-    int jointMode;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
