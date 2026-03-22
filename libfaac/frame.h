@@ -76,6 +76,9 @@ typedef struct {
     PsyInfo psyInfo[MAX_CHANNELS];
     GlobalPsyInfo gpsyInfo;
 
+    int reservoirBits;
+    int maxReservoirBits;
+
     /* Configuration data */
     faacEncConfiguration config;
 

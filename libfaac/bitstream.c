@@ -809,40 +809,27 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
-    /* Hoist bitstream state for faster access */
-    unsigned int currentBit = (unsigned int)bitStream->currentBit;
-    unsigned int bitOffset = currentBit & 7;
-    unsigned char *ptr = bitStream->data + (currentBit >> 3);
+    if (!bitStream->data)
+    {
+        bitStream->currentBit += numBit;
+        bitStream->numBit = bitStream->currentBit;
+        return 0;
+    }
 
-    /* Update bitstream state immediately */
-    bitStream->currentBit += numBit;
-    bitStream->numBit = bitStream->currentBit;
+    while (numBit > 0) {
+        int bitOffset = bitStream->currentBit & 7;
+        int bitsToFill = 8 - bitOffset;
+        int bits = (numBit < bitsToFill) ? numBit : bitsToFill;
 
-    /* Mask input data to ensure no extra bits are set */
-    data &= (1UL << numBit) - 1;
+        if (bitOffset == 0)
+            bitStream->data[bitStream->currentBit >> 3] = 0;
 
-    /* Fast path: bit write fits within the current byte */
-    if (bitOffset + numBit <= 8) {
-        if (bitOffset == 0) *ptr = 0;
-        *ptr |= (unsigned char)(data << (8 - bitOffset - numBit));
-    } else {
-        /* General case: multi-byte write */
-        /* Handle first partial byte */
-        int firstBits = 8 - bitOffset;
-        if (bitOffset == 0) *ptr = 0;
-        *ptr++ |= (unsigned char)(data >> (numBit - firstBits));
-        numBit -= firstBits;
+        bitStream->data[bitStream->currentBit >> 3] |=
+            (unsigned char)((data >> (numBit - bits)) & ((1 << bits) - 1)) << (bitsToFill - bits);
 
-        /* Handle full bytes */
-        while (numBit >= 8) {
-            *ptr++ = (unsigned char)((data >> (numBit - 8)) & 0xFF);
-            numBit -= 8;
-        }
-
-        /* Handle remaining bits in last byte */
-        if (numBit > 0) {
-            *ptr = (unsigned char)((data & ((1UL << numBit) - 1)) << (8 - numBit));
-        }
+        bitStream->currentBit += bits;
+        bitStream->numBit = bitStream->currentBit;
+        numBit -= bits;
     }
 
     return 0;

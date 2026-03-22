@@ -38,6 +38,8 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
+static faac_real pow43_lookup[8192];
+
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
@@ -51,6 +53,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
+        if (q > 8191) q = 8191;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
@@ -59,6 +62,10 @@ static QuantizeFunc qfunc = quantize_scalar;
 
 void QuantizeInit(void)
 {
+    int i;
+    for (i = 0; i < 8192; i++)
+        pow43_lookup[i] = FAAC_POW((faac_real)i, 4.0/3.0);
+
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -167,7 +174,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -182,12 +190,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
-      faac_real sfacfix;
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
-      int *xi;
       int start, end;
       const faac_real *xr;
       int win;
@@ -202,6 +207,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
+
+      if (etot < 1e-12)
+      {
+          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          continue;
+      }
+
       rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
@@ -213,35 +225,150 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
+          coderInfo->sf[coderInfo->bandcnt] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 10)
-          sfacfix = 0.0;
-      else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
 
-      end -= start;
-      xi = xitab;
-      if (sfacfix <= 0.0)
+      int width = end - start;
+      int best_sf = sfac;
+      faac_real best_cost = 1e36;
+      int best_book = HCB_ZERO;
+      int best_xi[BLOCK_LEN_LONG + 4];
+      faac_real lambda = aacquantCfg->lambda;
+      int i;
+
+      memset(best_xi, 0, sizeof(best_xi));
+
+      for (int cand_sf = sfac - 1; cand_sf <= sfac + 1; cand_sf++)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
-      }
-      else
-      {
-          for (win = 0; win < gsize; win++)
+          int cand_xi[BLOCK_LEN_LONG + 4];
+          faac_real cand_sfacfix;
+          faac_real cand_dist = 0;
+          int cand_bits = 0;
+          int cand_book = HCB_ZERO;
+          int maxq = 0;
+
+          if ((SF_OFFSET - cand_sf) < 10)
+              cand_sfacfix = 0.0;
+          else
+              cand_sfacfix = FAAC_POW(10, (faac_real)cand_sf / sfstep);
+
+          memset(cand_xi, 0, sizeof(cand_xi));
+          if (cand_sfacfix > 0.0)
           {
-              xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
-              xi += end;
+              for (win = 0; win < gsize; win++)
+              {
+                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
+                  qfunc(xr, cand_xi + win * width, width, cand_sfacfix);
+              }
+
+              // Distortion and maxq pass
+              faac_real i_sfacfix = 1.0 / cand_sfacfix;
+              for (win = 0; win < gsize; win++)
+              {
+                  xr = xr0 + win * BLOCK_LEN_SHORT + start;
+                  const int * __restrict xi = cand_xi + win * width;
+                  for (i = 0; i < width; i++)
+                  {
+                      int q_idx = abs(xi[i]);
+                      faac_real xr_q;
+
+                      if (q_idx < 8192)
+                          xr_q = pow43_lookup[q_idx] * i_sfacfix;
+                      else
+                          xr_q = FAAC_POW((faac_real)q_idx, 4.0/3.0) * i_sfacfix;
+
+                      if (xi[i] < 0) xr_q = -xr_q;
+                      faac_real err = xr[i] - xr_q;
+                      cand_dist += err * err;
+                      if (q_idx > maxq) maxq = q_idx;
+                  }
+              }
+          }
+          else
+          {
+              cand_dist = bandenrg[sb];
+          }
+
+          if (maxq == 0) cand_book = HCB_ZERO;
+          else if (maxq < 2) cand_book = 1;
+          else if (maxq < 3) cand_book = 3;
+          else if (maxq < 5) cand_book = 5;
+          else if (maxq < 8) cand_book = 7;
+          else if (maxq < 13) cand_book = 9;
+          else cand_book = HCB_ESC;
+
+          if (cand_book != HCB_ZERO)
+          {
+              cand_bits = huff_count_bits(cand_xi, gsize * width, cand_book);
+              if (cand_book < 11 && (cand_book & 1))
+              {
+                  int bnext_bits = huff_count_bits(cand_xi, gsize * width, cand_book + 1);
+                  if (bnext_bits < cand_bits)
+                  {
+                      cand_bits = bnext_bits;
+                      cand_book++;
+                  }
+              }
+          }
+
+          faac_real err_weight = bandqual[sb] * bandqual[sb] + 1e-15;
+          faac_real cost = cand_dist / err_weight + lambda * (faac_real)cand_bits;
+
+          if (cost < best_cost)
+          {
+              best_cost = cost;
+              best_sf = cand_sf;
+              best_book = cand_book;
+              memcpy(best_xi, cand_xi, sizeof(best_xi));
           }
       }
-      huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+
+      if (best_book > HCB_ZERO)
+          huffcode(best_xi, gsize * width, best_book, coderInfo, NULL);
+      coderInfo->book[coderInfo->bandcnt] = best_book;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - best_sf;
+    }
+}
+
+static void clamp_sf(CoderInfo *coder)
+{
+    int lastsf = coder->global_gain;
+    int lastis = 0;
+    int lastpns = coder->global_gain - 90;
+    int cnt;
+
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if (book > 0 && book < HCB_PNS)
+        {
+            int diff = coder->sf[cnt] - lastsf;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            lastsf += diff;
+            coder->sf[cnt] = lastsf;
+        }
+        else if (book == HCB_INTENSITY || book == HCB_INTENSITY2)
+        {
+            int diff = coder->sf[cnt] - lastis;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            lastis += diff;
+            coder->sf[cnt] = lastis;
+        }
+        else if (book == HCB_PNS)
+        {
+            int diff = coder->sf[cnt] - lastpns;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            lastpns += diff;
+            coder->sf[cnt] = lastpns;
+        }
     }
 }
 
@@ -258,15 +385,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->datacnt = 0;
 
     {
-        int lastis;
-        int lastsf;
-
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -283,37 +407,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             }
         }
 
-        lastsf = coder->global_gain;
-        lastis = 0;
         // fixme: move SF range check to quantizer
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
-        {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-            {
-                int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_ESC)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
-        }
+        clamp_sf(coder);
         return 1;
     }
     return 0;

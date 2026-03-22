@@ -35,7 +35,7 @@ extern "C" {
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
 #define MAX_SHORT_WINDOWS 8
-#define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
+#define MAX_SCFAC_BANDS 256
 
 enum WINDOW_TYPE {
     ONLY_LONG_WINDOW,
@@ -98,7 +98,7 @@ typedef struct {
     } groups;
 
     /* worst case: one codeword with two escapes per two spectral lines */
-#define DATASIZE (3*FRAME_LEN/2)
+#define DATASIZE 8192
 
     struct {
         int data;
@@ -108,6 +108,7 @@ typedef struct {
 
 
     TnsInfo tnsInfo;
+
 } CoderInfo;
 
 typedef struct {

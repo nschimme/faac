@@ -28,8 +28,11 @@ enum {
     HCB_NONE
 };
 
-int huffbook(CoderInfo *coderInfo,
-             int *qs /* quantized spectrum */,
-             int len);
+int huffcode(int *qs /* quantized spectrum */,
+                    int len,
+                    int bnum,
+                    CoderInfo *coder,
+                    BitStream *bitStream);
+int huff_count_bits(int *qs, int len, int bnum);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
