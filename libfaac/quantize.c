@@ -139,8 +139,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         avgenrg = totenrg / last;
         avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = NOISETONE * FAAC_POW(avge / (avgenrg + FAAC_EPSILON), powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe / (avgenrg + FAAC_EPSILON), powm);
 
         target *= 1.5;
     }
@@ -150,8 +150,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         avgenrg = totenrg / last;
         avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target = NOISETONE * FAAC_POW(avge / (avgenrg + FAAC_EPSILON), powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe / (avgenrg + FAAC_EPSILON), powm);
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));

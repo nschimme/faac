@@ -451,7 +451,8 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             for (i=1;i<order;i++) {
                 kTemp += aLastPtr[i]*rArray[order-i];
             }
-            kTemp = -kTemp/error;
+            kTemp = (FAAC_FABS(error) < FAAC_EPSILON) ? 1e30 : -kTemp / error;
+            if (kTemp == 1e30) return 0;
             kArray[order]=kTemp;
             aPtr[order]=kTemp;
             for (i=1;i<order;i++) {
@@ -464,7 +465,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aLastPtr=aPtr;      /* Current becomes last */
             aPtr=aTemp;         /* Last becomes current */
         }
-        return signal/error;    /* return the gain */
+        return (FAAC_FABS(error) < FAAC_EPSILON) ? 0 : signal / error;    /* return the gain */
     }
 }
 
