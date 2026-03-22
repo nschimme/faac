@@ -44,8 +44,8 @@ typedef struct
 
 enum {
     DEFQUAL = 100,
-    MAXQUAL = 100000,
-    MAXQUALADTS = 100000,
+    MAXQUAL = 5000,
+    MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
     SF_OFFSET = 100,
 };
