@@ -83,6 +83,12 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
+  if (psyInfo->attackHoldCount > 0)
+  {
+      psyInfo->attackHoldCount--;
+      psyInfo->block_type = ONLY_SHORT_WINDOW;
+  }
+
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
   {
@@ -109,6 +115,7 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
           if ((volchg / toteng * quality) > 3.0)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
+              psyInfo->attackHoldCount = 3;
               break;
           }
       }
@@ -146,6 +153,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].attackHoldCount = 0;
   }
 
   size = BLOCK_LEN_LONG;

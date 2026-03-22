@@ -34,6 +34,7 @@ typedef float faac_real;
 #define FAAC_FABS fabsf
 #define FAAC_LOG10 log10f
 #define FAAC_POW powf
+#define FAAC_EXP expf
 #define FAAC_ASIN asinf
 #define FAAC_LRINT lrintf
 #define FAAC_FLOOR floorf
@@ -45,9 +46,14 @@ typedef double faac_real;
 #define FAAC_FABS fabs
 #define FAAC_LOG10 log10
 #define FAAC_POW pow
+#define FAAC_EXP exp
 #define FAAC_ASIN asin
 #define FAAC_LRINT lrint
 #define FAAC_FLOOR floor
+#endif
+
+#ifndef M_E
+#define M_E 2.71828182845904523536
 #endif
 
 #endif /* FAAC_REAL_H */

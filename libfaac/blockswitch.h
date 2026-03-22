@@ -45,6 +45,9 @@ typedef struct {
 
 	int block_type;
 
+	/* Transient detection hysteresis to prevent pre-echo following an attack. */
+	int attackHoldCount;
+
         void *data;
 } PsyInfo;
 

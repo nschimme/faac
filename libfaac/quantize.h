@@ -31,6 +31,11 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    /* ATH-shaped per-band noise floor (amplitude units, same as signal).
+     * Anchored to NOISEFLOOR at the most sensitive frequency (~4 kHz).
+     * Precomputed once in CalcBW(); used each frame in qlevel().       */
+    faac_real ath_long[NSFB_LONG];
+    faac_real ath_short[NSFB_SHORT];
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
