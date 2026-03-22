@@ -85,6 +85,11 @@ typedef struct {
     AACQuantCfg aacquantCfg;
 
     /* FFT Tables */
+    /* Bit Reservoir and Rate Control */
+    int reservoirBits;
+    int maxReservoirBits;
+    int reservoirTarget;
+    faac_real lambda;
     FFT_Tables	fft_tables;
 } faacEncStruct;
 

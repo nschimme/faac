@@ -23,9 +23,6 @@ copyright notice must be included in all copies or derivative works.
 
 Copyright (c) 1997.
 **********************************************************************/
-/*
- * $Id: tns.h,v 1.6 2012/03/01 18:34:17 knik Exp $
- */
 
 #ifndef TNS_H
 #define TNS_H
@@ -34,17 +31,16 @@ Copyright (c) 1997.
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
+#endif
 
 
 void TnsInit(faacEncStruct* hEncoder);
-void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
-               int* sfbOffsetTable,faac_real* spec, faac_real* temp);
+void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real lambda, faac_real* temp);
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb,
                          enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-#endif /* TNS_H */
+#endif

@@ -23,29 +23,20 @@ copyright notice must be included in all copies or derivative works.
 
 Copyright (c) 1997.
 **********************************************************************/
-/*
- * $Id: tns.c,v 1.11 2012/03/01 18:34:17 knik Exp $
- */
 
 #include <math.h>
+#include <string.h>
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
 #include "tns.h"
 #include "util.h"
 
-/***********************************************/
-/* TNS Profile/Frequency Dependent Parameters  */
-/***********************************************/
-/* Limit bands to > 2.0 kHz */
 static unsigned short tnsMinBandNumberLong[12] =
 { 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
-/**************************************/
-/* Main/Low Profile TNS Parameters    */
-/**************************************/
 static unsigned short tnsMaxBandsLongMainLow[12] =
 { 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
 
@@ -56,30 +47,13 @@ static unsigned short tnsMaxOrderLongMain = 20;
 static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortMainLow = 7;
 
+static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict rArray, faac_real energy);
+static faac_real LevinsonDurbin(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict kArray, faac_real energy);
+static void StepUp(int fOrder, const faac_real* __restrict kArray, faac_real* __restrict aArray);
+static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* __restrict kArray, int* __restrict indexArray);
+static int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray);
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* __restrict filter, faac_real* __restrict temp);
 
-/*************************/
-/* Function prototypes   */
-/*************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray);     /* Autocorrelation array */
-
-static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
-                      int dataSize,        /* Size of the data array */
-                      faac_real* data,        /* Data array */
-                      faac_real* kArray);     /* Reflection coeff array */
-
-static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-
-static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
-
-
-/*****************************************************/
-/* InitTns:                                          */
-/*****************************************************/
 void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -94,10 +68,10 @@ void TnsInit(faacEncStruct* hEncoder)
         case LTP:
             tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
             tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
+            if (hEncoder->config.mpegVersion == 1) {
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
+            } else {
+                if (fsIndex <= 5)
                     tnsInfo->tnsMaxOrderLong = 12;
                 else
                     tnsInfo->tnsMaxOrderLong = 20;
@@ -107,10 +81,10 @@ void TnsInit(faacEncStruct* hEncoder)
         case LOW :
             tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
             tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
+            if (hEncoder->config.mpegVersion == 1) {
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
+            } else {
+                if (fsIndex <= 5)
                     tnsInfo->tnsMaxOrderLong = 12;
                 else
                     tnsInfo->tnsMaxOrderLong = 20;
@@ -123,78 +97,87 @@ void TnsInit(faacEncStruct* hEncoder)
     }
 }
 
-
-/*****************************************************/
-/* TnsEncode:                                        */
-/*****************************************************/
-void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
-               int numberOfBands,       /* Number of bands per window */
-               int maxSfb,              /* max_sfb */
-               enum WINDOW_TYPE blockType,   /* block type */
-               int* sfbOffsetTable,     /* Scalefactor band offset table */
-               faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real lambda, faac_real* temp)
 {
     int numberOfWindows,windowSize;
-    int startBand,stopBand,order;    /* Bands over which to apply TNS */
-    int lengthInBands;               /* Length to filter, in bands */
+    int startBand,stopBand,order;
+    int lengthInBands;
     int w;
     int startIndex,length;
-    faac_real gain;
+    faac_real gain_thresh;
+    faac_real sfm_thresh;
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
         order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        gain_thresh = 3.0;
+        sfm_thresh = 0.90;
         break;
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         order = tnsInfo->tnsMaxOrderLong;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        gain_thresh = 4.0;
+        sfm_thresh = 0.95;
         break;
     }
 
-    /* Make sure that start and stop bands < maxSfb */
-    /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
+    startBand = max(0, min(startBand,maxSfb));
+    stopBand = max(0, min(stopBand,maxSfb));
+    lengthInBands = max(0, stopBand-startBand);
+    tnsInfo->tnsDataPresent = 0;
 
-    tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
-
-    /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
+        faac_real energy = 0.0;
+        faac_real logSum = 0.0;
+        int i;
+        faac_real sfm;
 
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
-        faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
-        faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
+        faac_real* k = tnsFilter->kCoeffs;
+        faac_real* a = tnsFilter->aCoeffs;
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
-        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        if (length <= 0) continue;
+
+        const faac_real * __restrict window_spec = spec + startIndex;
+        faac_real inv_len = 1.0 / length;
+
+        for (i = 0; i < length; i++) {
+            energy += window_spec[i] * window_spec[i];
+        }
+
+        /* CPU Optimization: Early Exit on low energy */
+        if (energy < 1e-7) {
+            continue;
+        }
+
+        for (i = 0; i < length; i++) {
+            logSum += log(window_spec[i] * window_spec[i] + 1e-15);
+        }
+        sfm = exp(logSum * inv_len) / (energy * inv_len);
+
+        if (sfm < sfm_thresh) continue;
+
+        faac_real predGain = LevinsonDurbin(order,length,window_spec,k,energy);
+        faac_real side_info_cost = (order * 4 + 10) * lambda;
+
+        /* Soft-Gate: Reduce side info cost impact at high lambda (low bitrate) */
+        faac_real adjusted_cost = side_info_cost * (1.0 - (lambda * 0.5));
+
+        if (predGain > gain_thresh && (predGain - 1.0) * (energy + 1e-6) > adjusted_cost) {
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -204,28 +187,16 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
-            StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
+            StepUp(truncatedOrder,k,a);
+            TnsInvFilter(length,spec + startIndex,tnsFilter,temp);
         }
     }
 }
 
-
-/*****************************************************/
-/* TnsEncodeFilterOnly:                              */
-/* This is a stripped-down version of TnsEncode()    */
-/* which performs TNS analysis filtering only        */
-/*****************************************************/
-void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
-                         int numberOfBands,          /* Number of bands per window */
-                         int maxSfb,                 /* max_sfb */
-                         enum WINDOW_TYPE blockType, /* block type */
-                         int* sfbOffsetTable,        /* Scalefactor band offset table */
-                         faac_real* spec,               /* Spectral data array */
-                         faac_real* temp)
+void TnsEncodeFilterOnly(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int *sfbOffsetTable, faac_real *spec, faac_real *temp)
 {
     int numberOfWindows,windowSize;
-    int startBand,stopBand;    /* Bands over which to apply TNS */
+    int startBand,stopBand;
     int w;
     int startIndex,length;
 
@@ -234,30 +205,20 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         break;
     }
 
-    /* Make sure that start and stop bands < maxSfb */
-    /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
+    startBand = max(0, min(startBand,maxSfb));
+    stopBand = max(0, min(stopBand,maxSfb));
 
-
-    /* Perform filtering for each window */
     for(w=0;w<numberOfWindows;w++)
     {
         TnsWindowData* windowData = &tnsInfo->windowData[w];
@@ -266,228 +227,164 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
-        if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
+        if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {
+            TnsInvFilter(length,spec + startIndex,tnsFilter,temp);
         }
     }
 }
 
-
-
-
-/********************************************************/
-/* TnsInvFilter:                                        */
-/*   Inverse filter the given spec with specified       */
-/*   length using the coefficients specified in filter. */
-/*   Not that the order and direction are specified     */
-/*   withing the TNS_FILTER_DATA structure.             */
-/********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length, faac_real* __restrict spec, TnsFilterData* __restrict filter, faac_real* __restrict temp)
 {
-    int i,j,k=0;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    int i, j;
+    int order = filter->order;
+    const faac_real* __restrict a = filter->aCoeffs;
 
-    /* Determine loop parameters for given direction */
+    if (length <= 0) return;
+
+    memcpy(temp, spec, length * sizeof(faac_real));
+
     if (filter->direction) {
-
-        /* Startup, initial state is zero */
-        temp[length-1]=spec[length-1];
-        for (i=length-2;i>(length-1-order);i--) {
-            temp[i]=spec[i];
-            k++;
-            for (j=1;j<=k;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        for (i = length - 1; i >= length - order && i >= 0; i--) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i + 1;
+            for (j = 1; j <= (length - 1 - i); j++) s += tp[j-1] * a[j];
+            spec[i] = s;
         }
-
-        /* Now filter the rest */
-        for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        for (; i >= 0; i--) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i + 1;
+            for (j = 1; j <= order; j++) s += tp[j-1] * a[j];
+            spec[i] = s;
         }
-
-
     } else {
-
-        /* Startup, initial state is zero */
-        temp[0]=spec[0];
-        for (i=1;i<order;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=i;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        for (i = 0; i < order && i < length; i++) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i;
+            for (j = 1; j <= i; j++) s += tp[-j] * a[j];
+            spec[i] = s;
         }
-
-        /* Now filter the rest */
-        for (i=order;i<length;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        for (; i < length; i++) {
+            faac_real s = temp[i];
+            const faac_real* __restrict tp = temp + i;
+            for (j = 1; j <= order; j++) s += tp[-j] * a[j];
+            spec[i] = s;
         }
     }
 }
 
-
-
-
-
-/*****************************************************/
-/* TruncateCoeffs:                                   */
-/*   Truncate the given reflection coeffs by zeroing */
-/*   coefficients in the tail with absolute value    */
-/*   less than the specified threshold.  Return the  */
-/*   truncated filter order.                         */
-/*****************************************************/
-static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
+static int TruncateCoeffs(int fOrder, faac_real threshold, faac_real* kArray)
 {
     int i;
-
-    for (i = fOrder; i >= 0; i--) {
-        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
-        if (kArray[i]!=0.0) return i;
+    for (i = fOrder; i >= 1; i--) {
+        if (FAAC_FABS(kArray[i]) > threshold) return i;
+        kArray[i] = 0.0;
     }
-
     return 0;
 }
 
-/*****************************************************/
-/* QuantizeReflectionCoeffs:                         */
-/*   Quantize the given array of reflection coeffs   */
-/*   to the specified resolution in bits.            */
-/*****************************************************/
-static void QuantizeReflectionCoeffs(int fOrder,
-                              int coeffRes,
-                              faac_real* kArray,
-                              int* indexArray)
+static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* __restrict kArray, int* __restrict indexArray)
 {
     faac_real iqfac,iqfac_m;
     int i;
-
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
-
-    /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+        faac_real k = kArray[i];
+        int idx = (k >= 0) ? (int)(0.5 + (FAAC_ASIN(k) * iqfac)) : (int)(-0.5 + (FAAC_ASIN(k) * iqfac_m));
+        if (idx > 7) idx = 7;
+        if (idx < -8) idx = -8;
+        indexArray[i] = idx;
+        k = FAAC_SIN((faac_real)idx / ((idx >= 0) ? iqfac : iqfac_m));
+        if (k > 0.8) k = 0.8;
+        if (k < -0.8) k = -0.8;
+        kArray[i] = k;
     }
 }
 
-/*****************************************************/
-/* Autocorrelation,                                  */
-/*   Compute the autocorrelation function            */
-/*   estimate for the given data.                    */
-/*****************************************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray)      /* Autocorrelation array */
+static void Autocorrelation(int maxOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict rArray, faac_real energy)
 {
-    int order,index;
+    int order, index;
+    rArray[0] = energy;
+    for (order = 1; order <= maxOrder; order++) rArray[order] = 0.0;
 
-    for (order=0;order<=maxOrder;order++) {
-        rArray[order]=0.0;
-        for (index=0;index<dataSize;index++) {
-            rArray[order]+=data[index]*data[index+order];
+    int n = dataSize - maxOrder;
+    for (index = 0; index < n; index++) {
+        faac_real v = data[index];
+        const faac_real * __restrict d_lag = data + index;
+        for (order = 1; order <= maxOrder; order++) {
+            rArray[order] += v * d_lag[order];
         }
-        dataSize--;
+    }
+    for (; index < dataSize; index++) {
+        faac_real v = data[index];
+        for (order = 1; order < dataSize - index; order++) {
+            rArray[order] += v * data[index + order];
+        }
     }
 }
 
-
-
-/*****************************************************/
-/* LevinsonDurbin:                                   */
-/*   Compute the reflection coefficients for the     */
-/*   given data using LevinsonDurbin recursion.      */
-/*   Return the prediction gain.                     */
-/*****************************************************/
-static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
-                      int dataSize,        /* Size of the data array */
-                      faac_real* data,        /* Data array */
-                      faac_real* kArray)      /* Reflection coeff array */
+static faac_real LevinsonDurbin(int fOrder, int dataSize, const faac_real* __restrict data, faac_real* __restrict kArray, faac_real energy)
 {
     int order,i;
     faac_real signal;
-    faac_real error, kTemp;                /* Prediction error */
-    faac_real aArray1[TNS_MAX_ORDER+1];    /* Predictor coeff array */
-    faac_real aArray2[TNS_MAX_ORDER+1];    /* Predictor coeff array 2 */
-    faac_real rArray[TNS_MAX_ORDER+1] = {0}; /* Autocorrelation coeffs */
-    faac_real* aPtr = aArray1;             /* Ptr to aArray1 */
-    faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
-    faac_real* aTemp;
+    faac_real error, kt;
+    faac_real rArray[TNS_MAX_ORDER+1] = {0};
 
-    /* Compute autocorrelation coefficients */
-    Autocorrelation(fOrder,dataSize,data,rArray);
-    signal=rArray[0];   /* signal energy */
+    Autocorrelation(fOrder,dataSize,data,rArray,energy);
+    signal=rArray[0];
 
-    /* Set up pointers to current and last iteration */
-    /* predictor coefficients.                       */
-    aPtr = aArray1;
-    aLastPtr = aArray2;
-    /* If there is no signal energy, return */
-    if (!signal) {
+    if (signal < 1e-9) {
         kArray[0]=1.0;
         for (order=1;order<=fOrder;order++) {
             kArray[order]=0.0;
         }
         return 0;
-
     } else {
-
-        /* Set up first iteration */
+        faac_real aArray1[TNS_MAX_ORDER+1];
+        faac_real aArray2[TNS_MAX_ORDER+1];
+        faac_real* __restrict aPtr = aArray1;
+        faac_real* __restrict aLastPtr = aArray2;
+        faac_real* aTemp;
         kArray[0]=1.0;
-        aPtr[0]=1.0;        /* Ptr to predictor coeffs, current iteration*/
-        aLastPtr[0]=1.0;    /* Ptr to predictor coeffs, last iteration */
+        aPtr[0]=1.0;
+        aLastPtr[0]=1.0;
         error=rArray[0];
-
-        /* Now perform recursion */
         for (order=1;order<=fOrder;order++) {
-            kTemp = aLastPtr[0]*rArray[order-0];
+            kt = rArray[order];
+            const faac_real* __restrict alp = aLastPtr;
+            const faac_real* __restrict ra = rArray + order;
             for (i=1;i<order;i++) {
-                kTemp += aLastPtr[i]*rArray[order-i];
+                kt += alp[i]*ra[-i];
             }
-            kTemp = -kTemp/error;
-            kArray[order]=kTemp;
-            aPtr[order]=kTemp;
+            kt = -kt/error;
+            kArray[order]=kt;
+            aPtr[order]=kt;
             for (i=1;i<order;i++) {
-                aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
+                aPtr[i] = alp[i] + kt*alp[order-i];
             }
-            error = error * (1 - kTemp*kTemp);
-
-            /* Now make current iteration the last one */
+            error = error * (1.0 - kt*kt);
             aTemp=aLastPtr;
-            aLastPtr=aPtr;      /* Current becomes last */
-            aPtr=aTemp;         /* Last becomes current */
+            aLastPtr=aPtr;
+            aPtr=aTemp;
         }
-        return signal/error;    /* return the gain */
+        return signal/error;
     }
 }
 
-
-/*****************************************************/
-/* StepUp:                                           */
-/*   Convert reflection coefficients into            */
-/*   predictor coefficients.                         */
-/*****************************************************/
-static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
+static void StepUp(int fOrder, const faac_real* __restrict kArray, faac_real* __restrict aArray)
 {
-    faac_real aTemp[TNS_MAX_ORDER+2];
+    faac_real a_temp[TNS_MAX_ORDER+2];
     int i,order;
-
     aArray[0]=1.0;
-    aTemp[0]=1.0;
+    a_temp[0]=1.0;
     for (order=1;order<=fOrder;order++) {
+        faac_real k = kArray[order];
         aArray[order]=0.0;
         for (i=1;i<=order;i++) {
-            aTemp[i] = aArray[i] + kArray[order]*aArray[order-i];
+            a_temp[i] = aArray[i] + k * aArray[order-i];
         }
         for (i=1;i<=order;i++) {
-            aArray[i]=aTemp[i];
+            aArray[i]=a_temp[i];
         }
     }
 }
