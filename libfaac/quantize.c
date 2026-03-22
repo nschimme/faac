@@ -68,6 +68,9 @@ void QuantizeInit(void)
         qfunc = quantize_scalar;
 }
 #define NOISEFLOOR 0.4
+#define SPREAD_UP 0.10
+#define SPREAD_DN 0.10
+#define SPREAD_FLOOR 0.80
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -157,6 +160,66 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
     bandqual[sfb] = target * quality;
+  }
+
+  /* ---------------------------------------------------------------
+   * Spreading function (inter-band masking).
+   *
+   * A scalefactor band whose energy is well below an adjacent louder
+   * band lies at or below that band's masking threshold; its quality
+   * target (bandqual) is therefore over-stated. Scaling bandqual
+   * down proportionally allows coarser quantisation in those masked
+   * regions. In ABR mode the freed bits are reallocated by the
+   * quality feedback loop to unmasked, perceptually important bands.
+   *
+   * The two thresholds correspond to typical psychoacoustic masking
+   * slopes on the Bark scale:
+   *   SPREAD_UP  0.10  -> ~10 dB upward masking per scalefactor band
+   *   SPREAD_DN  0.10  -> ~10 dB downward masking per scalefactor band
+   *
+   * We apply a floor to the scaling to prevent over-aggressive
+   * bit reduction which can lead to audible artifacts in noise or
+   * transient regions.
+   * --------------------------------------------------------------- */
+
+  /* Skip spreading for short windows — inter-band energy ratios
+   * reflect temporal variation, not frequency masking. */
+  if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    return;
+
+  {
+    const faac_real inv_spread_up = 1.0 / SPREAD_UP;
+    const faac_real inv_spread_dn = 1.0 / SPREAD_DN;
+
+    for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+    {
+      faac_real scale = 1.0;
+
+      /* Forward masking: lower-frequency bands mask higher-frequency bands. */
+      if (sfb > 0 && bandenrg[sfb] > 0.0 && bandenrg[sfb - 1] > 0.0)
+      {
+        faac_real r = bandenrg[sfb] / bandenrg[sfb - 1];
+        if (r < SPREAD_UP)
+        {
+          faac_real s = r * inv_spread_up;
+          if (s < scale) scale = s;
+        }
+      }
+
+      /* Backward masking: higher-frequency bands mask lower-frequency bands. */
+      if (sfb < coderInfo->sfbn - 1 && bandenrg[sfb] > 0.0 && bandenrg[sfb + 1] > 0.0)
+      {
+        faac_real r = bandenrg[sfb] / bandenrg[sfb + 1];
+        if (r < SPREAD_DN)
+        {
+          faac_real s = r * inv_spread_dn;
+          if (s < scale) scale = s;
+        }
+      }
+
+      if (scale < SPREAD_FLOOR) scale = SPREAD_FLOOR;
+      bandqual[sfb] *= scale;
+    }
   }
 }
 
