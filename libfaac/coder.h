@@ -109,6 +109,7 @@ typedef struct {
     int datacnt;
     faac_real frame_pe;
 
+    int sbr_best_offset[MAX_SHORT_WINDOWS];
 
     TnsInfo tnsInfo;
 } CoderInfo;

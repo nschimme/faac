@@ -268,8 +268,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
-
-    srand(0);
+    hEncoder->sbr_noise_seed = 0x12345678;
 
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
@@ -583,6 +582,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
+        hEncoder->aacquantCfg.sbr_enabled = hEncoder->sbr_enabled && !channelInfo[channel].lfe;
+        hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
+        hEncoder->aacquantCfg.origFreq = hEncoder->origFreqBuff[channel];
+        hEncoder->aacquantCfg.sbr_noise_seed = &hEncoder->sbr_noise_seed;
+
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

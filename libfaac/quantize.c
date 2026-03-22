@@ -26,6 +26,13 @@
 #include "huff2.h"
 #include "cpu_compute.h"
 
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
@@ -167,7 +174,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   AACQuantCfg *aacquantCfg,
+                   const faac_real * __restrict origxr0
                   )
 {
     int sb;
@@ -204,8 +213,89 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < 1.0f) || (!bandqual[sb]))
       {
+          int block_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+          faac_real sfb_f = (faac_real)start * aacquantCfg->sampleRate / (block_len * 2);
+          faac_real crossover_f = 8000.0f;
+
+          if (aacquantCfg->sbr_enabled && coderInfo->frame_pe < 7.0f && sfb_f >= crossover_f)
+          {
+              if (coderInfo->sbr_best_offset[gnum] == 0) {
+                  /* Harmonic Search (Once per group) */
+                  int best_off = 0;
+                  faac_real max_corr = -1.0f;
+                  for (int off = -64; off <= 64; off += 4) {
+                      faac_real corr = 0;
+                      for (win = 0; win < gsize; win++) {
+                          const faac_real *win_orig = origxr0 + win * BLOCK_LEN_SHORT;
+                          const faac_real *win_xr = xr0 + win * BLOCK_LEN_SHORT;
+                          for (int i = start; i < min(end, block_len); i++) {
+                              int src = i / 2 + off;
+                              if (src >= 0 && src < block_len)
+                                  corr += (faac_real)fabs(win_xr[src] * win_orig[i]);
+                          }
+                      }
+                      if (corr > max_corr) { max_corr = corr; best_off = off; }
+                  }
+                  coderInfo->sbr_best_offset[gnum] = best_off;
+                  if (best_off == 0) coderInfo->sbr_best_offset[gnum] = 1000000; /* Flag for 0 offset */
+              }
+
+              int best_offset = coderInfo->sbr_best_offset[gnum];
+              if (best_offset == 1000000) best_offset = 0;
+
+              faac_real sbr_sfacfix = (faac_real)pow(10, (SF_OFFSET - 30) / (20 / 1.50515));
+              xi = xitab;
+              int nonzero = 0;
+              for (win = 0; win < gsize; win++) {
+                  xr = xr0 + win * BLOCK_LEN_SHORT;
+                  for (int i = start; i < end; i++) {
+                      int src = i / 2 + best_offset;
+                      if (src < 0) src = 0;
+                      if (src >= block_len) src = block_len - 1;
+
+                      faac_real val = xr[src];
+                      faac_real bin_f = (faac_real)i * aacquantCfg->sampleRate / (block_len * 2);
+                      faac_real tilt_db = -18.0f * (bin_f - crossover_f) / (16000.0f - crossover_f);
+                      if (tilt_db > 0) tilt_db = 0;
+
+                      /* Improved bitrate-adaptive gain: reduce tilt for speech frames (high PE) */
+                      faac_real pe_tilt = (coderInfo->frame_pe > 5.0f) ? -6.0f : 0.0f;
+                      faac_real gain = (faac_real)exp((tilt_db - 12.0f + pe_tilt) * 0.1151292546497022842f);
+
+                      /* 4-bin Cross-fade */
+                      faac_real mix = 1.0f;
+                      if (i < start + 4) mix = (faac_real)(i - start) / 4.0f;
+
+                      faac_real tmp = (faac_real)fabs(val * gain * mix);
+
+                      /* Noise injection */
+                      *aacquantCfg->sbr_noise_seed = *aacquantCfg->sbr_noise_seed * 1103515245 + 12345;
+                      faac_real noise = (faac_real)((*aacquantCfg->sbr_noise_seed / 65536) % 32768) / 32768.0f;
+
+                      faac_real s_val = xr[src];
+                      if (src > 0 && src < block_len - 1)
+                          s_val = 0.25f * xr[src-1] + 0.5f * xr[src] + 0.25f * xr[src+1];
+
+                      faac_real folded = (faac_real)fabs(s_val * gain * mix) + (faac_real)fabs((noise * 2.0f - 1.0f) * 0.005f);
+
+                      tmp = folded * sbr_sfacfix;
+                      tmp = (faac_real)sqrt(tmp * sqrt(tmp));
+                      int q = (int)(tmp + MAGIC_NUMBER);
+                      xi[i-start] = (val < 0) ? -q : q;
+                      if (q > 0) nonzero = 1;
+                  }
+                  xi += (end - start);
+              }
+
+              if (nonzero) {
+                  huffbook(coderInfo, xitab, gsize * (end - start));
+                  coderInfo->sf[coderInfo->bandcnt++] = 70;
+                  continue;
+              }
+          }
+
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
@@ -256,18 +346,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     coder->bandcnt = 0;
     coder->datacnt = 0;
+    memset(coder->sbr_best_offset, 0, sizeof(coder->sbr_best_offset));
 
     {
         int lastis;
         int lastsf;
 
         gxr = xr;
+        faac_real *gorigxr = aacquantCfg->origFreq;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg, gorigxr);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
+            if (gorigxr) gorigxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
         coder->global_gain = 0;

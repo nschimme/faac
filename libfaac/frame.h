@@ -90,6 +90,7 @@ typedef struct {
     int sbr_cutoff_sfb_long;
     int sbr_cutoff_sfb_short;
     faac_real sbr_nominal_bw;
+    unsigned int sbr_noise_seed;
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
