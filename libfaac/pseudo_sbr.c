@@ -38,23 +38,37 @@
  * Steeper rolloff reduces the bit-cost of the patched region, preventing
  * it from starving core frequencies at low bitrates.                    */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.354f  /* 10^(-9/20) ≈ 0.354 */
+#  define SBR_PATCH_ROLLOFF  0.398f  /* 10^(-8/20) ≈ 0.398 */
 #else
-#  define SBR_PATCH_ROLLOFF  0.354
+#  define SBR_PATCH_ROLLOFF  0.398
 #endif
 
 /* Fraction of patch amplitude replaced with band-limited white noise.
  * Breaks the pitch-periodicity of a direct spectral copy, giving a more
  * natural, diffuse HF texture ("breathiness").                          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_NOISE_FRAC     0.12f
+#  define SBR_NOISE_FRAC     0.15f
 #else
-#  define SBR_NOISE_FRAC     0.12
+#  define SBR_NOISE_FRAC     0.15
 #endif
 
 /* Minimum bandwidth extension worth applying (Hz).
  * If the achievable extension is smaller than this, skip pseudo-SBR.    */
 #define SBR_MIN_EXTENSION_HZ  500u
+
+/* Constant comfort noise floor amplitude.
+ * Injected to ensure a minimum level of "air" in the HF even when the
+ * source region is silent or extremely low energy.
+ * Kept extremely low (0.001f) to avoid killing Huffman zero-runs and
+ * wasting bits in constrained scenarios.                                */
+#ifdef FAAC_PRECISION_SINGLE
+#  define SBR_COMFORT_NOISE  0.0002f
+#else
+#  define SBR_COMFORT_NOISE  0.0002
+#endif
+
+/* Width of the spectral cross-fade at the crossover point (bins).       */
+#define SBR_XFADE_BINS      4
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -79,6 +93,27 @@ static faac_real band_energy(const faac_real * __restrict mdct,
     for (i = 0; i < len; i++)
         e += mdct[start + i] * mdct[start + i];
     return e;
+}
+
+/*
+ * Find the peak bin index in mdct[start .. start+len-1].
+ * Returns index relative to start.
+ */
+static int find_peak(const faac_real * __restrict mdct, int start, int len)
+{
+    faac_real max_e = -1.0;
+    int peak = 0;
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        faac_real e = mdct[start + i] * mdct[start + i];
+        if (e > max_e)
+        {
+            max_e = e;
+            peak = i;
+        }
+    }
+    return peak;
 }
 
 /* -----------------------------------------------------------------------
@@ -119,6 +154,9 @@ static void apply_sbr_window(faac_real * __restrict mdct,
     faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;   /* gain for patch 0 */
     int p;
 
+    /* Harmonic alignment: find peak in top coded octave to align patches. */
+    int core_peak = find_peak(mdct, bw_bin - (bw_bin / 2), bw_bin / 2);
+
     for (p = 0; p < MAX_SBR_PATCHES; p++)
     {
         int remaining, src_start;
@@ -136,9 +174,11 @@ static void apply_sbr_window(faac_real * __restrict mdct,
         if (patch_len > remaining)
             patch_len = remaining;
 
-        /* Source: top [patch_len] bins of the coded bandwidth.
-         * Clamp so we never read below bin 0.                            */
-        src_start = bw_bin - patch_len;
+        /* Source selection with harmonic alignment.
+         * Patches are shifted so that the source peak aligns with a
+         * harmonic position in the target region.                       */
+        src_start = (bw_bin - patch_len) - (core_peak % 4);
+
         if (src_start < 0)
         {
             patch_len += src_start;   /* shrink to fit */
@@ -174,8 +214,27 @@ static void apply_sbr_window(faac_real * __restrict mdct,
         noise_scale = scale * (faac_real)SBR_NOISE_FRAC;
 
         for (i = 0; i < patch_len; i++)
-            mdct[tgt + i] = mdct[src_start + i] * sig_scale
-                          + sbr_noise_next(rand)  * noise_scale;
+        {
+            /* Patching with spectral mirroring / sign-flipping to decorrelate
+             * patches and reduce grittiness.                                    */
+            faac_real src = mdct[src_start + i];
+            if (i % 2) src = -src;
+
+            faac_real val = src * sig_scale
+                          + sbr_noise_next(rand) * noise_scale
+                          + sbr_noise_next(rand) * (faac_real)SBR_COMFORT_NOISE;
+
+            /* Apply cross-fade at the very first patch boundary. */
+            if (p == 0 && i < SBR_XFADE_BINS)
+            {
+                faac_real alpha = (faac_real)(i + 1) / (faac_real)(SBR_XFADE_BINS + 1);
+                mdct[tgt + i] = mdct[tgt + i] * ((faac_real)1.0 - alpha) + val * alpha;
+            }
+            else
+            {
+                mdct[tgt + i] = val;
+            }
+        }
 
         tgt      += patch_len;
         patch_len = patch_len / 2;          /* halve for next patch      */

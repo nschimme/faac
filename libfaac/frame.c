@@ -579,6 +579,26 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
+    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
+    /* Apply BEFORE TNS and Stereo processing so that these tools can
+     * operate on the folded content, improving bit-efficiency and
+     * quality. Skip LFE channels.                                      */
+    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+        {
+            if (channelInfo[channel].present && !channelInfo[channel].lfe)
+            {
+                PseudoSBR(&coderInfo[channel],
+                          hEncoder->freqBuff[channel],
+                          hEncoder->sampleRate,
+                          hEncoder->baseBandWidth,
+                          (unsigned int)hEncoder->config.bandWidth,
+                          &hEncoder->sbrRandState);
+            }
+        }
+    }
+
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((!channelInfo[channel].lfe) && (useTns)) {
@@ -603,27 +623,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
-    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
-    /* Apply AFTER AACstereo (MDCT coefficients are available and joint-stereo
-     * decisions have been made) and BEFORE BlocQuant so that the quantiser
-     * sees the full extended spectrum.
-     * Skip LFE channels; their bandwidth is intentionally limited.     */
-    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
-    {
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            if (channelInfo[channel].present && !channelInfo[channel].lfe)
-            {
-                PseudoSBR(&coderInfo[channel],
-                          hEncoder->freqBuff[channel],
-                          hEncoder->sampleRate,
-                          hEncoder->baseBandWidth,
-                          (unsigned int)hEncoder->config.bandWidth,
-                          &hEncoder->sbrRandState);
-            }
-        }
-    }
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
