@@ -223,7 +223,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
 
         unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
-                                                hEncoder->baseBandWidth);
+                                                hEncoder->baseBandWidth,
+                                                (unsigned int)hEncoder->config.bitRate);
         if (sbrBW > hEncoder->baseBandWidth)
         {
             /* Let CalcBW include the extended region in max_cbl / max_cbs. */
@@ -550,27 +551,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             MOVERLAPPED);
     }
 
-    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
-    /* Apply AFTER FilterBank (MDCT coefficients are available) and
-     * BEFORE the sfb_offset / BlocGroup setup so that the quantiser
-     * sees the full extended spectrum when assigning scale-factor bands.
-     * Skip LFE channels; their bandwidth is intentionally limited.     */
-    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
-    {
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            if (channelInfo[channel].present && !channelInfo[channel].lfe)
-            {
-                PseudoSBR(&coderInfo[channel],
-                          hEncoder->freqBuff[channel],
-                          hEncoder->sampleRate,
-                          hEncoder->baseBandWidth,
-                          (unsigned int)hEncoder->config.bandWidth,
-                          &hEncoder->sbrRandState);
-            }
-        }
-    }
-
     for (channel = 0; channel < numChannels; channel++) {
         channelInfo[channel].msInfo.is_present = 0;
 
@@ -623,6 +603,27 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+
+    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
+    /* Apply AFTER AACstereo (MDCT coefficients are available and joint-stereo
+     * decisions have been made) and BEFORE BlocQuant so that the quantiser
+     * sees the full extended spectrum.
+     * Skip LFE channels; their bandwidth is intentionally limited.     */
+    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+        {
+            if (channelInfo[channel].present && !channelInfo[channel].lfe)
+            {
+                PseudoSBR(&coderInfo[channel],
+                          hEncoder->freqBuff[channel],
+                          hEncoder->sampleRate,
+                          hEncoder->baseBandWidth,
+                          (unsigned int)hEncoder->config.bandWidth,
+                          &hEncoder->sbrRandState);
+            }
+        }
+    }
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
