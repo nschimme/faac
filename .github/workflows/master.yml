@@ -60,11 +60,31 @@ jobs:
               options: -Dfloating-point=double,
               cflags: /W4
             }
+          - {
+              name: Linux uClibc,
+              os: ubuntu-latest,
+              compiler: x86_64-linux-gcc,
+              shell: bash,
+              options: -Dfloating-point=double -Ddefault_library=static,
+              cflags: -Wall -static,
+              uclibc: true
+            }
+          - {
+              name: Linux musl,
+              os: ubuntu-latest,
+              compiler: musl-gcc,
+              shell: bash,
+              options: -Dfloating-point=double -Ddefault_library=static,
+              cflags: -Wall -static,
+              musl: true
+            }
 
     steps:
-      - name: Install dependencies (Ubuntu)
+      - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt install meson-1.5
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends ffmpeg musl-tools xz-utils
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -73,7 +93,7 @@ jobs:
         run: |
           brew update || true
           brew install \
-            meson
+            ffmpeg
 
       - name: Install dependencies (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -82,13 +102,16 @@ jobs:
           msystem: ${{ matrix.config.msystem }}
           update: false
           install: >-
-            ${{ matrix.config.msys-env }}-meson
             ${{ matrix.config.msys-env }}-gcc
+            ${{ matrix.config.msys-env }}-meson
+            ${{ matrix.config.msys-env }}-ninja
+            ${{ matrix.config.msys-env }}-python-pip
+            ${{ matrix.config.msys-env }}-ffmpeg
 
-      - name: Install dependencies (MSVC)
+      - name: Install dependencies (Windows MSVC)
         if: matrix.config.compiler == 'cl'
         run: |
-          pip install meson ninja
+          choco install -y ffmpeg
 
       - name: Set up MSVC
         if: matrix.config.compiler == 'cl'
@@ -97,6 +120,32 @@ jobs:
           arch: x64
 
       - uses: actions/checkout@v6
+
+      - name: Set up uClibc toolchain cache
+        if: matrix.config.uclibc
+        id: cache-uclibc
+        uses: actions/cache@v4
+        with:
+          path: bootlin-uclibc
+          key: uclibc-2025.08-1-${{ runner.os }}
+
+      - name: Download uClibc toolchain
+        if: matrix.config.uclibc && steps.cache-uclibc.outputs.cache-hit != 'true'
+        run: |
+          curl -L https://toolchains.bootlin.com/downloads/releases/toolchains/x86-64/tarballs/x86-64--uclibc--stable-2025.08-1.tar.xz | tar -xJ
+          find . -maxdepth 1 -type d -name "x86*uclibc*stable*" -exec mv {} bootlin-uclibc \;
+
+      - name: Configure uClibc path
+        if: matrix.config.uclibc
+        run: |
+          echo "${{ github.workspace }}/bootlin-uclibc/bin" >> $GITHUB_PATH
+          sudo apt update
+          sudo apt install -y --no-install-recommends libmpfr-dev libmpc-dev libgmp-dev
+
+      - name: Install Python dependencies
+        if: matrix.config.shell != 'msys2 {0}'
+        run: |
+          python3 -m pip install --break-system-packages meson ninja ffmpeg-python || python3 -m pip install meson ninja ffmpeg-python
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -112,11 +161,23 @@ jobs:
       - name: Build (General)
         if: matrix.config.shell != 'msys2 {0}'
         env:
-          CC: ${{ matrix.config.compiler }}
+          CC: ${{ matrix.config.uclibc && format('{0}/bootlin-uclibc/bin/x86_64-buildroot-linux-uclibc-gcc', github.workspace) || matrix.config.compiler }}
           CFLAGS: ${{ matrix.config.cflags }}
         run: |
           meson setup build -Dprefix="${{ github.workspace }}/temp" ${{ matrix.config.options }}
           meson install -C build
+
+      - name: Run tests
+        if: matrix.config.shell != 'msys2 {0}'
+        run: |
+          meson test -C build --print-errorlogs
+
+      - name: Run tests (MSYS2)
+        if: matrix.config.shell == 'msys2 {0}'
+        run: |
+          # MSYS2 needs python dependencies installed inside the msys shell
+          python -m pip install ffmpeg-python
+          meson test -C build --print-errorlogs
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v7
@@ -132,8 +193,8 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install cppcheck
+          sudo apt update
+          sudo apt install -y --no-install-recommends cppcheck
 
       - uses: actions/checkout@v6
 
