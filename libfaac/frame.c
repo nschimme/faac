@@ -173,14 +173,12 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    /* All parameters interpolated between two anchor points.
-    * To tune: adjust the _LO and _HI values directly.
-    * LO anchor = 16kbps, HI anchor = 128kbps.
-    *
-    * nf uses log-space interpolation because it spans two decades
-    * (0.010 to 0.001) — linear interpolation overshoots the midrange.
-    * Everything else is linear. */
-
+    /* Bitrate-dependent parameter interpolation (anchored 16k-128k).
+     * Tuning Guide:
+     * - NF (Noise Floor):  Lower = less quantization noise (more detail).
+     * - FAC (BW Factor):   Higher = extended spectral cutoff frequency.
+     * - POWM (Power Exp):  Lower = flatter masking curve (more transparency).
+     * - FP (Freq Penalty): Lower = better high-frequency sibilance retention. */
     #define ANCHOR_LO  16000.0
     #define ANCHOR_HI 128000.0
 
@@ -194,7 +192,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     #define FP_HI    0.70
 
     faac_real t = (hEncoder->config.bitRate - (faac_real)ANCHOR_LO)
-                / ((faac_real)ANCHOR_HI - (faac_real)ANCHOR_LO);
+                   / ((faac_real)ANCHOR_HI - (faac_real)ANCHOR_LO);
     if (t < 0.0) t = 0.0;
     if (t > 1.0) t = 1.0;
 

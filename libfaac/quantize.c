@@ -76,8 +76,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
-  /* WHY: A power factor of 0.35 (down from 0.4) improves quiet passage transparency
-     by allowing more detail to be preserved in low-energy signals. */
+  /* Masking curve exponent. Lower: quiet passage transparency. */
   const faac_real powm = aacquantCfg->powm;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
@@ -85,7 +84,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
-  faac_real noise_floor = aacquantCfg->noise_floor;
+  const faac_real noise_floor = aacquantCfg->noise_floor;
 
   for (win = 0; win < gsize; win++)
   {
@@ -144,12 +143,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= 1.5;
-    /* WHY: The target multiplier is increased to 15.0 to align with more sensitive
-       modern psychoacoustic standards, ensuring better high-frequency retention. */
+    /* Global Masking Multiplier. Higher: raises MNR/fidelity. */
     target *= 15.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* WHY: Apply a frequency penalty to non-zero bands to prevent masking thresholds
-       from rising too aggressively at high frequencies, which protects sibilance. */
+    /* HF Sibilance Protection. Lower: prevents high-freq 'smearing'. */
     if (sfb > 0)
         target *= aacquantCfg->freq_penalty;
 
@@ -176,8 +173,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
     const faac_real inv_gsize = 1.0 / (faac_real)gsize;
-    faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
-    faac_real noise_floor = aacquantCfg->noise_floor;
+    const faac_real noise_floor = aacquantCfg->noise_floor;
+    const faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -200,7 +197,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
 
-      /* WHY: Hoist division by gsize into a precalculated reciprocal. */
       etot = bandenrg[sb] * inv_gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
@@ -262,10 +258,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         int lastsf;
 
         gxr = xr;
+        const faac_real qscale = (faac_real)aacquantCfg->quality / DEFQUAL;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg);
+            bmask(coder, gxr, bandlvl, bandenrg, cnt, qscale, aacquantCfg);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
