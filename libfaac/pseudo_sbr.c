@@ -34,22 +34,21 @@
  * Patches narrower than this are skipped.                               */
 #define MIN_PATCH_BINS      16
 
-/* Amplitude gain applied to each successive patch (-9 dB per step).
- * Steeper rolloff reduces the bit-cost of the patched region, preventing
- * it from starving core frequencies at low bitrates.                    */
+/* Default amplitude gain applied to each successive patch.
+ * This is overridden by bitrate-adaptive logic in PseudoSBR().          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.398f  /* 10^(-8/20) ≈ 0.398 */
+#  define SBR_PATCH_ROLLOFF_DEF  0.354f
 #else
-#  define SBR_PATCH_ROLLOFF  0.398
+#  define SBR_PATCH_ROLLOFF_DEF  0.354
 #endif
 
 /* Fraction of patch amplitude replaced with band-limited white noise.
  * Breaks the pitch-periodicity of a direct spectral copy, giving a more
  * natural, diffuse HF texture ("breathiness").                          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_NOISE_FRAC     0.15f
+#  define SBR_NOISE_FRAC     0.05f
 #else
-#  define SBR_NOISE_FRAC     0.15
+#  define SBR_NOISE_FRAC     0.05
 #endif
 
 /* Minimum bandwidth extension worth applying (Hz).
@@ -147,11 +146,12 @@ static int find_peak(const faac_real * __restrict mdct, int start, int len)
  * --------------------------------------------------------------------- */
 static void apply_sbr_window(faac_real * __restrict mdct,
                              int bw_bin, int tgt_bin,
+                             faac_real rolloff,
                              unsigned int *rand)
 {
     int tgt           = bw_bin;
     int patch_len     = bw_bin / 2;   /* width of first patch: one octave */
-    faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;   /* gain for patch 0 */
+    faac_real cum_gain = (faac_real)rolloff;   /* gain for patch 0 */
     int p;
 
     /* Harmonic alignment: find peak in top coded octave to align patches. */
@@ -238,7 +238,7 @@ static void apply_sbr_window(faac_real * __restrict mdct,
 
         tgt      += patch_len;
         patch_len = patch_len / 2;          /* halve for next patch      */
-        cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
+        cum_gain *= (faac_real)rolloff;
     }
 }
 
@@ -251,15 +251,30 @@ void PseudoSBR(CoderInfo    *coderInfo,
                unsigned int  sampleRate,
                unsigned int  baseBW,
                unsigned int  sbrBW,
+               unsigned int  bitRate,
                unsigned int *rand)
 {
     int bw_bin, tgt_bin;
+    faac_real rolloff;
 
     if (baseBW >= sbrBW || sampleRate == 0)
         return;
 
     if ((sbrBW - baseBW) < SBR_MIN_EXTENSION_HZ)
         return;
+
+    /* Bitrate-adaptive gain tilt.
+     * High bitrates get steeper rolloff to remain "stealthy" and bit-efficient. */
+    if (bitRate < 12000)
+        rolloff = (faac_real)0.891; /* -1.0 dB */
+    else if (bitRate < 24000)
+        rolloff = (faac_real)0.794; /* -2.0 dB */
+    else if (bitRate < 40000)
+        rolloff = (faac_real)0.707; /* -3.0 dB */
+    else if (bitRate < 56000)
+        rolloff = (faac_real)0.631; /* -4.0 dB */
+    else
+        rolloff = (faac_real)0.501; /* -6.0 dB */
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -279,7 +294,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
 
         for (win = 0; win < MAX_SHORT_WINDOWS; win++)
             apply_sbr_window(freqBuff + win * BLOCK_LEN_SHORT,
-                             bw_bin, tgt_bin, rand);
+                             bw_bin, tgt_bin, rolloff, rand);
     }
     else
     {
@@ -294,7 +309,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
-        apply_sbr_window(freqBuff, bw_bin, tgt_bin, rand);
+        apply_sbr_window(freqBuff, bw_bin, tgt_bin, rolloff, rand);
     }
 }
 
