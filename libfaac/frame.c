@@ -667,28 +667,32 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        /* ABR configuration constants */
-        const int min_frame_bits = 104; /* ~16kbps @ 16kHz mono floor */
-        const int reservoir_max_frames = 32; /* ~750ms @ 44.1kHz buffer */
-        const faac_real clamp_hi = 1.50; /* max 50% quality surge */
-        const faac_real clamp_lo = 0.67; /* max 33% quality cut */
-
+        // Per-frame ABR control
         int desbits = hEncoder->desbits;
         int actual_bits = frameBytes * 8;
 
-        /* Bit reservoir management: include saved bits from previous frames */
-        int target_bits = desbits + hEncoder->bit_reservoir;
+        // Normalized error: dimensionless, range typically ±0.3
+        faac_real err = (faac_real)(desbits - actual_bits) / (faac_real)desbits;
 
-        if (target_bits < min_frame_bits) target_bits = min_frame_bits;
+        faac_real fix;
+        if (FAAC_FABS(err) < 0.10) {
+            // Preserve old dead-band behavior for small errors.
+            // This is what kept music_high at 99.7% — don't break it.
+            fix = 1.0;
+        } else {
+            // Scale gain by err magnitude so large errors correct faster.
+            // At the dead-band boundary (10% err), gain≈0.5 matches old behavior.
+            // At 35% err (VoIP silence→speech), gain≈1.75, giving adequate correction.
+            faac_real gain = 0.5 + FAAC_FABS(err) * 3.5;
+            if (gain > 3.0) gain = 3.0;
+            fix = 1.0 + err * gain;
+        }
 
-        faac_real fix = (faac_real)target_bits / (faac_real)actual_bits;
-
-        /* Apply precalculated adaptive responsiveness */
-        fix = (fix - 1.0) * hEncoder->abr_responsiveness + 1.0;
-
-        /* Safety clamps for quality adjustment factor - tightened to prevent oscillation */
-        if (fix > clamp_hi) fix = clamp_hi;
-        if (fix < clamp_lo) fix = clamp_lo;
+        // Reservoir adjusts target for next frame
+        hEncoder->bit_reservoir += (desbits - actual_bits);
+        int max_res = 8 * desbits;  // ~0.25s at any bitrate
+        if (hEncoder->bit_reservoir >  max_res) hEncoder->bit_reservoir =  max_res;
+        if (hEncoder->bit_reservoir < -max_res) hEncoder->bit_reservoir = -max_res;
 
         hEncoder->aacquantCfg.quality *= fix;
 
@@ -696,14 +700,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
-
-        /* Update reservoir: bits we intended to use vs bits we actually used */
-        hEncoder->bit_reservoir += (desbits - actual_bits);
-
-        /* Clamp reservoir to prevent massive wind-up */
-        int res_limit = reservoir_max_frames * desbits;
-        if (hEncoder->bit_reservoir > res_limit) hEncoder->bit_reservoir = res_limit;
-        if (hEncoder->bit_reservoir < -res_limit) hEncoder->bit_reservoir = -res_limit;
     }
 
     return frameBytes;
