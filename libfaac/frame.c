@@ -182,14 +182,14 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     #define ANCHOR_LO  16000.0
     #define ANCHOR_HI 128000.0
 
-    #define NF_LO    0.010
-    #define NF_HI    0.001
+    #define NF_LO    0.014
+    #define NF_HI    0.0008
     #define FAC_LO   0.90
     #define FAC_HI   0.99
-    #define POWM_LO  0.27
-    #define POWM_HI  0.30
-    #define FP_LO    0.75
-    #define FP_HI    0.70
+    #define POWM_LO  0.34
+    #define POWM_HI  0.37
+    #define FP_LO    0.60
+    #define FP_HI    0.55
 
     faac_real t = (hEncoder->config.bitRate - (faac_real)ANCHOR_LO)
                    / ((faac_real)ANCHOR_HI - (faac_real)ANCHOR_LO);
