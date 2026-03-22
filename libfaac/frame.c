@@ -175,6 +175,21 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bitRate = config->bitRate;
 
+    if (hEncoder->config.bitRate) {
+        int bits_per_frame = (int)((faac_real)hEncoder->numChannels *
+            hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int bitrate_per_channel = hEncoder->config.bitRate / hEncoder->numChannels;
+        int multiplier;
+        if (bitrate_per_channel < 32000)
+            multiplier = 12;
+        else if (bitrate_per_channel < 64000)
+            multiplier = 8;
+        else
+            multiplier = 4;
+        hEncoder->maxReservoirBits = bits_per_frame * multiplier;
+        hEncoder->reservoirBits = hEncoder->maxReservoirBits / 2;
+    }
+
     if (!config->bandWidth)
     {
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
@@ -479,7 +494,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
         hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
         hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
+		hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
@@ -592,28 +607,37 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+    if (hEncoder->config.bitRate) {
+        int bits_per_frame = (int)((faac_real)numChannels *
+            hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int actual_bits = frameBytes * 8;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        hEncoder->reservoirBits += (bits_per_frame - actual_bits);
+        if (hEncoder->reservoirBits > hEncoder->maxReservoirBits)
+            hEncoder->reservoirBits = hEncoder->maxReservoirBits;
+        if (hEncoder->reservoirBits < 0)
+            hEncoder->reservoirBits = 0;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        /* Incremental quality adjustment based on reservoir level */
+        {
+            faac_real fill = (faac_real)hEncoder->reservoirBits /
+                             hEncoder->maxReservoirBits;
 
-        hEncoder->aacquantCfg.quality *= fix;
+			/* -0.5 (empty) to 0.5 (full) */
+            faac_real deviation = fill - 0.5; 
 
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+    		/* Nudge quality: 
+       		   If reservoir is sinking (deviation < 0), quality decreases.
+       		   If reservoir is growing (deviation > 0), quality increases.
+       		   Scaling by 0.5–1.0 is usually safer to prevent oscillation.
+    		*/
+			hEncoder->aacquantCfg.quality += (deviation * 2.0);
+
+            if (hEncoder->aacquantCfg.quality > maxqual)
+                hEncoder->aacquantCfg.quality = maxqual;
+            if (hEncoder->aacquantCfg.quality < 10)
+                hEncoder->aacquantCfg.quality = 10;
+        }
     }
 
     return frameBytes;
