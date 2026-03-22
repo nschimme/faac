@@ -38,6 +38,7 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
     int end = cl->sfb_offset[sfb + 1];
     faac_real enrgl, enrgr, enrgs, enrgd;
     faac_real sum;
+    int ms = 0;
 
     enrgl = enrgr = enrgs = enrgd = 0.0;
 
@@ -66,8 +67,10 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
     int use_is = (force_is_sfb >= 0 && sfb >= force_is_sfb);
     if (!use_is && phthr > 1.0)
     {
+        /* Bug 2 fix: IS threshold direction is inverted for phthr. */
+        faac_real inv_phthr = 1.0 / phthr;
         faac_real ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
-        ethr *= ethr * phthr;
+        ethr *= ethr * inv_phthr;
         if (enrgs >= ethr || enrgd >= ethr)
             use_is = 1;
     }
@@ -118,7 +121,6 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
     {
         /* M/S Decision with Phase Dominance Gate 2 restored. */
         faac_real ms_aggression = (quality < 0.35) ? 2.0 : 1.0;
-        int ms = 0;
         enum {PH_NONE, PH_IN, PH_OUT};
         int phase = PH_NONE;
 
@@ -133,7 +135,6 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
 
         if (ms)
         {
-            chi->msInfo.ms_used[*sfcnt] = 1;
             for (win = wstart; win < wend; win++)
             {
                 faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
@@ -169,6 +170,9 @@ static void apply_stereo_band(CoderInfo *cl, CoderInfo *cr, ChannelInfo *chi,
             }
         }
     }
+
+    /* Bug 1 fix: Unconditionally write ms_used to prevent bitstream corruption. */
+    chi->msInfo.ms_used[*sfcnt] = ms;
 }
 
 
