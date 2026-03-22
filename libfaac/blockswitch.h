@@ -46,6 +46,7 @@ typedef struct {
 	int block_type;
 
         void *data;
+        faac_real attackHold;
 } PsyInfo;
 
 typedef struct {

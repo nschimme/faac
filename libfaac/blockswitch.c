@@ -146,6 +146,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].attackHold = 0.0;
   }
 
   size = BLOCK_LEN_LONG;

@@ -606,6 +606,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0;
 
         fix = (fix - 1.0) * 0.5 + 1.0;
+
+        /* Damp overshoots more aggressively than undershoots */
+        if (fix > 1.0)
+            fix = 1.0 + (fix - 1.0) * 0.7;
+
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
