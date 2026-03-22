@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/> for more details.
 ****************************************************************************/
 
 #include <math.h>
@@ -167,7 +167,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   AACQuantCfg *aacquantCfg
                   )
 {
     int sb;
@@ -178,7 +178,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
-    faac_real pnsthr = 0.1 * pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -210,7 +209,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      if (bandqual[sb] < (0.1 * aacquantCfg->pnslevel))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -220,6 +219,26 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+
+      /* Surgical Vocal Boost.
+         Restricted to JOINT_MS Mid-channel or Constrained Mono.
+         Provides ~3dB boost for quality < 60% to improve masking in 1-4kHz range. */
+      if ((aacquantCfg->quality < 60.0) && aacquantCfg->isLeft &&
+          (aacquantCfg->jointMode == JOINT_MS || aacquantCfg->numChannels == 1)) {
+          int frame_len = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? 128 : 1024;
+          float f_start = (float)start * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
+          float f_end = (float)end * (float)aacquantCfg->sampleRate / (float)(frame_len * 2);
+
+          if (f_start > 800.0 && f_end < 5000.0) {
+              if (aacquantCfg->numChannels > 1) {
+                  if (aacquantCfg->quality < 35.0) sfac += 2;
+                  else sfac += 1;
+              } else {
+                  if (aacquantCfg->quality < 30.0) sfac += 1;
+              }
+          }
+      }
+
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
@@ -266,7 +285,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
