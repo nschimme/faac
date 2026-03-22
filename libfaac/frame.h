@@ -39,6 +39,8 @@ extern "C" {
 
 #include <faaccfg.h>
 
+struct BitStream;
+
 typedef struct {
     /* number of channels in AAC file */
     unsigned int numChannels;
@@ -48,6 +50,8 @@ typedef struct {
     unsigned int sampleRateIdx;
 
     unsigned int usedBytes;
+    int reservoir_bits;   /* current fill level in bits, range [0, reservoir_max] */
+    int reservoir_max;    /* decoder buffer ceiling in bits, bitrate-dependent     */
 
     /* frame number */
     unsigned int frameNum;
@@ -86,6 +90,12 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* Rate Control Buffers */
+    void *count_stream;   /* BitStream * */
+    unsigned char count_buf[8192];
+    void *snapshots;      /* CoderInfoSnapshot[MAX_CHANNELS] */
+    void *best_snapshots; /* CoderInfoSnapshot[MAX_CHANNELS] */
 } faacEncStruct;
 
 #ifdef __cplusplus
