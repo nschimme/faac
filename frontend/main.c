@@ -99,7 +99,8 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OPT_SBR
 };
 
 typedef struct {
@@ -196,6 +197,7 @@ static help_t help_advanced[] = {
     {"--joint 1\tUse Mid/Side coding.\n"},
     {"--joint 2\tUse Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
+    {"--sbr <0 .. 1>\tPseudo-SBR (0=disabled, 1=enabled).\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
@@ -462,6 +464,7 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = SHORTCTL_NORMAL;
+    int sbr_opt = 0;
 
     FILE *outfile = NULL;
 
@@ -525,6 +528,7 @@ int main(int argc, char *argv[])
             {"raw", 0, 0, 'r'},
             {"joint", required_argument, 0, OPT_JOINT},
             {"pns", required_argument, 0, OPT_PNS},
+            {"sbr", required_argument, 0, OPT_SBR},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
             {"pcmraw", 0, 0, 'P'},
@@ -794,6 +798,9 @@ int main(int argc, char *argv[])
         case OPT_PNS:
             pnslevel = atoi(optarg);
             break;
+        case OPT_SBR:
+            sbr_opt = atoi(optarg) ? 1 : 2;
+            break;
         case '?':
         default:
             help('?');
@@ -945,6 +952,8 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
+    if (sbr_opt)
+        myFormat->usePseudoSBR = sbr_opt;
     myFormat->bandWidth = cutOff;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;

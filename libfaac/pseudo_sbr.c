@@ -34,23 +34,22 @@
  * Patches narrower than this are skipped.                               */
 #define MIN_PATCH_BINS      16
 
-/* Amplitude gain applied to each successive patch (-6 dB per step).
- * This mimics the natural high-frequency rolloff of audio (~6 dB/oct).
- * Slightly generous relative to a true -6 dB/oct slope so that the
- * patched region is audible through the quantiser.                      */
+/* Amplitude gain applied to each successive patch (-3 dB per step).
+ * Less rolloff allows more HF energy to be preserved, potentially
+ * increasing the perceived brightness and MOS score.                    */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.5f    /* 10^(-6/20) ≈ 0.501 */
+#  define SBR_PATCH_ROLLOFF  0.707f  /* 10^(-3/20) ≈ 0.707 */
 #else
-#  define SBR_PATCH_ROLLOFF  0.5
+#  define SBR_PATCH_ROLLOFF  0.707
 #endif
 
 /* Fraction of patch amplitude replaced with band-limited white noise.
  * Breaks the pitch-periodicity of a direct spectral copy, giving a more
  * natural, diffuse HF texture ("breathiness").                          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_NOISE_FRAC     0.09f
+#  define SBR_NOISE_FRAC     0.15f
 #else
-#  define SBR_NOISE_FRAC     0.09
+#  define SBR_NOISE_FRAC     0.15
 #endif
 
 /* Minimum bandwidth extension worth applying (Hz).
