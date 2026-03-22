@@ -9,11 +9,11 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * : psychkni.c,v 1.19 2012/03/01 18:34:17 knik Exp $
@@ -360,7 +360,7 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   {
     int lasttype = coderInfo[channel].block_type;
 
-    /* Copy PE to CoderInfo for Pseudo-SBR V2 Strategy 3 */
+    /* Copy PE to CoderInfo for Pseudo-SBR Strategy */
     coderInfo[channel].frame_pe = psyInfo[channel].pe;
 
     if (desire == ONLY_SHORT_WINDOW

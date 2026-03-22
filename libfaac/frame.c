@@ -193,6 +193,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
     }
 
+    hEncoder->sbr_nominal_bw = config->bandWidth;
+
     hEncoder->config.bandWidth = config->bandWidth;
 
     // check bandwidth

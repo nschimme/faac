@@ -376,8 +376,11 @@ void AACstereo(faacEncHandle hpEncoder,
         if (((faacEncStruct*)hpEncoder)->sbr_enabled) {
             int block_len = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
             int crossover_bin = 0;
+            faac_real sbr_floor = ((faacEncStruct*)hpEncoder)->sbr_nominal_bw * 0.8f;
+            if (sbr_floor < 8000.0f) sbr_floor = 8000.0f;
+
             for (int b = 0; b < coder[chn].sfbn; b++) {
-                if ((faac_real)coder[chn].sfb_offset[b] * ((faacEncStruct*)hpEncoder)->sampleRate / (block_len * 2) >= 8000.0f) {
+                if ((faac_real)coder[chn].sfb_offset[b] * ((faacEncStruct*)hpEncoder)->sampleRate / (block_len * 2) >= sbr_floor) {
                     crossover_bin = coder[chn].sfb_offset[b];
                     break;
                 }
@@ -416,7 +419,7 @@ void AACstereo(faacEncHandle hpEncoder,
                             if (src >= block_len) src = block_len - 1;
 
                             faac_real bin_f = (faac_real)i * ((faacEncStruct*)hpEncoder)->sampleRate / (block_len * 2);
-                            faac_real tilt_db = -18.0f * (bin_f - 8000.0f) / (16000.0f - 8000.0f);
+                            faac_real tilt_db = -18.0f * (bin_f - sbr_floor) / (16000.0f - sbr_floor);
                             if (tilt_db > 0) tilt_db = 0;
                             faac_real gain = (faac_real)pow(10.0, (tilt_db - 12.0f) / 20.0);
 

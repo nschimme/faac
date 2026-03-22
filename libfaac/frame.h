@@ -89,6 +89,7 @@ typedef struct {
     int sbr_enabled;
     int sbr_cutoff_sfb_long;
     int sbr_cutoff_sfb_short;
+    faac_real sbr_nominal_bw;
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
