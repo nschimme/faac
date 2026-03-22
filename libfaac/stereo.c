@@ -24,97 +24,95 @@
 #include "huff2.h"
 #include "util.h"
 
-/* Named constants for energy comparisons and thresholds */
-#define MS_ENERGY_SCALE 0.25     /* Normalization factor for M/S energy from L/R sum/diff */
-#define IS_ENERGY_SCALE 4.0      /* Factor to convert normalized M/S energy back to unnormalized for IS */
-#define MS_PHASE_THRESHOLD 2.0   /* Threshold multiplier for M/S phase decision */
-
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
+/**
+ * apply_is - Applies Intensity Stereo transform to a scale factor band.
+ */
 static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
-                            faac_real *sl0, faac_real *sr0,
+                            faac_real * restrict sl0, faac_real * restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
-                            int hcb, int sf, int pan, faac_real enrgs, faac_real enrgd, faac_real efix)
+                            int hcb, int sf, int pan, faac_real enrgs_unnorm, faac_real enrgd_unnorm, faac_real efix)
 {
-    int win, l;
     faac_real vfix;
 
     if (hcb == HCB_INTENSITY)
-        vfix = FAAC_SQRT(efix / enrgs);
+        vfix = FAAC_SQRT(efix / enrgs_unnorm);
     else
-        vfix = FAAC_SQRT(efix / enrgd);
+        vfix = FAAC_SQRT(efix / enrgd_unnorm);
 
     cl->sf[sfcnt] = sf;
     cr->sf[sfcnt] = -pan;
     cr->book[sfcnt] = hcb;
 
-    for (win = start_win; win < end_win; win++)
+    for (int win = start_win; win < end_win; win++)
     {
-        faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-        faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-        for (l = start_bin; l < end_bin; l++)
+        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+        const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+        #pragma GCC ivdep
+        for (int l = start_bin; l < end_bin; l++)
         {
-            faac_real sum;
-            if (hcb == HCB_INTENSITY)
-                sum = sl[l] + sr[l];
-            else
-                sum = sl[l] - sr[l];
-            sl[l] = sum * vfix;
+            faac_real lx = sl[l];
+            faac_real rx = sr[l];
+            faac_real val = (hcb == HCB_INTENSITY) ? (lx + rx) : (lx - rx);
+            sl[l] = val * vfix;
         }
     }
 }
 
-static inline void apply_ms(ChannelInfo *channel, faac_real *sl0, faac_real *sr0,
+/**
+ * apply_ms - Applies destructive M/S transform (phase-collapse).
+ */
+static inline void apply_ms(ChannelInfo *channel, faac_real * restrict sl0, faac_real * restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
                             int phase)
 {
-    int win, l;
-
     channel->msInfo.ms_used[sfcnt] = 1;
 
-    for (win = start_win; win < end_win; win++)
+    for (int win = start_win; win < end_win; win++)
     {
-        faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-        faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-        for (l = start_bin; l < end_bin; l++)
+        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+        #pragma GCC ivdep
+        for (int l = start_bin; l < end_bin; l++)
         {
-            faac_real sum, diff;
+            faac_real lx = sl[l];
+            faac_real rx = sr[l];
             if (phase == MS_PH_IN)
             {
-                sum = sl[l] + sr[l];
-                diff = 0;
+                sl[l] = 0.5 * (lx + rx);
+                sr[l] = 0.0;
             }
             else
             {
-                sum = 0;
-                diff = sl[l] - sr[l];
+                sl[l] = 0.0;
+                sr[l] = 0.5 * (lx - rx);
             }
-            sl[l] = 0.5 * sum;
-            sr[l] = 0.5 * diff;
         }
     }
 }
 
-static inline void apply_lr(ChannelInfo *channel, faac_real *sl0, faac_real *sr0,
+/**
+ * apply_lr - Fallback to L/R coding, potentially applying destructive side-channel zeroing.
+ */
+static inline void apply_lr(ChannelInfo *channel, faac_real * restrict sl0, faac_real * restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
                             faac_real enrgl, faac_real enrgr, faac_real thrside)
 {
-    int win, l;
-
     channel->msInfo.ms_used[sfcnt] = 0;
 
     if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
     {
-        for (win = start_win; win < end_win; win++)
+        for (int win = start_win; win < end_win; win++)
         {
-            faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
-            faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
-            for (l = start_bin; l < end_bin; l++)
-            {
-                if (enrgl < enrgr)
-                    sl[l] = 0.0;
-                else
-                    sr[l] = 0.0;
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+            if (enrgl < enrgr) {
+                #pragma GCC ivdep
+                for (int l = start_bin; l < end_bin; l++) sl[l] = 0.0;
+            } else {
+                #pragma GCC ivdep
+                for (int l = start_bin; l < end_bin; l++) sr[l] = 0.0;
             }
         }
     }
@@ -166,6 +164,7 @@ void AACstereo(CoderInfo *coder,
 
     if (mode == JOINT_MIXED)
     {
+        /* Iteration 21: Original Mixed Mode thresholds for better MOS */
         faac_real m_isthr = 0.18 / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
@@ -177,12 +176,12 @@ void AACstereo(CoderInfo *coder,
     thrside *= thrside;
     isthr *= isthr;
 
-    /* Initialize book and sf arrays for all channels, including JOINT_NONE */
+    /* Initialize book and sf arrays for all present channels */
     for (chn = 0; chn < maxchan; chn++)
     {
-        int bookcnt = 0;
-        CoderInfo *cp = coder + chn;
         if (!channel[chn].present) continue;
+        CoderInfo *cp = coder + chn;
+        int bookcnt = 0;
         for (int group = 0; group < cp->groups.n; group++)
             for (int band = 0; band < cp->sfbn; band++)
             {
@@ -229,41 +228,38 @@ void AACstereo(CoderInfo *coder,
             {
                 int start_bin = cl->sfb_offset[sfb];
                 int end_bin = cl->sfb_offset[sfb + 1];
-                faac_real enrgl = 0, enrgr = 0, enrgs = 0, enrgd = 0;
+                faac_real enrgl = 0, enrgr = 0, enrgl_r = 0;
 
                 for (int win = start_win; win < end_win; win++)
                 {
-                    faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
-                    faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                    const faac_real * restrict sl = s[chn] + win * BLOCK_LEN_SHORT;
+                    const faac_real * restrict sr = s[rch] + win * BLOCK_LEN_SHORT;
+                    #pragma GCC ivdep
                     for (int l = start_bin; l < end_bin; l++)
                     {
                         faac_real lx = sl[l];
                         faac_real rx = sr[l];
-                        faac_real sum = 0.5 * (lx + rx);
-                        faac_real diff = 0.5 * (lx - rx);
-
                         enrgl += lx * lx;
                         enrgr += rx * rx;
-                        enrgs += sum * sum;
-                        enrgd += diff * diff;
+                        enrgl_r += lx * rx;
                     }
                 }
 
-                int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0;
+                faac_real enrgs_unnorm = enrgl + enrgr + 2.0 * enrgl_r;
+                faac_real enrgd_unnorm = enrgl + enrgr - 2.0 * enrgl_r;
                 faac_real efix = enrgl + enrgr;
+                int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0;
 
-                // Mixed Mode decision loop: IS then MS
-                if (mode == JOINT_IS || mode == JOINT_MIXED)
+                // 1. Evaluate Intensity Stereo
+                if ((mode == JOINT_IS || mode == JOINT_MIXED) && efix > 1e-9)
                 {
-                    faac_real is_enrgs = enrgs * IS_ENERGY_SCALE;
-                    faac_real is_enrgd = enrgd * IS_ENERGY_SCALE;
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
 
-                    if (is_enrgs >= ethr) hcb = HCB_INTENSITY;
-                    else if (is_enrgd >= ethr) hcb = HCB_INTENSITY2;
+                    if (enrgs_unnorm >= ethr) hcb = HCB_INTENSITY;
+                    else if (enrgd_unnorm >= ethr) hcb = HCB_INTENSITY2;
 
-                    if (hcb != HCB_NONE && efix > 0)
+                    if (hcb != HCB_NONE)
                     {
                         sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
@@ -272,23 +268,26 @@ void AACstereo(CoderInfo *coder,
                     }
                 }
 
-                if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED))
+                // 2. Evaluate M/S
+                if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > 1e-9)
                 {
-                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
-                        if ((enrgs * thrmid * MS_PHASE_THRESHOLD) >= efix ||
-                            (enrgd * thrmid * MS_PHASE_THRESHOLD) >= efix)
+                    faac_real enrgs_norm = 0.25 * enrgs_unnorm;
+                    faac_real enrgd_norm = 0.25 * enrgd_unnorm;
+                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
+                        if ((enrgs_norm * thrmid * 2.0) >= efix || (enrgd_norm * thrmid * 2.0) >= efix)
                             use_ms = 1;
                 }
 
+                // 3. Apply Decision
                 if (use_is)
                 {
-                    apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin,
-                             hcb, sf, pan, enrgs * IS_ENERGY_SCALE, enrgd * IS_ENERGY_SCALE, efix);
+                    apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, hcb, sf, pan, enrgs_unnorm, enrgd_unnorm, efix);
                     channel[chn].msInfo.ms_used[sfcnt] = 0;
                 }
                 else if (use_ms)
                 {
-                    int phase = ((enrgs * thrmid * MS_PHASE_THRESHOLD) >= efix) ? MS_PH_IN : MS_PH_OUT;
+                    faac_real enrgs_norm = 0.25 * enrgs_unnorm;
+                    int phase = ((enrgs_norm * thrmid * 2.0) >= efix) ? MS_PH_IN : MS_PH_OUT;
                     apply_ms(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, phase);
                     frame_uses_ms = 1;
                 }
