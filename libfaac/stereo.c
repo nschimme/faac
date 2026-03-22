@@ -248,7 +248,9 @@ void AACstereo(CoderInfo *coder,
                 faac_real enrgs_unnorm = enrgl + enrgr + 2.0 * enrgl_r;
                 faac_real enrgd_unnorm = enrgl + enrgr - 2.0 * enrgl_r;
                 faac_real efix = enrgl + enrgr;
-                int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0;
+                faac_real enrgs_norm = 0.25 * enrgs_unnorm;
+                faac_real enrgd_norm = 0.25 * enrgd_unnorm;
+                int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
                 // 1. Evaluate Intensity Stereo
                 if ((mode == JOINT_IS || mode == JOINT_MIXED) && efix > 1e-9)
@@ -271,11 +273,21 @@ void AACstereo(CoderInfo *coder,
                 // 2. Evaluate M/S
                 if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > 1e-9)
                 {
-                    faac_real enrgs_norm = 0.25 * enrgs_unnorm;
-                    faac_real enrgd_norm = 0.25 * enrgd_unnorm;
+                    faac_real thr_m = enrgs_norm * thrmid * 2.0;
+                    faac_real thr_d = enrgd_norm * thrmid * 2.0;
                     if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
-                        if ((enrgs_norm * thrmid * 2.0) >= efix || (enrgd_norm * thrmid * 2.0) >= efix)
+                    {
+                        if (thr_m >= efix)
+                        {
                             use_ms = 1;
+                            phase = MS_PH_IN;
+                        }
+                        else if (thr_d >= efix)
+                        {
+                            use_ms = 1;
+                            phase = MS_PH_OUT;
+                        }
+                    }
                 }
 
                 // 3. Apply Decision
@@ -286,8 +298,6 @@ void AACstereo(CoderInfo *coder,
                 }
                 else if (use_ms)
                 {
-                    faac_real enrgs_norm = 0.25 * enrgs_unnorm;
-                    int phase = ((enrgs_norm * thrmid * 2.0) >= efix) ? MS_PH_IN : MS_PH_OUT;
                     apply_ms(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, phase);
                     frame_uses_ms = 1;
                 }

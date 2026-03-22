@@ -34,6 +34,10 @@ extern "C" {
 
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
+
+/* AAC spec defined constant: 10 * log10(2^0.25) approx 1.50515 dB */
+#define AAC_SF_STEP_DB 1.50515
+#define AAC_SF_STEP (10.0 / AAC_SF_STEP_DB)
 #define MAX_SHORT_WINDOWS 8
 #define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
 

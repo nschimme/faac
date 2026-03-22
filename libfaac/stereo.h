@@ -20,10 +20,6 @@
 #include "channels.h"
 #include "util.h"
 
-/* AAC spec defined constant: 10 * log10(2^0.25) approx 1.50515 dB */
-#define AAC_SF_STEP_DB 1.50515
-#define AAC_SF_STEP (10.0 / AAC_SF_STEP_DB)
-
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
