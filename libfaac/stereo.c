@@ -22,14 +22,7 @@
 #include <math.h>
 #include "stereo.h"
 #include "huff2.h"
-
-#ifndef min
-#define min(a,b) ( (a) < (b) ? (a) : (b) )
-#endif
-
-#ifndef max
-#define max(a,b) ( (a) > (b) ? (a) : (b) )
-#endif
+#include "util.h"
 
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
@@ -80,10 +73,10 @@ void AACstereo(CoderInfo *coder,
 
     if (mode == JOINT_MIXED)
     {
-        isthr = 0.18 / (quality * quality);
-        if (isthr > isthrmax)
-            isthr = isthrmax;
-        isthr += 1.0;
+        faac_real m_isthr = 0.18 / (quality * quality);
+        if (m_isthr > isthrmax)
+            m_isthr = isthrmax;
+        isthr = m_isthr + 1.0;
     }
 
     // convert into energy
@@ -146,6 +139,7 @@ void AACstereo(CoderInfo *coder,
 
         if (mode == JOINT_MS || mode == JOINT_MIXED)
         {
+            channel[chn].common_window = 1;
             channel[chn].msInfo.is_present = 1;
             channel[rch].msInfo.is_present = 1;
         }
@@ -202,6 +196,8 @@ void AACstereo(CoderInfo *coder,
                 int use_is = 0;
                 int use_ms = 0;
                 int hcb = HCB_NONE;
+                int sf = 0, pan = 0;
+                faac_real efix = enrgl + enrgr;
 
                 // Decision logic
                 if (mode == JOINT_IS || mode == JOINT_MIXED)
@@ -217,14 +213,20 @@ void AACstereo(CoderInfo *coder,
 
                     if (hcb != HCB_NONE)
                     {
-                        faac_real efix = enrgl + enrgr;
-                        const faac_real step = 10 / 1.50515;
-                        int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                        int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
-
-                        if (pan <= 30 && pan >= -30)
+                        if (efix > 0)
                         {
-                            use_is = 1;
+                            const faac_real step = 10 / 1.50515;
+                            sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
+                            pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+
+                            if (pan <= 30 && pan >= -30)
+                            {
+                                use_is = 1;
+                            }
+                            else
+                            {
+                                hcb = HCB_NONE;
+                            }
                         }
                         else
                         {
@@ -242,8 +244,8 @@ void AACstereo(CoderInfo *coder,
 
                     if ((min(enrgl, enrgr) * thrmid) >= max(enrgm, enrgside))
                     {
-                        if ((enrgm * thrmid * 2.0) >= (enrgl + enrgr) ||
-                            (enrgside * thrmid * 2.0) >= (enrgl + enrgr))
+                        if ((enrgm * thrmid * 2.0) >= efix ||
+                            (enrgside * thrmid * 2.0) >= efix)
                         {
                             use_ms = 1;
                         }
@@ -252,11 +254,7 @@ void AACstereo(CoderInfo *coder,
 
                 if (use_is)
                 {
-                    faac_real efix = enrgl + enrgr;
                     faac_real vfix;
-                    const faac_real step = 10 / 1.50515;
-                    int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                    int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
 
                     if (hcb == HCB_INTENSITY)
                         vfix = FAAC_SQRT(efix / enrgs);
@@ -287,7 +285,7 @@ void AACstereo(CoderInfo *coder,
                     int phase;
                     faac_real enrgm = 0.25 * enrgs;
 
-                    if ((enrgm * thrmid * 2.0) >= (enrgl + enrgr))
+                    if ((enrgm * thrmid * 2.0) >= efix)
                         phase = 1; // IN
                     else
                         phase = 2; // OUT
