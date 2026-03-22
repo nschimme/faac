@@ -24,20 +24,25 @@
 #include "huff2.h"
 #include "util.h"
 
+/* Named constants for energy comparisons and thresholds */
+#define MS_ENERGY_SCALE 0.25     /* Normalization factor for M/S energy from L/R sum/diff */
+#define IS_ENERGY_SCALE 4.0      /* Factor to convert normalized M/S energy back to unnormalized for IS */
+#define MS_PHASE_THRESHOLD 2.0   /* Threshold multiplier for M/S phase decision */
+
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
 static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
                             faac_real *sl0, faac_real *sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
-                            int hcb, int sf, int pan, faac_real is_enrgs, faac_real is_enrgd, faac_real efix)
+                            int hcb, int sf, int pan, faac_real enrgs, faac_real enrgd, faac_real efix)
 {
     int win, l;
     faac_real vfix;
 
     if (hcb == HCB_INTENSITY)
-        vfix = FAAC_SQRT(efix / is_enrgs);
+        vfix = FAAC_SQRT(efix / enrgs);
     else
-        vfix = FAAC_SQRT(efix / is_enrgd);
+        vfix = FAAC_SQRT(efix / enrgd);
 
     cl->sf[sfcnt] = sf;
     cr->sf[sfcnt] = -pan;
@@ -132,26 +137,38 @@ void AACstereo(CoderInfo *coder,
     faac_real thrmid, thrside;
     faac_real isthr;
 
-    if (mode == JOINT_NONE)
-        return;
-
     thrmid = 1.0;
     thrside = 0.0;
     isthr = 1.0;
 
-    if (mode == JOINT_MS || mode == JOINT_MIXED)
+    switch (mode)
     {
+    case JOINT_MS:
+    case JOINT_MIXED:
         thrmid = thr075 / quality;
-        if (thrmid > thrmax) thrmid = thrmax;
+        if (thrmid > thrmax)
+            thrmid = thrmax;
+
         thrside = sidemin / quality;
-        if (thrside > sidemax) thrside = sidemax;
+        if (thrside > sidemax)
+            thrside = sidemax;
+
         thrmid += 1.0;
+        break;
+    case JOINT_IS:
+        isthr = 0.18 / (quality * quality);
+        if (isthr > isthrmax)
+            isthr = isthrmax;
+
+        isthr += 1.0;
+        break;
     }
 
-    if (mode == JOINT_IS || mode == JOINT_MIXED)
+    if (mode == JOINT_MIXED)
     {
         faac_real m_isthr = 0.18 / (quality * quality);
-        if (m_isthr > isthrmax) m_isthr = isthrmax;
+        if (m_isthr > isthrmax)
+            m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
     }
 
@@ -160,6 +177,7 @@ void AACstereo(CoderInfo *coder,
     thrside *= thrside;
     isthr *= isthr;
 
+    /* Initialize book and sf arrays for all channels, including JOINT_NONE */
     for (chn = 0; chn < maxchan; chn++)
     {
         int bookcnt = 0;
@@ -173,6 +191,9 @@ void AACstereo(CoderInfo *coder,
                 bookcnt++;
             }
     }
+
+    if (mode == JOINT_NONE)
+        return;
 
     for (chn = 0; chn < maxchan; chn++)
     {
@@ -234,8 +255,8 @@ void AACstereo(CoderInfo *coder,
                 // Mixed Mode decision loop: IS then MS
                 if (mode == JOINT_IS || mode == JOINT_MIXED)
                 {
-                    faac_real is_enrgs = enrgs * 4.0;
-                    faac_real is_enrgd = enrgd * 4.0;
+                    faac_real is_enrgs = enrgs * IS_ENERGY_SCALE;
+                    faac_real is_enrgd = enrgd * IS_ENERGY_SCALE;
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
 
@@ -244,9 +265,8 @@ void AACstereo(CoderInfo *coder,
 
                     if (hcb != HCB_NONE && efix > 0)
                     {
-                        const faac_real step = 10 / 1.50515;
-                        sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                        pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                        sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
+                        pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
                         if (pan <= 30 && pan >= -30) use_is = 1;
                         else hcb = HCB_NONE;
                     }
@@ -255,18 +275,20 @@ void AACstereo(CoderInfo *coder,
                 if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED))
                 {
                     if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
-                        if ((enrgs * thrmid * 2.0) >= efix || (enrgd * thrmid * 2.0) >= efix)
+                        if ((enrgs * thrmid * MS_PHASE_THRESHOLD) >= efix ||
+                            (enrgd * thrmid * MS_PHASE_THRESHOLD) >= efix)
                             use_ms = 1;
                 }
 
                 if (use_is)
                 {
-                    apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, hcb, sf, pan, enrgs * 4.0, enrgd * 4.0, efix);
+                    apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin,
+                             hcb, sf, pan, enrgs * IS_ENERGY_SCALE, enrgd * IS_ENERGY_SCALE, efix);
                     channel[chn].msInfo.ms_used[sfcnt] = 0;
                 }
                 else if (use_ms)
                 {
-                    int phase = ((enrgs * thrmid * 2.0) >= efix) ? MS_PH_IN : MS_PH_OUT;
+                    int phase = ((enrgs * thrmid * MS_PHASE_THRESHOLD) >= efix) ? MS_PH_IN : MS_PH_OUT;
                     apply_ms(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, phase);
                     frame_uses_ms = 1;
                 }
