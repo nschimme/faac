@@ -31,6 +31,12 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+
+    /* Pseudo-SBR Support */
+    int sbr_enabled;
+    int sampleRate;
+    faac_real *origFreq;
+    unsigned int *sbr_noise_seed;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE

@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #define _USE_MATH_DEFINES
@@ -249,7 +249,8 @@ static void midside(CoderInfo *coder, ChannelInfo *channel,
 }
 
 
-void AACstereo(CoderInfo *coder,
+void AACstereo(faacEncHandle hpEncoder,
+               CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
@@ -356,9 +357,9 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        for (group = 0; group < coder[chn].groups.n; group++)
         {
-            int end = start + coder->groups.len[group];
+            int end = start + coder[chn].groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,

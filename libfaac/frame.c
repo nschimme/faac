@@ -9,11 +9,11 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 
 #include "frame.h"
 #include "coder.h"
@@ -31,6 +32,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -55,6 +57,14 @@ static const struct {
     faac_real fac;
     faac_real freq;
 } g_bw = {0.42, 18000};
+
+#ifndef min
+#define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
@@ -175,10 +185,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.bitRate = config->bitRate;
 
+    /* SBR Activation Check (Targeting 24-48 kbps per channel, or 64-96kbps stereo) */
+    hEncoder->sbr_enabled = (hEncoder->config.bitRate && hEncoder->config.bitRate <= 64000) ? 1 : 0;
+
     if (!config->bandWidth)
     {
         config->bandWidth = g_bw.fac * hEncoder->sampleRate;
     }
+
+    hEncoder->sbr_nominal_bw = config->bandWidth;
 
     hEncoder->config.bandWidth = config->bandWidth;
 
@@ -253,6 +268,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
+    hEncoder->sbr_noise_seed = 0x12345678;
 
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
@@ -286,6 +302,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    for (channel = 0; channel < numChannels; channel++) hEncoder->origFreqBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
     for (channel = 0; channel < numChannels; channel++)
 	{
@@ -331,6 +348,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     /* Free remaining buffer memory */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
+        if (hEncoder->origFreqBuff[channel]) FreeMemory(hEncoder->origFreqBuff[channel]);
 		if (hEncoder->sampleBuff[channel])
 			FreeMemory(hEncoder->sampleBuff[channel]);
 		if (hEncoder->next3SampleBuff[channel])
@@ -507,6 +525,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->freqBuff[channel],
             hEncoder->overlapBuff[channel],
             MOVERLAPPED);
+        memcpy(hEncoder->origFreqBuff[channel], hEncoder->freqBuff[channel], FRAME_LEN * sizeof(faac_real));
     }
 
     for (channel = 0; channel < numChannels; channel++) {
@@ -516,7 +535,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
 
             offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+            for (sb = 0; sb < hEncoder->srInfo->num_cb_short; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
@@ -529,7 +548,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].groups.len[0] = 1;
 
             offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+            for (sb = 0; sb < hEncoder->srInfo->num_cb_long; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
@@ -559,10 +578,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
+    AACstereo(hEncoder, coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
+        hEncoder->aacquantCfg.sbr_enabled = hEncoder->sbr_enabled && !channelInfo[channel].lfe;
+        hEncoder->aacquantCfg.sampleRate = hEncoder->sampleRate;
+        hEncoder->aacquantCfg.origFreq = hEncoder->origFreqBuff[channel];
+        hEncoder->aacquantCfg.sbr_noise_seed = &hEncoder->sbr_noise_seed;
+
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }
