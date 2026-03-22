@@ -125,6 +125,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
 
+    hEncoder->config.usePseudoSBR = config->usePseudoSBR;
+
+    /* Auto-enable Pseudo-SBR if bitrate/channel < 48kbps and not explicitly set */
+    if (config->usePseudoSBR == 0 && config->bitRate > 0) {
+        if (config->bitRate < 48000) {
+            hEncoder->config.usePseudoSBR = 1;
+        }
+    } else if (config->usePseudoSBR == 2) {
+        hEncoder->config.usePseudoSBR = 0;
+    }
+
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     switch( hEncoder->config.inputFormat )
@@ -204,6 +215,32 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    /* ── Pseudo-SBR bandwidth extension ─────────────────────────────── */
+    if (hEncoder->config.usePseudoSBR)
+    {
+        /* Record the bitrate-derived bandwidth as the SBR source ceiling. */
+        hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
+
+        unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
+                                                hEncoder->baseBandWidth,
+                                                (unsigned int)hEncoder->config.bitRate);
+        if (sbrBW > hEncoder->baseBandWidth)
+        {
+            /* Let CalcBW include the extended region in max_cbl / max_cbs. */
+            hEncoder->config.bandWidth = sbrBW;
+        }
+        else
+        {
+            /* Extension not useful; disable transparently. */
+            hEncoder->baseBandWidth = 0;
+        }
+    }
+    else
+    {
+        hEncoder->baseBandWidth = 0;
+    }
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -311,6 +348,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     TnsInit(hEncoder);
 
     QuantizeInit();
+
+    /* Pseudo-SBR defaults */
+    hEncoder->config.usePseudoSBR = 0;
+    hEncoder->baseBandWidth       = 0;
+    hEncoder->sbrRandState        = 0xDEADBEEFu ^ (sampleRate * 31337u);
 
     /* Return handle */
     return hEncoder;
@@ -534,6 +576,27 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
+
+    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
+    /* Apply BEFORE TNS and Stereo processing so that these tools can
+     * operate on the folded content, improving bit-efficiency and
+     * quality. Skip LFE channels.                                      */
+    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+        {
+            if (channelInfo[channel].present && !channelInfo[channel].lfe)
+            {
+                PseudoSBR(&coderInfo[channel],
+                          hEncoder->freqBuff[channel],
+                          hEncoder->sampleRate,
+                          hEncoder->baseBandWidth,
+                          (unsigned int)hEncoder->config.bandWidth,
+                          (unsigned int)hEncoder->config.bitRate,
+                          &hEncoder->sbrRandState);
+            }
         }
     }
 

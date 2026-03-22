@@ -127,6 +127,14 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+
+    /* Enable encoder-side pseudo-SBR (spectral extension).
+     * When set, the encoder extends the coded bandwidth by up to 50 %
+     * by patching attenuated copies of the upper coded spectrum into
+     * higher-frequency scale-factor bands.  Compatible with every
+     * standard AAC decoder; no HE-AAC support is needed.
+     * Default: 0 (disabled).                                           */
+    unsigned int usePseudoSBR;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

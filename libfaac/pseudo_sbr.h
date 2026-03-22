@@ -45,6 +45,7 @@ void PseudoSBR(CoderInfo       *coderInfo,
                unsigned int     sampleRate,
                unsigned int     baseBW,
                unsigned int     sbrBW,
+               unsigned int     bitRate,
                unsigned int    *rand);
 
 /*
@@ -54,7 +55,7 @@ void PseudoSBR(CoderInfo       *coderInfo,
  * Extends by at most 50 % of baseBW, capped at 90 % of Nyquist.
  * Returns baseBW if no meaningful extension is possible.
  */
-unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW);
+unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW, unsigned int bitRate);
 
 #ifdef __cplusplus
 }

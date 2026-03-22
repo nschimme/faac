@@ -34,28 +34,40 @@
  * Patches narrower than this are skipped.                               */
 #define MIN_PATCH_BINS      16
 
-/* Amplitude gain applied to each successive patch (-6 dB per step).
- * This mimics the natural high-frequency rolloff of audio (~6 dB/oct).
- * Slightly generous relative to a true -6 dB/oct slope so that the
- * patched region is audible through the quantiser.                      */
+/* Default amplitude gain applied to each successive patch.
+ * This is overridden by bitrate-adaptive logic in PseudoSBR().          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.5f    /* 10^(-6/20) ≈ 0.501 */
+#  define SBR_PATCH_ROLLOFF_DEF  0.354f
 #else
-#  define SBR_PATCH_ROLLOFF  0.5
+#  define SBR_PATCH_ROLLOFF_DEF  0.354
 #endif
 
 /* Fraction of patch amplitude replaced with band-limited white noise.
  * Breaks the pitch-periodicity of a direct spectral copy, giving a more
  * natural, diffuse HF texture ("breathiness").                          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_NOISE_FRAC     0.09f
+#  define SBR_NOISE_FRAC     0.05f
 #else
-#  define SBR_NOISE_FRAC     0.09
+#  define SBR_NOISE_FRAC     0.05
 #endif
 
 /* Minimum bandwidth extension worth applying (Hz).
  * If the achievable extension is smaller than this, skip pseudo-SBR.    */
-#define SBR_MIN_EXTENSION_HZ  1500u
+#define SBR_MIN_EXTENSION_HZ  500u
+
+/* Constant comfort noise floor amplitude.
+ * Injected to ensure a minimum level of "air" in the HF even when the
+ * source region is silent or extremely low energy.
+ * Kept extremely low (0.001f) to avoid killing Huffman zero-runs and
+ * wasting bits in constrained scenarios.                                */
+#ifdef FAAC_PRECISION_SINGLE
+#  define SBR_COMFORT_NOISE  0.0002f
+#else
+#  define SBR_COMFORT_NOISE  0.0002
+#endif
+
+/* Width of the spectral cross-fade at the crossover point (bins).       */
+#define SBR_XFADE_BINS      4
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -80,6 +92,27 @@ static faac_real band_energy(const faac_real * __restrict mdct,
     for (i = 0; i < len; i++)
         e += mdct[start + i] * mdct[start + i];
     return e;
+}
+
+/*
+ * Find the peak bin index in mdct[start .. start+len-1].
+ * Returns index relative to start.
+ */
+static int find_peak(const faac_real * __restrict mdct, int start, int len)
+{
+    faac_real max_e = -1.0;
+    int peak = 0;
+    int i;
+    for (i = 0; i < len; i++)
+    {
+        faac_real e = mdct[start + i] * mdct[start + i];
+        if (e > max_e)
+        {
+            max_e = e;
+            peak = i;
+        }
+    }
+    return peak;
 }
 
 /* -----------------------------------------------------------------------
@@ -113,12 +146,16 @@ static faac_real band_energy(const faac_real * __restrict mdct,
  * --------------------------------------------------------------------- */
 static void apply_sbr_window(faac_real * __restrict mdct,
                              int bw_bin, int tgt_bin,
+                             faac_real rolloff,
                              unsigned int *rand)
 {
     int tgt           = bw_bin;
     int patch_len     = bw_bin / 2;   /* width of first patch: one octave */
-    faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;   /* gain for patch 0 */
+    faac_real cum_gain = (faac_real)rolloff;   /* gain for patch 0 */
     int p;
+
+    /* Harmonic alignment: find peak in top coded octave to align patches. */
+    int core_peak = find_peak(mdct, bw_bin - (bw_bin / 2), bw_bin / 2);
 
     for (p = 0; p < MAX_SBR_PATCHES; p++)
     {
@@ -137,9 +174,11 @@ static void apply_sbr_window(faac_real * __restrict mdct,
         if (patch_len > remaining)
             patch_len = remaining;
 
-        /* Source: top [patch_len] bins of the coded bandwidth.
-         * Clamp so we never read below bin 0.                            */
-        src_start = bw_bin - patch_len;
+        /* Source selection with harmonic alignment.
+         * Patches are shifted so that the source peak aligns with a
+         * harmonic position in the target region.                       */
+        src_start = (bw_bin - patch_len) - (core_peak % 4);
+
         if (src_start < 0)
         {
             patch_len += src_start;   /* shrink to fit */
@@ -160,6 +199,11 @@ static void apply_sbr_window(faac_real * __restrict mdct,
              */
             tgt_e_desired = src_e * cum_gain * cum_gain;
             scale = FAAC_SQRT(tgt_e_desired / src_e);   /* = cum_gain */
+
+            /* Adaptive boost for low-energy HF.
+             * If the source is extremely quiet, increase scale to maintain
+             * a minimum audible HF floor, helping MOS in silent segments.  */
+            if (scale < (faac_real)0.1) scale = (faac_real)0.1;
         }
         else
         {
@@ -170,12 +214,31 @@ static void apply_sbr_window(faac_real * __restrict mdct,
         noise_scale = scale * (faac_real)SBR_NOISE_FRAC;
 
         for (i = 0; i < patch_len; i++)
-            mdct[tgt + i] = mdct[src_start + i] * sig_scale
-                          + sbr_noise_next(rand)  * noise_scale;
+        {
+            /* Patching with spectral mirroring / sign-flipping to decorrelate
+             * patches and reduce grittiness.                                    */
+            faac_real src = mdct[src_start + i];
+            if (i % 2) src = -src;
+
+            faac_real val = src * sig_scale
+                          + sbr_noise_next(rand) * noise_scale
+                          + sbr_noise_next(rand) * (faac_real)SBR_COMFORT_NOISE;
+
+            /* Apply cross-fade at the very first patch boundary. */
+            if (p == 0 && i < SBR_XFADE_BINS)
+            {
+                faac_real alpha = (faac_real)(i + 1) / (faac_real)(SBR_XFADE_BINS + 1);
+                mdct[tgt + i] = mdct[tgt + i] * ((faac_real)1.0 - alpha) + val * alpha;
+            }
+            else
+            {
+                mdct[tgt + i] = val;
+            }
+        }
 
         tgt      += patch_len;
         patch_len = patch_len / 2;          /* halve for next patch      */
-        cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
+        cum_gain *= (faac_real)rolloff;
     }
 }
 
@@ -188,15 +251,30 @@ void PseudoSBR(CoderInfo    *coderInfo,
                unsigned int  sampleRate,
                unsigned int  baseBW,
                unsigned int  sbrBW,
+               unsigned int  bitRate,
                unsigned int *rand)
 {
     int bw_bin, tgt_bin;
+    faac_real rolloff;
 
     if (baseBW >= sbrBW || sampleRate == 0)
         return;
 
     if ((sbrBW - baseBW) < SBR_MIN_EXTENSION_HZ)
         return;
+
+    /* Bitrate-adaptive gain tilt.
+     * High bitrates get steeper rolloff to remain "stealthy" and bit-efficient. */
+    if (bitRate < 12000)
+        rolloff = (faac_real)0.891; /* -1.0 dB */
+    else if (bitRate < 24000)
+        rolloff = (faac_real)0.794; /* -2.0 dB */
+    else if (bitRate < 40000)
+        rolloff = (faac_real)0.707; /* -3.0 dB */
+    else if (bitRate < 56000)
+        rolloff = (faac_real)0.631; /* -4.0 dB */
+    else
+        rolloff = (faac_real)0.501; /* -6.0 dB */
 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
@@ -216,7 +294,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
 
         for (win = 0; win < MAX_SHORT_WINDOWS; win++)
             apply_sbr_window(freqBuff + win * BLOCK_LEN_SHORT,
-                             bw_bin, tgt_bin, rand);
+                             bw_bin, tgt_bin, rolloff, rand);
     }
     else
     {
@@ -231,14 +309,18 @@ void PseudoSBR(CoderInfo    *coderInfo,
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
-        apply_sbr_window(freqBuff, bw_bin, tgt_bin, rand);
+        apply_sbr_window(freqBuff, bw_bin, tgt_bin, rolloff, rand);
     }
 }
 
-unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW)
+unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW, unsigned int bitRate)
 {
-    /* Extend by at most 50 % of the base bandwidth. */
-    unsigned int extended  = baseBW + baseBW / 2;
+    /* Bitrate-adaptive extension limit.
+     * Extremely low bitrates (< 12kbps/ch) only get 15 % extension.
+     * Low bitrates (< 24kbps/ch) get 25 %.
+     * Standard bitrates (< 48kbps/ch) get 40 % to balance bit-cost.     */
+    unsigned int ext_percent = (bitRate < 12000) ? 15u : (bitRate < 24000) ? 25u : 40u;
+    unsigned int extended    = baseBW + (baseBW * ext_percent / 100u);
 
     /* Hard ceiling: 90 % of Nyquist, leaving room for the AAC anti-alias
      * region and ensuring we don't try to encode content the filterbank
