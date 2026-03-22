@@ -92,6 +92,11 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    int xi[FRAME_LEN];
+    int band_offset[MAX_SCFAC_BANDS];
+    int band_len[MAX_SCFAC_BANDS];
+    int xi_offset;
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];

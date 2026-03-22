@@ -25,11 +25,12 @@ enum {
     HCB_PNS = 13,
     HCB_INTENSITY2 = 14,
     HCB_INTENSITY = 15,
-    HCB_NONE
+    HCB_NONE = 16
 };
 
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
+void optimize_books(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
