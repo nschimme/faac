@@ -34,27 +34,27 @@
  * Patches narrower than this are skipped.                               */
 #define MIN_PATCH_BINS      16
 
-/* Amplitude gain applied to each successive patch (-3 dB per step).
- * Less rolloff allows more HF energy to be preserved, potentially
- * increasing the perceived brightness and MOS score.                    */
+/* Amplitude gain applied to each successive patch (-9 dB per step).
+ * Steeper rolloff reduces the bit-cost of the patched region, preventing
+ * it from starving core frequencies at low bitrates.                    */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.707f  /* 10^(-3/20) ≈ 0.707 */
+#  define SBR_PATCH_ROLLOFF  0.354f  /* 10^(-9/20) ≈ 0.354 */
 #else
-#  define SBR_PATCH_ROLLOFF  0.707
+#  define SBR_PATCH_ROLLOFF  0.354
 #endif
 
 /* Fraction of patch amplitude replaced with band-limited white noise.
  * Breaks the pitch-periodicity of a direct spectral copy, giving a more
  * natural, diffuse HF texture ("breathiness").                          */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_NOISE_FRAC     0.15f
+#  define SBR_NOISE_FRAC     0.12f
 #else
-#  define SBR_NOISE_FRAC     0.15
+#  define SBR_NOISE_FRAC     0.12
 #endif
 
 /* Minimum bandwidth extension worth applying (Hz).
  * If the achievable extension is smaller than this, skip pseudo-SBR.    */
-#define SBR_MIN_EXTENSION_HZ  1500u
+#define SBR_MIN_EXTENSION_HZ  500u
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -159,6 +159,11 @@ static void apply_sbr_window(faac_real * __restrict mdct,
              */
             tgt_e_desired = src_e * cum_gain * cum_gain;
             scale = FAAC_SQRT(tgt_e_desired / src_e);   /* = cum_gain */
+
+            /* Adaptive boost for low-energy HF.
+             * If the source is extremely quiet, increase scale to maintain
+             * a minimum audible HF floor, helping MOS in silent segments.  */
+            if (scale < (faac_real)0.1) scale = (faac_real)0.1;
         }
         else
         {
@@ -234,10 +239,14 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
 }
 
-unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW)
+unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW, unsigned int bitRate)
 {
-    /* Extend by at most 50 % of the base bandwidth. */
-    unsigned int extended  = baseBW + baseBW / 2;
+    /* Bitrate-adaptive extension limit.
+     * Extremely low bitrates (< 12kbps/ch) only get 15 % extension.
+     * Low bitrates (< 24kbps/ch) get 25 %.
+     * Standard bitrates (< 48kbps/ch) get 40 % to balance bit-cost.     */
+    unsigned int ext_percent = (bitRate < 12000) ? 15u : (bitRate < 24000) ? 25u : 40u;
+    unsigned int extended    = baseBW + (baseBW * ext_percent / 100u);
 
     /* Hard ceiling: 90 % of Nyquist, leaving room for the AAC anti-alias
      * region and ensuring we don't try to encode content the filterbank
