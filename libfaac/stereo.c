@@ -24,6 +24,97 @@
 #include "huff2.h"
 #include "util.h"
 
+enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
+
+static void apply_is(CoderInfo *cl, CoderInfo *cr,
+                     faac_real *sl0, faac_real *sr0,
+                     int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
+                     int hcb, int sf, int pan, faac_real enrgs, faac_real enrgd, faac_real efix)
+{
+    int win, l;
+    faac_real vfix;
+
+    if (hcb == HCB_INTENSITY)
+        vfix = FAAC_SQRT(efix / enrgs);
+    else
+        vfix = FAAC_SQRT(efix / enrgd);
+
+    cl->sf[sfcnt] = sf;
+    cr->sf[sfcnt] = -pan;
+    cr->book[sfcnt] = hcb;
+
+    for (win = start_win; win < end_win; win++)
+    {
+        faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+        faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+        for (l = start_bin; l < end_bin; l++)
+        {
+            faac_real sum;
+            if (hcb == HCB_INTENSITY)
+                sum = sl[l] + sr[l];
+            else
+                sum = sl[l] - sr[l];
+            sl[l] = sum * vfix;
+        }
+    }
+}
+
+static void apply_ms(ChannelInfo *channel, faac_real *sl0, faac_real *sr0,
+                     int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
+                     int phase)
+{
+    int win, l;
+
+    channel->msInfo.ms_used[sfcnt] = 1;
+
+    for (win = start_win; win < end_win; win++)
+    {
+        faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+        faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+        for (l = start_bin; l < end_bin; l++)
+        {
+            faac_real sum, diff;
+            if (phase == MS_PH_IN)
+            {
+                sum = sl[l] + sr[l];
+                diff = 0;
+            }
+            else
+            {
+                sum = 0;
+                diff = sl[l] - sr[l];
+            }
+            sl[l] = 0.5 * sum;
+            sr[l] = 0.5 * diff;
+        }
+    }
+}
+
+static void apply_lr(ChannelInfo *channel, faac_real *sl0, faac_real *sr0,
+                     int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
+                     faac_real enrgl, faac_real enrgr, faac_real thrside)
+{
+    int win, l;
+
+    channel->msInfo.ms_used[sfcnt] = 0;
+
+    if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
+    {
+        for (win = start_win; win < end_win; win++)
+        {
+            faac_real *sl = sl0 + win * BLOCK_LEN_SHORT;
+            faac_real *sr = sr0 + win * BLOCK_LEN_SHORT;
+            for (l = start_bin; l < end_bin; l++)
+            {
+                if (enrgl < enrgr)
+                    sl[l] = 0.0;
+                else
+                    sr[l] = 0.0;
+            }
+        }
+    }
+}
+
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
@@ -166,7 +257,6 @@ void AACstereo(CoderInfo *coder,
                 int l, start_bin, end_bin;
                 int win;
                 faac_real enrgl, enrgr, enrgs, enrgd;
-                faac_real sum, diff;
 
                 start_bin = coder[chn].sfb_offset[sfb];
                 end_bin = coder[chn].sfb_offset[sfb + 1];
@@ -182,12 +272,11 @@ void AACstereo(CoderInfo *coder,
                     {
                         faac_real lx = sl[l];
                         faac_real rx = sr[l];
+                        faac_real sum = lx + rx;
+                        faac_real diff = lx - rx;
 
                         enrgl += lx * lx;
                         enrgr += rx * rx;
-
-                        sum = lx + rx;
-                        diff = lx - rx;
                         enrgs += sum * sum;
                         enrgd += diff * diff;
                     }
@@ -199,7 +288,7 @@ void AACstereo(CoderInfo *coder,
                 int sf = 0, pan = 0;
                 faac_real efix = enrgl + enrgr;
 
-                // Decision logic
+                // 1. Evaluate Intensity Stereo
                 if (mode == JOINT_IS || mode == JOINT_MIXED)
                 {
                     faac_real ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
@@ -235,10 +324,9 @@ void AACstereo(CoderInfo *coder,
                     }
                 }
 
+                // 2. Evaluate M/S
                 if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED))
                 {
-                    // M/S decision
-                    // M = 0.5*(L+R), S = 0.5*(L-R) -> energies are 0.25 of enrgs/enrgd
                     faac_real enrgm = 0.25 * enrgs;
                     faac_real enrgside = 0.25 * enrgd;
 
@@ -252,89 +340,25 @@ void AACstereo(CoderInfo *coder,
                     }
                 }
 
+                // 3. Apply decision
                 if (use_is)
                 {
-                    faac_real vfix;
-
-                    if (hcb == HCB_INTENSITY)
-                        vfix = FAAC_SQRT(efix / enrgs);
-                    else
-                        vfix = FAAC_SQRT(efix / enrgd);
-
-                    coder[chn].sf[sfcnt] = sf;
-                    coder[rch].sf[sfcnt] = -pan;
-                    coder[rch].book[sfcnt] = hcb;
+                    apply_is(coder + chn, coder + rch, s[chn], s[rch], sfcnt,
+                             start_win, end_win, start_bin, end_bin, hcb, sf, pan,
+                             enrgs, enrgd, efix);
                     channel[chn].msInfo.ms_used[sfcnt] = 0;
-
-                    for (win = start_win; win < end_win; win++)
-                    {
-                        faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
-                        faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
-                        for (l = start_bin; l < end_bin; l++)
-                        {
-                            if (hcb == HCB_INTENSITY)
-                                sum = sl[l] + sr[l];
-                            else
-                                sum = sl[l] - sr[l];
-                            sl[l] = sum * vfix;
-                        }
-                    }
                 }
                 else if (use_ms)
                 {
-                    int phase;
-                    faac_real enrgm = 0.25 * enrgs;
-
-                    if ((enrgm * thrmid * 2.0) >= efix)
-                        phase = 1; // IN
-                    else
-                        phase = 2; // OUT
-
-                    channel[chn].msInfo.ms_used[sfcnt] = 1;
-
-                    for (win = start_win; win < end_win; win++)
-                    {
-                        faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
-                        faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
-                        for (l = start_bin; l < end_bin; l++)
-                        {
-                            if (phase == 1)
-                            {
-                                sum = sl[l] + sr[l];
-                                diff = 0;
-                            }
-                            else
-                            {
-                                sum = 0;
-                                diff = sl[l] - sr[l];
-                            }
-                            sl[l] = 0.5 * sum;
-                            sr[l] = 0.5 * diff;
-                        }
-                    }
+                    int phase = ((0.25 * enrgs * thrmid * 2.0) >= efix) ? MS_PH_IN : MS_PH_OUT;
+                    apply_ms(channel + chn, s[chn], s[rch], sfcnt,
+                             start_win, end_win, start_bin, end_bin, phase);
                 }
                 else
                 {
-                    // L/R or phase-collapse
-                    channel[chn].msInfo.ms_used[sfcnt] = 0;
-                    if (mode == JOINT_MS || mode == JOINT_MIXED)
-                    {
-                        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
-                        {
-                            for (win = start_win; win < end_win; win++)
-                            {
-                                faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
-                                faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
-                                for (l = start_bin; l < end_bin; l++)
-                                {
-                                    if (enrgl < enrgr)
-                                        sl[l] = 0.0;
-                                    else
-                                        sr[l] = 0.0;
-                                }
-                            }
-                        }
-                    }
+                    apply_lr(channel + chn, s[chn], s[rch], sfcnt,
+                             start_win, end_win, start_bin, end_bin,
+                             enrgl, enrgr, thrside);
                 }
                 sfcnt++;
             }
