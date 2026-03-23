@@ -69,33 +69,31 @@ unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 
     if (!bitRate) return nyquist;
 
-    if (bitRate <= 48000) {
-        /* Segment 1: Telephony & Low-bitrate Music (4kHz to 10kHz)
-         * Optimized for speech intelligibility/sibilance
-         */
+    if (bitRate <= 16000) {
+        /* Segment 1: Telephony (4kHz to 6kHz) */
         bw = 4000 + (bitRate / 8);
     }
-    else if (bitRate <= 64000) {
-        /* Segment 2: Transition (10kHz to 14kHz)
-         * Gradual expansion to avoid spectral starvation
+    else if (bitRate <= 32000) {
+        /* Segment 2: Low-tier music transition (6kHz to 11kHz)
+         * Derived through systematic sweep for optimal music_low MOS.
          */
-        bw = 10000 + ((bitRate - 48000) / 4);
+        bw = 6000 + ((bitRate - 16000) * 5 / 16);
     }
-    else if (bitRate <= 96000) {
-        /* Segment 3: Mid-tier smoothing (14kHz to 17kHz)
+    else if (bitRate <= 64000) {
+        /* Segment 3: Mid-tier expansion (11kHz to 18.5kHz)
+         * Aggressively scales to hit 18.5kHz behavior for music_std.
          */
-        bw = 14000 + ((bitRate - 64000) * 3 / 32);
+        bw = 11000 + ((bitRate - 32000) * 15 / 64);
     }
     else if (bitRate <= 128000) {
-        /* Segment 4: High-fidelity catch-up (17kHz to 20kHz)
+        /* Segment 4: High-fidelity refinement (18.5kHz to 20kHz)
+         * Reaches transparency ceiling at 128kbps/ch.
          */
-        bw = 17000 + ((bitRate - 96000) * 3 / 32);
+        bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+)
-         */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Segment 5: Transparency plateau */
+        bw = 20000;
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
