@@ -432,7 +432,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
         kArray[i] = 0.0;
 
     /* If there is no signal energy, return */
-    if (signal <= 0.0) {
+    if (signal <= FAAC_REAL_MIN) {
         kArray[0]=1.0;
         return 0;
 
@@ -451,7 +451,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                 kTemp += aLastPtr[i]*rArray[order-i];
 
             /* Stability Guard: check for perfect prediction or instability */
-            if (FAAC_FABS(kTemp) >= error || error <= 0.0) {
+            if (FAAC_FABS(kTemp) >= error || error <= FAAC_REAL_MIN) {
                 error = 0.0;
                 break;
             }
@@ -464,11 +464,17 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                 aPtr[i] = aLastPtr[i] + kArray[order] * aLastPtr[order - i];
             }
 
-            /* Update error energy: error = error * (1 - k^2) */
-            error = error * (1 - kArray[order] * kArray[order]);
+            /* Update error energy with rounding protection */
+            faac_real magK = kArray[order] * kArray[order];
+            if (magK >= 1.0 - FAAC_REAL_EPS) {
+                error = 0.0; /* Perfect prediction or limit of precision reached */
+                break;
+            }
+
+            error *= (1.0 - magK);
 
             /* Early exit if prediction is numerically perfect */
-            if (error <= 0.0) {
+            if (error <= FAAC_REAL_MIN) {
                 error = 0.0;
                 break;
             }
@@ -479,8 +485,8 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aPtr=aTemp;         /* Last becomes current */
         }
 
-        /* If error vanished, return INFINITY to trigger TNS gain threshold */
-        if (error <= 0.0) return (faac_real)INFINITY;
+        /* Return the literal ceiling for the chosen precision */
+        if (error <= 0.0) return (faac_real)FAAC_REAL_MAX;
 
         return signal/error;    /* return the gain */
     }

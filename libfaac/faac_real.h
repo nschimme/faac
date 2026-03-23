@@ -24,6 +24,7 @@
 #include "config.h"
 #endif
 
+#include <float.h>
 #include <math.h>
 
 #ifdef FAAC_PRECISION_SINGLE
@@ -37,6 +38,9 @@ typedef float faac_real;
 #define FAAC_ASIN asinf
 #define FAAC_LRINT lrintf
 #define FAAC_FLOOR floorf
+#define FAAC_REAL_MIN FLT_MIN
+#define FAAC_REAL_MAX FLT_MAX
+#define FAAC_REAL_EPS FLT_EPSILON
 #else
 typedef double faac_real;
 #define FAAC_SIN sin
@@ -48,6 +52,9 @@ typedef double faac_real;
 #define FAAC_ASIN asin
 #define FAAC_LRINT lrint
 #define FAAC_FLOOR floor
+#define FAAC_REAL_MIN DBL_MIN
+#define FAAC_REAL_MAX DBL_MAX
+#define FAAC_REAL_EPS DBL_EPSILON
 #endif
 
 #endif /* FAAC_REAL_H */
