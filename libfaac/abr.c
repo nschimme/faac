@@ -25,7 +25,10 @@ void AbrInit(abr_t *abr, int bitRate, int sampleRate, int numChannels, faac_real
     if (bitRate) {
         abr->desbits = numChannels * (int)((bitRate * FRAME_LEN) / sampleRate);
         abr->bit_reservoir_max = 6 * abr->desbits;
-        abr->bit_reservoir     = 0; /* neutral start, no phantom savings */
+        /* Seed at half-capacity to ensure neutral quality multiplier (1.0) at start.
+         * This prevents initial quality suppression on short clips.
+         */
+        abr->bit_reservoir     = abr->bit_reservoir_max / 2;
         abr->quality_base      = initial_quality;
     }
 }
@@ -35,19 +38,7 @@ void AbrUpdate(abr_t *abr, int frameBytes, faac_real *quality, int maxqual)
     const int desbits     = abr->desbits;
     const int actual_bits = frameBytes * 8;
 
-    /* ── Slow loop: single-pole IIR on the bitrate ratio ─────────────────
-     *
-     * quality_base *= EMA(desbits / actual_bits, α=1/16)
-     *
-     * At α = 1/16, the time constant is 16 frames (~0.35 s at 44.1 kHz,
-     * ~1 s at 16 kHz).  The per-frame ratio is hard-clamped to [0.5, 2.0]
-     * so a single outlier frame (silence, flush) can't collapse quality.
-     *
-     * Because quality_base is updated multiplicatively via a ratio that
-     * averages to 1.0 at the correct bitrate, it converges without
-     * overshoot and without the oscillation that a direct P-controller
-     * introduces.
-     */
+    /* ── Slow loop: single-pole IIR on the bitrate ratio ───────────────── */
     faac_real ratio;
 
     if (actual_bits > 0) {
@@ -58,14 +49,13 @@ void AbrUpdate(abr_t *abr, int frameBytes, faac_real *quality, int maxqual)
 
     if (ratio > 2.0f) ratio = 2.0f;
     if (ratio < 0.5f) ratio = 0.5f;
-    abr->quality_base *= (15.0f / 16.0f) + (1.0f / 16.0f) * ratio;
 
-    /* ── Reservoir update ────────────────────────────────────────────────
-     *
-     * Accumulate the per-frame bit surplus.  The floor at 0 enforces
-     * causality: you cannot spend bits that haven't been saved yet.
-     * The ceiling prevents unbounded wind-up over long silent passages.
+    /* alpha = 1/8 (IIR constant 8) for fast convergence on short samples
+     * while maintaining long-term stability.
      */
+    abr->quality_base *= (7.0f / 8.0f) + (1.0f / 8.0f) * ratio;
+
+    /* ── Reservoir update ──────────────────────────────────────────────── */
     abr->bit_reservoir += desbits - actual_bits;
     if (abr->bit_reservoir < 0)
         abr->bit_reservoir = 0;
@@ -73,14 +63,8 @@ void AbrUpdate(abr_t *abr, int frameBytes, faac_real *quality, int maxqual)
         abr->bit_reservoir = abr->bit_reservoir_max;
 
     /* ── Reservoir modulation ─────────────────────────────────────────────
-     *
      * Map reservoir fullness [0, max] → quality multiplier [0.8, 1.2].
      * Neutral at half-full (fill = 0.5 → multiplier = 1.0).
-     *
-     * This is the VBR-like component: simple/tonal frames underspend
-     * relative to quality_base, fill the reservoir, and boost the
-     * multiplier for the complex/transient frame that follows.  The slow
-     * loop does not need to react to these short-term swings at all.
      */
     faac_real fill    = (faac_real)abr->bit_reservoir
                       / (faac_real)abr->bit_reservoir_max;
