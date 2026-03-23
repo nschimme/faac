@@ -45,11 +45,11 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
     cr->sf[sfcnt] = -pan;
     cr->book[sfcnt] = hcb;
 
+    /* Spectral folding: Map sum/diff of L/R to L, scaled to target energy. */
     for (int win = start_win; win < end_win; win++)
     {
         faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
         const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
-        #pragma GCC ivdep
         for (int l = start_bin; l < end_bin; l++)
         {
             faac_real lx = sl[l];
@@ -69,11 +69,11 @@ static inline void apply_ms(ChannelInfo *channel, faac_real * restrict sl0, faac
 {
     channel->msInfo.ms_used[sfcnt] = 1;
 
+    /* M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir. */
     for (int win = start_win; win < end_win; win++)
     {
         faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
         faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
-        #pragma GCC ivdep
         for (int l = start_bin; l < end_bin; l++)
         {
             faac_real lx = sl[l];
@@ -101,6 +101,7 @@ static inline void apply_lr(ChannelInfo *channel, faac_real * restrict sl0, faac
 {
     channel->msInfo.ms_used[sfcnt] = 0;
 
+    /* Side-channel zeroing: If one channel is significantly dominant, mask the other to save bits. */
     if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
     {
         for (int win = start_win; win < end_win; win++)
@@ -108,10 +109,8 @@ static inline void apply_lr(ChannelInfo *channel, faac_real * restrict sl0, faac
             faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
             faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
             if (enrgl < enrgr) {
-                #pragma GCC ivdep
                 for (int l = start_bin; l < end_bin; l++) sl[l] = 0.0;
             } else {
-                #pragma GCC ivdep
                 for (int l = start_bin; l < end_bin; l++) sr[l] = 0.0;
             }
         }
@@ -139,6 +138,7 @@ void AACstereo(CoderInfo *coder,
     thrside = 0.0;
     isthr = 1.0;
 
+    /* Define perceptual thresholds based on requested quality and mode. */
     switch (mode)
     {
     case JOINT_MS:
@@ -230,11 +230,11 @@ void AACstereo(CoderInfo *coder,
                 int end_bin = cl->sfb_offset[sfb + 1];
                 faac_real enrgl = 0, enrgr = 0, enrgl_r = 0;
 
+                /* Accumulate energies and cross-products across windows in the group. */
                 for (int win = start_win; win < end_win; win++)
                 {
                     const faac_real * restrict sl = s[chn] + win * BLOCK_LEN_SHORT;
                     const faac_real * restrict sr = s[rch] + win * BLOCK_LEN_SHORT;
-                    #pragma GCC ivdep
                     for (int l = start_bin; l < end_bin; l++)
                     {
                         faac_real lx = sl[l];

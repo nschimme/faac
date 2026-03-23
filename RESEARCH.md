@@ -54,3 +54,12 @@ Result: MOS Δ: -0.003.
 
 ## CONCLUSION
 Refactoring to Mixed Mode is successful. The unified decision loop correctly handles L/R, M/S, and IS transitions per band. While a slight MOS regression (-0.008) is observed in the `music_std` scenario, the implementation is spec-compliant and more maintainable. Performance has been optimized to within acceptable bounds for the new logic complexity.
+
+## STEREO ENHANCEMENT ROADMAP (MOS IMPROVEMENTS)
+The following low-CPU enhancements are identified for potential future work to achieve a positive average MOS delta:
+
+1. **Transient-Aware M/S Masking**: Reduce M/S aggression during frames with detected transients (attack phases) to prevent pre-echo artifacts in the stereo image.
+2. **SMR-Adaptive Thresholds**: Scale `thrmid` and `isthr` based on the Signal-to-Mask Ratio (SMR) provided by the psychoacoustic model, allowing more aggressive joint coding when masking is high.
+3. **Phase Correlation Refinement**: Use a more sophisticated phase correlation metric (beyond simple cross-product) for M/S decisions to better preserve spatial imaging in out-of-phase segments.
+4. **Energy-Dependent IS Pan Limits**: Dynamically adjust the allowed IS pan range based on total band energy to prevent "panning jitter" in quiet, complex textures.
+5. **Vocal Protection**: Apply more conservative IS thresholds in the speech-critical mid-range (800Hz-4kHz) when the stereo image is centered.
