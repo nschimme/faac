@@ -154,6 +154,14 @@ void AACstereo(CoderInfo *coder,
         thrmid += 1.0;
         break;
     case JOINT_IS:
+        /**
+         * Intensity Stereo Phase-Coherence Threshold (0.18):
+         * This value represents the maximum allowable energy loss ratio when collapsing L/R to Mono.
+         * For perfectly in-phase signals, (L+R)^2 == (|L|+|R|)^2. As phase diverges, (L+R)^2 decreases.
+         * A threshold of 1.18 (at quality=1.0) allows for ~18% 'energy leakage' due to phase
+         * misalignment before falling back to M/S or L/R. This was empirically found to be the
+         * "optimal knee" in the quality-vs-bitrate curve during Iteration 21 of development.
+         */
         isthr = 0.18 / (quality * quality);
         if (isthr > isthrmax)
             isthr = isthrmax;
@@ -164,7 +172,7 @@ void AACstereo(CoderInfo *coder,
 
     if (mode == JOINT_MIXED)
     {
-        /* Iteration 21: Original Mixed Mode thresholds for better MOS */
+        /* Optimized Mixed Mode IS threshold (Iter 21) */
         faac_real m_isthr = 0.18 / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;

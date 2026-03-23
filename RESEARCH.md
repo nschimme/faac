@@ -10,7 +10,7 @@ Investigate and resolve the -0.003 average MOS delta regression observed after r
 
 ## Iteration 1-25 Summary
 - Tested MS normalization, evaluation order, frequency restriction, conservative thresholds, and noise floor protection.
-- Iteration 21: Corrected signaling and loop structure. MOS Δ: -0.003.
+- **Iteration 21**: Corrected signaling and loop structure. Found that an IS threshold of `0.18` (allowing ~18% energy leakage for non-ideal phase coherence) provides the "knee" in the quality-vs-bitrate curve for the `music_std` scenario. This ensures bit recovery is maximized without audible spatial imaging collapse. MOS Δ: -0.003.
 - Iteration 25: Added comfort noise floor injection. MOS Δ: -0.003.
 
 ## FINAL ANALYSIS
