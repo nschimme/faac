@@ -25,7 +25,7 @@ void AbrInit(abr_t *abr, int bitRate, int sampleRate, int numChannels, faac_real
     if (bitRate) {
         abr->desbits = numChannels * (int)((bitRate * FRAME_LEN) / sampleRate);
         abr->bit_reservoir_max = 6 * abr->desbits;
-        abr->bit_reservoir     = abr->bit_reservoir_max / 2;
+        abr->bit_reservoir     = 0; /* neutral start, no phantom savings */
         abr->quality_base      = initial_quality;
     }
 }
