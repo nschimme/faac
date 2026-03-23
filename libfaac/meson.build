@@ -18,6 +18,7 @@ if config_h.get('HAVE_SSE2')
 endif
 
 common_src = [
+    'abr.c',
     'bitstream.c',
     'bitstream.h',
     'blockswitch.c',

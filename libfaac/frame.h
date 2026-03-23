@@ -36,6 +36,7 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
+#include "abr.h"
 
 #include <faaccfg.h>
 
@@ -80,10 +81,7 @@ typedef struct {
     faacEncConfiguration config;
 
     /* ABR two-loop rate control state */
-    faac_real quality_base;      /* Slow-loop baseline; drifts to correct bitrate  */
-    int       bit_reservoir;     /* Current reservoir level in bits                 */
-    int       bit_reservoir_max; /* Maximum reservoir capacity in bits              */
-    int       desbits;           /* Target bits/frame, all channels combined        */
+    abr_t abr;
 
     psymodel_t *psymodel;
 

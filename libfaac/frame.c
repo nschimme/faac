@@ -209,12 +209,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
      * Seed with a neutral reservoir to ensure deterministic start in benchmarks.
      */
     if (hEncoder->config.bitRate) {
-        hEncoder->desbits = hEncoder->numChannels
-                          * (int)((hEncoder->config.bitRate * FRAME_LEN)
-                                  / hEncoder->sampleRate);
-        hEncoder->bit_reservoir_max = 6 * hEncoder->desbits;
-        hEncoder->bit_reservoir     = 0;  /* neutral start, no phantom savings */
-        hEncoder->quality_base      = hEncoder->aacquantCfg.quality;
+        AbrInit(&hEncoder->abr, hEncoder->config.bitRate,
+                hEncoder->sampleRate, hEncoder->numChannels,
+                hEncoder->aacquantCfg.quality);
     }
 
     CalcBW(&hEncoder->config.bandWidth,
@@ -607,62 +604,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        const int desbits     = hEncoder->desbits;
-        const int actual_bits = frameBytes * 8;
-
-        /* ── Slow loop: single-pole IIR on the bitrate ratio ─────────────────
-         *
-         * quality_base *= EMA(desbits / actual_bits, α=1/32)
-         *
-         * At α = 1/32, the time constant is 32 frames (~0.7 s at 44.1 kHz,
-         * ~2 s at 16 kHz).  The per-frame ratio is hard-clamped to [0.5, 2.0]
-         * so a single outlier frame (silence, flush) can't collapse quality.
-         *
-         * Because quality_base is updated multiplicatively via a ratio that
-         * averages to 1.0 at the correct bitrate, it converges without
-         * overshoot and without the oscillation that a direct P-controller
-         * introduces.
-         */
-        faac_real ratio = (faac_real)desbits / (faac_real)actual_bits;
-        if (ratio > 2.0f) ratio = 2.0f;
-        if (ratio < 0.5f) ratio = 0.5f;
-        hEncoder->quality_base *= (31.0f / 32.0f) + (1.0f / 32.0f) * ratio;
-
-        /* ── Reservoir update ────────────────────────────────────────────────
-         *
-         * Accumulate the per-frame bit surplus.  The floor at 0 enforces
-         * causality: you cannot spend bits that haven't been saved yet.
-         * The ceiling prevents unbounded wind-up over long silent passages.
-         */
-        hEncoder->bit_reservoir += desbits - actual_bits;
-        if (hEncoder->bit_reservoir < 0)
-            hEncoder->bit_reservoir = 0;
-        if (hEncoder->bit_reservoir > hEncoder->bit_reservoir_max)
-            hEncoder->bit_reservoir = hEncoder->bit_reservoir_max;
-
-        /* ── Reservoir modulation ─────────────────────────────────────────────
-         *
-         * Map reservoir fullness [0, max] → quality multiplier [0.8, 1.2].
-         * Neutral at half-full (fill = 0.5 → multiplier = 1.0).
-         *
-         * This is the VBR-like component: simple/tonal frames underspend
-         * relative to quality_base, fill the reservoir, and boost the
-         * multiplier for the complex/transient frame that follows.  The slow
-         * loop does not need to react to these short-term swings at all.
-         */
-        faac_real fill    = (faac_real)hEncoder->bit_reservoir
-                          / (faac_real)hEncoder->bit_reservoir_max;
-        faac_real res_mul = 0.8f + 0.4f * fill;   /* [0.8 … 1.2] */
-
-        /* ── Compose and clamp ───────────────────────────────────────────── */
-        hEncoder->aacquantCfg.quality = hEncoder->quality_base * res_mul;
-
-        if (hEncoder->quality_base > maxqual) hEncoder->quality_base = maxqual;
-        if (hEncoder->quality_base < 10)      hEncoder->quality_base = 10;
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        AbrUpdate(&hEncoder->abr, frameBytes,
+                  &hEncoder->aacquantCfg.quality, maxqual);
     }
 
     return frameBytes;
