@@ -62,8 +62,6 @@ BEGIN
                     WS_EX_STATICEDGE
     PUSHBUTTON      "...",IDC_SELECT_OUTPUTFILE,225,33,19,14,WS_DISABLED,
                     WS_EX_STATICEDGE
-    CONTROL         "Allow Mid/Side",IDC_ALLOWMIDSIDE,"Button",
-                    BS_AUTOCHECKBOX | BS_LEFTTEXT | WS_TABSTOP,14,81,71,10
     LTEXT           "Quantizer\nquality", IDC_STATIC, 98, 73, 44, 18
     EDITTEXT        IDC_QUALITY, 138, 76, 30, 12, ES_AUTOHSCROLL
     CONTROL         "", IDC_STATIC, "static", SS_SUNKEN, 98, 94, 70, 30
