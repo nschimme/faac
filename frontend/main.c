@@ -1038,6 +1038,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
+    if (myFormat->usePseudoSBR == 1)
+        fprintf(stderr, " + SBR");
 
     switch(myFormat->jointmode) {
     case JOINT_MS:

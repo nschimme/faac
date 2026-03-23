@@ -44,19 +44,18 @@
  * Private helpers
  * --------------------------------------------------------------------- */
 
-static faac_real sbr_noise_next(unsigned int *state)
-{
-    *state = *state * 1664525u + 1013904223u;
-    return (int)(*state) * (faac_real)(1.0 / 2147483648.0);
-}
+#ifdef FAAC_PRECISION_SINGLE
+#define NOISE_SCALE (faac_real)(1.0 / 2147483648.0f)
+#else
+#define NOISE_SCALE (faac_real)(1.0 / 2147483648.0)
+#endif
 
-static faac_real band_energy(const faac_real * __restrict mdct,
-                             int start, int len)
+static faac_real band_energy(const faac_real * __restrict mdct, int len)
 {
     faac_real e = 0.0;
     int i;
     for (i = 0; i < len; i++)
-        e += mdct[start + i] * mdct[start + i];
+        e += mdct[i] * mdct[i];
     return e;
 }
 
@@ -68,6 +67,7 @@ static void apply_sbr_window(faac_real * __restrict mdct,
     int tgt       = bw_bin;
     int patch_len = bw_bin / 2;
     faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;
+    unsigned int local_rand = *rand;
     int p;
 
     for (p = 0; p < MAX_SBR_PATCHES; p++)
@@ -94,33 +94,38 @@ static void apply_sbr_window(faac_real * __restrict mdct,
                 break;
         }
 
-        src_e = band_energy(mdct, src_start, patch_len);
+        src_e = band_energy(mdct + src_start, patch_len);
 
         if (src_e > (faac_real)1e-20)
         {
-            /* scale = cum_gain  (amplitude factor, derived from energy ratio) */
             scale = cum_gain;
         }
         else
         {
-            /* Source band silent: leave target silent, advance bookkeeping. */
             tgt      += patch_len;
-            patch_len = patch_len / 2;
+            patch_len = patch_len >> 1;
             cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
             continue;
         }
 
         sig_scale   = scale * ((faac_real)1.0 - (faac_real)SBR_NOISE_FRAC);
-        noise_scale = scale * (faac_real)SBR_NOISE_FRAC;
+        noise_scale = scale * (faac_real)SBR_NOISE_FRAC * NOISE_SCALE;
 
-        for (i = 0; i < patch_len; i++)
-            mdct[tgt + i] = mdct[src_start + i] * sig_scale
-                          + sbr_noise_next(rand)  * noise_scale;
+        {
+            faac_real * __restrict p_tgt = mdct + tgt;
+            const faac_real * __restrict p_src = mdct + src_start;
+
+            for (i = 0; i < patch_len; i++) {
+                local_rand = local_rand * 1664525u + 1013904223u;
+                p_tgt[i] = p_src[i] * sig_scale + (int)local_rand * noise_scale;
+            }
+        }
 
         tgt      += patch_len;
-        patch_len = patch_len / 2;
+        patch_len = patch_len >> 1;
         cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
     }
+    *rand = local_rand;
 }
 
 /* -----------------------------------------------------------------------
@@ -135,6 +140,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
                unsigned int *rand)
 {
     int bw_bin, tgt_bin;
+    faac_real invSampleRate;
 
     if (baseBW >= sbrBW || sampleRate == 0)
         return;
@@ -142,14 +148,14 @@ void PseudoSBR(CoderInfo    *coderInfo,
     if ((sbrBW - baseBW) < SBR_MIN_EXTENSION_HZ)
         return;
 
+    invSampleRate = (faac_real)2.0 / (faac_real)sampleRate;
+
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
     {
         int win;
 
-        bw_bin  = (int)((faac_real)baseBW * 2 * BLOCK_LEN_SHORT
-                        / (faac_real)sampleRate);
-        tgt_bin = (int)((faac_real)sbrBW  * 2 * BLOCK_LEN_SHORT
-                        / (faac_real)sampleRate);
+        bw_bin  = (int)((faac_real)baseBW * BLOCK_LEN_SHORT * invSampleRate);
+        tgt_bin = (int)((faac_real)sbrBW  * BLOCK_LEN_SHORT * invSampleRate);
 
         if (tgt_bin > BLOCK_LEN_SHORT) tgt_bin = BLOCK_LEN_SHORT;
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
@@ -161,10 +167,8 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
     else
     {
-        bw_bin  = (int)((faac_real)baseBW * 2 * BLOCK_LEN_LONG
-                        / (faac_real)sampleRate);
-        tgt_bin = (int)((faac_real)sbrBW  * 2 * BLOCK_LEN_LONG
-                        / (faac_real)sampleRate);
+        bw_bin  = (int)((faac_real)baseBW * BLOCK_LEN_LONG * invSampleRate);
+        tgt_bin = (int)((faac_real)sbrBW  * BLOCK_LEN_LONG * invSampleRate);
 
         if (tgt_bin > BLOCK_LEN_LONG) tgt_bin = BLOCK_LEN_LONG;
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)

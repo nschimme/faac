@@ -229,6 +229,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         else
         {
             hEncoder->baseBandWidth = 0;
+            hEncoder->config.usePseudoSBR = 0;
         }
     }
     else
