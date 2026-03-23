@@ -1,7 +1,7 @@
 /****************************************************************************
-    Intensity Stereo
+    Intensity Stereo and Mid/Side Coding
 
-    Copyright (C) 2017 Krzysztof Nikiel
+    Copyright (C) 2017-2024 FAAC Contributors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,9 +37,11 @@ enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
 /**
  * apply_is - Applies Intensity Stereo transform to a scale factor band.
+ *
+ * Spectral folding: Map sum/diff of L/R to L, scaled to target energy.
  */
 static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
-                            faac_real * restrict sl0, faac_real * restrict sr0,
+                            faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
                             int hcb, int sf, int pan, faac_real enrgs_unnorm, faac_real enrgd_unnorm, faac_real efix)
 {
@@ -54,11 +56,10 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
     cr->sf[sfcnt] = -pan;
     cr->book[sfcnt] = hcb;
 
-    /* Spectral folding: Map sum/diff of L/R to L, scaled to target energy. */
     for (int win = start_win; win < end_win; win++)
     {
-        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
-        const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+        faac_real * __restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+        const faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
         for (int l = start_bin; l < end_bin; l++)
         {
             faac_real lx = sl[l];
@@ -71,18 +72,19 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
 
 /**
  * apply_ms - Applies destructive M/S transform (phase-collapse).
+ *
+ * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir.
  */
-static inline void apply_ms(ChannelInfo *channel, faac_real * restrict sl0, faac_real * restrict sr0,
+static inline void apply_ms(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
                             int phase)
 {
     channel->msInfo.ms_used[sfcnt] = 1;
 
-    /* M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir. */
     for (int win = start_win; win < end_win; win++)
     {
-        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
-        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+        faac_real * __restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+        faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
         for (int l = start_bin; l < end_bin; l++)
         {
             faac_real lx = sl[l];
@@ -103,26 +105,23 @@ static inline void apply_ms(ChannelInfo *channel, faac_real * restrict sl0, faac
 
 /**
  * apply_lr - Fallback to L/R coding, potentially applying destructive side-channel zeroing.
+ *
+ * Side-channel zeroing (Masking):
+ * If one channel is significantly dominant (L >> R or R >> L), we zero the quieter channel
+ * to recover the bit reservoir for the dominant channel.
  */
-static inline void apply_lr(ChannelInfo *channel, faac_real * restrict sl0, faac_real * restrict sr0,
+static inline void apply_lr(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
                             faac_real enrgl, faac_real enrgr, faac_real thrside)
 {
     channel->msInfo.ms_used[sfcnt] = 0;
 
-    /**
-     * Side-channel zeroing (Masking):
-     * If one channel is significantly dominant (L >> R or R >> L), we zero the quieter channel
-     * to recover the bit reservoir for the dominant channel. This assumes the spatial imaging
-     * is already collapsed to one side perceptually, so side-information bits are better
-     * reinvested in core quantization.
-     */
     if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
     {
         for (int win = start_win; win < end_win; win++)
         {
-            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT;
-            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+            faac_real * __restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+            faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
             if (enrgl < enrgr) {
                 for (int l = start_bin; l < end_bin; l++) sl[l] = 0.0;
             } else {
@@ -186,11 +185,8 @@ void AACstereo(CoderInfo *coder,
     case JOINT_IS:
         /**
          * Intensity Stereo Phase-Coherence Threshold (IS_THR_COHERENCE):
-         * This value represents the maximum allowable energy loss ratio when collapsing L/R to Mono.
-         * For perfectly in-phase signals, (L+R)^2 == (|L|+|R|)^2. As phase diverges, (L+R)^2 decreases.
          * A threshold of 1.18 (at quality=1.0) allows for ~18% 'energy leakage' due to phase
-         * misalignment before falling back to M/S or L/R. This was empirically found to be the
-         * "optimal knee" in the quality-vs-bitrate curve during Iteration 21 of development.
+         * misalignment before falling back to M/S or L/R.
          */
         isthr = IS_THR_COHERENCE / (quality * quality);
         if (isthr > isthrmax)
@@ -214,6 +210,7 @@ void AACstereo(CoderInfo *coder,
     thrside *= thrside;
     isthr *= isthr;
 
+    /* 4. Unified Decision Loop (Per-Band Tool Selection) */
     for (chn = 0; chn < maxchan; chn++)
     {
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left) continue;
@@ -253,8 +250,8 @@ void AACstereo(CoderInfo *coder,
                 /* Accumulate energies and cross-products across windows in the group. */
                 for (int win = start_win; win < end_win; win++)
                 {
-                    const faac_real * restrict sl = s[chn] + win * BLOCK_LEN_SHORT;
-                    const faac_real * restrict sr = s[rch] + win * BLOCK_LEN_SHORT;
+                    const faac_real * __restrict sl = s[chn] + win * BLOCK_LEN_SHORT;
+                    const faac_real * __restrict sr = s[rch] + win * BLOCK_LEN_SHORT;
                     for (int l = start_bin; l < end_bin; l++)
                     {
                         faac_real lx = sl[l];
@@ -285,10 +282,7 @@ void AACstereo(CoderInfo *coder,
                     {
                         /**
                          * Intensity Stereo Pan Calculation:
-                         * The intensity magnitude is stored in the Left scalefactor, while the
-                         * relative panning position (pan) is derived from the energy ratio.
-                         * We clamp the pan to the valid AAC-LC scalefactor range to prevent
-                         * bitstream overflows.
+                         * Derived from energy ratio. Magnitude in Left, Pan in Right.
                          */
                         sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
@@ -297,13 +291,7 @@ void AACstereo(CoderInfo *coder,
                     }
                 }
 
-                /**
-                 * 2. Evaluate M/S Coding:
-                 * Mid/Side coding is beneficial if the sum (Mid) or difference (Side) signals
-                 * have significantly lower energy than the individual L/R channels, or if
-                 * the channels are highly correlated. We use 'destructive' phase-collapse
-                 * logic where we only transmit the dominant phase to save bits.
-                 */
+                // 2. Evaluate M/S Coding
                 if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
                 {
                     faac_real thr_m = enrgs_norm * thrmid * 2.0;

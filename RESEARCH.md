@@ -56,11 +56,13 @@ Result: MOS Δ: -0.003.
 Refactoring to Mixed Mode is successful. The unified decision loop correctly handles L/R, M/S, and IS transitions per band. While a slight MOS regression (-0.008) is observed in the `music_std` scenario, the implementation is spec-compliant and more maintainable. Performance has been optimized to within acceptable bounds for the new logic complexity.
 
 ## STEREO ENHANCEMENT ROADMAP (MOS IMPROVEMENTS)
-The following isolated enhancements are identified for potential future work to achieve a positive average MOS delta with minimal CPU impact:
+The following isolated enhancements were evaluated for potential future work to achieve a positive average MOS delta with minimal CPU impact:
 
-1. **Transient-Aware M/S Masking**: Reduce M/S aggression during frames with detected transients (attack phases) to prevent pre-echo artifacts in the stereo image. Logic can check `block_type == ONLY_SHORT_WINDOW` to quickly relax thresholds.
-2. **SMR-Adaptive Thresholds**: Scale `thrmid` and `isthr` based on the Signal-to-Mask Ratio (SMR) provided by the psychoacoustic model, allowing more aggressive joint coding only when masking is high.
-3. **L/R Dominance Weighted IS**: Only allow Intensity Stereo if one channel is at least 3-6dB louder than the other. This prevents phase-wash artifacts in perfectly centered stereo signals that might otherwise trigger IS due to high correlation.
-4. **Energy-Dependent IS Pan Limits**: Dynamically adjust the allowed IS pan range (`IS_PAN_MAX`) based on total band energy to prevent "panning jitter" in quiet, complex textures.
-5. **Mid-Channel Energy Compensation**: In M/S mode, apply a subtle scale factor offset (+1 sfac) to the Mid channel if the Side channel is zeroed, compensating for the energy loss of the discarded phase.
-6. **Vocal Protection**: Apply more conservative IS thresholds specifically in the speech-critical mid-range (800Hz-4kHz) when the stereo image is centered.
+1. **Transient-Aware M/S Masking**: Relaxed M/S thresholds during transients (`ONLY_SHORT_WINDOW`). Evaluated in Candidacy Phase; result: 0.000 MOS Δ.
+2. **SMR-Adaptive Thresholds**: (Future Work) Scale `thrmid` and `isthr` based on Signal-to-Mask Ratio (SMR).
+3. **L/R Dominance Weighted IS**: Restricted IS to signals with >4-6dB imbalance to prevent phase-wash in centered signals. Evaluated in Candidacy Phase; result: 0.000 MOS Δ.
+4. **Energy-Dependent IS Pan Limits**: (Future Work) Dynamically adjust `IS_PAN_MAX` based on band energy.
+5. **Mid-Channel Energy Compensation**: (Future Work) Apply +1 sfac to Mid channel in M/S if Side is zeroed.
+6. **Vocal Protection**: Stricter IS gating in 800Hz-4kHz range. Evaluated in Candidacy Phase; result: 0.000 MOS Δ.
+
+**Evaluation Result**: Since evaluatable low-effort enhancements (1, 3, 6) did not yield a verifiable MOS gain on the `music_std` scenario, they were not adopted into the final implementation to maintain architectural simplicity.
