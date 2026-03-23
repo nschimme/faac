@@ -172,8 +172,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   )
 {
     int sb;
-    /* 2^0.25 (1.50515 dB) step from AAC specs */
-    static const faac_real sfstep = 2.0 * AAC_SF_STEP;
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
@@ -211,16 +209,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+              FAAC_LRINT(FAAC_LOG10(etot) * AAC_SF_STEP);
           coderInfo->bandcnt++;
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * (2.0 * AAC_SF_STEP));
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+          sfacfix = FAAC_POW(10, sfac / (2.0 * AAC_SF_STEP));
 
       end -= start;
       xi = xitab;
