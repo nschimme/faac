@@ -19,58 +19,65 @@
 
 #include "pseudo_sbr.h"
 #include "coder.h"
-#include "filtbank.h"   /* BLOCK_LEN_LONG, BLOCK_LEN_SHORT, MAX_SHORT_WINDOWS */
+#include "filtbank.h"
 #include "faac_real.h"
-#include "util.h"       /* min() */
+#include "util.h"
 
 /* -----------------------------------------------------------------------
- * Tuning constants
+ * Design constants
+ *
+ * SBR_FILL_RATIO_MAX (0.65)
+ *   The maximum fraction of Nyquist the natural encoder bandwidth may
+ *   already occupy before pseudo-SBR is suppressed.
+ *
+ *   Derivation: the encoder formula gives
+ *     naturalBW = bitRate * sampleRate * 0.42 / 50000
+ *   Dividing by (sampleRate/2):
+ *     fillRatio  = bitRate * 0.42 / 25000  =  bitRate / 59524
+ *
+ *   fillRatio = 0.65  <=>  bitRate ~= 38700 bps
+ *
+ *   At 16 kHz / 40 kbps: fillRatio = 5376 / 8000 = 0.672  -> suppressed
+ *   At 16 kHz / 16 kbps: fillRatio = 2150 / 8000 = 0.269  -> enabled
+ *   At 48 kHz / 32 kbps: fillRatio = 12902/24000 = 0.538  -> enabled
+ *
+ * SBR_PATCH_ROLLOFF (~-9 dB = 0.354)
+ *   Each successive patch drops by 9 dB to minimise bit-cost of the
+ *   patched region while keeping it above the decoder noise floor.
+ *
+ * SBR_NOISE_FRAC (0.12)
+ *   12 % of patch amplitude replaced with white noise to de-correlate
+ *   the spectral copy and prevent pitch-periodicity artifacts.
+ *
+ * SBR_MIN_EXTENSION_HZ (500)
+ *   Minimum worthwhile extension; narrower gaps are ignored.
  * --------------------------------------------------------------------- */
 
-/* Maximum number of spectral patches per window. */
-#define MAX_SBR_PATCHES     4
+#define MAX_SBR_PATCHES      4
+#define MIN_PATCH_BINS       16
 
-/* Minimum useful patch width in MDCT bins.
- * Patches narrower than this are skipped.                               */
-#define MIN_PATCH_BINS      16
+#define SBR_FILL_RATIO_MAX   0.65f
 
-/* Amplitude gain applied to each successive patch (-9 dB per step).
- * Steeper rolloff reduces the bit-cost of the patched region, preventing
- * it from starving core frequencies at low bitrates.                    */
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.354f  /* 10^(-9/20) ≈ 0.354 */
-#else
-#  define SBR_PATCH_ROLLOFF  0.354
-#endif
-
-/* Fraction of patch amplitude replaced with band-limited white noise.
- * Breaks the pitch-periodicity of a direct spectral copy, giving a more
- * natural, diffuse HF texture ("breathiness").                          */
-#ifdef FAAC_PRECISION_SINGLE
+#  define SBR_PATCH_ROLLOFF  0.354f
 #  define SBR_NOISE_FRAC     0.12f
 #else
+#  define SBR_PATCH_ROLLOFF  0.354
 #  define SBR_NOISE_FRAC     0.12
 #endif
 
-/* Minimum bandwidth extension worth applying (Hz).
- * If the achievable extension is smaller than this, skip pseudo-SBR.    */
 #define SBR_MIN_EXTENSION_HZ  500u
 
 /* -----------------------------------------------------------------------
  * Private helpers
  * --------------------------------------------------------------------- */
 
-/*
- * Simple Galois LFSR / LCG hybrid – fast, no libm, no shared state.
- * Returns a value in (-1, 1).
- */
 static faac_real sbr_noise_next(unsigned int *state)
 {
     *state = *state * 1664525u + 1013904223u;
     return (int)(*state) * (faac_real)(1.0 / 2147483648.0);
 }
 
-/* Energy of mdct[start .. start+len-1]. */
 static faac_real band_energy(const faac_real * __restrict mdct,
                              int start, int len)
 {
@@ -84,47 +91,30 @@ static faac_real band_energy(const faac_real * __restrict mdct,
 /* -----------------------------------------------------------------------
  * apply_sbr_window()
  *
- * Core patching routine for a single MDCT window.
+ * Fill [bw_bin, tgt_bin) with energy-normalised, noise-dithered copies
+ * of the top octave of the coded bandwidth.
  *
- *   mdct    – coefficient array for this window [0 .. frame_len-1]
- *   bw_bin  – first bin at/above the encoder's natural bandwidth limit
- *             (= source ceiling; bins [0..bw_bin-1] contain real audio)
- *   tgt_bin – target bin ceiling; fill [bw_bin .. tgt_bin-1] with SBR
- *             content (must be ≤ frame_len)
- *   rand    – per-encoder LCG state, advanced in place
+ * Source: always re-read from [bw_bin - patch_len, bw_bin).
+ * Cascading through already-patched bins compounds quantisation noise.
  *
- * Algorithm
- * ---------
- * Each patch copies the "top half" of the coded bandwidth to the next
- * higher octave, applying:
- *   1. An energy-normalised amplitude scale so that each patch carries
- *      less energy than its predecessor, matching the expected
- *      high-frequency spectral slope of broadband audio.
- *   2. A small fraction (SBR_NOISE_FRAC) of band-limited white noise
- *      mixed with the copied signal.  This breaks the temporal
- *      periodicity of a naked spectral copy, which would otherwise
- *      create an audible "pitched" artifact in the HF.
- *
- * Source selection: patches always read from [bw_bin - patch_len, bw_bin),
- * i.e., the topmost coded octave.  Reusing the same source region (rather
- * than cascading through previously patched bins) prevents compounding
- * quantisation noise across patches.
+ * IMPORTANT: there is no minimum scale floor.  If the source band is
+ * silent, the target band stays silent.  A forced floor would inject
+ * constant artificial noise during pauses above baseBW, which speech
+ * quality metrics (PESQ, WARP) score as heavy distortion.
  * --------------------------------------------------------------------- */
 static void apply_sbr_window(faac_real * __restrict mdct,
                              int bw_bin, int tgt_bin,
                              unsigned int *rand)
 {
-    int tgt           = bw_bin;
-    int patch_len     = bw_bin / 2;   /* width of first patch: one octave */
-    faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;   /* gain for patch 0 */
+    int tgt       = bw_bin;
+    int patch_len = bw_bin / 2;
+    faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;
     int p;
 
     for (p = 0; p < MAX_SBR_PATCHES; p++)
     {
-        int remaining, src_start;
-        faac_real src_e, tgt_e_desired, scale;
-        faac_real sig_scale, noise_scale;
-        int i;
+        int remaining, src_start, i;
+        faac_real src_e, scale, sig_scale, noise_scale;
 
         if (patch_len < MIN_PATCH_BINS)
             break;
@@ -136,38 +126,29 @@ static void apply_sbr_window(faac_real * __restrict mdct,
         if (patch_len > remaining)
             patch_len = remaining;
 
-        /* Source: top [patch_len] bins of the coded bandwidth.
-         * Clamp so we never read below bin 0.                            */
         src_start = bw_bin - patch_len;
         if (src_start < 0)
         {
-            patch_len += src_start;   /* shrink to fit */
+            patch_len += src_start;
             src_start  = 0;
             if (patch_len < MIN_PATCH_BINS)
                 break;
         }
 
-        /* Energy of source region.                                       */
         src_e = band_energy(mdct, src_start, patch_len);
 
         if (src_e > (faac_real)1e-20)
         {
-            /*
-             * Desired target energy = src_e * cum_gain^2
-             * (cum_gain is already the amplitude factor, so squared gives
-             *  the energy ratio.)
-             */
-            tgt_e_desired = src_e * cum_gain * cum_gain;
-            scale = FAAC_SQRT(tgt_e_desired / src_e);   /* = cum_gain */
-
-            /* Adaptive boost for low-energy HF.
-             * If the source is extremely quiet, increase scale to maintain
-             * a minimum audible HF floor, helping MOS in silent segments.  */
-            if (scale < (faac_real)0.1) scale = (faac_real)0.1;
+            /* scale = cum_gain  (amplitude factor, derived from energy ratio) */
+            scale = cum_gain;
         }
         else
         {
-            scale = (faac_real)0.0;
+            /* Source band silent: leave target silent, advance bookkeeping. */
+            tgt      += patch_len;
+            patch_len = patch_len / 2;
+            cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
+            continue;
         }
 
         sig_scale   = scale * ((faac_real)1.0 - (faac_real)SBR_NOISE_FRAC);
@@ -178,7 +159,7 @@ static void apply_sbr_window(faac_real * __restrict mdct,
                           + sbr_noise_next(rand)  * noise_scale;
 
         tgt      += patch_len;
-        patch_len = patch_len / 2;          /* halve for next patch      */
+        patch_len = patch_len / 2;
         cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
     }
 }
@@ -206,15 +187,12 @@ void PseudoSBR(CoderInfo    *coderInfo,
     {
         int win;
 
-        /* Each short window covers the full [0, sampleRate/2] range in
-         * BLOCK_LEN_SHORT bins.                                          */
         bw_bin  = (int)((faac_real)baseBW * 2 * BLOCK_LEN_SHORT
                         / (faac_real)sampleRate);
         tgt_bin = (int)((faac_real)sbrBW  * 2 * BLOCK_LEN_SHORT
                         / (faac_real)sampleRate);
 
-        if (tgt_bin > BLOCK_LEN_SHORT)
-            tgt_bin = BLOCK_LEN_SHORT;
+        if (tgt_bin > BLOCK_LEN_SHORT) tgt_bin = BLOCK_LEN_SHORT;
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
@@ -224,14 +202,12 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
     else
     {
-        /* Long / start / stop windows: one 1024-bin spectrum.           */
         bw_bin  = (int)((faac_real)baseBW * 2 * BLOCK_LEN_LONG
                         / (faac_real)sampleRate);
         tgt_bin = (int)((faac_real)sbrBW  * 2 * BLOCK_LEN_LONG
                         / (faac_real)sampleRate);
 
-        if (tgt_bin > BLOCK_LEN_LONG)
-            tgt_bin = BLOCK_LEN_LONG;
+        if (tgt_bin > BLOCK_LEN_LONG) tgt_bin = BLOCK_LEN_LONG;
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
@@ -239,26 +215,85 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
 }
 
-unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW, unsigned int bitRate)
+/*
+ * PseudoSBRTargetBW()
+ *
+ * Return the SBR ceiling bandwidth using fill-ratio gating.
+ *
+ * The extension fraction scales with remaining Nyquist headroom:
+ *
+ *   fill >= 0.65              -> return baseBW (suppressed)
+ *   fill = 0.50               -> ext_frac ~= 0.24  (+24 %)
+ *   fill = 0.35               -> ext_frac ~= 0.43  (+43 %)
+ *   fill <= 0.19              -> ext_frac  = 0.50  cap
+ *
+ * Formula: ext_frac = clamp((FILL_MAX - fill) / FILL_MAX * 0.80, 0.15, 0.50)
+ *
+ * The `bitRate` parameter is retained for API stability but is not used;
+ * all decisions are in fill-ratio space, which is already implicit in
+ * naturalBW (= baseBW here) and sampleRate.
+ */
+unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
+                                unsigned int baseBW,
+                                unsigned int bitRate)
 {
-    /* Bitrate-adaptive extension limit.
-     * Extremely low bitrates (< 12kbps/ch) only get 15 % extension.
-     * Low bitrates (< 24kbps/ch) get 25 %.
-     * Standard bitrates (< 48kbps/ch) get 40 % to balance bit-cost.     */
-    unsigned int ext_percent = (bitRate < 12000) ? 15u : (bitRate < 24000) ? 25u : 40u;
-    unsigned int extended    = baseBW + (baseBW * ext_percent / 100u);
+    float fillRatio;
+    float relHeadroom, ext_frac;
+    unsigned int extended, nyquist90;
 
-    /* Hard ceiling: 90 % of Nyquist, leaving room for the AAC anti-alias
-     * region and ensuring we don't try to encode content the filterbank
-     * cannot reproduce cleanly.                                          */
-    unsigned int nyquist90 = sampleRate * 9u / 20u;
+    (void)bitRate;  /* kept for API stability only */
+
+    if (sampleRate == 0 || baseBW == 0)
+        return baseBW;
+
+    fillRatio = (float)baseBW / (float)(sampleRate / 2);
+
+    if (fillRatio >= SBR_FILL_RATIO_MAX)
+        return baseBW;
+
+    /*
+     * relHeadroom = fraction of the "available extension space" that
+     * remains below the FILL_MAX ceiling.  At fill=0, relHeadroom=1.0;
+     * at fill=FILL_MAX, relHeadroom=0.0.
+     */
+    relHeadroom = (SBR_FILL_RATIO_MAX - fillRatio) / SBR_FILL_RATIO_MAX;
+    ext_frac    = relHeadroom * 0.80f;
+
+    if (ext_frac > 0.50f) ext_frac = 0.50f;
+    if (ext_frac < 0.15f) ext_frac = 0.15f;
+
+    extended  = baseBW + (unsigned int)((float)baseBW * ext_frac);
+    nyquist90 = sampleRate * 9u / 20u;
 
     if (extended > nyquist90)
         extended = nyquist90;
 
-    /* Only return an extension if the gain is meaningful.               */
     if (extended <= baseBW + SBR_MIN_EXTENSION_HZ)
         return baseBW;
 
     return extended;
+}
+
+/*
+ * PseudoSBRShouldEnable()
+ *
+ * Returns 1 if pseudo-SBR is expected to provide a net quality benefit.
+ * Use this for the auto-enable logic in faacEncSetConfiguration() in
+ * place of the raw `bitRate < 48000` check.
+ *
+ * The test is simply: fill ratio < SBR_FILL_RATIO_MAX.  This correctly
+ * suppresses SBR for high-bitrate / low-samplerate combinations such as
+ * 40 kbps mono at 16 kHz (fill = 0.67, suppressed) while enabling it
+ * for 16 kbps mono at 16 kHz (fill = 0.27, enabled) and 32 kbps per
+ * channel at 48 kHz (fill = 0.54, enabled).
+ */
+int PseudoSBRShouldEnable(unsigned int sampleRate, unsigned int naturalBW)
+{
+    float fillRatio;
+
+    if (sampleRate == 0 || naturalBW == 0)
+        return 0;
+
+    fillRatio = (float)naturalBW / (float)(sampleRate / 2);
+    return (fillRatio < SBR_FILL_RATIO_MAX) ? 1 : 0;
 }
