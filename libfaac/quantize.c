@@ -25,6 +25,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "stereo.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -171,12 +172,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                   )
 {
     int sb;
-#if !defined(__clang__) && defined(__GNUC__) && (GCC_VERSION >= 40600)
-    /* 2^0.25 (1.50515 dB) step from AAC specs */
-    static const faac_real sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
-#else
-    static const faac_real sfstep = 20 / 1.50515;
-#endif
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
@@ -214,16 +209,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+              FAAC_LRINT(FAAC_LOG10(etot) * AAC_SF_STEP);
           coderInfo->bandcnt++;
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * (2.0 * AAC_SF_STEP));
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
-          sfacfix = FAAC_POW(10, sfac / sfstep);
+          sfacfix = FAAC_POW(10, sfac / (2.0 * AAC_SF_STEP));
 
       end -= start;
       xi = xitab;
