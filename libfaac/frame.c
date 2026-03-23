@@ -50,12 +50,6 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-// default bandwidth/samplerate ratio
-static const struct {
-    faac_real fac;
-    faac_real freq;
-} g_bw = {0.42, 18000};
-
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
 {
@@ -156,12 +150,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         return 0;
 #endif
 
-    if (config->bitRate && !config->bandWidth)
+    if (config->bitRate)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
-        if (config->bandWidth > g_bw.freq)
-            config->bandWidth = g_bw.freq;
-
         if (!config->quantqual)
         {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
@@ -174,19 +164,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->quantqual = DEFQUAL;
 
     hEncoder->config.bitRate = config->bitRate;
-
-    if (!config->bandWidth)
-    {
-        config->bandWidth = g_bw.fac * hEncoder->sampleRate;
-    }
-
     hEncoder->config.bandWidth = config->bandWidth;
-
-    // check bandwidth
-    if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
-    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->quantqual > maxqual)
         config->quantqual = maxqual;
@@ -194,6 +172,79 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->quantqual = MINQUAL;
 
     hEncoder->config.quantqual = config->quantqual;
+
+    /* Bitrate-dependent parameter interpolation (anchored 16k-128k).
+     * Tuning Guide:
+     * - NF (Noise Floor):  Lower = less quantization noise (more detail).
+     * - FAC (BW Factor):   Higher = extended spectral cutoff frequency.
+     * - POWM (Power Exp):  Lower = flatter masking curve (more transparency).
+     * - FP (Freq Penalty): Lower = better high-frequency sibilance retention. */
+    #define ANCHOR_LO  16000.0
+    #define ANCHOR_HI 128000.0
+
+    #define NF_LO    0.014
+    #define NF_HI    0.0008
+    #define FAC_LO   0.90
+    #define FAC_HI   0.99
+    #define POWM_LO  0.34
+    #define POWM_HI  0.37
+    #define FP_LO    0.60
+    #define FP_HI    0.55
+
+    faac_real t = (hEncoder->config.bitRate - (faac_real)ANCHOR_LO)
+                   / ((faac_real)ANCHOR_HI - (faac_real)ANCHOR_LO);
+    if (t < 0.0) t = 0.0;
+    if (t > 1.0) t = 1.0;
+
+    #define INTERP(lo, hi)      ((lo) + t * ((hi) - (lo)))
+    #define INTERP_LOG(lo, hi)  FAAC_POW((lo), 1.0-t) * FAAC_POW((hi), t)
+
+    faac_real nf   = INTERP_LOG(NF_LO,  NF_HI);
+    faac_real fac  = INTERP(FAC_LO,  FAC_HI);
+    faac_real powm = INTERP(POWM_LO, POWM_HI);
+    faac_real fp   = INTERP(FP_LO,   FP_HI);
+
+    #undef INTERP
+    #undef INTERP_LOG
+
+    hEncoder->aacquantCfg.noise_floor  = nf;
+    hEncoder->aacquantCfg.powm         = powm;
+    hEncoder->aacquantCfg.freq_penalty = fp;
+
+    #undef NF_LO
+    #undef NF_HI
+    #undef FAC_LO
+    #undef FAC_HI
+    #undef POWM_LO
+    #undef POWM_HI
+    #undef FP_LO
+    #undef FP_HI
+    #undef ANCHOR_LO
+    #undef ANCHOR_HI
+
+    /* Bandwidth resolution */
+    if (!hEncoder->config.bandWidth) {
+        faac_real nyquist      = (faac_real)hEncoder->sampleRate * 0.5;
+
+        /* Cap at 20 kHz: AAC does not efficiently encode near Nyquist */
+        faac_real maxBandwidth = (nyquist > 20000.0) ? 20000.0 : nyquist;
+        hEncoder->config.bandWidth = (unsigned int)(fac * maxBandwidth);
+
+        /* Prevents bandwidth falling below useful speech range.
+           Uses min(3500, 40% of Nyquist) to adapt to low sample rates. */
+        unsigned int bw_floor = 3500;
+        unsigned int sr_frac  = (unsigned int)(nyquist * 0.4);
+        if (sr_frac < bw_floor)
+            bw_floor = sr_frac;
+        if (hEncoder->config.bandWidth < bw_floor)
+            hEncoder->config.bandWidth = bw_floor;
+    }
+
+    /* Ensure bandwidth is within valid Nyquist limits */
+    if (hEncoder->config.bandWidth < 100)
+        hEncoder->config.bandWidth = 100;
+    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
+        hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -204,6 +255,22 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    /* Precalculate ABR factors */
+    if (hEncoder->config.bitRate) {
+        hEncoder->desbits = hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
+
+        /* Unified bitrate scaling factor: SQRT(64000 / bitRate) */
+        hEncoder->abr_scale = FAAC_SQRT(64000.0 / (faac_real)hEncoder->config.bitRate);
+        if (hEncoder->abr_scale < 0.8) hEncoder->abr_scale = 0.8;
+        if (hEncoder->abr_scale > 2.0) hEncoder->abr_scale = 2.0;
+
+        /* Adaptive responsiveness based on bitrate */
+        hEncoder->abr_responsiveness = 2.5 * hEncoder->abr_scale;
+        if (hEncoder->abr_responsiveness > 6.0) hEncoder->abr_responsiveness = 6.0;
+    }
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -254,6 +321,12 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
 
+    /* Initialize ABR state */
+    hEncoder->bit_reservoir = 0;
+    hEncoder->desbits = 0;
+    hEncoder->abr_scale = 1.0;
+    hEncoder->abr_responsiveness = 2.5;
+
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
     hEncoder->config.name = libfaacName;
@@ -265,7 +338,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
+    hEncoder->config.bandWidth = 0;
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
@@ -594,19 +667,28 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        /* ABR configuration constants */
+        const int min_frame_bits = 104; /* ~16kbps @ 16kHz mono floor */
+        const int reservoir_max_frames = 32; /* ~750ms @ 44.1kHz buffer */
+        const faac_real clamp_hi = 1.50; /* max 50% quality surge */
+        const faac_real clamp_lo = 0.67; /* max 33% quality cut */
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
+        int desbits = hEncoder->desbits;
+        int actual_bits = frameBytes * 8;
 
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        /* Bit reservoir management: include saved bits from previous frames */
+        int target_bits = desbits + hEncoder->bit_reservoir;
+
+        if (target_bits < min_frame_bits) target_bits = min_frame_bits;
+
+        faac_real fix = (faac_real)target_bits / (faac_real)actual_bits;
+
+        /* Apply precalculated adaptive responsiveness */
+        fix = (fix - 1.0) * hEncoder->abr_responsiveness + 1.0;
+
+        /* Safety clamps for quality adjustment factor - tightened to prevent oscillation */
+        if (fix > clamp_hi) fix = clamp_hi;
+        if (fix < clamp_lo) fix = clamp_lo;
 
         hEncoder->aacquantCfg.quality *= fix;
 
@@ -614,6 +696,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
+
+        /* Update reservoir: bits we intended to use vs bits we actually used */
+        hEncoder->bit_reservoir += (desbits - actual_bits);
+
+        /* Clamp reservoir to prevent massive wind-up */
+        int res_limit = reservoir_max_frames * desbits;
+        if (hEncoder->bit_reservoir > res_limit) hEncoder->bit_reservoir = res_limit;
+        if (hEncoder->bit_reservoir < -res_limit) hEncoder->bit_reservoir = -res_limit;
     }
 
     return frameBytes;
