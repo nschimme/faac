@@ -141,19 +141,34 @@ void AACstereo(CoderInfo *coder,
               )
 {
     int chn;
+
+    /* 1. Fast State Reset (Mandatory for both Mono and Stereo to prevent stale data in BlocQuant) */
+    for (chn = 0; chn < maxchan; chn++)
+    {
+        if (!channel[chn].present) continue;
+        CoderInfo *cp = &coder[chn];
+        int total_bands = cp->groups.n * cp->sfbn;
+        int * __restrict book = cp->book;
+        int * __restrict sf = cp->sf;
+        for (int i = 0; i < total_bands; i++)
+        {
+            book[i] = HCB_NONE;
+            sf[i] = 0;
+        }
+    }
+
+    /* 2. Early Exit for Mono or Joint-Disabled streams to recover throughput */
+    if (maxchan < 2 || mode == JOINT_NONE)
+        return;
+
+    /* 3. Perceptual Threshold Logic (Only for Stereo Joint modes) */
     static const faac_real thr075 = MS_THR_BASE - 1.0;
     static const faac_real thrmax = MS_THR_MAX - 1.0;
     static const faac_real sidemin = SIDE_THR_MIN;
     static const faac_real sidemax = SIDE_THR_MAX;
     static const faac_real isthrmax = M_SQRT2 - 1.0;
-    faac_real thrmid, thrside;
-    faac_real isthr;
+    faac_real thrmid = 1.0, thrside = 0.0, isthr = 1.0;
 
-    thrmid = 1.0;
-    thrside = 0.0;
-    isthr = 1.0;
-
-    /* Define perceptual thresholds based on requested quality and mode. */
     switch (mode)
     {
     case JOINT_MS:
@@ -198,9 +213,6 @@ void AACstereo(CoderInfo *coder,
     thrmid *= thrmid;
     thrside *= thrside;
     isthr *= isthr;
-
-    if (mode == JOINT_NONE)
-        return;
 
     for (chn = 0; chn < maxchan; chn++)
     {
