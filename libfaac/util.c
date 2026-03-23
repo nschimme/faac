@@ -1,6 +1,7 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2001 Menno Bakker
+ * Copyright (C) 2008 Konstantin Shishkov (Portions ported from FFmpeg libavcodec/aacpsy.c)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,6 +53,26 @@ unsigned int MaxBitrate(unsigned long sampleRate)
 unsigned int MinBitrate()
 {
     return 8000;
+}
+
+/* Calculates the frequency cutoff for the AAC encoder */
+unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
+{
+    /* If no bitrate is specified, default to the Nyquist frequency */
+     unsigned int nyquist = sampleRate / 2;
+    if (bitRate == 0) {
+        return nyquist;
+    }
+
+    /* Intercept at 4kHz provides a baseline for "Wideband" telephony quality */
+    unsigned int limit_low  = 4000  + (bitRate / 8);
+    /* Prevents the encoder from "bit-starving" the mid-bands */
+    unsigned int limit_high = 12000 + (bitRate / 32);
+
+    /* Select the most restrictive constraint (The "Knee" in the curve) */
+    unsigned int cutoff = (limit_low < limit_high) ? limit_low : limit_high;
+
+    return (cutoff > nyquist) ? nyquist : cutoff;
 }
 
 /* Calculate bit_allocation based on PE */

@@ -50,6 +50,7 @@ extern "C" {
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
+unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate);
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
 unsigned int BitAllocation(faac_real pe, int short_block);
 
