@@ -126,30 +126,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.shortctl = config->shortctl;
 
     hEncoder->config.usePseudoSBR = config->usePseudoSBR;
-
-    /* Handle the sentinel value 2 = "force off" from the CLI --sbr 0 flag. */
-    if (config->usePseudoSBR == 2) {
+    /* Sentinel 2 = "force off" from --sbr 0. Translate immediately. */
+    if (hEncoder->config.usePseudoSBR == 2)
         hEncoder->config.usePseudoSBR = 0;
-    }
-
-    /*
-     * Auto-enable: only when the natural encoder bandwidth covers less
-     * than 65 % of Nyquist.  A raw bitrate threshold is wrong here
-     * because it is sample-rate-agnostic:
-     *
-     *   40 kbps / 16 kHz -> fill = 0.67  -> suppressed (was broken)
-     *   16 kbps / 16 kHz -> fill = 0.27  -> enabled    (correct)
-     *   32 kbps / 48 kHz -> fill = 0.54  -> enabled    (correct)
-     *
-     * We read config->bandWidth here because it reflects the
-     * bitrate-derived value computed just above this block, BEFORE any
-     * SBR expansion.
-     */
-    if (config->usePseudoSBR == 0 && config->bitRate > 0) {
-        unsigned int naturalBW = (unsigned int)config->bandWidth;
-        if (PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
-            hEncoder->config.usePseudoSBR = 1;
-    }
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
@@ -230,6 +209,21 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    /*
+     * Auto-enable pseudo-SBR now that config->bandWidth has been derived
+     * from the bitrate.  Reading it any earlier gives 0 (the unset default),
+     * which makes PseudoSBRShouldEnable() always return 0.
+     *
+     *   40 kbps / 16 kHz: fill = 5376/8000 = 0.67  -> suppressed
+     *   16 kbps / 16 kHz: fill = 2150/8000 = 0.27  -> enabled
+     *   32 kbps / 48 kHz: fill = 12902/24000 = 0.54 -> enabled
+     */
+    if (hEncoder->config.usePseudoSBR == 0 && config->bitRate > 0) {
+        unsigned int naturalBW = (unsigned int)hEncoder->config.bandWidth;
+        if (PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
+            hEncoder->config.usePseudoSBR = 1;
+    }
 
     /* ── Pseudo-SBR bandwidth extension ─────────────────────────────── */
     if (hEncoder->config.usePseudoSBR)
