@@ -50,11 +50,47 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-// default bandwidth/samplerate ratio
-static const struct {
-    faac_real fac;
-    faac_real freq;
-} g_bw = {0.42, 18000};
+/* Bitrate-to-bandwidth mapping, per channel bps → Hz.
+ * Bandwidth grows roughly as log(bitrate): equal perceptual gain per octave
+ * of added bitrate. Linear interpolation over the table is log-linear in
+ * practice because the table x-axis is already quasi-logarithmic.         */
+static unsigned int calc_auto_bandwidth(unsigned long bps_per_ch,
+                                        unsigned long samplerate)
+{
+    static const struct { unsigned int br; unsigned int bw; } tbl[] = {
+        {  8000,  4000 },
+        { 12000,  6000 },
+        { 16000,  8000 },
+        { 22000,  9800 },
+        { 32000, 13500 },
+        { 40000, 16000 },
+        { 48000, 17500 },
+        { 56000, 18500 },
+        { 64000, 19000 },
+        { 80000, 19500 },
+        { 96000, 20000 },
+        {128000, 20000 },
+    };
+    enum { NTBL = (int)(sizeof(tbl) / sizeof(tbl[0])) };
+
+    faac_real nyq = (faac_real)samplerate * 0.5;
+
+    if (bps_per_ch <= tbl[0].br)
+        return (unsigned int)min((faac_real)tbl[0].bw, nyq);
+    if (bps_per_ch >= tbl[NTBL-1].br)
+        return (unsigned int)min((faac_real)tbl[NTBL-1].bw, nyq);
+
+    for (int i = 1; i < NTBL; i++) {
+        if (bps_per_ch <= tbl[i].br) {
+            /* Log interpolation between table entries */
+            faac_real t = FAAC_LOG10((faac_real)bps_per_ch  / tbl[i-1].br)
+                        / FAAC_LOG10((faac_real)tbl[i].br    / tbl[i-1].br);
+            faac_real bw = tbl[i-1].bw + t * (faac_real)(tbl[i].bw - tbl[i-1].bw);
+            return (unsigned int)min(bw, nyq);
+        }
+    }
+    return (unsigned int)min((faac_real)tbl[NTBL-1].bw, nyq);
+}
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
@@ -156,12 +192,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         return 0;
 #endif
 
-    if (config->bitRate && !config->bandWidth)
+    if (config->bitRate)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
-        if (config->bandWidth > g_bw.freq)
-            config->bandWidth = g_bw.freq;
-
         if (!config->quantqual)
         {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
@@ -173,20 +205,57 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
-    hEncoder->config.bitRate = config->bitRate;
+    hEncoder->config.bitRate  = config->bitRate;
+    hEncoder->config.quantqual = config->quantqual;
 
-    if (!config->bandWidth)
+    /* ---------------------------------------------------------------
+     * Bitrate-dependent psychoacoustic parameters.
+     * Interpolation anchor: 16 kbps/ch (t=0) → 128 kbps/ch (t=1).
+     * Log scale because perceptual gain per added bit is roughly
+     * constant per doubling of bitrate.
+     *
+     * noise_floor:    silence gate in linear amplitude (16-bit reference).
+     *   -98 dBFS at 16 kbps: matches original NOISEFLOOR=0.4, saves bits.
+     *   -116 dBFS at 128 kbps: preserves quiet passages for transparency.
+     *
+     * powm:           masking curve exponent.
+     *   0.38 at low br: stronger contrast between loud/quiet bands.
+     *   0.32 at high br: flatter, more uniform, more transparent.
+     *   Narrower range than patch (0.27–0.30) to avoid bass coloration.
+     *
+     * masking_mult:   replaces hardcoded 10.0 in the masking target formula.
+     *   11.0–13.0 keeps initial frame sizes within ≈20% of target, which
+     *   is the stable convergence range for FAAC's rate-control damping of
+     *   fix=(fix-1)*0.5+1.  Values above ~15 cause multi-frame overshoot.
+     * --------------------------------------------------------------- */
     {
-        config->bandWidth = g_bw.fac * hEncoder->sampleRate;
+        unsigned long bps = hEncoder->config.bitRate
+                          / (hEncoder->numChannels ? hEncoder->numChannels : 1);
+        faac_real t = (FAAC_LOG10((faac_real)bps)      - FAAC_LOG10(16000.0))
+                    / (FAAC_LOG10(128000.0) - FAAC_LOG10(16000.0));
+        if (t < 0.0) t = 0.0;
+        if (t > 1.0) t = 1.0;
+
+        /* noise_floor: log-interpolate in dB space then convert to linear */
+        faac_real nf_db = -98.0 - 18.0 * t;   /* -98 dBFS → -116 dBFS */
+        hEncoder->aacquantCfg.noise_floor  = 32767.0 * FAAC_POW(10.0, nf_db / 20.0);
+
+        hEncoder->aacquantCfg.powm         = 0.38 - 0.06 * t;  /* 0.38 → 0.32 */
+        hEncoder->aacquantCfg.masking_mult = 11.0 +  2.0 * t;  /* 11.0 → 13.0 */
     }
 
-    hEncoder->config.bandWidth = config->bandWidth;
+    /* Bandwidth: auto-compute per-channel if caller left it at zero */
+    if (!hEncoder->config.bandWidth) {
+        unsigned long bps = hEncoder->config.bitRate
+                          / (hEncoder->numChannels ? hEncoder->numChannels : 1);
+        hEncoder->config.bandWidth = calc_auto_bandwidth(bps, hEncoder->sampleRate);
+    }
 
-    // check bandwidth
+    /* Clamp to valid Nyquist range */
     if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
+        hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
+        hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->quantqual > maxqual)
         config->quantqual = maxqual;
@@ -264,8 +333,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
-    hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
+    hEncoder->config.bitRate  = 64000;
+    /* Use total bitrate (not per-channel) for the initial default so callers
+     * that never call SetConfiguration get a wide, safe bandwidth. */
+    hEncoder->config.bandWidth = calc_auto_bandwidth(
+        hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
