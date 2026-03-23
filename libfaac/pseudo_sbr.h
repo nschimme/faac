@@ -20,12 +20,7 @@ extern "C" {
 #include "coder.h"
 #include "faac_real.h"
 
-/*
- * PseudoSBR()
- *   Apply encoder-side spectral extension to one channel.
- *   Call after FilterBank() + AACstereo(), before BlocQuant().
- *   Skip LFE channels.
- */
+/* Apply SBR extension to one channel. */
 void PseudoSBR(CoderInfo       *coderInfo,
                faac_real       *freqBuff,
                unsigned int     sampleRate,
@@ -33,25 +28,12 @@ void PseudoSBR(CoderInfo       *coderInfo,
                unsigned int     sbrBW,
                unsigned int    *rand);
 
-/*
- * PseudoSBRTargetBW()
- *   Return the SBR ceiling bandwidth.  Uses fill-ratio gating; the
- *   `bitRate` parameter is retained for API stability but is unused.
- *   Returns baseBW when no beneficial extension is possible.
- */
+/* Calculate SBR target bandwidth. */
 unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate);
 
-/*
- * PseudoSBRShouldEnable()
- *   Returns 1 if pseudo-SBR is expected to improve quality given the
- *   encoder's natural bandwidth and sample rate.
- *
- *   Use this in faacEncSetConfiguration() for the auto-enable decision
- *   instead of a raw bitrate threshold.  `naturalBW` is the value of
- *   hEncoder->config.bandWidth BEFORE any SBR expansion.
- */
+/* Returns 1 if SBR should be enabled. */
 int PseudoSBRShouldEnable(unsigned int sampleRate, unsigned int naturalBW);
 
 #ifdef __cplusplus

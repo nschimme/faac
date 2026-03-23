@@ -23,35 +23,7 @@
 #include "faac_real.h"
 #include "util.h"
 
-/* -----------------------------------------------------------------------
- * Design constants
- *
- * SBR_FILL_RATIO_MAX (0.65)
- *   The maximum fraction of Nyquist the natural encoder bandwidth may
- *   already occupy before pseudo-SBR is suppressed.
- *
- *   Derivation: the encoder formula gives
- *     naturalBW = bitRate * sampleRate * 0.42 / 50000
- *   Dividing by (sampleRate/2):
- *     fillRatio  = bitRate * 0.42 / 25000  =  bitRate / 59524
- *
- *   fillRatio = 0.65  <=>  bitRate ~= 38700 bps
- *
- *   At 16 kHz / 40 kbps: fillRatio = 5376 / 8000 = 0.672  -> suppressed
- *   At 16 kHz / 16 kbps: fillRatio = 2150 / 8000 = 0.269  -> enabled
- *   At 48 kHz / 32 kbps: fillRatio = 12902/24000 = 0.538  -> enabled
- *
- * SBR_PATCH_ROLLOFF (~-9 dB = 0.354)
- *   Each successive patch drops by 9 dB to minimise bit-cost of the
- *   patched region while keeping it above the decoder noise floor.
- *
- * SBR_NOISE_FRAC (0.12)
- *   12 % of patch amplitude replaced with white noise to de-correlate
- *   the spectral copy and prevent pitch-periodicity artifacts.
- *
- * SBR_MIN_EXTENSION_HZ (500)
- *   Minimum worthwhile extension; narrower gaps are ignored.
- * --------------------------------------------------------------------- */
+/* SBR design constants */
 
 #define MAX_SBR_PATCHES      4
 #define MIN_PATCH_BINS       16
@@ -88,20 +60,7 @@ static faac_real band_energy(const faac_real * __restrict mdct,
     return e;
 }
 
-/* -----------------------------------------------------------------------
- * apply_sbr_window()
- *
- * Fill [bw_bin, tgt_bin) with energy-normalised, noise-dithered copies
- * of the top octave of the coded bandwidth.
- *
- * Source: always re-read from [bw_bin - patch_len, bw_bin).
- * Cascading through already-patched bins compounds quantisation noise.
- *
- * IMPORTANT: there is no minimum scale floor.  If the source band is
- * silent, the target band stays silent.  A forced floor would inject
- * constant artificial noise during pauses above baseBW, which speech
- * quality metrics (PESQ, WARP) score as heavy distortion.
- * --------------------------------------------------------------------- */
+/* Fill [bw_bin, tgt_bin) with noise-dithered copies of the coded bandwidth. */
 static void apply_sbr_window(faac_real * __restrict mdct,
                              int bw_bin, int tgt_bin,
                              unsigned int *rand)
@@ -215,40 +174,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
 }
 
-/*
- * PseudoSBRTargetBW()
- *
- * Return the SBR ceiling bandwidth.
- *
- * Two-stage decision:
- *
- * Stage 1 – Fill-ratio gate (suppression).
- *   If the encoder already covers >= 65 % of Nyquist, pseudo-SBR will
- *   starve core bands and is suppressed unconditionally.  This is the
- *   fix for the VSS regression (16 kHz / 40 kbps: fill = 0.67).
- *
- *   The 65 % threshold maps to ~38.7 kbps regardless of sample rate:
- *     fill = bitRate * 0.42 / 25000  =>  0.65 @ bitRate ≈ 38,690 bps
- *
- * Stage 2 – Bitrate-tier extension amount.
- *   Once SBR is permitted, the extension fraction is chosen from a
- *   three-tier table that was validated empirically:
- *
- *     bitRate < 12 kbps  →  15 %   (very tight budget, tiny lift)
- *     bitRate < 24 kbps  →  25 %   (VoIP: 2150→2688 Hz, +0.22 MOS)
- *     bitRate >= 24 kbps →  40 %   (music_low: 12900→18060 Hz, +0.29 MOS)
- *
- *   Using fill-ratio for the extension AMOUNT (instead of this table)
- *   caused the VoIP regression: fill=0.27 mapped to 47% extension
- *   (→ 3158 Hz) instead of 25% (→ 2688 Hz), costing ~1008 extra Hz at
- *   16 kbps and starving the 1–2 kHz formant range that PESQ weights
- *   most heavily.
- *
- *   Results:
- *     VoIP  (16 kHz / 16 kbps): fill=0.27, 25% → +0.22 MOS  ✓
- *     music_low (48 kHz / 32 kbps/ch): fill=0.54, 40% → +0.29 MOS  ✓
- *     VSS   (16 kHz / 40 kbps): fill=0.67 → suppressed  ✓
- */
+/* Calculate SBR target bandwidth based on bitrate and fill-ratio. */
 unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate)
@@ -285,19 +211,7 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
     return extended;
 }
 
-/*
- * PseudoSBRShouldEnable()
- *
- * Returns 1 if pseudo-SBR is expected to provide a net quality benefit.
- * Use this for the auto-enable logic in faacEncSetConfiguration() in
- * place of the raw `bitRate < 48000` check.
- *
- * The test is simply: fill ratio < SBR_FILL_RATIO_MAX.  This correctly
- * suppresses SBR for high-bitrate / low-samplerate combinations such as
- * 40 kbps mono at 16 kHz (fill = 0.67, suppressed) while enabling it
- * for 16 kbps mono at 16 kHz (fill = 0.27, enabled) and 32 kbps per
- * channel at 48 kHz (fill = 0.54, enabled).
- */
+/* Returns 1 if SBR is beneficial for the current configuration. */
 int PseudoSBRShouldEnable(unsigned int sampleRate, unsigned int naturalBW)
 {
     float fillRatio;
