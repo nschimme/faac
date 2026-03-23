@@ -72,22 +72,33 @@ static struct {
 } frames;
 #endif
 
-static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
+static void PsyCheckShort(PsyInfo *psyInfo, faac_real quality)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;
   int lastband = psydata->lastband;
+  /* Skipping the first two bands ignores DC offset and low-frequency rumble
+     which rarely contribute to perceived transient 'sharpness' */
   int firstband = 2;
   int sfb, win;
   psyfloat *lasteng;
 
+  /* Default to stationary signal assumption; short windows cost more bits
+     and sacrifice frequency resolution */
   psyInfo->block_type = ONLY_LONG_WINDOW;
+
+  /* Floating threshold based on 'quality' (bitrate). Higher quality settings
+     tighten the threshold to favor short windows and avoid smearing */
+  faac_real transient_thr = 3.0 - quality;
+  if (transient_thr < 2.0) transient_thr = 2.0;
+  if (transient_thr > 3.0) transient_thr = 3.0;
 
   lasteng = NULL;
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
   {
       psyfloat *eng;
 
+      /* Sliding window over current, previous, and look-ahead energy buffers */
       if (win < PREVS)
           eng = psydata->engPrev[win + 8 - PREVS];
       else if (win < (PREVS + 8))
@@ -102,11 +113,18 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 
           for (sfb = firstband; sfb < lastband; sfb++)
           {
+              /* 'toteng' uses the floor of the two windows to normalize
+                 relative energy flux without being spiked by the transient itself */
               toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
+              /* Sum of absolute differences captures spectral flux;
+                 high change across bands indicates a temporal 'edge' */
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          /* The 'Attack' Detection: If the normalized energy change exceeds the
+             thr, we switch to short windows to keep the quantization noise
+             within the temporal masking window of the transient */
+          if (toteng > 0.0 && (volchg / toteng * quality) > transient_thr)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;
