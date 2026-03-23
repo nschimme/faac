@@ -24,6 +24,15 @@
 #include "huff2.h"
 #include "util.h"
 
+/* Perceptual Decision Thresholds (Empirical) */
+#define MS_THR_BASE 1.09       /* ~0.75dB margin for M/S coding gain */
+#define MS_THR_MAX  1.25       /* ~2.00dB clamp to prevent spatial 'breathing' */
+#define SIDE_THR_MIN 0.1       /* -20dB noise floor for side-channel zeroing */
+#define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
+#define IS_THR_COHERENCE 0.18  /* 18% energy leakage margin for IS (Iter 21) */
+#define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
+#define ENERGY_EPSILON 1e-9    /* Silence floor to prevent div-by-zero */
+
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
 /**
@@ -101,7 +110,13 @@ static inline void apply_lr(ChannelInfo *channel, faac_real * restrict sl0, faac
 {
     channel->msInfo.ms_used[sfcnt] = 0;
 
-    /* Side-channel zeroing: If one channel is significantly dominant, mask the other to save bits. */
+    /**
+     * Side-channel zeroing (Masking):
+     * If one channel is significantly dominant (L >> R or R >> L), we zero the quieter channel
+     * to recover the bit reservoir for the dominant channel. This assumes the spatial imaging
+     * is already collapsed to one side perceptually, so side-information bits are better
+     * reinvested in core quantization.
+     */
     if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
     {
         for (int win = start_win; win < end_win; win++)
@@ -126,10 +141,10 @@ void AACstereo(CoderInfo *coder,
               )
 {
     int chn;
-    static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
-    static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
+    static const faac_real thr075 = MS_THR_BASE - 1.0;
+    static const faac_real thrmax = MS_THR_MAX - 1.0;
+    static const faac_real sidemin = SIDE_THR_MIN;
+    static const faac_real sidemax = SIDE_THR_MAX;
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
@@ -155,14 +170,14 @@ void AACstereo(CoderInfo *coder,
         break;
     case JOINT_IS:
         /**
-         * Intensity Stereo Phase-Coherence Threshold (0.18):
+         * Intensity Stereo Phase-Coherence Threshold (IS_THR_COHERENCE):
          * This value represents the maximum allowable energy loss ratio when collapsing L/R to Mono.
          * For perfectly in-phase signals, (L+R)^2 == (|L|+|R|)^2. As phase diverges, (L+R)^2 decreases.
          * A threshold of 1.18 (at quality=1.0) allows for ~18% 'energy leakage' due to phase
          * misalignment before falling back to M/S or L/R. This was empirically found to be the
          * "optimal knee" in the quality-vs-bitrate curve during Iteration 21 of development.
          */
-        isthr = 0.18 / (quality * quality);
+        isthr = IS_THR_COHERENCE / (quality * quality);
         if (isthr > isthrmax)
             isthr = isthrmax;
 
@@ -173,7 +188,7 @@ void AACstereo(CoderInfo *coder,
     if (mode == JOINT_MIXED)
     {
         /* Optimized Mixed Mode IS threshold (Iter 21) */
-        faac_real m_isthr = 0.18 / (quality * quality);
+        faac_real m_isthr = IS_THR_COHERENCE / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
@@ -261,7 +276,7 @@ void AACstereo(CoderInfo *coder,
                 int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
                 // 1. Evaluate Intensity Stereo
-                if ((mode == JOINT_IS || mode == JOINT_MIXED) && efix > 1e-9)
+                if ((mode == JOINT_IS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
@@ -271,15 +286,28 @@ void AACstereo(CoderInfo *coder,
 
                     if (hcb != HCB_NONE)
                     {
+                        /**
+                         * Intensity Stereo Pan Calculation:
+                         * The intensity magnitude is stored in the Left scalefactor, while the
+                         * relative panning position (pan) is derived from the energy ratio.
+                         * We clamp the pan to the valid AAC-LC scalefactor range to prevent
+                         * bitstream overflows.
+                         */
                         sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
-                        if (pan <= 30 && pan >= -30) use_is = 1;
+                        if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX) use_is = 1;
                         else hcb = HCB_NONE;
                     }
                 }
 
-                // 2. Evaluate M/S
-                if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > 1e-9)
+                /**
+                 * 2. Evaluate M/S Coding:
+                 * Mid/Side coding is beneficial if the sum (Mid) or difference (Side) signals
+                 * have significantly lower energy than the individual L/R channels, or if
+                 * the channels are highly correlated. We use 'destructive' phase-collapse
+                 * logic where we only transmit the dominant phase to save bits.
+                 */
+                if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
                 {
                     faac_real thr_m = enrgs_norm * thrmid * 2.0;
                     faac_real thr_d = enrgd_norm * thrmid * 2.0;
