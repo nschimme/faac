@@ -72,54 +72,60 @@ static struct {
 } frames;
 #endif
 
-static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
+static void PsyCheckShort(PsyInfo *psyInfo, faac_real quality)
 {
-  enum {PREVS = 2, NEXTS = 2};
-  psydata_t *psydata = psyInfo->data;
-  int lastband = psydata->lastband;
-  int firstband = 2;
-  int sfb, win;
-  psyfloat *lasteng;
+    enum {PREVS = 2, NEXTS = 2};
+    psydata_t *psydata = psyInfo->data;
+    int lastband = psydata->lastband;
+    int firstband = 2;
+    int sfb, win;
+    psyfloat *lasteng;
 
-  psyInfo->block_type = ONLY_LONG_WINDOW;
+    psyInfo->block_type = ONLY_LONG_WINDOW;
 
-  lasteng = NULL;
-  for (win = 0; win < PREVS + 8 + NEXTS; win++)
-  {
-      psyfloat *eng;
+    /* Quality-adaptive threshold.
+     * At quality=1.0 (DEFQUAL/DEFQUAL): threshold = 2.0 → catches soft transients.
+     * At quality=0.4 (clamped floor):   threshold = 2.6 → less aggressive.
+     * Short blocks cost proportionally more bits at low bitrates, so backing off
+     * slightly there is correct. Clamp ensures we never go below 2.0 regardless
+     * of how high quality climbs in rate-control overshoot. */
+    faac_real transient_thr = 3.0 - quality;
+    if (transient_thr < 2.0) transient_thr = 2.0;
+    if (transient_thr > 3.0) transient_thr = 3.0;
 
-      if (win < PREVS)
-          eng = psydata->engPrev[win + 8 - PREVS];
-      else if (win < (PREVS + 8))
-          eng = psydata->eng[win - PREVS];
-      else
-          eng = psydata->engNext[win - PREVS - 8];
+    lasteng = NULL;
+    for (win = 0; win < PREVS + 8 + NEXTS; win++)
+    {
+        psyfloat *eng;
 
-      if (lasteng)
-      {
-          faac_real toteng = 0.0;
-          faac_real volchg = 0.0;
+        if (win < PREVS)
+            eng = psydata->engPrev[win + 8 - PREVS];
+        else if (win < (PREVS + 8))
+            eng = psydata->eng[win - PREVS];
+        else
+            eng = psydata->engNext[win - PREVS - 8];
 
-          for (sfb = firstband; sfb < lastband; sfb++)
-          {
-              toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
-              volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
-          }
+        if (lasteng)
+        {
+            faac_real toteng = 0.0;
+            faac_real volchg = 0.0;
 
-          if ((volchg / toteng * quality) > 3.0)
-          {
-              psyInfo->block_type = ONLY_SHORT_WINDOW;
-              break;
-          }
-      }
-      lasteng = eng;
-  }
+            for (sfb = firstband; sfb < lastband; sfb++)
+            {
+                toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
+                volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
+            }
 
-#if PRINTSTAT
-  frames.tot++;
-  if (psyInfo->block_type == ONLY_SHORT_WINDOW)
-      frames.s++;
-#endif
+            /* Guard: original and patch both divide unconditionally.
+             * A silent frame produces toteng=0 → undefined behaviour. */
+            if (toteng > 0.0 && (volchg / toteng * quality) > transient_thr)
+            {
+                psyInfo->block_type = ONLY_SHORT_WINDOW;
+                break;
+            }
+        }
+        lasteng = eng;
+    }
 }
 
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
