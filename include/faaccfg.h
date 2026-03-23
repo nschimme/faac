@@ -130,7 +130,7 @@ typedef struct faacEncConfiguration
 
     /* Enable encoder-side pseudo-SBR (spectral extension).
      * Compatible with every standard AAC decoder; no HE-AAC support is needed.
-     * 0: auto-detect (default), 1: forced on, 2: forced off.           */
+     * 1: enabled (default/auto), 0: disabled.                          */
     unsigned int usePseudoSBR;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 

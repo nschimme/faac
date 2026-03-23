@@ -207,24 +207,41 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
 
-    /* Auto-enable pseudo-SBR if set to 0 (auto) */
-    if (hEncoder->config.usePseudoSBR == 0 && config->bitRate > 0) {
-        unsigned int naturalBW = (unsigned int)hEncoder->config.bandWidth;
-        if (PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
-            hEncoder->config.usePseudoSBR = 1;
-    }
+    /* Snap core bandwidth to SFB boundaries BEFORE establishing SBR source. */
+    CalcBW(&hEncoder->config.bandWidth,
+              hEncoder->sampleRate,
+              hEncoder->srInfo,
+              &hEncoder->aacquantCfg);
 
-    /* Pseudo-SBR bandwidth extension */
+    /* Pseudo-SBR bandwidth extension (Enabled/Auto-detect if 1) */
     if (hEncoder->config.usePseudoSBR == 1)
     {
-        hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
+        unsigned int naturalBW = (unsigned int)hEncoder->config.bandWidth;
 
-        unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
-                                                hEncoder->baseBandWidth,
-                                                (unsigned int)hEncoder->config.bitRate);
-        if (sbrBW > hEncoder->baseBandWidth)
+        /* Verify that SBR is beneficial for this bitrate/bandwidth */
+        if (config->bitRate > 0 && PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
         {
-            hEncoder->config.bandWidth = sbrBW;
+            /* Use the SNAPPED bandwidth as the SBR source ceiling. */
+            hEncoder->baseBandWidth = naturalBW;
+
+            unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
+                                                    hEncoder->baseBandWidth,
+                                                    (unsigned int)hEncoder->config.bitRate);
+            if (sbrBW > hEncoder->baseBandWidth)
+            {
+                /* Expand bandwidth for the SBR region and re-run CalcBW to
+                 * update quantization limits (max_cbl/max_cbs). */
+                hEncoder->config.bandWidth = sbrBW;
+                CalcBW(&hEncoder->config.bandWidth,
+                          hEncoder->sampleRate,
+                          hEncoder->srInfo,
+                          &hEncoder->aacquantCfg);
+            }
+            else
+            {
+                hEncoder->baseBandWidth = 0;
+                hEncoder->config.usePseudoSBR = 0;
+            }
         }
         else
         {
@@ -236,11 +253,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     {
         hEncoder->baseBandWidth = 0;
     }
-
-    CalcBW(&hEncoder->config.bandWidth,
-              hEncoder->sampleRate,
-              hEncoder->srInfo,
-              &hEncoder->aacquantCfg);
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
@@ -345,8 +357,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
-    /* Pseudo-SBR defaults */
-    hEncoder->config.usePseudoSBR = 0;
+    /* Pseudo-SBR defaults (1: Enabled/Auto) */
+    hEncoder->config.usePseudoSBR = 1;
     hEncoder->baseBandWidth       = 0;
     hEncoder->sbrRandState        = 0xDEADBEEFu ^ (sampleRate * 31337u);
 

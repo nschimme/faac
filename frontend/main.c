@@ -464,7 +464,7 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = SHORTCTL_NORMAL;
-    int sbr_opt = 0;
+    int sbr_opt = -1;
 
     FILE *outfile = NULL;
 
@@ -799,7 +799,7 @@ int main(int argc, char *argv[])
             pnslevel = atoi(optarg);
             break;
         case OPT_NO_SBR:
-            sbr_opt = 2;
+            sbr_opt = 0;
             break;
         case '?':
         default:
@@ -959,7 +959,7 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
-    if (sbr_opt)
+    if (sbr_opt >= 0)
         myFormat->usePseudoSBR = sbr_opt;
     myFormat->bandWidth = cutOff;
     myFormat->outputFormat = stream;
