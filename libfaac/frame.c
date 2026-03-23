@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -590,6 +591,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
+        /* Initialize book/sf for all channels to prevent stale data in BlocQuant */
+        int bookcnt = 0;
+        CoderInfo *cp = &coderInfo[channel];
+        for (int group = 0; group < cp->groups.n; group++)
+            for (int band = 0; band < cp->sfbn; band++)
+            {
+                cp->book[bookcnt] = HCB_NONE;
+                cp->sf[bookcnt] = 0;
+                bookcnt++;
+            }
+
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

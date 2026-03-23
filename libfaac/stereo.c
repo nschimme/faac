@@ -199,21 +199,6 @@ void AACstereo(CoderInfo *coder,
     thrside *= thrside;
     isthr *= isthr;
 
-    /* Initialize book and sf arrays for all present channels */
-    for (chn = 0; chn < maxchan; chn++)
-    {
-        if (!channel[chn].present) continue;
-        CoderInfo *cp = coder + chn;
-        int bookcnt = 0;
-        for (int group = 0; group < cp->groups.n; group++)
-            for (int band = 0; band < cp->sfbn; band++)
-            {
-                cp->book[bookcnt] = HCB_NONE;
-                cp->sf[bookcnt] = 0;
-                bookcnt++;
-            }
-    }
-
     if (mode == JOINT_NONE)
         return;
 
