@@ -54,6 +54,38 @@ unsigned int MinBitrate()
     return 8000;
 }
 
+/**
+ * Calculates the frequency cutoff (bandwidth) for the psychoacoustic model.
+ *
+ * This implementation provides a piecewise linear approximation of a logarithmic
+ * perceptual curve */
+unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
+{
+    const unsigned int nyquist = sampleRate / 2;
+    unsigned int bw;
+
+    if (!bitRate)
+        return nyquist;
+
+    if (bitRate <= 16000) {
+        /* Sub-VOIP: Linear ramp (125Hz/kbps) to preserve speech sibilance */
+        bw = 4000 + (bitRate / 8);
+    } else if (bitRate <= 64000) {
+        /* Transition: 250Hz/kbps slope
+         * Anchored at (16k, 6k) and (64k, 18k)
+         */
+        bw = 6000 + ((bitRate - 16000) / 4);
+    } else {
+        /* Perceptual Ceiling: 18kHz cap prevents bit-starvation of the
+         * sensitive 2-10kHz mid-band by discarding ultrasonic noise
+         */
+        bw = 18000;
+    }
+
+    /* Clamp to Shannon-Nyquist limit for low sample-rate inputs */
+    return (bw > nyquist) ? nyquist : bw;
+}
+
 /* Calculate bit_allocation based on PE */
 unsigned int BitAllocation(faac_real pe, int short_block)
 {

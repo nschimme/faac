@@ -50,12 +50,6 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-// default bandwidth/samplerate ratio
-static const struct {
-    faac_real fac;
-    faac_real freq;
-} g_bw = {0.42, 18000};
-
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
 {
@@ -158,9 +152,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = (faac_real)config->bitRate * hEncoder->sampleRate * g_bw.fac / 50000.0;
-        if (config->bandWidth > g_bw.freq)
-            config->bandWidth = g_bw.freq;
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
 
         if (!config->quantqual)
         {
@@ -177,7 +169,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = g_bw.fac * hEncoder->sampleRate;
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
@@ -265,7 +257,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = g_bw.fac * hEncoder->sampleRate;
+    hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
