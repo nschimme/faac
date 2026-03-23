@@ -83,3 +83,13 @@ Final advanced experiments were conducted to test library-wide interactions:
 - **Experiment H: PE-based M/S Gating**: Used block-switch perceptual entropy to gate M/S. Result: 0.000 MOS Δ.
 
 **Final Result**: After 5 phases of research and 45+ iterations, the unified Mixed Mode loop with the Iteration 21 thresholds remains the best verified implementation for quality and stability.
+
+## PHASE 6: TECHNICAL CORRECTION & PRIORITY OPTIMIZATION
+Based on expert technical feedback, Phase 6 focused on architectural correctness and priority tuning:
+
+- **Threshold Math Correction**: Resolved a major scaling bug where Mixed Mode thresholds were being squared and offset incorrectly, resulting in ~43x permissive IS activation. Restored correct linear energy ratios.
+- **Priority Reordering**: Swapped evaluation order to M/S-first, followed by IS. This prioritizes inter-channel phase preservation for common music signals.
+- **Spec Compliance**: Ensured `apply_is` zero-fills the Right channel spectral data as required by the AAC-LC spec for Intensity Stereo.
+- **State Robustness**: Fixed a stale-state bug by resetting `is_present` markers early in the CPE loop.
+
+**Result**: These changes solidify the "Mixed Mode" implementation as technically correct and spec-compliant, while maintaining the neutral MOS delta achieved in Phase 1.

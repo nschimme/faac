@@ -29,7 +29,7 @@
 #define MS_THR_MAX  1.25       /* ~2.00dB clamp to prevent spatial 'breathing' */
 #define SIDE_THR_MIN 0.1       /* -20dB noise floor for side-channel zeroing */
 #define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
-#define IS_THR_COHERENCE 0.18  /* 18% energy leakage margin for IS (Iter 21) */
+#define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS (Iter 21) */
 #define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
 #define ENERGY_EPSILON 1e-9    /* Silence floor to prevent div-by-zero */
 
@@ -59,13 +59,14 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
     for (int win = start_win; win < end_win; win++)
     {
         faac_real * __restrict sl = sl0 + win * BLOCK_LEN_SHORT;
-        const faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+        faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
         for (int l = start_bin; l < end_bin; l++)
         {
             faac_real lx = sl[l];
             faac_real rx = sr[l];
             faac_real val = (hcb == HCB_INTENSITY) ? (lx + rx) : (lx - rx);
             sl[l] = val * vfix;
+            sr[l] = 0.0; /* Zero Right spectral data as per AAC-LC spec for IS */
         }
     }
 }
@@ -184,11 +185,10 @@ void AACstereo(CoderInfo *coder,
         break;
     case JOINT_IS:
         /**
-         * Intensity Stereo Phase-Coherence Threshold (IS_THR_COHERENCE):
-         * A threshold of 1.18 (at quality=1.0) allows for ~18% 'energy leakage' due to phase
-         * misalignment before falling back to M/S or L/R.
+         * Intensity Stereo Phase-Coherence Threshold (IS_PHASE_LEAK_LIMIT):
+         * Margin allowed for phase misalignment before falling back to Mono tools.
          */
-        isthr = IS_THR_COHERENCE / (quality * quality);
+        isthr = IS_PHASE_LEAK_LIMIT / (quality * quality);
         if (isthr > isthrmax)
             isthr = isthrmax;
 
@@ -198,14 +198,14 @@ void AACstereo(CoderInfo *coder,
 
     if (mode == JOINT_MIXED)
     {
-        /* Optimized Mixed Mode IS threshold (Iter 21) */
-        faac_real m_isthr = IS_THR_COHERENCE / (quality * quality);
+        /* Optimized Mixed Mode IS threshold (slightly more permissive than pure IS) */
+        faac_real m_isthr = (IS_PHASE_LEAK_LIMIT * 1.5) / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
     }
 
-    // convert into energy
+    /* Convert perceptual thresholds to energy ratios. */
     thrmid *= thrmid;
     thrside *= thrside;
     isthr *= isthr;
@@ -218,6 +218,10 @@ void AACstereo(CoderInfo *coder,
         int rch = channel[chn].paired_ch;
         CoderInfo *cl = &coder[chn];
         CoderInfo *cr = &coder[rch];
+
+        /* Reset IS presence markers early to prevent stale state on skip. */
+        channel[chn].msInfo.is_present = 0;
+        channel[rch].msInfo.is_present = 0;
 
         if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n) continue;
 
@@ -269,8 +273,37 @@ void AACstereo(CoderInfo *coder,
                 faac_real enrgd_norm = 0.25 * enrgd_unnorm;
                 int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
-                // 1. Evaluate Intensity Stereo
-                if ((mode == JOINT_IS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
+                /**
+                 * 1. Evaluate M/S Coding:
+                 * Mid/Side coding is prioritized over IS to preserve inter-channel phase.
+                 * Benefit is calculated if the sum (Mid) or difference (Side) signals
+                 * have significantly lower energy than L/R or are highly correlated.
+                 */
+                if ((mode == JOINT_MS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
+                {
+                    faac_real mid_w = enrgs_norm * thrmid * 2.0;
+                    faac_real side_w = enrgd_norm * thrmid * 2.0;
+                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
+                    {
+                        if (mid_w >= efix)
+                        {
+                            use_ms = 1;
+                            phase = MS_PH_IN;
+                        }
+                        else if (side_w >= efix)
+                        {
+                            use_ms = 1;
+                            phase = MS_PH_OUT;
+                        }
+                    }
+                }
+
+                /**
+                 * 2. Evaluate Intensity Stereo:
+                 * Only if M/S is not chosen. IS provides maximum bit recovery but collapses
+                 * the phase image entirely.
+                 */
+                if (!use_ms && (mode == JOINT_IS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
