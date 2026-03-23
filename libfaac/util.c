@@ -57,32 +57,46 @@ unsigned int MinBitrate()
 /**
  * Calculates the frequency cutoff (bandwidth) for the psychoacoustic model.
  *
- * This implementation provides a piecewise linear approximation of a logarithmic
- * perceptual curve */
+ * This piecewise linear model implements 'Bitrate-Aware Damping.' It prevents 
+ * spectral starvation by aggressively narrowing the bandwidth at mid-tier 
+ * bitrates (32kbps), ensuring high-quality quantization in the audible range 
+ * over low-quality extension in the ultrasonic range.
+ */
 unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     const unsigned int nyquist = sampleRate / 2;
     unsigned int bw;
 
-    if (!bitRate)
-        return nyquist;
+    if (!bitRate) return nyquist;
 
     if (bitRate <= 16000) {
-        /* Sub-VOIP: Linear ramp (125Hz/kbps) to preserve speech sibilance */
-        bw = 4000 + (bitRate / 8);
-    } else if (bitRate <= 64000) {
-        /* Transition: 250Hz/kbps slope
-         * Anchored at (16k, 6k) and (64k, 18k)
+        /* Segment 1: Telephony-grade (4kHz to 6kHz) 
+         * Optimized for speech intelligibility/sibilance
          */
-        bw = 6000 + ((bitRate - 16000) / 4);
-    } else {
-        /* Perceptual Ceiling: 18kHz cap prevents bit-starvation of the
-         * sensitive 2-10kHz mid-band by discarding ultrasonic noise
+        bw = 4000 + (bitRate / 8); 
+    } 
+    else if (bitRate <= 48000) {
+        /* Segment 2: Damped Music Transition (6kHz to 10kHz)
+         * Slope (125Hz/kbps) prevents MOS drops at 32kbps by 
+         * conserving bits for mid-range SNR
          */
-        bw = 18000;
+        bw = 6000 + ((bitRate - 16000) / 8);
+    } 
+    else if (bitRate <= 64000) {
+        /* Segment 3: Regression Catch-up (10kHz to 18kHz)
+         * Aggressively scales to hit 18kHz legacy behavior at 64kbps
+         */
+        bw = 10000 + ((bitRate - 48000) / 2);
+    }
+    else {
+        /* Segment 4: Perceptual Ceiling (18kHz to 20kHz)
+         * Gradual expansion to 20kHz for hi-fi transparency
+         */
+        bw = 18000 + ((bitRate - 64000) / 16);
+        if (bw > 20000) bw = 20000;
     }
 
-    /* Clamp to Shannon-Nyquist limit for low sample-rate inputs */
+    /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;
 }
 
