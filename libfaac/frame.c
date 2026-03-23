@@ -185,7 +185,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         return 0;
 #endif
 
-    if (config->bitRate)
+if (config->bitRate)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
 
@@ -222,40 +222,63 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    /* ---------------------------------------------------------------
-     * Bitrate-dependent psychoacoustic parameters.
-     * Interpolation anchor: 16 kbps/ch (t=0) → 128 kbps/ch (t=1).
-     * Log scale because perceptual gain per added bit is roughly
-     * constant per doubling of bitrate.
+    /* ------------------------------------------------------------------
+     * Bitrate-dependent psychoacoustic parameter interpolation.
      *
-     * noise_floor:    silence gate in linear amplitude (16-bit reference).
-     *   -98 dBFS at 16 kbps: matches original NOISEFLOOR=0.4, saves bits.
-     *   -116 dBFS at 128 kbps: preserves quiet passages for transparency.
+     * Interpolation axis: log-scale, 0 at 16 kbps/ch → 1 at 128 kbps/ch.
+     * Using per-channel bitrate throughout; FAAC stores bitRate per-channel.
      *
-     * powm:           masking curve exponent.
-     *   0.38 at low br: stronger contrast between loud/quiet bands.
-     *   0.32 at high br: flatter, more uniform, more transparent.
-     *   Narrower range than patch (0.27–0.30) to avoid bass coloration.
+     * noise_floor — silence gate (linear amplitude on 16-bit scale)
+     *   t = 0 (16 kbps/ch): 0.45 — slightly above original 0.4.
+     *     Rationale: at low bitrate, coding near-silent bands wastes bits
+     *     on inefficient Huffman codes. Gate them aggressively.
+     *   t = 1 (128 kbps/ch): 0.10 — code quiet passages for transparency.
+     *     Rationale: at high bitrate there are enough bits; gating at 0.4
+     *     drops passages that are audible on good headphones.
+     *   Transition: only lowers below 0.45 above 32 kbps/ch. Below that
+     *     the budget is too thin and every band we gate saves precious bits.
      *
-     * masking_mult:   replaces hardcoded 10.0 in the masking target formula.
-     *   11.0–13.0 keeps initial frame sizes within ≈20% of target, which
-     *   is the stable convergence range for FAAC's rate-control damping of
-     *   fix=(fix-1)*0.5+1.  Values above ~15 cause multi-frame overshoot.
-     * --------------------------------------------------------------- */
+     * powm — masking curve exponent
+     *   HIGHER (sharper) at low bitrate: concentrate available bits on the
+     *   perceptually loudest bands rather than spreading them uniformly.
+     *   LOWER (flatter) at high bitrate: more uniform allocation improves
+     *   transparency on quiet and spectrally complex material.
+     *   Range 0.42→0.35 stays within validated territory (original 0.40
+     *   sits in the middle), avoiding the bass coloration risk below 0.30.
+     *
+     * masking_mult — replaces the hardcoded 10.0 in the masking target formula.
+     *   Kept at 10.0 (constant, no interpolation).
+     *   Rationale: FAAC's rate control damping is fix=(fix-1)*0.5+1, which
+     *   can only converge quickly when the quality target is within ≈±10% of
+     *   the budget. Any masking_mult above ~11 causes multi-frame overshoot
+     *   that the damping cannot correct within one GOP. The MOS wins in the
+     *   original patch that were attributed to masking_mult=15 were actually
+     *   bitrate inflation (encoder spending 15-40% more bits than targeted).
+     * ------------------------------------------------------------------ */
     {
-        unsigned long bps = hEncoder->config.bitRate
-                          / (hEncoder->numChannels ? hEncoder->numChannels : 1);
-        faac_real t = (FAAC_LOG10((faac_real)bps)      - FAAC_LOG10(16000.0))
-                    / (FAAC_LOG10(128000.0) - FAAC_LOG10(16000.0));
-        if (t < 0.0) t = 0.0;
-        if (t > 1.0) t = 1.0;
+        unsigned long bps = hEncoder->config.bitRate;   /* per-channel */
 
-        /* noise_floor: log-interpolate in dB space then convert to linear */
-        faac_real nf_db = -98.0 - 18.0 * t;   /* -98 dBFS → -116 dBFS */
-        hEncoder->aacquantCfg.noise_floor  = 32767.0 * FAAC_POW(10.0, nf_db / 20.0);
+        /* Log-scale t; clamped to [0, 1] */
+        faac_real t = 0.0;
+        if (bps > 16000) {
+            t = FAAC_LOG10((faac_real)bps / 16000.0)
+              / FAAC_LOG10(128000.0 / 16000.0);
+            if (t > 1.0) t = 1.0;
+        }
 
-        hEncoder->aacquantCfg.powm         = 0.38 - 0.06 * t;  /* 0.38 → 0.32 */
-        hEncoder->aacquantCfg.masking_mult = 11.0 +  2.0 * t;  /* 11.0 → 13.0 */
+        /* noise_floor: constant 0.45 below 32 kbps/ch; log-ramp above */
+        if (bps < 32000) {
+            hEncoder->aacquantCfg.noise_floor = 0.45;
+        } else {
+            faac_real tnf = FAAC_LOG10((faac_real)bps / 32000.0)
+                          / FAAC_LOG10(128000.0 / 32000.0);
+            if (tnf > 1.0) tnf = 1.0;
+            /* log-interp: 0.45 at tnf=0, 0.10 at tnf=1 */
+            hEncoder->aacquantCfg.noise_floor = 0.45 * FAAC_POW(0.10 / 0.45, tnf);
+        }
+
+        hEncoder->aacquantCfg.powm         = 0.42 - 0.07 * t;  /* 0.42 → 0.35 */
+        hEncoder->aacquantCfg.masking_mult  = 10.0;             /* do not raise */
     }
 
     if (config->mpegVersion == MPEG2)

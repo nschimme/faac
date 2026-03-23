@@ -83,15 +83,20 @@ static void PsyCheckShort(PsyInfo *psyInfo, faac_real quality)
 
     psyInfo->block_type = ONLY_LONG_WINDOW;
 
-    /* Quality-adaptive threshold.
-     * At quality=1.0 (DEFQUAL/DEFQUAL): threshold = 2.0 → catches soft transients.
-     * At quality=0.4 (clamped floor):   threshold = 2.6 → less aggressive.
-     * Short blocks cost proportionally more bits at low bitrates, so backing off
-     * slightly there is correct. Clamp ensures we never go below 2.0 regardless
-     * of how high quality climbs in rate-control overshoot. */
-    faac_real transient_thr = 3.0 - quality;
-    if (transient_thr < 2.0) transient_thr = 2.0;
-    if (transient_thr > 3.0) transient_thr = 3.0;
+    /* Quality-adaptive transient threshold.
+     *
+     * quality = aacquantCfg.quality / DEFQUAL, clamped to [0.4, 1.0] before entry.
+     *
+     *   quality = 1.0  →  threshold = 2.0   catches softest transients; justified
+     *                                        because high-bitrate frames can absorb
+     *                                        the extra short-block overhead.
+     *   quality = 0.4  →  threshold = 2.6   backs off at low bitrate; short blocks
+     *                                        cost proportionally more bits there.
+     *
+     * Hard clamps prevent runaway if rate control pushes quality outside [0.4, 1.0]. */
+    faac_real thr = 3.0 - quality;
+    if (thr < 2.0) thr = 2.0;
+    if (thr > 3.0) thr = 3.0;   /* never looser than original FAAC default */
 
     lasteng = NULL;
     for (win = 0; win < PREVS + 8 + NEXTS; win++)
@@ -116,9 +121,9 @@ static void PsyCheckShort(PsyInfo *psyInfo, faac_real quality)
                 volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
             }
 
-            /* Guard: original and patch both divide unconditionally.
-             * A silent frame produces toteng=0 → undefined behaviour. */
-            if (toteng > 0.0 && (volchg / toteng * quality) > transient_thr)
+            /* Guard: a fully silent window gives toteng = 0.
+             * Original code and both patches divide unconditionally — UB. */
+            if (toteng > 0.0 && (volchg / toteng * quality) > thr)
             {
                 psyInfo->block_type = ONLY_SHORT_WINDOW;
                 break;

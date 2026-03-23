@@ -69,21 +69,20 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
-/* Absolute threshold of hearing, Terhardt approximation.
- * f_hz: band centre frequency. Returns dB SPL.
- * Called only at initialisation time (inside CalcBW), never per-frame. */
-static faac_real ath_db(faac_real f_hz)
-{
-    faac_real f = f_hz * 0.001;          /* Hz → kHz */
-    if (f < 0.02) f = 0.02;
-    /* Gaussian centred at 3.3 kHz avoids a dependency on expf/exp. */
-    faac_real gauss_arg = -0.6 * (f - 3.3) * (f - 3.3);
-    return  3.64  * FAAC_POW(f, -0.8)
-           - 6.5  * FAAC_POW((faac_real)2.71828182845, gauss_arg)
-           + 0.001 * FAAC_POW(f,  4.0);
-}
-
 // band sound masking
+/* bmask: band sound masking quality targets.
+ *
+ * HF de-emphasis (replaces the original patch's cumulative freq_penalty):
+ * Quality targets for bands above the spectral midpoint are gently reduced
+ * by a linear ramp, reaching 15% reduction at the highest coded band.
+ * This is applied ONCE per band (non-cumulative) and is sample-rate aware
+ * because sfbn reflects the actual number of coded bands for the session.
+ *
+ * Rationale for NOT using ATH weights here:
+ * ATH-driven target reduction causes the rate control loop to raise global
+ * quality to compensate for the reduced HF targets. This re-allocates bits
+ * to LF without restoring HF — the net effect is poor spectral distribution
+ * at low bitrates. The mild linear ramp below avoids this interaction. */
 static void bmask(CoderInfo * __restrict coderInfo,
                   faac_real  * __restrict xr0,
                   faac_real  * __restrict bandqual,
@@ -102,10 +101,8 @@ static void bmask(CoderInfo * __restrict coderInfo,
     int win, enrgcnt;
     int total_len   = coderInfo->sfb_offset[coderInfo->sfbn];
     const int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
-
-    /* Select the ATH weight array matching the current block type */
-    const faac_real *ath_w = is_short ? aacquantCfg->ath_s
-                                      : aacquantCfg->ath_l;
+    const int last     = is_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    const int hf_start = coderInfo->sfbn / 2;   /* bands above this get gentle rolloff */
 
     for (win = 0; win < gsize; win++) {
         xr = xr0 + win * BLOCK_LEN_SHORT;
@@ -121,8 +118,6 @@ static void bmask(CoderInfo * __restrict coderInfo,
         }
         return;
     }
-
-    const int last = is_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
 
     for (sfb = 0; sfb < coderInfo->sfbn; sfb++) {
         faac_real avge = 0.0, maxe = 0.0, target;
@@ -145,24 +140,25 @@ static void bmask(CoderInfo * __restrict coderInfo,
         avgenrg = (totenrg / last) * (end - start);
 
 #define NOISETONE 0.2
-        target  =         NOISETONE  * FAAC_POW(avge / avgenrg, powm);
+        target  =        NOISETONE  * FAAC_POW(avge / avgenrg, powm);
         target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe / avgenrg, powm);
 #undef NOISETONE
 
         if (is_short) target *= 1.5;
 
-        /* Frequency-position taper (identical shape to original 10.0 formula)
-         * combined with ATH hearing weight.
-         *
-         * ath_w[sfb] == 1.0 below 4 kHz: no change to existing behaviour there.
-         * ath_w[sfb] falls to ~0.67 at 10 kHz and ~0.21 at 15 kHz: quality
-         * targets are proportionally reduced, saving bits on near-inaudible HF.
-         *
-         * This achieves the same goal as the patch's freq_penalty but is:
-         *  (a) non-cumulative — applied once per band, not per iteration
-         *  (b) physically motivated — follows ISO 226 ATH rather than a magic constant
-         *  (c) sample-rate aware — weights recalculated per session in CalcBW       */
-        target *= (mmult / (1.0 + (faac_real)(start + end) / last)) * ath_w[sfb];
+        /* Frequency-position taper — same shape as original */
+        target *= mmult / (1.0 + (faac_real)(start + end) / last);
+
+        /* Mild HF de-emphasis: linear rolloff above the spectral midpoint.
+         * 0% reduction at sfbn/2; 15% reduction at the highest coded band.
+         * Applied once per band — not cumulative. Does not interact with the
+         * rate control loop because it scales targets proportionally across
+         * all frames without changing the global bit budget. */
+        if (sfb > hf_start) {
+            faac_real frac = (faac_real)(sfb - hf_start)
+                           / (faac_real)(coderInfo->sfbn - hf_start);
+            target *= 1.0 - 0.15 * frac;
+        }
 
         bandqual[sfb] = target * qscale;
     }
@@ -184,9 +180,9 @@ static void qlevel(CoderInfo       * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
-    const faac_real inv_gsize  = 1.0 / (faac_real)gsize;
-    const faac_real noise_floor = aacquantCfg->noise_floor;
-    const faac_real pnsthr     = 0.1 * aacquantCfg->pnslevel;
+    const faac_real inv_gsize   = 1.0 / (faac_real)gsize;
+    const faac_real noise_floor = aacquantCfg->noise_floor;   /* was: NOISEFLOOR */
+    const faac_real pnsthr      = 0.1 * aacquantCfg->pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -351,60 +347,6 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     aacquantCfg->max_cbl = cnt;
     aacquantCfg->max_l   = l;
     *bw = (faac_real)l * rate / (BLOCK_LEN_LONG << 1);
-
-    /* ------------------------------------------------------------------
-     * Precompute per-SFB ATH hearing weights.
-     *
-     * ath_l[i] / ath_s[i] is 1.0 below 4 kHz where hearing is most acute.
-     * Above 4 kHz it falls following the ATH curve: each 1 dB of ATH rise
-     * above the 4 kHz reference reduces the quality target by 0.25 dB.
-     * At 10 kHz this gives ~0.67; at 15 kHz ~0.21.
-     *
-     * This replaces the patch's cumulative freq_penalty, which compounded
-     * per iteration and silenced virtually all energy above ~10 SFBs.
-     * ------------------------------------------------------------------ */
-    {
-        faac_real ath_ref = ath_db(4000.0);   /* ≈ -3.4 dB SPL */
-        int band_l = 0, band_s = 0;
-        int i;
-
-        for (i = 0; i < NSFB_LONG; i++) {
-            if (i < sr->num_cb_long) {
-                /* Centre frequency of this SFB */
-                faac_real f_c = (faac_real)(band_l * 2 + sr->cb_width_long[i])
-                              * 0.5 * rate / (2.0 * BLOCK_LEN_LONG);
-                band_l += sr->cb_width_long[i];
-
-                if (f_c >= 4000.0) {
-                    faac_real exc = (ath_db(f_c) - ath_ref) * 0.25;
-                    if (exc < 0.0) exc = 0.0;
-                    aacquantCfg->ath_l[i] = FAAC_POW(10.0, -exc / 20.0);
-                } else {
-                    aacquantCfg->ath_l[i] = 1.0;
-                }
-            } else {
-                aacquantCfg->ath_l[i] = 1.0;   /* unused bands: safe default */
-            }
-        }
-
-        for (i = 0; i < NSFB_SHORT; i++) {
-            if (i < sr->num_cb_short) {
-                faac_real f_c = (faac_real)(band_s * 2 + sr->cb_width_short[i])
-                              * 0.5 * rate / (2.0 * BLOCK_LEN_SHORT);
-                band_s += sr->cb_width_short[i];
-
-                if (f_c >= 4000.0) {
-                    faac_real exc = (ath_db(f_c) - ath_ref) * 0.25;
-                    if (exc < 0.0) exc = 0.0;
-                    aacquantCfg->ath_s[i] = FAAC_POW(10.0, -exc / 20.0);
-                } else {
-                    aacquantCfg->ath_s[i] = 1.0;
-                }
-            } else {
-                aacquantCfg->ath_s[i] = 1.0;
-            }
-        }
-    }
 }
 
 enum {MINSFB = 2};

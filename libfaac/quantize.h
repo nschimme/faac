@@ -36,12 +36,6 @@ typedef struct
     faac_real noise_floor;           /* silence gate: linear amplitude, 16-bit scale     */
     faac_real powm;                  /* masking curve exponent [0.28..0.42]              */
     faac_real masking_mult;          /* global SNR scale replacing hardcoded 10.0        */
-
-    /* Per-SFB ATH hearing weights, precomputed in CalcBW().
-     * 1.0 below ~4 kHz; decreases toward extremes following the ATH curve.
-     * Replaces the cumulative freq_penalty loop. */
-    faac_real ath_l[NSFB_LONG];
-    faac_real ath_s[NSFB_SHORT];
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
