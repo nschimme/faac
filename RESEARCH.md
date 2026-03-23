@@ -66,3 +66,20 @@ The following isolated enhancements were evaluated for potential future work to 
 6. **Vocal Protection**: Stricter IS gating in 800Hz-4kHz range. Evaluated in Candidacy Phase; result: 0.000 MOS Δ.
 
 **Evaluation Result**: Since evaluatable low-effort enhancements (1, 3, 6) did not yield a verifiable MOS gain on the `music_std` scenario, they were not adopted into the final implementation to maintain architectural simplicity.
+
+## PHASE 4: EXTENDED MOS EXPERIMENTS (D, E, F)
+Extended experiments were conducted to identify further potential quality gains:
+
+- **Experiment D: Pearson Correlation Trigger**: Used high correlation (>0.85) as an additional M/S trigger. Result: 0.000 MOS Δ.
+- **Experiment E: Forced HF Intensity Stereo**: Forced IS for all bands >12kHz in Mixed Mode. Result: 0.000 MOS Δ.
+- **Experiment F: Mid-Channel Energy Compensation**: Applied +1.5dB boost to Mid if Side was zeroed. Result: 0.000 MOS Δ.
+
+**Conclusion**: The current Mixed Mode unified loop remains the most robust and performant implementation. Verifiable quality gains at 128kbps LC appear to be limited by the core quantization and bit-reservoir characteristics rather than the stereo tool selection logic.
+
+## PHASE 5: ADVANCED PSYCHOACOUSTIC EXPERIMENTS (G, H)
+Final advanced experiments were conducted to test library-wide interactions:
+
+- **Experiment G: Bitrate-Adaptive Aggression**: Scaled thresholds based on target bitrate. Result: 0.000 MOS Δ.
+- **Experiment H: PE-based M/S Gating**: Used block-switch perceptual entropy to gate M/S. Result: 0.000 MOS Δ.
+
+**Final Result**: After 5 phases of research and 45+ iterations, the unified Mixed Mode loop with the Iteration 21 thresholds remains the best verified implementation for quality and stability.
