@@ -31,11 +31,9 @@
 #define SBR_FILL_RATIO_MAX   0.65f
 
 #ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.354f
-#  define SBR_NOISE_FRAC     0.12f
+#  define SBR_PATCH_ROLLOFF  0.50f
 #else
-#  define SBR_PATCH_ROLLOFF  0.354
-#  define SBR_NOISE_FRAC     0.12
+#  define SBR_PATCH_ROLLOFF  0.50
 #endif
 
 #define SBR_MIN_EXTENSION_HZ  500u
@@ -59,21 +57,40 @@ static faac_real band_energy(const faac_real * __restrict mdct, int len)
     return e;
 }
 
+static float compute_sfm(const faac_real * __restrict buf, int len)
+{
+    float am = 0.0f, lm = 0.0f;
+    int i, n = 0;
+    for (i = 0; i < len; i++) {
+        float v = (float)(buf[i] * buf[i]);
+        am += v;
+        if (v > 1e-20f) { lm += logf(v); n++; }
+    }
+    if (am < 1e-20f || n == 0) return 0.0f;   /* tonal / silence → no noise */
+    am /= len;
+    lm  = expf(lm / len);                      /* geometric mean over full len */
+    float sfm = lm / am;
+    /* Clamp to [0,1] — numerical noise can push it slightly over */
+    return sfm > 1.0f ? 1.0f : (sfm < 0.0f ? 0.0f : sfm);
+}
+
 /* Fill [bw_bin, tgt_bin) with noise-dithered copies of the coded bandwidth. */
-static void apply_sbr_window(faac_real * __restrict mdct,
-                             int bw_bin, int tgt_bin,
-                             unsigned int *rand)
+static void apply_sbr_patch(faac_real * __restrict mdct,
+                            int bw_bin, int tgt_bin,
+                            unsigned int *rand)
 {
     int tgt       = bw_bin;
-    int patch_len = bw_bin / 2;
-    faac_real cum_gain = (faac_real)SBR_PATCH_ROLLOFF;
+    faac_real cum_gain = (faac_real)1.0;
     unsigned int local_rand = *rand;
     int p;
 
     for (p = 0; p < MAX_SBR_PATCHES; p++)
     {
-        int remaining, src_start, i;
-        faac_real src_e, scale, sig_scale, noise_scale;
+        int remaining, src_start, i, patch_len;
+        faac_real src_e, tgt_rms_goal, sig_scale, noise_scale;
+        float sfm, adaptive_noise_frac;
+
+        patch_len = bw_bin >> (p + 1);
 
         if (patch_len < MIN_PATCH_BINS)
             break;
@@ -86,43 +103,49 @@ static void apply_sbr_window(faac_real * __restrict mdct,
             patch_len = remaining;
 
         src_start = bw_bin - patch_len;
-        if (src_start < 0)
-        {
-            patch_len += src_start;
-            src_start  = 0;
-            if (patch_len < MIN_PATCH_BINS)
-                break;
-        }
 
         src_e = band_energy(mdct + src_start, patch_len);
 
-        if (src_e > (faac_real)1e-20)
-        {
-            scale = cum_gain;
-        }
-        else
+        if (src_e <= (faac_real)1e-20)
         {
             tgt      += patch_len;
-            patch_len = patch_len >> 1;
             cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
             continue;
         }
 
-        sig_scale   = scale * ((faac_real)1.0 - (faac_real)SBR_NOISE_FRAC);
-        noise_scale = scale * (faac_real)SBR_NOISE_FRAC * NOISE_SCALE;
+        /* 1. Calculate target goal */
+        tgt_rms_goal = sqrtf((float)src_e / patch_len) * cum_gain;
 
+        /* 2. Determine noise fraction via SFM */
+        sfm = compute_sfm(mdct + src_start, patch_len);
+        adaptive_noise_frac = 0.04f + sfm * 0.20f;
+
+        sig_scale   = (faac_real)1.0 - (faac_real)adaptive_noise_frac;
+        noise_scale = (faac_real)adaptive_noise_frac * NOISE_SCALE;
+
+        /* 3. Fill patch */
         {
             faac_real * __restrict p_tgt = mdct + tgt;
             const faac_real * __restrict p_src = mdct + src_start;
 
             for (i = 0; i < patch_len; i++) {
                 local_rand = local_rand * 1664525u + 1013904223u;
-                p_tgt[i] = p_src[i] * sig_scale + (int)local_rand * noise_scale;
+                int32_t noise_samp = (int32_t)(local_rand >> 1) - 0x20000000;
+                p_tgt[i] = p_src[i] * sig_scale + (faac_real)noise_samp * noise_scale;
+            }
+        }
+
+        /* 4. Energy normalization correction */
+        {
+            faac_real written_e = band_energy(mdct + tgt, patch_len);
+            if (written_e > (faac_real)1e-20) {
+                faac_real correction = tgt_rms_goal / sqrtf((float)written_e / patch_len);
+                for (i = 0; i < patch_len; i++)
+                    mdct[tgt + i] *= correction;
             }
         }
 
         tgt      += patch_len;
-        patch_len = patch_len >> 1;
         cum_gain *= (faac_real)SBR_PATCH_ROLLOFF;
     }
     *rand = local_rand;
@@ -162,8 +185,8 @@ void PseudoSBR(CoderInfo    *coderInfo,
             return;
 
         for (win = 0; win < MAX_SHORT_WINDOWS; win++)
-            apply_sbr_window(freqBuff + win * BLOCK_LEN_SHORT,
-                             bw_bin, tgt_bin, rand);
+            apply_sbr_patch(freqBuff + win * BLOCK_LEN_SHORT,
+                            bw_bin, tgt_bin, rand);
     }
     else
     {
@@ -174,7 +197,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
-        apply_sbr_window(freqBuff, bw_bin, tgt_bin, rand);
+        apply_sbr_patch(freqBuff, bw_bin, tgt_bin, rand);
     }
 }
 
@@ -183,36 +206,29 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate)
 {
-    float fillRatio;
-    unsigned int ext_percent;
-    unsigned int extended, nyquist90;
+    unsigned int tgt_bw;
+    unsigned int nyquist90;
 
     if (sampleRate == 0 || baseBW == 0)
         return baseBW;
 
-    /* Stage 1: fill-ratio gate. */
-    fillRatio = (float)baseBW / (float)(sampleRate / 2);
-    if (fillRatio >= SBR_FILL_RATIO_MAX)
-        return baseBW;
+    /* Relative fill-ratio gate is handled by PseudoSBRShouldEnable. */
 
     /* Stage 2: bitrate-tier extension amount. */
-    if (bitRate < 12000u)
-        ext_percent = 15u;
-    else if (bitRate < 24000u)
-        ext_percent = 25u;
-    else
-        ext_percent = 40u;
+    if      (bitRate < 16000u)  tgt_bw = 7000u;
+    else if (bitRate < 32000u)  tgt_bw = 10000u;
+    else if (bitRate < 80000u)  tgt_bw = 14000u;
+    else                        tgt_bw = 16000u;
 
-    extended  = baseBW + (baseBW * ext_percent / 100u);
     nyquist90 = sampleRate * 9u / 20u;
 
-    if (extended > nyquist90)
-        extended = nyquist90;
+    if (tgt_bw > nyquist90)
+        tgt_bw = nyquist90;
 
-    if (extended <= baseBW + SBR_MIN_EXTENSION_HZ)
+    if (tgt_bw <= baseBW + SBR_MIN_EXTENSION_HZ)
         return baseBW;
 
-    return extended;
+    return tgt_bw;
 }
 
 /* Returns 1 if SBR is beneficial for the current configuration. */
