@@ -155,9 +155,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.shortctl = config->shortctl;
 
     hEncoder->config.usePseudoSBR = config->usePseudoSBR;
-    /* Sentinel 2 = "force off" from --sbr 0. Translate immediately. */
-    if (hEncoder->config.usePseudoSBR == 2)
-        hEncoder->config.usePseudoSBR = 0;
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
@@ -237,39 +234,28 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
 
-    /*
-     * Auto-enable pseudo-SBR now that config->bandWidth has been derived
-     * from the bitrate.  Reading it any earlier gives 0 (the unset default),
-     * which makes PseudoSBRShouldEnable() always return 0.
-     *
-     *   40 kbps / 16 kHz: fill = 5376/8000 = 0.67  -> suppressed
-     *   16 kbps / 16 kHz: fill = 2150/8000 = 0.27  -> enabled
-     *   32 kbps / 48 kHz: fill = 12902/24000 = 0.54 -> enabled
-     */
-    if (hEncoder->config.usePseudoSBR == 0 && config->bitRate > 0) {
+    if (hEncoder->config.usePseudoSBR) {
         unsigned int naturalBW = (unsigned int)hEncoder->config.bandWidth;
-        if (PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
-            hEncoder->config.usePseudoSBR = 1;
-    }
 
-    /* ── Pseudo-SBR bandwidth extension ─────────────────────────────── */
-    if (hEncoder->config.usePseudoSBR)
-    {
-        /* Record the bitrate-derived bandwidth as the SBR source ceiling. */
-        hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
+        /* Verify that SBR is beneficial for this bitrate/bandwidth */
+        hEncoder->config.usePseudoSBR = PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW);
+        if (hEncoder->config.usePseudoSBR) {
+            /* Record the bitrate-derived bandwidth as the SBR source ceiling. */
+            hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
 
-        unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
-                                                hEncoder->baseBandWidth,
-                                                (unsigned int)hEncoder->config.bitRate);
-        if (sbrBW > hEncoder->baseBandWidth)
-        {
-            /* Let CalcBW include the extended region in max_cbl / max_cbs. */
-            hEncoder->config.bandWidth = sbrBW;
-        }
-        else
-        {
-            /* Extension not useful; disable transparently. */
-            hEncoder->baseBandWidth = 0;
+            unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
+                                        hEncoder->baseBandWidth,
+                                        (unsigned int)hEncoder->config.bitRate);
+            if (sbrBW > hEncoder->baseBandWidth)
+            {
+                /* Let CalcBW include the extended region in max_cbl / max_cbs. */
+                hEncoder->config.bandWidth = sbrBW;
+            }
+            else
+            {
+                hEncoder->baseBandWidth = 0;
+                hEncoder->config.usePseudoSBR = 0;
+            }
         }
     }
     else
@@ -386,7 +372,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     QuantizeInit();
 
     /* Pseudo-SBR defaults */
-    hEncoder->config.usePseudoSBR = 0;
+    hEncoder->config.usePseudoSBR = 1;
     hEncoder->baseBandWidth       = 0;
     hEncoder->sbrRandState        = 0xDEADBEEFu ^ (sampleRate * 31337u);
 
@@ -640,12 +626,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-    /* ── Pseudo-SBR spectral extension ─────────────────────────────── */
-    /* Apply AFTER AACstereo (MDCT coefficients are available and joint-stereo
-     * decisions have been made) and BEFORE BlocQuant so that the quantiser
-     * sees the full extended spectrum.
-     * Skip LFE channels; their bandwidth is intentionally limited.     */
-    if (hEncoder->config.usePseudoSBR && hEncoder->baseBandWidth > 0)
+    /* Pseudo-SBR extension */
+    if (hEncoder->config.usePseudoSBR == 1 && hEncoder->baseBandWidth > 0)
     {
         for (channel = 0; channel < numChannels; channel++)
         {
