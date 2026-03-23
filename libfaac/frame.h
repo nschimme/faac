@@ -79,6 +79,12 @@ typedef struct {
     /* Configuration data */
     faacEncConfiguration config;
 
+    /* ABR two-loop rate control state */
+    faac_real quality_base;      /* Slow-loop baseline; drifts to correct bitrate  */
+    int       bit_reservoir;     /* Current reservoir level in bits                 */
+    int       bit_reservoir_max; /* Maximum reservoir capacity in bits              */
+    int       desbits;           /* Target bits/frame, all channels combined        */
+
     psymodel_t *psymodel;
 
     /* quantizer specific config */
