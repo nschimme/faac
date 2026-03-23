@@ -127,13 +127,28 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.usePseudoSBR = config->usePseudoSBR;
 
-    /* Auto-enable Pseudo-SBR if bitrate/channel < 48kbps and not explicitly set */
-    if (config->usePseudoSBR == 0 && config->bitRate > 0) {
-        if (config->bitRate < 48000) {
-            hEncoder->config.usePseudoSBR = 1;
-        }
-    } else if (config->usePseudoSBR == 2) {
+    /* Handle the sentinel value 2 = "force off" from the CLI --sbr 0 flag. */
+    if (config->usePseudoSBR == 2) {
         hEncoder->config.usePseudoSBR = 0;
+    }
+
+    /*
+     * Auto-enable: only when the natural encoder bandwidth covers less
+     * than 65 % of Nyquist.  A raw bitrate threshold is wrong here
+     * because it is sample-rate-agnostic:
+     *
+     *   40 kbps / 16 kHz -> fill = 0.67  -> suppressed (was broken)
+     *   16 kbps / 16 kHz -> fill = 0.27  -> enabled    (correct)
+     *   32 kbps / 48 kHz -> fill = 0.54  -> enabled    (correct)
+     *
+     * We read config->bandWidth here because it reflects the
+     * bitrate-derived value computed just above this block, BEFORE any
+     * SBR expansion.
+     */
+    if (config->usePseudoSBR == 0 && config->bitRate > 0) {
+        unsigned int naturalBW = (unsigned int)config->bandWidth;
+        if (PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW))
+            hEncoder->config.usePseudoSBR = 1;
     }
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));

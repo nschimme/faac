@@ -2,11 +2,6 @@
  * FAAC - Freeware Advanced Audio Coder
  * Pseudo Spectral Band Replication (encoder-side)
  *
- * Fills the MDCT spectrum above the bitrate-derived bandwidth by
- * patching and attenuating the upper coded bandwidth into successive
- * higher-frequency target regions.  Compatible with any AAC decoder;
- * no HE-AAC signalling required.
- *
  * Copyright (C) 2026  Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -27,18 +22,9 @@ extern "C" {
 
 /*
  * PseudoSBR()
- *
- * Apply encoder-side spectral extension to one channel.
- *
- *   coderInfo  – block-type / group info (block_type must already be set)
- *   freqBuff   – MDCT coefficient buffer for this channel
- *   sampleRate – audio sample rate, Hz
- *   baseBW     – original encoder bandwidth, Hz  (source ceiling)
- *   sbrBW      – target SBR bandwidth, Hz        (fill up to here)
- *   rand       – per-encoder LCG state (advanced in place)
- *
- * Must be called after FilterBank() and before BlocGroup() / BlocQuant().
- * Skip LFE channels.
+ *   Apply encoder-side spectral extension to one channel.
+ *   Call after FilterBank() + AACstereo(), before BlocQuant().
+ *   Skip LFE channels.
  */
 void PseudoSBR(CoderInfo       *coderInfo,
                faac_real       *freqBuff,
@@ -49,12 +35,24 @@ void PseudoSBR(CoderInfo       *coderInfo,
 
 /*
  * PseudoSBRTargetBW()
- *
- * Given the bitrate-derived bandwidth, return the SBR target bandwidth.
- * Extends by at most 50 % of baseBW, capped at 90 % of Nyquist.
- * Returns baseBW if no meaningful extension is possible.
+ *   Return the SBR ceiling bandwidth.  Uses fill-ratio gating; the
+ *   `bitRate` parameter is retained for API stability but is unused.
+ *   Returns baseBW when no beneficial extension is possible.
  */
-unsigned int PseudoSBRTargetBW(unsigned int sampleRate, unsigned int baseBW, unsigned int bitRate);
+unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
+                                unsigned int baseBW,
+                                unsigned int bitRate);
+
+/*
+ * PseudoSBRShouldEnable()
+ *   Returns 1 if pseudo-SBR is expected to improve quality given the
+ *   encoder's natural bandwidth and sample rate.
+ *
+ *   Use this in faacEncSetConfiguration() for the auto-enable decision
+ *   instead of a raw bitrate threshold.  `naturalBW` is the value of
+ *   hEncoder->config.bandWidth BEFORE any SBR expansion.
+ */
+int PseudoSBRShouldEnable(unsigned int sampleRate, unsigned int naturalBW);
 
 #ifdef __cplusplus
 }
