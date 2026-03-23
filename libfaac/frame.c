@@ -150,8 +150,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         return 0;
 #endif
 
-    if (config->bitRate)
+    if (config->bitRate && !config->bandWidth)
     {
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+
         if (!config->quantqual)
         {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
@@ -167,7 +169,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(hEncoder->config.bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
