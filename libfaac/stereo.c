@@ -280,7 +280,7 @@ void AACstereo(CoderInfo *coder,
                 {
                     faac_real mid_w = enrgs_norm * thrmid * 2.0;
                     faac_real side_w = enrgd_norm * thrmid * 2.0;
-                    if (min(enrgl, enrgr) >= max(enrgs_norm, enrgd_norm))
+                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
                     {
                         if (mid_w >= efix)
                         {

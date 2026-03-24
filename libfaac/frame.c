@@ -610,8 +610,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               jointmode, &(hEncoder->aacquantCfg));
 
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+        if (!channelInfo[channel].present) continue;
+        if (channelInfo[channel].type == ELEMENT_CPE && !channelInfo[channel].ch_is_left)
+            continue; /* handled by BlocQuantCPE via the left channel pass */
+
+        if (channelInfo[channel].type == ELEMENT_CPE && channelInfo[channel].ch_is_left) {
+            int rch = channelInfo[channel].paired_ch;
+            BlocQuantCPE(&coderInfo[channel], &coderInfo[rch],
+                        hEncoder->freqBuff[channel], hEncoder->freqBuff[rch],
+                        &hEncoder->aacquantCfg);
+        } else {
+            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                    &hEncoder->aacquantCfg);
+        }
     }
 
     // fix max_sfb in CPE mode
