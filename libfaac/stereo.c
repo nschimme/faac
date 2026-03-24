@@ -74,7 +74,7 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
  * apply_ms - Applies destructive M/S transform (phase-collapse).
  *
  * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir and
- * avoid unnecesary computation.
+ * avoid unnecessary computation.
  */
 static inline void apply_ms(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
@@ -187,10 +187,9 @@ void AACstereo(CoderInfo *coder,
     {
         /**
          * Intensity Stereo Phase-Coherence Threshold (IS_PHASE_LEAK_LIMIT):
-         * Margin allowed for phase misalignment before falling back to Mono tools.
+         * Margin allowed for phase misalignment before falling back to L/R tools.
          */
-        faac_real multiplier = (mode == JOINT_MIXED) ? 1.5 : 1.0;
-        faac_real m_isthr = (IS_PHASE_LEAK_LIMIT * multiplier) / (quality * quality);
+        faac_real m_isthr = IS_PHASE_LEAK_LIMIT / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
@@ -265,7 +264,9 @@ void AACstereo(CoderInfo *coder,
                 faac_real enrgd_norm = 0.25 * enrgd_unnorm;
                 int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
-                /* Band-aware silence floor: Derive from perceptual noisefloor for the current SFB. */
+                /* Per-band energy equivalent of the noisefloor RMS threshold:
+                * noisefloor is per-sample RMS, so (noisefloor * noisefloor * num_samples)
+                * gives the total band energy below which joint coding is pointless. */
                 faac_real silence_floor = (aacquantCfg->noisefloor * aacquantCfg->noisefloor) * (end_bin - start_bin) * (end_win - start_win);
 
                 /**
