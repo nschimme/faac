@@ -50,7 +50,6 @@ extern "C" {
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
-unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
 
 #ifdef __cplusplus
 }

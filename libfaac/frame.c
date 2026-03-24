@@ -622,17 +622,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->aacquantCfg.pe < 1.0) {
             hEncoder->aacquantCfg.pe = total_pe;
         } else {
-            faac_real beta = (hEncoder->frameNum < 50) ? 0.2 : 0.05;
+            faac_real beta = (hEncoder->frameNum < 50) ? 0.4 : 0.1;
             hEncoder->aacquantCfg.pe = (1.0 - beta) * hEncoder->aacquantCfg.pe + beta * total_pe;
         }
 
         /* Bit demand estimation from PE */
-        faac_real pe_demand = (total_pe + 100.0) / (hEncoder->aacquantCfg.pe + 100.0);
-        if (pe_demand > 1.5) pe_demand = 1.5;
-        if (pe_demand < 0.5) pe_demand = 0.5;
+        faac_real pe_demand = (total_pe + 75.0) / (hEncoder->aacquantCfg.pe + 75.0);
+        if (pe_demand > 1.4) pe_demand = 1.5;
+        if (pe_demand < 0.7) pe_demand = 0.5;
 
         /* Reservoir modulation: [0.75, 1.25] */
-        faac_real res_modulation = 0.75 + 0.5 * res_fullness;
+        faac_real res_modulation = 0.8 + 0.4 * res_fullness;
 
         /* Combined feed-forward fix */
         hEncoder->aacquantCfg.quality = hEncoder->quality_base * res_modulation * pe_demand;

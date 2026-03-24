@@ -54,8 +54,3 @@ unsigned int MinBitrate()
     return 8000;
 }
 
-/* Returns the maximum bit reservoir size */
-unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate)
-{
-    return 6144 - (unsigned int)((faac_real)bitRate/(faac_real)sampleRate*(faac_real)FRAME_LEN);
-}

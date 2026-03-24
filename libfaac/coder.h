@@ -107,6 +107,8 @@ typedef struct {
     int datacnt;
 
     faac_real pe;
+    faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real bandtgt[MAX_SCFAC_BANDS];
 
     TnsInfo tnsInfo;
 } CoderInfo;

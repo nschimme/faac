@@ -70,8 +70,7 @@ void QuantizeInit(void)
 #define NOISEFLOOR 0.4
 
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+static void bmask_prepare(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, int gnum)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -84,6 +83,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  int g_offset = gnum * (NSFB_SHORT + 1);
 
   for (win = 0; win < gsize; win++)
   {
@@ -99,8 +99,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
-          bandqual[sfb] = 0.0;
-          bandenrg[sfb] = 0.0;
+          coderInfo->bandtgt[g_offset + sfb] = 0.0;
+          coderInfo->bandenrg[g_offset + sfb] = 0.0;
       }
 
       return;
@@ -132,7 +132,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
                 maxe = e;
         }
     }
-    bandenrg[sfb] = avge;
+    coderInfo->bandenrg[g_offset + sfb] = avge;
     maxe *= gsize;
 
 #define NOISETONE 0.2
@@ -159,7 +159,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
+    coderInfo->bandtgt[g_offset + sfb] = target;
   }
 }
 
@@ -251,28 +251,26 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
 void EstimatePE(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
-    faac_real bandlvl[MAX_SCFAC_BANDS];
-    faac_real bandenrg[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr = xr;
     const int sfbn = coder->sfbn;
     const int * __restrict sfb_offset = coder->sfb_offset;
-    const faac_real qual = (faac_real)aacquantCfg->quality / DEFQUAL;
 
     coder->pe = 0.0;
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
-        bmask(coder, gxr, bandlvl, bandenrg, cnt, qual);
+        bmask_prepare(coder, gxr, cnt);
 
+        const int g_offset = cnt * (NSFB_SHORT + 1);
         /* Calculate Perceptual Entropy (PE) estimation for the frame */
-        /* Hoist sfb_offset accesses and use restrict */
+        /* Use restrict and hoist width calculation */
         for (int sfb = 0; sfb < sfbn; sfb++) {
-            const faac_real enrg = bandenrg[sfb];
-            const faac_real lvl = bandlvl[sfb];
-            /* Standard PE formula: width * log2(energy/threshold) */
-            if (enrg > lvl && lvl > 0.0) {
+            const faac_real enrg = coder->bandenrg[g_offset + sfb];
+            const faac_real target = coder->bandtgt[g_offset + sfb];
+            /* Initial PE estimation using baseline target */
+            if (enrg > target && target > 0.0) {
                 const int width = sfb_offset[sfb+1] - sfb_offset[sfb];
-                coder->pe += (faac_real)width * FAAC_LOG10(enrg / lvl);
+                coder->pe += (faac_real)width * FAAC_LOG10(enrg / target);
             }
         }
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
@@ -281,10 +279,11 @@ void EstimatePE(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuan
 
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
-    faac_real bandlvl[MAX_SCFAC_BANDS];
-    faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real bandlvl[NSFB_LONG];
+    faac_real bandenrg[NSFB_LONG];
     int cnt;
     faac_real *gxr;
+    const faac_real quality = (faac_real)aacquantCfg->quality / DEFQUAL;
 
     coder->global_gain = 0;
 
@@ -298,8 +297,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
+            const int g_offset = cnt * (NSFB_SHORT + 1);
+            for (int sfb = 0; sfb < coder->sfbn; sfb++) {
+                bandenrg[sfb] = coder->bandenrg[g_offset + sfb];
+                bandlvl[sfb] = coder->bandtgt[g_offset + sfb] * quality;
+            }
 
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
