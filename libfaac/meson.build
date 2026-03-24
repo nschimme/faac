@@ -38,8 +38,6 @@ common_src = [
     'huffdata.c',
     'huffdata.h',
     'quantize.c',
-    'pseudo_sbr.c',
-    'pseudo_sbr.h',
     'quantize.h',
     'stereo.c',
     'stereo.h',

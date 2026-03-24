@@ -17,6 +17,7 @@
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
+#include <float.h>
 
 #include "pseudo_sbr.h"
 #include "coder.h"
@@ -40,16 +41,22 @@
 /* Minimum extension required (Hz) to justify SBR overhead. */
 #define SBR_MIN_EXTENSION_HZ  250u
 
-/* Energy floors to prevent division by zero or processing of silence.
- * 1e-10 corresponds to roughly -100dB in PCM power scale. */
-#define SBR_ENERGY_FLOOR     1e-10f
-#define SFM_ENERGY_FLOOR     1e-10f
+/* Adaptive noise parameters.
+ * noise = offset + sfm * slope.
+ * Tuned via MOS optimization suite. */
+#define SBR_NOISE_OFFSET     0.04f
+#define SBR_NOISE_SLOPE      0.20f
 
 /* Linear Congruential Generator (LCG) parameters for noise generation.
  * Using constants from Numerical Recipes for 32-bit random numbers. */
 #define LCG_MULTIPLIER       1664525u
 #define LCG_INCREMENT        1013904223u
 #define LCG_SHIFT            1u
+
+/* SBR Target Ratios.
+ * Targets and caps derived from natural bandwidth to scale with MOS-optimized base. */
+#define SBR_EXTENSION_RATIO   1.20f
+#define SBR_GROWTH_CAP_RATIO  0.10f
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -68,14 +75,15 @@ static faac_real compute_sfm(const faac_real * __restrict mdct, int len)
 
     for (i = 0; i < len; i++) {
         faac_real e = mdct[i] * mdct[i];
+        if (e <= 0.0f) return 0.0f; /* Any zero bin makes the geometric mean zero */
         am += e;
-        gm += logf(max(e, SFM_ENERGY_FLOOR));
+        gm += logf(e);
     }
 
     am /= len;
     gm = expf(gm / len);
 
-    return (am > SFM_ENERGY_FLOOR) ? (gm / am) : 0.0f;
+    return (am > 0.0f) ? (gm / am) : 0.0f;
 }
 
 static faac_real band_energy(const faac_real * __restrict mdct, int len)
@@ -90,7 +98,6 @@ static faac_real band_energy(const faac_real * __restrict mdct, int len)
 /* Fill [bw_bin, tgt_bin) with noise-dithered copies of the coded bandwidth. */
 static void apply_sbr_patch(faac_real * __restrict mdct,
                             int bw_bin, int tgt_bin,
-                            unsigned int bitRate,
                             unsigned int *rand)
 {
     int tgt = bw_bin;
@@ -114,12 +121,11 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
 
         src_e = band_energy(mdct + src_start, patch_len);
 
-        if (src_e > SBR_ENERGY_FLOOR)
+        if (src_e > 0.0f)
         {
             faac_real sfm = compute_sfm(mdct + src_start, patch_len);
-            /* Adaptive noise: less noise for tonal bands, more for noise-like regions.
-             * adaptive_noise_frac = 0.04 (min) to 0.24 (max). */
-            faac_real adaptive_noise_frac = 0.04f + sfm * 0.20f;
+            /* Adaptive noise: less noise for tonal bands, more for noise-like regions. */
+            faac_real adaptive_noise_frac = SBR_NOISE_OFFSET + sfm * SBR_NOISE_SLOPE;
             scale = cum_gain;
             sig_scale   = scale * ((faac_real)1.0 - adaptive_noise_frac);
             noise_scale = scale * adaptive_noise_frac * NOISE_SCALE;
@@ -144,7 +150,7 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
             /* Normalize extended patch energy to match target fraction of source energy.
              * Clamped correction factor [0.1, 1.5] prevents extreme gain fluctuations. */
             written_e = band_energy(p_tgt, patch_len);
-            if (written_e > SBR_ENERGY_FLOOR)
+            if (written_e > 0.0f)
             {
                 correction = sqrtf((src_e * scale * scale) / written_e);
                 if (correction > 1.5f) correction = 1.5f;
@@ -196,7 +202,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
 
         for (win = 0; win < MAX_SHORT_WINDOWS; win++)
             apply_sbr_patch(freqBuff + win * BLOCK_LEN_SHORT,
-                            bw_bin, tgt_bin, bitRate, rand);
+                            bw_bin, tgt_bin, rand);
     }
     else
     {
@@ -207,11 +213,11 @@ void PseudoSBR(CoderInfo    *coderInfo,
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
-        apply_sbr_patch(freqBuff, bw_bin, tgt_bin, bitRate, rand);
+        apply_sbr_patch(freqBuff, bw_bin, tgt_bin, rand);
     }
 }
 
-/* Calculate SBR target bandwidth based on bitrate and fill-ratio. */
+/* Calculate SBR target bandwidth based on natural bandwidth. */
 unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate)
@@ -222,25 +228,10 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
     if (sampleRate == 0 || baseBW == 0)
         return baseBW;
 
-    /* Stage 2: bitrate-tier absolute target bandwidths with conservative growth caps.
-     * Bitrates are input as bitrate PER CHANNEL.
-     * Prevents core bit starvation at low bitrates while aiming for specific targets. */
-    if (bitRate <= 6000u) {
-        targetBW   = 7000u;
-        growth_cap = 500u;
-    } else if (bitRate <= 12000u) {
-        /* Interpolate targets and caps */
-        targetBW   = 7000u + (bitRate - 6000u) * (10000u - 7000u) / (12000u - 6000u);
-        growth_cap = 500u  + (bitRate - 6000u) * (1500u  - 500u)  / (12000u - 6000u);
-    } else if (bitRate <= 32000u) {
-        targetBW   = 10000u + (bitRate - 12000u) * (14000u - 10000u) / (32000u - 12000u);
-        growth_cap = 1500u  + (bitRate - 12000u) * (4000u  - 1500u)  / (32000u - 12000u);
-    } else {
-        targetBW   = 14000u + (bitRate - 32000u) * 2000u / 32000u;
-        growth_cap = 4000u  + (bitRate - 32000u) * 2000u / 32000u;
-    }
+    targetBW   = (unsigned int)((float)baseBW * SBR_EXTENSION_RATIO);
+    growth_cap = (unsigned int)((float)baseBW * SBR_GROWTH_CAP_RATIO);
 
-    extended = max(baseBW, targetBW);
+    extended = targetBW;
     if (extended > baseBW + growth_cap)
         extended = baseBW + growth_cap;
 
