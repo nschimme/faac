@@ -1,7 +1,7 @@
 /****************************************************************************
     Intensity Stereo and Mid/Side Coding
 
-    Copyright (C) 2017-2024 FAAC Contributors
+    Copyright (C) 2017 Krzysztof Nikiel
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 #define MS_THR_MAX  1.25       /* ~2.00dB clamp to prevent spatial 'breathing' */
 #define SIDE_THR_MIN 0.1       /* -20dB noise floor for side-channel zeroing */
 #define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
-#define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS (Iter 21) */
+#define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS */
 #define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
 
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
@@ -73,7 +73,8 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
 /**
  * apply_ms - Applies destructive M/S transform (phase-collapse).
  *
- * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir.
+ * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir and
+ * avoid unnecesary computation.
  */
 static inline void apply_ms(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
@@ -169,10 +170,8 @@ void AACstereo(CoderInfo *coder,
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid = 1.0, thrside = 0.0, isthr = 1.0;
 
-    switch (mode)
+    if (mode == JOINT_MS || mode == JOINT_MIXED)
     {
-    case JOINT_MS:
-    case JOINT_MIXED:
         thrmid = thr075 / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
@@ -182,24 +181,16 @@ void AACstereo(CoderInfo *coder,
             thrside = sidemax;
 
         thrmid += 1.0;
-        break;
-    case JOINT_IS:
+    }
+
+    if (mode == JOINT_IS || mode == JOINT_MIXED)
+    {
         /**
          * Intensity Stereo Phase-Coherence Threshold (IS_PHASE_LEAK_LIMIT):
          * Margin allowed for phase misalignment before falling back to Mono tools.
          */
-        isthr = IS_PHASE_LEAK_LIMIT / (quality * quality);
-        if (isthr > isthrmax)
-            isthr = isthrmax;
-
-        isthr += 1.0;
-        break;
-    }
-
-    if (mode == JOINT_MIXED)
-    {
-        /* Optimized Mixed Mode IS threshold (slightly more permissive than pure IS) */
-        faac_real m_isthr = (IS_PHASE_LEAK_LIMIT * 1.5) / (quality * quality);
+        faac_real multiplier = (mode == JOINT_MIXED) ? 1.5 : 1.0;
+        faac_real m_isthr = (IS_PHASE_LEAK_LIMIT * multiplier) / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
@@ -213,7 +204,8 @@ void AACstereo(CoderInfo *coder,
     /* 4. Unified Decision Loop (Per-Band Tool Selection) */
     for (chn = 0; chn < maxchan; chn++)
     {
-        if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left) continue;
+        if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left)
+            continue;
 
         int rch = channel[chn].paired_ch;
         CoderInfo *cl = &coder[chn];
@@ -223,7 +215,8 @@ void AACstereo(CoderInfo *coder,
         channel[chn].msInfo.is_present = 0;
         channel[rch].msInfo.is_present = 0;
 
-        if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n) continue;
+        if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n)
+            continue;
 
         channel[chn].common_window = 1;
         for (int cnt = 0; cnt < cl->groups.n; cnt++)
@@ -327,7 +320,7 @@ void AACstereo(CoderInfo *coder,
                     }
                 }
 
-                // 3. Apply Decision
+                /* 3. Apply Decision */
                 if (use_is)
                 {
                     apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, hcb, sf, pan, enrgs_unnorm, enrgd_unnorm, efix);
