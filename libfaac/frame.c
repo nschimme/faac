@@ -590,6 +590,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
+        /* Apply a -10% bias to prevent overshooting */
+        fix *= 0.90;
+
         if (fix < 0.9)
             fix += 0.1;
         else if (fix > 1.1)

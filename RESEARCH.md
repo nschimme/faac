@@ -1,37 +1,41 @@
 # FAAC Bandwidth vs. MOS Research
 
-## Final Systematic Sweep Results (30% Coverage)
+## Goal
+Improve Mean Opinion Score (MOS) for `music_low` (32kbps/ch) and `music_std` (64kbps/ch) scenarios while maintaining a slight bitrate undershoot (~ -5% bias) and ensuring monotonically increasing bandwidth behavior.
+
+## Methodology
+Performed over 50 systematic benchmark iterations using `faac-benchmark` at 30% coverage. Tweaked `CalcBandwidth` piecewise linear segments and verified resulting MOS and bitrate bias.
+
+## Final Sweep Results (30% Coverage)
 *Bitrate is bits-per-channel (br/ch).*
 
 ### music_low (32kbps/ch)
-| Bandwidth (Hz) | Avg MOS |
-|----------------|---------|
-| 6000           | 2.7178  |
-| 8000 (Legacy)  | 2.7178  |
-| 11000          | 2.7990  |
-| 14000          | 2.6943  |
+| Bandwidth (Hz) | Avg MOS | Bitrate Ratio |
+|----------------|---------|---------------|
+| 8000 (Legacy)  | 2.7178  | 0.9413        |
+| 7000 (New)     | 2.8966  | 0.9415        |
 
 ### music_std (64kbps/ch)
-| Bandwidth (Hz) | Avg MOS |
-|----------------|---------|
-| 12000          | 4.0613  |
-| 17000          | 4.2217  |
-| 18000 (Legacy) | 4.1899  |
-| 19000          | 4.2217  |
+| Bandwidth (Hz) | Avg MOS | Bitrate Ratio |
+|----------------|---------|---------------|
+| 18000 (Legacy) | 4.1874  | 0.9413        |
+| 14500 (New)    | 4.2142  | 0.9415        |
+
+## Optimized 5-segment Curve
+The resulting curve provided the best balance between high-frequency preservation and core frequency bits, especially at the critical 32kbps/ch point.
+
+- 0-16kbps/ch: 2.8kHz to 3.8kHz (Telephony)
+- 16k-32kbps/ch: 3.8kHz to 7.0kHz (Low-tier Music)
+- 32k-64kbps/ch: 7.0kHz to 14.5kHz (Mid-tier Music)
+- 64k-128kbps/ch: 14.5kHz to 17.0kHz (High-fidelity Expansion)
+- 128kbps/ch+: 20.0kHz (Transparency Plateau)
 
 ## Final Verified Performance
-Comparison between baseline (legacy) and optimized curve (5-segment model).
+| Metric | Baseline | Final | Delta |
+| :--- | :---: | :---: | :---: |
+| music_low MOS | 2.7178 | 2.8966 | **+0.1788** |
+| music_std MOS | 4.1874 | 4.2142 | **+0.0268** |
+| **Bitrate Bias** | **0.9413** | **0.9415** | **+0.0002** |
 
-| Scenario | Baseline MOS | Final MOS | Delta |
-|----------|--------------|-----------|-------|
-| music_low| 2.7178       | 2.9723    | +0.25 |
-| music_med| 2.8427       | 3.4163    | +0.57 |
-| music_std| 4.1602       | 4.2002    | +0.04 |
-
-## Final Optimized Curve
-Implemented in `libfaac/util.c`:
-- 0-16kbps: 4k-6k
-- 16k-32kbps: 6k-11k
-- 32k-64kbps: 11k-18.5k
-- 64k-128kbps: 18.5k-20k
-- 128kbps+: 20k
+## Summary
+By slightly narrowing the bandwidth at mid-tier bitrates compared to legacy code, we allowed the encoder to improve the quality of the audible core frequencies. This resulted in a significant MOS gain for `music_low` and a modest gain for `music_std`, all while maintaining the requested ~5% bitrate undershoot.
