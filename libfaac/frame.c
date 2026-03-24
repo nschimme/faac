@@ -589,6 +589,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+    if (hEncoder->frameNum != 8)
+    {
+        hEncoder->aacquantCfg.last_pe = 0;
+    }
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
@@ -619,21 +623,39 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
+    if (hEncoder->config.bitRate && (frameBytes > 0))
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+        faac_real fix;
 
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
+        if (hEncoder->frameNum <= 7) // 4 fill + 4 encode (approx)
+        {
+            fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
+
+            if (hEncoder->frameNum == 7)
+            {
+                /* seed last_pe for frame 8 transition */
+                faac_real pe_target = (faac_real)desbits / 1.18;
+                hEncoder->aacquantCfg.last_pe = pe_target / fix - 1.0;
+            }
+
+            if (fix < 0.9)
+                fix += 0.1;
+            else if (fix > 1.1)
+                fix -= 0.1;
+            else
+                fix = 1.0;
+
+            fix = (fix - 1.0) * 0.5 + 1.0;
+        }
         else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        {
+            faac_real pe_target = (faac_real)desbits / 1.18;
+            faac_real pe_actual = hEncoder->aacquantCfg.last_pe;
+            fix = pe_target / (pe_actual + 1.0);
+            fix = (fix - 1.0) * 0.4 + 1.0;
+        }
 
         hEncoder->aacquantCfg.quality *= fix;
 

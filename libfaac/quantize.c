@@ -245,6 +245,28 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
+faac_real CalcPE(CoderInfo *coder, faac_real *thresh, int sr_idx)
+{
+    faac_real pe = 0.0;
+    int cnt;
+
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        faac_real e = coder->bandenrg[cnt];
+        faac_real t = thresh[cnt];
+        int sfb = cnt % coder->sfbn;
+        int group = cnt / coder->sfbn;
+        int n_lines = coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb];
+
+        if (e > t)
+        {
+            pe += n_lines * coder->groups.len[group] * FAAC_LOG10(e / t) / FAAC_LOG10(2.0);
+        }
+    }
+
+    return pe;
+}
+
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
@@ -260,15 +282,27 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     {
         int lastis;
         int lastsf;
+        int bandcnt_group = 0;
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
+            int i;
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+
+            for (i = 0; i < coder->sfbn; i++)
+            {
+                coder->bandenrg[bandcnt_group + i] = bandenrg[i];
+                coder->bandthr[bandcnt_group + i] = bandlvl[i];
+            }
+            bandcnt_group += coder->sfbn;
+
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
+
+        aacquantCfg->last_pe += CalcPE(coder, coder->bandthr, 0);
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)

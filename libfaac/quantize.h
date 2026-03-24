@@ -31,6 +31,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    faac_real last_pe;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
