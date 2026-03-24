@@ -213,16 +213,28 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         /* Verify that SBR is beneficial for this bitrate/bandwidth */
         hEncoder->config.usePseudoSBR = PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW);
         if (hEncoder->config.usePseudoSBR) {
-            /* Record the bitrate-derived bandwidth as the SBR source ceiling. */
+            /* 1. Snap core bandwidth to SFB boundaries first. */
+            CalcBW(&hEncoder->config.bandWidth,
+                      hEncoder->sampleRate,
+                      hEncoder->srInfo,
+                      &hEncoder->aacquantCfg);
+
+            /* 2. Establish baseBandWidth from the snapped value. */
             hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
 
+            /* 3. Calculate target SBR bandwidth. */
             unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
                                         hEncoder->baseBandWidth,
                                         (unsigned int)hEncoder->config.bitRate);
+
             if (sbrBW > hEncoder->baseBandWidth)
             {
-                /* Let CalcBW include the extended region in max_cbl / max_cbs. */
-                hEncoder->config.bandWidth = sbrBW;
+                /* 4. Set final bandwidth to target and re-run CalcBW to update quantizer limits (max_cbl/max_cbs). */
+                hEncoder->config.bandWidth = (faac_real)sbrBW;
+                CalcBW(&hEncoder->config.bandWidth,
+                          hEncoder->sampleRate,
+                          hEncoder->srInfo,
+                          &hEncoder->aacquantCfg);
             }
             else
             {
@@ -230,16 +242,23 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
                 hEncoder->config.usePseudoSBR = 0;
             }
         }
+        else
+        {
+            hEncoder->baseBandWidth = 0;
+            CalcBW(&hEncoder->config.bandWidth,
+                      hEncoder->sampleRate,
+                      hEncoder->srInfo,
+                      &hEncoder->aacquantCfg);
+        }
     }
     else
     {
         hEncoder->baseBandWidth = 0;
+        CalcBW(&hEncoder->config.bandWidth,
+                  hEncoder->sampleRate,
+                  hEncoder->srInfo,
+                  &hEncoder->aacquantCfg);
     }
-
-    CalcBW(&hEncoder->config.bandWidth,
-              hEncoder->sampleRate,
-              hEncoder->srInfo,
-              &hEncoder->aacquantCfg);
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
@@ -611,6 +630,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                           hEncoder->sampleRate,
                           hEncoder->baseBandWidth,
                           (unsigned int)hEncoder->config.bandWidth,
+                          (unsigned int)hEncoder->config.bitRate,
                           &hEncoder->sbrRandState);
             }
         }

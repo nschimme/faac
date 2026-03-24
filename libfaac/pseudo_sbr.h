@@ -26,6 +26,7 @@ void PseudoSBR(CoderInfo       *coderInfo,
                unsigned int     sampleRate,
                unsigned int     baseBW,
                unsigned int     sbrBW,
+               unsigned int     bitRate,
                unsigned int    *rand);
 
 /* Calculate SBR target bandwidth. */

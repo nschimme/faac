@@ -77,6 +77,7 @@ static float compute_sfm(const faac_real * __restrict buf, int len)
 /* Fill [bw_bin, tgt_bin) with noise-dithered copies of the coded bandwidth. */
 static void apply_sbr_patch(faac_real * __restrict mdct,
                             int bw_bin, int tgt_bin,
+                            unsigned int bitRate,
                             unsigned int *rand)
 {
     int tgt       = bw_bin;
@@ -90,6 +91,7 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
         faac_real src_e, tgt_rms_goal, sig_scale, noise_scale;
         float sfm, adaptive_noise_frac;
 
+        /* Point 4: Source selection from top octave. */
         patch_len = bw_bin >> (p + 1);
 
         if (patch_len < MIN_PATCH_BINS)
@@ -114,14 +116,17 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
         }
 
         /* 1. Calculate target goal */
-        tgt_rms_goal = sqrtf((float)src_e / patch_len) * cum_gain;
+        tgt_rms_goal = FAAC_SQRT(src_e / (faac_real)patch_len) * cum_gain;
+
+        /* Conservative safeguard: scale initial goal at very low bitrates to prevent core starvation. */
+        if (bitRate < 24000) tgt_rms_goal *= (faac_real)0.5;
 
         /* 2. Determine noise fraction via SFM */
         sfm = compute_sfm(mdct + src_start, patch_len);
         adaptive_noise_frac = 0.04f + sfm * 0.20f;
 
         sig_scale   = (faac_real)1.0 - (faac_real)adaptive_noise_frac;
-        noise_scale = (faac_real)adaptive_noise_frac * NOISE_SCALE;
+        noise_scale = (faac_real)adaptive_noise_frac * NOISE_SCALE * (faac_real)2.0;
 
         /* 3. Fill patch */
         {
@@ -130,7 +135,8 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
 
             for (i = 0; i < patch_len; i++) {
                 local_rand = local_rand * 1664525u + 1013904223u;
-                int32_t noise_samp = (int32_t)(local_rand >> 1) - 0x20000000;
+                /* Zero-mean noise injection */
+                int32_t noise_samp = (int32_t)(local_rand >> 1) - 0x40000000;
                 p_tgt[i] = p_src[i] * sig_scale + (faac_real)noise_samp * noise_scale;
             }
         }
@@ -139,7 +145,10 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
         {
             faac_real written_e = band_energy(mdct + tgt, patch_len);
             if (written_e > (faac_real)1e-20) {
-                faac_real correction = tgt_rms_goal / sqrtf((float)written_e / patch_len);
+                faac_real correction = tgt_rms_goal / FAAC_SQRT(written_e / (faac_real)patch_len);
+                /* Safety clamp for numerical stability */
+                if (correction > (faac_real)2.0) correction = (faac_real)2.0;
+                if (correction < (faac_real)0.5) correction = (faac_real)0.5;
                 for (i = 0; i < patch_len; i++)
                     mdct[tgt + i] *= correction;
             }
@@ -160,6 +169,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
                unsigned int  sampleRate,
                unsigned int  baseBW,
                unsigned int  sbrBW,
+               unsigned int  bitRate,
                unsigned int *rand)
 {
     int bw_bin, tgt_bin;
@@ -186,7 +196,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
 
         for (win = 0; win < MAX_SHORT_WINDOWS; win++)
             apply_sbr_patch(freqBuff + win * BLOCK_LEN_SHORT,
-                            bw_bin, tgt_bin, rand);
+                            bw_bin, tgt_bin, bitRate, rand);
     }
     else
     {
@@ -197,7 +207,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
         if (bw_bin >= tgt_bin || bw_bin < MIN_PATCH_BINS * 2)
             return;
 
-        apply_sbr_patch(freqBuff, bw_bin, tgt_bin, rand);
+        apply_sbr_patch(freqBuff, bw_bin, tgt_bin, bitRate, rand);
     }
 }
 
@@ -206,29 +216,50 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate)
 {
-    unsigned int tgt_bw;
-    unsigned int nyquist90;
+    float fillRatio;
+    unsigned int ext_percent;
+    unsigned int extended, nyquist90;
 
     if (sampleRate == 0 || baseBW == 0)
         return baseBW;
 
-    /* Relative fill-ratio gate is handled by PseudoSBRShouldEnable. */
+    /* Stage 1: fill-ratio gate. */
+    fillRatio = (float)baseBW / (float)(sampleRate / 2);
+    if (fillRatio >= SBR_FILL_RATIO_MAX)
+        return baseBW;
 
-    /* Stage 2: bitrate-tier extension amount. */
-    if      (bitRate < 16000u)  tgt_bw = 7000u;
-    else if (bitRate < 32000u)  tgt_bw = 10000u;
-    else if (bitRate < 80000u)  tgt_bw = 14000u;
-    else                        tgt_bw = 16000u;
+    /* Stage 2: bitrate-tier extension amount.
+       Very conservative tiers for low bitrates to avoid core starvation. */
+    if (bitRate < 16000u)
+        ext_percent = 5u;
+    else if (bitRate < 24000u)
+        ext_percent = 15u;
+    else if (bitRate < 32000u)
+        ext_percent = 25u;
+    else
+        ext_percent = 40u;
+
+    extended  = baseBW + (baseBW * ext_percent / 100u);
+
+    /* Point 5: Target specific absolute output bandwidths for higher bitrates. */
+    if (bitRate >= 32000u) {
+        unsigned int abs_tgt;
+        if      (bitRate < 32000u)  abs_tgt = 10000u;
+        else if (bitRate < 80000u)  abs_tgt = 14000u;
+        else                        abs_tgt = 16000u;
+
+        if (abs_tgt > extended) extended = abs_tgt;
+    }
 
     nyquist90 = sampleRate * 9u / 20u;
 
-    if (tgt_bw > nyquist90)
-        tgt_bw = nyquist90;
+    if (extended > nyquist90)
+        extended = nyquist90;
 
-    if (tgt_bw <= baseBW + SBR_MIN_EXTENSION_HZ)
+    if (extended <= baseBW + SBR_MIN_EXTENSION_HZ)
         return baseBW;
 
-    return tgt_bw;
+    return extended;
 }
 
 /* Returns 1 if SBR is beneficial for the current configuration. */
