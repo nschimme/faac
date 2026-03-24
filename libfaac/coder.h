@@ -29,7 +29,7 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define FRAME_LEN FAAC_FRAME_LEN
+#define FRAME_LEN 1024
 #define BLOCK_LEN_LONG FRAME_LEN
 #define BLOCK_LEN_SHORT 128
 
