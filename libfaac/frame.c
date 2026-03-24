@@ -50,6 +50,45 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
+static int IngestSamples(faacEncStruct *hEncoder, int32_t *inputBuffer, unsigned int samplesInput, faac_real **dest)
+{
+    unsigned int channel, i;
+    unsigned int numChannels = hEncoder->numChannels;
+    unsigned int samples_per_channel = samplesInput / numChannels;
+
+    for (channel = 0; channel < numChannels; channel++) {
+        switch( hEncoder->config.inputFormat ) {
+            case FAAC_INPUT_16BIT: {
+                short *input_ptr = (short*)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < samples_per_channel; i++) {
+                    dest[channel][i] = (faac_real)*input_ptr;
+                    input_ptr += numChannels;
+                }
+                break;
+            }
+            case FAAC_INPUT_32BIT: {
+                int32_t *input_ptr = (int32_t*)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < samples_per_channel; i++) {
+                    dest[channel][i] = (1.0/256) * (faac_real)*input_ptr;
+                    input_ptr += numChannels;
+                }
+                break;
+            }
+            case FAAC_INPUT_FLOAT: {
+                float *input_ptr = (float*)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < samples_per_channel; i++) {
+                    dest[channel][i] = (faac_real)*input_ptr;
+                    input_ptr += numChannels;
+                }
+                break;
+            }
+            default:
+                return -1;
+        }
+    }
+    return 0;
+}
+
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     const unsigned int nyquist = sampleRate / 2;
@@ -267,7 +306,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     if (numChannels > MAX_CHANNELS)
 	return NULL;
 
-    *inputSamples = FRAME_LEN*numChannels;
+    *inputSamples = 1024*numChannels;
     *maxOutputBytes = ADTS_FRAMESIZE;
 
     hEncoder = (faacEncStruct*)AllocMemory(sizeof(faacEncStruct));
@@ -280,6 +319,13 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
+
+    /* FIFO buffer initialization */
+    hEncoder->fifoCount = 0;
+    hEncoder->fifoSize = FRAME_LEN;
+    for (channel = 0; channel < numChannels; channel++) {
+        hEncoder->fifoBuff[channel] = (faac_real*)AllocMemory(hEncoder->fifoSize * sizeof(faac_real));
+    }
 
     /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
@@ -362,6 +408,8 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 			FreeMemory(hEncoder->sampleBuff[channel]);
 		if (hEncoder->next3SampleBuff[channel])
 			FreeMemory (hEncoder->next3SampleBuff[channel]);
+		if (hEncoder->fifoBuff[channel])
+			FreeMemory (hEncoder->fifoBuff[channel]);
     }
 
     /* Free handle */
@@ -397,106 +445,130 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
+    /* Fast path: FIFO is empty and input is exactly one frame */
+    if (hEncoder->fifoCount == 0 && samplesInput == numChannels * FRAME_LEN) {
+        /* Proceed directly to Step 2 and beyond with hEncoder->fifoCount = 0 but special handling */
+        hEncoder->fifoCount = FRAME_LEN; // Mock FIFO count for standard logic
+        /* We will ingest directly into next3SampleBuff later */
+    } else {
+        /* 1. Ingest input into FIFO */
+        if (samplesInput > 0) {
+            unsigned int samples_per_channel = samplesInput / numChannels;
+            if (hEncoder->fifoCount + samples_per_channel > hEncoder->fifoSize) {
+                hEncoder->fifoSize = hEncoder->fifoCount + samples_per_channel + FRAME_LEN;
+                for (channel = 0; channel < numChannels; channel++) {
+                    faac_real *new_fifo = (faac_real*)realloc(hEncoder->fifoBuff[channel], hEncoder->fifoSize * sizeof(faac_real));
+                    if (new_fifo == NULL) return -1;
+                    hEncoder->fifoBuff[channel] = new_fifo;
+                }
+            }
+
+            faac_real *dest[MAX_CHANNELS];
+            for (channel = 0; channel < numChannels; channel++)
+                dest[channel] = hEncoder->fifoBuff[channel] + hEncoder->fifoCount;
+
+            if (IngestSamples(hEncoder, inputBuffer, samplesInput, dest) < 0)
+                return -1;
+
+            hEncoder->fifoCount += samples_per_channel;
+        }
+    }
+
+    /* 2. Determine if we can encode a frame */
+    if (hEncoder->fifoCount < FRAME_LEN) {
+        if (samplesInput > 0) {
+            /* Not enough samples yet, and not at EOF */
+            return 0;
+        } else {
+            /* EOF reached */
+            if (hEncoder->fifoCount > 0) {
+                /* Pad last frame */
+                for (channel = 0; channel < numChannels; channel++) {
+                    for (i = hEncoder->fifoCount; i < FRAME_LEN; i++)
+                        hEncoder->fifoBuff[channel][i] = 0.0;
+                }
+                hEncoder->fifoCount = FRAME_LEN;
+            } else {
+                /* Nothing left in FIFO, do lookahead flush */
+                hEncoder->flushFrame++;
+                if (hEncoder->flushFrame > 4)
+                    return 0;
+            }
+        }
+    }
+
+    /* Now we definitely encode one frame (either from FIFO or silence flush) */
+
     /* Increase frame number */
     hEncoder->frameNum++;
-
-    if (samplesInput == 0)
-        hEncoder->flushFrame++;
-
-    /* After 4 flush frames all samples have been encoded,
-       return 0 bytes written */
-    if (hEncoder->flushFrame > 4)
-        return 0;
 
     /* Determine the channel configuration */
     GetChannelInfo(channelInfo, numChannels, useLfe);
 
     /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
-	{
-		faac_real *tmp;
+    {
+        faac_real *tmp;
 
+        if (!hEncoder->sampleBuff[channel])
+            hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
-		if (!hEncoder->sampleBuff[channel])
-			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+        tmp = hEncoder->sampleBuff[channel];
+        hEncoder->sampleBuff[channel]   = hEncoder->next3SampleBuff[channel];
+        hEncoder->next3SampleBuff[channel]      = tmp;
+    }
 
-		tmp = hEncoder->sampleBuff[channel];
-
-		hEncoder->sampleBuff[channel]	= hEncoder->next3SampleBuff[channel];
-		hEncoder->next3SampleBuff[channel]	= tmp;
-
-        if (samplesInput == 0)
-        {
-            /* start flushing*/
+    if (hEncoder->fifoCount >= FRAME_LEN) {
+        if (samplesInput == numChannels * FRAME_LEN && hEncoder->fifoCount == FRAME_LEN) {
+            /* Fast path: Ingest directly into next3SampleBuff */
+            if (IngestSamples(hEncoder, inputBuffer, samplesInput, hEncoder->next3SampleBuff) < 0)
+                return -1;
+            /* Mock shift: Reset mock FIFO count */
+            hEncoder->fifoCount = 0;
+        } else {
+            /* Standard path: Copy from FIFO */
+            for (channel = 0; channel < numChannels; channel++) {
+                memcpy(hEncoder->next3SampleBuff[channel], hEncoder->fifoBuff[channel], FRAME_LEN * sizeof(faac_real));
+            }
+            /* Actual shift: Postpone until after loop */
+        }
+    } else {
+        /* This happens during lookahead flushing when FIFO is empty */
+        for (channel = 0; channel < numChannels; channel++) {
             for (i = 0; i < FRAME_LEN; i++)
                 hEncoder->next3SampleBuff[channel][i] = 0.0;
         }
-        else
+    }
+
+    for (channel = 0; channel < numChannels; channel++)
+    {
+
+        /* Psychoacoustics */
+        /* Update buffers and run FFT on new samples */
+        /* LFE psychoacoustic can run without it */
+        if (channelInfo[channel].type != ELEMENT_LFE)
         {
-			int samples_per_channel = samplesInput/numChannels;
+            hEncoder->psymodel->PsyBufferUpdate(
+                    &hEncoder->fft_tables,
+                    &hEncoder->gpsyInfo,
+                    &hEncoder->psyInfo[channel],
+                    hEncoder->next3SampleBuff[channel],
+                    bandWidth,
+                    hEncoder->srInfo->cb_width_short,
+                    hEncoder->srInfo->num_cb_short);
+        }
+    }
 
-            /* handle the various input formats and channel remapping */
-            switch( hEncoder->config.inputFormat )
-			{
-                case FAAC_INPUT_16BIT:
-					{
-						short *input_channel = (short*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
-							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
-							input_channel += numChannels;
-						}
-					}
-                    break;
-
-                case FAAC_INPUT_32BIT:
-					{
-						int32_t *input_channel = (int32_t*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
-							hEncoder->next3SampleBuff[channel][i] = (1.0/256) * (faac_real)*input_channel;
-							input_channel += numChannels;
-						}
-					}
-                    break;
-
-                case FAAC_INPUT_FLOAT:
-					{
-						float *input_channel = (float*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
-							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
-							input_channel += numChannels;
-						}
-					}
-                    break;
-
-                default:
-                    return -1; /* invalid input format */
-                    break;
+    /* Shift FIFO if we used samples from it (and not fast path) */
+    if (hEncoder->fifoCount >= FRAME_LEN) {
+        hEncoder->fifoCount -= FRAME_LEN;
+        if (hEncoder->fifoCount > 0) {
+            for (channel = 0; channel < numChannels; channel++) {
+                memmove(hEncoder->fifoBuff[channel], hEncoder->fifoBuff[channel] + FRAME_LEN, hEncoder->fifoCount * sizeof(faac_real));
             }
-
-            for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
-		}
-
-		/* Psychoacoustics */
-		/* Update buffers and run FFT on new samples */
-		/* LFE psychoacoustic can run without it */
-		if (channelInfo[channel].type != ELEMENT_LFE)
-		{
-			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
-					&hEncoder->gpsyInfo,
-					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel],
-					bandWidth,
-					hEncoder->srInfo->cb_width_short,
-					hEncoder->srInfo->num_cb_short);
-		}
+        }
+    } else {
+        /* EOF and lookahead flush, OR fast path (where fifoCount was reset), nothing to shift from FIFO */
     }
 
     if (hEncoder->frameNum <= 3) /* Still filling up the buffers */

@@ -60,6 +60,11 @@ typedef struct {
     faac_real *sampleBuff[MAX_CHANNELS];
     faac_real *next3SampleBuff[MAX_CHANNELS];
 
+    /* FIFO buffer for arbitrary frame sizes */
+    faac_real *fifoBuff[MAX_CHANNELS];
+    unsigned int fifoCount;
+    unsigned int fifoSize;
+
     /* Filterbank buffers */
     faac_real *sin_window_long;
     faac_real *sin_window_short;

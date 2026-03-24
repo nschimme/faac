@@ -895,7 +895,7 @@ int main(int argc, char *argv[])
         stream = RAW_STREAM;
     }
 
-    frameSize = samplesInput / infile->channels;
+    frameSize = 1024;
     delay_samples = frameSize;  // encoder delay 1024 samples
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
     bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
