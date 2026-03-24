@@ -44,8 +44,8 @@
 /* Adaptive noise parameters.
  * noise = offset + sfm * slope.
  * Tuned via MOS optimization suite. */
-#define SBR_NOISE_OFFSET     0.06f
-#define SBR_NOISE_SLOPE      0.15f
+#define SBR_NOISE_OFFSET     0.05f
+#define SBR_NOISE_SLOPE      0.20f
 
 /* Linear Congruential Generator (LCG) parameters for noise generation.
  * Using constants from Numerical Recipes for 32-bit random numbers. */
@@ -55,9 +55,8 @@
 
 /* SBR Target Ratios.
  * Targets and caps derived from natural bandwidth to scale with MOS-optimized base. */
-#define SBR_EXTENSION_RATIO   1.25f
-#define SBR_GROWTH_CAP_RATIO  0.35f
-
+#define SBR_EXTENSION_RATIO   1.10f
+#define SBR_GROWTH_CAP_RATIO  0.20f
 
 /* -----------------------------------------------------------------------
  * Private helpers
