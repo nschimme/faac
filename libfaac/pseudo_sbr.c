@@ -28,7 +28,8 @@
 #define MAX_SBR_PATCHES      4
 #define MIN_PATCH_BINS       16
 
-#define SBR_FILL_RATIO_MAX   0.65f
+/* Increased fill-ratio to allow activation on speech/vss signals (e.g. 16kHz @ 40kbps) */
+#define SBR_FILL_RATIO_MAX   0.75f
 
 #ifdef FAAC_PRECISION_SINGLE
 #  define SBR_PATCH_ROLLOFF  0.50f
@@ -41,12 +42,6 @@
 /* -----------------------------------------------------------------------
  * Private helpers
  * --------------------------------------------------------------------- */
-
-#ifdef FAAC_PRECISION_SINGLE
-#define NOISE_SCALE (faac_real)(1.0 / 2147483648.0f)
-#else
-#define NOISE_SCALE (faac_real)(1.0 / 2147483648.0)
-#endif
 
 static faac_real band_energy(const faac_real * __restrict mdct, int len)
 {
@@ -88,10 +83,10 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
     for (p = 0; p < MAX_SBR_PATCHES; p++)
     {
         int remaining, src_start, i, patch_len;
-        faac_real src_e, tgt_rms_goal, sig_scale, noise_scale;
+        faac_real src_e, tgt_rms_goal, sig_scale;
         float sfm, adaptive_noise_frac;
 
-        /* Point 4: Source selection from top octave. */
+        /* Point 4: Source patch selection from top octave of coded BW. */
         patch_len = bw_bin >> (p + 1);
 
         if (patch_len < MIN_PATCH_BINS)
@@ -115,38 +110,36 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
             continue;
         }
 
-        /* 1. Calculate target goal */
+        /* 1. Calculate target goal (RMS) */
         tgt_rms_goal = FAAC_SQRT(src_e / (faac_real)patch_len) * cum_gain;
 
-        /* Conservative safeguard: scale initial goal at very low bitrates to prevent core starvation. */
-        if (bitRate < 24000) tgt_rms_goal *= (faac_real)0.5;
+        /* Conservative safeguard for very low bitrates: reduce SBR energy to protect core bit depth. */
+        if (bitRate < 24000u) tgt_rms_goal *= (faac_real)0.5;
 
-        /* 2. Determine noise fraction via SFM */
+        /* 2. Determine noise fraction via SFM (Point 3) */
         sfm = compute_sfm(mdct + src_start, patch_len);
         adaptive_noise_frac = 0.04f + sfm * 0.20f;
 
-        sig_scale   = (faac_real)1.0 - (faac_real)adaptive_noise_frac;
-        noise_scale = (faac_real)adaptive_noise_frac * NOISE_SCALE * (faac_real)2.0;
+        sig_scale = (faac_real)1.0 - (faac_real)adaptive_noise_frac;
 
-        /* 3. Fill patch */
+        /* 3. Fill patch using signal-proportional noise (Point 6 alternative) for zero-mean and stability. */
         {
             faac_real * __restrict p_tgt = mdct + tgt;
             const faac_real * __restrict p_src = mdct + src_start;
 
             for (i = 0; i < patch_len; i++) {
                 local_rand = local_rand * 1664525u + 1013904223u;
-                /* Zero-mean noise injection */
-                int32_t noise_samp = (int32_t)(local_rand >> 1) - 0x40000000;
-                p_tgt[i] = p_src[i] * sig_scale + (faac_real)noise_samp * noise_scale;
+                faac_real noise_sign = (local_rand & 0x80000000u) ? (faac_real)1.0 : (faac_real)-1.0;
+                p_tgt[i] = p_src[i] * sig_scale + noise_sign * FAAC_FABS(p_src[i]) * (faac_real)adaptive_noise_frac;
             }
         }
 
-        /* 4. Energy normalization correction */
+        /* 4. Energy normalization correction to match target goal (Point 2) */
         {
             faac_real written_e = band_energy(mdct + tgt, patch_len);
             if (written_e > (faac_real)1e-20) {
                 faac_real correction = tgt_rms_goal / FAAC_SQRT(written_e / (faac_real)patch_len);
-                /* Safety clamp for numerical stability */
+                /* Safety clamp for numerical stability and bit protection */
                 if (correction > (faac_real)2.0) correction = (faac_real)2.0;
                 if (correction < (faac_real)0.5) correction = (faac_real)0.5;
                 for (i = 0; i < patch_len; i++)
@@ -211,7 +204,7 @@ void PseudoSBR(CoderInfo    *coderInfo,
     }
 }
 
-/* Calculate SBR target bandwidth based on bitrate and fill-ratio. */
+/* Calculate SBR target bandwidth based on bitrate and core protection. */
 unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
                                 unsigned int baseBW,
                                 unsigned int bitRate)
@@ -229,24 +222,21 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
         return baseBW;
 
     /* Stage 2: bitrate-tier extension amount.
-       Very conservative tiers for low bitrates to avoid core starvation. */
-    if (bitRate < 16000u)
-        ext_percent = 5u;
-    else if (bitRate < 24000u)
+       Using conservative percentage tiers for bitrates < 32kbps to protect core bit depth. */
+    if (bitRate < 12000u)
         ext_percent = 15u;
-    else if (bitRate < 32000u)
+    else if (bitRate < 24000u)
         ext_percent = 25u;
     else
         ext_percent = 40u;
 
     extended  = baseBW + (baseBW * ext_percent / 100u);
 
-    /* Point 5: Target specific absolute output bandwidths for higher bitrates. */
+    /* Point 5: Target specific absolute output bandwidths for higher bitrates (>= 32kbps). */
     if (bitRate >= 32000u) {
         unsigned int abs_tgt;
-        if      (bitRate < 32000u)  abs_tgt = 10000u;
-        else if (bitRate < 80000u)  abs_tgt = 14000u;
-        else                        abs_tgt = 16000u;
+        if (bitRate < 80000u) abs_tgt = 14000u;
+        else                  abs_tgt = 16000u;
 
         if (abs_tgt > extended) extended = abs_tgt;
     }
@@ -255,6 +245,10 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
 
     if (extended > nyquist90)
         extended = nyquist90;
+
+    /* Global safety: don't extend more than 50% beyond core BW to prevent excessive spectral starvation. */
+    if (extended > (baseBW * 3u / 2u))
+        extended = baseBW * 3u / 2u;
 
     if (extended <= baseBW + SBR_MIN_EXTENSION_HZ)
         return baseBW;
