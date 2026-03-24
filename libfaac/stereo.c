@@ -303,7 +303,9 @@ void AACstereo(CoderInfo *coder,
                     && efix > silence_floor
                     && (mode == JOINT_IS
                         || (mode == JOINT_MIXED
-                            && sfb >= aacquantCfg->is_sfb_start)))
+                            && sfb >= aacquantCfg->is_sfb_start
+                            && cl->block_type != ONLY_SHORT_WINDOW
+                        )))
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
@@ -339,9 +341,7 @@ void AACstereo(CoderInfo *coder,
                 }
                 else
                 {
-                    /* Only apply thrside zeroing if MS was evaluated and rejected;
-                    * for bands that never qualified for joint coding, leave them untouched. */
-                    apply_lr(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, enrgl, enrgr, use_ms ? 0.0 : thrside);
+                    apply_lr(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, enrgl, enrgr, thrside);
                 }
                 sfcnt++;
             }
