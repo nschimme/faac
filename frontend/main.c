@@ -99,8 +99,7 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS,
-    OPT_SBR
+    OPT_PNS
 };
 
 typedef struct {
