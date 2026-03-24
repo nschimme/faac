@@ -55,8 +55,9 @@
 
 /* SBR Target Ratios.
  * Targets and caps derived from natural bandwidth to scale with MOS-optimized base. */
-#define SBR_EXTENSION_RATIO   1.10f
-#define SBR_GROWTH_CAP_RATIO  0.20f
+#define SBR_EXTENSION_RATIO   1.1f
+#define SBR_GROWTH_CAP_RATIO  0.2f
+
 
 /* -----------------------------------------------------------------------
  * Private helpers
