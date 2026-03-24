@@ -327,7 +327,7 @@ void AACstereo(CoderInfo *coder,
 
         if (!channel[chn].present)
             continue;
-        if (!((channel[chn].cpe) && (channel[chn].ch_is_left)))
+        if (!((channel[chn].type == ELEMENT_CPE) && (channel[chn].ch_is_left)))
             continue;
 
         rch = channel[chn].paired_ch;
@@ -358,7 +358,7 @@ void AACstereo(CoderInfo *coder,
 
         for (group = 0; group < coder[chn].groups.n; group++)
         {
-            int end = start + coder[chn].groups.len[group];
+            int end = start + coder->groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
