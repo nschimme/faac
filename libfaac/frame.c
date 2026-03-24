@@ -611,6 +611,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                           hEncoder->sampleRate,
                           hEncoder->baseBandWidth,
                           (unsigned int)hEncoder->config.bandWidth,
+                          (unsigned int)hEncoder->config.bitRate,
                           &hEncoder->sbrRandState);
             }
         }
