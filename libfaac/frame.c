@@ -154,6 +154,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
 
+    hEncoder->config.usePseudoSBR = config->usePseudoSBR;
+
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     switch( hEncoder->config.inputFormat )
@@ -231,6 +233,36 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    if (hEncoder->config.usePseudoSBR) {
+        unsigned int naturalBW = (unsigned int)hEncoder->config.bandWidth;
+
+        /* Verify that SBR is beneficial for this bitrate/bandwidth */
+        hEncoder->config.usePseudoSBR = PseudoSBRShouldEnable(hEncoder->sampleRate, naturalBW);
+        if (hEncoder->config.usePseudoSBR) {
+            /* Record the natural bandwidth as the SBR source ceiling. */
+            hEncoder->baseBandWidth = (unsigned int)hEncoder->config.bandWidth;
+
+            unsigned int sbrBW = PseudoSBRTargetBW(hEncoder->sampleRate,
+                                        hEncoder->baseBandWidth,
+                                        (unsigned int)hEncoder->config.bitRate);
+            if (sbrBW > hEncoder->baseBandWidth)
+            {
+                /* Expand encoder bandwidth to include the extension region. */
+                hEncoder->config.bandWidth = sbrBW;
+            }
+            else
+            {
+                hEncoder->baseBandWidth = 0;
+                hEncoder->config.usePseudoSBR = 0;
+            }
+        }
+    }
+    else
+    {
+        hEncoder->baseBandWidth = 0;
+    }
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -338,6 +370,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     TnsInit(hEncoder);
 
     QuantizeInit();
+
+    /* Pseudo-SBR defaults */
+    hEncoder->config.usePseudoSBR = 1;
+    hEncoder->baseBandWidth       = 0;
+    hEncoder->sbrRandState        = 0xDEADBEEFu ^ (sampleRate * 31337u);
 
     /* Return handle */
     return hEncoder;
@@ -588,6 +625,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+
+    /* Pseudo-SBR extension */
+    if (hEncoder->config.usePseudoSBR == 1 && hEncoder->baseBandWidth > 0)
+    {
+        for (channel = 0; channel < numChannels; channel++)
+        {
+            if (channelInfo[channel].present && (channelInfo[channel].type != ELEMENT_LFE))
+            {
+                PseudoSBR(&coderInfo[channel],
+                          hEncoder->freqBuff[channel],
+                          hEncoder->sampleRate,
+                          hEncoder->baseBandWidth,
+                          (unsigned int)hEncoder->config.bandWidth,
+                          (unsigned int)hEncoder->config.bitRate,
+                          &hEncoder->sbrRandState);
+            }
+        }
+    }
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

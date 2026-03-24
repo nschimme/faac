@@ -43,7 +43,7 @@
 
 /* Adaptive noise parameters.
  * noise = offset + sfm * slope.
- * Tuned via MOS optimization suite. */
+ * Tuned via 30-iteration MOS optimization suite. */
 #define SBR_NOISE_OFFSET     0.04f
 #define SBR_NOISE_SLOPE      0.20f
 

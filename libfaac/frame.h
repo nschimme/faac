@@ -34,6 +34,7 @@ extern "C" {
 #include "coder.h"
 #include "channels.h"
 #include "blockswitch.h"
+#include "pseudo_sbr.h"
 #include "fft.h"
 #include "quantize.h"
 
@@ -86,6 +87,15 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* Pseudo-SBR state ------------------------------------------------- */
+    /* Natural bandwidth before SBR extension (Hz).
+     * Zero when pseudo-SBR is disabled.                                 */
+    unsigned int  baseBandWidth;
+
+    /* Per-encoder LCG state for the SBR noise dither.
+     * Seeded from sampleRate in faacEncOpen().                          */
+    unsigned int  sbrRandState;
 } faacEncStruct;
 
 #ifdef __cplusplus

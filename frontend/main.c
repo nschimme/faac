@@ -196,6 +196,7 @@ static help_t help_advanced[] = {
     {"--joint 1\tUse Mid/Side coding.\n"},
     {"--joint 2\tUse Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
+    {"--no-sbr\tDisable Pseudo-SBR (spectral extension).\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
@@ -436,6 +437,7 @@ int main(int argc, char *argv[])
     int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
+    static int useSbr = 1;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
     int cutOff = -1;
@@ -534,6 +536,7 @@ int main(int argc, char *argv[])
             {"shortctl", 1, 0, SHORTCTL_FLAG},
             {"tns", 0, &useTns, 1},
             {"no-tns", 0, &useTns, 0},
+            {"no-sbr", 0, &useSbr, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
@@ -952,6 +955,8 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
+    if (!useSbr)
+        myFormat->usePseudoSBR = 0;
     myFormat->bandWidth = cutOff;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
@@ -1029,6 +1034,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
+    if (myFormat->usePseudoSBR == 1)
+        fprintf(stderr, " + SBR");
 
     switch(myFormat->jointmode) {
     case JOINT_MS:
