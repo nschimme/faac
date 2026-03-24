@@ -44,6 +44,7 @@ typedef struct {
 	faac_real *prevSamples;
 
 	int block_type;
+	int pre_echo_flag;
 
         void *data;
 } PsyInfo;

@@ -280,6 +280,8 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   psyfloat *tmp;
   int sfb;
 
+  psyInfo->pre_echo_flag = 0;
+
   psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
 
   memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
@@ -330,6 +332,29 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     }
   }
 
+  /* Attack detector */
+  for (win = 0; win < 8; win++)
+  {
+    faac_real prev_sum = 0, curr_sum = 0;
+    int lastband = psydata->lastband;
+    int firstband = 2;
+
+    for (sfb = firstband; sfb < lastband; sfb++)
+    {
+      prev_sum += psydata->engNext[win][sfb];
+      curr_sum += psydata->engNext2[win][sfb];
+    }
+
+    /* 10 dB sudden rise and above noise floor safeguard.
+       Threshold 20.0 is derived from NOISEFLOOR (0.4) in quantize.c:
+       0.4 * 0.4 * BLOCK_LEN_SHORT (128) = 20.48 */
+    if (curr_sum > 10.0 * prev_sum && curr_sum > 20.0)
+    {
+      psyInfo->pre_echo_flag = 1;
+      break;
+    }
+  }
+
   memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
 }
 
@@ -368,6 +393,9 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
+
+    if (psyInfo[channel].pre_echo_flag)
+      coderInfo[channel].desired_block_type = ONLY_SHORT_WINDOW;
   }
 }
 
