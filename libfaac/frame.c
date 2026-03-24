@@ -615,10 +615,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
-
-    /* Pseudo-SBR extension */
+    /* Pseudo-SBR extension
+     * Must be applied BEFORE AACstereo/joint-stereo processing so that SBR-generated
+     * spectral data is correctly transformed into M/S or IS domains where applicable. */
     if (hEncoder->config.usePseudoSBR == 1 && hEncoder->baseBandWidth > 0)
     {
         for (channel = 0; channel < numChannels; channel++)
@@ -635,6 +634,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             }
         }
     }
+
+    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

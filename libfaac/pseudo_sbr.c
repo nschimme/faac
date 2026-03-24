@@ -28,8 +28,8 @@
 #define MAX_SBR_PATCHES      4
 #define MIN_PATCH_BINS       16
 
-/* Activate SBR when coded bandwidth is less than 75% of Nyquist. */
-#define SBR_FILL_RATIO_MAX   0.75f
+/* Activate SBR when coded bandwidth is less than 85% of Nyquist. */
+#define SBR_FILL_RATIO_MAX   0.85f
 
 /* Point 1: Per-patch rolloff. We start at unity and roll off at 0.5 per patch. */
 #ifdef FAAC_PRECISION_SINGLE
@@ -133,11 +133,11 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
         tgt_rms_goal = FAAC_SQRT(src_e / (faac_real)patch_len) * cum_gain;
 
         /* Conservative safeguard: reduce SBR energy for low bitrates to prevent core bit starvation.
-           Highly conservative levels for speech bitstreams (<32k) to address regressions. */
+           Speech bitstreams (<32k) are highly sensitive to high-frequency noise bits. */
         if (bitRate < 12000u)      tgt_rms_goal *= (faac_real)0.03;
-        else if (bitRate < 24000u) tgt_rms_goal *= (faac_real)0.08;
-        else if (bitRate < 32000u) tgt_rms_goal *= (faac_real)0.20;
-        else if (bitRate < 48000u) tgt_rms_goal *= (faac_real)0.45;
+        else if (bitRate < 24000u) tgt_rms_goal *= (faac_real)0.10;
+        else if (bitRate < 32000u) tgt_rms_goal *= (faac_real)0.25;
+        else if (bitRate < 48000u) tgt_rms_goal *= (faac_real)0.50;
         else if (bitRate < 64000u) tgt_rms_goal *= (faac_real)0.75;
 
         sig_scale   = (faac_real)1.0 - (faac_real)adaptive_noise_frac;
@@ -237,20 +237,18 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
 
     /* Stage 2: Bitrate-tier absolute targets.
        For low bitrates, we use a minimalist extension to avoid bit starvation. */
-    if (bitRate < 12000u)      abs_tgt = baseBW + 300;
-    else if (bitRate < 18000u) abs_tgt = baseBW + 500;
-    else if (bitRate < 24000u) abs_tgt = baseBW + 1000;
-    else if (bitRate < 32000u) abs_tgt = baseBW + 2000;
+    if (bitRate < 18000u)      abs_tgt = baseBW + 500;
+    else if (bitRate < 32000u) abs_tgt = baseBW + 1500;
     else if (bitRate < 80000u) abs_tgt = 14000u;
     else                       abs_tgt = 16000u;
 
     extended = abs_tgt;
 
-    /* Growth cap to prevent bandwidth explosion. */
+    /* Growth cap for mid-range bitrates to prevent "bandwidth explosion". */
     if (bitRate < 32000u) {
         if (extended > baseBW + 2000) extended = baseBW + 2000;
     } else {
-        if (extended > baseBW + 4000) extended = baseBW + 4000;
+        if (extended > baseBW + 6000) extended = baseBW + 6000;
     }
 
     nyquist90 = sampleRate * 9u / 20u;
