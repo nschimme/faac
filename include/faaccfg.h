@@ -123,7 +123,7 @@ typedef struct faacEncConfiguration
 		WAVE 4.0		2, 0, 1, 3
 		WAVE 5.0		2, 0, 1, 3, 4
 		WAVE 5.1		2, 0, 1, 4, 5, 3
-		AIFF 5.1		2, 0, 3, 1, 4, 5 
+		AIFF 5.1		2, 0, 3, 1, 4, 5
 	*/
     int channel_map[64];
     int pnslevel;

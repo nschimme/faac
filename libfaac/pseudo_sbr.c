@@ -29,7 +29,7 @@
 #define MAX_SBR_PATCHES      4
 #define MIN_PATCH_BINS       16
 
-#define SBR_FILL_RATIO_MAX   0.65f
+#define SBR_FILL_RATIO_MAX   0.75f
 
 #ifdef FAAC_PRECISION_SINGLE
 #  define SBR_PATCH_ROLLOFF  0.50f
@@ -39,7 +39,7 @@
 #  define SBR_NOISE_FRAC     0.12
 #endif
 
-#define SBR_MIN_EXTENSION_HZ  500u
+#define SBR_MIN_EXTENSION_HZ  250u
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -219,20 +219,21 @@ unsigned int PseudoSBRTargetBW(unsigned int sampleRate,
         return baseBW;
 
     /* Stage 2: bitrate-tier absolute target bandwidths with conservative growth caps.
+     * Bitrates are input as bitrate PER CHANNEL.
      * Prevents core bit starvation at low bitrates while aiming for specific targets. */
-    if (bitRate <= 12000u) {
+    if (bitRate <= 6000u) {
         targetBW   = 7000u;
-        growth_cap = 300u;
-    } else if (bitRate <= 24000u) {
+        growth_cap = 500u;
+    } else if (bitRate <= 12000u) {
         /* Interpolate targets and caps */
-        targetBW   = 7000u + (bitRate - 12000u) * (10000u - 7000u) / (24000u - 12000u);
-        growth_cap = 300u  + (bitRate - 12000u) * (1500u  - 300u)  / (24000u - 12000u);
-    } else if (bitRate <= 64000u) {
-        targetBW   = 10000u + (bitRate - 24000u) * (14000u - 10000u) / (64000u - 24000u);
-        growth_cap = 1500u  + (bitRate - 24000u) * (4000u  - 1500u)  / (64000u - 24000u);
+        targetBW   = 7000u + (bitRate - 6000u) * (10000u - 7000u) / (12000u - 6000u);
+        growth_cap = 500u  + (bitRate - 6000u) * (1500u  - 500u)  / (12000u - 6000u);
+    } else if (bitRate <= 32000u) {
+        targetBW   = 10000u + (bitRate - 12000u) * (14000u - 10000u) / (32000u - 12000u);
+        growth_cap = 1500u  + (bitRate - 12000u) * (4000u  - 1500u)  / (32000u - 12000u);
     } else {
-        targetBW   = 14000u + (bitRate - 64000u) * 2000u / 64000u;
-        growth_cap = 4000u  + (bitRate - 64000u) * 2000u / 64000u;
+        targetBW   = 14000u + (bitRate - 32000u) * 2000u / 32000u;
+        growth_cap = 4000u  + (bitRate - 32000u) * 2000u / 32000u;
     }
 
     extended = max(baseBW, targetBW);
