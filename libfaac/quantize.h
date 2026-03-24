@@ -21,10 +21,6 @@
 #ifndef QUANTIZE_H
 #define QUANTIZE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 #include "coder.h"
 #include "faac_real.h"
 
@@ -36,7 +32,6 @@ typedef struct
     int max_l;
     int pnslevel;
     faac_real noisefloor;
-    int is_sfb_start;  /* first sfb where IS is perceptually safe (phase-blind above ~6kHz) */
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
@@ -58,9 +53,5 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
 void QuantizeInit(void);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
 
 #endif
