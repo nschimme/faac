@@ -30,7 +30,7 @@
 #define SIDE_THR_MIN 0.1       /* -20dB noise floor for side-channel zeroing */
 #define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
 #define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS */
-#define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
+#define IS_PAN_MAX 30          /* AAC-LC scalefactor range limit; beyond this L/R energy ratio is too extreme for IS */
 
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
@@ -215,17 +215,16 @@ void AACstereo(CoderInfo *coder,
         channel[chn].msInfo.is_present = 0;
         channel[rch].msInfo.is_present = 0;
 
+        channel[rch].common_window = channel[chn].common_window = 0;
+
         if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n)
             continue;
 
-        channel[chn].common_window = 1;
         for (int cnt = 0; cnt < cl->groups.n; cnt++)
             if (cl->groups.len[cnt] != cr->groups.len[cnt])
-            {
-                channel[chn].common_window = 0;
                 goto skip;
-            }
-        channel[rch].common_window = channel[chn].common_window;
+
+        channel[rch].common_window = channel[chn].common_window = 1;
 
         int frame_uses_ms = 0;
         int sfcnt = 0;
@@ -315,8 +314,10 @@ void AACstereo(CoderInfo *coder,
                          */
                         sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
-                        if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX) use_is = 1;
-                        else hcb = HCB_NONE;
+                        if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX)
+                            use_is = 1;
+                        else
+                            hcb = HCB_NONE; /* pan out of range; apply_lr will zero the quieter channel via thrside */
                     }
                 }
 
