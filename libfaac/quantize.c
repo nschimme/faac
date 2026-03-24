@@ -25,6 +25,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -317,6 +318,35 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         return 1;
     }
     return 0;
+}
+
+void BlocQuantCPE(CoderInfo * __restrict cl, CoderInfo * __restrict cr,
+                  faac_real * __restrict xl, faac_real * __restrict xr,
+                  AACQuantCfg * __restrict aacquantCfg)
+{
+    /* Pass 1: right channel first to measure joint-stereo savings */
+    BlocQuant(cr, xr, aacquantCfg);
+
+    int zeroed = 0;
+    for (int i = 0; i < cr->bandcnt; i++) {
+        int book = cr->book[i];
+        if (book == HCB_ZERO || book == HCB_INTENSITY || book == HCB_INTENSITY2)
+            zeroed++;
+    }
+
+    /* Pass 2: boost left channel quality proportional to freed bands.
+     * Dampen by 0.5 to avoid overshooting the frame budget; IS bands
+     * still consume a scalefactor entry so savings are partial. */
+    if (cr->bandcnt > 0 && zeroed > 0) {
+        faac_real boost = 1.0 + 0.5 * (faac_real)zeroed / cr->bandcnt;
+        faac_real saved = aacquantCfg->quality;
+        aacquantCfg->quality = min(aacquantCfg->quality * boost,
+                                   (faac_real)MAXQUAL);
+        BlocQuant(cl, xl, aacquantCfg);
+        aacquantCfg->quality = saved;
+    } else {
+        BlocQuant(cl, xl, aacquantCfg);
+    }
 }
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
