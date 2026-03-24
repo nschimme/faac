@@ -32,6 +32,12 @@
 
 typedef float psyfloat;
 
+#define ATTACK_RATIO 10.0
+/* ATTACK_THRESHOLD was 20.0, increased to 100.0 to prevent MOS regression on voice.
+   Derivation: 2.0 * 0.4 * 0.4 * BLOCK_LEN_SHORT (128) * 2.5 ~= 100.0 */
+#define ATTACK_THRESHOLD 100.0
+#define ATTACK_FIRSTBAND 2
+
 typedef struct
 {
   /* bandwidth */
@@ -146,6 +152,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].pre_echo_flag = 0;
   }
 
   size = BLOCK_LEN_LONG;
@@ -337,18 +344,15 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
   {
     faac_real prev_sum = 0, curr_sum = 0;
     int lastband = psydata->lastband;
-    int firstband = 2;
 
-    for (sfb = firstband; sfb < lastband; sfb++)
+    for (sfb = ATTACK_FIRSTBAND; sfb < lastband; sfb++)
     {
       prev_sum += psydata->engNext[win][sfb];
       curr_sum += psydata->engNext2[win][sfb];
     }
 
-    /* 10 dB sudden rise and above noise floor safeguard.
-       Threshold 20.0 is derived from NOISEFLOOR (0.4) in quantize.c:
-       0.4 * 0.4 * BLOCK_LEN_SHORT (128) = 20.48 */
-    if (curr_sum > 10.0 * prev_sum && curr_sum > 20.0)
+    /* 10 dB sudden rise and above noise floor safeguard. */
+    if (curr_sum > ATTACK_RATIO * prev_sum && curr_sum > ATTACK_THRESHOLD)
     {
       psyInfo->pre_echo_flag = 1;
       break;
