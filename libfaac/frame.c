@@ -229,7 +229,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
             if (sbrBW > hEncoder->baseBandWidth)
             {
-                /* 4. Set final bandwidth to target and re-run CalcBW to update quantizer limits (max_cbl/max_cbs). */
+                /* 4. Set final bandwidth to target and re-run CalcBW to update quantizer limits. */
                 hEncoder->config.bandWidth = (faac_real)sbrBW;
                 CalcBW(&hEncoder->config.bandWidth,
                           hEncoder->sampleRate,
