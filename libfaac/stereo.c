@@ -342,7 +342,7 @@ void AACstereo(CoderInfo *coder,
                 }
                 else
                 {
-                    apply_lr(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, enrgl, enrgr, thrside);
+                    apply_lr(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, enrgl, enrgr, use_ms ? 0.0 : thrside);
                 }
                 sfcnt++;
             }
