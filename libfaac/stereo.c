@@ -135,12 +135,12 @@ void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
-               faac_real quality,
                int mode,
                AACQuantCfg *aacquantCfg
               )
 {
     int chn;
+    faac_real quality = (faac_real)aacquantCfg->quality / DEFQUAL;
 
     /* 1. Fast State Reset (Mandatory for both Mono and Stereo to prevent stale data in BlocQuant) */
     for (chn = 0; chn < maxchan; chn++)
