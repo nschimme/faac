@@ -34,3 +34,4 @@
 - Experiment 5: Log-domain proportional adjustment and faster PE moving average. Result: VoIP ~13.5kbps, VSS ~28kbps (target 40).
 - Experiment 6: Stabilized log-domain feedback and tuned res_fix. Result: 95%+ bitrate accuracy achieved on most scenarios.
 - Experiment 7: Switched to feed-forward PE estimation. Result: Drastic improvement in bitrate accuracy for short clips (VoIP/VSS), achieving >95% accuracy while maintaining MOS.
+- Experiment 8: Refined long-term IIR alpha and initial quality estimation. Result: Fast convergence within 30 frames, stable bitrate for speech and music.

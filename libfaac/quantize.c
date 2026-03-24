@@ -106,24 +106,27 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       return;
   }
 
-  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+  const int sfbn = coderInfo->sfbn;
+  const int block_type = coderInfo->block_type;
+
+  for (sfb = 0; sfb < sfbn; sfb++)
   {
     faac_real avge, maxe;
     faac_real target;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
+    const int n = end - start;
 
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
+        const faac_real * __restrict xr_win = xr0 + win * BLOCK_LEN_SHORT + start;
         for (cnt = 0; cnt < n; cnt++)
         {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
+            const faac_real val = xr_win[cnt];
+            const faac_real e = val * val;
             avge += e;
             if (maxe < e)
                 maxe = e;
@@ -133,7 +136,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
 
 #define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+    if (block_type == ONLY_SHORT_WINDOW)
     {
         last = BLOCK_LEN_SHORT;
         avgenrg = totenrg / last;
@@ -233,10 +236,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          /* Hoist BLOCK_LEN_SHORT and use restrict pointers */
           for (win = 0; win < gsize; win++)
           {
-              xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              const faac_real * __restrict xr_win = xr0 + win * BLOCK_LEN_SHORT + start;
+              qfunc(xr_win, xi, end, sfacfix);
               xi += end;
           }
       }
@@ -251,20 +255,24 @@ void EstimatePE(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuan
     faac_real bandenrg[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr = xr;
+    const int sfbn = coder->sfbn;
+    const int * __restrict sfb_offset = coder->sfb_offset;
+    const faac_real qual = (faac_real)aacquantCfg->quality / DEFQUAL;
 
     coder->pe = 0.0;
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
-        bmask(coder, gxr, bandlvl, bandenrg, cnt,
-              (faac_real)aacquantCfg->quality/DEFQUAL);
+        bmask(coder, gxr, bandlvl, bandenrg, cnt, qual);
 
         /* Calculate Perceptual Entropy (PE) estimation for the frame */
-        for (int sfb = 0; sfb < coder->sfbn; sfb++) {
-            if (bandenrg[sfb] > 1e-6 && bandlvl[sfb] > 1e-6) {
-                faac_real snr = bandenrg[sfb] / bandlvl[sfb];
-                if (snr > 1.0) {
-                    coder->pe += (coder->sfb_offset[sfb+1] - coder->sfb_offset[sfb]) * FAAC_LOG10(snr);
-                }
+        /* Hoist sfb_offset accesses and use restrict */
+        for (int sfb = 0; sfb < sfbn; sfb++) {
+            const faac_real enrg = bandenrg[sfb];
+            const faac_real lvl = bandlvl[sfb];
+            /* Standard PE formula: width * log2(energy/threshold) */
+            if (enrg > lvl && lvl > 0.0) {
+                const int width = sfb_offset[sfb+1] - sfb_offset[sfb];
+                coder->pe += (faac_real)width * FAAC_LOG10(enrg / lvl);
             }
         }
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;

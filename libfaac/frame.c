@@ -222,9 +222,14 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    hEncoder->quality_base = hEncoder->config.quantqual;
+    /* Initial quality estimation based on bitrate per channel */
+    {
+        /* Legacy FAAC heuristic: 64kbps/ch -> quality 100 */
+        hEncoder->quality_base = (faac_real)hEncoder->config.bitRate / 640.0;
+    }
     if (hEncoder->quality_base < 10) hEncoder->quality_base = 10;
-    hEncoder->bit_reservoir_max = MaxBitresSize(hEncoder->config.bitRate, hEncoder->sampleRate) * (hEncoder->numChannels > 1 ? 2 : 1);
+    /* Capacity is 6144 bits per CPE (Channel Pair Element) */
+    hEncoder->bit_reservoir_max = 6144 * ((hEncoder->numChannels + 1) / 2);
     hEncoder->bit_reservoir = hEncoder->bit_reservoir_max / 2;
     hEncoder->aacquantCfg.pe = 0;
 
@@ -405,6 +410,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Increase frame number */
     hEncoder->frameNum++;
+
+    /* Centralized bitrate parameters */
+    const int target_bits_per_frame = hEncoder->config.bitRate ? (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate : 0;
+    const int desbits_total = numChannels * target_bits_per_frame;
 
     if (samplesInput == 0)
         hEncoder->flushFrame++;
@@ -596,31 +605,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     /* Feed-forward Rate Control: Estimate PE and determine bit budget BEFORE quantization */
-    if (hEncoder->config.bitRate)
+    if (target_bits_per_frame > 0)
     {
         faac_real total_pe = 0;
-        int target_bits_per_frame = (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
-        int desbits_total = numChannels * target_bits_per_frame;
-        faac_real pe_chan[MAX_CHANNELS];
 
         for (channel = 0; channel < numChannels; channel++) {
             EstimatePE(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->aacquantCfg);
-            pe_chan[channel] = coderInfo[channel].pe;
-            total_pe += pe_chan[channel];
-        }
-
-        /* Shared CPE Budget: Allocation based on PE within pairs */
-        for (channel = 0; channel < numChannels; channel++) {
-            if (channelInfo[channel].present && channelInfo[channel].type == ELEMENT_CPE && channelInfo[channel].ch_is_left) {
-                int rch = channelInfo[channel].paired_ch;
-                faac_real cpe_pe = pe_chan[channel] + pe_chan[rch];
-                if (cpe_pe > 1.0) {
-                    /* In FAAC we set a global quality factor for the frame,
-                       but we can apply channel-specific adjustments if needed.
-                       For now, we use the total PE for the global quality.
-                    */
-                }
-            }
+            total_pe += coderInfo[channel].pe;
         }
 
         /* Dual Loop Rate Control (Feed-forward part) */
@@ -681,11 +672,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     frameBytes = CloseBitStream(bitStream);
 
     /* Modern Rate Control (Long-term Feedback) */
-    if (hEncoder->config.bitRate)
+    if (target_bits_per_frame > 0)
     {
-        int actual_bits = frameBytes * 8;
-        int target_bits_per_frame = (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
-        int desbits_total = numChannels * target_bits_per_frame;
+        const int actual_bits = frameBytes * 8;
 
         /* Update Bit Reservoir */
         hEncoder->bit_reservoir += (desbits_total - actual_bits);
@@ -695,13 +684,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->bit_reservoir = 0;
 
         /* Dual Loop Rate Control: Loop 1: Long-term average quality (IIR Filter) */
-        faac_real bitrate_ratio = (faac_real)actual_bits / (faac_real)(desbits_total + 1e-6);
-
         /* Adaptive alpha: faster at start or when error is large */
         faac_real alpha = (hEncoder->frameNum < 50) ? 0.4 : 0.1;
 
         /* Proportional adjustment in log domain for stability */
-        faac_real log_ratio = FAAC_LOG10(bitrate_ratio + 1e-6);
+        /* Use integer-based safety for log: (actual_bits + 1) / (desbits_total + 1) */
+        faac_real log_ratio = FAAC_LOG10((faac_real)(actual_bits + 1) / (faac_real)(desbits_total + 1));
         hEncoder->quality_base *= FAAC_POW(10.0, -log_ratio * alpha * 1.5);
 
         /* Clamp quality_base */
