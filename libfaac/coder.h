@@ -106,6 +106,7 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+    faac_real pe;
 
     TnsInfo tnsInfo;
 } CoderInfo;

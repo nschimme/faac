@@ -245,6 +245,32 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
+void EstimatePE(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+{
+    faac_real bandlvl[MAX_SCFAC_BANDS];
+    faac_real bandenrg[MAX_SCFAC_BANDS];
+    int cnt;
+    faac_real *gxr = xr;
+
+    coder->pe = 0.0;
+    for (cnt = 0; cnt < coder->groups.n; cnt++)
+    {
+        bmask(coder, gxr, bandlvl, bandenrg, cnt,
+              (faac_real)aacquantCfg->quality/DEFQUAL);
+
+        /* Calculate Perceptual Entropy (PE) estimation for the frame */
+        for (int sfb = 0; sfb < coder->sfbn; sfb++) {
+            if (bandenrg[sfb] > 1e-6 && bandlvl[sfb] > 1e-6) {
+                faac_real snr = bandenrg[sfb] / bandlvl[sfb];
+                if (snr > 1.0) {
+                    coder->pe += (coder->sfb_offset[sfb+1] - coder->sfb_offset[sfb]) * FAAC_LOG10(snr);
+                }
+            }
+        }
+        gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
+    }
+}
+
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
@@ -266,6 +292,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
+
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
