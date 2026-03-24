@@ -279,8 +279,8 @@ void EstimatePE(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuan
 
 int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
 {
-    faac_real bandlvl[NSFB_LONG];
-    faac_real bandenrg[NSFB_LONG];
+    faac_real bandlvl[MAX_SCFAC_BANDS];
+    faac_real bandenrg[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
     const faac_real quality = (faac_real)aacquantCfg->quality / DEFQUAL;

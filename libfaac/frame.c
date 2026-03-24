@@ -222,10 +222,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    /* Initial quality estimation based on bitrate per channel */
+    /* Initial quality estimation based on bits per sample per channel */
     {
-        /* Legacy FAAC heuristic: 64kbps/ch -> quality 100 */
-        hEncoder->quality_base = (faac_real)hEncoder->config.bitRate / 640.0;
+        /* Initial quality base based on bitrate per channel */
+        hEncoder->quality_base = (faac_real)hEncoder->config.bitRate / 400.0;
     }
     if (hEncoder->quality_base < 10) hEncoder->quality_base = 10;
     /* Capacity is 6144 bits per CPE (Channel Pair Element) */
@@ -604,11 +604,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+    faac_real total_pe = 0;
+    faac_real pe_demand = 1.0;
+
     /* Feed-forward Rate Control: Estimate PE and determine bit budget BEFORE quantization */
     if (target_bits_per_frame > 0)
     {
-        faac_real total_pe = 0;
-
         for (channel = 0; channel < numChannels; channel++) {
             EstimatePE(&coderInfo[channel], hEncoder->freqBuff[channel], &hEncoder->aacquantCfg);
             total_pe += coderInfo[channel].pe;
@@ -618,21 +619,21 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         /* Loop 2: Short-term bit distribution based on PE and reservoir fullness */
         faac_real res_fullness = (faac_real)hEncoder->bit_reservoir / (faac_real)(hEncoder->bit_reservoir_max + 1);
 
-        /* Update moving average PE with adaptive tracking */
-        if (hEncoder->aacquantCfg.pe < 1.0) {
+        /* Update moving average PE */
+        if (hEncoder->aacquantCfg.pe < 10.0) {
             hEncoder->aacquantCfg.pe = total_pe;
         } else {
-            faac_real beta = (hEncoder->frameNum < 50) ? 0.4 : 0.1;
+            faac_real beta = 0.1;
             hEncoder->aacquantCfg.pe = (1.0 - beta) * hEncoder->aacquantCfg.pe + beta * total_pe;
         }
 
         /* Bit demand estimation from PE */
-        faac_real pe_demand = (total_pe + 75.0) / (hEncoder->aacquantCfg.pe + 75.0);
-        if (pe_demand > 1.4) pe_demand = 1.5;
-        if (pe_demand < 0.7) pe_demand = 0.5;
+        pe_demand = (total_pe + 100.0) / (hEncoder->aacquantCfg.pe + 100.0);
+        if (pe_demand > 2.0) pe_demand = 2.0;
+        if (pe_demand < 0.4) pe_demand = 0.4;
 
-        /* Reservoir modulation: [0.75, 1.25] */
-        faac_real res_modulation = 0.8 + 0.4 * res_fullness;
+        /* Reservoir modulation: range [0.5, 2.0] for utilization of sparse audio */
+        faac_real res_modulation = 0.5 + 1.5 * res_fullness;
 
         /* Combined feed-forward fix */
         hEncoder->aacquantCfg.quality = hEncoder->quality_base * res_modulation * pe_demand;
@@ -684,13 +685,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->bit_reservoir = 0;
 
         /* Dual Loop Rate Control: Loop 1: Long-term average quality (IIR Filter) */
-        /* Adaptive alpha: faster at start or when error is large */
-        faac_real alpha = (hEncoder->frameNum < 50) ? 0.4 : 0.1;
+        /* Adaptive alpha: faster at start */
+        faac_real alpha = (hEncoder->frameNum < 50) ? 0.5 : 0.2;
 
         /* Proportional adjustment in log domain for stability */
-        /* Use integer-based safety for log: (actual_bits + 1) / (desbits_total + 1) */
+        /* Base feedback on global target to ensure long-term convergence */
         faac_real log_ratio = FAAC_LOG10((faac_real)(actual_bits + 1) / (faac_real)(desbits_total + 1));
-        hEncoder->quality_base *= FAAC_POW(10.0, -log_ratio * alpha * 1.5);
+
+        /* Complexity gating: reduce feedback aggression if frame is not representative */
+        if (total_pe < 100.0 && actual_bits < desbits_total) {
+            /* Very quiet frame: ignore bit under-run to avoid quality inflation */
+            alpha = 0.0;
+        }
+
+        /* If actual > target, log_ratio > 0. We want to decrease quality_base (more bits) */
+        /* If actual < target, log_ratio < 0. We want to increase quality_base (fewer bits) */
+        hEncoder->quality_base *= FAAC_POW(10.0, -log_ratio * alpha);
 
         /* Clamp quality_base */
         if (hEncoder->quality_base > maxqual) hEncoder->quality_base = maxqual;
