@@ -29,17 +29,27 @@
 #define MAX_SBR_PATCHES      4
 #define MIN_PATCH_BINS       16
 
+/* Maximum ratio of coded bandwidth to Nyquist frequency before SBR is disabled.
+ * Beyond 75%, natural extension by the LC encoder is preferred. */
 #define SBR_FILL_RATIO_MAX   0.75f
 
-#ifdef FAAC_PRECISION_SINGLE
-#  define SBR_PATCH_ROLLOFF  0.50f
-#  define SBR_NOISE_FRAC     0.12f
-#else
-#  define SBR_PATCH_ROLLOFF  0.50
-#  define SBR_NOISE_FRAC     0.12
-#endif
+/* Patch gain roll-off per subsequent patch (linear scale).
+ * 0.50 is -6dB, ensuring high frequencies roll off naturally. */
+#define SBR_PATCH_ROLLOFF  0.50f
 
+/* Minimum extension required (Hz) to justify SBR overhead. */
 #define SBR_MIN_EXTENSION_HZ  250u
+
+/* Energy floors to prevent division by zero or processing of silence.
+ * 1e-10 corresponds to roughly -100dB in PCM power scale. */
+#define SBR_ENERGY_FLOOR     1e-10f
+#define SFM_ENERGY_FLOOR     1e-10f
+
+/* Linear Congruential Generator (LCG) parameters for noise generation.
+ * Using constants from Numerical Recipes for 32-bit random numbers. */
+#define LCG_MULTIPLIER       1664525u
+#define LCG_INCREMENT        1013904223u
+#define LCG_SHIFT            1u
 
 /* -----------------------------------------------------------------------
  * Private helpers
@@ -59,13 +69,13 @@ static faac_real compute_sfm(const faac_real * __restrict mdct, int len)
     for (i = 0; i < len; i++) {
         faac_real e = mdct[i] * mdct[i];
         am += e;
-        gm += logf(max(e, 1e-10f));
+        gm += logf(max(e, SFM_ENERGY_FLOOR));
     }
 
     am /= len;
     gm = expf(gm / len);
 
-    return (am > 1e-10f) ? (gm / am) : 0.0f;
+    return (am > SFM_ENERGY_FLOOR) ? (gm / am) : 0.0f;
 }
 
 static faac_real band_energy(const faac_real * __restrict mdct, int len)
@@ -104,11 +114,12 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
 
         src_e = band_energy(mdct + src_start, patch_len);
 
-        if (src_e > (faac_real)1e-20)
+        if (src_e > SBR_ENERGY_FLOOR)
         {
             faac_real sfm = compute_sfm(mdct + src_start, patch_len);
-            /* Conservative adaptive noise: less noise for tonal bands, max ~0.15 for noisy bands */
-            faac_real adaptive_noise_frac = 0.02f + sfm * 0.12f;
+            /* Adaptive noise: less noise for tonal bands, more for noise-like regions.
+             * adaptive_noise_frac = 0.04 (min) to 0.24 (max). */
+            faac_real adaptive_noise_frac = 0.04f + sfm * 0.20f;
             scale = cum_gain;
             sig_scale   = scale * ((faac_real)1.0 - adaptive_noise_frac);
             noise_scale = scale * adaptive_noise_frac * NOISE_SCALE;
@@ -126,25 +137,18 @@ static void apply_sbr_patch(faac_real * __restrict mdct,
             faac_real written_e, correction;
 
             for (i = 0; i < patch_len; i++) {
-                local_rand = local_rand * 1664525u + 1013904223u;
-                p_tgt[i] = p_src[i] * sig_scale + (int32_t)(local_rand >> 1) * noise_scale;
+                local_rand = local_rand * LCG_MULTIPLIER + LCG_INCREMENT;
+                p_tgt[i] = p_src[i] * sig_scale + (int32_t)(local_rand >> LCG_SHIFT) * noise_scale;
             }
 
             /* Normalize extended patch energy to match target fraction of source energy.
-             * Clamped correction prevents extreme gain fluctuations. */
+             * Clamped correction factor [0.1, 1.5] prevents extreme gain fluctuations. */
             written_e = band_energy(p_tgt, patch_len);
-            if (written_e > (faac_real)1e-20)
+            if (written_e > SBR_ENERGY_FLOOR)
             {
-                faac_real norm_fac = (faac_real)1.0;
-                /* More aggressive normalization for low bitrates to protect core quality */
-                if (bitRate < 12000u) norm_fac = (faac_real)0.03;
-                else if (bitRate < 24000u) norm_fac = (faac_real)0.08;
-                else if (bitRate < 32000u) norm_fac = (faac_real)0.20;
-                else if (bitRate < 48000u) norm_fac = (faac_real)0.45;
-
-                correction = sqrtf((src_e * scale * scale * norm_fac) / written_e);
-                if (correction > (faac_real)1.5) correction = (faac_real)1.5;
-                if (correction < (faac_real)0.1) correction = (faac_real)0.1;
+                correction = sqrtf((src_e * scale * scale) / written_e);
+                if (correction > 1.5f) correction = 1.5f;
+                if (correction < 0.1f) correction = 0.1f;
                 for (i = 0; i < patch_len; i++)
                     p_tgt[i] *= correction;
             }
