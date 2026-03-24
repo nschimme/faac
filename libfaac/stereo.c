@@ -299,7 +299,9 @@ void AACstereo(CoderInfo *coder,
                  * Only if M/S is not chosen. IS provides maximum bit recovery but collapses
                  * the phase image entirely.
                  */
-                if (!use_ms && (mode == JOINT_IS || mode == JOINT_MIXED) && efix > silence_floor)
+                if (!use_ms
+                    && (mode == JOINT_IS || (mode == JOINT_MIXED && sfb >= aacquantCfg->is_sfb_start))
+                    && efix > silence_floor)
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);

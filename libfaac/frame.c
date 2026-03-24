@@ -341,6 +341,24 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
+    #define IS_FREQ_MIN_HZ 6000
+    /* IS frequency floor for JOINT_MIXED mode only.
+    * In JOINT_MIXED, IS is restricted to bands above ~6kHz where phase
+    * localization is perceptually weak. JOINT_IS ignores this and applies
+    * IS from sfmin upward per user intent. */
+    {
+        faac_real bin_hz = (faac_real)hEncoder->sampleRate / (2.0 * BLOCK_LEN_LONG);
+        hEncoder->aacquantCfg.is_sfb_start = hEncoder->coderInfo[0].sfbn; /* default: IS disabled */
+        for (int i = 0; i < hEncoder->coderInfo[0].sfbn; i++)
+        {
+            if (hEncoder->coderInfo[0].sfb_offset[i] * bin_hz >= IS_FREQ_MIN_HZ)
+            {
+                hEncoder->aacquantCfg.is_sfb_start = i;
+                break;
+            }
+        }
+    }
+
     /* Return handle */
     return hEncoder;
 }
