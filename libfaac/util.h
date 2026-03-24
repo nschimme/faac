@@ -44,6 +44,7 @@ extern "C" {
 
 /* Memory functions */
 #define AllocMemory(size) malloc(size)
+#define ReallocMemory(block, size) realloc(block, size)
 #define FreeMemory(block) free(block)
 #define SetMemory(block, value, size) memset(block, value, size)
 

@@ -22,11 +22,6 @@
 #ifndef _FAAC_H_
 #define _FAAC_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
-
 #if !defined(FAACAPI) && defined(__GNUC__) && (__GNUC__ >= 4)
 # if defined(_WIN32)
 #  define FAACAPI __stdcall __declspec(dllexport)
@@ -38,6 +33,12 @@ extern "C" {
 #  define FAACAPI
 #endif
 
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 #pragma pack(push, 1)
 
 typedef struct {
@@ -46,9 +47,9 @@ typedef struct {
 }
 psymodellist_t;
 
-#include <stdint.h>
-#include "faaccfg.h"
+#define FAAC_FRAME_LEN 1024
 
+#include "faaccfg.h"
 
 typedef void *faacEncHandle;
 

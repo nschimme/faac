@@ -23,13 +23,14 @@
 #define CODER_H
 
 #include "faac_real.h"
+#include <faac.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-#define FRAME_LEN 1024
-#define BLOCK_LEN_LONG 1024
+#define FRAME_LEN FAAC_FRAME_LEN
+#define BLOCK_LEN_LONG FRAME_LEN
 #define BLOCK_LEN_SHORT 128
 
 #define NSFB_LONG  51

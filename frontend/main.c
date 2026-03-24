@@ -895,7 +895,7 @@ int main(int argc, char *argv[])
         stream = RAW_STREAM;
     }
 
-    frameSize = 1024;
+    frameSize = FAAC_FRAME_LEN;
     delay_samples = frameSize;  // encoder delay 1024 samples
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
     bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
@@ -1066,7 +1066,7 @@ int main(int argc, char *argv[])
     long begin = GetTickCount();
 #endif
     if (infile->samples)
-        frames = ((infile->samples + 1023) / 1024) + 1;
+        frames = ((infile->samples + (FAAC_FRAME_LEN - 1)) / FAAC_FRAME_LEN) + 1;
     else
         frames = 0;
     currentFrame = 0;
@@ -1157,7 +1157,7 @@ int main(int argc, char *argv[])
                             ((double) infile->samples / infile->samplerate *
                              currentFrame / frames), timeused,
                             timeused * frames / currentFrame,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)FAAC_FRAME_LEN * currentFrame / infile->samplerate) /
                             timeused,
                             timeused * (frames -
                                         currentFrame) / currentFrame);
@@ -1168,7 +1168,7 @@ int main(int argc, char *argv[])
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)FAAC_FRAME_LEN * currentFrame / infile->samplerate) /
                             timeused);
                 }
 
