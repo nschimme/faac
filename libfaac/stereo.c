@@ -1,7 +1,7 @@
 /****************************************************************************
     Intensity Stereo and Mid/Side Coding
 
-    Copyright (C) 2017-2024 FAAC Contributors
+    Copyright (C) 2017 Krzysztof Nikiel
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@
 #define MS_THR_MAX  1.25       /* ~2.00dB clamp to prevent spatial 'breathing' */
 #define SIDE_THR_MIN 0.1       /* -20dB noise floor for side-channel zeroing */
 #define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
-#define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS (Iter 21) */
-#define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
+#define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS */
+#define IS_PAN_MAX 30          /* AAC-LC scalefactor range limit; beyond this L/R energy ratio is too extreme for IS */
 
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
@@ -73,7 +73,8 @@ static inline void apply_is(CoderInfo *cl, CoderInfo *cr,
 /**
  * apply_ms - Applies destructive M/S transform (phase-collapse).
  *
- * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir.
+ * M/S collapse: Force one channel to zero based on phase dominance to preserve bit reservoir and
+ * avoid unnecessary computation.
  */
 static inline void apply_ms(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
                             int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
@@ -169,10 +170,8 @@ void AACstereo(CoderInfo *coder,
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid = 1.0, thrside = 0.0, isthr = 1.0;
 
-    switch (mode)
+    if (mode == JOINT_MS || mode == JOINT_MIXED)
     {
-    case JOINT_MS:
-    case JOINT_MIXED:
         thrmid = thr075 / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
@@ -182,24 +181,15 @@ void AACstereo(CoderInfo *coder,
             thrside = sidemax;
 
         thrmid += 1.0;
-        break;
-    case JOINT_IS:
-        /**
-         * Intensity Stereo Phase-Coherence Threshold (IS_PHASE_LEAK_LIMIT):
-         * Margin allowed for phase misalignment before falling back to Mono tools.
-         */
-        isthr = IS_PHASE_LEAK_LIMIT / (quality * quality);
-        if (isthr > isthrmax)
-            isthr = isthrmax;
-
-        isthr += 1.0;
-        break;
     }
 
-    if (mode == JOINT_MIXED)
+    if (mode == JOINT_IS || mode == JOINT_MIXED)
     {
-        /* Optimized Mixed Mode IS threshold (slightly more permissive than pure IS) */
-        faac_real m_isthr = (IS_PHASE_LEAK_LIMIT * 1.5) / (quality * quality);
+        /**
+         * Intensity Stereo Phase-Coherence Threshold (IS_PHASE_LEAK_LIMIT):
+         * Margin allowed for phase misalignment before falling back to L/R tools.
+         */
+        faac_real m_isthr = IS_PHASE_LEAK_LIMIT / (quality * quality);
         if (m_isthr > isthrmax)
             m_isthr = isthrmax;
         isthr = m_isthr + 1.0;
@@ -214,6 +204,7 @@ void AACstereo(CoderInfo *coder,
     for (chn = 0; chn < maxchan; chn++)
     {
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left)
+           
             continue;
 
         int rch = channel[chn].paired_ch;
@@ -224,16 +215,16 @@ void AACstereo(CoderInfo *coder,
         channel[chn].msInfo.is_present = 0;
         channel[rch].msInfo.is_present = 0;
 
-        if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n) continue;
+        channel[rch].common_window = channel[chn].common_window = 0;
 
-        channel[chn].common_window = 1;
+        if (cl->block_type != cr->block_type || cl->groups.n != cr->groups.n)
+            continue;
+
         for (int cnt = 0; cnt < cl->groups.n; cnt++)
             if (cl->groups.len[cnt] != cr->groups.len[cnt])
-            {
-                channel[chn].common_window = 0;
                 goto skip;
-            }
-        channel[rch].common_window = channel[chn].common_window;
+
+        channel[rch].common_window = channel[chn].common_window = 1;
 
         int frame_uses_ms = 0;
         int sfcnt = 0;
@@ -274,7 +265,9 @@ void AACstereo(CoderInfo *coder,
                 faac_real enrgd_norm = 0.25 * enrgd_unnorm;
                 int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
-                /* Band-aware silence floor: Derive from perceptual noisefloor for the current SFB. */
+                /* Per-band energy equivalent of the noisefloor RMS threshold:
+                * noisefloor is per-sample RMS, so (noisefloor * noisefloor * num_samples)
+                * gives the total band energy below which joint coding is pointless. */
                 faac_real silence_floor = (aacquantCfg->noisefloor * aacquantCfg->noisefloor) * (end_bin - start_bin) * (end_win - start_win);
 
                 /**
@@ -287,7 +280,7 @@ void AACstereo(CoderInfo *coder,
                 {
                     faac_real mid_w = enrgs_norm * thrmid * 2.0;
                     faac_real side_w = enrgd_norm * thrmid * 2.0;
-                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
+                    if (min(enrgl, enrgr) >= max(enrgs_norm, enrgd_norm))
                     {
                         if (mid_w >= efix)
                         {
@@ -307,7 +300,13 @@ void AACstereo(CoderInfo *coder,
                  * Only if M/S is not chosen. IS provides maximum bit recovery but collapses
                  * the phase image entirely.
                  */
-                if (!use_ms && (mode == JOINT_IS || mode == JOINT_MIXED) && efix > silence_floor)
+                if (!use_ms
+                    && efix > silence_floor
+                    && (mode == JOINT_IS
+                        || (mode == JOINT_MIXED
+                            && sfb >= aacquantCfg->is_sfb_start
+                            && cl->block_type != ONLY_SHORT_WINDOW
+                        )))
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
@@ -323,12 +322,14 @@ void AACstereo(CoderInfo *coder,
                          */
                         sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * AAC_SF_STEP);
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
-                        if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX) use_is = 1;
-                        else hcb = HCB_NONE;
+                        if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX)
+                            use_is = 1;
+                        else
+                            hcb = HCB_NONE; /* pan out of range; apply_lr will zero the quieter channel via thrside */
                     }
                 }
 
-                // 3. Apply Decision
+                /* 3. Apply Decision */
                 if (use_is)
                 {
                     apply_is(cl, cr, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, hcb, sf, pan, enrgs_unnorm, enrgd_unnorm, efix);

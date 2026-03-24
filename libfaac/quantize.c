@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "quantize.h"
+#include "frame.h"
 #include "huff2.h"
 #include "cpu_compute.h"
 #include "stereo.h"
