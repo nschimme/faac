@@ -84,14 +84,6 @@ Final advanced experiments were conducted to test library-wide interactions:
 
 **Final Result**: After 5 phases of research and 45+ iterations, the unified Mixed Mode loop with the Iteration 21 thresholds remains the best verified implementation for quality and stability.
 
-## PHASE 7: STANDARD COMPLIANCE EVALUATION (I, J)
-Discrepancies between FAAC and standard reference encoders (FDK-AAC) were evaluated:
-
-- **Experiment I: Reconstructible (Standard) M/S**: Transmitted both Mid and Side channels instead of phase-collapsing. Result: 0.000 MOS Δ.
-- **Experiment J: Natural L/R Fallback**: Removed forced zeroing of quiet side channels. Result: 0.000 MOS Δ.
-
-**Analysis**: While "Standard" M/S and L/R behaviors are more technically accurate, FAAC's legacy "destructive" heuristics (phase-collapse and side-zeroing) provide superior bitstream stability at standard bitrates (128kbps) without measurable MOS degradation. These heuristics were retained in the final Mixed Mode loop to maintain the encoder's bit-allocation performance.
-
 ## PHASE 6: TECHNICAL CORRECTION & PRIORITY OPTIMIZATION
 Based on expert technical feedback, Phase 6 focused on architectural correctness and priority tuning:
 

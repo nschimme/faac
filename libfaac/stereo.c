@@ -104,14 +104,31 @@ static inline void apply_ms(ChannelInfo *channel, faac_real * __restrict sl0, fa
 }
 
 /**
- * apply_lr - Fallback to L/R coding.
+ * apply_lr - Fallback to L/R coding, potentially applying destructive side-channel zeroing.
  *
- * Performs no additional processing, allowing the quantizer to handle
- * both channels naturally.
+ * Side-channel zeroing (Masking):
+ * If one channel is significantly dominant (L >> R or R >> L), we zero the quieter channel
+ * to recover the bit reservoir for the dominant channel.
  */
-static inline void apply_lr(ChannelInfo *channel, int sfcnt)
+static inline void apply_lr(ChannelInfo *channel, faac_real * __restrict sl0, faac_real * __restrict sr0,
+                            int sfcnt, int start_win, int end_win, int start_bin, int end_bin,
+                            faac_real enrgl, faac_real enrgr, faac_real thrside)
 {
     channel->msInfo.ms_used[sfcnt] = 0;
+
+    if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
+    {
+        for (int win = start_win; win < end_win; win++)
+        {
+            faac_real * __restrict sl = sl0 + win * BLOCK_LEN_SHORT;
+            faac_real * __restrict sr = sr0 + win * BLOCK_LEN_SHORT;
+            if (enrgl < enrgr) {
+                for (int l = start_bin; l < end_bin; l++) sl[l] = 0.0;
+            } else {
+                for (int l = start_bin; l < end_bin; l++) sr[l] = 0.0;
+            }
+        }
+    }
 }
 
 void AACstereo(CoderInfo *coder,
@@ -323,7 +340,7 @@ void AACstereo(CoderInfo *coder,
                 }
                 else
                 {
-                    apply_lr(channel + chn, sfcnt);
+                    apply_lr(channel + chn, s[chn], s[rch], sfcnt, start_win, end_win, start_bin, end_bin, enrgl, enrgr, thrside);
                 }
                 sfcnt++;
             }
