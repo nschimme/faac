@@ -23,6 +23,7 @@
 
 #include "coder.h"
 #include "faac_real.h"
+#include "psy_tables.h"
 
 typedef struct
 {
@@ -31,6 +32,8 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int sr_idx;
+    FaacPsyContext psy;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE

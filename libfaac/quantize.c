@@ -69,94 +69,65 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
+static void FaacComputeMaskingThresholds(CoderInfo *coder, faac_real *xr0, faac_real *thresh,
+                                         faac_real *bandenrg, int gnum, AACQuantCfg *aacquantCfg)
+{
+    int sfb, s, t, win, cnt;
+    int gsize = coder->groups.len[gnum];
+    int *sfb_offset = coder->sfb_offset;
+    float edb[64];
+    float spread[64];
+    FaacPsyContext *psy = &aacquantCfg->psy;
+    float *sfb_bark = (coder->block_type == ONLY_SHORT_WINDOW) ? psy->sfb_bark_short : psy->sfb_bark_long;
+    float *sfb_ath = (coder->block_type == ONLY_SHORT_WINDOW) ? psy->sfb_ath_short : psy->sfb_ath_long;
+
+    for (sfb = 0; sfb < coder->sfbn; sfb++) {
+        int start = sfb_offset[sfb];
+        int end = sfb_offset[sfb + 1];
+        int n = end - start;
+        faac_real enrg = 0.0;
+
+        for (win = 0; win < gsize; win++) {
+            const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
+            for (cnt = 0; cnt < n; cnt++) {
+                enrg += xr[cnt] * xr[cnt];
+            }
+        }
+        bandenrg[sfb] = enrg;
+        edb[sfb] = 10.0f * log10f((float)enrg / (float)(n * gsize) + 1e-20f);
+    }
+
+    for (t = 0; t < coder->sfbn; t++) {
+        float max_spread = -100.0f;
+        for (s = 0; s < coder->sfbn; s++) {
+            float dz = sfb_bark[t] - sfb_bark[s];
+            float weight = 15.811389f + 7.5f * (dz + 0.474f) - 17.5f * sqrtf(1.0f + (dz + 0.474f) * (dz + 0.474f));
+            float s_enrg = edb[s] + weight;
+            if (s_enrg > max_spread) max_spread = s_enrg;
+        }
+        spread[t] = max_spread;
+    }
+
+    for (sfb = 0; sfb < coder->sfbn; sfb++) {
+        float m_thresh = powf(10.0f, spread[sfb] / 10.0f);
+        float ath_thresh = powf(10.0f, sfb_ath[sfb] / 10.0f);
+        if (ath_thresh > m_thresh) m_thresh = ath_thresh;
+        thresh[sfb] = (faac_real)m_thresh;
+    }
+}
+
 // band sound masking
-static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict thresh, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, int gnum, faac_real quality)
 {
-  int sfb, start, end, cnt;
-  int *cb_offset = coderInfo->sfb_offset;
-  int last;
-  faac_real avgenrg;
-  faac_real powm = 0.4;
-  faac_real totenrg = 0.0;
+  int sfb;
   int gsize = coderInfo->groups.len[gnum];
-  const faac_real *xr;
-  int win;
-  int enrgcnt = 0;
-  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
-
-  for (win = 0; win < gsize; win++)
-  {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
-      {
-          totenrg += xr[cnt] * xr[cnt];
-      }
-  }
-  enrgcnt = gsize * total_len;
-
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
-  {
-      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
-      {
-          bandqual[sfb] = 0.0;
-          bandenrg[sfb] = 0.0;
-      }
-
-      return;
-  }
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
-    faac_real target;
-
-    start = cb_offset[sfb];
-    end = cb_offset[sfb + 1];
-
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    maxe *= gsize;
-
-#define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-
-        target *= 1.5;
-    }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
-
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
-
-    bandqual[sfb] = target * quality;
+    int n = coderInfo->sfb_offset[sfb+1] - coderInfo->sfb_offset[sfb];
+    /* Scaling threshold by band size (n * gsize) to compare with total bandenrg */
+    bandqual[sfb] = thresh[sfb] * (n * gsize) * quality;
   }
 }
 
@@ -219,7 +190,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(0.5 * FAAC_LOG10(bandenrg[sb] / bandqual[sb]) * sfstep);
       if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
@@ -249,6 +220,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real thresh[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -264,7 +236,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
+            FaacComputeMaskingThresholds(coder, gxr, thresh, bandenrg, cnt, aacquantCfg);
+            bmask(coder, thresh, bandlvl, bandenrg, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;

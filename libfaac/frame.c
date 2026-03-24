@@ -231,10 +231,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.sr_idx = hEncoder->sampleRateIdx;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
+
+    FaacInitPsyContext(&hEncoder->aacquantCfg.psy, hEncoder->sampleRateIdx,
+                       hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_long,
+                       hEncoder->srInfo->num_cb_short, hEncoder->srInfo->cb_width_short);
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);

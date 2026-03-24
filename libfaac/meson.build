@@ -39,6 +39,8 @@ common_src = [
     'huffdata.h',
     'quantize.c',
     'quantize.h',
+    'psy_tables.c',
+    'psy_tables.h',
     'stereo.c',
     'stereo.h',
     'tns.c',
