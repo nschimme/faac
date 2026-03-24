@@ -300,6 +300,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
       (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
+    hEncoder->aacquantCfg.noisefloor = 0.4;
+
 	/* default channel map is straight-through */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
 		hEncoder->config.channel_map[channel] = channel;
@@ -587,7 +589,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	}
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, &(hEncoder->aacquantCfg));
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

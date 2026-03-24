@@ -68,11 +68,10 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
-#define NOISEFLOOR 0.4
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality, AACQuantCfg * __restrict aacquantCfg)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -96,7 +95,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((aacquantCfg->noisefloor * aacquantCfg->noisefloor) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -168,12 +167,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   AACQuantCfg * __restrict aacquantCfg
                   )
 {
     int sb;
     int gsize = coderInfo->groups.len[gnum];
-    faac_real pnsthr = 0.1 * pnslevel;
+    faac_real pnsthr = 0.1 * aacquantCfg->pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -199,7 +198,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < aacquantCfg->noisefloor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
@@ -240,7 +239,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg * __restrict aacquantCfg)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -260,8 +259,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 

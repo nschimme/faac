@@ -31,7 +31,6 @@
 #define SIDE_THR_MAX 0.3       /* ~-10.5dB max side-zeroing for wide imaging */
 #define IS_PHASE_LEAK_LIMIT 0.18 /* 18% energy leakage limit for IS (Iter 21) */
 #define IS_PAN_MAX 30          /* AAC-LC max pan offset (scalefactor limit) */
-#define ENERGY_EPSILON 1e-9    /* Silence floor to prevent div-by-zero */
 
 enum { MS_PH_NONE, MS_PH_IN, MS_PH_OUT };
 
@@ -137,7 +136,8 @@ void AACstereo(CoderInfo *coder,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
                faac_real quality,
-               int mode
+               int mode,
+               AACQuantCfg *aacquantCfg
               )
 {
     int chn;
@@ -273,13 +273,16 @@ void AACstereo(CoderInfo *coder,
                 faac_real enrgd_norm = 0.25 * enrgd_unnorm;
                 int use_is = 0, use_ms = 0, hcb = HCB_NONE, sf = 0, pan = 0, phase = MS_PH_NONE;
 
+                /* Band-aware silence floor: Derive from perceptual noisefloor for the current SFB. */
+                faac_real silence_floor = (aacquantCfg->noisefloor * aacquantCfg->noisefloor) * (end_bin - start_bin) * (end_win - start_win);
+
                 /**
                  * 1. Evaluate M/S Coding:
                  * Mid/Side coding is prioritized over IS to preserve inter-channel phase.
                  * Benefit is calculated if the sum (Mid) or difference (Side) signals
                  * have significantly lower energy than L/R or are highly correlated.
                  */
-                if ((mode == JOINT_MS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
+                if ((mode == JOINT_MS || mode == JOINT_MIXED) && efix > silence_floor)
                 {
                     faac_real mid_w = enrgs_norm * thrmid * 2.0;
                     faac_real side_w = enrgd_norm * thrmid * 2.0;
@@ -303,7 +306,7 @@ void AACstereo(CoderInfo *coder,
                  * Only if M/S is not chosen. IS provides maximum bit recovery but collapses
                  * the phase image entirely.
                  */
-                if (!use_ms && (mode == JOINT_IS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
+                if (!use_ms && (mode == JOINT_IS || mode == JOINT_MIXED) && efix > silence_floor)
                 {
                     faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
                     ethr = ethr * ethr * (1.0 / isthr);
@@ -321,26 +324,6 @@ void AACstereo(CoderInfo *coder,
                         pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * AAC_SF_STEP) - sf;
                         if (pan <= IS_PAN_MAX && pan >= -IS_PAN_MAX) use_is = 1;
                         else hcb = HCB_NONE;
-                    }
-                }
-
-                // 2. Evaluate M/S Coding
-                if (!use_is && (mode == JOINT_MS || mode == JOINT_MIXED) && efix > ENERGY_EPSILON)
-                {
-                    faac_real thr_m = enrgs_norm * thrmid * 2.0;
-                    faac_real thr_d = enrgd_norm * thrmid * 2.0;
-                    if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_norm, enrgd_norm))
-                    {
-                        if (thr_m >= efix)
-                        {
-                            use_ms = 1;
-                            phase = MS_PH_IN;
-                        }
-                        else if (thr_d >= efix)
-                        {
-                            use_ms = 1;
-                            phase = MS_PH_OUT;
-                        }
                     }
                 }
 
