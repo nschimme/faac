@@ -631,7 +631,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         for (channel = 0; channel < numChannels; channel++)
         {
-            if (channelInfo[channel].present && !channelInfo[channel].lfe)
+            if (channelInfo[channel].present && channelInfo[channel].type != ELEMENT_LFE)
             {
                 PseudoSBR(&coderInfo[channel],
                           hEncoder->freqBuff[channel],
