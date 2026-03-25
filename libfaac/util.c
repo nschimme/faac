@@ -85,10 +85,14 @@ faac_real calc_noisefloor(unsigned long bitRatePerChannel)
     /*
      * Higher bitrates can afford a lower noise floor (more precision).
      * Lower bitrates need a higher noise floor to suppress quantization noise in silence.
-     * Values derived from parameter sweep across VoIP (16k), music_low (32k) and music_std (64k).
+     * Values refined based on parameter sweep across VoIP, VSS, and Music scenarios.
      */
+    if (bitRatePerChannel <= 16000)
+        return 0.8;
+    if (bitRatePerChannel <= 32000)
+        return 0.6;
     if (bitRatePerChannel <= 48000)
-        return 1.2;
+        return 0.5;
     return 0.1;
 }
 
@@ -96,11 +100,12 @@ faac_real calc_powm(unsigned long bitRatePerChannel)
 {
     /*
      * POWM controls the non-linearity of the masking curve.
-     * Values derived from parameter sweep: 0.2 was optimal for 16k VoIP, 0.4 for 32k music.
-     * High fidelity music (>48k) prefers a very low value (0.1).
+     * Values refined based on parameter sweep: 0.2 was optimal for VoIP, 0.4 for music_low.
      */
-    if (bitRatePerChannel <= 24000)
+    if (bitRatePerChannel <= 16000)
         return 0.2;
+    if (bitRatePerChannel <= 32000)
+        return 0.3;
     if (bitRatePerChannel <= 48000)
         return 0.4;
     return 0.1;
