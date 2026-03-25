@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -152,6 +153,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
+    hEncoder->config.usePseudoSBR = config->usePseudoSBR;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -295,6 +297,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
+    hEncoder->config.usePseudoSBR = 1;
+    /* Seed deterministically from sampleRate: same rate → same noise sequence
+       → reproducible bitstream / stable MD5. */
+    hEncoder->sbrRandState = 0xDEADBEEFu ^ (uint32_t)(sampleRate * 31337u);
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -592,6 +598,33 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
+
+    /* Pseudo-SBR: synthesise spectral content above the natural bandwidth.
+       Only fires in ABR mode when naturalBW < 65% Nyquist (low bitrates).
+       Placed after AACstereo so M/S processing covers the real spectrum,
+       and before BlocQuant so the extended bins get quantised. */
+    if (hEncoder->config.usePseudoSBR && hEncoder->config.bitRate) {
+        unsigned int naturalBW = hEncoder->config.bandWidth;
+        if (PseudoSBRShouldEnable(naturalBW, hEncoder->sampleRate,
+                                   hEncoder->config.bitRate)) {
+            unsigned int targetBW = PseudoSBRTargetBW(naturalBW,
+                hEncoder->sampleRate, hEncoder->config.bitRate);
+            if (targetBW > naturalBW + SBR_MIN_EXTENSION) {
+                for (channel = 0; channel < numChannels; channel++) {
+                    if (channelInfo[channel].type != ELEMENT_LFE) {
+                        PseudoSBR(&coderInfo[channel],
+                                   hEncoder->freqBuff[channel],
+                                   hEncoder->sampleRate,
+                                   naturalBW, targetBW,
+                                   hEncoder->config.bitRate,
+                                   hEncoder->srInfo->cb_width_long,
+                                   hEncoder->srInfo->num_cb_long,
+                                   &hEncoder->sbrRandState);
+                    }
+                }
+            }
+        }
+    }
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

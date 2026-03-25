@@ -127,6 +127,10 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+
+    /* Enable encoder-side pseudo-SBR spectral extension (1=on default, 0=off).
+       Only fires in ABR mode when natural bandwidth < 65% Nyquist. */
+    unsigned int usePseudoSBR;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)
