@@ -25,6 +25,7 @@
 #include "config.h"
 #endif
 
+#include <stdint.h>
 #include <faac.h>
 
 #ifdef __cplusplus
@@ -86,6 +87,11 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* PRNG state for pseudo-SBR noise dithering.
+       Seeded once in faacEncOpen from sampleRate — no entropy, so
+       re-encoding the same file yields a bit-identical bitstream. */
+    uint32_t sbrRandState;
 } faacEncStruct;
 
 #ifdef __cplusplus
