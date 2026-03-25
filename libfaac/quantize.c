@@ -80,10 +80,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     compute_masking_thresholds(coderInfo, xr0, thresh, bandenrg, gnum, sr_idx);
 
     for (int sfb = 0; sfb < coderInfo->sfbn; sfb++) {
-        /* Map masking energy threshold to target RMS amplitude.
+        /* bandqual is the target error level.
            Scale based on theoretical noise floor (sqrt(12)) and quality factor.
-           Quality 1.0 is default. */
-        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * quality * 2.5f;
+           At default quality (100), bandqual approx sqrt(thresh). */
+        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * (quality / (faac_real)DEFQUAL) * 1.5f;
     }
 }
 
