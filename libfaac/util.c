@@ -66,12 +66,14 @@ faac_real calc_noisefloor(unsigned long bitRatePerChannel)
 {
     /*
      * Noisefloor refinement:
-     * - Low bitrates (<= 16k): 0.8 to suppress noise in near-silence.
-     * - Transitioning to legacy default 0.4 at 32k-48k to prevent regressions.
-     * - Higher bitrates (> 64k): 0.1 for maximum transparency.
+     * - Low bitrates (< 16k): 0.8 optimized for high-noise environments.
+     * - 16k to 24k: Transitions from 0.8 to 0.4.
+     * - 24k to 48k: Legacy default of 0.4 for stability (minimizes VSS/music regressions).
+     * - 48k to 64k: Transitions from 0.4 to 0.1 for transparency.
+     * - > 64k: 0.1 for high fidelity.
      */
     if (bitRatePerChannel <= 16000) return 0.8;
-    if (bitRatePerChannel <= 32000) return lerp(bitRatePerChannel, 16000, 0.8, 32000, 0.5);
+    if (bitRatePerChannel <= 24000) return lerp(bitRatePerChannel, 16000, 0.8, 24000, 0.4);
     if (bitRatePerChannel <= 48000) return 0.4;
     if (bitRatePerChannel <= 64000) return lerp(bitRatePerChannel, 48000, 0.4, 64000, 0.1);
     return 0.1;
@@ -81,12 +83,14 @@ faac_real calc_powm(unsigned long bitRatePerChannel)
 {
     /*
      * POWM refinement:
-     * - Low bitrates (<= 16k): 0.2 optimized for speech masking.
-     * - Legacy default 0.4 for mid-tier (32k-48k).
-     * - High fidelity (64k+): 0.2 (more conservative masking).
+     * - Low bitrates (<= 16k): 0.2 optimized for masking in speech.
+     * - 16k to 24k: Transitions from 0.2 to 0.4.
+     * - 24k to 48k: Legacy default of 0.4 for stability.
+     * - 48k to 64k: Transitions from 0.4 to 0.2 for improved transparency.
+     * - > 64k: 0.2.
      */
     if (bitRatePerChannel <= 16000) return 0.2;
-    if (bitRatePerChannel <= 32000) return lerp(bitRatePerChannel, 16000, 0.2, 32000, 0.4);
+    if (bitRatePerChannel <= 24000) return lerp(bitRatePerChannel, 16000, 0.2, 24000, 0.4);
     if (bitRatePerChannel <= 48000) return 0.4;
     if (bitRatePerChannel <= 64000) return lerp(bitRatePerChannel, 48000, 0.4, 64000, 0.2);
     return 0.2;
