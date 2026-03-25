@@ -80,19 +80,24 @@ unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate)
     return 6144 - (unsigned int)((faac_real)bitRate/(faac_real)sampleRate*(faac_real)FRAME_LEN);
 }
 
+static faac_real lerp(faac_real x, faac_real x0, faac_real y0, faac_real x1, faac_real y1)
+{
+    if (x <= x0) return y0;
+    if (x >= x1) return y1;
+    return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+}
+
 faac_real calc_noisefloor(unsigned long bitRatePerChannel)
 {
     /*
      * Higher bitrates can afford a lower noise floor (more precision).
      * Lower bitrates need a higher noise floor to suppress quantization noise in silence.
-     * Values refined based on parameter sweep across VoIP, VSS, and Music scenarios.
+     * Derived from parameter sweep (NF: 0.8 @ 16k, 0.6 @ 32k, 0.5 @ 40k, 0.1 @ 64k).
      */
-    if (bitRatePerChannel <= 16000)
-        return 0.8;
-    if (bitRatePerChannel <= 32000)
-        return 0.6;
-    if (bitRatePerChannel <= 48000)
-        return 0.5;
+    if (bitRatePerChannel <= 16000) return 0.8;
+    if (bitRatePerChannel <= 32000) return lerp(bitRatePerChannel, 16000, 0.8, 32000, 0.6);
+    if (bitRatePerChannel <= 40000) return lerp(bitRatePerChannel, 32000, 0.6, 40000, 0.5);
+    if (bitRatePerChannel <= 64000) return lerp(bitRatePerChannel, 40000, 0.5, 64000, 0.1);
     return 0.1;
 }
 
@@ -100,13 +105,11 @@ faac_real calc_powm(unsigned long bitRatePerChannel)
 {
     /*
      * POWM controls the non-linearity of the masking curve.
-     * Values refined based on parameter sweep: 0.2 was optimal for VoIP, 0.4 for music_low.
+     * Derived from parameter sweep (PM: 0.2 @ 16k, 0.3 @ 32k, 0.4 @ 40k, 0.1 @ 64k).
      */
-    if (bitRatePerChannel <= 16000)
-        return 0.2;
-    if (bitRatePerChannel <= 32000)
-        return 0.3;
-    if (bitRatePerChannel <= 48000)
-        return 0.4;
+    if (bitRatePerChannel <= 16000) return 0.2;
+    if (bitRatePerChannel <= 32000) return lerp(bitRatePerChannel, 16000, 0.2, 32000, 0.3);
+    if (bitRatePerChannel <= 40000) return lerp(bitRatePerChannel, 32000, 0.3, 40000, 0.4);
+    if (bitRatePerChannel <= 64000) return lerp(bitRatePerChannel, 40000, 0.4, 64000, 0.1);
     return 0.1;
 }
