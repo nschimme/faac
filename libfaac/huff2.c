@@ -24,7 +24,12 @@
 #include "huff2.h"
 #include "bitstream.h"
 
-static int escape(int x, int *code)
+static unsigned int uabs_int(int x)
+{
+    return (x < 0) ? -(unsigned int)x : (unsigned int)x;
+}
+
+static int escape(unsigned int x, int *code)
 {
     int preflen = 0;
     int base = 32;
@@ -68,7 +73,7 @@ static int huffcode(int *qs /* quantized spectrum */,
     int bits = 0, blen;
     int ofs, *qp;
     int data;
-    int idx;
+    unsigned int idx;
     int datacnt;
 
     if (coder)
@@ -104,8 +109,8 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
-            idx = 27 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + 9 * ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1]))) + 3 * ((unsigned int)(qp[2] < 0 ? -(unsigned int)(qp[2]) : (unsigned int)(qp[2]))) + ((unsigned int)(qp[3] < 0 ? -(unsigned int)(qp[3]) : (unsigned int)(qp[3])));
-            if (idx < 0 || idx >= arrlen(book03))
+            idx = 27 * uabs_int(qp[0]) + 9 * uabs_int(qp[1]) + 3 * uabs_int(qp[2]) + uabs_int(qp[3]);
+            if (idx >= arrlen(book03))
             {
                 return -1;
             }
@@ -162,8 +167,8 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
-            idx = 8 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
-            if (idx < 0 || idx >= arrlen(book07))
+            idx = 8 * uabs_int(qp[0]) + uabs_int(qp[1]);
+            if (idx >= arrlen(book07))
             {
                 return -1;
             }
@@ -198,8 +203,8 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
-            idx = 13 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
-            if (idx < 0 || idx >= arrlen(book09))
+            idx = 13 * uabs_int(qp[0]) + uabs_int(qp[1]);
+            if (idx >= arrlen(book09))
             {
                 return -1;
             }
@@ -232,18 +237,18 @@ static int huffcode(int *qs /* quantized spectrum */,
     case HCB_ESC:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            int x0, x1;
+            unsigned int x0, x1;
 
             qp = qs+ofs;
 
-            x0 = ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0])));
-            x1 = ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
+            x0 = uabs_int(qp[0]);
+            x1 = uabs_int(qp[1]);
             if (x0 > 16)
                 x0 = 16;
             if (x1 > 16)
                 x1 = 16;
             idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
+            if (idx >= arrlen(book11))
             {
                 return -1;
             }
@@ -275,7 +280,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x0 >= 16)
             {
-                blen = escape(((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))), &data);
+                blen = escape(uabs_int(qp[0]), &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -286,7 +291,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x1 >= 16)
             {
-                blen = escape(((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1]))), &data);
+                blen = escape(uabs_int(qp[1]), &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -313,12 +318,12 @@ int huffbook(CoderInfo *coder,
              int len)
 {
     int cnt;
-    int maxq = 0;
+    unsigned int maxq = 0;
     int bookmin, lenmin;
 
     for (cnt = 0; cnt < len; cnt++)
     {
-        int q = ((unsigned int)(qs[cnt] < 0 ? -(unsigned int)(qs[cnt]) : (unsigned int)(qs[cnt])));
+        int q = uabs_int(qs[cnt]);
         if (maxq < q)
             maxq = q;
     }

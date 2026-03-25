@@ -300,15 +300,13 @@ static int CountBitstream(faacEncStruct* hEncoder,
     if (hEncoder->usedBytes > bitStream->size)
     {
         fprintf(stderr, "frame buffer overrun\n");
-        bitStream->numBit = 0;
-        bitStream->currentBit = 0;
+        ResetBitStream(bitStream);
         return -1;
     }
     if (hEncoder->usedBytes >= ADTS_FRAMESIZE)
     {
         fprintf(stderr, "frame size limit exceeded\n");
-        bitStream->numBit = 0;
-        bitStream->currentBit = 0;
+        ResetBitStream(bitStream);
         return -1;
     }
 
@@ -802,6 +800,17 @@ int CloseBitStream(BitStream *bitStream)
 static long BufferNumBit(BitStream *bitStream)
 {
     return bitStream->numBit;
+}
+
+void ResetBitStream(BitStream *bitStream)
+{
+    if (bitStream) {
+        bitStream->numBit = 0;
+        bitStream->currentBit = 0;
+        if (bitStream->data && bitStream->size > 0) {
+            SetMemory(bitStream->data, 0, bitStream->size);
+        }
+    }
 }
 
 int PutBit(BitStream *bitStream,

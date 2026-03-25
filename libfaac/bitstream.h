@@ -113,6 +113,8 @@ BitStream *OpenBitStream(int size, unsigned char *buffer);
 
 int CloseBitStream(BitStream *bitStream);
 
+void ResetBitStream(BitStream *bitStream);
+
 int PutBit(BitStream *bitStream,
            unsigned long data,
            int numBit);
