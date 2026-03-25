@@ -69,17 +69,21 @@ void QuantizeInit(void)
         qfunc = quantize_scalar;
 }
 
-#define NOISEFLOOR 0.4
-
 /* Numerical stability epsilons */
 #define EPS_ENRG ((faac_real)1e-15)
 #define EPS_SMR  ((faac_real)1e-10)
 
+/* Reference energy floor for global silence gate (per line) */
+#define LEGACY_ENRG_FLOOR 0.16f
+
 /* Spreading function offset (dB). ISO Model 2 suggests ~6-10 dB for low bitrates.
- * Increased to 12.0f to be more conservative and avoid regressions. */
+ * Set to 12.0f to be conservative and prevent MOS regressions. */
 #define SPREAD_OFFSET 12.0f
 
-/* Absolute Threshold of Hearing (ATH) scaling for zero-out logic.
+/* ATH scaling to align with legacy NOISEFLOOR 0.4 rms at 1kHz. */
+#define ATH_LINEAR_SCALE 0.0734f
+
+/* Absolute Threshold of Hearing (ATH) scaling for per-band zero-out logic.
  * 0.1 corresponds to a -10 dB offset from the theoretical ATH floor. */
 #define ATH_ZERO_SCALE 0.1f
 
@@ -89,6 +93,7 @@ void QuantizeInit(void)
  * This ensures that the quantized value 'q' in quantize_scalar does not
  * exceed the 13-bit escape coding limit of the AAC Huffman books. */
 #define QUANT_UPPER_BOUND 165000.0f
+
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -104,11 +109,21 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
-  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  int total_len = cb_offset[coderInfo->sfbn];
   int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
   const float *bark = is_short ? sfb_bark_s[sr_idx] : sfb_bark[sr_idx];
   const float *ath  = is_short ? sfb_ath_s[sr_idx]  : sfb_ath[sr_idx];
+  double frame_ath_thr = (double)LEGACY_ENRG_FLOOR * total_len * gsize;
+
+  if (spreading) {
+      frame_ath_thr = 0.0;
+      /* For low bitrates, use a more precise ATH-based global silence gate.
+       * We use a -10 dB offset from ATH for the global gate to be safe. */
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++) {
+          float ath_linear_per_line = ATH_LINEAR_SCALE * powf(10.0f, (ath[sfb] - 10.0f) * 0.1f);
+          frame_ath_thr += (double)ath_linear_per_line * (cb_offset[sfb+1] - cb_offset[sfb]) * gsize;
+      }
+  }
 
   for (win = 0; win < gsize; win++)
   {
@@ -118,9 +133,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < frame_ath_thr)
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -128,7 +142,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandenrg[sfb] = 0.0;
           bandmax[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -208,9 +221,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       M += (double)bandenrg[m] * powf(10.0f, (weight - SPREAD_OFFSET) * 0.1f);
     }
 
-    /* 2. Absolute Threshold of Hearing (ATH) masking floor */
-    /* ath[sfb] is in dB. Convert to linear energy. Scale factor chosen to match NOISEFLOOR. */
-    ath_thr = ATH_ZERO_SCALE * powf(10.0f, (ath[sfb] - 10.0f) * 0.1f) * (cb_offset[sfb+1] - cb_offset[sfb]) * gsize;
+    /* 2. Absolute Threshold of Hearing (ATH) masking floor (per-band zero-out) */
+    ath_thr = ATH_ZERO_SCALE * ATH_LINEAR_SCALE * powf(10.0f, ath[sfb] * 0.1f) * (cb_offset[sfb+1] - cb_offset[sfb]) * gsize;
 
     if ((double)bandenrg[sfb] <= M || bandenrg[sfb] < ath_thr)
       bandqual[sfb] = 0.0;
@@ -219,13 +231,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
+
+// use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    const faac_real * __restrict bandmax,
+                   const float *ath,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   int spreading
                   )
 {
     int sb;
@@ -244,11 +260,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
+      faac_real local_noisefloor;
       int xitab[8 * MAXSHORTBAND];
       int *xi;
       int start, end;
       const faac_real *xr;
       int win;
+
+      /* Frequency-dependent noise floor derived from ATH for low bitrates.
+       * Fallback to legacy constant for high bitrates to maintain bit-identity. */
+      local_noisefloor = spreading ? FAAC_SQRT(ATH_LINEAR_SCALE * powf(10.0f, ath[sb] * 0.1f)) : (faac_real)0.4;
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
@@ -262,7 +283,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start) + EPS_ENRG);
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < local_noisefloor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
@@ -334,7 +355,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                   (faac_real)aacquantCfg->quality/DEFQUAL,
                   aacquantCfg->sr_idx,
                   aacquantCfg->spreading);
-            qlevel(coder, gxr, bandlvl, bandenrg, bandmax, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, bandmax,
+                   (coder->block_type == ONLY_SHORT_WINDOW) ? sfb_ath_s[aacquantCfg->sr_idx] : sfb_ath[aacquantCfg->sr_idx],
+                   cnt, aacquantCfg->pnslevel, aacquantCfg->spreading);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
