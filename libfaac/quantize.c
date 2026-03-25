@@ -80,10 +80,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     compute_masking_thresholds(coderInfo, xr0, thresh, bandenrg, gnum, sr_idx);
 
     for (int sfb = 0; sfb < coderInfo->sfbn; sfb++) {
-        /* bandqual is the target error RMS amplitude.
-           Higher quality means smaller target error.
-           Empirically tuned to 0.24 * sqrt(thresh) at quality=100. */
-        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * (24.0f / (quality + 1e-10));
+        /* Map masking energy threshold to target RMS amplitude.
+           Scale based on theoretical noise floor (sqrt(12)) and quality factor.
+           Quality 1.0 is default. */
+        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * quality * 2.5f;
     }
 }
 
@@ -94,7 +94,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   AACQuantCfg *aacquantCfg
+                   int pnslevel
                   )
 {
     int sb;
@@ -105,6 +105,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
+    faac_real pnsthr = 0.1 * pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -130,28 +131,24 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb];
       rmsx = FAAC_SQRT(etot);
 
-      /* PNS decision: simplified version of legacy logic */
-      if (aacquantCfg->pnslevel > 0)
-      {
-          faac_real pns_thresh = 1.0f / (faac_real)aacquantCfg->pnslevel;
-          if (bandqual[sb] > rmsx * pns_thresh)
-          {
-              coderInfo->book[coderInfo->bandcnt++] = HCB_PNS;
-              /* PNS energy scalefactor: 100 + 2 * log10(rms) * sfstep */
-              coderInfo->sf[coderInfo->bandcnt-1] = 100 + FAAC_LRINT(2.0 * FAAC_LOG10(rmsx + 1e-10) * sfstep);
-              continue;
-          }
-      }
-
-      /* Zero bands below absolute noise floor or masking threshold */
-      if ((rmsx < NOISEFLOOR) || (rmsx < bandqual[sb]) || (!bandqual[sb]))
+      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
-      /* sfac = 20 * log10(rmsx / target_error) / 1.5 */
-      sfac = FAAC_LRINT(FAAC_LOG10(rmsx / (bandqual[sb] + 1e-10)) * sfstep);
+      if (bandqual[sb] < pnsthr)
+      {
+          coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+          /* PNS energy scalefactor calculation from original logic */
+          coderInfo->sf[coderInfo->bandcnt] +=
+              FAAC_LRINT(FAAC_LOG10(etot * gsize * (end - start) + 1e-10) * (0.5 * sfstep));
+          coderInfo->bandcnt++;
+          continue;
+      }
+
+      /* sfac = 20 * log10(target_error / signal) / 1.5 */
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / (rmsx + 1e-10)) * sfstep);
 
       /* Find max absolute value in this band to prevent overflow */
       faac_real max_xr = 0.0;
@@ -163,18 +160,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
 
-      /* Clamp sfac to prevent quantized values from exceeding 8191.
-         q = (xr * multiplier)^0.75 < 8192 => xr * multiplier < 165080.
-         multiplier < 165080 / xr => 10^(sfac / sfstep) < 165080 / xr
-         => sfac < log10(165080 / xr) * sfstep. */
+      /* Clamp sfac to prevent quantized values from exceeding 8191. */
       int sfac_max = FAAC_LRINT(FAAC_LOG10(165000.0f / (max_xr + 1e-15)) * sfstep);
       if (sfac > sfac_max) sfac = sfac_max;
 
-      /* Clamp sfac. sf = 100 - sfac. Range [0, 255] -> sfac in [-155, 100]. */
-      if (sfac > 95) sfac = 95;
-      if (sfac < -150) sfac = -150;
-
-      if ((SF_OFFSET - sfac) < 5)
+      if ((SF_OFFSET - sfac) < 10)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -195,11 +185,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-
-      int sf = SF_OFFSET - sfac;
-      if (sf < 0) sf = 0;
-      if (sf > 255) sf = 255;
-      coderInfo->sf[coderInfo->bandcnt++] = sf;
+      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
     }
 }
 
@@ -246,7 +232,7 @@ static void compute_masking_thresholds(CoderInfo *coder, faac_real *xr0, faac_re
                 enrg[sfb] += xr[cnt] * xr[cnt];
             }
         }
-        enrg[sfb] /= (faac_real)(gsize * (end - start));
+        enrg[sfb] /= (faac_real)(gsize * (end - start) + 1e-10);
     }
 
     /* 2. Apply Spreading Function in Bark domain */
@@ -289,61 +275,56 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->bandcnt = 0;
     coder->datacnt = 0;
 
-    gxr = xr;
-    for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
-        bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->sr_idx);
+        int lastis;
+        int lastsf;
 
-        qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg);
-        gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
-    }
+        gxr = xr;
+        for (cnt = 0; cnt < coder->groups.n; cnt++)
+        {
+            bmask(coder, gxr, bandlvl, bandenrg, cnt,
+                  (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->sr_idx);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
+        }
 
-    coder->global_gain = 0;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if (!book)
-            continue;
-        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+        coder->global_gain = 0;
+        for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
-            coder->global_gain = coder->sf[cnt];
-            break;
+            int book = coder->book[cnt];
+            if (!book)
+                continue;
+            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+            {
+                coder->global_gain = coder->sf[cnt];
+                break;
+            }
         }
-    }
 
-    int lastsf = coder->global_gain;
-    int lastis = 0;
-    int lastpns = coder->global_gain - 90;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+        lastsf = coder->global_gain;
+        lastis = 0;
+        for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
-            int diff = coder->sf[cnt] - lastis;
-            if (diff < -60) diff = -60;
-            if (diff > 60) diff = 60;
-            lastis += diff;
-            coder->sf[cnt] = lastis;
+            int book = coder->book[cnt];
+            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+            {
+                int diff = coder->sf[cnt] - lastis;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
+                lastis += diff;
+                coder->sf[cnt] = lastis;
+            }
+            else if (book == HCB_ESC)
+            {
+                int diff = coder->sf[cnt] - lastsf;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
+                lastsf += diff;
+                coder->sf[cnt] = lastsf;
+            }
         }
-        else if (book == HCB_PNS)
-        {
-            int diff = coder->sf[cnt] - lastpns;
-            if (diff < -60) diff = -60;
-            if (diff > 60) diff = 60;
-            lastpns += diff;
-            coder->sf[cnt] = lastpns;
-        }
-        else if (book != HCB_ZERO)
-        {
-            int diff = coder->sf[cnt] - lastsf;
-            if (diff < -60) diff = -60;
-            if (diff > 60) diff = 60;
-            lastsf += diff;
-            coder->sf[cnt] = lastsf;
-        }
+        return 1;
     }
-    return 1;
 }
 
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
