@@ -596,7 +596,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     /* Pseudo-SBR: synthesise spectral content above the natural bandwidth.
-       Only fires in ABR mode when naturalBW < 65% Nyquist (low bitrates).
+       Only fires in ABR mode when naturalBW < 40% Nyquist (low bitrates).
        Placed after AACstereo so M/S processing covers the real spectrum,
        and before BlocQuant so the extended bins get quantised. */
     if (hEncoder->config.usePseudoSBR && hEncoder->config.bitRate) {
@@ -639,7 +639,27 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			cil = &coderInfo[channel];
 			cir = &coderInfo[channelInfo[channel].paired_ch];
 
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+                        if (cil->sfbn < cir->sfbn) {
+                            cil->sfbn = cir->sfbn;
+                            offset = cil->sfb_offset[0];
+                            for (sb = 0; sb < cil->sfbn; sb++) {
+                                if (cil->block_type == ONLY_SHORT_WINDOW)
+                                    offset += hEncoder->srInfo->cb_width_short[sb];
+                                else
+                                    offset += hEncoder->srInfo->cb_width_long[sb];
+                                cil->sfb_offset[sb + 1] = offset;
+                            }
+                        } else if (cir->sfbn < cil->sfbn) {
+                            cir->sfbn = cil->sfbn;
+                            offset = cir->sfb_offset[0];
+                            for (sb = 0; sb < cir->sfbn; sb++) {
+                                if (cir->block_type == ONLY_SHORT_WINDOW)
+                                    offset += hEncoder->srInfo->cb_width_short[sb];
+                                else
+                                    offset += hEncoder->srInfo->cb_width_long[sb];
+                                cir->sfb_offset[sb + 1] = offset;
+                            }
+                        }
 		}
     }
     /* Write the AAC bitstream */
