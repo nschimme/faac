@@ -79,3 +79,29 @@ unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate)
 {
     return 6144 - (unsigned int)((faac_real)bitRate/(faac_real)sampleRate*(faac_real)FRAME_LEN);
 }
+
+faac_real calc_noisefloor(unsigned long bitRatePerChannel)
+{
+    /*
+     * Higher bitrates can afford a lower noise floor (more precision).
+     * Lower bitrates need a higher noise floor to suppress quantization noise in silence.
+     * Values derived from parameter sweep across VoIP (16k), music_low (32k) and music_std (64k).
+     */
+    if (bitRatePerChannel <= 48000)
+        return 1.2;
+    return 0.1;
+}
+
+faac_real calc_powm(unsigned long bitRatePerChannel)
+{
+    /*
+     * POWM controls the non-linearity of the masking curve.
+     * Values derived from parameter sweep: 0.2 was optimal for 16k VoIP, 0.4 for 32k music.
+     * High fidelity music (>48k) prefers a very low value (0.1).
+     */
+    if (bitRatePerChannel <= 24000)
+        return 0.2;
+    if (bitRatePerChannel <= 48000)
+        return 0.4;
+    return 0.1;
+}

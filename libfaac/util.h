@@ -53,6 +53,9 @@ unsigned int MinBitrate();
 unsigned int MaxBitresSize(unsigned long bitRate, unsigned long sampleRate);
 unsigned int BitAllocation(faac_real pe, int short_block);
 
+faac_real calc_noisefloor(unsigned long bitRatePerChannel);
+faac_real calc_powm(unsigned long bitRatePerChannel);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

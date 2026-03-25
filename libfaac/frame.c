@@ -231,6 +231,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+
+    hEncoder->aacquantCfg.noisefloor = calc_noisefloor(hEncoder->config.bitRate);
+    hEncoder->aacquantCfg.powm = calc_powm(hEncoder->config.bitRate);
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -294,6 +298,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
+    hEncoder->aacquantCfg.noisefloor = calc_noisefloor(hEncoder->config.bitRate);
+    hEncoder->aacquantCfg.powm = calc_powm(hEncoder->config.bitRate);
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
@@ -641,6 +647,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < 10)
             hEncoder->aacquantCfg.quality = 10;
+
+        /* Update bitrate-dependent parameters if quality adjusted significantly */
+        hEncoder->aacquantCfg.noisefloor = calc_noisefloor(hEncoder->config.bitRate);
+        hEncoder->aacquantCfg.powm = calc_powm(hEncoder->config.bitRate);
     }
 
     return frameBytes;
