@@ -31,6 +31,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    unsigned long bitRate; /* per-channel bits/sec from faacEncConfiguration */
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE

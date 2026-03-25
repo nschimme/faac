@@ -67,17 +67,84 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
-#define NOISEFLOOR 0.4
+/*
+ * Masking curve exponent as a function of per-channel bitrate (bps).
+ *
+ * Lower powm → more bits allocated to quiet bands (better quiet-passage
+ * transparency).  Higher powm → more aggressive masking (saves bits at low
+ * bitrates).  Curve shape derived from Stevens' loudness power law (~0.33)
+ * as the high-bitrate floor and psychoacoustic headroom at low bitrates.
+ *
+ * Breakpoints (per-channel bps → powm):
+ *   ≤  8 kbps/ch : 0.45   (very tight, aggressive masking)
+ *     16 kbps/ch : 0.42
+ *     32 kbps/ch : 0.40   (historical default)
+ *     64 kbps/ch : 0.35
+ *    128 kbps/ch : 0.30   (near Stevens cube-root)
+ *   >128 kbps/ch : 0.30   (plateau)
+ *
+ * TODO: refine breakpoints from sweep_params.py / bitrate_curve.png results.
+ */
+static faac_real calc_powm(unsigned long br)
+{
+#ifdef FAAC_POWM
+    /* Sweep override: treat FAAC_POWM as a constant for all bitrates. */
+    (void)br;
+    return (faac_real)FAAC_POWM;
+#else
+    if (!br || br >= 128000) return 0.30f;
+    if (br <=   8000) return 0.45f;
+    if (br <=  16000) return 0.45f + (faac_real)(br -   8000) * (-0.03f / 8000);
+    if (br <=  32000) return 0.42f + (faac_real)(br -  16000) * (-0.02f / 16000);
+    if (br <=  64000) return 0.40f + (faac_real)(br -  32000) * (-0.05f / 32000);
+    else              return 0.35f + (faac_real)(br -  64000) * (-0.05f / 64000);
+#endif
+}
+
+/*
+ * Silence-gate threshold as a function of per-channel bitrate (bps).
+ *
+ * Frames whose RMS energy falls below this threshold are zeroed entirely,
+ * saving bits at the cost of discarding very quiet content.  At high
+ * bitrates the gate is relaxed so faint signal details are preserved.
+ *
+ * Breakpoints (per-channel bps → noisefloor):
+ *   ≤  8 kbps/ch : 0.60   (aggressive gating — bits are scarce)
+ *     16 kbps/ch : 0.50
+ *     32 kbps/ch : 0.40   (historical default)
+ *     64 kbps/ch : 0.25
+ *    128 kbps/ch : 0.15
+ *   >128 kbps/ch : 0.10   (minimal gating — preserve quiet content)
+ *
+ * TODO: refine breakpoints from sweep_params.py / bitrate_curve.png results.
+ */
+static faac_real calc_noisefloor(unsigned long br)
+{
+#ifdef FAAC_NOISEFLOOR
+    /* Sweep override: treat FAAC_NOISEFLOOR as a constant for all bitrates. */
+    (void)br;
+    return (faac_real)FAAC_NOISEFLOOR;
+#else
+    if (!br || br >= 128000) return 0.10f;
+    if (br <=   8000) return 0.60f;
+    if (br <=  16000) return 0.60f + (faac_real)(br -   8000) * (-0.10f / 8000);
+    if (br <=  32000) return 0.50f + (faac_real)(br -  16000) * (-0.10f / 16000);
+    if (br <=  64000) return 0.40f + (faac_real)(br -  32000) * (-0.15f / 32000);
+    else              return 0.25f + (faac_real)(br -  64000) * (-0.10f / 64000);
+#endif
+}
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality,
+                  unsigned long bitRate)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
-  faac_real powm = 0.4;
+  faac_real powm = calc_powm(bitRate);
+  faac_real noisefloor = calc_noisefloor(bitRate);
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
@@ -95,7 +162,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((noisefloor * noisefloor) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -167,7 +234,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   unsigned long bitRate
                   )
 {
     int sb;
@@ -179,6 +247,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
+    faac_real noisefloor = calc_noisefloor(bitRate);
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -204,7 +273,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if ((rmsx < noisefloor) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
@@ -265,8 +334,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+                  (faac_real)aacquantCfg->quality/DEFQUAL,
+                  aacquantCfg->bitRate);
+            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel, aacquantCfg->bitRate);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
