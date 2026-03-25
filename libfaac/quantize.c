@@ -87,13 +87,29 @@ void QuantizeInit(void)
  * 0.1 corresponds to a -10 dB offset from the theoretical ATH floor. */
 #define ATH_ZERO_SCALE 0.1f
 
+
+
+/* Maximum value representable in AAC Huffman books (13-bit unsigned) */
+#define MAX_HUFF_VALUE 8191
+
 /* Quantization upper bound to keep x_quant < 8192 (Huffman limit).
  * x_quant = (abs(xr) * sfacfix)^0.75 + 0.4054
- * 8191.5 ^ (4/3) is approx 165000.
+ * (MAX_HUFF_VALUE + 0.5) ^ (4/3) is approx 165000.
  * This ensures that the quantized value 'q' in quantize_scalar does not
  * exceed the 13-bit escape coding limit of the AAC Huffman books. */
 #define QUANT_UPPER_BOUND 165000.0f
 
+
+
+/* Helper to clamp and update differential scalefactor encoding reference. */
+static inline void ClampDiff(int *last, int current, int *sf_dest)
+{
+    int diff = current - *last;
+    if (diff < -60) diff = -60;
+    if (diff > 60)  diff = 60;
+    *last += diff;
+    *sf_dest = *last;
+}
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -230,8 +246,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 }
 
 enum {MAXSHORTBAND = 36};
-// use band quality levels to quantize a group of windows
-
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -378,41 +392,32 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastis = 0;
         lastpns = coder->global_gain - 90;
 
-        {
+                        {
             int initpns = 1;
             for (cnt = 0; cnt < coder->bandcnt; cnt++)
             {
                 int book = coder->book[cnt];
                 if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
                 {
-                    int diff = coder->sf[cnt] - lastis;
-                    if (diff < -60) diff = -60;
-                    if (diff > 60) diff = 60;
-                    lastis += diff;
-                    coder->sf[cnt] = lastis;
+                    ClampDiff(&lastis, coder->sf[cnt], &coder->sf[cnt]);
                 }
                 else if (book == HCB_PNS)
                 {
-                    int diff = coder->sf[cnt] - lastpns;
                     if (initpns)
                     {
+                        /* First PNS band in frame uses absolute 9-bit encoding in writesf().
+                         * We update the reference here to correctly encode subsequent bands. */
+                        lastpns = coder->sf[cnt];
                         initpns = 0;
                     }
                     else
                     {
-                        if (diff < -60) diff = -60;
-                        if (diff > 60) diff = 60;
+                        ClampDiff(&lastpns, coder->sf[cnt], &coder->sf[cnt]);
                     }
-                    lastpns += diff;
-                    coder->sf[cnt] = lastpns;
                 }
                 else if (book != HCB_ZERO)
                 {
-                    int diff = coder->sf[cnt] - lastsf;
-                    if (diff < -60) diff = -60;
-                    if (diff > 60) diff = 60;
-                    lastsf += diff;
-                    coder->sf[cnt] = lastsf;
+                    ClampDiff(&lastsf, coder->sf[cnt], &coder->sf[cnt]);
                 }
             }
         }
