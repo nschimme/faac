@@ -655,7 +655,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             faac_real pe_target = (faac_real)desbits / 1.1400;
             faac_real pe_actual = hEncoder->aacquantCfg.last_pe;
             fix = pe_target / (pe_actual + 1.0);
-            fix = (fix - 1.0) * 0.2000 + 1.0; /* PE loop convergence */
+            fix = (fix - 1.0) * 0.4000 + 1.0; /* PE loop convergence */
         }
 
         /* Safety clamp on the feedback factor to prevent oscillations */
