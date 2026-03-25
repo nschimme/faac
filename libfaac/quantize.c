@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -245,7 +245,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-faac_real CalcPE(CoderInfo *coder, faac_real *thresh, int sr_idx)
+faac_real CalcPE(CoderInfo *coder, faac_real *thresh)
 {
     faac_real pe = 0.0;
     int cnt;
@@ -302,7 +302,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
-        aacquantCfg->last_pe += CalcPE(coder, coder->bandthr, 0);
+        /* Ensure bandcnt matches total expected bands for PE calculation consistency */
+        if (coder->bandcnt == (coder->groups.n * coder->sfbn)) {
+            aacquantCfg->last_pe += CalcPE(coder, coder->bandthr);
+        }
 
         coder->global_gain = 0;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)

@@ -1,0 +1,167 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 3.20931,
+      "size": 40876,
+      "bitrate": 41.70942734994986,
+      "bitrate_target": 64,
+      "time": 0.06308245658874512,
+      "md5": "d43daecde5e3b3dae7b5aa875a7de0b5",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav"
+    },
+    "music_low_Girl_In_The_Fire__Sample_.16b48k.wav": {
+      "mos": 3.26558,
+      "size": 51474,
+      "bitrate": 41.1792,
+      "bitrate_target": 64,
+      "time": 0.04422283172607422,
+      "md5": "720a8765f5ea59442e890ac9a684d069",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Girl_In_The_Fire__Sample_.16b48k.wav"
+    },
+    "music_low_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+      "mos": 3.23645,
+      "size": 51073,
+      "bitrate": 40.8584,
+      "bitrate_target": 64,
+      "time": 0.08840465545654297,
+      "md5": "428e15ced7841506226f2470feba8645",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+    },
+    "music_low_4-Sound-English-male.441.16b48k.wav": {
+      "mos": 3.04603,
+      "size": 41164,
+      "bitrate": 36.47614914512903,
+      "bitrate_target": 64,
+      "time": 0.07895112037658691,
+      "md5": "7964720e55d00be7b0d6e2b919873c4d",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "4-Sound-English-male.441.16b48k.wav"
+    },
+    "music_low_Hotel California.16b48k.wav": {
+      "mos": 3.25839,
+      "size": 48032,
+      "bitrate": 38.4256,
+      "bitrate_target": 64,
+      "time": 0.04506945610046387,
+      "md5": "30fc847d656cee1fbcd65245ab2738a2",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Hotel California.16b48k.wav"
+    },
+    "music_low_24-Greensleeves-Korean-male-speech.441.16b48k.wav": {
+      "mos": 3.27269,
+      "size": 53989,
+      "bitrate": 49.53119266055046,
+      "bitrate_target": 64,
+      "time": 0.08948040008544922,
+      "md5": "7056fd064cb3e8cb9b9468ec0ddcab2c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+    },
+    "music_low_Through The Fire And Flames.16b48k.wav": {
+      "mos": 3.20301,
+      "size": 52258,
+      "bitrate": 41.8064,
+      "bitrate_target": 64,
+      "time": 0.04574418067932129,
+      "md5": "8260a7e50341e7f91b8ed1bd49e44b6e",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Through The Fire And Flames.16b48k.wav"
+    },
+    "music_low_Only Time.16b48k.wav": {
+      "mos": 3.13606,
+      "size": 44113,
+      "bitrate": 35.2904,
+      "bitrate_target": 64,
+      "time": 0.08602738380432129,
+      "md5": "092b5eb2400da4cc8a4732dd53bbe3f9",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Only Time.16b48k.wav"
+    },
+    "music_low_Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "mos": 4.33751,
+      "size": 39826,
+      "bitrate": 31.8608,
+      "bitrate_target": 64,
+      "time": 0.08508563041687012,
+      "md5": "1cdb441d81f1fa89218d2ed40224e005",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Shinsho_pool_3min45_4min4.16b48k.wav"
+    },
+    "music_low_clapton_44k.16b48k.wav": {
+      "mos": 2.96068,
+      "size": 50572,
+      "bitrate": 40.4576,
+      "bitrate_target": 64,
+      "time": 0.044106483459472656,
+      "md5": "c579e070f3d3a7c8a4e1237e46b764a6",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "clapton_44k.16b48k.wav"
+    },
+    "music_low_lob.wav": {
+      "mos": 3.17977,
+      "size": 33152,
+      "bitrate": 37.395295611577126,
+      "bitrate_target": 64,
+      "time": 0.06343579292297363,
+      "md5": "ae751684f7948045fa135089db21c5fb",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "lob.wav"
+    },
+    "music_low_girl.16b48k.wav": {
+      "mos": 2.72729,
+      "size": 45789,
+      "bitrate": 36.6312,
+      "bitrate_target": 64,
+      "time": 0.08169388771057129,
+      "md5": "d76f49f557c0fef81cca3dde8f6ffe18",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "girl.16b48k.wav"
+    },
+    "music_low_With Love (Outro).16b48k.wav": {
+      "mos": 3.41867,
+      "size": 49466,
+      "bitrate": 39.5728,
+      "bitrate_target": 64,
+      "time": 0.13861346244812012,
+      "md5": "60aa634ab035c8e27c5148ed783ac641",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "With Love (Outro).16b48k.wav"
+    },
+    "music_low_sandman.16b48k.wav": {
+      "mos": 3.6243,
+      "size": 43648,
+      "bitrate": 34.9184,
+      "bitrate_target": 64,
+      "time": 0.044611454010009766,
+      "md5": "d614708c32c1089ab4361578e0b38d1e",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "sandman.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.2866763346670873,
+    "silence.wav": 2.7380510163329745,
+    "sine.wav": 3.0519562726667573,
+    "sweep.wav": 2.9519028660003337,
+    "overall": 3.007146622416788
+  },
+  "lib_size": 222952
+}
