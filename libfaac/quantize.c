@@ -80,10 +80,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     compute_masking_thresholds(coderInfo, xr0, thresh, bandenrg, gnum, sr_idx);
 
     for (int sfb = 0; sfb < coderInfo->sfbn; sfb++) {
-        /* bandqual is the target error level.
-           Scale based on theoretical noise floor (sqrt(12)) and quality factor.
-           At default quality (100), bandqual approx sqrt(thresh). */
-        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * (quality / (faac_real)DEFQUAL) * 1.5f;
+        /* Scale thresholds to magnitude range expected by legacy qlevel logic.
+           Reference: original noise floor 0.4, powm 0.4.
+           We scale sqrt(thresh) to match. */
+        bandqual[sfb] = (faac_real)sqrt(thresh[sfb] + 1e-10) * quality * 2.0f;
     }
 }
 
@@ -105,7 +105,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     static const faac_real sfstep = 20 / 1.50515;
 #endif
     int gsize = coderInfo->groups.len[gnum];
-    faac_real pnsthr = 0.1 * pnslevel;
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -129,7 +128,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb];
-      rmsx = FAAC_SQRT(etot);
+      rmsx = FAAC_SQRT(etot + 1e-15);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -137,14 +136,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      if (pnslevel > 0)
       {
-          coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          /* PNS energy scalefactor calculation from original logic */
-          coderInfo->sf[coderInfo->bandcnt] +=
-              FAAC_LRINT(FAAC_LOG10(etot * gsize * (end - start) + 1e-10) * (0.5 * sfstep));
-          coderInfo->bandcnt++;
-          continue;
+          if (bandqual[sb] > rmsx * (1.0f / (faac_real)pnslevel))
+          {
+              coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+              /* PNS energy scalefactor: log10(total_energy) * (0.5 * sfstep) */
+              coderInfo->sf[coderInfo->bandcnt] = FAAC_LRINT(FAAC_LOG10(etot * (end - start) * gsize + 1e-10) * (0.5 * sfstep));
+              coderInfo->bandcnt++;
+              continue;
+          }
       }
 
       /* sfac = 20 * log10(target_error / signal) / 1.5 */
@@ -185,7 +186,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac;
     }
 }
 
@@ -278,6 +279,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     {
         int lastis;
         int lastsf;
+        int lastpns;
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
@@ -294,7 +296,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             int book = coder->book[cnt];
             if (!book)
                 continue;
-            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
+            if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2) && (book != HCB_PNS))
             {
                 coder->global_gain = coder->sf[cnt];
                 break;
@@ -303,6 +305,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
+        lastpns = coder->global_gain - 90;
+
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
@@ -314,7 +318,15 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book == HCB_PNS)
+            {
+                int diff = coder->sf[cnt] - lastpns;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
+                lastpns += diff;
+                coder->sf[cnt] = lastpns;
+            }
+            else if (book != HCB_ZERO)
             {
                 int diff = coder->sf[cnt] - lastsf;
                 if (diff < -60) diff = -60;
