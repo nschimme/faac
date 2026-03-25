@@ -31,6 +31,8 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int sr_idx;      /* GetSRIndex() result — index into psy_tables sfb_bark/sfb_ath */
+    int spreading;   /* 1 = apply spreading-function zero-out in bmask (low bitrate only) */
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE

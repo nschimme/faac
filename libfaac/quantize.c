@@ -25,6 +25,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "psy_tables.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -69,11 +70,15 @@ void QuantizeInit(void)
 }
 #define NOISEFLOOR 0.4
 
+/* MASK_RATIO: simultaneous masking gain per unit energy (~50 dB attenuation at 1 Bark). */
+#define MASK_RATIO 0.001f
+
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, int gnum, faac_real quality,
+                  int sr_idx, int spreading)
 {
-  int sfb, start, end, cnt;
+  int sfb, start, end, cnt, m;
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
@@ -84,6 +89,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int win;
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
+  const float *bark = is_short ? sfb_bark_s[sr_idx] : sfb_bark[sr_idx];
 
   for (win = 0; win < gsize; win++)
   {
@@ -157,6 +164,30 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
     bandqual[sfb] = target * quality;
+  }
+
+  /* Pass 2: simultaneous-masking zero-out (low-bitrate only).
+   * Zero bandqual when E[sfb] is at or below the spreading-function
+   * masking threshold M.  MASK_RATIO=0.001 is conservative (~30 dB
+   * guard), so only bands that are truly masked by neighbours are
+   * suppressed; music content well above the mask is unaffected. */
+  if (!spreading)
+    return;
+
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+  {
+    float b_t = bark[sfb];
+    double M  = 0.0;
+
+    for (m = 0; m < coderInfo->sfbn; m++)
+    {
+      float db       = b_t - bark[m];
+      float slope_dB = (db >= 0.0f) ? (-25.0f * db) : (10.0f * db);
+      M += (double)bandenrg[m] * (MASK_RATIO * powf(10.0f, slope_dB * 0.1f));
+    }
+
+    if ((double)bandenrg[sfb] <= M)
+      bandqual[sfb] = 0.0;
   }
 }
 
@@ -265,7 +296,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL);
+                  (faac_real)aacquantCfg->quality/DEFQUAL,
+                  aacquantCfg->sr_idx,
+                  aacquantCfg->spreading);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }

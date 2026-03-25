@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "psy_tables.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -231,6 +232,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.spreading = (config->quantqual < DEFQUAL);
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -313,6 +315,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    hEncoder->aacquantCfg.sr_idx = (int)hEncoder->sampleRateIdx;
+
+    /* initialise psychoacoustic lookup tables (idempotent after first call) */
+    psy_tables_init(srInfo, 12);
 
     for (channel = 0; channel < numChannels; channel++)
 	{
