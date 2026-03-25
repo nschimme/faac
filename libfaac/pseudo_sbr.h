@@ -25,7 +25,7 @@
 /*
  * Returns 1 if pseudo-SBR is useful for the given configuration:
  *   - bitRate > 0  (ABR mode; VBR already encodes full bandwidth)
- *   - naturalBW < 40% of Nyquist  (room to extend)
+ *   - naturalBW < 65% of Nyquist  (room to extend)
  */
 int PseudoSBRShouldEnable(unsigned int naturalBW, unsigned long sampleRate,
                            unsigned long bitRate);

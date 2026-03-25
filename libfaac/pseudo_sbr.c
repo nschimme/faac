@@ -29,7 +29,7 @@
  * ---------------------------------------------------------------------- */
 #define MAX_SBR_PATCHES   4
 #define SBR_PATCH_ROLLOFF 0.50f   /* –6 dB gain per subsequent patch       */
-#define SBR_FILL_THRESH   40u     /* disable if naturalBW > 40% of Nyquist */
+#define SBR_FILL_THRESH   65u     /* disable if naturalBW > 65% of Nyquist */
 #define SBR_NOISE_OFFSET  0.05f   /* minimum noise injection fraction       */
 #define SBR_NOISE_SLOPE   0.20f   /* noise scales by (1-SFM) * slope        */
 #define SBR_SFM_WINDOW    64      /* bins below bw_bin used for SFM         */
@@ -242,7 +242,7 @@ void PseudoSBR(CoderInfo *coderInfo, faac_real *freq,
     sb     = coderInfo->sfbn;
     offset = coderInfo->sfb_offset[sb]; /* end sentinel from normal setup */
 
-    while (sb < num_cb_long && sb < NSFB_LONG && offset < tgt_bin) {
+    while (sb < num_cb_long && offset < tgt_bin) {
         coderInfo->sfb_offset[sb + 1] = offset + cb_width_long[sb];
         offset = coderInfo->sfb_offset[sb + 1];
         sb++;
