@@ -48,7 +48,8 @@ static const psymodellist_t psymodellist[] = {
   {NULL}
 };
 
-static SR_INFO srInfo[12+1];
+extern SR_INFO srInfo[12+1];
+
 
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
@@ -231,6 +232,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.sr_idx = hEncoder->sampleRateIdx;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -276,6 +278,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->numChannels = numChannels;
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
+    hEncoder->aacquantCfg.sr_idx = hEncoder->sampleRateIdx;
 
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
@@ -648,7 +651,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 
 /* Scalefactorband data table for 1024 transform length */
-static SR_INFO srInfo[12+1] =
+SR_INFO srInfo[12+1] =
 {
     { 96000, 41, 12,
         {
