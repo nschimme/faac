@@ -68,14 +68,28 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
+
 #define NOISEFLOOR 0.4
 
-/* MASK_RATIO: simultaneous masking gain per unit energy (~50 dB attenuation at 1 Bark). */
+/* Numerical stability epsilons */
+#define EPS_ENRG ((faac_real)1e-15)
+#define EPS_SMR  ((faac_real)1e-10)
+
+/* Masking ratio for spreading function (-30 dB guard for Pass 1 logic) */
 #define MASK_RATIO 0.001f
 
+/* Spreading function offset (dB). ISO Model 2 suggests ~6-10 dB for low bitrates. */
+#define SPREAD_OFFSET 6.0f
+
+/* Quantization upper bound to keep x_quant < 8192 (Huffman limit).
+ * x_quant = (abs(xr) * sfacfix)^0.75 + 0.4054
+ * 8191.5 ^ (4/3) is approx 165000.
+ * This ensures that the quantized value 'q' in quantize_scalar does not
+ * exceed the 13-bit escape coding limit of the AAC Huffman books. */
+#define QUANT_UPPER_BOUND 165000.0f
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality,
+                  faac_real * __restrict bandenrg, faac_real * __restrict bandmax, int gnum, faac_real quality,
                   int sr_idx, int spreading)
 {
   int sfb, start, end, cnt, m;
@@ -108,6 +122,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       {
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
+          bandmax[sfb] = 0.0;
       }
 
       return;
@@ -115,14 +130,15 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
+    faac_real avge, maxe_enrg, maxe_abs;
     faac_real target;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
     avge = 0.0;
-    maxe = 0.0;
+    maxe_enrg = 0.0;
+    maxe_abs = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -130,14 +146,18 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
+            faac_real abs_val = FAAC_FABS(val);
             faac_real e = val * val;
             avge += e;
-            if (maxe < e)
-                maxe = e;
+            if (maxe_enrg < e)
+                maxe_enrg = e;
+            if (maxe_abs < abs_val)
+                maxe_abs = abs_val;
         }
     }
     bandenrg[sfb] = avge;
-    maxe *= gsize;
+    bandmax[sfb] = maxe_abs;
+    maxe_enrg *= gsize;
 
 #define NOISETONE 0.2
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
@@ -147,7 +167,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         avgenrg *= end - start;
 
         target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_enrg/avgenrg, powm);
 
         target *= 1.5;
     }
@@ -158,7 +178,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         avgenrg *= end - start;
 
         target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_enrg/avgenrg, powm);
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
@@ -179,7 +199,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       float dz = b_t - bark[m];
       /* ISO AAC Model 2 spreading function */
       float weight = 15.811389f + 7.5f * (dz + 0.474f) - 17.5f * sqrtf(1.0f + (dz + 0.474f) * (dz + 0.474f));
-      M += (double)bandenrg[m] * powf(10.0f, (weight - 6.0f) * 0.1f);
+      M += (double)bandenrg[m] * powf(10.0f, (weight - SPREAD_OFFSET) * 0.1f);
     }
 
     if ((double)bandenrg[sfb] <= M)
@@ -193,6 +213,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
+                   const faac_real * __restrict bandmax,
                    int gnum,
                    int pnslevel
                   )
@@ -229,7 +250,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       end = coderInfo->sfb_offset[sb+1];
 
       etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start) + 1e-15);
+      rmsx = FAAC_SQRT(etot / (end - start) + EPS_ENRG);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
@@ -240,26 +261,17 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
+          /* PNS energy represents power per window. Use average energy 'etot'. */
           coderInfo->sf[coderInfo->bandcnt] =
-              FAAC_LRINT(FAAC_LOG10(bandenrg[sb] + 1e-10) * (0.5 * sfstep));
+              FAAC_LRINT(FAAC_LOG10(etot + EPS_SMR) * (0.5 * sfstep));
           coderInfo->bandcnt++;
           continue;
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
 
-      /* Find max absolute value in this band to prevent overflow */
-      faac_real max_xr = 0.0;
-      for (win = 0; win < gsize; win++) {
-          const faac_real *xr_win = xr0 + win * BLOCK_LEN_SHORT + start;
-          for (int i = 0; i < (end - start); i++) {
-              faac_real abs_xr = FAAC_FABS(xr_win[i]);
-              if (abs_xr > max_xr) max_xr = abs_xr;
-          }
-      }
-
-      /* Clamp sfac to prevent quantized values from exceeding 8191. */
-      int sfac_max = FAAC_LRINT(FAAC_LOG10(165000.0f / (max_xr + 1e-15)) * sfstep);
+      /* Clamp sfac to prevent quantized values from exceeding Huffman limit. */
+      int sfac_max = FAAC_LRINT(FAAC_LOG10(QUANT_UPPER_BOUND / (bandmax[sb] + EPS_ENRG)) * sfstep);
       if (sfac > sfac_max) sfac = sfac_max;
 
       if ((SF_OFFSET - sfac) < 10)
@@ -291,6 +303,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real bandmax[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -307,11 +320,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
+            bmask(coder, gxr, bandlvl, bandenrg, bandmax, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL,
                   aacquantCfg->sr_idx,
                   aacquantCfg->spreading);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, bandmax, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -332,32 +345,42 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastis = 0;
         lastpns = coder->global_gain - 90;
 
-        for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
-            int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+            int initpns = 1;
+            for (cnt = 0; cnt < coder->bandcnt; cnt++)
             {
-                int diff = coder->sf[cnt] - lastis;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
-                lastis += diff;
-                coder->sf[cnt] = lastis;
-            }
-            else if (book == HCB_PNS)
-            {
-                int diff = coder->sf[cnt] - lastpns;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
-                lastpns += diff;
-                coder->sf[cnt] = lastpns;
-            }
-            else if (book != HCB_ZERO)
-            {
-                int diff = coder->sf[cnt] - lastsf;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
+                int book = coder->book[cnt];
+                if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+                {
+                    int diff = coder->sf[cnt] - lastis;
+                    if (diff < -60) diff = -60;
+                    if (diff > 60) diff = 60;
+                    lastis += diff;
+                    coder->sf[cnt] = lastis;
+                }
+                else if (book == HCB_PNS)
+                {
+                    int diff = coder->sf[cnt] - lastpns;
+                    if (initpns)
+                    {
+                        initpns = 0;
+                    }
+                    else
+                    {
+                        if (diff < -60) diff = -60;
+                        if (diff > 60) diff = 60;
+                    }
+                    lastpns += diff;
+                    coder->sf[cnt] = lastpns;
+                }
+                else if (book != HCB_ZERO)
+                {
+                    int diff = coder->sf[cnt] - lastsf;
+                    if (diff < -60) diff = -60;
+                    if (diff > 60) diff = 60;
+                    lastsf += diff;
+                    coder->sf[cnt] = lastsf;
+                }
             }
         }
         return 1;
