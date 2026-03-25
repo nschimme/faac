@@ -809,7 +809,10 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        fprintf(stderr, dieMessage, progName, progName, progName, progName);
+        if (dieMessage)
+            fprintf(stderr, dieMessage, progName, progName, progName, progName);
+        if (aacFileName)
+            free(aacFileName);
         return 1;
     }
 
@@ -1275,7 +1278,7 @@ int main(int argc, char *argv[])
         free(pcmbuf);
     if (bitbuf)
         free(bitbuf);
-    if (aacFileNameGiven)
+    if (aacFileName)
         free(aacFileName);
 
     return 0;

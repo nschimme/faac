@@ -129,10 +129,10 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   unsigned int channel;
   int i, j, size;
 
-  gpsyInfo->hannWindow =
-    (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
-  gpsyInfo->hannWindowS =
-    (faac_real *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(faac_real));
+  if (gpsyInfo->hannWindow == NULL)
+    gpsyInfo->hannWindow = (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
+  if (gpsyInfo->hannWindowS == NULL)
+    gpsyInfo->hannWindowS = (faac_real *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(faac_real));
 
   for (i = 0; i < BLOCK_LEN_LONG * 2; i++)
     gpsyInfo->hannWindow[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
@@ -144,8 +144,11 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 
   for (channel = 0; channel < numChannels; channel++)
   {
-    psydata_t *psydata = AllocMemory(sizeof(psydata_t));
-    psyInfo[channel].data = psydata;
+    if (psyInfo[channel].data == NULL) {
+      psydata_t *psydata = AllocMemory(sizeof(psydata_t));
+      memset(psydata, 0, sizeof(psydata_t));
+      psyInfo[channel].data = psydata;
+    }
   }
 
   size = BLOCK_LEN_LONG;
@@ -153,8 +156,10 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psyInfo[channel].size = size;
 
-    psyInfo[channel].prevSamples =
-      (faac_real *) AllocMemory(size * sizeof(faac_real));
+    if (psyInfo[channel].prevSamples == NULL) {
+      psyInfo[channel].prevSamples =
+        (faac_real *) AllocMemory(size * sizeof(faac_real));
+    }
     memset(psyInfo[channel].prevSamples, 0, size * sizeof(faac_real));
   }
 
@@ -167,17 +172,20 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 
     for (j = 0; j < 8; j++)
     {
-      psydata->engPrev[j] =
-            (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
+      if (psydata->engPrev[j] == NULL)
+        psydata->engPrev[j] = (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
       memset(psydata->engPrev[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->eng[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
+
+      if (psydata->eng[j] == NULL)
+        psydata->eng[j] = (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
       memset(psydata->eng[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->engNext[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
+
+      if (psydata->engNext[j] == NULL)
+        psydata->engNext[j] = (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
       memset(psydata->engNext[j], 0, NSFB_SHORT * sizeof(psyfloat));
-      psydata->engNext2[j] =
-          (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
+
+      if (psydata->engNext2[j] == NULL)
+        psydata->engNext2[j] = (psyfloat *) AllocMemory(NSFB_SHORT * sizeof(psyfloat));
       memset(psydata->engNext2[j], 0, NSFB_SHORT * sizeof(psyfloat));
     }
   }
@@ -188,38 +196,60 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
   unsigned int channel;
   int j;
 
-  if (gpsyInfo->hannWindow)
+  if (psyInfo == NULL)
+    return;
+
+  if (gpsyInfo->hannWindow) {
     FreeMemory(gpsyInfo->hannWindow);
-  if (gpsyInfo->hannWindowS)
+    gpsyInfo->hannWindow = NULL;
+  }
+  if (gpsyInfo->hannWindowS) {
     FreeMemory(gpsyInfo->hannWindowS);
+    gpsyInfo->hannWindowS = NULL;
+  }
 
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].prevSamples)
+    if (psyInfo[channel].prevSamples) {
       FreeMemory(psyInfo[channel].prevSamples);
+      psyInfo[channel].prevSamples = NULL;
+    }
   }
 
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = psyInfo[channel].data;
 
+    if (psydata == NULL)
+      continue;
+
     for (j = 0; j < 8; j++)
     {
-        if (psydata->engPrev[j])
+        if (psydata->engPrev[j]) {
             FreeMemory(psydata->engPrev[j]);
-        if (psydata->eng[j])
+            psydata->engPrev[j] = NULL;
+        }
+        if (psydata->eng[j]) {
             FreeMemory(psydata->eng[j]);
-        if (psydata->engNext[j])
+            psydata->eng[j] = NULL;
+        }
+        if (psydata->engNext[j]) {
             FreeMemory(psydata->engNext[j]);
-        if (psydata->engNext2[j])
+            psydata->engNext[j] = NULL;
+        }
+        if (psydata->engNext2[j]) {
             FreeMemory(psydata->engNext2[j]);
+            psydata->engNext2[j] = NULL;
+        }
     }
   }
 
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].data)
+    if (psyInfo[channel].data) {
       FreeMemory(psyInfo[channel].data);
+      psyInfo[channel].data = NULL;
+    }
   }
 
 #if PRINTSTAT

@@ -298,6 +298,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
       (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
+    memset(&hEncoder->gpsyInfo, 0, sizeof(GlobalPsyInfo));
+    memset(hEncoder->psyInfo, 0, MAX_CHANNELS * sizeof(PsyInfo));
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
 	/* default channel map is straight-through */
@@ -323,6 +325,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
         hEncoder->sampleBuff[channel] = NULL;
+        hEncoder->next3SampleBuff[channel] = NULL;
     }
 
     /* Initialize coder functions */
@@ -358,10 +361,14 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     /* Free remaining buffer memory */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
-		if (hEncoder->sampleBuff[channel])
+		if (hEncoder->sampleBuff[channel]) {
 			FreeMemory(hEncoder->sampleBuff[channel]);
-		if (hEncoder->next3SampleBuff[channel])
+			hEncoder->sampleBuff[channel] = NULL;
+		}
+		if (hEncoder->next3SampleBuff[channel]) {
 			FreeMemory (hEncoder->next3SampleBuff[channel]);
+			hEncoder->next3SampleBuff[channel] = NULL;
+		}
     }
 
     /* Free handle */
@@ -419,6 +426,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+
+		if (!hEncoder->next3SampleBuff[channel])
+			hEncoder->next3SampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
 		tmp = hEncoder->sampleBuff[channel];
 
@@ -612,8 +622,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
 
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
+    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0) {
+        CloseBitStream(bitStream);
         return -1;
+    }
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);

@@ -104,7 +104,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 4)
         {
             qp = qs+ofs;
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
+            idx = 27 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + 9 * ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1]))) + 3 * ((unsigned int)(qp[2] < 0 ? -(unsigned int)(qp[2]) : (unsigned int)(qp[2]))) + ((unsigned int)(qp[3] < 0 ? -(unsigned int)(qp[3]) : (unsigned int)(qp[3])));
             if (idx < 0 || idx >= arrlen(book03))
             {
                 return -1;
@@ -162,7 +162,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
-            idx = 8 * abs(qp[0]) + abs(qp[1]);
+            idx = 8 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
             if (idx < 0 || idx >= arrlen(book07))
             {
                 return -1;
@@ -198,7 +198,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             qp = qs+ofs;
-            idx = 13 * abs(qp[0]) + abs(qp[1]);
+            idx = 13 * ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))) + ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
             if (idx < 0 || idx >= arrlen(book09))
             {
                 return -1;
@@ -236,8 +236,8 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             qp = qs+ofs;
 
-            x0 = abs(qp[0]);
-            x1 = abs(qp[1]);
+            x0 = ((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0])));
+            x1 = ((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1])));
             if (x0 > 16)
                 x0 = 16;
             if (x1 > 16)
@@ -275,7 +275,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x0 >= 16)
             {
-                blen = escape(abs(qp[0]), &data);
+                blen = escape(((unsigned int)(qp[0] < 0 ? -(unsigned int)(qp[0]) : (unsigned int)(qp[0]))), &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -286,7 +286,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x1 >= 16)
             {
-                blen = escape(abs(qp[1]), &data);
+                blen = escape(((unsigned int)(qp[1] < 0 ? -(unsigned int)(qp[1]) : (unsigned int)(qp[1]))), &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -318,7 +318,7 @@ int huffbook(CoderInfo *coder,
 
     for (cnt = 0; cnt < len; cnt++)
     {
-        int q = abs(qs[cnt]);
+        int q = ((unsigned int)(qs[cnt] < 0 ? -(unsigned int)(qs[cnt]) : (unsigned int)(qs[cnt])));
         if (maxq < q)
             maxq = q;
     }

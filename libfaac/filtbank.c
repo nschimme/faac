@@ -54,15 +54,22 @@ void FilterBankInit(faacEncStruct* hEncoder)
     unsigned int i, channel;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        hEncoder->freqBuff[channel] = (faac_real*)AllocMemory(2*FRAME_LEN*sizeof(faac_real));
-        hEncoder->overlapBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
-        SetMemory(hEncoder->overlapBuff[channel], 0, FRAME_LEN*sizeof(faac_real));
+        if (hEncoder->freqBuff[channel] == NULL)
+            hEncoder->freqBuff[channel] = (faac_real*)AllocMemory(2*FRAME_LEN*sizeof(faac_real));
+        if (hEncoder->overlapBuff[channel] == NULL) {
+            hEncoder->overlapBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+            SetMemory(hEncoder->overlapBuff[channel], 0, FRAME_LEN*sizeof(faac_real));
+        }
     }
 
-    hEncoder->sin_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
-    hEncoder->sin_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
-    hEncoder->kbd_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
-    hEncoder->kbd_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
+    if (hEncoder->sin_window_long == NULL)
+        hEncoder->sin_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
+    if (hEncoder->sin_window_short == NULL)
+        hEncoder->sin_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
+    if (hEncoder->kbd_window_long == NULL)
+        hEncoder->kbd_window_long = (faac_real*)AllocMemory(BLOCK_LEN_LONG*sizeof(faac_real));
+    if (hEncoder->kbd_window_short == NULL)
+        hEncoder->kbd_window_short = (faac_real*)AllocMemory(BLOCK_LEN_SHORT*sizeof(faac_real));
 
     for( i=0; i<BLOCK_LEN_LONG; i++ )
         hEncoder->sin_window_long[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_LONG)) * (i + 0.5));
@@ -72,10 +79,14 @@ void FilterBankInit(faacEncStruct* hEncoder)
     CalculateKBDWindow(hEncoder->kbd_window_long, 4, BLOCK_LEN_LONG*2);
     CalculateKBDWindow(hEncoder->kbd_window_short, 6, BLOCK_LEN_SHORT*2);
 
-    hEncoder->gpsyInfo.sharedWorkBuffLong = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
-    hEncoder->gpsyInfo.sharedWorkBuffShort = (faac_real*)AllocMemory(2*BLOCK_LEN_SHORT*sizeof(faac_real));
-    hEncoder->gpsyInfo.mdctXr = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
-    hEncoder->gpsyInfo.mdctXi = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
+    if (hEncoder->gpsyInfo.sharedWorkBuffLong == NULL)
+        hEncoder->gpsyInfo.sharedWorkBuffLong = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
+    if (hEncoder->gpsyInfo.sharedWorkBuffShort == NULL)
+        hEncoder->gpsyInfo.sharedWorkBuffShort = (faac_real*)AllocMemory(2*BLOCK_LEN_SHORT*sizeof(faac_real));
+    if (hEncoder->gpsyInfo.mdctXr == NULL)
+        hEncoder->gpsyInfo.mdctXr = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
+    if (hEncoder->gpsyInfo.mdctXi == NULL)
+        hEncoder->gpsyInfo.mdctXi = (faac_real*)AllocMemory((BLOCK_LEN_LONG / 2)*sizeof(faac_real));
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)
@@ -83,19 +94,49 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     unsigned int channel;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
-        if (hEncoder->overlapBuff[channel]) FreeMemory(hEncoder->overlapBuff[channel]);
+        if (hEncoder->freqBuff[channel]) {
+            FreeMemory(hEncoder->freqBuff[channel]);
+            hEncoder->freqBuff[channel] = NULL;
+        }
+        if (hEncoder->overlapBuff[channel]) {
+            FreeMemory(hEncoder->overlapBuff[channel]);
+            hEncoder->overlapBuff[channel] = NULL;
+        }
     }
 
-    if (hEncoder->sin_window_long) FreeMemory(hEncoder->sin_window_long);
-    if (hEncoder->sin_window_short) FreeMemory(hEncoder->sin_window_short);
-    if (hEncoder->kbd_window_long) FreeMemory(hEncoder->kbd_window_long);
-    if (hEncoder->kbd_window_short) FreeMemory(hEncoder->kbd_window_short);
+    if (hEncoder->sin_window_long) {
+        FreeMemory(hEncoder->sin_window_long);
+        hEncoder->sin_window_long = NULL;
+    }
+    if (hEncoder->sin_window_short) {
+        FreeMemory(hEncoder->sin_window_short);
+        hEncoder->sin_window_short = NULL;
+    }
+    if (hEncoder->kbd_window_long) {
+        FreeMemory(hEncoder->kbd_window_long);
+        hEncoder->kbd_window_long = NULL;
+    }
+    if (hEncoder->kbd_window_short) {
+        FreeMemory(hEncoder->kbd_window_short);
+        hEncoder->kbd_window_short = NULL;
+    }
 
-    if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
-    if (hEncoder->gpsyInfo.sharedWorkBuffShort) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffShort);
-    if (hEncoder->gpsyInfo.mdctXr) FreeMemory(hEncoder->gpsyInfo.mdctXr);
-    if (hEncoder->gpsyInfo.mdctXi) FreeMemory(hEncoder->gpsyInfo.mdctXi);
+    if (hEncoder->gpsyInfo.sharedWorkBuffLong) {
+        FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
+        hEncoder->gpsyInfo.sharedWorkBuffLong = NULL;
+    }
+    if (hEncoder->gpsyInfo.sharedWorkBuffShort) {
+        FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffShort);
+        hEncoder->gpsyInfo.sharedWorkBuffShort = NULL;
+    }
+    if (hEncoder->gpsyInfo.mdctXr) {
+        FreeMemory(hEncoder->gpsyInfo.mdctXr);
+        hEncoder->gpsyInfo.mdctXr = NULL;
+    }
+    if (hEncoder->gpsyInfo.mdctXi) {
+        FreeMemory(hEncoder->gpsyInfo.mdctXi);
+        hEncoder->gpsyInfo.mdctXi = NULL;
+    }
 }
 
 void FilterBank(faacEncStruct* hEncoder,
