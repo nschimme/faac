@@ -75,11 +75,13 @@ void QuantizeInit(void)
 #define EPS_ENRG ((faac_real)1e-15)
 #define EPS_SMR  ((faac_real)1e-10)
 
-/* Masking ratio for spreading function (-30 dB guard for Pass 1 logic) */
-#define MASK_RATIO 0.001f
+/* Spreading function offset (dB). ISO Model 2 suggests ~6-10 dB for low bitrates.
+ * Increased to 12.0f to be more conservative and avoid regressions. */
+#define SPREAD_OFFSET 12.0f
 
-/* Spreading function offset (dB). ISO Model 2 suggests ~6-10 dB for low bitrates. */
-#define SPREAD_OFFSET 6.0f
+/* Absolute Threshold of Hearing (ATH) scaling for zero-out logic.
+ * 0.1 corresponds to a -10 dB offset from the theoretical ATH floor. */
+#define ATH_ZERO_SCALE 0.1f
 
 /* Quantization upper bound to keep x_quant < 8192 (Huffman limit).
  * x_quant = (abs(xr) * sfacfix)^0.75 + 0.4054
@@ -87,6 +89,7 @@ void QuantizeInit(void)
  * This ensures that the quantized value 'q' in quantize_scalar does not
  * exceed the 13-bit escape coding limit of the AAC Huffman books. */
 #define QUANT_UPPER_BOUND 165000.0f
+
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmax, int gnum, faac_real quality,
@@ -105,6 +108,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
   int is_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
   const float *bark = is_short ? sfb_bark_s[sr_idx] : sfb_bark[sr_idx];
+  const float *ath  = is_short ? sfb_ath_s[sr_idx]  : sfb_ath[sr_idx];
 
   for (win = 0; win < gsize; win++)
   {
@@ -193,16 +197,22 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
     float b_t = bark[sfb];
     double M  = 0.0;
+    float ath_thr;
 
+    /* 1. Spreading function masking (inter-band) */
     for (m = 0; m < coderInfo->sfbn; m++)
     {
       float dz = b_t - bark[m];
-      /* ISO AAC Model 2 spreading function */
+      /* ISO AAC Model 2 spreading function weight */
       float weight = 15.811389f + 7.5f * (dz + 0.474f) - 17.5f * sqrtf(1.0f + (dz + 0.474f) * (dz + 0.474f));
       M += (double)bandenrg[m] * powf(10.0f, (weight - SPREAD_OFFSET) * 0.1f);
     }
 
-    if ((double)bandenrg[sfb] <= M)
+    /* 2. Absolute Threshold of Hearing (ATH) masking floor */
+    /* ath[sfb] is in dB. Convert to linear energy. Scale factor chosen to match NOISEFLOOR. */
+    ath_thr = ATH_ZERO_SCALE * powf(10.0f, (ath[sfb] - 10.0f) * 0.1f) * (cb_offset[sfb+1] - cb_offset[sfb]) * gsize;
+
+    if ((double)bandenrg[sfb] <= M || bandenrg[sfb] < ath_thr)
       bandqual[sfb] = 0.0;
   }
 }
