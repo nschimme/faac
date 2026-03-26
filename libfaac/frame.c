@@ -58,18 +58,16 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
 
     if (!bitRate) return nyquist;
 
-    if (bitRate <= 16000) {
-        /* Segment 1: Telephony (4kHz to 6kHz) */
-        bw = 4000 + (bitRate / 8);
+    if (bitRate < 12000) {
+        bw = 4000;
     }
-    else if (bitRate <= 32000) {
-        /* Segment 2: Low-tier (6kHz to 11kHz)
-         */
-        bw = 6000 + ((bitRate - 16000) * 5 / 16);
+    else if (bitRate < 24000) {
+        bw = 5000;
+    }
+    else if (bitRate < 48000) {
+        bw = 6000;
     }
     else if (bitRate <= 64000) {
-        /* Segment 3: Mid-tier expansion (11kHz to 18.5kHz)
-         */
         bw = 11000 + ((bitRate - 32000) * 15 / 64);
     }
     else if (bitRate <= 128000) {
@@ -596,7 +594,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     /* Pseudo-SBR: synthesise spectral content above the natural bandwidth.
-       Only fires in ABR mode when naturalBW < 40% Nyquist (low bitrates).
+       Only fires in ABR mode when naturalBW < 65% Nyquist (low bitrates).
        Placed after AACstereo so M/S processing covers the real spectrum,
        and before BlocQuant so the extended bins get quantised. */
     if (hEncoder->config.usePseudoSBR && hEncoder->config.bitRate) {
@@ -613,8 +611,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                                    hEncoder->sampleRate,
                                    naturalBW, targetBW,
                                    hEncoder->config.bitRate,
-                                   hEncoder->srInfo->cb_width_long,
-                                   hEncoder->srInfo->num_cb_long,
+                                   hEncoder->srInfo,
                                    &hEncoder->sbrRandState);
                     }
                 }

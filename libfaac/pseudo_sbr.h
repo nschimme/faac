@@ -20,12 +20,12 @@
 #include "faac_real.h"
 
 /* Minimum extension in Hz worth applying. */
-#define SBR_MIN_EXTENSION 250u
+#define SBR_MIN_EXTENSION 500u
 
 /*
  * Returns 1 if pseudo-SBR is useful for the given configuration:
  *   - bitRate > 0  (ABR mode; VBR already encodes full bandwidth)
- *   - naturalBW < 40% of Nyquist  (room to extend)
+ *   - naturalBW < 65% of Nyquist  (room to extend)
  */
 int PseudoSBRShouldEnable(unsigned int naturalBW, unsigned long sampleRate,
                            unsigned long bitRate);
@@ -53,7 +53,7 @@ void PseudoSBR(CoderInfo *coderInfo, faac_real *freq,
                unsigned long sampleRate,
                unsigned int baseBW, unsigned int targetBW,
                unsigned long bitRate,
-               const int *cb_width_long, int num_cb_long,
+               const SR_INFO *srInfo,
                uint32_t *randState);
 
 #endif /* PSEUDO_SBR_H */

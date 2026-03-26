@@ -1046,9 +1046,8 @@ int main(int argc, char *argv[])
     if (myFormat->pnslevel > 0)
         fprintf(stderr, " + PNS");
     /* Only show Pseudo-SBR when it will actually fire: enabled, ABR mode,
-       and natural bandwidth below 40% of Nyquist (the in-encoder threshold). */
-    if (myFormat->usePseudoSBR && myFormat->bitRate &&
-            myFormat->bandWidth * 100u < (infile->samplerate / 2u) * 40u)
+       and bitrate below 48kbps per channel. */
+    if (myFormat->usePseudoSBR && myFormat->bitRate && (myFormat->bitRate < 48000))
         fprintf(stderr, " + Pseudo-SBR");
     fprintf(stderr, "\n");
 
