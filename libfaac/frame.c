@@ -589,6 +589,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+    if (hEncoder->config.bitRate)
+    {
+        hEncoder->aacquantCfg.target_bits = (int)((faac_real)hEncoder->config.bitRate * FRAME_LEN
+            / hEncoder->sampleRate / numChannels);
+    }
+    else
+    {
+        hEncoder->aacquantCfg.target_bits = 0;
+    }
+
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
