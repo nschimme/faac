@@ -638,28 +638,29 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 			cil = &coderInfo[channel];
 			cir = &coderInfo[channelInfo[channel].paired_ch];
+			int sb, offset;
 
-                        if (cil->sfbn < cir->sfbn) {
-                            cil->sfbn = cir->sfbn;
-                            offset = cil->sfb_offset[0];
-                            for (sb = 0; sb < cil->sfbn; sb++) {
-                                if (cil->block_type == ONLY_SHORT_WINDOW)
-                                    offset += hEncoder->srInfo->cb_width_short[sb];
-                                else
-                                    offset += hEncoder->srInfo->cb_width_long[sb];
-                                cil->sfb_offset[sb + 1] = offset;
-                            }
-                        } else if (cir->sfbn < cil->sfbn) {
-                            cir->sfbn = cil->sfbn;
-                            offset = cir->sfb_offset[0];
-                            for (sb = 0; sb < cir->sfbn; sb++) {
-                                if (cir->block_type == ONLY_SHORT_WINDOW)
-                                    offset += hEncoder->srInfo->cb_width_short[sb];
-                                else
-                                    offset += hEncoder->srInfo->cb_width_long[sb];
-                                cir->sfb_offset[sb + 1] = offset;
-                            }
-                        }
+			if (cil->sfbn < cir->sfbn) {
+				cil->sfbn = cir->sfbn;
+				offset = cil->sfb_offset[0];
+				for (sb = 0; sb < cil->sfbn; sb++) {
+					if (cil->block_type == ONLY_SHORT_WINDOW)
+						offset += hEncoder->srInfo->cb_width_short[sb];
+					else
+						offset += hEncoder->srInfo->cb_width_long[sb];
+					cil->sfb_offset[sb + 1] = offset;
+				}
+			} else if (cir->sfbn < cil->sfbn) {
+				cir->sfbn = cil->sfbn;
+				offset = cir->sfb_offset[0];
+				for (sb = 0; sb < cir->sfbn; sb++) {
+					if (cir->block_type == ONLY_SHORT_WINDOW)
+						offset += hEncoder->srInfo->cb_width_short[sb];
+					else
+						offset += hEncoder->srInfo->cb_width_long[sb];
+					cir->sfb_offset[sb + 1] = offset;
+				}
+			}
 		}
     }
     /* Write the AAC bitstream */
