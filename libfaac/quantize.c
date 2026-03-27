@@ -217,13 +217,15 @@ static faac_real compute_band_noise(const faac_real *xabs_group, const faac_real
     return noise;
 }
 
-static int count_band_bits(CoderInfo *coderInfo, const faac_real *xr_group, int start, int n, int gsize, int sfac_idx)
+static int count_band_bits(CoderInfo *coderInfo, const faac_real *xr_group, int start, int n, int gsize, int sfac_idx, int *book_out)
 {
     int win;
     faac_real sfacfix = sfacfix_tab[sfac_idx];
 
-    if (sfacfix <= 1e-10)
+    if (sfacfix <= 1e-10) {
+        if (book_out) *book_out = HCB_ZERO;
         return 0;
+    }
 
     int *xi = coderInfo->xitab;
     for (win = 0; win < gsize; win++)
@@ -233,7 +235,7 @@ static int count_band_bits(CoderInfo *coderInfo, const faac_real *xr_group, int 
         xi += n;
     }
 
-    return huff_count_bits(coderInfo->xitab, gsize * n, NULL);
+    return huff_count_bits(coderInfo->xitab, gsize * n, book_out);
 }
 
 static int count_group_bits(CoderInfo *coderInfo,
@@ -272,20 +274,24 @@ static int count_group_bits(CoderInfo *coderInfo,
             if (effective_sfac > 100) effective_sfac = 100;
 
             int cache_idx = effective_sfac + 155;
-            s_bits = (int)coderInfo->quantCache[bandcnt].bits[cache_idx];
+            int bit_idx = cache_idx & 31;
+            int word_idx = cache_idx >> 5;
+            int valid = (coderInfo->quantCacheValid[bandcnt][word_idx] >> bit_idx) & 1;
 
-            if (s_bits < 0) {
+            if (valid && coderInfo->quantCache[bandcnt].bits[cache_idx] >= 0) {
+                s_bits = (int)coderInfo->quantCache[bandcnt].bits[cache_idx];
+                // Approximate book selection for speed in trial - HCB_ESC is safe upper bound
+                book = (s_bits > 0) ? HCB_ESC : HCB_ZERO;
+            } else {
                 s_bits = count_band_bits(coderInfo, xr_group, coderInfo->sfb_offset[sb],
                                         coderInfo->sfb_offset[sb+1] - coderInfo->sfb_offset[sb],
-                                        gsize, cache_idx);
+                                        gsize, cache_idx, &book);
                 coderInfo->quantCache[bandcnt].bits[cache_idx] = (short)s_bits;
+                coderInfo->quantCacheValid[bandcnt][word_idx] |= (1U << bit_idx);
             }
 
             if (s_bits > 0) {
                 bits += 7; // Scalefactor
-                book = HCB_ESC;
-            } else {
-                book = HCB_ZERO;
             }
         }
         current_book[sb] = book;
@@ -412,13 +418,21 @@ static void twoloop_quant(CoderInfo *coderInfo,
 
             int current_sfac = sfac[sb];
             int cache_idx = current_sfac + 155;
-            float noise = coderInfo->quantCache[bandcnt].noise[cache_idx];
+            int bit_idx = cache_idx & 31;
+            int word_idx = cache_idx >> 5;
+            int valid = (coderInfo->quantCacheValid[bandcnt][word_idx] >> bit_idx) & 1;
+
+            float noise = -1.0f;
+            if (valid) {
+                noise = coderInfo->quantCache[bandcnt].noise[cache_idx];
+            }
 
             if (noise < 0.0f) {
                 int start = coderInfo->sfb_offset[sb];
                 int n = coderInfo->sfb_offset[sb+1] - start;
                 noise = (float)compute_band_noise(xabs_group, x075_group, start, n, gsize, cache_idx);
                 coderInfo->quantCache[bandcnt].noise[cache_idx] = noise;
+                coderInfo->quantCacheValid[bandcnt][word_idx] |= (1U << bit_idx);
             }
 
             int n = coderInfo->sfb_offset[sb+1] - coderInfo->sfb_offset[sb];
@@ -515,11 +529,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     int total_bands = coder->sfbn * coder->groups.n;
     if (total_bands > MAX_SCFAC_BANDS) total_bands = MAX_SCFAC_BANDS;
 
+    // Reset cache validity bitmasks once per frame
     for (i = 0; i < total_bands; i++) {
-        for (int j = 0; j < 256; j++) {
-            coder->quantCache[i].bits[j] = -1;
-            coder->quantCache[i].noise[j] = -1.0f;
-        }
+        memset(coder->quantCacheValid[i], 0, sizeof(coder->quantCacheValid[i]));
+        // Lazy reset of values by setting bits[cache_idx] = -1 and noise[cache_idx] = -1.0f
+        // is now replaced by bitmask checks for performance.
     }
 
     for (i = 0; i < MAX_SCFAC_BANDS; i++) {

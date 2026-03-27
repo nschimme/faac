@@ -22,6 +22,16 @@
 #ifndef CODER_H
 #define CODER_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#else
+#include <sys/types.h>
+#endif
+
 #include "faac_real.h"
 
 #ifdef __cplusplus
@@ -110,6 +120,7 @@ typedef struct {
         short bits[256];
         float noise[256];
     } quantCache[MAX_SCFAC_BANDS];
+    uint32_t quantCacheValid[MAX_SCFAC_BANDS][8];
 
     int xitab[1152];
     faac_real xabs[1152];
