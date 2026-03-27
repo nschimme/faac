@@ -84,6 +84,8 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    faac_real quality_base;
+
     /* FFT Tables */
     FFT_Tables	fft_tables;
 } faacEncStruct;

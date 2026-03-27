@@ -28,6 +28,10 @@ enum {
     HCB_NONE
 };
 
+int huffcode(int *qs /* quantized spectrum */,
+             int len,
+             int bnum,
+             CoderInfo *coder);
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);

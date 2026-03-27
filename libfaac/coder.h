@@ -97,8 +97,8 @@ typedef struct {
         int len[MAX_SHORT_WINDOWS];
     } groups;
 
-    /* worst case: one codeword with two escapes per two spectral lines */
-#define DATASIZE (3*FRAME_LEN/2)
+    /* worst case: one codeword with two escapes per two spectral lines, plus some margin */
+#define DATASIZE (2*FRAME_LEN)
 
     struct {
         int data;

@@ -231,6 +231,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->quality_base = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -279,6 +280,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     /* Initialize variables to default values */
     hEncoder->frameNum = 0;
+    hEncoder->quality_base = DEFQUAL;
     hEncoder->flushFrame = 0;
 
     /* Default configuration */
@@ -590,6 +592,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     faac_real pe_actual = 0.0;
+    faac_real current_q_mult = (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL;
+
     for (channel = 0; channel < numChannels; channel++) {
         CoderInfo *coder = &coderInfo[channel];
         faac_real *gxr = hEncoder->freqBuff[channel];
@@ -600,14 +604,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         for (cnt = 0; cnt < coder->groups.n; cnt++) {
             FaacComputeMaskingThresholds(coder, gxr, bandlvl, bandenrg, bandmax, cnt,
-                                        (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL, &hEncoder->gpsyInfo);
+                                        current_q_mult, &hEncoder->gpsyInfo);
 
             for (group = 0; group < coder->groups.len[cnt]; group++) {
                 int sfb;
                 for (sfb = 0; sfb < coder->sfbn; sfb++) {
                     if (bandlvl[sfb] > 1e-15) {
                         faac_real enrg = bandenrg[sfb] / coder->groups.len[cnt];
-                        faac_real thr = bandlvl[sfb] / coder->groups.len[cnt];
+                        /* pe_actual must reflect the threshold currently being used for quantization */
+                        faac_real thr = (bandlvl[sfb] * (faac_real)hEncoder->aacquantCfg.quality) / (DEFQUAL * coder->groups.len[cnt]);
                         if (enrg > thr) {
                             pe_actual += (faac_real)(coder->sfb_offset[sfb+1] - coder->sfb_offset[sfb]) *
                                         FAAC_LOG10(enrg / thr) / FAAC_LOG10(2.0);
@@ -624,26 +629,41 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
         faac_real pe_target = (faac_real)desbits / 1.18;
-        /* Proportional feedback: adjust quality to reach target PE.
-         * If pe_actual > pe_target, fix > 1.0, quality increases, bitrate decreases.
-         */
+
+        /* INNER LOOP: Proportional feedback for the current frame.
+           'fix' is the correction factor needed to hit target bits this frame.
+        */
         faac_real fix = (pe_actual / (pe_target + 1.0) - 1.0) * 0.4 + 1.0;
 
-        /* Dampen adjustment to +/- 5% per frame for stability */
-        if (fix > 1.05) fix = 1.05;
-        if (fix < 0.95) fix = 0.95;
+        /* OUTER LOOP: Smoothly update the long-term quality_base.
+           We use a very slow IIR (dampen=0.05) to track the average scene complexity.
+        */
+        faac_real dampen = 0.05;
+        faac_real base_fix = (fix - 1.0) * dampen + 1.0;
 
-        /* Complexity gate: don't increase quality if PE is very low (silence) */
-        if (pe_actual < (pe_target * 0.5)) {
-            if (fix > 1.0) fix = 1.0;
-        }
+        /* Complexity gate: don't allow quality_base to increase (bitrate decrease)
+           during silence or very low complexity segments.
+        */
+        if (pe_actual < (pe_target * 0.5) && base_fix > 1.0) base_fix = 1.0;
 
-        hEncoder->aacquantCfg.quality *= fix;
+        hEncoder->quality_base *= base_fix;
+        if (hEncoder->quality_base > maxqual) hEncoder->quality_base = (faac_real)maxqual;
+        if (hEncoder->quality_base < 10.0) hEncoder->quality_base = 10.0;
+
+        /* Combined Transient Handling: Combine quality_base with a dampened current-frame fix.
+           This allows the encoder to react to sudden complexity spikes without permanently
+           skewing the base quality.
+        */
+        faac_real transient_fix = (fix - 1.0) * 0.5 + 1.0;
+        if (transient_fix > 1.1) transient_fix = 1.1;
+        if (transient_fix < 0.9) transient_fix = 0.9;
+
+        hEncoder->aacquantCfg.quality = hEncoder->quality_base * transient_fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+            hEncoder->aacquantCfg.quality = (faac_real)maxqual;
+        if (hEncoder->aacquantCfg.quality < 10.0)
+            hEncoder->aacquantCfg.quality = 10.0;
     }
 
     for (channel = 0; channel < numChannels; channel++) {

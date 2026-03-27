@@ -56,10 +56,10 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
-                    CoderInfo *coder)
+int huffcode(int *qs /* quantized spectrum */,
+             int len,
+             int bnum,
+             CoderInfo *coder)
 {
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
@@ -85,7 +85,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01))
+            if (idx < 0 || idx >= 81)
             {
                 return -1;
             }
@@ -105,7 +105,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03))
+            if (idx < 0 || idx >= 81)
             {
                 return -1;
             }
@@ -143,7 +143,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05))
+            if (idx < 0 || idx >= 81)
             {
                 return -1;
             }
@@ -163,7 +163,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07))
+            if (idx < 0 || idx >= 64)
             {
                 return -1;
             }
@@ -199,7 +199,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09))
+            if (idx < 0 || idx >= 169)
             {
                 return -1;
             }
@@ -243,7 +243,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             if (x1 > 16)
                 x1 = 16;
             idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
+            if (idx < 0 || idx >= 289)
             {
                 return -1;
             }
@@ -314,7 +314,6 @@ int huffbook(CoderInfo *coder,
 {
     int cnt;
     int maxq = 0;
-    int bookmin, lenmin;
 
     for (cnt = 0; cnt < len; cnt++)
     {
@@ -323,39 +322,24 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+    int bookmin = HCB_ZERO;
+    int lenmin = 0x7FFFFFFF;
 
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
+    if (maxq > 0) {
+        int b;
+        for (b = 1; b <= 11; b++) {
+            int l = huffcode(qs, len, b, 0);
+            if (l != -1 && l < lenmin) {
+                lenmin = l;
+                bookmin = b;
+            }
+        }
     }
 
-    if (bookmin > HCB_ZERO)
+    if (bookmin == HCB_ZERO && maxq > 0)
+        bookmin = 1;
+
+    if (bookmin != HCB_ZERO)
         huffcode(qs, len, bookmin, coder);
     coder->book[coder->bandcnt] = bookmin;
 

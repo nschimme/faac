@@ -111,9 +111,11 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
                 (*sfcnt)++;
                 continue;
             }
-            cl->sf[*sfcnt] = sf;
+            /* cl->sf stays same (it will be suggestion for Pass 1) */
+            cl->sf[*sfcnt] = 100 + sf;
             cr->sf[*sfcnt] = -pan;
-            cr->book[*sfcnt] = hcb;
+            cl->book[*sfcnt] = HCB_NONE; /* Left channel is regular spectral data */
+            cr->book[*sfcnt] = hcb;      /* Right channel is intensity data */
 
             for (win = wstart; win < wend; win++)
             {

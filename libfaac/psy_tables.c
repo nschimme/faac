@@ -38,8 +38,10 @@ static void compute_spreading_matrix(faac_real *matrix, faac_real *bark, int n, 
             faac_real dz = bark[i] - bark[j];
             faac_real dz_off = dz + 0.474;
             faac_real weight = 15.811389 + 7.5 * dz_off - 17.5 * sqrt(1.0 + dz_off * dz_off);
-            /* Apply a 18dB masking index (SNR) offset to convert masking function to threshold */
-            weight -= 18.0;
+            /* SPREAD_OFFSET: 12dB is standard for AAC Model 2.
+               This converts the masking function to a threshold.
+            */
+            weight -= 12.0;
             if (weight < -100.0) weight = -100.0;
             matrix[i * stride + j] = pow(10.0, weight / 10.0);
         }
@@ -57,7 +59,11 @@ void FaacPsyInitContext(FaacPsyContext *ctx, int sample_rate,
     for (sfb = 0; sfb < num_cb_long; sfb++) {
         faac_real center_freq = (faac_real)(offset + cb_width_long[sfb] / 2) * sample_rate / (2.0 * BLOCK_LEN_LONG);
         ctx->bark_long[sfb] = freq_to_bark(center_freq);
-        ctx->ath_long[sfb] = pow(10.0, (interpolate_ath(center_freq) - 90.0) / 10.0) * (cb_width_long[sfb] * 0.1);
+        /* ATH scaling:
+           Offset by -35.0dB. This is a balanced middle ground to avoid over-masking
+           while maintaining bitrate efficiency.
+        */
+        ctx->ath_long[sfb] = pow(10.0, (interpolate_ath(center_freq) - 35.0) / 10.0) * (cb_width_long[sfb]);
         offset += cb_width_long[sfb];
     }
     compute_spreading_matrix(ctx->spread_matrix_long, ctx->bark_long, num_cb_long, NSFB_LONG_H);
@@ -66,7 +72,7 @@ void FaacPsyInitContext(FaacPsyContext *ctx, int sample_rate,
     for (sfb = 0; sfb < num_cb_short; sfb++) {
         faac_real center_freq = (faac_real)(offset + cb_width_short[sfb] / 2) * sample_rate / (2.0 * BLOCK_LEN_SHORT);
         ctx->bark_short[sfb] = freq_to_bark(center_freq);
-        ctx->ath_short[sfb] = pow(10.0, (interpolate_ath(center_freq) - 90.0) / 10.0) * (cb_width_short[sfb] * 0.1);
+        ctx->ath_short[sfb] = pow(10.0, (interpolate_ath(center_freq) - 35.0) / 10.0) * (cb_width_short[sfb]);
         offset += cb_width_short[sfb];
     }
     compute_spreading_matrix(ctx->spread_matrix_short, ctx->bark_short, num_cb_short, NSFB_SHORT_H);
