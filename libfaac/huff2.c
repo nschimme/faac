@@ -27,27 +27,27 @@
 static int escape(int x, int *code)
 {
     int preflen = 0;
-    int base = 32;
+    int base = 16;
 
     if (x >= 8192)
     {
-        fprintf(stderr, "%s(%d): x_quant >= 8192\n", __FILE__, __LINE__);
-        return 0;
+        // Should be capped by quantizer
+        x = 8191;
     }
 
     *code = 0;
-    while (base <= x)
+    while ((base << 1) <= x)
     {
         base <<= 1;
         *code <<= 1;
         *code |= 1;
         preflen++;
     }
-    base >>= 1;
 
     // separator
     *code <<= 1;
 
+    // value
     *code <<= (preflen + 4);
     *code |= (x - base);
 
@@ -92,6 +92,7 @@ int huffcode(int *qs /* quantized spectrum */,
             blen = book[idx].len;
             if (coder)
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
@@ -119,6 +120,7 @@ int huffcode(int *qs /* quantized spectrum */,
             }
             else
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 // add sign bits
                 for(cnt = 0; cnt < 4; cnt++)
@@ -150,6 +152,7 @@ int huffcode(int *qs /* quantized spectrum */,
             blen = book[idx].len;
             if (coder)
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 coder->s[datacnt].data = data;
                 coder->s[datacnt++].len = blen;
@@ -176,6 +179,7 @@ int huffcode(int *qs /* quantized spectrum */,
             }
             else
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 for(cnt = 0; cnt < 2; cnt++)
                 {
@@ -212,6 +216,7 @@ int huffcode(int *qs /* quantized spectrum */,
             }
             else
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 for(cnt = 0; cnt < 2; cnt++)
                 {
@@ -257,6 +262,7 @@ int huffcode(int *qs /* quantized spectrum */,
             }
             else
             {
+                if (datacnt >= DATASIZE) return -1;
                 data = book[idx].data;
                 for(cnt = 0; cnt < 2; cnt++)
                 {
@@ -278,6 +284,7 @@ int huffcode(int *qs /* quantized spectrum */,
                 blen = escape(abs(qp[0]), &data);
                 if (coder)
                 {
+                    if (datacnt >= DATASIZE) return -1;
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
                 }
@@ -289,6 +296,7 @@ int huffcode(int *qs /* quantized spectrum */,
                 blen = escape(abs(qp[1]), &data);
                 if (coder)
                 {
+                    if (datacnt >= DATASIZE) return -1;
                     coder->s[datacnt].data = data;
                     coder->s[datacnt++].len = blen;
                 }
@@ -305,6 +313,37 @@ int huffcode(int *qs /* quantized spectrum */,
         coder->datacnt = datacnt;
 
     return bits;
+}
+
+int huff_count_bits(int *qs, int len, int bnum)
+{
+    return huffcode(qs, len, bnum, NULL);
+}
+
+int huff_estimate_bits(int *qs, int len)
+{
+    int cnt;
+    int maxq = 0;
+
+    for (cnt = 0; cnt < len; cnt++)
+    {
+        int q = abs(qs[cnt]);
+        if (maxq < q)
+            maxq = q;
+    }
+
+    if (maxq == 0) return 0;
+
+    int min_bits = 1000000;
+    int b;
+    /* Only check a few books for fast estimation */
+    static const int books_to_check[] = {1, 3, 5, 7, 9, 11};
+    for (b = 0; b < arrlen(books_to_check); b++) {
+        int bits = huff_count_bits(qs, len, books_to_check[b]);
+        if (bits != -1 && bits < min_bits)
+            min_bits = bits;
+    }
+    return min_bits;
 }
 
 
@@ -340,7 +379,9 @@ int huffbook(CoderInfo *coder,
         bookmin = 1;
 
     if (bookmin != HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
+    {
+        if (huffcode(qs, len, bookmin, coder) == -1) return -1;
+    }
     coder->book[coder->bandcnt] = bookmin;
 
     return 0;

@@ -32,6 +32,8 @@ int huffcode(int *qs /* quantized spectrum */,
              int len,
              int bnum,
              CoderInfo *coder);
+int huff_count_bits(int *qs, int len, int bnum);
+int huff_estimate_bits(int *qs, int len);
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);

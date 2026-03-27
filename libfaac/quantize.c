@@ -24,6 +24,7 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "huffdata.h"
 #include "cpu_compute.h"
 
 #ifdef __GNUC__
@@ -188,7 +189,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac_val = FAAC_LRINT(0.5 * FAAC_LOG10(enrg_line / (thr_line + 1e-15f)) * sfstep);
 
       coderInfo->book[coderInfo->bandcnt] = HCB_ESC; /* Placeholder */
-      coderInfo->sf[coderInfo->bandcnt++] = 100 - sfac_val;
+      coderInfo->sf[coderInfo->bandcnt++] = SF_OFFSET - sfac_val;
     }
 }
 
@@ -221,13 +222,80 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* Pass 2: Global bitstream compliance */
     int total_bands = coder->bandcnt;
-    coder->global_gain = 100;
+
+    // Iterative Search: Two-loop quantizer
+    int offset = 0;
+    int best_offset = 150;
+
+    /* Coarse search for offset to fit target_bits */
+    if (aacquantCfg->target_bits > 0) {
+        int low = -150, high = 150;
+        int iter;
+        /* Budget 95% for spectral data to allow for headers/SFs/sideinfo */
+        int spectral_target = (aacquantCfg->target_bits * 95) / 100;
+
+        for (iter = 0; iter < 12; iter++) {
+            int current_bits = 0;
+            offset = (low + high) / 2;
+
+            gxr = xr;
+            int current_band = 0;
+            for (cnt = 0; cnt < coder->groups.n; cnt++) {
+                int gsize = coder->groups.len[cnt];
+                for (sb = 0; sb < coder->sfbn; sb++) {
+                    int b = coder->book[current_band];
+                    if (b >= 1 && b <= HCB_ESC) {
+                        int start = coder->sfb_offset[sb];
+                        int end = coder->sfb_offset[sb+1];
+                        int n_lines = end - start;
+                        int sf = coder->sf[current_band] + offset;
+                        faac_real sf_limit = SF_OFFSET - sfstep * FAAC_LOG10(165080.0f / (bandmax_all[current_band] + 1e-15f));
+                        if (sf < (int)ceil(sf_limit)) sf = (int)ceil(sf_limit);
+                        if (sf < 0) sf = 0;
+                        if (sf > 255) sf = 255;
+
+                        faac_real sfacfix = FAAC_POW(10, (faac_real)(SF_OFFSET - sf) / sfstep);
+                        int xitab[FRAME_LEN];
+                        int win;
+                        int group_bits = 0;
+                        for (win = 0; win < gsize; win++) {
+                            qfunc(gxr + win * BLOCK_LEN_SHORT + start, xitab, n_lines, sfacfix);
+                            group_bits += huff_estimate_bits(xitab, n_lines);
+                        }
+                        current_bits += group_bits;
+                        current_bits += 4; // SF bits estimate
+                    } else if (b == HCB_ZERO) {
+                        // zero bits
+                    } else {
+                        current_bits += 10; // other books estimate (intensity/pns)
+                    }
+                    current_band++;
+                }
+                gxr += gsize * BLOCK_LEN_SHORT;
+            }
+
+            if (current_bits > spectral_target) {
+                low = offset;
+            } else {
+                high = offset;
+                best_offset = offset;
+            }
+        }
+        offset = best_offset;
+    }
+
+    /* Pass 2: Global bitstream compliance & finalize sf */
+    coder->global_gain = SF_OFFSET + offset;
+    if (coder->global_gain < 0) coder->global_gain = 0;
+    if (coder->global_gain > 255) coder->global_gain = 255;
+
     for (cnt = 0; cnt < total_bands; cnt++) {
         int book = coder->book[cnt];
         if (book >= 1 && book <= HCB_ESC) {
-            coder->global_gain = coder->sf[cnt];
+            coder->global_gain = coder->sf[cnt] + offset;
+            if (coder->global_gain < 0) coder->global_gain = 0;
+            if (coder->global_gain > 255) coder->global_gain = 255;
             break;
         }
     }
@@ -239,7 +307,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     for (cnt = 0; cnt < total_bands; cnt++) {
         int book = coder->book[cnt];
-        int sf = coder->sf[cnt];
+        int sf = coder->sf[cnt] + offset;
         if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
             sf = ClampDiff(sf, lastis);
             if (sf < 0) sf = 0;
@@ -258,10 +326,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastpns = sf;
             }
         } else if (book >= 1 && book <= HCB_ESC) {
-            /* Huffman Limit: sfacfix < 165080 / bandmax
-               sfacfix = 10^((100-sf)/sfstep) => sf > 100 - sfstep * log10(165080 / bandmax)
-            */
-            faac_real sf_limit = 100.0 - sfstep * FAAC_LOG10(165080.0f / (bandmax_all[cnt] + 1e-15f));
+            faac_real sf_limit = SF_OFFSET - sfstep * FAAC_LOG10(165080.0f / (bandmax_all[cnt] + 1e-15f));
             if (sf < (int)ceil(sf_limit)) sf = (int)ceil(sf_limit);
 
             sf = ClampDiff(sf, lastsf);
@@ -271,7 +336,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         } else if (book == HCB_ZERO) {
             sf = lastsf;
         }
-        /* Crucial: if book == HCB_NONE (16), we leave sf alone (it's the pan value for right channel) */
         if (book != HCB_NONE) coder->sf[cnt] = sf;
     }
 
@@ -302,10 +366,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 faac_real sfacfix;
                 memset(xitab, 0, sizeof(xitab));
 
-                if ((100 - sf) < -155)
+                if ((SF_OFFSET - sf) < -155)
                     sfacfix = 0.0;
                 else
-                    sfacfix = FAAC_POW(10, (faac_real)(100 - sf) / sfstep);
+                    sfacfix = FAAC_POW(10, (faac_real)(SF_OFFSET - sf) / sfstep);
 
                 int *xi = xitab;
                 int win;
@@ -313,7 +377,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                     qfunc(gxr + win * BLOCK_LEN_SHORT + start, xi, n_lines, sfacfix);
                     xi += n_lines;
                 }
-                huffbook(coder, xitab, gsize * n_lines);
+                if (huffbook(coder, xitab, gsize * n_lines) == -1) {
+                    /* Fallback: Bitstream overflow */
+                    coder->book[current_band] = HCB_ZERO;
+                }
 
                 /* Update PE based on actual quantized SNR */
                 faac_real thr_line = (current_band_lvl[sb] * q_mult) / (faac_real)(gsize * n_lines);
@@ -322,7 +389,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                     coder->pe += (faac_real)n_lines * gsize * FAAC_LOG10(enrg_line / (thr_line + 1e-15f)) / FAAC_LOG10(2.0);
                 }
             } else if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
-                /* We must re-run huffbook for intensity stereo to ensure correct bitstream count */
                 int xitab[FRAME_LEN + 4];
                 memset(xitab, 0, sizeof(xitab));
                 huffbook(coder, xitab, gsize * n_lines);

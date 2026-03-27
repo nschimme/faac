@@ -84,6 +84,9 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    int bit_reservoir;
+    int bit_reservoir_max;
+
     faac_real quality_base;
 
     /* FFT Tables */

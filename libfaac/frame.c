@@ -232,6 +232,14 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     hEncoder->quality_base = config->quantqual;
+
+    if (hEncoder->config.bitRate) {
+        /* Reservoir size based on total bits for all channels */
+        int total_bitrate = hEncoder->config.bitRate * hEncoder->numChannels;
+        hEncoder->bit_reservoir_max = (int)(total_bitrate * 2.0); // 2 seconds max
+        if (hEncoder->bit_reservoir_max > 6144 * 8) hEncoder->bit_reservoir_max = 6144 * 8;
+        hEncoder->bit_reservoir = hEncoder->bit_reservoir_max / 2;
+    }
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -626,14 +634,30 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     if (hEncoder->config.bitRate)
     {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real pe_target = (faac_real)desbits / 1.18;
+        /* total_target_bits is for ALL channels */
+        int total_target_bits = (hEncoder->config.bitRate * hEncoder->numChannels * FRAME_LEN) / hEncoder->sampleRate;
+
+        /* Adjust target based on bit reservoir */
+        /* If reservoir is high (near max), spend more bits (reservoir_fix > 0) */
+        int reservoir_fix = (hEncoder->bit_reservoir - hEncoder->bit_reservoir_max / 2) / 10;
+        int current_target = total_target_bits + reservoir_fix;
+        if (current_target < total_target_bits / 2) current_target = total_target_bits / 2;
+        if (current_target > total_target_bits * 2) current_target = total_target_bits * 2;
+
+        /* target_bits in aacquantCfg is PER CHANNEL since BlocQuant is called per channel */
+        int desbits = current_target / numChannels;
+        faac_real pe_target = (faac_real)desbits; // PE target is roughly matching bits
+
+        hEncoder->aacquantCfg.target_bits = desbits;
 
         /* INNER LOOP: Proportional feedback for the current frame.
            'fix' is the correction factor needed to hit target bits this frame.
         */
         faac_real fix = (pe_actual / (pe_target + 1.0) - 1.0) * 0.4 + 1.0;
+
+        /* Dampen fix factor to avoid oscillations */
+        if (fix > 1.05) fix = 1.05;
+        if (fix < 0.95) fix = 0.95;
 
         /* OUTER LOOP: Smoothly update the long-term quality_base.
            We use a very slow IIR (dampen=0.05) to track the average scene complexity.
@@ -650,15 +674,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->quality_base > maxqual) hEncoder->quality_base = (faac_real)maxqual;
         if (hEncoder->quality_base < 10.0) hEncoder->quality_base = 10.0;
 
-        /* Combined Transient Handling: Combine quality_base with a dampened current-frame fix.
-           This allows the encoder to react to sudden complexity spikes without permanently
-           skewing the base quality.
-        */
-        faac_real transient_fix = (fix - 1.0) * 0.5 + 1.0;
-        if (transient_fix > 1.1) transient_fix = 1.1;
-        if (transient_fix < 0.9) transient_fix = 0.9;
-
-        hEncoder->aacquantCfg.quality = hEncoder->quality_base * transient_fix;
+        hEncoder->aacquantCfg.quality = hEncoder->quality_base * fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = (faac_real)maxqual;
@@ -694,6 +710,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
+
+    if (hEncoder->config.bitRate) {
+        int bits_used = frameBytes * 8;
+        int bits_available = (hEncoder->config.bitRate * hEncoder->numChannels * FRAME_LEN) / hEncoder->sampleRate;
+        hEncoder->bit_reservoir += (bits_available - bits_used);
+        if (hEncoder->bit_reservoir > hEncoder->bit_reservoir_max) hEncoder->bit_reservoir = hEncoder->bit_reservoir_max;
+        if (hEncoder->bit_reservoir < 0) hEncoder->bit_reservoir = 0;
+    }
 
     return frameBytes;
 }

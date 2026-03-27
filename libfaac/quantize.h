@@ -32,6 +32,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int target_bits;
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
