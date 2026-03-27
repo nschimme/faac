@@ -4,6 +4,7 @@ faac = executable('faac',
     link_with: libfaac,
     install: true
 )
+faac_exe = faac
 
 if target_machine.system() == 'windows'
     windows = import('windows')

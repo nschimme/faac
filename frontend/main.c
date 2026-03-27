@@ -28,9 +28,15 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <fcntl.h>
+#include <io.h>
 #else
 #include <signal.h>
 #endif
+
+#include <stdio.h>
+
+int verbose = 1;
+#define fprintf(f, ...) do { if (verbose) (fprintf)(f, __VA_ARGS__); } while(0)
 
 /* the BSD derivatives don't define __unix__ */
 #if defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
@@ -60,11 +66,6 @@
 
 #if !defined(HAVE_STRCASECMP) && !defined(_WIN32)
 # define strcasecmp strcmp
-#endif
-
-#ifdef _WIN32
-# undef stderr
-# define stderr stdout
 #endif
 
 #include "input.h"
@@ -420,7 +421,6 @@ static int *mkChanMap(int channels, int center, int lf)
     return map;
 }
 
-#define fprintf if(verbose)fprintf
 
 int main(int argc, char *argv[])
 {
@@ -483,7 +483,6 @@ int main(int argc, char *argv[])
     char *faac_id_string;
     char *faac_copyright_string;
     static int ignorelen = 0;
-    int verbose = 1;
     static int overwrite = 0;
 
 #ifndef _WIN32
@@ -809,7 +808,12 @@ int main(int argc, char *argv[])
 
     if (argc - optind < 1 || dieMessage)
     {
-        fprintf(stderr, dieMessage, progName, progName, progName, progName);
+        if (dieMessage)
+        {
+            fprintf(stderr, "%s", dieMessage);
+        }
+        else
+            help('h');
         return 1;
     }
 
@@ -961,6 +965,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+#ifdef _WIN32
+    if (infile && infile->f == stdin && _fileno(stdin) >= 0)
+        _setmode(_fileno(stdin), _O_BINARY);
+#endif
+
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)
     {
@@ -997,6 +1006,11 @@ int main(int argc, char *argv[])
             fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
             return 1;
         }
+
+#ifdef _WIN32
+        if (outfile == stdout && _fileno(stdout) >= 0)
+            _setmode(_fileno(stdout), _O_BINARY);
+#endif
     }
 
     cutOff = myFormat->bandWidth;
@@ -1129,7 +1143,6 @@ int main(int argc, char *argv[])
             struct rusage usage;
 #endif
 #ifdef _WIN32
-            char percent[MAX_PATH + 20];
             timeused = (GetTickCount() - begin) * 1e-3;
 #else
 #ifdef __unix__
@@ -1176,9 +1189,13 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
                 if (frames != 0)
                 {
+                    char percent[MAX_PATH + 20];
+                    char truncatedName[MAX_PATH];
+                    strncpy(truncatedName, audioFileName ? audioFileName : "stdin", MAX_PATH - 1);
+                    truncatedName[MAX_PATH - 1] = '\0';
                     sprintf(percent, "%.2f%% encoding %s",
-                            100.0 * currentFrame / frames, audioFileName);
-                    SetConsoleTitle(percent);
+                            100.0 * currentFrame / frames, truncatedName);
+                    SetConsoleTitleA(percent);
                 }
 #endif
             }
@@ -1262,7 +1279,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        fclose(outfile);
+        if (outfile && outfile != stdout)
+            fclose(outfile);
     }
 
     faacEncClose(hEncoder);

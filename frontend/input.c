@@ -163,7 +163,8 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
   if (!strcmp(name, "-"))
   {
 #ifdef _WIN32
-    _setmode(_fileno(stdin), O_BINARY);
+    if (_fileno(stdin) >= 0)
+        _setmode(_fileno(stdin), _O_BINARY);
 #endif
     wave_f = stdin;
     dostdin = 1;
@@ -231,10 +232,16 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
   memset(sndf, 0, sizeof(*sndf));
   sndf->f = wave_f;
 
-  if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_FLOAT) {
-    sndf->isfloat = 1;
+  if (!rawinput) {
+    if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_FLOAT) {
+      sndf->isfloat = 1;
+    } else if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_EXTENSIBLE) {
+      sndf->isfloat = (wave.SubFormat[0] == WAVE_FORMAT_FLOAT);
+    } else {
+      sndf->isfloat = 0;
+    }
   } else {
-    sndf->isfloat = (wave.SubFormat[0] == WAVE_FORMAT_FLOAT);
+    sndf->isfloat = 0;
   }
   if (rawinput)
   {
@@ -488,7 +495,10 @@ size_t wav_read_int24(pcmfile_t *sndf, int32_t *buf, size_t num, int *map)
 
 int wav_close(pcmfile_t *sndf)
 {
-  int i = fclose(sndf->f);
-  free(sndf);
+  int i = 0;
+  if (sndf && sndf->f && sndf->f != stdin)
+    i = fclose(sndf->f);
+  if (sndf)
+    free(sndf);
   return i;
 }

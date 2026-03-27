@@ -83,12 +83,12 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        if (enrgs >= ethr)
+        if (enrgs >= ethr && enrgs > FAAC_EPSILON)
         {
             hcb = HCB_INTENSITY;
             vfix = FAAC_SQRT(efix / enrgs);
         }
-        else if (enrgd >= ethr)
+        else if (enrgd >= ethr && enrgd > FAAC_EPSILON)
         {
             hcb = HCB_INTENSITY2;
             vfix = FAAC_SQRT(efix / enrgd);
@@ -96,8 +96,8 @@ static void stereo(CoderInfo *cl, CoderInfo *cr,
 
         if (hcb != HCB_NONE)
         {
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            int sf = FAAC_LRINT(FAAC_LOG10((enrgl + FAAC_EPSILON) / (efix + FAAC_EPSILON)) * step);
+            int pan = FAAC_LRINT(FAAC_LOG10((enrgr + FAAC_EPSILON) / (efix + FAAC_EPSILON)) * step) - sf;
 
             if (pan > 30)
             {
@@ -299,22 +299,16 @@ void AACstereo(CoderInfo *coder,
 
     for (chn = 0; chn < maxchan; chn++)
     {
-        int group;
-        int bookcnt = 0;
+        int i;
         CoderInfo *cp = coder + chn;
 
         if (!channel[chn].present)
             continue;
 
-        for (group = 0; group < cp->groups.n; group++)
+        for (i = 0; i < MAX_SCFAC_BANDS; i++)
         {
-            int band;
-            for (band = 0; band < cp->sfbn; band++)
-            {
-                cp->book[bookcnt] = HCB_NONE;
-                cp->sf[bookcnt] = 0;
-                bookcnt++;
-            }
+            cp->book[i] = HCB_NONE;
+            cp->sf[i] = 0;
         }
     }
     for (chn = 0; chn < maxchan; chn++)
@@ -356,9 +350,9 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
-        for (group = 0; group < coder->groups.n; group++)
+        for (group = 0; group < coder[chn].groups.n; group++)
         {
-            int end = start + coder->groups.len[group];
+            int end = start + coder[chn].groups.len[group];
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
