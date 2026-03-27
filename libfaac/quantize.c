@@ -246,9 +246,11 @@ static int count_group_bits(CoderInfo *coderInfo, const faac_real *xr_group, con
     int sb;
     int bits = 0;
     int last_book = -1;
-    int section_count = 0;
+    int section_len = 0;
     static const faac_real sfstep = 13.287712379549449;
     int gsize = coderInfo->groups.len[gnum];
+    int max_section_len = (coderInfo->block_type == ONLY_SHORT_WINDOW ? 7 : 31);
+    int section_bits = (coderInfo->block_type == ONLY_SHORT_WINDOW ? 3 : 5);
 
     for (sb = 0; sb < coderInfo->sfbn; sb++)
     {
@@ -279,13 +281,15 @@ static int count_group_bits(CoderInfo *coderInfo, const faac_real *xr_group, con
             }
         }
 
-        if (book != last_book) {
-            section_count++;
+        if (book != last_book || section_len >= max_section_len) {
+            bits += 4 + section_bits; // New section header
             last_book = book;
+            section_len = 1;
+        } else {
+            section_len++;
         }
         bits += s_bits;
     }
-    bits += section_count * (4 + (coderInfo->block_type == ONLY_SHORT_WINDOW ? 3 : 5));
     return bits;
 }
 
@@ -356,41 +360,10 @@ static void twoloop_quant(CoderInfo *coderInfo,
         if (sfac[sb] < -155) sfac[sb] = -155;
     }
 
-    int target_group_bits = 0;
-    if (target_bits > 0)
-    {
-        target_group_bits = target_bits * gsize / (coderInfo->block_type == ONLY_SHORT_WINDOW ? 8 : 1);
-        target_group_bits = target_group_bits * 92 / 100;
-    }
-
-    // Interleaved Loops
-    for (iter = 0; iter < 5; iter++)
+    // Step 2: Outer loop (Relative NMR refinement - only FINER)
+    for (iter = 0; iter < 10; iter++)
     {
         int changed = 0;
-
-        // Inner loop: Global bit control
-        if (target_group_bits > 0)
-        {
-            int low = -200, high = 200;
-            for (int ii = 0; ii < 12; ii++) {
-                int mid = (low + high) / 2;
-                int bits = count_group_bits(coderInfo, xr_group, x075_group, sfac, mid, initial_bandcnt, gnum);
-                if (bits > target_group_bits) high = mid;
-                else low = mid;
-            }
-            if (low != 0) {
-                for (sb = 0; sb < coderInfo->sfbn; sb++) {
-                    if (coderInfo->book[initial_bandcnt + sb] == HCB_NONE) {
-                        sfac[sb] += low;
-                        if (sfac[sb] > sfac_max[sb]) sfac[sb] = sfac_max[sb];
-                        if (sfac[sb] < -155) sfac[sb] = -155;
-                    }
-                }
-                changed = 1;
-            }
-        }
-
-        // Outer loop: NMR refinement
         for (sb = 0; sb < coderInfo->sfbn; sb++)
         {
             if (coderInfo->book[initial_bandcnt + sb] != HCB_NONE) continue;
@@ -400,7 +373,8 @@ static void twoloop_quant(CoderInfo *coderInfo,
             int n = coderInfo->sfb_offset[sb+1] - start;
             faac_real noise = compute_band_noise(xr_group, x075_group, start, n, gsize, sfacfix);
             faac_real mask = bandqual[sb] * bandqual[sb] * (faac_real)n * (faac_real)gsize;
-            if (noise > 1.05 * mask)
+
+            if (noise > 1.00 * mask)
             {
                 if (sfac[sb] < sfac_max[sb]) {
                     sfac[sb]++;
@@ -408,8 +382,34 @@ static void twoloop_quant(CoderInfo *coderInfo,
                 }
             }
         }
-
         if (!changed) break;
+    }
+
+    // Step 3: Inner loop (Global bitrate control)
+    if (target_bits > 0)
+    {
+        int target_group_bits = target_bits * gsize / (coderInfo->block_type == ONLY_SHORT_WINDOW ? 8 : 1);
+        // Budget 98% because count_group_bits is now very accurate.
+        target_group_bits = target_group_bits * 98 / 100;
+
+        int low = -200, high = 200;
+        int inner_iter;
+        for (inner_iter = 0; inner_iter < 12; inner_iter++) {
+            int mid = (low + high) / 2;
+            int bits = count_group_bits(coderInfo, xr_group, x075_group, sfac, mid, initial_bandcnt, gnum);
+            if (bits > target_group_bits) high = mid;
+            else low = mid;
+        }
+        int offset = low;
+        if (offset != 0) {
+            for (sb = 0; sb < coderInfo->sfbn; sb++) {
+                if (coderInfo->book[initial_bandcnt + sb] == HCB_NONE) {
+                    sfac[sb] += offset;
+                    if (sfac[sb] > sfac_max[sb]) sfac[sb] = sfac_max[sb];
+                    if (sfac[sb] < -155) sfac[sb] = -155;
+                }
+            }
+        }
     }
 
     // Step 4: Staging
