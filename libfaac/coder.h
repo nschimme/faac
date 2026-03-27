@@ -98,7 +98,7 @@ typedef struct {
     } groups;
 
     /* worst case: one codeword with two escapes per two spectral lines */
-#define DATASIZE (2*FRAME_LEN)
+#define DATASIZE (4*FRAME_LEN)
 
     struct {
         int data;
@@ -106,6 +106,14 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+    struct {
+        short bits[256];
+        float noise[256];
+    } quantCache[MAX_SCFAC_BANDS];
+
+    int xitab[1152];
+    faac_real xabs[1152];
+    faac_real x075[1152];
 
     TnsInfo tnsInfo;
 } CoderInfo;
