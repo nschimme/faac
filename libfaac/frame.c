@@ -589,15 +589,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
-    if (hEncoder->config.bitRate)
-    {
-        hEncoder->aacquantCfg.target_bits = (int)((faac_real)hEncoder->config.bitRate * FRAME_LEN
-            / hEncoder->sampleRate);
-    }
-    else
-    {
-        hEncoder->aacquantCfg.target_bits = 0;
-    }
+
 
     if (hEncoder->config.bitRate)
     {
