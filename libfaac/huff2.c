@@ -352,6 +352,7 @@ int huffbook(CoderInfo *coder,
              int len)
 {
     int cnt;
+    int saved_datacnt = coder->datacnt;
     int maxq = 0;
 
     for (cnt = 0; cnt < len; cnt++)
@@ -380,7 +381,10 @@ int huffbook(CoderInfo *coder,
 
     if (bookmin != HCB_ZERO)
     {
-        if (huffcode(qs, len, bookmin, coder) == -1) return -1;
+        if (huffcode(qs, len, bookmin, coder) == -1) {
+            coder->datacnt = saved_datacnt;
+            return -1;
+        }
     }
     coder->book[coder->bandcnt] = bookmin;
 

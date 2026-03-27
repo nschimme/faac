@@ -230,12 +230,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     /* Coarse search for offset to fit target_bits */
     if (aacquantCfg->target_bits > 0) {
-        int low = -150, high = 150;
+        int low = -155, high = 100;
         int iter;
         /* Budget 95% for spectral data to allow for headers/SFs/sideinfo */
         int spectral_target = (aacquantCfg->target_bits * 95) / 100;
 
-        for (iter = 0; iter < 12; iter++) {
+        for (iter = 0; iter < 10; iter++) {
             int current_bits = 0;
             offset = (low + high) / 2;
 

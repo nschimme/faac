@@ -639,7 +639,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         /* Adjust target based on bit reservoir */
         /* If reservoir is high (near max), spend more bits (reservoir_fix > 0) */
-        int reservoir_fix = (hEncoder->bit_reservoir - hEncoder->bit_reservoir_max / 2) / 10;
+        int reservoir_fix = (hEncoder->bit_reservoir - hEncoder->bit_reservoir_max / 2) / 5;
         int current_target = total_target_bits + reservoir_fix;
         if (current_target < total_target_bits / 2) current_target = total_target_bits / 2;
         if (current_target > total_target_bits * 2) current_target = total_target_bits * 2;
@@ -699,7 +699,20 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			cil = &coderInfo[channel];
 			cir = &coderInfo[channelInfo[channel].paired_ch];
 
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+                        if (cil->sfbn != cir->sfbn) {
+                            CoderInfo *repair_coder = (cil->sfbn < cir->sfbn) ? cil : cir;
+                            int new_sfbn = max(cil->sfbn, cir->sfbn);
+                            int *cb_width = (repair_coder->block_type == ONLY_SHORT_WINDOW) ?
+                                            hEncoder->srInfo->cb_width_short : hEncoder->srInfo->cb_width_long;
+
+                            offset = repair_coder->sfb_offset[0];
+                            for (sb = 0; sb < new_sfbn; sb++) {
+                                repair_coder->sfb_offset[sb] = offset;
+                                offset += cb_width[sb];
+                            }
+                            repair_coder->sfb_offset[sb] = offset;
+                            cil->sfbn = cir->sfbn = new_sfbn;
+                        }
 		}
     }
     /* Write the AAC bitstream */

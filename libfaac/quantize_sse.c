@@ -56,6 +56,10 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
 
+        // Clamp to 8191 to prevent Huffman overflows
+        const __m128 max_huff = _mm_set1_ps(8191.0f);
+        x = _mm_min_ps(x, max_huff);
+
         // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
 
