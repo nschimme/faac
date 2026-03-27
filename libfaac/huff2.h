@@ -29,10 +29,6 @@ enum {
 };
 
 int huff_count_bits(int *qs, int len, int *book_out);
-int huffcode(int *qs /* quantized spectrum */,
-             int len,
-             int bnum,
-             CoderInfo *coder);
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);

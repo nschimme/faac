@@ -14,7 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <stdio.h>
@@ -309,7 +309,7 @@ int huffcode(int *qs /* quantized spectrum */,
         }
         break;
     default:
-        fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
+        // fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
         return -1;
     }
 
@@ -349,7 +349,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
         bookmin = 1;
         lenmin = huffcode(qs, len, bookmin, 0);
         int l2 = huffcode(qs, len, bookmin + 1, 0);
-        if (l2 < lenmin)
+        if (l2 >= 0 && (lenmin < 0 || l2 < lenmin))
         {
             bookmin++;
             lenmin = l2;
@@ -360,7 +360,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
         bookmin = 3;
         lenmin = huffcode(qs, len, bookmin, 0);
         int l2 = huffcode(qs, len, bookmin + 1, 0);
-        if (l2 < lenmin)
+        if (l2 >= 0 && (lenmin < 0 || l2 < lenmin))
         {
             bookmin++;
             lenmin = l2;
@@ -371,7 +371,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
         bookmin = 5;
         lenmin = huffcode(qs, len, bookmin, 0);
         int l2 = huffcode(qs, len, bookmin + 1, 0);
-        if (l2 < lenmin)
+        if (l2 >= 0 && (lenmin < 0 || l2 < lenmin))
         {
             bookmin++;
             lenmin = l2;
@@ -382,7 +382,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
         bookmin = 7;
         lenmin = huffcode(qs, len, bookmin, 0);
         int l2 = huffcode(qs, len, bookmin + 1, 0);
-        if (l2 < lenmin)
+        if (l2 >= 0 && (lenmin < 0 || l2 < lenmin))
         {
             bookmin++;
             lenmin = l2;
@@ -393,7 +393,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
         bookmin = 9;
         lenmin = huffcode(qs, len, bookmin, 0);
         int l2 = huffcode(qs, len, bookmin + 1, 0);
-        if (l2 < lenmin)
+        if (l2 >= 0 && (lenmin < 0 || l2 < lenmin))
         {
             bookmin++;
             lenmin = l2;
@@ -408,6 +408,7 @@ int huff_count_bits(int *qs, int len, int *book_out)
     if (book_out)
         *book_out = bookmin;
 
+    if (lenmin < 0) return 1000000;
     return lenmin;
 }
 
@@ -418,7 +419,8 @@ int huffbook(CoderInfo *coder,
     int bookmin = HCB_ZERO;
     int res = 0;
 
-    huff_count_bits(qs, len, &bookmin);
+    int bits = huff_count_bits(qs, len, &bookmin);
+    if (bits >= 1000000) return -1;
 
     if (bookmin > HCB_ZERO)
         res = huffcode(qs, len, bookmin, coder);
@@ -557,6 +559,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             length = book12[60 + diff].len;
 
             bits += length;
+
             lastsf += diff;
 
             if (write)

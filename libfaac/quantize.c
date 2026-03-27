@@ -15,7 +15,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #include <math.h>
@@ -264,8 +264,8 @@ static int count_group_bits(CoderInfo *coderInfo, const faac_real *xr_group, con
             bits += 7;
         } else {
             int effective_sfac = sfac[sb] + sfac_offset;
-            if (effective_sfac < -150) effective_sfac = -150;
-            if (effective_sfac > 150) effective_sfac = 150;
+            if (effective_sfac < -155) effective_sfac = -155;
+            if (effective_sfac > 100) effective_sfac = 100;
 
             faac_real sfacfix = FAAC_POW(10.0, (faac_real)effective_sfac / sfstep);
             s_bits = count_band_bits(xr_group, x075_group, coderInfo->sfb_offset[sb],
@@ -315,7 +315,7 @@ static void twoloop_quant(CoderInfo *coderInfo,
         if (coderInfo->book[bandcnt] != HCB_NONE)
         {
             sfac[sb] = 0;
-            sfac_max[sb] = 150;
+            sfac_max[sb] = 100;
             continue;
         }
 
@@ -332,14 +332,14 @@ static void twoloop_quant(CoderInfo *coderInfo,
              }
         }
         sfac_max[sb] = FAAC_LRINT(FAAC_LOG10(QUANT_UPPER_BOUND / (max_xr + 1e-10)) * sfstep);
-        if (sfac_max[sb] > 150) sfac_max[sb] = 150;
+        if (sfac_max[sb] > 100) sfac_max[sb] = 100;
 
         faac_real rmsx = FAAC_SQRT(etot / (n + 1e-10));
 
         if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
         {
             coderInfo->book[bandcnt] = HCB_ZERO;
-            sfac[sb] = -150;
+            sfac[sb] = -155;
             continue;
         }
 
@@ -347,73 +347,64 @@ static void twoloop_quant(CoderInfo *coderInfo,
         {
             coderInfo->book[bandcnt] = HCB_PNS;
             coderInfo->sf[bandcnt] = FAAC_LRINT(FAAC_LOG10(etot + 1e-10) * (0.5 * sfstep));
-            sfac[sb] = -150;
+            sfac[sb] = -155;
             continue;
         }
 
         sfac[sb] = FAAC_LRINT(FAAC_LOG10(rmsx / (bandqual[sb] + 1e-10)) * sfstep);
         if (sfac[sb] > sfac_max[sb]) sfac[sb] = sfac_max[sb];
-        if (sfac[sb] < -150) sfac[sb] = -150;
+        if (sfac[sb] < -155) sfac[sb] = -155;
     }
 
-    // Step 2 & 3: Loops
     int target_group_bits = 0;
     if (target_bits > 0)
     {
         target_group_bits = target_bits * gsize / (coderInfo->block_type == ONLY_SHORT_WINDOW ? 8 : 1);
-        target_group_bits = target_group_bits * 88 / 100;
+        target_group_bits = target_group_bits * 92 / 100;
     }
 
+    // Interleaved Loops
     for (iter = 0; iter < 5; iter++)
     {
         int changed = 0;
+
+        // Inner loop: Global bit control
+        if (target_group_bits > 0)
+        {
+            int low = -200, high = 200;
+            for (int ii = 0; ii < 12; ii++) {
+                int mid = (low + high) / 2;
+                int bits = count_group_bits(coderInfo, xr_group, x075_group, sfac, mid, initial_bandcnt, gnum);
+                if (bits > target_group_bits) high = mid;
+                else low = mid;
+            }
+            if (low != 0) {
+                for (sb = 0; sb < coderInfo->sfbn; sb++) {
+                    if (coderInfo->book[initial_bandcnt + sb] == HCB_NONE) {
+                        sfac[sb] += low;
+                        if (sfac[sb] > sfac_max[sb]) sfac[sb] = sfac_max[sb];
+                        if (sfac[sb] < -155) sfac[sb] = -155;
+                    }
+                }
+                changed = 1;
+            }
+        }
+
+        // Outer loop: NMR refinement
         for (sb = 0; sb < coderInfo->sfbn; sb++)
         {
-            int bandcnt = initial_bandcnt + sb;
-            if (coderInfo->book[bandcnt] != HCB_NONE) continue;
+            if (coderInfo->book[initial_bandcnt + sb] != HCB_NONE) continue;
 
             faac_real sfacfix = FAAC_POW(10.0, (faac_real)sfac[sb] / sfstep);
             int start = coderInfo->sfb_offset[sb];
             int n = coderInfo->sfb_offset[sb+1] - start;
             faac_real noise = compute_band_noise(xr_group, x075_group, start, n, gsize, sfacfix);
             faac_real mask = bandqual[sb] * bandqual[sb] * (faac_real)n * (faac_real)gsize;
-            faac_real nmr = noise / (mask + 1e-10);
-
-            if (nmr > 1.05)
+            if (noise > 1.05 * mask)
             {
                 if (sfac[sb] < sfac_max[sb]) {
                     sfac[sb]++;
                     changed = 1;
-                }
-            }
-            else if (nmr < 0.7)
-            {
-                if (sfac[sb] > -150) {
-                    sfac[sb]--;
-                    changed = 1;
-                }
-            }
-        }
-
-        if (target_group_bits > 0)
-        {
-            int low = -200, high = 200;
-            int inner_iter;
-            for (inner_iter = 0; inner_iter < 12; inner_iter++) {
-                int mid = (low + high) / 2;
-                int bits = count_group_bits(coderInfo, xr_group, x075_group, sfac, mid, initial_bandcnt, gnum);
-                if (bits > target_group_bits) high = mid;
-                else low = mid;
-            }
-            int offset = low;
-            if (offset != 0) {
-                for (sb = 0; sb < coderInfo->sfbn; sb++) {
-                    if (coderInfo->book[initial_bandcnt + sb] == HCB_NONE) {
-                        sfac[sb] += offset;
-                        if (sfac[sb] > sfac_max[sb]) sfac[sb] = sfac_max[sb];
-                        if (sfac[sb] < -150) sfac[sb] = -150;
-                        changed = 1;
-                    }
                 }
             }
         }
@@ -452,8 +443,21 @@ static void twoloop_quant(CoderInfo *coderInfo,
         }
         int old_bandcnt = coderInfo->bandcnt;
         coderInfo->bandcnt = bandcnt;
-        if (huffbook(coderInfo, xitab, gsize * n) < 0) {
-             coderInfo->book[bandcnt] = HCB_ZERO;
+        int res = huffbook(coderInfo, xitab, gsize * n);
+        // Robust fallback
+        if (res < 0) {
+             sfac[sb] -= 8; // Drop quality significantly
+             if (sfac[sb] < -155) sfac[sb] = -155;
+             sfacfix = FAAC_POW(10.0, (faac_real)sfac[sb] / sfstep);
+             int *xi = xitab;
+             for (win = 0; win < gsize; win++) {
+                 const faac_real *xr = xr_group + win * BLOCK_LEN_SHORT + start;
+                 qfunc(xr, xi, n, sfacfix);
+                 xi += n;
+             }
+             if (huffbook(coderInfo, xitab, gsize * n) < 0) {
+                 coderInfo->book[bandcnt] = HCB_ZERO;
+             }
         }
         coderInfo->bandcnt = old_bandcnt;
         coderInfo->sf[bandcnt] = SF_OFFSET - sfac[sb];
