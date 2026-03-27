@@ -35,6 +35,7 @@ extern "C" {
 #include "coder.h"
 #include "channels.h"
 #include "fft.h"
+#include "psy_tables.h"
 
 typedef struct {
 	int size;
@@ -61,6 +62,7 @@ typedef struct {
 	faac_real *mdctXr;              /* MDCT pre-twiddle work buffer (xr) */
 	faac_real *mdctXi;              /* MDCT pre-twiddle work buffer (xi) */
 
+	FaacPsyContext *psyContext;
         void *data;
 } GlobalPsyInfo;
 

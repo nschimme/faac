@@ -23,6 +23,7 @@
 
 #include "coder.h"
 #include "faac_real.h"
+#include "blockswitch.h"
 
 typedef struct
 {
@@ -47,7 +48,9 @@ enum {
     SF_OFFSET = 100,
 };
 
-int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
+void FaacComputeMaskingThresholds(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+                                        faac_real * __restrict bandenrg, faac_real * __restrict bandmax, int gnum, faac_real quality, GlobalPsyInfo *gpsyInfo);
+int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg, GlobalPsyInfo *gpsyInfo);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);

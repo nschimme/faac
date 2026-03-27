@@ -142,6 +142,11 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 					      (BLOCK_LEN_SHORT * 2)));
   gpsyInfo->sampleRate = (faac_real) sampleRate;
 
+  gpsyInfo->psyContext = (FaacPsyContext *)AllocMemory(sizeof(FaacPsyContext));
+  FaacPsyInitContext(gpsyInfo->psyContext, sampleRate,
+                    cb_width_long, num_cb_long,
+                    cb_width_short, num_cb_short);
+
   for (channel = 0; channel < numChannels; channel++)
   {
     psydata_t *psydata = AllocMemory(sizeof(psydata_t));
@@ -192,6 +197,9 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
     FreeMemory(gpsyInfo->hannWindow);
   if (gpsyInfo->hannWindowS)
     FreeMemory(gpsyInfo->hannWindowS);
+
+  if (gpsyInfo->psyContext)
+    FreeMemory(gpsyInfo->psyContext);
 
   for (channel = 0; channel < numChannels; channel++)
   {

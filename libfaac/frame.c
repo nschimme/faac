@@ -589,9 +589,66 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
+    faac_real pe_actual = 0.0;
+    for (channel = 0; channel < numChannels; channel++) {
+        CoderInfo *coder = &coderInfo[channel];
+        faac_real *gxr = hEncoder->freqBuff[channel];
+        int cnt, group;
+        faac_real bandlvl[MAX_SCFAC_BANDS];
+        faac_real bandenrg[MAX_SCFAC_BANDS];
+        faac_real bandmax[MAX_SCFAC_BANDS];
+
+        for (cnt = 0; cnt < coder->groups.n; cnt++) {
+            FaacComputeMaskingThresholds(coder, gxr, bandlvl, bandenrg, bandmax, cnt,
+                                        (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL, &hEncoder->gpsyInfo);
+
+            for (group = 0; group < coder->groups.len[cnt]; group++) {
+                int sfb;
+                for (sfb = 0; sfb < coder->sfbn; sfb++) {
+                    if (bandlvl[sfb] > 1e-15) {
+                        faac_real enrg = bandenrg[sfb] / coder->groups.len[cnt];
+                        faac_real thr = bandlvl[sfb] / coder->groups.len[cnt];
+                        if (enrg > thr) {
+                            pe_actual += (faac_real)(coder->sfb_offset[sfb+1] - coder->sfb_offset[sfb]) *
+                                        FAAC_LOG10(enrg / thr) / FAAC_LOG10(2.0);
+                        }
+                    }
+                }
+            }
+            gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
+        }
+    }
+
+    if (hEncoder->config.bitRate)
+    {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
+        faac_real pe_target = (faac_real)desbits / 1.18;
+        /* Proportional feedback: adjust quality to reach target PE.
+         * If pe_actual > pe_target, fix > 1.0, quality increases, bitrate decreases.
+         */
+        faac_real fix = (pe_actual / (pe_target + 1.0) - 1.0) * 0.4 + 1.0;
+
+        /* Dampen adjustment to +/- 5% per frame for stability */
+        if (fix > 1.05) fix = 1.05;
+        if (fix < 0.95) fix = 0.95;
+
+        /* Complexity gate: don't increase quality if PE is very low (silence) */
+        if (pe_actual < (pe_target * 0.5)) {
+            if (fix > 1.0) fix = 1.0;
+        }
+
+        hEncoder->aacquantCfg.quality *= fix;
+
+        if (hEncoder->aacquantCfg.quality > maxqual)
+            hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < 10)
+            hEncoder->aacquantCfg.quality = 10;
+    }
+
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), &hEncoder->gpsyInfo);
     }
 
     // fix max_sfb in CPE mode
@@ -617,31 +674,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
-
-    /* Adjust quality to get correct average bitrate */
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
-        faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
-
-        if (fix < 0.9)
-            fix += 0.1;
-        else if (fix > 1.1)
-            fix -= 0.1;
-        else
-            fix = 1.0;
-
-        fix = (fix - 1.0) * 0.5 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
-
-        hEncoder->aacquantCfg.quality *= fix;
-
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
-    }
 
     return frameBytes;
 }
