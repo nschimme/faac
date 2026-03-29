@@ -632,15 +632,15 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         else
             fix = 1.0;
 
-        fix = (fix - 1.0) * 0.6 + 1.0;
+        fix = (fix - 1.0) * 0.5 + 1.0;
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < 10)
-            hEncoder->aacquantCfg.quality = 10;
+        if (hEncoder->aacquantCfg.quality < MINQUAL)
+            hEncoder->aacquantCfg.quality = MINQUAL;
     }
 
     return frameBytes;
