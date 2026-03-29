@@ -625,22 +625,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
-        if (fix < 0.98)
-            fix += 0.02;
-        else if (fix > 1.02)
-            fix -= 0.02;
+        if (fix < 0.995)
+            /* no jump */;
+        else if (fix > 1.005)
+            /* no jump */;
         else
             fix = 1.0;
 
-        fix = (fix - 1.0) * 0.6 + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
+        fix = (fix - 1.0) * 0.95 + 1.0;
+        // printf("q: %.1f(f:%.4f) bits:%d des:%d\n", hEncoder->aacquantCfg.quality, fix, frameBytes * 8, desbits);
 
         hEncoder->aacquantCfg.quality *= fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < MINQUAL)
-            hEncoder->aacquantCfg.quality = MINQUAL;
+        if (hEncoder->aacquantCfg.quality < 10)
+            hEncoder->aacquantCfg.quality = 10;
     }
 
     return frameBytes;
