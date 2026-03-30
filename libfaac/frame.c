@@ -32,6 +32,7 @@
 #include "tns.h"
 #include "stereo.h"
 #include "pseudo_sbr.h"
+#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -426,9 +427,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	{
 		faac_real *tmp;
 
-        /* Reset scalefactor and huffman book arrays to prevent cross-frame leak */
-        memset(coderInfo[channel].book, 0, sizeof(coderInfo[channel].book));
-        memset(coderInfo[channel].sf, 0, sizeof(coderInfo[channel].sf));
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
@@ -551,6 +549,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         channelInfo[channel].msInfo.is_present = 0;
+
+        /* Reset scalefactor and huffman book arrays to prevent cross-frame leak.
+         * Must set book to HCB_NONE so the quantizer knows it's uninitialized. */
+        for (i = 0; i < MAX_SCFAC_BANDS; i++) {
+            coderInfo[channel].book[i] = HCB_NONE;
+            coderInfo[channel].sf[i] = 0;
+        }
 
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
