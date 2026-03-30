@@ -166,7 +166,7 @@ void PseudoSBR(CoderInfo *coderInfo, faac_real *freq,
     if (num_cb_long > 0) {
         /* Walk the band table to find total bins covered */
         int max_bin = 0;
-        for (sb = 0; sb < num_cb_long; sb++)
+        for (sb = 0; sb < num_cb_long && sb < NSFB_LONG; sb++)
             max_bin += cb_width_long[sb];
         if (tgt_bin > max_bin)
             tgt_bin = max_bin;

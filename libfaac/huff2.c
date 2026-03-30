@@ -29,13 +29,12 @@ static int escape(int x, int *code)
     int preflen = 0;
     int base = 32;
 
+    *code = 0;
     if (x >= 8192)
     {
         fprintf(stderr, "%s(%d): x_quant >= 8192\n", __FILE__, __LINE__);
         return 0;
     }
-
-    *code = 0;
     while (base <= x)
     {
         base <<= 1;

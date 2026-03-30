@@ -426,6 +426,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	{
 		faac_real *tmp;
 
+        /* Reset scalefactor and huffman book arrays to prevent cross-frame leak */
+        memset(coderInfo[channel].book, 0, sizeof(coderInfo[channel].book));
+        memset(coderInfo[channel].sf, 0, sizeof(coderInfo[channel].sf));
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
