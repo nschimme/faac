@@ -1,5 +1,5 @@
 /****************************************************************************
-    Huffman encoding functions
+    Huffman encoding implementation
 
     Copyright (C) 2001 Menno Bakker
     Copyright (C) 2026 Nils Schimmelmann
@@ -85,7 +85,10 @@ int huffcode(int *qs, int len, int bnum, CoderInfo *coder) {
             int data = book[idx].data;
             if (bnum == 3 || bnum == 4 || bnum >= 7) {
                 for (int i = 0; i < step; i++) {
-                    if (qp[i]) { blen++; data = (data << 1) | (qp[i] < 0); }
+                    if (qp[i]) {
+                        blen++;
+                        if (coder) data = (data << 1) | (qp[i] < 0);
+                    }
                 }
             }
             if (coder) {
@@ -157,7 +160,7 @@ int writebooks(CoderInfo *ci, BitStream *s, int write) {
             while (b < maxb && ci->book[b] == bk) { b++; n++; }
             if (write) PutBit(s, bk, 4);
             bits += 4;
-            while (n > max_sect_len) {
+            while (n >= max_sect_len) {
                 if (write) PutBit(s, max_sect_len, sect_len_bits);
                 bits += sect_len_bits;
                 n -= max_sect_len;

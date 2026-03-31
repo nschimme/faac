@@ -1,5 +1,5 @@
 /****************************************************************************
-    Quantizer core functions
+    Quantizer core implementation
 
     Copyright (C) 2017 Krzysztof Nikiel
     Copyright (C) 2026 Nils Schimmelmann
@@ -38,8 +38,8 @@ void QuantizeInit(void) {}
 
 static void count_bits_loop(CoderInfo *ci, int sfb, int trial_sfac, float *noise, int *bits) {
     if (sfb < 0 || sfb >= MAX_SCFAC_BANDS) { *noise = 1e10f; *bits = 1000000; return; }
-    int idx = trial_sfac + 155;
-    if (idx >= 0 && idx < 256 && ci->quantCacheValid[sfb][idx]) {
+    int idx = trial_sfac + 256;
+    if (idx >= 0 && idx < 512 && ci->quantCacheValid[sfb][idx]) {
         *noise = ci->quantCache[sfb][idx].noise;
         *bits = ci->quantCache[sfb][idx].bits;
         return;
@@ -68,7 +68,7 @@ static void count_bits_loop(CoderInfo *ci, int sfb, int trial_sfac, float *noise
         *noise += (float)(d * d);
     }
 
-    if (idx >= 0 && idx < 256) {
+    if (idx >= 0 && idx < 512) {
         ci->quantCache[sfb][idx].bits = *bits;
         ci->quantCache[sfb][idx].noise = *noise;
         ci->quantCacheValid[sfb][idx] = 1;
@@ -84,17 +84,17 @@ void twoloop_exec(CoderInfo *ci, float *thr, int target) {
     for (int i = 0; i < ci->sfbn; i++) sfac_offsets[i] = 0;
 
     int target_spectral = (target * 85) / 100;
-    best_mid = 100;
+    best_mid = 0;
 
     for (int iter = 0; iter < 10; iter++) {
-        int low = -155, high = 100, best = -155;
+        int low = -255, high = 255, best = -255;
         while (low <= high) {
             int mid = (low + high) / 2;
             total = 0;
             for (int i = 0; i < ci->sfbn; i++) {
                 int s = mid + sfac_offsets[i];
-                if (s < -155) s = -155;
-                if (s > 100) s = 100;
+                if (s < -255) s = -255;
+                if (s > 255) s = 255;
                 count_bits_loop(ci, i, s, &noise, &bits);
                 total += bits;
             }
@@ -109,10 +109,10 @@ void twoloop_exec(CoderInfo *ci, float *thr, int target) {
         int over = 0;
         for (int i = 0; i < ci->sfbn; i++) {
             int s = best_mid + sfac_offsets[i];
-            if (s < -155) s = -155;
-            if (s > 100) s = 100;
+            if (s < -255) s = -255;
+            if (s > 255) s = 255;
             count_bits_loop(ci, i, s, &noise, &bits);
-            if (noise > thr[i] && sfac_offsets[i] < 50) {
+            if (noise > thr[i] && sfac_offsets[i] < 100) {
                 sfac_offsets[i]++;
                 over++;
             }
@@ -123,8 +123,8 @@ void twoloop_exec(CoderInfo *ci, float *thr, int target) {
     ci->bandcnt = 0;
     for (int i = 0; i < ci->sfbn; i++) {
         int s = best_mid + sfac_offsets[i];
-        if (s < -155) s = -155;
-        if (s > 100) s = 100;
+        if (s < -255) s = -255;
+        if (s > 255) s = 255;
         int st = ci->sfb_offset[i], n = ci->sfb_offset[i+1] - st;
         faac_real f = (faac_real)pow(2.0, 0.25 * s);
 #if defined(HAVE_SSE2)
@@ -134,7 +134,7 @@ void twoloop_exec(CoderInfo *ci, float *thr, int target) {
         q_scalar(ci->xabs + st, ci->xitab + st, n, f);
 #endif
         huffbook(ci, ci->xitab + st, n);
-        ci->sf[i] = 100 - s;
+        ci->sf[i] = 150 - s;
     }
 }
 

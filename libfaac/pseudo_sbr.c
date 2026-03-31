@@ -1,5 +1,5 @@
 /****************************************************************************
-    Encoder-side Pseudo Spectral Band Replication for AAC-LC
+    Encoder-side Pseudo Spectral Band Replication for AAC-LC implementation
 
     Copyright (C) 2026 Nils Schimmelmann
 
@@ -42,12 +42,9 @@ int PseudoSBRShouldEnable(unsigned int naturalBW, unsigned long sampleRate,
     unsigned int nyquist;
     unsigned int thresh;
 
-    if (!bitRateCh || !sampleRate)
-        return 0;
-
+    if (!bitRateCh || !sampleRate) return 0;
     nyquist = (unsigned int)(sampleRate / 2);
-    if (!nyquist)
-        return 0;
+    if (!nyquist) return 0;
 
     if      (bitRateCh < 24000) thresh = 90u;
     else if (bitRateCh < 48000) thresh = 65u;
@@ -62,8 +59,7 @@ unsigned int PseudoSBRTargetBW(unsigned int naturalBW, unsigned long sampleRate,
     unsigned int nyquist = (unsigned int)(sampleRate / 2);
     float expansion;
 
-    if (!nyquist || naturalBW >= nyquist)
-        return naturalBW;
+    if (!nyquist || naturalBW >= nyquist) return naturalBW;
 
     if      (bitRateCh < 12000) expansion = 0.15f;
     else if (bitRateCh < 24000) expansion = 0.25f;
@@ -82,8 +78,7 @@ void PseudoSBR(CoderInfo *ci, faac_real *freq, unsigned long sampleRate,
     int bwb, tgb, src_bwb, dst, patch, i, sb, off;
     float cumulative_gain;
 
-    if (ci->block_type != ONLY_LONG_WINDOW)
-        return;
+    if (ci->block_type != ONLY_LONG_WINDOW) return;
 
     bwb = bw_to_bin(baseBW, sampleRate);
     tgb = bw_to_bin(targetBW, sampleRate);
@@ -91,11 +86,9 @@ void PseudoSBR(CoderInfo *ci, faac_real *freq, unsigned long sampleRate,
         int max_bin = 0;
         for (i = 0; i < num_cb_long && i < NSFB_LONG; i++)
             max_bin += cb_width_long[i];
-        if (tgb > max_bin)
-            tgb = max_bin;
+        if (tgb > max_bin) tgb = max_bin;
     }
-    if (tgb <= bwb + MIN_PATCH_BINS || bwb <= MIN_PATCH_BINS)
-        return;
+    if (tgb <= bwb + MIN_PATCH_BINS || bwb <= MIN_PATCH_BINS) return;
 
     src_bwb = bwb;
     dst = bwb;
@@ -106,8 +99,7 @@ void PseudoSBR(CoderInfo *ci, faac_real *freq, unsigned long sampleRate,
         float src_energy = 0.0f;
         float noise_scale, boost_g;
 
-        if (src_size < MIN_PATCH_BINS)
-            break;
+        if (src_size < MIN_PATCH_BINS) break;
 
         for (i = 0; i < src_size; i++)
             src_energy += (float)(freq[src_bwb - 1 - i] * freq[src_bwb - 1 - i]);
@@ -130,8 +122,7 @@ void PseudoSBR(CoderInfo *ci, faac_real *freq, unsigned long sampleRate,
         dst += src_size;
         cumulative_gain *= SBR_PATCH_ROLLOFF;
     }
-    if (dst < tgb)
-        memset(freq + dst, 0, (size_t)(tgb - dst) * sizeof(faac_real));
+    if (dst < tgb) memset(freq + dst, 0, (size_t)(tgb - dst) * sizeof(faac_real));
 
     sb = ci->sfbn;
     off = ci->sfb_offset[sb];
