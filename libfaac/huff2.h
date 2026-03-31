@@ -1,35 +1,17 @@
-/****************************************************************************
-    Huffman coding
-
-    Copyright (C) 2017 Krzysztof Nikiel
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-****************************************************************************/
-
+#ifndef HUFF2_H
+#define HUFF2_H
+#include "coder.h"
 #include "bitstream.h"
-
-enum {
-    HCB_ZERO = 0,
-    HCB_ESC = 11,
-    HCB_PNS = 13,
-    HCB_INTENSITY2 = 14,
-    HCB_INTENSITY = 15,
-    HCB_NONE
-};
-
-int huffbook(CoderInfo *coderInfo,
-             int *qs /* quantized spectrum */,
-             int len);
-int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
-int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
+#ifdef __cplusplus
+extern "C" {
+#endif
+enum { HCB_NONE = -1, HCB_ZERO = 0, HCB_ESC = 11, HCB_PNS = 13, HCB_INTENSITY = 14, HCB_INTENSITY2 = 15 };
+int huffcode(int *qs, int len, int bnum, CoderInfo *coder);
+int huff_count_bits(int *qs, int len, int *best_book);
+int huffbook(CoderInfo *coder, int *qs, int len);
+int writebooks(CoderInfo *coder, BitStream *stream, int write);
+int writesf(CoderInfo *coder, BitStream *stream, int write);
+#ifdef __cplusplus
+}
+#endif
+#endif

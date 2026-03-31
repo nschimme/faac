@@ -1,70 +1,215 @@
+/****************************************************************************
+    Huffman encoding functions
+
+    Copyright (C) 2001 Menno Bakker
+    Copyright (C) 2026 Nils Schimmelmann
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+****************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
-static int escape(int x, int *code) {
-    int preflen = 0, base = 32; if (x >= 8192) return 0; *code = 0;
-    while (base <= x) { base <<= 1; *code <<= 1; *code |= 1; preflen++; }
-    base >>= 1; *code <<= 1; *code <<= (preflen + 4); *code |= (x - base); return (preflen << 1) + 5;
+
+static int escape(int val, int *code) {
+    if (val < 16) return 0;
+    int n = 0;
+    while (val >= (1 << (n + 5))) n++;
+    if (n > 12) return 0;
+    int suffix_len = n + 4;
+    int suffix = val - (1 << suffix_len);
+    *code = (((1 << n) - 1) << (suffix_len + 1)) | suffix;
+    return 2 * n + 5;
 }
-#define arrlen(a) (sizeof(a)/sizeof(*(a)))
+
 int huffcode(int *qs, int len, int bnum, CoderInfo *coder) {
-    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04, book05, book06, book07, book08, book09, book10, book11};
+    static hcode16_t * const hmap[12] = {
+        NULL, book01, book02, book03, book04, book05, book06, book07, book08, book09, book10, book11
+    };
     if (bnum < 1 || bnum > 11) return (coder ? -1 : 1000000);
-    hcode16_t *book = hmap[bnum]; int bits = 0, datacnt = coder ? coder->datacnt : 0;
+    hcode16_t *book = hmap[bnum];
+    int bits = 0;
+    int datacnt = coder ? coder->datacnt : 0;
+
     for (int ofs = 0; ofs < len; ) {
-        int step = (bnum <= 4) ? 4 : 2; int *qp = qs + ofs;
+        int step = (bnum <= 4) ? 4 : 2;
+        int *qp = qs + ofs;
         if (bnum == 11) {
-            int x0 = abs(qp[0]), x1 = abs(qp[1]); int idx = 17 * (x0 > 16 ? 16 : x0) + (x1 > 16 ? 16 : x1);
-            int blen = book[idx].len; int data = book[idx].data;
-            for (int i = 0; i < 2; i++) if (qp[i]) { blen++; if (coder) data = (data << 1) | (qp[i] < 0); }
-            if (coder) { if (datacnt >= DATASIZE) return -1; coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } bits += blen;
-            if (x0 >= 16) { int ed, el = escape(x0, &ed); bits += el; if (coder) { if (datacnt >= DATASIZE) return -1; coder->s[datacnt].data = ed; coder->s[datacnt++].len = el; } }
-            if (x1 >= 16) { int ed, el = escape(x1, &ed); bits += el; if (coder) { if (datacnt >= DATASIZE) return -1; coder->s[datacnt].data = ed; coder->s[datacnt++].len = el; } }
+            int x0 = abs(qp[0]);
+            int x1 = abs(qp[1]);
+            int idx = 17 * (x0 > 16 ? 16 : x0) + (x1 > 16 ? 16 : x1);
+            int blen = book[idx].len;
+            int data = book[idx].data;
+            if (qp[0]) { blen++; data = (data << 1) | (qp[0] < 0); }
+            if (qp[1]) { blen++; data = (data << 1) | (qp[1] < 0); }
+            if (coder) {
+                if (datacnt >= DATASIZE) return -1;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            bits += blen;
+            if (x0 >= 16) {
+                int ed = 0, el = escape(x0, &ed);
+                bits += el;
+                if (coder) {
+                    if (datacnt >= DATASIZE) return -1;
+                    coder->s[datacnt].data = ed;
+                    coder->s[datacnt++].len = el;
+                }
+            }
+            if (x1 >= 16) {
+                int ed = 0, el = escape(x1, &ed);
+                bits += el;
+                if (coder) {
+                    if (datacnt >= DATASIZE) return -1;
+                    coder->s[datacnt].data = ed;
+                    coder->s[datacnt++].len = el;
+                }
+            }
         } else {
-            int idx; if (bnum <= 2) idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
+            int idx;
+            if (bnum <= 2) idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
             else if (bnum <= 4) idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
             else if (bnum <= 6) idx = 9 * qp[0] + qp[1] + 40;
             else if (bnum <= 8) idx = 8 * abs(qp[0]) + abs(qp[1]);
             else idx = 13 * abs(qp[0]) + abs(qp[1]);
-            int blen = book[idx].len; int data = book[idx].data;
-            if (bnum == 3 || bnum == 4 || bnum >= 7) { for (int i = 0; i < step; i++) if (qp[i]) { blen++; if (coder) data = (data << 1) | (qp[i] < 0); } }
-            if (coder) { if (datacnt >= DATASIZE) return -1; coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } bits += blen;
+            int blen = book[idx].len;
+            int data = book[idx].data;
+            if (bnum == 3 || bnum == 4 || bnum >= 7) {
+                for (int i = 0; i < step; i++) {
+                    if (qp[i]) { blen++; data = (data << 1) | (qp[i] < 0); }
+                }
+            }
+            if (coder) {
+                if (datacnt >= DATASIZE) return -1;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            bits += blen;
         }
         ofs += step;
     }
-    if (coder) coder->datacnt = datacnt; return bits;
+    if (coder) coder->datacnt = datacnt;
+    return bits;
 }
+
+int huff_count_bits(int *qs, int len, int *best_book) {
+    int i, mq = 0;
+    for (i = 0; i < len; i++) {
+        int v = abs(qs[i]);
+        if (v > mq) mq = v;
+    }
+    if (mq == 0) {
+        if (best_book) *best_book = 0;
+        return 0;
+    }
+    int bb = 11, bl = huffcode(qs, len, 11, NULL);
+    if (mq < 2) {
+        int l = huffcode(qs, len, 1, NULL); if (l < bl) { bl = l; bb = 1; }
+        l = huffcode(qs, len, 2, NULL); if (l < bl) { bl = l; bb = 2; }
+    } else if (mq < 3) {
+        int l = huffcode(qs, len, 3, NULL); if (l < bl) { bl = l; bb = 3; }
+        l = huffcode(qs, len, 4, NULL); if (l < bl) { bl = l; bb = 4; }
+    } else if (mq < 5) {
+        int l = huffcode(qs, len, 5, NULL); if (l < bl) { bl = l; bb = 5; }
+        l = huffcode(qs, len, 6, NULL); if (l < bl) { bl = l; bb = 6; }
+    } else if (mq < 8) {
+        int l = huffcode(qs, len, 7, NULL); if (l < bl) { bl = l; bb = 7; }
+        l = huffcode(qs, len, 8, NULL); if (l < bl) { bl = l; bb = 8; }
+    } else if (mq < 13) {
+        int l = huffcode(qs, len, 9, NULL); if (l < bl) { bl = l; bb = 9; }
+        l = huffcode(qs, len, 10, NULL); if (l < bl) { bl = l; bb = 10; }
+    }
+    if (best_book) *best_book = bb;
+    return bl;
+}
+
 int huffbook(CoderInfo *ci, int *qs, int len) {
-    int mq = 0; for (int i = 0; i < len; i++) if (abs(qs[i]) > mq) mq = abs(qs[i]);
-    int b = 0, l; if (mq < 1) b = 0; else if (mq < 2) { b = 1; l = huffcode(qs, len, 1, 0); if (huffcode(qs, len, 2, 0) < l) b = 2; }
-    else if (mq < 3) { b = 3; l = huffcode(qs, len, 3, 0); if (huffcode(qs, len, 4, 0) < l) b = 4; }
-    else if (mq < 5) { b = 5; l = huffcode(qs, len, 5, 0); if (huffcode(qs, len, 6, 0) < l) b = 6; }
-    else if (mq < 8) { b = 7; l = huffcode(qs, len, 7, 0); if (huffcode(qs, len, 8, 0) < l) b = 8; }
-    else if (mq < 13) { b = 9; l = huffcode(qs, len, 9, 0); if (huffcode(qs, len, 10, 0) < l) b = 10; }
-    else b = 11;
-    int saved = ci->datacnt; if (b > 0 && huffcode(qs, len, b, ci) < 0) { ci->datacnt = saved; b = 0; }
-    ci->book[ci->bandcnt++] = b; return 0;
+    int bb;
+    huff_count_bits(qs, len, &bb);
+    int saved = ci->datacnt;
+    if (bb > 0 && huffcode(qs, len, bb, ci) < 0) {
+        ci->datacnt = saved;
+        bb = 0;
+    }
+    ci->book[ci->bandcnt++] = bb;
+    return 0;
 }
+
 int writebooks(CoderInfo *ci, BitStream *s, int write) {
-    int bits = 0, maxc = (ci->block_type == 2 ? 7 : 31), cntb = (ci->block_type == 2 ? 3 : 5);
+    int bits = 0;
+    int max_sect_len = (ci->block_type == ONLY_SHORT_WINDOW ? 7 : 31);
+    int sect_len_bits = (ci->block_type == ONLY_SHORT_WINDOW ? 3 : 5);
     for (int g = 0; g < ci->groups.n; g++) {
-        int b = g * ci->sfbn, maxb = b + ci->sfbn;
-        while (b < maxb) { int bk = ci->book[b++], n = 1; if (write) PutBit(s, bk, 4); bits += 4;
+        int b = g * ci->sfbn;
+        int maxb = b + ci->sfbn;
+        while (b < maxb) {
+            int bk = ci->book[b++];
+            int n = 1;
             while (b < maxb && ci->book[b] == bk) { b++; n++; }
-            while (n >= maxc) { if (write) PutBit(s, maxc, cntb); bits += cntb; n -= maxc; }
-            if (write) PutBit(s, n, cntb); bits += cntb; }
-    } return bits;
+            if (write) PutBit(s, bk, 4);
+            bits += 4;
+            while (n > max_sect_len) {
+                if (write) PutBit(s, max_sect_len, sect_len_bits);
+                bits += sect_len_bits;
+                n -= max_sect_len;
+            }
+            if (write) PutBit(s, n, sect_len_bits);
+            bits += sect_len_bits;
+        }
+    }
+    return bits;
 }
+
 int writesf(CoderInfo *ci, BitStream *s, int write) {
-    int bits = 0, lastsf = ci->global_gain, lastis = 0, lastpns = ci->global_gain - 90, initpns = 1;
+    int bits = 0;
+    int lastsf = ci->global_gain;
+    int lastis = 0;
+    int lastpns = ci->global_gain - 90;
+    int initpns = 1;
     for (int i = 0; i < ci->bandcnt; i++) {
-        int bk = ci->book[i], diff, len;
-        if (bk == 14 || bk == 15) { diff = ci->sf[i] - lastis; if (diff < -60) diff = -60; if (diff > 60) diff = 60; len = book12[60 + diff].len; bits += len; lastis += diff; if (write) PutBit(s, book12[60 + diff].data, len); }
-        else if (bk == 13) { diff = ci->sf[i] - lastpns; if (initpns) { initpns = 0; bits += 9; lastpns += diff; if (write) PutBit(s, diff + 256, 9); }
-            else { if (diff > 60) diff = 60; if (diff < -60) diff = -60; len = book12[60 + diff].len; bits += len; lastpns += diff; if (write) PutBit(s, book12[60 + diff].data, len); } }
-        else if (bk) { diff = ci->sf[i] - lastsf; if (diff > 60) diff = 60; if (diff < -60) diff = -60; len = book12[60 + diff].len; bits += len; lastsf += diff; if (write) PutBit(s, book12[60 + diff].data, len); }
-    } return bits;
+        int bk = ci->book[i];
+        int diff, len;
+        if (bk == HCB_INTENSITY || bk == HCB_INTENSITY2) {
+            diff = ci->sf[i] - lastis;
+            if (diff < -60) diff = -60;
+            if (diff > 60) diff = 60;
+            len = book12[60 + diff].len;
+            bits += len;
+            lastis += diff;
+            if (write) PutBit(s, book12[60 + diff].data, len);
+        } else if (bk == HCB_PNS) {
+            diff = ci->sf[i] - lastpns;
+            if (initpns) {
+                initpns = 0;
+                bits += 9;
+                lastpns += diff;
+                if (write) PutBit(s, diff + 256, 9);
+            } else {
+                if (diff > 60) diff = 60;
+                if (diff < -60) diff = -60;
+                len = book12[60 + diff].len;
+                bits += len;
+                lastpns += diff;
+                if (write) PutBit(s, book12[60 + diff].data, len);
+            }
+        } else if (bk != HCB_ZERO && bk != HCB_NONE) {
+            diff = ci->sf[i] - lastsf;
+            if (diff > 60) diff = 60;
+            if (diff < -60) diff = -60;
+            len = book12[60 + diff].len;
+            bits += len;
+            lastsf += diff;
+            if (write) PutBit(s, book12[60 + diff].data, len);
+        }
+    }
+    return bits;
 }

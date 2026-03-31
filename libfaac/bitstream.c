@@ -669,7 +669,7 @@ static int WriteSpectralData(CoderInfo *coderInfo,
                              BitStream *bitStream,
                              int writeFlag)
 {
-    int i, bits = 0;
+    int i; long bits = 0;
 
     if (writeFlag) {
         for(i = 0; i < coderInfo->datacnt; i++) {
