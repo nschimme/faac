@@ -20,7 +20,7 @@
 #include "faac_real.h"
 
 /* Minimum extension in Hz worth applying. */
-#define SBR_MIN_EXTENSION 250u
+#define SBR_MIN_EXTENSION 500u
 
 /*
  * Returns 1 if pseudo-SBR is useful for the given configuration:
