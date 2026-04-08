@@ -268,7 +268,8 @@ void AACstereo(CoderInfo *coder,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
                faac_real quality,
-               int mode
+               int mode,
+               int sampleRate
               )
 {
     int chn;
@@ -286,6 +287,20 @@ void AACstereo(CoderInfo *coder,
 
     switch (mode)
     {
+    case JOINT_MIXED:
+        thrmid = (thr075 * 0.5) / quality;
+        if (thrmid > thrmax)
+            thrmid = thrmax;
+        thrside = sidemin / quality;
+        if (thrside > sidemax)
+            thrside = sidemax;
+        thrmid += 1.0;
+
+        isthr = 0.18 / (quality * quality);
+        isthr += 1.0;
+        if (isthr > isthrmax + 1.0)
+            isthr = isthrmax + 1.0;
+        break;
     case JOINT_MS:
         thrmid = thr075 / quality;
         if (thrmid > thrmax)
@@ -299,10 +314,9 @@ void AACstereo(CoderInfo *coder,
         break;
     case JOINT_IS:
         isthr = 0.18 / (quality * quality);
-        if (isthr > isthrmax)
-            isthr = isthrmax;
-
         isthr += 1.0;
+        if (isthr > isthrmax + 1.0)
+            isthr = isthrmax + 1.0;
         break;
     }
 
@@ -380,6 +394,142 @@ void AACstereo(CoderInfo *coder,
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
+                break;
+            case JOINT_MIXED:
+                {
+                    int sfb;
+                    int win;
+                    int sfmin;
+                    int is_start_sfb = -1;
+                    int is_freq_limit = 6000; // 6kHz limit for IS
+
+                    if (coder[chn].block_type == ONLY_SHORT_WINDOW)
+                        sfmin = 1;
+                    else
+                        sfmin = 8;
+
+                    // Find SFB corresponding to 6kHz
+                    for (sfb = 0; sfb < coder[chn].sfbn; sfb++) {
+                        int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / (coder[chn].block_type == ONLY_SHORT_WINDOW ? 256 : 2048);
+                        if (freq >= is_freq_limit) {
+                            is_start_sfb = sfb;
+                            break;
+                        }
+                    }
+                    if (is_start_sfb < 0) is_start_sfb = coder[chn].sfbn;
+                    if (is_start_sfb < sfmin) is_start_sfb = sfmin;
+
+                    for (sfb = 0; sfb < sfmin; sfb++) {
+                        channel[chn].msInfo.ms_used[sfcnt] = 0;
+                        sfcnt++;
+                    }
+
+                    for (sfb = sfmin; sfb < coder[chn].sfbn; sfb++) {
+                        int start_off = coder[chn].sfb_offset[sfb];
+                        int end_off = coder[chn].sfb_offset[sfb + 1];
+                        faac_real enrgl = 0, enrgr = 0, enrgs = 0, enrgd = 0;
+                        int is_candidate = (sfb >= is_start_sfb);
+
+                        for (win = start; win < end; win++) {
+                            faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
+                            faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                            int l;
+                            for (l = start_off; l < end_off; l++) {
+                                faac_real lx = sl[l];
+                                faac_real rx = sr[l];
+                                enrgl += lx * lx;
+                                enrgr += rx * rx;
+                                enrgs += (lx + rx) * (lx + rx);
+                                enrgd += (lx - rx) * (lx - rx);
+                            }
+                        }
+
+                        // IS Decision
+                        if (is_candidate) {
+                            faac_real ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+                            ethr *= ethr / isthr;
+                            faac_real efix = enrgl + enrgr;
+                            int hcb = HCB_NONE;
+                            faac_real vfix = 1.0;
+
+                            if (enrgs >= ethr) {
+                                hcb = HCB_INTENSITY;
+                                vfix = FAAC_SQRT(efix / enrgs);
+                            } else if (enrgd >= ethr) {
+                                hcb = HCB_INTENSITY2;
+                                vfix = FAAC_SQRT(efix / enrgd);
+                            }
+
+                            if (hcb != HCB_NONE) {
+                                const faac_real step = 10/1.50515;
+                                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
+                                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+
+                                if (pan <= 30 && pan >= -30) {
+                                    coder[chn].sf[sfcnt] = sf;
+                                    coder[rch].sf[sfcnt] = -pan;
+                                    coder[rch].book[sfcnt] = hcb;
+                                    channel[chn].msInfo.ms_used[sfcnt] = 0;
+
+                                    for (win = start; win < end; win++) {
+                                        faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
+                                        faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                                        int l;
+                                        for (l = start_off; l < end_off; l++) {
+                                            faac_real sum = (hcb == HCB_INTENSITY) ? (sl[l] + sr[l]) : (sl[l] - sr[l]);
+                                            sl[l] = sum * vfix;
+                                            sr[l] = 0.0;
+                                        }
+                                    }
+                                    sfcnt++;
+                                    continue; // Move to next SFB
+                                }
+                            }
+                        }
+
+                        // M/S Decision
+                        int ms = 0;
+                        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25)) {
+                            int phase = 0; // 1: IN, 2: OUT
+                            if ((enrgs * 0.25 * thrmid * 2.0) >= (enrgl + enrgr)) {
+                                ms = 1; phase = 1;
+                            } else if ((enrgd * 0.25 * thrmid * 2.0) >= (enrgl + enrgr)) {
+                                ms = 1; phase = 2;
+                            }
+
+                            if (ms) {
+                                for (win = start; win < end; win++) {
+                                    faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
+                                    faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                                    int l;
+                                    for (l = start_off; l < end_off; l++) {
+                                            faac_real sum, diff;
+                                        if (phase == 1) { sum = sl[l] + sr[l]; diff = 0; }
+                                        else { sum = 0; diff = sl[l] - sr[l]; }
+                                        sl[l] = 0.5 * sum;
+                                        sr[l] = 0.5 * diff;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Side-only coding (best practice from midside function)
+                        if (!ms && min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))) {
+                            for (win = start; win < end; win++) {
+                                faac_real *sl = s[chn] + win * BLOCK_LEN_SHORT;
+                                faac_real *sr = s[rch] + win * BLOCK_LEN_SHORT;
+                                int l;
+                                for (l = start_off; l < end_off; l++) {
+                                    if (enrgl < enrgr) sl[l] = 0.0;
+                                    else sr[l] = 0.0;
+                                }
+                            }
+                        }
+
+                        channel[chn].msInfo.ms_used[sfcnt] = ms;
+                        sfcnt++;
+                    }
+                }
                 break;
             }
             start = end;
