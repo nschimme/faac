@@ -10,7 +10,7 @@ static float fast_rand(uint32_t *seed) {
 }
 
 int PseudoSBRShouldEnable(unsigned long bitRatePerChannel, unsigned int sampleRate) {
-    if (bitRatePerChannel > 0 && bitRatePerChannel <= 24000 && sampleRate <= 44100) return 1;
+    if (bitRatePerChannel > 0 && bitRatePerChannel <= 18000 && sampleRate <= 44100) return 1;
     return 0;
 }
 
@@ -26,7 +26,7 @@ void PseudoSBRApply(faac_real *freqBuff, int sbr_start_sfb, const int *cb_widths
     for (b = 0; b < sbr_start_sfb; b++) max_bin += cb_widths[b];
     int sbr_start = max_bin;
     int sbr_end = FRAME_LEN;
-    float gain = 0.20f; // -14dB
+    float gain = 0.125f; // -18dB
 
     if (sbr_start >= sbr_end) return;
 
@@ -46,11 +46,11 @@ void PseudoSBRApply(faac_real *freqBuff, int sbr_start_sfb, const int *cb_widths
             freqBuff[i] *= (float)(i - sbr_start + 1) / 5.0f;
         }
 
-        // Signal-proportional noise (reduced)
-        float noise = (fast_rand(&seed) - 0.5f) * 0.08f * (float)fabs(freqBuff[src]);
+        // Signal-proportional noise (minimal)
+        float noise = (fast_rand(&seed) - 0.5f) * 0.05f * (float)fabs(freqBuff[src]);
         freqBuff[i] += noise;
 
         // Comfort noise floor (minimal)
-        freqBuff[i] += (fast_rand(&seed) - 0.5f) * 0.002f;
+        freqBuff[i] += (fast_rand(&seed) - 0.5f) * 0.001f;
     }
 }

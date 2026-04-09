@@ -158,7 +158,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     /* Pseudo-SBR masking scaling: allow more noise in highs to save bits */
     if (sbr_start_sfb > 0 && sfb >= sbr_start_sfb) {
-        target *= 12.0;
+        target *= 60.0;
     }
 
     bandqual[sfb] = target * quality;
@@ -353,7 +353,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
         l += sr->cb_width_long[cnt];
     }
     if (aacquantCfg->useSBR) {
-        aacquantCfg->sbr_start_sfb = (int)(cnt * 0.9);
+        aacquantCfg->sbr_start_sfb = cnt;
         aacquantCfg->max_cbl = sr->num_cb_long;
         l = 0;
         for (cnt = 0; cnt < sr->num_cb_long; cnt++) l += sr->cb_width_long[cnt];
