@@ -154,6 +154,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             faacEncConfigurationPtr config = faacEncGetCurrentConfiguration(hEncoder);
 
             config->jointmode = IsDlgButtonChecked(hWnd, IDC_ALLOWMIDSIDE) == BST_CHECKED ? 1 : 0;
+            config->usePseudoSBR = IsDlgButtonChecked(hWnd, IDC_USESBR) == BST_CHECKED ? 1 : 0;
             config->useTns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED ? 1 : 0;
             config->useLfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
             config->outputFormat = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? 0 : 1;
@@ -340,6 +341,7 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_SETCURSEL, 0, 0);
 
         CheckDlgButton(hWnd, IDC_ALLOWMIDSIDE, TRUE);
+        CheckDlgButton(hWnd, IDC_USESBR, TRUE);
         CheckDlgButton(hWnd, IDC_USELFE, FALSE);
         CheckDlgButton(hWnd, IDC_USERAW, FALSE);
         CheckDlgButton(hWnd, IDC_USETNS, TRUE);

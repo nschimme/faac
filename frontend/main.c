@@ -959,6 +959,7 @@ int main(int argc, char *argv[])
         myFormat->pnslevel = pnslevel;
     if (useSbr >= 0)
         myFormat->usePseudoSBR = useSbr;
+
     if (quantqual > 0)
     {
         myFormat->quantqual = quantqual;
@@ -1024,7 +1025,10 @@ int main(int argc, char *argv[])
     }
     else
         fprintf(stderr, "Quantization quality: %ld\n", quantqual);
-    fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
+    fprintf(stderr, "Bandwidth: %d Hz", cutOff);
+    if (myFormat->usePseudoSBR)
+        fprintf(stderr, " + SBR");
+    fprintf(stderr, "\n");
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
     fprintf(stderr, "Object type: ");
@@ -1054,8 +1058,6 @@ int main(int argc, char *argv[])
     }
     if (myFormat->pnslevel > 0)
         fprintf(stderr, " + PNS");
-    if (myFormat->usePseudoSBR)
-        fprintf(stderr, " + SBR");
     fprintf(stderr, "\n");
 
     fprintf(stderr, "Container format: ");

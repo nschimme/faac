@@ -156,12 +156,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    bandqual[sfb] = target * quality;
-
-    /* Reduce bit usage in SBR region */
+    /* Pseudo-SBR masking scaling: allow more noise in highs to save bits */
     if (sbr_start_sfb > 0 && sfb >= sbr_start_sfb) {
-        bandqual[sfb] *= 4.0;
+        target *= 12.0;
     }
+
+    bandqual[sfb] = target * quality;
   }
 }
 
@@ -269,9 +269,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            int sbr_start = (aacquantCfg->useSBR) ? aacquantCfg->sbr_start_sfb : -1;
             bmask(coder, gxr, bandlvl, bandenrg, cnt,
-                  (faac_real)aacquantCfg->quality/DEFQUAL, sbr_start);
+                  (faac_real)aacquantCfg->quality/DEFQUAL,
+                  aacquantCfg->useSBR ? aacquantCfg->sbr_start_sfb : -1);
             qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
@@ -352,10 +352,11 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
             break;
         l += sr->cb_width_long[cnt];
     }
-
     if (aacquantCfg->useSBR) {
-        aacquantCfg->sbr_start_sfb = cnt;
+        aacquantCfg->sbr_start_sfb = (int)(cnt * 0.9);
         aacquantCfg->max_cbl = sr->num_cb_long;
+        l = 0;
+        for (cnt = 0; cnt < sr->num_cb_long; cnt++) l += sr->cb_width_long[cnt];
     } else {
         aacquantCfg->max_cbl = cnt;
     }
@@ -367,16 +368,14 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 enum {MINSFB = 2};
 
 static void calce(faac_real * __restrict xr, const int * __restrict bands, faac_real e[NSFB_SHORT], int maxsfb,
-                  int maxl, int useSBR)
+                  int maxl)
 {
     int sfb;
     int l;
 
     // mute lines above cutoff freq
-    if (!useSBR) {
-        for (l = maxl; l < bands[maxsfb]; l++)
-            xr[l] = 0.0;
-    }
+    for (l = maxl; l < bands[maxsfb]; l++)
+        xr[l] = 0.0;
 
     for (sfb = MINSFB; sfb < maxsfb; sfb++)
     {
@@ -399,7 +398,7 @@ static void resete(faac_real min[NSFB_SHORT], faac_real max[NSFB_SHORT],
 static int groups = 0;
 static int frames = 0;
 #endif
-void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg, int sbr_start_sfb)
+void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 {
     int win, sfb;
     faac_real e[NSFB_SHORT];
@@ -424,7 +423,7 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg, int sbr_st
 #if PRINTSTAT
     frames++;
 #endif
-    calce(xr, coderInfo->sfb_offset, e, maxsfb, maxl, cfg->useSBR);
+    calce(xr, coderInfo->sfb_offset, e, maxsfb, maxl);
     resete(min, max, e, maxsfb);
     win0 = 0;
     coderInfo->groups.n = 0;
@@ -432,7 +431,7 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg, int sbr_st
     {
         int fast = 0;
 
-        calce(xr + win * BLOCK_LEN_SHORT, coderInfo->sfb_offset, e, maxsfb, maxl, cfg->useSBR);
+        calce(xr + win * BLOCK_LEN_SHORT, coderInfo->sfb_offset, e, maxsfb, maxl);
         for (sfb = MINSFB; sfb < maxsfb; sfb++)
         {
             if (min[sfb] > e[sfb])

@@ -568,7 +568,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg, hEncoder->aacquantCfg.sbr_start_sfb);
+            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -660,7 +660,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         fix = (fix - 1.0) * RC_DAMPING_FACTOR + 1.0;
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
-        hEncoder->aacquantCfg.quality *= fix;
+        if (hEncoder->config.usePseudoSBR) {
+            hEncoder->aacquantCfg.quality *= (fix + (1.0 - fix) * 0.4);
+        } else {
+            hEncoder->aacquantCfg.quality *= fix;
+        }
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
