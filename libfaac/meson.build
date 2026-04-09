@@ -28,6 +28,8 @@ common_src = [
     'cpu_compute.c',
     'cpu_compute.h',
     'filtbank.c',
+    'pseudo_sbr.c',
+    'pseudo_sbr.h',
     'filtbank.h',
     'fft.c',
     'fft.h',

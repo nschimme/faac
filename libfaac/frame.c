@@ -31,6 +31,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -157,6 +158,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+    if (config->usePseudoSBR < 0) {
+        hEncoder->config.usePseudoSBR = PseudoSBRShouldEnable(config->bitRate / hEncoder->numChannels, hEncoder->sampleRate);
+    } else {
+        hEncoder->config.usePseudoSBR = config->usePseudoSBR;
+    }
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
@@ -191,7 +197,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        if (hEncoder->config.usePseudoSBR) {
+            config->bandWidth = PseudoSBRTargetBW(config->bitRate / hEncoder->numChannels, hEncoder->sampleRate);
+        } else {
+            config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        }
 
         if (!config->quantqual)
         {
@@ -208,7 +218,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        if (hEncoder->config.usePseudoSBR) {
+            config->bandWidth = PseudoSBRTargetBW(config->bitRate / hEncoder->numChannels, hEncoder->sampleRate);
+        } else {
+            config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        }
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
@@ -235,6 +249,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.useSBR = hEncoder->config.usePseudoSBR;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -296,6 +311,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
+    hEncoder->config.usePseudoSBR = -1; /* Default: Auto-detect in faacEncSetConfiguration */
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
@@ -552,7 +568,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
+            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg, hEncoder->aacquantCfg.sbr_start_sfb);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -594,6 +610,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
+        if (hEncoder->config.usePseudoSBR && coderInfo[channel].block_type == ONLY_LONG_WINDOW) {
+            PseudoSBRApply(hEncoder->freqBuff[channel], hEncoder->aacquantCfg.sbr_start_sfb, hEncoder->srInfo->cb_width_long, hEncoder->config.bitRate / hEncoder->numChannels);
+        }
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }
