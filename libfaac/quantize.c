@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -67,6 +68,19 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
+
+void CoderInit(CoderInfo *coderInfo)
+{
+    int i;
+    for (i = 0; i < MAX_SCFAC_BANDS; i++)
+    {
+        coderInfo->book[i] = HCB_NONE;
+        coderInfo->sf[i] = 0;
+    }
+    coderInfo->bandcnt = 0;
+    coderInfo->datacnt = 0;
+}
+
 #define NOISEFLOOR 0.4
 
 // band sound masking
@@ -180,9 +194,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
+    assert(coderInfo->bandcnt <= MAX_SCFAC_BANDS);
+
     /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
-       per-channel band index even when some bands are skipped (e.g. stereo). */
-    for (sb = 0; sb < coderInfo->sfbn; sb++, coderInfo->bandcnt++)
+       per-channel band index even when some bands are skipped (e.g. stereo).
+       downstream users of bandcnt expect it to track the total number of
+       scale factor bands processed across all groups in the frame. */
+    for (sb = 0; sb < coderInfo->sfbn && coderInfo->bandcnt < MAX_SCFAC_BANDS; sb++, coderInfo->bandcnt++)
     {
       faac_real sfacfix;
       int sfac;
@@ -194,8 +212,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       const faac_real *xr;
       int win;
       int bidx = coderInfo->bandcnt;
-
-      if (bidx >= MAX_SCFAC_BANDS) break;
 
       /* band already claimed by stereo coding — leave it alone */
       if (coderInfo->book[bidx] != HCB_NONE)
@@ -216,6 +232,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[bidx] = HCB_PNS;
+          /* Note: we use = instead of += here because coderInfo->sf is
+             expected to be zero-initialized at the start of each frame. */
           coderInfo->sf[bidx] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           continue;
@@ -243,6 +261,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
+      /* Note: we use = instead of += here because coderInfo->sf is
+         expected to be zero-initialized at the start of each frame. */
       coderInfo->sf[bidx] = SF_OFFSET - sfac;
     }
 }
@@ -255,9 +275,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real *gxr;
 
     coder->global_gain = 0;
-
-    coder->bandcnt = 0;
-    coder->datacnt = 0;
 
     {
         int lastis;
