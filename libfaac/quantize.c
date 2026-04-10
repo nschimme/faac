@@ -220,7 +220,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
-      if ((SF_OFFSET - sfac) < 10)
+      if ((SF_OFFSET - sfac) < SF_MIN)
           sfacfix = 0.0;
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -287,8 +287,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastis = 0;
         /* PNS scale factors use a separate predictor per AAC spec.
          * Initialise it PNS_SF_OFFSET steps below global_gain so the first PNS band's
-         * delta fits within the [-SF_DELTA, SF_DELTA] limit (SF_OFFSET=100,
-         * typical gain≈100 gives lastpns≈10, leaving room for the first real PNS value). */
+         * delta fits within the [-SF_DELTA, SF_DELTA] limit (PNS_SF_OFFSET is
+         * SF_OFFSET - SF_MIN, so lastpns starts at the scalefactor floor). */
         int lastpns = coder->global_gain - PNS_SF_OFFSET;
 
         for (cnt = 0; cnt < coder->bandcnt; cnt++)

@@ -45,7 +45,8 @@ enum {
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
     SF_OFFSET = 100,
-    PNS_SF_OFFSET = 90,
+    SF_MIN = 10,
+    PNS_SF_OFFSET = SF_OFFSET - SF_MIN,
     SF_DELTA = 60,
 };
 
