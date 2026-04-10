@@ -22,7 +22,6 @@
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
-#include "quantize.h"
 #include "bitstream.h"
 
 static int escape(int x, int *code)
@@ -441,7 +440,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
         {
             diff = coder->sf[cnt] - lastis;
-            diff = ClampSfDiff(diff);
+            diff = clamp_sf_diff(diff);
             length = book12[SF_DELTA + diff].len;
 
             bits += length;
@@ -468,7 +467,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
                 continue;
             }
 
-            diff = ClampSfDiff(diff);
+            diff = clamp_sf_diff(diff);
 
             length = book12[SF_DELTA + diff].len;
             bits += length;
@@ -480,7 +479,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         else if ((book != HCB_ZERO) && (book != HCB_NONE))
         {
             diff = coder->sf[cnt] - lastsf;
-            diff = ClampSfDiff(diff);
+            diff = clamp_sf_diff(diff);
             length = book12[SF_DELTA + diff].len;
 
             bits += length;

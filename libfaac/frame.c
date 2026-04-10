@@ -28,7 +28,7 @@
 #include "channels.h"
 #include "bitstream.h"
 #include "filtbank.h"
-#include "quantize.h"
+#include "aac_constants.h"
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"

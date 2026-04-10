@@ -23,6 +23,7 @@
 
 #include "coder.h"
 #include "faac_real.h"
+#include "aac_constants.h"
 
 typedef struct
 {
@@ -38,30 +39,6 @@ typedef struct
 #else
 #define MAGIC_NUMBER 0.4054
 #endif
-
-enum {
-    DEFQUAL = 100,
-    MAXQUAL = 5000,
-    MAXQUALADTS = MAXQUAL,
-    MINQUAL = 10,
-    /* Baseline scalefactor value used in bitstream */
-    SF_OFFSET = 100,
-    /* Minimum allowable scalefactor to prevent underflow */
-    SF_MIN = 10,
-    /* PNS predictor initialization offset (starts at floor) */
-    PNS_SF_OFFSET = SF_OFFSET - SF_MIN,
-    /* Max allowed difference between successive scalefactors (AAC spec) */
-    SF_DELTA = 60,
-};
-
-static inline int ClampSfDiff(int diff)
-{
-    if (diff > SF_DELTA)
-        return SF_DELTA;
-    if (diff < -SF_DELTA)
-        return -SF_DELTA;
-    return diff;
-}
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);

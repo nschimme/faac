@@ -297,14 +297,14 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
             {
                 int diff = coder->sf[cnt] - lastis;
-                diff = ClampSfDiff(diff);
+                diff = clamp_sf_diff(diff);
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
             else if (book == HCB_PNS)
             {
                 int diff = coder->sf[cnt] - lastpns;
-                diff = ClampSfDiff(diff);
+                diff = clamp_sf_diff(diff);
                 lastpns += diff;
                 coder->sf[cnt] = lastpns;
             }
@@ -314,7 +314,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                  * The original code only enforced this for HCB_ESC; it
                  * applies to every non-zero, non-IS, non-PNS codebook. */
                 int diff = coder->sf[cnt] - lastsf;
-                diff = ClampSfDiff(diff);
+                diff = clamp_sf_diff(diff);
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;
             }

@@ -16,7 +16,7 @@
 ****************************************************************************/
 
 #include <stdint.h>
-#include "quantize.h"
+#include "aac_constants.h"
 
 typedef struct {
     const uint16_t len;
