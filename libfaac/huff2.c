@@ -27,29 +27,30 @@
 static int escape(int x, int *code)
 {
     int preflen = 0;
-    int base = 32;
+    int base;
 
     if (x >= 8192)
     {
         fprintf(stderr, "%s(%d): x_quant >= 8192\n", __FILE__, __LINE__);
-        return 0;
+        x = 8191;
     }
 
-    *code = 0;
-    while (base <= x)
+    if (x >= 32)
     {
-        base <<= 1;
-        *code <<= 1;
-        *code |= 1;
-        preflen++;
+#ifdef __GNUC__
+        preflen = 31 - __builtin_clz(x) - 4;
+#else
+        int tmp = x >> 5;
+        while (tmp)
+        {
+            tmp >>= 1;
+            preflen++;
+        }
+#endif
     }
-    base >>= 1;
 
-    // separator
-    *code <<= 1;
-
-    *code <<= (preflen + 4);
-    *code |= (x - base);
+    base = 1 << (preflen + 4);
+    *code = (((1 << preflen) - 1) << (preflen + 5)) | (x - base);
 
     return (preflen << 1) + 5;
 }
@@ -72,7 +73,11 @@ static int huffcode(int *qs /* quantized spectrum */,
     int datacnt;
 
     if (coder)
+    {
         datacnt = coder->datacnt;
+        if (datacnt + len * 2 >= DATASIZE)
+            return -1;
+    }
     else
         datacnt = 0;
 
