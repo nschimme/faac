@@ -68,6 +68,17 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 }
+
+void CoderInit(CoderInfo *coderInfo)
+{
+    int i;
+    for (i = 0; i < MAX_SCFAC_BANDS; i++)
+    {
+        coderInfo->book[i] = HCB_NONE;
+        coderInfo->sf[i] = 0;
+    }
+}
+
 #define NOISEFLOOR 0.4
 
 // band sound masking
@@ -181,6 +192,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
+    assert(coderInfo->bandcnt < MAX_SCFAC_BANDS);
+
     /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
        per-channel band index even when some bands are skipped (e.g. stereo).
        downstream users of bandcnt expect it to track the total number of
@@ -197,8 +210,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       const faac_real *xr;
       int win;
       int bidx = coderInfo->bandcnt;
-
-      assert(bidx < MAX_SCFAC_BANDS);
 
       /* band already claimed by stereo coding — leave it alone */
       if (coderInfo->book[bidx] != HCB_NONE)
