@@ -285,31 +285,39 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
         lastsf = coder->global_gain;
         lastis = 0;
-        // fixme: move SF range check to quantizer
+        /* PNS scale factors use a separate predictor per AAC spec.
+         * Initialise it 90 steps below global_gain so the first PNS band's
+         * delta fits within the ±60 limit (SF_OFFSET=100, typical gain≈100
+         * gives lastpns≈10, leaving room for the first real PNS value). */
+        int lastpns = coder->global_gain - 90;
+
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
             if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
             {
                 int diff = coder->sf[cnt] - lastis;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_ESC)
+            else if (book == HCB_PNS)
             {
+                int diff = coder->sf[cnt] - lastpns;
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
+                lastpns += diff;
+                coder->sf[cnt] = lastpns;
+            }
+            else if (book)
+            {
+                /* AAC spec §6.3: scalefactor delta must be in [-60, +60].
+                 * The original code only enforced this for HCB_ESC; it
+                 * applies to every non-zero, non-IS, non-PNS codebook. */
                 int diff = coder->sf[cnt] - lastsf;
-
-                if (diff < -60)
-                    diff = -60;
-                if (diff > 60)
-                    diff = 60;
-
+                if (diff < -60) diff = -60;
+                if (diff > 60) diff = 60;
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;
             }
