@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "quantize.h"
+#include "quantize_internal.h"
 #include "huff2.h"
 #include "cpu_compute.h"
 
@@ -200,9 +200,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
        per-channel band index even when some bands are skipped (e.g. stereo).
        downstream users of bandcnt expect it to track the total number of
        scale factor bands processed across all groups in the frame. */
-    for (sb = 0; sb < coderInfo->sfbn && coderInfo->bandcnt < MAX_SCFAC_BANDS; sb++, coderInfo->bandcnt++)
+    for (sb = 0; sb < coderInfo->sfbn; sb++, coderInfo->bandcnt++)
     {
       faac_real sfacfix;
+
+      if (coderInfo->bandcnt >= MAX_SCFAC_BANDS)
+      {
+          fprintf(stderr, "FAAC: MAX_SCFAC_BANDS reached\n");
+          break;
+      }
+
       int sfac;
       faac_real rmsx;
       faac_real etot;

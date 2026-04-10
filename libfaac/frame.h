@@ -35,7 +35,7 @@ extern "C" {
 #include "channels.h"
 #include "blockswitch.h"
 #include "fft.h"
-#include "quantize.h"
+#include "quantize_internal.h"
 
 #include <faaccfg.h>
 
