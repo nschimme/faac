@@ -22,6 +22,7 @@
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
+#include "quantize.h"
 #include "bitstream.h"
 
 static int escape(int x, int *code)
@@ -430,7 +431,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
 
     lastsf = coder->global_gain;
     lastis = 0;
-    lastpns = coder->global_gain - 90;
+    lastpns = coder->global_gain - PNS_SF_OFFSET;
 
     // fixme: move range check to quantizer
     for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -440,10 +441,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
         {
             diff = coder->sf[cnt] - lastis;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
+            diff = CLAMP_SF_DIFF(diff);
             length = book12[60 + diff].len;
 
             bits += length;
@@ -470,10 +468,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
                 continue;
             }
 
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
+            diff = CLAMP_SF_DIFF(diff);
 
             length = book12[60 + diff].len;
             bits += length;
@@ -482,13 +477,10 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
-        else if (book)
+        else if (book != HCB_ZERO)
         {
             diff = coder->sf[cnt] - lastsf;
-            if (diff > 60)
-                diff = 60;
-            if (diff < -60)
-                diff = -60;
+            diff = CLAMP_SF_DIFF(diff);
             length = book12[60 + diff].len;
 
             bits += length;

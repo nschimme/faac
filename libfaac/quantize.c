@@ -286,10 +286,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastsf = coder->global_gain;
         lastis = 0;
         /* PNS scale factors use a separate predictor per AAC spec.
-         * Initialise it 90 steps below global_gain so the first PNS band's
+         * Initialise it PNS_SF_OFFSET steps below global_gain so the first PNS band's
          * delta fits within the ±60 limit (SF_OFFSET=100, typical gain≈100
          * gives lastpns≈10, leaving room for the first real PNS value). */
-        int lastpns = coder->global_gain - 90;
+        int lastpns = coder->global_gain - PNS_SF_OFFSET;
 
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
@@ -297,27 +297,24 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
             {
                 int diff = coder->sf[cnt] - lastis;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
+                diff = CLAMP_SF_DIFF(diff);
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
             else if (book == HCB_PNS)
             {
                 int diff = coder->sf[cnt] - lastpns;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
+                diff = CLAMP_SF_DIFF(diff);
                 lastpns += diff;
                 coder->sf[cnt] = lastpns;
             }
-            else if (book)
+            else if (book != HCB_ZERO)
             {
                 /* AAC spec §6.3: scalefactor delta must be in [-60, +60].
                  * The original code only enforced this for HCB_ESC; it
                  * applies to every non-zero, non-IS, non-PNS codebook. */
                 int diff = coder->sf[cnt] - lastsf;
-                if (diff < -60) diff = -60;
-                if (diff > 60) diff = 60;
+                diff = CLAMP_SF_DIFF(diff);
                 lastsf += diff;
                 coder->sf[cnt] = lastsf;
             }

@@ -45,7 +45,10 @@ enum {
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
     SF_OFFSET = 100,
+    PNS_SF_OFFSET = 90,
 };
+
+#define CLAMP_SF_DIFF(diff) (((diff) > 60) ? 60 : (((diff) < -60) ? -60 : (diff)))
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
