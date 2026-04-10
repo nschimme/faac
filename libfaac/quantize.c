@@ -180,7 +180,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
-    for (sb = 0; sb < coderInfo->sfbn; sb++)
+    /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
+       per-channel band index even when some bands are skipped (e.g. stereo). */
+    for (sb = 0; sb < coderInfo->sfbn; sb++, coderInfo->bandcnt++)
     {
       faac_real sfacfix;
       int sfac;
@@ -191,12 +193,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int start, end;
       const faac_real *xr;
       int win;
+      int bidx = coderInfo->bandcnt;
 
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
-      {
-          coderInfo->bandcnt++;
+      if (bidx >= MAX_SCFAC_BANDS) break;
+
+      /* band already claimed by stereo coding — leave it alone */
+      if (coderInfo->book[bidx] != HCB_NONE)
           continue;
-      }
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
@@ -206,16 +209,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
-          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          coderInfo->book[bidx] = HCB_ZERO;
           continue;
       }
 
       if (bandqual[sb] < pnsthr)
       {
-          coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
-          coderInfo->sf[coderInfo->bandcnt] +=
+          coderInfo->book[bidx] = HCB_PNS;
+          coderInfo->sf[bidx] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
-          coderInfo->bandcnt++;
           continue;
       }
 
@@ -241,7 +243,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      coderInfo->sf[bidx] = SF_OFFSET - sfac;
     }
 }
 
