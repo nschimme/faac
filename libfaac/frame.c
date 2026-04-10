@@ -81,8 +81,7 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     }
     else {
         /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        bw = 24000 + ((bitRate - 128000) / 16);
     }
 
     /* Safety clamp to Shannon-Nyquist limit */

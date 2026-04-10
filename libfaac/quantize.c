@@ -41,7 +41,6 @@ extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, 
 static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
-    const faac_real max_val = (faac_real)MAX_HUFF_ESC_VAL;
     int cnt;
     for (cnt = 0; cnt < n; cnt++)
     {
@@ -50,9 +49,10 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-        tmp += magic;
 
-        if (tmp > max_val) tmp = max_val;
+        tmp += magic;
+        if (tmp > (faac_real)MAX_HUFF_ESC_VAL)
+            tmp = (faac_real)MAX_HUFF_ESC_VAL;
 
         int q = (int)tmp;
         xi[cnt] = (val < 0) ? -q : q;

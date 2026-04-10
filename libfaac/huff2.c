@@ -23,7 +23,6 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
-#include "quantize.h"
 
 static int escape(int x, int *code)
 {
@@ -31,19 +30,14 @@ static int escape(int x, int *code)
     int base;
 
     if (x > MAX_HUFF_ESC_VAL)
-    {
-        fprintf(stderr, "%s(%d): x_quant > %d\n", __FILE__, __LINE__, MAX_HUFF_ESC_VAL);
         x = MAX_HUFF_ESC_VAL;
-    }
 
-    if (x >= 32)
-    {
+    if (x >= 32) {
 #ifdef __GNUC__
         preflen = 31 - __builtin_clz((unsigned)x) - 4;
 #else
         int tmp = x >> 5;
-        while (tmp)
-        {
+        while (tmp) {
             tmp >>= 1;
             preflen++;
         }
@@ -58,7 +52,7 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
+static int huffcode(const int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)
@@ -73,14 +67,13 @@ static int huffcode(int *qs /* quantized spectrum */,
     int idx;
     int datacnt;
 
-    if (coder)
-    {
+    if (coder) {
         datacnt = coder->datacnt;
         if ((size_t)len * 2 >= (size_t)(DATASIZE - datacnt))
             return -1;
-    }
-    else
+    } else {
         datacnt = 0;
+    }
 
     book = hmap[bnum];
     switch (bnum)
@@ -244,11 +237,8 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             x0 = abs(qp[0]);
             x1 = abs(qp[1]);
-            if (x0 > 16)
-                x0 = 16;
-            if (x1 > 16)
-                x1 = 16;
-            idx = 17 * x0 + x1;
+
+            idx = 17 * (x0 > 16 ? 16 : x0) + (x1 > 16 ? 16 : x1);
             if (idx < 0 || idx >= arrlen(book11))
             {
                 return -1;
@@ -281,7 +271,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x0 >= 16)
             {
-                blen = escape(abs(qp[0]), &data);
+                blen = escape(x0, &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -292,7 +282,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
             if (x1 >= 16)
             {
-                blen = escape(abs(qp[1]), &data);
+                blen = escape(x1, &data);
                 if (coder)
                 {
                     coder->s[datacnt].data = data;
@@ -314,8 +304,8 @@ static int huffcode(int *qs /* quantized spectrum */,
 }
 
 
-int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
+int huffbook(CoderInfo * __restrict coder,
+             const int * __restrict qs /* quantized spectrum */,
              int len)
 {
     int cnt;
@@ -329,7 +319,11 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+#define BOOKMIN(n) \
+    bookmin = n; \
+    lenmin = huffcode(qs, len, bookmin, 0); \
+    if (huffcode(qs, len, bookmin + 1, 0) < lenmin) \
+        bookmin++;
 
     if (maxq < 1)
     {

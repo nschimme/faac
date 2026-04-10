@@ -46,7 +46,17 @@ enum {
     MINQUAL = 10,
     SF_OFFSET = 100,
     MAX_HUFF_ESC_VAL = 8191,
+    SF_MIN = 10,
+    SF_DELTA = 60,
+    PNS_SF_OFFSET = (SF_OFFSET - SF_MIN),
 };
+
+static inline int ClampSfDiff(int diff)
+{
+    if (diff > SF_DELTA) return SF_DELTA;
+    if (diff < -SF_DELTA) return -SF_DELTA;
+    return diff;
+}
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);

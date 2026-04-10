@@ -30,7 +30,6 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
     const __m128 magic = _mm_set1_ps(MAGIC_NUMBER);
-    const __m128 max_q = _mm_set1_ps((float)MAX_HUFF_ESC_VAL);
     // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     int cnt = 0;
@@ -56,7 +55,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_mul_ps(x, _mm_sqrt_ps(x));
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
-        x = _mm_min_ps(x, max_q);
+        x = _mm_min_ps(x, _mm_set1_ps((float)MAX_HUFF_ESC_VAL));
 
         // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
@@ -69,7 +68,6 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     }
 
     // Safe scalar remainder loop for widths not multiple of 4
-    const faac_real max_val = (faac_real)MAX_HUFF_ESC_VAL;
     for (; cnt < n; cnt++)
     {
 	faac_real val = xr[cnt];
@@ -77,9 +75,8 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
         tmp += (faac_real)MAGIC_NUMBER;
-
-        if (tmp > max_val) tmp = max_val;
-
+        if (tmp > (faac_real)MAX_HUFF_ESC_VAL)
+            tmp = (faac_real)MAX_HUFF_ESC_VAL;
         int q = (int)tmp;
         xi[cnt] = (val < 0) ? -q : q;
     }
