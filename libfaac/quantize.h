@@ -1,21 +1,5 @@
 /****************************************************************************
     Quantizer core functions
-    quality setting, error distribution, etc.
-
-    Copyright (C) 2017 Krzysztof Nikiel
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
 #ifndef QUANTIZE_H
@@ -46,7 +30,17 @@ enum {
     MINQUAL = 10,
     SF_OFFSET = 100,
     MAX_HUFF_ESC_VAL = 8191,
+    SF_MIN = 10,
+    SF_DELTA = 60,
+    PNS_SF_OFFSET = (SF_OFFSET - SF_MIN),
 };
+
+static inline int ClampSfDiff(int diff)
+{
+    if (diff > SF_DELTA) return SF_DELTA;
+    if (diff < -SF_DELTA) return -SF_DELTA;
+    return diff;
+}
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
