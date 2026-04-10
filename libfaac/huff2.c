@@ -23,22 +23,25 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "quantize.h"
+#include "util.h"
 
-static int escape(int x, int *code)
+
+static inline int escape(int x, int *code)
 {
     int preflen = 0;
     int base;
 
-    if (x >= 8192)
+    if (UNLIKELY(x > MAX_HUFF_ESC_VAL))
     {
-        fprintf(stderr, "%s(%d): x_quant >= 8192\n", __FILE__, __LINE__);
-        x = 8191;
+        fprintf(stderr, "%s(%d): x_quant > %d\n", __FILE__, __LINE__, MAX_HUFF_ESC_VAL);
+        x = MAX_HUFF_ESC_VAL;
     }
 
     if (x >= 32)
     {
 #ifdef __GNUC__
-        preflen = 31 - __builtin_clz(x) - 4;
+        preflen = 31 - __builtin_clz((unsigned)x) - 4;
 #else
         int tmp = x >> 5;
         while (tmp)
@@ -57,264 +60,157 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
-                    CoderInfo *coder)
+typedef struct {
+    int data;
+    int len;
+} huff_res_t;
+
+static inline huff_res_t get_huff_res(const int *qp, int bnum, hcode16_t *book)
 {
-    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
-      book05, book06, book07, book08, book09, book10, book11};
-    hcode16_t *book;
-    int cnt;
-    int bits = 0, blen;
-    int ofs, *qp;
-    int data = 0;
-    int idx;
-    int datacnt;
+    huff_res_t res;
+    int idx, cnt;
+    int data;
+    int blen;
 
-    if (coder)
-    {
-        datacnt = coder->datacnt;
-        if (datacnt + len * 2 >= DATASIZE)
-            return -1;
-    }
-    else
-        datacnt = 0;
-
-    book = hmap[bnum];
-    switch (bnum)
-    {
+    switch (bnum) {
     case 1:
     case 2:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+        idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
+        res.data = book[idx].data;
+        res.len = book[idx].len;
         break;
     case 3:
     case 4:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03))
-            {
-                return -1;
+        idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
+        data = book[idx].data;
+        blen = book[idx].len;
+        for (cnt = 0; cnt < 4; cnt++) {
+            if (qp[cnt]) {
+                blen++;
+                data <<= 1;
+                if (qp[cnt] < 0) data |= 1;
             }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
         }
+        res.data = data;
+        res.len = blen;
         break;
     case 5:
     case 6:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+        idx = 9 * qp[0] + qp[1] + 40;
+        res.data = book[idx].data;
+        res.len = book[idx].len;
         break;
     case 7:
     case 8:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07))
-            {
-                return -1;
+        idx = 8 * abs(qp[0]) + abs(qp[1]);
+        data = book[idx].data;
+        blen = book[idx].len;
+        for (cnt = 0; cnt < 2; cnt++) {
+            if (qp[cnt]) {
+                blen++;
+                data <<= 1;
+                if (qp[cnt] < 0) data |= 1;
             }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
         }
+        res.data = data;
+        res.len = blen;
         break;
     case 9:
     case 10:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09))
-            {
-                return -1;
+        idx = 13 * abs(qp[0]) + abs(qp[1]);
+        data = book[idx].data;
+        blen = book[idx].len;
+        for (cnt = 0; cnt < 2; cnt++) {
+            if (qp[cnt]) {
+                blen++;
+                data <<= 1;
+                if (qp[cnt] < 0) data |= 1;
             }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
         }
+        res.data = data;
+        res.len = blen;
         break;
     case HCB_ESC:
-        for(ofs = 0; ofs < len; ofs += 2)
+    default:
         {
-            int x0, x1;
-
-            qp = qs+ofs;
-
-            x0 = abs(qp[0]);
-            x1 = abs(qp[1]);
-            if (x0 > 16)
-                x0 = 16;
-            if (x1 > 16)
-                x1 = 16;
-            idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
-            {
-                return -1;
-            }
-
+            int x0 = abs(qp[0]);
+            int x1 = abs(qp[1]);
+            idx = 17 * (x0 > 16 ? 16 : x0) + (x1 > 16 ? 16 : x1);
+            data = book[idx].data;
             blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
+            for (cnt = 0; cnt < 2; cnt++) {
+                if (qp[cnt]) {
+                    blen++;
+                    data <<= 1;
+                    if (qp[cnt] < 0) data |= 1;
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
             }
-            bits += blen;
-
-            if (x0 >= 16)
-            {
-                blen = escape(abs(qp[0]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
-
-            if (x1 >= 16)
-            {
-                blen = escape(abs(qp[1]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
+            res.data = data;
+            res.len = blen;
         }
         break;
-    default:
-        fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
-        return -1;
+    }
+    return res;
+}
+
+static int huffcode(const int * __restrict qs /* quantized spectrum */,
+                    int len,
+                    int bnum,
+                    CoderInfo * __restrict coder)
+{
+    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
+      book05, book06, book07, book08, book09, book10, book11};
+    hcode16_t *book = hmap[bnum];
+    int bits = 0;
+    int ofs;
+    int datacnt = 0;
+    int stride = (bnum <= 4) ? 4 : 2;
+
+    if (coder) {
+        datacnt = coder->datacnt;
+        if (UNLIKELY((size_t)len * 2 >= (size_t)(DATASIZE - datacnt)))
+            return -1;
     }
 
-    if (coder)
-        coder->datacnt = datacnt;
+    for (ofs = 0; ofs < len; ofs += stride) {
+        huff_res_t res = get_huff_res(qs + ofs, bnum, book);
+        if (coder) {
+            coder->s[datacnt].data = res.data;
+            coder->s[datacnt++].len = res.len;
+        }
+        bits += res.len;
 
+        if (bnum == HCB_ESC) {
+            int x0 = abs(qs[ofs]);
+            int x1 = abs(qs[ofs + 1]);
+            if (UNLIKELY(x0 >= 16)) {
+                int esc_code, esc_len;
+                esc_len = escape(x0, &esc_code);
+                if (coder) {
+                    coder->s[datacnt].data = esc_code;
+                    coder->s[datacnt++].len = esc_len;
+                }
+                bits += esc_len;
+            }
+            if (UNLIKELY(x1 >= 16)) {
+                int esc_code, esc_len;
+                esc_len = escape(x1, &esc_code);
+                if (coder) {
+                    coder->s[datacnt].data = esc_code;
+                    coder->s[datacnt++].len = esc_len;
+                }
+                bits += esc_len;
+            }
+        }
+    }
+
+    if (coder) coder->datacnt = datacnt;
     return bits;
 }
 
 
-int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
+int huffbook(CoderInfo * __restrict coder,
+             const int * __restrict qs /* quantized spectrum */,
              int len)
 {
     int cnt;

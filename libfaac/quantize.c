@@ -25,11 +25,10 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 
 #ifdef __GNUC__
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
+#define GCC_VERSION (__GNUC__ * 10000                      + __GNUC_MINOR__ * 100                      + __GNUC_PATCHLEVEL__)
 #endif
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
@@ -38,10 +37,12 @@ typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict x
 extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, const faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
+    const faac_real max_val = (faac_real)MAX_HUFF_ESC_VAL;
     int cnt;
+
     for (cnt = 0; cnt < n; cnt++)
     {
         faac_real val = xr[cnt];
@@ -49,9 +50,10 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-
         tmp += magic;
-        if (tmp > 8191.0) tmp = 8191.0;
+
+        if (UNLIKELY(tmp > max_val)) tmp = max_val;
+
         int q = (int)tmp;
         xi[cnt] = (val < 0) ? -q : q;
     }
