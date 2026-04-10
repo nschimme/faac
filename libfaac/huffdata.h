@@ -16,6 +16,7 @@
 ****************************************************************************/
 
 #include <stdint.h>
+#include "quantize.h"
 
 typedef struct {
     const uint16_t len;
@@ -38,4 +39,4 @@ extern hcode16_t book08[64];
 extern hcode16_t book09[169];
 extern hcode16_t book10[169];
 extern hcode16_t book11[289];
-extern hcode32_t book12[121];
+extern hcode32_t book12[2 * SF_DELTA + 1];

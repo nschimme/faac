@@ -442,14 +442,14 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
         {
             diff = coder->sf[cnt] - lastis;
             diff = ClampSfDiff(diff);
-            length = book12[SF_DELTA_MAX + diff].len;
+            length = book12[SF_DELTA + diff].len;
 
             bits += length;
 
             lastis += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA_MAX + diff].data, length);
+                PutBit(stream, book12[SF_DELTA + diff].data, length);
         }
         else if (book == HCB_PNS)
         {
@@ -470,24 +470,24 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
 
             diff = ClampSfDiff(diff);
 
-            length = book12[SF_DELTA_MAX + diff].len;
+            length = book12[SF_DELTA + diff].len;
             bits += length;
             lastpns += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA_MAX + diff].data, length);
+                PutBit(stream, book12[SF_DELTA + diff].data, length);
         }
         else if ((book != HCB_ZERO) && (book != HCB_NONE))
         {
             diff = coder->sf[cnt] - lastsf;
             diff = ClampSfDiff(diff);
-            length = book12[SF_DELTA_MAX + diff].len;
+            length = book12[SF_DELTA + diff].len;
 
             bits += length;
             lastsf += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA_MAX + diff].data, length);
+                PutBit(stream, book12[SF_DELTA + diff].data, length);
         }
 
     }

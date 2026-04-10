@@ -287,8 +287,8 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         lastis = 0;
         /* PNS scale factors use a separate predictor per AAC spec.
          * Initialise it PNS_SF_OFFSET steps below global_gain so the first PNS band's
-         * delta fits within the ±60 limit (SF_OFFSET=100, typical gain≈100
-         * gives lastpns≈10, leaving room for the first real PNS value). */
+         * delta fits within the [-SF_DELTA, SF_DELTA] limit (SF_OFFSET=100,
+         * typical gain≈100 gives lastpns≈10, leaving room for the first real PNS value). */
         int lastpns = coder->global_gain - PNS_SF_OFFSET;
 
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -310,7 +310,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             }
             else if ((book != HCB_ZERO) && (book != HCB_NONE))
             {
-                /* AAC spec §6.3: scalefactor delta must be in [-60, +60].
+                /* AAC spec §6.3: scalefactor delta must be in [-SF_DELTA, SF_DELTA].
                  * The original code only enforced this for HCB_ESC; it
                  * applies to every non-zero, non-IS, non-PNS codebook. */
                 int diff = coder->sf[cnt] - lastsf;
