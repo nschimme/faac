@@ -25,6 +25,14 @@
 #include "faac_real.h"
 #include "util.h"
 
+/* Quality and Quantization Constants */
+enum {
+    DEFQUAL = 100,
+    MAXQUAL = 5000,
+    MAXQUALADTS = MAXQUAL,
+    MINQUAL = 10,
+};
+
 typedef struct
 {
     faac_real quality;

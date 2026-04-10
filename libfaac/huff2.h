@@ -17,9 +17,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
-#ifndef HUFF2_H
-#define HUFF2_H
-
 #include "bitstream.h"
 #include "util.h"
 
@@ -38,5 +35,3 @@ int huffbook(CoderInfo *coderInfo,
              int len);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
-
-#endif
