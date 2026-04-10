@@ -75,8 +75,9 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         faac_real tmp = FAAC_FABS(val);
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
-        int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
-        if (q > 8191) q = 8191;
+        tmp += (faac_real)MAGIC_NUMBER;
+        if (tmp > 8191.0) tmp = 8191.0;
+        int q = (int)tmp;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
