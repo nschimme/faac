@@ -51,25 +51,16 @@ int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
 
-/* Huffman Codebooks */
-enum {
-    HCB_ZERO = 0,
-    HCB_ESC = 11,
-    HCB_PNS = 13,
-    HCB_INTENSITY2 = 14,
-    HCB_INTENSITY = 15,
-    HCB_NONE
-};
-
 /* Quality and Quantization Constants */
 enum {
     DEFQUAL = 100,
     MAXQUAL = 5000,
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
+};
 
-    /* Scalefactor Management */
-
+/* Scalefactor Management */
+enum {
     /* Baseline scalefactor value used in bitstream */
     SF_OFFSET = 100,
     /* Minimum allowable scalefactor to prevent underflow */

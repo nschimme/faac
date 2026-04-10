@@ -23,6 +23,16 @@
 #include "bitstream.h"
 #include "util.h"
 
+/* Huffman Codebooks */
+enum {
+    HCB_ZERO = 0,
+    HCB_ESC = 11,
+    HCB_PNS = 13,
+    HCB_INTENSITY2 = 14,
+    HCB_INTENSITY = 15,
+    HCB_NONE
+};
+
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
