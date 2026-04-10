@@ -44,9 +44,13 @@ enum {
     MAXQUAL = 5000,
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
+    /* Baseline scalefactor value used in bitstream */
     SF_OFFSET = 100,
+    /* Minimum allowable scalefactor to prevent underflow */
     SF_MIN = 10,
+    /* PNS predictor initialization offset (starts at floor) */
     PNS_SF_OFFSET = SF_OFFSET - SF_MIN,
+    /* Max allowed difference between successive scalefactors (AAC spec) */
     SF_DELTA = 60,
 };
 
