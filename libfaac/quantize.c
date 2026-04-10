@@ -48,13 +48,9 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         faac_real tmp = FAAC_FABS(val);
 
         tmp *= sfacfix;
-        /* 165134 ≈ 8191.5^(4/3): largest input that maps to a non-escape value */
-        if (tmp > 165134.0) tmp = 165134.0;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
         int q = (int)(tmp + magic);
-        /* AAC escape codebook triggers at 8192; clamp to the 13-bit maximum */
-        if (q > 8191) q = 8191;
         xi[cnt] = (val < 0) ? -q : q;
     }
 }
