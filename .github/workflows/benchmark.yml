@@ -6,11 +6,13 @@ on:
     paths:
       - "libfaac/**"
       - ".github/workflows/benchmark.yml"
+      - "meson.build"
   pull_request:
     branches: [ "*" ]
     paths:
       - "libfaac/**"
       - ".github/workflows/benchmark.yml"
+      - "meson.build"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

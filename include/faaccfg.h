@@ -127,9 +127,6 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
-
-    /* Use encoder-side pseudo-SBR (spectral extension) */
-    unsigned int usePseudoSBR;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

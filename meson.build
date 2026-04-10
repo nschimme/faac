@@ -2,9 +2,10 @@ project('faac', 'c',
     version: '1.40.0',
     default_options: [
         'default_library=both',
-        'buildtype=debugoptimized',
+        'buildtype=release',
         'warning_level=1',
-        'c_std=gnu99,c99'
+        'c_std=gnu99,c99',
+        'b_lto=true'
     ])
 
 add_global_arguments('-DHAVE_CONFIG_H', language: 'c')
