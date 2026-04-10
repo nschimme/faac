@@ -15,8 +15,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#ifndef HUFFDATA_H
+#define HUFFDATA_H
+
 #include <stdint.h>
-#include "aac_constants.h"
+#include "util.h"
 
 typedef struct {
     const uint16_t len;
@@ -40,3 +43,5 @@ extern hcode16_t book09[169];
 extern hcode16_t book10[169];
 extern hcode16_t book11[289];
 extern hcode32_t book12[2 * SF_DELTA + 1];
+
+#endif

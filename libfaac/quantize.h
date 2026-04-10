@@ -23,7 +23,7 @@
 
 #include "coder.h"
 #include "faac_real.h"
-#include "aac_constants.h"
+#include "util.h"
 
 typedef struct
 {
