@@ -308,7 +308,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastpns += diff;
                 coder->sf[cnt] = lastpns;
             }
-            else if (book != HCB_ZERO)
+            else if ((book != HCB_ZERO) && (book != HCB_NONE))
             {
                 /* AAC spec §6.3: scalefactor delta must be in [-60, +60].
                  * The original code only enforced this for HCB_ESC; it

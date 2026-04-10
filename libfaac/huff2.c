@@ -477,7 +477,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (write)
                 PutBit(stream, book12[60 + diff].data, length);
         }
-        else if (book != HCB_ZERO)
+        else if ((book != HCB_ZERO) && (book != HCB_NONE))
         {
             diff = coder->sf[cnt] - lastsf;
             diff = CLAMP_SF_DIFF(diff);
