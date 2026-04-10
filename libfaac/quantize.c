@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -181,8 +182,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     faac_real pnsthr = 0.1 * pnslevel;
 
     /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
-       per-channel band index even when some bands are skipped (e.g. stereo). */
-    for (sb = 0; sb < coderInfo->sfbn; sb++, coderInfo->bandcnt++)
+       per-channel band index even when some bands are skipped (e.g. stereo).
+       downstream users of bandcnt expect it to track the total number of
+       scale factor bands processed across all groups in the frame. */
+    for (sb = 0; sb < coderInfo->sfbn && coderInfo->bandcnt < MAX_SCFAC_BANDS; sb++, coderInfo->bandcnt++)
     {
       faac_real sfacfix;
       int sfac;
@@ -195,7 +198,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int win;
       int bidx = coderInfo->bandcnt;
 
-      if (bidx >= MAX_SCFAC_BANDS) break;
+      assert(bidx < MAX_SCFAC_BANDS);
 
       /* band already claimed by stereo coding — leave it alone */
       if (coderInfo->book[bidx] != HCB_NONE)
@@ -216,6 +219,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (bandqual[sb] < pnsthr)
       {
           coderInfo->book[bidx] = HCB_PNS;
+          /* Note: we use = instead of += here because coderInfo->sf is
+             expected to be zero-initialized at the start of each frame. */
           coderInfo->sf[bidx] =
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
           continue;
@@ -243,6 +248,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
+      /* Note: we use = instead of += here because coderInfo->sf is
+         expected to be zero-initialized at the start of each frame. */
       coderInfo->sf[bidx] = SF_OFFSET - sfac;
     }
 }

@@ -312,6 +312,7 @@ void AACstereo(CoderInfo *coder,
             for (band = 0; band < cp->sfbn; band++)
             {
                 cp->book[bookcnt] = HCB_NONE;
+                /* Note: quantizer (qlevel) relies on sf being zero-initialized here */
                 cp->sf[bookcnt] = 0;
                 bookcnt++;
             }
