@@ -31,7 +31,6 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
-#include "huff2.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -542,16 +541,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-        if (!channelInfo[channel].present) continue;
-
-        /* Clear per-frame stereo state.  Without this, sf[] and book[] can
-         * carry stale values from a previous frame when stereo coding decides
-         * to leave some bands in L/R mode, causing the quantiser to see
-         * already-set book[] entries and skip re-quantising those bands. */
-        memset(coderInfo[channel].sf, 0, MAX_SCFAC_BANDS * sizeof(int));
-        for (i = 0; i < MAX_SCFAC_BANDS; i++) coderInfo[channel].book[i] = HCB_NONE;
-        memset(channelInfo[channel].msInfo.ms_used, 0, MAX_SCFAC_BANDS * sizeof(int));
-
         channelInfo[channel].msInfo.is_present = 0;
 
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
