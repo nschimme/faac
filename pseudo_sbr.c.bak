@@ -47,7 +47,7 @@ void PseudoSBRApply(faac_real *freqBuff, int sbr_start_sfb, const int *cb_widths
         }
 
         // Signal-proportional noise (minimal)
-        float noise = (fast_rand(&seed) - 0.5f) * 0.05f * (float)FAAC_FABS(freqBuff[src]);
+        float noise = (fast_rand(&seed) - 0.5f) * 0.05f * (float)fabs(freqBuff[src]);
         freqBuff[i] += noise;
 
         // Comfort noise floor (minimal)
