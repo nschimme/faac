@@ -77,6 +77,8 @@ void CoderInit(CoderInfo *coderInfo)
         coderInfo->book[i] = HCB_NONE;
         coderInfo->sf[i] = 0;
     }
+    coderInfo->bandcnt = 0;
+    coderInfo->datacnt = 0;
 }
 
 #define NOISEFLOOR 0.4
@@ -192,7 +194,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
 
-    assert(coderInfo->bandcnt < MAX_SCFAC_BANDS);
+    assert(coderInfo->bandcnt <= MAX_SCFAC_BANDS);
 
     /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
        per-channel band index even when some bands are skipped (e.g. stereo).
@@ -273,9 +275,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real *gxr;
 
     coder->global_gain = 0;
-
-    coder->bandcnt = 0;
-    coder->datacnt = 0;
 
     {
         int lastis;
