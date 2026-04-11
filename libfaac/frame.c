@@ -91,13 +91,6 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         if (bw > 20000) bw = 20000;
     }
 
-    /* If SBR is enabled, we slightly reduce core bandwidth to allow saved bits
-       to improve core quality, which is a common HE-AAC strategy.
-    */
-    if (useSbr) {
-        bw = (bw * 4) / 5;
-    }
-
     /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;
 }
@@ -204,7 +197,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, hEncoder->config.useSbr);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, config->useSbr);
 
         if (!config->quantqual)
         {
@@ -221,7 +214,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, hEncoder->config.useSbr);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, config->useSbr);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
@@ -608,7 +601,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         if (hEncoder->config.useSbr) {
             ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
-                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels);
+                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
         }
     }
 
@@ -616,17 +609,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
-        if (hEncoder->config.useSbr) {
-            CoderInfo *coder = &coderInfo[channel];
-            int bookcnt = 0;
-            for (int group = 0; group < coder->groups.n; group++) {
-                bookcnt += coder->sfbn - 1;
-                if (coder->book[bookcnt] == HCB_NONE) {
-                    coder->sf[bookcnt] = 150;
-                }
-                bookcnt++;
-            }
-        }
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }

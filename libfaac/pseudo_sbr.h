@@ -45,7 +45,7 @@ extern "C" {
 #define SBR_GAIN_ROLLOFF 0.42f /* -7.5dB per patch */
 #define SBR_HOLE_NOISE 0.0001f
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel);
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo);
 
 #ifdef __cplusplus
 }

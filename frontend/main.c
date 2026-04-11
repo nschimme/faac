@@ -197,8 +197,8 @@ static help_t help_advanced[] = {
     {"--joint 1\tUse Mid/Side coding.\n"},
     {"--joint 2\tUse Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
-    {"--sbr\t\tEnable Pseudo-SBR.\n"},
-    {"--no-sbr\tDisable Pseudo-SBR (default).\n"},
+    {"--sbr\t\tEnable Pseudo-SBR (default).\n"},
+    {"--no-sbr\tDisable Pseudo-SBR.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},

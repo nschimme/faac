@@ -23,6 +23,9 @@
 #include "util.h"
 #include "huff2.h"
 
+/**
+ * Calculates the Spectral Flatness Measure (SFM).
+ */
 static float CalcSFM(faac_real *freq, int start, int end)
 {
     double am = 0.0, gm = 0.0;
@@ -42,15 +45,19 @@ static float CalcSFM(faac_real *freq, int start, int end)
     return (float)(gm / (am + 1e-12));
 }
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel)
+/**
+ * Applies Pseudo-SBR (Spectral Band Replication) at the encoder side.
+ * Reconstructs high frequencies by folding (translating) the core spectrum.
+ */
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo)
 {
     int core_bins;
     int sbr_bins;
     float expansion_fraction;
     int i;
-    int patch_size;
     int dest_idx;
     float sfm;
+    int patch_offset;
 
     if (coder->block_type != ONLY_LONG_WINDOW)
         return;
@@ -59,7 +66,6 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (core_bins >= FRAME_LEN)
         return;
 
-    /* Adaptive expansion fraction based on bitrate */
     if (bitRatePerChannel < SBR_LOW_BR_LIMIT)
         expansion_fraction = 0.50f;
     else if (bitRatePerChannel < SBR_MID_BR_LIMIT)
@@ -74,56 +80,42 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (sbr_bins <= 0)
         return;
 
-    /* Tonality Gating: Check core tonality to prevent metallic artifacts */
     sfm = CalcSFM(freq, core_bins / 2, core_bins);
 
-    /* Spectral Folding (Translation): Copy low-frequency tile to high-frequency region.
-       Inspiration from HE-AAC and Opus CELT. Translation preserves harmonic structure
-       much better than mirroring for speech.
-    */
-    patch_size = sbr_bins;
-    int patch_offset = core_bins / 2;
-    if (patch_offset + patch_size > core_bins) {
-        patch_offset = core_bins - patch_size;
+    /* 1. Spectral Folding (Translation): Better for speech harmonics */
+    patch_offset = core_bins / 2;
+    if (patch_offset + sbr_bins > core_bins) {
+        patch_offset = core_bins - sbr_bins;
     }
     if (patch_offset < 0) patch_offset = 0;
 
-    for (i = 0; i < patch_size; i++) {
+    for (i = 0; i < sbr_bins; i++) {
         dest_idx = core_bins + i;
         if (dest_idx >= FRAME_LEN) break;
 
-        /* Translation logic: freq[f] = freq[f - offset] */
         freq[dest_idx] = freq[patch_offset + i] * SBR_GAIN_ROLLOFF;
 
-        /* Tonality Gating: attenuate tonal components to prevent metallic ringing */
         if (sfm < SBR_TONAL_THRESH) {
-            freq[dest_idx] *= SBR_TONAL_ATTEN;
+            float atten = (sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) ? (SBR_TONAL_ATTEN * 0.5f) : SBR_TONAL_ATTEN;
+            freq[dest_idx] *= atten;
         }
     }
 
-    /* 8-bin cross-fade at the transition for smoother spectral joining */
-    for (i = 0; i < 8 && (core_bins + i < FRAME_LEN); i++) {
-        float fade = (float)(i + 1) / 9.0f;
+    /* 2. Transition Smoothing */
+    for (i = 0; i < 16 && (core_bins + i < FRAME_LEN); i++) {
+        float fade = (float)(i + 1) / 17.0f;
         freq[core_bins + i] *= fade;
     }
 
-    /* Stealth Hole Filling: Inject noise floor into zeroed core bins to maintain texture */
-    for (i = 0; i < core_bins; i++) {
-        if (FAAC_FABS(freq[i]) < 1e-9f) {
-            freq[i] = (i % 2 ? 1.0f : -1.0f) * SBR_HOLE_NOISE;
-        }
-    }
-
-    /* Tonality-aware scaling for SBR: preserve texture by not over-attenuating
-       if the core is noisy (high SFM).
-    */
-
-    /* Update sfb_offset to include SBR bins.
-       We extend the core by adding one more scalefactor band if possible.
-       Safety check: sfbn must not exceed NSFB_LONG or MAX_SCFAC_BANDS.
-    */
-    if (coder->sfbn < NSFB_LONG && coder->sfbn < MAX_SCFAC_BANDS) {
-        coder->sfb_offset[coder->sfbn + 1] = core_bins + sbr_bins;
+    /**
+     * 3. Update Scale Factor Bands (SFBs)
+     * Use standard band definitions for bitstream compatibility.
+     */
+    int target_bins = core_bins + sbr_bins;
+    while (coder->sfbn < srInfo->num_cb_long && coder->sfb_offset[coder->sfbn] < target_bins) {
+        int next_offset = coder->sfb_offset[coder->sfbn] + srInfo->cb_width_long[coder->sfbn];
+        if (next_offset > FRAME_LEN) next_offset = FRAME_LEN;
+        coder->sfb_offset[coder->sfbn + 1] = next_offset;
         coder->sfbn++;
     }
 }

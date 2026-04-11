@@ -8,7 +8,7 @@ Implement a minimal "Pseudo" SBR for AAC-LC to improve perceived quality at low 
 - **Adaptive Patching**: SBR expansion fraction scales with bitrate (50% for < 24kbps, 35% for < 48kbps).
 - **Tonality Gating**: Attenuates reconstructed bins by 95% if the core spectrum is tonal (SFM < 0.12), preventing "metallic ringing."
 - **Stealth Hole Filling**: Injects a tiny noise floor (0.0001f) into zeroed bins to maintain texture and prevent "musical noise."
-- **Coarse SBR Quantization**: SBR-filled bands are assigned a large default scalefactor (150) to ensure they consume minimal bits, prioritizing core spectrum fidelity.
+- **Standard Quantization Integration**: SBR-filled bands are seamlessly integrated into the existing quantization and joint-stereo modules, allowing the psychoacoustic model to naturally balance bits between the core and the reconstructed high frequencies.
 - **Smoothed Transition**: 8-bin cross-fade at the HFR boundary.
 
 ## Results Summary
