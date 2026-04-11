@@ -21,7 +21,6 @@
 #define HUFF2_H
 
 #include "bitstream.h"
-#include "quantize.h"
 
 /* Huffman Codebooks */
 enum {
@@ -48,12 +47,6 @@ enum {
     /* Max allowed difference between successive scalefactors (AAC spec) */
     SF_DELTA = 60,
 };
-
-/* The maximum absolute value for xr before quantization that stays within
- * MAX_HUFF_ESC_VAL. Calculated based on the inverse of the AAC quantization
- * formula: x_quant = (x * sfacfix)^0.75 + MAGIC_NUMBER.
- * Derived as: (MAX_HUFF_ESC_VAL + 1 - MAGIC_NUMBER)^(4/3). */
-#define MAX_QUANT_LIMIT (FAAC_POW((faac_real)MAX_HUFF_ESC_VAL + (faac_real)1.0 - (faac_real)MAGIC_NUMBER, (faac_real)4.0/(faac_real)3.0))
 
 /**
  * Restrict scalefactor delta to the spec-defined +/- SF_DELTA range.

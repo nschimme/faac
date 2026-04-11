@@ -68,7 +68,9 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 
-    max_quant_limit = MAX_QUANT_LIMIT;
+    /* Set the maximum absolute value for xr before quantization that stays within
+     * MAX_HUFF_ESC_VAL. Calculated as the inverse of x_quant = (x * gain)^0.75 + MAGIC_NUMBER. */
+    max_quant_limit = FAAC_POW((faac_real)MAX_HUFF_ESC_VAL + 1.0 - MAGIC_NUMBER, 4.0/3.0);
 }
 #define NOISEFLOOR 0.4
 
@@ -239,7 +241,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
            * integer scalefactor (sfac) always results in a safe quantized value. */
           if (sfacfix * bandmaxe[sb] > max_quant_limit)
           {
-              sfacfix = (faac_real)max_quant_limit / (bandmaxe[sb] + 1e-12);
+              /* bandmaxe[sb] is guaranteed > 0 here */
+              sfacfix = (faac_real)max_quant_limit / bandmaxe[sb];
               sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix) * sfstep);
               /* Recalculate sfacfix from the integer scalefactor to ensure the
                * encoder's quantization perfectly matches the decoder's reconstruction. */

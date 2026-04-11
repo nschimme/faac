@@ -24,6 +24,12 @@
 #include "coder.h"
 #include "faac_real.h"
 
+#ifdef FAAC_PRECISION_SINGLE
+#define MAGIC_NUMBER 0.4054f
+#else
+#define MAGIC_NUMBER 0.4054
+#endif
+
 typedef struct
 {
     faac_real quality;
@@ -32,12 +38,6 @@ typedef struct
     int max_l;
     int pnslevel;
 } AACQuantCfg;
-
-#ifdef FAAC_PRECISION_SINGLE
-#define MAGIC_NUMBER 0.4054f
-#else
-#define MAGIC_NUMBER 0.4054
-#endif
 
 enum {
     DEFQUAL = 100,
