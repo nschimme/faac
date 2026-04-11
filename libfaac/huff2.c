@@ -65,7 +65,6 @@ static int huffcode(int *qs /* quantized spectrum */,
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
     hcode16_t *book;
-    int cnt;
     int bits = 0, blen;
     int ofs, *qp;
     int data = 0;
@@ -109,19 +108,15 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 4:
         for(ofs = 0; ofs < len; ofs += 4)
         {
-            qp = qs+ofs;
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
+            int q0 = qs[ofs], q1 = qs[ofs+1], q2 = qs[ofs+2], q3 = qs[ofs+3];
+            int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
+            idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
             blen = book[idx].len;
             data = book[idx].data;
-            for(cnt = 0; cnt < 4; cnt++)
-            {
-                if(qp[cnt])
-                {
-                    blen++;
-                    data <<= 1;
-                    if (qp[cnt] < 0) data |= 1;
-                }
-            }
+            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
+            if (a2) { blen++; data = (data << 1) | (q2 < 0); }
+            if (a3) { blen++; data = (data << 1) | (q3 < 0); }
             get_huff_res(data, blen, &bits, &datacnt, coder);
         }
         break;
@@ -138,19 +133,13 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 8:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            qp = qs+ofs;
-            idx = 8 * abs(qp[0]) + abs(qp[1]);
+            int q0 = qs[ofs], q1 = qs[ofs+1];
+            int a0 = abs(q0), a1 = abs(q1);
+            idx = 8 * a0 + a1;
             blen = book[idx].len;
             data = book[idx].data;
-            for(cnt = 0; cnt < 2; cnt++)
-            {
-                if(qp[cnt])
-                {
-                    blen++;
-                    data <<= 1;
-                    if (qp[cnt] < 0) data |= 1;
-                }
-            }
+            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
             get_huff_res(data, blen, &bits, &datacnt, coder);
         }
         break;
@@ -158,52 +147,37 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 10:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            qp = qs+ofs;
-            idx = 13 * abs(qp[0]) + abs(qp[1]);
+            int q0 = qs[ofs], q1 = qs[ofs+1];
+            int a0 = abs(q0), a1 = abs(q1);
+            idx = 13 * a0 + a1;
             blen = book[idx].len;
             data = book[idx].data;
-            for(cnt = 0; cnt < 2; cnt++)
-            {
-                if(qp[cnt])
-                {
-                    blen++;
-                    data <<= 1;
-                    if (qp[cnt] < 0) data |= 1;
-                }
-            }
+            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
             get_huff_res(data, blen, &bits, &datacnt, coder);
         }
         break;
     case HCB_ESC:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            int x0, x1;
-            qp = qs+ofs;
-            x0 = abs(qp[0]);
-            x1 = abs(qp[1]);
+            int q0 = qs[ofs], q1 = qs[ofs+1];
+            int a0 = abs(q0), a1 = abs(q1);
 
-            idx = 17 * min(x0, 16) + min(x1, 16);
+            idx = 17 * min(a0, 16) + min(a1, 16);
             blen = book[idx].len;
             data = book[idx].data;
-            for (cnt = 0; cnt < 2; cnt++)
-            {
-                if (qp[cnt])
-                {
-                    blen++;
-                    data <<= 1;
-                    if (qp[cnt] < 0) data |= 1;
-                }
-            }
+            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
             get_huff_res(data, blen, &bits, &datacnt, coder);
 
-            if (x0 >= 16)
+            if (a0 >= 16)
             {
-                blen = escape(x0, &data);
+                blen = escape(a0, &data);
                 get_huff_res(data, blen, &bits, &datacnt, coder);
             }
-            if (x1 >= 16)
+            if (a1 >= 16)
             {
-                blen = escape(x1, &data);
+                blen = escape(a1, &data);
                 get_huff_res(data, blen, &bits, &datacnt, coder);
             }
         }

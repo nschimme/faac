@@ -108,7 +108,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe, bmaxe;
+    faac_real avge, maxe;
     faac_real target;
 
     start = cb_offset[sfb];
@@ -116,7 +116,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     avge = 0.0;
     maxe = 0.0;
-    bmaxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -128,12 +127,10 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
             avge += e;
             if (maxe < e)
                 maxe = e;
-            if (bmaxe < FAAC_FABS(val))
-                bmaxe = FAAC_FABS(val);
         }
     }
     bandenrg[sfb] = avge;
-    bandmaxe[sfb] = bmaxe;
+    bandmaxe[sfb] = FAAC_SQRT(maxe);
     maxe *= gsize;
 
 #define NOISETONE 0.2
