@@ -532,7 +532,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* AAC Filterbank, MDCT with overlap and add */
     for (channel = 0; channel < numChannels; channel++) {
-        CoderInit(&coderInfo[channel]);
+        CoderInit(&coderInfo[channel], &channelInfo[channel]);
 
         FilterBank(hEncoder,
             &coderInfo[channel],
@@ -543,7 +543,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-        channelInfo[channel].msInfo.is_present = 0;
 
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
