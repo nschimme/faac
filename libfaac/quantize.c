@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -69,11 +68,15 @@ void QuantizeInit(void)
         qfunc = quantize_scalar;
 }
 
-void CoderInit(CoderInfo *coderInfo, ChannelInfo *channelInfo)
+void ChannelReset(CoderInfo *coderInfo, ChannelInfo *channelInfo)
 {
-    memset(coderInfo->book, HCB_NONE, sizeof(coderInfo->book));
-    memset(coderInfo->sf, 0, sizeof(coderInfo->sf));
-    memset(channelInfo->msInfo.ms_used, 0, sizeof(channelInfo->msInfo.ms_used));
+    int i;
+    for (i = 0; i < MAX_SCFAC_BANDS; i++)
+    {
+        coderInfo->book[i] = HCB_NONE;
+        coderInfo->sf[i] = 0;
+        channelInfo->msInfo.ms_used[i] = 0;
+    }
 
     coderInfo->bandcnt = 0;
     coderInfo->datacnt = 0;
@@ -192,8 +195,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 #endif
     int gsize = coderInfo->groups.len[gnum];
     faac_real pnsthr = 0.1 * pnslevel;
-
-    assert(coderInfo->bandcnt <= MAX_SCFAC_BANDS);
 
     /* bandcnt always advances with sb so book[]/sf[] stay in sync with the
        per-channel band index even when some bands are skipped (e.g. stereo).

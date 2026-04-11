@@ -532,7 +532,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* AAC Filterbank, MDCT with overlap and add */
     for (channel = 0; channel < numChannels; channel++) {
-        CoderInit(&coderInfo[channel], &channelInfo[channel]);
+        ChannelReset(&coderInfo[channel], &channelInfo[channel]);
 
         FilterBank(hEncoder,
             &coderInfo[channel],
