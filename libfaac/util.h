@@ -38,6 +38,26 @@ extern "C" {
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
+/**
+ * Portable Count Leading Zeros (CLZ)
+ */
+#ifdef __GNUC__
+#define CLZ(x) __builtin_clz(x)
+#else
+static inline int CLZ(unsigned int x)
+{
+    int n = 32;
+    if (x == 0) return 32;
+    if (x >= 0x10000) { x >>= 16; n -= 16; }
+    if (x >= 0x100)   { x >>= 8;  n -= 8;  }
+    if (x >= 0x10)    { x >>= 4;  n -= 4;  }
+    if (x >= 0x4)     { x >>= 2;  n -= 2;  }
+    if (x >= 0x2)     { x >>= 1;  n -= 1;  }
+    if (x >= 0x1)     {           n -= 1;  }
+    return n;
+}
+#endif
+
 #ifndef M_PI
 #define M_PI        3.14159265358979323846
 #endif

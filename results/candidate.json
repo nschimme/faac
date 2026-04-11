@@ -6,7 +6,7 @@
       "size": 328118,
       "bitrate": 262.4944,
       "bitrate_target": 256,
-      "time": 0.062378644943237305,
+      "time": 0.0787820816040039,
       "md5": "99a1c879ebdc1bd90f4adba17daf1f68",
       "thresh": 4.3,
       "scenario": "music_high",
@@ -14,11 +14,11 @@
     }
   },
   "throughput": {
-    "noise.wav": 3.2368171020001077,
-    "silence.wav": 3.3421411689999636,
-    "sine.wav": 3.179571087666621,
-    "sweep.wav": 2.62811016300005,
-    "overall": 3.0966598804166856
+    "noise.wav": 3.0204086576666973,
+    "silence.wav": 3.1002152556663227,
+    "sine.wav": 2.9565991973334653,
+    "sweep.wav": 2.4350413103334176,
+    "overall": 2.878066105249976
   },
-  "lib_size": 72584
+  "lib_size": 72736
 }
