@@ -56,6 +56,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
+static faac_real max_quant_limit;
 
 void QuantizeInit(void)
 {
@@ -66,6 +67,8 @@ void QuantizeInit(void)
     else
 #endif
         qfunc = quantize_scalar;
+
+    max_quant_limit = MAX_QUANT_LIMIT;
 }
 #define NOISEFLOOR 0.4
 
@@ -130,6 +133,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         }
     }
     bandenrg[sfb] = avge;
+    /* Track peak energy to identify potential Huffman overflows early.
+     * FAAC_SQRT(maxe) gives the maximum absolute sample value in this band. */
     bandmaxe[sfb] = FAAC_SQRT(maxe);
     maxe *= gsize;
 
@@ -228,10 +233,16 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
       {
           sfacfix = FAAC_POW(10, sfac / sfstep);
-          if (sfacfix * bandmaxe[sb] > MAX_QUANT_LIMIT)
+          /* Hot-spot protection: If the combination of gain (sfacfix) and peak
+           * signal (bandmaxe) would exceed the AAC bitstream limit, we must
+           * cap the gain for this band. We use FAAC_FLOOR to ensure the rounded
+           * integer scalefactor (sfac) always results in a safe quantized value. */
+          if (sfacfix * bandmaxe[sb] > max_quant_limit)
           {
-              sfacfix = (faac_real)MAX_QUANT_LIMIT / (bandmaxe[sb] + 1e-12);
+              sfacfix = (faac_real)max_quant_limit / (bandmaxe[sb] + 1e-12);
               sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix) * sfstep);
+              /* Recalculate sfacfix from the integer scalefactor to ensure the
+               * encoder's quantization perfectly matches the decoder's reconstruction. */
               sfacfix = FAAC_POW(10, sfac / sfstep);
           }
       }
