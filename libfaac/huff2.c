@@ -23,13 +23,14 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "util.h"
 
 static int escape(int x, int *code)
 {
     int preflen = 0;
     int base = 32;
 
-    if (x > MAX_HUFF_ESC_VAL)
+    if (UNLIKELY(x > MAX_HUFF_ESC_VAL))
     {
         fprintf(stderr, "%s(%d): x_quant > %d\n", __FILE__, __LINE__, MAX_HUFF_ESC_VAL);
         return 0;
@@ -85,7 +86,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book01)))
             {
                 return -1;
             }
@@ -105,7 +106,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book03)))
             {
                 return -1;
             }
@@ -143,7 +144,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book05)))
             {
                 return -1;
             }
@@ -163,7 +164,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book07)))
             {
                 return -1;
             }
@@ -199,7 +200,7 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book09)))
             {
                 return -1;
             }
@@ -243,7 +244,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             if (x1 > 16)
                 x1 = 16;
             idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
+            if (UNLIKELY(idx < 0 || idx >= arrlen(book11)))
             {
                 return -1;
             }
@@ -325,7 +326,7 @@ int huffbook(CoderInfo *coder,
 
 #define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
 
-    if (maxq < 1)
+    if (UNLIKELY(maxq < 1))
     {
         bookmin = HCB_ZERO;
         lenmin = 0;
@@ -476,7 +477,7 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
             if (write)
                 PutBit(stream, book12[SF_DELTA + diff].data, length);
         }
-        else if ((book != HCB_ZERO) && (book != HCB_NONE))
+        else if (LIKELY((book != HCB_ZERO) && (book != HCB_NONE)))
         {
             diff = coder->sf[cnt] - lastsf;
             diff = clamp_sf_diff(diff);

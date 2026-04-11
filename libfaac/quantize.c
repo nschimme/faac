@@ -25,6 +25,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -104,7 +105,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
   enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (UNLIKELY(totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt)))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -198,7 +199,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       const faac_real *xr;
       int win;
 
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
+      if (UNLIKELY(coderInfo->book[coderInfo->bandcnt] != HCB_NONE))
       {
           coderInfo->bandcnt++;
           continue;
@@ -210,13 +211,13 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
-      if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
+      if (UNLIKELY((rmsx < NOISEFLOOR) || (!bandqual[sb])))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      if (UNLIKELY(bandqual[sb] < pnsthr))
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
@@ -235,7 +236,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
           /* Bitstream saturation check: if gain * peak exceeds the Huffman limit,
            * clamp gain and re-sync the integer scalefactor to prevent overflow. */
-          if (sfacfix * bandmaxe[sb] > max_quant_limit)
+          if (UNLIKELY(sfacfix * bandmaxe[sb] > max_quant_limit))
           {
               sfacfix = max_quant_limit / bandmaxe[sb];
               sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix) * sfstep);
@@ -247,7 +248,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       end -= start;
       xi = xitab;
-      if (sfacfix <= 0.0)
+      if (UNLIKELY(sfacfix <= 0.0))
       {
           memset(xi, 0, gsize * end * sizeof(int));
       }
