@@ -296,7 +296,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
-            if (!book)
+            if (UNLIKELY(!book))
                 continue;
             if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2))
             {
@@ -311,21 +311,21 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
         {
             int book = coder->book[cnt];
-            if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+            if (UNLIKELY((book == HCB_INTENSITY) || (book == HCB_INTENSITY2)))
             {
                 int diff = coder->sf[cnt] - lastis;
                 diff = clamp_sf_diff(diff);
                 lastis += diff;
                 coder->sf[cnt] = lastis;
             }
-            else if (book == HCB_PNS)
+            else if (UNLIKELY(book == HCB_PNS))
             {
                 int diff = coder->sf[cnt] - lastpns;
                 diff = clamp_sf_diff(diff);
                 lastpns += diff;
                 coder->sf[cnt] = lastpns;
             }
-            else if ((book != HCB_ZERO) && (book != HCB_NONE))
+            else if (LIKELY((book != HCB_ZERO) && (book != HCB_NONE)))
             {
                 int diff = coder->sf[cnt] - lastsf;
                 diff = clamp_sf_diff(diff);

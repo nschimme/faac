@@ -250,7 +250,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             }
 
             blen = book[idx].len;
-            if (!coder)
+            if (UNLIKELY(!coder))
             {
                 for(cnt = 0; cnt < 2; cnt++)
                     if(qp[cnt])
@@ -274,7 +274,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             }
             bits += blen;
 
-            if (x0 >= 16)
+            if (UNLIKELY(x0 >= 16))
             {
                 blen = escape(abs(qp[0]), &data);
                 if (coder)
@@ -285,7 +285,7 @@ static int huffcode(int *qs /* quantized spectrum */,
                 bits += blen;
             }
 
-            if (x1 >= 16)
+            if (UNLIKELY(x1 >= 16))
             {
                 blen = escape(abs(qp[1]), &data);
                 if (coder)
@@ -326,7 +326,7 @@ int huffbook(CoderInfo *coder,
 
 #define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
 
-    if (UNLIKELY(maxq < 1))
+    if (maxq < 1)
     {
         bookmin = HCB_ZERO;
         lenmin = 0;
