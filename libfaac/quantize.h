@@ -44,8 +44,11 @@ enum {
     MAXQUAL = 5000,
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
-    MAX_HUFF_ESC_VAL = 8191,
 };
+
+/* Theoretical limit for xr * sfacfix to ensure quantized values <= MAX_HUFF_ESC_VAL */
+/* Derived from: (8192 - 0.4054)^(4/3) */
+#define MAX_QUANT_LIMIT 165011.0f
 
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);

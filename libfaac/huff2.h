@@ -20,6 +20,7 @@
 #ifndef HUFF2_H
 #define HUFF2_H
 
+#include "coder.h"
 #include "bitstream.h"
 
 /* Huffman Codebooks */
@@ -29,7 +30,8 @@ enum {
     HCB_PNS = 13,
     HCB_INTENSITY2 = 14,
     HCB_INTENSITY = 15,
-    HCB_NONE
+    HCB_NONE,
+    MAX_HUFF_ESC_VAL = 8191
 };
 
 /* Scalefactor Management */

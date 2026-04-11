@@ -23,8 +23,8 @@
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
-#include "bitstream.h"
 #include "quantize.h"
+#include "bitstream.h"
 #include "util.h"
 
 static int escape(int x, int *code)
@@ -46,67 +46,52 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static inline int get_huff_res(int data, int len, int *bits, int *datacnt, CoderInfo *coder)
+static inline void get_huff_res(int data, int len, int *bits, int *datacnt, CoderInfo *coder)
 {
     *bits += len;
     if (coder)
     {
-        if (UNLIKELY(*datacnt >= DATASIZE))
-        {
-            fprintf(stderr, "DATASIZE exceeded: truncation occurred!\n");
-            assert(0);
-            return -1;
-        }
         coder->s[*datacnt].data = data;
         coder->s[(*datacnt)++].len = len;
     }
-    return 0;
-}
-
-static inline int huff_loop(int *qs, int len, int stride, int book_size, hcode16_t *book, int sign_count, int *bits, int *datacnt, CoderInfo *coder)
-{
-    int ofs, cnt;
-    for (ofs = 0; ofs < len; ofs += stride)
-    {
-        int *qp = qs + ofs;
-        int idx;
-        if (stride == 4)
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-        else
-            idx = book_size == (int)arrlen(book07) ? 8 * abs(qp[0]) + abs(qp[1]) : 13 * abs(qp[0]) + abs(qp[1]);
-
-        if (UNLIKELY(idx < 0 || idx >= book_size))
-            return -1;
-
-        int blen = book[idx].len;
-        int data = book[idx].data;
-        for (cnt = 0; cnt < sign_count; cnt++)
-        {
-            if (qp[cnt])
-            {
-                blen++;
-                data <<= 1;
-                if (qp[cnt] < 0) data |= 1;
-            }
-        }
-        if (get_huff_res(data, blen, bits, datacnt, coder) < 0)
-            return -1;
-    }
-    return 0;
 }
 
 static int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
+                    int maxq,
                     CoderInfo *coder)
 {
     static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
       book05, book06, book07, book08, book09, book10, book11};
     hcode16_t *book;
-    int bits = 0;
+    int cnt;
+    int bits = 0, blen;
     int ofs, *qp;
+    int data = 0;
     int idx;
     int datacnt = coder ? coder->datacnt : 0;
+
+    /* Safety checks hoisted out of the loop */
+    if (coder)
+    {
+        /* Worst case: two escape sequences and one 2-tuple codeword per 2 spectral lines */
+        /* Each 2 spectral lines can produce up to 3 codewords in the coder->s array */
+        int worst_case_len = (len / 2) * 3;
+        if (UNLIKELY(datacnt + worst_case_len > DATASIZE))
+        {
+            fprintf(stderr, "DATASIZE exceeded: truncation occurred!\n");
+            return -1;
+        }
+    }
+
+    /* Codebook range check hoisted */
+    if (bnum > 0 && bnum <= 10)
+    {
+        static const int book_maxq[] = {0, 1, 1, 2, 2, 4, 4, 7, 7, 12, 12};
+        if (UNLIKELY(maxq > book_maxq[bnum]))
+            return -1;
+    }
 
     book = hmap[bnum];
     switch (bnum)
@@ -117,13 +102,28 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (UNLIKELY(idx < 0 || idx >= (int)arrlen(book01))) return -1;
-            if (get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder) < 0) return -1;
+            get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder);
         }
         break;
     case 3:
     case 4:
-        if (huff_loop(qs, len, 4, (int)arrlen(book03), book, 4, &bits, &datacnt, coder) < 0) return -1;
+        for(ofs = 0; ofs < len; ofs += 4)
+        {
+            qp = qs+ofs;
+            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
+            blen = book[idx].len;
+            data = book[idx].data;
+            for(cnt = 0; cnt < 4; cnt++)
+            {
+                if(qp[cnt])
+                {
+                    blen++;
+                    data <<= 1;
+                    if (qp[cnt] < 0) data |= 1;
+                }
+            }
+            get_huff_res(data, blen, &bits, &datacnt, coder);
+        }
         break;
     case 5:
     case 6:
@@ -131,29 +131,58 @@ static int huffcode(int *qs /* quantized spectrum */,
         {
             qp = qs+ofs;
             idx = 9 * qp[0] + qp[1] + 40;
-            if (UNLIKELY(idx < 0 || idx >= (int)arrlen(book05))) return -1;
-            if (get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder) < 0) return -1;
+            get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder);
         }
         break;
     case 7:
     case 8:
-        if (huff_loop(qs, len, 2, (int)arrlen(book07), book, 2, &bits, &datacnt, coder) < 0) return -1;
+        for(ofs = 0; ofs < len; ofs += 2)
+        {
+            qp = qs+ofs;
+            idx = 8 * abs(qp[0]) + abs(qp[1]);
+            blen = book[idx].len;
+            data = book[idx].data;
+            for(cnt = 0; cnt < 2; cnt++)
+            {
+                if(qp[cnt])
+                {
+                    blen++;
+                    data <<= 1;
+                    if (qp[cnt] < 0) data |= 1;
+                }
+            }
+            get_huff_res(data, blen, &bits, &datacnt, coder);
+        }
         break;
     case 9:
     case 10:
-        if (huff_loop(qs, len, 2, (int)arrlen(book09), book, 2, &bits, &datacnt, coder) < 0) return -1;
+        for(ofs = 0; ofs < len; ofs += 2)
+        {
+            qp = qs+ofs;
+            idx = 13 * abs(qp[0]) + abs(qp[1]);
+            blen = book[idx].len;
+            data = book[idx].data;
+            for(cnt = 0; cnt < 2; cnt++)
+            {
+                if(qp[cnt])
+                {
+                    blen++;
+                    data <<= 1;
+                    if (qp[cnt] < 0) data |= 1;
+                }
+            }
+            get_huff_res(data, blen, &bits, &datacnt, coder);
+        }
         break;
     case HCB_ESC:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            int x0, x1, cnt;
-            int blen, data;
+            int x0, x1;
             qp = qs+ofs;
             x0 = abs(qp[0]);
             x1 = abs(qp[1]);
 
             idx = 17 * min(x0, 16) + min(x1, 16);
-            if (UNLIKELY(idx < 0 || idx >= (int)arrlen(book11))) return -1;
             blen = book[idx].len;
             data = book[idx].data;
             for (cnt = 0; cnt < 2; cnt++)
@@ -165,17 +194,17 @@ static int huffcode(int *qs /* quantized spectrum */,
                     if (qp[cnt] < 0) data |= 1;
                 }
             }
-            if (get_huff_res(data, blen, &bits, &datacnt, coder) < 0) return -1;
+            get_huff_res(data, blen, &bits, &datacnt, coder);
 
             if (x0 >= 16)
             {
                 blen = escape(x0, &data);
-                if (get_huff_res(data, blen, &bits, &datacnt, coder) < 0) return -1;
+                get_huff_res(data, blen, &bits, &datacnt, coder);
             }
             if (x1 >= 16)
             {
                 blen = escape(x1, &data);
-                if (get_huff_res(data, blen, &bits, &datacnt, coder) < 0) return -1;
+                get_huff_res(data, blen, &bits, &datacnt, coder);
             }
         }
         break;
@@ -206,7 +235,7 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,maxq,0);if(huffcode(qs,len,bookmin+1,maxq,0)<lenmin)bookmin++;
 
     if (maxq < 1)
     {
@@ -239,7 +268,7 @@ int huffbook(CoderInfo *coder,
     }
 
     if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
+        huffcode(qs, len, bookmin, maxq, coder);
     coder->book[coder->bandcnt] = bookmin;
 
     return 0;

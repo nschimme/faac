@@ -50,9 +50,6 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
-        if (tmp > (faac_real)MAX_HUFF_ESC_VAL)
-            tmp = (faac_real)MAX_HUFF_ESC_VAL;
-
         int q = (int)(tmp + magic);
         xi[cnt] = (val < 0) ? -q : q;
     }
@@ -74,7 +71,7 @@ void QuantizeInit(void)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -111,7 +108,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
+    faac_real avge, maxe, bmaxe;
     faac_real target;
 
     start = cb_offset[sfb];
@@ -119,6 +116,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     avge = 0.0;
     maxe = 0.0;
+    bmaxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -130,9 +128,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
             avge += e;
             if (maxe < e)
                 maxe = e;
+            if (bmaxe < FAAC_FABS(val))
+                bmaxe = FAAC_FABS(val);
         }
     }
     bandenrg[sfb] = avge;
+    bandmaxe[sfb] = bmaxe;
     maxe *= gsize;
 
 #define NOISETONE 0.2
@@ -169,6 +170,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
                    const faac_real * __restrict bandqual,
                    const faac_real * __restrict bandenrg,
+                   const faac_real * __restrict bandmaxe,
                    int gnum,
                    int pnslevel
                   )
@@ -228,6 +230,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       else
           sfacfix = FAAC_POW(10, sfac / sfstep);
 
+      /* Band-level clamping to prevent spectral values > MAX_HUFF_ESC_VAL */
+      if (sfacfix > 0.0 && (bandmaxe[sb] * sfacfix) > MAX_QUANT_LIMIT)
+      {
+          sfacfix = MAX_QUANT_LIMIT / bandmaxe[sb];
+          /* Recalculate sfac to match clamped sfacfix for bitstream consistency */
+          sfac = FAAC_LRINT(FAAC_LOG10(sfacfix) * sfstep);
+      }
+
       end -= start;
       xi = xitab;
       if (sfacfix <= 0.0)
@@ -252,6 +262,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
+    faac_real bandmaxe[MAX_SCFAC_BANDS];
     int cnt;
     faac_real *gxr;
 
@@ -267,9 +278,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
-            bmask(coder, gxr, bandlvl, bandenrg, cnt,
+            bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt, aacquantCfg->pnslevel);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
