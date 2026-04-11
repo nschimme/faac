@@ -127,6 +127,7 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+    int useSbr;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

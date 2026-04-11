@@ -32,6 +32,8 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
+#include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -55,7 +57,7 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
+static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate, int useSbr)
 {
     const unsigned int nyquist = sampleRate / 2;
     unsigned int bw;
@@ -65,6 +67,9 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (bitRate <= 16000) {
         /* Segment 1: Telephony (4kHz to 6kHz) */
         bw = 4000 + (bitRate / 8);
+        if (useSbr && sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) {
+            if (bw > SBR_SPEECH_CORE_BW_CAP) bw = SBR_SPEECH_CORE_BW_CAP;
+        }
     }
     else if (bitRate <= 32000) {
         /* Segment 2: Low-tier (6kHz to 11kHz)
@@ -84,6 +89,13 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         /* Segment 5: Transparency plateau (20kHz+) */
         bw = 20000 + ((bitRate - 128000) / 16);
         if (bw > 20000) bw = 20000;
+    }
+
+    /* If SBR is enabled, we slightly reduce core bandwidth to allow saved bits
+       to improve core quality, which is a common HE-AAC strategy.
+    */
+    if (useSbr) {
+        bw = (bw * 4) / 5;
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -192,7 +204,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, hEncoder->config.useSbr);
 
         if (!config->quantqual)
         {
@@ -209,7 +221,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, hEncoder->config.useSbr);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
@@ -234,6 +246,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->config.useSbr = config->useSbr;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -296,8 +309,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
+    hEncoder->config.useSbr = 0;
     hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
+    hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate, hEncoder->config.useSbr);
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
@@ -591,10 +605,28 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
 	}
 
+    for (channel = 0; channel < numChannels; channel++) {
+        if (hEncoder->config.useSbr) {
+            ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
+                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels);
+        }
+    }
+
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);
 
     for (channel = 0; channel < numChannels; channel++) {
+        if (hEncoder->config.useSbr) {
+            CoderInfo *coder = &coderInfo[channel];
+            int bookcnt = 0;
+            for (int group = 0; group < coder->groups.n; group++) {
+                bookcnt += coder->sfbn - 1;
+                if (coder->book[bookcnt] == HCB_NONE) {
+                    coder->sf[bookcnt] = 150;
+                }
+                bookcnt++;
+            }
+        }
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
     }
