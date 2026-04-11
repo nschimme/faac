@@ -35,8 +35,10 @@ typedef struct
 
 #ifdef FAAC_PRECISION_SINGLE
 #define MAGIC_NUMBER 0.4054f
+#define MAX_QUANT_LIMIT 165128.0f
 #else
 #define MAGIC_NUMBER 0.4054
+#define MAX_QUANT_LIMIT 165128.0
 #endif
 
 enum {

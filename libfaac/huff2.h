@@ -32,6 +32,8 @@ enum {
     HCB_NONE
 };
 
+#define MAX_HUFF_ESC_VAL 8191
+
 /* Scalefactor Management */
 enum {
     /* Baseline scalefactor value used in bitstream */
