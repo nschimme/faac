@@ -50,6 +50,9 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
 
+        if (tmp > (faac_real)MAX_HUFF_ESC_VAL)
+            tmp = (faac_real)MAX_HUFF_ESC_VAL;
+
         int q = (int)(tmp + magic);
         xi[cnt] = (val < 0) ? -q : q;
     }

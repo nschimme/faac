@@ -56,6 +56,9 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         x = _mm_sqrt_ps(x);
         x = _mm_add_ps(x, magic);
 
+        // Clamp to MAX_HUFF_ESC_VAL (8191)
+        x = _mm_min_ps(x, _mm_set1_ps((float)MAX_HUFF_ESC_VAL));
+
         // Convert to integer
         __m128i xi_vec = _mm_cvttps_epi32(x);
 
@@ -69,10 +72,14 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     // Safe scalar remainder loop for widths not multiple of 4
     for (; cnt < n; cnt++)
     {
-	faac_real val = xr[cnt];
+        faac_real val = xr[cnt];
         faac_real tmp = FAAC_FABS(val);
         tmp *= sfacfix;
         tmp = FAAC_SQRT(tmp * FAAC_SQRT(tmp));
+
+        if (tmp > (faac_real)MAX_HUFF_ESC_VAL)
+            tmp = (faac_real)MAX_HUFF_ESC_VAL;
+
         int q = (int)(tmp + (faac_real)MAGIC_NUMBER);
         xi[cnt] = (val < 0) ? -q : q;
     }

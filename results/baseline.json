@@ -1,0 +1,24 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_high_bonhemian_rhapsody.16b48k.wav": {
+      "mos": 4.643086,
+      "size": 322822,
+      "bitrate": 258.2576,
+      "bitrate_target": 256,
+      "time": 0.06012892723083496,
+      "md5": "c45981d573149cb62f5edfa8e86e74eb",
+      "thresh": 4.3,
+      "scenario": "music_high",
+      "filename": "bonhemian_rhapsody.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.2179121683334415,
+    "silence.wav": 2.3473748256665203,
+    "sine.wav": 3.1243319230000757,
+    "sweep.wav": 2.6116753106666692,
+    "overall": 2.825323556916677
+  },
+  "lib_size": 72584
+}

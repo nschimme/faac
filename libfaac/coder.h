@@ -98,7 +98,7 @@ typedef struct {
     } groups;
 
     /* worst case: one codeword with two escapes per two spectral lines */
-#define DATASIZE (3*FRAME_LEN/2)
+#define DATASIZE (4 * FRAME_LEN)
 
     struct {
         int data;
