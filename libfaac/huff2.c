@@ -46,15 +46,7 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static inline void get_huff_res(int data, int len, int *bits, int *datacnt, CoderInfo *coder)
-{
-    *bits += len;
-    if (coder)
-    {
-        coder->s[*datacnt].data = data;
-        coder->s[(*datacnt)++].len = len;
-    }
-}
+
 
 static int huffcode(int *qs /* quantized spectrum */,
                     int len,
@@ -66,23 +58,8 @@ static int huffcode(int *qs /* quantized spectrum */,
       book05, book06, book07, book08, book09, book10, book11};
     hcode16_t *book;
     int bits = 0, blen;
-    int ofs, *qp;
-    int data = 0;
+    int ofs, data = 0;
     int idx;
-    int datacnt = coder ? coder->datacnt : 0;
-
-    /* Safety checks hoisted out of the loop */
-    if (coder)
-    {
-        /* Worst case: two escape sequences and one 2-tuple codeword per 2 spectral lines */
-        /* Each 2 spectral lines can produce up to 3 codewords in the coder->s array */
-        int worst_case_len = (len / 2) * 3;
-        if (UNLIKELY(datacnt + worst_case_len > DATASIZE))
-        {
-            fprintf(stderr, "DATASIZE exceeded: truncation occurred!\n");
-            return -1;
-        }
-    }
 
     /* Codebook range check hoisted */
     if (bnum > 0 && bnum <= 10)
@@ -93,102 +70,186 @@ static int huffcode(int *qs /* quantized spectrum */,
     }
 
     book = hmap[bnum];
-    switch (bnum)
-    {
-    case 1:
-    case 2:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder);
-        }
-        break;
-    case 3:
-    case 4:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            int q0 = qs[ofs], q1 = qs[ofs+1], q2 = qs[ofs+2], q3 = qs[ofs+3];
-            int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
-            idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
-            blen = book[idx].len;
-            data = book[idx].data;
-            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
-            if (a2) { blen++; data = (data << 1) | (q2 < 0); }
-            if (a3) { blen++; data = (data << 1) | (q3 < 0); }
-            get_huff_res(data, blen, &bits, &datacnt, coder);
-        }
-        break;
-    case 5:
-    case 6:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 9 * qp[0] + qp[1] + 40;
-            get_huff_res(book[idx].data, book[idx].len, &bits, &datacnt, coder);
-        }
-        break;
-    case 7:
-    case 8:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            int q0 = qs[ofs], q1 = qs[ofs+1];
-            int a0 = abs(q0), a1 = abs(q1);
-            idx = 8 * a0 + a1;
-            blen = book[idx].len;
-            data = book[idx].data;
-            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
-            get_huff_res(data, blen, &bits, &datacnt, coder);
-        }
-        break;
-    case 9:
-    case 10:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            int q0 = qs[ofs], q1 = qs[ofs+1];
-            int a0 = abs(q0), a1 = abs(q1);
-            idx = 13 * a0 + a1;
-            blen = book[idx].len;
-            data = book[idx].data;
-            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
-            get_huff_res(data, blen, &bits, &datacnt, coder);
-        }
-        break;
-    case HCB_ESC:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            int q0 = qs[ofs], q1 = qs[ofs+1];
-            int a0 = abs(q0), a1 = abs(q1);
-
-            idx = 17 * min(a0, 16) + min(a1, 16);
-            blen = book[idx].len;
-            data = book[idx].data;
-            if (a0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (a1) { blen++; data = (data << 1) | (q1 < 0); }
-            get_huff_res(data, blen, &bits, &datacnt, coder);
-
-            if (a0 >= 16)
-            {
-                blen = escape(a0, &data);
-                get_huff_res(data, blen, &bits, &datacnt, coder);
-            }
-            if (a1 >= 16)
-            {
-                blen = escape(a1, &data);
-                get_huff_res(data, blen, &bits, &datacnt, coder);
-            }
-        }
-        break;
-    default:
-        fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
-        return -1;
-    }
 
     if (coder)
+    {
+        int datacnt = coder->datacnt;
+
+        /* Worst case buffer check: up to 3 codewords per 2 bins */
+        if (UNLIKELY(datacnt + (len / 2) * 3 > DATASIZE))
+        {
+            fprintf(stderr, "DATASIZE exceeded: truncation occurred!\n");
+            return -1;
+        }
+
+        switch (bnum)
+        {
+        case 1:
+        case 2:
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                idx = 27 * qs[ofs] + 9 * qs[ofs+1] + 3 * qs[ofs+2] + qs[ofs+3] + 40;
+                blen = book[idx].len;
+                bits += blen;
+                coder->s[datacnt].data = book[idx].data;
+                coder->s[datacnt++].len = blen;
+            }
+            break;
+        case 3:
+        case 4:
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                int q0 = qs[ofs], q1 = qs[ofs+1], q2 = qs[ofs+2], q3 = qs[ofs+3];
+                int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
+                idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+                blen = book[idx].len;
+                data = book[idx].data;
+                if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+                if (a1) { blen++; data = (data << 1) | (q1 < 0); }
+                if (a2) { blen++; data = (data << 1) | (q2 < 0); }
+                if (a3) { blen++; data = (data << 1) | (q3 < 0); }
+                bits += blen;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            break;
+        case 5:
+        case 6:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                idx = 9 * qs[ofs] + qs[ofs+1] + 40;
+                blen = book[idx].len;
+                bits += blen;
+                coder->s[datacnt].data = book[idx].data;
+                coder->s[datacnt++].len = blen;
+            }
+            break;
+        case 7:
+        case 8:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                int q0 = qs[ofs], q1 = qs[ofs+1];
+                int a0 = abs(q0), a1 = abs(q1);
+                idx = 8 * a0 + a1;
+                blen = book[idx].len;
+                data = book[idx].data;
+                if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+                if (a1) { blen++; data = (data << 1) | (q1 < 0); }
+                bits += blen;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            break;
+        case 9:
+        case 10:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                int q0 = qs[ofs], q1 = qs[ofs+1];
+                int a0 = abs(q0), a1 = abs(q1);
+                idx = 13 * a0 + a1;
+                blen = book[idx].len;
+                data = book[idx].data;
+                if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+                if (a1) { blen++; data = (data << 1) | (q1 < 0); }
+                bits += blen;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            break;
+        case HCB_ESC:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                int q0 = qs[ofs], q1 = qs[ofs+1];
+                int a0 = abs(q0), a1 = abs(q1);
+
+                idx = 17 * min(a0, 16) + min(a1, 16);
+                blen = book[idx].len;
+                data = book[idx].data;
+                if (a0) { blen++; data = (data << 1) | (q0 < 0); }
+                if (a1) { blen++; data = (data << 1) | (q1 < 0); }
+                bits += blen;
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+
+                if (a0 >= 16)
+                {
+                    blen = escape(a0, &data);
+                    bits += blen;
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
+                if (a1 >= 16)
+                {
+                    blen = escape(a1, &data);
+                    bits += blen;
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
+            }
+            break;
+        default:
+            return -1;
+        }
         coder->datacnt = datacnt;
+    }
+    else
+    {
+        switch (bnum)
+        {
+        case 1:
+        case 2:
+            for(ofs = 0; ofs < len; ofs += 4)
+                bits += book[27 * qs[ofs] + 9 * qs[ofs+1] + 3 * qs[ofs+2] + qs[ofs+3] + 40].len;
+            break;
+        case 3:
+        case 4:
+            for(ofs = 0; ofs < len; ofs += 4)
+            {
+                bits += book[27 * abs(qs[ofs]) + 9 * abs(qs[ofs+1]) + 3 * abs(qs[ofs+2]) + abs(qs[ofs+3])].len;
+                if (qs[ofs]) bits++;
+                if (qs[ofs+1]) bits++;
+                if (qs[ofs+2]) bits++;
+                if (qs[ofs+3]) bits++;
+            }
+            break;
+        case 5:
+        case 6:
+            for(ofs = 0; ofs < len; ofs += 2)
+                bits += book[9 * qs[ofs] + qs[ofs+1] + 40].len;
+            break;
+        case 7:
+        case 8:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                bits += book[8 * abs(qs[ofs]) + abs(qs[ofs+1])].len;
+                if (qs[ofs]) bits++;
+                if (qs[ofs+1]) bits++;
+            }
+            break;
+        case 9:
+        case 10:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                bits += book[13 * abs(qs[ofs]) + abs(qs[ofs+1])].len;
+                if (qs[ofs]) bits++;
+                if (qs[ofs+1]) bits++;
+            }
+            break;
+        case HCB_ESC:
+            for(ofs = 0; ofs < len; ofs += 2)
+            {
+                int a0 = abs(qs[ofs]), a1 = abs(qs[ofs+1]);
+                bits += book[17 * min(a0, 16) + min(a1, 16)].len;
+                if (a0) bits++;
+                if (a1) bits++;
+                if (a0 >= 16) bits += escape(a0, &data);
+                if (a1 >= 16) bits += escape(a1, &data);
+            }
+            break;
+        default:
+            return -1;
+        }
+    }
 
     return bits;
 }
