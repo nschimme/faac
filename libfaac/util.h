@@ -46,9 +46,6 @@ extern "C" {
 #define UNLIKELY(x) (x)
 #endif
 
-/**
- * Portable Count Leading Zeros (CLZ)
- */
 #ifdef __GNUC__
 #define CLZ(x) __builtin_clz(x)
 #else
