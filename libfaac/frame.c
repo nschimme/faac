@@ -67,9 +67,6 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (bitRate <= 16000) {
         /* Segment 1: Telephony (4kHz to 6kHz) */
         bw = 4000 + (bitRate / 8);
-        if (useSbr && sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) {
-            if (bw > SBR_SPEECH_CORE_BW_CAP) bw = SBR_SPEECH_CORE_BW_CAP;
-        }
     }
     else if (bitRate <= 32000) {
         /* Segment 2: Low-tier (6kHz to 11kHz)
@@ -95,8 +92,7 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
        For Iteration 13, we keep 100% core and let SBR be a "pure bonus" until we
        implement smarter bit allocation.
     */
-    /* Iteration 18: Reverted to 100% core bandwidth.
-       Pseudo-SBR must be a pure bonus to avoid regressions.
+    /* Pseudo-SBR is additive and should not sacrifice core bandwidth.
     */
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -610,7 +606,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         if (hEncoder->config.useSbr) {
             ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
-                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
+                           hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
         }
     }
 

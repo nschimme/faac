@@ -1,0 +1,24 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_Severance__1.31-1.51_.16b48k.wav": {
+      "mos": 2.761885,
+      "size": 80181,
+      "bitrate": 64.1448,
+      "bitrate_target": 64,
+      "time": 0.07364416122436523,
+      "md5": "4b7f09b80e7b7390dfe1bdff02efd10c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Severance__1.31-1.51_.16b48k.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.113384177999251,
+    "silence.wav": 2.15188183833258,
+    "sine.wav": 2.5601469313332927,
+    "sweep.wav": 2.225712976000068,
+    "overall": 2.512781480916298
+  },
+  "lib_size": 76824
+}

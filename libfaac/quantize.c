@@ -92,7 +92,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   const faac_real *xr;
   int win;
   int enrgcnt = 0;
-  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  /* Use core bandwidth for total energy calculation to avoid starvation by SBR bands. */
+  int total_len = coderInfo->sfb_offset[coderInfo->sbr_start_sfb > 0 ? coderInfo->sbr_start_sfb : coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
   {
@@ -166,6 +167,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     }
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    /* Iteration 26: Massive Quality Bias.
+       A factor of 100x ensures SBR bands are only coded if bits are extremely
+       abundant, preventing any regression in the critical core. */
+    if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
+        target *= 100.0f;
+    }
 
     bandqual[sfb] = target * quality;
   }

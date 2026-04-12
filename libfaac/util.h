@@ -47,6 +47,15 @@ extern "C" {
 #define FreeMemory(block) free(block)
 #define SetMemory(block, value, size) memset(block, value, size)
 
+/* Branch prediction macros */
+#if defined(__GNUC__) || defined(__clang__)
+#define LIKELY(x)   __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define LIKELY(x)   (x)
+#define UNLIKELY(x) (x)
+#endif
+
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
