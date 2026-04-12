@@ -31,20 +31,12 @@ extern "C" {
 #define SBR_LOW_BR_LIMIT  24000
 #define SBR_MID_BR_LIMIT  48000
 
-/* Sample rate limit for forcing SBR (Speech optimization) */
-#define SBR_SPEECH_SAMPLERATE_MAX 16000
-
-/* Core bandwidth cap for speech at 16kHz to force SBR lift.
-   Set to 5.5kHz to leave room for 2.5kHz of SBR extension up to Nyquist (8kHz).
-*/
-#define SBR_SPEECH_CORE_BW_CAP 5500
-
 /* Tonality Gating constants */
 #define SBR_TONAL_THRESH 0.15f
 #define SBR_TONAL_ATTEN 0.10f
 
 /* Gain constants */
-#define SBR_GAIN_ROLLOFF 0.40f
+#define SBR_GAIN_ROLLOFF 0.30f
 #define SBR_HOLE_NOISE 0.00005f
 
 void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo);

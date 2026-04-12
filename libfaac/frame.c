@@ -32,7 +32,6 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
-#include "huff2.h"
 #include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
@@ -87,13 +86,6 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 20000 + ((bitRate - 128000) / 16);
         if (bw > 20000) bw = 20000;
     }
-
-    /* If SBR is enabled, we used to reduce core bandwidth, but it led to regressions.
-       For Iteration 13, we keep 100% core and let SBR be a "pure bonus" until we
-       implement smarter bit allocation.
-    */
-    /* Pseudo-SBR is additive and should not sacrifice core bandwidth.
-    */
 
     /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;

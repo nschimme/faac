@@ -43,12 +43,7 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     core_bins = coder->sfb_offset[coder->sfbn];
     coder->sbr_start_sfb = coder->sfbn;
 
-    /* If core bandwidth is already high, SBR is unnecessary and bit-hungry.
-       Limit SBR to cases where core is < 18kHz (approx 768 bins at 48k).
-    */
-    if (core_bins > 768)
-        return;
-
+    /* Iteration 34: Ensure SBR is active for all low-bitrate streams including VOIP. */
     if (core_bins >= FRAME_LEN)
         return;
 
@@ -62,15 +57,9 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (sbr_bins <= 0)
         return;
 
-    /* 1. Combined analysis pass.
-       Calculates SFM, upper core energy, and mid core energy.
-    */
+    /* 1. Calculate SFM for tonality gating. */
     double am = 0.0, gm = 0.0;
-    float upper_core_en = 0.0f;
-    float mid_core_en = 0.0f;
     int sfm_start = core_bins / 2;
-    int upper_start = coder->sfb_offset[coder->sfbn > 1 ? coder->sfbn - 1 : 0];
-    int mid_start = coder->sfb_offset[coder->sfbn > 2 ? coder->sfbn - 2 : 0];
     int analysis_len = core_bins - sfm_start;
 
     if (analysis_len > 0) {
@@ -79,8 +68,6 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
             double dval = (double)val + 1e-12;
             am += dval;
             gm += log(dval);
-            if (i >= upper_start) upper_core_en += val;
-            else if (i >= mid_start) mid_core_en += val;
         }
         am /= analysis_len;
         gm = exp(gm / analysis_len);
@@ -96,28 +83,8 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     }
     if (patch_offset < 0) patch_offset = 0;
 
-    float patch_en = 0.0f;
-    int patch_check_len = (sbr_bins < 64 ? sbr_bins : 64);
-    for (i = 0; i < patch_check_len; i++) {
-        patch_en += FAAC_FABS(freq[patch_offset + i]);
-    }
-
-    /* 3. Calculate optimized combined gain factors. */
-    float slope_adj = 1.0f;
-    if (mid_core_en > 1e-6f) {
-        slope_adj = upper_core_en / (mid_core_en + 1e-12f);
-        if (slope_adj > 1.5f) slope_adj = 1.5f;
-        if (slope_adj < 0.5f) slope_adj = 0.5f;
-    }
-
-    float energy_norm = 1.0f;
-    if (patch_en > 1e-6f) {
-        energy_norm = upper_core_en / (patch_en + 1e-12f);
-        if (energy_norm > 1.5f) energy_norm = 1.5f;
-        if (energy_norm < 0.7f) energy_norm = 0.7f;
-    }
-
-    float final_gain = SBR_GAIN_ROLLOFF * slope_adj * energy_norm;
+    /* 3. Combined gain. Simplified for Iteration 34. */
+    float final_gain = SBR_GAIN_ROLLOFF;
 
     if (sfm < SBR_TONAL_THRESH) {
         final_gain *= SBR_TONAL_ATTEN;

@@ -1,0 +1,51 @@
+--- frontend/main.c
++++ frontend/main.c
+@@ -100,7 +100,8 @@
+     HELP_MP4,
+     HELP_ADVANCED,
+     OPT_JOINT,
+-    OPT_PNS
++    OPT_PNS,
++    OPT_SBR
+ };
+
+ typedef struct {
+@@ -434,6 +435,7 @@
+     faacEncConfigurationPtr myFormat;
+     unsigned int mpegVersion = MPEG4;
+     unsigned int objectType = LOW;
++    int useSbr = 1;
+     int jointmode = -1;
+     int pnslevel = -1;
+     static int useTns = 0;
+@@ -525,6 +527,8 @@
+             {"raw", 0, 0, 'r'},
+             {"joint", required_argument, 0, OPT_JOINT},
+             {"pns", required_argument, 0, OPT_PNS},
++            {"sbr", 0, 0, OPT_SBR},
++            {"no-sbr", 0, 0, 'n'},
+             {"cutoff", 1, 0, 'c'},
+             {"quality", 1, 0, 'q'},
+             {"pcmraw", 0, 0, 'P'},
+@@ -794,6 +798,12 @@
+         case OPT_PNS:
+             pnslevel = atoi(optarg);
+             break;
++        case OPT_SBR:
++            useSbr = 1;
++            break;
++        case 'n':
++            useSbr = 0;
++            break;
+         case '?':
+         default:
+             help('?');
+@@ -945,6 +955,8 @@
+
+     if (pnslevel >= 0)
+         myFormat->pnslevel = pnslevel;
++    if (useSbr >= 0)
++        myFormat->useSbr = useSbr;
+     if (quantqual > 0)
+     {
+         myFormat->quantqual = quantqual;
