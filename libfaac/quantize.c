@@ -168,11 +168,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Final Strategy: Minimal Safety Bias.
-       A factor of 2.0x increase in masking threshold ensures the core is
-       always prioritized while still allowing SBR to contribute to the lift. */
+    /* Iteration 30: Protective Bias.
+       A factor of 30x increase in masking threshold ensures the core bit budget
+       is fully protected while still allowing SBR to fill the highest frequencies. */
     if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
-        target *= 2.0f;
+        target *= 30.0f;
     }
 
     bandqual[sfb] = target * quality;

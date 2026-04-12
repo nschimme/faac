@@ -40,14 +40,14 @@ extern "C" {
 #define SBR_SPEECH_CORE_BW_CAP 5500
 
 /* Tonality Gating constants */
-#define SBR_TONAL_THRESH 0.12f
-#define SBR_TONAL_ATTEN 0.20f
+#define SBR_TONAL_THRESH 0.15f
+#define SBR_TONAL_ATTEN 0.15f
 
 /* Gain constants */
-#define SBR_GAIN_ROLLOFF 0.50f
+#define SBR_GAIN_ROLLOFF 0.40f
 #define SBR_HOLE_NOISE 0.00005f
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, unsigned long bitRatePerChannel, SR_INFO *srInfo);
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo);
 
 #ifdef __cplusplus
 }

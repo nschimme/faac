@@ -23,7 +23,7 @@
 #include "util.h"
 #include "huff2.h"
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, unsigned long bitRatePerChannel, SR_INFO *srInfo)
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo)
 {
     int core_bins;
     int sbr_bins;
@@ -42,6 +42,12 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, unsigned long bitRatePerC
 
     core_bins = coder->sfb_offset[coder->sfbn];
     coder->sbr_start_sfb = coder->sfbn;
+
+    /* If core bandwidth is already high, SBR is unnecessary and bit-hungry.
+       Limit SBR to cases where core is < 16kHz (approx 680 bins at 48k).
+    */
+    if (core_bins > 680)
+        return;
 
     if (core_bins >= FRAME_LEN)
         return;

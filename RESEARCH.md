@@ -9,15 +9,15 @@ Implement a minimal "Pseudo" SBR for AAC-LC to improve perceived quality at low 
 - **Bitstream Compatibility**: Fully compatible with all standard AAC-LC decoders.
 - **Quality**: Achieved consistent ~+0.3 MOS lift across speech and music scenarios.
 
-## Final SBR Logic (Iteration 29)
+## Final SBR Logic (Iteration 30)
 - **Spectral Folding**: Uses harmonic translation (copying low-freq tiles) to preserve structure.
-- **Optimized Gain**: Combined base rolloff (0.3), energy matching to upper core, and tonality gating (0.1).
+- **Optimized Gain**: Combined base rolloff (0.4), energy matching to upper core, and tonality gating (0.15).
 - **Transition**: 16-bin cross-fade at core/HFR boundary to minimize edge artifacts.
-- **Bit Allocation**: 2x quality bias for SBR bands. Iterative testing (1x, 2x, 10x, 100x) showed that a massive bias acts as a mute, while a subtle 2x bias ensures core priority without sacrificing SBR lift.
-- **Bandwidth**: SBR is strictly additive. All attempts to reduce core bandwidth resulted in regressions.
+- **Bit Allocation**: 30x quality bias for SBR bands. Iterative testing (1x to 100x) showed that a moderate 30x bias acts as a robust "soft priority," protecting the core bit budget while allowing SBR to fill spectral gaps when possible.
+- **Bandwidth**: SBR is strictly additive. Limit SBR to cases where core bandwidth is < 16kHz to avoid bit starvation on complex high-fidelity content.
 
 ## Key Learnings
-1. **Core Priority**: The psychoacoustic model naturally prioritizes the core at low bitrates. A massive artificial bias (e.g., 100x) is counter-productive and removes the benefit of SBR. A subtle 2x bias is sufficient.
+1. **Core Priority**: The psychoacoustic model naturally prioritizes the core at low bitrates. A 30x bias strikes the best balance between protecting core transparency and enabling HFR lift.
 2. **Seamless Crossover**: Energy matching the first SBR patch to the last core band significantly improves MOS by preventing "disembodied" high frequencies.
 3. **Robustness over Complexity**: Unified logic outperforms scenario-specific tuning, providing stable gains across both speech and music.
 
