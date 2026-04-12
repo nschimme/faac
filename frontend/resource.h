@@ -19,6 +19,7 @@
 #define IDC_USELFE2                     1013
 #define IDC_USELFE                      1013
 #define IDC_BWCTL                       1014
+#define IDC_USESBR                      1015
 
 #define IDC_COMPILEDATE                 1018
 #define IDC_MPEGVERSION                 1020

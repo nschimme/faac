@@ -91,6 +91,14 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         if (bw > 20000) bw = 20000;
     }
 
+    /* If SBR is enabled, we used to reduce core bandwidth, but it led to regressions.
+       For Iteration 13, we keep 100% core and let SBR be a "pure bonus" until we
+       implement smarter bit allocation.
+    */
+    /* Iteration 18: Reverted to 100% core bandwidth.
+       Pseudo-SBR must be a pure bonus to avoid regressions.
+    */
+
     /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;
 }
@@ -302,7 +310,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
-    hEncoder->config.useSbr = 0;
+    hEncoder->config.useSbr = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate, hEncoder->config.useSbr);
     hEncoder->config.quantqual = 0;
@@ -550,6 +558,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         channelInfo[channel].msInfo.is_present = 0;
+        coderInfo[channel].sbr_start_sfb = 0;
 
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;

@@ -23,16 +23,13 @@
 #include "util.h"
 #include "huff2.h"
 
-/**
- * Calculates the Spectral Flatness Measure (SFM).
- */
 static float CalcSFM(faac_real *freq, int start, int end)
 {
     double am = 0.0, gm = 0.0;
     int n = end - start;
     int i;
 
-    if (n <= 0) return 0.0f;
+    if (n <= 0) return 1.0f;
 
     for (i = start; i < end; i++) {
         double val = (double)FAAC_FABS(freq[i]) + 1e-12;
@@ -45,10 +42,6 @@ static float CalcSFM(faac_real *freq, int start, int end)
     return (float)(gm / (am + 1e-12));
 }
 
-/**
- * Applies Pseudo-SBR (Spectral Band Replication) at the encoder side.
- * Reconstructs high frequencies by folding (translating) the core spectrum.
- */
 void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo)
 {
     int core_bins;
@@ -63,9 +56,11 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
         return;
 
     core_bins = coder->sfb_offset[coder->sfbn];
+    coder->sbr_start_sfb = coder->sfbn;
     if (core_bins >= FRAME_LEN)
         return;
 
+    /* Adaptive expansion fraction based on bitrate */
     if (bitRatePerChannel < SBR_LOW_BR_LIMIT)
         expansion_fraction = 0.50f;
     else if (bitRatePerChannel < SBR_MID_BR_LIMIT)
@@ -80,37 +75,85 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (sbr_bins <= 0)
         return;
 
+    /* Tonality Gating: check core for tonality */
     sfm = CalcSFM(freq, core_bins / 2, core_bins);
 
-    /* 1. Spectral Folding (Translation): Better for speech harmonics */
+    /* 1. Spectral Folding (Translation): copy low-freq tile to high-freq.
+       Better for preserving harmonic structures in speech.
+    */
     patch_offset = core_bins / 2;
     if (patch_offset + sbr_bins > core_bins) {
         patch_offset = core_bins - sbr_bins;
     }
     if (patch_offset < 0) patch_offset = 0;
 
+    /* Iteration 15/19: Adaptive Slope and Energy Matching.
+       Measure energy trend of the upper core to ensure a seamless transition.
+    */
+    float upper_core_en = 0.0f;
+    float mid_core_en = 0.0f;
+    int upper_start = coder->sfb_offset[coder->sfbn > 1 ? coder->sfbn - 1 : 0];
+    int mid_start = coder->sfb_offset[coder->sfbn > 2 ? coder->sfbn - 2 : 0];
+
+    for (i = upper_start; i < core_bins; i++) upper_core_en += FAAC_FABS(freq[i]);
+    for (i = mid_start; i < upper_start; i++) mid_core_en += FAAC_FABS(freq[i]);
+
+    float slope_adj = 1.0f;
+    if (mid_core_en > 1e-6f) {
+        slope_adj = upper_core_en / (mid_core_en + 1e-12f);
+        if (slope_adj > 1.5f) slope_adj = 1.5f;
+        if (slope_adj < 0.5f) slope_adj = 0.5f;
+    }
+
+    float patch_en = 0.0f;
+    for (i = 0; i < (sbr_bins < 64 ? sbr_bins : 64); i++) {
+        patch_en += FAAC_FABS(freq[patch_offset + i]);
+    }
+
+    float energy_norm = 1.0f;
+    if (patch_en > 1e-6f) {
+        energy_norm = upper_core_en / (patch_en + 1e-12f);
+        if (energy_norm > 2.0f) energy_norm = 2.0f;
+        if (energy_norm < 0.5f) energy_norm = 0.5f;
+    }
+
     for (i = 0; i < sbr_bins; i++) {
         dest_idx = core_bins + i;
         if (dest_idx >= FRAME_LEN) break;
 
-        freq[dest_idx] = freq[patch_offset + i] * SBR_GAIN_ROLLOFF;
+        /* Combined gain from Iteration 12, 15, and 19 */
+        float gain = SBR_GAIN_ROLLOFF * slope_adj * energy_norm;
+        if (sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) {
+            gain *= 1.4f; /* Boost fricatives */
+        }
 
+        freq[dest_idx] = freq[patch_offset + i] * gain;
+
+        /* Tonality Gating: attenuate if tonal to prevent metallic ringing.
+           Iteration 16: Boost noise-like components to improve texture.
+        */
         if (sfm < SBR_TONAL_THRESH) {
-            float atten = (sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) ? (SBR_TONAL_ATTEN * 0.5f) : SBR_TONAL_ATTEN;
+            float atten = (sampleRate <= SBR_SPEECH_SAMPLERATE_MAX) ? (SBR_TONAL_ATTEN * 1.5f) : SBR_TONAL_ATTEN;
             freq[dest_idx] *= atten;
+        } else {
+            freq[dest_idx] *= 1.2f;
+        }
+
+        /* Inject very low noise floor to maintain texture in SBR region */
+        if (FAAC_FABS(freq[dest_idx]) < 1e-12f) {
+            freq[dest_idx] = (i % 2 ? 1.0f : -1.0f) * SBR_HOLE_NOISE;
         }
     }
 
-    /* 2. Transition Smoothing */
+    /* 2. Transition Smoothing (16-bin cross-fade) */
     for (i = 0; i < 16 && (core_bins + i < FRAME_LEN); i++) {
         float fade = (float)(i + 1) / 17.0f;
         freq[core_bins + i] *= fade;
     }
 
-    /**
-     * 3. Update Scale Factor Bands (SFBs)
-     * Use standard band definitions for bitstream compatibility.
-     */
+    /* 3. Minimal Noise Filling in Core disabled to save bits. */
+
+    /* 4. Extend SFBs up to Nyquist following standard definitions */
     int target_bins = core_bins + sbr_bins;
     while (coder->sfbn < srInfo->num_cb_long && coder->sfb_offset[coder->sfbn] < target_bins) {
         int next_offset = coder->sfb_offset[coder->sfbn] + srInfo->cb_width_long[coder->sfbn];

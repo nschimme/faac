@@ -1,0 +1,24 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_15_CHOP_FA.wav": {
+      "mos": 4.248058,
+      "size": 15731,
+      "bitrate": 15.765487002818666,
+      "bitrate_target": 16,
+      "time": 0.025189638137817383,
+      "md5": "e0c2dbfce87122dc1556d266e7ab5a86",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_15_CHOP_FA.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.280085955332955,
+    "silence.wav": 2.3372079673335975,
+    "sine.wav": 2.614503462000357,
+    "sweep.wav": 2.349687307666803,
+    "overall": 2.6453711730834284
+  },
+  "lib_size": 76864
+}

@@ -90,6 +90,7 @@ typedef struct {
     int book[MAX_SCFAC_BANDS];
     int bandcnt;
     int sfbn;
+    int sbr_start_sfb;
     int sfb_offset[NSFB_LONG + 1];
 
     struct {
