@@ -168,11 +168,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 26: Massive Quality Bias.
-       A factor of 100x ensures SBR bands are only coded if bits are extremely
-       abundant, preventing any regression in the critical core. */
+    /* Final Strategy: Minimal Safety Bias.
+       A factor of 2.0x increase in masking threshold ensures the core is
+       always prioritized while still allowing SBR to contribute to the lift. */
     if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
-        target *= 100.0f;
+        target *= 2.0f;
     }
 
     bandqual[sfb] = target * quality;
@@ -278,6 +278,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
     faac_real bandmaxe[MAX_SCFAC_BANDS];
+    memset(bandlvl, 0, sizeof(bandlvl));
+    memset(bandenrg, 0, sizeof(bandenrg));
+    memset(bandmaxe, 0, sizeof(bandmaxe));
     int cnt;
     faac_real *gxr;
 
