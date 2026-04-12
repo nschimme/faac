@@ -1,0 +1,46 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_02_CHOP_FA.wav": {
+      "mos": 4.647697,
+      "size": 17770,
+      "bitrate": 16.86108228317272,
+      "bitrate_target": 16,
+      "time": 0.022464752197265625,
+      "md5": "5e014de1bacf16d2b15e756dced2bb90",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_02_CHOP_FA.wav"
+    },
+    "voip_C_03_CHOP_FA.wav": {
+      "mos": 4.51368,
+      "size": 19151,
+      "bitrate": 17.204836238051293,
+      "bitrate_target": 16,
+      "time": 0.02558302879333496,
+      "md5": "6fc62c756cc5e62c1a398bff2530f8c5",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_03_CHOP_FA.wav"
+    },
+    "voip_C_01_CHOP_FA.wav": {
+      "mos": 4.625435,
+      "size": 18190,
+      "bitrate": 16.82640302218479,
+      "bitrate_target": 16,
+      "time": 0.01512765884399414,
+      "md5": "7926e7908647f9d4fcc0dbb85fe7f462",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_FA.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.5817278559989063,
+    "silence.wav": 2.88777726633513,
+    "sine.wav": 3.0533714096697318,
+    "sweep.wav": 2.5929742130004647,
+    "overall": 3.028962686251058
+  },
+  "lib_size": 76824
+}

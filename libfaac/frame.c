@@ -298,7 +298,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
-    hEncoder->config.useSbr = 1;
+    hEncoder->config.useSbr = SBR_AUTO;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate, hEncoder->config.useSbr);
     hEncoder->config.quantqual = 0;
@@ -596,10 +596,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	}
 
     for (channel = 0; channel < numChannels; channel++) {
-        if (hEncoder->config.useSbr) {
-            ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
-                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
-        }
+        ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
+                       hEncoder->sampleRate, hEncoder->config.bitRate / numChannels,
+                       hEncoder->srInfo, hEncoder->config.useSbr);
     }
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,

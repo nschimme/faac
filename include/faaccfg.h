@@ -53,6 +53,11 @@ enum stream_format
 
 enum {JOINT_NONE = 0, JOINT_MS, JOINT_IS};
 
+/* SBR Modes */
+#define SBR_OFF  0
+#define SBR_ON   1
+#define SBR_AUTO -1
+
 #pragma pack(push, 1)
 typedef struct faacEncConfiguration
 {

@@ -434,7 +434,7 @@ int main(int argc, char *argv[])
     faacEncConfigurationPtr myFormat;
     unsigned int mpegVersion = MPEG4;
     unsigned int objectType = LOW;
-    int useSbr = 1;
+    int useSbr = SBR_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
@@ -955,7 +955,7 @@ int main(int argc, char *argv[])
 
     if (pnslevel >= 0)
         myFormat->pnslevel = pnslevel;
-    if (useSbr >= 0)
+    if (useSbr >= -1)
         myFormat->useSbr = useSbr;
     if (quantqual > 0)
     {
@@ -1029,7 +1029,7 @@ int main(int argc, char *argv[])
     switch (objectType)
     {
     case LOW:
-        fprintf(stderr, "Low Complexity%s", myFormat->useSbr ? " + SBR" : "");
+        fprintf(stderr, "Low Complexity%s", myFormat->useSbr == SBR_ON ? " + SBR" : (myFormat->useSbr == SBR_AUTO ? " + SBR (auto)" : ""));
         break;
     case MAIN:
         fprintf(stderr, "Main");

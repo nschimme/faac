@@ -36,10 +36,10 @@ extern "C" {
 #define SBR_TONAL_ATTEN 0.10f
 
 /* Gain constants */
-#define SBR_GAIN_ROLLOFF 0.30f
+#define SBR_GAIN_ROLLOFF 0.40f
 #define SBR_HOLE_NOISE 0.00005f
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo);
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo, int useSbr);
 
 #ifdef __cplusplus
 }

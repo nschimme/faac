@@ -168,12 +168,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 34: Absolute Core Priority.
-       SBR bands are given a minimal quality target (0.01x) to ensure the
-       limited bit budget is exclusively spent on the core first.
+    /* Iteration 35: Rebalanced Priority.
+       A 0.5x quality target for SBR bands provides a good balance:
+       it prioritizes the core while still allowing enough bits for
+       synthetic HF to be perceptually significant.
     */
     if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
-        target *= 0.01f;
+        target *= 0.5f;
     }
 
     bandqual[sfb] = target * quality;
