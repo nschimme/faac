@@ -44,9 +44,9 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     coder->sbr_start_sfb = coder->sfbn;
 
     /* If core bandwidth is already high, SBR is unnecessary and bit-hungry.
-       Limit SBR to cases where core is < 16kHz (approx 680 bins at 48k).
+       Limit SBR to cases where core is < 18kHz (approx 768 bins at 48k).
     */
-    if (core_bins > 680)
+    if (core_bins > 768)
         return;
 
     if (core_bins >= FRAME_LEN)

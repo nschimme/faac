@@ -9,17 +9,28 @@ Implement a minimal "Pseudo" SBR for AAC-LC to improve perceived quality at low 
 - **Bitstream Compatibility**: Fully compatible with all standard AAC-LC decoders.
 - **Quality**: Achieved consistent ~+0.3 MOS lift across speech and music scenarios.
 
-## Final SBR Logic (Iteration 30)
-- **Spectral Folding**: Uses harmonic translation (copying low-freq tiles) to preserve structure.
-- **Optimized Gain**: Combined base rolloff (0.4), energy matching to upper core, and tonality gating (0.15).
-- **Transition**: 16-bin cross-fade at core/HFR boundary to minimize edge artifacts.
-- **Bit Allocation**: 30x quality bias for SBR bands. Iterative testing (1x to 100x) showed that a moderate 30x bias acts as a robust "soft priority," protecting the core bit budget while allowing SBR to fill spectral gaps when possible.
-- **Bandwidth**: SBR is strictly additive. Limit SBR to cases where core bandwidth is < 16kHz to avoid bit starvation on complex high-fidelity content.
+## Iterations
+| Iteration | Description | MOS Delta (voip) | MOS Delta (music_low) | Throughput Δ |
+|-----------|-------------|------------------|-----------------------|--------------|
+| 0 | Baseline | 0.000 | 0.000 | 0.0% |
+| 11 | Initial Folding/Mirroring Refined | +0.000 | +0.000 | -4.6% |
+| 13 | Bandwidth Recovery & Starvation Check | +0.150 | -0.850 | -5.2% |
+| 14 | Quality Bias Correction (25x - Incorrect) | +0.220 | +0.450 | -5.8% |
+| 26 | Starvation Bias (100x - Starving core) | +0.050 | +0.100 | -5.5% |
+| 30 | Starvation Bias (30x - Starving core) | +0.000 | +0.200 | -5.8% |
+| 31 | Corrected Quality Target (0.05x) | +0.350 | +0.400 | -6.2% |
 
-## Key Learnings
-1. **Core Priority**: The psychoacoustic model naturally prioritizes the core at low bitrates. A 30x bias strikes the best balance between protecting core transparency and enabling HFR lift.
-2. **Seamless Crossover**: Energy matching the first SBR patch to the last core band significantly improves MOS by preventing "disembodied" high frequencies.
-3. **Robustness over Complexity**: Unified logic outperforms scenario-specific tuning, providing stable gains across both speech and music.
+## Iteration 31 Analysis: The Bias Inversion Discovery
+Detailed analysis of the FAAC bit allocator revealed that the `target` variable in `bmask` represents a **perceptual quality target (SMR)**, not a masking threshold.
+- Previous iterations used multipliers > 1.0 (e.g., 30x, 100x), which erroneously commanded the encoder to spend **more** bits on synthetic SBR bands, starving the core.
+- Iteration 31 uses a multiplier of **0.05x** for SBR bands. This tells the encoder that a much lower quality is acceptable for the synthetic HF region, successfully prioritizing the core bit budget.
+- This correction recovered the full +0.3 MOS lift for `voip` and fixed regressions in music.
+
+## Final SBR Logic
+- **Spectral Folding**: Harmonic translation from core.
+- **Additive SBR**: 100% core preserved; SBR limited to streams with < 18kHz core.
+- **Corrected Bit Priority**: 0.05x quality target for SBR bands.
+- **Transition**: 16-bin cross-fade.
 
 ## Conclusion
-The implementation of Pseudo-SBR in FAAC successfully provides a significant perceptual lift for low-bitrate audio by intelligently filling spectral "holes" without compromising core transparency.
+The implementation now correctly leverages the psychoacoustic model to fill spectral gaps with low-priority synthetic content, providing a significant and robust quality boost.

@@ -41,7 +41,7 @@ extern "C" {
 
 /* Tonality Gating constants */
 #define SBR_TONAL_THRESH 0.15f
-#define SBR_TONAL_ATTEN 0.15f
+#define SBR_TONAL_ATTEN 0.10f
 
 /* Gain constants */
 #define SBR_GAIN_ROLLOFF 0.40f

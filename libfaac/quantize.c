@@ -168,11 +168,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 30: Protective Bias.
-       A factor of 30x increase in masking threshold ensures the core bit budget
-       is fully protected while still allowing SBR to fill the highest frequencies. */
+    /* Iteration 31: Corrected SBR Priority.
+       SBR bands are given a much lower quality target (0.05x) to ensure the
+       limited bit budget is spent on the core first. This is critical for 16kbps voip.
+    */
     if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
-        target *= 30.0f;
+        target *= 0.05f;
     }
 
     bandqual[sfb] = target * quality;
