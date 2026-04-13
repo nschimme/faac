@@ -47,6 +47,33 @@ extern "C" {
 #define FreeMemory(block) free(block)
 #define SetMemory(block, value, size) memset(block, value, size)
 
+/* Branch prediction macros */
+#if defined(__GNUC__) || defined(__clang__)
+#define LIKELY(x)   __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define LIKELY(x)   (x)
+#define UNLIKELY(x) (x)
+#endif
+
+/* CLZ: Count Leading Zeros wrapper */
+#if defined(__GNUC__) || defined(__clang__)
+static inline int CLZ(unsigned int x) {
+    return x ? __builtin_clz((unsigned)x) : 32;
+}
+#else
+static inline int CLZ(unsigned int x) {
+    int n = 0;
+    if (x == 0) return 32;
+    if (x <= 0x0000FFFF) { n += 16; x <<= 16; }
+    if (x <= 0x00FFFFFF) { n += 8; x <<= 8; }
+    if (x <= 0x0FFFFFFF) { n += 4; x <<= 4; }
+    if (x <= 0x3FFFFFFF) { n += 2; x <<= 2; }
+    if (x <= 0x7FFFFFFF) { n += 1; }
+    return n;
+}
+#endif
+
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();

@@ -32,6 +32,8 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "huff2.h"
+#include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -55,7 +57,7 @@ static const psymodellist_t psymodellist[] = {
 
 static SR_INFO srInfo[12+1];
 
-static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
+static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate, int useSbr)
 {
     const unsigned int nyquist = sampleRate / 2;
     unsigned int bw;
@@ -81,9 +83,19 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Segment 5: Transparency plateau (24kHz+) */
+        bw = 24000 + ((bitRate - 128000) / 16);
+        if (bw > 24000) bw = 24000;
+    }
+
+    if (useSbr) {
+        /* Pseudo-SBR core bandwidth reduction to allow bit redistribution.
+           Iteration 31 found that bits saved here significantly improve SBR lift.
+           SBR is disabled for <= 16kHz, so we only reduce BW above that.
+        */
+        if (sampleRate > 16000) {
+            bw = (bw * 4) / 5;
+        }
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -192,7 +204,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (config->bitRate && !config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, config->useSbr);
 
         if (!config->quantqual)
         {
@@ -209,7 +221,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate, config->useSbr);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
@@ -234,6 +246,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->config.useSbr = config->useSbr;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
     CalcBW(&hEncoder->config.bandWidth,
@@ -296,8 +309,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
+    hEncoder->config.useSbr = 1;
     hEncoder->config.bitRate = 64000;
-    hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
+    hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate, hEncoder->config.useSbr);
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
@@ -543,6 +557,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         channelInfo[channel].msInfo.is_present = 0;
+        coderInfo[channel].sbr_start_sfb = 0;
 
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
@@ -590,6 +605,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                     coderInfo[channel].sfbn = 3;
 		}
 	}
+
+    for (channel = 0; channel < numChannels; channel++) {
+        if (hEncoder->config.useSbr) {
+            ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
+                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
+        }
+    }
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode);

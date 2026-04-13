@@ -92,7 +92,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   const faac_real *xr;
   int win;
   int enrgcnt = 0;
-  int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
+  /* Use core bandwidth for total energy calculation to avoid starvation by SBR bands. */
+  int total_len = coderInfo->sfb_offset[coderInfo->sbr_start_sfb > 0 ? coderInfo->sbr_start_sfb : coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
   {
@@ -167,6 +168,14 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    /* Iteration 31: Corrected SBR Priority.
+       SBR bands are given a much lower quality target (0.01x) to ensure the
+       limited bit budget is spent on the core first. This is critical for 16kbps voip.
+    */
+    if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
+        target *= 0.01f;
+    }
+
     bandqual[sfb] = target * quality;
   }
 }
@@ -192,7 +201,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sfac;
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -225,7 +234,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / (rmsx + 1e-12)) * sfstep);
 
       if ((SF_OFFSET - sfac) < SF_MIN)
           sfacfix = 0.0;
@@ -237,8 +246,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
            * clamp gain and re-sync the integer scalefactor to prevent overflow. */
           if (sfacfix * bandmaxe[sb] > max_quant_limit)
           {
-              sfacfix = max_quant_limit / bandmaxe[sb];
-              sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix) * sfstep);
+              sfacfix = max_quant_limit / (bandmaxe[sb] + 1e-12);
+              sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix + 1e-12) * sfstep);
               /* Re-derive gain from the floored scalefactor to ensure bit-exact
                * sync with the decoder's inverse quantizer. */
               sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -270,6 +279,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
     faac_real bandmaxe[MAX_SCFAC_BANDS];
+    memset(bandlvl, 0, sizeof(bandlvl));
+    memset(bandenrg, 0, sizeof(bandenrg));
+    memset(bandmaxe, 0, sizeof(bandmaxe));
     int cnt;
     faac_real *gxr;
 

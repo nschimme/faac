@@ -22,7 +22,7 @@
 #ifndef _FAACCFG_H_
 #define _FAACCFG_H_
 
-#define FAAC_CFG_VERSION 105
+#define FAAC_CFG_VERSION 106
 
 /* MPEG ID's */
 #define MPEG2 1
@@ -127,6 +127,7 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+    int useSbr;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)
