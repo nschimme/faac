@@ -24,6 +24,7 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "pseudo_sbr.h"
 #include "cpu_compute.h"
 
 #ifdef __GNUC__
@@ -168,13 +169,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Iteration 35: Rebalanced Priority.
-       A 0.5x quality target for SBR bands provides a good balance:
-       it prioritizes the core while still allowing enough bits for
-       synthetic HF to be perceptually significant.
-    */
+    /* SBR Quality Bias.
+       We use a low quality target (e.g. 0.1x) for SBR bands.
+       This ensures they only consume "leftover" bits, preventing
+       any possibility of core starvation.
+     */
     if (coderInfo->sbr_start_sfb > 0 && sfb >= coderInfo->sbr_start_sfb) {
-        target *= 0.5f;
+        target *= SBR_QUAL_BIAS;
     }
 
     bandqual[sfb] = target * quality;

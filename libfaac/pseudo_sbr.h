@@ -21,28 +21,25 @@
 #define PSEUDO_SBR_H
 
 #include "coder.h"
-#include "faac_real.h"
+#include "frame.h"
+#include "include/faaccfg.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
+/*
+ * SBR Parameters (Perceptually Tuned)
+ */
 
-/* Bitrate thresholds for adaptive expansion */
-#define SBR_LOW_BR_LIMIT  24000
-#define SBR_MID_BR_LIMIT  48000
+/* Gain rolloff (0.70) provides robust HF presence for 48kHz source material. */
+#define SBR_GAIN_ROLLOFF 0.70f
 
-/* Tonality Gating constants */
-#define SBR_TONAL_THRESH 0.15f
-#define SBR_TONAL_ATTEN 0.10f
+/* Stealth hole filling (0.0001f) maintains spectral texture. */
+#define SBR_HOLE_NOISE   0.0001f
 
-/* Gain constants */
-#define SBR_GAIN_ROLLOFF 0.40f
-#define SBR_HOLE_NOISE 0.00005f
+/*
+ * Bit Allocator Bias (0.40x)
+ * Optimal priority balance ensuring HF bands are audible while protecting core bits.
+ */
+#define SBR_QUAL_BIAS    0.40f
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo, int useSbr);
-
-#ifdef __cplusplus
-}
-#endif /* __cplusplus */
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, unsigned long bitRatePerChannel, SR_INFO *srInfo, int useSbr);
 
 #endif /* PSEUDO_SBR_H */

@@ -21,28 +21,28 @@
 #include <string.h>
 #include "pseudo_sbr.h"
 #include "util.h"
-#include "huff2.h"
 
-void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo, int useSbr)
+/**
+ * ApplyPseudoSBR - Minimal Spectral Folding for AAC-LC
+ *
+ * Implements a strictly additive high-frequency reconstruction by folding
+ * mid-core spectrum tiles. Optimized for 48kHz content at 24-64kbps.
+ */
+void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, unsigned long bitRatePerChannel, SR_INFO *srInfo, int useSbr)
 {
-    int core_bins;
-    int sbr_bins;
-    float expansion_fraction;
-    int i;
-    int dest_idx;
-    float sfm;
-    int patch_offset;
+    int core_bins, sbr_bins, i, dest_idx, patch_offset;
+    const float expansion_fraction = 0.50f; /* 1.5x bandwidth extension */
 
     if (coder->block_type != ONLY_LONG_WINDOW)
         return;
 
-    /* SBR Logic based on mode */
+    /* SBR Activation Logic */
     if (useSbr == SBR_OFF)
         return;
 
     if (useSbr == SBR_AUTO) {
-        /* In AUTO mode, SBR is only effective at lower bitrates. */
-        if (bitRatePerChannel >= 48000)
+        /* Enable for per-channel bitrates <= 48kbps (96kbps total stereo). */
+        if (bitRatePerChannel > 48000 || srInfo->sampling_rate < 32000)
             return;
     }
 
@@ -52,9 +52,6 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (core_bins >= FRAME_LEN)
         return;
 
-    /* Conservative expansion fraction. */
-    expansion_fraction = 0.25f;
-
     sbr_bins = (int)(core_bins * expansion_fraction);
     if (core_bins + sbr_bins > FRAME_LEN)
         sbr_bins = FRAME_LEN - core_bins;
@@ -62,87 +59,40 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (sbr_bins <= 0)
         return;
 
-    /* 1. Combined analysis pass.
-       Calculates SFM, upper core energy, and mid core energy.
-    */
-    double am = 0.0, gm = 0.0;
-    float upper_core_en = 0.0f;
-    float mid_core_en = 0.0f;
-    int sfm_start = core_bins / 2;
-    int upper_start = coder->sfb_offset[coder->sfbn > 1 ? coder->sfbn - 1 : 0];
-    int mid_start = coder->sfb_offset[coder->sfbn > 2 ? coder->sfbn - 2 : 0];
-    int analysis_len = core_bins - sfm_start;
-
-    if (analysis_len > 0) {
-        for (i = sfm_start; i < core_bins; i++) {
-            float val = FAAC_FABS(freq[i]);
-            double dval = (double)val + 1e-12;
-            am += dval;
-            gm += log(dval);
-            if (i >= upper_start) upper_core_en += val;
-            else if (i >= mid_start) mid_core_en += val;
-        }
-        am /= analysis_len;
-        gm = exp(gm / analysis_len);
-        sfm = (float)(gm / (am + 1e-12));
-    } else {
-        sfm = 1.0f;
-    }
-
-    /* 2. Determine patch offset. */
+    /* Harmonic Folding (2:1 mapping) */
     patch_offset = core_bins / 2;
     if (patch_offset + sbr_bins > core_bins) {
         patch_offset = core_bins - sbr_bins;
     }
     if (patch_offset < 0) patch_offset = 0;
 
-    float patch_en = 0.0f;
-    int patch_check_len = (sbr_bins < 64 ? sbr_bins : 64);
-    for (i = 0; i < patch_check_len; i++) {
+    /* Match upper core energy density for natural level scaling. */
+    float upper_en = 1e-12f, patch_en = 1e-12f;
+    int alen = (sbr_bins < 64) ? sbr_bins : 64;
+    for (i = 0; i < alen; i++) {
+        upper_en += FAAC_FABS(freq[core_bins - 1 - i]);
         patch_en += FAAC_FABS(freq[patch_offset + i]);
     }
 
-    /* 3. Calculate optimized combined gain factors. */
-    float slope_adj = 1.0f;
-    if (mid_core_en > 1e-6f) {
-        slope_adj = upper_core_en / (mid_core_en + 1e-12f);
-        if (slope_adj > 1.5f) slope_adj = 1.5f;
-        if (slope_adj < 0.5f) slope_adj = 0.5f;
-    }
+    float final_gain = SBR_GAIN_ROLLOFF * (upper_en / patch_en);
+    if (final_gain > 1.2f) final_gain = 1.2f;
+    if (final_gain < 0.3f) final_gain = 0.3f;
 
-    float energy_norm = 1.0f;
-    if (patch_en > 1e-6f) {
-        energy_norm = upper_core_en / (patch_en + 1e-12f);
-        if (energy_norm > 1.5f) energy_norm = 1.5f;
-        if (energy_norm < 0.7f) energy_norm = 0.7f;
-    }
-
-    float final_gain = SBR_GAIN_ROLLOFF * slope_adj * energy_norm;
-
-    if (sfm < SBR_TONAL_THRESH) {
-        final_gain *= SBR_TONAL_ATTEN;
-    }
-
-    /* 4. Optimized SBR folding and noise injection loop. */
     for (i = 0; i < sbr_bins; i++) {
         dest_idx = core_bins + i;
         if (UNLIKELY(dest_idx >= FRAME_LEN)) break;
-
         freq[dest_idx] = freq[patch_offset + i] * final_gain;
-
-        /* Minimal hole filling to maintain spectral texture. */
         if (UNLIKELY(FAAC_FABS(freq[dest_idx]) < 1e-12f)) {
-            freq[dest_idx] = (i % 2 ? 1.0f : -1.0f) * SBR_HOLE_NOISE;
+            freq[dest_idx] = (i & 1 ? SBR_HOLE_NOISE : -SBR_HOLE_NOISE);
         }
     }
 
-    /* 5. Transition Smoothing (16-bin cross-fade). */
+    /* 16-bin linear cross-fade smoothing */
     for (i = 0; i < 16 && (core_bins + i < FRAME_LEN); i++) {
-        float fade = (float)(i + 1) / 17.0f;
-        freq[core_bins + i] *= fade;
+        freq[core_bins + i] *= (float)(i + 1) * 0.0588f;
     }
 
-    /* 6. Metadata: Extend SFBs to cover the replicated region. */
+    /* Metadata Update */
     int target_bins = core_bins + sbr_bins;
     while (coder->sfbn < srInfo->num_cb_long && coder->sfb_offset[coder->sfbn] < target_bins) {
         int next_offset = coder->sfb_offset[coder->sfbn] + srInfo->cb_width_long[coder->sfbn];

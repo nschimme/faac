@@ -597,7 +597,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
-                       hEncoder->sampleRate, hEncoder->config.bitRate / numChannels,
+                       hEncoder->config.bitRate / numChannels,
                        hEncoder->srInfo, hEncoder->config.useSbr);
     }
 
