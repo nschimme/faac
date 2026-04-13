@@ -93,13 +93,16 @@ void sbr_encode_frame(sbr_info_t *sbr, faac_real *input[], int block_type[])
         int band_width = 32 / num_bands;
 
         for (env = 0; env < sbr_grid; env++) {
+            int l_start = env * env_len;
+            int l_end = (env + 1) * env_len;
             for (k = 0; k < num_bands; k++) {
                 faac_real p_orig = 0;
                 faac_real p_trans = 0;
                 int start_k = 32 + k * band_width;
 
-                for (l = env * env_len; l < (env + 1) * env_len; l++) {
-                    for (int b = 0; b < band_width; b++) {
+                for (l = l_start; l < l_end; l++) {
+                    int b;
+                    for (b = 0; b < band_width; b++) {
                         p_orig += X[l][start_k + b][0] * X[l][start_k + b][0] + X[l][start_k + b][1] * X[l][start_k + b][1];
                         p_trans += X_transposed[l][start_k + b][0] * X_transposed[l][start_k + b][0] + X_transposed[l][start_k + b][1] * X_transposed[l][start_k + b][1];
                     }

@@ -489,11 +489,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							faac_real sample = (faac_real)*input_channel;
                             if (hEncoder->config.useSbr) {
-                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = (faac_real)*input_channel;
                             } else {
-                                hEncoder->next3SampleBuff[channel][i] = sample;
+                                hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
                             }
 							input_channel += numChannels;
 						}
@@ -506,11 +505,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							faac_real sample = (1.0/256) * (faac_real)*input_channel;
                             if (hEncoder->config.useSbr) {
-                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = (1.0/256) * (faac_real)*input_channel;
                             } else {
-                                hEncoder->next3SampleBuff[channel][i] = sample;
+                                hEncoder->next3SampleBuff[channel][i] = (1.0/256) * (faac_real)*input_channel;
                             }
 							input_channel += numChannels;
 						}
@@ -523,11 +521,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							faac_real sample = (faac_real)*input_channel;
                             if (hEncoder->config.useSbr) {
-                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = (faac_real)*input_channel;
                             } else {
-                                hEncoder->next3SampleBuff[channel][i] = sample;
+                                hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
                             }
 							input_channel += numChannels;
 						}

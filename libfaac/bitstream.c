@@ -866,7 +866,7 @@ static int WriteSBRData(faacEncStruct* hEncoder,
 {
     sbr_info_t *sbr = (sbr_info_t *)hEncoder->sbr_info;
     int bits = 0;
-    int sbr_frame_bits = (SBR_BPC * hEncoder->numChannels * FRAME_LEN) / hEncoder->inputSampleRate;
+    long sbr_frame_bits = (long)(SBR_BPC * hEncoder->numChannels * FRAME_LEN) / (long)hEncoder->inputSampleRate;
     long start_bits = bitStream->numBit;
 
     if (writeFlag) {
@@ -874,7 +874,7 @@ static int WriteSBRData(faacEncStruct* hEncoder,
         /* count is 4 bits, if count == 15, then 8 more bits */
         /* For simplicity, we assume the total SBR payload fits in the standard fill element. */
         /* HE-AAC SBR normally uses extension_type 13. */
-        int count = (sbr_frame_bits / 8);
+        int count = (int)(sbr_frame_bits / 8);
         if (count < 15) {
             PutBit(bitStream, count, 4);
         } else {

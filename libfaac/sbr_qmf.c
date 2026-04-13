@@ -21,6 +21,7 @@
 #include <math.h>
 #include <string.h>
 #include "sbr_qmf.h"
+#include "util.h"
 
 static faac_real qmf_cos_lut[64][640];
 static faac_real qmf_sin_lut[64][640];
