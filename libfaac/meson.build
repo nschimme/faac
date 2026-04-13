@@ -45,6 +45,10 @@ common_src = [
     'tns.h',
     'util.c',
     'util.h',
+    'sbr_qmf.c',
+    'sbr_qmf.h',
+    'sbr_main.c',
+    'sbr_main.h',
 ]
 
 libfaac = library('faac', common_src,

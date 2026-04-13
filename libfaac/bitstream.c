@@ -33,6 +33,7 @@ Copyright (c) 1997.
 #include "huff2.h"
 #include "bitstream.h"
 #include "util.h"
+#include "sbr_main.h"
 
 static int CountBitstream(faacEncStruct* hEncoder,
                           CoderInfo *coderInfo,
@@ -87,6 +88,9 @@ static int FindGroupingBits(CoderInfo *coderInfo);
 static long BufferNumBit(BitStream *bitStream);
 static int ByteAlign(BitStream* bitStream,
                      int writeFlag, int bitsSoFar);
+static int WriteSBRData(faacEncStruct* hEncoder,
+                        BitStream *bitStream,
+                        int writeFlag);
 
 static int WriteFAACStr(BitStream *bitStream, char *version, int write)
 {
@@ -202,6 +206,10 @@ int WriteBitstream(faacEncStruct* hEncoder,
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
     bits += (numFillBits - bitsLeftAfterFill);
 
+    if (hEncoder->config.useSbr) {
+        bits += WriteSBRData(hEncoder, bitStream, 1);
+    }
+
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
     PutBit(bitStream, ID_END, LEN_SE_ID);
@@ -288,6 +296,10 @@ static int CountBitstream(faacEncStruct* hEncoder,
     numFillBits += 6;
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
     bits += (numFillBits - bitsLeftAfterFill);
+
+    if (hEncoder->config.useSbr) {
+        bits += WriteSBRData(hEncoder, bitStream, 0);
+    }
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
@@ -846,6 +858,89 @@ int PutBit(BitStream *bitStream,
     }
 
     return 0;
+}
+
+static int WriteSBRData(faacEncStruct* hEncoder,
+                        BitStream *bitStream,
+                        int writeFlag)
+{
+    sbr_info_t *sbr = (sbr_info_t *)hEncoder->sbr_info;
+    int bits = 0;
+    int sbr_frame_bits = (SBR_BPC * hEncoder->numChannels * FRAME_LEN) / hEncoder->inputSampleRate;
+    long start_bits = bitStream->numBit;
+
+    if (writeFlag) {
+        PutBit(bitStream, ID_FIL, LEN_SE_ID);
+        /* count is 4 bits, if count == 15, then 8 more bits */
+        /* For simplicity, we assume the total SBR payload fits in the standard fill element. */
+        /* HE-AAC SBR normally uses extension_type 13. */
+        int count = (sbr_frame_bits / 8);
+        if (count < 15) {
+            PutBit(bitStream, count, 4);
+        } else {
+            PutBit(bitStream, 15, 4);
+            PutBit(bitStream, count - 14, 8);
+        }
+
+        PutBit(bitStream, SBR_EXTENSION, 4); /* extension_type */
+
+        /* Naive SBR Bitstream Writing (Phase 4.2) */
+        if (sbr->bs_data.sbr_header_present) {
+            PutBit(bitStream, 1, 1); /* ampRes = 1.5dB */
+            PutBit(bitStream, 0, 1); /* stopFreq = 0 */
+            PutBit(bitStream, 0, 1); /* xoverFreq = 0 */
+            PutBit(bitStream, 0, 2); /* reserved */
+            PutBit(bitStream, 0, 1); /* headerExtra1 = 0 */
+            PutBit(bitStream, 0, 1); /* headerExtra2 = 0 */
+        } else {
+            PutBit(bitStream, 0, 1); /* sbr_header_present = 0 */
+        }
+
+        /* sbr_grid() */
+        if (sbr->bs_data.sbr_grid == 1) {
+            PutBit(bitStream, 0, 2); /* FIXFIX */
+            PutBit(bitStream, 0, 2); /* numEnv = 1 (log2) */
+        } else {
+            PutBit(bitStream, 0, 2); /* FIXFIX */
+            PutBit(bitStream, 2, 2); /* numEnv = 4 (log2) */
+        }
+
+        /* sbr_envelope() - Naive quantization (Phase 3.3 & 4.2) */
+        int ch, env, k;
+        for (ch = 0; ch < hEncoder->numChannels; ch++) {
+            PutBit(bitStream, 0, 1); /* sbr_dtdf = 0 (Time) */
+            for (env = 0; env < sbr->bs_data.num_env; env++) {
+                for (k = 0; k < sbr->bs_data.num_bands; k++) {
+                    PutBit(bitStream, sbr->bs_data.env_data[ch][env][k], 6); /* Simplified fixed-length encoding */
+                }
+            }
+        }
+
+        /* sbr_noise() - Mandatory but simplified */
+        for (ch = 0; ch < hEncoder->numChannels; ch++) {
+            PutBit(bitStream, 0, 1); /* sbr_dtdf_noise = 0 */
+            for (k = 0; k < 2; k++) { /* Minimal 2 noise bands */
+                PutBit(bitStream, 0, 5); /* static low noise */
+            }
+        }
+
+        PutBit(bitStream, 0, 1); /* sbr_add_harmonic_flag = 0 */
+
+        /* Padding for CBR compliance (Phase 4.3) */
+        long bits_written = bitStream->numBit - start_bits;
+        while (bits_written < sbr_frame_bits) {
+            PutBit(bitStream, 0, 1);
+            bits_written++;
+        }
+    }
+
+    /* Rough estimation for bit counting if not writing */
+    if (!writeFlag) {
+        bits = LEN_SE_ID + 4 + ( (sbr_frame_bits/8 >= 15) ? 8 : 0 ) + sbr_frame_bits;
+        return bits;
+    }
+
+    return (int)(bitStream->numBit - start_bits);
 }
 
 static int ByteAlign(BitStream *bitStream, int writeFlag, int bitsSoFar)

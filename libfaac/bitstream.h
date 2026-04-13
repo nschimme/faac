@@ -108,6 +108,8 @@ int WriteBitstream(faacEncStruct* hEncoder,
                    BitStream *bitStream,
                    int numChannels);
 
+#define SBR_EXTENSION 13
+
 
 BitStream *OpenBitStream(int size, unsigned char *buffer);
 

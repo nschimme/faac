@@ -99,7 +99,8 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OPT_SBR
 };
 
 typedef struct {
@@ -199,6 +200,7 @@ static help_t help_advanced[] = {
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
+    {"--sbr       \tEnable SBR (HE-AAC v1).\n"},
     {0}
 };
 
@@ -441,6 +443,7 @@ int main(int argc, char *argv[])
     int cutOff = -1;
     int bitRate = 0;
     unsigned long quantqual = 0;
+    int useSbr = 0;
     int chanC = 3;
     int chanLF = 4;
 
@@ -556,6 +559,7 @@ int main(int argc, char *argv[])
             {"pcmswapbytes", 0, 0, 'X'},
             {"ignorelength", 0, &ignorelen, 1},
             {"tag", 1, 0, TAG_FLAG},
+            {"sbr", 0, 0, OPT_SBR},
             {"overwrite", 0, &overwrite, 1},
             {0, 0, 0, 0}
         };
@@ -794,6 +798,9 @@ int main(int argc, char *argv[])
         case OPT_PNS:
             pnslevel = atoi(optarg);
             break;
+        case OPT_SBR:
+            useSbr = 1;
+            break;
         case '?':
         default:
             help('?');
@@ -953,6 +960,7 @@ int main(int argc, char *argv[])
     if (bitRate)
         myFormat->bitRate = bitRate / infile->channels;
     myFormat->bandWidth = cutOff;
+    myFormat->useSbr = useSbr;
     myFormat->outputFormat = stream;
     myFormat->inputFormat = FAAC_INPUT_FLOAT;
     if (!faacEncSetConfiguration(hEncoder, myFormat))

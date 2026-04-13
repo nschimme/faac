@@ -32,6 +32,7 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
+#include "sbr_main.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -158,6 +159,26 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+    hEncoder->config.useSbr = config->useSbr;
+
+    /* SBR only supported for Mono and Stereo, and sample rates > 24kHz */
+    if (hEncoder->config.useSbr) {
+        if (hEncoder->numChannels > 2)
+            hEncoder->config.useSbr = 0;
+        if (hEncoder->inputSampleRate <= 24000)
+            hEncoder->config.useSbr = 0;
+    }
+
+    if (hEncoder->config.useSbr) {
+        /* HE-AAC dual-rate: AAC core runs at half the input sample rate */
+        hEncoder->sampleRate = hEncoder->inputSampleRate / 2;
+        hEncoder->sampleRateIdx = GetSRIndex(hEncoder->sampleRate);
+        hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    } else {
+        hEncoder->sampleRate = hEncoder->inputSampleRate;
+        hEncoder->sampleRateIdx = GetSRIndex(hEncoder->sampleRate);
+        hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    }
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
@@ -227,6 +248,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    if (hEncoder->config.useSbr) {
+        if (hEncoder->sbr_info) {
+            sbr_encode_close(hEncoder->sbr_info);
+        }
+        hEncoder->sbr_info = sbr_encode_init(hEncoder->numChannels, hEncoder->inputSampleRate);
+    }
+
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
@@ -279,6 +307,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     SetMemory(hEncoder, 0, sizeof(faacEncStruct));
 
     hEncoder->numChannels = numChannels;
+    hEncoder->inputSampleRate = sampleRate;
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
@@ -299,6 +328,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
+    hEncoder->config.useSbr = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
     hEncoder->psymodel =
@@ -367,6 +397,13 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 			FreeMemory(hEncoder->sampleBuff[channel]);
 		if (hEncoder->next3SampleBuff[channel])
 			FreeMemory (hEncoder->next3SampleBuff[channel]);
+        if (hEncoder->sbr_input_buffer[channel])
+            FreeMemory(hEncoder->sbr_input_buffer[channel]);
+    }
+
+    /* Free SBR info */
+    if (hEncoder->sbr_info) {
+        sbr_encode_close((sbr_info_t *)hEncoder->sbr_info);
     }
 
     /* Free handle */
@@ -425,6 +462,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
+        if (hEncoder->config.useSbr && !hEncoder->sbr_input_buffer[channel])
+            hEncoder->sbr_input_buffer[channel] = (faac_real*)AllocMemory(2048 * sizeof(faac_real));
+
 		tmp = hEncoder->sampleBuff[channel];
 
 		hEncoder->sampleBuff[channel]	= hEncoder->next3SampleBuff[channel];
@@ -449,7 +489,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
+							faac_real sample = (faac_real)*input_channel;
+                            if (hEncoder->config.useSbr) {
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                            } else {
+                                hEncoder->next3SampleBuff[channel][i] = sample;
+                            }
 							input_channel += numChannels;
 						}
 					}
@@ -461,7 +506,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							hEncoder->next3SampleBuff[channel][i] = (1.0/256) * (faac_real)*input_channel;
+							faac_real sample = (1.0/256) * (faac_real)*input_channel;
+                            if (hEncoder->config.useSbr) {
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                            } else {
+                                hEncoder->next3SampleBuff[channel][i] = sample;
+                            }
 							input_channel += numChannels;
 						}
 					}
@@ -473,7 +523,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
 						for (i = 0; i < samples_per_channel; i++)
 						{
-							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
+							faac_real sample = (faac_real)*input_channel;
+                            if (hEncoder->config.useSbr) {
+                                hEncoder->sbr_input_buffer[channel][hEncoder->sbr_input_num_samples + i] = sample;
+                            } else {
+                                hEncoder->next3SampleBuff[channel][i] = sample;
+                            }
 							input_channel += numChannels;
 						}
 					}
@@ -484,8 +539,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                     break;
             }
 
-            for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
+            if (!hEncoder->config.useSbr) {
+                for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
+                    hEncoder->next3SampleBuff[channel][i] = 0.0;
+            }
 		}
 
 		/* Psychoacoustics */
@@ -504,16 +561,48 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
+    if (hEncoder->config.useSbr) {
+        hEncoder->sbr_input_num_samples += (samplesInput / numChannels);
+        if (hEncoder->sbr_input_num_samples < 2048 && samplesInput > 0)
+            return 0; /* Wait for more samples for SBR dual-rate */
+
+        /* We have enough samples, downsample for AAC core and process SBR */
+        for (channel = 0; channel < numChannels; channel++) {
+            for (i = 0; i < 1024; i++) {
+                /* Decimation: Average of 2 samples for half-rate core */
+                hEncoder->next3SampleBuff[channel][i] = 0.5f * (hEncoder->sbr_input_buffer[channel][i*2] + hEncoder->sbr_input_buffer[channel][i*2+1]);
+            }
+        }
+        /* Reset counter, but handle overlap if needed (HE-AAC uses 2048 samples per core frame) */
+        hEncoder->sbr_input_num_samples = 0;
+    }
+
     if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
         return 0;
+
+    /* SBR Intercept */
+    if (hEncoder->config.useSbr && hEncoder->sbr_info) {
+        faac_real *sbr_inputs[MAX_CHANNELS];
+        int sbr_block_types[MAX_CHANNELS];
+
+        /* We need block switching decisions from AAC-LC first */
+        hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+
+        for (channel = 0; channel < numChannels; channel++) {
+            sbr_inputs[channel] = hEncoder->sbr_input_buffer[channel];
+            sbr_block_types[channel] = coderInfo[channel].block_type;
+        }
+
+        sbr_encode_frame((sbr_info_t *)hEncoder->sbr_info, sbr_inputs, sbr_block_types);
+    } else {
+        hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+    }
 
     /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
         hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
         hEncoder->srInfo->cb_width_short,
         hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
-
-    hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -628,6 +717,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
+
+        if (hEncoder->config.useSbr) {
+            /* SBR bit budget: 2000 bps per channel */
+            int sbr_bits = (2000 * numChannels * FRAME_LEN) / hEncoder->sampleRate;
+            desbits -= sbr_bits;
+        }
+
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
         if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) {

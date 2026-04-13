@@ -86,6 +86,12 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* SBR related */
+    unsigned long inputSampleRate;
+    void *sbr_info;
+    faac_real *sbr_input_buffer[MAX_CHANNELS];
+    int sbr_input_num_samples;
 } faacEncStruct;
 
 #ifdef __cplusplus
