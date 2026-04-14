@@ -18,6 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -179,7 +180,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandenrg,
                    const faac_real * __restrict bandmaxe,
                    int gnum,
-                   int pnslevel
+                   int pnslevel,
+                   int *p_lastsf  /* predictor for regular-band delta chain */
                   )
 {
     int sb;
@@ -190,6 +192,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     {
       faac_real sfacfix;
       int sfac;
+      int sf_raw;
       faac_real rmsx;
       faac_real etot;
       int xitab[8 * MAXSHORTBAND];
@@ -226,9 +229,19 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       sfac = FAAC_LRINT(FAAC_LOG10(bandqual[sb] / rmsx) * sfstep);
+      sf_raw = SF_OFFSET - sfac;
 
-      if ((SF_OFFSET - sfac) < SF_MIN)
+      /* sf_pre: any pre-existing bias in sf[cnt] (e.g. IS energy offset from
+       * AACstereo). For regular bands this is 0. The actual stored bitstream
+       * value is sf_stored = sf_pre + sf_raw, and the delta chain must be
+       * based on that combined value, not on sf_raw alone. */
+      int sf_pre = coderInfo->sf[coderInfo->bandcnt];
+      int sf_stored = sf_pre + sf_raw;
+
+      if (sf_raw < SF_MIN)
+      {
           sfacfix = 0.0;
+      }
       else
       {
           sfacfix = FAAC_POW(10, sfac / sfstep);
@@ -242,6 +255,38 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               /* Re-derive gain from the floored scalefactor to ensure bit-exact
                * sync with the decoder's inverse quantizer. */
               sfacfix = FAAC_POW(10, sfac / sfstep);
+              sf_raw = SF_OFFSET - sfac;
+              sf_stored = sf_pre + sf_raw;
+          }
+
+          /* Pre-clamp: compare the actual stored value (sf_stored) against the
+           * previous band's stored value so encoder gain matches decoder gain. */
+          if (*p_lastsf != INT_MIN)
+          {
+              int diff = sf_stored - *p_lastsf;
+              if (diff > SF_DELTA)
+              {
+                  sf_stored = *p_lastsf + SF_DELTA;
+                  sf_raw = sf_stored - sf_pre;
+                  sfac = SF_OFFSET - sf_raw;
+                  sfacfix = FAAC_POW(10, sfac / sfstep);
+                  /* Delta clamp may have increased gain; re-check peak overflow. */
+                  if (bandmaxe[sb] > 0.0 && sfacfix * bandmaxe[sb] > max_quant_limit)
+                  {
+                      sfacfix = max_quant_limit / bandmaxe[sb];
+                      sfac = (int)FAAC_FLOOR(FAAC_LOG10(sfacfix) * sfstep);
+                      sfacfix = FAAC_POW(10, sfac / sfstep);
+                      sf_raw = SF_OFFSET - sfac;
+                      sf_stored = sf_pre + sf_raw;
+                  }
+              }
+              else if (diff < -SF_DELTA)
+              {
+                  sf_stored = *p_lastsf - SF_DELTA;
+                  sf_raw = sf_stored - sf_pre;
+                  sfac = SF_OFFSET - sf_raw;
+                  sfacfix = FAAC_POW(10, sfac / sfstep);
+              }
           }
       }
 
@@ -261,7 +306,12 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           }
       }
       huffbook(coderInfo, xitab, gsize * end);
-      coderInfo->sf[coderInfo->bandcnt++] += SF_OFFSET - sfac;
+      /* Update the delta-chain predictor only for active regular bands.
+       * Track sf_stored (= sf_pre + sf_raw) — the value written to the
+       * bitstream — so that the next band's delta comparison is correct. */
+      if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
+          *p_lastsf = sf_stored;
+      coderInfo->sf[coderInfo->bandcnt++] += sf_raw;
     }
 }
 
@@ -280,14 +330,15 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
 
     {
         int lastis;
-        int lastsf;
+        int lastsf = INT_MIN;  /* sentinel: no previous regular band yet */
 
         gxr = xr;
         for (cnt = 0; cnt < coder->groups.n; cnt++)
         {
             bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                   (faac_real)aacquantCfg->quality/DEFQUAL);
-            qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt, aacquantCfg->pnslevel);
+            qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
+                   aacquantCfg->pnslevel, &lastsf);
             gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
         }
 
@@ -304,7 +355,6 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             }
         }
 
-        lastsf = coder->global_gain;
         lastis = 0;
         int lastpns = coder->global_gain - SF_PNS_OFFSET;
         for (cnt = 0; cnt < coder->bandcnt; cnt++)
@@ -324,13 +374,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
                 lastpns += diff;
                 coder->sf[cnt] = lastpns;
             }
-            else if ((book != HCB_ZERO) && (book != HCB_NONE))
-            {
-                int diff = coder->sf[cnt] - lastsf;
-                diff = clamp_sf_diff(diff);
-                lastsf += diff;
-                coder->sf[cnt] = lastsf;
-            }
+            /* Regular bands: already pre-clamped in qlevel(); no action needed. */
         }
         return 1;
     }
