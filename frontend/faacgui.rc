@@ -99,8 +99,6 @@ BEGIN
     LTEXT           "AAC Object Type",IDC_STATIC,183,100,56,8
     CONTROL         "Use LFE channel",IDC_USELFE,"Button",BS_AUTOCHECKBOX | 
                     BS_LEFTTEXT | WS_DISABLED | WS_TABSTOP,14,114,71,10
-    CONTROL         "Use SBR",IDC_USESBR,"Button",BS_AUTOCHECKBOX |
-                    BS_LEFTTEXT | WS_TABSTOP,14,125,71,10
 END
 
 

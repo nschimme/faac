@@ -32,7 +32,6 @@
 #include "util.h"
 #include "tns.h"
 #include "stereo.h"
-#include "huff2.h"
 #include "pseudo_sbr.h"
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
@@ -64,6 +63,8 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
 
     if (!bitRate) return nyquist;
 
+
+
     if (bitRate <= 16000) {
         /* Segment 1: Telephony (4kHz to 6kHz) */
         bw = 4000 + (bitRate / 8);
@@ -83,19 +84,9 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (24kHz+) */
-        bw = 24000 + ((bitRate - 128000) / 16);
-        if (bw > 24000) bw = 24000;
-    }
-
-    if (useSbr) {
-        /* Pseudo-SBR core bandwidth reduction to allow bit redistribution.
-           Iteration 31 found that bits saved here significantly improve SBR lift.
-           SBR is disabled for <= 16kHz, so we only reduce BW above that.
-        */
-        if (sampleRate > 16000) {
-            bw = (bw * 4) / 5;
-        }
+        /* Segment 5: Transparency plateau (20kHz+) */
+        bw = 20000 + ((bitRate - 128000) / 16);
+        if (bw > 20000) bw = 20000;
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -609,7 +600,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         if (hEncoder->config.useSbr) {
             ApplyPseudoSBR(&coderInfo[channel], hEncoder->freqBuff[channel],
-                           hEncoder->sampleRate, hEncoder->config.bitRate / numChannels, hEncoder->srInfo);
+                           hEncoder->sampleRate, hEncoder->config.bitRate, hEncoder->srInfo);
         }
     }
 

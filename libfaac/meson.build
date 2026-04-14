@@ -37,6 +37,8 @@ common_src = [
     'huff2.h',
     'huffdata.c',
     'huffdata.h',
+    'pseudo_sbr.c',
+    'pseudo_sbr.h',
     'quantize.c',
     'quantize.h',
     'stereo.c',
@@ -45,8 +47,6 @@ common_src = [
     'tns.h',
     'util.c',
     'util.h',
-    'pseudo_sbr.c',
-    'pseudo_sbr.h',
 ]
 
 libfaac = library('faac', common_src,

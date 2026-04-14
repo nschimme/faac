@@ -156,7 +156,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             config->jointmode = IsDlgButtonChecked(hWnd, IDC_ALLOWMIDSIDE) == BST_CHECKED ? 1 : 0;
             config->useTns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED ? 1 : 0;
             config->useLfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
-            config->useSbr = IsDlgButtonChecked(hWnd, IDC_USESBR) == BST_CHECKED ? 1 : 0;
             config->outputFormat = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? 0 : 1;
 
             config->mpegVersion = SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
@@ -344,7 +343,6 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         CheckDlgButton(hWnd, IDC_USELFE, FALSE);
         CheckDlgButton(hWnd, IDC_USERAW, FALSE);
         CheckDlgButton(hWnd, IDC_USETNS, TRUE);
-        CheckDlgButton(hWnd, IDC_USESBR, TRUE);
         SetDlgItemText(hWnd, IDC_QUALITY, "100");
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 

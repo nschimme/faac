@@ -21,7 +21,6 @@
 #include <string.h>
 #include "pseudo_sbr.h"
 #include "util.h"
-#include "huff2.h"
 
 void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned long bitRatePerChannel, SR_INFO *srInfo)
 {
@@ -36,27 +35,35 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
     if (coder->block_type != ONLY_LONG_WINDOW)
         return;
 
-    /* SBR is most effective at lower bitrates. */
-    if (bitRatePerChannel > 64000)
-        return;
-
-    /* SBR provides negligible benefit for low sample rate speech. */
+    /* SBR is only supported for sample rates > 16kHz. */
     if (sampleRate <= 16000)
         return;
 
+    /* SBR is most effective at lower bitrates.
+       Targets scenarios up to 64kbps/channel (128kbps total).
+    */
+    if (bitRatePerChannel > 64000)
+        return;
 
     core_bins = coder->sfb_offset[coder->sfbn];
     coder->sbr_start_sfb = coder->sfbn;
 
-    /* Limit SBR to cases where core is not already full-band */
-    if (core_bins >= 1000)
+    /* If core bandwidth is already high, SBR is unnecessary and bit-hungry.
+       Limit SBR to cases where core is < 18kHz (approx 768 bins at 48k).
+    */
+    if (core_bins > 768)
         return;
 
     if (core_bins >= FRAME_LEN)
         return;
 
-    /* Expansion fraction. */
-    expansion_fraction = 0.50f;
+    /* Adaptive expansion based on bitrate per channel. */
+    if (bitRatePerChannel < SBR_LOW_BR_LIMIT)
+        expansion_fraction = 0.90f;
+    else if (bitRatePerChannel < SBR_MID_BR_LIMIT)
+        expansion_fraction = 0.65f;
+    else
+        expansion_fraction = 0.40f;
 
     sbr_bins = (int)(core_bins * expansion_fraction);
     if (core_bins + sbr_bins > FRAME_LEN)
@@ -122,11 +129,12 @@ void ApplyPseudoSBR(CoderInfo *coder, faac_real *freq, int sampleRate, unsigned 
 
     float final_gain = SBR_GAIN_ROLLOFF * slope_adj * energy_norm;
 
+    /* Tonality Gating to prevent metallic artifacts. */
     if (sfm < SBR_TONAL_THRESH) {
         final_gain *= SBR_TONAL_ATTEN;
     }
 
-    /* 4. Optimized SBR folding and noise injection loop. */
+    /* 4. SBR folding and noise injection loop. */
     for (i = 0; i < sbr_bins; i++) {
         dest_idx = core_bins + i;
         if (UNLIKELY(dest_idx >= FRAME_LEN)) break;
