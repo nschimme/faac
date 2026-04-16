@@ -191,7 +191,7 @@ static help_t help_advanced[] = {
     {"--joint 1\tUse Mid/Side coding.\n"},
     {"--joint 2\tUse Intensity Stereo coding.\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
-    {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
+    {"--mpeg-vers X\tForce AAC MPEG version/mode: 2=MPEG2 LC, 4=MPEG4 LC (default), 5=HE-AAC v1\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
     {0}
@@ -751,8 +751,9 @@ int main(int argc, char *argv[])
             shortctl = atoi(optarg);
             break;
         case MPEGVERS_FLAG:
-            mpegVersion = atoi(optarg);
-            switch (mpegVersion)
+        {
+            int mpegArg = atoi(optarg);
+            switch (mpegArg)
             {
             case 2:
                 mpegVersion = MPEG2;
@@ -760,10 +761,16 @@ int main(int argc, char *argv[])
             case 4:
                 mpegVersion = MPEG4;
                 break;
+            case 5:
+                /* HE-AAC v1: MPEG4 AAC-LC core + SBR */
+                mpegVersion = MPEG4;
+                objectType  = HE_AAC;
+                break;
             default:
-                dieMessage = "Unrecognised MPEG version!\n";
+                dieMessage = "Unrecognised MPEG version (use 2, 4, or 5 for HE-AAC v1)!\n";
             }
             break;
+        }
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
             dieMessage = license;
@@ -956,6 +963,20 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* HE-AAC requires 2× input samples per frame: the encoder downsamples
+     * 2:1 internally.  Update samplesInput and reallocate the PCM buffer. */
+    if (objectType == HE_AAC) {
+        samplesInput *= 2;
+        frameSize     = samplesInput / infile->channels;
+        delay_samples = frameSize;
+        free(pcmbuf);
+        pcmbuf = (float *) malloc(samplesInput * sizeof(float));
+        if (!pcmbuf) {
+            fprintf(stderr, "Out of memory allocating PCM buffer\n");
+            return 1;
+        }
+    }
+
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)
     {
@@ -1008,7 +1029,25 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
-    fprintf(stderr, "Object type: Low Complexity");
+    fprintf(stderr, "Object type: ");
+    switch (objectType)
+    {
+    case LOW:
+        fprintf(stderr, "Low Complexity");
+        break;
+    case MAIN:
+        fprintf(stderr, "Main");
+        break;
+    case LTP:
+        fprintf(stderr, "LTP");
+        break;
+    case HE_AAC:
+        fprintf(stderr, "HE-AAC v1");
+        break;
+    default:
+        fprintf(stderr, "Unknown");
+        break;
+    }
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
