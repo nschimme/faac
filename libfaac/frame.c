@@ -260,10 +260,22 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     }
 
     /* Resolve AAC_AUTO before the half-rate switch so the picked type drives
-     * everything downstream. Crossover: HE-AAC below 48 kbps/ch, LC at/above. */
+     * everything downstream.  Crossover: HE-AAC only inside [20, 32] kbps/ch.
+     *
+     * The previous gate (`< 48000`) was 4-clip-music-corpus-validated and
+     * regressed catastrophically on a wide CI run (baseline e70fd79 vs
+     * b67a38a, 947 cases × 2 builds, avg MOS Δ = −1.084):
+     *   - vss @ 40k voice + impairments: mean Δ −1.565 (base 4.0–4.6 → 1.3–2.5)
+     *   - voip @ 16k mono speech:        mean Δ −0.961 (base 3.2–4.1 → 1.3–2.4)
+     * Voice content cannot tolerate SBR formant smearing; the rate floor
+     * keeps the SBR-overhead amortisation positive.  Music_high (256k) and
+     * music_std (128k) are LC and bit-exact MATCH at any threshold.
+     * `config->bitRate` is per-channel here (frontend/main.c:968 divides by
+     * channel count before assigning).  See heaac_bitrate_baseline.md and
+     * project_sbr_voice_regression_closed.md. */
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        int pick_heaac = (rate_per_ch > 0 && rate_per_ch < 48000);
+        int pick_heaac = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
         hEncoder->config.aacObjectType = pick_heaac ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
