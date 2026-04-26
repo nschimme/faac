@@ -58,6 +58,7 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
 
 static QuantizeFunc qfunc = quantize_scalar;
 static faac_real sfstep;
+
 static faac_real max_quant_limit;
 
 /* Sentinel: delta chain has no previous band yet (first active regular band). */
@@ -97,8 +98,8 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 
 #define NOISEFLOOR 0.4
 
-#define NOISETONE     0.2   /* noise-floor weight in masking target */
-#define TONEMASK      0.45  /* tone-masking component weight */
+#define NOISETONE     0.35  /* noise-floor weight in masking target */
+#define MAXE_W        0.90  /* peak-energy masking weight (higher = more masking budget for formants) */
 #define SHORT_PENALTY 0.45  /* tightens masking target for short-window blocks */
 
 /* Prevents masking target collapse in quiet upper bands by flooring energy ratios.
@@ -115,7 +116,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
-  faac_real powm = 0.4;
+  faac_real powm = 0.20;
   faac_real totenrg = 0.0;
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
@@ -182,7 +183,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     if (maxe < avgenrg * MAXE_FLOOR_FACTOR) maxe = avgenrg * MAXE_FLOOR_FACTOR;
 
     target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
+    target += (1.0 - NOISETONE) * MAXE_W * FAAC_POW(maxe/avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= SHORT_PENALTY;
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
@@ -199,7 +200,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         faac_real maxe_floor = avgenrg * (faac_real)0.02;
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
         faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
-        target_floor += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_eff/avgenrg, powm);
+        target_floor += (1.0 - NOISETONE) * MAXE_W * FAAC_POW(maxe_eff/avgenrg, powm);
         target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
         if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
         if (target < target_floor) target = target_floor;
