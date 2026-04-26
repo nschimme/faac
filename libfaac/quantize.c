@@ -187,6 +187,24 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target *= SHORT_PENALTY;
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
+    /* Floor the band/frame energy ratio so target doesn't collapse on quiet
+     * upper bands. Without this, target ends up ~5 decades below rmsx at
+     * 24 kHz internal SR (HE-AAC), and the magic-offset rounding in
+     * quantize_scalar truncates the entire band to zeros even though sf_rel
+     * never trips SF_MIN. Floor at -23 dB (avge) / -17 dB (maxe) below
+     * avgenrg keeps the band alive at coarse precision. */
+    {
+        faac_real avge_floor = avgenrg * (faac_real)0.005;  /* -23 dB below avg */
+        faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
+        faac_real maxe_floor = avgenrg * (faac_real)0.02;
+        faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
+        faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
+        target_floor += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_eff/avgenrg, powm);
+        target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
+        if (target < target_floor) target = target_floor;
+    }
+
     bandqual[sfb] = target * quality;
   }
 }
