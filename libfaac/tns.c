@@ -37,11 +37,11 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Shifted to approx 1.3 kHz based on instrumentation hints */
+/* Shifted based on regression analysis to avoid sensitive speech regions */
 static unsigned short tnsMinBandNumberLong[12] =
-{ 7, 8, 10, 11, 12, 14, 17, 18, 17, 20, 21, 22 };
+{ 10, 11, 14, 15, 16, 19, 23, 24, 22, 26, 28, 29 };
 static unsigned short tnsMinBandNumberShort[12] =
-{ 1, 1, 1, 2, 2, 3, 4, 4, 6, 7, 7, 8 };
+{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 9, 9, 10 };
 
 /**************************************/
 /* Main/Low Profile TNS Parameters    */
@@ -100,13 +100,23 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
     int i, sfb;
     faac_real tnsSfbMean[NSFB_LONG];
     faac_real tmp;
+    faac_real totalEnergy = 1e-10;
+
+    for (i = sfbOffset[lpcStartBand]; i < sfbOffset[lpcStopBand]; i++) {
+        totalEnergy += spectrum[i] * spectrum[i];
+    }
+
+    /* Relative floor to avoid over-amplifying low-energy bands */
+    faac_real floor = totalEnergy * 1e-4 / (sfbOffset[lpcStopBand] - sfbOffset[lpcStartBand]) + 1e-10;
 
     for (sfb = lpcStartBand; sfb < lpcStopBand; sfb++) {
-        faac_real energy = 1e-30;
+        faac_real energy = 0.0;
+        int bandSize = sfbOffset[sfb+1] - sfbOffset[sfb];
         for (i = sfbOffset[sfb]; i < sfbOffset[sfb+1]; i++) {
             energy += spectrum[i] * spectrum[i];
         }
-        tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy));
+        energy /= (faac_real)bandSize;
+        tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
     }
 
     sfb = lpcStartBand;
@@ -194,7 +204,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
-    int w;
+    int w, i;
     int startIndex,length;
     faac_real gain;
     faac_real weightedSpec[FRAME_LEN];
@@ -248,14 +258,24 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
+        if (length <= 0) continue;
+
+        /* Skip TNS if signal is extremely quiet in the analysis range */
+        faac_real totalE = 0.0;
+        for (i = 0; i < length; i++) {
+            totalE += spec[w * windowSize + sfbOffsetTable[startBand] + i] * spec[w * windowSize + sfbOffsetTable[startBand] + i];
+        }
+        if (totalE < 1e-4) continue;
+
         CalcWeightedSpectrum(&spec[w * windowSize], weightedSpec, numberOfBands, sfbOffsetTable, startBand, stopBand);
 
         gain = LevinsonDurbin(order,length,&weightedSpec[sfbOffsetTable[startBand]],k,acfWin);
 
-        faac_real thresh = (faac_real)DEF_TNS_GAIN_THRESH;
-        if (bitRatePerChannel < 16000) thresh = (faac_real)2.4;
-        else if (bitRatePerChannel < 20000) thresh = (faac_real)2.6;
-        else thresh = (faac_real)2.8;
+        /* Conservative thresholds based on bitrate to minimize regressions */
+        faac_real thresh;
+        if (bitRatePerChannel < 16000) thresh = (faac_real)4.0;
+        else if (bitRatePerChannel < 32000) thresh = (faac_real)3.7;
+        else thresh = (faac_real)3.3;
 
         if (gain > thresh) {  /* Use TNS */
             int truncatedOrder;
@@ -499,12 +519,12 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     aPtr = aArray1;
     aLastPtr = aArray2;
     /* If there is no signal energy, return */
-    if (!signal) {
+    if (signal <= 1e-10) {
         kArray[0]=1.0;
         for (order=1;order<=fOrder;order++) {
             kArray[order]=0.0;
         }
-        return 0;
+        return (faac_real)0.0;
 
     } else {
 
@@ -538,8 +558,8 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aLastPtr=aPtr;      /* Current becomes last */
             aPtr=aTemp;         /* Last becomes current */
         }
-        /* If perfect prediction, trigger TNS */
-        if (error <= 1e-30) return DEF_TNS_GAIN_THRESH + 1.0;
+        /* If perfect prediction, trigger TNS with high gain */
+        if (error <= 1e-30) return (faac_real)100.0;
         return signal/error;    /* return the gain */
     }
 }
