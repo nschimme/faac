@@ -276,10 +276,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions */
         faac_real thresh;
-        if (bitRatePerChannel < 24000) thresh = (faac_real)15.0;
-        else if (bitRatePerChannel < 32000) thresh = (faac_real)10.0;
-        else if (bitRatePerChannel < 48000) thresh = (faac_real)8.0;
-        else if (bitRatePerChannel < 64000) thresh = (faac_real)6.5;
+        if (bitRatePerChannel < 32000) thresh = (faac_real)15.0;
+        else if (bitRatePerChannel < 48000) thresh = (faac_real)10.0;
+        else if (bitRatePerChannel < 64000) thresh = (faac_real)8.0;
         else if (bitRatePerChannel < 96000) thresh = (faac_real)5.5;
         else thresh = (faac_real)3.5;
 
