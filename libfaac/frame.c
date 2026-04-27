@@ -419,7 +419,18 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = AAC_AUTO;
     hEncoder->config.jointmode = JOINT_IS;
-    hEncoder->config.pnslevel = 4;
+    /* pnslevel=2 chosen by 12-clip voip + 9-clip he64 + 4-clip lc128 sweep
+     * vs the long-standing default 4 (which over-substitutes noise into
+     * formant bands at low rates). At -b 16 mono speech, pnslevel=4 fired
+     * PNS in 41% of frames and 508/2756 sections — including the 0-4 kHz
+     * formant region. Lowering to 2 lifted ViSQOL speech-mode mean by
+     * +0.079 (3.051 -> 3.130) on voip 16 kbps and +0.046 on lc128 128k
+     * music with the music HE64 gate flat; voip output bytes stayed
+     * inside ±2% of baseline so the lift is matched-bps coding gain,
+     * not bit overspend. pnslevel=0 (full disable) regressed lc128 by
+     * -0.046, confirming PNS is still useful at higher rates and tonal
+     * content. */
+    hEncoder->config.pnslevel = 2;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;

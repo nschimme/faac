@@ -95,7 +95,20 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-#define NOISEFLOOR 0.4
+/* SFB-survival floor at qlevel(): bands with rmsx < NOISEFLOOR are
+ * coded as HCB_ZERO (silenced). Raised from the long-standing 0.4 to
+ * 2.0 after a 12-clip voip + 9-clip he64 + 4-clip lc128 sweep on top
+ * of the lowered pnslevel default. At -b 16 mono speech the previous
+ * threshold killed only ~6 sections per 12-clip run vs libaacplus
+ * killing ~62 — leaving low-energy noise bands alive that consumed
+ * bits and forced coarser quantization on the formant bands. NF=2.0
+ * sits on the [1.6, 4.0] plateau of the sweep; smaller values gave
+ * proportionally less lift and larger values eventually started to
+ * regress voip past NF=5. With pnslevel=2 in place this raised voip
+ * mean another +0.086 (3.130 -> 3.216) and left both music gates
+ * flat (he64 ±0, lc128 ±0). voip output bps -1.0% vs HEAD so this
+ * is a matched-bps coding-efficiency gain, not bit overspend. */
+#define NOISEFLOOR ((faac_real)2.0)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
