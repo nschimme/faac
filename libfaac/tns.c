@@ -99,7 +99,6 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
 {
     int i, sfb;
     faac_real tnsSfbMean[NSFB_LONG];
-    faac_real tmp;
     faac_real totalEnergy = 1e-10;
 
     for (i = sfbOffset[lpcStartBand]; i < sfbOffset[lpcStopBand]; i++) {
@@ -118,17 +117,15 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         energy /= (faac_real)bandSize;
         tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
         /* Cap weight strictly to avoid over-amplifying low-energy bins */
-        if (tnsSfbMean[sfb] > 10.0) tnsSfbMean[sfb] = 10.0;
+        if (tnsSfbMean[sfb] > 8.0) tnsSfbMean[sfb] = 8.0;
     }
 
-    sfb = lpcStartBand;
-    tmp = tnsSfbMean[sfb];
-    for (i = sfbOffset[lpcStartBand]; i < sfbOffset[lpcStopBand]; i++) {
-        if (sfb + 1 < lpcStopBand && sfbOffset[sfb+1] == i) {
-            sfb++;
-            tmp = tnsSfbMean[sfb];
+    /* Smooth weights to avoid blockiness in prediction gain */
+    for (sfb = lpcStartBand; sfb < lpcStopBand; sfb++) {
+        faac_real weight = tnsSfbMean[sfb];
+        for (i = sfbOffset[sfb]; i < sfbOffset[sfb+1]; i++) {
+            weightedSpectrum[i] = weight;
         }
-        weightedSpectrum[i] = tmp;
     }
 
     /* Filter down */
@@ -185,6 +182,7 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
+        /* Gaussian window resolution tuned for stability */
         CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 0.75);
         CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 0.75);
     }
@@ -262,26 +260,27 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (length <= 0) continue;
 
-        /* Skip TNS if signal is quiet in the analysis range to avoid speech regressions */
+        /* Skip TNS if signal is quiet or too stable to avoid speech regressions */
         faac_real totalE = 0.0;
         for (i = 0; i < length; i++) {
             faac_real val = spec[w * windowSize + sfbOffsetTable[startBand] + i];
             totalE += val * val;
         }
-        if (totalE < 10.0) continue;
+        if (totalE < 100.0) continue;
 
         CalcWeightedSpectrum(&spec[w * windowSize], weightedSpec, numberOfBands, sfbOffsetTable, startBand, stopBand);
 
         gain = LevinsonDurbin(order,length,&weightedSpec[sfbOffsetTable[startBand]],k,acfWin);
 
-        /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions */
+        /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions.
+           Regression observed at 40kbps total bitrate (mono/stereo) on vss samples. */
         faac_real thresh;
-        if (bitRatePerChannel < 24000) thresh = (faac_real)20.0;
-        else if (bitRatePerChannel < 32000) thresh = (faac_real)15.0;
-        else if (bitRatePerChannel < 48000) thresh = (faac_real)12.0;
-        else if (bitRatePerChannel < 64000) thresh = (faac_real)10.0;
-        else if (bitRatePerChannel < 96000) thresh = (faac_real)6.0;
-        else thresh = (faac_real)3.5;
+        if (bitRatePerChannel < 24000) thresh = (faac_real)25.0;
+        else if (bitRatePerChannel < 32000) thresh = (faac_real)20.0;
+        else if (bitRatePerChannel < 48000) thresh = (faac_real)18.0;
+        else if (bitRatePerChannel < 64000) thresh = (faac_real)15.0;
+        else if (bitRatePerChannel < 96000) thresh = (faac_real)10.0;
+        else thresh = (faac_real)4.0;
 
         /* Disable TNS for short blocks at lower bitrates to save side info bits */
         if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 64000) continue;
@@ -299,7 +298,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             /* Only apply if order is significant enough to justify the bit cost */
             if (truncatedOrder < 3) {
                 windowData->numFilters = 0;
-                /* Note: tnsDataPresent stays 1 if a previous window used it */
                 continue;
             }
 
@@ -313,8 +311,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
 /*****************************************************/
 /* TnsEncodeFilterOnly:                              */
-/* This is a stripped-down version of TnsEncode()    */
-/* which performs TNS analysis filtering only        */
 /*****************************************************/
 void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          int numberOfBands,          /* Number of bands per window */
@@ -377,10 +373,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 
 /********************************************************/
 /* TnsInvFilter:                                        */
-/*   Inverse filter the given spec with specified       */
-/*   length using the coefficients specified in filter. */
-/*   Not that the order and direction are specified     */
-/*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
@@ -436,10 +428,6 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
 
 /*****************************************************/
 /* TruncateCoeffs:                                   */
-/*   Truncate the given reflection coeffs by zeroing */
-/*   coefficients in the tail with absolute value    */
-/*   less than the specified threshold.  Return the  */
-/*   truncated filter order.                         */
 /*****************************************************/
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 {
@@ -455,8 +443,6 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 
 /*****************************************************/
 /* QuantizeReflectionCoeffs:                         */
-/*   Quantize the given array of reflection coeffs   */
-/*   to the specified resolution in bits.            */
 /*****************************************************/
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
@@ -478,8 +464,6 @@ static void QuantizeReflectionCoeffs(int fOrder,
 
 /*****************************************************/
 /* Autocorrelation,                                  */
-/*   Compute the autocorrelation function            */
-/*   estimate for the given data.                    */
 /*****************************************************/
 static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
                      int dataSize,        /* Size of the data array */
@@ -506,9 +490,6 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 
 /*****************************************************/
 /* LevinsonDurbin:                                   */
-/*   Compute the reflection coefficients for the     */
-/*   given data using LevinsonDurbin recursion.      */
-/*   Return the prediction gain.                     */
 /*****************************************************/
 static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
                       int dataSize,        /* Size of the data array */
@@ -573,8 +554,6 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 
 /*****************************************************/
 /* StepUp:                                           */
-/*   Convert reflection coefficients into            */
-/*   predictor coefficients.                         */
 /*****************************************************/
 static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 {
