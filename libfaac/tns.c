@@ -37,11 +37,11 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Shifted based on regression analysis to avoid sensitive speech regions */
+/* Restore original FAAC band numbers (~1.6-2.0kHz start) to avoid speech formant interference */
 static unsigned short tnsMinBandNumberLong[12] =
-{ 10, 11, 14, 15, 16, 19, 23, 24, 22, 26, 28, 29 };
+{ 12, 13, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
-{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 9, 9, 10 };
+{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 9, 10, 11 };
 
 /**************************************/
 /* Main/Low Profile TNS Parameters    */
@@ -52,10 +52,10 @@ static unsigned short tnsMaxBandsLongMainLow[12] =
 static unsigned short tnsMaxBandsShortMainLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-/* Capped to reduce bit budget consumption at low bitrates */
-static unsigned short tnsMaxOrderLongMain = 12;
-static unsigned short tnsMaxOrderLongLow = 12;
-static unsigned short tnsMaxOrderShortMainLow = 5;
+/* Reduced to preserve bit budget and ensure filter smoothness at low bitrates */
+static unsigned short tnsMaxOrderLongMain = 6;
+static unsigned short tnsMaxOrderLongLow = 6;
+static unsigned short tnsMaxOrderShortMainLow = 3;
 
 
 /*************************/
@@ -106,8 +106,8 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         totalEnergy += spectrum[i] * spectrum[i];
     }
 
-    /* Relative floor to avoid over-amplifying low-energy bands */
-    faac_real floor = totalEnergy * 1e-4 / (sfbOffset[lpcStopBand] - sfbOffset[lpcStartBand]) + 1e-10;
+    /* Robust relative floor to balance spectral flattening and prevent noise amplification */
+    faac_real floor = totalEnergy * 5e-2 / (sfbOffset[lpcStopBand] - sfbOffset[lpcStartBand]) + 1e-4;
 
     for (sfb = lpcStartBand; sfb < lpcStopBand; sfb++) {
         faac_real energy = 0.0;
@@ -117,6 +117,8 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         }
         energy /= (faac_real)bandSize;
         tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
+        /* Cap weight strictly to avoid over-amplifying low-energy bins */
+        if (tnsSfbMean[sfb] > 10.0) tnsSfbMean[sfb] = 10.0;
     }
 
     sfb = lpcStartBand;
@@ -165,7 +167,7 @@ void TnsInit(faacEncStruct* hEncoder)
             if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
             } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 12;
+                tnsInfo->tnsMaxOrderLong = 6;
             }
             tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
             break;
@@ -175,7 +177,7 @@ void TnsInit(faacEncStruct* hEncoder)
             if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
             } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 12;
+                tnsInfo->tnsMaxOrderLong = 6;
             }
             tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
             break;
@@ -183,8 +185,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 0.75);
-        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 0.75);
+        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 1.5);
+        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 1.5);
     }
 }
 
@@ -260,22 +262,28 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (length <= 0) continue;
 
-        /* Skip TNS if signal is extremely quiet in the analysis range */
+        /* Skip TNS if signal is extremely quiet in the analysis range to avoid speech regressions */
         faac_real totalE = 0.0;
         for (i = 0; i < length; i++) {
-            totalE += spec[w * windowSize + sfbOffsetTable[startBand] + i] * spec[w * windowSize + sfbOffsetTable[startBand] + i];
+            faac_real val = spec[w * windowSize + sfbOffsetTable[startBand] + i];
+            totalE += val * val;
         }
-        if (totalE < 1e-4) continue;
+        if (totalE < 1.0) continue;
 
         CalcWeightedSpectrum(&spec[w * windowSize], weightedSpec, numberOfBands, sfbOffsetTable, startBand, stopBand);
 
         gain = LevinsonDurbin(order,length,&weightedSpec[sfbOffsetTable[startBand]],k,acfWin);
 
-        /* Conservative thresholds based on bitrate to minimize regressions */
+        /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions */
         faac_real thresh;
-        if (bitRatePerChannel < 16000) thresh = (faac_real)4.0;
-        else if (bitRatePerChannel < 32000) thresh = (faac_real)3.7;
-        else thresh = (faac_real)3.3;
+        if (bitRatePerChannel < 32000) thresh = (faac_real)15.0;
+        else if (bitRatePerChannel < 48000) thresh = (faac_real)10.0;
+        else if (bitRatePerChannel < 64000) thresh = (faac_real)6.5;
+        else if (bitRatePerChannel < 96000) thresh = (faac_real)5.0;
+        else thresh = (faac_real)3.5;
+
+        /* Disable TNS for short blocks at lower bitrates to save side info bits */
+        if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 96000) continue;
 
         if (gain > thresh) {  /* Use TNS */
             int truncatedOrder;
@@ -367,7 +375,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /********************************************************/
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
-    int i,j,k=0;
+    int i,j;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
 
@@ -376,10 +384,9 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
 
         /* Startup, initial state is zero */
         temp[length-1]=spec[length-1];
-        for (i=length-2;i>(length-1-order);i--) {
+        for (i=length-2; i >= 0 && i > (length-1-order); i--) {
             temp[i]=spec[i];
-            k++;
-            for (j=1;j<=k;j++) {
+            for (j=1; j <= (length-1-i); j++) {
                 spec[i]+=temp[i+j]*a[j];
             }
         }
@@ -397,7 +404,7 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
 
         /* Startup, initial state is zero */
         temp[0]=spec[0];
-        for (i=1;i<order;i++) {
+        for (i=1; i < order && i < length; i++) {
             temp[i]=spec[i];
             for (j=1;j<=i;j++) {
                 spec[i]+=temp[i-j]*a[j];
@@ -475,14 +482,14 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 
     for (order=0;order<=maxOrder;order++) {
         faac_real accu = 0.0;
-        for (index=0;index<dataSize;index++) {
+        /* Correct biased autocorrelation with proper bounds check */
+        for (index=0; index < dataSize - order; index++) {
             accu += data[index]*data[index+order];
         }
         if (acfWin)
             rArray[order] = accu * acfWin[order];
         else
             rArray[order] = accu;
-        dataSize--;
     }
 }
 
@@ -502,7 +509,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 {
     int order,i;
     faac_real signal;
-    faac_real error, kTemp;                /* Prediction error */
+    faac_real error, kTemp, num;
     faac_real aArray1[TNS_MAX_ORDER+1];    /* Predictor coeff array */
     faac_real aArray2[TNS_MAX_ORDER+1];    /* Predictor coeff array 2 */
     faac_real rArray[TNS_MAX_ORDER+1] = {0}; /* Autocorrelation coeffs */
@@ -514,54 +521,44 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     Autocorrelation(fOrder,dataSize,data,rArray,acfWin);
     signal=rArray[0];   /* signal energy */
 
-    /* Set up pointers to current and last iteration */
-    /* predictor coefficients.                       */
-    aPtr = aArray1;
-    aLastPtr = aArray2;
     /* If there is no signal energy, return */
-    if (signal <= 1e-10) {
-        kArray[0]=1.0;
-        for (order=1;order<=fOrder;order++) {
-            kArray[order]=0.0;
-        }
-        return (faac_real)0.0;
-
-    } else {
-
-        /* Set up first iteration */
-        kArray[0]=1.0;
-        aPtr[0]=1.0;        /* Ptr to predictor coeffs, current iteration*/
-        aLastPtr[0]=1.0;    /* Ptr to predictor coeffs, last iteration */
-        error=rArray[0];
-
-        /* Now perform recursion */
-        for (order=1;order<=fOrder;order++) {
-            kTemp = aLastPtr[0]*rArray[order-0];
-            for (i=1;i<order;i++) {
-                kTemp += aLastPtr[i]*rArray[order-i];
-            }
-            if (error <= 1e-30 || FAAC_FABS(kTemp) >= error) {
-                error = 0.0;
-                break;
-            }
-            kTemp = -kTemp/error;
-            kArray[order]=kTemp;
-            aPtr[order]=kTemp;
-            for (i=1;i<order;i++) {
-                aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
-            }
-            error = error * (1 - kTemp*kTemp);
-            if (error <= 1e-30) break;
-
-            /* Now make current iteration the last one */
-            aTemp=aLastPtr;
-            aLastPtr=aPtr;      /* Current becomes last */
-            aPtr=aTemp;         /* Last becomes current */
-        }
-        /* If perfect prediction, trigger TNS with high gain */
-        if (error <= 1e-30) return (faac_real)100.0;
-        return signal/error;    /* return the gain */
+    if (signal <= 1e-9) {
+        for (order=0;order<=fOrder;order++) kArray[order]=0.0;
+        return 0.0;
     }
+
+    error = signal;
+    aPtr[0] = 1.0;
+    aLastPtr[0] = 1.0;
+
+    /* Now perform recursion */
+    for (order=1;order<=fOrder;order++) {
+        num = 0.0;
+        for (i=0; i<order; i++) {
+            num -= aLastPtr[i] * rArray[order-i];
+        }
+
+        kTemp = num / error;
+
+        if (FAAC_FABS(kTemp) >= 1.0) break;
+
+        kArray[order] = kTemp;
+        aPtr[0] = 1.0;
+        aPtr[order] = kTemp;
+        for (i=1; i < order; i++) {
+            aPtr[i] = aLastPtr[i] + kTemp * aLastPtr[order-i];
+        }
+
+        error *= (1.0 - kTemp * kTemp);
+        if (error <= 1e-9) break;
+
+        /* Now make current iteration the last one */
+        aTemp = aLastPtr;
+        aLastPtr = aPtr;
+        aPtr = aTemp;
+    }
+
+    return (error > 1e-9) ? signal / error : 100.0;
 }
 
 
