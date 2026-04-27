@@ -275,7 +275,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
      * project_sbr_voice_regression_closed.md. */
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        int pick_heaac = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
+        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
+        /* HE-AAC halves the configured SR for the LC core (line 288 below).
+         * On input SR < 32 kHz the core would drop to < 16 kHz and SBR
+         * would regenerate the 4-8 kHz band — which carries real speech
+         * formants/sibilants on narrow-band inputs, producing catastrophic
+         * MOS (12-clip voip mean 2.145 at -b 16 mono 16 kHz, vs 3.216 LC).
+         * Refuse HE here for any input that would yield core SR < 16 kHz;
+         * frontend may upsample explicitly-requested HE before opening
+         * the encoder. */
+        int sr_ok = (hEncoder->sampleRate >= 32000);
+        int pick_heaac = rate_ok && sr_ok;
         hEncoder->config.aacObjectType = pick_heaac ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
