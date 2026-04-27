@@ -34,14 +34,18 @@ Copyright (c) 1997.
 #include "tns.h"
 #include "util.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Shifted to conservative bands to avoid speech formant interference at low bitrates */
+/* Shifted to very high bands (> 6.5kHz) to avoid speech formant interference */
 static unsigned short tnsMinBandNumberLong[12] =
-{ 15, 15, 15, 20, 21, 23, 22, 23, 28, 30, 31, 31 };
+{ 28, 28, 28, 31, 31, 32, 30, 32, 34, 35, 36, 36 };
 static unsigned short tnsMinBandNumberShort[12] =
-{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 9, 10, 11 };
+{ 5, 5, 5, 7, 7, 8, 9, 9, 11, 12, 13, 14 };
 
 /**************************************/
 /* Main/Low Profile TNS Parameters    */
@@ -52,7 +56,7 @@ static unsigned short tnsMaxBandsLongMainLow[12] =
 static unsigned short tnsMaxBandsShortMainLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-/* Reduced to preserve bit budget and avoid ringing at low bitrates */
+/* Reduced order to minimize side-info and ringing at low bitrates */
 static unsigned short tnsMaxOrderLongMain = 7;
 static unsigned short tnsMaxOrderLongLow = 7;
 static unsigned short tnsMaxOrderShortMainLow = 3;
@@ -82,7 +86,8 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
 static void CalcGaussWindow(faac_real *win, int winSize, int samplingRate, int blockType, double timeResolution)
 {
     int i;
-    double gaussExp = M_PI * samplingRate * 0.001 * timeResolution / (blockType != ONLY_SHORT_WINDOW ? 1024.0 : 128.0);
+    /* Resolution set to 1.5ms for robust speech handling */
+    double gaussExp = M_PI * (double)samplingRate * 0.001 * timeResolution / (blockType != ONLY_SHORT_WINDOW ? 1024.0 : 128.0);
     gaussExp = -0.5 * gaussExp * gaussExp;
 
     for (i = 0; i < winSize; i++) {
@@ -117,10 +122,10 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         energy /= (faac_real)bandSize;
         tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
         /* Cap weight strictly to avoid over-amplifying low-energy bins */
-        if (tnsSfbMean[sfb] > 8.0) tnsSfbMean[sfb] = 8.0;
+        if (tnsSfbMean[sfb] > 5.0) tnsSfbMean[sfb] = 5.0;
     }
 
-    /* Smooth weights to avoid blockiness in prediction gain */
+    /* Initialize weights */
     for (sfb = lpcStartBand; sfb < lpcStopBand; sfb++) {
         faac_real weight = tnsSfbMean[sfb];
         for (i = sfbOffset[sfb]; i < sfbOffset[sfb+1]; i++) {
@@ -128,11 +133,10 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         }
     }
 
-    /* Filter down */
+    /* Aggressive smoothing of weights across bins to prevent artifacts */
     for (i = sfbOffset[lpcStopBand] - 2; i >= sfbOffset[lpcStartBand]; i--) {
         weightedSpectrum[i] = (weightedSpectrum[i] + weightedSpectrum[i+1]) * (faac_real)0.5;
     }
-    /* Filter up */
     for (i = sfbOffset[lpcStartBand] + 1; i < sfbOffset[lpcStopBand]; i++) {
         weightedSpectrum[i] = (weightedSpectrum[i] + weightedSpectrum[i-1]) * (faac_real)0.5;
     }
@@ -182,9 +186,9 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Gaussian window resolution tuned for stability */
-        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 0.75);
-        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 0.75);
+        /* Lag window resolution set to 1.5ms for robust speech handling */
+        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 1.5);
+        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 1.5);
     }
 }
 
@@ -266,24 +270,30 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             faac_real val = spec[w * windowSize + sfbOffsetTable[startBand] + i];
             totalE += val * val;
         }
-        if (totalE < 100.0) continue;
+        /* Increased energy gate to further protect steady segments */
+        if (totalE < 400.0) continue;
 
         CalcWeightedSpectrum(&spec[w * windowSize], weightedSpec, numberOfBands, sfbOffsetTable, startBand, stopBand);
 
-        gain = LevinsonDurbin(order,length,&weightedSpec[sfbOffsetTable[startBand]],k,acfWin);
+        /* Limit filter order at low bitrates to minimize side info and ringing */
+        int activeOrder = order;
+        if (bitRatePerChannel < 32000) activeOrder = min(order, 4);
+        else if (bitRatePerChannel < 64000) activeOrder = min(order, 5);
 
-        /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions.
-           Regression observed at 40kbps total bitrate (mono/stereo) on vss samples. */
+        gain = LevinsonDurbin(activeOrder,length,&weightedSpec[sfbOffsetTable[startBand]],k,acfWin);
+
+        /* Extreme tiered thresholds to resolve CI regressions on vss samples.
+           Thresholds set high for all bitrates < 80kbps/ch to be safe. */
         faac_real thresh;
-        if (bitRatePerChannel < 24000) thresh = (faac_real)25.0;
-        else if (bitRatePerChannel < 32000) thresh = (faac_real)20.0;
-        else if (bitRatePerChannel < 48000) thresh = (faac_real)18.0;
-        else if (bitRatePerChannel < 64000) thresh = (faac_real)15.0;
-        else if (bitRatePerChannel < 96000) thresh = (faac_real)10.0;
-        else thresh = (faac_real)4.0;
+        if (bitRatePerChannel < 24000) thresh = (faac_real)80.0;
+        else if (bitRatePerChannel < 32000) thresh = (faac_real)60.0;
+        else if (bitRatePerChannel < 48000) thresh = (faac_real)50.0;
+        else if (bitRatePerChannel < 64000) thresh = (faac_real)40.0;
+        else if (bitRatePerChannel < 96000) thresh = (faac_real)20.0;
+        else thresh = (faac_real)8.0;
 
         /* Disable TNS for short blocks at lower bitrates to save side info bits */
-        if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 64000) continue;
+        if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 96000) continue;
 
         if (gain > thresh) {  /* Use TNS */
             int truncatedOrder;
@@ -292,8 +302,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             tnsFilter->direction = 0;
             tnsFilter->coefCompress = 0;
             tnsFilter->length = lengthInBands;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+            QuantizeReflectionCoeffs(activeOrder,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(activeOrder,DEF_TNS_COEFF_THRESH,k);
 
             /* Only apply if order is significant enough to justify the bit cost */
             if (truncatedOrder < 3) {
