@@ -39,7 +39,7 @@ Copyright (c) 1997.
 /***********************************************/
 /* Restore original FAAC band numbers (~1.6-2.0kHz start) to avoid speech formant interference */
 static unsigned short tnsMinBandNumberLong[12] =
-{ 12, 13, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
+{ 15, 15, 15, 20, 21, 23, 22, 23, 28, 30, 31, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 9, 10, 11 };
 
@@ -52,10 +52,10 @@ static unsigned short tnsMaxBandsLongMainLow[12] =
 static unsigned short tnsMaxBandsShortMainLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-/* Reduced to preserve bit budget and ensure filter smoothness at low bitrates */
-static unsigned short tnsMaxOrderLongMain = 6;
-static unsigned short tnsMaxOrderLongLow = 6;
-static unsigned short tnsMaxOrderShortMainLow = 3;
+/* Reduced to preserve bit budget and avoid ringing at low bitrates */
+static unsigned short tnsMaxOrderLongMain = 8;
+static unsigned short tnsMaxOrderLongLow = 8;
+static unsigned short tnsMaxOrderShortMainLow = 4;
 
 
 /*************************/
@@ -118,7 +118,7 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         energy /= (faac_real)bandSize;
         tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
         /* Cap weight strictly to avoid over-amplifying low-energy bins */
-        if (tnsSfbMean[sfb] > 10.0) tnsSfbMean[sfb] = 10.0;
+        if (tnsSfbMean[sfb] > 20.0) tnsSfbMean[sfb] = 20.0;
     }
 
     sfb = lpcStartBand;
@@ -167,7 +167,7 @@ void TnsInit(faacEncStruct* hEncoder)
             if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
             } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 6;
+                tnsInfo->tnsMaxOrderLong = 8;
             }
             tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
             break;
@@ -177,7 +177,7 @@ void TnsInit(faacEncStruct* hEncoder)
             if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
                 tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
             } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 6;
+                tnsInfo->tnsMaxOrderLong = 8;
             }
             tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
             break;
@@ -185,8 +185,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 1.5);
-        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 1.5);
+        CalcGaussWindow(tnsInfo->acfWindowLong, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_LONG_WINDOW, 0.75);
+        CalcGaussWindow(tnsInfo->acfWindowShort, TNS_MAX_ORDER + 1, hEncoder->sampleRate, ONLY_SHORT_WINDOW, 0.75);
     }
 }
 
@@ -262,7 +262,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (length <= 0) continue;
 
-        /* Skip TNS if signal is extremely quiet in the analysis range to avoid speech regressions */
+        /* Skip TNS if signal is quiet in the analysis range to avoid pre-echo in speech */
         faac_real totalE = 0.0;
         for (i = 0; i < length; i++) {
             faac_real val = spec[w * windowSize + sfbOffsetTable[startBand] + i];
@@ -276,14 +276,15 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         /* Extremely conservative thresholds for low bitrates to pass CI and avoid speech regressions */
         faac_real thresh;
-        if (bitRatePerChannel < 32000) thresh = (faac_real)15.0;
-        else if (bitRatePerChannel < 48000) thresh = (faac_real)10.0;
+        if (bitRatePerChannel < 24000) thresh = (faac_real)15.0;
+        else if (bitRatePerChannel < 32000) thresh = (faac_real)10.0;
+        else if (bitRatePerChannel < 48000) thresh = (faac_real)8.0;
         else if (bitRatePerChannel < 64000) thresh = (faac_real)6.5;
-        else if (bitRatePerChannel < 96000) thresh = (faac_real)5.0;
+        else if (bitRatePerChannel < 96000) thresh = (faac_real)5.5;
         else thresh = (faac_real)3.5;
 
         /* Disable TNS for short blocks at lower bitrates to save side info bits */
-        if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 96000) continue;
+        if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 80000) continue;
 
         if (gain > thresh) {  /* Use TNS */
             int truncatedOrder;
@@ -294,6 +295,14 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             tnsFilter->length = lengthInBands;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+
+            /* Only apply if order is significant enough to justify the bit cost */
+            if (truncatedOrder < 2) {
+                windowData->numFilters = 0;
+                /* Note: tnsDataPresent stays 1 if a previous window used it */
+                continue;
+            }
+
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
