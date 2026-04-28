@@ -95,7 +95,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-#define NOISEFLOOR 0.4
+#define NOISEFLOOR 0.15
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -315,6 +315,20 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
           *p_last_abs = sf_abs;
       coderInfo->sf[coderInfo->bandcnt++] += sf_rel;
+    }
+}
+
+void ChannelReset(CoderInfo *coderInfo, ChannelInfo *channelInfo)
+{
+    int i;
+    coderInfo->bandcnt = 0;
+    coderInfo->datacnt = 0;
+    channelInfo->msInfo.is_present = 0;
+
+    for (i = 0; i < MAX_SCFAC_BANDS; i++) {
+        coderInfo->book[i] = HCB_NONE;
+        coderInfo->sf[i] = 0;
+        channelInfo->msInfo.ms_used[i] = 0;
     }
 }
 

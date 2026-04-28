@@ -22,6 +22,7 @@
 #define QUANTIZE_H
 
 #include "coder.h"
+#include "channels.h"
 #include "faac_real.h"
 
 typedef struct
@@ -46,6 +47,7 @@ enum {
     MINQUAL = 10,
 };
 
+void ChannelReset(CoderInfo *coderInfo, ChannelInfo *channelInfo);
 int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);

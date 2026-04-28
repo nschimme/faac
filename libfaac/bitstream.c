@@ -34,11 +34,11 @@ Copyright (c) 1997.
 #include "bitstream.h"
 #include "util.h"
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannels);
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannels);
 static int WriteADTSHeader(faacEncStruct* hEncoder,
                            BitStream *bitStream,
                            int writeFlag);
@@ -88,56 +88,17 @@ static long BufferNumBit(BitStream *bitStream);
 static int ByteAlign(BitStream* bitStream,
                      int writeFlag, int bitsSoFar);
 
-static int WriteFAACStr(BitStream *bitStream, char *version, int write)
-{
-  int i;
-  char str[200];
-  int len, padbits, count;
-  int bitcnt;
-
-  sprintf(str, "libfaac %s", version);
-
-  len = strlen(str) + 1;
-  padbits = (8 - ((bitStream->numBit + 7) % 8)) % 8;
-  count = len + 3;
-
-  bitcnt = LEN_SE_ID + 4 + ((count < 15) ? 0 : 8) + count * 8;
-  if (!write)
-    return bitcnt;
-
-  PutBit(bitStream, ID_FIL, LEN_SE_ID);
-  if (count < 15)
-  {
-    PutBit(bitStream, count, 4);
-  }
-  else
-  {
-    PutBit(bitStream, 15, 4);
-    PutBit(bitStream, count - 14, 8);
-  }
-
-  PutBit(bitStream, 0, padbits);
-  PutBit(bitStream, 0, 8);
-  PutBit(bitStream, 0, 8); // just in case
-  for (i = 0; i < len; i++)
-    PutBit(bitStream, str[i], 8);
-
-  PutBit(bitStream, 0, 8 - padbits);
-
-  return bitcnt;
-}
-
 int WriteBitstream(faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
                    BitStream *bitStream,
-                   int numChannel)
+                   int numChannels)
 {
     int channel;
     int bits = 0;
     int bitsLeftAfterFill, numFillBits;
 
-    if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannel) < 0)
+    if (CountBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
         return -1;
 
     if(hEncoder->config.outputFormat == 1){
@@ -146,11 +107,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
         bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
-/* sur: faad2 complains about scalefactor error if we are writing FAAC String */
-    if (hEncoder->frameNum == 4)
-      WriteFAACStr(bitStream, hEncoder->config.name, 1);
-
-    for (channel = 0; channel < numChannel; channel++) {
+    for (channel = 0; channel < numChannels; channel++) {
 
         if (channelInfo[channel].present) {
 
@@ -214,14 +171,16 @@ int WriteBitstream(faacEncStruct* hEncoder,
      */
     bits += ByteAlign(bitStream, 1, bits);
 
+    hEncoder->usedBytes = bit2byte(bits);
+
     return bits;
 }
 
-static int CountBitstream(faacEncStruct* hEncoder,
-                          CoderInfo *coderInfo,
-                          ChannelInfo *channelInfo,
-                          BitStream *bitStream,
-                          int numChannel)
+int CountBitstream(faacEncStruct* hEncoder,
+                   CoderInfo *coderInfo,
+                   ChannelInfo *channelInfo,
+                   BitStream *bitStream,
+                   int numChannels)
 {
     int channel;
     int bits = 0;
@@ -233,11 +192,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
         bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
-/* sur: faad2 complains about scalefactor error if we are writing FAAC String */
-    if (hEncoder->frameNum == 4)
-      bits += WriteFAACStr(bitStream, hEncoder->config.name, 0);
-
-    for (channel = 0; channel < numChannel; channel++) {
+    for (channel = 0; channel < numChannels; channel++) {
 
         if (channelInfo[channel].present) {
 
