@@ -1,5 +1,4 @@
 /**********************************************************************
-
 This software module was originally developed by Texas Instruments
 and edited by         in the course of
 development of the MPEG-2 NBC/MPEG-4 Audio standard
@@ -23,9 +22,6 @@ copyright notice must be included in all copies or derivative works.
 
 Copyright (c) 1997.
 **********************************************************************/
-/*
- * $Id: tns.c,v 1.11 2012/03/01 18:34:17 knik Exp $
- */
 
 #include <math.h>
 #include <stdlib.h>
@@ -43,7 +39,6 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Shifted to conservative bands to avoid speech formant interference at low bitrates */
 static unsigned short tnsMinBandNumberLong[12] =
 { 15, 15, 15, 20, 21, 23, 22, 23, 28, 30, 31, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
@@ -58,26 +53,21 @@ static unsigned short tnsMaxBandsLongMainLow[12] =
 static unsigned short tnsMaxBandsShortMainLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-/* Reduced to preserve bit budget and avoid ringing at low bitrates */
-static unsigned short tnsMaxOrderLongMain = 7;
-static unsigned short tnsMaxOrderLongLow = 7;
-static unsigned short tnsMaxOrderShortMainLow = 3;
-
 
 /*************************/
 /* Function prototypes   */
 /*************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     const faac_real* data,        /* Data array */
+static void Autocorrelation(int maxOrder,
+                     int dataSize,
+                     const faac_real* data,
                      faac_real* rArray,
-                     const faac_real* acfWin);     /* Autocorrelation array */
+                     const faac_real* acfWin);
 
-static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
-                      int dataSize,        /* Size of the data array */
-                      const faac_real* data,        /* Data array */
+static faac_real LevinsonDurbin(int maxOrder,
+                      int dataSize,
+                      const faac_real* data,
                       faac_real* kArray,
-                      const faac_real* acfWin);     /* Reflection coeff array */
+                      const faac_real* acfWin);
 
 static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
@@ -106,15 +96,6 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
     int i, sfb;
     faac_real tnsSfbMean[NSFB_LONG];
     faac_real tmp;
-    faac_real totalEnergy = 1e-10;
-
-    for (i = sfbOffset[lpcStartBand]; i < sfbOffset[lpcStopBand]; i++) {
-        faac_real val = spectrum[i];
-        totalEnergy += val * val;
-    }
-
-    /* Robust relative floor to balance spectral flattening and prevent noise amplification */
-    faac_real floor = totalEnergy * 5e-2 / (sfbOffset[lpcStopBand] - sfbOffset[lpcStartBand]) + 1e-5;
 
     for (sfb = lpcStartBand; sfb < lpcStopBand; sfb++) {
         faac_real energy = 0.0;
@@ -126,7 +107,7 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
             energy += val * val;
         }
         energy /= (faac_real)bandSize;
-        tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + floor));
+        tnsSfbMean[sfb] = (faac_real)(1.0 / sqrt(energy + 1e-10));
         if (tnsSfbMean[sfb] > 10.0) tnsSfbMean[sfb] = 10.0;
     }
 
@@ -140,11 +121,10 @@ static void CalcWeightedSpectrum(const faac_real spectrum[],
         weightedSpectrum[i] = tmp;
     }
 
-    /* Spatial Filter down */
+    /* Spatial smoothing */
     for (i = sfbOffset[lpcStopBand] - 2; i >= sfbOffset[lpcStartBand]; i--) {
         weightedSpectrum[i] = (weightedSpectrum[i] + weightedSpectrum[i+1]) * (faac_real)0.5;
     }
-    /* Spatial Filter up */
     for (i = sfbOffset[lpcStartBand] + 1; i < sfbOffset[lpcStopBand]; i++) {
         weightedSpectrum[i] = (weightedSpectrum[i] + weightedSpectrum[i-1]) * (faac_real)0.5;
     }
@@ -163,34 +143,14 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    int profile = hEncoder->config.aacObjectType;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        switch( profile ) {
-        case MAIN:
-        case LTP:
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
-            } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 7;
-            }
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        case LOW :
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-            } else { /* MPEG4 */
-                tnsInfo->tnsMaxOrderLong = 7;
-            }
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        }
+        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
+        tnsInfo->tnsMaxOrderLong = 12;
+        tnsInfo->tnsMaxOrderShort = 5;
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
@@ -217,8 +177,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     int lengthInBands;               /* Length to filter, in bands */
     int w, i;
     int startIndex,length;
-    faac_real gain;
-    faac_real weightedSpec[FRAME_LEN];
+    faac_real gain, thresh;
+    faac_real *weightedSpec = temp;
     faac_real *acfWin;
 
     switch( blockType ) {
@@ -226,11 +186,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
         order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
         acfWin = tnsInfo->acfWindowShort;
         break;
 
@@ -238,23 +195,17 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         order = tnsInfo->tnsMaxOrderLong;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         acfWin = tnsInfo->acfWindowLong;
         break;
     }
 
-    /* Make sure that start and stop bands < maxSfb */
-    /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
+    startBand = min(max(startBand, 0), maxSfb);
+    stopBand = min(max(stopBand, 0), maxSfb);
+    lengthInBands = stopBand - startBand;
 
-    tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
+    tnsInfo->tnsDataPresent = 0;
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
@@ -277,32 +228,27 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             faac_real val = spec[startIndex + i];
             totalE += val * val;
         }
-        /* Increased gate (20.0) for throughput and safety */
-        if (totalE < 20.0) continue;
+        if (UNLIKELY(totalE < 1.0)) continue;
 
         CalcWeightedSpectrum(&spec[w * windowSize], weightedSpec, numberOfBands, sfbOffsetTable, startBand, stopBand);
 
         /* Optimization: Tiered order search. Start with order 2 to see if TNS is even viable. */
         gain = LevinsonDurbin(min(order, 2), length, &weightedSpec[sfbOffsetTable[startBand]], k, acfWin);
 
-        if (gain < 1.05) continue;
+        if (UNLIKELY(gain < 1.02)) continue;
 
         /* Full analysis */
         gain = LevinsonDurbin(order, length, &weightedSpec[sfbOffsetTable[startBand]], k, acfWin);
 
-        /* Heuristic: Activation thresholds for stability at low bitrates */
-        faac_real thresh;
-        if (bitRatePerChannel < 24000) thresh = (faac_real)25.0;
-        else if (bitRatePerChannel < 32000) thresh = (faac_real)18.0;
-        else if (bitRatePerChannel < 48000) thresh = (faac_real)14.0;
-        else if (bitRatePerChannel < 64000) thresh = (faac_real)10.0;
-        else if (bitRatePerChannel < 96000) thresh = (faac_real)6.0;
-        else thresh = (faac_real)3.5;
+        /* Heuristic: Activation thresholds for stability */
+        if (bitRatePerChannel < 32000) thresh = 1.6;
+        else if (bitRatePerChannel < 64000) thresh = 1.5;
+        else thresh = 1.41;
 
-        /* Disable TNS for short blocks at lower bitrates to save cycles and bits */
+        /* Disable TNS for short blocks at lower bitrates to save bits */
         if (blockType == ONLY_SHORT_WINDOW && bitRatePerChannel < 64000) continue;
 
-        if (gain > thresh) {  /* Use TNS */
+        if (gain > thresh) {
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -319,7 +265,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
+            /* Use second half of shared work buffer for in-place filtering temporary storage */
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,weightedSpec + 1024);
         }
     }
 }
@@ -346,28 +293,19 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
         break;
     }
 
-    /* Make sure that start and stop bands < maxSfb */
-    /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
-
+    startBand = min(max(startBand, 0), maxSfb);
+    stopBand = min(max(stopBand, 0), maxSfb);
 
     /* Perform filtering for each window */
     for(w=0;w<numberOfWindows;w++)
@@ -484,7 +422,14 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
         const faac_real *p2 = data + order;
         int count = dataSize - order;
 
-        for (index=0; index < count; index++) {
+        for (index=0; index < count - 3; index += 4) {
+            accu += p1[0] * p2[0];
+            accu += p1[1] * p2[1];
+            accu += p1[2] * p2[2];
+            accu += p1[3] * p2[3];
+            p1 += 4; p2 += 4;
+        }
+        for (; index < count; index++) {
             accu += (*p1++) * (*p2++);
         }
         if (acfWin)
