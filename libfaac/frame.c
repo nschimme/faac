@@ -38,7 +38,7 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05  /* +/- 5% deadband */
+#define RC_DEADBAND_THRESHOLD  0.01  /* +/- 1% deadband */
 #define RC_DAMPING_FACTOR      0.6   /* Control loop damping */
 
 static char *libfaacName = PACKAGE_VERSION;
