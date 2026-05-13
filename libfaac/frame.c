@@ -638,6 +638,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0;
         }
 
+        /* Quality floor to prevent excessive zeroing in transients */
+        if (fix < 0.5)
+            fix = 0.5;
+
         /* Apply damping to the quality adjustment */
         fix = (fix - 1.0) * RC_DAMPING_FACTOR + 1.0;
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);

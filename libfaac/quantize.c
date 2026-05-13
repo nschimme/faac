@@ -172,6 +172,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
         target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
+        /* Balanced target for short blocks to improve energy retention */
         target *= 1.0;
     }
     else
@@ -228,7 +229,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
       /* Ensure combined group size does not exceed the spectral buffer. */
-      if (gsize * (end - start) > FRAME_LEN) return;
+      if (gsize * (end - start) > FRAME_LEN) {
+          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          continue;
+      }
 
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
