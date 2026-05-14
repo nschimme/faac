@@ -172,7 +172,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
         target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
 
-        target *= 0.5;
+        target *= 0.45;
     }
     else
     {
