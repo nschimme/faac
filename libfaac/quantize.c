@@ -163,27 +163,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     maxe *= gsize;
 
 #define NOISETONE 0.2
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
+    last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+    avgenrg = totenrg / last;
+    avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-
-        target *= 0.5;
-    }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
-    }
-
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+    target += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe/avgenrg, powm);
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
     bandqual[sfb] = target * quality;
