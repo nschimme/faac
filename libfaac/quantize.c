@@ -95,7 +95,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-#define NOISEFLOOR 0.15
+#define NOISEFLOOR 0.4
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -213,7 +213,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
