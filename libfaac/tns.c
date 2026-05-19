@@ -424,6 +424,20 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
     faac_real* aTemp;
 
+    /* Zero output reflection coefficients before doing any work. kArray
+       is the caller's tnsFilter->kCoeffs, which is per-channel state
+       persisted across frames; when the recursion below exits early
+       (via the error<=0 or |kTemp|>=error guard, common on highly
+       correlated input such as speech formants) the entries beyond the
+       break index would otherwise retain stale values from a previous
+       frame and be propagated into QuantizeReflectionCoeffs / StepUp /
+       TnsInvFilter, producing a garbage prediction filter and severe
+       noise modulation. (The kArray[0]=1.0 assignments in the branches
+       below still set the sentinel correctly.) */
+    for (order = 0; order <= fOrder; order++) {
+        kArray[order] = 0.0;
+    }
+
     /* Compute autocorrelation coefficients */
     Autocorrelation(fOrder,dataSize,data,rArray);
     signal=rArray[0];   /* signal energy */
