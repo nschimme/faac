@@ -89,37 +89,18 @@ void TnsInit(faacEncStruct* hEncoder)
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        switch( profile ) {
-        case MAIN:
-        case LTP:
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
-                    tnsInfo->tnsMaxOrderLong = 12;
-                else
-                    tnsInfo->tnsMaxOrderLong = 20;
-            }
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        case LOW :
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
-                    tnsInfo->tnsMaxOrderLong = 12;
-                else
-                    tnsInfo->tnsMaxOrderLong = 20;
-            }
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        }
+        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
+        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
+
+        if (profile == MAIN) {
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
+        } else {
+            /* LOW (LC) and LTP profiles cap long-block TNS order at 12 */
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        }
     }
 }
 
