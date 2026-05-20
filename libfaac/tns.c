@@ -228,13 +228,25 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
+            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+            if (truncatedOrder == 0) {
+                /* Identity filter - skip TNS for this window so we do
+                   not consume tns_data syntax bits for a no-op filter.
+                   This happens on strongly correlated content (e.g.
+                   speech) where LevinsonDurbin breaks early before
+                   writing any reflection coefficients yet still returns
+                   the "perfect prediction" gain that passes the gate;
+                   without this check, ~13 bits/frame of TNS header are
+                   stolen from spectral quantization for zero spectral
+                   change, which collapses MOS at low bitrates. */
+                continue;
+            }
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
             tnsFilter->coefCompress = 0;
             tnsFilter->length = lengthInBands;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
