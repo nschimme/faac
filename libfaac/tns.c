@@ -167,6 +167,21 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
+        /* Short-block TNS is disabled. The dead code below is
+           structurally complete (verified) and the bitstream writer
+           handles per-window emission. Enabling it (commit a3dfbe7)
+           regressed avg MOS by -0.134 with 32 killers on CI; locally
+           it regressed bah.wav by -0.62, Coral by -0.13, 9-Have... by
+           -0.02 at music_std 128 kbps. Disabling short-block TNS fully
+           recovers these. A per-block-type activation gain threshold
+           did not filter the bad firings (the LD gain on bassoon
+           partials and other tonal short-block content is genuinely
+           >> 2.5). Re-enabling short-block TNS is a separate problem
+           requiring a perceptual-aware gate (e.g. transient confirmation
+           that distinguishes true attacks from harmonic onsets), not a
+           gain-threshold tweak. */
+        tnsInfo->tnsDataPresent = 0;
+        return;
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
