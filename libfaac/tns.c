@@ -63,6 +63,16 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
+#define TNS_PEAK_RATIO_K  4.0      /* peak-to-mean magnitude minimum;
+                                      max|X| / mean|X| below K indicates
+                                      a noise-dominated band lacking the
+                                      strong spectral peaks TNS relies on
+                                      for benefit. White Gaussian noise
+                                      over N bins has expected peak-to-
+                                      mean ~sqrt(2 ln N) ~3.4 for N~200,
+                                      so K=4 is just above the noise
+                                      floor while still well below the
+                                      ratio seen in tonal content. */
 
 
 /*************************/
@@ -181,16 +191,19 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
            the spectrum is nearly flat (L2^2*N / L1^2 < TNS_FLATNESS_K,
            bounded below by 1.0 at perfect flatness by Cauchy-Schwarz). */
         {
-            faac_real sumsq = 0.0, suma = 0.0;
+            faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
             int j;
             for (j = 0; j < length; j++) {
                 faac_real v = spec[startIndex + j];
+                faac_real va = FAAC_FABS(v);
                 sumsq += v * v;
-                suma  += FAAC_FABS(v);
+                suma  += va;
+                if (va > maxa) maxa = va;
             }
             if (sumsq < TNS_ENERGY_FLOOR * length
                 || suma <= 0.0
-                || sumsq * length < TNS_FLATNESS_K * suma * suma) {
+                || sumsq * length < TNS_FLATNESS_K * suma * suma
+                || maxa * length < TNS_PEAK_RATIO_K * suma) {
                 continue;
             }
         }
