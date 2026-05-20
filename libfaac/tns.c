@@ -76,6 +76,20 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
                                       at long-block N~200) would over-gate
                                       short blocks (N~10-30) where the
                                       noise floor is ~2.4. */
+#define TNS_TRANSIENT_LOCALIZATION 3.0 /* short-block frame-level transient
+                                          confirmation. Skip short-block
+                                          TNS for the whole frame when
+                                          per-window energy is too uniform
+                                          to indicate a sharp attack. The
+                                          gate checks peak_e * 8 vs K *
+                                          total_e (peak/mean > K). Drum
+                                          hits: ratio ~4-8 (pass). Bassoon
+                                          onsets / soft ramps: ratio ~1.5
+                                          -2.5 (skipped). Block-switching
+                                          fires on amplitude changes that
+                                          aren't always true transients;
+                                          this gate corrects that for
+                                          TNS purposes only. */
 
 
 /*************************/
@@ -167,21 +181,37 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-block TNS is disabled. The dead code below is
-           structurally complete (verified) and the bitstream writer
-           handles per-window emission. Enabling it (commit a3dfbe7)
-           regressed avg MOS by -0.134 with 32 killers on CI; locally
-           it regressed bah.wav by -0.62, Coral by -0.13, 9-Have... by
-           -0.02 at music_std 128 kbps. Disabling short-block TNS fully
-           recovers these. A per-block-type activation gain threshold
-           did not filter the bad firings (the LD gain on bassoon
-           partials and other tonal short-block content is genuinely
-           >> 2.5). Re-enabling short-block TNS is a separate problem
-           requiring a perceptual-aware gate (e.g. transient confirmation
-           that distinguishes true attacks from harmonic onsets), not a
-           gain-threshold tweak. */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        {
+            /* Frame-level transient confirmation. Short-block TNS is
+               only perceptually useful on true sharp transients (energy
+               concentrated in 1-2 of the 8 windows). Block-switching's
+               PsyCheckShort trigger also fires on slower amplitude
+               changes - bassoon note onsets, soft fade-ins - where TNS
+               reshapes quantization noise around tonal partials and
+               regresses MOS (a3dfbe7 dropped avg MOS by -0.134 with 32
+               killers on CI; locally regressed bah.wav -0.62, Coral
+               -0.13). The per-window LD gain gate cannot discriminate
+               these cases (LD gain is genuinely high on tonal content).
+               Use cross-window energy distribution instead: if peak
+               window energy * 8 < K * total energy then energy is too
+               spread out for a real transient, skip the frame. */
+            faac_real total_e = 0.0, peak_e = 0.0;
+            int j;
+            for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
+                faac_real e = 0.0;
+                for (j = 0; j < BLOCK_LEN_SHORT; j++) {
+                    faac_real v = spec[w * BLOCK_LEN_SHORT + j];
+                    e += v * v;
+                }
+                total_e += e;
+                if (e > peak_e) peak_e = e;
+            }
+            if (peak_e * MAX_SHORT_WINDOWS
+                    < TNS_TRANSIENT_LOCALIZATION * total_e) {
+                tnsInfo->tnsDataPresent = 0;
+                return;
+            }
+        }
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
