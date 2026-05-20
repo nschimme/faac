@@ -61,6 +61,10 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
    any over-firing MOS regressions) are avoided on the silence/noise/
    flat-spectrum content that defined prior failed attempts. */
 #define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor */
+#define TNS_GAIN_THRESH_LOW   1.4  /* Minimum gain to bother with TNS */
+#define TNS_GAIN_THRESH_HIGH  12.0 /* Max gain; above this is likely steady
+                                      tonal content where TNS harms bitrate
+                                      efficiency more than it helps masking. */
 #define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
@@ -162,20 +166,15 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-block TNS is disabled. Every attempt to gate it
-           per-frame (peak-to-mean, length-aware K, transient
-           localization, SFM tonality) left multi-file killer MOS
-           regressions on CI - the bad firings are real high-confidence
-           predictions on tonal content (bassoon partials, harmonic
-           speech) that no spectral discriminator could separate from
-           the wins. The regressions were not low-bitrate-specific
-           (bah.wav -0.62, Coral -0.13 at music 128 kbps), so a
-           bitrate gate (b5e97ce/7adf0e3) was both insufficient and
-           wasteful - it disabled the proven long-block TNS along
-           with the bad short-block path. Long-block TNS alone
-           (commit 13a1fe0) was the avg-MOS peak (+0.022). */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        numberOfWindows = MAX_SHORT_WINDOWS;
+        windowSize = BLOCK_LEN_SHORT;
+        startBand = tnsInfo->tnsMinBandNumberShort;
+        stopBand = numberOfBands;
+        lengthInBands = stopBand - startBand;
+        order = tnsInfo->tnsMaxOrderShort;
+        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        break;
 
     default:
         numberOfWindows = 1;
@@ -242,7 +241,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        if (gain > TNS_GAIN_THRESH_LOW && gain < TNS_GAIN_THRESH_HIGH) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
@@ -426,14 +425,21 @@ static void QuantizeReflectionCoeffs(int fOrder,
 {
     faac_real iqfac,iqfac_m;
     int i;
+    int i_min = -(1 << (coeffRes - 1));
+    int i_max = (1 << (coeffRes - 1)) - 1;
 
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
 
     /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+        int index = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
+
+        if (index > i_max) index = i_max;
+        if (index < i_min) index = i_min;
+
+        indexArray[i] = index;
+        kArray[i] = FAAC_SIN((faac_real)index/((index>=0)?iqfac:iqfac_m));
     }
 }
 
