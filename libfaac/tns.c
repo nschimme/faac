@@ -64,16 +64,18 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
 #define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
-#define TNS_PEAK_RATIO_K  4.0      /* peak-to-mean magnitude minimum;
-                                      max|X| / mean|X| below K indicates
-                                      a noise-dominated band lacking the
-                                      strong spectral peaks TNS relies on
-                                      for benefit. White Gaussian noise
-                                      over N bins has expected peak-to-
-                                      mean ~sqrt(2 ln N) ~3.4 for N~200,
-                                      so K=4 is just above the noise
-                                      floor while still well below the
-                                      ratio seen in tonal content. */
+#define TNS_PEAK_RATIO_MARGIN 1.2  /* peak-to-mean tonality gate factor.
+                                      White Gaussian noise over N bins has
+                                      expected peak-to-mean ~sqrt(2 ln N);
+                                      we skip TNS when max|X|/mean|X| is
+                                      below MARGIN * sqrt(2 ln N). MARGIN
+                                      ~1.2 sits just above the noise floor
+                                      and well below tonal-content ratios.
+                                      The length-aware formula is critical
+                                      for short blocks: a fixed K=4 (good
+                                      at long-block N~200) would over-gate
+                                      short blocks (N~10-30) where the
+                                      noise floor is ~2.4. */
 
 
 /*************************/
@@ -165,11 +167,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
@@ -182,7 +179,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -229,11 +226,20 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 suma  += va;
                 if (va > maxa) maxa = va;
             }
-            if (sumsq < TNS_ENERGY_FLOOR * length
-                || suma <= 0.0
-                || sumsq * length < TNS_FLATNESS_K * suma * suma
-                || maxa * length < TNS_PEAK_RATIO_K * suma) {
-                continue;
+            {
+                /* Length-aware peak-to-mean threshold: the noise floor
+                   for max|X|/mean|X| scales as sqrt(2 ln N). Keeping a
+                   fixed K here (as in earlier revisions) would over-gate
+                   short-block bands where N is ~10-30, since the noise
+                   floor there is ~2.4 vs ~3.4 for long-block N~200. */
+                faac_real peak_thresh = TNS_PEAK_RATIO_MARGIN
+                                        * (faac_real)sqrt(2.0 * log((double)length));
+                if (sumsq < TNS_ENERGY_FLOOR * length
+                    || suma <= 0.0
+                    || sumsq * length < TNS_FLATNESS_K * suma * suma
+                    || maxa * length < peak_thresh * suma) {
+                    continue;
+                }
             }
         }
 
