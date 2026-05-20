@@ -123,42 +123,36 @@ void FilterBank(faacEncStruct* hEncoder,
     }
 
     /*  Window shape processing */
-    if(overlap_select != MNON_OVERLAPPED) {
-        switch (coderInfo->prev_window_shape) {
-        case SINE_WINDOW:
-            if ( (block_type == ONLY_LONG_WINDOW) || (block_type == LONG_SHORT_WINDOW))
-                first_window = hEncoder->sin_window_long;
-            else
-                first_window = hEncoder->sin_window_short;
-            break;
-        default:
-        case KBD_WINDOW:
-            if ( (block_type == ONLY_LONG_WINDOW) || (block_type == LONG_SHORT_WINDOW))
-                first_window = hEncoder->kbd_window_long;
-            else
-                first_window = hEncoder->kbd_window_short;
-            break;
-        }
+    switch (coderInfo->prev_window_shape) {
+    case SINE_WINDOW:
+        if ( (block_type == ONLY_LONG_WINDOW) || (block_type == LONG_SHORT_WINDOW))
+            first_window = hEncoder->sin_window_long;
+        else
+            first_window = hEncoder->sin_window_short;
+        break;
+    default:
+    case KBD_WINDOW:
+        if ( (block_type == ONLY_LONG_WINDOW) || (block_type == LONG_SHORT_WINDOW))
+            first_window = hEncoder->kbd_window_long;
+        else
+            first_window = hEncoder->kbd_window_short;
+        break;
+    }
 
-        switch (coderInfo->window_shape){
-        case SINE_WINDOW:
-        default:
-            if ( (block_type == ONLY_LONG_WINDOW) || (block_type == SHORT_LONG_WINDOW))
-                second_window = hEncoder->sin_window_long;
-            else
-                second_window = hEncoder->sin_window_short;
-            break;
-        case KBD_WINDOW:
-            if ( (block_type == ONLY_LONG_WINDOW) || (block_type == SHORT_LONG_WINDOW))
-                second_window = hEncoder->kbd_window_long;
-            else
-                second_window = hEncoder->kbd_window_short;
-            break;
-        }
-    } else {
-        /* Always long block and sine window for LTP */
-        first_window = hEncoder->sin_window_long;
-        second_window = hEncoder->sin_window_long;
+    switch (coderInfo->window_shape){
+    case SINE_WINDOW:
+    default:
+        if ( (block_type == ONLY_LONG_WINDOW) || (block_type == SHORT_LONG_WINDOW))
+            second_window = hEncoder->sin_window_long;
+        else
+            second_window = hEncoder->sin_window_short;
+        break;
+    case KBD_WINDOW:
+        if ( (block_type == ONLY_LONG_WINDOW) || (block_type == SHORT_LONG_WINDOW))
+            second_window = hEncoder->kbd_window_long;
+        else
+            second_window = hEncoder->kbd_window_short;
+        break;
     }
 
     /* Set ptr to transf-Buffer */

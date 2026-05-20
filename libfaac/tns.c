@@ -44,17 +44,16 @@ static unsigned short tnsMinBandNumberShort[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
 /**************************************/
-/* Main/Low Profile TNS Parameters    */
+/* Low Profile TNS Parameters         */
 /**************************************/
-static unsigned short tnsMaxBandsLongMainLow[12] =
+static unsigned short tnsMaxBandsLongLow[12] =
 { 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
 
-static unsigned short tnsMaxBandsShortMainLow[12] =
+static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongMain = 20;
 static unsigned short tnsMaxOrderLongLow = 12;
-static unsigned short tnsMaxOrderShortMainLow = 7;
+static unsigned short tnsMaxOrderShortLow = 7;
 
 
 /*************************/
@@ -84,23 +83,16 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    int profile = hEncoder->config.aacObjectType;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
+        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
+        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
-
-        if (profile == MAIN) {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
-        } else {
-            /* LOW (LC) and LTP profiles cap long-block TNS order at 12 */
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-        }
     }
 }
 
