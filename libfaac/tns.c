@@ -116,14 +116,16 @@ void TnsInit(faacEncStruct* hEncoder)
         case LOW :
             tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
             tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
-                    tnsInfo->tnsMaxOrderLong = 12;
-                else
-                    tnsInfo->tnsMaxOrderLong = 20;
-            }
+            /* LC (LOW) profile caps long-block TNS filter order at 12
+               regardless of sample rate or MPEG version. The previous
+               MPEG4 branch raised the cap to 20 for fs<32kHz - that
+               was inherited from the MAIN profile and is invalid for
+               LC: standard decoders (ffmpeg, faad) reject any LC frame
+               carrying tns_order > 12, treating the whole packet as
+               corrupt. This was harmless while TNS was off by default
+               but is the dominant cause of catastrophic per-file MOS
+               drops on the voip 16 kHz scenario now that TNS is on. */
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;  /* = 12 */
             tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
             break;
         }
