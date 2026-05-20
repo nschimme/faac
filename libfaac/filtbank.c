@@ -102,8 +102,7 @@ void FilterBank(faacEncStruct* hEncoder,
                 CoderInfo *coderInfo,
                 faac_real *p_in_data,
                 faac_real *p_out_mdct,
-                faac_real *p_overlap,
-                int overlap_select)
+                faac_real *p_overlap)
 {
     faac_real *p_o_buf, *first_window, *second_window;
     faac_real *transf_buf;
@@ -114,13 +113,9 @@ void FilterBank(faacEncStruct* hEncoder,
 
     /* create / shift old values */
     /* We use p_overlap here as buffer holding the last frame time signal*/
-    if(overlap_select != MNON_OVERLAPPED) {
-        memcpy(transf_buf, p_overlap, FRAME_LEN*sizeof(faac_real));
-        memcpy(transf_buf+BLOCK_LEN_LONG, p_in_data, FRAME_LEN*sizeof(faac_real));
-        memcpy(p_overlap, p_in_data, FRAME_LEN*sizeof(faac_real));
-    } else {
-        memcpy(transf_buf, p_in_data, 2*FRAME_LEN*sizeof(faac_real));
-    }
+    memcpy(transf_buf, p_overlap, FRAME_LEN*sizeof(faac_real));
+    memcpy(transf_buf+BLOCK_LEN_LONG, p_in_data, FRAME_LEN*sizeof(faac_real));
+    memcpy(p_overlap, p_in_data, FRAME_LEN*sizeof(faac_real));
 
     /*  Window shape processing */
     switch (coderInfo->prev_window_shape) {
