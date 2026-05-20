@@ -90,6 +90,27 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
                                           aren't always true transients;
                                           this gate corrects that for
                                           TNS purposes only. */
+#define TNS_SHORT_LOG_SFM_MIN  -4.0    /* short-block tonality gate.
+                                          Spectral Flatness Measure (SFM)
+                                          = geo_mean(|X|^2) / arith_mean
+                                          (|X|^2); we compute log(SFM)
+                                          directly. log(SFM) is 0 for
+                                          flat noise-like spectra and
+                                          large-negative for tonal
+                                          content. CI data on f932340
+                                          (CI run 26143032370) showed
+                                          transient localization alone
+                                          cannot discriminate harmful
+                                          firings on tonal short-block
+                                          content (voip C_16_NOISE_ML
+                                          lost -0.60 with identical
+                                          gate behavior to FA which
+                                          won +1.08). Reject too-tonal
+                                          frames: log_sfm < -4 means
+                                          geo_mean is more than ~50x
+                                          smaller than arith_mean
+                                          (single tonal partial
+                                          dominates the band). */
 
 
 /*************************/
@@ -210,6 +231,56 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                     < TNS_TRANSIENT_LOCALIZATION * total_e) {
                 tnsInfo->tnsDataPresent = 0;
                 return;
+            }
+
+            /* Tonality rejection. Even after transient confirmation,
+               some short-block frames carry strongly tonal content
+               (e.g. harmonic partials within a noisy speech frame on
+               certain speakers, or bassoon partials within an attack
+               window). TNS prediction on those reshapes quantization
+               noise around the tonal peaks, producing audible noise
+               modulation. CI data on f932340 showed identical
+               transient-gate behavior between voip C_16_NOISE_FA
+               (+1.08 win) and ML (-0.60 loss) - the discriminator is
+               not transient localization but spectral tonality.
+
+               Reject the frame if SFM (geometric mean / arithmetic
+               mean of |X|^2 over the TNS band) is too low (too
+               tonal). We compute log(SFM) directly to avoid an exp.
+               Numerical floor (~1e-30) guards log(0). */
+            {
+                int s_band_start = sfbOffsetTable[tnsInfo->tnsMinBandNumberShort];
+                int s_band_end_band = numberOfBands;
+                if (s_band_end_band > tnsInfo->tnsMaxBandsShort) {
+                    s_band_end_band = tnsInfo->tnsMaxBandsShort;
+                }
+                int s_band_end = sfbOffsetTable[s_band_end_band];
+                int s_len = s_band_end - s_band_start;
+                if (s_len > 0) {
+                    faac_real log_sum = 0.0, sum_sq = 0.0;
+                    int count = 0;
+                    for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
+                        int s = w * BLOCK_LEN_SHORT + s_band_start;
+                        for (j = 0; j < s_len; j++) {
+                            faac_real v = spec[s + j];
+                            faac_real x2 = v * v;
+                            if (x2 > (faac_real)1e-30) {
+                                log_sum += (faac_real)log((double)x2);
+                                sum_sq += x2;
+                                count++;
+                            }
+                        }
+                    }
+                    if (count > 8 && sum_sq > 0.0) {
+                        faac_real log_geo = log_sum / count;
+                        faac_real log_arith = (faac_real)log((double)(sum_sq / count));
+                        faac_real log_sfm = log_geo - log_arith;
+                        if (log_sfm < TNS_SHORT_LOG_SFM_MIN) {
+                            tnsInfo->tnsDataPresent = 0;
+                            return;
+                        }
+                    }
+                }
             }
         }
         numberOfWindows = MAX_SHORT_WINDOWS;
