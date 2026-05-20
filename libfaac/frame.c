@@ -402,6 +402,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
+    /* Force TNS off at very low per-channel bitrates. The TNS data
+       syntax header costs ~13 bits/frame, which is a material share
+       of the spectral-coding budget at <=20 kbps/ch, and content at
+       these operating points is dominated by speech and noise whose
+       MDCT shape is poorly predictable by cross-frequency LPC. The
+       worst CI regressor on PR #174 head 282b29b is voip
+       C_16_NOISE_ML at -0.54 MOS (16 kbps mono); prior iterations
+       d347b1a / a3dfbe7 / f932340 / 282b29b that tried to gate TNS
+       per-frame inside TnsEncode could not stop it. Gate at the
+       operating point instead. */
+    if (hEncoder->config.bitRate && hEncoder->config.bitRate < 20000)
+        useTns = 0;
+
     /* Increase frame number */
     hEncoder->frameNum++;
 
