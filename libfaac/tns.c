@@ -70,47 +70,7 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
                                       we skip TNS when max|X|/mean|X| is
                                       below MARGIN * sqrt(2 ln N). MARGIN
                                       ~1.2 sits just above the noise floor
-                                      and well below tonal-content ratios.
-                                      The length-aware formula is critical
-                                      for short blocks: a fixed K=4 (good
-                                      at long-block N~200) would over-gate
-                                      short blocks (N~10-30) where the
-                                      noise floor is ~2.4. */
-#define TNS_TRANSIENT_LOCALIZATION 3.0 /* short-block frame-level transient
-                                          confirmation. Skip short-block
-                                          TNS for the whole frame when
-                                          per-window energy is too uniform
-                                          to indicate a sharp attack. The
-                                          gate checks peak_e * 8 vs K *
-                                          total_e (peak/mean > K). Drum
-                                          hits: ratio ~4-8 (pass). Bassoon
-                                          onsets / soft ramps: ratio ~1.5
-                                          -2.5 (skipped). Block-switching
-                                          fires on amplitude changes that
-                                          aren't always true transients;
-                                          this gate corrects that for
-                                          TNS purposes only. */
-#define TNS_SHORT_LOG_SFM_MIN  -4.0    /* short-block tonality gate.
-                                          Spectral Flatness Measure (SFM)
-                                          = geo_mean(|X|^2) / arith_mean
-                                          (|X|^2); we compute log(SFM)
-                                          directly. log(SFM) is 0 for
-                                          flat noise-like spectra and
-                                          large-negative for tonal
-                                          content. CI data on f932340
-                                          (CI run 26143032370) showed
-                                          transient localization alone
-                                          cannot discriminate harmful
-                                          firings on tonal short-block
-                                          content (voip C_16_NOISE_ML
-                                          lost -0.60 with identical
-                                          gate behavior to FA which
-                                          won +1.08). Reject too-tonal
-                                          frames: log_sfm < -4 means
-                                          geo_mean is more than ~50x
-                                          smaller than arith_mean
-                                          (single tonal partial
-                                          dominates the band). */
+                                      and well below tonal-content ratios. */
 
 
 /*************************/
@@ -202,96 +162,20 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        {
-            /* Frame-level transient confirmation. Short-block TNS is
-               only perceptually useful on true sharp transients (energy
-               concentrated in 1-2 of the 8 windows). Block-switching's
-               PsyCheckShort trigger also fires on slower amplitude
-               changes - bassoon note onsets, soft fade-ins - where TNS
-               reshapes quantization noise around tonal partials and
-               regresses MOS (a3dfbe7 dropped avg MOS by -0.134 with 32
-               killers on CI; locally regressed bah.wav -0.62, Coral
-               -0.13). The per-window LD gain gate cannot discriminate
-               these cases (LD gain is genuinely high on tonal content).
-               Use cross-window energy distribution instead: if peak
-               window energy * 8 < K * total energy then energy is too
-               spread out for a real transient, skip the frame. */
-            faac_real total_e = 0.0, peak_e = 0.0;
-            int j;
-            for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
-                faac_real e = 0.0;
-                for (j = 0; j < BLOCK_LEN_SHORT; j++) {
-                    faac_real v = spec[w * BLOCK_LEN_SHORT + j];
-                    e += v * v;
-                }
-                total_e += e;
-                if (e > peak_e) peak_e = e;
-            }
-            if (peak_e * MAX_SHORT_WINDOWS
-                    < TNS_TRANSIENT_LOCALIZATION * total_e) {
-                tnsInfo->tnsDataPresent = 0;
-                return;
-            }
-
-            /* Tonality rejection. Even after transient confirmation,
-               some short-block frames carry strongly tonal content
-               (e.g. harmonic partials within a noisy speech frame on
-               certain speakers, or bassoon partials within an attack
-               window). TNS prediction on those reshapes quantization
-               noise around the tonal peaks, producing audible noise
-               modulation. CI data on f932340 showed identical
-               transient-gate behavior between voip C_16_NOISE_FA
-               (+1.08 win) and ML (-0.60 loss) - the discriminator is
-               not transient localization but spectral tonality.
-
-               Reject the frame if SFM (geometric mean / arithmetic
-               mean of |X|^2 over the TNS band) is too low (too
-               tonal). We compute log(SFM) directly to avoid an exp.
-               Numerical floor (~1e-30) guards log(0). */
-            {
-                int s_band_start = sfbOffsetTable[tnsInfo->tnsMinBandNumberShort];
-                int s_band_end_band = numberOfBands;
-                if (s_band_end_band > tnsInfo->tnsMaxBandsShort) {
-                    s_band_end_band = tnsInfo->tnsMaxBandsShort;
-                }
-                int s_band_end = sfbOffsetTable[s_band_end_band];
-                int s_len = s_band_end - s_band_start;
-                if (s_len > 0) {
-                    faac_real log_sum = 0.0, sum_sq = 0.0;
-                    int count = 0;
-                    for (w = 0; w < MAX_SHORT_WINDOWS; w++) {
-                        int s = w * BLOCK_LEN_SHORT + s_band_start;
-                        for (j = 0; j < s_len; j++) {
-                            faac_real v = spec[s + j];
-                            faac_real x2 = v * v;
-                            if (x2 > (faac_real)1e-30) {
-                                log_sum += (faac_real)log((double)x2);
-                                sum_sq += x2;
-                                count++;
-                            }
-                        }
-                    }
-                    if (count > 8 && sum_sq > 0.0) {
-                        faac_real log_geo = log_sum / count;
-                        faac_real log_arith = (faac_real)log((double)(sum_sq / count));
-                        faac_real log_sfm = log_geo - log_arith;
-                        if (log_sfm < TNS_SHORT_LOG_SFM_MIN) {
-                            tnsInfo->tnsDataPresent = 0;
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-        numberOfWindows = MAX_SHORT_WINDOWS;
-        windowSize = BLOCK_LEN_SHORT;
-        startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
-        break;
+        /* Short-block TNS is disabled. Every attempt to gate it
+           per-frame (peak-to-mean, length-aware K, transient
+           localization, SFM tonality) left multi-file killer MOS
+           regressions on CI - the bad firings are real high-confidence
+           predictions on tonal content (bassoon partials, harmonic
+           speech) that no spectral discriminator could separate from
+           the wins. The regressions were not low-bitrate-specific
+           (bah.wav -0.62, Coral -0.13 at music 128 kbps), so a
+           bitrate gate (b5e97ce/7adf0e3) was both insufficient and
+           wasteful - it disabled the proven long-block TNS along
+           with the bad short-block path. Long-block TNS alone
+           (commit 13a1fe0) was the avg-MOS peak (+0.022). */
+        tnsInfo->tnsDataPresent = 0;
+        return;
 
     default:
         numberOfWindows = 1;
@@ -344,10 +228,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             }
             {
                 /* Length-aware peak-to-mean threshold: the noise floor
-                   for max|X|/mean|X| scales as sqrt(2 ln N). Keeping a
-                   fixed K here (as in earlier revisions) would over-gate
-                   short-block bands where N is ~10-30, since the noise
-                   floor there is ~2.4 vs ~3.4 for long-block N~200. */
+                   for max|X|/mean|X| scales as sqrt(2 ln N). */
                 faac_real peak_thresh = TNS_PEAK_RATIO_MARGIN
                                         * (faac_real)sqrt(2.0 * log((double)length));
                 if (sumsq < TNS_ENERGY_FLOOR * length
