@@ -35,16 +35,6 @@ Copyright (c) 1997.
 #include "tns.h"
 #include "util.h"
 
-/***********************************************/
-/* TNS Profile/Frequency Dependent Parameters  */
-/***********************************************/
-/* Limit bands to > 2.0 kHz. Lowered to 10 for long blocks to improve
-   low-frequency coverage of transients. */
-static unsigned short tnsMinBandNumberLong[12] =
-{ 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10 };
-static unsigned short tnsMinBandNumberShort[12] =
-{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
-
 /**************************************/
 /* Low Profile TNS Parameters         */
 /**************************************/
@@ -112,6 +102,33 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
+    SR_INFO *srInfo = hEncoder->srInfo;
+    int minBandLong = 0;
+    int minBandShort = 0;
+    int sum, band;
+
+    /* Calculate TNS start band dynamically based on frequency (target ~3.4kHz).
+       This follows best practices to avoid low-frequency artifacts while
+       providing temporal coverage for transients. Original FAAC used ~2-4kHz. */
+    sum = 0;
+    minBandLong = srInfo->num_cb_long - 1;
+    for (band = 0; band < srInfo->num_cb_long; band++) {
+        if ((sum * (int)hEncoder->sampleRate) >= (3400 * 1024)) {
+            minBandLong = band;
+            break;
+        }
+        sum += srInfo->cb_width_long[band];
+    }
+
+    sum = 0;
+    minBandShort = srInfo->num_cb_short - 1;
+    for (band = 0; band < srInfo->num_cb_short; band++) {
+        if ((sum * (int)hEncoder->sampleRate) >= (3400 * 128)) {
+            minBandShort = band;
+            break;
+        }
+        sum += srInfo->cb_width_short[band];
+    }
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -120,8 +137,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
         tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
         tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
-        tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
-        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
+        tnsInfo->tnsMinBandNumberLong = minBandLong;
+        tnsInfo->tnsMinBandNumberShort = minBandShort;
     }
 }
 
@@ -347,7 +364,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /********************************************************/
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
-    int i,j;
+    int i,j,k=0;
     int order=filter->order;
     faac_real* a=filter->aCoeffs;
 
@@ -358,7 +375,8 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
         temp[length-1]=spec[length-1];
         for (i=length-2;i>(length-1-order);i--) {
             temp[i]=spec[i];
-            for (j=1;j<=(length-1-i);j++) {
+            k++;
+            for (j=1;j<=k;j++) {
                 spec[i]+=temp[i+j]*a[j];
             }
         }
@@ -366,24 +384,9 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
         /* Now filter the rest */
         for (i=length-1-order;i>=0;i--) {
             temp[i]=spec[i];
-            faac_real sum = 0.0;
-            const faac_real *t_ptr = &temp[i+1];
-            const faac_real *a_ptr = &a[1];
-            int jj = order;
-            while (jj >= 4) {
-                sum += t_ptr[0] * a_ptr[0];
-                sum += t_ptr[1] * a_ptr[1];
-                sum += t_ptr[2] * a_ptr[2];
-                sum += t_ptr[3] * a_ptr[3];
-                t_ptr += 4;
-                a_ptr += 4;
-                jj -= 4;
+            for (j=1;j<=order;j++) {
+                spec[i]+=temp[i+j]*a[j];
             }
-            while (jj > 0) {
-                sum += (*t_ptr++) * (*a_ptr++);
-                jj--;
-            }
-            spec[i] += sum;
         }
 
 
@@ -401,24 +404,9 @@ static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_
         /* Now filter the rest */
         for (i=order;i<length;i++) {
             temp[i]=spec[i];
-            faac_real sum = 0.0;
-            const faac_real *t_ptr = &temp[i-1];
-            const faac_real *a_ptr = &a[1];
-            int jj = order;
-            while (jj >= 4) {
-                sum += t_ptr[0] * a_ptr[0];
-                sum += t_ptr[-1] * a_ptr[1];
-                sum += t_ptr[-2] * a_ptr[2];
-                sum += t_ptr[-3] * a_ptr[3];
-                t_ptr -= 4;
-                a_ptr += 4;
-                jj -= 4;
+            for (j=1;j<=order;j++) {
+                spec[i]+=temp[i-j]*a[j];
             }
-            while (jj > 0) {
-                sum += (*t_ptr--) * (*a_ptr++);
-                jj--;
-            }
-            spec[i] += sum;
         }
     }
 }
@@ -500,15 +488,7 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 
     for (order=0;order<=maxOrder;order++) {
         faac_real sum = 0.0;
-        index = 0;
-        while (index + 3 < dataSize) {
-            sum += data[index] * data[index+order];
-            sum += data[index+1] * data[index+1+order];
-            sum += data[index+2] * data[index+2+order];
-            sum += data[index+3] * data[index+3+order];
-            index += 4;
-        }
-        for (; index < dataSize; index++) {
+        for (index=0;index<dataSize;index++) {
             sum += data[index] * data[index+order];
         }
         rArray[order] = sum;
@@ -674,7 +654,7 @@ static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
         for (i = 1; i < length; i++) {
             faac_real curr = (faac_real)0.5 * (out[i] + prev);
             out[i] = curr * spec[i];
-            prev = curr;
+            prev = out[i];
         }
     }
 }

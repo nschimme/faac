@@ -20,8 +20,8 @@ Prediction gain upper cap. While `DEF_TNS_GAIN_THRESH` (1.4) gates TNS on from b
 
 ## Feature Enhancements
 
-### Lowered `tnsMinBandNumberLong` (10)
-Lowered the starting SFB for long-block TNS from 11-31 (depending on sample rate) to a consistent 10. This expands TNS coverage into lower frequencies, allowing it to capture and shape transients in speech formants and lower-frequency percussion, which were previously ignored.
+### Frequency-Based Start Band (3.5kHz)
+The TNS start band is now calculated dynamically during initialization to target approximately 3.5kHz. This ensures consistent behavior across different sample rates and avoids low-frequency artifacts where TNS can sometimes degrade quality, while still providing good temporal shaping for speech formants and transients.
 
 ### Short-Block TNS Enabled
 Previously, TNS was hard-coded to return early for `ONLY_SHORT_WINDOW`. By enabling it and applying the same whitening and pre-gating logic, we significantly improve the handling of transients that trigger block switching, reducing "ringing" artifacts in high-energy bursts.
@@ -30,13 +30,13 @@ Previously, TNS was hard-coded to return early for `ONLY_SHORT_WINDOW`. By enabl
 
 - **Loop Fusion**: Fused energy accumulation and whitening weight expansion in `WhitenSpectrumForTns` to reduce the number of passes over the spectral data.
 - **Hoisting**: Hoisted constant parts of the pre-gate calculation (like `log` and `sqrt` for `peak_thresh`) out of the window loops.
-- **Pointer Arithmetic & Unrolling**: Optimized `TnsInvFilter` and `Autocorrelation` loops using manual unrolling (factor of 4) and pointer-based access to minimize array indexing overhead.
+- **Compiler-Friendly Loops**: The core loops in `TnsInvFilter` and `Autocorrelation` use standard, clean C patterns that allow modern compilers to perform automatic unrolling and SIMD vectorization while maintaining maximum portability.
 - **Relative Indexing**: Fixed a bug where short windows incorrectly indexed the `sfbOffsetTable`, ensuring the whitener uses the correct scale factor weights for all 8 windows.
 
 ## Benchmark Results
 
 Verification was performed using `faac-benchmark` with the ViSQOL MOS backend.
 
-- **Bitstream Consistency**: 100.0% match against baseline (with TNS manually enabled).
+- **Bitstream Consistency**: Verified with manual TNS enabling.
 - **Throughput**: Overall average throughput remains high at ~3.0x real-time. The added complexity of whitening and pre-gating is largely offset by skipping the Levinson-Durbin recursion on ~40-60% of frames (depending on content).
-- **Perceptual Quality**: Improvements observed in transient-heavy clips due to short-block TNS and expanded frequency coverage.
+- **Perceptual Quality**: Improvements observed in transient-heavy clips due to short-block TNS enablement and safer frequency-based gating.
