@@ -60,7 +60,11 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
    analysis on frames where TNS provably cannot help, so the cost (and
    any over-firing MOS regressions) are avoided on the silence/noise/
    flat-spectrum content that defined prior failed attempts. */
-#define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor */
+#define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor; avoids wasting bits on silence */
+#define TNS_GAIN_THRESH_LOW   1.4  /* Minimum gain to bother with TNS */
+#define TNS_GAIN_THRESH_HIGH  12.0 /* Max gain; above this is likely steady
+                                      tonal content where TNS harms bitrate
+                                      efficiency more than it helps masking. */
 #define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
@@ -270,7 +274,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                              sfbOffsetTable[startBand], sfbOffsetTable[stopBand]);
         gain = LevinsonDurbin(order,length,&temp[sfbOffsetTable[startBand]],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        if (gain > TNS_GAIN_THRESH_LOW && gain < TNS_GAIN_THRESH_HIGH) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
