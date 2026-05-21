@@ -44,28 +44,23 @@ static unsigned short tnsMinBandNumberShort[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
 /**************************************/
-/* Main/Low Profile TNS Parameters    */
+/* Low Profile TNS Parameters         */
 /**************************************/
-static unsigned short tnsMaxBandsLongMainLow[12] =
+static unsigned short tnsMaxBandsLongLow[12] =
 { 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
 
-static unsigned short tnsMaxBandsShortMainLow[12] =
+static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongMain = 20;
 static unsigned short tnsMaxOrderLongLow = 12;
-static unsigned short tnsMaxOrderShortMainLow = 7;
+static unsigned short tnsMaxOrderShortLow = 7;
 
 /* TNS analysis pre-gate thresholds: skip the expensive LevinsonDurbin
    analysis on frames where TNS provably cannot help, so the cost (and
-   any over-firing MOS regressions) are avoided on the silence/noise/
+   any over-firing MOS regressions) are avoided on the silence / noise /
    flat-spectrum content that defined prior failed attempts. */
-#define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor; avoids wasting bits on silence */
-#define TNS_GAIN_THRESH_LOW   1.4  /* Minimum gain to bother with TNS */
-#define TNS_GAIN_THRESH_HIGH  12.0 /* Max gain; above this is likely steady
-                                      tonal content where TNS harms bitrate
-                                      efficiency more than it helps masking. */
-#define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
+#define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor */
+#define TNS_FLATNESS_K    1.5      /* L2^2 * N / L1^2 minimum; below this
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
 #define TNS_PEAK_RATIO_MARGIN 1.2  /* peak-to-mean tonality gate factor.
@@ -75,6 +70,10 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
                                       below MARGIN * sqrt(2 ln N). MARGIN
                                       ~1.2 sits just above the noise floor
                                       and well below tonal-content ratios. */
+#define TNS_GAIN_THRESH_LOW   1.4  /* Minimum gain to bother with TNS */
+#define TNS_GAIN_THRESH_HIGH  12.0 /* Max gain; above this is likely steady
+                                      tonal content where TNS harms bitrate
+                                      efficiency more than it helps masking. */
 
 
 /*************************/
@@ -110,42 +109,14 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    int profile = hEncoder->config.aacObjectType;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        switch( profile ) {
-        case MAIN:
-        case LTP:
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            if (hEncoder->config.mpegVersion == 1) { /* MPEG2 */
-                tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongMain;
-            } else { /* MPEG4 */
-                if (fsIndex <= 5) /* fs > 32000Hz */
-                    tnsInfo->tnsMaxOrderLong = 12;
-                else
-                    tnsInfo->tnsMaxOrderLong = 20;
-            }
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        case LOW :
-            tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongMainLow[fsIndex];
-            tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortMainLow[fsIndex];
-            /* LC (LOW) profile caps long-block TNS filter order at 12
-               regardless of sample rate or MPEG version. The previous
-               MPEG4 branch raised the cap to 20 for fs<32kHz - that
-               was inherited from the MAIN profile and is invalid for
-               LC: standard decoders (ffmpeg, faad) reject any LC frame
-               carrying tns_order > 12, treating the whole packet as
-               corrupt. This was harmless while TNS was off by default
-               but is the dominant cause of catastrophic per-file MOS
-               drops on the voip 16 kHz scenario now that TNS is on. */
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;  /* = 12 */
-            tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortMainLow;
-            break;
-        }
+        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
+        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
     }
@@ -210,9 +181,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         TnsFilterData* tnsFilter = windowData->tnsFilter;
         faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
         faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
-        faac_real sfbEnergy[NSFB_LONG];       /* per-SFB sum of squares,
-                                                 filled by the pre-gate and
-                                                 consumed by the whitener */
+        faac_real sfbEnergy[NSFB_LONG];
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
@@ -222,24 +191,23 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         /* Cheap pre-gate fused with per-SFB energy accumulation.
            Walks the TNS band once, SFB by SFB, building both the
            pre-gate statistics (sumsq, suma, maxa) and the per-SFB
-           sum-of-squares the whitener needs. Skip if the band is
-           essentially silent or the spectrum is nearly flat
-           (L2^2*N / L1^2 < TNS_FLATNESS_K, bounded below by 1.0 at
-           perfect flatness by Cauchy-Schwarz).
-           winOffset accounts for the window position in the spec[]
-           buffer: for long blocks (w=0, windowSize=1024) this is 0
-           so behaviour is unchanged; for short blocks (windowSize=128)
-           sfbOffsetTable gives per-window offsets 0-128 and we must
-           add w*128 to reach the correct window. */
+           sum-of-squares the whitener needs.  Skip if:
+             - the band is essentially silent (sumsq < floor),
+             - or the spectrum is nearly flat
+               (L2^2 * N / L1^2 < TNS_FLATNESS_K, bounded below by
+               1.0 at perfect flatness by Cauchy-Schwarz),
+             - or it is dominated by a single peak below the
+               tonality margin (max|X|*N < margin*sqrt(2*ln(N))*L1).
+           Skipping these avoids a wasted O(order*length) LD call
+           and prevents TNS firing on bands where it cannot help. */
         {
             faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
             int sfb;
-            int winOffset = w * windowSize;
             for (sfb = startBand; sfb < stopBand; sfb++) {
                 faac_real e = 0.0;
                 int j;
                 for (j = sfbOffsetTable[sfb]; j < sfbOffsetTable[sfb + 1]; j++) {
-                    faac_real v = spec[winOffset + j];
+                    faac_real v = spec[w * windowSize + j];
                     faac_real va = FAAC_FABS(v);
                     e    += v * v;
                     suma += va;
@@ -249,8 +217,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 sumsq += e;
             }
             {
-                /* Length-aware peak-to-mean threshold: the noise floor
-                   for max|X|/mean|X| scales as sqrt(2 ln N). */
                 faac_real peak_thresh = TNS_PEAK_RATIO_MARGIN
                                         * (faac_real)sqrt(2.0 * log((double)length));
                 if (sumsq < TNS_ENERGY_FLOOR * length
@@ -264,11 +230,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         /* Run LD on the per-SFB-whitened spectrum, not the raw one,
            so prediction gain reflects within-band correlation rather
-           than formant-peak structure across SFBs. The whitened buffer
-           lives in `temp`; it is consumed by LevinsonDurbin here and
-           is reused by TnsInvFilter later (after the decision is
-           made and the coefficients are quantised), so the storage
-           does not collide. See WhitenSpectrumForTns for rationale. */
+           than formant-peak structure across SFBs.  The whitened
+           buffer lives in `temp`; it is consumed by LevinsonDurbin
+           here and is reused by TnsInvFilter later (after the
+           decision is made and the coefficients are quantised), so
+           the storage does not collide.  See WhitenSpectrumForTns
+           for rationale.  This is the libaacplus CalcWeightedSpectrum
+           equivalent. */
         WhitenSpectrumForTns(&spec[w * windowSize], temp, sfbOffsetTable, sfbEnergy,
                              startBand, stopBand,
                              sfbOffsetTable[startBand], sfbOffsetTable[stopBand]);
@@ -280,12 +248,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             if (truncatedOrder == 0) {
                 /* Identity filter after truncation - skip so we do
-                   not consume tns_data syntax bits for a no-op. With
-                   whitening in place the order-1 "noise-overlay"
-                   case the previous truncatedOrder<2 gate caught
-                   should no longer fire (LD on whitened input does
-                   not see the formant-peak prediction), so the gate
-                   is back to the original identity check.  */
+                   not consume tns_data syntax bits for a no-op. */
                 continue;
             }
             windowData->numFilters++;
@@ -463,9 +426,12 @@ static void QuantizeReflectionCoeffs(int fOrder,
     /* Quantize and inverse quantize.  Clamp to the valid signed range
        [-(1<<(coeffRes-1)), (1<<(coeffRes-1))-1] so that indices never
        exceed what fits in the bitstream field: for coeffRes=4 that is
-       [-8, 7].  Without clamping, kArray[i] near ±1 maps to asin(±1)
-       = ±π/2, iqfac*(π/2) = 7.5, and (int)(0.5+7.5) = 8 which wraps
-       to -8 as a 4-bit signed value — encoder/decoder filter mismatch. */
+       [-8, 7].  Without clamping, kArray[i] near +/-1 maps to asin
+       output of +/-pi/2, the multiply-by-iqfac yields 7.5, and the
+       +0.5 round step produces 8 - which wraps to -8 as a 4-bit
+       signed value on the wire, creating an encoder/decoder filter
+       mismatch.  Harmless while TNS was off by default; matters now
+       that TNS is intended to be on. */
     {
         const int i_max =  (1 << (coeffRes - 1)) - 1;
         const int i_min = -(1 << (coeffRes - 1));
@@ -504,92 +470,6 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 
 
 
-/******************************************************************/
-/* WhitenSpectrumForTns:                                          */
-/*   Per-scale-factor-band energy normalisation of the MDCT       */
-/*   spectrum, used as the LevinsonDurbin input for TNS analysis. */
-/*                                                                */
-/*   Running LD on the raw spectrum lets the formant peaks        */
-/*   dominate the fit: on noise-overlaid speech, LD reports a     */
-/*   high prediction gain because it "predicted" the formant      */
-/*   pattern, even when the within-band signal is essentially     */
-/*   white. TNS then reshapes quantisation noise around those     */
-/*   formants and the noise modulation is audible (the dominant   */
-/*   long-block TNS killer pattern in CI, all NOISE-tagged files  */
-/*   at low bitrate).                                             */
-/*                                                                */
-/*   The fix is to divide each spectral line by sqrt(SFB energy)  */
-/*   before LD, so prediction gain reflects within-SFB structure  */
-/*   (which is what TNS can actually exploit perceptually) and    */
-/*   not peak-driven inter-SFB structure. A 3-tap triangle        */
-/*   smoother is applied to the per-line weight to soften the     */
-/*   step discontinuities at SFB boundaries that LD would         */
-/*   otherwise fit as spurious correlation. Both reference        */
-/*   encoders (ffmpeg, libaacplus) document this whitening step;  */
-/*   FAAC was running LD on the raw spectrum and accumulating     */
-/*   the noise-modulation bug as a result.                        */
-/*                                                                */
-/*   Caller must size out[] to at least stopLine elements.        */
-/******************************************************************/
-static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
-                                 const int *sfbOffsetTable,
-                                 const faac_real *sfbEnergy,
-                                 int startBand, int stopBand,
-                                 int startLine, int stopLine)
-{
-    faac_real invE[NSFB_LONG];
-    int sfb, i;
-
-    if (startBand >= stopBand || startLine >= stopLine)
-        return;
-
-    /* Step 1: per-SFB inverse sqrt(energy). Energies come pre-computed
-       from the pre-gate loop so we do not walk the band a second time
-       just to accumulate them. The 1e-30 floor keeps silent bands from
-       producing a NaN weight; their contribution to LD is irrelevant
-       in practice. FAAC_SQRT picks sqrtf vs sqrt by precision build,
-       so single-precision builds do not pay for the double-precision
-       sqrt path 30-51 times per long-block frame. */
-    for (sfb = startBand; sfb < stopBand; sfb++) {
-        invE[sfb] = (faac_real)1.0
-                  / FAAC_SQRT(sfbEnergy[sfb] + (faac_real)1e-30);
-    }
-
-    /* Step 2: expand to per-line weight, piecewise constant by SFB. */
-    {
-        int next = sfbOffsetTable[startBand + 1];
-        faac_real w = invE[startBand];
-        sfb = startBand;
-        for (i = startLine; i < stopLine; i++) {
-            if (i >= next && sfb + 1 < stopBand) {
-                sfb++;
-                w = invE[sfb];
-                next = sfbOffsetTable[sfb + 1];
-            }
-            out[i] = w;
-        }
-    }
-
-    /* Step 3a: right-to-left half of the triangle smoother. */
-    for (i = stopLine - 2; i >= startLine; i--)
-        out[i] = (faac_real)0.5 * (out[i] + out[i + 1]);
-
-    /* Step 3b: left-to-right half, fused with multiplication by the
-       raw spectrum so we walk the band once and finish in-place. The
-       running `prev` keeps the smoothed weight before the multiply
-       contaminates out[]. */
-    {
-        faac_real prev = out[startLine];
-        out[startLine] = prev * spec[startLine];
-        for (i = startLine + 1; i < stopLine; i++) {
-            faac_real curr = (faac_real)0.5 * (out[i] + prev);
-            out[i] = curr * spec[i];
-            prev = curr;
-        }
-    }
-}
-
-
 /*****************************************************/
 /* LevinsonDurbin:                                   */
 /*   Compute the reflection coefficients for the     */
@@ -610,20 +490,6 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     faac_real* aPtr = aArray1;             /* Ptr to aArray1 */
     faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
     faac_real* aTemp;
-
-    /* Zero output reflection coefficients before doing any work. kArray
-       is the caller's tnsFilter->kCoeffs, which is per-channel state
-       persisted across frames; when the recursion below exits early
-       (via the error<=0 or |kTemp|>=error guard, common on highly
-       correlated input such as speech formants) the entries beyond the
-       break index would otherwise retain stale values from a previous
-       frame and be propagated into QuantizeReflectionCoeffs / StepUp /
-       TnsInvFilter, producing a garbage prediction filter and severe
-       noise modulation. (The kArray[0]=1.0 assignments in the branches
-       below still set the sentinel correctly.) */
-    for (order = 0; order <= fOrder; order++) {
-        kArray[order] = 0.0;
-    }
 
     /* Compute autocorrelation coefficients */
     Autocorrelation(fOrder,dataSize,data,rArray);
@@ -699,6 +565,83 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
         }
         for (i=1;i<=order;i++) {
             aArray[i]=aTemp[i];
+        }
+    }
+}
+
+/*****************************************************/
+/* WhitenSpectrumForTns:                             */
+/*   Per-SFB inverse-sqrt-energy normalization with  */
+/*   a 3-tap triangle smoother, written to `out`.    */
+/*   Equivalent to libaacplus CalcWeightedSpectrum.  */
+/*                                                   */
+/*   Why: LevinsonDurbin run on the raw MDCT         */
+/*   spectrum sees both the within-band envelope     */
+/*   (which TNS should model) AND the inter-band     */
+/*   formant peaks (which it should not), so on      */
+/*   harmonic speech / music the gain test is        */
+/*   dominated by formant structure rather than by   */
+/*   correlations that pre-echo correction can       */
+/*   actually exploit, and TNS fires on bands where  */
+/*   it then reshapes noise audibly around the       */
+/*   formant.  Whitening per-SFB removes the slow    */
+/*   inter-band envelope before LD sees the data, so */
+/*   the gain test measures only within-SFB temporal */
+/*   structure - matching how libaacplus avoids this */
+/*   class of regression on long-block speech.       */
+/*****************************************************/
+static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
+                                 const int *sfbOffsetTable,
+                                 const faac_real *sfbEnergy,
+                                 int startBand, int stopBand,
+                                 int startLine, int stopLine)
+{
+    faac_real invE[NSFB_LONG];
+    int sfb, i;
+
+    if (startBand >= stopBand || startLine >= stopLine)
+        return;
+
+    /* Step 1: per-SFB inverse sqrt(energy).  Energies come pre-
+       computed from the pre-gate loop so we do not walk the band
+       a second time just to accumulate them.  The 1e-30 floor
+       keeps silent bands from producing a NaN weight; their
+       contribution to LD is irrelevant in practice. */
+    for (sfb = startBand; sfb < stopBand; sfb++) {
+        invE[sfb] = (faac_real)1.0
+                  / FAAC_SQRT(sfbEnergy[sfb] + (faac_real)1e-30);
+    }
+
+    /* Step 2: expand to per-line weight, piecewise constant by SFB. */
+    {
+        int next = sfbOffsetTable[startBand + 1];
+        faac_real w = invE[startBand];
+        sfb = startBand;
+        for (i = startLine; i < stopLine; i++) {
+            if (i >= next && sfb + 1 < stopBand) {
+                sfb++;
+                w = invE[sfb];
+                next = sfbOffsetTable[sfb + 1];
+            }
+            out[i] = w;
+        }
+    }
+
+    /* Step 3a: right-to-left half of the triangle smoother. */
+    for (i = stopLine - 2; i >= startLine; i--)
+        out[i] = (faac_real)0.5 * (out[i] + out[i + 1]);
+
+    /* Step 3b: left-to-right half, fused with multiplication by the
+       raw spectrum so we walk the band once and finish in-place.
+       The running `prev` keeps the smoothed weight before the
+       multiply contaminates out[]. */
+    {
+        faac_real prev = out[startLine];
+        out[startLine] = prev * spec[startLine];
+        for (i = startLine + 1; i < stopLine; i++) {
+            faac_real curr = (faac_real)0.5 * (out[i] + prev);
+            out[i] = curr * spec[i];
+            prev = curr;
         }
     }
 }
