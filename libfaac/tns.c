@@ -61,10 +61,6 @@ static unsigned short tnsMaxOrderShortMainLow = 7;
    any over-firing MOS regressions) are avoided on the silence/noise/
    flat-spectrum content that defined prior failed attempts. */
 #define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor */
-#define TNS_GAIN_THRESH_LOW   1.4  /* Minimum gain to bother with TNS */
-#define TNS_GAIN_THRESH_HIGH  12.0 /* Max gain; above this is likely steady
-                                      tonal content where TNS harms bitrate
-                                      efficiency more than it helps masking. */
 #define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
                                       the band is too close to flat for
                                       cross-frequency LPC to predict */
@@ -216,6 +212,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
+
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
         /* Cheap pre-gate fused with per-SFB energy accumulation.
@@ -224,15 +221,21 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
            sum-of-squares the whitener needs. Skip if the band is
            essentially silent or the spectrum is nearly flat
            (L2^2*N / L1^2 < TNS_FLATNESS_K, bounded below by 1.0 at
-           perfect flatness by Cauchy-Schwarz). */
+           perfect flatness by Cauchy-Schwarz).
+           winOffset accounts for the window position in the spec[]
+           buffer: for long blocks (w=0, windowSize=1024) this is 0
+           so behaviour is unchanged; for short blocks (windowSize=128)
+           sfbOffsetTable gives per-window offsets 0-128 and we must
+           add w*128 to reach the correct window. */
         {
             faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
             int sfb;
+            int winOffset = w * windowSize;
             for (sfb = startBand; sfb < stopBand; sfb++) {
                 faac_real e = 0.0;
                 int j;
                 for (j = sfbOffsetTable[sfb]; j < sfbOffsetTable[sfb + 1]; j++) {
-                    faac_real v = spec[w * windowSize + j];
+                    faac_real v = spec[winOffset + j];
                     faac_real va = FAAC_FABS(v);
                     e    += v * v;
                     suma += va;
@@ -267,7 +270,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                              sfbOffsetTable[startBand], sfbOffsetTable[stopBand]);
         gain = LevinsonDurbin(order,length,&temp[sfbOffsetTable[startBand]],k);
 
-        if (gain > TNS_GAIN_THRESH_LOW && gain < TNS_GAIN_THRESH_HIGH) {  /* Use TNS */
+        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
@@ -345,6 +348,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
     {
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
+
 
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
