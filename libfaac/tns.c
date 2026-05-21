@@ -89,6 +89,9 @@ void TnsInit(faacEncStruct* hEncoder)
 
         tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongLow[fsIndex];
         tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
+
+        /* TNS order limits are 12 for LONG and 7 for SHORT blocks in LOW (LC) profile */
+        /* regardless of MPEG version (2 or 4). */
         tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
         tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
         tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
