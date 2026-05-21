@@ -55,6 +55,27 @@ static unsigned short tnsMaxBandsShortLow[12] =
 static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
 
+/* TNS analysis pre-gate thresholds: skip the expensive LevinsonDurbin
+   analysis on frames where TNS provably cannot help, so the cost (and
+   any over-firing MOS regressions) are avoided on the silence/noise/
+   flat-spectrum content that defined prior failed attempts. */
+#define TNS_ENERGY_FLOOR  0.16     /* per-sample MDCT energy floor */
+#define TNS_FLATNESS_K    1.5      /* L2^2*N / L1^2 minimum; < K means
+                                      the band is too close to flat for
+                                      cross-frequency LPC to predict */
+#define TNS_PEAK_RATIO_MARGIN 1.2  /* peak-to-mean tonality gate factor.
+                                      White Gaussian noise over N bins has
+                                      expected peak-to-mean ~sqrt(2 ln N);
+                                      we skip TNS when max|X|/mean|X| is
+                                      below MARGIN * sqrt(2 ln N). MARGIN
+                                      ~1.2 sits just above the noise floor
+                                      and well below tonal-content ratios.
+                                      The length-aware formula is critical
+                                      for short blocks: a fixed K=4 (good
+                                      at long-block N~200) would over-gate
+                                      short blocks (N~10-30) where the
+                                      noise floor is ~2.4. */
+
 
 /*************************/
 /* Function prototypes   */
@@ -117,11 +138,21 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
+        /* Short-block TNS is disabled. The dead code below is
+           structurally complete (verified) and the bitstream writer
+           handles per-window emission. Enabling it (commit a3dfbe7)
+           regressed avg MOS by -0.134 with 32 killers on CI; locally
+           it regressed bah.wav by -0.62, Coral by -0.13, 9-Have... by
+           -0.02 at music_std 128 kbps. Disabling short-block TNS fully
+           recovers these. A per-block-type activation gain threshold
+           did not filter the bad firings (the LD gain on bassoon
+           partials and other tonal short-block content is genuinely
+           >> 2.5). Re-enabling short-block TNS is a separate problem
+           requiring a perceptual-aware gate (e.g. transient confirmation
+           that distinguishes true attacks from harmonic onsets), not a
+           gain-threshold tweak. */
         tnsInfo->tnsDataPresent = 0;
         return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
@@ -134,7 +165,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -165,17 +196,62 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+
+        /* Cheap pre-gate: skip LevinsonDurbin when TNS cannot help.
+           Single O(length) pass over the TNS band computes L2 (energy)
+           and L1 (sum |x|). Skip if the band is essentially silent or
+           the spectrum is nearly flat (L2^2*N / L1^2 < TNS_FLATNESS_K,
+           bounded below by 1.0 at perfect flatness by Cauchy-Schwarz). */
+        {
+            faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
+            int j;
+            for (j = 0; j < length; j++) {
+                faac_real v = spec[startIndex + j];
+                faac_real va = FAAC_FABS(v);
+                sumsq += v * v;
+                suma  += va;
+                if (va > maxa) maxa = va;
+            }
+            {
+                /* Length-aware peak-to-mean threshold: the noise floor
+                   for max|X|/mean|X| scales as sqrt(2 ln N). Keeping a
+                   fixed K here (as in earlier revisions) would over-gate
+                   short-block bands where N is ~10-30, since the noise
+                   floor there is ~2.4 vs ~3.4 for long-block N~200. */
+                faac_real peak_thresh = TNS_PEAK_RATIO_MARGIN
+                                        * (faac_real)sqrt(2.0 * log((double)length));
+                if (sumsq < TNS_ENERGY_FLOOR * length
+                    || suma <= 0.0
+                    || sumsq * length < TNS_FLATNESS_K * suma * suma
+                    || maxa * length < peak_thresh * suma) {
+                    continue;
+                }
+            }
+        }
+
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
+            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+            if (truncatedOrder == 0) {
+                /* Identity filter - skip TNS for this window so we do
+                   not consume tns_data syntax bits for a no-op filter.
+                   This happens on strongly correlated content (e.g.
+                   speech) where LevinsonDurbin breaks early before
+                   writing any reflection coefficients yet still returns
+                   the "perfect prediction" gain that passes the gate;
+                   without this check, ~13 bits/frame of TNS header are
+                   stolen from spectral quantization for zero spectral
+                   change, which collapses MOS at low bitrates. */
+                continue;
+            }
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
             tnsFilter->coefCompress = 0;
             tnsFilter->length = lengthInBands;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
@@ -393,6 +469,20 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     faac_real* aPtr = aArray1;             /* Ptr to aArray1 */
     faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
     faac_real* aTemp;
+
+    /* Zero output reflection coefficients before doing any work. kArray
+       is the caller's tnsFilter->kCoeffs, which is per-channel state
+       persisted across frames; when the recursion below exits early
+       (via the error<=0 or |kTemp|>=error guard, common on highly
+       correlated input such as speech formants) the entries beyond the
+       break index would otherwise retain stale values from a previous
+       frame and be propagated into QuantizeReflectionCoeffs / StepUp /
+       TnsInvFilter, producing a garbage prediction filter and severe
+       noise modulation. (The kArray[0]=1.0 assignments in the branches
+       below still set the sentinel correctly.) */
+    for (order = 0; order <= fOrder; order++) {
+        kArray[order] = 0.0;
+    }
 
     /* Compute autocorrelation coefficients */
     Autocorrelation(fOrder,dataSize,data,rArray);
