@@ -343,10 +343,27 @@ static void QuantizeReflectionCoeffs(int fOrder,
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
 
-    /* Quantize and inverse quantize */
-    for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+    /* Quantize and inverse quantize.  Clamp to the valid signed range
+       [-(1<<(coeffRes-1)), (1<<(coeffRes-1))-1] so that indices never
+       exceed what fits in the bitstream field: for coeffRes=4 that is
+       [-8, 7].  Without clamping, kArray[i] near +/-1 maps to asin
+       output of +/-pi/2, the multiply-by-iqfac yields 7.5, and the
+       +0.5 round step produces 8 - which wraps to -8 as a 4-bit
+       signed value on the wire, creating an encoder/decoder filter
+       mismatch.  Harmless while TNS was off by default; matters now
+       that TNS is intended to be on. */
+    {
+        const int i_max =  (1 << (coeffRes - 1)) - 1;
+        const int i_min = -(1 << (coeffRes - 1));
+        for (i = 1; i <= fOrder; i++) {
+            int idx = (kArray[i] >= 0)
+                    ? (int)(0.5  + FAAC_ASIN(kArray[i]) * iqfac)
+                    : (int)(-0.5 + FAAC_ASIN(kArray[i]) * iqfac_m);
+            if (idx > i_max) idx = i_max;
+            if (idx < i_min) idx = i_min;
+            indexArray[i] = idx;
+            kArray[i] = FAAC_SIN((faac_real)idx / (idx >= 0 ? iqfac : iqfac_m));
+        }
     }
 }
 
