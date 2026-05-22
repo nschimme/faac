@@ -35,6 +35,15 @@ Copyright (c) 1997.
 #include "tns.h"
 #include "util.h"
 
+/***********************************************/
+/* TNS Profile/Frequency Dependent Parameters  */
+/***********************************************/
+/* Limit bands to > 2.0 kHz */
+static unsigned short tnsMinBandNumberLong[12] =
+{ 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
+static unsigned short tnsMinBandNumberShort[12] =
+{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
+
 /**************************************/
 /* Low Profile TNS Parameters         */
 /**************************************/
@@ -62,11 +71,10 @@ static unsigned short tnsMaxOrderShortLow = 7;
                                       below MARGIN * sqrt(2 ln N). MARGIN
                                       ~1.2 sits just above the noise floor
                                       and well below tonal-content ratios. */
-#define TNS_GAIN_THRESH_HIGH 12.0  /* upper prediction-gain cap. skip TNS
-                                      on extremely tonal signals to avoid
-                                      spreading quantization noise into
-                                      spectral nulls where it becomes
-                                      audible (e.g. steady sines). */
+#define TNS_GAIN_THRESH_HIGH 12.0  /* upper bound for prediction gain;
+                                      above this, the signal is likely too
+                                      tonal/steady-state for TNS to be
+                                      appropriate. */
 
 
 /*************************/
@@ -102,33 +110,6 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    SR_INFO *srInfo = hEncoder->srInfo;
-    int minBandLong = 0;
-    int minBandShort = 0;
-    int sum, band;
-
-    /* Calculate TNS start band dynamically based on frequency (target ~1.5kHz).
-       This ensures consistency across sample rates while avoiding low-frequency
-       shaping of pitch harmonics. */
-    sum = 0;
-    minBandLong = srInfo->num_cb_long - 1;
-    for (band = 0; band < srInfo->num_cb_long; band++) {
-        if ((sum * (int)hEncoder->sampleRate) >= (1500 * 2048)) {
-            minBandLong = band;
-            break;
-        }
-        sum += srInfo->cb_width_long[band];
-    }
-
-    sum = 0;
-    minBandShort = srInfo->num_cb_short - 1;
-    for (band = 0; band < srInfo->num_cb_short; band++) {
-        if ((sum * (int)hEncoder->sampleRate) >= (1500 * 256)) {
-            minBandShort = band;
-            break;
-        }
-        sum += srInfo->cb_width_short[band];
-    }
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -137,8 +118,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
         tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
         tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
-        tnsInfo->tnsMinBandNumberLong = minBandLong;
-        tnsInfo->tnsMinBandNumberShort = minBandShort;
+        tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
+        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
     }
 }
 
@@ -162,7 +143,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-block TNS disabled for stability on speech. */
+        /* Short-block TNS is disabled to maintain speech stability (VSS). */
         tnsInfo->tnsDataPresent = 0;
         return;
 
@@ -207,7 +188,18 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             windowData->coefResolution = DEF_TNS_COEFF_RES;
             const int startIndex = w * windowSize + sfbOffsetTable[startBand];
 
-            /* Cheap pre-gate fused with per-SFB energy accumulation. */
+            /* Cheap pre-gate fused with per-SFB energy accumulation.
+               Walks the TNS band once, SFB by SFB, building both the
+               pre-gate statistics (sumsq, suma, maxa) and the per-SFB
+               sum-of-squares the whitener needs.  Skip if:
+                 - the band is essentially silent (sumsq < floor),
+                 - or the spectrum is nearly flat
+                   (L2^2 * N / L1^2 < TNS_FLATNESS_K, bounded below by
+                   1.0 at perfect flatness by Cauchy-Schwarz),
+                 - or it is dominated by a single peak below the
+                   tonality margin (max|X|*N < margin*sqrt(2*ln(N))*L1).
+               Skipping these avoids a wasted O(order*length) LD call
+               and prevents TNS firing on bands where it cannot help. */
             {
                 faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
                 int sfb;
@@ -235,19 +227,29 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 }
             }
 
-            /* Whitening improves prediction gain accuracy for TNS. */
+            /* Run LD on the per-SFB-whitened spectrum, not the raw one,
+               so prediction gain reflects within-band correlation rather
+               than formant-peak structure across SFBs.  The whitened
+               buffer lives in `temp`; it is consumed by LevinsonDurbin
+               here and is reused by TnsInvFilter later (after the
+               decision is made and the coefficients are quantised), so
+               the storage does not collide.  See WhitenSpectrumForTns
+               for rationale.  This is the libaacplus CalcWeightedSpectrum
+               equivalent. */
             WhitenSpectrumForTns(spec + startIndex, temp + startIndex,
                                  sfbOffsetTable, sfbEnergy,
                                  startBand, stopBand,
                                  length);
             gain = LevinsonDurbin(order,length,&temp[startIndex],k);
 
-            if (gain > DEF_TNS_GAIN_THRESH && gain < TNS_GAIN_THRESH_HIGH) {  /* Use TNS */
+            /* Use TNS if gain is within [LOW, HIGH] bounds. */
+            if (gain > DEF_TNS_GAIN_THRESH && gain < TNS_GAIN_THRESH_HIGH) {
                 int truncatedOrder;
                 QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
                 truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
                 if (truncatedOrder == 0) {
-                    /* Identity filter - skip so we do not waste bits. */
+                    /* Identity filter after truncation - skip so we do
+                       not consume tns_data syntax bits for a no-op. */
                     continue;
                 }
                 windowData->numFilters++;
@@ -485,7 +487,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
     faac_real* aTemp;
 
-    /* Zero output reflection coefficients. */
+    /* Zero output reflection coefficients before doing any work. */
     for (order = 0; order <= fOrder; order++) {
         kArray[order] = 0.0;
     }
@@ -530,7 +532,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             for (i=1;i<order;i++) {
                 aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
             }
-            error = error * (1.0 - kTemp*kTemp);
+            error = error * (1 - kTemp*kTemp);
             if (error <= 0.0) break;
 
             /* Now make current iteration the last one */
@@ -572,6 +574,7 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 /* WhitenSpectrumForTns:                             */
 /*   Per-SFB inverse-sqrt-energy normalization with  */
 /*   a 3-tap triangle smoother, written to `out`.    */
+/*   Equivalent to libaacplus CalcWeightedSpectrum.  */
 /*****************************************************/
 static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
                                  const int *sfbOffsetTable,
