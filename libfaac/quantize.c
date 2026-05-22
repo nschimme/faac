@@ -301,6 +301,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (sfacfix <= 0.0)
       {
           memset(xi, 0, gsize * end * sizeof(int));
+          /* xi is all zeros; huffbook() would just scan to confirm
+             and assign HCB_ZERO. Skip the scan. */
+          coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
       {
@@ -310,8 +313,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
+          huffbook(coderInfo, xitab, gsize * end);
       }
-      huffbook(coderInfo, xitab, gsize * end);
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * HCB_ZERO bands don't participate in the regular-band delta chain. */
       if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
