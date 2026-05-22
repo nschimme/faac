@@ -99,11 +99,12 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
  * These values were tuned via balanced feature sweeps to maximize MOS across
  * VoIP, VSS, and Music scenarios while maintaining bitrate accuracy.
  * See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.40
+#define NOISEFLOOR 0.45
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
 #define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
+#define SHORT_FLOOR_MULT  1.5    /* Aggressive noise floor for short-window blocks to focus bit budget */
 
 /* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
  * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
@@ -129,6 +130,8 @@ static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_rea
     return target;
 }
 
+
+// band sound masking
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
@@ -142,7 +145,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
+  faac_real enrgcnt = 0.0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
@@ -153,9 +156,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
+  enrgcnt = (faac_real)gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+      enrgcnt *= (faac_real)SHORT_FLOOR_MULT;
+
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -244,7 +250,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -330,6 +336,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (sfacfix <= 0.0)
       {
           memset(xi, 0, gsize * end * sizeof(int));
+          /* xi is all zeros; huffbook() would just scan to confirm
+             and assign HCB_ZERO. Skip the scan. */
+          coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
       {
@@ -339,8 +348,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
+          huffbook(coderInfo, xitab, gsize * end);
       }
-      huffbook(coderInfo, xitab, gsize * end);
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * HCB_ZERO bands don't participate in the regular-band delta chain. */
       if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)

@@ -293,9 +293,21 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = LOW;
     hEncoder->config.jointmode = JOINT_IS;
-    hEncoder->config.pnslevel = 4;
+    /* Corpus sweep (947 files, 5 scenarios, gain110 + per-SFB whitening
+       baseline) of pnslevel grid [0, 2, 3, 4, 5, 6, 8]:
+         0: -0.165 avg MOS (catastrophic; music_low -0.69, voip -0.25)
+         2: -0.004 avg MOS (voip -0.018 fails per-scenario bar)
+         3: +0.005 avg MOS at 100% coverage; all scenarios positive
+            (music_high +0.013, music_std +0.023, music_low +0.007,
+             voip +0.002, vss +0.004)
+         5: -0.005 avg MOS  6: -0.010  8: -0.020
+       Level 3 is the post-TNS optimum: TNS-shaped spectra already
+       partially smooth bands before bmask() sees them, so pnsthr=0.3
+       leaves PNS firing on truly noise-like bands without replacing
+       borderline-tonal content. */
+    hEncoder->config.pnslevel = 3;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
