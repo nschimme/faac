@@ -97,8 +97,9 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 
 /* Psychoacoustic masking thresholds and factors.
  * These values were tuned via balanced feature sweeps to maximize MOS across
- * VoIP, VSS, and Music scenarios. See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.25
+ * VoIP, VSS, and Music scenarios while maintaining bitrate accuracy.
+ * See TNS_TUNING.md for derivation details. */
+#define NOISEFLOOR 0.35
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
