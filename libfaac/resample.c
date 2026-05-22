@@ -2,24 +2,14 @@
  * FAAC - Freeware Advanced Audio Coder
  *
  * 2:1 FIR downsampler for HE-AAC core signal preparation.
- *
- * Uses a 31-tap linear-phase half-band FIR anti-alias filter.
- * The filter attenuates frequencies above Fs/4 (the Nyquist of the
- * half-rate output), preventing aliasing in the AAC-LC core encoder.
- *
- * Filter design: Kaiser-windowed sinc, beta=5.0, cut-off = 0.5*Fs/2.
  */
 
 #include <stdlib.h>
 #include <string.h>
 
 #include "resample.h"
-#include "coder.h"   /* MAX_CHANNELS via config.h */
+#include "coder.h"
 
-/* 63-tap Kaiser lowpass anti-alias FIR (β=6.0, fc=11.5 kHz at Fs=48 kHz)
- * DC gain ≈ 1.0; passband flat to 11 kHz; stopband >67 dB above 13 kHz.
- * Designed for 2:1 decimation 48 kHz → 24 kHz for HE-AAC core encoder.
- * Symmetric: h[n] = h[62-n]. */
 static const faac_real fir_coeffs[RESAMPLE_FILTER_LEN] = {
      (faac_real) 6.7547e-05f,  (faac_real) 2.4177e-04f,
     (faac_real)-1.3024e-04f,  (faac_real)-5.6920e-04f,
@@ -73,34 +63,32 @@ int Resample2to1(Resampler *r,
                  faac_real *output[MAX_CHANNELS])
 {
     int output_len = input_len / 2;
-    /* FIR is symmetric (h[n] = h[N-1-n]), so fold taps into HALF pairs + center.
-     * N=63 ⇒ 31 paired taps + 1 center tap = 32 multiplies per output sample
-     * (down from 63), with no per-tap branch. */
-    const int H = RESAMPLE_FILTER_LEN - 1;            /* 62: history depth actually needed */
-    const int HALF = RESAMPLE_FILTER_LEN / 2;         /* 31: center index */
+    const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
+    const int HALF = RESAMPLE_FILTER_LEN / 2;         /* 31 */
+    int ch, i, j;
 
-    for (int ch = 0; ch < r->channels; ch++) {
+    for (ch = 0; ch < r->channels; ch++) {
         faac_real *in  = input[ch];
         faac_real *out = output[ch];
         faac_real *hist = r->buf[ch];
 
-        /* Contiguous view: [hist(H) | in(input_len)]. Lets the inner loop
-         * address samples as a single array with no negative-index branch. */
-        faac_real combined[H + input_len];
-        memcpy(combined,     hist, H         * sizeof(faac_real));
-        memcpy(combined + H, in,   input_len * sizeof(faac_real));
+        /* Fixed-size buffer to avoid VLA (MSVC portability). */
+        faac_real combined[2112];
+        int actual_input = input_len > 2048 ? 2048 : input_len;
 
-        for (int i = 0; i < output_len; i++) {
-            const faac_real *p = combined + H + 2 * i;  /* p[-j] = sample at logical idx 2i-j */
+        memcpy(combined,     hist, H            * sizeof(faac_real));
+        memcpy(combined + H, in,   actual_input * sizeof(faac_real));
+
+        for (i = 0; i < output_len; i++) {
+            const faac_real *p = combined + H + 2 * i;
             faac_real sum = p[-HALF] * fir_coeffs[HALF];
-            for (int j = 0; j < HALF; j++) {
+            for (j = 0; j < HALF; j++) {
                 sum += (p[-j] + p[-(H - j)]) * fir_coeffs[j];
             }
             out[i] = sum;
         }
 
-        /* Update history: last H samples of the contiguous view (hist+in). */
-        memcpy(hist, combined + input_len, H * sizeof(faac_real));
+        memcpy(hist, combined + actual_input, H * sizeof(faac_real));
     }
 
     return output_len;

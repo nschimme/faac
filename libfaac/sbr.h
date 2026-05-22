@@ -94,6 +94,11 @@ typedef struct SBRInfo {
      * See qmf_analysis_64_slot_energy(). */
     faac_real cos_table64T[128][SBR_QMF_BANDS_64];
     faac_real sin_table64T[128][SBR_QMF_BANDS_64];
+
+    /* Runtime dispatch for SBR QMF modulation */
+    void (*qmf_64_mod)(const faac_real * restrict proto, const faac_real * restrict ovl,
+                       faac_real cos_table[128][64], faac_real sin_table[128][64],
+                       faac_real * restrict re, faac_real * restrict im);
 } SBRInfo;
 
 /* ---- API --------------------------------------------------------- */
