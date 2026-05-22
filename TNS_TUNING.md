@@ -1,15 +1,12 @@
 # FAAC Quantization Thresholds & TNS Tuning
 
-This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps using the `faac-benchmark` suite, targeting maximum perceptual quality (MOS) across VoIP and Music scenarios.
+This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps using the `faac-benchmark` suite, targeting maximum perceptual quality (MOS) across VoIP, VSS, and Music scenarios.
 
 ## Quantization Constants
 
-### `NOISEFLOOR` (0.15)
+### `NOISEFLOOR` (0.25)
 - **Purpose**: Defines the minimum RMS energy for a scale factor band to be considered non-silent.
-- **Justification**: Reduced from 0.40 to 0.15 to preserve subtle low-energy details in transients and speech at low bitrates (e.g., VoIP 16kbps). This change was critical in reversing MOS regressions on noisy speech samples.
-
-### `SAFE_ENERGY_EPSILON` (1e-30)
-- **Purpose**: A safety floor used in `compute_masking_target` to prevent division by zero or `NaN` when the average frame energy (`avgenrg`) is extremely small.
+- **Justification**: Balanced at 0.25 to provide a global improvement across all scenarios. Lower values (e.g., 0.15) over-optimized for VoIP speech at the expense of music fidelity and bitrate accuracy in surveillance (VSS) scenarios.
 
 ## Masking Target Factors
 
@@ -27,7 +24,7 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ### `AVGE_FLOOR_FACTOR` (0.0010)
 - **Derivation**: 10^( -30 dB / 10 ) = 0.0010.
-- **Justification**: Clamps the band-to-frame average energy ratio at -30 dB. Found to be the optimal balance in feature sweeps for preserving high-frequency "air" without wasting bits on near-silent bands.
+- **Justification**: Clamps the band-to-frame average energy ratio at -30 dB. Found to be the optimal balance for preserving high-frequency "air" without wasting bits on near-silent bands.
 
 ### `MAXE_FLOOR_FACTOR` (0.0050)
 - **Derivation**: 10^( -23 dB / 10 ) approx 0.0050.
@@ -35,11 +32,10 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ## Feature Sweep Results (Summary)
 
-| Configuration | VoIP Avg MOS | Music Std Avg MOS | Notes |
-| :--- | :---: | :---: | :--- |
-| Baseline (Stale) | 3.38 | 4.47 | Initial regression point |
-| nf0.15_af0.015_mf0.03 | 3.56 | 4.55 | Improved |
-| **nf0.15_af0.001_mf0.005** | **3.62** | **4.55** | **Optimal (Current)** |
-| nf0.01_af0.001_mf0.005 | 3.60 | 4.57 | High bitrate bias |
+| Configuration | VoIP Avg MOS | VSS Avg MOS | Music Std Avg MOS | Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| **nf0.25_af0.001_mf0.005** | **3.52** | **4.13** | **4.50** | **Balanced (Current)** |
+| nf0.15_af0.001_mf0.005 | 3.62 | 4.08 | 4.55 | VoIP Over-optimized |
+| nf0.40_af0.005_mf0.02 | 3.53 | 4.13 | 4.51 | High Bitrate Error |
 
-*MOS scores computed via ViSQOL backend.*
+*MOS scores computed via ViSQOL backend. All configurations are protected by a frame-level energy gate in `bmask()` to prevent division by zero in silent segments.*

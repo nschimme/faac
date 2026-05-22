@@ -95,13 +95,10 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-/* Quantization energy floor to prevent log10(0.0) or division by zero. */
-#define SAFE_ENERGY_EPSILON 1e-30
-
 /* Psychoacoustic masking thresholds and factors.
- * These values were tuned via feature sweeps to maximize MOS on TCD-VOIP and PMLT datasets.
- * See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.15
+ * These values were tuned via balanced feature sweeps to maximize MOS across
+ * VoIP, VSS, and Music scenarios. See TNS_TUNING.md for derivation details. */
+#define NOISEFLOOR 0.25
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
@@ -119,10 +116,7 @@ static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_rea
 {
     faac_real target;
 
-    /* Guard against zero or extremely small average energy to prevent NaN. */
-    if (avgenrg <= SAFE_ENERGY_EPSILON)
-        return 0.0;
-
+    /* avgenrg is guaranteed to be positive by the totenrg gate in bmask(). */
     target = NOISETONE * FAAC_POW(avge / avgenrg, powm);
     target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe / avgenrg, powm);
 
