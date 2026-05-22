@@ -96,25 +96,24 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 }
 
 /* Psychoacoustic masking thresholds and factors.
- * These values were tuned via extensive feature sweeps to maximize MOS across
- * VoIP, VSS, and Music scenarios while ensuring bitrate stability.
+ * These values were tuned via balanced feature sweeps to maximize MOS across
+ * VoIP, VSS, and Music scenarios while maintaining bitrate accuracy.
  * See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.10
+#define NOISEFLOOR 0.35
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
 #define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
-#define SHORT_FLOOR_MULT  1.5    /* Loosens noise floor for short-window blocks */
 
 /* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
- * AVGE_FLOOR_FACTOR: 10^( -40 dB / 10 ) = 0.0001
- * MAXE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010 */
-#define AVGE_FLOOR_FACTOR 0.0001
-#define MAXE_FLOOR_FACTOR 0.0010
+ * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
+ * MAXE_FLOOR_FACTOR: 10^( -23 dB / 10 ) approx 0.0050 */
+#define AVGE_FLOOR_FACTOR 0.0010
+#define MAXE_FLOOR_FACTOR 0.0050
 
 static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_real avgenrg,
                                         faac_real powm, int start, int end, int last,
-                                        faac_real penalty)
+                                        int block_type)
 {
     faac_real target;
 
@@ -122,7 +121,8 @@ static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_rea
     target = NOISETONE * FAAC_POW(avge / avgenrg, powm);
     target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe / avgenrg, powm);
 
-    target *= penalty;
+    if (block_type == ONLY_SHORT_WINDOW)
+        target *= SHORT_PENALTY;
 
     target *= 10.0 / (1.0 + ((faac_real)(start + end) / last));
 
@@ -172,8 +172,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   {
     faac_real avge, maxe;
     faac_real target;
-    faac_real penalty = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? SHORT_PENALTY : 1.0;
-    faac_real floor_penalty = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? SHORT_FLOOR_MULT : 1.0;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
@@ -201,13 +199,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     avgenrg = totenrg / last;
     avgenrg *= end - start;
 
-    target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, penalty);
+    target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
 
     /* Floor the band/frame energy ratio so target doesn't collapse on quiet
      * upper bands. Without this, target ends up ~5 decades below rmsx at
      * 24 kHz internal SR (HE-AAC), and the magic-offset rounding in
      * quantize_scalar truncates the entire band to zeros even though sf_rel
-     * never trips SF_MIN. Floor at -40 dB (avge) / -30 dB (maxe) below
+     * never trips SF_MIN. Floor at -30 dB (avge) / -23 dB (maxe) below
      * avgenrg keeps the band alive at coarse precision. */
     {
         faac_real avge_floor = avgenrg * (faac_real)AVGE_FLOOR_FACTOR;
@@ -215,7 +213,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         faac_real maxe_floor = avgenrg * (faac_real)MAXE_FLOOR_FACTOR;
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
         faac_real target_floor = compute_masking_target(avge_eff, maxe_eff, avgenrg, powm,
-                                                        start, end, last, floor_penalty);
+                                                        start, end, last, coderInfo->block_type);
         if (target < target_floor) target = target_floor;
     }
 
