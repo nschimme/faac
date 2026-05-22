@@ -113,37 +113,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
-  {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
-      {
-          totenrg += xr[cnt] * xr[cnt];
-      }
-  }
-  enrgcnt = gsize * total_len;
-
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
-  {
-      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
-      {
-          bandqual[sfb] = 0.0;
-          bandenrg[sfb] = 0.0;
-      }
-
-      return;
-  }
-
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
-    faac_real target;
+    faac_real avge = 0.0, maxe = 0.0;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
-    avge = 0.0;
-    maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
@@ -160,7 +136,30 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     /* Track peak magnitude to identify potential Huffman overflows. */
     bandmaxe[sfb] = FAAC_SQRT(maxe);
-    maxe *= gsize;
+    totenrg += avge;
+  }
+
+  enrgcnt = gsize * total_len;
+
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  {
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          bandqual[sfb] = 0.0;
+          bandenrg[sfb] = 0.0;
+      }
+
+      return;
+  }
+
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+  {
+    faac_real target;
+    faac_real avge = bandenrg[sfb];
+    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb] * gsize;
+
+    start = cb_offset[sfb];
+    end = cb_offset[sfb + 1];
 
 #define NOISETONE     0.2   /* noise-floor weight in masking target */
 #define TONEMASK      0.45  /* tone-masking component weight */
@@ -215,7 +214,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[8 * MAXSHORTBAND];
+      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
