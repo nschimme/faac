@@ -104,7 +104,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
 #define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
-#define SHORT_FLOOR_MULT  1.5    /* Aggressive noise floor for short-window blocks to focus bit budget */
+#define SHORT_FLOOR_MULT  1.5    /* Scales the noise floor gate for short blocks to focus bit budget */
 
 /* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
  * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
@@ -148,14 +148,32 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   faac_real enrgcnt = 0.0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
-      {
-          totenrg += xr[cnt] * xr[cnt];
-      }
+    faac_real avge = 0.0, maxe = 0.0;
+
+    start = cb_offset[sfb];
+    end = cb_offset[sfb + 1];
+    int n = end - start;
+
+    for (win = 0; win < gsize; win++)
+    {
+        xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        for (cnt = 0; cnt < n; cnt++)
+        {
+            faac_real val = xr[cnt];
+            faac_real e = val * val;
+            avge += e;
+            if (maxe < e)
+                maxe = e;
+        }
+    }
+    bandenrg[sfb] = avge;
+    /* Track peak magnitude to identify potential Huffman overflows. */
+    bandmaxe[sfb] = FAAC_SQRT(maxe);
+    totenrg += avge;
   }
+
   enrgcnt = (faac_real)gsize * total_len;
 
   if (coderInfo->block_type == ONLY_SHORT_WINDOW)
@@ -176,43 +194,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
-    faac_real target;
+    faac_real avge = bandenrg[sfb];
+    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb] * gsize;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    /* Track peak magnitude to identify potential Huffman overflows. */
-    bandmaxe[sfb] = FAAC_SQRT(maxe);
-    maxe *= gsize;
-
     avgenrg = totenrg / last;
     avgenrg *= end - start;
 
-    target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
+    faac_real target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
 
-    /* Floor the band/frame energy ratio so target doesn't collapse on quiet
-     * upper bands. Without this, target ends up ~5 decades below rmsx at
-     * 24 kHz internal SR (HE-AAC), and the magic-offset rounding in
-     * quantize_scalar truncates the entire band to zeros even though sf_rel
-     * never trips SF_MIN. Floor at -30 dB (avge) / -23 dB (maxe) below
-     * avgenrg keeps the band alive at coarse precision. */
     {
         faac_real avge_floor = avgenrg * (faac_real)AVGE_FLOOR_FACTOR;
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
