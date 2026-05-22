@@ -95,7 +95,44 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-#define NOISEFLOOR 0.4
+/* Quantization energy floor to prevent log10(0.0) or division by zero. */
+#define SAFE_ENERGY_EPSILON 1e-30
+
+/* Psychoacoustic masking thresholds and factors.
+ * These values were tuned via feature sweeps to maximize MOS on TCD-VOIP and PMLT datasets.
+ * See TNS_TUNING.md for derivation details. */
+#define NOISEFLOOR 0.15
+
+#define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
+#define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
+#define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
+
+/* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
+ * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
+ * MAXE_FLOOR_FACTOR: 10^( -23 dB / 10 ) approx 0.0050 */
+#define AVGE_FLOOR_FACTOR 0.0010
+#define MAXE_FLOOR_FACTOR 0.0050
+
+static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_real avgenrg,
+                                        faac_real powm, int start, int end, int last,
+                                        int block_type)
+{
+    faac_real target;
+
+    /* Guard against zero or extremely small average energy to prevent NaN. */
+    if (avgenrg <= SAFE_ENERGY_EPSILON)
+        return 0.0;
+
+    target = NOISETONE * FAAC_POW(avge / avgenrg, powm);
+    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe / avgenrg, powm);
+
+    if (block_type == ONLY_SHORT_WINDOW)
+        target *= SHORT_PENALTY;
+
+    target *= 10.0 / (1.0 + ((faac_real)(start + end) / last));
+
+    return target;
+}
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -134,6 +171,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
       return;
   }
 
+  last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge, maxe;
@@ -162,47 +201,24 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandmaxe[sfb] = FAAC_SQRT(maxe);
     maxe *= gsize;
 
-#define NOISETONE     0.2   /* noise-floor weight in masking target */
-#define TONEMASK      0.45  /* tone-masking component weight */
-#define SHORT_PENALTY 0.45  /* tightens masking target for short-window blocks */
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
-    {
-        last = BLOCK_LEN_SHORT;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
+    avgenrg = totenrg / last;
+    avgenrg *= end - start;
 
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
-
-        target *= SHORT_PENALTY;
-    }
-    else
-    {
-        last = BLOCK_LEN_LONG;
-        avgenrg = totenrg / last;
-        avgenrg *= end - start;
-
-        target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-        target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
-    }
-
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+    target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
 
     /* Floor the band/frame energy ratio so target doesn't collapse on quiet
      * upper bands. Without this, target ends up ~5 decades below rmsx at
      * 24 kHz internal SR (HE-AAC), and the magic-offset rounding in
      * quantize_scalar truncates the entire band to zeros even though sf_rel
-     * never trips SF_MIN. Floor at -23 dB (avge) / -17 dB (maxe) below
+     * never trips SF_MIN. Floor at -30 dB (avge) / -23 dB (maxe) below
      * avgenrg keeps the band alive at coarse precision. */
     {
-        faac_real avge_floor = avgenrg * (faac_real)0.005;  /* -23 dB below avg */
+        faac_real avge_floor = avgenrg * (faac_real)AVGE_FLOOR_FACTOR;
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
-        faac_real maxe_floor = avgenrg * (faac_real)0.02;
+        faac_real maxe_floor = avgenrg * (faac_real)MAXE_FLOOR_FACTOR;
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
-        faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
-        target_floor += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_eff/avgenrg, powm);
-        target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
-        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
+        faac_real target_floor = compute_masking_target(avge_eff, maxe_eff, avgenrg, powm,
+                                                        start, end, last, coderInfo->block_type);
         if (target < target_floor) target = target_floor;
     }
 
