@@ -107,13 +107,13 @@ void TnsInit(faacEncStruct* hEncoder)
     int minBandShort = 0;
     int sum, band;
 
-    /* Calculate TNS start band dynamically based on frequency (target ~3.4kHz).
-       This follows best practices to avoid low-frequency artifacts while
-       providing temporal coverage for transients. Original FAAC used ~2-4kHz. */
+    /* Calculate TNS start band dynamically based on frequency (target ~1.5kHz).
+       This ensures consistency across sample rates while avoiding low-frequency
+       shaping of pitch harmonics. */
     sum = 0;
     minBandLong = srInfo->num_cb_long - 1;
     for (band = 0; band < srInfo->num_cb_long; band++) {
-        if ((sum * (int)hEncoder->sampleRate) >= (3400 * 1024)) {
+        if ((sum * (int)hEncoder->sampleRate) >= (1500 * 2048)) {
             minBandLong = band;
             break;
         }
@@ -123,7 +123,7 @@ void TnsInit(faacEncStruct* hEncoder)
     sum = 0;
     minBandShort = srInfo->num_cb_short - 1;
     for (band = 0; band < srInfo->num_cb_short; band++) {
-        if ((sum * (int)hEncoder->sampleRate) >= (3400 * 128)) {
+        if ((sum * (int)hEncoder->sampleRate) >= (1500 * 256)) {
             minBandShort = band;
             break;
         }
@@ -162,15 +162,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        numberOfWindows = MAX_SHORT_WINDOWS;
-        windowSize = BLOCK_LEN_SHORT;
-        startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
-        break;
+        /* Short-block TNS disabled for stability on speech. */
+        tnsInfo->tnsDataPresent = 0;
+        return;
 
     default:
         numberOfWindows = 1;
@@ -213,18 +207,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             windowData->coefResolution = DEF_TNS_COEFF_RES;
             const int startIndex = w * windowSize + sfbOffsetTable[startBand];
 
-            /* Cheap pre-gate fused with per-SFB energy accumulation.
-               Walks the TNS band once, SFB by SFB, building both the
-               pre-gate statistics (sumsq, suma, maxa) and the per-SFB
-               sum-of-squares the whitener needs.  Skip if:
-                 - the band is essentially silent (sumsq < floor),
-                 - or the spectrum is nearly flat
-                   (L2^2 * N / L1^2 < TNS_FLATNESS_K, bounded below by
-                   1.0 at perfect flatness by Cauchy-Schwarz),
-                 - or it is dominated by a single peak below the
-                   tonality margin (max|X|*N < margin*sqrt(2*ln(N))*L1).
-               Skipping these avoids a wasted O(order*length) LD call
-               and prevents TNS firing on bands where it cannot help. */
+            /* Cheap pre-gate fused with per-SFB energy accumulation. */
             {
                 faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
                 int sfb;
@@ -252,15 +235,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 }
             }
 
-            /* Run LD on the per-SFB-whitened spectrum, not the raw one,
-               so prediction gain reflects within-band correlation rather
-               than formant-peak structure across SFBs.  The whitened
-               buffer lives in `temp`; it is consumed by LevinsonDurbin
-               here and is reused by TnsInvFilter later (after the
-               decision is made and the coefficients are quantised), so
-               the storage does not collide.  See WhitenSpectrumForTns
-               for rationale.  This is the libaacplus CalcWeightedSpectrum
-               equivalent. */
+            /* Whitening improves prediction gain accuracy for TNS. */
             WhitenSpectrumForTns(spec + startIndex, temp + startIndex,
                                  sfbOffsetTable, sfbEnergy,
                                  startBand, stopBand,
@@ -272,8 +247,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
                 truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
                 if (truncatedOrder == 0) {
-                    /* Identity filter after truncation - skip so we do
-                       not consume tns_data syntax bits for a no-op. */
+                    /* Identity filter - skip so we do not waste bits. */
                     continue;
                 }
                 windowData->numFilters++;
@@ -450,15 +424,7 @@ static void QuantizeReflectionCoeffs(int fOrder,
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
 
-    /* Quantize and inverse quantize.  Clamp to the valid signed range
-       [-(1<<(coeffRes-1)), (1<<(coeffRes-1))-1] so that indices never
-       exceed what fits in the bitstream field: for coeffRes=4 that is
-       [-8, 7].  Without clamping, kArray[i] near +/-1 maps to asin
-       output of +/-pi/2, the multiply-by-iqfac yields 7.5, and the
-       +0.5 round step produces 8 - which wraps to -8 as a 4-bit
-       signed value on the wire, creating an encoder/decoder filter
-       mismatch.  Harmless while TNS was off by default; matters now
-       that TNS is intended to be on. */
+    /* Quantize and inverse quantize.  Clamp to the valid signed range. */
     {
         const int i_max =  (1 << (coeffRes - 1)) - 1;
         const int i_min = -(1 << (coeffRes - 1));
@@ -518,6 +484,11 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
     faac_real* aPtr = aArray1;             /* Ptr to aArray1 */
     faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
     faac_real* aTemp;
+
+    /* Zero output reflection coefficients. */
+    for (order = 0; order <= fOrder; order++) {
+        kArray[order] = 0.0;
+    }
 
     /* Compute autocorrelation coefficients */
     Autocorrelation(fOrder,dataSize,data,rArray);
@@ -601,22 +572,6 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 /* WhitenSpectrumForTns:                             */
 /*   Per-SFB inverse-sqrt-energy normalization with  */
 /*   a 3-tap triangle smoother, written to `out`.    */
-/*   Equivalent to libaacplus CalcWeightedSpectrum.  */
-/*                                                   */
-/*   Why: LevinsonDurbin run on the raw MDCT         */
-/*   spectrum sees both the within-band envelope     */
-/*   (which TNS should model) AND the inter-band     */
-/*   formant peaks (which it should not), so on      */
-/*   harmonic speech / music the gain test is        */
-/*   dominated by formant structure rather than by   */
-/*   correlations that pre-echo correction can       */
-/*   actually exploit, and TNS fires on bands where  */
-/*   it then reshapes noise audibly around the       */
-/*   formant.  Whitening per-SFB removes the slow    */
-/*   inter-band envelope before LD sees the data, so */
-/*   the gain test measures only within-SFB temporal */
-/*   structure - matching how libaacplus avoids this */
-/*   class of regression on long-block speech.       */
 /*****************************************************/
 static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
                                  const int *sfbOffsetTable,
@@ -644,17 +599,14 @@ static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
     for (i = length - 2; i >= 0; i--)
         out[i] = (faac_real)0.5 * (out[i] + out[i + 1]);
 
-    /* Step 3b: left-to-right half, fused with multiplication by the
-       raw spectrum so we walk the band once and finish in-place.
-       The running `prev` keeps the smoothed weight before the
-       multiply contaminates out[]. */
+    /* Step 3b: left-to-right half, fused with multiplication. */
     {
         faac_real prev = out[0];
         out[0] = prev * spec[0];
         for (i = 1; i < length; i++) {
             faac_real curr = (faac_real)0.5 * (out[i] + prev);
             out[i] = curr * spec[i];
-            prev = out[i];
+            prev = curr;
         }
     }
 }

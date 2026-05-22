@@ -1,0 +1,233 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_01_CHOP_FG.wav": {
+      "mos": 3.69302,
+      "size": 13624,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009500265121459961,
+      "md5": "2da86a8fbbe3e56313626e24e7458369",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_FG.wav"
+    },
+    "voip_C_01_CHOP_FA.wav": {
+      "mos": 3.76204,
+      "size": 16724,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.010689020156860352,
+      "md5": "c4f24c212578e3a4ee31f94d3bcbd96d",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_FA.wav"
+    },
+    "voip_C_01_CHOP_ML.wav": {
+      "mos": 3.33944,
+      "size": 15704,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009808063507080078,
+      "md5": "6cf2aed03337f090b13655d6c3bd3473",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_ML.wav"
+    },
+    "voip_C_01_CHOP_MK.wav": {
+      "mos": 4.22019,
+      "size": 16211,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.010226249694824219,
+      "md5": "ec906bf8295dad4561b40c300923a696",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CHOP_MK.wav"
+    },
+    "voip_C_01_CLIP_FA.wav": {
+      "mos": 3.75794,
+      "size": 16348,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009750843048095703,
+      "md5": "599dc9034c890d370c11293c1cc30e1d",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CLIP_FA.wav"
+    },
+    "voip_C_01_CLIP_FG.wav": {
+      "mos": 3.27148,
+      "size": 15368,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009109735488891602,
+      "md5": "94c4671caee9aa2bbf8a10dc7eebb166",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CLIP_FG.wav"
+    },
+    "voip_C_01_CLIP_MK.wav": {
+      "mos": 4.15277,
+      "size": 16336,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008928060531616211,
+      "md5": "f362e54636b006faaba984a22828fb06",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CLIP_MK.wav"
+    },
+    "voip_C_01_CLIP_ML.wav": {
+      "mos": 3.51907,
+      "size": 14974,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008598804473876953,
+      "md5": "198b69a9e227f56eaf2d338ebe1a9442",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_CLIP_ML.wav"
+    },
+    "voip_C_01_COMPSPKR_FG.wav": {
+      "mos": 3.09548,
+      "size": 15652,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.00800943374633789,
+      "md5": "5ffe73b1ec5ed021b7d4cb2404953b4e",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_COMPSPKR_FG.wav"
+    },
+    "voip_C_01_COMPSPKR_FA.wav": {
+      "mos": 3.22206,
+      "size": 17989,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009379386901855469,
+      "md5": "d8fc0ba1ca551e5e853e3ff43cbed0eb",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_COMPSPKR_FA.wav"
+    },
+    "voip_C_01_COMPSPKR_MK.wav": {
+      "mos": 3.6575,
+      "size": 16393,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009238958358764648,
+      "md5": "02895b10a0b346424580c6dd40c4dd13",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_COMPSPKR_MK.wav"
+    },
+    "voip_C_01_COMPSPKR_ML.wav": {
+      "mos": 4.43055,
+      "size": 16971,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009312629699707031,
+      "md5": "07db0b7f49d7674351562515a47103eb",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_COMPSPKR_ML.wav"
+    },
+    "voip_C_01_ECHO_FG.wav": {
+      "mos": 3.35164,
+      "size": 13972,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.007806062698364258,
+      "md5": "8a1af3b097e8321f6a0f9d917d05952b",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_ECHO_FG.wav"
+    },
+    "voip_C_01_ECHO_FA.wav": {
+      "mos": 3.77875,
+      "size": 17674,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009464502334594727,
+      "md5": "c40a19c3c240503ec2ba72112364ed50",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_ECHO_FA.wav"
+    },
+    "voip_C_01_ECHO_MK.wav": {
+      "mos": 4.17275,
+      "size": 16293,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008757829666137695,
+      "md5": "b2563b75332bad0a57bc1e6579f84f83",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_ECHO_MK.wav"
+    },
+    "voip_C_01_ECHO_ML.wav": {
+      "mos": 3.95802,
+      "size": 14375,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.00914311408996582,
+      "md5": "20ab808c583698a7916c53419407ed50",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_ECHO_ML.wav"
+    },
+    "voip_C_01_NOISE_FG.wav": {
+      "mos": 3.12064,
+      "size": 14274,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008086681365966797,
+      "md5": "dd9c295c8b8bc80ea27ebb73a11da923",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_NOISE_FG.wav"
+    },
+    "voip_C_01_NOISE_FA.wav": {
+      "mos": 3.47185,
+      "size": 18414,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.009997129440307617,
+      "md5": "98ab88fb430938febdc1a137e0628f16",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_NOISE_FA.wav"
+    },
+    "voip_C_01_NOISE_MK.wav": {
+      "mos": 3.2076,
+      "size": 16243,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008356809616088867,
+      "md5": "8518b71142721b73593d1eb3f259f6f6",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_NOISE_MK.wav"
+    },
+    "voip_C_01_NOISE_ML.wav": {
+      "mos": 4.18149,
+      "size": 15956,
+      "bitrate": null,
+      "bitrate_target": 16,
+      "time": 0.008932828903198242,
+      "md5": "6f35adb53190cdb769ae0a93e6949e1e",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_01_NOISE_ML.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 3.0925787903336945,
+    "silence.wav": 1.9154983083329473,
+    "sine.wav": 2.661576040999838,
+    "sweep.wav": 2.333141398000104,
+    "overall": 2.5006986344166457
+  },
+  "lib_size": 78896
+}
