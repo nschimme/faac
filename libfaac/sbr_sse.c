@@ -8,6 +8,7 @@
 #endif
 
 #include <immintrin.h>
+#include <string.h>
 #include "faac_real.h"
 #include "sbr.h"
 
@@ -30,17 +31,33 @@ void sbr_qmf_64_modulation_sse2(const faac_real * restrict proto, const faac_rea
         }
     }
 #else
+    float re_f[64], im_f[64];
     int n, k;
+    memset(re_f, 0, 64 * sizeof(float));
+    memset(im_f, 0, 64 * sizeof(float));
+
     for (n = 0; n < 128; n++) {
-        faac_real un = proto[n] * ovl[639 - n] +
-                       proto[n + 128] * ovl[511 - n] +
-                       proto[n + 256] * ovl[383 - n] +
-                       proto[n + 384] * ovl[255 - n] +
-                       proto[n + 512] * ovl[127 - n];
-        for (k = 0; k < 64; k++) {
-            re[k] += un * cos_table[n][k];
-            im[k] += un * sin_table[n][k];
+        double un_d = proto[n] * ovl[639 - n] +
+                      proto[n + 128] * ovl[511 - n] +
+                      proto[n + 256] * ovl[383 - n] +
+                      proto[n + 384] * ovl[255 - n] +
+                      proto[n + 512] * ovl[127 - n];
+        __m128 v_un = _mm_set1_ps((float)un_d);
+
+        for (k = 0; k < 64; k += 4) {
+            __m128 cos_v = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&cos_table[n][k])),
+                                         _mm_cvtpd_ps(_mm_loadu_pd(&cos_table[n][k + 2])));
+            __m128 sin_v = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&sin_table[n][k])),
+                                         _mm_cvtpd_ps(_mm_loadu_pd(&sin_table[n][k + 2])));
+
+            _mm_storeu_ps(&re_f[k], _mm_add_ps(_mm_loadu_ps(&re_f[k]), _mm_mul_ps(v_un, cos_v)));
+            _mm_storeu_ps(&im_f[k], _mm_add_ps(_mm_loadu_ps(&im_f[k]), _mm_mul_ps(v_un, sin_v)));
         }
+    }
+
+    for (k = 0; k < 64; k++) {
+        re[k] = (double)re_f[k];
+        im[k] = (double)im_f[k];
     }
 #endif
 }
