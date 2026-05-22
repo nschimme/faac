@@ -5,7 +5,7 @@ if host_machine.system() == 'windows' and meson.get_compiler('c').get_id() == 'g
 endif
 
 
-quantize_simd_objs = []
+libfaac_simd_objs = []
 
 if config_h.get('HAVE_SSE2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
@@ -14,7 +14,14 @@ if config_h.get('HAVE_SSE2')
         c_args: c_args + sse2_flag,
         gnu_symbol_visibility: 'hidden'
     )
-    quantize_simd_objs += quantize_sse.extract_all_objects()
+    libfaac_simd_objs += quantize_sse.extract_all_objects()
+
+    sbr_sse = static_library('sbr_sse', 'sbr_sse.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + sse2_flag,
+        gnu_symbol_visibility: 'hidden'
+    )
+    libfaac_simd_objs += sbr_sse.extract_all_objects()
 endif
 
 common_src = [
@@ -57,7 +64,7 @@ libfaac = library('faac', common_src,
     c_args: c_args,
     link_args: link_args,
     dependencies: [ libm ],
-    objects: quantize_simd_objs,
+    objects: libfaac_simd_objs,
     vs_module_defs: 'libfaac.def',
     install: true,
     version: '0.0.0',
