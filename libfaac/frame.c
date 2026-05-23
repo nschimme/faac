@@ -877,17 +877,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
 
-        /* When HE-AAC is active, frameBytes also contains the SBR fill element.
-         * The quantiser quality only controls AAC-LC core bits, so compare the
-         * target against core bits only — otherwise SBR overhead starves the
-         * core at exactly the bitrates where SBR should leave it headroom. */
-        if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
-            int id_aac = (numChannels > 1) ? ID_CPE : ID_SCE;
-            int sbr_bits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
-            if (sbr_bits > 0 && sbr_bits < totalBits) {
-                totalBits -= sbr_bits;
-            }
-        }
 
         faac_real fix = (faac_real)desbits / (faac_real)totalBits;
 
