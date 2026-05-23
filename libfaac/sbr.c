@@ -74,7 +74,6 @@ static int cmp_int16(const void *a, const void *b) { return (int)(*(const short 
 
 static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 {
-    /* Always target full spectrum (64 bands) for SBR if not explicitly set. */
     if (bs_stop_freq == 14) return 64;
     if (bs_stop_freq == 15) return 64;
 
@@ -168,20 +167,11 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
 
     sbr->bs_amp_res = 0;
 
-    /* Bitrate-aware SBR crossover tuning. */
     unsigned long rate_per_ch = bitRate / channels;
-    if (rate_per_ch < 20000) {
-        sbr->bs_start_freq = 10;
+    if (rate_per_ch < 32000) {
+        sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
-    } else if (rate_per_ch < 28000) {
-        sbr->bs_start_freq = 12;
-        sbr->bs_alter_scale = 1;
-        sbr->dk = 2;
-    } else if (rate_per_ch < 40000) {
-        sbr->bs_start_freq = 13;
-        sbr->bs_alter_scale = 0;
-        sbr->dk = 1;
     } else {
         sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 0;
@@ -325,7 +315,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
 
-                /* 1.5 dB resolution quantization with energy floor. */
                 float log2E = FAAC_LOG((float)E + 1e-20f) * 1.4426950408889634f;
                 int level = (int)lrintf(2.0f * (log2E + 20.0f));
 
