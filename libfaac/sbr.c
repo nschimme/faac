@@ -116,7 +116,8 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 
 static int build_freq_table(SBRInfo *sbr)
 {
-    int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
+    /* Use standard dk=1 for stable frequency grid resolution. */
+    int kx = sbr->kx, k2 = sbr->k2, dk = 1;
     int n_master = ((k2 - kx + (dk & 2)) >> dk) << 1;
     int k;
 
@@ -166,28 +167,10 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->coreSampleRate = coreSampleRate;
 
     sbr->bs_amp_res = 0;
-
-    unsigned long rate_per_ch = bitRate / channels;
-    if (rate_per_ch < 24000) {
-        sbr->bs_start_freq = 7;
-        sbr->bs_alter_scale = 1;
-        sbr->dk = 2;
-    } else if (rate_per_ch < 32000) {
-        sbr->bs_start_freq = 10;
-        sbr->bs_alter_scale = 1;
-        sbr->dk = 2;
-    } else if (rate_per_ch < 48000) {
-        sbr->bs_start_freq = 12;
-        sbr->bs_alter_scale = 0;
-        sbr->dk = 1;
-    } else {
-        sbr->bs_start_freq = 14;
-        sbr->bs_alter_scale = 0;
-        sbr->dk = 1;
-    }
-
+    sbr->bs_start_freq = 15;
     sbr->bs_stop_freq = 14;
     sbr->bs_xover_band = 0;
+    sbr->bs_alter_scale = 0;
 
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
@@ -324,7 +307,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
 
                 float log2E = FAAC_LOG((float)E + 1e-20f) * 1.4426950408889634f;
-                int level = (int)lrintf(2.0f * (log2E + 20.0f));
+                int level = (int)lrintf(2.0f * (log2E + 24.0f));
 
                 if (prevLevel < 0) {
                     level = clamp_int(level, 0, 127);
