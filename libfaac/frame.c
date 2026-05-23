@@ -6,16 +6,6 @@
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
-
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 
 #include <stdio.h>
@@ -354,9 +344,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->pnslevel = 0;
     if (config->pnslevel > 10)
         config->pnslevel = 10;
-    hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.pnslevel = hEncoder->config.pnslevel;
     /* set quantization quality */
-    hEncoder->aacquantCfg.quality = config->quantqual;
+    hEncoder->aacquantCfg.quality = hEncoder->config.quantqual;
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
@@ -438,17 +428,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = AAC_AUTO;
     hEncoder->config.jointmode = JOINT_IS;
-    /* pnslevel=2 chosen by 12-clip voip + 9-clip he64 + 4-clip lc128 sweep
-     * vs the long-standing default 4 (which over-substitutes noise into
-     * formant bands at low rates). At -b 16 mono speech, pnslevel=4 fired
-     * PNS in 41% of frames and 508/2756 sections — including the 0-4 kHz
-     * formant region. Lowering to 2 lifted ViSQOL speech-mode mean by
-     * +0.079 (3.051 -> 3.130) on voip 16 kbps and +0.046 on lc128 128k
-     * music with the music HE64 gate flat; voip output bytes stayed
-     * inside ±2% of baseline so the lift is matched-bps coding gain,
-     * not bit overspend. pnslevel=0 (full disable) regressed lc128 by
-     * -0.046, confirming PNS is still useful at higher rates and tonal
-     * content. */
     hEncoder->config.pnslevel = 2;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
@@ -547,10 +526,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     return 0;
 }
 
-/* HE-AAC pre-processing: deinterleave full-rate input, run SBR analysis,
- * then 2:1 downsample → FRAME_LEN per channel.  Marked cold+noinline so the
- * compiler places this in .text.unlikely, keeping it out of the L1 icache
- * on the AAC-LC path. */
 #if defined(__GNUC__)
 __attribute__((cold, noinline))
 #endif
@@ -563,9 +538,6 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder,
     unsigned int numChannels = hEncoder->numChannels;
     int full_spch = (int)(samplesInput / numChannels);
 
-    /* HE-AAC buffer is sized for 2*FRAME_LEN full-rate samples per channel.
-     * Partial frames at end-of-file (full_spch < 2*FRAME_LEN) are acceptable;
-     * overflow into out-of-bounds memory is not. */
     if (full_spch <= 0 || full_spch > 2 * FRAME_LEN)
         return -1;
 
@@ -622,9 +594,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int channel, i;
     int sb, frameBytes;
     unsigned int offset;
-    BitStream *bitStream; /* bitstream used for writing the frame to */
+    BitStream *bitStream;
 
-    /* local copy's of parameters */
     ChannelInfo *channelInfo = hEncoder->channelInfo;
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
@@ -635,22 +606,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
-    /* Increase frame number */
     hEncoder->frameNum++;
 
     if (samplesInput == 0)
         hEncoder->flushFrame++;
 
-    /* After 4 flush frames all samples have been encoded,
-       return 0 bytes written */
     if (hEncoder->flushFrame > 4)
         return 0;
 
-    /* Determine the channel configuration */
     GetChannelInfo(channelInfo, numChannels, useLfe);
 
-    /* HE-AAC pre-processing (cold path): deinterleave, SBR analysis, 2:1 downsample.
-     * heHalfRate[ch] is non-NULL only when HE-AAC preprocessing ran successfully. */
     faac_real *heHalfRate[MAX_CHANNELS] = {0};
 
     if (hEncoder->config.aacObjectType == HE_AAC &&
@@ -658,7 +623,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (doHEAACPreprocess(hEncoder, inputBuffer, samplesInput, heHalfRate) < 0)
             return -1;
 
-    /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
@@ -674,13 +638,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         if (samplesInput == 0)
         {
-            /* start flushing*/
             for (i = 0; i < FRAME_LEN; i++)
                 hEncoder->next3SampleBuff[channel][i] = 0.0;
         }
         else if (hEncoder->config.aacObjectType == HE_AAC && heHalfRate[channel])
         {
-            /* HE-AAC: load pre-computed half-rate samples */
             memcpy(hEncoder->next3SampleBuff[channel], heHalfRate[channel],
                    FRAME_LEN * sizeof(faac_real));
         }
@@ -688,7 +650,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         {
 			int samples_per_channel = samplesInput/numChannels;
 
-            /* handle the various input formats and channel remapping */
             switch( hEncoder->config.inputFormat )
 			{
                 case FAAC_INPUT_16BIT:
@@ -728,7 +689,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                     break;
 
                 default:
-                    return -1; /* invalid input format */
+                    return -1;
                     break;
             }
 
@@ -736,9 +697,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 hEncoder->next3SampleBuff[channel][i] = 0.0;
 		}
 
-		/* Psychoacoustics */
-		/* Update buffers and run FFT on new samples */
-		/* LFE psychoacoustic can run without it */
 		if (channelInfo[channel].type != ELEMENT_LFE)
 		{
 			hEncoder->psymodel->PsyBufferUpdate(
@@ -752,10 +710,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
-    if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
+    if (hEncoder->frameNum <= 3)
         return 0;
 
-    /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
         hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
         hEncoder->srInfo->cb_width_short,
@@ -763,7 +720,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
-    /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
     {
 		for (channel = 0; channel < numChannels; channel++)
@@ -779,7 +735,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
-    /* AAC Filterbank, MDCT with overlap and add */
     for (channel = 0; channel < numChannels; channel++) {
         FilterBank(hEncoder,
             &coderInfo[channel],
@@ -816,7 +771,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
             TnsEncode(&(coderInfo[channel].tnsInfo),
@@ -826,12 +780,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfb_offset,
                       hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-      // reduce LFE bandwidth
 		if (channelInfo[channel].type == ELEMENT_LFE)
 		{
                     coderInfo[channel].sfbn = 3;
@@ -846,7 +799,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                   &(hEncoder->aacquantCfg));
     }
 
-    // fix max_sfb in CPE mode
     for (channel = 0; channel < numChannels; channel++)
     {
 		if (channelInfo[channel].present
@@ -861,22 +813,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                         cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
 		}
     }
-    /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
 
     if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
         return -1;
 
-    /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);
 
-    /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
-
 
         faac_real fix = (faac_real)desbits / (faac_real)totalBits;
 
@@ -888,9 +836,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0;
         }
 
-        /* Apply damping to the quality adjustment */
         fix = (fix - 1.0) * RC_DAMPING_FACTOR + 1.0;
-        // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;
 
@@ -904,7 +850,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 }
 
 
-/* Scalefactorband data table for 1024 transform length */
 static SR_INFO srInfo[12+1] =
 {
     { 96000, 41, 12,
