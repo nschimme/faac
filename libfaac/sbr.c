@@ -238,7 +238,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                     int raw_level = clamp_int(level, 0, 127), delta = clamp_int(raw_level - prevLevel, -60, 60);
                     sbr->envData[ch][e][b] = delta; prevLevel = prevLevel + delta;
                 }
-                prevLevel = (prevLevel < 0) ? level : prevLevel;
             }
         }
         int prevNoise = -1;
@@ -246,9 +245,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             if (prevNoise < 0) sbr->noiseData[ch][nb] = noise_level;
             else {
                 int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                sbr->noiseData[ch][nb] = delta; prevNoise = prevNoise + delta;
+                sbr->noiseData[ch][nb] = delta; prevNoise = noise_level + delta;
             }
-            prevNoise = (prevNoise < 0) ? noise_level : prevNoise;
+            prevNoise = noise_level;
         }
     }
 }
