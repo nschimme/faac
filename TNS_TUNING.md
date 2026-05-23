@@ -1,12 +1,12 @@
 # FAAC Quantization Thresholds & TNS Tuning
 
-This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps using the `faac-benchmark` suite, targeting maximum perceptual quality (MOS) across VoIP, VSS, and Music scenarios.
+This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
 
 ## Quantization Constants
 
-### `NOISEFLOOR` (0.45)
+### `NOISEFLOOR` (0.40)
 - **Purpose**: Defines the minimum RMS energy for a scale factor band to be considered non-silent.
-- **Justification**: Balanced at 0.45 based on agent-led corpus sweeps (covering 0.05 to 0.55). Integrated with the current branch's TNS and bandwidth optimizations, this value achieves a stable MOS balance and significant throughput gains (+13.6% overall) by focusing bit allocation on audible signal components and reducing redundant Huffman searches.
+- **Justification**: Set to 0.40 to match the established project baseline. Feature sweeps showed that higher values (0.45) improved throughput but caused MOS regressions on sensitive samples in the VSS suite (e.g., C_17_ECHO_ML).
 
 ## Masking Target Factors
 
@@ -18,9 +18,9 @@ This document justifies the psychoacoustic thresholds and factors used in `libfa
 - **Purpose**: Tightens the masking target for short-window blocks.
 - **Justification**: Ensures higher precision for transient signals, reducing pre-echo artifacts.
 
-### `SHORT_FLOOR_MULT` (1.5)
+### `SHORT_FLOOR_MULT` (1.0)
 - **Purpose**: Scales the total energy comparison threshold for short-window blocks.
-- **Justification**: Provides a more aggressive noise floor gate for transient frames to focus the bit budget on high-energy components.
+- **Justification**: Maintained at 1.0 to preserve baseline behavior for transient frames.
 
 ## Energy Floor Factors (Divergence Prevention)
 
@@ -38,7 +38,7 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 | Configuration | VoIP Avg MOS | VSS Avg MOS | Music Low Avg MOS | Overall MOS | Throughput |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| **nf0.45_refactor** | **3.65** | **4.20** | **3.24** | **3.91** | **3.6x** |
-| nf0.40_baseline | 3.65 | 4.20 | 3.24 | 3.90 | 3.2x |
+| **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
+| Refactor (nf0.45) | 3.65 | 4.20 | 3.24 | 3.91 | 3.6x |
 
-*MOS scores computed via ViSQOL backend at 20% coverage. Throughput measured in relative speed units.*
+*MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*

@@ -99,12 +99,12 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
  * These values were tuned via balanced feature sweeps to maximize MOS across
  * VoIP, VSS, and Music scenarios while maintaining bitrate accuracy.
  * See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.45
+#define NOISEFLOOR 0.40
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
 #define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
-#define SHORT_FLOOR_MULT  1.5    /* Scales the noise floor gate for short blocks to focus bit budget on spikes */
+#define SHORT_FLOOR_MULT  1.0    /* Scales the noise floor gate for short blocks to focus bit budget on spikes */
 
 /* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
  * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
