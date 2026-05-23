@@ -59,10 +59,6 @@ static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int off
     return table[sym].len;
 }
 
-/*
- * k0/kx: SBR start subband.
- * ISO 14496-3:2009 §4.6.18.3.2.1
- */
 static int compute_kx(int sampleRate, int bs_start_freq)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -76,10 +72,6 @@ static int compute_kx(int sampleRate, int bs_start_freq)
 
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
 
-/*
- * k2: SBR stop subband.
- * ISO 14496-3:2009 §4.6.18.3.2.1
- */
 static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 {
     if (bs_stop_freq == 14) return 2 * kx > 64 ? 64 : 2 * kx;
@@ -114,7 +106,6 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     if (k2 > 64) k2 = 64;
     if (k2 <= kx) k2 = kx + 1;
 
-    /* Standard frequency span constraints to ensure decoder compatibility. */
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
     if (k2 - kx > max_span) {
         k2 = kx + max_span;
@@ -123,15 +114,9 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     return k2;
 }
 
-/*
- * Generate frequency band tables (master and derived noise).
- * ISO 14496-3:2009 §4.6.18.3.2
- */
 static int build_freq_table(SBRInfo *sbr)
 {
-    /* dk is derived from bs_alter_scale: 1 for standard half-octave, 2 for full-octave.
-     * We currently hardcode bs_alter_scale = 1 in the header, so dk must be 2. */
-    int kx = sbr->kx, k2 = sbr->k2, dk = 2;
+    int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
     int n_master = ((k2 - kx + (dk & 2)) >> dk) << 1;
     int k;
 
@@ -161,7 +146,6 @@ static int build_freq_table(SBRInfo *sbr)
         sbr->bandEdges[b] = f_master[b];
     }
 
-    /* Single noise band covering the whole SBR range. */
     sbr->numNoiseBands = 1;
     sbr->noiseBandEdges[0] = kx;
     sbr->noiseBandEdges[1] = k2;
@@ -181,18 +165,25 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->sampleRate = sampleRate;
     sbr->coreSampleRate = coreSampleRate;
 
-    /* Initialize SBR configuration parameters. */
     sbr->bs_amp_res = 0;
 
     unsigned long rate_per_ch = bitRate / channels;
-    if (rate_per_ch < 20000) {
+    if (rate_per_ch < 24000) {
+        sbr->bs_start_freq = 7;
+        sbr->bs_alter_scale = 1;
+        sbr->dk = 2;
+    } else if (rate_per_ch < 32000) {
         sbr->bs_start_freq = 10;
-    } else if (rate_per_ch < 28000) {
+        sbr->bs_alter_scale = 1;
+        sbr->dk = 2;
+    } else if (rate_per_ch < 48000) {
         sbr->bs_start_freq = 12;
-    } else if (rate_per_ch < 36000) {
-        sbr->bs_start_freq = 13;
+        sbr->bs_alter_scale = 0;
+        sbr->dk = 1;
     } else {
-        sbr->bs_start_freq = 15;
+        sbr->bs_start_freq = 14;
+        sbr->bs_alter_scale = 0;
+        sbr->dk = 1;
     }
 
     sbr->bs_stop_freq = 14;
@@ -202,7 +193,6 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
 
-    /* Transposed modulation tables and pre-converted float tables for SIMD. */
     for (int k = 0; k < SBR_QMF_BANDS; k++) {
         double phase_step = M_PI * (2 * k + 1) / 128.0;
         for (int n = 0; n < SBR_QMF_FILTER_LEN; n++) {
@@ -224,7 +214,6 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
         }
     }
 
-    /* Runtime SIMD dispatch. */
 #ifdef HAVE_SSE2
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2) {
@@ -264,10 +253,6 @@ void qmf_analysis_slot_complex(const SBRInfo *sbr, const faac_real *slot, faac_r
     }
 }
 
-/*
- * 64-band analysis QMF.
- * Optimized with SIMD and transposed modulation tables.
- */
 static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict slot, faac_real * restrict ovl, faac_real * restrict energy, int kx, int k2)
 {
     int k;
@@ -293,10 +278,6 @@ void qmf_analysis_64_slot_energy_test(const SBRInfo *sbr, const faac_real * rest
     qmf_analysis_64_slot_energy(sbr, slot, ovl, energy, kx, k2);
 }
 
-/*
- * Main SBR analysis loop.
- * Performs SFM-based dynamic noise estimation and envelope energy calculation.
- */
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
@@ -314,7 +295,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             }
         }
 
-        /* Calculate Spectral Flatness Measure (SFM) for noise floor estimation. */
         float sum_e = 0, sum_log_e = 0;
         int n_sbr = k2 - kx;
         if (n_sbr < 1) n_sbr = 1;
@@ -326,8 +306,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         }
 
         float sfm = FAAC_EXP(sum_log_e / n_sbr) / (sum_e / n_sbr + 1e-15f);
-        /* Refined SFM mapping to protect speech formants. */
-        int noise_level = (int)(18.0f * sfm);
+        int noise_level = (int)(24.0f * sfm);
         noise_level = clamp_int(noise_level, 0, 30);
 
         for (e = 0; e < SBR_NUM_ENVELOPES; e++) {
@@ -344,8 +323,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
 
-                /* Calibrated energy scaling for better spectral balance.
-                 * 1.5 dB resolution quantization with energy floor. */
                 float log2E = FAAC_LOG((float)E + 1e-20f) * 1.4426950408889634f;
                 int level = (int)lrintf(2.0f * (log2E + 20.0f));
 
@@ -377,11 +354,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     }
 }
 
-/*
- * SBR bitstream writing functions.
- * Strictly compliant with ISO 14496-3 Table 4.63 - 4.68.
- */
-
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
     int bits = 0;
@@ -394,9 +366,8 @@ static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
     WB(1, 1); // bs_header_extra_1
     WB(0, 1); // bs_header_extra_2
 
-    /* Conditioned by bs_header_extra_1 */
     WB(0, 2); // bs_freq_scale
-    WB(1, 1); // bs_alter_scale
+    WB(sbr->bs_alter_scale, 1);
     WB(0, 2); // bs_noise_bands
 #undef WB
     return bits;
@@ -431,7 +402,7 @@ static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int wf)
     int nb;
     for (nb = 0; nb < sbr->numNoiseBands; nb++) {
         if (wf) {
-            PutBit(bs, 2, 2); // bs_invf_mode = HIGH
+            PutBit(bs, 2, 2);
         }
         bits += 2;
     }

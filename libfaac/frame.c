@@ -392,14 +392,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             return 0;
 
         /* Synchronize AAC-LC core bandwidth with SBR crossover.
-         * The core bandwidth must not exceed the SBR start frequency to avoid
-         * spectral overlap and bit waste. kx is the first QMF subband of the
+         * The core bandwidth must exactly match the SBR start frequency to avoid
+         * spectral overlap or holes. kx is the first QMF subband of the
          * 128-subband full-rate QMF bank (0..Fs/2). */
         unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
-        if (hEncoder->config.bandWidth > kx_freq) {
-            hEncoder->config.bandWidth = kx_freq;
-            hEncoder->aacquantCfg.quality *= 0.95; /* Slight quality boost for core */
-        }
+        hEncoder->config.bandWidth = kx_freq;
     } else {
         /* If switched away from HE-AAC, free these buffers */
         HeAacBuffersFree(hEncoder);

@@ -108,7 +108,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
  * mean another +0.086 (3.130 -> 3.216) and left both music gates
  * flat (he64 ±0, lc128 ±0). voip output bps -1.0% vs HEAD so this
  * is a matched-bps coding-efficiency gain, not bit overspend. */
-#define NOISEFLOOR ((faac_real)2.0)
+#define NOISEFLOOR ((faac_real)0.4)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
