@@ -104,7 +104,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
 #define SHORT_PENALTY     0.45   /* Tightens masking target for short-window blocks to improve transients */
-#define SHORT_FLOOR_MULT  1.5    /* Scales the noise floor gate for short blocks to focus bit budget */
+#define SHORT_FLOOR_MULT  1.5    /* Scales the noise floor gate for short blocks to focus bit budget on spikes */
 
 /* Floor the band/frame energy ratio so target doesn't collapse on quiet upper bands.
  * AVGE_FLOOR_FACTOR: 10^( -30 dB / 10 ) = 0.0010
@@ -151,7 +151,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge = 0.0, maxe = 0.0;
-
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
     int n = end - start;
@@ -164,8 +163,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
             faac_real val = xr[cnt];
             faac_real e = val * val;
             avge += e;
-            if (maxe < e)
-                maxe = e;
+            if (maxe < e) maxe = e;
         }
     }
     bandenrg[sfb] = avge;
@@ -175,7 +173,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 
   enrgcnt = (faac_real)gsize * total_len;
-
   if (coderInfo->block_type == ONLY_SHORT_WINDOW)
       enrgcnt *= (faac_real)SHORT_FLOOR_MULT;
 
@@ -186,7 +183,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -195,14 +191,11 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge = bandenrg[sfb];
-    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb] * gsize;
-
+    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb] * (faac_real)gsize;
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
 
-    avgenrg = totenrg / last;
-    avgenrg *= end - start;
-
+    avgenrg = (totenrg / last) * (end - start);
     faac_real target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
 
     {
@@ -210,11 +203,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
         faac_real maxe_floor = avgenrg * (faac_real)MAXE_FLOOR_FACTOR;
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
-        faac_real target_floor = compute_masking_target(avge_eff, maxe_eff, avgenrg, powm,
-                                                        start, end, last, coderInfo->block_type);
+        faac_real target_floor = compute_masking_target(avge_eff, maxe_eff, avgenrg, powm, start, end, last, coderInfo->block_type);
         if (target < target_floor) target = target_floor;
     }
-
     bandqual[sfb] = target * quality;
   }
 }
