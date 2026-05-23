@@ -89,48 +89,6 @@ static long BufferNumBit(BitStream *bitStream);
 static int ByteAlign(BitStream* bitStream,
                      int writeFlag, int bitsSoFar);
 
-/*
- * Write custom FAAC encoder identification string into a fill element.
- */
-static int WriteFAACStr(BitStream *bitStream, char *version, int write)
-{
-  int i;
-  char str[200];
-  int len, padbits, count;
-  int bitcnt;
-
-  sprintf(str, "libfaac %s", version);
-
-  len = strlen(str) + 1;
-  padbits = (8 - ((bitStream->numBit + 7) % 8)) % 8;
-  count = len + 3;
-
-  bitcnt = LEN_SE_ID + 4 + ((count < 15) ? 0 : 8) + count * 8;
-  if (!write)
-    return bitcnt;
-
-  PutBit(bitStream, ID_FIL, LEN_SE_ID);
-  if (count < 15)
-  {
-    PutBit(bitStream, count, 4);
-  }
-  else
-  {
-    PutBit(bitStream, 15, 4);
-    PutBit(bitStream, count - 14, 8);
-  }
-
-  PutBit(bitStream, 0, padbits);
-  PutBit(bitStream, 0, 8);
-  PutBit(bitStream, 0, 8); // just in case
-  for (i = 0; i < len; i++)
-    PutBit(bitStream, str[i], 8);
-
-  PutBit(bitStream, 0, 8 - padbits);
-
-  return bitcnt;
-}
-
 int WriteBitstream(faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
                    ChannelInfo *channelInfo,
@@ -150,24 +108,22 @@ int WriteBitstream(faacEncStruct* hEncoder,
         bits = 0;
     }
 
-    /* Standard encoder signature at frame 4. */
-    if (hEncoder->frameNum == 4) {
-      WriteFAACStr(bitStream, hEncoder->config.name, 1);
-    }
-
     for (channel = 0; channel < numChannel; channel++) {
 
         if (channelInfo[channel].present) {
 
+            /* Write out a single_channel_element */
             if (channelInfo[channel].type != ELEMENT_CPE) {
 
                 if (channelInfo[channel].type == ELEMENT_LFE) {
+                    /* Write out lfe */
                     bits += WriteLFE(&coderInfo[channel],
                         &channelInfo[channel],
                         bitStream,
                         hEncoder->config.aacObjectType,
                         1);
                 } else {
+                    /* Write out sce */
                     bits += WriteSCE(&coderInfo[channel],
                         &channelInfo[channel],
                         bitStream,
@@ -178,6 +134,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
             } else {
 
                 if (channelInfo[channel].ch_is_left) {
+                    /* Write out cpe */
                     bits += WriteCPE(&coderInfo[channel],
                         &coderInfo[channelInfo[channel].paired_ch],
                         &channelInfo[channel],
@@ -189,25 +146,31 @@ int WriteBitstream(faacEncStruct* hEncoder,
         }
     }
 
+    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
+    /* Save room for ID_END terminator */
     if (bits < (8 - LEN_SE_ID) ) {
         numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
     }
 
+    /* Write AAC fill_elements, smallest fill element is 7 bits. */
+    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
     numFillBits += 6;
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 1);
     bits += (numFillBits - bitsLeftAfterFill);
 
-    /* Write SBR extension payload for HE-AAC. */
+    /* Write SBR extension payload for HE-AAC (fill element with EXT_SBR_DATA) */
     if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
         bits += SBRWriteBitstream(hEncoder->sbrInfo, bitStream, id_aac, 1);
     }
 
+    /* Write ID_END terminator */
     bits += LEN_SE_ID;
     PutBit(bitStream, ID_END, LEN_SE_ID);
 
+    /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 1, bits);
 
     return bits;
@@ -229,23 +192,22 @@ static int CountBitstream(faacEncStruct* hEncoder,
         bits = 0;
     }
 
-    if (hEncoder->frameNum == 4) {
-      bits += WriteFAACStr(bitStream, hEncoder->config.name, 0);
-    }
-
     for (channel = 0; channel < numChannel; channel++) {
 
         if (channelInfo[channel].present) {
 
+            /* Write out a single_channel_element */
             if (channelInfo[channel].type != ELEMENT_CPE) {
 
                 if (channelInfo[channel].type == ELEMENT_LFE) {
+                    /* Write out lfe */
                     bits += WriteLFE(&coderInfo[channel],
                         &channelInfo[channel],
                         bitStream,
                         hEncoder->config.aacObjectType,
                         0);
                 } else {
+                    /* Write out sce */
                     bits += WriteSCE(&coderInfo[channel],
                         &channelInfo[channel],
                         bitStream,
@@ -256,6 +218,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
             } else {
 
                 if (channelInfo[channel].ch_is_left) {
+                    /* Write out cpe */
                     bits += WriteCPE(&coderInfo[channel],
                         &coderInfo[channelInfo[channel].paired_ch],
                         &channelInfo[channel],
@@ -267,23 +230,30 @@ static int CountBitstream(faacEncStruct* hEncoder,
         }
     }
 
+    /* Compute how many fill bits are needed to avoid overflowing bit reservoir */
+    /* Save room for ID_END terminator */
     if (bits < (8 - LEN_SE_ID) ) {
         numFillBits = 8 - LEN_SE_ID - bits;
     } else {
         numFillBits = 0;
     }
 
+    /* Write AAC fill_elements, smallest fill element is 7 bits. */
+    /* Function may leave up to 6 bits left after fill, so tell it to fill a few extra */
     numFillBits += 6;
     bitsLeftAfterFill = WriteAACFillBits(bitStream, numFillBits, 0);
     bits += (numFillBits - bitsLeftAfterFill);
 
+    /* Count SBR extension payload for HE-AAC */
     if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
         bits += SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
     }
 
+    /* Write ID_END terminator */
     bits += LEN_SE_ID;
 
+    /* Now byte align the bitstream */
     bits += ByteAlign(bitStream, 0, bits);
 
     hEncoder->usedBytes = bit2byte(bits);
@@ -309,24 +279,28 @@ static int WriteADTSHeader(faacEncStruct* hEncoder,
     int bits = 56;
 
     if (writeFlag) {
-        PutBit(bitStream, 0xFFFF, 12);
-        PutBit(bitStream, hEncoder->config.mpegVersion, 1);
-        PutBit(bitStream, 0, 2);
-        PutBit(bitStream, 1, 1);
+        /* Fixed ADTS header */
+        PutBit(bitStream, 0xFFFF, 12); /* 12 bit Syncword */
+        PutBit(bitStream, hEncoder->config.mpegVersion, 1); /* ID == 0 for MPEG4 AAC, 1 for MPEG2 AAC */
+        PutBit(bitStream, 0, 2); /* layer == 0 */
+        PutBit(bitStream, 1, 1); /* protection absent */
+        /* ADTS profile: always AAC-LC (1) for both LC and HE-AAC.
+         * HE-AAC core is AAC-LC at Fs/2; SBR data lives in fill elements. */
         int adts_profile = (hEncoder->config.aacObjectType == HE_AAC) ? LOW - 1
                                                                        : hEncoder->config.aacObjectType - 1;
-        PutBit(bitStream, adts_profile, 2);
-        PutBit(bitStream, hEncoder->sampleRateIdx, 4);
-        PutBit(bitStream, 0, 1);
-        PutBit(bitStream, hEncoder->numChannels, 3);
-        PutBit(bitStream, 0, 1);
-        PutBit(bitStream, 0, 1);
+        PutBit(bitStream, adts_profile, 2); /* profile */
+        PutBit(bitStream, hEncoder->sampleRateIdx, 4); /* sampling rateIdx */
+        PutBit(bitStream, 0, 1); /* private bit */
+        PutBit(bitStream, hEncoder->numChannels, 3); /* ch. config */
+        PutBit(bitStream, 0, 1); /* original/copy */
+        PutBit(bitStream, 0, 1); /* home */
 
-        PutBit(bitStream, 0, 1);
-        PutBit(bitStream, 0, 1);
+        /* Variable ADTS header */
+        PutBit(bitStream, 0, 1); /* copyr. id. bit */
+        PutBit(bitStream, 0, 1); /* copyr. id. start */
         PutBit(bitStream, hEncoder->usedBytes, 13);
-        PutBit(bitStream, 0x7FF, 11);
-        PutBit(bitStream, 0, 2);
+        PutBit(bitStream, 0x7FF, 11); /* buffer fullness */
+        PutBit(bitStream, 0, 2); /* raw data blocks */
 
     }
 
@@ -681,10 +655,6 @@ static int ByteAlign(BitStream *bitStream, int writeFlag, int bitsSoFar)
 {
     int len = writeFlag ? BufferNumBit(bitStream) : bitsSoFar;
     int j = (8 - (len%8))%8;
-    if (writeFlag) {
-        for( int i=0; i<j; i++ ) {
-            PutBit(bitStream, 0, 1);
-        }
-    }
+    if (writeFlag) for( int i=0; i<j; i++ ) PutBit(bitStream, 0, 1);
     return j;
 }

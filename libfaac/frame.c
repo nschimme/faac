@@ -65,13 +65,14 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (!bitRate) return nyquist;
 
     if (bitRate <= 16000) {
-        /* Segment 1: Telephony (4kHz to 6kHz) */
-        bw = 4000 + (bitRate / 8);
+        /* Segment 1: Telephony (3.0kHz to 3.5kHz)
+         * Optimized for HE-AAC core at low bitrates to maintain precision. */
+        bw = 3000 + (bitRate / 32);
     }
     else if (bitRate <= 32000) {
-        /* Segment 2: Low-tier (6kHz to 11kHz)
+        /* Segment 2: Low-tier (3.5kHz to 7.5kHz)
          */
-        bw = 6000 + ((bitRate - 16000) * 5 / 16);
+        bw = 3500 + ((bitRate - 16000) / 4);
     }
     else if (bitRate <= 64000) {
         /* Segment 3: Mid-tier expansion (11kHz to 18.5kHz)
@@ -384,10 +385,21 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         if (!hEncoder->sbrInfo)
             hEncoder->sbrInfo = SBRInit(hEncoder->numChannels,
                                         hEncoder->fullSampleRate,
-                                        hEncoder->sampleRate);
+                                        hEncoder->sampleRate,
+                                        hEncoder->config.bitRate * hEncoder->numChannels);
 
         if (!HeAacBuffersAlloc(hEncoder))
             return 0;
+
+        /* Synchronize AAC-LC core bandwidth with SBR crossover.
+         * The core bandwidth must not exceed the SBR start frequency to avoid
+         * spectral overlap and bit waste. kx is the first QMF subband of the
+         * 128-subband full-rate QMF bank (0..Fs/2). */
+        unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
+        if (hEncoder->config.bandWidth > kx_freq) {
+            hEncoder->config.bandWidth = kx_freq;
+            hEncoder->aacquantCfg.quality *= 0.95; /* Slight quality boost for core */
+        }
     } else {
         /* If switched away from HE-AAC, free these buffers */
         HeAacBuffersFree(hEncoder);

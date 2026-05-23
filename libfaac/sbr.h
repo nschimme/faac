@@ -111,7 +111,7 @@ typedef struct SBRInfo {
  *
  * Returns NULL on allocation failure.
  */
-SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate);
+SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate);
 
 /** SBREnd - free SBR state. */
 void SBREnd(SBRInfo *sbr);
