@@ -132,9 +132,14 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
     sbr->coreSampleRate = coreSampleRate;
+    sbr->bs_amp_res = 1;
     unsigned long rate_per_ch = bitRate / channels;
-    if (rate_per_ch <= 32000) {
-        sbr->bs_start_freq = 10;
+    if (rate_per_ch < 24000) {
+        sbr->bs_start_freq = 12;
+        sbr->bs_alter_scale = 1;
+        sbr->dk = 2;
+    } else if (rate_per_ch <= 32000) {
+        sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
     } else {
@@ -223,57 +228,105 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             sum_e += enrg; sum_log_e += FAAC_LOG(enrg);
         }
         float sfm = FAAC_EXP(sum_log_e / n_sbr) / (sum_e / n_sbr + 1e-15f);
-        int noise_level = clamp_int((int)(24.0f * sfm), 0, 30);
+        /* Spectral Flatness Measure for noise floor estimation.
+         * sfm = geometric_mean / arithmetic_mean.
+         * sfm -> 1.0 (noise), sfm -> 0.0 (tonal). */
+        int noise_level = clamp_int((int)(30.0f * sfm), 0, 30);
+
         for (int e = 0; e < SBR_NUM_ENVELOPES; e++) {
             int prevLevel = -1;
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1] > k_lo ? sbr->bandEdges[b+1] : k_lo + 1;
                 if (k_hi > SBR_QMF_BANDS_64) k_hi = SBR_QMF_BANDS_64;
+
                 faac_real E = 0;
                 for (int k = k_lo; k < k_hi; k++) E += bandEnergy64[ch][k];
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
-                int level = (int)lrintf(2.0f * (FAAC_LOG((float)E + 1e-20f) * 1.442695f + 20.0f));
-                if (prevLevel < 0) sbr->envData[ch][e][b] = clamp_int(level, 0, 127);
-                else {
-                    int raw_level = clamp_int(level, 0, 127), delta = clamp_int(raw_level - prevLevel, -60, 60);
-                    sbr->envData[ch][e][b] = delta; prevLevel = prevLevel + delta;
+
+                /* Quantize to 1.5 dB steps (bs_amp_res=1).
+                 * level = 2 * log2(E_rel) + offset.
+                 * Offset -6.0 is standard-aligned for relative subband energy mapping. */
+                int level = (int)lrintf(2.0f * (FAAC_LOG((float)E + 1e-20f) * 1.442695f - 6.0f));
+                int raw_level = clamp_int(level, 0, 127);
+                if (prevLevel < 0) {
+                    sbr->envData[ch][e][b] = raw_level;
+                    prevLevel = raw_level;
+                } else {
+                    int delta = clamp_int(raw_level - prevLevel, -60, 60);
+                    sbr->envData[ch][e][b] = delta;
+                    prevLevel += delta;
                 }
             }
         }
         int prevNoise = -1;
         for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            if (prevNoise < 0) sbr->noiseData[ch][nb] = noise_level;
-            else {
+            if (prevNoise < 0) {
+                sbr->noiseData[ch][nb] = noise_level;
+                prevNoise = noise_level;
+            } else {
                 int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                sbr->noiseData[ch][nb] = delta; prevNoise = noise_level + delta;
+                sbr->noiseData[ch][nb] = delta; prevNoise += delta;
             }
-            prevNoise = noise_level;
         }
     }
 }
 
+/**
+ * Write SBR Header (sbr_header())
+ * ISO/IEC 14496-3 Table 4.63
+ */
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
     if (wf) {
-        PutBit(bs, sbr->bs_amp_res, 1); PutBit(bs, sbr->bs_start_freq, 4);
-        PutBit(bs, sbr->bs_stop_freq, 4); PutBit(bs, sbr->bs_xover_band, 3);
-        PutBit(bs, 0, 2); PutBit(bs, 0, 1); PutBit(bs, 0, 1);
+        PutBit(bs, sbr->bs_amp_res, 1);
+        PutBit(bs, sbr->bs_start_freq, 4);
+        PutBit(bs, sbr->bs_stop_freq, 4);
+        PutBit(bs, sbr->bs_xover_band, 3);
+        PutBit(bs, 0, 2); /* reserved */
+        PutBit(bs, 1, 1); /* bs_header_extra_1: present */
+        PutBit(bs, 0, 1); /* bs_header_extra_2: not present */
+
+        /* bs_header_extra_1: Table 4.64 */
+        PutBit(bs, sbr->bs_alter_scale, 1);
+        PutBit(bs, 0, 2); /* bs_noise_bands: 0 = 1 band/octave (matches production) */
+        PutBit(bs, 2, 2); /* bs_limiter_bands: 2 = 1.2 bands/octave */
+        PutBit(bs, 2, 2); /* bs_limiter_gains: 2 = 2 dB */
+        PutBit(bs, 1, 1); /* bs_interpol_freq: 1 = on */
+        PutBit(bs, 1, 1); /* bs_smoothing_mode: 1 = on */
     }
-    return 16;
+    /* 1 + 4 + 4 + 3 + 2 + 1 + 1 (base) + 1 + 2 + 2 + 2 + 1 + 1 (extra_1) = 25 bits */
+    return 25;
 }
 
-static int write_sbr_grid(BitStream *bs, int wf) { if (wf) { PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2); PutBit(bs, 0, 2); PutBit(bs, 1, 1); } return 5; }
+static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf)
+{
+    if (wf) {
+        PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2);
+        PutBit(bs, 0, 2); /* bs_num_env = 0 (1 envelope) */
+        PutBit(bs, sbr->bs_amp_res, 1);
+    }
+    return 5;
+}
 static int write_sbr_dtdf(BitStream *bs, int wf) { if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); } return 2; }
 static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, 2, 2); } return 2 * sbr->numNoiseBands; }
 
 static int write_sbr_envelope(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 {
     int bits = 0;
+    const SBRHuffEntry *table = sbr->bs_amp_res ? f_huff_env_1_5dB : f_huff_env_3_0dB;
+    int nsyms = sbr->bs_amp_res ? F_HUFF_ENV_1_5DB_NSYMS : F_HUFF_ENV_3_0DB_NSYMS;
+    int offset = sbr->bs_amp_res ? F_HUFF_ENV_1_5DB_OFFSET : F_HUFF_ENV_3_0DB_OFFSET;
+
     for (int e = 0; e < SBR_NUM_ENVELOPES; e++) {
         for (int b = 0; b < sbr->numBands; b++) {
             int val = sbr->envData[ch][e][b];
-            if (b == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 127), 7); bits += 7; }
-            else bits += put_huff(bs, f_huff_env_1_5dB, F_HUFF_ENV_1_5DB_NSYMS, F_HUFF_ENV_1_5DB_OFFSET, val, wf);
+            if (b == 0) {
+                int first_bits = sbr->bs_amp_res ? 7 : 6;
+                if (wf) PutBit(bs, clamp_int(val, 0, (1 << first_bits) - 1), first_bits);
+                bits += first_bits;
+            } else {
+                bits += put_huff(bs, table, nsyms, offset, val, wf);
+            }
         }
     }
     return bits;
@@ -292,20 +345,41 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 
 static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
 {
-    int bits = 1; if (wf) PutBit(bs, 0, 1);
+    int bits = 0;
     if (id_aac == ID_CPE) {
-        if (wf) PutBit(bs, 0, 1); bits += 1;
-        bits += write_sbr_grid(bs, wf); bits += write_sbr_grid(bs, wf);
-        bits += write_sbr_dtdf(bs, wf); bits += write_sbr_dtdf(bs, wf);
-        bits += write_sbr_invf(sbr, bs, wf); bits += write_sbr_invf(sbr, bs, wf);
-        bits += write_sbr_envelope(sbr, bs, 0, wf); bits += write_sbr_envelope(sbr, bs, 1, wf);
-        bits += write_sbr_noise(sbr, bs, 0, wf); bits += write_sbr_noise(sbr, bs, 1, wf);
-        if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); PutBit(bs, 0, 1); } bits += 3;
-    } else {
-        bits += write_sbr_grid(bs, wf); bits += write_sbr_dtdf(bs, wf);
-        bits += write_sbr_invf(sbr, bs, wf); bits += write_sbr_envelope(sbr, bs, 0, wf);
+        if (wf) {
+            PutBit(bs, 0, 1); /* bs_data_extra */
+            PutBit(bs, 0, 1); /* bs_coupling */
+        }
+        bits += 2;
+        bits += write_sbr_grid(sbr, bs, wf);
+        bits += write_sbr_grid(sbr, bs, wf);
+        bits += write_sbr_dtdf(bs, wf);
+        bits += write_sbr_dtdf(bs, wf);
+        bits += write_sbr_invf(sbr, bs, wf);
+        bits += write_sbr_invf(sbr, bs, wf);
+        bits += write_sbr_envelope(sbr, bs, 0, wf);
+        bits += write_sbr_envelope(sbr, bs, 1, wf);
         bits += write_sbr_noise(sbr, bs, 0, wf);
-        if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); } bits += 2;
+        bits += write_sbr_noise(sbr, bs, 1, wf);
+        if (wf) {
+            PutBit(bs, 0, 1); /* bs_add_harmonics */
+            PutBit(bs, 0, 1); /* bs_extended_data_present */
+        }
+        bits += 2;
+    } else {
+        if (wf) PutBit(bs, 0, 1); /* bs_data_extra */
+        bits += 1;
+        bits += write_sbr_grid(sbr, bs, wf);
+        bits += write_sbr_dtdf(bs, wf);
+        bits += write_sbr_invf(sbr, bs, wf);
+        bits += write_sbr_envelope(sbr, bs, 0, wf);
+        bits += write_sbr_noise(sbr, bs, 0, wf);
+        if (wf) {
+            PutBit(bs, 0, 1); /* bs_add_harmonics */
+            PutBit(bs, 0, 1); /* bs_extended_data_present */
+        }
+        bits += 2;
     }
     return bits;
 }

@@ -538,6 +538,7 @@ int main(int argc, char *argv[])
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
+            {"profile", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
             {"artist", 1, 0, ARTIST_FLAG},
@@ -777,7 +778,8 @@ int main(int argc, char *argv[])
         case OBJTYPE_FLAG:
             if (!strcmp(optarg, "lc"))
                 objectType = LOW;
-            else if (!strcmp(optarg, "he-aac") || !strcmp(optarg, "heaac"))
+            else if (!strcmp(optarg, "he-aac") || !strcmp(optarg, "heaac") ||
+                     !strcmp(optarg, "he-aac-v1") || !strcmp(optarg, "heaac-v1"))
                 objectType = HE_AAC;
             else if (!strcmp(optarg, "auto"))
                 objectType = AAC_AUTO;
