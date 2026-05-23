@@ -263,15 +263,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* Resolve AAC_AUTO before the half-rate switch so the picked type drives
      * everything downstream.  Crossover: HE-AAC only inside [20, 32] kbps/ch.
      *
-     * The previous gate () was 4-clip-music-corpus-validated and
-     * regressed catastrophically on a wide CI run (baseline e70fd79 vs
+     * The previous gate (rate_per_ch <= 48000) was 4-clip-music-corpus-validated
+     * but regressed catastrophically on a wide CI run (baseline e70fd79 vs
      * b67a38a, 947 cases × 2 builds, avg MOS Δ = −1.084):
      *   - vss @ 40k voice + impairments: mean Δ −1.565 (base 4.0–4.6 → 1.3–2.5)
      *   - voip @ 16k mono speech:        mean Δ −0.961 (base 3.2–4.1 → 1.3–2.4)
      * Voice content cannot tolerate SBR formant smearing; the rate floor
      * keeps the SBR-overhead amortisation positive.  Music_high (256k) and
      * music_std (128k) are LC and bit-exact MATCH at any threshold.
-     *  is per-channel here (frontend/main.c:968 divides by
+     * config->bitRate is per-channel here (frontend/main.c:968 divides by
      * channel count before assigning).  See heaac_bitrate_baseline.md and
      * project_sbr_voice_regression_closed.md. */
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
@@ -879,6 +879,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
+
         /* When HE-AAC is active, frameBytes also contains the SBR fill element.
          * The quantiser quality only controls AAC-LC core bits, so compare the
          * target against core bits only — otherwise SBR overhead starves the
@@ -886,9 +887,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
             int id_aac = (numChannels > 1) ? ID_CPE : ID_SCE;
             int sbr_bits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
-            if (sbr_bits > 0 && sbr_bits < totalBits)
+            if (sbr_bits > 0 && sbr_bits < totalBits) {
                 totalBits -= sbr_bits;
+            }
         }
+
         faac_real fix = (faac_real)desbits / (faac_real)totalBits;
 
         if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) {

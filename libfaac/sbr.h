@@ -95,10 +95,14 @@ typedef struct SBRInfo {
     faac_real cos_table64T[128][SBR_QMF_BANDS_64];
     faac_real sin_table64T[128][SBR_QMF_BANDS_64];
 
+    /* Pre-converted float tables for SIMD speed in double-precision builds. */
+    float cos_table64F[128][SBR_QMF_BANDS_64];
+    float sin_table64F[128][SBR_QMF_BANDS_64];
+
     /* Runtime dispatch for SBR QMF modulation */
-    void (*qmf_64_mod)(const faac_real * restrict proto, const faac_real * restrict ovl,
-                       faac_real cos_table[128][64], faac_real sin_table[128][64],
-                       faac_real * restrict re, faac_real * restrict im);
+    void (*qmf_64_mod)(const struct SBRInfo *sbr, const faac_real * restrict proto,
+                       const faac_real * restrict ovl, faac_real * restrict re,
+                       faac_real * restrict im);
 } SBRInfo;
 
 /* ---- API --------------------------------------------------------- */
