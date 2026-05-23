@@ -22,8 +22,9 @@
 
 static SBRInfo *make_sbr(void)
 {
-    /* coreSampleRate arg is unused by the QMF itself; pick Fs/2. */
-    SBRInfo *s = SBRInit(1, FS, FS / 2);
+    /* coreSampleRate arg is unused by the QMF itself; pick Fs/2.
+     * bitRate arg is also unused for the QMF math, using 64k placeholder. */
+    SBRInfo *s = SBRInit(1, FS, FS / 2, 64000);
     if (!s) { fprintf(stderr, "SBRInit failed\n"); exit(2); }
     return s;
 }
