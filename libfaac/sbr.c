@@ -74,8 +74,9 @@ static int cmp_int16(const void *a, const void *b) { return (int)(*(const short 
 
 static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 {
-    if (bs_stop_freq == 14) return 2 * kx > 64 ? 64 : 2 * kx;
-    if (bs_stop_freq == 15) return 3 * kx > 64 ? 64 : 3 * kx;
+    /* Always target full spectrum (64 bands) for SBR if not explicitly set. */
+    if (bs_stop_freq == 14) return 64;
+    if (bs_stop_freq == 15) return 64;
 
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int stop_min = ((temp << 8) + (sampleRate >> 1)) / sampleRate;
@@ -116,8 +117,7 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 
 static int build_freq_table(SBRInfo *sbr)
 {
-    /* Use standard dk=1 for stable frequency grid resolution. */
-    int kx = sbr->kx, k2 = sbr->k2, dk = 1;
+    int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
     int n_master = ((k2 - kx + (dk & 2)) >> dk) << 1;
     int k;
 
@@ -167,10 +167,29 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->coreSampleRate = coreSampleRate;
 
     sbr->bs_amp_res = 0;
-    sbr->bs_start_freq = 15;
+
+    /* Bitrate-aware SBR crossover tuning. */
+    unsigned long rate_per_ch = bitRate / channels;
+    if (rate_per_ch < 20000) {
+        sbr->bs_start_freq = 10;
+        sbr->bs_alter_scale = 1;
+        sbr->dk = 2;
+    } else if (rate_per_ch < 28000) {
+        sbr->bs_start_freq = 12;
+        sbr->bs_alter_scale = 1;
+        sbr->dk = 2;
+    } else if (rate_per_ch < 40000) {
+        sbr->bs_start_freq = 13;
+        sbr->bs_alter_scale = 0;
+        sbr->dk = 1;
+    } else {
+        sbr->bs_start_freq = 15;
+        sbr->bs_alter_scale = 0;
+        sbr->dk = 1;
+    }
+
     sbr->bs_stop_freq = 14;
     sbr->bs_xover_band = 0;
-    sbr->bs_alter_scale = 0;
 
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
@@ -306,8 +325,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
 
+                /* 1.5 dB resolution quantization with energy floor. */
                 float log2E = FAAC_LOG((float)E + 1e-20f) * 1.4426950408889634f;
-                int level = (int)lrintf(2.0f * (log2E + 24.0f));
+                int level = (int)lrintf(2.0f * (log2E + 20.0f));
 
                 if (prevLevel < 0) {
                     level = clamp_int(level, 0, 127);
