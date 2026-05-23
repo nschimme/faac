@@ -29,7 +29,7 @@
 #include "win32_ver.h"
 #endif
 
-#define RC_DEADBAND_THRESHOLD  0.05
+#define RC_DEADBAND_THRESHOLD  0.01
 #define RC_DAMPING_FACTOR      0.6
 
 static char *libfaacName = PACKAGE_VERSION;
@@ -236,7 +236,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
     if (hEncoder->config.pnslevel > 10) hEncoder->config.pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = hEncoder->config.pnslevel;
     hEncoder->aacquantCfg.quality = hEncoder->config.quantqual;
-    CalcBW(&hEncoder->config.bandWidth, hEncoder->sampleRate, hEncoder->srInfo, &hEncoder->aacquantCfg);
 
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
     if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
@@ -256,11 +255,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
         if (!hEncoder->resampler) hEncoder->resampler = ResampleOpen(hEncoder->numChannels);
         if (!hEncoder->sbrInfo) hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate, hEncoder->sampleRate, hEncoder->config.bitRate * hEncoder->numChannels);
         if (!HeAacBuffersAlloc(hEncoder)) return 0;
+        /* HE-AAC (v1): SBR crossover frequency (kx) determines the core AAC-LC bandwidth.
+         * kx is expressed in QMF bands [0..63] of the high-rate spectrum.
+         * kx_freq = kx * fullSampleRate / 128.
+         * Syncing core bandwidth ensures no spectral gaps or overlaps with SBR. */
         unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
         hEncoder->config.bandWidth = kx_freq;
     } else {
         HeAacBuffersFree(hEncoder);
     }
+
+    /* Initialize Bandwidth and Scalefactor Band (SFB) counts for the core encoder. */
+    CalcBW(&hEncoder->config.bandWidth, hEncoder->sampleRate, hEncoder->srInfo, &hEncoder->aacquantCfg);
 
     return 1;
 }
@@ -562,7 +568,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
     if (hEncoder->config.bitRate) {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
-        faac_real fix = (faac_real)desbits / (faac_real)totalBits;
+        int sbrBits = 0;
+
+        if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
+            int id_aac = (numChannels > 1) ? ID_CPE : ID_SCE;
+            sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
+        }
+
+        /* Adjust quality based on core bit performance against its allocated budget.
+         * Subtracting SBR overhead prevents the rate controller from over-starving
+         * the core when SBR consumes its fixed allocation. */
+        faac_real fix;
+        if (totalBits > sbrBits) {
+            fix = (faac_real)(desbits - sbrBits) / (faac_real)(totalBits - sbrBits);
+        } else {
+            fix = 1.0;
+        }
 
         if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) fix += RC_DEADBAND_THRESHOLD;
         else if (fix > (1.0 + RC_DEADBAND_THRESHOLD)) fix -= RC_DEADBAND_THRESHOLD;
