@@ -29,9 +29,8 @@
 #include "win32_ver.h"
 #endif
 
-/* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05  /* +/- 5% deadband */
-#define RC_DAMPING_FACTOR      0.6   /* Control loop damping */
+#define RC_DEADBAND_THRESHOLD  0.05
+#define RC_DAMPING_FACTOR      0.6
 
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
@@ -55,31 +54,18 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (!bitRate) return nyquist;
 
     if (bitRate <= 16000) {
-        /* Segment 1: Telephony (3.0kHz to 3.5kHz)
-         * Optimized for HE-AAC core at low bitrates to maintain precision. */
         bw = 3000 + (bitRate / 32);
-    }
-    else if (bitRate <= 32000) {
-        /* Segment 2: Low-tier (3.5kHz to 7.5kHz)
-         */
+    } else if (bitRate <= 32000) {
         bw = 3500 + ((bitRate - 16000) / 4);
-    }
-    else if (bitRate <= 64000) {
-        /* Segment 3: Mid-tier expansion (11kHz to 18.5kHz)
-         */
+    } else if (bitRate <= 64000) {
         bw = 11000 + ((bitRate - 32000) * 15 / 64);
-    }
-    else if (bitRate <= 128000) {
-        /* Segment 4: High-fidelity catch-up (18.5kHz to 20kHz) */
+    } else if (bitRate <= 128000) {
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
-    }
-    else {
-        /* Segment 5: Transparency plateau (20kHz+) */
+    } else {
         bw = 20000 + ((bitRate - 128000) / 16);
         if (bw > 20000) bw = 20000;
     }
 
-    /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;
 }
 
@@ -120,90 +106,63 @@ static int HeAacBuffersAlloc(faacEncStruct *hEncoder)
     return 1;
 }
 
-int FAACAPI faacEncGetVersion( char **faac_id_string,
-			      				char **faac_copyright_string)
+int FAACAPI faacEncGetVersion( char **faac_id_string, char **faac_copyright_string)
 {
-  if (faac_id_string)
-    *faac_id_string = libfaacName;
-
-  if (faac_copyright_string)
-    *faac_copyright_string = libCopyright;
-
+  if (faac_id_string) *faac_id_string = libfaacName;
+  if (faac_copyright_string) *faac_copyright_string = libCopyright;
   return FAAC_CFG_VERSION;
 }
-
 
 int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuffer,unsigned long* pSizeOfDecoderSpecificInfo)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     BitStream* pBitStream = NULL;
 
-    if((hEncoder == NULL) || (ppBuffer == NULL) || (pSizeOfDecoderSpecificInfo == NULL)) {
-        return -1;
-    }
-
-    if(hEncoder->config.mpegVersion == MPEG2){
-        return -2; /* not supported */
-    }
+    if((hEncoder == NULL) || (ppBuffer == NULL) || (pSizeOfDecoderSpecificInfo == NULL)) return -1;
+    if(hEncoder->config.mpegVersion == MPEG2) return -2;
 
     if (hEncoder->config.aacObjectType == HE_AAC) {
-        /* HE-AAC explicit backward-compatible AudioSpecificConfig (5 bytes / 37 bits):
-         *   5 bits: AOT = 2 (AAC-LC core)
-         *   4 bits: samplingFrequencyIndex for Fs/2 (core rate)
-         *   4 bits: channelConfiguration
-         *   GASpecificConfig: frameLengthFlag(1) + dependsOnCoreCoder(1) + extensionFlag(1)
-         *   SBR extension: syncWord(11=0x2b7) + extAOT(5=5) + sbrPresentFlag(1) + extSRIdx(4)
-         *  Total: 5+4+4+1+1+1+11+5+1+4 = 37 bits → 5 bytes */
         *pSizeOfDecoderSpecificInfo = 5;
         *ppBuffer = malloc(5);
         if (*ppBuffer == NULL) return -3;
         memset(*ppBuffer, 0, 5);
         pBitStream = OpenBitStream(5, *ppBuffer);
-        PutBit(pBitStream, LOW,                       5); /* AOT = AAC-LC (core) */
-        PutBit(pBitStream, hEncoder->sampleRateIdx,   4); /* Fs/2 (already set) */
+        PutBit(pBitStream, LOW,                       5);
+        PutBit(pBitStream, hEncoder->sampleRateIdx,   4);
         PutBit(pBitStream, hEncoder->numChannels,     4);
-        /* GASpecificConfig */
-        PutBit(pBitStream, 0, 1); /* frameLengthFlag */
-        PutBit(pBitStream, 0, 1); /* dependsOnCoreCoder */
-        PutBit(pBitStream, 0, 1); /* extensionFlag */
-        /* SBR backward-compatible extension */
-        PutBit(pBitStream, 0x2b7,                    11); /* extensionSyncWord */
-        PutBit(pBitStream, 5,                         5); /* extensionAudioObjectType = SBR */
-        PutBit(pBitStream, 1,                         1); /* sbrPresentFlag */
-        PutBit(pBitStream, hEncoder->fullSampleRateIdx, 4); /* full Fs index */
+        PutBit(pBitStream, 0, 1);
+        PutBit(pBitStream, 0, 1);
+        PutBit(pBitStream, 0, 1);
+        PutBit(pBitStream, 0x2b7,                    11);
+        PutBit(pBitStream, 5,                         5);
+        PutBit(pBitStream, 1,                         1);
+        PutBit(pBitStream, hEncoder->fullSampleRateIdx, 4);
         CloseBitStream(pBitStream);
         return 0;
     }
 
     *pSizeOfDecoderSpecificInfo = 2;
     *ppBuffer = malloc(2);
-
     if(*ppBuffer != NULL){
-
         memset(*ppBuffer,0,*pSizeOfDecoderSpecificInfo);
         pBitStream = OpenBitStream(*pSizeOfDecoderSpecificInfo, *ppBuffer);
         PutBit(pBitStream, hEncoder->config.aacObjectType, 5);
         PutBit(pBitStream, hEncoder->sampleRateIdx, 4);
         PutBit(pBitStream, hEncoder->numChannels, 4);
         CloseBitStream(pBitStream);
-
         return 0;
     } else {
         return -3;
     }
 }
 
-
 faacEncConfigurationPtr FAACAPI faacEncGetCurrentConfiguration(faacEncHandle hpEncoder)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    faacEncConfigurationPtr config = &(hEncoder->config);
-
-    return config;
+    return &(hEncoder->config);
 }
 
-int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
-                                    faacEncConfigurationPtr config)
+int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfigurationPtr config)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     int i;
@@ -218,141 +177,67 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
 
-    assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
-
-    switch( hEncoder->config.inputFormat )
-    {
-        case FAAC_INPUT_16BIT:
-        //case FAAC_INPUT_24BIT:
-        case FAAC_INPUT_32BIT:
-        case FAAC_INPUT_FLOAT:
-            break;
-
-        default:
-            return 0;
-            break;
-    }
-
     if (hEncoder->config.aacObjectType != LOW &&
         hEncoder->config.aacObjectType != HE_AAC &&
         hEncoder->config.aacObjectType != AAC_AUTO)
         return 0;
 
-    if (!hEncoder->sampleRate || !hEncoder->numChannels)
-        return 0;
+    if (!hEncoder->sampleRate || !hEncoder->numChannels) return 0;
 
-    /* Clamp bitrate against the full (pre-halved) core sample rate so the cap
-     * stays correct regardless of HE-AAC's 2:1 downsample. */
     {
-        unsigned long fullRate = hEncoder->fullSampleRate ? hEncoder->fullSampleRate
-                                                          : hEncoder->sampleRate;
+        unsigned long fullRate = hEncoder->fullSampleRate ? hEncoder->fullSampleRate : hEncoder->sampleRate;
         if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
             config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
     }
 
-    /* Resolve AAC_AUTO before the half-rate switch so the picked type drives
-     * everything downstream.  Crossover: HE-AAC only inside [20, 32] kbps/ch.
-     *
-     * The previous gate (rate_per_ch <= 48000) was 4-clip-music-corpus-validated
-     * but regressed catastrophically on a wide CI run (baseline e70fd79 vs
-     * b67a38a, 947 cases × 2 builds, avg MOS Δ = −1.084):
-     *   - vss @ 40k voice + impairments: mean Δ −1.565 (base 4.0–4.6 → 1.3–2.5)
-     *   - voip @ 16k mono speech:        mean Δ −0.961 (base 3.2–4.1 → 1.3–2.4)
-     * Voice content cannot tolerate SBR formant smearing; the rate floor
-     * keeps the SBR-overhead amortisation positive.  Music_high (256k) and
-     * music_std (128k) are LC and bit-exact MATCH at any threshold.
-     * config->bitRate is per-channel here (frontend/main.c:968 divides by
-     * channel count before assigning).  See heaac_bitrate_baseline.md and
-     * project_sbr_voice_regression_closed.md. */
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
-        /* HE-AAC halves the configured SR for the LC core (line 288 below).
-         * On input SR < 32 kHz the core would drop to < 16 kHz and SBR
-         * would regenerate the 4-8 kHz band — which carries real speech
-         * formants/sibilants on narrow-band inputs, producing catastrophic
-         * MOS (12-clip voip mean 2.145 at -b 16 mono 16 kHz, vs 3.216 LC).
-         * Refuse HE here for any input that would yield core SR < 16 kHz;
-         * frontend may upsample explicitly-requested HE before opening
-         * the encoder. */
         int sr_ok = (hEncoder->sampleRate >= 32000);
-        int pick_heaac = rate_ok && sr_ok;
-        hEncoder->config.aacObjectType = pick_heaac ? HE_AAC : LOW;
+        hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    /* HE-AAC: switch core codec to half sample rate (first time only) */
-    if (hEncoder->config.aacObjectType == HE_AAC &&
-        hEncoder->fullSampleRate == 0) {
+    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->fullSampleRate == 0) {
         hEncoder->fullSampleRate    = hEncoder->sampleRate;
         hEncoder->fullSampleRateIdx = hEncoder->sampleRateIdx;
         hEncoder->sampleRate        = hEncoder->sampleRate / 2;
         hEncoder->sampleRateIdx     = GetSRIndex(hEncoder->sampleRate);
         hEncoder->srInfo            = &srInfo[hEncoder->sampleRateIdx];
-        /* Force MPEG4 (SBR requires it) and disable PNS (not valid with SBR) */
         hEncoder->config.mpegVersion = MPEG4;
         hEncoder->config.pnslevel    = 0;
     }
 
-    /* Re-init TNS for new profile */
     TnsInit(hEncoder);
-#if 0
-    if (config->bitRate < MinBitrate())
-        return 0;
-#endif
 
-    if (config->bitRate && !config->bandWidth)
-    {
+    if (config->bitRate && !config->bandWidth) {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
-
-        if (!config->quantqual)
-        {
+        if (!config->quantqual) {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0 + DEFQUAL;
         }
     }
 
-    if (!config->quantqual)
-        config->quantqual = DEFQUAL;
-
+    if (!config->quantqual) config->quantqual = DEFQUAL;
     hEncoder->config.bitRate = config->bitRate;
-
-    if (!config->bandWidth)
-    {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
-    }
-
+    if (!config->bandWidth) config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
     hEncoder->config.bandWidth = config->bandWidth;
 
-    // check bandwidth
-    if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
-    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
+    if (hEncoder->config.bandWidth < 100) hEncoder->config.bandWidth = 100;
+    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2)) hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
-    if (config->quantqual > maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
+    if (config->quantqual > maxqual) config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL) config->quantqual = MINQUAL;
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->mpegVersion == MPEG2)
-        config->pnslevel = 0;
-    if (config->pnslevel < 0)
-        config->pnslevel = 0;
-    if (config->pnslevel > 10)
-        config->pnslevel = 10;
+    if (config->mpegVersion == MPEG2) hEncoder->config.pnslevel = 0;
+    if (hEncoder->config.pnslevel < 0) hEncoder->config.pnslevel = 0;
+    if (hEncoder->config.pnslevel > 10) hEncoder->config.pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = hEncoder->config.pnslevel;
-    /* set quantization quality */
     hEncoder->aacquantCfg.quality = hEncoder->config.quantqual;
-    CalcBW(&hEncoder->config.bandWidth,
-              hEncoder->sampleRate,
-              hEncoder->srInfo,
-              &hEncoder->aacquantCfg);
+    CalcBW(&hEncoder->config.bandWidth, hEncoder->sampleRate, hEncoder->srInfo, &hEncoder->aacquantCfg);
 
-    // reset psymodel
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
     if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
 		config->psymodelidx = (sizeof(psymodellist) / sizeof(psymodellist[0])) - 2;
@@ -364,49 +249,28 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 			hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short,
 			hEncoder->srInfo->num_cb_short);
 
-	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
 		hEncoder->config.channel_map[i] = config->channel_map[i];
 
-    /* HE-AAC: initialise resampler, SBR state and buffers (after sample-rate switch) */
     if (hEncoder->config.aacObjectType == HE_AAC) {
-        if (!hEncoder->resampler)
-            hEncoder->resampler = ResampleOpen(hEncoder->numChannels);
-        if (!hEncoder->sbrInfo)
-            hEncoder->sbrInfo = SBRInit(hEncoder->numChannels,
-                                        hEncoder->fullSampleRate,
-                                        hEncoder->sampleRate,
-                                        hEncoder->config.bitRate * hEncoder->numChannels);
-
-        if (!HeAacBuffersAlloc(hEncoder))
-            return 0;
-
-        /* Synchronize AAC-LC core bandwidth with SBR crossover.
-         * The core bandwidth must exactly match the SBR start frequency to avoid
-         * spectral overlap or holes. kx is the first QMF subband of the
-         * 128-subband full-rate QMF bank (0..Fs/2). */
+        if (!hEncoder->resampler) hEncoder->resampler = ResampleOpen(hEncoder->numChannels);
+        if (!hEncoder->sbrInfo) hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate, hEncoder->sampleRate, hEncoder->config.bitRate * hEncoder->numChannels);
+        if (!HeAacBuffersAlloc(hEncoder)) return 0;
         unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
         hEncoder->config.bandWidth = kx_freq;
     } else {
-        /* If switched away from HE-AAC, free these buffers */
         HeAacBuffersFree(hEncoder);
     }
 
-    /* OK */
     return 1;
 }
 
-faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
-                                  unsigned int numChannels,
-                                  unsigned long *inputSamples,
-                                  unsigned long *maxOutputBytes)
+faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate, unsigned int numChannels, unsigned long *inputSamples, unsigned long *maxOutputBytes)
 {
     unsigned int channel;
     faacEncStruct* hEncoder;
 
-    if (numChannels > MAX_CHANNELS)
-	return NULL;
-
+    if (numChannels > MAX_CHANNELS) return NULL;
     *inputSamples = FRAME_LEN*numChannels;
     *maxOutputBytes = ADTS_FRAMESIZE;
 
@@ -417,11 +281,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
-    /* Initialize variables to default values */
     hEncoder->frameNum = 0;
     hEncoder->flushFrame = 0;
 
-    /* Default configuration */
     hEncoder->config.version = FAAC_CFG_VERSION;
     hEncoder->config.name = libfaacName;
     hEncoder->config.copyright = libCopyright;
@@ -447,52 +309,29 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.quantqual = 0;
     hEncoder->config.psymodellist = (psymodellist_t *)psymodellist;
     hEncoder->config.psymodelidx = 0;
-    hEncoder->psymodel =
-      (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
+    hEncoder->psymodel = (psymodel_t *)hEncoder->config.psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
     HeAacBuffersFree(hEncoder);
-
-	/* default channel map is straight-through */
-	for( channel = 0; channel < MAX_CHANNELS; channel++ )
-		hEncoder->config.channel_map[channel] = channel;
-
+	for( channel = 0; channel < MAX_CHANNELS; channel++ ) hEncoder->config.channel_map[channel] = channel;
     hEncoder->config.outputFormat = ADTS_STREAM;
-
-    /*
-        be compatible with software which assumes 24bit in 32bit PCM
-    */
     hEncoder->config.inputFormat = FAAC_INPUT_32BIT;
-
-    /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
-    for (channel = 0; channel < numChannels; channel++)
-	{
+    for (channel = 0; channel < numChannels; channel++) {
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
         hEncoder->coderInfo[channel].window_shape = SINE_WINDOW;
         hEncoder->coderInfo[channel].block_type = ONLY_LONG_WINDOW;
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
-
         hEncoder->sampleBuff[channel] = NULL;
     }
 
-    /* Initialize coder functions */
 	fft_initialize( &hEncoder->fft_tables );
-
-	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
-        hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
-        hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short);
-
+	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels, hEncoder->sampleRate, hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short, hEncoder->srInfo->num_cb_short);
     FilterBankInit(hEncoder);
-
     TnsInit(hEncoder);
-
     QuantizeInit();
-
-    /* Return handle */
     return hEncoder;
 }
 
@@ -501,23 +340,15 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel;
 
-    /* Deinitialize coder functions */
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
-
     FilterBankEnd(hEncoder);
-
     fft_terminate(&hEncoder->fft_tables);
 
-    /* Free remaining buffer memory */
-    for (channel = 0; channel < hEncoder->numChannels; channel++)
-	{
-		if (hEncoder->sampleBuff[channel])
-			FreeMemory(hEncoder->sampleBuff[channel]);
-		if (hEncoder->next3SampleBuff[channel])
-			FreeMemory (hEncoder->next3SampleBuff[channel]);
+    for (channel = 0; channel < hEncoder->numChannels; channel++) {
+		if (hEncoder->sampleBuff[channel]) FreeMemory(hEncoder->sampleBuff[channel]);
+		if (hEncoder->next3SampleBuff[channel]) FreeMemory (hEncoder->next3SampleBuff[channel]);
     }
 
-    /* Free HE-AAC state */
     if (hEncoder->resampler) {
         ResampleClose(hEncoder->resampler);
         hEncoder->resampler = NULL;
@@ -527,38 +358,27 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrInfo = NULL;
     }
     HeAacBuffersFree(hEncoder);
-
-    /* Free handle */
-    if (hEncoder)
-		FreeMemory(hEncoder);
-
+    if (hEncoder) FreeMemory(hEncoder);
     BlocStat();
-
     return 0;
 }
 
 #if defined(__GNUC__)
 __attribute__((cold, noinline))
 #endif
-static int doHEAACPreprocess(faacEncStruct *hEncoder,
-                              int32_t *inputBuffer,
-                              unsigned int samplesInput,
-                              faac_real *heHalfRate[MAX_CHANNELS])
+static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer, unsigned int samplesInput, faac_real *heHalfRate[MAX_CHANNELS])
 {
     unsigned int channel, i;
     unsigned int numChannels = hEncoder->numChannels;
     int full_spch = (int)(samplesInput / numChannels);
 
-    if (full_spch <= 0 || full_spch > 2 * FRAME_LEN)
-        return -1;
+    if (full_spch <= 0 || full_spch > 2 * FRAME_LEN) return -1;
 
     for (channel = 0; channel < numChannels; channel++) {
         faac_real *fullRate = hEncoder->heFullRatePtr[channel];
-
         switch (hEncoder->config.inputFormat) {
             case FAAC_INPUT_16BIT: {
-                short *src = (short *)inputBuffer
-                             + hEncoder->config.channel_map[channel];
+                short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < (unsigned)full_spch; i++) {
                     fullRate[i] = (faac_real)*src;
                     src += numChannels;
@@ -566,8 +386,7 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder,
                 break;
             }
             case FAAC_INPUT_32BIT: {
-                int32_t *src = (int32_t *)inputBuffer
-                               + hEncoder->config.channel_map[channel];
+                int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < (unsigned)full_spch; i++) {
                     fullRate[i] = (1.0f/256) * (faac_real)*src;
                     src += numChannels;
@@ -575,16 +394,14 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder,
                 break;
             }
             case FAAC_INPUT_FLOAT: {
-                float *src = (float *)inputBuffer
-                             + hEncoder->config.channel_map[channel];
+                float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < (unsigned)full_spch; i++) {
                     fullRate[i] = (faac_real)*src;
                     src += numChannels;
                 }
                 break;
             }
-            default:
-                break;
+            default: break;
         }
         heHalfRate[channel] = hEncoder->heHalfRatePtr[channel];
     }
@@ -594,12 +411,7 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder,
     return 0;
 }
 
-int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
-                          int32_t *inputBuffer,
-                          unsigned int samplesInput,
-                          unsigned char *outputBuffer,
-                          unsigned int bufferSize
-                          )
+int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigned int samplesInput, unsigned char *outputBuffer, unsigned int bufferSize)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel, i;
@@ -618,148 +430,83 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     hEncoder->frameNum++;
-
-    if (samplesInput == 0)
-        hEncoder->flushFrame++;
-
-    if (hEncoder->flushFrame > 4)
-        return 0;
+    if (samplesInput == 0) hEncoder->flushFrame++;
+    if (hEncoder->flushFrame > 4) return 0;
 
     GetChannelInfo(channelInfo, numChannels, useLfe);
-
     faac_real *heHalfRate[MAX_CHANNELS] = {0};
 
-    if (hEncoder->config.aacObjectType == HE_AAC &&
-        hEncoder->sbrInfo && hEncoder->resampler && samplesInput > 0)
-        if (doHEAACPreprocess(hEncoder, inputBuffer, samplesInput, heHalfRate) < 0)
-            return -1;
+    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo && hEncoder->resampler && samplesInput > 0)
+        if (doHEAACPreprocess(hEncoder, inputBuffer, samplesInput, heHalfRate) < 0) return -1;
 
-    for (channel = 0; channel < numChannels; channel++)
-	{
+    for (channel = 0; channel < numChannels; channel++) {
 		faac_real *tmp;
-
-
-		if (!hEncoder->sampleBuff[channel])
-			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
-
+		if (!hEncoder->sampleBuff[channel]) hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 		tmp = hEncoder->sampleBuff[channel];
-
 		hEncoder->sampleBuff[channel]	= hEncoder->next3SampleBuff[channel];
 		hEncoder->next3SampleBuff[channel]	= tmp;
 
-        if (samplesInput == 0)
-        {
-            for (i = 0; i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
-        }
-        else if (hEncoder->config.aacObjectType == HE_AAC && heHalfRate[channel])
-        {
-            memcpy(hEncoder->next3SampleBuff[channel], heHalfRate[channel],
-                   FRAME_LEN * sizeof(faac_real));
-        }
-        else
-        {
+        if (samplesInput == 0) {
+            for (i = 0; i < FRAME_LEN; i++) hEncoder->next3SampleBuff[channel][i] = 0.0;
+        } else if (hEncoder->config.aacObjectType == HE_AAC && heHalfRate[channel]) {
+            memcpy(hEncoder->next3SampleBuff[channel], heHalfRate[channel], FRAME_LEN * sizeof(faac_real));
+        } else {
 			int samples_per_channel = samplesInput/numChannels;
-
-            switch( hEncoder->config.inputFormat )
-			{
-                case FAAC_INPUT_16BIT:
-					{
+            switch( hEncoder->config.inputFormat ) {
+                case FAAC_INPUT_16BIT: {
 						short *input_channel = (short*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
 							input_channel += numChannels;
 						}
 					}
                     break;
-
-                case FAAC_INPUT_32BIT:
-					{
+                case FAAC_INPUT_32BIT: {
 						int32_t *input_channel = (int32_t*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (1.0/256) * (faac_real)*input_channel;
 							input_channel += numChannels;
 						}
 					}
                     break;
-
-                case FAAC_INPUT_FLOAT:
-					{
+                case FAAC_INPUT_FLOAT: {
 						float *input_channel = (float*)inputBuffer + hEncoder->config.channel_map[channel];
-
-						for (i = 0; i < samples_per_channel; i++)
-						{
+						for (i = 0; i < samples_per_channel; i++) {
 							hEncoder->next3SampleBuff[channel][i] = (faac_real)*input_channel;
 							input_channel += numChannels;
 						}
 					}
                     break;
-
-                default:
-                    return -1;
-                    break;
+                default: return -1; break;
             }
-
-            for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
+            for (i = (int)(samplesInput/numChannels); i < FRAME_LEN; i++) hEncoder->next3SampleBuff[channel][i] = 0.0;
 		}
 
-		if (channelInfo[channel].type != ELEMENT_LFE)
-		{
-			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
-					&hEncoder->gpsyInfo,
-					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel],
-					bandWidth,
-					hEncoder->srInfo->cb_width_short,
-					hEncoder->srInfo->num_cb_short);
+		if (channelInfo[channel].type != ELEMENT_LFE) {
+			hEncoder->psymodel->PsyBufferUpdate(&hEncoder->fft_tables, &hEncoder->gpsyInfo, &hEncoder->psyInfo[channel], hEncoder->next3SampleBuff[channel], bandWidth, hEncoder->srInfo->cb_width_short, hEncoder->srInfo->num_cb_short);
 		}
     }
 
-    if (hEncoder->frameNum <= 3)
-        return 0;
+    if (hEncoder->frameNum <= 3) return 0;
 
-    hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo,
-        hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long,
-        hEncoder->srInfo->cb_width_short,
-        hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
+    hEncoder->psymodel->PsyCalculate(channelInfo, &hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->srInfo->cb_width_long, hEncoder->srInfo->num_cb_long, hEncoder->srInfo->cb_width_short, hEncoder->srInfo->num_cb_short, numChannels, (faac_real)hEncoder->aacquantCfg.quality / DEFQUAL);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
-    if (shortctl == SHORTCTL_NOSHORT)
-    {
-		for (channel = 0; channel < numChannels; channel++)
-		{
-			coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-		}
-    }
-    else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG))
-    {
-		for (channel = 0; channel < numChannels; channel++)
-		{
-			coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
-		}
+    if (shortctl == SHORTCTL_NOSHORT) {
+		for (channel = 0; channel < numChannels; channel++) coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+    } else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG)) {
+		for (channel = 0; channel < numChannels; channel++) coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-        FilterBank(hEncoder,
-            &coderInfo[channel],
-            hEncoder->sampleBuff[channel],
-            hEncoder->freqBuff[channel],
-            hEncoder->overlapBuff[channel]);
+        FilterBank(hEncoder, &coderInfo[channel], hEncoder->sampleBuff[channel], hEncoder->freqBuff[channel], hEncoder->overlapBuff[channel]);
     }
 
     for (channel = 0; channel < numChannels; channel++) {
         channelInfo[channel].msInfo.is_present = 0;
-
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
-
             offset = 0;
             for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
@@ -769,10 +516,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
-
             coderInfo[channel].groups.n = 1;
             coderInfo[channel].groups.len[0] = 1;
-
             offset = 0;
             for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
@@ -784,82 +529,54 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+            TnsEncode(&(coderInfo[channel].tnsInfo), coderInfo[channel].sfbn, coderInfo[channel].sfbn, coderInfo[channel].block_type, coderInfo[channel].sfb_offset, hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-		if (channelInfo[channel].type == ELEMENT_LFE)
-		{
-                    coderInfo[channel].sfbn = 3;
-		}
+		if (channelInfo[channel].type == ELEMENT_LFE) coderInfo[channel].sfbn = 3;
 	}
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
               (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
 
     for (channel = 0; channel < numChannels; channel++) {
-        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+        BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
     }
 
-    for (channel = 0; channel < numChannels; channel++)
-    {
-		if (channelInfo[channel].present
-				&& (channelInfo[channel].type == ELEMENT_CPE)
-				&& (channelInfo[channel].ch_is_left))
-		{
+    for (channel = 0; channel < numChannels; channel++) {
+		if (channelInfo[channel].present && (channelInfo[channel].type == ELEMENT_CPE) && (channelInfo[channel].ch_is_left)) {
 			CoderInfo *cil, *cir;
-
 			cil = &coderInfo[channel];
 			cir = &coderInfo[channelInfo[channel].paired_ch];
-
-                        cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+            cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
 		}
     }
+
     bitStream = OpenBitStream(bufferSize, outputBuffer);
-
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
-        return -1;
-
+    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0) return -1;
     frameBytes = CloseBitStream(bitStream);
 
-    if (hEncoder->config.bitRate)
-    {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
-            / hEncoder->sampleRate;
+    if (hEncoder->config.bitRate) {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
-
         faac_real fix = (faac_real)desbits / (faac_real)totalBits;
 
-        if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) {
-            fix += RC_DEADBAND_THRESHOLD;
-        } else if (fix > (1.0 + RC_DEADBAND_THRESHOLD)) {
-            fix -= RC_DEADBAND_THRESHOLD;
-        } else {
-            fix = 1.0;
-        }
+        if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) fix += RC_DEADBAND_THRESHOLD;
+        else if (fix > (1.0 + RC_DEADBAND_THRESHOLD)) fix -= RC_DEADBAND_THRESHOLD;
+        else fix = 1.0;
 
         fix = (fix - 1.0) * RC_DAMPING_FACTOR + 1.0;
-
         hEncoder->aacquantCfg.quality *= fix;
 
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < MINQUAL)
-            hEncoder->aacquantCfg.quality = MINQUAL;
+        if (hEncoder->aacquantCfg.quality > maxqual) hEncoder->aacquantCfg.quality = maxqual;
+        if (hEncoder->aacquantCfg.quality < MINQUAL) hEncoder->aacquantCfg.quality = MINQUAL;
     }
 
     return frameBytes;
 }
-
 
 static SR_INFO srInfo[12+1] =
 {
