@@ -132,8 +132,8 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
     sbr->coreSampleRate = coreSampleRate;
-    sbr->bs_amp_res = 1;
     unsigned long rate_per_ch = bitRate / channels;
+    sbr->bs_amp_res = (rate_per_ch < 20000) ? 0 : 1;
     if (rate_per_ch < 24000) {
         sbr->bs_start_freq = 12;
         sbr->bs_alter_scale = 1;
@@ -243,10 +243,11 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 for (int k = k_lo; k < k_hi; k++) E += bandEnergy64[ch][k];
                 E /= (faac_real)(num_slots * (k_hi - k_lo));
 
-                /* Quantize to 1.5 dB steps (bs_amp_res=1).
-                 * level = 2 * log2(E_rel) + offset.
-                 * Offset -6.0 is standard-aligned for relative subband energy mapping. */
-                int level = (int)lrintf(2.0f * (FAAC_LOG((float)E + 1e-20f) * 1.442695f - 6.0f));
+                /* Quantize energy levels.
+                 * bs_amp_res=1: 1.5 dB steps (step = 0.5 in log2) -> factor 2.0
+                 * bs_amp_res=0: 3.0 dB steps (step = 1.0 in log2) -> factor 1.0 */
+                float factor = sbr->bs_amp_res ? 2.0f : 1.0f;
+                int level = (int)lrintf(factor * (FAAC_LOG((float)E + 1e-20f) * 1.442695f + 10.0f));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
                     sbr->envData[ch][e][b] = raw_level;
