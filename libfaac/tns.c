@@ -119,25 +119,28 @@ static unsigned short tnsMaxOrderShortLow = 7;
 /*************************/
 /* Function prototypes   */
 /*************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray);     /* Autocorrelation array */
+static void Autocorrelation(int maxOrder,
+                     int dataSize,
+                     const faac_real * restrict data,
+                     faac_real * restrict rArray);
 
-static faac_real LevinsonDurbin(int maxOrder,        /* Maximum filter order */
-                      int dataSize,        /* Size of the data array */
-                      faac_real* data,        /* Data array */
-                      faac_real* kArray);     /* Reflection coeff array */
+static faac_real LevinsonDurbin(int maxOrder,
+                      int dataSize,
+                      const faac_real * restrict data,
+                      faac_real * restrict kArray);
 
 static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp);
 
-static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
-                                 const int *sfbOffsetTable,
-                                 const faac_real *sfbEnergy,
+static void WhitenSpectrumForTns(const faac_real * restrict spec,
+                                 faac_real * restrict out,
+                                 const int * restrict sfbOffsetTable,
+                                 const faac_real * restrict sfbEnergy,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine);
 
@@ -468,51 +471,62 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /*   Not that the order and direction are specified     */
 /*   withing the TNS_FILTER_DATA structure.             */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp)
 {
-    int i,j,k=0;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    int i, j;
+    const int order = filter->order;
+    /* Hoist aCoeffs into a restrict local so the compiler knows it does not
+       alias spec[] or temp[] and can reorder loads across loop iterations. */
+    const faac_real * restrict a = filter->aCoeffs;
 
-    /* Determine loop parameters for given direction */
     if (filter->direction) {
-
-        /* Startup, initial state is zero */
-        temp[length-1]=spec[length-1];
-        for (i=length-2;i>(length-1-order);i--) {
-            temp[i]=spec[i];
-            k++;
-            for (j=1;j<=k;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        /* Reverse direction (high-to-low index) */
+        int k = 0;
+        temp[length-1] = spec[length-1];
+        for (i = length-2; i > length-1-order; i--) {
+            faac_real s = spec[i];
+            const faac_real *tp = &temp[i+1];
+            const faac_real *ap = &a[1];
+            faac_real acc = s;
+            temp[i] = s;
+            for (j = ++k; j > 0; j--)
+                acc += (*tp++) * (*ap++);
+            spec[i] = acc;
         }
-
-        /* Now filter the rest */
-        for (i=length-1-order;i>=0;i--) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i+j]*a[j];
-            }
+        for (i = length-1-order; i >= 0; i--) {
+            faac_real s = spec[i];
+            const faac_real *tp = &temp[i+1];
+            const faac_real *ap = &a[1];
+            faac_real acc = s;
+            temp[i] = s;
+            for (j = order; j > 0; j--)
+                acc += (*tp++) * (*ap++);
+            spec[i] = acc;
         }
-
-
     } else {
-
-        /* Startup, initial state is zero */
-        temp[0]=spec[0];
-        for (i=1;i<order;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=i;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        /* Forward direction (low-to-high index) */
+        temp[0] = spec[0];
+        for (i = 1; i < order; i++) {
+            faac_real s = spec[i];
+            const faac_real *tp = &temp[i-1];
+            const faac_real *ap = &a[1];
+            faac_real acc = s;
+            temp[i] = s;
+            for (j = i; j > 0; j--)
+                acc += (*tp--) * (*ap++);
+            spec[i] = acc;
         }
-
-        /* Now filter the rest */
-        for (i=order;i<length;i++) {
-            temp[i]=spec[i];
-            for (j=1;j<=order;j++) {
-                spec[i]+=temp[i-j]*a[j];
-            }
+        for (i = order; i < length; i++) {
+            faac_real s = spec[i];
+            const faac_real *tp = &temp[i-1];
+            const faac_real *ap = &a[1];
+            faac_real acc = s;
+            temp[i] = s;
+            for (j = order; j > 0; j--)
+                acc += (*tp--) * (*ap++);
+            spec[i] = acc;
         }
     }
 }
@@ -585,23 +599,30 @@ static void QuantizeReflectionCoeffs(int fOrder,
 /*   Compute the autocorrelation function            */
 /*   estimate for the given data.                    */
 /*****************************************************/
-static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
-                     int dataSize,        /* Size of the data array */
-                     faac_real* data,        /* Data array */
-                     faac_real* rArray)      /* Autocorrelation array */
+static void Autocorrelation(int maxOrder,
+                     int dataSize,
+                     const faac_real * restrict data,
+                     faac_real * restrict rArray)
 {
-    int order,index;
+    int i, j;
+    for (j = 0; j <= maxOrder; j++) rArray[j] = 0.0;
 
-    for (order = 0; order <= maxOrder; order++)
-        rArray[order] = 0.0;
-
-    for (index = 0; index < dataSize; index++) {
-        faac_real d = data[index];
-        int n = min(maxOrder, dataSize - 1 - index);
+    /* Main body: all maxOrder lags available — inner loop has a fixed upper
+       bound so the compiler can omit the variable-limit branch and generate
+       a compact fixed-count loop. */
+    for (i = 0; i < dataSize - maxOrder; i++) {
+        faac_real d = data[i];
         rArray[0] += d * d;
-        for (order = 1; order <= n; order++) {
-            rArray[order] += d * data[index + order];
-        }
+        for (j = 1; j <= maxOrder; j++)
+            rArray[j] += d * data[i + j];
+    }
+    /* Tail: last maxOrder samples contribute fewer lags each.  Only
+       O(maxOrder^2/2) operations total — negligible vs. the main body. */
+    for (; i < dataSize; i++) {
+        faac_real d = data[i];
+        rArray[0] += d * d;
+        for (j = 1; j < dataSize - i; j++)
+            rArray[j] += d * data[i + j];
     }
 }
 
@@ -613,29 +634,24 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 /*   given data using LevinsonDurbin recursion.      */
 /*   Return the prediction gain.                     */
 /*****************************************************/
-static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
-                      int dataSize,        /* Size of the data array */
-                      faac_real* data,        /* Data array */
-                      faac_real* kArray)      /* Reflection coeff array */
+static faac_real LevinsonDurbin(int fOrder,
+                      int dataSize,
+                      const faac_real * restrict data,
+                      faac_real * restrict kArray)
 {
     int order,i;
     faac_real signal;
-    faac_real error, kTemp;                /* Prediction error */
-    faac_real aArray1[TNS_MAX_ORDER+1];    /* Predictor coeff array */
-    faac_real aArray2[TNS_MAX_ORDER+1];    /* Predictor coeff array 2 */
-    faac_real rArray[TNS_MAX_ORDER+1] = {0}; /* Autocorrelation coeffs */
-    faac_real* aPtr = aArray1;             /* Ptr to aArray1 */
-    faac_real* aLastPtr = aArray2;         /* Ptr to aArray2 */
+    faac_real error, kTemp;
+    faac_real aArray1[TNS_MAX_ORDER+1];
+    faac_real aArray2[TNS_MAX_ORDER+1];
+    faac_real rArray[TNS_MAX_ORDER+1];   /* Autocorrelation zeroed by Autocorrelation() */
+    faac_real* aPtr = aArray1;
+    faac_real* aLastPtr = aArray2;
     faac_real* aTemp;
 
-    /* Compute autocorrelation coefficients */
-    Autocorrelation(fOrder,dataSize,data,rArray);
-    signal=rArray[0];   /* signal energy */
+    Autocorrelation(fOrder, dataSize, data, rArray);
+    signal = rArray[0];
 
-    /* Set up pointers to current and last iteration */
-    /* predictor coefficients.                       */
-    aPtr = aArray1;
-    aLastPtr = aArray2;
     /* If there is no signal energy, return */
     if (!signal) {
         kArray[0]=1.0;
@@ -727,43 +743,41 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 /*   structure - matching how libaacplus avoids this */
 /*   class of regression on long-block speech.       */
 /*****************************************************/
-static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
-                                 const int *sfbOffsetTable,
-                                 const faac_real *sfbEnergy,
+static void WhitenSpectrumForTns(const faac_real * restrict spec,
+                                 faac_real * restrict out,
+                                 const int * restrict sfbOffsetTable,
+                                 const faac_real * restrict sfbEnergy,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine)
 {
-    faac_real invE[NSFB_LONG];
     int sfb, i;
 
     if (startBand >= stopBand || startLine >= stopLine)
         return;
 
-    /* Step 1: per-SFB inverse sqrt(energy). */
-    for (sfb = startBand; sfb < stopBand; sfb++) {
-        invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb])
-                  : (faac_real)0.0;
-    }
-
-    /* Merged expansion and RTL smoothing.
-       Step 2 (expansion) and Step 3a (RTL filter) combined into one RTL pass. */
+    /* RTL pass: compute 1/sqrt(sfbEnergy) on-the-fly at each SFB boundary.
+       Fuses the old Step 1 (invE[] forward pass) into the RTL expansion,
+       eliminating the invE[NSFB_LONG] stack array and its initialisation loop.
+       SFBs are encountered in descending order here, matching the traversal
+       direction, so each sqrt is computed exactly once per SFB per window. */
     {
         sfb = stopBand - 1;
         int sfb_start = sfbOffsetTable[sfb];
-        faac_real w = invE[sfb];
+        faac_real w = (sfbEnergy[sfb] > (faac_real)0.0)
+                    ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb]) : (faac_real)0.0;
         out[stopLine - 1] = w;
         for (i = stopLine - 2; i >= startLine; i--) {
             if (i < sfb_start) {
                 sfb--;
-                w = invE[sfb];
                 sfb_start = sfbOffsetTable[sfb];
+                w = (sfbEnergy[sfb] > (faac_real)0.0)
+                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb]) : (faac_real)0.0;
             }
             out[i] = (faac_real)0.5 * (w + out[i + 1]);
         }
     }
 
-    /* Step 3b: LTR smoothing fused with whitening. */
+    /* LTR smoothing fused with whitening. */
     {
         faac_real prev = out[startLine];
         out[startLine] = prev * spec[startLine];
