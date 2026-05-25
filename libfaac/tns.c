@@ -594,25 +594,17 @@ static void Autocorrelation(int maxOrder,
                      const faac_real * restrict data,
                      faac_real * restrict rArray)
 {
-    int i, j;
-    for (j = 0; j <= maxOrder; j++) rArray[j] = 0.0;
+    int order, index;
 
-    /* Main body: all maxOrder lags available — inner loop has a fixed upper
-       bound so the compiler can omit the variable-limit branch and generate
-       a compact fixed-count loop. */
-    for (i = 0; i < dataSize - maxOrder; i++) {
-        faac_real d = data[i];
+    for (order = 0; order <= maxOrder; order++)
+        rArray[order] = 0.0;
+
+    for (index = 0; index < dataSize; index++) {
+        faac_real d = data[index];
+        int n = min(maxOrder, dataSize - 1 - index);
         rArray[0] += d * d;
-        for (j = 1; j <= maxOrder; j++)
-            rArray[j] += d * data[i + j];
-    }
-    /* Tail: last maxOrder samples contribute fewer lags each.  Only
-       O(maxOrder^2/2) operations total — negligible vs. the main body. */
-    for (; i < dataSize; i++) {
-        faac_real d = data[i];
-        rArray[0] += d * d;
-        for (j = 1; j < dataSize - i; j++)
-            rArray[j] += d * data[i + j];
+        for (order = 1; order <= n; order++)
+            rArray[order] += d * data[index + order];
     }
 }
 
@@ -740,28 +732,33 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine)
 {
+    faac_real invE[NSFB_LONG];
     int sfb, i;
 
     if (startBand >= stopBand || startLine >= stopLine)
         return;
 
-    /* RTL pass: compute 1/sqrt(sfbEnergy) on-the-fly at each SFB boundary.
-       Fuses the old Step 1 (invE[] forward pass) into the RTL expansion,
-       eliminating the invE[NSFB_LONG] stack array and its initialisation loop.
-       SFBs are encountered in descending order here, matching the traversal
-       direction, so each sqrt is computed exactly once per SFB per window. */
+    /* Step 1: per-SFB inverse sqrt(energy) in a tight forward pass.
+       Keeping this as a separate loop lets the CPU pipeline the sqrt calls
+       without data-dependent branches — fusing them into the RTL pass
+       degrades throughput on short windows (8 calls per frame). */
+    for (sfb = startBand; sfb < stopBand; sfb++) {
+        invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
+                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb])
+                  : (faac_real)0.0;
+    }
+
+    /* Merged expansion and RTL smoothing. */
     {
         sfb = stopBand - 1;
         int sfb_start = sfbOffsetTable[sfb];
-        faac_real w = (sfbEnergy[sfb] > (faac_real)0.0)
-                    ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb]) : (faac_real)0.0;
+        faac_real w = invE[sfb];
         out[stopLine - 1] = w;
         for (i = stopLine - 2; i >= startLine; i--) {
             if (i < sfb_start) {
                 sfb--;
+                w = invE[sfb];
                 sfb_start = sfbOffsetTable[sfb];
-                w = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb]) : (faac_real)0.0;
             }
             out[i] = (faac_real)0.5 * (w + out[i + 1]);
         }
