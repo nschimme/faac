@@ -478,54 +478,44 @@ static void TnsInvFilter(int length, faac_real * restrict spec,
     int i, j;
     const int order = filter->order;
     /* Hoist aCoeffs into a restrict local so the compiler knows it does not
-       alias spec[] or temp[] and can reorder loads across loop iterations. */
+       alias spec[] or temp[] and can reorder loads across loop iterations.
+       Indexed inner loops (temp[i-j]*a[j] / temp[i+j]*a[j]) let x86 use
+       its scaled-indexed addressing and allow the compiler to vectorize or
+       unroll; pointer-walk versions with opposing directions are slower. */
     const faac_real * restrict a = filter->aCoeffs;
 
     if (filter->direction) {
-        /* Reverse direction (high-to-low index) */
-        int k = 0;
+        /* Reverse direction (high-to-low index): prolog then steady-state */
         temp[length-1] = spec[length-1];
         for (i = length-2; i > length-1-order; i--) {
-            faac_real s = spec[i];
-            const faac_real *tp = &temp[i+1];
-            const faac_real *ap = &a[1];
-            faac_real acc = s;
-            temp[i] = s;
-            for (j = ++k; j > 0; j--)
-                acc += (*tp++) * (*ap++);
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= length-1-i; j++)
+                acc += temp[i+j] * a[j];
             spec[i] = acc;
         }
         for (i = length-1-order; i >= 0; i--) {
-            faac_real s = spec[i];
-            const faac_real *tp = &temp[i+1];
-            const faac_real *ap = &a[1];
-            faac_real acc = s;
-            temp[i] = s;
-            for (j = order; j > 0; j--)
-                acc += (*tp++) * (*ap++);
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= order; j++)
+                acc += temp[i+j] * a[j];
             spec[i] = acc;
         }
     } else {
-        /* Forward direction (low-to-high index) */
+        /* Forward direction (low-to-high index): prolog then steady-state */
         temp[0] = spec[0];
         for (i = 1; i < order; i++) {
-            faac_real s = spec[i];
-            const faac_real *tp = &temp[i-1];
-            const faac_real *ap = &a[1];
-            faac_real acc = s;
-            temp[i] = s;
-            for (j = i; j > 0; j--)
-                acc += (*tp--) * (*ap++);
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= i; j++)
+                acc += temp[i-j] * a[j];
             spec[i] = acc;
         }
         for (i = order; i < length; i++) {
-            faac_real s = spec[i];
-            const faac_real *tp = &temp[i-1];
-            const faac_real *ap = &a[1];
-            faac_real acc = s;
-            temp[i] = s;
-            for (j = order; j > 0; j--)
-                acc += (*tp--) * (*ap++);
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= order; j++)
+                acc += temp[i-j] * a[j];
             spec[i] = acc;
         }
     }
