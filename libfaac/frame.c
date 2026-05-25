@@ -192,8 +192,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 28000);
-        int sr_ok = (hEncoder->sampleRate >= 16000);
+        int rate_ok = (rate_per_ch >= 16000 && rate_per_ch <= 28000);
+        int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }

@@ -96,9 +96,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 }
 
 /* SFB-survival floor at qlevel(): bands with rmsx < NOISEFLOOR are
- * coded as HCB_ZERO (silenced). Standard threshold of 0.4 established after
- * 2.0 after a 12-clip voip + 9-clip he64 + 4-clip lc128 sweep on top
- * of the lowered pnslevel default. At -b 16 mono speech the previous
+ * coded as HCB_ZERO (silenced). Standard threshold of 0.4.
  * threshold killed only ~6 sections per 12-clip run vs libaacplus
  * killing ~62 — leaving low-energy noise bands alive that consumed
  * bits and forced coarser quantization on the formant bands. NF=0.4

@@ -103,29 +103,23 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 
 static int build_freq_table(SBRInfo *sbr)
 {
-    int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
-    int n_master = (int)(2.0 * log((double)k2 / kx) / log(2.0) * (dk == 1 ? 2.0 : 1.0) + 0.5);
+    int kx = sbr->kx, k2 = sbr->k2;
+    int n_master = (int)(12.0 * log((double)k2 / kx) / log(2.0) + 0.5);
     if (n_master < 1) n_master = 1;
     if (n_master > SBR_MAX_BANDS) n_master = SBR_MAX_BANDS;
-    int f_master[SBR_MAX_BANDS + 1];
     double ratio = pow((double)k2 / kx, 1.0 / n_master);
-    f_master[0] = kx;
-    for (int k = 1; k < n_master; k++) f_master[k] = (int)(kx * pow(ratio, k) + 0.5);
-    f_master[n_master] = k2;
-    for (int k = 1; k <= n_master; k++) if (f_master[k] <= f_master[k-1]) f_master[k] = f_master[k-1] + 1;
-    sbr->numBands = n_master;
-    for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
-    sbr->numNoiseBands = 1 + (n_master > 12);
-    sbr->noiseBandEdges[0] = kx;
-    if (sbr->numNoiseBands > 1) {
-        sbr->noiseBandEdges[1] = f_master[n_master/2];
-        sbr->noiseBandEdges[2] = k2;
-    } else {
-        sbr->noiseBandEdges[1] = k2;
+    sbr->bandEdges[0] = kx;
+    for (int k = 1; k < n_master; k++) {
+        sbr->bandEdges[k] = (int)(kx * pow(ratio, k) + 0.5);
+        if (sbr->bandEdges[k] <= sbr->bandEdges[k-1]) sbr->bandEdges[k] = sbr->bandEdges[k-1] + 1;
     }
+    sbr->bandEdges[n_master] = k2;
+    sbr->numBands = n_master;
+    sbr->numNoiseBands = 1;
+    sbr->noiseBandEdges[0] = kx;
+    sbr->noiseBandEdges[1] = k2;
     return n_master;
 }
-
 SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate)
 {
     SBRInfo *sbr = (SBRInfo *)calloc(1, sizeof(SBRInfo));
@@ -290,7 +284,7 @@ static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
     }
     return bits;
 }
-static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf) { if (wf) { PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2); PutBit(bs, 0, 2); PutBit(bs, 1, 1); PutBit(bs, sbr->bs_amp_res, 1); } return 6; }
+static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf) { if (wf) { PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2); PutBit(bs, 0, 2); PutBit(bs, sbr->bs_amp_res, 1); PutBit(bs, 1, 1); } return 6; }
 static int write_sbr_dtdf(BitStream *bs, int wf) { if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); } return 2; }
 static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, 2, 2); } return 2 * sbr->numNoiseBands; }
 
