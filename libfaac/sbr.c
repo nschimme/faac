@@ -140,9 +140,9 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
         sbr->bs_start_freq = 10;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
-        sbr->bs_amp_res = 1;
+        sbr->bs_amp_res = 0;
     } else {
-        sbr->bs_start_freq = 12;
+        sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 0;
         sbr->dk = 1;
         sbr->bs_amp_res = 0;
@@ -242,7 +242,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 int delta_max = sbr->bs_amp_res ? 31 : 60;
                 int max_level = sbr->bs_amp_res ? 63 : 127;
 
-                int level = (int)lrintf(step * (FAAC_LOG((float)E + 1e-20f) * 1.442695f + 30.0f));
+                int level = (int)lrintf(step * (FAAC_LOG((float)E + 1e-20f) * 1.442695f + 24.0f));
                 int raw_level = clamp_int(level, 0, max_level);
                 if (prevLevel < 0) {
                     sbr->envData[ch][e][b] = raw_level;
