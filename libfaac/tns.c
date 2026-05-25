@@ -309,6 +309,35 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     faac_real peak_thresh = (length > 0) ? (TNS_PEAK_RATIO_MARGIN
                                             * FAAC_SQRT(2.0 * FAAC_LOG((faac_real)length))) : 0.0;
 
+    /* Short-block onset selection: only run TNS analysis on the 2 windows
+       with the highest energy in the TNS band.
+       Transients concentrate pre-echo in 1-2 attack windows; TNS on the
+       remaining 6 sustain windows costs 6x LevinsonDurbin calls with little
+       perceptual gain (post-masking covers the residual correlation).  For
+       steady-state content (sweep, arpeggios), all windows have similar
+       energy — choosing the top 2 still limits analysis to 2/8 of the LD
+       cost.  Pre-scan cost: 8*length multiply-adds vs 6 LD calls saved
+       (each O(order*length)). */
+    int tnsWindowMask = (1 << MAX_SHORT_WINDOWS) - 1;  /* default: all windows */
+    if (blockType == ONLY_SHORT_WINDOW && length > 0) {
+        faac_real winEnergy[MAX_SHORT_WINDOWS];
+        int wi, top1 = 0, top2 = 1;
+        for (wi = 0; wi < MAX_SHORT_WINDOWS; wi++) {
+            const faac_real *wsp = spec + wi * windowSize + startIndex;
+            faac_real e = 0.0;
+            int i;
+            for (i = 0; i < length; i++)
+                e += wsp[i] * wsp[i];
+            winEnergy[wi] = e;
+        }
+        if (winEnergy[1] > winEnergy[0]) { top1 = 1; top2 = 0; }
+        for (wi = 2; wi < MAX_SHORT_WINDOWS; wi++) {
+            if (winEnergy[wi] > winEnergy[top1]) { top2 = top1; top1 = wi; }
+            else if (winEnergy[wi] > winEnergy[top2]) { top2 = wi; }
+        }
+        tnsWindowMask = (1 << top1) | (1 << top2);
+    }
+
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
 
@@ -321,6 +350,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
+
+        /* Skip non-onset short windows; numFilters already reset above so
+           TnsEncodeFilterOnly will not replay a stale filter from a prior frame. */
+        if (blockType == ONLY_SHORT_WINDOW && !(tnsWindowMask & (1 << w)))
+            continue;
 
         /* Cheap pre-gate fused with per-SFB energy accumulation.
            Walks the TNS band once, SFB by SFB, building both the
