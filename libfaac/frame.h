@@ -86,6 +86,16 @@ typedef struct {
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
+
+    /* HE-AAC / SBR state */
+    unsigned long fullSampleRate;    /* original input sample rate (Fs), stored when HE-AAC halves it */
+    unsigned int  fullSampleRateIdx; /* GetSRIndex(fullSampleRate) */
+    struct Resampler *resampler;     /* 2:1 FIR downsampler for core signal */
+    struct SBRInfo   *sbrInfo;       /* SBR analysis state and bitstream data */
+
+    /* HE-AAC cached buffers */
+    faac_real *heFullRatePtr[MAX_CHANNELS];
+    faac_real *heHalfRatePtr[MAX_CHANNELS];
 } faacEncStruct;
 
 #ifdef __cplusplus
