@@ -177,9 +177,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.aacObjectType != LOW)
         return 0;
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
@@ -206,6 +203,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         config->quantqual = DEFQUAL;
 
     hEncoder->config.bitRate = config->bitRate;
+
+    /* Re-init TNS after bitRate is committed so gainThreshLong/Short and
+       tnsMaxOrderLong reflect the new target bitrate. */
+    TnsInit(hEncoder);
 
     if (!config->bandWidth)
     {
