@@ -239,6 +239,9 @@ void TnsInit(faacEncStruct* hEncoder)
             }
             tnsInfo->gainThreshShort = thresh_s;
         }
+
+        tnsInfo->prevFlatnessFailed = 0;
+        tnsInfo->prevSumSq          = (faac_real)0.0;
     }
 }
 
@@ -356,18 +359,43 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         if (blockType == ONLY_SHORT_WINDOW && !(tnsWindowMask & (1 << w)))
             continue;
 
-        /* Cheap pre-gate fused with per-SFB energy accumulation.
-           Walks the TNS band once, SFB by SFB, building both the
-           pre-gate statistics (sumsq, suma, maxa) and the per-SFB
-           sum-of-squares the whitener needs.  Skip if:
-             - the band is essentially silent (sumsq < floor),
-             - or the spectrum is nearly flat
-               (L2^2 * N / L1^2 < TNS_FLATNESS_K, bounded below by
-               1.0 at perfect flatness by Cauchy-Schwarz),
-             - or it is dominated by a single peak below the
-               tonality margin (max|X|*N < margin*sqrt(2*ln(N))*L1).
-           Skipping these avoids a wasted O(order*length) LD call
-           and prevents TNS firing on bands where it cannot help. */
+        /* Pre-gate: reject silent, flat, and single-peak bands before the
+           expensive WhitenSpectrumForTns + LevinsonDurbin calls.
+
+           Step 1: cheap energy-only scan (one multiply per sample).
+           This is split out so that the temporal continuity check (step 2)
+           can fire BEFORE the more expensive per-SFB accumulation (step 3). */
+        {
+            faac_real sumsq = 0.0;
+            const faac_real *pq = &wspec[startIndex];
+            int qi;
+            for (qi = 0; qi < length; qi++)
+                sumsq += pq[qi] * pq[qi];
+
+            /* Energy floor: silent bands are always skipped regardless of history. */
+            if (sumsq < TNS_ENERGY_FLOOR * length) {
+                tnsInfo->prevFlatnessFailed = 1;
+                tnsInfo->prevSumSq          = sumsq;
+                continue;
+            }
+
+            /* Temporal continuity: if the previous window was rejected by the
+               flatness/peak check and the energy is within a factor of 2, the
+               spectral shape has not changed significantly — skip the O(length)
+               per-SFB accumulation (suma, maxa, sfbEnergy) and the flatness
+               metric entirely.  Resets automatically when energy changes (onset,
+               fade-in, silence→speech transition), so no false skips on attacks. */
+            if (tnsInfo->prevFlatnessFailed
+                    && sumsq >= tnsInfo->prevSumSq * (faac_real)0.5
+                    && sumsq <= tnsInfo->prevSumSq * (faac_real)2.0) {
+                tnsInfo->prevSumSq = sumsq;   /* track slowly-drifting energy */
+                continue;
+            }
+        }
+
+        /* Step 3: full per-SFB accumulation — computes suma, maxa, and the
+           sfbEnergy[] array needed by WhitenSpectrumForTns.
+           Only reached when the temporal-continuity check above did not fire. */
         {
             faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
             int sfb;
@@ -390,12 +418,16 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 sumsq += e;
             }
 
-            if (sumsq < TNS_ENERGY_FLOOR * length
-                || suma <= 0.0
+            /* Flatness and peak-ratio checks.  If rejected, arm the temporal
+               continuity flag so consecutive flat/noisy frames skip step 3. */
+            if (suma <= 0.0
                 || sumsq * length < TNS_FLATNESS_K * suma * suma
                 || maxa * length < peak_thresh * suma) {
+                tnsInfo->prevFlatnessFailed = 1;
+                tnsInfo->prevSumSq          = sumsq;
                 continue;
             }
+            tnsInfo->prevFlatnessFailed = 0;
         }
 
         /* Run LD on the per-SFB-whitened spectrum, not the raw one,
