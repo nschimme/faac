@@ -1,16 +1,17 @@
 # FAAC TNS Tuning and Speech Regression Fix
 
 ## Overview
-Recent CI runs identified MOS regressions in VSS (voice) samples when TNS was enabled. Analysis revealed that applying TNS to lower frequencies (below ~3kHz) can introduce audible "burbling" or noise reshaping artifacts on harmonic speech content.
+To address MOS regressions in VSS (voice) samples identified in CI, the TNS implementation uses ultra-conservative thresholds and a higher frequency starting band. This ensures TNS provides the desired pre-echo control for transients and complex music while remaining completely transparent for harmonic speech.
 
-## Fix: Dynamic 3.4kHz minBand
-The TNS implementation has been updated to dynamically calculate the starting scale factor band (`minBand`) based on the input sample rate, targeting approximately **3.4kHz**. This ensures that TNS only operates on higher frequencies where pre-echo control is most beneficial and speech artifacts are minimized.
+## Fix: 4500Hz Dynamic minBand
+The TNS analysis now targets frequencies starting at approximately **4500 Hz**. By avoiding the lower spectral regions where harmonic speech structure is most dense, we eliminate the risk of audible noise-reshaping artifacts ("burbling") in voice content.
 
-## Balanced Parameters
-To maintain quality improvements in music while remaining conservative for speech, the following parameters are used:
-- **TNS_SPECTRAL_FRAC (0.50)**: A balanced threshold for TNS activity.
-- **Max Orders (Long: 8, Short: 4)**: Increased from the previous conservative settings to recover some quality gain in music, with adaptive reduction at higher bitrates.
-- **Adaptive Orders**: Long-block order is reduced to 6 at >= 96kbps/ch and 4 at >= 128kbps/ch.
+## Ultra-Conservative Parameters
+The following constants are tuned to prioritize speech transparency:
+- **TNS_SPECTRAL_FRAC (0.15)**: Highly selective bit-budget threshold, ensuring TNS only fires when the prediction gain significantly outweighs the bitstream overhead.
+- **TNS_ENERGY_FLOOR (1.50)**: Skips analysis on low-energy bands to save CPU and prevent TNS activity on noise.
+- **TNS_FLATNESS_K (3.5)**: Stricter flatness requirement; TNS only attempts analysis on non-flat spectra.
+- **Max Orders (Long: 6, Short: 3)**: Reduced base orders to maintain a low CPU footprint.
 
-## Verification
-This configuration specifically addresses the speech regressions seen in CI while preserving the objective of having TNS enabled by default for a general quality improvement.
+## Quantization Stability
+The `bmask` loop in `libfaac/quantize.c` was refactored to perform energy flooring *before* the primary masking target calculation. This ensures that the psychoacoustic model remains stable in quiet bands and prevents spectral collapse across all scenarios.
