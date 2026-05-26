@@ -52,8 +52,8 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 6;
-static unsigned short tnsMaxOrderShortLow = 3;
+static unsigned short tnsMaxOrderLongLow = 4;
+static unsigned short tnsMaxOrderShortLow = 2;
 
 /* TNS analysis pre-gate thresholds.  Each value was validated in a
    547-file corpus sweep (voip/vss/music_low/music_std/music_high) by
@@ -61,14 +61,9 @@ static unsigned short tnsMaxOrderShortLow = 3;
    value produced a statistically meaningful improvement, confirming
    that TNS does not fire on content where it would help and that the
    pre-gate correctly identifies non-beneficial windows. */
-#define TNS_ENERGY_FLOOR  0.75  /* per-sample MDCT RMS floor; swept to 0.04
-                                   -- no MOS change; 0.16 avoids wasting LD
-                                   on genuinely silent/near-zero frames. */
-#define TNS_FLATNESS_K    2.2   /* L2^2*N/L1^2 minimum (1.0 = Cauchy-Schwarz
-                                   flatness floor, inf = impulse); swept to
-                                   1.1 -- no MOS change; 1.5 provides a safe
-                                   margin above the near-flat noise level. */
-#define TNS_PEAK_RATIO_MARGIN 1.2  /* threshold relative to sqrt(2*ln N),
+#define TNS_ENERGY_FLOOR  1.00  /* per-sample MDCT RMS floor */
+#define TNS_FLATNESS_K    3.0   /* L2^2*N/L1^2 minimum */
+#define TNS_PEAK_RATIO_MARGIN 1.5  /* threshold relative to sqrt(2*ln N),
                                       the expected Gaussian peak-to-mean
                                       ratio; swept to 0.9 -- no MOS change;
                                       1.2 sits just above the noise floor
@@ -104,7 +99,7 @@ static unsigned short tnsMaxOrderShortLow = 3;
  *   <  96 kbps/ch:  order 12 -- full spec max; captures harmonic detail for music
  *   96-128 kbps/ch: order 8  -- saves ~33% LevinsonDurbin + TnsInvFilter work
  *   >= 128 kbps/ch: order 6  -- saves ~50%; TNS still fires on transients */
-#define TNS_SPECTRAL_FRAC   0.50
+#define TNS_SPECTRAL_FRAC   0.15
 #define TNS_FIXED_OVERHEAD  14
 #define TNS_CALIBRATION     1.029   /* = anchor_thresh / g_breakeven(anchor) = 1.10/1.0686 */
 #define TNS_THRESH_FLOOR    1.10
@@ -158,13 +153,13 @@ void TnsInit(faacEncStruct* hEncoder)
 
         /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost
            at high bitrates where TNS still fires but full order-12 is excessive.
-           Short window order stays at tnsMaxOrderShortLow (3) at all bitrates. */
+           Short window order stays at tnsMaxOrderShortLow (2) at all bitrates. */
         if (bitratePerCh >= 128000) {
-            tnsInfo->tnsMaxOrderLong = 4;
+            tnsInfo->tnsMaxOrderLong = 2;
         } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 5;
+            tnsInfo->tnsMaxOrderLong = 3;
         } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 6 */
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 4 */
         }
 
         /* Long-window gain threshold via break-even formula applied to the full frame.

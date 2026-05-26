@@ -2,29 +2,23 @@
 
 This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c` and `libfaac/tns.c`.
 
-## Quantization Constants
-
-### `NOISEFLOOR` (0.38)
-- **Purpose**: Defines the minimum RMS energy for a scale factor band to be considered non-silent.
-- **Justification**: Reduced from 0.40 to 0.38 to improve average MOS by preserving more low-energy spectral content, compensating for TNS bit overhead.
-
 ## TNS Analysis Gating (Pre-gate)
 
-### `TNS_ENERGY_FLOOR` (0.75)
+### `TNS_ENERGY_FLOOR` (1.00)
 - **Purpose**: Minimum band energy to attempt TNS analysis.
-- **Justification**: Prevents wasting CPU on low-energy frames where TNS gain is negligible.
+- **Justification**: Prevents wasting CPU on low-energy frames where TNS gain is negligible. High value ensures efficiency.
 
-### `TNS_FLATNESS_K` (2.2)
+### `TNS_FLATNESS_K` (3.0)
 - **Purpose**: Spectral flatness threshold.
 - **Justification**: Skips analysis on flat spectra where TNS provides little prediction gain.
 
 ## TNS Complexity Control
 
 ### Max Orders
-- **Long Blocks**: 6 (Adaptive: 4-5 at high bitrates).
-- **Short Blocks**: 3.
-- **Justification**: Provides the majority of the MOS benefit of full-order TNS while keeping CPU overhead minimized.
+- **Long Blocks**: 4 (Adaptive: 2-3 at high bitrates).
+- **Short Blocks**: 2.
+- **Justification**: Balanced order that provides temporal noise shaping benefit while keeping CPU overhead extremely low.
 
-### `TNS_SPECTRAL_FRAC` (0.50)
+### `TNS_SPECTRAL_FRAC` (0.15)
 - **Purpose**: Threshold for TNS break-even gain calculation.
-- **Justification**: Balanced threshold to ensure TNS fires only when the prediction gain is high enough to justify the bitstream overhead.
+- **Justification**: Highly selective threshold to ensure TNS only fires when the prediction gain is high enough to justify the bitstream overhead.
