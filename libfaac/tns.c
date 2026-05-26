@@ -176,16 +176,24 @@ void TnsInit(faacEncStruct* hEncoder)
         }
 
         /* Long-window gain threshold via break-even formula applied to the full frame.
-           At medium-to-high bitrates the formula naturally returns THRESH_FLOOR (1.10)
-           because H << S; no bitrate override is needed.  VBR uses the floor directly. */
+           Uses fixed order-12 overhead (62 bits) in the formula regardless of actual
+           tnsMaxOrderLong -- this preserves the threshold calibration from the 947-file
+           corpus sweep (anchor: 1.10 at 64 kbps/ch, 44.1 kHz, order=12).  Reducing
+           the actual LD order from 12 to 8 lowers per-frame cost but the formula must
+           stay at H=62 to avoid dropping the threshold at low bitrates (e.g. 16 kbps:
+           order-12 gives 1.383, order-8 wrongly gives 1.271, admitting marginal frames
+           that add activation overhead without MOS benefit).
+           At medium-to-high bitrates the formula returns THRESH_FLOOR (1.10) regardless
+           of overhead.  VBR uses the floor directly. */
         if (bitratePerCh == 0) {
             tnsInfo->gainThreshLong = (faac_real)TNS_THRESH_FLOOR;
         } else {
             int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
-            int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
-                                + TNS_FIXED_OVERHEAD;
+            /* Fixed at order-12 overhead to preserve corpus-calibrated thresholds.
+               Actual LD runs at tnsMaxOrderLong (8 or 6) for CPU savings. */
+            int tns_overhead  = 12 * DEF_TNS_COEFF_RES + TNS_FIXED_OVERHEAD;  /* 62 */
             int denom = spectral_bits - tns_overhead;
             faac_real thresh;
             if (denom <= 0) {
