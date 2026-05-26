@@ -85,8 +85,6 @@ typedef struct {
     int tnsMaxOrderShort;
     faac_real gainThreshLong;    /* long-window break-even threshold, computed by TnsInit */
     faac_real gainThreshShort;   /* short-window break-even threshold per 128-line window */
-    int prevFlatnessFailed;      /* 1 if last frame's pre-gate rejected due to flatness/energy */
-    faac_real prevSumSq;         /* energy of last rejected window (for continuity check) */
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
