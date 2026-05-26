@@ -99,7 +99,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
  * These values were tuned via balanced feature sweeps to maximize MOS across
  * VoIP, VSS, and Music scenarios while maintaining bitrate accuracy.
  * See TNS_TUNING.md for derivation details. */
-#define NOISEFLOOR 0.40
+#define NOISEFLOOR 0.38
 
 #define NOISETONE         0.2    /* Weight of average energy (noise-like) in masking target */
 #define TONEMASK          0.45   /* Weight of peak energy (tone-like) in masking target */
@@ -131,7 +131,6 @@ static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_rea
 }
 
 
-// band sound masking
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
