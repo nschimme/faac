@@ -52,6 +52,7 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
+static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
 
 /* TNS analysis pre-gate thresholds.  Each value was validated in a
@@ -164,36 +165,32 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost.
-           CI benchmark showed order-12 below 96 kbps contributed -47% sweep throughput
-           regression (autocorr + filter ∝ order*length per frame).  Order-8 saves ~30%
-           of per-frame LD+filter cost with only -0.005 avg MOS impact (plan lever table).
+        /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost
+           at high bitrates where TNS still fires but full order-12 is excessive.
+           Empirical note: reducing order to 8 for all <128 kbps (tried in CI runs
+           65aacba/18d105c/ba7f1b2) did not improve throughput; the reduced spectral
+           pre-shaping appears to increase quantizer iterations, offsetting LD savings.
+           Tiers remain at 12/<96k, 8/96-128k, 6/>=128k as corpus-proven.
            Short window order stays at tnsMaxOrderShortLow (7) at all bitrates. */
         if (bitratePerCh >= 128000) {
             tnsInfo->tnsMaxOrderLong = 6;
+        } else if (bitratePerCh >= 96000) {
+            tnsInfo->tnsMaxOrderLong = 8;
         } else {
-            tnsInfo->tnsMaxOrderLong = 8;  /* was tnsMaxOrderLongLow=12 for <96 kbps */
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 12 */
         }
 
         /* Long-window gain threshold via break-even formula applied to the full frame.
-           Uses fixed order-12 overhead (62 bits) in the formula regardless of actual
-           tnsMaxOrderLong -- this preserves the threshold calibration from the 947-file
-           corpus sweep (anchor: 1.10 at 64 kbps/ch, 44.1 kHz, order=12).  Reducing
-           the actual LD order from 12 to 8 lowers per-frame cost but the formula must
-           stay at H=62 to avoid dropping the threshold at low bitrates (e.g. 16 kbps:
-           order-12 gives 1.383, order-8 wrongly gives 1.271, admitting marginal frames
-           that add activation overhead without MOS benefit).
-           At medium-to-high bitrates the formula returns THRESH_FLOOR (1.10) regardless
-           of overhead.  VBR uses the floor directly. */
+           At medium-to-high bitrates the formula naturally returns THRESH_FLOOR (1.10)
+           because H << S; no bitrate override is needed.  VBR uses the floor directly. */
         if (bitratePerCh == 0) {
             tnsInfo->gainThreshLong = (faac_real)TNS_THRESH_FLOOR;
         } else {
             int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
-            /* Fixed at order-12 overhead to preserve corpus-calibrated thresholds.
-               Actual LD runs at tnsMaxOrderLong (8 or 6) for CPU savings. */
-            int tns_overhead  = 12 * DEF_TNS_COEFF_RES + TNS_FIXED_OVERHEAD;  /* 62 */
+            int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
+                                + TNS_FIXED_OVERHEAD;
             int denom = spectral_bits - tns_overhead;
             faac_real thresh;
             if (denom <= 0) {
