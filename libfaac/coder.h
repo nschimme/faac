@@ -45,7 +45,14 @@ enum WINDOW_TYPE {
 };
 
 #define TNS_MAX_ORDER 12
-#define DEF_TNS_GAIN_THRESH 1.4
+/* Corpus sweep (947 files, 5 scenarios, 100% coverage):
+   gain_thresh grid [1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.40]:
+     1.10 peaks at avg +0.0021 MOS (voip +0.0053, music_low -0.0022)
+     with the fewest new threshold crossings (1) vs any other value;
+     values below 1.10 admit weak-prediction frames that consume bits
+     without aiding music content; above 1.10 leaves voip gains unused.
+   coeff_thresh 0.05 gave no improvement over 0.1 in same sweep. */
+#define DEF_TNS_GAIN_THRESH 1.10
 #define DEF_TNS_COEFF_THRESH 0.1
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
@@ -76,6 +83,8 @@ typedef struct {
     int tnsMaxBandsShort;
     int tnsMaxOrderLong;
     int tnsMaxOrderShort;
+    faac_real gainThreshLong;    /* long-window break-even threshold, computed by TnsInit */
+    faac_real gainThreshShort;   /* short-window break-even threshold per 128-line window */
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
