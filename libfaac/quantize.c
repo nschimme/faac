@@ -132,6 +132,7 @@ static faac_real compute_masking_target(faac_real avge, faac_real maxe, faac_rea
 
 
 // band sound masking
+// band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
 {
@@ -195,14 +196,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     end = cb_offset[sfb + 1];
 
     avgenrg = (totenrg / last) * (end - start);
+    faac_real target = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type);
 
-    /* Floor the band energy components before computing target to avoid collapse on quiet bands. */
-    faac_real avge_floor = avgenrg * (faac_real)AVGE_FLOOR_FACTOR;
-    if (avge < avge_floor) avge = avge_floor;
-    faac_real maxe_floor = avgenrg * (faac_real)MAXE_FLOOR_FACTOR;
-    if (maxe < maxe_floor) maxe = maxe_floor;
-
-    bandqual[sfb] = compute_masking_target(avge, maxe, avgenrg, powm, start, end, last, coderInfo->block_type) * quality;
+    {
+        faac_real avge_floor = avgenrg * (faac_real)AVGE_FLOOR_FACTOR;
+        faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
+        faac_real maxe_floor = avgenrg * (faac_real)MAXE_FLOOR_FACTOR;
+        faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
+        faac_real target_floor = compute_masking_target(avge_eff, maxe_eff, avgenrg, powm, start, end, last, coderInfo->block_type);
+        if (target < target_floor) target = target_floor;
+    }
+    bandqual[sfb] = target * quality;
   }
 }
 

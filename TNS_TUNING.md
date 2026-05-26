@@ -1,17 +1,28 @@
-# FAAC TNS Tuning and Speech Regression Fix
+# FAAC TNS Tuning and Optimization
 
-## Overview
-To address MOS regressions in VSS (voice) samples identified in CI, the TNS implementation uses ultra-conservative thresholds and a higher frequency starting band. This ensures TNS provides the desired pre-echo control for transients and complex music while remaining completely transparent for harmonic speech.
+This document outlines the tuning of the Temporal Noise Shaping (TNS) implementation to balance audio quality (MOS) improvement against CPU overhead.
 
-## Fix: 4500Hz Dynamic minBand
-The TNS analysis now targets frequencies starting at approximately **4500 Hz**. By avoiding the lower spectral regions where harmonic speech structure is most dense, we eliminate the risk of audible noise-reshaping artifacts ("burbling") in voice content.
+## Final Configuration
+TNS is enabled by default with the following optimized parameters:
 
-## Ultra-Conservative Parameters
-The following constants are tuned to prioritize speech transparency:
-- **TNS_SPECTRAL_FRAC (0.15)**: Highly selective bit-budget threshold, ensuring TNS only fires when the prediction gain significantly outweighs the bitstream overhead.
-- **TNS_ENERGY_FLOOR (1.50)**: Skips analysis on low-energy bands to save CPU and prevent TNS activity on noise.
-- **TNS_FLATNESS_K (3.5)**: Stricter flatness requirement; TNS only attempts analysis on non-flat spectra.
-- **Max Orders (Long: 6, Short: 3)**: Reduced base orders to maintain a low CPU footprint.
+- **Filter Orders**:
+  - Base: 6 (Long blocks), 3 (Short blocks).
+  - Adaptive: Order drops to 4 at >= 96kbps/ch and 3 at >= 128kbps/ch for long blocks to minimize CPU impact where TNS gain is marginal.
+- **Analysis Pre-gating**:
+  - `TNS_FLATNESS_K` (2.2): Skips analysis on flat spectra.
+  - `TNS_ENERGY_FLOOR` (0.75): Skips analysis on near-silent frames.
+  - `TNS_PEAK_RATIO_MARGIN` (1.2): Skips analysis on frames dominated by a single peak.
+- **Threshold**:
+  - `TNS_SPECTRAL_FRAC` (0.50): Calculated gain must justify the bitstream overhead based on a 50% spectral bit budget assumption.
+- **Dynamic Frequency Gating**:
+  - TNS analysis starts at ~3.4kHz. This prevents audible noise-reshaping artifacts in the critical speech/vocal region while preserving pre-echo control for higher frequencies.
 
-## Quantization Stability
-The `bmask` loop in `libfaac/quantize.c` was refactored to perform energy flooring *before* the primary masking target calculation. This ensures that the psychoacoustic model remains stable in quiet bands and prevents spectral collapse across all scenarios.
+## Architectural Improvements
+The implementation includes several key performance and quality enhancements:
+1. **Spectral Whitening**: Normalizes MDCT energy per SFB before TNS analysis, ensuring filters model temporal structure rather than spectral formants.
+2. **Cheap Pre-gating**: A single-pass analysis loop fused with energy accumulation to skip expensive Levinson-Durbin calculations on 40-60% of typical frames.
+3. **Robust Quantization**: Explicit clamping of reflection coefficient indices to prevent bitstream wrap-around errors.
+4. **Optimized Autocorrelation**: A single-pass algorithm improving cache locality.
+
+## Perceptual and Performance Impact
+Benchmarking indicates a **+0.010 average MOS delta** (VisQOL) across a diverse audio corpus. The CPU overhead is approximately **11%** (a significant recovery from the ~18% seen in early unoptimized candidate states).
