@@ -104,7 +104,7 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2;
-    int n_master = (int)(12.0 * log((double)k2 / kx) / log(2.0) + 0.5);
+    int n_master = (int)(2.0 * log((double)k2 / kx) / log(2.0) * (sbr->dk == 1 ? 2.0 : 1.0) + 0.5);
     if (n_master < 1) n_master = 1;
     if (n_master > SBR_MAX_BANDS) n_master = SBR_MAX_BANDS;
     double ratio = pow((double)k2 / kx, 1.0 / n_master);
@@ -115,9 +115,9 @@ static int build_freq_table(SBRInfo *sbr)
     }
     sbr->bandEdges[n_master] = k2;
     sbr->numBands = n_master;
-    sbr->numNoiseBands = 1;
+    sbr->numNoiseBands = 1 + (n_master > 12);
     sbr->noiseBandEdges[0] = kx;
-    sbr->noiseBandEdges[1] = k2;
+    if (sbr->numNoiseBands > 1) { sbr->noiseBandEdges[1] = sbr->bandEdges[n_master/2]; sbr->noiseBandEdges[2] = k2; } else { sbr->noiseBandEdges[1] = k2; }
     return n_master;
 }
 SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate)
@@ -128,7 +128,7 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
     sbr->coreSampleRate = coreSampleRate;
-    unsigned long rate_per_ch = bitRate / channels;
+    unsigned long rate_per_ch = bitRate;
     /* HE-AAC v1 SBR parameters optimized for quality and bit-efficiency. */
     if (rate_per_ch < 24000) {
         sbr->bs_start_freq = 10;
@@ -266,25 +266,24 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
     int bits = 16;
-    if (sbr->bs_alter_scale || sbr->numNoiseBands > 2) bits += 5;
+    if (sbr->bs_alter_scale || sbr->numNoiseBands > 1) bits += 5; /* bs_header_extra_1 fields */
     if (wf) {
         PutBit(bs, sbr->bs_amp_res, 1);
         PutBit(bs, sbr->bs_start_freq, 4);
         PutBit(bs, sbr->bs_stop_freq, 4);
         PutBit(bs, sbr->bs_xover_band, 3);
         PutBit(bs, 0, 2); /* bs_reserved */
-        PutBit(bs, (sbr->bs_alter_scale || sbr->numNoiseBands > 2), 1); /* bs_header_extra_1 */
+        PutBit(bs, (sbr->bs_alter_scale || sbr->numNoiseBands > 1), 1); /* bs_header_extra_1 */
         PutBit(bs, 0, 1); /* bs_header_extra_2 */
-        if (sbr->bs_alter_scale || sbr->numNoiseBands > 2) {
+        if (sbr->bs_alter_scale || sbr->numNoiseBands > 1) {
             PutBit(bs, 0, 1); /* bs_freq_scale */
             PutBit(bs, sbr->bs_alter_scale, 1);
-            PutBit(bs, (sbr->numNoiseBands > 2) ? 1 : 0, 2); /* bs_noise_bands */
-            PutBit(bs, 0, 1); /* bs_limiter_bands */
+            PutBit(bs, (sbr->numNoiseBands > 1 ? 1 : 0), 2); /* bs_noise_bands */
         }
     }
     return bits;
 }
-static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf) { if (wf) { PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2); PutBit(bs, 0, 2); PutBit(bs, sbr->bs_amp_res, 1); PutBit(bs, 1, 1); } return 6; }
+static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf) { if (wf) { PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2); PutBit(bs, 0, 2); PutBit(bs, sbr->bs_amp_res, 1); PutBit(bs, 1, 1); PutBit(bs, 0, 1); } return 7; }
 static int write_sbr_dtdf(BitStream *bs, int wf) { if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); } return 2; }
 static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, 2, 2); } return 2 * sbr->numNoiseBands; }
 
@@ -315,7 +314,7 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
     int bits = 0;
     for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
         int val = sbr->noiseData[ch][nb];
-        if (nb == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 30), 5); bits += 5; }
+        if (nb == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 30), 5); bits += 5; /* bs_header_extra_1 fields */ }
         else bits += put_huff(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, val, wf);
     }
     return bits;
