@@ -50,7 +50,7 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 8;
+static unsigned short tnsMaxOrderLongLow = 6;
 static unsigned short tnsMaxOrderShortLow = 4;
 
 /* TNS analysis pre-gate thresholds.  Each value was validated in a
@@ -59,8 +59,8 @@ static unsigned short tnsMaxOrderShortLow = 4;
    value produced a statistically meaningful improvement, confirming
    that TNS does not fire on content where it would help and that the
    pre-gate correctly identifies non-beneficial windows. */
-#define TNS_ENERGY_FLOOR  1.00  /* per-sample MDCT RMS floor */
-#define TNS_FLATNESS_K    3.0   /* L2^2*N/L1^2 minimum */
+#define TNS_ENERGY_FLOOR  1.5  /* per-sample MDCT RMS floor */
+#define TNS_FLATNESS_K    3.5   /* L2^2*N/L1^2 minimum */
 #define TNS_PEAK_RATIO_MARGIN 1.5  /* threshold relative to sqrt(2*ln N),
                                       the expected Gaussian peak-to-mean
                                       ratio; swept to 0.9 -- no MOS change;
@@ -97,7 +97,7 @@ static unsigned short tnsMaxOrderShortLow = 4;
  *   <  96 kbps/ch:  order 12 -- full spec max; captures harmonic detail for music
  *   96-128 kbps/ch: order 8  -- saves ~33% LevinsonDurbin + TnsInvFilter work
  *   >= 128 kbps/ch: order 6  -- saves ~50%; TNS still fires on transients */
-#define TNS_SPECTRAL_FRAC   0.50
+#define TNS_SPECTRAL_FRAC   0.15
 #define TNS_FIXED_OVERHEAD  14
 #define TNS_CALIBRATION     1.029   /* = anchor_thresh / g_breakeven(anchor) = 1.10/1.0686 */
 #define TNS_THRESH_FLOOR    1.10
@@ -147,11 +147,11 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
         tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
 
-        /* Dynamic minBand calculation targeting ~3.4kHz to prevent speech regressions. */
+        /* Dynamic minBand calculation targeting ~4500Hz to prevent speech regressions. */
         {
             int sfb, offset;
-            int targetLineLong = (int)(3400.0 * 2.0 * BLOCK_LEN_LONG / hEncoder->sampleRate + 0.5);
-            int targetLineShort = (int)(3400.0 * 2.0 * BLOCK_LEN_SHORT / hEncoder->sampleRate + 0.5);
+            int targetLineLong = (int)(4500.0 * 2.0 * BLOCK_LEN_LONG / hEncoder->sampleRate + 0.5);
+            int targetLineShort = (int)(4500.0 * 2.0 * BLOCK_LEN_SHORT / hEncoder->sampleRate + 0.5);
 
             offset = 0;
             for (sfb = 0; sfb < hEncoder->srInfo->num_cb_long; sfb++) {
@@ -169,14 +169,14 @@ void TnsInit(faacEncStruct* hEncoder)
         }
 
         /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost
-           at high bitrates where TNS still fires but full order-12 is excessive.
-           Short window order stays at tnsMaxOrderShortLow (2) at all bitrates. */
+           at high bitrates where TNS still fires but base order-6 is excessive.
+           Short window order stays at tnsMaxOrderShortLow (3) at all bitrates. */
         if (bitratePerCh >= 128000) {
             tnsInfo->tnsMaxOrderLong = 4;
         } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 6;
+            tnsInfo->tnsMaxOrderLong = 5;
         } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 8 */
+            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 6 */
         }
 
         /* Long-window gain threshold via break-even formula applied to the full frame.
@@ -764,7 +764,7 @@ static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
         out[startLine] = prev * spec[startLine];
         for (i = startLine + 1; i < stopLine; i++) {
             faac_real weight = (faac_real)0.5 * (out[i] + prev);
-            prev = weight;
+            prev = out[i];
             out[i] = weight * spec[i];
         }
     }
