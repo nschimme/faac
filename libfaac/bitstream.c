@@ -146,7 +146,6 @@ int WriteBitstream(faacEncStruct* hEncoder,
         bits = 0; // compilier will remove it, byt anyone will see that current size of bitstream is 0
     }
 
-/* sur: faad2 complains about scalefactor error if we are writing FAAC String */
     if (hEncoder->frameNum == 4)
       WriteFAACStr(bitStream, hEncoder->config.name, 1);
 
