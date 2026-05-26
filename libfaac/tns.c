@@ -38,8 +38,10 @@ Copyright (c) 1997.
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
 /* Limit bands to > 2.0 kHz */
-
-
+static unsigned short tnsMinBandNumberLong[12] =
+{ 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
+static unsigned short tnsMinBandNumberShort[12] =
+{ 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
 /**************************************/
 /* Low Profile TNS Parameters         */
@@ -50,58 +52,8 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 6;
-static unsigned short tnsMaxOrderShortLow = 4;
-
-/* TNS analysis pre-gate thresholds.  Each value was validated in a
-   547-file corpus sweep (voip/vss/music_low/music_std/music_high) by
-   varying the constant and measuring avg VisQOL MOS delta; no relaxed
-   value produced a statistically meaningful improvement, confirming
-   that TNS does not fire on content where it would help and that the
-   pre-gate correctly identifies non-beneficial windows. */
-#define TNS_ENERGY_FLOOR  1.5  /* per-sample MDCT RMS floor */
-#define TNS_FLATNESS_K    3.5   /* L2^2*N/L1^2 minimum */
-#define TNS_PEAK_RATIO_MARGIN 1.5  /* threshold relative to sqrt(2*ln N),
-                                      the expected Gaussian peak-to-mean
-                                      ratio; swept to 0.9 -- no MOS change;
-                                      1.2 sits just above the noise floor
-                                      and below tonal-content ratios. */
-
-/* Bitrate-adaptive gain threshold via bit-budget break-even analysis.
- *
- * A TNS filter costs H = N*DEF_TNS_COEFF_RES + TNS_FIXED_OVERHEAD bits.
- * A frame at bitrate B bps/ch has S = TNS_SPECTRAL_FRAC * B * FRAME_LEN / sampleRate
- * bits for spectral lines.  TNS breaks even when gain G > S / (S - H).
- *
- * TNS_CALIBRATION is derived from the corpus-sweep anchor (947 files, 5 scenarios):
- *   g_breakeven(64000 bps/ch, 44100 Hz, order=12) = 966.0 / (966.0-62) = 1.0686
- *   calibration = anchor_thresh / g_breakeven = 1.10 / 1.0686 = 1.029
- *
- * TNS_SPECTRAL_FRAC = 0.65: approximately 35% of AAC-LC frame bits carry headers,
- * scale factors, and side-info; derived from bitstream analysis.
- *
- * TNS_FIXED_OVERHEAD = 14: fixed TNS syntax bits per filter:
- *   tns_data_present(1) + n_filt(2) + coef_res(1) + length(6) + order(5) - 1 = 14.
- *
- * TNS_THRESH_FLOOR = 1.10: corpus-proven minimum useful gain (values below this
- * show no MOS improvement in the 947-file sweep at the standard bitrate).
- *
- * TNS_THRESH_CAP = 1.40: clamp ceiling used in two roles:
- *   1. Caps gainThreshLong at very low bitrate + high sample rate (e.g. 16 kbps/44.1 kHz
- *      where the formula would exceed 1.40 meaning TNS can't pay for itself).
- *   2. Signals "disabled" for gainThreshShort when per-window bits are too few.
- * It is NOT used to suppress long-window TNS at high bitrates -- the formula
- * naturally returns THRESH_FLOOR (1.10) there because H << S.
- *
- * Max order tiers for long windows (independent of threshold formula):
- *   <  96 kbps/ch:  order 12 -- full spec max; captures harmonic detail for music
- *   96-128 kbps/ch: order 8  -- saves ~33% LevinsonDurbin + TnsInvFilter work
- *   >= 128 kbps/ch: order 6  -- saves ~50%; TNS still fires on transients */
-#define TNS_SPECTRAL_FRAC   0.15
-#define TNS_FIXED_OVERHEAD  14
-#define TNS_CALIBRATION     1.029   /* = anchor_thresh / g_breakeven(anchor) = 1.10/1.0686 */
-#define TNS_THRESH_FLOOR    1.10
-#define TNS_THRESH_CAP      1.40
+static unsigned short tnsMaxOrderLongLow = 12;
+static unsigned short tnsMaxOrderShortLow = 7;
 
 
 /*************************/
@@ -123,12 +75,6 @@ static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,i
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
 static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
-static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
-                                 const int *sfbOffsetTable,
-                                 const faac_real *sfbEnergy,
-                                 int startBand, int stopBand,
-                                 int startLine, int stopLine);
-
 
 /*****************************************************/
 /* InitTns:                                          */
@@ -137,100 +83,16 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    unsigned long bitratePerCh = (hEncoder->numChannels > 0)
-        ? hEncoder->config.bitRate / hEncoder->numChannels : 0;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        tnsInfo->tnsMaxBandsLong       = tnsMaxBandsLongLow[fsIndex];
-        tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
-        tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
-
-        /* Dynamic minBand calculation targeting ~4500Hz to prevent speech regressions. */
-        {
-            int sfb, offset;
-            int targetLineLong = (int)(4500.0 * 2.0 * BLOCK_LEN_LONG / hEncoder->sampleRate + 0.5);
-            int targetLineShort = (int)(4500.0 * 2.0 * BLOCK_LEN_SHORT / hEncoder->sampleRate + 0.5);
-
-            offset = 0;
-            for (sfb = 0; sfb < hEncoder->srInfo->num_cb_long; sfb++) {
-                if (offset >= targetLineLong) break;
-                offset += hEncoder->srInfo->cb_width_long[sfb];
-            }
-            tnsInfo->tnsMinBandNumberLong = sfb;
-
-            offset = 0;
-            for (sfb = 0; sfb < hEncoder->srInfo->num_cb_short; sfb++) {
-                if (offset >= targetLineShort) break;
-                offset += hEncoder->srInfo->cb_width_short[sfb];
-            }
-            tnsInfo->tnsMinBandNumberShort = sfb;
-        }
-
-        /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost
-           at high bitrates where TNS still fires but base order-6 is excessive.
-           Short window order stays at tnsMaxOrderShortLow (3) at all bitrates. */
-        if (bitratePerCh >= 128000) {
-            tnsInfo->tnsMaxOrderLong = 4;
-        } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 5;
-        } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 6 */
-        }
-
-        /* Long-window gain threshold via break-even formula applied to the full frame.
-           At medium-to-high bitrates the formula naturally returns THRESH_FLOOR (1.10)
-           because H << S; no bitrate override is needed.  VBR uses the floor directly. */
-        if (bitratePerCh == 0) {
-            tnsInfo->gainThreshLong = (faac_real)TNS_THRESH_FLOOR;
-        } else {
-            int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
-                                      / hEncoder->sampleRate);
-            int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
-            int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
-                                + TNS_FIXED_OVERHEAD;
-            int denom = spectral_bits - tns_overhead;
-            faac_real thresh;
-            if (denom <= 0) {
-                thresh = (faac_real)TNS_THRESH_CAP;
-            } else {
-                thresh = ((faac_real)spectral_bits / (faac_real)denom)
-                         * (faac_real)TNS_CALIBRATION;
-                if (thresh < (faac_real)TNS_THRESH_FLOOR)
-                    thresh = (faac_real)TNS_THRESH_FLOOR;
-                if (thresh > (faac_real)TNS_THRESH_CAP)
-                    thresh = (faac_real)TNS_THRESH_CAP;
-            }
-            tnsInfo->gainThreshLong = thresh;
-        }
-
-        /* Short-window gain threshold: same formula per short window (frame_bits/8).
-           Short overhead H_short = tnsMaxOrderShort(7)*4 + 14 = 42 bits.
-           gainThreshShort == TNS_THRESH_CAP signals "disabled" (per-window bits too few).
-           VBR uses the floor (fire aggressively in quality mode). */
-        if (bitratePerCh == 0) {
-            tnsInfo->gainThreshShort = (faac_real)TNS_THRESH_FLOOR;
-        } else {
-            int frame_bits_s = (int)((unsigned long)bitratePerCh * FRAME_LEN
-                                     / hEncoder->sampleRate);
-            int spectral_s   = (int)(frame_bits_s * TNS_SPECTRAL_FRAC) / MAX_SHORT_WINDOWS;
-            int overhead_s   = tnsInfo->tnsMaxOrderShort * DEF_TNS_COEFF_RES
-                               + TNS_FIXED_OVERHEAD;
-            int denom_s      = spectral_s - overhead_s;
-            faac_real thresh_s;
-            if (denom_s <= 0) {
-                thresh_s = (faac_real)TNS_THRESH_CAP;
-            } else {
-                thresh_s = ((faac_real)spectral_s / (faac_real)denom_s)
-                           * (faac_real)TNS_CALIBRATION;
-                if (thresh_s < (faac_real)TNS_THRESH_FLOOR)
-                    thresh_s = (faac_real)TNS_THRESH_FLOOR;
-                if (thresh_s > (faac_real)TNS_THRESH_CAP)
-                    thresh_s = (faac_real)TNS_THRESH_CAP;
-            }
-            tnsInfo->gainThreshShort = thresh_s;
-        }
+        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
+        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
+        tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
+        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
     }
 }
 
@@ -255,12 +117,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Disabled when per-window bit budget cannot cover the short-filter overhead;
-           gainThreshShort == TNS_THRESH_CAP signals this condition (set by TnsInit). */
-        if (tnsInfo->gainThreshShort >= (faac_real)TNS_THRESH_CAP) {
-            tnsInfo->tnsDataPresent = 0;
-            return;
-        }
+
+        /* TNS not used for short blocks currently */
+        tnsInfo->tnsDataPresent = 0;
+        return;
+
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
@@ -273,7 +134,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_LONG;
+        windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -282,9 +143,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
         break;
     }
-
-    faac_real gainThreshCur = (blockType == ONLY_SHORT_WINDOW)
-        ? tnsInfo->gainThreshShort : tnsInfo->gainThreshLong;
 
     /* Make sure that start and stop bands < maxSfb */
     /* Make sure that start and stop bands >= 0 */
@@ -295,12 +153,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
-    /* Common constants for pre-gate */
-    startIndex = sfbOffsetTable[startBand];
-    length = sfbOffsetTable[stopBand] - startIndex;
-    faac_real peak_thresh = (length > 0) ? (TNS_PEAK_RATIO_MARGIN
-                                            * FAAC_SQRT(2.0 * FAAC_LOG((faac_real)length))) : 0.0;
-
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
 
@@ -308,85 +160,25 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         TnsFilterData* tnsFilter = windowData->tnsFilter;
         faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
         faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
-        faac_real sfbEnergy[NSFB_LONG];
-        faac_real* wspec = spec + w * windowSize;
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
+        startIndex = w * windowSize + sfbOffsetTable[startBand];
+        length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        /* Cheap pre-gate fused with per-SFB energy accumulation.
-           Walks the TNS band once, SFB by SFB, building both the
-           pre-gate statistics (sumsq, suma, maxa) and the per-SFB
-           sum-of-squares the whitener needs.  Skip if:
-             - the band is essentially silent (sumsq < floor),
-             - or the spectrum is nearly flat
-               (L2^2 * N / L1^2 < TNS_FLATNESS_K, bounded below by
-               1.0 at perfect flatness by Cauchy-Schwarz),
-             - or it is dominated by a single peak below the
-               tonality margin (max|X|*N < margin*sqrt(2*ln(N))*L1).
-           Skipping these avoids a wasted O(order*length) LD call
-           and prevents TNS firing on bands where it cannot help. */
-        {
-            faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
-            int sfb;
-            for (sfb = startBand; sfb < stopBand; sfb++) {
-                faac_real e = 0.0;
-                int j;
-                int sfb_start = sfbOffsetTable[sfb];
-                int sfb_end = sfbOffsetTable[sfb + 1];
-                const faac_real *pspec = &wspec[sfb_start];
-                int n = sfb_end - sfb_start;
-
-                for (j = 0; j < n; j++) {
-                    faac_real v = pspec[j];
-                    faac_real va = FAAC_FABS(v);
-                    e    += v * v;
-                    suma += va;
-                    if (va > maxa) maxa = va;
-                }
-                sfbEnergy[sfb] = e;
-                sumsq += e;
-            }
-
-            if (sumsq < TNS_ENERGY_FLOOR * length
-                || suma <= 0.0
-                || sumsq * length < TNS_FLATNESS_K * suma * suma
-                || maxa * length < peak_thresh * suma) {
-                continue;
-            }
-        }
-
-        /* Run LD on the per-SFB-whitened spectrum, not the raw one,
-           so prediction gain reflects within-band correlation rather
-           than formant-peak structure across SFBs.  The whitened
-           buffer lives in `temp`; it is consumed by LevinsonDurbin
-           here and is reused by TnsInvFilter later (after the
-           decision is made and the coefficients are quantised), so
-           the storage does not collide.  See WhitenSpectrumForTns
-           for rationale.  This is the libaacplus CalcWeightedSpectrum
-           equivalent. */
-        WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy,
-                             startBand, stopBand,
-                             startIndex, startIndex + length);
-        gain = LevinsonDurbin(order,length,&temp[startIndex],k);
-
-        if (gain > gainThreshCur) {  /* Use TNS */
+        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
-            if (truncatedOrder == 0) {
-                /* Identity filter after truncation - skip so we do
-                   not consume tns_data syntax bits for a no-op. */
-                continue;
-            }
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
             tnsFilter->coefCompress = 0;
             tnsFilter->length = lengthInBands;
+            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&wspec[startIndex],tnsFilter,temp);      /* Filter */
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
         }
     }
 }
@@ -551,27 +343,10 @@ static void QuantizeReflectionCoeffs(int fOrder,
     iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
     iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
 
-    /* Quantize and inverse quantize.  Clamp to the valid signed range
-       [-(1<<(coeffRes-1)), (1<<(coeffRes-1))-1] so that indices never
-       exceed what fits in the bitstream field: for coeffRes=4 that is
-       [-8, 7].  Without clamping, kArray[i] near +/-1 maps to asin
-       output of +/-pi/2, the multiply-by-iqfac yields 7.5, and the
-       +0.5 round step produces 8 - which wraps to -8 as a 4-bit
-       signed value on the wire, creating an encoder/decoder filter
-       mismatch.  Harmless while TNS was off by default; matters now
-       that TNS is intended to be on. */
-    {
-        const int i_max =  (1 << (coeffRes - 1)) - 1;
-        const int i_min = -(1 << (coeffRes - 1));
-        for (i = 1; i <= fOrder; i++) {
-            int idx = (kArray[i] >= 0)
-                    ? (int)(0.5  + FAAC_ASIN(kArray[i]) * iqfac)
-                    : (int)(-0.5 + FAAC_ASIN(kArray[i]) * iqfac_m);
-            if (idx > i_max) idx = i_max;
-            if (idx < i_min) idx = i_min;
-            indexArray[i] = idx;
-            kArray[i] = FAAC_SIN((faac_real)idx / (idx >= 0 ? iqfac : iqfac_m));
-        }
+    /* Quantize and inverse quantize */
+    for (i=1;i<=fOrder;i++) {
+        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
+        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
     }
 }
 
@@ -587,16 +362,12 @@ static void Autocorrelation(int maxOrder,        /* Maximum autocorr order */
 {
     int order,index;
 
-    for (order = 0; order <= maxOrder; order++)
-        rArray[order] = 0.0;
-
-    for (index = 0; index < dataSize; index++) {
-        faac_real d = data[index];
-        int n = min(maxOrder, dataSize - 1 - index);
-        rArray[0] += d * d;
-        for (order = 1; order <= n; order++) {
-            rArray[order] += d * data[index + order];
+    for (order=0;order<=maxOrder;order++) {
+        rArray[order]=0.0;
+        for (index=0;index<dataSize;index++) {
+            rArray[order]+=data[index]*data[index+order];
         }
+        dataSize--;
     }
 }
 
@@ -671,8 +442,8 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aLastPtr=aPtr;      /* Current becomes last */
             aPtr=aTemp;         /* Last becomes current */
         }
-        /* If perfect prediction, trigger TNS regardless of adaptive threshold */
-        if (error <= 0.0) return (faac_real)(TNS_THRESH_CAP + 1.0);
+        /* If perfect prediction, trigger TNS */
+        if (error <= 0.0) return DEF_TNS_GAIN_THRESH + 1.0;
         return signal/error;    /* return the gain */
     }
 }
@@ -697,75 +468,6 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
         }
         for (i=1;i<=order;i++) {
             aArray[i]=aTemp[i];
-        }
-    }
-}
-
-/*****************************************************/
-/* WhitenSpectrumForTns:                             */
-/*   Per-SFB inverse-sqrt-energy normalization with  */
-/*   a 3-tap triangle smoother, written to `out`.    */
-/*   Equivalent to libaacplus CalcWeightedSpectrum.  */
-/*                                                   */
-/*   Why: LevinsonDurbin run on the raw MDCT         */
-/*   spectrum sees both the within-band envelope     */
-/*   (which TNS should model) AND the inter-band     */
-/*   formant peaks (which it should not), so on      */
-/*   harmonic speech / music the gain test is        */
-/*   dominated by formant structure rather than by   */
-/*   correlations that pre-echo correction can       */
-/*   actually exploit, and TNS fires on bands where  */
-/*   it then reshapes noise audibly around the       */
-/*   formant.  Whitening per-SFB removes the slow    */
-/*   inter-band envelope before LD sees the data, so */
-/*   the gain test measures only within-SFB temporal */
-/*   structure - matching how libaacplus avoids this */
-/*   class of regression on long-block speech.       */
-/*****************************************************/
-static void WhitenSpectrumForTns(const faac_real *spec, faac_real *out,
-                                 const int *sfbOffsetTable,
-                                 const faac_real *sfbEnergy,
-                                 int startBand, int stopBand,
-                                 int startLine, int stopLine)
-{
-    faac_real invE[NSFB_LONG];
-    int sfb, i;
-
-    if (startBand >= stopBand || startLine >= stopLine)
-        return;
-
-    /* Step 1: per-SFB inverse sqrt(energy). */
-    for (sfb = startBand; sfb < stopBand; sfb++) {
-        invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb])
-                  : (faac_real)0.0;
-    }
-
-    /* Merged expansion and RTL smoothing.
-       Step 2 (expansion) and Step 3a (RTL filter) combined into one RTL pass. */
-    {
-        sfb = stopBand - 1;
-        int sfb_start = sfbOffsetTable[sfb];
-        faac_real w = invE[sfb];
-        out[stopLine - 1] = w;
-        for (i = stopLine - 2; i >= startLine; i--) {
-            if (i < sfb_start) {
-                sfb--;
-                w = invE[sfb];
-                sfb_start = sfbOffsetTable[sfb];
-            }
-            out[i] = (faac_real)0.5 * (w + out[i + 1]);
-        }
-    }
-
-    /* Step 3b: LTR smoothing fused with whitening. */
-    {
-        faac_real prev = out[startLine];
-        out[startLine] = prev * spec[startLine];
-        for (i = startLine + 1; i < stopLine; i++) {
-            faac_real weight = (faac_real)0.5 * (out[i] + prev);
-            prev = out[i];
-            out[i] = weight * spec[i];
         }
     }
 }
