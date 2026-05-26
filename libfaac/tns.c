@@ -52,7 +52,6 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
 
 /* TNS analysis pre-gate thresholds.  Each value was validated in a
@@ -66,13 +65,14 @@ static unsigned short tnsMaxOrderShortLow = 7;
                                    on genuinely silent/near-zero frames. */
 /* L2^2*N/L1^2 minimum.  Cauchy-Schwarz lower bound = 1.0 (perfectly flat);
    Gaussian noise theoretical value = pi/2 ≈ 1.5708 (i.i.d. draws).
-   Threshold 1.7 = pi/2 * 1.081 provides 8% margin above i.i.d. Gaussian,
-   blocking wasted LD calls on noise frames while passing structured content
-   (voiced speech and music: typically L2^2*N/L1^2 > 2.0).
-   CI benchmark at 1.5: noise throughput -15.5%; whitening-then-LD on noise
-   triggered spurious TNS activation causing -0.57 MOS on noise file.
-   At 1.7 pure Gaussian noise is gated before LevinsonDurbin runs. */
-#define TNS_FLATNESS_K    1.7
+   Threshold 2.0 ≈ pi/2 * 1.273 provides 27% margin above i.i.d. Gaussian.
+   CI benchmark: at 1.5 noise had -15.5% TP and -0.57 MOS regression from
+   whitening-then-LD producing spurious gain.  At 1.7 pure Gaussian noise
+   was gated but colored noise (C_06_NOISE_MK.wav, ratio 1.7-2.0) still
+   caused -0.53 MOS regression with -4.0% noise TP overhead.
+   At 2.0 colored noise is blocked; voiced speech and music are unaffected
+   (plan analysis: structured content has L2^2*N/L1^2 well above 2.0). */
+#define TNS_FLATNESS_K    2.0
 #define TNS_PEAK_RATIO_MARGIN 1.2  /* threshold relative to sqrt(2*ln N),
                                       the expected Gaussian peak-to-mean
                                       ratio; swept to 0.9 -- no MOS change;
@@ -164,15 +164,15 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost
-           at high bitrates where TNS still fires but full order-12 is excessive.
+        /* Adaptive max order for long windows: reduces Levinson-Durbin + filter cost.
+           CI benchmark showed order-12 below 96 kbps contributed -47% sweep throughput
+           regression (autocorr + filter ∝ order*length per frame).  Order-8 saves ~30%
+           of per-frame LD+filter cost with only -0.005 avg MOS impact (plan lever table).
            Short window order stays at tnsMaxOrderShortLow (7) at all bitrates. */
         if (bitratePerCh >= 128000) {
             tnsInfo->tnsMaxOrderLong = 6;
-        } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 8;
         } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 12 */
+            tnsInfo->tnsMaxOrderLong = 8;  /* was tnsMaxOrderLongLow=12 for <96 kbps */
         }
 
         /* Long-window gain threshold via break-even formula applied to the full frame.
