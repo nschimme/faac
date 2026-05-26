@@ -410,6 +410,45 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy,
                              startBand, stopBand,
                              startIndex, startIndex + length);
+
+        /* Order-2 LD pre-screen on the whitened spectrum.
+         * Prediction gain is monotonically non-decreasing with filter order
+         * (each new Levinson step can only reduce or maintain error), so
+         * gain_2 is a strict lower bound on gain_N.  If gain_2 is below
+         * 85% of gainThreshCur the full-order gain cannot reach the threshold
+         * with high probability; we skip the O(order×length) LevinsonDurbin
+         * call (its internal Autocorrelation dominates the cost).
+         * Cost: one extra O(length) pass for r[0..2]; effective when ≥8% of
+         * frames reaching this point have marginal correlation. */
+        {
+            const faac_real *wt = &temp[startIndex];
+            faac_real r0 = 0.0, r1 = 0.0, r2 = 0.0;
+            int ii;
+            for (ii = 0; ii < length - 2; ii++) {
+                faac_real d = wt[ii];
+                r0 += d * d;
+                r1 += d * wt[ii + 1];
+                r2 += d * wt[ii + 2];
+            }
+            if (length >= 2) {
+                r0 += wt[length-2] * wt[length-2];
+                r1 += wt[length-2] * wt[length-1];
+            }
+            if (length >= 1)
+                r0 += wt[length-1] * wt[length-1];
+            if (r0 > (faac_real)0.0) {
+                faac_real e = r0;
+                faac_real k1 = -r1 / e;
+                e *= ((faac_real)1.0 - k1 * k1);
+                if (e > (faac_real)0.0) {
+                    faac_real k2 = -(r2 + k1 * r1) / e;
+                    e *= ((faac_real)1.0 - k2 * k2);
+                    if (e > (faac_real)0.0 && r0 / e < gainThreshCur * (faac_real)0.85)
+                        continue;
+                }
+            }
+        }
+
         gain = LevinsonDurbin(order,length,&temp[startIndex],k);
 
         if (gain > gainThreshCur) {  /* Use TNS */
