@@ -83,7 +83,6 @@ jobs:
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
           run-name: ${{ matrix.arch }}_${{ matrix.precision }}_base
           output-json: ./results/${{ matrix.arch }}_${{ matrix.precision }}_base.json
-          visqol-image: ghcr.io/nschimme/faac-benchmark-visqol:latest
 
       - name: Save Baseline Results
         if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
@@ -100,7 +99,6 @@ jobs:
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
           run-name: ${{ matrix.arch }}_${{ matrix.precision }}_cand
           output-json: ./results/${{ matrix.arch }}_${{ matrix.precision }}_cand.json
-          visqol-image: ghcr.io/nschimme/faac-benchmark-visqol:latest
 
       - name: Upload Results
         if: github.event_name == 'pull_request'
