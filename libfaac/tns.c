@@ -552,10 +552,13 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
     }
     {
         faac_real prev = out[startLine];
-        out[startLine] = prev * spec[startLine];
+        /* Fix: Use a local weight to avoid using whitened spectral values as smoothing weights. */
+        faac_real weight = prev;
+        out[startLine] = weight * spec[startLine];
         for (i = startLine + 1; i < stopLine; i++) {
-            faac_real weight = (faac_real)0.5 * (out[i] + prev);
-            prev = weight; out[i] = weight * spec[i];
+            weight = (faac_real)0.5 * (out[i] + prev);
+            prev = weight;
+            out[i] = weight * spec[i];
         }
     }
 }
