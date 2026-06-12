@@ -1,6 +1,6 @@
 # FAAC Quantization Thresholds & TNS Tuning
 
-This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
+This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c` and `libfaac/tns.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
 
 ## Quantization Constants
 
@@ -34,20 +34,15 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Derivation**: 10^( -23 dB / 10 ) approx 0.0050.
 - **Justification**: Clamps the peak energy ratio at -23 dB as a secondary safety net for tonal components in quiet bands.
 
-## Feature Sweep Results (Summary)
+## TNS Tuning and Optimization
 
-| Configuration | VoIP Avg MOS | VSS Avg MOS | Music Low Avg MOS | Overall MOS | Throughput |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
-| Refactor (nf0.45) | 3.65 | 4.20 | 3.24 | 3.91 | 3.6x |
+### Dynamic Frequency Gating (4500Hz)
+- **Purpose**: Restricts TNS operation to frequencies above 4500Hz.
+- **Justification**: Harmonic speech signals often show high prediction gain in lower frequency regions, but applying TNS noise-reshaping there can cause audible artifacts on vowels. Dynamically finding the SFB closest to 4500Hz based on the sample rate protects speech quality while allowing TNS to work on transient "clicks" and high-frequency noise.
 
-*MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*
-
-## TNS Tuning and Optimization (fix-tns-vss-regressions)
-
-### Spectral Budget Gate (15% Long / 10% Short)
-- **Purpose**: Prevents TNS from starving the core quantizer of bits, which is critical at low bitrates where TNS overhead (coefficients and side data) can be a significant fraction of the total budget.
-- **Justification**: Validated via VoIP and VSS sweeps. Setting the gate to 10% for short windows and 15% for long windows maintains high core quality while allowing TNS to fire on frames where its gain is truly beneficial.
+### Adaptive Spectral Budget Gate (15% Long / 10% Short)
+- **Purpose**: Prevents TNS from starving the core quantizer of bits at low bitrates.
+- **Justification**: TNS side-info (coefficients) is a fixed cost. When this cost exceeds 15% (long) or 10% (short) of the estimated spectral bit budget, the `gainThresh` is adaptively increased. This ensures TNS only fires when its benefit is high enough to justify the bit cost.
 
 ### Arm D1: Lossless Bitstream Compression
 - **Purpose**: Signals `coefCompress = 1` in the bitstream when all quantized reflection coefficients for a filter fit within a 3-bit signed range ([-4, 3]).
@@ -55,8 +50,17 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ### Arm D2: Dual-Analysis Strategy
 - **Purpose**: Performs LPC analysis on both the whitened spectrum (standard) and the raw MDCT spectrum.
-- **Justification**: Standard whitened analysis can sometimes miss strong correlations in echoic or reverberant signals. If the raw spectrum analysis yields significantly higher prediction gain (`gain_raw > 1.05 * gain_whitened`), raw coefficients are used. This strategy recovered quality on reverberant speech samples (e.g., C_24 files) that previously regressed.
+- **Justification**: Standard whitened analysis can miss strong correlations in echoic or reverberant signals. If raw spectrum analysis yields >15% higher prediction gain, raw coefficients are used. This recovered quality on reverberant speech samples (e.g., C_24 files).
 
 ### Encoder-Decoder Synchronization (stopBand)
 - **Purpose**: Ensures `stopBand` is always synchronized with `maxSfb`.
-- **Justification**: AAC decoders apply TNS filters starting from the highest active scale factor band downwards. Any mismatch in the starting band between the encoder and decoder results in a frequency shift of the spectral noise reshaping, causing severe audible artifacts ("spectral garbage").
+- **Justification**: AAC decoders apply TNS filters starting from the highest active scale factor band downwards. Any mismatch results in a frequency shift of the noise reshaping, causing severe distortion.
+
+## Feature Sweep Results (Summary)
+
+| Configuration | VoIP Avg MOS | VSS Avg MOS | Music Low Avg MOS | Overall MOS | Throughput |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
+| Refined TNS | 3.70 | 4.22 | 3.35 | 3.92 | 3.4x |
+
+*MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*

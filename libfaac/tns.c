@@ -37,7 +37,6 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Initial defaults, will be dynamically tuned in TnsInit for speech safety. */
 static unsigned short tnsMinBandNumberLongDef[12] =
 { 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
 static unsigned short tnsMinBandNumberShortDef[12] =
@@ -66,7 +65,7 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_CALIBRATION     1.029
 #define TNS_THRESH_FLOOR    1.10
 #define TNS_THRESH_CAP      1.40
-#define TNS_SPEECH_TARGET_HZ 4500.0  /* Dynamic gating targets 4500Hz for speech safety */
+#define TNS_SPEECH_TARGET_HZ 4500.0
 
 /*************************/
 /* Function prototypes   */
@@ -103,6 +102,7 @@ void TnsInit(faacEncStruct* hEncoder)
     int fsIndex = hEncoder->sampleRateIdx;
     unsigned long bitratePerCh = (hEncoder->numChannels > 0)
         ? hEncoder->config.bitRate / hEncoder->numChannels : 0;
+    SR_INFO *srInfo = &hEncoder->srInfo[fsIndex];
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -115,31 +115,32 @@ void TnsInit(faacEncStruct* hEncoder)
         {
             int sfb;
             int found_l = 0, found_s = 0;
-            const int *sfbOffsetLong = hEncoder->coderInfo[channel].sfbOffsetTable;
-            const int *sfbOffsetShort = hEncoder->coderInfo[channel].sfbOffsetTableShort;
+            int offset = 0;
 
-            for (sfb = 0; sfb < NSFB_LONG - 1; sfb++) {
-                double freq = (double)sfbOffsetLong[sfb] * hEncoder->sampleRate / (2.0 * FRAME_LEN);
+            for (sfb = 0; sfb < srInfo->num_cb_long; sfb++) {
+                double freq = (double)offset * hEncoder->sampleRate / (2.0 * FRAME_LEN);
                 if (freq >= TNS_SPEECH_TARGET_HZ) {
                     tnsInfo->tnsMinBandNumberLong = sfb;
                     found_l = 1;
                     break;
                 }
+                offset += srInfo->cb_width_long[sfb];
             }
             if (!found_l) tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLongDef[fsIndex];
 
-            for (sfb = 0; sfb < NSFB_SHORT - 1; sfb++) {
-                double freq = (double)sfbOffsetShort[sfb] * hEncoder->sampleRate / (2.0 * BLOCK_LEN_SHORT);
+            offset = 0;
+            for (sfb = 0; sfb < srInfo->num_cb_short; sfb++) {
+                double freq = (double)offset * hEncoder->sampleRate / (2.0 * BLOCK_LEN_SHORT);
                 if (freq >= TNS_SPEECH_TARGET_HZ) {
                     tnsInfo->tnsMinBandNumberShort = sfb;
                     found_s = 1;
                     break;
                 }
+                offset += srInfo->cb_width_short[sfb];
             }
             if (!found_s) tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShortDef[fsIndex];
         }
 
-        /* Adaptive max order for long windows. */
         if (bitratePerCh >= 128000) {
             tnsInfo->tnsMaxOrderLong = 6;
         } else if (bitratePerCh >= 96000) {
@@ -148,12 +149,10 @@ void TnsInit(faacEncStruct* hEncoder)
             tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
         }
 
-        /* Long-window gain threshold with graceful adaptive budget gate. */
         if (bitratePerCh == 0) {
             tnsInfo->gainThreshLong = (faac_real)TNS_THRESH_FLOOR;
         } else {
-            int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
-                                      / hEncoder->sampleRate);
+            int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
             int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES + TNS_FIXED_OVERHEAD;
             int denom = spectral_bits - tns_overhead;
@@ -165,7 +164,6 @@ void TnsInit(faacEncStruct* hEncoder)
                 if (thresh < (faac_real)TNS_THRESH_FLOOR) thresh = (faac_real)TNS_THRESH_FLOOR;
                 if (thresh > (faac_real)TNS_THRESH_CAP)   thresh = (faac_real)TNS_THRESH_CAP;
             }
-            /* Adaptive gate: increase threshold if TNS takes > 15% of spectral bits. */
             if (tns_overhead * 100 > spectral_bits * 15) {
                 thresh *= (faac_real)(1.0 + (double)(tns_overhead * 100 - spectral_bits * 15) / (spectral_bits * 5));
                 if (thresh > (faac_real)2.0) thresh = (faac_real)2.0;
@@ -173,7 +171,6 @@ void TnsInit(faacEncStruct* hEncoder)
             tnsInfo->gainThreshLong = thresh;
         }
 
-        /* Short-window gain threshold with graceful adaptive budget gate. */
         if (bitratePerCh == 0) {
             tnsInfo->gainThreshShort = (faac_real)TNS_THRESH_FLOOR;
         } else {
@@ -189,7 +186,6 @@ void TnsInit(faacEncStruct* hEncoder)
                 if (thresh_s < (faac_real)TNS_THRESH_FLOOR) thresh_s = (faac_real)TNS_THRESH_FLOOR;
                 if (thresh_s > (faac_real)TNS_THRESH_CAP)   thresh_s = (faac_real)TNS_THRESH_CAP;
             }
-            /* Adaptive gate: increase threshold if TNS takes > 10% of spectral bits. */
             if (MAX_SHORT_WINDOWS * overhead_s * 100 > frame_bits_s * TNS_SPECTRAL_FRAC * 10) {
                 thresh_s *= (faac_real)1.5;
                 if (thresh_s > (faac_real)2.0) thresh_s = (faac_real)2.0;
@@ -302,7 +298,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             faac_real k_raw[TNS_MAX_ORDER+1];
             faac_real gain_raw = LevinsonDurbin(order,length,&wspec[startIndex],k_raw);
 
-            /* Arm D2: Use raw coefficients only if significant advantage seen (>15% gain). */
             if (gain_raw > 1.15 * gain_whitened) {
                 for (int i=0; i<=order; i++) k[i] = k_raw[i];
             }
