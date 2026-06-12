@@ -52,7 +52,6 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
 
 /* TNS analysis pre-gate thresholds.
@@ -113,13 +112,16 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Adaptive max order for long windows based on per-channel bitrate. */
+        /* Adaptive max order for long windows based on per-channel bitrate.
+         * Balanced for CPU and quality: lower orders for low bitrates. */
         if (bitratePerCh >= 128000) {
             tnsInfo->tnsMaxOrderLong = 6;
         } else if (bitratePerCh >= 96000) {
             tnsInfo->tnsMaxOrderLong = 8;
+        } else if (bitratePerCh >= 64000) {
+            tnsInfo->tnsMaxOrderLong = 10;
         } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 12 */
+            tnsInfo->tnsMaxOrderLong = 8;
         }
 
         /* Long-window gain threshold via break-even bit budget formula. */
@@ -297,9 +299,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             int truncatedOrder;
             faac_real kraw[TNS_MAX_ORDER+1];
 
-            /* Conditional coefficient source (Arm D2).
+            /* Conditional coefficient source.
              * If raw LPC gain also exceeds threshold, use raw coefficients to preserve
-             * periodicity (benefits C_24 ECHO). Else keep whitened coefficients. */
+             * periodicity (benefits reverberant speech). Else keep whitened coefficients. */
             if (LevinsonDurbin(order, length, &wspec[startIndex], kraw) > gainThreshCur) {
                 for (i = 0; i <= order; i++) k[i] = kraw[i];
             }
@@ -312,10 +314,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
 
-            /* Lossless bitstream compression (Arm D1):
+            /* Lossless bitstream compression:
              * If all transmitted coefficients fit in 3 bits (-4..3),
-             * signal coefCompress=1 to save 1 bit/coefficient.
-             * Note: tnsFilter->index[1..truncatedOrder] are the transmitted coefficients. */
+             * signal coefCompress=1 to save 1 bit/coefficient. */
             tnsFilter->coefCompress = 1;
             for (i = 1; i <= truncatedOrder; i++) {
                 if (tnsFilter->index[i] < -4 || tnsFilter->index[i] > 3) {
