@@ -113,14 +113,14 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Adaptive max order for long windows based on per-channel bitrate. */
-        if (bitratePerCh >= 128000) {
-            tnsInfo->tnsMaxOrderLong = 6;
-        } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 8;
-        } else {
-            tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow; /* 12 */
-        }
+        /* TNS pays only at low ABR rates: at >=32 kbps/ch quantisation noise is
+         * already below masking thresholds, and quality mode (bitRate == 0)
+         * targets transparency by construction. In both cases TNS has nothing
+         * to shape and only costs CPU. useTns means "allow TNS where
+         * beneficial"; this gate decides where that is. */
+        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 32000);
+
+        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
 
         /* Long-window gain threshold via break-even bit budget formula. */
         if (bitratePerCh == 0) {
@@ -196,6 +196,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     int w;
     int startIndex,length;
     faac_real gain;
+
+    /* TNS disabled outside its beneficial operating range (see TnsInit). */
+    if (tnsInfo->tnsDisabled) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
