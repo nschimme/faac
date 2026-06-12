@@ -41,4 +41,20 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 | **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
 | Refactor (nf0.45) | 3.65 | 4.20 | 3.24 | 3.91 | 3.6x |
 
+## TNS (Temporal Noise Shaping) Tuning
+
+### Bitrate Gate (32 kbps/ch)
+- **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) only at the lowest bitrates (< 24 kbps/ch) where quantization noise is high. Above 32 kbps/ch, the benefit is negligible (+0.002) while the CPU cost remains significant.
+- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 32000` and for quality mode (`bitrate == 0`).
+
+### Fixed Order (8)
+- **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
+
+### Pre-gate Logic
+- **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
+- **Flatness Gate**: Rejects frames where flatness clusters at π/2 (already flat).
+
+### Whitened-LPC Analysis
+- **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. Benchmarking showed this outperforms raw-LPC and two-pass arms by providing broader coverage on noisy transients (+0.047 vs +0.024 on VoIP).
+
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*

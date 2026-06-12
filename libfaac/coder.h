@@ -70,6 +70,7 @@ typedef struct {
 
 typedef struct {
     int tnsDataPresent;
+    int tnsDisabled;
     int tnsMinBandNumberLong;
     int tnsMinBandNumberShort;
     int tnsMaxBandsLong;
