@@ -167,10 +167,10 @@ void TnsInit(faacEncStruct* hEncoder)
                 if (thresh_s > (faac_real)TNS_THRESH_CAP)
                     thresh_s = (faac_real)TNS_THRESH_CAP;
             }
-            /* Apply 20% spectral budget gate for short TNS filters. */
+            /* Apply 10% spectral budget gate for short TNS filters. */
             {
                 int s_total = (int)(frame_bits_s * TNS_SPECTRAL_FRAC);
-                if (MAX_SHORT_WINDOWS * overhead_s * 5 >= s_total)
+                if (MAX_SHORT_WINDOWS * overhead_s * 10 >= s_total)
                     thresh_s = (faac_real)TNS_THRESH_CAP;
             }
             tnsInfo->gainThreshShort = thresh_s;
@@ -349,7 +349,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
     startBand = max(startBand, 0);
     stopBand = max(stopBand, 0);
 
-    length = stopBand - startBand;
+    length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
 
     /* Perform filtering for each window */
