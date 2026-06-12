@@ -1,0 +1,24 @@
+{
+  "sha": null,
+  "matrix": {
+    "vss_C_01_CLIP_FG.wav": {
+      "mos": 3.5204997062683105,
+      "size": 28710,
+      "bitrate": 28.10228802153432,
+      "bitrate_target": 40,
+      "time": 0.013901948928833008,
+      "md5": "ca94987556553a80ee0867c9e4b9f16a",
+      "thresh": 3.0,
+      "scenario": "vss",
+      "filename": "C_01_CLIP_FG.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.515700812000432,
+    "silence.wav": 1.8785437093332196,
+    "sine.wav": 3.7815511409996057,
+    "sweep.wav": 3.5437758519995746,
+    "overall": 2.929892878583208
+  },
+  "lib_size": 87096
+}
