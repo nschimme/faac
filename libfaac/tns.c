@@ -193,7 +193,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
-    int w;
+    int w, i;
     int startIndex,length;
     faac_real gain;
 
@@ -295,6 +295,15 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain > gainThreshCur) {
             int truncatedOrder;
+            faac_real kraw[TNS_MAX_ORDER+1];
+
+            /* Conditional coefficient source (Arm D2).
+             * If raw LPC gain also exceeds threshold, use raw coefficients to preserve
+             * periodicity (benefits C_24 ECHO). Else keep whitened coefficients. */
+            if (LevinsonDurbin(order, length, &wspec[startIndex], kraw) > gainThreshCur) {
+                for (i = 0; i <= order; i++) k[i] = kraw[i];
+            }
+
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             if (truncatedOrder == 0) continue;
@@ -302,7 +311,19 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
-            tnsFilter->coefCompress = 0;
+
+            /* Lossless bitstream compression (Arm D1):
+             * If all transmitted coefficients fit in 3 bits (-4..3),
+             * signal coefCompress=1 to save 1 bit/coefficient.
+             * Note: tnsFilter->index[1..truncatedOrder] are the transmitted coefficients. */
+            tnsFilter->coefCompress = 1;
+            for (i = 1; i <= truncatedOrder; i++) {
+                if (tnsFilter->index[i] < -4 || tnsFilter->index[i] > 3) {
+                    tnsFilter->coefCompress = 0;
+                    break;
+                }
+            }
+
             tnsFilter->length = lengthInBands;
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);
