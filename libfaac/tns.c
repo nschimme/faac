@@ -199,18 +199,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-window TNS disabled due to throughput cost vs MOS gain. */
-        tnsInfo->tnsDataPresent = 0;
-        return;
-
         numberOfWindows = MAX_SHORT_WINDOWS;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
         order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        startBand = min(startBand, tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
@@ -218,10 +212,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        startBand = min(startBand, tnsInfo->tnsMaxBandsLong);
         break;
     }
 
@@ -230,10 +222,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     /* Make sure that start and stop bands < maxSfb */
     /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
+    startBand = min(startBand, maxSfb);
+    stopBand = min(stopBand, maxSfb);
+    startBand = max(startBand, 0);
+    stopBand = max(stopBand, 0);
+
+    lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
@@ -336,8 +330,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
         stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        startBand = min(startBand, tnsInfo->tnsMaxBandsShort);
         break;
 
     default:
@@ -345,17 +338,18 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
+        startBand = min(startBand, tnsInfo->tnsMaxBandsLong);
         break;
     }
 
     /* Make sure that start and stop bands < maxSfb */
     /* Make sure that start and stop bands >= 0 */
-    startBand = min(startBand,maxSfb);
-    stopBand = min(stopBand,maxSfb);
-    startBand = max(startBand,0);
-    stopBand = max(stopBand,0);
+    startBand = min(startBand, maxSfb);
+    stopBand = min(stopBand, maxSfb);
+    startBand = max(startBand, 0);
+    stopBand = max(stopBand, 0);
+
+    length = stopBand - startBand;
 
 
     /* Perform filtering for each window */
@@ -365,7 +359,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         TnsFilterData* tnsFilter = windowData->tnsFilter;
 
         startIndex = w * windowSize + sfbOffsetTable[startBand];
-        length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
