@@ -113,22 +113,21 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Adaptive max order for long windows based on per-channel bitrate.
-         * Balanced for CPU and quality: lower orders for low bitrates. */
-        if (bitratePerCh >= 128000) {
-            tnsInfo->tnsMaxOrderLong = 6;
-        } else if (bitratePerCh >= 96000) {
-            tnsInfo->tnsMaxOrderLong = 8;
-        } else if (bitratePerCh >= 64000) {
-            tnsInfo->tnsMaxOrderLong = 10;
-        } else {
-            tnsInfo->tnsMaxOrderLong = 8;
+        /* TNS gate: active only for low bitrates (< 32 kbps/ch) where
+         * quantization noise exceeds masking thresholds. Disabled for
+         * transparency-targeted quality mode (bitrate == 0). */
+        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 32000);
+
+        if (tnsInfo->tnsDisabled) {
+            continue;
         }
 
+        /* Fixed max order for long windows at low bitrates.
+         * Replaces adaptive ladder that became dead once gate was restricted. */
+        tnsInfo->tnsMaxOrderLong = 8;
+
         /* Long-window gain threshold via break-even bit budget formula. */
-        if (bitratePerCh == 0) {
-            tnsInfo->gainThreshLong = (faac_real)TNS_THRESH_FLOOR;
-        } else {
+        {
             int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
@@ -150,9 +149,7 @@ void TnsInit(faacEncStruct* hEncoder)
         }
 
         /* Short-window gain threshold: applied per 128-line window. */
-        if (bitratePerCh == 0) {
-            tnsInfo->gainThreshShort = (faac_real)TNS_THRESH_FLOOR;
-        } else {
+        {
             int frame_bits_s = (int)((unsigned long)bitratePerCh * FRAME_LEN
                                      / hEncoder->sampleRate);
             int spectral_s   = (int)(frame_bits_s * TNS_SPECTRAL_FRAC) / MAX_SHORT_WINDOWS;
@@ -194,6 +191,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                faac_real* temp)
 {
     int numberOfWindows,windowSize;
+
+    if (tnsInfo->tnsDisabled) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
     int w, i;
@@ -347,6 +349,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          faac_real* temp)
 {
     int numberOfWindows,windowSize;
+
+    if (tnsInfo->tnsDisabled) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
     int startBand,stopBand;    /* Bands over which to apply TNS */
     int w;
     int startIndex,length;
