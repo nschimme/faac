@@ -29,8 +29,9 @@
 #include "win32_ver.h"
 #endif
 
-#define RC_DEADBAND_THRESHOLD  0.01
-#define RC_DAMPING_FACTOR      0.6
+/* Rate control tuning constants */
+#define RC_DEADBAND_THRESHOLD  0.05  /* +/- 5% deadband */
+#define RC_DAMPING_FACTOR      0.6   /* Control loop damping */
 
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
@@ -54,9 +55,11 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     if (!bitRate) return nyquist;
 
     if (bitRate <= 16000) {
-        bw = 3000 + (bitRate / 32);
+        /* Segment 1: Telephony (4kHz to 6kHz) */
+        bw = 4000 + (bitRate / 8);
     } else if (bitRate <= 32000) {
-        bw = 3500 + ((bitRate - 16000) / 4);
+        /* Segment 2: Low-tier (6kHz to 11kHz) */
+        bw = 6000 + ((bitRate - 16000) * 5 / 16);
     } else if (bitRate <= 64000) {
         bw = 11000 + ((bitRate - 32000) * 15 / 64);
     } else if (bitRate <= 128000) {
@@ -205,7 +208,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
         hEncoder->sampleRateIdx     = GetSRIndex(hEncoder->sampleRate);
         hEncoder->srInfo            = &srInfo[hEncoder->sampleRateIdx];
         hEncoder->config.mpegVersion = MPEG4;
-        hEncoder->config.pnslevel    = 0;
+        /* Keep PNS enabled (at a reduced level) in the HE core: percussive
+         * content carries broadband noise below the SBR crossover, and
+         * coding it as waveforms starves the rest of the core. Benchmarked
+         * pnslevel 0..4 on music_low; 2 is the matched-bitrate optimum. */
+        hEncoder->config.pnslevel    = 2;
     }
 
     TnsInit(hEncoder);
@@ -236,6 +243,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
     if (hEncoder->config.pnslevel > 10) hEncoder->config.pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = hEncoder->config.pnslevel;
     hEncoder->aacquantCfg.quality = hEncoder->config.quantqual;
+    hEncoder->aacquantCfg.heMode = (hEncoder->config.aacObjectType == HE_AAC);
 
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
     if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
@@ -296,18 +304,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate, unsigned int numChan
     hEncoder->config.mpegVersion = MPEG4;
     hEncoder->config.aacObjectType = AAC_AUTO;
     hEncoder->config.jointmode = JOINT_MIXED;
-    /* pnslevel=2 chosen by 12-clip voip + 9-clip he64 + 4-clip lc128 sweep
-     * vs the long-standing default 4 (which over-substitutes noise into
-     * formant bands at low rates). At -b 16 mono speech, pnslevel=4 fired
-     * PNS in 41% of frames and 508/2756 sections — including the 0-4 kHz
-     * formant region. Lowering to 2 lifted ViSQOL speech-mode mean by
-     * +0.079 (3.051 -> 3.130) on voip 16 kbps and +0.046 on lc128 128k
-     * music with the music HE64 gate flat; voip output bytes stayed
-     * inside ±2% of baseline so the lift is matched-bps coding gain,
-     * not bit overspend. pnslevel=0 (full disable) regressed lc128 by
-     * -0.046, confirming PNS is still useful at higher rates and tonal
-     * content. */
-    hEncoder->config.pnslevel = 2;
+    hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;

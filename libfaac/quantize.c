@@ -95,23 +95,10 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
     return gain;
 }
 
-/* SFB-survival floor at qlevel(): bands with rmsx < NOISEFLOOR are
- * coded as HCB_ZERO (silenced). Raised from the long-standing 0.4 to
- * 2.0 after a 12-clip voip + 9-clip he64 + 4-clip lc128 sweep on top
- * of the lowered pnslevel default. At -b 16 mono speech the previous
- * threshold killed only ~6 sections per 12-clip run vs libaacplus
- * killing ~62 — leaving low-energy noise bands alive that consumed
- * bits and forced coarser quantization on the formant bands. NF=2.0
- * sits on the [1.6, 4.0] plateau of the sweep; smaller values gave
- * proportionally less lift and larger values eventually started to
- * regress voip past NF=5. With pnslevel=2 in place this raised voip
- * mean another +0.086 (3.130 -> 3.216) and left both music gates
- * flat (he64 ±0, lc128 ±0). voip output bps -1.0% vs HEAD so this
- * is a matched-bps coding-efficiency gain, not bit overspend. */
-#define NOISEFLOOR ((faac_real)1.0)
+#define NOISEFLOOR 0.4
 
 #define NOISETONE     0.2   /* noise-floor weight in masking target */
-#define MAXE_W        0.45  /* peak-energy masking weight */
+#define TONEMASK      0.45  /* tone-masking component weight */
 #define SHORT_PENALTY 0.45  /* tightens masking target for short-window blocks */
 
 /* Prevents masking target collapse in quiet upper bands by flooring energy ratios.
@@ -122,7 +109,8 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality,
+                  int heMode)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -195,24 +183,23 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     if (maxe < avgenrg * MAXE_FLOOR_FACTOR) maxe = avgenrg * MAXE_FLOOR_FACTOR;
 
     target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * MAXE_W * FAAC_POW(maxe/avgenrg, powm);
+    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= SHORT_PENALTY;
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* Floor the band/frame energy ratio so target doesn't collapse on quiet
-     * upper bands. Without this, target ends up ~5 decades below rmsx at
-     * 24 kHz internal SR (HE-AAC), and the magic-offset rounding in
-     * quantize_scalar truncates the entire band to zeros even though sf_rel
-     * never trips SF_MIN. Floor at -23 dB (avge) / -17 dB (maxe) below
-     * avgenrg keeps the band alive at coarse precision. */
-    {
-        faac_real avge_floor = avgenrg * (faac_real)0.005;  /* -23 dB below avg */
+    /* HE-AAC core only: stronger floor so quiet bands just below the SBR
+     * crossover survive quantization. At the halved core sample rate the
+     * default floors leave the target ~5 decades below rmsx and the
+     * magic-offset rounding truncates whole bands to zero, which the SBR
+     * patch then mirrors as silence. */
+    if (heMode) {
+        faac_real avge_floor = avgenrg * (faac_real)0.005;   /* -23 dB */
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
-        faac_real maxe_floor = avgenrg * (faac_real)0.02;
+        faac_real maxe_floor = avgenrg * (faac_real)0.02;    /* -17 dB */
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
         faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
-        target_floor += (1.0 - NOISETONE) * 0.45 * FAAC_POW(maxe_eff/avgenrg, powm);
+        target_floor += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe_eff/avgenrg, powm);
         target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
         if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
         if (target < target_floor) target = target_floor;
@@ -387,7 +374,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-              (faac_real)aacquantCfg->quality/DEFQUAL);
+              (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->heMode);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
