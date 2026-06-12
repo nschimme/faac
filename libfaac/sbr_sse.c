@@ -26,6 +26,10 @@ void sbr_qmf_64_modulation_sse2(const SBRInfo *sbr, const faac_real * restrict p
                                 faac_real * restrict im)
 {
     float re_f[64], im_f[64];
+    /* Only bands [kx,k2) are consumed by the SBR energy analysis; callers
+     * zero re/im beforehand. Round the range out to SIMD width. */
+    const int k0 = sbr->kx & ~3;
+    const int k1 = (sbr->k2 + 3) & ~3;
     int n, k;
     memset(re_f, 0, 64 * sizeof(float));
     memset(im_f, 0, 64 * sizeof(float));
@@ -42,14 +46,14 @@ void sbr_qmf_64_modulation_sse2(const SBRInfo *sbr, const faac_real * restrict p
         const float *cos_row = sbr->cos_table64F[n];
         const float *sin_row = sbr->sin_table64F[n];
 
-        for (k = 0; k < 64; k += 4) {
+        for (k = k0; k < k1; k += 4) {
             _mm_storeu_ps(&re_f[k], _mm_add_ps(_mm_loadu_ps(&re_f[k]), _mm_mul_ps(v_un, _mm_loadu_ps(&cos_row[k]))));
             _mm_storeu_ps(&im_f[k], _mm_add_ps(_mm_loadu_ps(&im_f[k]), _mm_mul_ps(v_un, _mm_loadu_ps(&sin_row[k]))));
         }
     }
 
     /* Convert back to faac_real (might be double). */
-    for (k = 0; k < 64; k++) {
+    for (k = k0; k < k1 && k < 64; k++) {
         re[k] = (faac_real)re_f[k];
         im[k] = (faac_real)im_f[k];
     }

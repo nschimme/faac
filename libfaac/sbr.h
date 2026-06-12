@@ -26,7 +26,7 @@ extern "C" {
 #define SBR_QMF_BANDS_64     64
 #define SBR_QMF_OVL_LEN_64   640
 #define SBR_MAX_BANDS        64
-#define SBR_NUM_ENVELOPES     1
+#define SBR_MAX_ENVELOPES     2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30
 
@@ -43,12 +43,19 @@ typedef struct SBRInfo {
     int kx;
     int k2;
     int dk;                /* Frequency table resolution (1 or 2) */
+    int numEnvelopes;      /* envelopes in the CURRENT frame (1 or 2), set by
+                              the transient detector in SBRAnalysis */
+    float transientThresh; /* slot peak/mean energy ratio for 2-env frames */
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
     int numNoiseBands;
     int noiseBandEdges[SBR_MAX_NOISE_BANDS + 1];
 
     int bs_amp_res;
+    int bs_freq_res;       /* envelope frequency resolution: 1 = HIGH (f_master) */
+    int eff_amp_res;       /* amp_res the decoder actually uses: forced to 0 for
+                              FIXFIX frames with a single envelope (ISO 14496-3,
+                              cf. FAAD2 sbr_huff.c) */
     int bs_start_freq;
     int bs_stop_freq;
     int bs_xover_band;
@@ -56,8 +63,9 @@ typedef struct SBRInfo {
 
     faac_real qmfOvl[MAX_CHANNELS][SBR_QMF_OVL_LEN];
     faac_real qmfOvl64[MAX_CHANNELS][SBR_QMF_OVL_LEN_64];
-    int envData  [MAX_CHANNELS][SBR_NUM_ENVELOPES][SBR_MAX_BANDS];
+    int envData  [MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
     int noiseData[MAX_CHANNELS][SBR_MAX_NOISE_BANDS];
+    int invfMode [MAX_CHANNELS];   /* bs_invf_mode 0..3, from spectral flatness */
 
     faac_real cos_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
     faac_real sin_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
