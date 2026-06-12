@@ -23,6 +23,125 @@
 #include "stereo.h"
 #include "huff2.h"
 
+/* Psychoacoustic and bitstream constants */
+#define IS_FREQ_LIMIT    6000     /* IS only above 6kHz */
+#define IS_PAN_LIMIT     30       /* Intensity panning limit in units */
+#define IS_STEP_CONST    (10/1.50515)
+#define THR075_CONST     (1.09 - 1.0)
+#define THRMAX_CONST     (1.25 - 1.0)
+#define SIDEMIN_CONST    0.1
+#define SIDEMAX_CONST    0.3
+#define ISTHR_CONST      0.18
+
+enum {PH_NONE, PH_IN, PH_OUT};
+
+/* Shared helper for energy accumulation and cross-correlation */
+static inline void accumulate_energies(faac_real * restrict enrgl_out,
+                                       faac_real * restrict enrgr_out,
+                                       faac_real * restrict enrg_corr_out,
+                                       const faac_real * restrict sl0,
+                                       const faac_real * restrict sr0,
+                                       int wstart, int wend, int start, int len)
+{
+    int win;
+    faac_real enrgl = 0.0;
+    faac_real enrgr = 0.0;
+    faac_real enrg_corr = 0.0;
+
+    for (win = wstart; win < wend; win++)
+    {
+        const faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+        const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+        int l;
+
+        for (l = 0; l < len; l++)
+        {
+            faac_real lx = sl[l];
+            faac_real rx = sr[l];
+
+            enrgl += lx * lx;
+            enrgr += rx * rx;
+            enrg_corr += lx * rx;
+        }
+    }
+    *enrgl_out = enrgl;
+    *enrgr_out = enrgr;
+    *enrg_corr_out = enrg_corr;
+}
+
+/* Shared helper for Mid/Side transform */
+static inline void apply_midside_transform(faac_real * restrict sl0,
+                                           faac_real * restrict sr0,
+                                           int wstart, int wend, int start, int len,
+                                           int phase)
+{
+    int win;
+    if (phase == PH_IN)
+    {
+        for (win = wstart; win < wend; win++)
+        {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+            int l;
+            for (l = 0; l < len; l++)
+            {
+                sl[l] = 0.5 * (sl[l] + sr[l]);
+                sr[l] = 0.0;
+            }
+        }
+    }
+    else
+    {
+        for (win = wstart; win < wend; win++)
+        {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+            int l;
+            for (l = 0; l < len; l++)
+            {
+                sr[l] = 0.5 * (sl[l] - sr[l]);
+                sl[l] = 0.0;
+            }
+        }
+    }
+}
+
+/* Shared helper for Intensity Stereo transform */
+static inline void apply_intensity_transform(faac_real * restrict sl0,
+                                             faac_real * restrict sr0,
+                                             int wstart, int wend, int start, int len,
+                                             int hcb, faac_real vfix, int clear_sr)
+{
+    int win;
+    if (hcb == HCB_INTENSITY)
+    {
+        for (win = wstart; win < wend; win++)
+        {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+            int l;
+            for (l = 0; l < len; l++)
+            {
+                sl[l] = (sl[l] + sr[l]) * vfix;
+                if (clear_sr) sr[l] = 0.0;
+            }
+        }
+    }
+    else
+    {
+        for (win = wstart; win < wend; win++)
+        {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+            int l;
+            for (l = 0; l < len; l++)
+            {
+                sl[l] = (sl[l] - sr[l]) * vfix;
+                if (clear_sr) sr[l] = 0.0;
+            }
+        }
+    }
+}
 
 static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                    faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
@@ -47,35 +166,17 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++)
     {
-        int win;
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrg_corr;
         int hcb = HCB_NONE;
-        const faac_real step = 10/1.50515;
         faac_real ethr;
         faac_real vfix, efix;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            int l;
-
-            for (l = 0; l < len; l++)
-            {
-                faac_real lx = sl[l];
-                faac_real rx = sr[l];
-
-                enrgl += lx * lx;
-                enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
-            }
-        }
-        enrgs = enrgl + enrgr + 2.0 * enrgs_minus_enrgd;
-        enrgd = enrgl + enrgr - 2.0 * enrgs_minus_enrgd;
+        accumulate_energies(&enrgl, &enrgr, &enrg_corr, sl0, sr0, wstart, wend, start, len);
+        enrgs = enrgl + enrgr + 2.0 * enrg_corr;
+        enrgd = enrgl + enrgr - 2.0 * enrg_corr;
 
         ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
         ethr *= ethr;
@@ -108,16 +209,16 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 (*sfcnt)++;
                 continue;
             }
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * IS_STEP_CONST);
+            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * IS_STEP_CONST) - sf;
 
-            if (pan > 30)
+            if (pan > IS_PAN_LIMIT)
             {
                 cl->book[*sfcnt] = HCB_ZERO;
                 (*sfcnt)++;
                 continue;
             }
-            if (pan < -30)
+            if (pan < -IS_PAN_LIMIT)
             {
                 cr->book[*sfcnt] = HCB_ZERO;
                 (*sfcnt)++;
@@ -127,32 +228,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             cr->sf[*sfcnt] = -pan;
             cr->book[*sfcnt] = hcb;
 
-            if (hcb == HCB_INTENSITY)
-            {
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                    const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
-                    {
-                        sl[l] = (sl[l] + sr[l]) * vfix;
-                    }
-                }
-            }
-            else
-            {
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                    const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
-                    {
-                        sl[l] = (sl[l] - sr[l]) * vfix;
-                    }
-                }
-            }
+            apply_intensity_transform(sl0, sr0, wstart, wend, start, len, hcb, vfix, 0);
         }
         (*sfcnt)++;
     }
@@ -180,35 +256,17 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
     for (sfb = sfmin; sfb < coder->sfbn; sfb++)
     {
         int ms = 0;
-        int win;
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrg_corr;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            int l;
-
-            for (l = 0; l < len; l++)
-            {
-                faac_real lx = sl[l];
-                faac_real rx = sr[l];
-
-                enrgl += lx * lx;
-                enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
-            }
-        }
-        enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrgs_minus_enrgd);
-        enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrgs_minus_enrgd);
+        accumulate_energies(&enrgl, &enrgr, &enrg_corr, sl0, sr0, wstart, wend, start, len);
+        enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrg_corr);
+        enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrg_corr);
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;
 
             if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
@@ -224,34 +282,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 
             if (ms)
             {
-                if (phase == PH_IN)
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl[l] = 0.5 * (sl[l] + sr[l]);
-                            sr[l] = 0.0;
-                        }
-                    }
-                }
-                else
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sr[l] = 0.5 * (sl[l] - sr[l]);
-                            sl[l] = 0.0;
-                        }
-                    }
-                }
+                apply_midside_transform(sl0, sr0, wstart, wend, start, len, phase);
             }
         }
 
@@ -259,21 +290,19 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         {
             if (enrgl < enrgr)
             {
-                for (win = wstart; win < wend; win++)
+                for (int win = wstart; win < wend; win++)
                 {
                     faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
+                    for (int l = 0; l < len; l++)
                         sl[l] = 0.0;
                 }
             }
             else
             {
-                for (win = wstart; win < wend; win++)
+                for (int win = wstart; win < wend; win++)
                 {
                     faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
+                    for (int l = 0; l < len; l++)
                         sr[l] = 0.0;
                 }
             }
@@ -311,32 +340,15 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
     for (sfb = sfmin; sfb < cl->sfbn; sfb++)
     {
         int ms = 0;
-        int win;
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrg_corr;
         faac_real efix;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            int l;
-
-            for (l = 0; l < len; l++)
-            {
-                faac_real lx = sl[l];
-                faac_real rx = sr[l];
-
-                enrgl += lx * lx;
-                enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
-            }
-        }
-        enrgs = enrgl + enrgr + 2.0 * enrgs_minus_enrgd;
-        enrgd = enrgl + enrgr - 2.0 * enrgs_minus_enrgd;
+        accumulate_energies(&enrgl, &enrgr, &enrg_corr, sl0, sr0, wstart, wend, start, len);
+        enrgs = enrgl + enrgr + 2.0 * enrg_corr;
+        enrgd = enrgl + enrgr - 2.0 * enrg_corr;
 
         efix = enrgl + enrgr;
         /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
@@ -352,7 +364,6 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         if ((sfb >= is_start_sfb) && (enrgl > 0.0) && (enrgr > 0.0))
         {
             int hcb = HCB_NONE;
-            const faac_real step = 10/1.50515;
             faac_real ethr;
             faac_real vfix;
 
@@ -373,16 +384,16 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (hcb != HCB_NONE)
             {
-                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * IS_STEP_CONST);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * IS_STEP_CONST) - sf;
 
-                if (pan > 30)
+                if (pan > IS_PAN_LIMIT)
                 {
                     cl->book[*sfcnt] = HCB_ZERO;
                     channel->msInfo.ms_used[(*sfcnt)++] = 0;
                     continue;
                 }
-                if (pan < -30)
+                if (pan < -IS_PAN_LIMIT)
                 {
                     cr->book[*sfcnt] = HCB_ZERO;
                     channel->msInfo.ms_used[(*sfcnt)++] = 0;
@@ -393,34 +404,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
-                if (hcb == HCB_INTENSITY)
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl[l] = (sl[l] + sr[l]) * vfix;
-                            sr[l] = 0.0;
-                        }
-                    }
-                }
-                else
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl[l] = (sl[l] - sr[l]) * vfix;
-                            sr[l] = 0.0;
-                        }
-                    }
-                }
+                apply_intensity_transform(sl0, sr0, wstart, wend, start, len, hcb, vfix, 1);
                 continue;
             }
         }
@@ -429,7 +413,6 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
          * factor of midside(), hence the 0.25 energy compensation. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
-            enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;
 
             if ((enrgs * 0.25 * thrmid * 2.0) >= (enrgl + enrgr))
@@ -446,34 +429,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             if (ms)
             {
                 msused = 1;
-                if (phase == PH_IN)
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl[l] = 0.5 * (sl[l] + sr[l]);
-                            sr[l] = 0.0;
-                        }
-                    }
-                }
-                else
-                {
-                    for (win = wstart; win < wend; win++)
-                    {
-                        faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                        faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sr[l] = 0.5 * (sl[l] - sr[l]);
-                            sl[l] = 0.0;
-                        }
-                    }
-                }
+                apply_midside_transform(sl0, sr0, wstart, wend, start, len, phase);
             }
         }
 
@@ -481,21 +437,19 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         {
             if (enrgl < enrgr)
             {
-                for (win = wstart; win < wend; win++)
+                for (int win = wstart; win < wend; win++)
                 {
                     faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
+                    for (int l = 0; l < len; l++)
                         sl[l] = 0.0;
                 }
             }
             else
             {
-                for (win = wstart; win < wend; win++)
+                for (int win = wstart; win < wend; win++)
                 {
                     faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                    int l;
-                    for (l = 0; l < len; l++)
+                    for (int l = 0; l < len; l++)
                         sr[l] = 0.0;
                 }
             }
@@ -518,10 +472,6 @@ void AACstereo(CoderInfo *coder,
               )
 {
     int chn;
-    static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
-    static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
@@ -533,32 +483,32 @@ void AACstereo(CoderInfo *coder,
     switch (mode)
     {
     case JOINT_MIXED:
-        thrmid = (thr075 * 0.5) / quality;
-        if (thrmid > thrmax)
-            thrmid = thrmax;
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
+        thrmid = (THR075_CONST * 0.5) / quality;
+        if (thrmid > THRMAX_CONST)
+            thrmid = THRMAX_CONST;
+        thrside = SIDEMIN_CONST / quality;
+        if (thrside > SIDEMAX_CONST)
+            thrside = SIDEMAX_CONST;
         thrmid += 1.0;
 
-        isthr = 0.18 / (quality * quality);
+        isthr = ISTHR_CONST / (quality * quality);
         isthr += 1.0;
         if (isthr > isthrmax + 1.0)
             isthr = isthrmax + 1.0;
         break;
     case JOINT_MS:
-        thrmid = thr075 / quality;
-        if (thrmid > thrmax)
-            thrmid = thrmax;
+        thrmid = THR075_CONST / quality;
+        if (thrmid > THRMAX_CONST)
+            thrmid = THRMAX_CONST;
 
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
+        thrside = SIDEMIN_CONST / quality;
+        if (thrside > SIDEMAX_CONST)
+            thrside = SIDEMAX_CONST;
 
         thrmid += 1.0;
         break;
     case JOINT_IS:
-        isthr = 0.18 / (quality * quality);
+        isthr = ISTHR_CONST / (quality * quality);
         isthr += 1.0;
         if (isthr > isthrmax + 1.0)
             isthr = isthrmax + 1.0;
@@ -633,7 +583,6 @@ void AACstereo(CoderInfo *coder,
 
         if (mode == JOINT_MIXED)
         {
-            enum {IS_FREQ_LIMIT = 6000}; /* IS only above 6kHz */
             int sfb;
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
