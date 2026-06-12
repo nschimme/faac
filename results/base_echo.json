@@ -1,0 +1,24 @@
+{
+  "sha": null,
+  "matrix": {
+    "voip_C_24_ECHO_FA.wav": {
+      "mos": 2.9299416542053223,
+      "size": 17956,
+      "bitrate": 16.14748201438849,
+      "bitrate_target": 16,
+      "time": 0.010890483856201172,
+      "md5": "844f916fb5ddaed580e3f263d69b17df",
+      "thresh": 2.5,
+      "scenario": "voip",
+      "filename": "C_24_ECHO_FA.wav"
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.8301444970002194,
+    "silence.wav": 1.9005643459998585,
+    "sine.wav": 2.740910304000257,
+    "sweep.wav": 2.9765488839996883,
+    "overall": 2.6120420077500057
+  },
+  "lib_size": 83032
+}

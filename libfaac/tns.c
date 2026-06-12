@@ -118,6 +118,10 @@ void TnsInit(faacEncStruct* hEncoder)
             tnsInfo->tnsMaxOrderLong = 6;
         } else if (bitratePerCh >= 96000) {
             tnsInfo->tnsMaxOrderLong = 8;
+        } else {
+            tnsInfo->tnsMaxOrderLong = 8;
+        }
+            tnsInfo->tnsMaxOrderLong = 8;
         } else if (bitratePerCh >= 64000) {
             tnsInfo->tnsMaxOrderLong = 10;
         } else {
@@ -349,7 +353,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand;    /* Bands over which to apply TNS */
-    int w;
+    int w, i;
     int startIndex,length;
 
     switch( blockType ) {
