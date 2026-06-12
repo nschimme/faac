@@ -302,7 +302,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
-            tnsFilter->coefCompress = 0;
+            {
+                int ci, can_compress = 1;
+                for (ci = 1; ci <= truncatedOrder; ci++)
+                    if (tnsFilter->index[ci] < -4 || tnsFilter->index[ci] > 3)
+                        { can_compress = 0; break; }
+                tnsFilter->coefCompress = can_compress;
+            }
             tnsFilter->length = lengthInBands;
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);
