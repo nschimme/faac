@@ -50,7 +50,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     else
         sfmin = 8;
 
-    (*sfcnt) += sfmin;
+    for (sfb = 0; sfb < sfmin; sfb++)
+    {
+        (*sfcnt)++;
+    }
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++)
     {
@@ -563,7 +566,7 @@ void AACstereo(CoderInfo *coder,
     switch (mode)
     {
     case JOINT_MIXED:
-        thrmid = (thr075 * 0.5) / quality;
+        thrmid = (thr075 * 0.85) / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
         thrside = sidemin / quality;
@@ -571,7 +574,7 @@ void AACstereo(CoderInfo *coder,
             thrside = sidemax;
         thrmid += 1.0;
 
-        isthr = 0.18 / (quality * quality);
+        isthr = 0.18 / quality;
         isthr += 1.0;
         if (isthr > isthrmax + 1.0)
             isthr = isthrmax + 1.0;
@@ -663,7 +666,7 @@ void AACstereo(CoderInfo *coder,
 
         if (mode == JOINT_MIXED)
         {
-            enum {IS_FREQ_LIMIT = 6000}; /* IS only above 6kHz */
+            enum {IS_FREQ_LIMIT = 5500}; /* IS only above 5.5kHz */
             int sfb;
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
