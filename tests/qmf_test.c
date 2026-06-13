@@ -13,6 +13,7 @@
 
 #include "libfaac/sbr.h"
 #include "libfaac/sbr_internal.h"
+#include "libfaac/sbr_tables.h"
 #include "qmf_oracle.h"
 
 #define SLOT   32
@@ -110,6 +111,55 @@ static faac_real *noise_buf(int n_slots)
     return b;
 }
 
+/* Reference for the 64-band analysis: same 640-tap polyphase window, but
+ * direct (slow) modulation with libm trig instead of the production FFT
+ * factorization. Returns worst-band energy error in dB across n_slots of
+ * 64 samples. */
+static double run_case_64(const char *name, const faac_real *input, int n_slots)
+{
+    SBRInfo *sbr = make_sbr();
+    int kx = sbr->kx, k2 = sbr->k2;
+    faac_real refovl[640] = {0};
+    double ref_acc = 0, worst = -1e9;
+    int worst_k = -1;
+    double band_err[64] = {0};
+
+    for (int s = 0; s < n_slots; s++) {
+        faac_real energy[64];
+        qmf_analysis_64_slot_energy_test(sbr, input + s * 64, sbr->qmfOvl64[0], energy, kx, k2);
+
+        memmove(refovl, refovl + 64, (640 - 64) * sizeof(faac_real));
+        memcpy(refovl + 640 - 64, input + s * 64, 64 * sizeof(faac_real));
+        double un[128];
+        for (int n = 0; n < 128; n++)
+            un[n] = (double)sbr_qmf_window_us640[n] * refovl[639 - n] +
+                    (double)sbr_qmf_window_us640[n + 128] * refovl[511 - n] +
+                    (double)sbr_qmf_window_us640[n + 256] * refovl[383 - n] +
+                    (double)sbr_qmf_window_us640[n + 384] * refovl[255 - n] +
+                    (double)sbr_qmf_window_us640[n + 512] * refovl[127 - n];
+        for (int k = kx; k < k2; k++) {
+            double re = 0, im = 0;
+            for (int n = 0; n < 128; n++) {
+                double ph = M_PI * (2 * k + 1) * (2 * n - 127) / 256.0;
+                re += un[n] * cos(ph);
+                im += un[n] * sin(ph);
+            }
+            double Eref = re * re + im * im;
+            double d = (double)energy[k] - Eref;
+            band_err[k] += d * d;
+            ref_acc += Eref;
+        }
+    }
+    double ref_mean = ref_acc / ((k2 - kx) * n_slots) + 1e-30;
+    for (int k = kx; k < k2; k++) {
+        double db = 20.0 * log10(sqrt(band_err[k] / n_slots) / (ref_mean + 1e-30) + 1e-30);
+        if (db > worst) { worst = db; worst_k = k; }
+    }
+    printf("  [%s] worst-band err = %+7.2f dB (band %d)\n", name, worst, worst_k);
+    SBREnd(sbr);
+    return worst;
+}
+
 int main(void)
 {
     double threshold_db = -40.0;
@@ -139,6 +189,24 @@ int main(void)
     {
         faac_real *b = noise_buf(NSLOTS);
         double w = run_case("white noise", b, NSLOTS);
+        if (w > threshold_db) failed++;
+        free(b);
+    }
+
+    /* 64-band FFT analysis path vs direct modulation reference. The 64-band
+     * path consumes 64 full-rate samples per slot; band k centre is at
+     * (k + 0.5)/128 cycles/sample. */
+    {
+        int ks[] = { 35, 45 };
+        for (size_t i = 0; i < sizeof(ks)/sizeof(ks[0]); i++) {
+            char name[40]; snprintf(name, sizeof(name), "64-band tone k=%d", ks[i]);
+            faac_real *b = tone_buf(NSLOTS * 2, (ks[i] + 0.5) / 128.0);
+            double w = run_case_64(name, b, NSLOTS);
+            if (w > threshold_db) failed++;
+            free(b);
+        }
+        faac_real *b = noise_buf(NSLOTS * 2);
+        double w = run_case_64("64-band noise", b, NSLOTS);
         if (w > threshold_db) failed++;
         free(b);
     }

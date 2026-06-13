@@ -14,6 +14,7 @@
 
 #include "faac_real.h"
 #include "coder.h"
+#include "fft.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,14 +70,17 @@ typedef struct SBRInfo {
 
     faac_real cos_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
     faac_real sin_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
-    faac_real cos_table64T[128][SBR_QMF_BANDS_64];
-    faac_real sin_table64T[128][SBR_QMF_BANDS_64];
-    float cos_table64F[128][SBR_QMF_BANDS_64];
-    float sin_table64F[128][SBR_QMF_BANDS_64];
 
-    void (*qmf_64_mod)(const struct SBRInfo *sbr, const faac_real * restrict proto,
-                       const faac_real * restrict ovl, faac_real * restrict re,
-                       faac_real * restrict im);
+    /* 64-band analysis via a single 64-point complex FFT (see
+     * qmf_analysis_64_slot_energy): even/odd samples of the real window
+     * output are packed into one complex sequence, pre-twiddled by
+     * exp(-j*pi*m/64), and the odd-frequency spectrum is recovered from the
+     * conjugate symmetry of the bins. */
+    faac_real twidCos[64];   /* cos(pi*m/64) */
+    faac_real twidSin[64];   /* sin(pi*m/64) */
+    faac_real oddCos[64];    /* cos(pi*(2k+1)/128) */
+    faac_real oddSin[64];    /* sin(pi*(2k+1)/128) */
+    FFT_Tables fftTables;
 } SBRInfo;
 
 SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate);

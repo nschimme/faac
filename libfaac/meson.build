@@ -15,13 +15,6 @@ if config_h.get('HAVE_SSE2')
         gnu_symbol_visibility: 'hidden'
     )
     libfaac_simd_objs += quantize_sse.extract_all_objects()
-
-    sbr_sse = static_library('sbr_sse', 'sbr_sse.c',
-        include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag,
-        gnu_symbol_visibility: 'hidden'
-    )
-    libfaac_simd_objs += sbr_sse.extract_all_objects()
 endif
 
 common_src = [
