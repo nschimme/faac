@@ -23,14 +23,10 @@
 #include "stereo.h"
 #include "huff2.h"
 
-#ifndef min
-#define min(a, b) ((a) < (b) ? (a) : (b))
-#endif
-#ifndef max
-#define max(a, b) ((a) > (b) ? (a) : (b))
-#endif
 
-
+/* Intensity Stereo: send one combined channel + per-band L/R level ratio;
+ * the decoder re-pans it. Discards inter-channel phase, so it is gated by
+ * phthr and skipped on low bands where phase still matters. */
 static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                    faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                    int wstart, int wend, faac_real phthr
@@ -45,6 +41,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
     phthr = 1.0 / phthr;
 
+    /* low bands skip IS: phase still audible there */
     if (cl->block_type == ONLY_SHORT_WINDOW)
         sfmin = 1;
     else
@@ -61,7 +58,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrglr;
         int hcb = HCB_NONE;
         const faac_real step = 10/1.50515;
         faac_real ethr;
@@ -69,7 +66,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         const faac_real * restrict sl_ptr = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real * restrict sr_ptr = sr0 + wstart * BLOCK_LEN_SHORT + start;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
+        /* one pass: accumulate L/R energies and the L*R cross term, then
+         * derive sum/diff energies via |l+-r|^2 = l^2 + r^2 +- 2*l*r */
+        enrgl = enrgr = enrglr = 0.0;
         for (win = wstart; win < wend; win++)
         {
             int l;
@@ -80,14 +79,16 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
+                enrglr += lx * rx;
             }
             sl_ptr += BLOCK_LEN_SHORT;
             sr_ptr += BLOCK_LEN_SHORT;
         }
-        enrgs = enrgl + enrgr + 2.0 * enrgs_minus_enrgd;
-        enrgd = enrgl + enrgr - 2.0 * enrgs_minus_enrgd;
+        enrgs = enrgl + enrgr + 2.0 * enrglr;
+        enrgd = enrgl + enrgr - 2.0 * enrglr;
 
+        /* IS pays off when one phase collapses most energy into a single
+         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
         ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
         ethr *= ethr;
         ethr *= phthr;
@@ -99,6 +100,8 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             (*sfcnt)++;
             continue;
         }
+        /* in-phase (l+r) vs out-of-phase (l-r); vfix renormalises the kept
+         * channel so its energy matches the original L+R total */
         if (enrgs >= ethr)
         {
             hcb = HCB_INTENSITY;
@@ -119,9 +122,13 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 (*sfcnt)++;
                 continue;
             }
+            /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
+             * the intensity position the decoder uses to re-spread the band */
             int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
             int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
 
+            /* pan beyond +-30 steps: the quieter channel is inaudible,
+             * so drop it entirely (HCB_ZERO) instead of IS-coding */
             if (pan > 30)
             {
                 cl->book[*sfcnt] = HCB_ZERO;
@@ -173,6 +180,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     }
 }
 
+/* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R. Lossless when
+ * both are kept; here a near-silent side is dropped to save bits, gated by
+ * thrmid. thrside additionally zeroes a channel that is far quieter. */
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
@@ -199,11 +209,11 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrglr;
         const faac_real * restrict sl_ptr = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real * restrict sr_ptr = sr0 + wstart * BLOCK_LEN_SHORT + start;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
+        enrgl = enrgr = enrglr = 0.0;
         for (win = wstart; win < wend; win++)
         {
             int l;
@@ -214,19 +224,23 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
+                enrglr += lx * rx;
             }
             sl_ptr += BLOCK_LEN_SHORT;
             sr_ptr += BLOCK_LEN_SHORT;
         }
-        enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrgs_minus_enrgd);
-        enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrgs_minus_enrgd);
+        /* 0.25 = the (1/2)^2 from the mid/side half-scaling */
+        enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
+        enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
             enum {PH_NONE, PH_IN, PH_OUT};
             int phase = PH_NONE;
 
+            /* keep whichever of mid/side holds nearly all the energy and
+             * drop the other; in-phase content collapses to mid, anti-phase
+             * to side */
             if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
             {
                 ms = 1;
@@ -275,6 +289,8 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
             }
         }
 
+        /* one channel far quieter than the other: zero it (the louder one
+         * masks the loss) */
         if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
         {
             if (enrgl < enrgr)
@@ -337,12 +353,12 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         int start = sfb_offset[sfb];
         int end = sfb_offset[sfb + 1];
         int len = end - start;
-        faac_real enrgs, enrgd, enrgl, enrgr, enrgs_minus_enrgd;
+        faac_real enrgs, enrgd, enrgl, enrgr, enrglr;
         faac_real efix;
         const faac_real * restrict sl_ptr = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real * restrict sr_ptr = sr0 + wstart * BLOCK_LEN_SHORT + start;
 
-        enrgl = enrgr = enrgs_minus_enrgd = 0.0;
+        enrgl = enrgr = enrglr = 0.0;
         for (win = wstart; win < wend; win++)
         {
             int l;
@@ -353,13 +369,13 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;
-                enrgs_minus_enrgd += lx * rx;
+                enrglr += lx * rx;
             }
             sl_ptr += BLOCK_LEN_SHORT;
             sr_ptr += BLOCK_LEN_SHORT;
         }
-        enrgs = enrgl + enrgr + 2.0 * enrgs_minus_enrgd;
-        enrgd = enrgl + enrgr - 2.0 * enrgs_minus_enrgd;
+        enrgs = enrgl + enrgr + 2.0 * enrglr;
+        enrgd = enrgl + enrgr - 2.0 * enrglr;
 
         efix = enrgl + enrgr;
         /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
@@ -563,9 +579,13 @@ void AACstereo(CoderInfo *coder,
     thrside = 0.0;
     isthr = 1.0;
 
+    /* all thresholds loosen as quality drops (divide by quality) and are
+     * clamped so aggressive joint coding never kicks in at high quality */
     switch (mode)
     {
     case JOINT_MIXED:
+        /* 0.85x tighter M/S than pure JOINT_MS (IS carries the rest); linear
+         * isthr (not quality^2) keeps more phase at low quality */
         thrmid = (thr075 * 0.85) / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
@@ -664,6 +684,8 @@ void AACstereo(CoderInfo *coder,
             channel[rch].msInfo.is_present = 1;
         }
 
+        /* find the first SFB at/above 5.5 kHz; mixed() does IS from here up,
+         * M/S below, where phase still carries the stereo image */
         if (mode == JOINT_MIXED)
         {
             enum {IS_FREQ_LIMIT = 5500}; /* IS only above 5.5kHz */
@@ -674,6 +696,7 @@ void AACstereo(CoderInfo *coder,
             is_start_sfb = coder[chn].sfbn;
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++)
             {
+                /* bin center -> Hz: offset * fs / mdctlen */
                 int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen;
                 if (freq >= IS_FREQ_LIMIT)
                 {
