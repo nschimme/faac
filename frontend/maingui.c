@@ -153,16 +153,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             /* set encoder configuration */
             faacEncConfigurationPtr config = faacEncGetCurrentConfiguration(hEncoder);
 
-            {
-                LRESULT curSel = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
-                switch (curSel) {
-                case 0:  config->jointmode = JOINT_NONE;  break;
-                case 1:  config->jointmode = JOINT_MS;    break;
-                case 2:  config->jointmode = JOINT_IS;    break;
-                case 3:  config->jointmode = JOINT_MIXED; break;
-                default: config->jointmode = JOINT_MIXED; break;
-                }
-            }
+            config->jointmode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
             config->useTns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED ? 1 : 0;
             config->useLfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
             config->outputFormat = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? 0 : 1;

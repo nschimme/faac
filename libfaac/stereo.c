@@ -24,9 +24,10 @@
 #include "stereo.h"
 #include "huff2.h"
 
-#define IS_FREQ_LIMIT 6000
-#define IS_PAN_LIMIT 30
-#define IS_STEP_CONST (6.643856189774724)
+/* Psychoacoustic and bitstream constants */
+#define IS_FREQ_LIMIT    6000
+#define IS_PAN_LIMIT     30
+#define IS_STEP_CONST    (6.643856189774724)
 
 enum {PH_NONE, PH_IN, PH_OUT};
 
@@ -35,58 +36,51 @@ static void stereo(CoderInfo * __restrict cl, CoderInfo * __restrict cr,
                    int wstart, int wend, faac_real phthr
                   )
 {
-    int sfb, sfmin;
-    const int * __restrict sfb_offset = cl->sfb_offset;
-
     if (!phthr) return;
     phthr = 1.0 / phthr;
-
-    sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
+    int sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
+    const int * __restrict sfb_offset = cl->sfb_offset;
     (*sfcnt) += sfmin;
 
-    for (sfb = sfmin; sfb < cl->sfbn; sfb++)
-    {
-        int win, start = sfb_offset[sfb], end = sfb_offset[sfb + 1];
-        faac_real enrgs = 0, enrgd = 0, enrgl = 0, enrgr = 0, efix, vfix, ethr;
-        int hcb = HCB_NONE;
-
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * __restrict sl = sl0 + win * 128;
-            const faac_real * __restrict sr = sr0 + win * 128;
-            for (int l = start; l < end; l++)
-            {
+    for (int sfb = sfmin; sfb < cl->sfbn; sfb++) {
+        int start = sfb_offset[sfb], end = sfb_offset[sfb + 1], len = end - start;
+        faac_real enrgs = 0, enrgd = 0, enrgl = 0, enrgr = 0;
+        for (int win = wstart; win < wend; win++) {
+            const faac_real * __restrict sl = sl0 + win * 128 + start;
+            const faac_real * __restrict sr = sr0 + win * 128 + start;
+            for (int l = 0; l < len; l++) {
                 faac_real lx = sl[l], rx = sr[l];
                 faac_real s = lx + rx, d = lx - rx;
                 enrgs += s * s; enrgd += d * d;
                 enrgl += lx * lx; enrgr += rx * rx;
             }
         }
-
-        ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
-        ethr *= ethr * phthr;
-        efix = enrgl + enrgr;
-
+        faac_real efix = enrgl + enrgr;
         if (efix <= 0.0) { (*sfcnt)++; continue; }
+        faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
+        ethr *= ethr * phthr;
+        int hcb = HCB_NONE; faac_real vfix;
         if (enrgs >= ethr) { hcb = HCB_INTENSITY; vfix = FAAC_SQRT(efix / enrgs); }
         else if (enrgd >= ethr) { hcb = HCB_INTENSITY2; vfix = FAAC_SQRT(efix / enrgd); }
 
-        if (hcb != HCB_NONE)
-        {
-            if (enrgl == 0.0 || enrgr == 0.0) { (*sfcnt)++; continue; }
+        if (hcb != HCB_NONE && enrgl > 0.0 && enrgr > 0.0) {
             int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * IS_STEP_CONST);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * IS_STEP_CONST) - sf;
-
+            int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * IS_STEP_CONST) - sf;
             if (pan > IS_PAN_LIMIT) { cl->book[*sfcnt] = HCB_ZERO; (*sfcnt)++; continue; }
             if (pan < -IS_PAN_LIMIT) { cr->book[*sfcnt] = HCB_ZERO; (*sfcnt)++; continue; }
             cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan; cl->book[*sfcnt] = hcb;
-
-            for (win = wstart; win < wend; win++)
-            {
-                faac_real * __restrict sl = sl0 + win * 128;
-                const faac_real * __restrict sr = sr0 + win * 128;
-                if (hcb == HCB_INTENSITY) for (int l = start; l < end; l++) sl[l] = (sl[l] + sr[l]) * vfix;
-                else for (int l = start; l < end; l++) sl[l] = (sl[l] - sr[l]) * vfix;
+            if (hcb == HCB_INTENSITY) {
+                for (int win = wstart; win < wend; win++) {
+                    faac_real * __restrict sl = sl0 + win * 128 + start;
+                    const faac_real * __restrict sr = sr0 + win * 128 + start;
+                    for (int l = 0; l < len; l++) sl[l] = (sl[l] + sr[l]) * vfix;
+                }
+            } else {
+                for (int win = wstart; win < wend; win++) {
+                    faac_real * __restrict sl = sl0 + win * 128 + start;
+                    const faac_real * __restrict sr = sr0 + win * 128 + start;
+                    for (int l = 0; l < len; l++) sl[l] = (sl[l] - sr[l]) * vfix;
+                }
             }
         }
         (*sfcnt)++;
@@ -95,67 +89,43 @@ static void stereo(CoderInfo * __restrict cl, CoderInfo * __restrict cr,
 
 static void midside(CoderInfo * __restrict coder, ChannelInfo * __restrict channel,
                     faac_real * __restrict sl0, faac_real * __restrict sr0, int * __restrict sfcnt,
-                    int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
-                   )
+                    int wstart, int wend, faac_real thrmid, faac_real thrside)
 {
-    int sfb, sfmin;
+    int sfmin = (coder->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     const int * __restrict sfb_offset = coder->sfb_offset;
-    sfmin = (coder->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
-    for (sfb = 0; sfb < sfmin; sfb++) channel->msInfo.ms_used[(*sfcnt)++] = 0;
-
-    for (sfb = sfmin; sfb < coder->sfbn; sfb++)
-    {
-        int win, ms = 0, start = sfb_offset[sfb], end = sfb_offset[sfb + 1];
+    for (int sfb = 0; sfb < sfmin; sfb++) channel->msInfo.ms_used[(*sfcnt)++] = 0;
+    for (int sfb = sfmin; sfb < coder->sfbn; sfb++) {
+        int start = sfb_offset[sfb], end = sfb_offset[sfb + 1], len = end - start;
         faac_real enrgs = 0, enrgd = 0, enrgl = 0, enrgr = 0;
-
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * __restrict sl = sl0 + win * 128;
-            const faac_real * __restrict sr = sr0 + win * 128;
-            for (int l = start; l < end; l++)
-            {
+        for (int win = wstart; win < wend; win++) {
+            const faac_real * __restrict sl = sl0 + win * 128 + start;
+            const faac_real * __restrict sr = sr0 + win * 128 + start;
+            for (int l = 0; l < len; l++) {
                 faac_real lx = sl[l], rx = sr[l];
                 faac_real s = 0.5 * (lx + rx), d = 0.5 * (lx - rx);
                 enrgs += s * s; enrgd += d * d;
                 enrgl += lx * lx; enrgr += rx * rx;
             }
         }
-
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
-        {
+        int ms = 0;
+        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd)) {
             int phase = PH_NONE;
             if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr)) { ms = 1; phase = PH_IN; }
             else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr)) { ms = 1; phase = PH_OUT; }
-
-            if (ms)
-            {
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real * __restrict sl = sl0 + win * 128;
-                    faac_real * __restrict sr = sr0 + win * 128;
-                    for (int l = start; l < end; l++)
-                    {
-                        if (phase == PH_IN) { faac_real m = sl[l] + sr[l]; sl[l] = 0.5 * m; sr[l] = 0; }
-                        else { faac_real d = sl[l] - sr[l]; sr[l] = 0.5 * d; sl[l] = 0; }
+            if (ms) {
+                for (int win = wstart; win < wend; win++) {
+                    faac_real * __restrict sl = sl0 + win * 128 + start, * __restrict sr = sr0 + win * 128 + start;
+                    for (int l = 0; l < len; l++) {
+                        faac_real lx = sl[l], rx = sr[l];
+                        if (phase == PH_IN) { sl[l] = 0.5 * (lx + rx); sr[l] = 0.0; }
+                        else { sl[l] = 0.0; sr[l] = 0.5 * (lx - rx); }
                     }
                 }
             }
         }
-
-        if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
-        {
-            if (enrgl < enrgr) {
-                for (win = wstart; win < wend; win++) {
-                    faac_real * __restrict sl = sl0 + win * 128;
-                    for (int l = start; l < end; l++) sl[l] = 0.0;
-                }
-            } else {
-                for (win = wstart; win < wend; win++) {
-                    faac_real * __restrict sr = sr0 + win * 128;
-                    for (int l = start; l < end; l++) sr[l] = 0.0;
-                }
-            }
+        if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))) {
+            if (enrgl < enrgr) for (int win = wstart; win < wend; win++) { faac_real * __restrict sl = sl0 + win * 128 + start; for (int l = 0; l < len; l++) sl[l] = 0.0; }
+            else for (int win = wstart; win < wend; win++) { faac_real * __restrict sr = sr0 + win * 128 + start; for (int l = 0; l < len; l++) sr[l] = 0.0; }
         }
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
     }
@@ -163,93 +133,70 @@ static void midside(CoderInfo * __restrict coder, ChannelInfo * __restrict chann
 
 static int mixed(CoderInfo * __restrict cl, CoderInfo * __restrict cr, ChannelInfo * __restrict channel,
                  faac_real * __restrict sl0, faac_real * __restrict sr0, int * __restrict sfcnt,
-                 int wstart, int wend,
-                 faac_real thrmid, faac_real thrside, faac_real isthr,
-                 int is_start_sfb
-                )
+                 int wstart, int wend, faac_real thrmid, faac_real thrside, faac_real isthr, int is_start_sfb)
 {
-    int sfb, sfmin, msused = 0;
+    int sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     const int * __restrict sfb_offset = cl->sfb_offset;
-    sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
-    for (sfb = 0; sfb < sfmin; sfb++) channel->msInfo.ms_used[(*sfcnt)++] = 0;
-
-    for (sfb = sfmin; sfb < cl->sfbn; sfb++)
-    {
-        int win, ms = 0, start = sfb_offset[sfb], end = sfb_offset[sfb + 1];
-        faac_real enrgs = 0, enrgd = 0, enrgl = 0, enrgr = 0, efix;
-
-        for (win = wstart; win < wend; win++)
-        {
-            const faac_real * __restrict sl = sl0 + win * 128;
-            const faac_real * __restrict sr = sr0 + win * 128;
-            for (int l = start; l < end; l++)
-            {
+    for (int sfb = 0; sfb < sfmin; sfb++) channel->msInfo.ms_used[(*sfcnt)++] = 0;
+    int msused = 0;
+    for (int sfb = sfmin; sfb < cl->sfbn; sfb++) {
+        int start = sfb_offset[sfb], end = sfb_offset[sfb + 1], len = end - start;
+        faac_real enrgs = 0, enrgd = 0, enrgl = 0, enrgr = 0;
+        for (int win = wstart; win < wend; win++) {
+            const faac_real * __restrict sl = sl0 + win * 128 + start;
+            const faac_real * __restrict sr = sr0 + win * 128 + start;
+            for (int l = 0; l < len; l++) {
                 faac_real lx = sl[l], rx = sr[l];
-                faac_real s = lx + rx, d = lx - rx;
-                enrgs += s * s; enrgd += d * d;
+                faac_real sum = lx + rx, diff = lx - rx;
+                enrgs += sum * sum; enrgd += diff * diff;
                 enrgl += lx * lx; enrgr += rx * rx;
             }
         }
-        efix = enrgl + enrgr;
+        faac_real efix = enrgl + enrgr;
         if (efix <= 0.0) { channel->msInfo.ms_used[(*sfcnt)++] = 0; continue; }
-
-        if ((sfb >= is_start_sfb) && (enrgl > 0.0) && (enrgr > 0.0))
-        {
+        int ms = 0;
+        if (sfb >= is_start_sfb && enrgl > 0.0 && enrgr > 0.0) {
             faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr)); ethr = (ethr * ethr) / isthr;
             int hcb = HCB_NONE; faac_real vfix;
             if (enrgs >= ethr) { hcb = HCB_INTENSITY; vfix = FAAC_SQRT(efix / enrgs); }
             else if (enrgd >= ethr) { hcb = HCB_INTENSITY2; vfix = FAAC_SQRT(efix / enrgd); }
-
-            if (hcb != HCB_NONE)
-            {
+            if (hcb != HCB_NONE) {
                 int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * IS_STEP_CONST);
                 int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * IS_STEP_CONST) - sf;
                 if (pan > 30) { cl->book[*sfcnt] = HCB_ZERO; channel->msInfo.ms_used[(*sfcnt)++] = 0; continue; }
                 if (pan < -30) { cr->book[*sfcnt] = HCB_ZERO; channel->msInfo.ms_used[(*sfcnt)++] = 0; continue; }
                 cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan; cl->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real * __restrict sl = sl0 + win * 128;
-                    faac_real * __restrict sr = sr0 + win * 128;
-                    if (hcb == HCB_INTENSITY) for (int l = start; l < end; l++) { sl[l] = (sl[l] + sr[l]) * vfix; sr[l] = 0.0; }
-                    else for (int l = start; l < end; l++) { sl[l] = (sl[l] - sr[l]) * vfix; sr[l] = 0.0; }
+                for (int win = wstart; win < wend; win++) {
+                    faac_real * __restrict sl = sl0 + win * 128 + start, * __restrict sr = sr0 + win * 128 + start;
+                    for (int l = 0; l < len; l++) {
+                        faac_real lx = sl[l], rx = sr[l];
+                        if (hcb == HCB_INTENSITY) sl[l] = (lx + rx) * vfix; else sl[l] = (lx - rx) * vfix;
+                        sr[l] = 0.0;
+                    }
                 }
                 continue;
             }
         }
-
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
-        {
+        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25)) {
             int phase = PH_NONE;
             if ((enrgs * 0.25 * thrmid * 2.0) >= (enrgl + enrgr)) { ms = 1; phase = PH_IN; }
             else if ((enrgd * 0.25 * thrmid * 2.0) >= (enrgl + enrgr)) { ms = 1; phase = PH_OUT; }
-            if (ms)
-            {
+            if (ms) {
                 msused = 1;
-                for (win = wstart; win < wend; win++)
-                {
-                    faac_real * __restrict sl = sl0 + win * 128;
-                    faac_real * __restrict sr = sr0 + win * 128;
-                    if (phase == PH_IN) for (int l = start; l < end; l++) { faac_real sum = sl[l] + sr[l]; sl[l] = 0.5 * sum; sr[l] = 0.0; }
-                    else for (int l = start; l < end; l++) { faac_real diff = sl[l] - sr[l]; sr[l] = 0.5 * diff; sl[l] = 0.0; }
+                for (int win = wstart; win < wend; win++) {
+                    faac_real * __restrict sl = sl0 + win * 128 + start, * __restrict sr = sr0 + win * 128 + start;
+                    for (int l = 0; l < len; l++) {
+                        faac_real lx = sl[l], rx = sr[l];
+                        if (phase == PH_IN) { sl[l] = 0.5 * (lx + rx); sr[l] = 0.0; }
+                        else { sl[l] = 0.0; sr[l] = 0.5 * (lx - rx); }
+                    }
                 }
             }
         }
-
-        if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
-        {
-            if (enrgl < enrgr) {
-                for (win = wstart; win < wend; win++) {
-                    faac_real * __restrict sl = sl0 + win * 128;
-                    for (int l = start; l < end; l++) sl[l] = 0.0;
-                }
-            } else {
-                for (win = wstart; win < wend; win++) {
-                    faac_real * __restrict sr = sr0 + win * 128;
-                    for (int l = start; l < end; l++) sr[l] = 0.0;
-                }
-            }
+        if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))) {
+            if (enrgl < enrgr) for (int win = wstart; win < wend; win++) { faac_real * __restrict sl = sl0 + win * 128 + start; for (int l = 0; l < len; l++) sl[l] = 0.0; }
+            else for (int win = wstart; win < wend; win++) { faac_real * __restrict sr = sr0 + win * 128 + start; for (int l = 0; l < len; l++) sr[l] = 0.0; }
         }
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
     }
@@ -292,7 +239,7 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         int is_start_sfb = coder[chn].sfbn;
         if (mode == JOINT_MIXED) {
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 256 : 2048;
-            for (int sfb = 0; sfb < coder[chn].sfbn; sfb++) if ((coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen >= IS_FREQ_LIMIT) { is_start_sfb = sfb; break; }
+            for (int sfb = 0; sfb < coder[chn].sfbn; sfb++) if ((coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen >= 6000) { is_start_sfb = sfb; break; }
         }
         int sfcnt = 0, start = 0, msused = 0;
         for (int group = 0; group < coder[chn].groups.n; group++) {
