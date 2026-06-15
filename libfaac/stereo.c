@@ -24,8 +24,8 @@
 #include "huff2.h"
 
 
-static void zero_channel(faac_real * restrict s0, int start, int len,
-                         int wstart, int wend)
+static inline void zero_channel(faac_real * restrict s0, int start, int len,
+                                int wstart, int wend)
 {
     faac_real * restrict s_out = s0 + wstart * BLOCK_LEN_SHORT + start;
     int win;
@@ -39,8 +39,8 @@ static void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
-                     int start, int len, int wstart, int wend, int in_phase)
+static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
+                            int start, int len, int wstart, int wend, int in_phase)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -66,9 +66,9 @@ static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     }
 }
 
-static void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
-                     int start, int len, int wstart, int wend,
-                     int in_phase, faac_real vfix, int zero_sr)
+static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
+                            int start, int len, int wstart, int wend,
+                            int in_phase, faac_real vfix, int zero_sr)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
