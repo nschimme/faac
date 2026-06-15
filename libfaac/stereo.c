@@ -683,17 +683,24 @@ void AACstereo(CoderInfo *coder,
          * M/S below, where phase still carries the stereo image */
         if (mode == JOINT_MIXED)
         {
-            enum {IS_FREQ_LIMIT = 5500}; /* IS only above 5.5kHz */
             int sfb;
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
+            /* IS frequency floor (5.5kHz). Cap at 70% of Nyquist so low sample
+             * rates (where 5.5kHz is near/above Nyquist) still get an IS region
+             * instead of disabling IS for the whole frame. At >=44.1kHz the cap
+             * is well above 5.5kHz, so common rates are unchanged. */
+            int is_freq = 5500;
+            int cap = (sampleRate * 7) / 20;
+            if (is_freq > cap)
+                is_freq = cap;
 
             is_start_sfb = coder[chn].sfbn;
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++)
             {
                 /* bin center -> Hz: offset * fs / mdctlen */
                 int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen;
-                if (freq >= IS_FREQ_LIMIT)
+                if (freq >= is_freq)
                 {
                     is_start_sfb = sfb;
                     break;
