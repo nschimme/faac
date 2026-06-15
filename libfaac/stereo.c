@@ -24,6 +24,23 @@
 #include "huff2.h"
 
 
+/* Zero one channel's coefficients across every window of a scalefactor band. */
+static void zero_channel(faac_real * restrict s0, int start, int len,
+                         int wstart, int wend)
+{
+    faac_real * restrict s_out = s0 + wstart * BLOCK_LEN_SHORT + start;
+    int win;
+
+    for (win = wstart; win < wend; win++)
+    {
+        int l;
+        for (l = 0; l < len; l++)
+            s_out[l] = 0.0;
+        s_out += BLOCK_LEN_SHORT;
+    }
+}
+
+
 /* Intensity Stereo: send one combined channel + per-band L/R level ratio;
  * the decoder re-pans it. Discards inter-channel phase, so it is gated by
  * phthr and skipped on low bands where phase still matters. */
@@ -86,6 +103,11 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
+        /* The |l+-r|^2 identity is mathematically non-negative, but float
+         * cancellation for L~=+-R can round it slightly below zero; clamp so a
+         * negative value never reaches FAAC_SQRT (which would yield NaN). */
+        if (enrgs < 0.0) enrgs = 0.0;
+        if (enrgd < 0.0) enrgd = 0.0;
 
         /* IS pays off when one phase collapses most energy into a single
          * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
@@ -232,6 +254,9 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         /* 0.25 = the (1/2)^2 from the mid/side half-scaling */
         enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
         enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
+        /* float cancellation for L~=+-R can round these below zero; clamp. */
+        if (enrgs < 0.0) enrgs = 0.0;
+        if (enrgd < 0.0) enrgd = 0.0;
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
@@ -290,31 +315,15 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         }
 
         /* one channel far quieter than the other: zero it (the louder one
-         * masks the loss) */
-        if (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr)))
+         * masks the loss). Skip when this band was just M/S-coded: sl/sr now
+         * hold mid/side, and zeroing one would discard the M/S data and (with
+         * ms_used=1) silence the band on decode -- mixed() guards this too. */
+        if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             if (enrgl < enrgr)
-            {
-                faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                        sl_out[l] = 0.0;
-                    sl_out += BLOCK_LEN_SHORT;
-                }
-            }
+                zero_channel(sl0, start, len, wstart, wend);
             else
-            {
-                faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                        sr_out[l] = 0.0;
-                    sr_out += BLOCK_LEN_SHORT;
-                }
-            }
+                zero_channel(sr0, start, len, wstart, wend);
         }
 
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
@@ -376,6 +385,10 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
+        /* float cancellation for L~=+-R can round these below zero; clamp so a
+         * negative value never reaches FAAC_SQRT(efix/enrgs) as a NaN. */
+        if (enrgs < 0.0) enrgs = 0.0;
+        if (enrgd < 0.0) enrgd = 0.0;
 
         efix = enrgl + enrgr;
         /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
@@ -527,27 +540,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             if (enrgl < enrgr)
-            {
-                faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                        sl_out[l] = 0.0;
-                    sl_out += BLOCK_LEN_SHORT;
-                }
-            }
+                zero_channel(sl0, start, len, wstart, wend);
             else
-            {
-                faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                        sr_out[l] = 0.0;
-                    sr_out += BLOCK_LEN_SHORT;
-                }
-            }
+                zero_channel(sr0, start, len, wstart, wend);
         }
 
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
