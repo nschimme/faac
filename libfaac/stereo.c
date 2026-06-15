@@ -24,7 +24,6 @@
 #include "huff2.h"
 
 
-/* Zero one channel's coefficients across every window of a scalefactor band. */
 static void zero_channel(faac_real * restrict s0, int start, int len,
                          int wstart, int wend)
 {
@@ -40,9 +39,6 @@ static void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-/* Mid/Side transform for one band: in-phase keeps mid=0.5(l+r) in sl and zeroes
- * sr; out-of-phase keeps side=0.5(l-r) in sr and zeroes sl. The in_phase /
- * window branches are loop-invariant (hoisted out of the per-sample loop). */
 static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                      int start, int len, int wstart, int wend, int in_phase)
 {
@@ -70,9 +66,6 @@ static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     }
 }
 
-/* Intensity-stereo combine for one band: sl = (l +/- r) * vfix (in-phase uses +,
- * out-of-phase uses -). mixed() also drops the now-redundant right channel
- * (zero_sr); stereo() leaves it (the codebook marks it intensity). */
 static void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
                      int start, int len, int wstart, int wend,
                      int in_phase, faac_real vfix, int zero_sr)
@@ -166,9 +159,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
-        /* The |l+-r|^2 identity is mathematically non-negative, but float
-         * cancellation for L~=+-R can round it slightly below zero; clamp so a
-         * negative value never reaches FAAC_SQRT (which would yield NaN). */
+        /* float cancellation for L~=+-R can round these below zero; clamp before FAAC_SQRT (NaN guard) */
         if (enrgs < 0.0) enrgs = 0.0;
         if (enrgd < 0.0) enrgd = 0.0;
 
@@ -291,9 +282,6 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         /* 0.25 = the (1/2)^2 from the mid/side half-scaling */
         enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
         enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
-        /* float cancellation for L~=+-R can round these below zero; clamp. */
-        if (enrgs < 0.0) enrgs = 0.0;
-        if (enrgd < 0.0) enrgd = 0.0;
 
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
@@ -319,9 +307,8 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         }
 
         /* one channel far quieter than the other: zero it (the louder one
-         * masks the loss). Skip when this band was just M/S-coded: sl/sr now
-         * hold mid/side, and zeroing one would discard the M/S data and (with
-         * ms_used=1) silence the band on decode -- mixed() guards this too. */
+         * masks the loss). Skip if just M/S-coded: sl/sr hold mid/side now,
+         * so zeroing one would silence the band on decode. */
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             if (enrgl < enrgr)
@@ -389,8 +376,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
-        /* float cancellation for L~=+-R can round these below zero; clamp so a
-         * negative value never reaches FAAC_SQRT(efix/enrgs) as a NaN. */
+        /* float cancellation for L~=+-R can round these below zero; clamp before FAAC_SQRT (NaN guard) */
         if (enrgs < 0.0) enrgs = 0.0;
         if (enrgd < 0.0) enrgd = 0.0;
 
@@ -449,8 +435,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
-                /* mixed() collapses the band to one channel and zeroes the
-                 * other; the codebook + intensity position carry the rest. */
+                /* drop the right channel: the codebook + intensity position
+                 * carry the band, so its spectrum is not coded */
                 apply_is(sl0, sr0, start, len, wstart, wend,
                          hcb == HCB_INTENSITY, vfix, /*zero_sr=*/1);
                 continue;
@@ -631,10 +617,8 @@ void AACstereo(CoderInfo *coder,
             int sfb;
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
-            /* IS frequency floor (5.5kHz). Cap at 70% of Nyquist so low sample
-             * rates (where 5.5kHz is near/above Nyquist) still get an IS region
-             * instead of disabling IS for the whole frame. At >=44.1kHz the cap
-             * is well above 5.5kHz, so common rates are unchanged. */
+            /* cap the 5.5kHz IS floor at 70% of Nyquist: at low sample rates
+             * 5.5kHz can exceed the top band and disable IS for the whole frame */
             int is_freq = 5500;
             int cap = (sampleRate * 7) / 20;
             if (is_freq > cap)
