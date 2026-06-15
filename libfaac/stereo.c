@@ -40,6 +40,69 @@ static void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
+/* Mid/Side transform for one band: in-phase keeps mid=0.5(l+r) in sl and zeroes
+ * sr; out-of-phase keeps side=0.5(l-r) in sr and zeroes sl. The in_phase /
+ * window branches are loop-invariant (hoisted out of the per-sample loop). */
+static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
+                     int start, int len, int wstart, int wend, int in_phase)
+{
+    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
+    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
+    int win;
+
+    for (win = wstart; win < wend; win++)
+    {
+        int l;
+        if (in_phase)
+            for (l = 0; l < len; l++)
+            {
+                sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
+                sr_out[l] = 0.0;
+            }
+        else
+            for (l = 0; l < len; l++)
+            {
+                sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
+                sl_out[l] = 0.0;
+            }
+        sl_out += BLOCK_LEN_SHORT;
+        sr_out += BLOCK_LEN_SHORT;
+    }
+}
+
+/* Intensity-stereo combine for one band: sl = (l +/- r) * vfix (in-phase uses +,
+ * out-of-phase uses -). mixed() also drops the now-redundant right channel
+ * (zero_sr); stereo() leaves it (the codebook marks it intensity). */
+static void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
+                     int start, int len, int wstart, int wend,
+                     int in_phase, faac_real vfix, int zero_sr)
+{
+    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
+    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
+    int win;
+
+    for (win = wstart; win < wend; win++)
+    {
+        int l;
+        if (in_phase)
+        {
+            if (zero_sr)
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; sr_out[l] = 0.0; }
+            else
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; }
+        }
+        else
+        {
+            if (zero_sr)
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; sr_out[l] = 0.0; }
+            else
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; }
+        }
+        sl_out += BLOCK_LEN_SHORT;
+        sr_out += BLOCK_LEN_SHORT;
+    }
+}
+
 
 /* Intensity Stereo: send one combined channel + per-band L/R level ratio;
  * the decoder re-pans it. Discards inter-channel phase, so it is gated by
@@ -167,36 +230,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             cr->sf[*sfcnt] = -pan;
             cr->book[*sfcnt] = hcb;
 
-            if (hcb == HCB_INTENSITY)
-            {
-                faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                const faac_real * restrict sr_in = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                    {
-                        sl_out[l] = (sl_out[l] + sr_in[l]) * vfix;
-                    }
-                    sl_out += BLOCK_LEN_SHORT;
-                    sr_in += BLOCK_LEN_SHORT;
-                }
-            }
-            else
-            {
-                faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                const faac_real * restrict sr_in = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                for (win = wstart; win < wend; win++)
-                {
-                    int l;
-                    for (l = 0; l < len; l++)
-                    {
-                        sl_out[l] = (sl_out[l] - sr_in[l]) * vfix;
-                    }
-                    sl_out += BLOCK_LEN_SHORT;
-                    sr_in += BLOCK_LEN_SHORT;
-                }
-            }
+            /* JOINT_IS leaves the right channel intact; the intensity
+             * codebook marks the band, so its spectrum is not coded. */
+            apply_is(sl0, sr0, start, len, wstart, wend,
+                     hcb == HCB_INTENSITY, vfix, /*zero_sr=*/0);
         }
         (*sfcnt)++;
     }
@@ -278,40 +315,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
             }
 
             if (ms)
-            {
-                if (phase == PH_IN)
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
-                            sr_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
-                else
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
-                            sl_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
-            }
+                apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN);
         }
 
         /* one channel far quieter than the other: zero it (the louder one
@@ -445,38 +449,10 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
-                if (hcb == HCB_INTENSITY)
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl_out[l] = (sl_out[l] + sr_out[l]) * vfix;
-                            sr_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
-                else
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl_out[l] = (sl_out[l] - sr_out[l]) * vfix;
-                            sr_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
+                /* mixed() collapses the band to one channel and zeroes the
+                 * other; the codebook + intensity position carry the rest. */
+                apply_is(sl0, sr0, start, len, wstart, wend,
+                         hcb == HCB_INTENSITY, vfix, /*zero_sr=*/1);
                 continue;
             }
         }
@@ -502,38 +478,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             if (ms)
             {
                 msused = 1;
-                if (phase == PH_IN)
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
-                            sr_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
-                else
-                {
-                    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
-                    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
-                    for (win = wstart; win < wend; win++)
-                    {
-                        int l;
-                        for (l = 0; l < len; l++)
-                        {
-                            sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
-                            sl_out[l] = 0.0;
-                        }
-                        sl_out += BLOCK_LEN_SHORT;
-                        sr_out += BLOCK_LEN_SHORT;
-                    }
-                }
+                apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN);
             }
         }
 
