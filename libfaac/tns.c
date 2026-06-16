@@ -65,7 +65,7 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_SPECTRAL_FRAC   0.65    /* Estimated fraction of frame bits for spectral data */
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
-#define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
+#define TNS_THRESH_FLOOR    1.40    /* Minimum gain threshold for TNS utility */
 #define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
 
 /*************************/
@@ -85,7 +85,9 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp);
 
 static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  faac_real * restrict out,
@@ -401,11 +403,13 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /* TnsInvFilter:                                        */
 /*   Apply inverse filtering to the spectrum.           */
 /********************************************************/
-static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp)
 {
-    int i,j;
-    int order=filter->order;
-    faac_real* a=filter->aCoeffs;
+    int i, j;
+    const int order = filter->order;
+    const faac_real * restrict a = filter->aCoeffs;
 
     if (filter->direction) {
         /* Backward direction (high-to-low index) */
@@ -509,9 +513,19 @@ static void Autocorrelation(int maxOrder,
     for (order = 0; order <= maxOrder; order++)
         rArray[order] = 0.0;
 
-    for (index = 0; index < dataSize; index++) {
-        faac_real d = data[index];
-        int n = min(maxOrder, dataSize - 1 - index);
+    /* Hoist maxOrder clamping for bulk of the loop for L1 locality */
+    int limit = dataSize - maxOrder;
+    for (index = 0; index < limit; index++) {
+        const faac_real d = data[index];
+        const faac_real * restrict dp = &data[index + 1];
+        rArray[0] += d * d;
+        for (order = 1; order <= maxOrder; order++)
+            rArray[order] += d * dp[order - 1];
+    }
+
+    for (; index < dataSize; index++) {
+        const faac_real d = data[index];
+        int n = dataSize - 1 - index;
         rArray[0] += d * d;
         for (order = 1; order <= n; order++)
             rArray[order] += d * data[index + order];
@@ -633,19 +647,20 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                   : (faac_real)0.0;
     }
 
-    /* RTL smoothing. */
+    /* RTL smoothing: process per SFB to remove branch from hot loop. */
     {
-        sfb = stopBand - 1;
-        int sfb_start = sfbOffsetTable[sfb];
-        faac_real w = invE[sfb];
-        out[stopLine - 1] = w;
-        for (i = stopLine - 2; i >= startLine; i--) {
-            if (i < sfb_start) {
-                sfb--;
-                w = invE[sfb];
-                sfb_start = sfbOffsetTable[sfb];
+        faac_real next_w = invE[stopBand - 1];
+        out[stopLine - 1] = next_w;
+
+        for (sfb = stopBand - 1; sfb >= startBand; sfb--) {
+            const int sfb_start = sfbOffsetTable[sfb];
+            const int sfb_end = (sfb == stopBand - 1) ? stopLine - 1 : sfbOffsetTable[sfb + 1];
+            const faac_real w = invE[sfb];
+
+            for (i = sfb_end - 1; i >= sfb_start; i--) {
+                next_w = (faac_real)0.5 * (w + next_w);
+                out[i] = next_w;
             }
-            out[i] = (faac_real)0.5 * (w + out[i + 1]);
         }
     }
 
@@ -654,7 +669,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
         faac_real prev = out[startLine];
         out[startLine] = prev * spec[startLine];
         for (i = startLine + 1; i < stopLine; i++) {
-            faac_real weight = (faac_real)0.5 * (out[i] + prev);
+            const faac_real weight = (faac_real)0.5 * (out[i] + prev);
             prev = weight;
             out[i] = weight * spec[i];
         }

@@ -47,9 +47,9 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) at the lowest bitrates (< 24 kbps/ch). Expanding the gate to 64 kbps/ch enables TNS for VSS (40 kbps mono) and low-bitrate music (32 kbps/ch), where it recovers quality lost to quantization noise.
 - **Implementation**: TNS is hard-disabled for `bitratePerCh >= 64000` and for quality mode (`bitrate == 0`).
 
-### Adaptive Gain Threshold (Cap 1.80)
-- **Rationale**: Increasing the adaptive threshold cap from 1.40 to 1.80 prevents TNS from over-applying to complex music content, protecting the bit budget for spectral lines while still allowing high-impact filters on transients.
-- **Implementation**: `TNS_THRESH_CAP` set to 1.80 in `libfaac/tns.c`.
+### Adaptive Gain Threshold (Floor 1.40, Cap 1.80)
+- **Rationale**: Increasing the gain floor to 1.40 prevents TNS activation on complex signals (like echoic speech in VSS) where the prediction gain doesn't justify the bitstream overhead. The cap at 1.80 prevents over-applying to dense music.
+- **Implementation**: `TNS_THRESH_FLOOR` set to 1.40 and `TNS_THRESH_CAP` set to 1.80 in `libfaac/tns.c`.
 
 ### Fixed Order (8)
 - **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
@@ -60,5 +60,16 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ### Whitened-LPC Analysis (Single-Pass)
 - **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. The second "raw-LPC" pass (Arm D2) was removed to improve throughput, as single-pass whitened analysis provides the optimal balance of quality and performance across both music and speech.
+
+## Portable Loop Optimizations (Throughput)
+
+### Autocorrelation (L1 Locality)
+- **Rationale**: Manually hoisting SFB-end clamping logic out of the main index loop improves L1 cache locality and removes branching from the hot path.
+
+### Branchless Whitening
+- **Rationale**: Refactoring the RTL smoothing pass in `WhitenSpectrumForTns` to process per-SFB eliminates the per-line branch used for band transition detection, enabling better compiler loop optimization.
+
+### Pointer Aliasing (restrict)
+- **Rationale**: Using `restrict` and `const` qualifiers in hot DSP loops (e.g., `TnsInvFilter`) enables aggressive compiler vectorization.
 
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*
