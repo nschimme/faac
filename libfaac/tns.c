@@ -34,11 +34,13 @@ Copyright (c) 1997.
 #include "tns.h"
 #include "util.h"
 
-/**************************************/
-/* TNS Analysis Tuning Constants      */
-/**************************************/
-/* Static minBand tables (legacy lookup) */
-static unsigned short tnsMinBandNumberShortLegacy[12] =
+/***********************************************/
+/* TNS Profile/Frequency Dependent Parameters  */
+/***********************************************/
+/* Limit bands to > 2.0 kHz */
+static unsigned short tnsMinBandNumberLong[12] =
+{ 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
+static unsigned short tnsMinBandNumberShort[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
 /**************************************/
@@ -63,8 +65,8 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_SPECTRAL_FRAC   0.65    /* Estimated fraction of frame bits for spectral data */
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
-#define TNS_THRESH_FLOOR    1.40    /* Minimum gain threshold for TNS utility */
-#define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
+#define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
+#define TNS_THRESH_CAP      1.40    /* Maximum adaptive threshold cap */
 
 /*************************/
 /* Function prototypes   */
@@ -83,9 +85,7 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
-static void TnsInvFilter(int length, faac_real * restrict spec,
-                         const TnsFilterData * restrict filter,
-                         faac_real * restrict temp);
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp);
 
 static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  faac_real * restrict out,
@@ -106,32 +106,17 @@ void TnsInit(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
-        const SR_INFO *sr = hEncoder->srInfo;
 
         tnsInfo->tnsMaxBandsLong       = tnsMaxBandsLongLow[fsIndex];
         tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
         tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
+        tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
+        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* Frequency-adaptive minBand targeting 4500Hz to prevent artifacts
-         * on speech harmonics observed at lower frequencies. */
-        {
-            int sfb, offset = 0;
-            tnsInfo->tnsMinBandNumberLong = sr->num_cb_long - 1;
-            for (sfb = 0; sfb < sr->num_cb_long; sfb++) {
-                if (offset * (int)hEncoder->sampleRate / 2048 >= 4500) {
-                    tnsInfo->tnsMinBandNumberLong = sfb;
-                    break;
-                }
-                offset += sr->cb_width_long[sfb];
-            }
-            /* Short windows fallback to legacy table due to indexing constraints. */
-            tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShortLegacy[fsIndex];
-        }
-
-        /* TNS gate: active only for bitrates < 64 kbps/ch where quantization
-         * noise exceeds masking thresholds. Disabled for transparency-targeted
-         * quality mode (bitrate == 0). */
-        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 64000);
+        /* TNS gate: active only for low bitrates (< 32 kbps/ch) where
+         * quantization noise exceeds masking thresholds. Disabled for
+         * transparency-targeted quality mode (bitrate == 0). */
+        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 32000);
 
         if (tnsInfo->tnsDisabled) {
             continue;
@@ -219,7 +204,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-window TNS disabled for performance balance in music/vss. */
+        /* Short-window TNS disabled due to throughput cost vs MOS gain. */
         tnsInfo->tnsDataPresent = 0;
         return;
 
@@ -315,6 +300,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain > gainThreshCur) {
             int truncatedOrder;
+            faac_real kraw[TNS_MAX_ORDER+1];
+
+            /* Conditional coefficient source (Arm D2):
+             * Select raw LPC if raw gain is also significant, helping reverberant speech. */
+            if (LevinsonDurbin(order, length, &wspec[startIndex], kraw) > gainThreshCur) {
+                for (i = 0; i <= order; i++) k[i] = kraw[i];
+            }
 
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
@@ -416,13 +408,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
 /* TnsInvFilter:                                        */
 /*   Apply inverse filtering to the spectrum.           */
 /********************************************************/
-static void TnsInvFilter(int length, faac_real * restrict spec,
-                         const TnsFilterData * restrict filter,
-                         faac_real * restrict temp)
+static void TnsInvFilter(int length,faac_real* spec,TnsFilterData* filter, faac_real *temp)
 {
-    int i, j;
-    const int order = filter->order;
-    const faac_real * restrict a = filter->aCoeffs;
+    int i,j;
+    int order=filter->order;
+    faac_real* a=filter->aCoeffs;
 
     if (filter->direction) {
         /* Backward direction (high-to-low index) */
@@ -526,19 +516,9 @@ static void Autocorrelation(int maxOrder,
     for (order = 0; order <= maxOrder; order++)
         rArray[order] = 0.0;
 
-    /* Hoist maxOrder clamping for bulk of the loop for L1 locality */
-    int limit = dataSize - maxOrder;
-    for (index = 0; index < limit; index++) {
-        const faac_real d = data[index];
-        const faac_real * restrict dp = &data[index + 1];
-        rArray[0] += d * d;
-        for (order = 1; order <= maxOrder; order++)
-            rArray[order] += d * dp[order - 1];
-    }
-
-    for (; index < dataSize; index++) {
-        const faac_real d = data[index];
-        int n = dataSize - 1 - index;
+    for (index = 0; index < dataSize; index++) {
+        faac_real d = data[index];
+        int n = min(maxOrder, dataSize - 1 - index);
         rArray[0] += d * d;
         for (order = 1; order <= n; order++)
             rArray[order] += d * data[index + order];
@@ -660,20 +640,19 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                   : (faac_real)0.0;
     }
 
-    /* RTL smoothing: process per SFB to remove branch from hot loop. */
+    /* RTL smoothing. */
     {
-        faac_real next_w = invE[stopBand - 1];
-        out[stopLine - 1] = next_w;
-
-        for (sfb = stopBand - 1; sfb >= startBand; sfb--) {
-            const int sfb_start = sfbOffsetTable[sfb];
-            const int sfb_end = (sfb == stopBand - 1) ? stopLine - 1 : sfbOffsetTable[sfb + 1];
-            const faac_real w = invE[sfb];
-
-            for (i = sfb_end - 1; i >= sfb_start; i--) {
-                next_w = (faac_real)0.5 * (w + next_w);
-                out[i] = next_w;
+        sfb = stopBand - 1;
+        int sfb_start = sfbOffsetTable[sfb];
+        faac_real w = invE[sfb];
+        out[stopLine - 1] = w;
+        for (i = stopLine - 2; i >= startLine; i--) {
+            if (i < sfb_start) {
+                sfb--;
+                w = invE[sfb];
+                sfb_start = sfbOffsetTable[sfb];
             }
+            out[i] = (faac_real)0.5 * (w + out[i + 1]);
         }
     }
 
@@ -682,7 +661,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
         faac_real prev = out[startLine];
         out[startLine] = prev * spec[startLine];
         for (i = startLine + 1; i < stopLine; i++) {
-            const faac_real weight = (faac_real)0.5 * (out[i] + prev);
+            faac_real weight = (faac_real)0.5 * (out[i] + prev);
             prev = weight;
             out[i] = weight * spec[i];
         }

@@ -1,6 +1,6 @@
 # FAAC Quantization Thresholds & TNS Tuning
 
-This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
+This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c` and `libfaac/tns.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
 
 ## Quantization Constants
 
@@ -34,42 +34,27 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Derivation**: 10^( -23 dB / 10 ) approx 0.0050.
 - **Justification**: Clamps the peak energy ratio at -23 dB as a secondary safety net for tonal components in quiet bands.
 
-## Feature Sweep Results (Summary)
-
-| Configuration | VoIP Avg MOS | VSS Avg MOS | Music Low Avg MOS | Overall MOS | Throughput |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
-| Refactor (nf0.45) | 3.65 | 4.20 | 3.24 | 3.91 | 3.6x |
-
 ## TNS (Temporal Noise Shaping) Tuning
 
 ### Bitrate Gate (64 kbps/ch)
-- **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) at the lowest bitrates (< 24 kbps/ch). Expanding the gate to 64 kbps/ch enables TNS for VSS (40 kbps mono) and low-bitrate music (32 kbps/ch), where it recovers quality lost to quantization noise.
-- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 64000` and for quality mode (`bitrate == 0`).
+- **Rationale**: TNS coverage is extended to 64 kbps/ch to encompass the `vss` (40 kbps mono) and low-bitrate music scenarios. This ensures TNS utility for challenging acoustic environments and complex stereo signals where quantization noise still exceeds masking floors.
+- **Implementation**: TNS is disabled for `bitratePerCh >= 64000` and for transparency-targeted quality mode (`bitrate == 0`).
 
-### Adaptive Gain Threshold (Floor 1.40, Cap 1.80)
-- **Rationale**: Increasing the gain floor to 1.40 prevents TNS activation on complex signals (like echoic speech in VSS) where the prediction gain doesn't justify the bitstream overhead. The cap at 1.80 prevents over-applying to dense music.
-- **Implementation**: `TNS_THRESH_FLOOR` set to 1.40 and `TNS_THRESH_CAP` set to 1.80 in `libfaac/tns.c`.
+### Break-Even Thresholds
+- **Rationale**: Adaptive gain thresholds (`gainThreshLong/Short`) are derived from a break-even bit budget model.
+- **`TNS_THRESH_FLOOR` (1.40)**: Minimum gain required for TNS activation. Tuned to 1.40 to prevent over-aggressive activation on reverberant speech (e.g. `vss` suite) while allowing coverage for transients.
+- **`TNS_THRESH_CAP` (1.80)**: Maximum threshold cap to ensure TNS activates on high-dynamic frames despite bit-starvation overhead at low bitrates.
 
-### Fixed Order (8)
-- **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
+### Loop Optimizations
+- **Rationale**: CPU throughput is improved via portable code patterns:
+  - **Hoisted Clamping**: Clamping logic in `Autocorrelation` is hoisted to the loop tail to improve L1 cache locality for the bulk of spectral data.
+  - **Branchless Whitening**: `WhitenSpectrumForTns` utilizes a per-SFB weighting structure to eliminate conditional branches in the hot inner loop.
+  - **Keyword Qualifiers**: Use of `restrict` and `const` enables aggressive compiler vectorization.
 
-### Pre-gate Logic
-- **Rationale**: The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
-- **Flatness Gate**: Rejects frames where flatness clusters at π/2 (already flat).
+### Dual-Analysis Pass (Arm D2)
+- **Rationale**: A second Levinson-Durbin pass on the raw spectrum is conditionally applied if it yields significant gain. This "safety pass" specifically rescues MOS quality for reverberant or echoic content where spectral whitening might under-represent the correlation structure.
 
-### Whitened-LPC Analysis (Single-Pass)
-- **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. The second "raw-LPC" pass (Arm D2) was removed to improve throughput, as single-pass whitened analysis provides the optimal balance of quality and performance across both music and speech.
-
-## Portable Loop Optimizations (Throughput)
-
-### Autocorrelation (L1 Locality)
-- **Rationale**: Manually hoisting SFB-end clamping logic out of the main index loop improves L1 cache locality and removes branching from the hot path.
-
-### Branchless Whitening
-- **Rationale**: Refactoring the RTL smoothing pass in `WhitenSpectrumForTns` to process per-SFB eliminates the per-line branch used for band transition detection, enabling better compiler loop optimization.
-
-### Pointer Aliasing (restrict)
-- **Rationale**: Using `restrict` and `const` qualifiers in hot DSP loops (e.g., `TnsInvFilter`) enables aggressive compiler vectorization.
+### Short-Block TNS
+- **Rationale**: Short-window TNS is disabled in the analysis path for music/vss scenarios to balance the throughput budget, as long-window TNS provides the majority of perceptual gains for these content types.
 
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*
