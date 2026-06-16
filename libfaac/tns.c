@@ -66,7 +66,7 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
 #define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
-#define TNS_THRESH_CAP      1.40    /* Maximum adaptive threshold cap */
+#define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
 
 /*************************/
 /* Function prototypes   */
@@ -113,10 +113,10 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* TNS gate: active only for low bitrates (< 32 kbps/ch) where
-         * quantization noise exceeds masking thresholds. Disabled for
-         * transparency-targeted quality mode (bitrate == 0). */
-        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 32000);
+        /* TNS gate: active only for bitrates < 64 kbps/ch where quantization
+         * noise exceeds masking thresholds. Disabled for transparency-targeted
+         * quality mode (bitrate == 0). */
+        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 64000);
 
         if (tnsInfo->tnsDisabled) {
             continue;
@@ -300,13 +300,6 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain > gainThreshCur) {
             int truncatedOrder;
-            faac_real kraw[TNS_MAX_ORDER+1];
-
-            /* Conditional coefficient source (Arm D2):
-             * Select raw LPC if raw gain is also significant, helping reverberant speech. */
-            if (LevinsonDurbin(order, length, &wspec[startIndex], kraw) > gainThreshCur) {
-                for (i = 0; i <= order; i++) k[i] = kraw[i];
-            }
 
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);

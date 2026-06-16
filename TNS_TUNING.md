@@ -43,9 +43,13 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ## TNS (Temporal Noise Shaping) Tuning
 
-### Bitrate Gate (32 kbps/ch)
-- **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) only at the lowest bitrates (< 24 kbps/ch) where quantization noise is high. Above 32 kbps/ch, the benefit is negligible (+0.002) while the CPU cost remains significant.
-- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 32000` and for quality mode (`bitrate == 0`).
+### Bitrate Gate (64 kbps/ch)
+- **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) at the lowest bitrates (< 24 kbps/ch). Expanding the gate to 64 kbps/ch enables TNS for VSS (40 kbps mono) and low-bitrate music (32 kbps/ch), where it recovers quality lost to quantization noise.
+- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 64000` and for quality mode (`bitrate == 0`).
+
+### Adaptive Gain Threshold (Cap 1.80)
+- **Rationale**: Increasing the adaptive threshold cap from 1.40 to 1.80 prevents TNS from over-applying to complex music content, protecting the bit budget for spectral lines while still allowing high-impact filters on transients.
+- **Implementation**: `TNS_THRESH_CAP` set to 1.80 in `libfaac/tns.c`.
 
 ### Fixed Order (8)
 - **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
@@ -54,7 +58,7 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
 - **Flatness Gate**: Rejects frames where flatness clusters at π/2 (already flat).
 
-### Whitened-LPC Analysis
-- **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. Benchmarking showed this outperforms raw-LPC and two-pass arms by providing broader coverage on noisy transients (+0.047 vs +0.024 on VoIP).
+### Whitened-LPC Analysis (Single-Pass)
+- **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. The second "raw-LPC" pass (Arm D2) was removed to improve throughput, as single-pass whitened analysis provides the optimal balance of quality and performance across both music and speech.
 
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*
