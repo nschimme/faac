@@ -892,6 +892,14 @@ int main(int argc, char *argv[])
      * libfaac/frame.c), so this path triggers only for explicit
      * --object-type he-aac. */
     encoder_sr = infile->samplerate;
+
+    /* HE-AAC (v1) auto-mode: voip (16kbps, 16kHz) gains from HE. */
+    if (objectType == AAC_AUTO) {
+        int rate_ok = (bitRate >= 15000 && bitRate <= 48000);
+        int sr_ok = (infile->samplerate >= 16000);
+        if (rate_ok && sr_ok) objectType = HE_AAC;
+    }
+
     if (objectType == HE_AAC && infile->samplerate < 32000) {
         if (infile->samplerate < 16000) {
             fprintf(stderr,

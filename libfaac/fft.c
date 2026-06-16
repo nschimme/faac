@@ -100,7 +100,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 
 	for (i = 0; i < size; i++)
 	{
-		int j = r[i];
+		int j = *r++;
 		faac_real tmp;
 
 		if (j <= i)

@@ -274,6 +274,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     int n2 = 0;       /* ascending: 2i */
 
     /* Phase 1: i < N/8 */
+    faac_real *pxr = xr;
+    faac_real *pxi = xi;
     for (i = 0; i < N8; i++) {
 
         /* calculate real and imaginary parts of g(n) or G(p) */
@@ -285,8 +287,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         tempi = base0[n2] - base1[-n2];
 
         /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
+        *pxr++ = tempr * c + tempi * s;
+        *pxi++ = tempi * c - tempr * s;
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -309,8 +311,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         tempi = base0[n2] + base2[-n2];
 
         /* calculate pre-twiddled FFT input */
-        xr[i] = tempr * c + tempi * s;
-        xi[i] = tempi * c - tempr * s;
+        *pxr++ = tempr * c + tempi * s;
+        *pxi++ = tempi * c - tempr * s;
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -344,11 +346,15 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     n2 = 0;
 
     /* post-twiddle FFT output and then get output data */
+    pxr = xr;
+    pxi = xi;
     for (i = 0; i < N4; i++) {
+        faac_real xri = *pxr++;
+        faac_real xii = *pxi++;
 
         /* get post-twiddled FFT output */
-        tempr = 2. * (xr[i] * c + xi[i] * s);
-        tempi = 2. * (xi[i] * c - xr[i] * s);
+        tempr = (faac_real)2. * (xri * c + xii * s);
+        tempi = (faac_real)2. * (xii * c - xri * s);
 
         /* fill in output values */
         base_even0[n2] = -tempr;  /* first half even */

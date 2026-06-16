@@ -195,7 +195,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
+        /* HE-AAC (v1) is optimal for [20, 32] kbps/ch on music, but speech
+         * also gains from HE-AAC down to 15kbps/ch. */
+        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= 32000);
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
@@ -563,7 +565,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
     frameBytes = CloseBitStream(bitStream);
 
     if (hEncoder->config.bitRate) {
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
+        /* desbits uses the target bitrate. For HE-AAC, sampleRate is the
+         * halved core rate; we must use the full rate to correctly calculate
+         * the per-frame bit budget. */
+        unsigned long sr = hEncoder->fullSampleRate ? hEncoder->fullSampleRate : hEncoder->sampleRate;
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / sr;
         int totalBits = frameBytes * 8;
         int sbrBits = 0;
 

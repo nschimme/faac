@@ -79,13 +79,18 @@ int Resample2to1(Resampler *r,
         memcpy(combined,     hist, H            * sizeof(faac_real));
         memcpy(combined + H, in,   actual_input * sizeof(faac_real));
 
+        const faac_real *p = combined + H;
+        const faac_real *c_start = fir_coeffs;
         for (i = 0; i < output_len; i++) {
-            const faac_real *p = combined + H + 2 * i;
-            faac_real sum = p[-HALF] * fir_coeffs[HALF];
+            faac_real sum = p[-HALF] * c_start[HALF];
+            const faac_real *p_lo = p;
+            const faac_real *p_hi = p - H;
+            const faac_real *c = c_start;
             for (j = 0; j < HALF; j++) {
-                sum += (p[-j] + p[-(H - j)]) * fir_coeffs[j];
+                sum += (*p_lo-- + *p_hi++) * *c++;
             }
             out[i] = sum;
+            p += 2;
         }
 
         memcpy(hist, combined + actual_input, H * sizeof(faac_real));
