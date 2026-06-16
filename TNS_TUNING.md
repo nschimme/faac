@@ -55,7 +55,7 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
 
 ### Pre-gate Logic
-- **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
+- **Rationale**: The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
 - **Flatness Gate**: Rejects frames where flatness clusters at π/2 (already flat).
 
 ### Whitened-LPC Analysis (Single-Pass)

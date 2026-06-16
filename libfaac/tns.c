@@ -34,13 +34,11 @@ Copyright (c) 1997.
 #include "tns.h"
 #include "util.h"
 
-/***********************************************/
-/* TNS Profile/Frequency Dependent Parameters  */
-/***********************************************/
-/* Limit bands to > 2.0 kHz */
-static unsigned short tnsMinBandNumberLong[12] =
-{ 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
-static unsigned short tnsMinBandNumberShort[12] =
+/**************************************/
+/* TNS Analysis Tuning Constants      */
+/**************************************/
+/* Static minBand tables (legacy lookup) */
+static unsigned short tnsMinBandNumberShortLegacy[12] =
 { 2, 2, 2, 3, 3, 4, 6, 6, 8, 10, 10, 12 };
 
 /**************************************/
@@ -108,12 +106,27 @@ void TnsInit(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
+        const SR_INFO *sr = hEncoder->srInfo;
 
         tnsInfo->tnsMaxBandsLong       = tnsMaxBandsLongLow[fsIndex];
         tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
         tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
-        tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
-        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
+
+        /* Frequency-adaptive minBand targeting 4500Hz to prevent artifacts
+         * on speech harmonics observed at lower frequencies. */
+        {
+            int sfb, offset = 0;
+            tnsInfo->tnsMinBandNumberLong = sr->num_cb_long - 1;
+            for (sfb = 0; sfb < sr->num_cb_long; sfb++) {
+                if (offset * (int)hEncoder->sampleRate / 2048 >= 4500) {
+                    tnsInfo->tnsMinBandNumberLong = sfb;
+                    break;
+                }
+                offset += sr->cb_width_long[sfb];
+            }
+            /* Short windows fallback to legacy table due to indexing constraints. */
+            tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShortLegacy[fsIndex];
+        }
 
         /* TNS gate: active only for bitrates < 64 kbps/ch where quantization
          * noise exceeds masking thresholds. Disabled for transparency-targeted
@@ -206,7 +219,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-window TNS disabled due to throughput cost vs MOS gain. */
+        /* Short-window TNS disabled for performance balance in music/vss. */
         tnsInfo->tnsDataPresent = 0;
         return;
 
