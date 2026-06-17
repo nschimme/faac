@@ -42,7 +42,6 @@ typedef struct SBRInfo {
     int coreSampleRate;
 
     int kx;
-    unsigned int kx_freq;
     int k2;
     int dk;                /* Frequency table resolution (1 or 2) */
     int numEnvelopes;      /* envelopes in the CURRENT frame (1 or 2), set by
@@ -77,10 +76,8 @@ typedef struct SBRInfo {
      * output are packed into one complex sequence, pre-twiddled by
      * exp(-j*pi*m/64), and the odd-frequency spectrum is recovered from the
      * conjugate symmetry of the bins. */
-    faac_real twidCos[64];   /* cos(pi*m/64) */
-    faac_real twidSin[64];   /* sin(pi*m/64) */
-    faac_real oddCos[64];    /* cos(pi*(2k+1)/128) */
-    faac_real oddSin[64];    /* sin(pi*(2k+1)/128) */
+    faac_real cos64_table[64][128];
+    faac_real sin64_table[64][128];
     FFT_Tables fftTables;
 } SBRInfo;
 

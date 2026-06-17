@@ -24,10 +24,6 @@
 
 #include "faac_real.h"
 
-#define MAXLOGM 10
-#define MAXLOGR 10
-#define TWOPI   (2.0 * M_PI)
-
 typedef faac_real fftfloat;
 
 typedef struct

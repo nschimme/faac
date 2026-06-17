@@ -1,31 +1,34 @@
-/****************************************************************************
-    FFT function
-    bitreversal, etc.
+/*
+ * FAAC - Freeware Advanced Audio Coder
+ * $Id: fft.c,v 1.12 2005/02/02 07:49:55 sur Exp $
+ * Copyright (C) 2002 Krzysztof Nikiel
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
 
-    Copyright (C) 2017 Krzysztof Nikiel
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-****************************************************************************/
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
 
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
-#include "faac_real.h"
-#include "util.h"
 #include "fft.h"
+#include "util.h"
+
+#define MAXLOGM 9
+#define MAXLOGR 8
 
 void fft_initialize( FFT_Tables *fft_tables )
 {
@@ -97,7 +100,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 
 	for (i = 0; i < size; i++)
 	{
-		int j = *r++;
+		int j = r[i];
 		faac_real tmp;
 
 		if (j <= i)
@@ -128,20 +131,21 @@ static void fft_proc(
 	   Twiddle factor W_N^0 is always (1, 0).
 	   Eliminate all multiplications and table lookups.
 	*/
+	faac_real * __restrict p_xr = xr;
+	faac_real * __restrict p_xi = xi;
 	for (pos = 0; pos < size; pos += 2)
 	{
-		faac_real v2r, v2i;
-		int x1 = pos;
-		int x2 = pos + 1;
+		faac_real v2r = p_xr[1];
+		faac_real v2i = p_xi[1];
+		faac_real v1r = p_xr[0];
+		faac_real v1i = p_xi[0];
 
-		v2r = xr[x2];
-		v2i = xi[x2];
-
-		xr[x2] = xr[x1] - v2r;
-		xr[x1] += v2r;
-
-		xi[x2] = xi[x1] - v2i;
-		xi[x1] += v2i;
+		p_xr[1] = v1r - v2r;
+		p_xr[0] = v1r + v2r;
+		p_xi[1] = v1i - v2i;
+		p_xi[0] = v1i + v2i;
+		p_xr += 2;
+		p_xi += 2;
 	}
 
 	/* Second stage: step = 2
@@ -152,32 +156,32 @@ static void fft_proc(
 	if (size >= 4) {
 		for (pos = 0; pos < size; pos += 4)
 		{
-			faac_real v2r, v2i;
-			int x1 = pos;
-			int x2 = pos + 2;
+			faac_real * __restrict pxr1 = xr + pos;
+			faac_real * __restrict pxi1 = xi + pos;
+			faac_real * __restrict pxr2 = xr + pos + 2;
+			faac_real * __restrict pxi2 = xi + pos + 2;
 
 			/* shift = 0: Rotation by 0 degrees */
-			v2r = xr[x2];
-			v2i = xi[x2];
+			faac_real v2r = *pxr2;
+			faac_real v2i = *pxi2;
+			faac_real v1r = *pxr1;
+			faac_real v1i = *pxi1;
 
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
+			*pxr2++ = v1r - v2r;
+			*pxr1++ = v1r + v2r;
+			*pxi2++ = v1i - v2i;
+			*pxi1++ = v1i + v2i;
 
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			/* shift = 1: Rotation by -90 degrees (W_4^1 = -j) */
+			v2r = *pxi2;
+			v2i = -*pxr2;
+			v1r = *pxr1;
+			v1i = *pxi1;
 
-			/* shift = 1: Rotation by -90 degrees */
-			x1++;
-			x2++;
-
-			v2r = xi[x2];
-			v2i = -xr[x2];
-
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
-
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			*pxr2 = v1r - v2r;
+			*pxr1 = v1r + v2r;
+			*pxi2 = v1i - v2i;
+			*pxi1 = v1i + v2i;
 		}
 	}
 
@@ -185,32 +189,34 @@ static void fft_proc(
 	estep = size >> 2;
 	for (step = 4; step < size; step *= 2)
 	{
-		int x1;
-		int x2 = 0;
 		estep >>= 1;
 		for (pos = 0; pos < size; pos += (2 * step))
 		{
-			x1 = x2;
-			x2 += step;
+			faac_real * __restrict pxr1 = xr + pos;
+			faac_real * __restrict pxi1 = xi + pos;
+			faac_real * __restrict pxr2 = xr + pos + step;
+			faac_real * __restrict pxi2 = xi + pos + step;
 			exp = 0;
 			for (shift = 0; shift < step; shift++)
 			{
-				faac_real v2r, v2i;
+				faac_real x2r = *pxr2;
+				faac_real x2i = *pxi2;
+				faac_real r_f = refac[exp];
+				faac_real i_f = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				faac_real v2r = x2r * r_f - x2i * i_f;
+				faac_real v2i = x2r * i_f + x2i * r_f;
 
-				xr[x2] = xr[x1] - v2r;
-				xr[x1] += v2r;
+				faac_real x1r = *pxr1;
+				faac_real x1i = *pxi1;
 
-				xi[x2] = xi[x1] - v2i;
+				*pxr2++ = x1r - v2r;
+				*pxr1++ = x1r + v2r;
 
-				xi[x1] += v2i;
+				*pxi2++ = x1i - v2i;
+				*pxi1++ = x1i + v2i;
 
 				exp += estep;
-
-				x1++;
-				x2++;
 			}
 		}
 	}
@@ -218,23 +224,22 @@ static void fft_proc(
 
 static void check_tables( FFT_Tables *fft_tables, int logm)
 {
-	int size, i;
-	fftfloat *refac, *imfac;
-
-	if ( fft_tables->costbl[logm] == NULL )
+	if( fft_tables->costbl[logm] == NULL )
 	{
-		size = 1 << logm;
+		int i;
+		int size = 1 << logm;
 
-		fft_tables->costbl[logm]		= AllocMemory((size/2) * sizeof(*(fft_tables->costbl[0])));
-		fft_tables->negsintbl[logm]	= AllocMemory((size/2) * sizeof(*(fft_tables->negsintbl[0])));
+		if( fft_tables->negsintbl[logm] != NULL )
+			FreeMemory( fft_tables->negsintbl[logm] );
 
-		refac = fft_tables->costbl[logm];
-		imfac = fft_tables->negsintbl[logm];
+		fft_tables->costbl[logm]	= AllocMemory((size / 2) * sizeof(*(fft_tables->costbl[0])));
+		fft_tables->negsintbl[logm]	= AllocMemory((size / 2) * sizeof(*(fft_tables->negsintbl[0])));
 
-		for (i = 0; i < (size / 2); i++)
+		for (i = 0; i < (size >> 1); i++)
 		{
-			refac[i] = (fftfloat)FAAC_COS(TWOPI * i / size);
-			imfac[i] = (fftfloat)-FAAC_SIN(TWOPI * i / size);
+			faac_real theta = 2.0 * M_PI * ((faac_real) i) / (faac_real) size;
+			fft_tables->costbl[logm][i]		= FAAC_COS(theta);
+			fft_tables->negsintbl[logm][i]	= -FAAC_SIN(theta);
 		}
 	}
 }

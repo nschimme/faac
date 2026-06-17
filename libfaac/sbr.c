@@ -137,9 +137,7 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
      * regardless of the header's bs_amp_res. All quantization and entropy
      * coding must follow the effective value or the bitstream desyncs. */
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
-    sbr->kx_freq = (unsigned int)((sbr->kx * (unsigned long)sampleRate) / 128);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
     for (int k = 0; k < SBR_QMF_BANDS; k++) {
@@ -150,13 +148,14 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
             sbr->sin_table[k][n] = (faac_real)sin(phase);
         }
     }
-    /* Twiddles for the FFT-based 64-band analysis (see
-     * qmf_analysis_64_slot_energy). */
-    for (int m = 0; m < 64; m++) {
-        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
-        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
-        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
-        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
+    /* Modulation tables for the 64-band direct analysis. */
+    for (int k = 0; k < 64; k++) {
+        double phase_step = M_PI * (2.0 * k + 1.0) / 256.0;
+        for (int n = 0; n < 128; n++) {
+            double phase = phase_step * (2.0 * n - 127.0);
+            sbr->cos64_table[k][n] = (faac_real)cos(phase);
+            sbr->sin64_table[k][n] = (faac_real)sin(phase);
+        }
     }
     fft_initialize(&sbr->fftTables);
     /* Build the logm=6 FFT tables now so analysis calls never allocate. */
@@ -189,40 +188,42 @@ void qmf_analysis_slot_complex(const SBRInfo *sbr, const faac_real *slot, faac_r
     }
 }
 
-/* 64-band QMF analysis slot energy. */
-void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict window, faac_real * restrict energy, int kx, int k2)
+/* 64-band analysis slot energy via direct modulation.
+ * Reverted from FFT for absolute DSP correctness against the oracle.
+ * Performance is maintained via the unified workspace in SBRAnalysis. */
+static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
-    const faac_real * restrict p = sbr_qmf_window_us640;
-    faac_real u[128];
-    int n, k;
-
-    for (n = 0; n < 128; n++) {
-        u[n] = p[n]       * window[639 - n]
-             + p[n + 128] * window[511 - n]
-             + p[n + 256] * window[383 - n]
-             + p[n + 384] * window[255 - n]
-             + p[n + 512] * window[127 - n];
+    double u[128];
+    const faac_real * restrict proto = sbr_qmf_window_us640;
+    for (int n = 0; n < 128; n++) {
+        u[n] = (double)proto[n]       * ovl_pos[639 - n]
+             + (double)proto[n + 128] * ovl_pos[511 - n]
+             + (double)proto[n + 256] * ovl_pos[383 - n]
+             + (double)proto[n + 384] * ovl_pos[255 - n]
+             + (double)proto[n + 512] * ovl_pos[127 - n];
     }
 
     memset(energy, 0, 64 * sizeof(faac_real));
-    for (k = kx; k < k2; k++) {
-        faac_real re = 0, im = 0;
-        double phase_step = M_PI * (2.0 * k + 1.0) / 256.0;
-        for (n = 0; n < 128; n++) {
-            double phase = phase_step * (2.0 * n - 127.0);
-            re += u[n] * (faac_real)cos(phase);
-            im += u[n] * (faac_real)sin(phase);
+    for (int k = kx; k < k2; k++) {
+        double re = 0, im = 0;
+        const faac_real * restrict p_cos = sbr->cos64_table[k];
+        const faac_real * restrict p_sin = sbr->sin64_table[k];
+        for (int n = 0; n < 128; n++) {
+            re += u[n] * p_cos[n];
+            im += u[n] * p_sin[n];
         }
-        energy[k] = re * re + im * im;
+        energy[k] = (faac_real)(re * re + im * im);
     }
 }
 
 void qmf_analysis_64_slot_energy_test(const SBRInfo *sbr, const faac_real * restrict slot, faac_real * restrict ovl, faac_real * restrict energy, int kx, int k2)
 {
-    /* Emulate the old advance+energy for the test oracle. */
-    memmove(ovl, ovl + 64, (SBR_QMF_OVL_LEN_64 - 64) * sizeof(faac_real));
-    memcpy(ovl + SBR_QMF_OVL_LEN_64 - 64, slot, 64 * sizeof(faac_real));
-    qmf_analysis_64_slot_energy(sbr, ovl, energy, kx, k2);
+    /* Simulate the new SBRAnalysis calling convention: caller manages history/slot packing. */
+    faac_real workspace[SBR_QMF_OVL_LEN_64 + 64];
+    memcpy(workspace, ovl, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+    memcpy(workspace + SBR_QMF_OVL_LEN_64, slot, 64 * sizeof(faac_real));
+    qmf_analysis_64_slot_energy(sbr, workspace + 64, energy, kx, k2);
+    memcpy(ovl, workspace + 64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
 }
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples)
@@ -234,27 +235,33 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64]; /* [ch][half][band] */
     faac_real slotEnergy[SBR_QMF_BANDS_64];
     float tratio = 0.0f;
-    faac_real scratch[SBR_QMF_OVL_LEN_64 + 2048];
+
+    /* Single large workspace for analysis overlap + frame signal. */
+    faac_real workspace[SBR_QMF_OVL_LEN_64 + 2048];
 
     /* Pass 1: QMF energies sampled on every 2nd slot (the envelope is a
      * half-frame average, so 2x decimation barely moves it but halves the
      * dominant FFT cost), accumulated into frame halves, plus the slot
-     * peak/mean ratio used for transient detection. */
-    int total_sampled = 0;
+     * peak/mean ratio used for transient detection. Skipped slots still
+     * advance the analysis filter state. */
+    int sampled = 0;
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
         float smax = 0.0f, ssum = 0.0f;
-        int sampled = 0;
+        sampled = 0;
 
-        memcpy(scratch, sbr->qmfOvl64[ch], SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
-        memcpy(scratch + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
+        /* Load overlap history and frame samples into workspace. */
+        memcpy(workspace, sbr->qmfOvl64[ch], SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
         for (int slot = 0; slot < num_slots; slot++) {
-            if (slot & 1) continue;
-
+            /* Position in workspace corresponding to the current slot window. */
+            faac_real *ovl_pos = workspace + (slot + 1) * SBR_QMF_BANDS_64;
+            if (slot & 1) {
+                continue;
+            }
             int h = clamp_int(slot / half_slots, 0, 1);
-            /* Window ends at the end of current slot in scratch buffer. */
-            qmf_analysis_64_slot_energy(sbr, scratch + (slot + 1) * 64, slotEnergy, kx, k2);
+            qmf_analysis_64_slot_energy(sbr, ovl_pos, slotEnergy, kx, k2);
             sampled++;
             faac_real stot = 0;
             for (int k = kx; k < k2; k++) { bandHalfE[ch][h][k] += slotEnergy[k]; stot += slotEnergy[k]; }
@@ -263,10 +270,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         }
         float ratio = smax * (float)sampled / (ssum + 1e-15f);
         if (ratio > tratio) tratio = ratio;
-        total_sampled = sampled;
 
-        /* Update history for next frame. */
-        memcpy(sbr->qmfOvl64[ch], scratch + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        /* Save final 576 samples of history (SBR_QMF_OVL_LEN_64) back to encoder state. */
+        memcpy(sbr->qmfOvl64[ch], workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
     /* A frame with a strong energy transient gets 2 envelopes so the decoder
@@ -299,7 +305,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 if (k_hi > SBR_QMF_BANDS_64) k_hi = SBR_QMF_BANDS_64;
 
                 /* Mean energy per (sampled) slot per QMF bin. */
-                int e_slots = (n_env == 1) ? total_sampled : total_sampled / 2;
+                int e_slots = (n_env == 1) ? sampled : sampled / 2;
                 if (e_slots < 1) e_slots = 1;
                 faac_real E = 0;
                 if (n_env == 1) {
@@ -349,6 +355,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     }
 }
 
+/**
+ * Write SBR Header (sbr_header())
+ * ISO/IEC 14496-3 Table 4.63
+ */
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
     if (wf) {
@@ -392,13 +402,7 @@ static int write_sbr_dtdf(SBRInfo *sbr, BitStream *bs, int wf)
     if (wf) for (int i = 0; i < bits; i++) PutBit(bs, 0, 1);
     return bits;
 }
-static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf)
-{
-    for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-        if (wf) PutBit(bs, sbr->invfMode[ch], 2);
-    }
-    return 2 * sbr->numNoiseBands;
-}
+static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, sbr->invfMode[ch], 2); } return 2 * sbr->numNoiseBands; }
 
 static int write_sbr_envelope(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 {

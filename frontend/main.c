@@ -63,6 +63,7 @@
 #endif
 
 #include "input.h"
+#include "upsample.h"
 
 #include <faac.h>
 
@@ -448,6 +449,9 @@ int main(int argc, char *argv[])
     int aacFileNameGiven = 0;
 
     float *pcmbuf;
+    float *raw_pcmbuf = NULL;            /* native-rate input when upsampling */
+    upsample2x_t *upsampler = NULL;      /* 2x upsampler for HE on narrow input */
+    int will_upsample = 0;
     unsigned long encoder_sr = 0;
     int *chanmap = NULL;
 
@@ -878,15 +882,32 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* HE-AAC on narrow-band input: faac halves the configured SR for the
+     * LC core (libfaac/frame.c). On a 16 kHz mono speech input that drops
+     * the core to 8 kHz; SBR then regenerates [4, 8] kHz with noise --
+     * which destroys real fricative/sibilant content in that band. We
+     * upsample 2x in the frontend so libfaac receives a 32 kHz stream and
+     * its halving lands the core at 16 kHz instead. Auto-mode never
+     * silently picks HE on narrow-band inputs (gate added in
+     * libfaac/frame.c), so this path triggers only for explicit
+     * --object-type he-aac. */
     encoder_sr = infile->samplerate;
-
     if (objectType == HE_AAC && infile->samplerate < 32000) {
+        if (infile->samplerate < 16000) {
+            fprintf(stderr,
+                "HE-AAC requires input >= 16 kHz for usable SBR coverage "
+                "(got %lu Hz). Use --object-type lc instead.\n",
+                (unsigned long)infile->samplerate);
+            wav_close(infile);
+            return 1;
+        }
+        will_upsample = 1;
+        encoder_sr = (unsigned long)infile->samplerate * 2;
         fprintf(stderr,
-            "HE-AAC requires input >= 32 kHz for usable SBR coverage "
-            "(got %lu Hz). Use --object-type lc instead.\n",
+            "HE-AAC on %lu Hz input: upsampling 2x internally to %lu Hz "
+            "so the LC core stays at %lu Hz.\n",
+            (unsigned long)infile->samplerate, encoder_sr,
             (unsigned long)infile->samplerate);
-        wav_close(infile);
-        return 1;
     }
 
     /* open the encoder library */
@@ -1005,6 +1026,22 @@ int main(int argc, char *argv[])
         pcmbuf = (float *) malloc(samplesInput * sizeof(float));
         if (!pcmbuf) {
             fprintf(stderr, "Out of memory allocating PCM buffer\n");
+            return 1;
+        }
+    }
+
+    /* If we upsampled into a doubled encoder SR, set up the upsampler and
+     * the half-size raw input buffer the WAV reader actually pulls into. */
+    if (will_upsample) {
+        unsigned long raw_capacity = samplesInput / 2;
+        raw_pcmbuf = (float *) malloc(raw_capacity * sizeof(float));
+        if (!raw_pcmbuf) {
+            fprintf(stderr, "Out of memory allocating raw input buffer\n");
+            return 1;
+        }
+        upsampler = upsample2x_create(infile->channels);
+        if (!upsampler) {
+            fprintf(stderr, "Out of memory creating upsampler\n");
             return 1;
         }
     }
@@ -1149,11 +1186,13 @@ int main(int argc, char *argv[])
         int bytesWritten;
 
         {
+            unsigned long want = will_upsample ? (samplesInput / 2) : samplesInput;
+            float *read_buf  = will_upsample ? raw_pcmbuf : pcmbuf;
             if (!ignorelen)
             {
                 if (input_samples < infile->samples || infile->samples == 0)
                     samplesRead =
-                        wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
+                        wav_read_float32(infile, read_buf, want, chanmap);
                 else
                     samplesRead = 0;
 
@@ -1164,9 +1203,17 @@ int main(int argc, char *argv[])
             }
             else
                 samplesRead =
-                    wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
+                    wav_read_float32(infile, read_buf, want, chanmap);
 
             input_samples += samplesRead / infile->channels;
+
+            if (will_upsample) {
+                /* Upsample raw_pcmbuf -> pcmbuf 2x. samplesRead is the count
+                 * read from the file at native rate; the encoder gets 2x. */
+                upsample2x_process(upsampler, raw_pcmbuf,
+                                   samplesRead / infile->channels, pcmbuf);
+                samplesRead *= 2;
+            }
         }
 
         /* call the actual encoding routine */
@@ -1332,6 +1379,10 @@ int main(int argc, char *argv[])
         free(artData);
     if (pcmbuf)
         free(pcmbuf);
+    if (raw_pcmbuf)
+        free(raw_pcmbuf);
+    if (upsampler)
+        upsample2x_destroy(upsampler);
     if (bitbuf)
         free(bitbuf);
     if (aacFileNameGiven)

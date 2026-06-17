@@ -195,7 +195,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        /* HE-AAC (v1) is optimal for [20, 32] kbps/ch on music. */
+        /* Strictly restrict HE-AAC to bitrates where it provides a clear
+         * MOS advantage (20-32 kbps/ch) and sample rates >= 32kHz. 16kHz
+         * scenarios (voip/vss) regressions are avoided by defaulting to LC. */
         int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
@@ -265,8 +267,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
         if (!hEncoder->sbrInfo) hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate, hEncoder->sampleRate, hEncoder->config.bitRate * hEncoder->numChannels);
         if (!HeAacBuffersAlloc(hEncoder)) return 0;
         /* HE-AAC (v1): SBR crossover frequency (kx) determines the core AAC-LC bandwidth.
+         * kx is expressed in QMF bands [0..63] of the high-rate spectrum.
+         * kx_freq = kx * fullSampleRate / 128.
          * Syncing core bandwidth ensures no spectral gaps or overlaps with SBR. */
-        hEncoder->config.bandWidth = hEncoder->sbrInfo->kx_freq;
+        unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
+        hEncoder->config.bandWidth = kx_freq;
     } else {
         HeAacBuffersFree(hEncoder);
     }
@@ -561,11 +566,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
     frameBytes = CloseBitStream(bitStream);
 
     if (hEncoder->config.bitRate) {
-        /* desbits uses the target bitrate. For HE-AAC, sampleRate is the
-         * halved core rate; we must use the full rate to correctly calculate
-         * the per-frame bit budget. */
-        unsigned long sr = hEncoder->fullSampleRate ? hEncoder->fullSampleRate : hEncoder->sampleRate;
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / sr;
+        /* desbits = (bits_per_second * core_samples_per_frame) / core_samples_per_second.
+         * For HE-AAC, hEncoder->sampleRate is the halved core rate. Because core
+         * samples are produced at half-rate, but represent a full-rate frame
+         * duration (1024 / core_fs), this ratio correctly yields the bits
+         * allocated per frame duration at the target bitrate. */
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
         int sbrBits = 0;
 

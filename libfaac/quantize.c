@@ -112,77 +112,92 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality,
                   int heMode)
 {
-  int sfb, cnt;
+  int sfb, cnt, win;
   int *cb_offset = coderInfo->sfb_offset;
-  int gsize = coderInfo->groups.len[gnum];
-  int block_short = (coderInfo->block_type == ONLY_SHORT_WINDOW);
-  int last = block_short ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
-  int total_len = cb_offset[coderInfo->sfbn];
+  int last;
+  faac_real avgenrg;
+  faac_real powm = 0.4;
   faac_real totenrg = 0.0;
-  faac_real inv_last = 1.0 / (faac_real)last;
+  int gsize = coderInfo->groups.len[gnum];
+  int total_len = cb_offset[coderInfo->sfbn];
 
-  for (int win = 0; win < gsize; win++) {
-      const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++) {
-          faac_real val = xr[cnt];
+  for (win = 0; win < gsize; win++)
+  {
+      const faac_real * __restrict p_xr = xr0 + win * BLOCK_LEN_SHORT;
+      for (cnt = 0; cnt < total_len; cnt++)
+      {
+          faac_real val = *p_xr++;
           totenrg += val * val;
       }
   }
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)gsize * total_len))
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)(gsize * total_len)))
   {
-      memset(bandqual, 0, coderInfo->sfbn * sizeof(faac_real));
-      memset(bandenrg, 0, coderInfo->sfbn * sizeof(faac_real));
+      for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
+      {
+          bandqual[sfb] = 0.0;
+          bandenrg[sfb] = 0.0;
+          bandmaxe[sfb] = 0.0;
+      }
       return;
   }
 
-  faac_real inv_avg_enrg_line = 1.0 / (totenrg * inv_last + 1e-30);
-  const faac_real powm = 0.4;
-  const faac_real w_noise = NOISETONE;
-  const faac_real w_tone = (1.0 - NOISETONE) * TONEMASK;
+  last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
+    faac_real avge, maxe;
+    faac_real target;
     int start = cb_offset[sfb];
     int end = cb_offset[sfb + 1];
     int n = end - start;
-    faac_real avge = 0.0, maxe = 0.0;
 
-    for (int win = 0; win < gsize; win++) {
-        const faac_real *xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        for (cnt = 0; cnt < n; cnt++) {
-            faac_real val = xr[cnt];
+    avge = 0.0;
+    maxe = 0.0;
+    for (win = 0; win < gsize; win++)
+    {
+        const faac_real * __restrict p_xr = xr0 + win * BLOCK_LEN_SHORT + start;
+        for (cnt = 0; cnt < n; cnt++)
+        {
+            faac_real val = *p_xr++;
             faac_real e = val * val;
             avge += e;
-            if (maxe < e) maxe = e;
+            if (maxe < e)
+                maxe = e;
         }
     }
-
     bandenrg[sfb] = avge;
+    /* Track peak magnitude to identify potential Huffman overflows. */
     bandmaxe[sfb] = FAAC_SQRT(maxe);
 
-    faac_real inv_n = 1.0 / (faac_real)n;
-    faac_real e_norm = (avge * inv_n) * inv_avg_enrg_line;
-    faac_real m_norm = (maxe * gsize * inv_n) * inv_avg_enrg_line;
+    avgenrg = (totenrg / last) * n;
 
-    if (e_norm < AVGE_FLOOR_FACTOR) e_norm = AVGE_FLOOR_FACTOR;
-    if (m_norm < MAXE_FLOOR_FACTOR) m_norm = MAXE_FLOOR_FACTOR;
+    /* Apply floors to inputs before the pow() calls. The masking formula is
+     * monotonic, so flooring inputs is equivalent to flooring the output. */
+    if (avge < avgenrg * AVGE_FLOOR_FACTOR) avge = avgenrg * AVGE_FLOOR_FACTOR;
+    if (maxe < avgenrg * MAXE_FLOOR_FACTOR) maxe = avgenrg * MAXE_FLOOR_FACTOR;
 
-    faac_real target = w_noise * FAAC_POW(e_norm, powm) +
-                       w_tone * FAAC_POW(m_norm, powm);
+    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
+    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
+    if (coderInfo->block_type == ONLY_SHORT_WINDOW)
+        target *= SHORT_PENALTY;
+    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    target *= 10.0 / (1.0 + (faac_real)(start + end) * inv_last);
-
-    if (block_short) target *= SHORT_PENALTY;
-
+    /* HE-AAC core only: stronger floor so quiet bands just below the SBR
+     * crossover survive quantization. At the halved core sample rate the
+     * default floors leave the target ~5 decades below rmsx and the
+     * magic-offset rounding truncates whole bands to zero, which the SBR
+     * patch then mirrors as silence. */
     if (heMode) {
-        faac_real e_f = (e_norm > 0.005) ? e_norm : 0.005;
-        faac_real m_f = (m_norm > 0.02) ? m_norm : 0.02;
-        faac_real t_f = w_noise * FAAC_POW(e_f, powm) +
-                        w_tone * FAAC_POW(m_f, powm);
-        t_f *= 10.0 / (1.0 + (faac_real)(start + end) * inv_last);
-        if (block_short) t_f *= 1.5;
-        if (target < t_f) target = t_f;
+        faac_real avge_floor = avgenrg * (faac_real)0.005;   /* -23 dB */
+        faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
+        faac_real maxe_floor = avgenrg * (faac_real)0.02;    /* -17 dB */
+        faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
+        faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
+        target_floor += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe_eff/avgenrg, powm);
+        target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
+        if (target < target_floor) target = target_floor;
     }
 
     bandqual[sfb] = target * quality;

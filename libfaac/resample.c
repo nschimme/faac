@@ -68,9 +68,9 @@ int Resample2to1(Resampler *r,
     int ch, i, j;
 
     for (ch = 0; ch < r->channels; ch++) {
-        faac_real *in  = input[ch];
-        faac_real *out = output[ch];
-        faac_real *hist = r->buf[ch];
+        faac_real * __restrict in  = input[ch];
+        faac_real * __restrict out = output[ch];
+        faac_real * __restrict hist = r->buf[ch];
 
         /* Fixed-size buffer to avoid VLA (MSVC portability). */
         faac_real combined[2112];
@@ -79,17 +79,13 @@ int Resample2to1(Resampler *r,
         memcpy(combined,     hist, H            * sizeof(faac_real));
         memcpy(combined + H, in,   actual_input * sizeof(faac_real));
 
-        const faac_real *p = combined + H;
-        const faac_real *c_start = fir_coeffs;
+        const faac_real * __restrict p = combined + H;
         for (i = 0; i < output_len; i++) {
-            faac_real sum = p[-HALF] * c_start[HALF];
-            const faac_real *p_lo = p;
-            const faac_real *p_hi = p - H;
-            const faac_real *c = c_start;
+            faac_real sum = p[-HALF] * fir_coeffs[HALF];
             for (j = 0; j < HALF; j++) {
-                sum += (*p_lo-- + *p_hi++) * *c++;
+                sum += (p[-j] + p[-(H - j)]) * fir_coeffs[j];
             }
-            out[i] = sum;
+            *out++ = sum;
             p += 2;
         }
 
