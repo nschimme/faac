@@ -204,6 +204,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 }
 
+void bmask_test(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
+                faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality,
+                int heMode)
+{
+    bmask(coderInfo, xr0, bandqual, bandenrg, bandmaxe, gnum, quality, heMode);
+}
+
 enum {MAXSHORTBAND = 36};
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,

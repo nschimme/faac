@@ -78,6 +78,8 @@ typedef struct SBRInfo {
      * conjugate symmetry of the bins. */
     faac_real cos64_table[64][128];
     faac_real sin64_table[64][128];
+    faac_real twidCos[128];
+    faac_real twidSin[128];
     FFT_Tables fftTables;
 } SBRInfo;
 

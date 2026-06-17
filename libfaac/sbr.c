@@ -157,11 +157,16 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
             sbr->sin64_table[k][n] = (faac_real)sin(phase);
         }
     }
+    /* Twiddles for the 128-point FFT-based QMF. */
+    for (int n = 0; n < 128; n++) {
+        sbr->twidCos[n] = (faac_real)cos(M_PI * n / 128.0);
+        sbr->twidSin[n] = (faac_real)sin(M_PI * n / 128.0);
+    }
     fft_initialize(&sbr->fftTables);
-    /* Build the logm=6 FFT tables now so analysis calls never allocate. */
+    /* Build the logm=7 FFT tables now so analysis calls never allocate. */
     {
-        faac_real xr[64] = {0}, xi[64] = {0};
-        fft(&sbr->fftTables, xr, xi, 6);
+        faac_real xr[128] = {0}, xi[128] = {0};
+        fft(&sbr->fftTables, xr, xi, 7);
     }
     return sbr;
 }
@@ -189,9 +194,8 @@ void qmf_analysis_slot_complex(const SBRInfo *sbr, const faac_real *slot, faac_r
 }
 
 /* 64-band analysis slot energy via direct modulation.
- * Reverted from FFT for absolute DSP correctness against the oracle.
- * Performance is maintained via the unified workspace in SBRAnalysis. */
-static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+ * Accuracy-first implementation matching the normative oracle. */
+static void qmf_analysis_64_slot_energy_direct(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     double u[128];
     const faac_real * restrict proto = sbr_qmf_window_us640;
@@ -203,7 +207,6 @@ static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * re
              + (double)proto[n + 512] * ovl_pos[127 - n];
     }
 
-    memset(energy, 0, 64 * sizeof(faac_real));
     for (int k = kx; k < k2; k++) {
         double re = 0, im = 0;
         const faac_real * restrict p_cos = sbr->cos64_table[k];
@@ -216,13 +219,63 @@ static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * re
     }
 }
 
+/* 64-band analysis slot energy via a 128-point complex FFT.
+ * This is mathematically equivalent to the direct modulation.
+ * The odd-frequency DFT X[k] = sum_{n=0}^{127} u[n] * exp(-j*pi*(2k+1)*(n-127)/256)
+ * is computed by pre-twiddling u[n] by exp(j*pi*n/128) and taking a 128-point FFT. */
+static void qmf_analysis_64_slot_energy_fft(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+{
+    faac_real xr[128], xi[128];
+    const faac_real * restrict proto = sbr_qmf_window_us640;
+
+    for (int n = 0; n < 128; n++) {
+        faac_real un = proto[n]       * ovl_pos[639 - n]
+                     + proto[n + 128] * ovl_pos[511 - n]
+                     + proto[n + 256] * ovl_pos[383 - n]
+                     + proto[n + 384] * ovl_pos[255 - n]
+                     + proto[n + 512] * ovl_pos[127 - n];
+
+        /* Pre-twiddle: w[n] = un * exp(j*pi*n/128).
+         * Library FFT is sum(x[n] * exp(-j*2*pi*k*n/N)).
+         * We want sum(un * exp(-j*pi*(2k+1)*n/128)).
+         * exp(-j*pi*(2k+1)*n/128) = exp(-j*2*pi*k*n/128) * exp(-j*pi*n/128).
+         * So we feed x[n] = un * exp(-j*pi*n/128) to the FFT.
+         * The energy |X[k]|^2 is phase-invariant, so (n-127) shift is ignored. */
+        xr[n] = un * sbr->twidCos[n];
+        xi[n] = -un * sbr->twidSin[n];
+    }
+
+    fft((FFT_Tables *)&sbr->fftTables, xr, xi, 7);
+
+    for (int k = kx; k < k2; k++) {
+        energy[k] = xr[k] * xr[k] + xi[k] * xi[k];
+    }
+}
+
+static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+{
+    /* Default to FFT for production speed. */
+    qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, energy, kx, k2);
+}
+
 void qmf_analysis_64_slot_energy_test(const SBRInfo *sbr, const faac_real * restrict slot, faac_real * restrict ovl, faac_real * restrict energy, int kx, int k2)
 {
-    /* Simulate the new SBRAnalysis calling convention: caller manages history/slot packing. */
+    /* Simulate the new SBRAnalysis calling convention. */
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 64];
     memcpy(workspace, ovl, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     memcpy(workspace + SBR_QMF_OVL_LEN_64, slot, 64 * sizeof(faac_real));
+
+    /* Test the production kernel. */
     qmf_analysis_64_slot_energy(sbr, workspace + 64, energy, kx, k2);
+    memcpy(ovl, workspace + 64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+}
+
+void qmf_analysis_64_slot_energy_direct_test(const SBRInfo *sbr, const faac_real * restrict slot, faac_real * restrict ovl, faac_real * restrict energy, int kx, int k2)
+{
+    faac_real workspace[SBR_QMF_OVL_LEN_64 + 64];
+    memcpy(workspace, ovl, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+    memcpy(workspace + SBR_QMF_OVL_LEN_64, slot, 64 * sizeof(faac_real));
+    qmf_analysis_64_slot_energy_direct(sbr, workspace + 64, energy, kx, k2);
     memcpy(ovl, workspace + 64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
 }
 
