@@ -34,27 +34,34 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 - **Derivation**: 10^( -23 dB / 10 ) approx 0.0050.
 - **Justification**: Clamps the peak energy ratio at -23 dB as a secondary safety net for tonal components in quiet bands.
 
+## Feature Sweep Results (Summary)
+
+| Configuration | VoIP Avg MOS | VSS Avg MOS | Music Low Avg MOS | Overall MOS | Throughput |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Integrated Baseline** | **3.62** | **4.21** | **3.35** | **3.91** | **3.4x** |
+| Refactor (nf0.45) | 3.65 | 4.20 | 3.24 | 3.91 | 3.6x |
+
 ## TNS (Temporal Noise Shaping) Tuning
 
 ### Bitrate Gate (64 kbps/ch)
-- **Rationale**: TNS coverage is extended to 64 kbps/ch to encompass the `vss` (40 kbps mono) and low-bitrate music scenarios. This ensures TNS utility for challenging acoustic environments and complex stereo signals where quantization noise still exceeds masking floors.
-- **Implementation**: TNS is disabled for `bitratePerCh >= 64000` and for transparency-targeted quality mode (`bitrate == 0`).
+- **Rationale**: TNS provides measurable MOS gains only at bitrates where quantization noise is high enough to be reshaped. The gate was increased from 32 to 64 kbps/ch to enable TNS for the `vss` (40 kbps mono) and `music_40/48` (20-24 kbps/ch stereo) scenarios, which showed significant quality-impact regressions when TNS was disabled.
+- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 64000` and for quality mode (`bitrate == 0`).
 
-### Break-Even Thresholds
-- **Rationale**: Adaptive gain thresholds (`gainThreshLong/Short`) are derived from a break-even bit budget model.
-- **`TNS_THRESH_FLOOR` (1.40)**: Minimum gain required for TNS activation. Tuned to 1.40 to prevent over-aggressive activation on reverberant speech (e.g. `vss` suite) while allowing coverage for transients.
-- **`TNS_THRESH_CAP` (1.80)**: Maximum threshold cap to ensure TNS activates on high-dynamic frames despite bit-starvation overhead at low bitrates.
+### Fixed Order (8)
+- **Rationale**: Replaces the adaptive ladder with a fixed order of 8 for long windows. This is MOS-neutral (+0.002) compared to higher orders at low bitrates but simplifies analysis.
 
-### Loop Optimizations
-- **Rationale**: CPU throughput is improved via portable code patterns:
-  - **Hoisted Clamping**: Clamping logic in `Autocorrelation` is hoisted to the loop tail to improve L1 cache locality for the bulk of spectral data.
-  - **Branchless Whitening**: `WhitenSpectrumForTns` utilizes a per-SFB weighting structure to eliminate conditional branches in the hot inner loop.
-  - **Keyword Qualifiers**: Use of `restrict` and `const` enables aggressive compiler vectorization.
+### Break-Even Gain Thresholds
+- **Rationale**: TNS utility is modeled as a break-even bit budget calculation (`spectral_bits` vs `tns_overhead`).
+- **`TNS_THRESH_FLOOR` (1.10)**: Minimum LPC gain required to activate TNS. Lower values (e.g. 1.05) increase TNS frequency but risk bit starvation in the core quantizer on tonal content.
+- **`TNS_THRESH_CAP` (1.80)**: Maximum adaptive threshold. Prevents TNS from being permanently disabled at very low bitrates by capping the penalty of TNS overhead bits.
 
-### Dual-Analysis Pass (Arm D2)
-- **Rationale**: A second Levinson-Durbin pass on the raw spectrum is conditionally applied if it yields significant gain. This "safety pass" specifically rescues MOS quality for reverberant or echoic content where spectral whitening might under-represent the correlation structure.
+### Pre-gate Logic
+- **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot provide a win.
+- **Flatness Gate**: Rejects frames where the spectral flatness (L2^2*N/L1^2) is already high.
+- **Peak Gate**: Rejects frames with low peak-to-mean ratios that behave like Gaussian noise.
 
-### Short-Block TNS
-- **Rationale**: Short-window TNS is disabled in the analysis path for music/vss scenarios to balance the throughput budget, as long-window TNS provides the majority of perceptual gains for these content types.
+### Optimized Single-Pass Analysis
+- **Rationale**: The expensive "Arm D2" (second LPC analysis pass) was removed. Throughput research showed that a single-pass whitened analysis, combined with DSP kernel optimizations (hoisted Autocorrelation clamping and branchless SFB whitening), provides equivalent quality with a ~9% total throughput speedup.
+- **Whitening**: Scaling spectral lines by `1/sqrt(sfbEnergy)` before analysis focuses the filter on within-band correlation rather than global spectral tilt.
 
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*

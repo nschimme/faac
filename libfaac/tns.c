@@ -28,6 +28,7 @@ Copyright (c) 1997.
  */
 
 #include <math.h>
+#include <stdlib.h>
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
@@ -65,7 +66,7 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_SPECTRAL_FRAC   0.65    /* Estimated fraction of frame bits for spectral data */
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
-#define TNS_THRESH_FLOOR    1.40    /* Minimum gain threshold for TNS utility */
+#define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
 #define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
 
 /*************************/
@@ -206,19 +207,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Short-window TNS disabled for performance balance in music/vss. */
+        /* Analysis disabled for short windows to balance throughput. */
         tnsInfo->tnsDataPresent = 0;
         return;
-
-        numberOfWindows = MAX_SHORT_WINDOWS;
-        windowSize = BLOCK_LEN_SHORT;
-        startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
-        break;
 
     default:
         numberOfWindows = 1;
@@ -247,16 +238,14 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     /* Pre-gate thresholds. */
     startIndex = sfbOffsetTable[startBand];
     length = sfbOffsetTable[stopBand] - startIndex;
-    faac_real peak_thresh = (length > 0) ? (TNS_PEAK_RATIO_MARGIN
-                                            * FAAC_SQRT(2.0 * FAAC_LOG((faac_real)length))) : 0.0;
+    faac_real peak_thresh = (length > 0) ? ((faac_real)TNS_PEAK_RATIO_MARGIN
+                                            * (faac_real)sqrt(2.0 * log((double)length))) : 0.0;
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
 
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
-        faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
-        faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
         faac_real sfbEnergy[NSFB_LONG];
         faac_real* wspec = spec + w * windowSize;
 
@@ -277,7 +266,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
                 for (j = 0; j < n; j++) {
                     faac_real v = pspec[j];
-                    faac_real va = FAAC_FABS(v);
+                    faac_real va = (faac_real)fabs((double)v);
                     e    += v * v;
                     suma += va;
                     if (va > maxa) maxa = va;
@@ -286,9 +275,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 sumsq += e;
             }
 
-            if (sumsq < TNS_ENERGY_FLOOR * length
+            if (sumsq < (faac_real)TNS_ENERGY_FLOOR * length
                 || suma <= 0.0
-                || sumsq * length < TNS_FLATNESS_K * suma * suma
+                || sumsq * length < (faac_real)TNS_FLATNESS_K * suma * suma
                 || maxa * length < peak_thresh * suma) {
                 continue;
             }
@@ -298,20 +287,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy,
                              startBand, stopBand,
                              startIndex, startIndex + length);
-        gain = LevinsonDurbin(order,length,&temp[startIndex],k);
+        gain = LevinsonDurbin(order,length,&temp[startIndex],tnsFilter->kCoeffs);
 
         if (gain > gainThreshCur) {
             int truncatedOrder;
-            faac_real kraw[TNS_MAX_ORDER+1];
 
-            /* Conditional coefficient source (Arm D2):
-             * Select raw LPC if raw gain is also significant, helping reverberant speech. */
-            if (LevinsonDurbin(order, length, &wspec[startIndex], kraw) > gainThreshCur) {
-                for (i = 0; i <= order; i++) k[i] = kraw[i];
-            }
-
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
+            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,tnsFilter->kCoeffs,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,tnsFilter->kCoeffs);
             if (truncatedOrder == 0) continue;
 
             windowData->numFilters++;
@@ -330,7 +312,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
             tnsFilter->length = lengthInBands;
             tnsFilter->order = truncatedOrder;
-            StepUp(truncatedOrder,k,a);
+            StepUp(truncatedOrder,tnsFilter->kCoeffs,tnsFilter->aCoeffs);
             TnsInvFilter(length,&wspec[startIndex],tnsFilter,temp);
         }
     }
@@ -358,7 +340,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
     }
     int startBand,stopBand;    /* Bands over which to apply TNS */
     int w;
-    int startIndex,length;
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
@@ -394,10 +375,9 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
 
-        startIndex = w * windowSize + sfbOffsetTable[startBand];
-        length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
-
         if (tnsInfo->tnsDataPresent  &&  windowData->numFilters) {  /* Use TNS */
+            int startIndex = w * windowSize + sfbOffsetTable[startBand];
+            int length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);
         }
     }
@@ -468,7 +448,7 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
     int i;
 
     for (i = fOrder; i >= 0; i--) {
-        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
+        kArray[i] = (faac_real)(fabs((double)kArray[i])>threshold) ? kArray[i] : 0.0;
         if (kArray[i]!=0.0) return i;
     }
 
@@ -487,8 +467,8 @@ static void QuantizeReflectionCoeffs(int fOrder,
     faac_real iqfac,iqfac_m;
     int i;
 
-    iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
-    iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
+    iqfac = (faac_real)(((1<<(coeffRes-1))-0.5)/(M_PI/2));
+    iqfac_m = (faac_real)(((1<<(coeffRes-1))+0.5)/(M_PI/2));
 
     /* Range clamping prevents index wrapping and encoder/decoder mismatch. */
     {
@@ -496,12 +476,12 @@ static void QuantizeReflectionCoeffs(int fOrder,
         const int i_min = -(1 << (coeffRes - 1));
         for (i = 1; i <= fOrder; i++) {
             int idx = (kArray[i] >= 0)
-                    ? (int)(0.5  + FAAC_ASIN(kArray[i]) * iqfac)
-                    : (int)(-0.5 + FAAC_ASIN(kArray[i]) * iqfac_m);
+                    ? (int)(0.5  + asin((double)kArray[i]) * (double)iqfac)
+                    : (int)(-0.5 + asin((double)kArray[i]) * (double)iqfac_m);
             if (idx > i_max) idx = i_max;
             if (idx < i_min) idx = i_min;
             indexArray[i] = idx;
-            kArray[i] = FAAC_SIN((faac_real)idx / (idx >= 0 ? iqfac : iqfac_m));
+            kArray[i] = (faac_real)sin((double)idx / (idx >= 0 ? (double)iqfac : (double)iqfac_m));
         }
     }
 }
@@ -581,11 +561,11 @@ static faac_real LevinsonDurbin(int fOrder,
 
         /* Now perform recursion */
         for (order=1;order<=fOrder;order++) {
-            kTemp = aLastPtr[0]*rArray[order-0];
+            kTemp = aLastPtr[0]*rArray[order];
             for (i=1;i<order;i++) {
                 kTemp += aLastPtr[i]*rArray[order-i];
             }
-            if (error <= 0.0 || FAAC_FABS(kTemp) >= error) {
+            if (error <= 0.0 || (faac_real)fabs((double)kTemp) >= error) {
                 error = 0.0;
                 break;
             }
@@ -595,7 +575,7 @@ static faac_real LevinsonDurbin(int fOrder,
             for (i=1;i<order;i++) {
                 aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
             }
-            error = error * (1 - kTemp*kTemp);
+            error *= (1 - kTemp*kTemp);
             if (error <= 0.0) break;
 
             /* Now make current iteration the last one */
@@ -650,7 +630,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
 
     for (sfb = startBand; sfb < stopBand; sfb++) {
         invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)1.0 / FAAC_SQRT(sfbEnergy[sfb])
+                  ? (faac_real)(1.0 / sqrt((double)sfbEnergy[sfb]))
                   : (faac_real)0.0;
     }
 
