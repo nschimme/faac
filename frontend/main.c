@@ -65,6 +65,7 @@
 #include "input.h"
 
 #include <faac.h>
+#include "../libfaac/util.h"
 
 #define FALSE 0
 #define TRUE 1
@@ -1010,7 +1011,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
     fprintf(stderr, "Object type: Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
-    if (myFormat->useTns)
+    if (myFormat->useTns && !TnsIsGated(myFormat->bitRate, myFormat->quantqual))
         fprintf(stderr, " + TNS");
 
     switch(myFormat->jointmode) {

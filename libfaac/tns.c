@@ -104,17 +104,11 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
+    /* hEncoder->config.bitRate is already normalized to bps per channel
+     * by the frontend and faacEncSetConfiguration. */
     unsigned long bitratePerCh = hEncoder->config.bitRate;
     unsigned long quality = hEncoder->config.quantqual;
-    int tnsGated = 0;
-
-    if (bitratePerCh == 0) {
-        if (quality >= 100)
-            tnsGated = 1;
-    } else {
-        if (bitratePerCh >= 64000)
-            tnsGated = 1;
-    }
+    int tnsGated = TnsIsGated(bitratePerCh, quality);
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;

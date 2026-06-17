@@ -51,6 +51,15 @@ int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate();
 
+static inline int TnsIsGated(unsigned long bitratePerCh, unsigned long quality)
+{
+    if (bitratePerCh == 0) {
+        return (quality >= 100);
+    } else {
+        return (bitratePerCh >= 64000);
+    }
+}
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
