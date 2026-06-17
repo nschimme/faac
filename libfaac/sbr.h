@@ -25,7 +25,7 @@ extern "C" {
 #define SBR_QMF_FILTER_LEN   64
 #define SBR_QMF_OVL_LEN      64
 #define SBR_QMF_BANDS_64     64
-#define SBR_QMF_OVL_LEN_64   640
+#define SBR_QMF_OVL_LEN_64   576
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     2
 #define SBR_MAX_NOISE_BANDS   5
@@ -46,7 +46,7 @@ typedef struct SBRInfo {
     int dk;                /* Frequency table resolution (1 or 2) */
     int numEnvelopes;      /* envelopes in the CURRENT frame (1 or 2), set by
                               the transient detector in SBRAnalysis */
-    float transientThresh; /* slot peak/mean energy ratio for 2-env frames */
+    faac_real transientThresh; /* slot peak/mean energy ratio for 2-env frames */
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
     int numNoiseBands;
@@ -71,11 +71,7 @@ typedef struct SBRInfo {
     faac_real cos_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
     faac_real sin_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
 
-    /* 64-band analysis via a single 64-point complex FFT (see
-     * qmf_analysis_64_slot_energy): even/odd samples of the real window
-     * output are packed into one complex sequence, pre-twiddled by
-     * exp(-j*pi*m/64), and the odd-frequency spectrum is recovered from the
-     * conjugate symmetry of the bins. */
+    /* 64-band analysis via a 128-point complex FFT. */
     faac_real cos64_table[64][128];
     faac_real sin64_table[64][128];
     faac_real twidCos[128];

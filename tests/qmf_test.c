@@ -11,6 +11,7 @@
 #include "libfaac/sbr.h"
 #include "libfaac/sbr_internal.h"
 #include "libfaac/sbr_tables.h"
+#include "libfaac/faac_real.h"
 #include "qmf_oracle.h"
 
 #define SLOT   32
@@ -45,17 +46,15 @@ static void run_case_64(const char *name, const faac_real *input, int n_slots)
     double ref_acc = 0, worst = -1e9;
     int worst_k = -1;
     double band_err[64] = {0};
-    float ref_state[640] = {0};
+    faac_real ref_state[640] = {0};
 
     /* Accuracy pass: FFT */
     for (int s = 0; s < n_slots; s++) {
         faac_real energy[64];
         qmf_analysis_64_slot_energy_test(sbr, input + s * 64, state, energy, kx, k2);
 
-        float ref_in[64];
-        float ref_en[64];
-        for (int i = 0; i < 64; i++) ref_in[i] = (float)input[s * 64 + i];
-        qmf_ref_64_slot_energy(ref_in, ref_state, ref_en);
+        faac_real ref_en[64];
+        qmf_ref_64_slot_energy(input + s * 64, ref_state, ref_en);
 
         for (int k = kx; k < k2; k++) {
             double Eref = (double)ref_en[k];
@@ -81,10 +80,8 @@ static void run_case_64(const char *name, const faac_real *input, int n_slots)
     for (int s = 0; s < n_slots; s++) {
         faac_real energy[64];
         qmf_analysis_64_slot_energy_direct_test(sbr, input + s * 64, state, energy, kx, k2);
-        float ref_in[64];
-        float ref_en[64];
-        for (int i = 0; i < 64; i++) ref_in[i] = (float)input[s * 64 + i];
-        qmf_ref_64_slot_energy(ref_in, ref_state, ref_en);
+        faac_real ref_en[64];
+        qmf_ref_64_slot_energy(input + s * 64, ref_state, ref_en);
         for (int k = kx; k < k2; k++) {
             double d = (double)energy[k] - (double)ref_en[k];
             band_err_dir[k] += d * d;
@@ -120,9 +117,11 @@ static void run_case_64(const char *name, const faac_real *input, int n_slots)
     t1 = get_time();
     double speed_dir = ((double)n_slots * bench_iters) / (t1 - t0);
 
-    printf("  [64-band %s] FFT: err=%+7.2f dB, speed=%8.0f | Direct: err=%+7.2f dB, speed=%8.0f\n",
+    printf("  [64-band %-10s] FFT: err=%+7.2f dB, speed=%8.0f | Direct: err=%+7.2f dB, speed=%8.0f\n",
            name, worst, speed_fft, worst_dir, speed_dir);
 
+    (void)worst_k;
+    (void)worst_k_dir;
     SBREnd(sbr);
 }
 

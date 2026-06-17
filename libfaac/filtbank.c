@@ -355,8 +355,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         /* get post-twiddled FFT output */
         faac_real xr_val = *p_xr++;
         faac_real xi_val = *p_xi++;
-        tempr = 2. * (xr_val * c + xi_val * s);
-        tempi = 2. * (xi_val * c - xr_val * s);
+        tempr = (faac_real)2.0 * (xr_val * c + xi_val * s);
+        tempi = (faac_real)2.0 * (xi_val * c - xr_val * s);
 
         /* fill in output values */
         base_even0[n2] = -tempr;  /* first half even */
