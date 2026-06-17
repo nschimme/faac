@@ -153,6 +153,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
+    hEncoder->config.quantqual = config->quantqual;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -206,6 +207,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     /* Re-init TNS after bitRate is committed. */
     TnsInit(hEncoder);
+
+    /* Reflect actual TNS status back to the configuration struct */
+    config->useTns = hEncoder->coderInfo[0].tnsInfo.tnsDisabled ? 0 : 1;
+    hEncoder->config.useTns = config->useTns;
 
     if (!config->bandWidth)
     {

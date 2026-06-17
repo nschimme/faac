@@ -185,7 +185,6 @@ static help_t help_mp4[] = {
 };
 
 static help_t help_advanced[] = {
-    {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
     {"--joint 0\tDisable joint stereo coding.\n"},
     {"--joint 1\tUse Mid/Side coding.\n"},
