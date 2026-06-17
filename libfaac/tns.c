@@ -239,7 +239,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     startIndex = sfbOffsetTable[startBand];
     length = sfbOffsetTable[stopBand] - startIndex;
     faac_real peak_thresh = (length > 0) ? ((faac_real)TNS_PEAK_RATIO_MARGIN
-                                            * (faac_real)sqrt(2.0 * log((double)length))) : 0.0;
+                                            * (faac_real)FAAC_SQRT(2.0 * FAAC_LOG((faac_real)length))) : 0.0;
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
@@ -266,7 +266,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
                 for (j = 0; j < n; j++) {
                     faac_real v = pspec[j];
-                    faac_real va = (faac_real)fabs((double)v);
+                    faac_real va = (faac_real)FAAC_FABS(v);
                     e    += v * v;
                     suma += va;
                     if (va > maxa) maxa = va;
@@ -275,10 +275,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                 sumsq += e;
             }
 
-            if (sumsq < (faac_real)TNS_ENERGY_FLOOR * length
+            if (sumsq < (faac_real)TNS_ENERGY_FLOOR * (faac_real)length
                 || suma <= 0.0
-                || sumsq * length < (faac_real)TNS_FLATNESS_K * suma * suma
-                || maxa * length < peak_thresh * suma) {
+                || sumsq * (faac_real)length < (faac_real)TNS_FLATNESS_K * suma * suma
+                || maxa * (faac_real)length < peak_thresh * suma) {
                 continue;
             }
         }
@@ -448,7 +448,7 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
     int i;
 
     for (i = fOrder; i >= 0; i--) {
-        kArray[i] = (faac_real)(fabs((double)kArray[i])>threshold) ? kArray[i] : 0.0;
+        kArray[i] = (faac_real)(FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
         if (kArray[i]!=0.0) return i;
     }
 
@@ -476,12 +476,12 @@ static void QuantizeReflectionCoeffs(int fOrder,
         const int i_min = -(1 << (coeffRes - 1));
         for (i = 1; i <= fOrder; i++) {
             int idx = (kArray[i] >= 0)
-                    ? (int)(0.5  + asin((double)kArray[i]) * (double)iqfac)
-                    : (int)(-0.5 + asin((double)kArray[i]) * (double)iqfac_m);
+                    ? (int)(0.5  + FAAC_ASIN(kArray[i]) * (faac_real)iqfac)
+                    : (int)(-0.5 + FAAC_ASIN(kArray[i]) * (faac_real)iqfac_m);
             if (idx > i_max) idx = i_max;
             if (idx < i_min) idx = i_min;
             indexArray[i] = idx;
-            kArray[i] = (faac_real)sin((double)idx / (idx >= 0 ? (double)iqfac : (double)iqfac_m));
+            kArray[i] = (faac_real)FAAC_SIN((faac_real)idx / (idx >= 0 ? (faac_real)iqfac : (faac_real)iqfac_m));
         }
     }
 }
@@ -565,7 +565,7 @@ static faac_real LevinsonDurbin(int fOrder,
             for (i=1;i<order;i++) {
                 kTemp += aLastPtr[i]*rArray[order-i];
             }
-            if (error <= 0.0 || (faac_real)fabs((double)kTemp) >= error) {
+            if (error <= 0.0 || (faac_real)FAAC_FABS(kTemp) >= error) {
                 error = 0.0;
                 break;
             }
@@ -630,7 +630,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
 
     for (sfb = startBand; sfb < stopBand; sfb++) {
         invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)(1.0 / sqrt((double)sfbEnergy[sfb]))
+                  ? (faac_real)(1.0 / FAAC_SQRT(sfbEnergy[sfb]))
                   : (faac_real)0.0;
     }
 
