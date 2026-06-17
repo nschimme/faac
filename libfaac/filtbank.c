@@ -273,10 +273,6 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     int n1 = N2 - 1;  /* descending: N/2 - 1 - 2i */
     int n2 = 0;       /* ascending: 2i */
 
-    /* Induction pointers */
-    faac_real * __restrict p_xr = xr;
-    faac_real * __restrict p_xi = xi;
-
     /* Phase 1: i < N/8 */
     for (i = 0; i < N8; i++) {
 
@@ -289,8 +285,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         tempi = base0[n2] - base1[-n2];
 
         /* calculate pre-twiddled FFT input */
-        *p_xr++ = tempr * c + tempi * s;
-        *p_xi++ = tempi * c - tempr * s;
+        xr[i] = tempr * c + tempi * s;
+        xi[i] = tempi * c - tempr * s;
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -313,8 +309,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
         tempi = base0[n2] + base2[-n2];
 
         /* calculate pre-twiddled FFT input */
-        *p_xr++ = tempr * c + tempi * s;
-        *p_xi++ = tempi * c - tempr * s;
+        xr[i] = tempr * c + tempi * s;
+        xi[i] = tempi * c - tempr * s;
 
         /* use recurrence to prepare cosine and sine for next value of i */
         cold = c;
@@ -348,15 +344,11 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     n2 = 0;
 
     /* post-twiddle FFT output and then get output data */
-    p_xr = xr;
-    p_xi = xi;
     for (i = 0; i < N4; i++) {
 
         /* get post-twiddled FFT output */
-        faac_real xr_val = *p_xr++;
-        faac_real xi_val = *p_xi++;
-        tempr = (faac_real)2.0 * (xr_val * c + xi_val * s);
-        tempi = (faac_real)2.0 * (xi_val * c - xr_val * s);
+        tempr = 2. * (xr[i] * c + xi[i] * s);
+        tempi = 2. * (xi[i] * c - xr[i] * s);
 
         /* fill in output values */
         base_even0[n2] = -tempr;  /* first half even */
