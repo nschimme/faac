@@ -189,15 +189,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 return 0;
             }
 
-            if (IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED)
-            {
-                SetDlgItemText(hWnd, IDC_USETNS, config->useTns ? "Use TNS (Active)" : "Use TNS (Gated)");
-            }
-            else
-            {
-                SetDlgItemText(hWnd, IDC_USETNS, "Use TNS (Off)");
-            }
-
 	    sprintf(szTemp, "%ld", config->quantqual);
 	    SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
 
@@ -299,9 +290,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             }
 
             faacEncClose(hEncoder);
-
-            /* Reset TNS checkbox text */
-            SetDlgItemText(hWnd, IDC_USETNS, "Use TNS");
         }
 
         wav_close(infile);
