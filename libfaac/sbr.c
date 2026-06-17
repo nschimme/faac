@@ -131,19 +131,12 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->numEnvelopes = 1;
     /* Slot peak/mean energy ratio above which a frame is coded with two
      * envelopes. 16.0 fires only on hard attacks; lower values spend
-     * envelope bits the core misses more than the time resolution helps.
-     * Narrow-band speech (16kHz) has dense transients; raising the threshold
-     * keeps more bits in the core by avoiding envelope overhead. */
-    sbr->transientThresh = (sampleRate <= 16000) ? 20.0f : 16.0f;
+     * envelope bits the core misses more than the time resolution helps. */
+    sbr->transientThresh = 16.0f;
     /* Decoders force amp_res = 0 (1.5 dB) for FIXFIX frames with one envelope,
      * regardless of the header's bs_amp_res. All quantization and entropy
      * coding must follow the effective value or the bitstream desyncs. */
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-
-    /* Narrow-band speech lever: override crossover for 16kHz inputs to
-     * keep more vocal formants in the core. bs_start_freq 10-12 (~4-5kHz)
-     * is safer than 15 (~7kHz) for speech. */
-    if (sampleRate <= 32000) sbr->bs_start_freq = 4;
 
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->kx_freq = (unsigned int)((sbr->kx * (unsigned long)sampleRate) / 128);
@@ -196,49 +189,31 @@ void qmf_analysis_slot_complex(const SBRInfo *sbr, const faac_real *slot, faac_r
     }
 }
 
-/* 64-band analysis slot energy via a single 64-point complex FFT. */
+/* 64-band QMF analysis slot energy. */
 void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict window, faac_real * restrict energy, int kx, int k2)
 {
-    faac_real xr[64], xi[64];
     const faac_real * restrict p = sbr_qmf_window_us640;
-    const faac_real * restrict twidCos = sbr->twidCos;
-    const faac_real * restrict twidSin = sbr->twidSin;
+    faac_real u[128];
+    int n, k;
 
-    for (int m = 0; m < 64; m++) {
-        const faac_real * restrict o = window + 639 - 2 * m;
-        faac_real a = p[0]   * o[0]   +
-                      p[128] * o[-128] +
-                      p[256] * o[-256] +
-                      p[384] * o[-384] +
-                      p[512] * o[-512];
-        faac_real b = p[1]   * o[-1]   +
-                      p[129] * o[-129] +
-                      p[257] * o[-257] +
-                      p[385] * o[-385] +
-                      p[513] * o[-513];
-
-        /* d[m] = conj((a + j*b) * exp(j*pi*m/64)) */
-        xr[m] = a * twidCos[m] - b * twidSin[m];
-        xi[m] = -(a * twidSin[m] + b * twidCos[m]);
+    for (n = 0; n < 128; n++) {
+        u[n] = p[n]       * window[639 - n]
+             + p[n + 128] * window[511 - n]
+             + p[n + 256] * window[383 - n]
+             + p[n + 384] * window[255 - n]
+             + p[n + 512] * window[127 - n];
     }
-    fft((FFT_Tables *)&sbr->fftTables, xr, xi, 6);
+
     memset(energy, 0, 64 * sizeof(faac_real));
-
-    const faac_real * restrict oddCos = sbr->oddCos;
-    const faac_real * restrict oddSin = sbr->oddSin;
-    for (int k = kx; k < k2; k++) {
-        int kr = 63 - k;
-        faac_real xrk = xr[k], xik = xi[k];
-        faac_real xrkr = xr[kr], xikr = xi[kr];
-
-        /* C_k = conj(D_k) = (xr[k], -xi[k]); conj(C_{63-k}) = D_{63-k}. */
-        faac_real Ar = (faac_real)0.5 * (xrk + xrkr);
-        faac_real Ai = (faac_real)0.5 * (xikr - xik);
-        faac_real Br = (faac_real)-0.5 * (xik + xikr);
-        faac_real Bi = (faac_real)0.5 * (xrkr - xrk);
-        faac_real Sr = Ar + oddCos[k] * Br - oddSin[k] * Bi;
-        faac_real Si = Ai + oddCos[k] * Bi + oddSin[k] * Br;
-        energy[k] = Sr * Sr + Si * Si;
+    for (k = kx; k < k2; k++) {
+        faac_real re = 0, im = 0;
+        double phase_step = M_PI * (2.0 * k + 1.0) / 256.0;
+        for (n = 0; n < 128; n++) {
+            double phase = phase_step * (2.0 * n - 127.0);
+            re += u[n] * (faac_real)cos(phase);
+            im += u[n] * (faac_real)sin(phase);
+        }
+        energy[k] = re * re + im * im;
     }
 }
 
@@ -310,10 +285,8 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
          * puts the noise well above the patched signal. A full Q sweep
          * (0..30) and an SFM-adaptive mapping both measured worse or equal:
          * for the [11.6, 18.4] kHz band the patch's continued harmonics
-         * match the original worse than shaped noise does.
-         * For speech (16kHz), high noise floor can sound "whispery". Lever:
-         * drop noise level if sampleRate is low. */
-        int noise_level = (sbr->sampleRate <= 16000) ? 5 : 0;
+         * match the original worse than shaped noise does. */
+        int noise_level = 0;
         sbr->invfMode[ch] = 3;
 
         /* Frequency-delta range is bounded by the Huffman table's LAV:

@@ -195,10 +195,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        /* HE-AAC (v1) is optimal for [20, 32] kbps/ch on music, but speech
-         * scenarios at very low bitrates (e.g. voip 16kbps) can also benefit
-         * with proper SBR tuning. Enable for [15, 31] kbps/ch. */
-        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= 31000);
+        /* HE-AAC (v1) is optimal for [20, 32] kbps/ch on music. */
+        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
