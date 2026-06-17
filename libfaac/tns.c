@@ -104,8 +104,19 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
-    unsigned long bitratePerCh = (hEncoder->numChannels > 0)
-        ? hEncoder->config.bitRate / hEncoder->numChannels : 0;
+    /* hEncoder->config.bitRate is already normalized to bps per channel
+     * by the frontend and faacEncSetConfiguration. */
+    unsigned long bitratePerCh = hEncoder->config.bitRate;
+    unsigned long quality = hEncoder->config.quantqual;
+    int tnsGated = 0;
+
+    if (bitratePerCh == 0) {
+        if (quality >= 100)
+            tnsGated = 1;
+    } else {
+        if (bitratePerCh >= 64000)
+            tnsGated = 1;
+    }
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -116,10 +127,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* TNS gate: active only for bitrates < 64 kbps/ch where quantization
-         * noise exceeds masking thresholds. Disabled for transparency-targeted
-         * quality mode (bitrate == 0). */
-        tnsInfo->tnsDisabled = (bitratePerCh == 0 || bitratePerCh >= 64000);
+        /* TNS gate: active only when enabled and within bitrate/quality limits. */
+        tnsInfo->tnsDisabled = (hEncoder->config.useTns == 0) || tnsGated;
 
         if (tnsInfo->tnsDisabled) {
             continue;

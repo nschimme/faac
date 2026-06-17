@@ -202,9 +202,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
-    hEncoder->config.bitRate = config->bitRate;
+    if (config->quantqual > maxqual)
+        config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
 
-    /* Re-init TNS after bitRate is committed. */
+    hEncoder->config.bitRate = config->bitRate;
+    hEncoder->config.quantqual = config->quantqual;
+
+    /* Re-init TNS after intent, bitRate and quantqual are committed. */
     TnsInit(hEncoder);
 
     if (!config->bandWidth)
@@ -219,13 +225,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-    if (config->quantqual > maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
-    hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
