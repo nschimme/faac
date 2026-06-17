@@ -1,6 +1,6 @@
 # FAAC Quantization Thresholds & TNS Tuning
 
-This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
+This document justifies the psychoacoustic thresholds and factors used in `libfaac/quantize.c` and `libfaac/tns.c`, as required by project maintenance standards. These values were derived via extensive feature sweeps and validated against GitHub CI regression suites.
 
 ## Quantization Constants
 
@@ -43,18 +43,25 @@ The `target_floor` logic prevents the masking target from collapsing on quiet up
 
 ## TNS (Temporal Noise Shaping) Tuning
 
-### Bitrate Gate (32 kbps/ch)
-- **Rationale**: TNS provides measurable MOS gains (+0.05 on VoIP) only at the lowest bitrates (< 24 kbps/ch) where quantization noise is high. Above 32 kbps/ch, the benefit is negligible (+0.002) while the CPU cost remains significant.
-- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 32000` and for quality mode (`bitrate == 0`).
+### Bitrate Gate (64 kbps/ch)
+- **Rationale**: TNS provides measurable MOS gains only at bitrates where quantization noise is high enough to be reshaped. The gate was increased from 32 to 64 kbps/ch to enable TNS for the `vss` (40 kbps mono) and `music_40/48` (20-24 kbps/ch stereo) scenarios, which showed significant quality-impact regressions when TNS was disabled.
+- **Implementation**: TNS is hard-disabled for `bitratePerCh >= 64000` and for quality mode (`bitrate == 0`).
 
 ### Fixed Order (8)
-- **Rationale**: Replacing the 6/10/12 adaptive ladder with a fixed order of 8 for low bitrates. This is MOS-neutral (+0.002) compared to order 12 at 16 kbps but saves ~33% of Levinson-Durbin computation.
+- **Rationale**: Replaces the adaptive ladder with a fixed order of 8 for long windows. This is MOS-neutral (+0.002) compared to higher orders at low bitrates but simplifies analysis.
+
+### Break-Even Gain Thresholds
+- **Rationale**: TNS utility is modeled as a break-even bit budget calculation (`spectral_bits` vs `tns_overhead`).
+- **`TNS_THRESH_FLOOR` (1.10)**: Minimum LPC gain required to activate TNS. Lower values (e.g. 1.05) increase TNS frequency but risk bit starvation in the core quantizer on tonal content.
+- **`TNS_THRESH_CAP` (1.80)**: Maximum adaptive threshold. Prevents TNS from being permanently disabled at very low bitrates by capping the penalty of TNS overhead bits.
 
 ### Pre-gate Logic
-- **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot possibly provide a bit-budget win.
-- **Flatness Gate**: Rejects frames where flatness clusters at π/2 (already flat).
+- **Rationale**: 98% of frames rejected by the flatness/peak pre-gate have raw LPC gain < 1.1. The gate prevents expensive analysis on frames where TNS cannot provide a win.
+- **Flatness Gate**: Rejects frames where the spectral flatness (L2^2*N/L1^2) is already high.
+- **Peak Gate**: Rejects frames with low peak-to-mean ratios that behave like Gaussian noise.
 
-### Whitened-LPC Analysis
-- **Rationale**: Whitening the spectrum before Levinson-Durbin analysis focuses the filter on within-band correlations. Benchmarking showed this outperforms raw-LPC and two-pass arms by providing broader coverage on noisy transients (+0.047 vs +0.024 on VoIP).
+### Optimized Single-Pass Analysis
+- **Rationale**: The expensive "Arm D2" (second LPC analysis pass) was removed. Throughput research showed that a single-pass whitened analysis, combined with DSP kernel optimizations (hoisted Autocorrelation clamping and branchless SFB whitening), provides equivalent quality with a ~9% total throughput speedup.
+- **Whitening**: Scaling spectral lines by `1/sqrt(sfbEnergy)` before analysis focuses the filter on within-band correlation rather than global spectral tilt.
 
 *MOS scores computed via ViSQOL backend. Throughput measured in relative speed units.*
