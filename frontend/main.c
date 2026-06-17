@@ -887,15 +887,12 @@ int main(int argc, char *argv[])
      * the core to 8 kHz; SBR then regenerates [4, 8] kHz with noise --
      * which destroys real fricative/sibilant content in that band. We
      * upsample 2x in the frontend so libfaac receives a 32 kHz stream and
-     * its halving lands the core at 16 kHz instead. Auto-mode never
-     * silently picks HE on narrow-band inputs (gate added in
-     * libfaac/frame.c), so this path triggers only for explicit
-     * --object-type he-aac. */
+     * its halving lands the core at 16 kHz instead. */
     encoder_sr = infile->samplerate;
 
     /* HE-AAC (v1) auto-mode: voip (16kbps, 16kHz) gains from HE. */
     if (objectType == AAC_AUTO) {
-        int rate_ok = (bitRate >= 15000 && bitRate <= 48000);
+        int rate_ok = (bitRate >= 15000 && bitRate <= 31000);
         int sr_ok = (infile->samplerate >= 16000);
         if (rate_ok && sr_ok) objectType = HE_AAC;
     }

@@ -1,34 +1,31 @@
-/*
- * FAAC - Freeware Advanced Audio Coder
- * $Id: fft.c,v 1.12 2005/02/02 07:49:55 sur Exp $
- * Copyright (C) 2002 Krzysztof Nikiel
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+/****************************************************************************
+    FFT function
+    bitreversal, etc.
 
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
+    Copyright (C) 2017 Krzysztof Nikiel
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+****************************************************************************/
 
 #include <math.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "fft.h"
+#include "faac_real.h"
 #include "util.h"
-
-#define MAXLOGM 9
-#define MAXLOGR 8
+#include "fft.h"
 
 void fft_initialize( FFT_Tables *fft_tables )
 {
@@ -221,22 +218,23 @@ static void fft_proc(
 
 static void check_tables( FFT_Tables *fft_tables, int logm)
 {
-	if( fft_tables->costbl[logm] == NULL )
+	int size, i;
+	fftfloat *refac, *imfac;
+
+	if ( fft_tables->costbl[logm] == NULL )
 	{
-		int i;
-		int size = 1 << logm;
+		size = 1 << logm;
 
-		if( fft_tables->negsintbl[logm] != NULL )
-			FreeMemory( fft_tables->negsintbl[logm] );
+		fft_tables->costbl[logm]		= AllocMemory((size/2) * sizeof(*(fft_tables->costbl[0])));
+		fft_tables->negsintbl[logm]	= AllocMemory((size/2) * sizeof(*(fft_tables->negsintbl[0])));
 
-		fft_tables->costbl[logm]	= AllocMemory((size / 2) * sizeof(*(fft_tables->costbl[0])));
-		fft_tables->negsintbl[logm]	= AllocMemory((size / 2) * sizeof(*(fft_tables->negsintbl[0])));
+		refac = fft_tables->costbl[logm];
+		imfac = fft_tables->negsintbl[logm];
 
-		for (i = 0; i < (size >> 1); i++)
+		for (i = 0; i < (size / 2); i++)
 		{
-			faac_real theta = 2.0 * M_PI * ((faac_real) i) / (faac_real) size;
-			fft_tables->costbl[logm][i]		= FAAC_COS(theta);
-			fft_tables->negsintbl[logm][i]	= -FAAC_SIN(theta);
+			refac[i] = (fftfloat)FAAC_COS(TWOPI * i / size);
+			imfac[i] = (fftfloat)-FAAC_SIN(TWOPI * i / size);
 		}
 	}
 }

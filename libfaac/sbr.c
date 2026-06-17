@@ -109,13 +109,7 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->coreSampleRate = coreSampleRate;
     unsigned long rate_per_ch = bitRate / channels;
     sbr->bs_amp_res = (rate_per_ch < 20000) ? 0 : 1;
-    if (rate_per_ch < 20000) {
-        /* Low-bitrate speech: lower crossover to help fricatives survive
-         * quantization in the core. Tuning kx=12 for 16kbps voip. */
-        sbr->bs_start_freq = 12;
-        sbr->bs_alter_scale = 1;
-        sbr->dk = 2;
-    } else if (rate_per_ch < 24000) {
+    if (rate_per_ch < 24000) {
         sbr->bs_start_freq = 12;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
@@ -136,13 +130,23 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     sbr->bs_freq_res = 1; /* HIGH resolution: envelopes coded on f_master bands */
     sbr->numEnvelopes = 1;
     /* Slot peak/mean energy ratio above which a frame is coded with two
-     * envelopes. Higher values for low-bitrate speech save bits for the core. */
-    sbr->transientThresh = (rate_per_ch < 24000) ? 25.0f : 16.0f;
+     * envelopes. 16.0 fires only on hard attacks; lower values spend
+     * envelope bits the core misses more than the time resolution helps.
+     * Narrow-band speech (16kHz) has dense transients; raising the threshold
+     * keeps more bits in the core by avoiding envelope overhead. */
+    sbr->transientThresh = (sampleRate <= 16000) ? 20.0f : 16.0f;
     /* Decoders force amp_res = 0 (1.5 dB) for FIXFIX frames with one envelope,
      * regardless of the header's bs_amp_res. All quantization and entropy
      * coding must follow the effective value or the bitstream desyncs. */
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
+
+    /* Narrow-band speech lever: override crossover for 16kHz inputs to
+     * keep more vocal formants in the core. bs_start_freq 10-12 (~4-5kHz)
+     * is safer than 15 (~7kHz) for speech. */
+    if (sampleRate <= 32000) sbr->bs_start_freq = 4;
+
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
+    sbr->kx_freq = (unsigned int)((sbr->kx * (unsigned long)sampleRate) / 128);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
     for (int k = 0; k < SBR_QMF_BANDS; k++) {
@@ -192,28 +196,15 @@ void qmf_analysis_slot_complex(const SBRInfo *sbr, const faac_real *slot, faac_r
     }
 }
 
-/* 64-band analysis slot energy via a single 64-point complex FFT.
- *
- * Dropping the unit-modulus factor (irrelevant for energy) the modulation is
- * the odd-frequency DFT S_k = sum_{n<128} u[n]*exp(j*pi*(2k+1)*n/128) of the
- * REAL 128-tap window output u. Split u into even/odd samples a[m]=u[2m],
- * b[m]=u[2m+1] (m<64): S_k = A_k + w_k*B_k with w_k=exp(j*pi*(2k+1)/128) and
- * A,B the 64-point odd-frequency DFTs of a,b. Pack c[m]=a[m]+j*b[m] and run
- * ONE 64-point FFT; both A_k and B_k fall out of C_k and C_{63-k} because real
- * sequences give A_{63-k}=conj(A_k). The library FFT has a negative exponent,
- * so we transform conj(c[m]*twiddle[m]) (= D) and use C_k = conj(D_k).
- * ~4x fewer flops than the 128-point form, ~20x fewer than direct modulation.
- *
- * window points to the 640-sample window ending at the current slot. */
-static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict window, faac_real * restrict energy, int kx, int k2)
+/* 64-band analysis slot energy via a single 64-point complex FFT. */
+void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict window, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
-    const faac_real * restrict proto = sbr_qmf_window_us640;
+    const faac_real * restrict p = sbr_qmf_window_us640;
     const faac_real * restrict twidCos = sbr->twidCos;
     const faac_real * restrict twidSin = sbr->twidSin;
 
     for (int m = 0; m < 64; m++) {
-        const faac_real * restrict p = proto + 2 * m;
         const faac_real * restrict o = window + 639 - 2 * m;
         faac_real a = p[0]   * o[0]   +
                       p[128] * o[-128] +
@@ -268,8 +259,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64]; /* [ch][half][band] */
     faac_real slotEnergy[SBR_QMF_BANDS_64];
     float tratio = 0.0f;
-
-    /* Extended buffer to prepend history; avoids 32 memmoves per frame. */
     faac_real scratch[SBR_QMF_OVL_LEN_64 + 2048];
 
     /* Pass 1: QMF energies sampled on every 2nd slot (the envelope is a
@@ -321,8 +310,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
          * puts the noise well above the patched signal. A full Q sweep
          * (0..30) and an SFM-adaptive mapping both measured worse or equal:
          * for the [11.6, 18.4] kHz band the patch's continued harmonics
-         * match the original worse than shaped noise does. */
-        int noise_level = 0;
+         * match the original worse than shaped noise does.
+         * For speech (16kHz), high noise floor can sound "whispery". Lever:
+         * drop noise level if sampleRate is low. */
+        int noise_level = (sbr->sampleRate <= 16000) ? 5 : 0;
         sbr->invfMode[ch] = 3;
 
         /* Frequency-delta range is bounded by the Huffman table's LAV:
@@ -385,10 +376,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     }
 }
 
-/**
- * Write SBR Header (sbr_header())
- * ISO/IEC 14496-3 Table 4.63
- */
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
     if (wf) {
@@ -432,7 +419,13 @@ static int write_sbr_dtdf(SBRInfo *sbr, BitStream *bs, int wf)
     if (wf) for (int i = 0; i < bits; i++) PutBit(bs, 0, 1);
     return bits;
 }
-static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, sbr->invfMode[ch], 2); } return 2 * sbr->numNoiseBands; }
+static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf)
+{
+    for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+        if (wf) PutBit(bs, sbr->invfMode[ch], 2);
+    }
+    return 2 * sbr->numNoiseBands;
+}
 
 static int write_sbr_envelope(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 {

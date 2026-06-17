@@ -274,8 +274,7 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     int n2 = 0;       /* ascending: 2i */
 
     /* Phase 1: i < N/8 */
-    faac_real *pxr = xr;
-    faac_real *pxi = xi;
+    faac_real *pxr = xr, *pxi = xi;
     for (i = 0; i < N8; i++) {
 
         /* calculate real and imaginary parts of g(n) or G(p) */
@@ -343,18 +342,16 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *xr, faac_r
     faac_real *base_even1 = data + N2;
     faac_real *base_odd1  = data + (N - 1);
 
+    pxr = xr; pxi = xi;
     n2 = 0;
-
     /* post-twiddle FFT output and then get output data */
-    pxr = xr;
-    pxi = xi;
     for (i = 0; i < N4; i++) {
         faac_real xri = *pxr++;
         faac_real xii = *pxi++;
 
         /* get post-twiddled FFT output */
-        tempr = (faac_real)2. * (xri * c + xii * s);
-        tempi = (faac_real)2. * (xii * c - xri * s);
+        tempr = 2. * (xri * c + xii * s);
+        tempi = 2. * (xii * c - xri * s);
 
         /* fill in output values */
         base_even0[n2] = -tempr;  /* first half even */

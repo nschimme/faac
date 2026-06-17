@@ -196,8 +196,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
         /* HE-AAC (v1) is optimal for [20, 32] kbps/ch on music, but speech
-         * also gains from HE-AAC down to 15kbps/ch. */
-        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= 32000);
+         * scenarios at very low bitrates (e.g. voip 16kbps) can also benefit
+         * with proper SBR tuning. Enable for [15, 31] kbps/ch. */
+        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= 31000);
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
@@ -266,11 +267,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
         if (!hEncoder->sbrInfo) hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate, hEncoder->sampleRate, hEncoder->config.bitRate * hEncoder->numChannels);
         if (!HeAacBuffersAlloc(hEncoder)) return 0;
         /* HE-AAC (v1): SBR crossover frequency (kx) determines the core AAC-LC bandwidth.
-         * kx is expressed in QMF bands [0..63] of the high-rate spectrum.
-         * kx_freq = kx * fullSampleRate / 128.
          * Syncing core bandwidth ensures no spectral gaps or overlaps with SBR. */
-        unsigned int kx_freq = (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
-        hEncoder->config.bandWidth = kx_freq;
+        hEncoder->config.bandWidth = hEncoder->sbrInfo->kx_freq;
     } else {
         HeAacBuffersFree(hEncoder);
     }

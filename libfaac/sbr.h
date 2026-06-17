@@ -42,6 +42,7 @@ typedef struct SBRInfo {
     int coreSampleRate;
 
     int kx;
+    unsigned int kx_freq;
     int k2;
     int dk;                /* Frequency table resolution (1 or 2) */
     int numEnvelopes;      /* envelopes in the CURRENT frame (1 or 2), set by
