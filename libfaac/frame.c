@@ -212,6 +212,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     /* Re-init TNS after intent, bitRate and quantqual are committed. */
     TnsInit(hEncoder);
+    config->useTns = hEncoder->config.useTns;
 
     if (!config->bandWidth)
     {

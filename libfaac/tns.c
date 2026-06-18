@@ -108,15 +108,19 @@ void TnsInit(faacEncStruct* hEncoder)
      * by the frontend and faacEncSetConfiguration. */
     unsigned long bitratePerCh = hEncoder->config.bitRate;
     unsigned long quality = hEncoder->config.quantqual;
-    int tnsGated = 0;
+    unsigned long effectiveBitratePerCh;
 
-    if (bitratePerCh == 0) {
-        if (quality >= 100)
-            tnsGated = 1;
+    if (bitratePerCh > 0) {
+        effectiveBitratePerCh = bitratePerCh;
     } else {
-        if (bitratePerCh >= 64000)
-            tnsGated = 1;
+        /* Estimate effective bitrate from quality for VBR gating and thresholds.
+         * Project anchor: Quality 100 is approx 64kbps/ch for stereo 44.1kHz. */
+        effectiveBitratePerCh = (quality * 1280) / hEncoder->numChannels;
     }
+
+    /* TNS gate: active only when enabled and within bitrate limits (< 64kbps/ch). */
+    int tnsGated = (effectiveBitratePerCh >= 64000);
+    hEncoder->config.useTns = (hEncoder->config.useTns != 0) && !tnsGated;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -127,8 +131,8 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
 
-        /* TNS gate: active only when enabled and within bitrate/quality limits. */
-        tnsInfo->tnsDisabled = (hEncoder->config.useTns == 0) || tnsGated;
+        /* Internal TNS state: disabled if gated or explicitly forced off. */
+        tnsInfo->tnsDisabled = !hEncoder->config.useTns;
 
         if (tnsInfo->tnsDisabled) {
             continue;
@@ -140,7 +144,7 @@ void TnsInit(faacEncStruct* hEncoder)
 
         /* Long-window gain threshold via break-even bit budget formula. */
         {
-            int frame_bits    = (int)((unsigned long)bitratePerCh * FRAME_LEN
+            int frame_bits    = (int)(effectiveBitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
             int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
@@ -162,7 +166,7 @@ void TnsInit(faacEncStruct* hEncoder)
 
         /* Short-window gain threshold: applied per 128-line window. */
         {
-            int frame_bits_s = (int)((unsigned long)bitratePerCh * FRAME_LEN
+            int frame_bits_s = (int)(effectiveBitratePerCh * FRAME_LEN
                                      / hEncoder->sampleRate);
             int spectral_s   = (int)(frame_bits_s * TNS_SPECTRAL_FRAC) / MAX_SHORT_WINDOWS;
             int overhead_s   = tnsInfo->tnsMaxOrderShort * DEF_TNS_COEFF_RES
