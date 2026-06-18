@@ -52,9 +52,16 @@ static unsigned short tnsMaxBandsLongLow[12] =
 static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
-static unsigned short tnsMaxOrderLongLow = 12;
+
+static unsigned short tnsMaxOrderLongLow  = 8;
 static unsigned short tnsMaxOrderShortLow = 7;
 
+/* TNS break-even gain analysis constants. */
+#define TNS_SPECTRAL_FRAC   0.65    /* Estimated fraction of frame bits for spectral data */
+#define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
+#define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
+#define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
+#define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
 
 /*************************/
 /* Function prototypes   */
@@ -83,16 +90,65 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     int fsIndex = hEncoder->sampleRateIdx;
+    /* hEncoder->config.bitRate is already normalized to bps per channel
+     * by the frontend and faacEncSetConfiguration. */
+    unsigned long bitratePerCh = hEncoder->config.bitRate;
+    unsigned long quality = hEncoder->config.quantqual;
+    unsigned long effectiveBitratePerCh;
+
+    if (bitratePerCh > 0) {
+        effectiveBitratePerCh = bitratePerCh;
+    } else {
+        /* Estimate effective bitrate from quality for VBR gating and thresholds.
+         * Project anchor: Quality 100 is approx 64kbps/ch for stereo 44.1kHz. */
+        effectiveBitratePerCh = (quality * 1280) / hEncoder->numChannels;
+    }
+
+    /* TNS gate: active only when enabled and within bitrate limits (< 64kbps/ch). */
+    int tnsGated = (effectiveBitratePerCh >= 64000);
+    hEncoder->config.useTns = (hEncoder->config.useTns != 0) && !tnsGated;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
 
-        tnsInfo->tnsMaxBandsLong = tnsMaxBandsLongLow[fsIndex];
-        tnsInfo->tnsMaxBandsShort = tnsMaxBandsShortLow[fsIndex];
-        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
-        tnsInfo->tnsMaxOrderShort = tnsMaxOrderShortLow;
-        tnsInfo->tnsMinBandNumberLong = tnsMinBandNumberLong[fsIndex];
+        tnsInfo->tnsMaxBandsLong       = tnsMaxBandsLongLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
+        tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
+        tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
         tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
+
+        /* Internal TNS state: disabled if gated or explicitly forced off. */
+        tnsInfo->tnsDisabled = !hEncoder->config.useTns;
+
+        if (tnsInfo->tnsDisabled) {
+            continue;
+        }
+
+        /* Order 8 captures the dominant spectral resonances without
+         * overfitting noise at the bitrates where TNS operates. */
+        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+
+        /* Long-window gain threshold via break-even bit budget formula. */
+        {
+            int frame_bits    = (int)(effectiveBitratePerCh * FRAME_LEN
+                                      / hEncoder->sampleRate);
+            int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
+            int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
+                                + TNS_FIXED_OVERHEAD;
+            int denom = spectral_bits - tns_overhead;
+            faac_real thresh;
+            if (denom <= 0) {
+                thresh = (faac_real)TNS_THRESH_CAP;
+            } else {
+                thresh = ((faac_real)spectral_bits / (faac_real)denom)
+                         * (faac_real)TNS_CALIBRATION;
+                if (thresh < (faac_real)TNS_THRESH_FLOOR)
+                    thresh = (faac_real)TNS_THRESH_FLOOR;
+                if (thresh > (faac_real)TNS_THRESH_CAP)
+                    thresh = (faac_real)TNS_THRESH_CAP;
+            }
+            tnsInfo->gainThreshLong = thresh;
+        }
     }
 }
 
@@ -109,6 +165,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                faac_real* temp)
 {
     int numberOfWindows,windowSize;
+
+    if (tnsInfo->tnsDisabled) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
     int w;
@@ -117,24 +178,13 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-
-        /* TNS not used for short blocks currently */
+        /* Analysis disabled for short windows to balance throughput. */
         tnsInfo->tnsDataPresent = 0;
         return;
 
-        numberOfWindows = MAX_SHORT_WINDOWS;
-        windowSize = BLOCK_LEN_SHORT;
-        startBand = tnsInfo->tnsMinBandNumberShort;
-        stopBand = numberOfBands;
-        lengthInBands = stopBand-startBand;
-        order = tnsInfo->tnsMaxOrderShort;
-        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
-        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
-        break;
-
     default:
         numberOfWindows = 1;
-        windowSize = BLOCK_LEN_SHORT;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
         lengthInBands = stopBand - startBand;
@@ -167,7 +217,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        if (gain > tnsInfo->gainThreshLong) {  /* Use TNS */
             int truncatedOrder;
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
@@ -198,6 +248,11 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          faac_real* temp)
 {
     int numberOfWindows,windowSize;
+
+    if (tnsInfo->tnsDisabled) {
+        tnsInfo->tnsDataPresent = 0;
+        return;
+    }
     int startBand,stopBand;    /* Bands over which to apply TNS */
     int w;
     int startIndex,length;
@@ -443,7 +498,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aPtr=aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
-        if (error <= 0.0) return DEF_TNS_GAIN_THRESH + 1.0;
+        if (error <= 0.0) return (faac_real)(TNS_THRESH_CAP + 1.0);
         return signal/error;    /* return the gain */
     }
 }
