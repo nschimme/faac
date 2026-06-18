@@ -355,7 +355,6 @@ int huffbook(CoderInfo *coder,
     else
     {
         bookmin = HCB_ESC;
-        lenmin = huffcode(qs, len, bookmin, 0);
     }
 
      /* Hysteresis to reduce signaling overhead */
