@@ -176,9 +176,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.aacObjectType != LOW)
         return 0;
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
@@ -204,7 +201,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
+    if (config->quantqual > maxqual)
+        config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
+
     hEncoder->config.bitRate = config->bitRate;
+    hEncoder->config.quantqual = config->quantqual;
+
+    /* Re-init TNS after intent, bitRate and quantqual are committed. */
+    TnsInit(hEncoder);
+    config->useTns = hEncoder->config.useTns;
 
     if (!config->bandWidth)
     {
@@ -218,13 +225,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-    if (config->quantqual > maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
-    hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -292,7 +292,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
