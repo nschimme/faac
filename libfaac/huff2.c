@@ -358,15 +358,17 @@ int huffbook(CoderInfo *coder,
         lenmin = huffcode(qs, len, bookmin, 0);
     }
 
-    /* Favor the previous band's codebook if it's valid and bit savings are marginal. */
-    if (last_book != HCB_NONE && last_book != HCB_ZERO && last_book != HCB_PNS &&
-        last_book != HCB_INTENSITY && last_book != HCB_INTENSITY2 &&
-        last_book != bookmin) {
-        int last_bits = huffcode(qs, len, last_book, 0);
-        if (last_bits >= 0 && last_bits <= lenmin + 4) {
-            bookmin = last_book;
-        }
-    }
+     /* Hysteresis to reduce signaling overhead */
+     if (bookmin > HCB_ZERO && bookmin < HCB_INTENSITY &&
+         last_book > HCB_ZERO && last_book < HCB_INTENSITY && last_book != bookmin)
+     {
+         int last_bits = huffcode(qs, len, last_book, 0);
+         if (last_bits >= 0 && last_bits <= lenmin + 4)
+         {
+             bookmin = last_book;
+         }
+     }
+
 
     if (bookmin > HCB_ZERO)
         huffcode(qs, len, bookmin, coder);
