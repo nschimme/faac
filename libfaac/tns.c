@@ -61,7 +61,7 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
 #define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
-#define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
+#define TNS_THRESH_CAP      2.00    /* Maximum adaptive threshold cap */
 
 /*************************/
 /* Function prototypes   */
