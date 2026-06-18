@@ -19,11 +19,38 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
 #include "huff_lut.h"
+
+#ifdef _MSC_VER
+#include <intrin.h>
+static inline int clz(unsigned int x)
+{
+    unsigned long index;
+    if (_BitScanReverse(&index, x))
+        return 31 - (int)index;
+    return 32;
+}
+#else
+#define clz(x) __builtin_clz(x)
+#endif
+
+static inline int get_book_limit(int bnum)
+{
+    switch(bnum) {
+        case 1: case 2: return 1;
+        case 3: case 4: return 2;
+        case 5: case 6: return 4;
+        case 7: case 8: return 7;
+        case 9: case 10: return 12;
+        case 11: return MAX_HUFF_ESC_VAL;
+        default: return 0;
+    }
+}
 
 static int escape(int x, int *code)
 {
@@ -324,7 +351,7 @@ static inline int escape_len(int x)
 {
     if (x < 32) return 5;
     /* Bits = 2 * (floor(log2(x)) - 4) + 5 */
-    int preflen = 31 - __builtin_clz(x) - 4;
+    int preflen = 31 - clz(x) - 4;
     return (preflen << 1) + 5;
 }
 
@@ -419,16 +446,7 @@ int huffbook(CoderInfo *coder,
     } else {
         /* Optimization: Start by evaluating the previous book with Candidate A penalty */
         if (prev_book >= 1 && prev_book <= 11) {
-            int limit = 0;
-            switch(prev_book) {
-                case 1: case 2: limit = 1; break;
-                case 3: case 4: limit = 2; break;
-                case 5: case 6: limit = 4; break;
-                case 7: case 8: limit = 7; break;
-                case 9: case 10: limit = 12; break;
-                case 11: limit = MAX_HUFF_ESC_VAL; break;
-            }
-            if (maxq <= limit) {
+            if (maxq <= get_book_limit(prev_book)) {
                 bookmin = prev_book;
                 /* Bits(CB_prev) <= Bits(CB_new_optimal) + 4  => Bits(CB_new_optimal) >= Bits(CB_prev) - 4
                  * We set the bar for new books to be at least 5 bits better than the previous one. */
@@ -438,16 +456,8 @@ int huffbook(CoderInfo *coder,
 
         /* Evaluate all valid books to find if any is significantly better than bookmin */
         for (bnum = 1; bnum <= 11; bnum++) {
-            int limit = 0;
-            switch(bnum) {
-                case 1: case 2: limit = 1; break;
-                case 3: case 4: limit = 2; break;
-                case 5: case 6: limit = 4; break;
-                case 7: case 8: limit = 7; break;
-                case 9: case 10: limit = 12; break;
-                case 11: limit = MAX_HUFF_ESC_VAL; break;
-            }
-            if (maxq <= limit) {
+            if (bnum == prev_book) continue;
+            if (maxq <= get_book_limit(bnum)) {
                 int cost = calc_bit_cost(qs, len, bnum);
                 if (cost < lenmin) {
                     lenmin = cost;
