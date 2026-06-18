@@ -98,7 +98,6 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine);
 
-
 /*****************************************************/
 /* InitTns:                                          */
 /*****************************************************/
@@ -315,7 +314,6 @@ static void TnsInvFilter(int length, faac_real * restrict spec,
     const int order = filter->order;
     const faac_real * restrict a = filter->aCoeffs;
 
-    /* Determine loop parameters for given direction */
     if (filter->direction) {
         /* Backward direction (high-to-low index) */
         temp[length-1] = spec[length-1];
@@ -344,7 +342,6 @@ static void TnsInvFilter(int length, faac_real * restrict spec,
                 acc += temp[i-j] * a[j];
             spec[i] = acc;
         }
-
         /* Now filter the rest */
         for (i = order; i < length; i++) {
             faac_real acc = spec[i];
@@ -426,6 +423,7 @@ static void Autocorrelation(int maxOrder,                      /* Maximum autoco
     for (order = 0; order <= maxOrder; order++)
         rArray[order] = 0.0;
 
+    /* Hoist maxOrder clamping for bulk of the loop for L1 locality */
     int limit = dataSize - maxOrder;
     for (index = 0; index < limit; index++) {
         const faac_real d = data[index];
