@@ -315,10 +315,12 @@ int huffbook(CoderInfo *coder,
     int cnt;
     int maxq = 0;
     int bookmin, lenmin;
+    const int * __restrict p_qs = qs;
+    int last_book = (coder->bandcnt > 0) ? coder->book[coder->bandcnt - 1] : HCB_NONE;
 
     for (cnt = 0; cnt < len; cnt++)
     {
-        int q = abs(qs[cnt]);
+        int q = abs(*p_qs++);
         if (maxq < q)
             maxq = q;
     }
@@ -353,6 +355,17 @@ int huffbook(CoderInfo *coder,
     else
     {
         bookmin = HCB_ESC;
+        lenmin = huffcode(qs, len, bookmin, 0);
+    }
+
+    /* Favor the previous band's codebook if it's valid and bit savings are marginal. */
+    if (last_book != HCB_NONE && last_book != HCB_ZERO && last_book != HCB_PNS &&
+        last_book != HCB_INTENSITY && last_book != HCB_INTENSITY2 &&
+        last_book != bookmin) {
+        int last_bits = huffcode(qs, len, last_book, 0);
+        if (last_bits >= 0 && last_bits <= lenmin + 4) {
+            bookmin = last_book;
+        }
     }
 
     if (bookmin > HCB_ZERO)
