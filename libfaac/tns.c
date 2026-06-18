@@ -173,7 +173,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     }
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
     int lengthInBands;               /* Length to filter, in bands */
-    int w;
+    int w, i;
     int startIndex,length;
     faac_real gain;
 
@@ -220,13 +220,25 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain > tnsInfo->gainThreshLong) {  /* Use TNS */
             int truncatedOrder;
+            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,tnsFilter->kCoeffs,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,tnsFilter->kCoeffs);
+            if (truncatedOrder == 0) continue;
+
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
-            tnsFilter->coefCompress = 0;
+
+            /* Lossless bitstream compression:
+             * Signal coefCompress=1 if all transmitted indices fit in 3 bits. */
+            tnsFilter->coefCompress = 1;
+            for (i = 1; i <= truncatedOrder; i++) {
+                if (tnsFilter->index[i] < -4 || tnsFilter->index[i] > 3) {
+                    tnsFilter->coefCompress = 0;
+                    break;
+                }
+            }
+
             tnsFilter->length = lengthInBands;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             tnsFilter->order = truncatedOrder;
             StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
