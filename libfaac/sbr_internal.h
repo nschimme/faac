@@ -23,4 +23,10 @@ void qmf_analysis_64_slot_energy_direct_test(const SBRInfo *sbr,
                                              faac_real *energy,
                                              int kx, int k2);
 
+void qmf_analysis_64_slot_energy_fast_test(const SBRInfo *sbr,
+                                           const faac_real *slot,
+                                           faac_real *ovl,
+                                           faac_real *energy,
+                                           int kx, int k2);
+
 #endif

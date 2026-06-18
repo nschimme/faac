@@ -217,7 +217,7 @@ void qmf_ref_64_slot_energy(const faac_real input[64], faac_real state[640], faa
         faac_real re = (faac_real)0.0, im = (faac_real)0.0;
         faac_real phase_step = (faac_real)M_PI * (faac_real)(2.0 * k + 1.0) / (faac_real)256.0;
         for (int n = 0; n < 128; n++) {
-            faac_real phase = phase_step * (faac_real)(2.0 * n - 127.0);
+            faac_real phase = phase_step * (faac_real)(2 * n - 127);
             re += u[n] * FAAC_COS(phase);
             im += u[n] * FAAC_SIN(phase);
         }

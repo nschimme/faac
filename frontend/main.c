@@ -96,7 +96,8 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OPT_SBR_FAST
 };
 
 typedef struct {
@@ -528,6 +529,7 @@ int main(int argc, char *argv[])
             {"raw", 0, 0, 'r'},
             {"joint", required_argument, 0, OPT_JOINT},
             {"pns", required_argument, 0, OPT_PNS},
+            {"sbr-fast", required_argument, 0, OPT_SBR_FAST},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
             {"pcmraw", 0, 0, 'P'},
@@ -811,6 +813,12 @@ int main(int argc, char *argv[])
             break;
         case OPT_PNS:
             pnslevel = atoi(optarg);
+            break;
+        case OPT_SBR_FAST:
+            {
+                extern void FAACAPI faacSetSbrFastMode(int mode);
+                faacSetSbrFastMode(atoi(optarg));
+            }
             break;
         case '?':
         default:
