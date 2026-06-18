@@ -179,6 +179,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+    hEncoder->config.sbr_fast = config->sbr_fast;
 
     if (hEncoder->config.aacObjectType != LOW &&
         hEncoder->config.aacObjectType != HE_AAC &&
@@ -195,12 +196,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        /* Dynamic HE-AAC crossover curve: captures the bitrate threshold where
-         * SBR becomes advantageous. At 48kHz, crossover is ~32kbps/ch; at
-         * 32kHz, it is ~20kbps/ch. We enforce a >= 32kHz floor to avoid
-         * 16kHz-to-8kHz core rate starvation on speech content. */
-        unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate * 3 / 4 - 4000);
-        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= max_he_rate);
+        int rate_ok;
+        if (rate_per_ch > 0) {
+            /* CBR/ABR: use dynamic crossover curve. */
+            unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate * 3 / 4 - 4000);
+            rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= max_he_rate);
+        } else {
+            /* VBR: HE-AAC is advantageous for qualities <= 60% (~100 kbps total). */
+            rate_ok = (config->quantqual <= 60);
+        }
+        /* Strictly restrict HE-AAC to inputs >= 32kHz. This ensures the
+         * core rate is >= 16kHz, avoiding the quality collapse observed
+         * with narrow-band core encoding and noise reconstruction. */
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
@@ -315,6 +322,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate, unsigned int numChan
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
+    hEncoder->config.sbr_fast = 1; /* Default to 4x decimation */
+    hEncoder->config.sbr_fast = 1; /* Default to 4x decimation */
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -417,7 +426,7 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer, unsi
         heHalfRate[channel] = hEncoder->heHalfRatePtr[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, hEncoder->heFullRatePtr, numChannels, full_spch);
+    SBRAnalysis(hEncoder->sbrInfo, hEncoder->heFullRatePtr, numChannels, full_spch, hEncoder->config.sbr_fast);
     Resample2to1(hEncoder->resampler, hEncoder->heFullRatePtr, full_spch, hEncoder->heHalfRatePtr);
     return 0;
 }

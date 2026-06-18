@@ -237,10 +237,6 @@ static void qmf_analysis_64_slot_energy_fft(const SBRInfo *sbr, const faac_real 
     }
 }
 
-static int sbr_fast_mode = 1;   /* 0: 2x dec, 1: 4x dec, 2: 8x dec */
-
-void FAACAPI faacSetSbrFastMode(int mode) { sbr_fast_mode = mode; }
-
 static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, energy, kx, k2);
@@ -270,7 +266,7 @@ void qmf_analysis_64_slot_energy_fast_test(const SBRInfo *sbr, const faac_real *
     qmf_analysis_64_slot_energy_test(sbr, slot, ovl, energy, kx, k2);
 }
 
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples)
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, int fast_mode)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
@@ -288,7 +284,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         memcpy(workspace, sbr->qmfOvl64[ch], SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
         memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-        int dec_mask = (sbr_fast_mode >= 2) ? 7 : (sbr_fast_mode >= 1) ? 3 : 1;
+        int dec_mask = (fast_mode >= 2) ? 7 : (fast_mode >= 1) ? 3 : 1;
         for (int slot = 0; slot < num_slots; slot++) {
             faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
             const faac_real * __restrict p_in = timeDomain[ch] + slot * 64;

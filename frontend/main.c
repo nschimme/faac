@@ -434,6 +434,7 @@ int main(int argc, char *argv[])
     unsigned int objectType = AAC_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
+    int sbr_fast = -1;
     static int useTns = 0;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
@@ -811,10 +812,7 @@ int main(int argc, char *argv[])
             pnslevel = atoi(optarg);
             break;
         case OPT_SBR_FAST:
-            {
-                extern void FAACAPI faacSetSbrFastMode(int mode);
-                faacSetSbrFastMode(atoi(optarg));
-            }
+            sbr_fast = atoi(optarg);
             break;
         case '?':
         default:
@@ -969,6 +967,10 @@ int main(int argc, char *argv[])
 
     if (pnslevel >= 0)
         myFormat->pnslevel = pnslevel;
+    if (sbr_fast >= 0)
+        myFormat->sbr_fast = sbr_fast;
+    else
+        myFormat->sbr_fast = 1; /* Default to 4x decimation */
     if (quantqual > 0)
     {
         myFormat->quantqual = quantqual;

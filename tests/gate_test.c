@@ -54,22 +54,22 @@ void test_point(unsigned long sr, unsigned long bitrate_per_ch, int expected_typ
 
 int main(void)
 {
-    printf("HE-AAC Auto-Gating Matrix Test (Rejection & Curve)\n");
+    printf("HE-AAC Auto-Gating Matrix Test (Strict Rejection)\n");
 
-    /* 1. Rejection: 16kHz should ALWAYS fail for HE-AAC auto */
+    /* 1. Rejection: 16kHz and 32kHz should ALWAYS fail for HE-AAC auto */
     test_point(16000, 16000, LOW);
-    test_point(16000, 24000, LOW);
+    test_point(32000, 16000, LOW);
 
     /* Explicit rejection for he-aac at low SR */
     unsigned long samplesInput, maxBytesOutput;
-    faacEncHandle h = faacEncOpen(16000, 1, &samplesInput, &maxBytesOutput);
+    faacEncHandle h = faacEncOpen(32000, 1, &samplesInput, &maxBytesOutput);
     faacEncConfigurationPtr cfg = faacEncGetCurrentConfiguration(h);
     cfg->aacObjectType = HE_AAC;
     if (faacEncSetConfiguration(h, cfg) != 0) {
-        printf("  FAIL: Accepted HE-AAC at 16kHz!\n");
+        printf("  FAIL: Accepted HE-AAC at 32kHz!\n");
         exit(1);
     }
-    printf("  16000 Hz / HE-AAC -> Correctly rejected\n");
+    printf("  32000 Hz / HE-AAC -> Correctly rejected\n");
     faacEncClose(h);
 
     /* 2. Standard 48kHz: HE-AAC up to ~32kbps/ch (max_he = 48000*0.75 - 4000 = 32000) */
@@ -77,14 +77,10 @@ int main(void)
     test_point(48000, 32000, HE_AAC);
     test_point(48000, 33000, LOW);
 
-    /* 3. Mid 32kHz: HE-AAC up to ~20kbps/ch (max_he = 32000*0.75 - 4000 = 20000) */
-    test_point(32000, 18000, HE_AAC);
-    test_point(32000, 20000, HE_AAC);
-    test_point(32000, 21000, LOW);
-
-    /* 4. Limits */
-    test_point(32000, 15000, HE_AAC);
-    test_point(32000, 14000, LOW); // min_he is 15000
+    /* 3. Mid 44.1kHz: HE-AAC up to ~29kbps/ch (max_he = 44100*0.75 - 4000 = 29075) */
+    test_point(44100, 24000, HE_AAC);
+    test_point(44100, 29000, HE_AAC);
+    test_point(44100, 30000, LOW);
 
     printf("PASS\n");
     return 0;

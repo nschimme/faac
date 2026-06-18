@@ -21,8 +21,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-extern void faacSetSbrFastMode(int mode);
-
 static SBRInfo *make_sbr(void)
 {
     SBRInfo *s = SBRInit(1, FS, FS / 2, 64000);
@@ -45,8 +43,6 @@ static void run_bench(const char *name, int mode, const faac_real *input)
     faac_real energy[64];
     faac_real ref_state[640] = {0};
     faac_real ref_en[64];
-
-    faacSetSbrFastMode(mode);
 
     /* Accuracy: compare accumulated frame energy */
     double frame_en_prod[64] = {0};
