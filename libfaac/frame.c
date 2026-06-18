@@ -195,14 +195,19 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        /* Strictly restrict HE-AAC to bitrates where it provides a clear
-         * MOS advantage (20-32 kbps/ch) and sample rates >= 32kHz. 16kHz
-         * scenarios (voip/vss) regressions are avoided by defaulting to LC. */
-        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
+        /* Dynamic HE-AAC crossover curve: captures the bitrate threshold where
+         * SBR becomes advantageous. At 48kHz, crossover is ~32kbps/ch; at
+         * 32kHz, it is ~20kbps/ch. We enforce a >= 32kHz floor to avoid
+         * 16kHz-to-8kHz core rate starvation on speech content. */
+        unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate * 3 / 4 - 4000);
+        int rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= max_he_rate);
         int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
+
+    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < 32000)
+        return 0;
 
     if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->fullSampleRate == 0) {
         hEncoder->fullSampleRate    = hEncoder->sampleRate;

@@ -22,3 +22,13 @@ bmask_test = executable('bmask_test',
     build_by_default: false
 )
 test('bmask_scaling', bmask_test, should_fail: false)
+
+gate_test = executable('gate_test',
+    ['gate_test.c'],
+    include_directories: ['..', '../include'],
+    objects: libfaac.extract_all_objects(recursive: true),
+    dependencies: [ libm ],
+    c_args: c_args,
+    build_by_default: false
+)
+test('he_auto_gating', gate_test, should_fail: false)
