@@ -23,6 +23,7 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "huff_lut.h"
 
 static int escape(int x, int *code)
 {
@@ -308,56 +309,159 @@ static int huffcode(int *qs /* quantized spectrum */,
 }
 
 
+static inline int get_maxq(const int * __restrict qs, int len)
+{
+    int maxq = 0;
+    int i;
+    for (i = 0; i < len; i++) {
+        int q = abs(qs[i]);
+        if (q > maxq) maxq = q;
+    }
+    return maxq;
+}
+
+static inline int escape_len(int x)
+{
+    if (x < 32) return 5;
+    /* Bits = 2 * (floor(log2(x)) - 4) + 5 */
+    int preflen = 31 - __builtin_clz(x) - 4;
+    return (preflen << 1) + 5;
+}
+
+static int calc_bit_cost(const int * __restrict qs, int len, int bnum)
+{
+    int bits = 0;
+    int ofs;
+    const uint8_t * __restrict lut = huff_len_lut[bnum];
+
+    switch (bnum) {
+    case 1:
+    case 2:
+        for (ofs = 0; ofs < len; ofs += 4) {
+            int idx = 27 * qs[ofs] + 9 * qs[ofs+1] + 3 * qs[ofs+2] + qs[ofs+3] + 40;
+            bits += lut[idx];
+        }
+        break;
+    case 3:
+    case 4:
+        for (ofs = 0; ofs < len; ofs += 4) {
+            int idx = 27 * abs(qs[ofs]) + 9 * abs(qs[ofs+1]) + 3 * abs(qs[ofs+2]) + abs(qs[ofs+3]);
+            bits += lut[idx];
+            bits += (qs[ofs] != 0);
+            bits += (qs[ofs+1] != 0);
+            bits += (qs[ofs+2] != 0);
+            bits += (qs[ofs+3] != 0);
+        }
+        break;
+    case 5:
+    case 6:
+        for (ofs = 0; ofs < len; ofs += 2) {
+            int idx = 9 * qs[ofs] + qs[ofs+1] + 40;
+            bits += lut[idx];
+        }
+        break;
+    case 7:
+    case 8:
+        for (ofs = 0; ofs < len; ofs += 2) {
+            int idx = 8 * abs(qs[ofs]) + abs(qs[ofs+1]);
+            bits += lut[idx];
+            bits += (qs[ofs] != 0);
+            bits += (qs[ofs+1] != 0);
+        }
+        break;
+    case 9:
+    case 10:
+        for (ofs = 0; ofs < len; ofs += 2) {
+            int idx = 13 * abs(qs[ofs]) + abs(qs[ofs+1]);
+            bits += lut[idx];
+            bits += (qs[ofs] != 0);
+            bits += (qs[ofs+1] != 0);
+        }
+        break;
+    case 11:
+        for (ofs = 0; ofs < len; ofs += 2) {
+            int q0 = abs(qs[ofs]);
+            int q1 = abs(qs[ofs+1]);
+            int x0 = (q0 > 16) ? 16 : q0;
+            int x1 = (q1 > 16) ? 16 : q1;
+            int idx = 17 * x0 + x1;
+            bits += lut[idx];
+            bits += (qs[ofs] != 0);
+            bits += (qs[ofs+1] != 0);
+            if (q0 >= 16) bits += escape_len(q0);
+            if (q1 >= 16) bits += escape_len(q1);
+        }
+        break;
+    default:
+        return 1000000;
+    }
+    return bits;
+}
+
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
 {
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
+    int maxq = get_maxq(qs, len);
+    int bookmin = HCB_ZERO;
+    int lenmin = 1000000;
+    int bnum;
+    int prev_book = -1;
 
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
+    /* Candidate A: Only consider the immediately preceding band within the same window group. */
+    if (coder->bandcnt > 0 && (coder->bandcnt % coder->sfbn) != 0) {
+        prev_book = coder->book[coder->bandcnt - 1];
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
-
-    if (maxq < 1)
-    {
+    if (maxq < 1) {
         bookmin = HCB_ZERO;
         lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
+    } else {
+        /* Optimization: Start by evaluating the previous book with Candidate A penalty */
+        if (prev_book >= 1 && prev_book <= 11) {
+            int limit = 0;
+            switch(prev_book) {
+                case 1: case 2: limit = 1; break;
+                case 3: case 4: limit = 2; break;
+                case 5: case 6: limit = 4; break;
+                case 7: case 8: limit = 7; break;
+                case 9: case 10: limit = 12; break;
+                case 11: limit = MAX_HUFF_ESC_VAL; break;
+            }
+            if (maxq <= limit) {
+                bookmin = prev_book;
+                /* Bits(CB_prev) <= Bits(CB_new_optimal) + 4  => Bits(CB_new_optimal) >= Bits(CB_prev) - 4
+                 * We set the bar for new books to be at least 5 bits better than the previous one. */
+                lenmin = calc_bit_cost(qs, len, prev_book) - 4;
+            }
+        }
+
+        /* Evaluate all valid books to find if any is significantly better than bookmin */
+        for (bnum = 1; bnum <= 11; bnum++) {
+            int limit = 0;
+            switch(bnum) {
+                case 1: case 2: limit = 1; break;
+                case 3: case 4: limit = 2; break;
+                case 5: case 6: limit = 4; break;
+                case 7: case 8: limit = 7; break;
+                case 9: case 10: limit = 12; break;
+                case 11: limit = MAX_HUFF_ESC_VAL; break;
+            }
+            if (maxq <= limit) {
+                int cost = calc_bit_cost(qs, len, bnum);
+                if (cost < lenmin) {
+                    lenmin = cost;
+                    bookmin = bnum;
+                }
+            }
+        }
     }
 
     if (bookmin > HCB_ZERO)
         huffcode(qs, len, bookmin, coder);
+
     coder->book[coder->bandcnt] = bookmin;
+    /* Note: coder->bandcnt is incremented by the caller (qlevel in quantize.c) */
 
     return 0;
 }
