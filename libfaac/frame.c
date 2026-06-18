@@ -205,15 +205,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
             /* VBR: HE-AAC is advantageous for qualities <= 60% (~100 kbps total). */
             rate_ok = (config->quantqual <= 60);
         }
-        /* Strictly restrict HE-AAC to inputs >= 32kHz. This ensures the
-         * core rate is >= 16kHz, avoiding the quality collapse observed
+        /* Strictly restrict HE-AAC to inputs >= 44.1kHz. This ensures the
+         * core rate is >= 22.05kHz, avoiding the quality collapse observed
          * with narrow-band core encoding and noise reconstruction. */
-        int sr_ok = (hEncoder->sampleRate >= 32000);
+        int sr_ok = (hEncoder->sampleRate >= 44100);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < 32000)
+    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < 44100)
         return 0;
 
     if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->fullSampleRate == 0) {
@@ -322,8 +322,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate, unsigned int numChan
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
-    hEncoder->config.sbr_fast = 1; /* Default to 4x decimation */
-    hEncoder->config.sbr_fast = 1; /* Default to 4x decimation */
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -580,12 +578,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
     frameBytes = CloseBitStream(bitStream);
 
     if (hEncoder->config.bitRate) {
-        /* desbits = (bits_per_second * core_samples_per_frame) / core_samples_per_second.
-         * For HE-AAC, hEncoder->sampleRate is the halved core rate. Because core
-         * samples are produced at half-rate, but represent a full-rate frame
-         * duration (1024 / core_fs), this ratio correctly yields the bits
-         * allocated per frame duration at the target bitrate. */
-        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
         int sbrBits = 0;
 
@@ -594,12 +586,20 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
             sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
         }
 
+        /* desbits = (bits_per_second * core_samples_per_frame) / core_samples_per_second.
+         * For HE-AAC, hEncoder->sampleRate is the halved core rate. Because core
+         * samples are produced at half-rate, but represent a full-rate frame
+         * duration (1024 / core_fs), this ratio correctly yields the bits
+         * allocated per frame duration at the target bitrate.
+         * Use double for intermediate to avoid 32-bit overflow on high channel counts. */
+        double targetBitsPerFrame = (double)numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate;
+
         /* Adjust quality based on core bit performance against its allocated budget.
          * Subtracting SBR overhead prevents the rate controller from over-starving
          * the core when SBR consumes its fixed allocation. */
         faac_real fix;
         if (totalBits > sbrBits) {
-            fix = (faac_real)(desbits - sbrBits) / (faac_real)(totalBits - sbrBits);
+            fix = (faac_real)(targetBitsPerFrame - sbrBits) / (faac_real)(totalBits - sbrBits);
         } else {
             fix = 1.0;
         }
