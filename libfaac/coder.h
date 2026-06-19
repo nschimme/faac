@@ -92,6 +92,15 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    /* Retained quantized spectrum + per-band metadata, so the greedy section
+     * merge (section_optimize) can re-cost adjacent spectral bands under a
+     * shared codebook before symbols are emitted (emit_spectral). Only spectral
+     * bands (book 1..HCB_ESC) occupy qspec; non-spectral bands get qlen 0. */
+    int qspec[FRAME_LEN];         /* packed quantized coeffs, in band order */
+    int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
+    int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
+    int blen[MAX_SCFAC_BANDS];    /* cached spectral bit cost of chosen book */
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
