@@ -81,6 +81,7 @@ static unsigned short tnsMaxOrderLongLow  = 8;
 #define TNS_CALIBRATION     1.029   /* Calibration factor against corpus anchor */
 #define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
 #define TNS_THRESH_CAP      1.80    /* Maximum adaptive threshold cap */
+#define TNS_GAIN_SENTINEL   1.0e30  /* Sentinel for perfect prediction; also used as default ceiling */
 
 /*************************/
 /* Function prototypes   */
@@ -146,7 +147,7 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
     faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
     int       t_direction_adapt   = 1;
-    faac_real t_gain_ceiling      = (faac_real)1.0e30;
+    faac_real t_gain_ceiling      = (faac_real)TNS_GAIN_SENTINEL;
     int       t_coeff_res         = DEF_TNS_COEFF_RES;
     { const char *e;
       if ((e = getenv("FAAC_TNS_GATE_BPS")))         t_gate_bps      = (unsigned long)atof(e);
@@ -179,7 +180,7 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
     faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
     int       t_direction_adapt   = 1;
-    faac_real t_gain_ceiling      = (faac_real)1.0e30;
+    faac_real t_gain_ceiling      = (faac_real)TNS_GAIN_SENTINEL;
     int       t_coeff_res         = DEF_TNS_COEFF_RES;
 #endif
 
@@ -377,7 +378,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             tnsFilter->direction = direction;
 
             /* Lossless bitstream compression (Arm D1):
-             * Signal coefCompress=1 if all transmitted indices fit in (res-1) bits. */
+             * Signal coefCompress=1 if all transmitted indices fit in a reduced range.
+             * The bitstream uses (res - coefCompress) bits per index.
+             * For res=4, compress=1 means 3 bits (range -4 to 3).
+             * For res=3, compress=1 means 2 bits (range -2 to 1). */
             {
                 int compress_max = (1 << (tnsInfo->tnsCoeffRes - 2)) - 1;
                 int compress_min = -(1 << (tnsInfo->tnsCoeffRes - 2));
@@ -616,7 +620,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aPtr=aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
-        if (error <= 0.0) return (faac_real)1.0e30;
+        if (error <= 0.0) return (faac_real)TNS_GAIN_SENTINEL;
         return signal/error;    /* return the gain */
     }
 }
