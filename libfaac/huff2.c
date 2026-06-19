@@ -308,6 +308,24 @@ static int huffcode(int *qs /* quantized spectrum */,
 }
 
 
+/* Lowest base codebook whose range-pair covers |maxq| (keeps the decoder in
+ * range, cf. the escape/out-of-range guards). Returns the lower book of the
+ * pair; HCB_ZERO for an empty band, HCB_ESC for the escape book. Shared by
+ * huffbook() (per-band selection) and section_optimize() (merge re-costing). */
+static int book_for_maxq(int maxq)
+{
+    if (maxq < 1)  return HCB_ZERO;
+    if (maxq < 2)  return 1;
+    if (maxq < 3)  return 3;
+    if (maxq < 5)  return 5;
+    if (maxq < 8)  return 7;
+    if (maxq < 13) return 9;
+    return HCB_ESC;
+}
+
+/* Select the cheapest codebook for one band and cache its spectral bit cost in
+ * coder->blen[]; symbols are NOT emitted here (deferred to emit_spectral after
+ * section_optimize has finalised the books). */
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
@@ -323,43 +341,167 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
-
-    if (maxq < 1)
+    bookmin = book_for_maxq(maxq);
+    if (bookmin == HCB_ZERO)
     {
-        bookmin = HCB_ZERO;
         lenmin = 0;
     }
-    else if (maxq < 2)
+    else if (bookmin == HCB_ESC)
     {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
+        lenmin = huffcode(qs, len, HCB_ESC, 0);
     }
     else
     {
-        bookmin = HCB_ESC;
+        /* range-pair: keep whichever of {base, base+1} codes the band shorter */
+        int len2;
+        lenmin = huffcode(qs, len, bookmin, 0);
+        len2 = huffcode(qs, len, bookmin + 1, 0);
+        if (len2 < lenmin)
+        {
+            bookmin++;
+            lenmin = len2;
+        }
     }
 
-    if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
     coder->book[coder->bandcnt] = bookmin;
+    coder->blen[coder->bandcnt] = lenmin;
 
     return 0;
+}
+
+/* Range tier of a spectral book (higher tier covers larger |coef|); 0 for
+ * HCB_ZERO and non-spectral books. */
+static int book_tier(int book)
+{
+    switch (book)
+    {
+    case 1: case 2:  return 1;
+    case 3: case 4:  return 2;
+    case 5: case 6:  return 3;
+    case 7: case 8:  return 4;
+    case 9: case 10: return 5;
+    case HCB_ESC:    return 6;
+    default:         return 0;
+    }
+}
+
+static int tier_base_book(int tier)
+{
+    switch (tier)
+    {
+    case 1: return 1;
+    case 2: return 3;
+    case 3: return 5;
+    case 4: return 7;
+    case 5: return 9;
+    case 6: return HCB_ESC;
+    default: return HCB_ZERO;
+    }
+}
+
+/* A band carries Huffman-coded spectral data iff its book is in [1, HCB_ESC].
+ * HCB_ZERO/PNS/intensity carry none and act as hard section boundaries. */
+static int is_spectral(int book)
+{
+    return book >= 1 && book <= HCB_ESC;
+}
+
+/* Bit cost of coding the contiguous span of bands [first..last] as one section
+ * under a single book. The span's quantized coeffs are packed back-to-back in
+ * coder->qspec[], so a single huffcode() count over the whole run is exact. */
+static int span_cost(CoderInfo *coder, int first, int last, int book)
+{
+    int ofs = coder->qoffset[first];
+    int len = coder->qoffset[last] + coder->qlen[last] - ofs;
+    return huffcode(coder->qspec + ofs, len, book, 0);
+}
+
+/* Greedy section merge ("codebook hysteresis"): walk each group left to right
+ * and absorb the next spectral band into the open section whenever re-coding the
+ * span under a shared covering book costs fewer extra spectral bits than the
+ * section header it would save. Lossless: it only re-assigns spectral books to
+ * spectral bands, never touching scalefactors or band classes. */
+void section_optimize(CoderInfo *coder)
+{
+    int shortwin = (coder->block_type == ONLY_SHORT_WINDOW);
+    int maxcnt = shortwin ? 7 : 31;   /* section run length writebooks() can encode */
+    int header = 4 + (shortwin ? 3 : 5); /* bits saved by dropping one section header */
+    int g;
+
+    for (g = 0; g < coder->groups.n; g++)
+    {
+        int band = g * coder->sfbn;
+        int maxband = band + coder->sfbn;
+
+        while (band < maxband)
+        {
+            int sec_start, sec_spec, sec_tier;
+
+            if (!is_spectral(coder->book[band]))
+            {
+                band++;
+                continue;
+            }
+
+            sec_start = band;
+            sec_spec = coder->blen[band];
+            sec_tier = book_tier(coder->book[band]);
+            band++;
+
+            /* Cap the run at maxcnt so the saved-header model stays exact. */
+            while (band < maxband
+                   && is_spectral(coder->book[band])
+                   && (band - sec_start) < maxcnt)
+            {
+                int cand_tier = sec_tier;
+                int t = book_tier(coder->book[band]);
+                int base, best_book, best_cost, k;
+
+                if (t > cand_tier)
+                    cand_tier = t;
+                base = tier_base_book(cand_tier);
+
+                best_book = base;
+                best_cost = span_cost(coder, sec_start, band, base);
+                if (base != HCB_ESC)
+                {
+                    int c2 = span_cost(coder, sec_start, band, base + 1);
+                    if (c2 < best_cost)
+                    {
+                        best_cost = c2;
+                        best_book = base + 1;
+                    }
+                }
+
+                if (best_cost - sec_spec - coder->blen[band] < header)
+                {
+                    for (k = sec_start; k <= band; k++)
+                        coder->book[k] = best_book;
+                    sec_spec = best_cost;
+                    sec_tier = cand_tier;
+                    band++;
+                }
+                else
+                    break;
+            }
+        }
+    }
+}
+
+/* Emit Huffman symbols for all spectral bands in band order, filling coder->s[]
+ * for WriteSpectralData(). Per-band emission of a merged section yields the same
+ * bits as one combined call (spectral data is a continuous tuple sequence). */
+void emit_spectral(CoderInfo *coder)
+{
+    int b;
+
+    coder->datacnt = 0;
+    for (b = 0; b < coder->bandcnt; b++)
+    {
+        if (is_spectral(coder->book[b]))
+            huffcode(coder->qspec + coder->qoffset[b], coder->qlen[b],
+                     coder->book[b], coder);
+    }
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
