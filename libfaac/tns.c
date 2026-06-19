@@ -74,6 +74,12 @@ static unsigned short tnsMaxBandsShortLow[12] =
 static unsigned short tnsMaxOrderLongLow  = 8;
 static unsigned short tnsMaxOrderShortLow = 7;
 
+/* TNS analysis pre-gate thresholds.
+ * Validated via corpus sweeps to prevent TNS activation on non-beneficial frames. */
+#define TNS_ENERGY_FLOOR      0.16  /* Min MDCT RMS to avoid processing near-silent frames */
+#define TNS_FLATNESS_K        1.7   /* Spectral flatness gate (L2^2*N/L1^2) */
+#define TNS_PEAK_RATIO_MARGIN 1.2   /* Peak-to-mean ratio margin above Gaussian expected peak */
+
 /* TNS break-even gain analysis constants. */
 #define TNS_SPECTRAL_FRAC   0.65    /* Estimated fraction of frame bits for spectral data */
 #define TNS_FIXED_OVERHEAD  14      /* Fixed bitstream overhead per TNS filter */
@@ -98,6 +104,13 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 
 static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
+static void WhitenSpectrumForTns(const faac_real * restrict spec,
+                                 faac_real * restrict out,
+                                 const int * restrict sfbOffsetTable,
+                                 const faac_real * restrict sfbEnergy,
+                                 int startBand, int stopBand,
+                                 int startLine, int stopLine);
+
 static void TnsInvFilter(int length, faac_real * restrict spec,
                          const TnsFilterData * restrict filter,
                          faac_real * restrict temp);
@@ -127,27 +140,36 @@ void TnsInit(faacEncStruct* hEncoder)
      * Under FAAC_TNS_TUNING these are overridable via environment variables
      * so run_benchmark.py --sweep can drive them without recompiling. */
 #ifdef FAAC_TNS_TUNING
-    unsigned long t_gate_bps   = 64000UL;
-    faac_real t_spectral_frac  = (faac_real)TNS_SPECTRAL_FRAC;
-    faac_real t_calibration    = (faac_real)TNS_CALIBRATION;
-    faac_real t_thresh_floor   = (faac_real)TNS_THRESH_FLOOR;
-    faac_real t_thresh_cap     = (faac_real)TNS_THRESH_CAP;
-    int       t_maxorder       = tnsMaxOrderLongLow;
+    unsigned long t_gate_bps      = 64000UL;
+    faac_real t_spectral_frac     = (faac_real)TNS_SPECTRAL_FRAC;
+    faac_real t_calibration       = (faac_real)TNS_CALIBRATION;
+    faac_real t_thresh_floor      = (faac_real)TNS_THRESH_FLOOR;
+    faac_real t_thresh_cap        = (faac_real)TNS_THRESH_CAP;
+    int       t_maxorder          = tnsMaxOrderLongLow;
+    faac_real t_energy_floor      = (faac_real)TNS_ENERGY_FLOOR;
+    faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
+    faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
     { const char *e;
       if ((e = getenv("FAAC_TNS_GATE_BPS")))         t_gate_bps      = (unsigned long)atof(e);
       if ((e = getenv("FAAC_TNS_SPECTRAL_FRAC")))    t_spectral_frac = (faac_real)atof(e);
       if ((e = getenv("FAAC_TNS_CALIBRATION")))      t_calibration   = (faac_real)atof(e);
       if ((e = getenv("FAAC_TNS_GAINTHRESH_FLOOR"))) t_thresh_floor  = (faac_real)atof(e);
       if ((e = getenv("FAAC_TNS_GAINTHRESH_CAP")))   t_thresh_cap    = (faac_real)atof(e);
-      if ((e = getenv("FAAC_TNS_MAXORDER")))          t_maxorder      = (int)atof(e);
+      if ((e = getenv("FAAC_TNS_MAXORDER")))         t_maxorder      = (int)atof(e);
+      if ((e = getenv("FAAC_TNS_ENERGY_FLOOR")))     t_energy_floor  = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_FLATNESS_K")))       t_flatness_k    = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_PEAK_MARGIN")))      t_peak_margin   = (faac_real)atof(e);
     }
 #else
-    unsigned long t_gate_bps   = 64000UL;
-    faac_real t_spectral_frac  = (faac_real)TNS_SPECTRAL_FRAC;
-    faac_real t_calibration    = (faac_real)TNS_CALIBRATION;
-    faac_real t_thresh_floor   = (faac_real)TNS_THRESH_FLOOR;
-    faac_real t_thresh_cap     = (faac_real)TNS_THRESH_CAP;
-    int       t_maxorder       = tnsMaxOrderLongLow;
+    unsigned long t_gate_bps      = 64000UL;
+    faac_real t_spectral_frac     = (faac_real)TNS_SPECTRAL_FRAC;
+    faac_real t_calibration       = (faac_real)TNS_CALIBRATION;
+    faac_real t_thresh_floor      = (faac_real)TNS_THRESH_FLOOR;
+    faac_real t_thresh_cap        = (faac_real)TNS_THRESH_CAP;
+    int       t_maxorder          = tnsMaxOrderLongLow;
+    faac_real t_energy_floor      = (faac_real)TNS_ENERGY_FLOOR;
+    faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
+    faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
 #endif
 
     /* TNS gate: active only when enabled and within bitrate limits. */
@@ -193,6 +215,10 @@ void TnsInit(faacEncStruct* hEncoder)
             }
             tnsInfo->gainThreshLong = thresh;
         }
+
+        tnsInfo->pregateEnergyFloor = t_energy_floor;
+        tnsInfo->pregateFlatenessK   = t_flatness_k;
+        tnsInfo->pregatePeakMargin   = t_peak_margin;
     }
 }
 
@@ -250,19 +276,60 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     tns_analyzed_count++;
 #endif
 
+    /* Pre-gate: compute window-invariant values. */
+    startIndex = sfbOffsetTable[startBand];
+    length = sfbOffsetTable[stopBand] - startIndex;
+    faac_real peak_thresh = (length > 0)
+        ? (tnsInfo->pregatePeakMargin * (faac_real)FAAC_SQRT(2.0 * FAAC_LOG((faac_real)length)))
+        : 0.0;
+
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
 
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
-        faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
-        faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
+        faac_real sfbEnergy[NSFB_LONG];
+        faac_real* wspec = spec + w * windowSize;
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
-        startIndex = w * windowSize + sfbOffsetTable[startBand];
-        length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
-        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
+
+        /* Combined pre-gate and per-SFB energy accumulation. */
+        {
+            faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
+            int sfb;
+            for (sfb = startBand; sfb < stopBand; sfb++) {
+                faac_real e = 0.0;
+                int j;
+                int sfb_start = sfbOffsetTable[sfb];
+                int sfb_end = sfbOffsetTable[sfb + 1];
+                const faac_real *pspec = &wspec[sfb_start];
+                int n = sfb_end - sfb_start;
+
+                for (j = 0; j < n; j++) {
+                    faac_real v = pspec[j];
+                    faac_real va = (faac_real)FAAC_FABS(v);
+                    e    += v * v;
+                    suma += va;
+                    if (va > maxa) maxa = va;
+                }
+                sfbEnergy[sfb] = e;
+                sumsq += e;
+            }
+
+            if (sumsq < tnsInfo->pregateEnergyFloor * (faac_real)length
+                || suma <= 0.0
+                || sumsq * (faac_real)length < tnsInfo->pregateFlatenessK * suma * suma
+                || maxa * (faac_real)length < peak_thresh * suma) {
+                continue;
+            }
+        }
+
+        /* Run Levinson-Durbin on whitened spectrum to focus on within-band correlation. */
+        WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy,
+                             startBand, stopBand,
+                             startIndex, startIndex + length);
+        gain = LevinsonDurbin(order,length,&temp[startIndex],tnsFilter->kCoeffs);
 
         if (gain > tnsInfo->gainThreshLong) {  /* Use TNS */
             int truncatedOrder;
@@ -274,7 +341,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             tnsInfo->tnsDataPresent=1;
             tnsFilter->direction = 0;
 
-            /* Lossless bitstream compression:
+            /* Lossless bitstream compression (Arm D1):
              * Signal coefCompress=1 if all transmitted indices fit in 3 bits. */
             tnsFilter->coefCompress = 1;
             for (i = 1; i <= truncatedOrder; i++) {
@@ -286,8 +353,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
             tnsFilter->length = lengthInBands;
             tnsFilter->order = truncatedOrder;
-            StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
-            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
+            StepUp(truncatedOrder,tnsFilter->kCoeffs,tnsFilter->aCoeffs);
+            TnsInvFilter(length,&wspec[startIndex],tnsFilter,temp);
         }
     }
 #ifdef FAAC_TNS_TUNING
@@ -452,13 +519,22 @@ static void QuantizeReflectionCoeffs(int fOrder,
     faac_real iqfac,iqfac_m;
     int i;
 
-    iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
-    iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
+    iqfac = (faac_real)(((1<<(coeffRes-1))-0.5)/(M_PI/2));
+    iqfac_m = (faac_real)(((1<<(coeffRes-1))+0.5)/(M_PI/2));
 
-    /* Quantize and inverse quantize */
-    for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+    /* Range clamping prevents index wrapping and encoder/decoder mismatch. */
+    {
+        const int i_max =  (1 << (coeffRes - 1)) - 1;
+        const int i_min = -(1 << (coeffRes - 1));
+        for (i = 1; i <= fOrder; i++) {
+            int idx = (kArray[i] >= 0)
+                    ? (int)(0.5  + FAAC_ASIN(kArray[i]) * iqfac)
+                    : (int)(-0.5 + FAAC_ASIN(kArray[i]) * iqfac_m);
+            if (idx > i_max) idx = i_max;
+            if (idx < i_min) idx = i_min;
+            indexArray[i] = idx;
+            kArray[i] = (faac_real)FAAC_SIN((faac_real)idx / (idx >= 0 ? iqfac : iqfac_m));
+        }
     }
 }
 
@@ -593,6 +669,58 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
         }
         for (i=1;i<=order;i++) {
             aArray[i]=aTemp[i];
+        }
+    }
+}
+
+/*****************************************************/
+/* WhitenSpectrumForTns:                             */
+/*   Per-SFB whitening via inverse-sqrt normalization. */
+/*****************************************************/
+static void WhitenSpectrumForTns(const faac_real * restrict spec,
+                                 faac_real * restrict out,
+                                 const int * restrict sfbOffsetTable,
+                                 const faac_real * restrict sfbEnergy,
+                                 int startBand, int stopBand,
+                                 int startLine, int stopLine)
+{
+    faac_real invE[NSFB_LONG];
+    int sfb, i;
+
+    if (startBand >= stopBand || startLine >= stopLine)
+        return;
+
+    for (sfb = startBand; sfb < stopBand; sfb++) {
+        invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
+                  ? (faac_real)(1.0 / FAAC_SQRT(sfbEnergy[sfb]))
+                  : (faac_real)0.0;
+    }
+
+    /* RTL smoothing: process per SFB to remove branch from hot loop. */
+    {
+        faac_real next_w = invE[stopBand - 1];
+        out[stopLine - 1] = next_w;
+
+        for (sfb = stopBand - 1; sfb >= startBand; sfb--) {
+            const int sfb_start = sfbOffsetTable[sfb];
+            const int sfb_end = (sfb == stopBand - 1) ? stopLine - 1 : sfbOffsetTable[sfb + 1];
+            const faac_real w = invE[sfb];
+
+            for (i = sfb_end - 1; i >= sfb_start; i--) {
+                next_w = (faac_real)0.5 * (w + next_w);
+                out[i] = next_w;
+            }
+        }
+    }
+
+    /* LTR smoothing and application. */
+    {
+        faac_real prev = out[startLine];
+        out[startLine] = prev * spec[startLine];
+        for (i = startLine + 1; i < stopLine; i++) {
+            const faac_real weight = (faac_real)0.5 * (out[i] + prev);
+            prev = weight;
+            out[i] = weight * spec[i];
         }
     }
 }
