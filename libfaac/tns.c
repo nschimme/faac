@@ -85,7 +85,6 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
 static void TnsInvFilter(int length, faac_real * restrict spec,
                          const TnsFilterData * restrict filter,
                          faac_real * restrict temp);
-static void WhitenSpectrumForTns(int length, faac_real * restrict spec);
 
 /*****************************************************/
 /* InitTns:                                          */
@@ -110,7 +109,9 @@ void TnsInit(faacEncStruct* hEncoder)
 
     /* TNS gate: active only when enabled and within bitrate limits (24kbps - 96kbps/ch). */
     int tnsGated = (effectiveBitratePerCh >= 96000) || (effectiveBitratePerCh < 24000);
-    hEncoder->config.useTns = (hEncoder->config.useTns != 0) && !tnsGated;
+    if (tnsGated) {
+        hEncoder->config.useTns = 0;
+    }
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
@@ -245,11 +246,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             continue;
         }
 
-        /* Whiten spectrum for analysis to improve prediction gain on transients */
-        memcpy(temp, &spec[startIndex], length * sizeof(faac_real));
-        WhitenSpectrumForTns(length, temp);
-
-        gain = LevinsonDurbin(order,length,temp,k);
+        /* Analysis and filtering. Whitening disabled to prioritize steady-state MOS stability. */
+        gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         faac_real currentThresh = (blockType == ONLY_SHORT_WINDOW) ? tnsInfo->gainThreshShort : tnsInfo->gainThreshLong;
 
@@ -342,28 +340,6 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
         }
     }
 }
-
-/*
- * WhitenSpectrumForTns:
- * Apply a simple adaptive whitening filter to the spectral data
- * before TNS analysis to improve the detection of transients.
- * Uses LTR (Left-To-Right) smoothing with original spectral weight fix.
- */
-static void WhitenSpectrumForTns(int length, faac_real * restrict spec)
-{
-    int i;
-    faac_real weight = 0.25;
-    faac_real prev_orig = FAAC_FABS(spec[0]);
-    for (i = 1; i < length; i++) {
-        faac_real current_orig = FAAC_FABS(spec[i]);
-        /* Use original spectral values for weight calculation to avoid in-place corruption */
-        faac_real w = (current_orig > prev_orig) ? 0.75 : 0.25;
-        weight = weight * 0.9 + w * 0.1;
-        spec[i] *= weight;
-        prev_orig = current_orig;
-    }
-}
-
 
 /********************************************************/
 /* TnsInvFilter:                                        */
