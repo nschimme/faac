@@ -41,6 +41,7 @@ Copyright (c) 1997.
 #ifdef FAAC_TNS_TUNING
 static long tns_analyzed_count = 0;
 static long tns_applied_count  = 0;
+static long tns_gain_hist[5]   = {0}; /* [thresh, 2), [2, 5), [5, 20), [20, 100), [100, inf) */
 
 void TnsPrintStats(void)
 {
@@ -49,6 +50,8 @@ void TnsPrintStats(void)
             tns_analyzed_count > 0
                 ? (double)tns_applied_count / tns_analyzed_count
                 : 0.0);
+    fprintf(stderr, "TNS_GAIN_HIST [thresh,2):%ld [2,5):%ld [5,20):%ld [20,100):%ld [100,inf):%ld\n",
+            tns_gain_hist[0], tns_gain_hist[1], tns_gain_hist[2], tns_gain_hist[3], tns_gain_hist[4]);
 }
 #endif
 
@@ -141,6 +144,10 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_energy_floor      = (faac_real)TNS_ENERGY_FLOOR;
     faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
+    faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
+    int       t_direction_adapt   = 1;
+    faac_real t_gain_ceiling      = (faac_real)1.0e30;
+    int       t_coeff_res         = DEF_TNS_COEFF_RES;
     { const char *e;
       if ((e = getenv("FAAC_TNS_GATE_BPS")))         t_gate_bps      = (unsigned long)atof(e);
       if ((e = getenv("FAAC_TNS_SPECTRAL_FRAC")))    t_spectral_frac = (faac_real)atof(e);
@@ -151,6 +158,14 @@ void TnsInit(faacEncStruct* hEncoder)
       if ((e = getenv("FAAC_TNS_ENERGY_FLOOR")))     t_energy_floor  = (faac_real)atof(e);
       if ((e = getenv("FAAC_TNS_FLATNESS_K")))       t_flatness_k    = (faac_real)atof(e);
       if ((e = getenv("FAAC_TNS_PEAK_MARGIN")))      t_peak_margin   = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_COEFF_THRESH")))     t_coeff_thresh  = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_DIRECTION_ADAPT")))  t_direction_adapt = (int)atoi(e);
+      if ((e = getenv("FAAC_TNS_GAINTHRESH_CEILING"))) t_gain_ceiling = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_COEFF_RES"))) {
+          t_coeff_res = (int)atoi(e);
+          if (t_coeff_res < 3) t_coeff_res = 3;
+          if (t_coeff_res > 4) t_coeff_res = 4;
+      }
     }
 #else
     unsigned long t_gate_bps      = 64000UL;
@@ -162,6 +177,10 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_energy_floor      = (faac_real)TNS_ENERGY_FLOOR;
     faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
+    faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
+    int       t_direction_adapt   = 1;
+    faac_real t_gain_ceiling      = (faac_real)1.0e30;
+    int       t_coeff_res         = DEF_TNS_COEFF_RES;
 #endif
 
     /* TNS gate: active only when enabled and within bitrate limits. */
@@ -182,13 +201,14 @@ void TnsInit(faacEncStruct* hEncoder)
         }
 
         tnsInfo->tnsMaxOrderLong = t_maxorder;
+        tnsInfo->tnsCoeffRes     = t_coeff_res;
 
         /* Long-window gain threshold via break-even bit budget formula. */
         {
             int frame_bits    = (int)(effectiveBitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
             int spectral_bits = (int)(frame_bits * t_spectral_frac);
-            int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
+            int tns_overhead  = tnsInfo->tnsMaxOrderLong * tnsInfo->tnsCoeffRes
                                 + TNS_FIXED_OVERHEAD;
             int denom = spectral_bits - tns_overhead;
             faac_real thresh;
@@ -208,6 +228,9 @@ void TnsInit(faacEncStruct* hEncoder)
         tnsInfo->pregateEnergyFloor = t_energy_floor;
         tnsInfo->pregateFlatenessK   = t_flatness_k;
         tnsInfo->pregatePeakMargin   = t_peak_margin;
+        tnsInfo->pregateCoeffThresh   = t_coeff_thresh;
+        tnsInfo->adaptDirection      = t_direction_adapt;
+        tnsInfo->gainThreshCeiling    = t_gain_ceiling;
     }
 }
 
@@ -276,7 +299,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         faac_real* wspec = spec + w * windowSize;
 
         windowData->numFilters=0;
-        windowData->coefResolution = DEF_TNS_COEFF_RES;
+        windowData->coefResolution = tnsInfo->tnsCoeffRes;
 
         /* Combined pre-gate and per-SFB energy accumulation. */
         {
@@ -315,23 +338,55 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                              startIndex, startIndex + length);
         gain = LevinsonDurbin(order,length,&temp[startIndex],tnsFilter->kCoeffs);
 
-        if (gain > tnsInfo->gainThreshLong) {  /* Use TNS */
+#ifdef FAAC_TNS_TUNING
+        if (gain > tnsInfo->gainThreshLong) {
+            if (gain < 2.0) tns_gain_hist[0]++;
+            else if (gain < 5.0) tns_gain_hist[1]++;
+            else if (gain < 20.0) tns_gain_hist[2]++;
+            else if (gain < 100.0) tns_gain_hist[3]++;
+            else tns_gain_hist[4]++;
+        }
+#endif
+
+        if (gain > tnsInfo->gainThreshLong && gain < tnsInfo->gainThreshCeiling) {  /* Use TNS */
             int truncatedOrder;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,tnsFilter->kCoeffs,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,tnsFilter->kCoeffs);
+            int direction = 0;
+
+            if (tnsInfo->adaptDirection) {
+                int midBand = (startBand + stopBand) / 2;
+                faac_real sum_lo = 0.0, sum_hi = 0.0;
+                int sfb;
+                for (sfb = startBand; sfb < midBand; sfb++) sum_lo += sfbEnergy[sfb];
+                for (sfb = midBand;   sfb < stopBand; sfb++) sum_hi += sfbEnergy[sfb];
+
+                if (blockType == LONG_SHORT_WINDOW) {
+                    direction = 1;   /* Transition to short: backward */
+                } else if (blockType == SHORT_LONG_WINDOW) {
+                    direction = 0;   /* Transition from short: forward */
+                } else {
+                    direction = (sum_hi > sum_lo) ? 1 : 0;
+                }
+            }
+
+            QuantizeReflectionCoeffs(order,tnsInfo->tnsCoeffRes,tnsFilter->kCoeffs,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(order,tnsInfo->pregateCoeffThresh,tnsFilter->kCoeffs);
             if (truncatedOrder == 0) continue;
 
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
-            tnsFilter->direction = 0;
+            tnsFilter->direction = direction;
 
             /* Lossless bitstream compression (Arm D1):
-             * Signal coefCompress=1 if all transmitted indices fit in 3 bits. */
-            tnsFilter->coefCompress = 1;
-            for (i = 1; i <= truncatedOrder; i++) {
-                if (tnsFilter->index[i] < -4 || tnsFilter->index[i] > 3) {
-                    tnsFilter->coefCompress = 0;
-                    break;
+             * Signal coefCompress=1 if all transmitted indices fit in (res-1) bits. */
+            {
+                int compress_max = (1 << (tnsInfo->tnsCoeffRes - 2)) - 1;
+                int compress_min = -(1 << (tnsInfo->tnsCoeffRes - 2));
+                tnsFilter->coefCompress = 1;
+                for (i = 1; i <= truncatedOrder; i++) {
+                    if (tnsFilter->index[i] < compress_min || tnsFilter->index[i] > compress_max) {
+                        tnsFilter->coefCompress = 0;
+                        break;
+                    }
                 }
             }
 
@@ -561,7 +616,7 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
             aPtr=aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
-        if (error <= 0.0) return (faac_real)(TNS_THRESH_CAP + 1.0);
+        if (error <= 0.0) return (faac_real)1.0e30;
         return signal/error;    /* return the gain */
     }
 }

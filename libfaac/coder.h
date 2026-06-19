@@ -46,7 +46,7 @@ enum WINDOW_TYPE {
 
 #define TNS_MAX_ORDER 12
 #define DEF_TNS_COEFF_THRESH 0.1
-#define DEF_TNS_COEFF_RES 4
+#define DEF_TNS_COEFF_RES 3
 #define DEF_TNS_RES_OFFSET 3
 #define LEN_TNS_NFILTL 2
 #define LEN_TNS_NFILTS 1
@@ -77,6 +77,10 @@ typedef struct {
     faac_real pregateEnergyFloor;
     faac_real pregateFlatenessK;
     faac_real pregatePeakMargin;
+    faac_real pregateCoeffThresh;
+    int adaptDirection;
+    faac_real gainThreshCeiling;
+    int tnsCoeffRes;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
