@@ -308,6 +308,24 @@ static int huffcode(int *qs /* quantized spectrum */,
 }
 
 
+static int book_for_maxq(int maxq)
+{
+    if (maxq < 1)
+        return HCB_ZERO;
+    if (maxq < 2)
+        return 1;
+    if (maxq < 3)
+        return 3;
+    if (maxq < 5)
+        return 5;
+    if (maxq < 8)
+        return 7;
+    if (maxq < 13)
+        return 9;
+
+    return HCB_ESC;
+}
+
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
@@ -323,43 +341,217 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+    bookmin = book_for_maxq(maxq);
 
-    if (maxq < 1)
+    if (bookmin == HCB_ZERO)
     {
-        bookmin = HCB_ZERO;
         lenmin = 0;
     }
-    else if (maxq < 2)
+    else if (bookmin == HCB_ESC)
     {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
+        lenmin = huffcode(qs, len, HCB_ESC, 0);
     }
     else
     {
-        bookmin = HCB_ESC;
+        int l0 = huffcode(qs, len, bookmin, 0);
+        int l1 = huffcode(qs, len, bookmin + 1, 0);
+
+        if (l1 >= 0 && (l0 < 0 || l1 < l0))
+        {
+            bookmin++;
+            lenmin = l1;
+        }
+        else
+        {
+            lenmin = l0;
+        }
     }
 
-    if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
     coder->book[coder->bandcnt] = bookmin;
+    coder->blen[coder->bandcnt] = lenmin;
+    coder->maxq[coder->bandcnt] = maxq;
 
     return 0;
+}
+
+static int spec_cost(CoderInfo *coder, int band, int book)
+{
+    if (book == HCB_ZERO)
+        return 0;
+    return huffcode(coder->qspec + coder->qoffset[band], coder->qlen[band], book, 0);
+}
+
+static int count_header_bits(int cnt, int maxcnt, int cntbits)
+{
+    int bits = 4;
+    while (cnt > maxcnt)
+    {
+        bits += cntbits;
+        cnt -= maxcnt;
+    }
+    bits += cntbits;
+    return bits;
+}
+
+void section_optimize(CoderInfo *coder)
+{
+    int maxcnt, cntbits;
+    int group;
+    int costs[MAX_SCFAC_BANDS][13]; // bits for each book (1-11 pair or 11) per band
+
+    if (coder->block_type == ONLY_SHORT_WINDOW)
+    {
+        maxcnt = 7;
+        cntbits = 3;
+    }
+    else
+    {
+        maxcnt = 31;
+        cntbits = 5;
+    }
+
+    for (group = 0; group < coder->groups.n; group++)
+    {
+        int band = group * coder->sfbn;
+        int maxband = band + coder->sfbn;
+
+        // Precompute costs for the group (O(N))
+        for (int b = band; b < maxband; b++)
+        {
+            int book = coder->book[b];
+            if (book > HCB_ESC)
+            {
+                for (int k = 0; k <= 12; k++) costs[b][k] = 0;
+                continue;
+            }
+
+            // Always calculate ESC cost
+            costs[b][HCB_ESC] = spec_cost(coder, b, HCB_ESC);
+
+            // Calculate costs for all potential base books
+            for (int k = 1; k < HCB_ESC; k += 2)
+            {
+                costs[b][k] = spec_cost(coder, b, k);
+                costs[b][k + 1] = spec_cost(coder, b, k + 1);
+            }
+        }
+
+        while (band < maxband)
+        {
+            int start_band = band;
+            int current_book = coder->book[band];
+            int current_spec_sum = coder->blen[band];
+            int maxq = coder->maxq[band];
+            int run_costs[13];
+
+            if (current_book == HCB_PNS || current_book == HCB_INTENSITY || current_book == HCB_INTENSITY2)
+            {
+                band++;
+                continue;
+            }
+
+            for (int k = 1; k <= 12; k++) run_costs[k] = costs[band][k];
+
+            band++;
+            while (band < maxband)
+            {
+                int next_book = coder->book[band];
+                int next_maxq = coder->maxq[band];
+                int merged_book, merged_cost;
+                int delta, header_saved;
+
+                if (next_book == HCB_PNS || next_book == HCB_INTENSITY || next_book == HCB_INTENSITY2)
+                    break;
+
+                int span_maxq = (maxq > next_maxq) ? maxq : next_maxq;
+                merged_book = book_for_maxq(span_maxq);
+
+                if (merged_book == HCB_ZERO)
+                {
+                    merged_cost = 0;
+                }
+                else
+                {
+                    // Accumulate costs (O(1) work within O(N) loop)
+                    for (int k = 1; k <= 12; k++)
+                    {
+                        if (run_costs[k] >= 0 && costs[band][k] >= 0)
+                            run_costs[k] += costs[band][k];
+                        else
+                            run_costs[k] = -1;
+                    }
+
+                    if (merged_book == HCB_ESC)
+                    {
+                        merged_cost = run_costs[HCB_ESC];
+                    }
+                    else
+                    {
+                        int l0 = run_costs[merged_book];
+                        int l1 = run_costs[merged_book + 1];
+                        if (l1 >= 0 && (l0 < 0 || l1 < l0))
+                        {
+                            merged_book++;
+                            merged_cost = l1;
+                        }
+                        else
+                        {
+                            merged_cost = l0;
+                        }
+                    }
+                }
+
+                if (merged_cost < 0) break;
+
+                int span_len = band - start_band;
+                header_saved = count_header_bits(span_len, maxcnt, cntbits) +
+                               count_header_bits(1, maxcnt, cntbits) -
+                               count_header_bits(span_len + 1, maxcnt, cntbits);
+
+                delta = merged_cost - (current_spec_sum + coder->blen[band]);
+
+                if (delta < header_saved)
+                {
+                    for (int b = start_band; b <= band; b++)
+                        coder->book[b] = merged_book;
+                    current_book = merged_book;
+                    current_spec_sum = merged_cost;
+                    maxq = span_maxq;
+                    band++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void emit_spectral(CoderInfo *coder)
+{
+    int band = 0;
+    coder->datacnt = 0;
+    while (band < coder->bandcnt)
+    {
+        int book = coder->book[band];
+        if (book > HCB_ZERO && book <= HCB_ESC)
+        {
+            int start_band = band;
+            int total_len = coder->qlen[band];
+            band++;
+            while (band < coder->bandcnt && coder->book[band] == book)
+            {
+                total_len += coder->qlen[band];
+                band++;
+            }
+            huffcode(coder->qspec + coder->qoffset[start_band], total_len, book, coder);
+        }
+        else
+        {
+            band++;
+        }
+    }
 }
 
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
@@ -402,7 +594,7 @@ int writebooks(CoderInfo *coder, BitStream *stream, int write)
                 }
             }
 
-            while (bookcnt >= maxcnt)
+            while (bookcnt > maxcnt)
             {
                 if (write)
                     PutBit(stream, maxcnt, cntbits);

@@ -200,7 +200,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandmaxe,
                    int gnum,
                    int pnslevel,
-                   int *p_last_abs  /* previous active band's absolute stored scalefactor */
+                   int *p_last_abs, /* previous active band's absolute stored scalefactor */
+                   int *qspec_offset
                   )
 {
     int sb;
@@ -214,32 +215,47 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
       int win;
-
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
-      {
-          coderInfo->bandcnt++;
-          continue;
-      }
+      int band_len;
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
+      band_len = gsize * (end - start);
+
+      if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
+      {
+          coderInfo->qoffset[coderInfo->bandcnt] = 0;
+          coderInfo->qlen[coderInfo->bandcnt] = 0;
+          coderInfo->blen[coderInfo->bandcnt] = 0;
+          coderInfo->maxq[coderInfo->bandcnt] = 0;
+          coderInfo->bandcnt++;
+          continue;
+      }
 
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
+          coderInfo->qoffset[coderInfo->bandcnt] = *qspec_offset;
+          coderInfo->qlen[coderInfo->bandcnt] = band_len;
+          coderInfo->blen[coderInfo->bandcnt] = 0;
+          coderInfo->maxq[coderInfo->bandcnt] = 0;
+          memset(coderInfo->qspec + *qspec_offset, 0, band_len * sizeof(int));
+          *qspec_offset += band_len;
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
       if (bandqual[sb] < pnsthr)
       {
+          coderInfo->qoffset[coderInfo->bandcnt] = 0;
+          coderInfo->qlen[coderInfo->bandcnt] = 0;
+          coderInfo->blen[coderInfo->bandcnt] = 0;
+          coderInfo->maxq[coderInfo->bandcnt] = 0;
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -313,10 +329,15 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       end -= start;
-      xi = xitab;
+      xi = coderInfo->qspec + *qspec_offset;
+      coderInfo->qoffset[coderInfo->bandcnt] = *qspec_offset;
+      coderInfo->qlen[coderInfo->bandcnt] = band_len;
+
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          memset(xi, 0, band_len * sizeof(int));
+          coderInfo->blen[coderInfo->bandcnt] = 0;
+          coderInfo->maxq[coderInfo->bandcnt] = 0;
           coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
@@ -327,8 +348,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
-          huffbook(coderInfo, xitab, gsize * end);
+          huffbook(coderInfo, coderInfo->qspec + *qspec_offset, band_len);
       }
+      *qspec_offset += band_len;
+
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * HCB_ZERO bands don't participate in the regular-band delta chain. */
       if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
@@ -351,6 +374,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
+    int qspec_offset = 0;
 
     gxr = xr;
     for (cnt = 0; cnt < coder->groups.n; cnt++)
@@ -358,9 +382,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
               (faac_real)aacquantCfg->quality/DEFQUAL);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-               aacquantCfg->pnslevel, &lastsf);
+               aacquantCfg->pnslevel, &lastsf, &qspec_offset);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
+
+    section_optimize(coder);
+    emit_spectral(coder);
 
     /* global_gain seeds the decoder's regular scalefactor chain and is written
      * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity
