@@ -41,14 +41,19 @@ Copyright (c) 1997.
 #ifdef FAAC_TNS_TUNING
 static long tns_analyzed_count = 0;
 static long tns_applied_count  = 0;
+static long tns_compressed_count = 0;
 static long tns_gain_hist[5]   = {0}; /* [thresh, 2), [2, 5), [5, 20), [20, 100), [100, inf) */
 
 void TnsPrintStats(void)
 {
-    fprintf(stderr, "TNS_ACTIVATION applied=%ld analyzed=%ld rate=%.3f\n",
+    fprintf(stderr, "TNS_ACTIVATION applied=%ld analyzed=%ld rate=%.3f compressed=%ld comp_rate=%.3f\n",
             tns_applied_count, tns_analyzed_count,
             tns_analyzed_count > 0
                 ? (double)tns_applied_count / tns_analyzed_count
+                : 0.0,
+            tns_compressed_count,
+            tns_applied_count > 0
+                ? (double)tns_compressed_count / tns_applied_count
                 : 0.0);
     fprintf(stderr, "TNS_GAIN_HIST [thresh,2):%ld [2,5):%ld [5,20):%ld [20,100):%ld [100,inf):%ld\n",
             tns_gain_hist[0], tns_gain_hist[1], tns_gain_hist[2], tns_gain_hist[3], tns_gain_hist[4]);
@@ -392,6 +397,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                         break;
                     }
                 }
+#ifdef FAAC_TNS_TUNING
+                if (tnsFilter->coefCompress) tns_compressed_count++;
+#endif
             }
 
             tnsFilter->length = lengthInBands;
