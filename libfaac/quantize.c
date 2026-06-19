@@ -245,7 +245,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           int band = coderInfo->bandcnt;
           coderInfo->qoffset[band] = *qspec_offset;
           coderInfo->qlen[band] = band_len;
-          memset(coderInfo->qspec + *qspec_offset, 0, band_len * sizeof(int));
+          memset(coderInfo->qspec + *qspec_offset, 0, (band_len + 4) * sizeof(int));
           *qspec_offset += band_len;
           huffbook(coderInfo, NULL, band_len);
           if (*p_last_abs != SF_CHAIN_UNSET)
@@ -340,6 +340,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       xi = coderInfo->qspec + *qspec_offset;
       coderInfo->qoffset[coderInfo->bandcnt] = *qspec_offset;
       coderInfo->qlen[coderInfo->bandcnt] = band_len;
+      memset(xi + band_len, 0, 4 * sizeof(int)); /* Padding for huff_count_all_books reads */
 
       if (sfacfix <= 0.0)
       {
@@ -360,9 +361,9 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * HCB_ZERO bands don't participate in the regular-band delta chain. */
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
+      if (coderInfo->book[coderInfo->bandcnt-1] != HCB_ZERO)
           *p_last_abs = sf_abs;
-      coderInfo->sf[coderInfo->bandcnt++] += sf_rel;
+      coderInfo->sf[coderInfo->bandcnt-1] += sf_rel;
     }
 }
 
