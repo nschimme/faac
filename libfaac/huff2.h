@@ -66,6 +66,8 @@ static inline int clamp_sf_diff(int diff)
 int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
+
+void huff_count_all_books(const int * __restrict qs, int len, int * __restrict costs, int * __restrict maxq);
 void section_optimize(CoderInfo *coder);
 void emit_spectral(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);

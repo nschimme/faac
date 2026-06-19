@@ -123,16 +123,32 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
+  totenrg = 0.0;
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
+      faac_real avge = 0.0, maxe = 0.0;
+      start = cb_offset[sfb];
+      end = cb_offset[sfb + 1];
+      for (win = 0; win < gsize; win++)
       {
-          totenrg += xr[cnt] * xr[cnt];
+          xr = xr0 + win * BLOCK_LEN_SHORT + start;
+          int n = end - start;
+          for (cnt = 0; cnt < n; cnt++)
+          {
+              faac_real val = xr[cnt];
+              faac_real e = val * val;
+              avge += e;
+              if (maxe < e)
+                  maxe = e;
+          }
       }
+      bandenrg[sfb] = avge;
+      /* Track peak magnitude to identify potential Huffman overflows. */
+      bandmaxe[sfb] = FAAC_SQRT(maxe);
+      totenrg += avge;
   }
-  enrgcnt = gsize * total_len;
 
+  enrgcnt = gsize * total_len;
   if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -140,7 +156,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -148,31 +163,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
+    faac_real avge = bandenrg[sfb];
+    faac_real maxe = (bandmaxe[sfb] * bandmaxe[sfb]) * gsize;
     faac_real target;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
-
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    /* Track peak magnitude to identify potential Huffman overflows. */
-    bandmaxe[sfb] = FAAC_SQRT(maxe);
-    maxe *= gsize;
 
     avgenrg = (totenrg / last) * (end - start);
 
