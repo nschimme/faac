@@ -375,6 +375,10 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 
     BlocStat();
 
+#ifdef FAAC_TNS_TUNING
+    TnsPrintStats();
+#endif
+
     return 0;
 }
 

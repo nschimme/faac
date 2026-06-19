@@ -28,11 +28,29 @@ Copyright (c) 1997.
  */
 
 #include <math.h>
+#ifdef FAAC_TNS_TUNING
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
 #include "tns.h"
 #include "util.h"
+
+#ifdef FAAC_TNS_TUNING
+static long tns_analyzed_count = 0;
+static long tns_applied_count  = 0;
+
+void TnsPrintStats(void)
+{
+    fprintf(stderr, "TNS_ACTIVATION applied=%ld analyzed=%ld rate=%.3f\n",
+            tns_applied_count, tns_analyzed_count,
+            tns_analyzed_count > 0
+                ? (double)tns_applied_count / tns_analyzed_count
+                : 0.0);
+}
+#endif
 
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
@@ -105,8 +123,35 @@ void TnsInit(faacEncStruct* hEncoder)
         effectiveBitratePerCh = (quality * 1280) / hEncoder->numChannels;
     }
 
-    /* TNS gate: active only when enabled and within bitrate limits (< 64kbps/ch). */
-    int tnsGated = (effectiveBitratePerCh >= 64000);
+    /* Sweepable constants: defaults match the #defines / compile-time values.
+     * Under FAAC_TNS_TUNING these are overridable via environment variables
+     * so run_benchmark.py --sweep can drive them without recompiling. */
+#ifdef FAAC_TNS_TUNING
+    unsigned long t_gate_bps   = 64000UL;
+    faac_real t_spectral_frac  = (faac_real)TNS_SPECTRAL_FRAC;
+    faac_real t_calibration    = (faac_real)TNS_CALIBRATION;
+    faac_real t_thresh_floor   = (faac_real)TNS_THRESH_FLOOR;
+    faac_real t_thresh_cap     = (faac_real)TNS_THRESH_CAP;
+    int       t_maxorder       = tnsMaxOrderLongLow;
+    { const char *e;
+      if ((e = getenv("FAAC_TNS_GATE_BPS")))         t_gate_bps      = (unsigned long)atof(e);
+      if ((e = getenv("FAAC_TNS_SPECTRAL_FRAC")))    t_spectral_frac = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_CALIBRATION")))      t_calibration   = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_GAINTHRESH_FLOOR"))) t_thresh_floor  = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_GAINTHRESH_CAP")))   t_thresh_cap    = (faac_real)atof(e);
+      if ((e = getenv("FAAC_TNS_MAXORDER")))          t_maxorder      = (int)atof(e);
+    }
+#else
+    unsigned long t_gate_bps   = 64000UL;
+    faac_real t_spectral_frac  = (faac_real)TNS_SPECTRAL_FRAC;
+    faac_real t_calibration    = (faac_real)TNS_CALIBRATION;
+    faac_real t_thresh_floor   = (faac_real)TNS_THRESH_FLOOR;
+    faac_real t_thresh_cap     = (faac_real)TNS_THRESH_CAP;
+    int       t_maxorder       = tnsMaxOrderLongLow;
+#endif
+
+    /* TNS gate: active only when enabled and within bitrate limits. */
+    int tnsGated = (effectiveBitratePerCh >= t_gate_bps);
     hEncoder->config.useTns = (hEncoder->config.useTns != 0) && !tnsGated;
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
@@ -125,28 +170,26 @@ void TnsInit(faacEncStruct* hEncoder)
             continue;
         }
 
-        /* Order 8 captures the dominant spectral resonances without
-         * overfitting noise at the bitrates where TNS operates. */
-        tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        tnsInfo->tnsMaxOrderLong = t_maxorder;
 
         /* Long-window gain threshold via break-even bit budget formula. */
         {
             int frame_bits    = (int)(effectiveBitratePerCh * FRAME_LEN
                                       / hEncoder->sampleRate);
-            int spectral_bits = (int)(frame_bits * TNS_SPECTRAL_FRAC);
+            int spectral_bits = (int)(frame_bits * t_spectral_frac);
             int tns_overhead  = tnsInfo->tnsMaxOrderLong * DEF_TNS_COEFF_RES
                                 + TNS_FIXED_OVERHEAD;
             int denom = spectral_bits - tns_overhead;
             faac_real thresh;
             if (denom <= 0) {
-                thresh = (faac_real)TNS_THRESH_CAP;
+                thresh = t_thresh_cap;
             } else {
                 thresh = ((faac_real)spectral_bits / (faac_real)denom)
-                         * (faac_real)TNS_CALIBRATION;
-                if (thresh < (faac_real)TNS_THRESH_FLOOR)
-                    thresh = (faac_real)TNS_THRESH_FLOOR;
-                if (thresh > (faac_real)TNS_THRESH_CAP)
-                    thresh = (faac_real)TNS_THRESH_CAP;
+                         * t_calibration;
+                if (thresh < t_thresh_floor)
+                    thresh = t_thresh_floor;
+                if (thresh > t_thresh_cap)
+                    thresh = t_thresh_cap;
             }
             tnsInfo->gainThreshLong = thresh;
         }
@@ -203,6 +246,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     stopBand = max(stopBand,0);
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
+#ifdef FAAC_TNS_TUNING
+    tns_analyzed_count++;
+#endif
 
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
@@ -244,6 +290,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
         }
     }
+#ifdef FAAC_TNS_TUNING
+    if (tnsInfo->tnsDataPresent)
+        tns_applied_count++;
+#endif
 }
 
 
