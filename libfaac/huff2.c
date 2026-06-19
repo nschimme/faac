@@ -323,7 +323,17 @@ int huffbook(CoderInfo *coder,
             maxq = q;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+#define BOOKMIN(n) do { \
+    int l0 = huffcode(qs, len, n, 0); \
+    int l1 = huffcode(qs, len, (n) + 1, 0); \
+    if (l1 < l0) { \
+        bookmin = (n) + 1; \
+        lenmin = l1; \
+    } else { \
+        bookmin = (n); \
+        lenmin = l0; \
+    } \
+} while (0)
 
     if (maxq < 1)
     {
@@ -353,6 +363,25 @@ int huffbook(CoderInfo *coder,
     else
     {
         bookmin = HCB_ESC;
+        lenmin = huffcode(qs, len, bookmin, 0);
+    }
+
+    /* Implement codebook-switching hysteresis. */
+    if (coder->bandcnt % coder->sfbn != 0)
+    {
+        int last_book = coder->book[coder->bandcnt - 1];
+
+        if (last_book > HCB_ZERO && last_book <= HCB_ESC &&
+            bookmin > HCB_ZERO && bookmin <= HCB_ESC &&
+            last_book != bookmin)
+        {
+            int last_len = huffcode(qs, len, last_book, 0);
+            if (last_len >= 0 && last_len <= lenmin + 4)
+            {
+                bookmin = last_book;
+                lenmin = last_len;
+            }
+        }
     }
 
     if (bookmin > HCB_ZERO)
