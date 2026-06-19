@@ -71,11 +71,8 @@ typedef struct {
     int tnsDataPresent;
     int tnsDisabled;
     int tnsMinBandNumberLong;
-    int tnsMinBandNumberShort;
     int tnsMaxBandsLong;
-    int tnsMaxBandsShort;
     int tnsMaxOrderLong;
-    int tnsMaxOrderShort;
     faac_real gainThreshLong;
     faac_real pregateEnergyFloor;
     faac_real pregateFlatenessK;
