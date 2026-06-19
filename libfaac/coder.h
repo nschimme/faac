@@ -97,6 +97,7 @@ typedef struct {
     int qlen[MAX_SCFAC_BANDS];
     int blen[MAX_SCFAC_BANDS];
     int maxq[MAX_SCFAC_BANDS];
+    int all_costs[MAX_SCFAC_BANDS][12];
 
     struct {
         int n;

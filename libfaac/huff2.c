@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
@@ -352,69 +353,137 @@ static int maxq_for_book(int book)
     }
 }
 
+static void huff_count_all_books(CoderInfo *coder, int band, int *costs)
+{
+    int maxq = coder->maxq[band];
+    int len = coder->qlen[band];
+    int *qs = (coder->qspec + coder->qoffset[band]);
+    int ofs, k;
+
+    for (k = 1; k <= 11; k++)
+    {
+        if (maxq > maxq_for_book(k))
+            costs[k] = -1;
+        else
+            costs[k] = 0;
+    }
+
+    if (maxq == 0)
+    {
+        for (k = 1; k <= 4; k++) costs[k] = ((len + 3) >> 2);
+        for (k = 5; k <= 11; k++) costs[k] = ((len + 1) >> 1);
+        return;
+    }
+
+    for (ofs = 0; ofs < len; ofs += 4)
+    {
+        const int *qp = qs + ofs;
+        int q0 = qp[0], q1 = qp[1], q2 = qp[2], q3 = qp[3];
+        int signbits = (q0 != 0) + (q1 != 0) + (q2 != 0) + (q3 != 0);
+
+        if (costs[1] >= 0) costs[1] += book01[27 * q0 + 9 * q1 + 3 * q2 + q3 + 40].len;
+        if (costs[2] >= 0) costs[2] += book02[27 * q0 + 9 * q1 + 3 * q2 + q3 + 40].len;
+        if (costs[3] >= 0 || costs[4] >= 0)
+        {
+            int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
+            int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+            if (costs[3] >= 0) costs[3] += book03[idx].len + signbits;
+            if (costs[4] >= 0) costs[4] += book04[idx].len + signbits;
+        }
+    }
+
+    for (ofs = 0; ofs < len; ofs += 2)
+    {
+        const int *qp = qs + ofs;
+        int q0 = qp[0], q1 = qp[1];
+        int signbits = (q0 != 0) + (q1 != 0);
+
+        if (costs[5] >= 0) costs[5] += book05[9 * q0 + q1 + 40].len;
+        if (costs[6] >= 0) costs[6] += book06[9 * q0 + q1 + 40].len;
+        if (costs[7] >= 0 || costs[8] >= 0 || costs[9] >= 0 || costs[10] >= 0 || costs[11] >= 0)
+        {
+            int a0 = abs(q0), a1 = abs(q1);
+            if (costs[7] >= 0) costs[7] += book07[8 * a0 + a1].len + signbits;
+            if (costs[8] >= 0) costs[8] += book08[8 * a0 + a1].len + signbits;
+            if (costs[9] >= 0) costs[9] += book09[13 * a0 + a1].len + signbits;
+            if (costs[10] >= 0) costs[10] += book10[13 * a0 + a1].len + signbits;
+            if (costs[11] >= 0)
+            {
+                int x0 = (a0 > 16) ? 16 : a0;
+                int x1 = (a1 > 16) ? 16 : a1;
+                int dummy;
+                costs[11] += book11[17 * x0 + x1].len + signbits;
+                if (a0 >= 16) costs[11] += escape(a0, &dummy);
+                if (a1 >= 16) costs[11] += escape(a1, &dummy);
+            }
+        }
+    }
+}
+
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
 {
+    int cnt;
+    int maxq = 0;
     int bookmin, lenmin;
-    int maxq = coder->maxq[coder->bandcnt];
+    int band = coder->bandcnt;
 
-    bookmin = book_for_maxq(maxq);
-
-    if (bookmin == HCB_ZERO)
+    if (qs)
     {
-        lenmin = 0;
+        for (cnt = 0; cnt < len; cnt++)
+        {
+            int q = abs(qs[cnt]);
+            if (maxq < q)
+                maxq = q;
+        }
     }
-    else if (bookmin == HCB_ESC)
+    coder->maxq[band] = maxq;
+
+    if (maxq == 0)
     {
-        lenmin = huffcode(qs, len, HCB_ESC, 0);
+        bookmin = HCB_ZERO;
+        lenmin = 0;
+        memset(coder->all_costs[band], 0, 12 * sizeof(int));
+        huff_count_all_books(coder, band, coder->all_costs[band]);
     }
     else
     {
-        int l0 = huffcode(qs, len, bookmin, 0);
-        int l1 = huffcode(qs, len, bookmin + 1, 0);
+        int *costs = coder->all_costs[band];
+        huff_count_all_books(coder, band, costs);
 
-        if (l1 >= 0 && (l0 < 0 || l1 < l0))
+        bookmin = book_for_maxq(maxq);
+        if (bookmin == HCB_ESC)
         {
-            bookmin++;
-            lenmin = l1;
+            lenmin = costs[HCB_ESC];
         }
         else
         {
-            lenmin = l0;
+            int l0 = costs[bookmin];
+            int l1 = costs[bookmin + 1];
+
+            if (l1 >= 0 && (l0 < 0 || l1 < l0))
+            {
+                bookmin++;
+                lenmin = l1;
+            }
+            else
+            {
+                lenmin = l0;
+            }
         }
     }
 
-    coder->book[coder->bandcnt] = bookmin;
-    coder->blen[coder->bandcnt] = lenmin;
-    coder->maxq[coder->bandcnt] = maxq;
+    coder->book[band] = bookmin;
+    coder->blen[band] = lenmin;
 
     return 0;
-}
-
-static int spec_cost(CoderInfo *coder, int band, int book)
-{
-    if (book == HCB_ZERO)
-        return 0;
-
-    int maxq = coder->maxq[band];
-    if (maxq == 0)
-    {
-        /* Zeros have a fixed cost under a spectral book (usually 1 bit per tuple). */
-        if (book <= 4) return (coder->qlen[band] >> 2); /* 4-tuple */
-        return (coder->qlen[band] >> 1); /* 2-tuple */
-    }
-
-    if (maxq > maxq_for_book(book))
-        return -1;
-
-    return huffcode(coder->qspec + coder->qoffset[band], coder->qlen[band], book, 0);
 }
 
 static int count_header_bits(int cnt, int maxcnt, int cntbits)
 {
     int bits = 4;
-    while (cnt >= maxcnt)
+    while (cnt > maxcnt)
     {
         bits += cntbits;
         cnt -= maxcnt;
@@ -427,7 +496,6 @@ void section_optimize(CoderInfo *coder)
 {
     int maxcnt, cntbits;
     int group;
-    int costs[MAX_SCFAC_BANDS][13]; // bits for each book (1-11 pair or 11) per band
 
     if (coder->block_type == ONLY_SHORT_WINDOW)
     {
@@ -445,12 +513,6 @@ void section_optimize(CoderInfo *coder)
         int band = group * coder->sfbn;
         int maxband = band + coder->sfbn;
 
-        // Lazy cost initialization
-        for (int b = band; b < maxband; b++)
-        {
-            for (int k = 1; k <= 12; k++) costs[b][k] = -2;
-        }
-
         while (band < maxband)
         {
             int start_band = band;
@@ -465,11 +527,7 @@ void section_optimize(CoderInfo *coder)
                 continue;
             }
 
-            for (int k = 1; k <= 12; k++)
-            {
-                if (costs[band][k] == -2) costs[band][k] = spec_cost(coder, band, k);
-                run_costs[k] = costs[band][k];
-            }
+            for (int k = 1; k <= 11; k++) run_costs[k] = coder->all_costs[band][k];
 
             band++;
             while (band < maxband)
@@ -491,14 +549,11 @@ void section_optimize(CoderInfo *coder)
                 }
                 else
                 {
-                    // Accumulate costs lazily
-                    for (int k = 1; k <= 12; k++)
+                    // Accumulate costs (O(1) work)
+                    for (int k = 1; k <= 11; k++)
                     {
-                        if (run_costs[k] == -1) continue;
-                        if (costs[band][k] == -2) costs[band][k] = spec_cost(coder, band, k);
-
-                        if (costs[band][k] >= 0)
-                            run_costs[k] += costs[band][k];
+                        if (run_costs[k] >= 0 && coder->all_costs[band][k] >= 0)
+                            run_costs[k] += coder->all_costs[band][k];
                         else
                             run_costs[k] = -1;
                     }
