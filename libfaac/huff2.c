@@ -42,8 +42,8 @@ static int clz(unsigned int x)
 
 static int escape(int x, int *code)
 {
-    int preflen = 0;
-    int base = 32;
+    int preflen;
+    int base;
 
     if (x > MAX_HUFF_ESC_VAL)
     {
@@ -85,8 +85,17 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 2:
         for(ofs = 0; ofs < len; ofs += 4)
         {
-            qp = qs+ofs;
-            if (!(qp[0] | qp[1] | qp[2] | qp[3])) {
+            int q0, q1, q2, q3;
+            if (len - ofs >= 4) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1]; q2 = qp[2]; q3 = qp[3];
+            } else {
+                int q[4] = {0};
+                for (int j = 0; j < len - ofs; j++) q[j] = qs[ofs + j];
+                q0 = q[0]; q1 = q[1]; q2 = q[2]; q3 = q[3];
+            }
+
+            if (!(q0 | q1 | q2 | q3)) {
                 blen = blens[40];
                 if (coder) {
                     coder->s[datacnt].data = bdata[40];
@@ -95,7 +104,8 @@ static int huffcode(int *qs /* quantized spectrum */,
                 bits += blen;
                 continue;
             }
-            idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
+            idx = 27 * q0 + 9 * q1 + 3 * q2 + q3 + 40;
+            if (idx < 0 || idx >= 81) return -1;
             blen = blens[idx];
             if (coder)
             {
@@ -110,8 +120,16 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 4:
         for(ofs = 0; ofs < len; ofs += 4)
         {
-            qp = qs+ofs;
-            int q0 = qp[0], q1 = qp[1], q2 = qp[2], q3 = qp[3];
+            int q0, q1, q2, q3;
+            if (len - ofs >= 4) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1]; q2 = qp[2]; q3 = qp[3];
+            } else {
+                int q[4] = {0};
+                for (int j = 0; j < len - ofs; j++) q[j] = qs[ofs + j];
+                q0 = q[0]; q1 = q[1]; q2 = q[2]; q3 = q[3];
+            }
+
             if (!(q0 | q1 | q2 | q3)) {
                 blen = blens[0];
                 if (coder) {
@@ -123,6 +141,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             }
             int aq0 = abs(q0), aq1 = abs(q1), aq2 = abs(q2), aq3 = abs(q3);
             idx = 27 * aq0 + 9 * aq1 + 3 * aq2 + aq3;
+            if (idx < 0 || idx >= 81) return -1;
             blen = blens[idx];
             if (!coder)
             {
@@ -148,8 +167,15 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 6:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            qp = qs+ofs;
-            if (!(qp[0] | qp[1])) {
+            int q0, q1;
+            if (len - ofs >= 2) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1];
+            } else {
+                q0 = qs[ofs]; q1 = 0;
+            }
+
+            if (!(q0 | q1)) {
                 blen = blens[40];
                 if (coder) {
                     coder->s[datacnt].data = bdata[40];
@@ -158,7 +184,8 @@ static int huffcode(int *qs /* quantized spectrum */,
                 bits += blen;
                 continue;
             }
-            idx = 9 * qp[0] + qp[1] + 40;
+            idx = 9 * q0 + q1 + 40;
+            if (idx < 0 || idx >= 81) return -1;
             blen = blens[idx];
             if (coder)
             {
@@ -173,8 +200,14 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 8:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            qp = qs+ofs;
-            int q0 = qp[0], q1 = qp[1];
+            int q0, q1;
+            if (len - ofs >= 2) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1];
+            } else {
+                q0 = qs[ofs]; q1 = 0;
+            }
+
             if (!(q0 | q1)) {
                 blen = blens[0];
                 if (coder) {
@@ -186,6 +219,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             }
             int aq0 = abs(q0), aq1 = abs(q1);
             idx = 8 * aq0 + aq1;
+            if (idx < 0 || idx >= 64) return -1;
             blen = blens[idx];
             if (!coder)
             {
@@ -207,8 +241,14 @@ static int huffcode(int *qs /* quantized spectrum */,
     case 10:
         for(ofs = 0; ofs < len; ofs += 2)
         {
-            qp = qs+ofs;
-            int q0 = qp[0], q1 = qp[1];
+            int q0, q1;
+            if (len - ofs >= 2) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1];
+            } else {
+                q0 = qs[ofs]; q1 = 0;
+            }
+
             if (!(q0 | q1)) {
                 blen = blens[0];
                 if (coder) {
@@ -220,6 +260,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             }
             int aq0 = abs(q0), aq1 = abs(q1);
             idx = 13 * aq0 + aq1;
+            if (idx < 0 || idx >= 169) return -1;
             blen = blens[idx];
             if (!coder)
             {
@@ -241,9 +282,13 @@ static int huffcode(int *qs /* quantized spectrum */,
         for(ofs = 0; ofs < len; ofs += 2)
         {
             int q0, q1, aq0, aq1, x0, x1;
+            if (len - ofs >= 2) {
+                qp = qs + ofs;
+                q0 = qp[0]; q1 = qp[1];
+            } else {
+                q0 = qs[ofs]; q1 = 0;
+            }
 
-            qp = qs+ofs;
-            q0 = qp[0]; q1 = qp[1];
             if (!(q0 | q1)) {
                 blen = blens[0];
                 if (coder) {
@@ -258,6 +303,7 @@ static int huffcode(int *qs /* quantized spectrum */,
             x0 = (aq0 > 16) ? 16 : aq0;
             x1 = (aq1 > 16) ? 16 : aq1;
             idx = 17 * x0 + x1;
+            if (idx < 0 || idx >= 289) return -1;
 
             blen = blens[idx];
             if (!coder)
@@ -316,6 +362,13 @@ static inline int escape_len(int x)
     return (preflen << 1) + 5;
 }
 
+/* Multi-book Huffman bit counter.
+ * Calculates spectral bit costs for all 11 AAC Huffman codebooks in a single pass.
+ * Constraints:
+ * - Books 1-4 (quads) require section length to be a multiple of 4.
+ * - Books 5-11 (pairs) require section length to be a multiple of 2.
+ * - Max quantized value must stay within each book's range.
+ */
 void huff_count_all_books(const int * __restrict qs, int len, int * __restrict costs, int * __restrict maxq_out)
 {
     int i, b;
@@ -334,11 +387,12 @@ void huff_count_all_books(const int * __restrict qs, int len, int * __restrict c
         return;
     }
 
-    can12 = (maxq <= 1);
-    can34 = (maxq <= 2);
-    can56 = (maxq <= 4);
-    can78 = (maxq <= 7);
-    can910 = (maxq <= 12);
+    /* Tuple size and range constraints from AAC spec. */
+    can12 = (maxq <= 1) && (len % 4 == 0);
+    can34 = (maxq <= 2) && (len % 4 == 0);
+    can56 = (maxq <= 4) && (len % 2 == 0);
+    can78 = (maxq <= 7) && (len % 2 == 0);
+    can910 = (maxq <= 12) && (len % 2 == 0);
 
     const uint8_t *l1 = huff_len + huff_offset[0];
     const uint8_t *l2 = huff_len + huff_offset[1];
@@ -354,16 +408,21 @@ void huff_count_all_books(const int * __restrict qs, int len, int * __restrict c
 
     for (i = 0; i < len; i += 4)
     {
-        int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
+        int q0 = 0, q1 = 0, q2 = 0, q3 = 0;
+        int n = (len - i > 4) ? 4 : len - i;
+        q0 = qs[i];
+        if (n > 1) q1 = qs[i+1];
+        if (n > 2) q2 = qs[i+2];
+        if (n > 3) q3 = qs[i+3];
 
         if (!(q0 | q1 | q2 | q3))
         {
             if (can12) { c[1] += l1[40]; c[2] += l2[40]; }
             if (can34) { c[3] += l3[0];  c[4] += l4[0];  }
-            if (can56) { c[5] += 2 * l5[40]; c[6] += 2 * l6[40]; }
-            if (can78) { c[7] += 2 * l7[0];  c[8] += 2 * l8[0];  }
-            if (can910) { c[9] += 2 * l9[0];  c[10] += 2 * l10[0]; }
-            c[11] += 2 * l11[0];
+            if (can56) { c[5] += (n/2) * l5[40]; c[6] += (n/2) * l6[40]; }
+            if (can78) { c[7] += (n/2) * l7[0];  c[8] += (n/2) * l8[0];  }
+            if (can910) { c[9] += (n/2) * l9[0];  c[10] += (n/2) * l10[0]; }
+            c[11] += (n/2) * l11[0];
             continue;
         }
 
@@ -384,7 +443,7 @@ void huff_count_all_books(const int * __restrict qs, int len, int * __restrict c
         }
 
         // Books 5-11 (2-tuples)
-        for (b = 0; b < 4; b += 2)
+        for (b = 0; b < n; b += 2)
         {
             int tq0 = (b == 0) ? q0 : q2;
             int tq1 = (b == 0) ? q1 : q3;
@@ -424,6 +483,7 @@ void huff_count_all_books(const int * __restrict qs, int len, int * __restrict c
     if (!can56) c[5] = c[6] = 1000000;
     if (!can78) c[7] = c[8] = 1000000;
     if (!can910) c[9] = c[10] = 1000000;
+    if (len % 2 != 0) c[11] = 1000000;
 
     for (i = 1; i < 12; i++) costs[i] = c[i];
 }
