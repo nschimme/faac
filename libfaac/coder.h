@@ -96,10 +96,11 @@ typedef struct {
      * merge (section_optimize) can re-cost adjacent spectral bands under a
      * shared codebook before symbols are emitted (emit_spectral). Only spectral
      * bands (book 1..HCB_ESC) occupy qspec; non-spectral bands get qlen 0. */
-    int qspec[FRAME_LEN];         /* packed quantized coeffs, in band order */
+    int qspec[FRAME_LEN + 4];     /* packed quantized coeffs, in band order, +padding */
     int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
     int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
     int blen[MAX_SCFAC_BANDS];    /* cached spectral bit cost of chosen book */
+    int band_costs[MAX_SCFAC_BANDS][12]; /* pre-calculated costs for all books */
 
     struct {
         int n;
