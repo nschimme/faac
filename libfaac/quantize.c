@@ -246,7 +246,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           coderInfo->maxq[coderInfo->bandcnt] = 0;
           memset(coderInfo->qspec + *qspec_offset, 0, band_len * sizeof(int));
           *qspec_offset += band_len;
-          coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
+          coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
+          if (*p_last_abs != SF_CHAIN_UNSET)
+              coderInfo->sf[coderInfo->bandcnt] = *p_last_abs;
+          coderInfo->bandcnt++;
           continue;
       }
 
@@ -259,6 +262,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
+          if (*p_last_abs == SF_CHAIN_UNSET)
+              *p_last_abs = coderInfo->sf[coderInfo->bandcnt];
           coderInfo->bandcnt++;
           continue;
       }
