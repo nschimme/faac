@@ -326,7 +326,7 @@ int huffbook(CoderInfo *coder,
 #define BOOKMIN(n) do { \
     int l0 = huffcode(qs, len, n, 0); \
     int l1 = huffcode(qs, len, (n) + 1, 0); \
-    if (l1 < l0) { \
+    if (l1 >= 0 && (l0 < 0 || l1 < l0)) { \
         bookmin = (n) + 1; \
         lenmin = l1; \
     } else { \

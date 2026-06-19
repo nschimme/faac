@@ -232,6 +232,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       etot = bandenrg[sb] / (faac_real)gsize;
       rmsx = FAAC_SQRT(etot / (end - start));
 
+      memset(xitab, 0, sizeof(xitab));
+
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
