@@ -129,17 +129,18 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate)
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
-    /* Twiddles for the 128-point FFT-based QMF. */
-    for (int n = 0; n < 128; n++) {
-        double phase = M_PI * n / 128.0;
-        sbr->twidCos[n] = (faac_real)cos(phase);
-        sbr->twidSin[n] = (faac_real)sin(phase);
+    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
+    for (int m = 0; m < 64; m++) {
+        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
+        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
+        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
+        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
     }
     fft_initialize(&sbr->fftTables);
-    /* Build the logm=7 FFT tables. */
+    /* Build the logm=6 FFT tables now so analysis calls never allocate. */
     {
-        faac_real xr[128] = {0}, xi[128] = {0};
-        fft(&sbr->fftTables, xr, xi, 7);
+        faac_real xr[64] = {0}, xi[64] = {0};
+        fft(&sbr->fftTables, xr, xi, 6);
     }
     return sbr;
 }
@@ -160,22 +161,47 @@ static inline faac_real fast_log2(faac_real x)
     return (faac_real)(exp - 127) + (faac_real)(m * (1.3424f - 0.3427f * m));
 }
 
+/* 64-band analysis slot energy via a single 64-point complex FFT.
+ *
+ * Energy discards the per-band unit-modulus phase, so the modulation is just
+ * the odd-frequency DFT S_k = sum_{n<128} u[n]*exp(-j*pi*(2k+1)*n/128) of the
+ * REAL 128-tap window output u. Split u into even/odd a[m]=u[2m], b[m]=u[2m+1]
+ * (m<64): S_k = A_k + w_k*B_k with w_k=exp(-j*pi*(2k+1)/128) and A,B the 64-pt
+ * odd-DFTs of a,b. Pack c[m]=a[m]+j*b[m], pre-twiddle, and run ONE 64-point
+ * FFT; A_k and B_k fall out of D_k and D_{63-k} via the conjugate symmetry of
+ * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
+ * matches it to machine precision. */
 static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
-    faac_real xr[128], xi[128];
+    faac_real xr[64], xi[64];
     const faac_real * restrict proto = sbr_qmf_window_us640;
-    for (int n = 0; n < 128; n++) {
-        faac_real un = proto[n]       * ovl_pos[639 - n]
-                     + proto[n + 128] * ovl_pos[511 - n]
-                     + proto[n + 256] * ovl_pos[383 - n]
-                     + proto[n + 384] * ovl_pos[255 - n]
-                     + proto[n + 512] * ovl_pos[127 - n];
-        xr[n] = un * sbr->twidCos[n];
-        xi[n] = -un * sbr->twidSin[n];
+    for (int m = 0; m < 64; m++) {
+        int n0 = 2 * m, n1 = 2 * m + 1;
+        faac_real a = proto[n0]       * ovl_pos[639 - n0]
+                    + proto[n0 + 128] * ovl_pos[511 - n0]
+                    + proto[n0 + 256] * ovl_pos[383 - n0]
+                    + proto[n0 + 384] * ovl_pos[255 - n0]
+                    + proto[n0 + 512] * ovl_pos[127 - n0];
+        faac_real b = proto[n1]       * ovl_pos[639 - n1]
+                    + proto[n1 + 128] * ovl_pos[511 - n1]
+                    + proto[n1 + 256] * ovl_pos[383 - n1]
+                    + proto[n1 + 384] * ovl_pos[255 - n1]
+                    + proto[n1 + 512] * ovl_pos[127 - n1];
+        /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
+        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
+        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
     }
-    fft(&sbr->fftTables, xr, xi, 7);
+    fft(&sbr->fftTables, xr, xi, 6);
     for (int k = kx; k < k2; k++) {
-        energy[k] = xr[k] * xr[k] + xi[k] * xi[k];
+        int kr = 63 - k;
+        /* Separate the two real-subsequence DFTs by conjugate symmetry. */
+        faac_real Ar = (faac_real)0.5 * (xr[k] + xr[kr]);
+        faac_real Ai = (faac_real)0.5 * (xi[kr] - xi[k]);
+        faac_real Br = (faac_real)-0.5 * (xi[k] + xi[kr]);
+        faac_real Bi = (faac_real)0.5 * (xr[kr] - xr[k]);
+        faac_real Sr = Ar + sbr->oddCos[k] * Br - sbr->oddSin[k] * Bi;
+        faac_real Si = Ai + sbr->oddCos[k] * Bi + sbr->oddSin[k] * Br;
+        energy[k] = Sr * Sr + Si * Si;
     }
 }
 
