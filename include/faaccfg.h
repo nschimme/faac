@@ -22,17 +22,19 @@
 #ifndef _FAACCFG_H_
 #define _FAACCFG_H_
 
-#define FAAC_CFG_VERSION 105
+#define FAAC_CFG_VERSION 106
 
 /* MPEG ID's */
 #define MPEG2 1
 #define MPEG4 0
 
 /* AAC object types */
-#define MAIN 1
-#define LOW  2
-#define SSR  3
-#define LTP  4
+#define MAIN     1
+#define LOW      2
+#define SSR      3
+#define LTP      4
+#define HE_AAC   5  /* HE-AAC v1: AAC-LC core + SBR */
+#define AAC_AUTO 6  /* pick LC or HE-AAC from bitrate (default) */
 
 /* Input Formats */
 #define FAAC_INPUT_NULL    0
@@ -127,6 +129,7 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+    int sbr_fast; /* SBR temporal decimation: 0=2x (norm), 1=4x (fast), 2=8x (extreme) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)
