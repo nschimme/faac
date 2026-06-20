@@ -101,9 +101,9 @@ static faac_real LevinsonDurbin(int maxOrder,                    /* Maximum filt
                       const faac_real * restrict data, /* Data array */
                       faac_real * restrict kArray);    /* Reflection coeff array */
 
-static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
+static void StepUp(int fOrder, faac_real * restrict kArray, faac_real * restrict aArray);
 
-static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
+static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real * restrict rArray,int * restrict indexArray);
 static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray);
 static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  faac_real * restrict out,
@@ -151,8 +151,8 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
     faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
-    int       t_direction_adapt   = 1;
-    faac_real t_gain_ceiling      = (faac_real)TNS_GAIN_SENTINEL;
+    int       t_direction_adapt   = 0;
+    faac_real t_gain_ceiling      = (faac_real)20.0;
     int       t_coeff_res         = DEF_TNS_COEFF_RES;
     { const char *e;
       if ((e = getenv("FAAC_TNS_GATE_BPS")))         t_gate_bps      = (unsigned long)atof(e);
@@ -184,8 +184,8 @@ void TnsInit(faacEncStruct* hEncoder)
     faac_real t_flatness_k        = (faac_real)TNS_FLATNESS_K;
     faac_real t_peak_margin       = (faac_real)TNS_PEAK_RATIO_MARGIN;
     faac_real t_coeff_thresh      = (faac_real)DEF_TNS_COEFF_THRESH;
-    int       t_direction_adapt   = 1;
-    faac_real t_gain_ceiling      = (faac_real)TNS_GAIN_SENTINEL;
+    int       t_direction_adapt   = 0;
+    faac_real t_gain_ceiling      = (faac_real)20.0;
     int       t_coeff_res         = DEF_TNS_COEFF_RES;
 #endif
 
@@ -202,12 +202,19 @@ void TnsInit(faacEncStruct* hEncoder)
         /* Internal TNS state: disabled if gated or explicitly forced off. */
         tnsInfo->tnsDisabled = !hEncoder->config.useTns;
 
+        /* Initialize parameters for all channels. */
+        tnsInfo->tnsMaxOrderLong = t_maxorder;
+        tnsInfo->tnsCoeffRes     = t_coeff_res;
+        tnsInfo->pregateEnergyFloor = t_energy_floor;
+        tnsInfo->pregateFlatenessK   = t_flatness_k;
+        tnsInfo->pregatePeakMargin   = t_peak_margin;
+        tnsInfo->pregateCoeffThresh   = t_coeff_thresh;
+        tnsInfo->adaptDirection      = t_direction_adapt;
+        tnsInfo->gainThreshCeiling    = t_gain_ceiling;
+
         if (tnsInfo->tnsDisabled) {
             continue;
         }
-
-        tnsInfo->tnsMaxOrderLong = t_maxorder;
-        tnsInfo->tnsCoeffRes     = t_coeff_res;
 
         /* Long-window gain threshold via break-even bit budget formula. */
         {
@@ -230,13 +237,6 @@ void TnsInit(faacEncStruct* hEncoder)
             }
             tnsInfo->gainThreshLong = thresh;
         }
-
-        tnsInfo->pregateEnergyFloor = t_energy_floor;
-        tnsInfo->pregateFlatenessK   = t_flatness_k;
-        tnsInfo->pregatePeakMargin   = t_peak_margin;
-        tnsInfo->pregateCoeffThresh   = t_coeff_thresh;
-        tnsInfo->adaptDirection      = t_direction_adapt;
-        tnsInfo->gainThreshCeiling    = t_gain_ceiling;
     }
 }
 
@@ -312,22 +312,25 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
             int sfb;
             for (sfb = startBand; sfb < stopBand; sfb++) {
-                faac_real e = 0.0;
                 int j;
-                int sfb_start = sfbOffsetTable[sfb];
-                int sfb_end = sfbOffsetTable[sfb + 1];
-                const faac_real *pspec = &wspec[sfb_start];
-                int n = sfb_end - sfb_start;
+                const int sfb_start = sfbOffsetTable[sfb];
+                const int sfb_end = sfbOffsetTable[sfb + 1];
+                const faac_real * restrict pspec = &wspec[sfb_start];
+                const int n = sfb_end - sfb_start;
 
+                /* Inner loop uses induction pointers for speed. */
+                faac_real esfb = 0.0, sumasfb = 0.0, maxasfb = 0.0;
                 for (j = 0; j < n; j++) {
-                    faac_real v = pspec[j];
-                    faac_real va = (faac_real)FAAC_FABS(v);
-                    e    += v * v;
-                    suma += va;
-                    if (va > maxa) maxa = va;
+                    const faac_real v = *pspec++;
+                    const faac_real va = (faac_real)FAAC_FABS(v);
+                    esfb += v * v;
+                    sumasfb += va;
+                    if (va > maxasfb) maxasfb = va;
                 }
-                sfbEnergy[sfb] = e;
-                sumsq += e;
+                sfbEnergy[sfb] = esfb;
+                sumsq += esfb;
+                suma += sumasfb;
+                if (maxasfb > maxa) maxa = maxasfb;
             }
 
             if (sumsq < tnsInfo->pregateEnergyFloor * (faac_real)length
@@ -442,9 +445,11 @@ static void TnsInvFilter(int length, faac_real * restrict spec,
         }
         for (i = length-1-order; i >= 0; i--) {
             faac_real acc = spec[i];
+            const faac_real * restrict tp = &temp[i+1];
+            const faac_real * restrict ap = &a[1];
             temp[i] = acc;
-            for (j = 1; j <= order; j++)
-                acc += temp[i+j] * a[j];
+            for (j = 0; j < order; j++)
+                acc += tp[j] * ap[j];
             spec[i] = acc;
         }
     } else {
@@ -459,9 +464,11 @@ static void TnsInvFilter(int length, faac_real * restrict spec,
         }
         for (i = order; i < length; i++) {
             faac_real acc = spec[i];
+            const faac_real * restrict tp = &temp[i-1];
+            const faac_real * restrict ap = &a[1];
             temp[i] = acc;
-            for (j = 1; j <= order; j++)
-                acc += temp[i-j] * a[j];
+            for (j = 0; j < order; j++)
+                acc += tp[-j] * ap[j];
             spec[i] = acc;
         }
     }
@@ -497,17 +504,89 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 /*****************************************************/
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
-                              faac_real* kArray,
-                              int* indexArray)
+                              faac_real * restrict kArray,
+                              int * restrict indexArray)
 {
-    faac_real iqfac,iqfac_m;
     int i;
 
-    iqfac = (faac_real)(((1<<(coeffRes-1))-0.5)/(M_PI/2));
-    iqfac_m = (faac_real)(((1<<(coeffRes-1))+0.5)/(M_PI/2));
-
-    /* Range clamping prevents index wrapping and encoder/decoder mismatch. */
-    {
+    /* Optimized quantization avoids expensive asin/sin calls in the hot loop. */
+    if (coeffRes == 3) {
+        for (i = 1; i <= fOrder; i++) {
+            const faac_real k = kArray[i];
+            int idx = 0;
+            if (k >= 0.0) {
+                if (k >= (faac_real)0.9009689) idx = 3;
+                else if (k >= (faac_real)0.6234898) idx = 2;
+                else if (k >= (faac_real)0.2225209) idx = 1;
+            } else {
+                if (k <= (faac_real)-0.9396926) idx = -4;
+                else if (k <= (faac_real)-0.7660444) idx = -3;
+                else if (k <= (faac_real)-0.5000000) idx = -2;
+                else if (k <= (faac_real)-0.1736482) idx = -1;
+            }
+            indexArray[i] = idx;
+            /* Dequantize using LUT (sin(idx/fac)) */
+            switch (idx) {
+                case -4: kArray[i] = (faac_real)-0.9848077530; break;
+                case -3: kArray[i] = (faac_real)-0.8660254038; break;
+                case -2: kArray[i] = (faac_real)-0.6427876097; break;
+                case -1: kArray[i] = (faac_real)-0.3420201433; break;
+                case  0: kArray[i] = (faac_real) 0.0000000000; break;
+                case  1: kArray[i] = (faac_real) 0.4338837391; break;
+                case  2: kArray[i] = (faac_real) 0.7818314825; break;
+                case  3: kArray[i] = (faac_real) 0.9749279122; break;
+                default: kArray[i] = (faac_real) 0.0000000000; break;
+            }
+        }
+    } else if (coeffRes == 4) {
+        for (i = 1; i <= fOrder; i++) {
+            const faac_real k = kArray[i];
+            int idx = 0;
+            if (k >= 0.0) {
+                if (k >= (faac_real)0.9781476) idx = 7;
+                else if (k >= (faac_real)0.9135455) idx = 6;
+                else if (k >= (faac_real)0.8090170) idx = 5;
+                else if (k >= (faac_real)0.6691306) idx = 4;
+                else if (k >= (faac_real)0.5000000) idx = 3;
+                else if (k >= (faac_real)0.3090170) idx = 2;
+                else if (k >= (faac_real)0.1045285) idx = 1;
+            } else {
+                if (k <= (faac_real)-0.9829731) idx = -8;
+                else if (k <= (faac_real)-0.9324722) idx = -7;
+                else if (k <= (faac_real)-0.8502171) idx = -6;
+                else if (k <= (faac_real)-0.7390089) idx = -5;
+                else if (k <= (faac_real)-0.6026346) idx = -4;
+                else if (k <= (faac_real)-0.4457384) idx = -3;
+                else if (k <= (faac_real)-0.2736630) idx = -2;
+                else if (k <= (faac_real)-0.0922684) idx = -1;
+            }
+            indexArray[i] = idx;
+            /* Dequantize using LUT */
+            switch (idx) {
+                case -8: kArray[i] = (faac_real)-0.9957341763; break;
+                case -7: kArray[i] = (faac_real)-0.9618256432; break;
+                case -6: kArray[i] = (faac_real)-0.8951632914; break;
+                case -5: kArray[i] = (faac_real)-0.7980172273; break;
+                case -4: kArray[i] = (faac_real)-0.6736956436; break;
+                case -3: kArray[i] = (faac_real)-0.5264321629; break;
+                case -2: kArray[i] = (faac_real)-0.3612416662; break;
+                case -1: kArray[i] = (faac_real)-0.1837495178; break;
+                case  0: kArray[i] = (faac_real) 0.0000000000; break;
+                case  1: kArray[i] = (faac_real) 0.2079116908; break;
+                case  2: kArray[i] = (faac_real) 0.4067366431; break;
+                case  3: kArray[i] = (faac_real) 0.5877852523; break;
+                case  4: kArray[i] = (faac_real) 0.7431448255; break;
+                case  5: kArray[i] = (faac_real) 0.8660254038; break;
+                case  6: kArray[i] = (faac_real) 0.9510565163; break;
+                case  7: kArray[i] = (faac_real) 0.9945218954; break;
+                default: kArray[i] = (faac_real) 0.0000000000; break;
+            }
+        }
+    } else {
+        /* Fallback for other resolutions */
+        faac_real iqfac,iqfac_m;
+        iqfac = (faac_real)(((1<<(coeffRes-1))-0.5)/(M_PI/2));
+        iqfac_m = (faac_real)(((1<<(coeffRes-1))+0.5)/(M_PI/2));
         const int i_max =  (1 << (coeffRes - 1)) - 1;
         const int i_min = -(1 << (coeffRes - 1));
         for (i = 1; i <= fOrder; i++) {
@@ -543,8 +622,10 @@ static void Autocorrelation(int maxOrder,
         const faac_real d = data[index];
         const faac_real * restrict dp = &data[index + 1];
         rArray[0] += d * d;
-        for (order = 1; order <= maxOrder; order++)
-            rArray[order] += d * dp[order - 1];
+        for (order = 1; order <= maxOrder; order++) {
+            rArray[order] += d * dp[0];
+            dp++;
+        }
     }
 
     for (; index < dataSize; index++) {
@@ -604,28 +685,28 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
         error=rArray[0];
 
         /* Now perform recursion */
-        for (order=1;order<=fOrder;order++) {
-            kTemp = aLastPtr[0]*rArray[order-0];
-            for (i=1;i<order;i++) {
-                kTemp += aLastPtr[i]*rArray[order-i];
+        for (order = 1; order <= fOrder; order++) {
+            kTemp = aLastPtr[0] * rArray[order];
+            for (i = 1; i < order; i++) {
+                kTemp += aLastPtr[i] * rArray[order-i];
             }
             if (error <= 0.0 || FAAC_FABS(kTemp) >= error) {
                 error = 0.0;
                 break;
             }
-            kTemp = -kTemp/error;
-            kArray[order]=kTemp;
-            aPtr[order]=kTemp;
-            for (i=1;i<order;i++) {
-                aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
+            kTemp = -kTemp / error;
+            kArray[order] = kTemp;
+            aPtr[order] = kTemp;
+            for (i = 1; i < order; i++) {
+                aPtr[i] = aLastPtr[i] + kTemp * aLastPtr[order-i];
             }
-            error = error * (1 - kTemp*kTemp);
+            error *= ((faac_real)1.0 - kTemp * kTemp);
             if (error <= 0.0) break;
 
             /* Now make current iteration the last one */
-            aTemp=aLastPtr;
-            aLastPtr=aPtr;      /* Current becomes last */
-            aPtr=aTemp;         /* Last becomes current */
+            aTemp = aLastPtr;
+            aLastPtr = aPtr;      /* Current becomes last */
+            aPtr = aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
         if (error <= 0.0) return (faac_real)TNS_GAIN_SENTINEL;
@@ -639,20 +720,21 @@ static faac_real LevinsonDurbin(int fOrder,          /* Filter order */
 /*   Convert reflection coefficients into            */
 /*   predictor coefficients.                         */
 /*****************************************************/
-static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
+static void StepUp(int fOrder, faac_real * restrict kArray, faac_real * restrict aArray)
 {
     faac_real aTemp[TNS_MAX_ORDER+2];
-    int i,order;
+    int i, order;
 
-    aArray[0]=1.0;
-    aTemp[0]=1.0;
-    for (order=1;order<=fOrder;order++) {
-        aArray[order]=0.0;
-        for (i=1;i<=order;i++) {
-            aTemp[i] = aArray[i] + kArray[order]*aArray[order-i];
+    aArray[0] = 1.0;
+    aTemp[0] = 1.0;
+    for (order = 1; order <= fOrder; order++) {
+        const faac_real k = kArray[order];
+        aArray[order] = 0.0;
+        for (i = 1; i <= order; i++) {
+            aTemp[i] = aArray[i] + k * aArray[order-i];
         }
-        for (i=1;i<=order;i++) {
-            aArray[i]=aTemp[i];
+        for (i = 1; i <= order; i++) {
+            aArray[i] = aTemp[i];
         }
     }
 }
