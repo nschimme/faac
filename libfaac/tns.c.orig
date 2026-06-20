@@ -489,12 +489,9 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
 {
     int i;
 
-    for (i = fOrder; i >= 1; i--) {
-        if (FAAC_FABS(kArray[i]) > threshold) {
-            return i;
-        } else {
-            kArray[i] = 0.0;
-        }
+    for (i = fOrder; i >= 0; i--) {
+        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
+        if (kArray[i]!=0.0) return i;
     }
 
     return 0;

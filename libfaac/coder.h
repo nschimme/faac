@@ -77,6 +77,10 @@ typedef struct {
     faac_real pregateEnergyFloor;
     faac_real pregateFlatenessK;
     faac_real pregatePeakMargin;
+    faac_real pregateCoeffThresh;
+    int adaptDirection;
+    faac_real gainThreshCeiling;
+    int tnsCoeffRes;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
