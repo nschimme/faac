@@ -61,8 +61,8 @@ void fft_proc_sse2(
 		int size);
 #endif
 
-#if defined(HAVE_AVX)
-void fft_proc_avx(
+#if defined(HAVE_AVX2)
+void fft_proc_avx2(
 		faac_real * __restrict xr,
 		faac_real * __restrict xi,
 		const fftfloat * __restrict refac,

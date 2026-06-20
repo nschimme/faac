@@ -26,7 +26,7 @@
 #include "faac_real.h"
 #include "fft.h"
 
-void fft_proc_avx(
+void fft_proc_avx2(
     faac_real * __restrict xr,
     faac_real * __restrict xi,
     const fftfloat * __restrict refac,

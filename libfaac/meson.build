@@ -24,14 +24,14 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += fft_sse
 endif
 
-if config_h.get('HAVE_AVX')
-    avx_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:AVX'] : ['-mavx']
+if config_h.get('HAVE_AVX2')
+    avx2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:AVX2'] : ['-mavx2']
     if config_h.get('HAVE_FMA')
-        avx_flag += (cc.get_argument_syntax() == 'msvc') ? [] : ['-mfma']
+        avx2_flag += (cc.get_argument_syntax() == 'msvc') ? [] : ['-mfma']
     endif
     fft_avx = static_library('fft_avx', 'fft_avx.c',
         include_directories: ['..', '../include'],
-        c_args: c_args + avx_flag,
+        c_args: c_args + avx2_flag,
         gnu_symbol_visibility: 'hidden'
     )
     quantize_simd_libs += fft_avx

@@ -73,7 +73,17 @@ CPUCaps get_cpu_caps(void)
             xcr0 = ((unsigned long long)high << 32) | low;
 # endif
             if ((xcr0 & 6) == 6) { // XMM and YMM state saved by OS
-                caps |= CPU_CAP_AVX;
+                if (max_leaf >= 7) {
+                    unsigned int eax7 = 0, ebx7 = 0, ecx7 = 0, edx7 = 0;
+# ifdef _MSC_VER
+                    __cpuid(cpu_info, 7);
+                    ebx7 = (unsigned int)cpu_info[1];
+# elif defined(__GNUC__) || defined(__clang__)
+                    __cpuid_count(7, 0, eax7, ebx7, ecx7, edx7);
+# endif
+                    if (ebx7 & (1 << 5)) // AVX2
+                        caps |= CPU_CAP_AVX2;
+                }
                 if (ecx & (1 << 12)) // FMA
                     caps |= CPU_CAP_FMA;
             }
@@ -96,9 +106,9 @@ void init_simd_functions(SimdFunctions *simd, CPUCaps caps)
     }
 #endif
 
-#if defined(HAVE_AVX)
-    if (caps & CPU_CAP_AVX) {
-        simd->fft_proc = fft_proc_avx;
+#if defined(HAVE_AVX2)
+    if (caps & CPU_CAP_AVX2) {
+        simd->fft_proc = fft_proc_avx2;
     }
 #endif
 }
