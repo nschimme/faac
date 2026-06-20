@@ -103,6 +103,15 @@ typedef struct {
     faac_real    *inputFifo[MAX_CHANNELS];
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
+
+    /* HE-AAC / SBR state */
+    unsigned long fullSampleRate;    /* original input Fs, stored when HE-AAC halves it for the core */
+    unsigned int  fullSampleRateIdx; /* GetSRIndex(fullSampleRate) */
+    struct Resampler *resampler;     /* 2:1 FIR downsampler for the core signal */
+    struct SBRInfo   *sbrInfo;       /* SBR analysis state and bitstream data */
+
+    faac_real *heFullRatePtr[MAX_CHANNELS]; /* full-rate input handed to SBR analysis */
+    faac_real *heHalfRatePtr[MAX_CHANNELS]; /* downsampled core fed to the LC encoder */
 } faacEncStruct;
 
 #ifdef __cplusplus

@@ -94,7 +94,9 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OPT_SBR_FAST,
+    OBJTYPE_FLAG
 };
 
 typedef struct {
@@ -193,6 +195,7 @@ static help_t help_advanced[] = {
     {"--joint 3\tUse Mixed Mode (dynamic M/S and IS) coding (default).\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
+    {"--object-type X\tForce AAC object type: lc, he-aac, or auto (default)\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
     {0}
@@ -428,9 +431,10 @@ int main(int argc, char *argv[])
 
     faacEncConfigurationPtr myFormat;
     unsigned int mpegVersion = MPEG4;
-    const unsigned int objectType = LOW;
+    unsigned int objectType = AAC_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
+    int sbr_fast = -1;
     static int useTns = 0;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
@@ -446,6 +450,7 @@ int main(int argc, char *argv[])
     int aacFileNameGiven = 0;
 
     float *pcmbuf;
+    unsigned long encoder_sr = 0;
     int *chanmap = NULL;
 
     unsigned char *bitbuf;
@@ -521,6 +526,7 @@ int main(int argc, char *argv[])
             {"raw", 0, 0, 'r'},
             {"joint", required_argument, 0, OPT_JOINT},
             {"pns", required_argument, 0, OPT_PNS},
+            {"sbr-fast", required_argument, 0, OPT_SBR_FAST},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
             {"pcmraw", 0, 0, 'P'},
@@ -531,6 +537,8 @@ int main(int argc, char *argv[])
             {"tns", 0, &useTns, 1},
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
+            {"object-type", 1, 0, OBJTYPE_FLAG},
+            {"profile", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
             {"artist", 1, 0, ARTIST_FLAG},
@@ -765,6 +773,17 @@ int main(int argc, char *argv[])
                 dieMessage = "Unrecognised MPEG version!\n";
             }
             break;
+        case OBJTYPE_FLAG:
+            if (!strcmp(optarg, "lc"))
+                objectType = LOW;
+            else if (!strcmp(optarg, "he-aac") || !strcmp(optarg, "heaac") ||
+                     !strcmp(optarg, "he-aac-v1") || !strcmp(optarg, "heaac-v1"))
+                objectType = HE_AAC;
+            else if (!strcmp(optarg, "auto"))
+                objectType = AAC_AUTO;
+            else
+                dieMessage = "Unrecognised object type (use lc, he-aac, or auto)!\n";
+            break;
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
             dieMessage = license;
@@ -789,6 +808,9 @@ int main(int argc, char *argv[])
             break;
         case OPT_PNS:
             pnslevel = atoi(optarg);
+            break;
+        case OPT_SBR_FAST:
+            sbr_fast = atoi(optarg);
             break;
         case '?':
         default:
@@ -860,8 +882,10 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    encoder_sr = infile->samplerate;
+
     /* open the encoder library */
-    hEncoder = faacEncOpen(infile->samplerate, infile->channels,
+    hEncoder = faacEncOpen(encoder_sr, infile->channels,
                            &samplesInput, &maxBytesOutput);
 
     if (hEncoder == NULL)
@@ -941,6 +965,8 @@ int main(int argc, char *argv[])
 
     if (pnslevel >= 0)
         myFormat->pnslevel = pnslevel;
+    if (sbr_fast >= 0)
+        myFormat->sbr_fast = sbr_fast;
     if (quantqual > 0)
     {
         myFormat->quantqual = quantqual;
@@ -955,6 +981,31 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "Unsupported output format!\n");
         return 1;
+    }
+
+    /* AAC_AUTO may have resolved to LC or HE-AAC; read back the decision. */
+    {
+        unsigned int userRequestedType = objectType;
+        objectType = myFormat->aacObjectType;
+        if (userRequestedType == AAC_AUTO)
+            fprintf(stderr, "Auto-selected: %s\n",
+                    objectType == HE_AAC ? "HE-AAC v1" : "Low Complexity");
+    }
+
+    /* HE-AAC consumes 2x input samples per frame (the encoder downsamples
+     * 2:1 internally), so grow samplesInput and the PCM buffer to match. */
+    if (objectType == HE_AAC)
+    {
+        samplesInput *= 2;
+        frameSize     = samplesInput / infile->channels;
+        delay_samples = frameSize;
+        free(pcmbuf);
+        pcmbuf = (float *) malloc(samplesInput * sizeof(float));
+        if (!pcmbuf)
+        {
+            fprintf(stderr, "Out of memory allocating PCM buffer\n");
+            return 1;
+        }
     }
 
     /* initialize MP4 creation */
@@ -973,7 +1024,7 @@ int main(int argc, char *argv[])
         }
         mp4atom_head();
 
-        mp4config.samplerate = infile->samplerate;
+        mp4config.samplerate = encoder_sr;
         mp4config.channels = infile->channels;
         mp4config.bits = infile->samplebytes * 8;
     }
@@ -1009,7 +1060,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
-    fprintf(stderr, "Object type: Low Complexity");
+    fprintf(stderr, "Object type: %s",
+            (objectType == HE_AAC) ? "HE-AAC v1" : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
