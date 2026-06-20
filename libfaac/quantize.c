@@ -188,6 +188,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 }
 
 enum {MAXSHORTBAND = 36};
+
+/* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
+ * zero, or sfac underflow): it occupies no qspec range and so is a hard section
+ * boundary for section_optimize(). Caller still sets book[] and bumps bandcnt. */
+static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
+{
+    coderInfo->qoffset[coderInfo->bandcnt] = qofs;
+    coderInfo->qlen[coderInfo->bandcnt] = 0;
+    coderInfo->blen[coderInfo->bandcnt] = 0;
+}
+
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -219,9 +230,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
           /* Pre-assigned (intensity/PNS/pan-zero): no spectral data, section boundary. */
-          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
-          coderInfo->qlen[coderInfo->bandcnt] = 0;
-          coderInfo->blen[coderInfo->bandcnt] = 0;
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->bandcnt++;
           continue;
       }
@@ -234,18 +243,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
-          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
-          coderInfo->qlen[coderInfo->bandcnt] = 0;
-          coderInfo->blen[coderInfo->bandcnt] = 0;
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
       if (bandqual[sb] < pnsthr)
       {
-          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
-          coderInfo->qlen[coderInfo->bandcnt] = 0;
-          coderInfo->blen[coderInfo->bandcnt] = 0;
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -319,12 +324,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       end -= start;
-      coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
       if (sfacfix <= 0.0)
       {
           /* Underflowed to silence: a zero band, no spectral data emitted. */
-          coderInfo->qlen[coderInfo->bandcnt] = 0;
-          coderInfo->blen[coderInfo->bandcnt] = 0;
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
@@ -337,6 +340,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               xi += end;
           }
           /* huffbook() sets book[] + blen[]; retain coeffs for section_optimize. */
+          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
           coderInfo->qlen[coderInfo->bandcnt] = gsize * end;
           huffbook(coderInfo, coderInfo->qspec + *p_qofs, gsize * end);
           *p_qofs += gsize * end;

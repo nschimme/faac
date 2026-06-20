@@ -40,6 +40,10 @@ static int clz(unsigned int x)
 }
 #endif
 
+/* Escape suffix for book 11: a magnitude |q| >= 16 is sent as the pair index 16
+ * (emitted by the caller) plus this suffix - a unary prefix of `preflen` ones and
+ * a zero, then the low `preflen+4` bits of x. preflen counts how far x is past the
+ * 16-window, so the suffix is 2*preflen+5 bits. */
 static int escape(int x, int *code)
 {
     int preflen;
@@ -61,6 +65,11 @@ static int escape(int x, int *code)
     return (preflen << 1) + 5;
 }
 
+/* Code `len` coeffs under book `bnum`, returning bit count. coder == NULL only
+ * sizes (the hot cost path); else also emits codewords to coder->s[]. len/code
+ * tables are split (huff_len/huff_data, sliced by huff_offset) so the cost path
+ * streams uint8 lengths only. Signed books (1,2,5,6) bias the index by 40 and
+ * fold in sign; magnitude books append explicit sign bits. */
 static int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
@@ -555,17 +564,13 @@ static int is_spectral(int book)
  * above any real span cost, so min() never picks it; never added to. */
 #define COST_INF (1 << 28)
 
-/* Greedy section merge ("codebook hysteresis"): walk each group left to right
- * and absorb the next spectral band into the open section whenever re-coding the
- * span under a shared covering book costs fewer extra spectral bits than the
- * section header it would save. Lossless: it only re-assigns spectral books to
- * spectral bands, never touching scalefactors or band classes.
- *
- * Cost is tracked lazily. A section is a contiguous run in qspec[]; run0/run1
- * hold its spectral cost under the covering tier's base / base+1 books. Adding a
- * same-tier band is free (its cached cost_pair[] is already under the covering
- * pair); adding a band that sits below or raises the covering tier recosts only
- * what changed via huffcode() over the contiguous slice. */
+/* Greedy section merge ("codebook hysteresis"): per group, absorb the next
+ * spectral band into the open section whenever recoding the span under a shared
+ * covering book costs fewer extra bits than the section header it saves. Lossless
+ * - only reassigns spectral books, never touching scalefactors or band class.
+ * Costed lazily: run0/run1 hold the span's cost under the covering tier's
+ * base/base+1; a same-tier band adds its cached cost_pair[] for free, a cross-tier
+ * one recosts only the contiguous qspec slice that changed. */
 void section_optimize(CoderInfo *coder)
 {
     int shortwin = (coder->block_type == ONLY_SHORT_WINDOW);
@@ -720,6 +725,10 @@ void emit_spectral(CoderInfo *coder)
     }
 }
 
+/* Write (or size) the section layout: 4-bit book + run length per maximal run of
+ * equal adjacent books. The count field is cntbits wide (5 long / 3 short), so a
+ * run past maxcnt splits into repeated full sections. section_optimize() grows the
+ * runs; this just RLE-encodes the final books[]. */
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {
     int bits = 0;
@@ -786,6 +795,10 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     int lastpns;
     int initpns = 1;
 
+    /* Three independent DPCM chains share book 12, each seeded so its first delta
+     * is self-contained: intensity positions from 0, scalefactors from global_gain
+     * (itself the first regular sf), PNS energies from global_gain - SF_PNS_OFFSET.
+     * The decoder rebuilds each by the same running sum, so deltas must match. */
     lastsf = coder->global_gain;
     lastis = 0;
     lastpns = coder->global_gain - SF_PNS_OFFSET;
@@ -815,6 +828,9 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
 
             if (initpns)
             {
+                /* First PNS band has no prior energy to delta against, so the
+                 * spec sends a raw 9-bit value (diff + 256) instead of a book-12
+                 * code; later PNS bands delta off this one. */
                 initpns = 0;
 
                 length = 9;
