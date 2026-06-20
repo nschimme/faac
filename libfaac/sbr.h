@@ -20,10 +20,6 @@
 extern "C" {
 #endif
 
-#define SBR_NUM_TIME_SLOTS   32
-#define SBR_QMF_BANDS        32
-#define SBR_QMF_FILTER_LEN   64
-#define SBR_QMF_OVL_LEN      64
 #define SBR_QMF_BANDS_64     64
 #define SBR_QMF_OVL_LEN_64   576
 #define SBR_MAX_BANDS        64
@@ -38,8 +34,7 @@ typedef struct SBRInfo {
     int headerSent;
     int frameCount;
     int numChannels;
-    int sampleRate;
-    int coreSampleRate;
+    int sampleRate;        /* full output rate; the core runs at sampleRate/2 */
 
     int kx;
     int k2;
@@ -50,7 +45,6 @@ typedef struct SBRInfo {
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
     int numNoiseBands;
-    int noiseBandEdges[SBR_MAX_NOISE_BANDS + 1];
 
     int bs_amp_res;
     int bs_freq_res;       /* envelope frequency resolution: 1 = HIGH (f_master) */
@@ -62,24 +56,18 @@ typedef struct SBRInfo {
     int bs_xover_band;
     int bs_alter_scale;
 
-    faac_real qmfOvl[MAX_CHANNELS][SBR_QMF_OVL_LEN];
     faac_real qmfOvl64[MAX_CHANNELS][SBR_QMF_OVL_LEN_64];
     int envData  [MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
     int noiseData[MAX_CHANNELS][SBR_MAX_NOISE_BANDS];
-    int invfMode [MAX_CHANNELS];   /* bs_invf_mode 0..3, from spectral flatness */
+    int invfMode [MAX_CHANNELS];   /* bs_invf_mode; currently fixed at 3 (strongest) */
 
-    faac_real cos_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
-    faac_real sin_table[SBR_QMF_BANDS][SBR_QMF_FILTER_LEN];
-
-    /* 64-band analysis via a 128-point complex FFT. */
-    faac_real cos64_table[64][128];
-    faac_real sin64_table[64][128];
+    /* 64-band analysis via a 128-point complex FFT (twiddles for the pre-rotation). */
     faac_real twidCos[128];
     faac_real twidSin[128];
     FFT_Tables fftTables;
 } SBRInfo;
 
-SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate);
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate);
 void SBREnd(SBRInfo *sbr);
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, int fast_mode);
 #include "bitstream.h"
