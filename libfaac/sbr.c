@@ -5,9 +5,7 @@
  * ISO/IEC 14496-3:2009 §4.6.18
  */
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
 #include <math.h>
 
@@ -95,19 +93,17 @@ static int build_freq_table(SBRInfo *sbr)
     sbr->numBands = n_master;
     for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
     sbr->numNoiseBands = 1;
-    sbr->noiseBandEdges[0] = kx;
-    sbr->noiseBandEdges[1] = k2;
     return n_master;
 }
 
-SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long bitRate)
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate)
 {
-    SBRInfo *sbr = (SBRInfo *)calloc(1, sizeof(SBRInfo));
+    SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
+    SetMemory(sbr, 0, sizeof(SBRInfo));
     sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
-    sbr->coreSampleRate = coreSampleRate;
     unsigned long rate_per_ch = bitRate / channels;
     sbr->bs_amp_res = (rate_per_ch < 20000) ? 0 : 1;
     if (rate_per_ch < 24000) {
@@ -126,29 +122,13 @@ SBRInfo *SBRInit(int channels, int sampleRate, int coreSampleRate, unsigned long
     /* k2 lands ~3/4 of the way to Nyquist (18.4 kHz at 48 kHz input). */
     sbr->bs_stop_freq = 10;
     sbr->bs_freq_res = 1; /* HIGH resolution */
+    sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
     sbr->transientThresh = (faac_real)16.0;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
-    for (int k = 0; k < SBR_QMF_BANDS; k++) {
-        double phase_step = M_PI * (2 * k + 1) / 128.0;
-        for (int n = 0; n < SBR_QMF_FILTER_LEN; n++) {
-            double phase = phase_step * (2 * n - 63);
-            sbr->cos_table[k][n] = (faac_real)cos(phase);
-            sbr->sin_table[k][n] = (faac_real)sin(phase);
-        }
-    }
-    /* Modulation tables for the 64-band direct analysis. */
-    for (int k = 0; k < 64; k++) {
-        double phase_step = M_PI * (2.0 * k + 1.0) / 256.0;
-        for (int n = 0; n < 128; n++) {
-            double phase = phase_step * (2.0 * n - 127.0);
-            sbr->cos64_table[k][n] = (faac_real)cos(phase);
-            sbr->sin64_table[k][n] = (faac_real)sin(phase);
-        }
-    }
     /* Twiddles for the 128-point FFT-based QMF. */
     for (int n = 0; n < 128; n++) {
         double phase = M_PI * n / 128.0;
@@ -168,7 +148,7 @@ void SBREnd(SBRInfo *sbr)
 {
     if (!sbr) return;
     fft_terminate(&sbr->fftTables);
-    free(sbr);
+    FreeMemory(sbr);
 }
 
 static inline faac_real fast_log2(faac_real x)
@@ -180,7 +160,7 @@ static inline faac_real fast_log2(faac_real x)
     return (faac_real)(exp - 127) + (faac_real)(m * (1.3424f - 0.3427f * m));
 }
 
-static void qmf_analysis_64_slot_energy_fft(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[128], xi[128];
     const faac_real * restrict proto = sbr_qmf_window_us640;
@@ -193,13 +173,13 @@ static void qmf_analysis_64_slot_energy_fft(const SBRInfo *sbr, const faac_real 
         xr[n] = un * sbr->twidCos[n];
         xi[n] = -un * sbr->twidSin[n];
     }
-    fft((FFT_Tables *)&sbr->fftTables, xr, xi, 7);
+    fft(&sbr->fftTables, xr, xi, 7);
     for (int k = kx; k < k2; k++) {
         energy[k] = xr[k] * xr[k] + xi[k] * xi[k];
     }
 }
 
-static void qmf_analysis_64_slot_energy(const SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+static void qmf_analysis_64_slot_energy(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, energy, kx, k2);
 }
@@ -212,7 +192,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
     faac_real slotEnergy[SBR_QMF_BANDS_64];
     faac_real tratio = (faac_real)0.0;
-    faac_real workspace[SBR_QMF_OVL_LEN_64 + 2048];
+    faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
     int sampled = 0;
     memset(bandHalfE, 0, sizeof(bandHalfE));
@@ -225,10 +205,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         int dec_mask = (fast_mode >= 2) ? 7 : (fast_mode >= 1) ? 3 : 1;
         for (int slot = 0; slot < num_slots; slot++) {
             faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
-            const faac_real * __restrict p_in = timeDomain[ch] + slot * 64;
+            const faac_real * restrict p_in = timeDomain[ch] + slot * SBR_QMF_BANDS_64;
 
             faac_real stot = (faac_real)0.0;
-            for (int n = 0; n < 64; n++) {
+            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
                 faac_real val = *p_in++;
                 stot += val * val;
             }
@@ -252,6 +232,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     int n_env = sbr->numEnvelopes;
 
     for (int ch = 0; ch < nch; ch++) {
+        /* Noise floor and inverse-filtering mode are fixed placeholders: the
+         * decoder gets a zero noise floor and strongest inverse filtering.
+         * Adapting them from per-band tonality is a known TODO. */
         int noise_level = 0;
         sbr->invfMode[ch] = 3;
         int dlav = sbr->eff_amp_res ? 31 : 60;
@@ -330,7 +313,12 @@ static int write_sbr_dtdf(SBRInfo *sbr, BitStream *bs, int wf)
     if (wf) for (int i = 0; i < bits; i++) PutBit(bs, 0, 1);
     return bits;
 }
-static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf) { for (int nb = 0; nb < sbr->numNoiseBands; nb++) { if (wf) PutBit(bs, sbr->invfMode[ch], 2); } return 2 * sbr->numNoiseBands; }
+static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf)
+{
+    for (int nb = 0; nb < sbr->numNoiseBands; nb++)
+        if (wf) PutBit(bs, sbr->invfMode[ch], 2);
+    return 2 * sbr->numNoiseBands;
+}
 
 static int write_sbr_envelope(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 {
