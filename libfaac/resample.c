@@ -4,11 +4,11 @@
  * 2:1 FIR downsampler for HE-AAC core signal preparation.
  */
 
-#include <stdlib.h>
 #include <string.h>
 
 #include "resample.h"
 #include "coder.h"
+#include "util.h"
 
 static const faac_real fir_coeffs[RESAMPLE_FILTER_LEN] = {
      (faac_real) 6.7547e-05f,  (faac_real) 2.4177e-04f,
@@ -47,14 +47,16 @@ static const faac_real fir_coeffs[RESAMPLE_FILTER_LEN] = {
 
 Resampler *ResampleOpen(int channels)
 {
-    Resampler *r = (Resampler *)calloc(1, sizeof(Resampler));
-    if (r) r->channels = channels;
+    Resampler *r = (Resampler *)AllocMemory(sizeof(Resampler));
+    if (!r) return NULL;
+    SetMemory(r, 0, sizeof(Resampler));
+    r->channels = channels;
     return r;
 }
 
 void ResampleClose(Resampler *r)
 {
-    free(r);
+    FreeMemory(r);
 }
 
 int Resample2to1(Resampler *r,
@@ -72,9 +74,10 @@ int Resample2to1(Resampler *r,
         faac_real * __restrict out = output[ch];
         faac_real * __restrict hist = r->buf[ch];
 
-        /* Fixed-size buffer to avoid VLA (MSVC portability). */
-        faac_real combined[2112];
-        int actual_input = input_len > 2048 ? 2048 : input_len;
+        /* Fixed-size buffer to avoid VLA (MSVC portability): history + one
+         * full-rate HE frame (2 * FRAME_LEN input samples). */
+        faac_real combined[RESAMPLE_FILTER_LEN - 1 + 2 * FRAME_LEN];
+        int actual_input = input_len > 2 * FRAME_LEN ? 2 * FRAME_LEN : input_len;
 
         memcpy(combined,     hist, H            * sizeof(faac_real));
         memcpy(combined + H, in,   actual_input * sizeof(faac_real));
