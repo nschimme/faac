@@ -109,7 +109,8 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
-                  faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
+                  faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality,
+                  int heMode)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -185,6 +186,23 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= SHORT_PENALTY;
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+
+    /* HE-AAC core only: stronger floor so quiet bands just below the SBR
+     * crossover survive quantization. At the halved core sample rate the
+     * default floors leave the target ~5 decades below rmsx and the
+     * magic-offset rounding truncates whole bands to zero, which SBR then
+     * mirrors into the high band as silence. */
+    if (heMode) {
+        faac_real avge_floor = avgenrg * (faac_real)0.005;   /* -23 dB */
+        faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
+        faac_real maxe_floor = avgenrg * (faac_real)0.02;    /* -17 dB */
+        faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
+        faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
+        target_floor += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe_eff/avgenrg, powm);
+        target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
+        if (target < target_floor) target = target_floor;
+    }
 
     bandqual[sfb] = target * quality;
   }
@@ -369,7 +387,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-              (faac_real)aacquantCfg->quality/DEFQUAL);
+              (faac_real)aacquantCfg->quality/DEFQUAL, aacquantCfg->heMode);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
