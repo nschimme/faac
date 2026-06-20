@@ -371,6 +371,85 @@ static int book_for_maxq(int maxq)
     return HCB_ESC;
 }
 
+/* Bit cost of coding [qs,len) under BOTH books of a range-pair in one traversal.
+ * `base` is the lower book (1,3,5,7,9 — never ESC, which has no pair). The two
+ * books of a pair share the per-tuple index and sign accounting and differ only
+ * in the length table, so we look up both lengths per tuple and avoid a second
+ * pass. Results match two huffcode(...,0) count calls exactly. */
+static void huff_count_pair(const int *qs, int len, int base, int *pc0, int *pc1)
+{
+    const uint8_t *la = huff_len + huff_offset[base - 1];
+    const uint8_t *lb = huff_len + huff_offset[base];
+    int c0 = 0, c1 = 0, ofs;
+
+    switch (base)
+    {
+    case 1:   /* books 1,2: signed 4-tuple, no sign bits */
+        for (ofs = 0; ofs < len; ofs += 4)
+        {
+            int q0, q1 = 0, q2 = 0, q3 = 0, idx;
+            q0 = qs[ofs];
+            if (len - ofs > 1) q1 = qs[ofs+1];
+            if (len - ofs > 2) q2 = qs[ofs+2];
+            if (len - ofs > 3) q3 = qs[ofs+3];
+            idx = (!(q0 | q1 | q2 | q3)) ? 40 : 27*q0 + 9*q1 + 3*q2 + q3 + 40;
+            c0 += la[idx]; c1 += lb[idx];
+        }
+        break;
+    case 3:   /* books 3,4: magnitude 4-tuple + sign bits */
+        for (ofs = 0; ofs < len; ofs += 4)
+        {
+            int q0, q1 = 0, q2 = 0, q3 = 0, idx, s;
+            q0 = qs[ofs];
+            if (len - ofs > 1) q1 = qs[ofs+1];
+            if (len - ofs > 2) q2 = qs[ofs+2];
+            if (len - ofs > 3) q3 = qs[ofs+3];
+            if (!(q0 | q1 | q2 | q3)) { c0 += la[0]; c1 += lb[0]; continue; }
+            idx = 27*abs(q0) + 9*abs(q1) + 3*abs(q2) + abs(q3);
+            s = (q0 != 0) + (q1 != 0) + (q2 != 0) + (q3 != 0);
+            c0 += la[idx] + s; c1 += lb[idx] + s;
+        }
+        break;
+    case 5:   /* books 5,6: signed 2-tuple, no sign bits */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            int q0, q1 = 0, idx;
+            q0 = qs[ofs];
+            if (len - ofs > 1) q1 = qs[ofs+1];
+            idx = (!(q0 | q1)) ? 40 : 9*q0 + q1 + 40;
+            c0 += la[idx]; c1 += lb[idx];
+        }
+        break;
+    case 7:   /* books 7,8: magnitude 2-tuple + sign bits, idx = 8*aq0 + aq1 */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            int q0, q1 = 0, idx, s;
+            q0 = qs[ofs];
+            if (len - ofs > 1) q1 = qs[ofs+1];
+            if (!(q0 | q1)) { c0 += la[0]; c1 += lb[0]; continue; }
+            idx = 8*abs(q0) + abs(q1);
+            s = (q0 != 0) + (q1 != 0);
+            c0 += la[idx] + s; c1 += lb[idx] + s;
+        }
+        break;
+    default:  /* base == 9: books 9,10: magnitude 2-tuple + sign, idx = 13*aq0 + aq1 */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            int q0, q1 = 0, idx, s;
+            q0 = qs[ofs];
+            if (len - ofs > 1) q1 = qs[ofs+1];
+            if (!(q0 | q1)) { c0 += la[0]; c1 += lb[0]; continue; }
+            idx = 13*abs(q0) + abs(q1);
+            s = (q0 != 0) + (q1 != 0);
+            c0 += la[idx] + s; c1 += lb[idx] + s;
+        }
+        break;
+    }
+
+    *pc0 = c0;
+    *pc1 = c1;
+}
+
 /* Select the cheapest codebook for one band and cache its spectral bit cost in
  * coder->blen[]; symbols are NOT emitted here (deferred to emit_spectral after
  * section_optimize has finalised the books). Only the band's own tier range-pair
@@ -416,8 +495,8 @@ int huffbook(CoderInfo *coder,
     else
     {
         /* range-pair: keep whichever of {base, base+1} codes the band shorter */
-        int c0 = huffcode(qs, len, base, 0);
-        int c1 = huffcode(qs, len, base + 1, 0);
+        int c0, c1;
+        huff_count_pair(qs, len, base, &c0, &c1);
         cp[0] = c0;
         cp[1] = c1;
         if (c1 < c0)
@@ -544,10 +623,18 @@ void section_optimize(CoderInfo *coder)
                     {
                         /* lower-tier band under the higher covering book: recost it */
                         int cbase = tier_base_book(sec_tier);
-                        n0 = run0 + huffcode(coder->qspec + ofs, ln, cbase, 0);
-                        n1 = (sec_tier < 6)
-                             ? run1 + huffcode(coder->qspec + ofs, ln, cbase + 1, 0)
-                             : COST_INF;
+                        if (sec_tier < 6)
+                        {
+                            int a0, a1;
+                            huff_count_pair(coder->qspec + ofs, ln, cbase, &a0, &a1);
+                            n0 = run0 + a0;
+                            n1 = run1 + a1;
+                        }
+                        else
+                        {
+                            n0 = run0 + huffcode(coder->qspec + ofs, ln, cbase, 0);
+                            n1 = COST_INF;
+                        }
                     }
                 }
                 else
@@ -556,12 +643,19 @@ void section_optimize(CoderInfo *coder)
                      * new higher book; the raising band is already under its own
                      * (== new covering) pair. */
                     int nbase = tier_base_book(t);
-                    n0 = huffcode(coder->qspec + sec_ofs, sec_len, nbase, 0)
-                         + coder->cost_pair[band][0];
-                    n1 = (t < 6)
-                         ? huffcode(coder->qspec + sec_ofs, sec_len, nbase + 1, 0)
-                           + coder->cost_pair[band][1]
-                         : COST_INF;
+                    if (t < 6)
+                    {
+                        int s0, s1;
+                        huff_count_pair(coder->qspec + sec_ofs, sec_len, nbase, &s0, &s1);
+                        n0 = s0 + coder->cost_pair[band][0];
+                        n1 = s1 + coder->cost_pair[band][1];
+                    }
+                    else
+                    {
+                        n0 = huffcode(coder->qspec + sec_ofs, sec_len, nbase, 0)
+                             + coder->cost_pair[band][0];
+                        n1 = COST_INF;
+                    }
                 }
 
                 base = tier_base_book(cand_tier);
