@@ -42,18 +42,18 @@ void rfft			( FFT_Tables *fft_tables, faac_real *x, int logm );
 void fft			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
 
 void fft_proc_scalar(
-		faac_real *xr,
-		faac_real *xi,
-		fftfloat *refac,
-		fftfloat *imfac,
+		faac_real * __restrict xr,
+		faac_real * __restrict xi,
+		const fftfloat * __restrict refac,
+		const fftfloat * __restrict imfac,
 		int size);
 
 #if defined(HAVE_SSE2)
 void fft_proc_sse2(
-		faac_real *xr,
-		faac_real *xi,
-		fftfloat *refac,
-		fftfloat *imfac,
+		faac_real * __restrict xr,
+		faac_real * __restrict xi,
+		const fftfloat * __restrict refac,
+		const fftfloat * __restrict imfac,
 		int size);
 #endif
 

@@ -32,7 +32,7 @@ typedef enum {
 #include "faac_real.h"
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-typedef void (*FFTProcFunc)(faac_real *xr, faac_real *xi, float *refac, float *imfac, int size);
+typedef void (*FFTProcFunc)(faac_real * __restrict xr, faac_real * __restrict xi, const float * __restrict refac, const float * __restrict imfac, int size);
 
 typedef struct {
     QuantizeFunc quantize;

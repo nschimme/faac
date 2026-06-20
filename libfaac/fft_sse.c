@@ -26,10 +26,10 @@
 #include "fft.h"
 
 void fft_proc_sse2(
-    faac_real *xr,
-    faac_real *xi,
-    fftfloat *refac,
-    fftfloat *imfac,
+    faac_real * __restrict xr,
+    faac_real * __restrict xi,
+    const fftfloat * __restrict refac,
+    const fftfloat * __restrict imfac,
     int size)
 {
     int step, shift, pos;
@@ -86,10 +86,9 @@ void fft_proc_sse2(
     }
 
     /* Standard Radix-2 loop from stage 3 (step = 4) */
-    estep = size >> 2;
+    estep = 0;
     for (step = 4; step < size; step *= 2)
     {
-        estep >>= 1;
         for (pos = 0; pos < size; pos += (2 * step))
         {
             int x1 = pos;
@@ -111,12 +110,9 @@ void fft_proc_sse2(
                 xr2 = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&xr[x2])), _mm_cvtpd_ps(_mm_loadu_pd(&xr[x2+2])));
                 xi2 = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&xi[x2])), _mm_cvtpd_ps(_mm_loadu_pd(&xi[x2+2])));
 #endif
-                /* Load twiddle factors. Since estep can be > 1, we might need to gather or load carefully.
-                   However, the tables are floats, so we can use _mm_loadu_ps if they were contiguous.
-                   But exp += estep, so they are not.
-                */
-                wr = _mm_set_ps(refac[(shift+3)*estep], refac[(shift+2)*estep], refac[(shift+1)*estep], refac[shift*estep]);
-                wi = _mm_set_ps(imfac[(shift+3)*estep], imfac[(shift+2)*estep], imfac[(shift+1)*estep], imfac[shift*estep]);
+                /* Load twiddle factors from contiguous tables */
+                wr = _mm_loadu_ps(&refac[estep + shift]);
+                wi = _mm_loadu_ps(&imfac[estep + shift]);
 
                 /* v2r = xr[x2] * wr - xi[x2] * wi */
                 v2r = _mm_sub_ps(_mm_mul_ps(xr2, wr), _mm_mul_ps(xi2, wi));
@@ -153,7 +149,7 @@ void fft_proc_sse2(
             }
 
             /* Scalar remainder for shift */
-            exp = shift * estep;
+            exp = estep + shift;
             for (; shift < step; shift++)
             {
                 faac_real v2r, v2i;
@@ -169,10 +165,11 @@ void fft_proc_sse2(
                 xi[x2] = xi[x1] - v2i;
                 xi[x1] += v2i;
 
-                exp += estep;
+                exp++;
                 x1++;
                 x2++;
             }
         }
+        estep += step;
     }
 }
