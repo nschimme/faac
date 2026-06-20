@@ -179,7 +179,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
-    hEncoder->config.sbr_fast = config->sbr_fast;
 
     if (hEncoder->config.aacObjectType != LOW &&
         hEncoder->config.aacObjectType != HE_AAC &&
@@ -196,27 +195,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder, faacEncConfiguratio
 
     if (hEncoder->config.aacObjectType == AAC_AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        int rate_ok;
-        if (rate_per_ch > 0) {
-            /* CBR/ABR: use dynamic crossover curve derived from empirical sweep.
-             * max_he_rate_per_ch = 0.5 * input_sr + 8000.
-             * This targets ~20kbps at 24kHz, ~24kbps at 32kHz, and ~32kbps at 48kHz. */
-            unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate / 2 + 8000);
-            rate_ok = (rate_per_ch >= 12000 && rate_per_ch <= max_he_rate);
-        } else {
-            /* VBR: HE-AAC is advantageous for qualities <= 60% (~100 kbps total). */
-            rate_ok = (config->quantqual <= 60);
-        }
-        /* Strictly restrict HE-AAC to inputs >= 24kHz. This ensures the
-         * core rate is >= 12kHz. 16kHz inputs (core 8kHz) produce poor SBR
-         * results on speech/vss/voip scenarios. */
-        int sr_ok = (hEncoder->sampleRate >= 24000);
+        int rate_ok = (rate_per_ch >= 20000 && rate_per_ch <= 32000);
+        int sr_ok = (hEncoder->sampleRate >= 32000);
         hEncoder->config.aacObjectType = (rate_ok && sr_ok) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
-
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < 24000)
-        return 0;
 
     if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->fullSampleRate == 0) {
         hEncoder->fullSampleRate    = hEncoder->sampleRate;
@@ -426,7 +409,7 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer, unsi
         heHalfRate[channel] = hEncoder->heHalfRatePtr[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, hEncoder->heFullRatePtr, numChannels, full_spch, hEncoder->config.sbr_fast);
+    SBRAnalysis(hEncoder->sbrInfo, hEncoder->heFullRatePtr, numChannels, full_spch);
     Resample2to1(hEncoder->resampler, hEncoder->heFullRatePtr, full_spch, hEncoder->heHalfRatePtr);
     return 0;
 }
@@ -580,6 +563,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
     frameBytes = CloseBitStream(bitStream);
 
     if (hEncoder->config.bitRate) {
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
         int sbrBits = 0;
 
@@ -588,20 +572,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder, int32_t *inputBuffer, unsigne
             sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
         }
 
-        /* desbits = (bits_per_second * core_samples_per_frame) / core_samples_per_second.
-         * For HE-AAC, hEncoder->sampleRate is the halved core rate. Because core
-         * samples are produced at half-rate, but represent a full-rate frame
-         * duration (1024 / core_fs), this ratio correctly yields the bits
-         * allocated per frame duration at the target bitrate.
-         * Use double for intermediate to avoid 32-bit overflow on high channel counts. */
-        double targetBitsPerFrame = (double)numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate;
-
         /* Adjust quality based on core bit performance against its allocated budget.
          * Subtracting SBR overhead prevents the rate controller from over-starving
          * the core when SBR consumes its fixed allocation. */
         faac_real fix;
         if (totalBits > sbrBits) {
-            fix = (faac_real)(targetBitsPerFrame - sbrBits) / (faac_real)(totalBits - sbrBits);
+            fix = (faac_real)(desbits - sbrBits) / (faac_real)(totalBits - sbrBits);
         } else {
             fix = 1.0;
         }

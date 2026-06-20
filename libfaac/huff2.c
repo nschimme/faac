@@ -1,495 +1,182 @@
-/****************************************************************************
-    Huffman coding
-
-    Copyright (C) 2017 Krzysztof Nikiel
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-****************************************************************************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "huff_lut.h"
 
-static int escape(int x, int *code)
-{
-    int preflen = 0;
-    int base = 32;
-
-    if (x > MAX_HUFF_ESC_VAL)
-    {
-        fprintf(stderr, "%s(%d): x_quant > %d\n", __FILE__, __LINE__, MAX_HUFF_ESC_VAL);
-        return 0;
-    }
-
-    *code = 0;
-    while (base <= x)
-    {
-        base <<= 1;
-        *code <<= 1;
-        *code |= 1;
-        preflen++;
-    }
-    base >>= 1;
-
-    // separator
-    *code <<= 1;
-
-    *code <<= (preflen + 4);
-    *code |= (x - base);
-
+static int escape(int x, int *code) {
+    int preflen = 0; int base = 32;
+    if (x > MAX_HUFF_ESC_VAL) return 0;
+    if (code) {
+        *code = 0; while (base <= x) { base <<= 1; *code <<= 1; *code |= 1; preflen++; }
+        base >>= 1; *code <<= 1; *code <<= (preflen + 4); *code |= (x - base);
+    } else { while (base <= x) { base <<= 1; preflen++; } }
     return (preflen << 1) + 5;
 }
 
-#define arrlen(array) (sizeof(array) / sizeof(*array))
-
-static int huffcode(int *qs /* quantized spectrum */,
-                    int len,
-                    int bnum,
-                    CoderInfo *coder)
-{
-    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
-      book05, book06, book07, book08, book09, book10, book11};
-    hcode16_t *book;
-    int cnt;
-    int bits = 0, blen;
-    int ofs, *qp;
-    int data = 0;
-    int idx;
-    int datacnt;
-
-    if (coder)
-        datacnt = coder->datacnt;
-    else
-        datacnt = 0;
-
-    book = hmap[bnum];
-    switch (bnum)
-    {
-    case 1:
-    case 2:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+static int huffcode_estimate(int *qs, int len, int bnum) {
+    static const uint8_t * const hlen_map[12] = {NULL, book01_len, book02_len, book03_len, book04_len, book05_len, book06_len, book07_len, book08_len, book09_len, book10_len, book11_len};
+    const uint8_t * __restrict hlen = hlen_map[bnum];
+    int bits = 0;
+    switch (bnum) {
+    case 1: case 2:
+        for(int ofs = 0; ofs < len; ofs += 4) bits += hlen[27 * qs[ofs] + 9 * qs[ofs+1] + 3 * qs[ofs+2] + qs[ofs+3] + 40];
         break;
-    case 3:
-    case 4:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case 3: case 4:
+        for(int ofs = 0; ofs < len; ofs += 4) {
+            bits += hlen[27 * abs(qs[ofs]) + 9 * abs(qs[ofs+1]) + 3 * abs(qs[ofs+2]) + abs(qs[ofs+3])];
+            bits += (qs[ofs] != 0) + (qs[ofs+1] != 0) + (qs[ofs+2] != 0) + (qs[ofs+3] != 0);
+        } break;
+    case 5: case 6:
+        for(int ofs = 0; ofs < len; ofs += 2) bits += hlen[9 * qs[ofs] + qs[ofs+1] + 40];
         break;
-    case 5:
-    case 6:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
-        break;
-    case 7:
-    case 8:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
-        break;
-    case 9:
-    case 10:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
-        break;
+    case 7: case 8:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            bits += hlen[8 * abs(qs[ofs]) + abs(qs[ofs+1])];
+            bits += (qs[ofs] != 0) + (qs[ofs+1] != 0);
+        } break;
+    case 9: case 10:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            bits += hlen[13 * abs(qs[ofs]) + abs(qs[ofs+1])];
+            bits += (qs[ofs] != 0) + (qs[ofs+1] != 0);
+        } break;
     case HCB_ESC:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            int x0, x1;
-
-            qp = qs+ofs;
-
-            x0 = abs(qp[0]);
-            x1 = abs(qp[1]);
-            if (x0 > 16)
-                x0 = 16;
-            if (x1 > 16)
-                x1 = 16;
-            idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
-            {
-                return -1;
-            }
-
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-
-            if (x0 >= 16)
-            {
-                blen = escape(abs(qp[0]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
-
-            if (x1 >= 16)
-            {
-                blen = escape(abs(qp[1]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
-        }
-        break;
-    default:
-        fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
-        return -1;
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            int x0 = abs(qs[ofs]), x1 = abs(qs[ofs+1]);
+            int sx0 = x0 > 16 ? 16 : x0, sx1 = x1 > 16 ? 16 : x1;
+            bits += hlen[17 * sx0 + sx1] + (qs[ofs] != 0) + (qs[ofs+1] != 0);
+            if (x0 >= 16) bits += escape(x0, NULL);
+            if (x1 >= 16) bits += escape(x1, NULL);
+        } break;
+    default: return -1;
     }
-
-    if (coder)
-        coder->datacnt = datacnt;
-
     return bits;
 }
 
+static int huffcode_write(int *qs, int len, int bnum, CoderInfo *coder) {
+    static hcode16_t * const hmap[12] = {NULL, book01, book02, book03, book04, book05, book06, book07, book08, book09, book10, book11};
+    int bits = 0; int datacnt = coder->datacnt;
+    hcode16_t * __restrict book = hmap[bnum];
+    switch (bnum) {
+    case 1: case 2:
+        for(int ofs = 0; ofs < len; ofs += 4) {
+            int idx = 27 * qs[ofs] + 9 * qs[ofs+1] + 3 * qs[ofs+2] + qs[ofs+3] + 40;
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
+            bits += book[idx].len;
+        } break;
+    case 3: case 4:
+        for(int ofs = 0; ofs < len; ofs += 4) {
+            int idx = 27 * abs(qs[ofs]) + 9 * abs(qs[ofs+1]) + 3 * abs(qs[ofs+2]) + abs(qs[ofs+3]);
+            int data = book[idx].data; int blen = book[idx].len;
+            for(int i = 0; i < 4; i++) if(qs[ofs+i]) { blen++; data <<= 1; if (qs[ofs+i] < 0) data |= 1; }
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
+            bits += blen;
+        } break;
+    case 5: case 6:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            int idx = 9 * qs[ofs] + qs[ofs+1] + 40;
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
+            bits += book[idx].len;
+        } break;
+    case 7: case 8:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            int idx = 8 * abs(qs[ofs]) + abs(qs[ofs+1]);
+            int data = book[idx].data; int blen = book[idx].len;
+            for(int i = 0; i < 2; i++) if(qs[ofs+i]) { blen++; data <<= 1; if (qs[ofs+i] < 0) data |= 1; }
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
+            bits += blen;
+        } break;
+    case 9: case 10:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            int idx = 13 * abs(qs[ofs]) + abs(qs[ofs+1]);
+            int data = book[idx].data; int blen = book[idx].len;
+            for(int i = 0; i < 2; i++) if(qs[ofs+i]) { blen++; data <<= 1; if (qs[ofs+i] < 0) data |= 1; }
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
+            bits += blen;
+        } break;
+    case HCB_ESC:
+        for(int ofs = 0; ofs < len; ofs += 2) {
+            int q0 = qs[ofs], q1 = qs[ofs+1]; int x0 = abs(q0), x1 = abs(q1);
+            int sx0 = x0 > 16 ? 16 : x0, sx1 = x1 > 16 ? 16 : x1;
+            int idx = 17 * sx0 + sx1; int data = book[idx].data; int blen = book[idx].len;
+            if(q0) { blen++; data <<= 1; if (q0 < 0) data |= 1; } if(q1) { blen++; data <<= 1; if (q1 < 0) data |= 1; }
+            coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; bits += blen;
+            if (x0 >= 16) { int id = 0; int elen = escape(x0, &id); coder->s[datacnt].data = id; coder->s[datacnt++].len = elen; bits += elen; }
+            if (x1 >= 16) { int id = 0; int elen = escape(x1, &id); coder->s[datacnt].data = id; coder->s[datacnt++].len = elen; bits += elen; }
+        } break;
+    default: return -1;
+    }
+    coder->datacnt = datacnt;
+    return bits;
+}
 
-int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
-             int len)
-{
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
+int huffbook(CoderInfo *coder, int *qs, int len) {
+    int maxq = 0; int bookmin; int lenmin = 0; const int * __restrict p_qs = qs;
+    int last_book = (coder->bandcnt > 0) ? coder->book[coder->bandcnt - 1] : HCB_NONE;
+    for (int i = 0; i < len; i++) {
+        int q = abs(*p_qs++);
+        if (maxq < q) { maxq = q; if (maxq >= 16) { maxq = 16; break; } }
+    }
+#define BOOKMIN(n) bookmin=n; lenmin=huffcode_estimate(qs,len,bookmin); { int lnext = huffcode_estimate(qs,len,bookmin+1); if(lnext>=0 && lnext<lenmin) { bookmin++; lenmin=lnext; } }
+    if (maxq < 1) { bookmin = HCB_ZERO; lenmin = 0; }
+    else if (maxq < 2) { BOOKMIN(1); }
+    else if (maxq < 3) { BOOKMIN(3); }
+    else if (maxq < 5) { BOOKMIN(5); }
+    else if (maxq < 8) { BOOKMIN(7); }
+    else if (maxq < 13) { BOOKMIN(9); }
+    else { bookmin = HCB_ESC; lenmin = huffcode_estimate(qs, len, HCB_ESC); }
 
-    for (cnt = 0; cnt < len; cnt++)
-    {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
+    if (last_book != HCB_NONE && last_book != HCB_ZERO && last_book != HCB_PNS &&
+        last_book != HCB_INTENSITY && last_book != HCB_INTENSITY2 &&
+        last_book != bookmin) {
+        int last_bits = huffcode_estimate(qs, len, last_book);
+        if (last_bits >= 0 && last_bits <= lenmin + 7) { bookmin = last_book; }
     }
-
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
-
-    if (maxq < 1)
-    {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
-    }
-    else if (maxq < 2)
-    {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
-    }
-    else
-    {
-        bookmin = HCB_ESC;
-    }
-
-    if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
+    if (bookmin > HCB_ZERO) huffcode_write(qs, len, bookmin, coder);
     coder->book[coder->bandcnt] = bookmin;
-
     return 0;
 }
 
-int writebooks(CoderInfo *coder, BitStream *stream, int write)
-{
-    int bits = 0;
-    int maxcnt, cntbits;
-    int group;
-    int bookbits = 4;
-
-    if (coder->block_type == ONLY_SHORT_WINDOW){
-        maxcnt = 7;
-        cntbits = 3;
-    } else {
-        maxcnt = 31;
-        cntbits = 5;
-    }
-
-    for (group = 0; group < coder->groups.n; group++)
-    {
-        int band = group * coder->sfbn;
-        int maxband = band + coder->sfbn;
-
-        while (band < maxband)
-        {
-            int book = coder->book[band++];
-            int bookcnt = 1;
-            if (write) {
-                PutBit(stream, book, bookbits);
-            }
-            bits += bookbits;
-
-            if (band < maxband)
-            {
-                while (book == coder->book[band])
-                {
-                    band++;
-                    bookcnt++;
-                    if (band >= maxband)
-                        break;
-                }
-            }
-
-            while (bookcnt >= maxcnt)
-            {
-                if (write)
-                    PutBit(stream, maxcnt, cntbits);
-                bits += cntbits;
-                bookcnt -= maxcnt;
-            }
-            if (write)
-                PutBit(stream, bookcnt, cntbits);
-            bits += cntbits;
+int writebooks(CoderInfo *coder, BitStream *stream, int write) {
+    int bits = 0; int maxcnt, cntbits; int bookbits = 4;
+    if (coder->block_type == ONLY_SHORT_WINDOW){ maxcnt = 7; cntbits = 3; } else { maxcnt = 31; cntbits = 5; }
+    for (int group = 0; group < coder->groups.n; group++) {
+        int band = group * coder->sfbn; int maxband = band + coder->sfbn;
+        while (band < maxband) {
+            int book = coder->book[band++]; int bookcnt = 1;
+            if (write) { PutBit(stream, (unsigned long)book, bookbits); } bits += bookbits;
+            while (band < maxband && coder->book[band] == book) { band++; bookcnt++; }
+            while (bookcnt >= maxcnt) { if (write) { PutBit(stream, (unsigned long)maxcnt, cntbits); } bits += cntbits; bookcnt -= maxcnt; }
+            if (write) { PutBit(stream, (unsigned long)bookcnt, cntbits); } bits += cntbits;
         }
-    }
-
-    return bits;
+    } return bits;
 }
 
-int writesf(CoderInfo *coder, BitStream *stream, int write)
-{
-    int cnt;
-    int bits = 0;
-    int diff, length;
-    int lastsf;
-    int lastis;
-    int lastpns;
-    int initpns = 1;
-
-    lastsf = coder->global_gain;
-    lastis = 0;
-    lastpns = coder->global_gain - SF_PNS_OFFSET;
-
-    /* qlevel() bounds every stored sf[] and global_gain to [0, SF_MAX_ABS], so
-     * the running reconstruction below cannot leave the decoder's range. */
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
+int writesf(CoderInfo *coder, BitStream *stream, int write) {
+    int bits = 0; int initpns = 1;
+    int lastsf = coder->global_gain; int lastis = 0; int lastpns = coder->global_gain - SF_PNS_OFFSET;
+    for (int cnt = 0; cnt < coder->bandcnt; cnt++) {
         int book = coder->book[cnt];
-
-        if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
-        {
-            diff = coder->sf[cnt] - lastis;
-            diff = clamp_sf_diff(diff);
-            length = book12[SF_DELTA + diff].len;
-
-            bits += length;
-
-            lastis += diff;
-
-            if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
+        if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2)) {
+            int diff = clamp_sf_diff(coder->sf[cnt] - lastis);
+            bits += book12[SF_DELTA + diff].len; lastis += diff;
+            if (write) PutBit(stream, book12[SF_DELTA + diff].data, book12[SF_DELTA + diff].len);
+        } else if (book == HCB_PNS) {
+            int diff = coder->sf[cnt] - lastpns;
+            if (initpns) { initpns = 0; bits += 9; lastpns += diff; if (write) PutBit(stream, (unsigned long)(diff + 256), 9); continue; }
+            diff = clamp_sf_diff(diff); bits += book12[SF_DELTA + diff].len; lastpns += diff;
+            if (write) PutBit(stream, book12[SF_DELTA + diff].data, book12[SF_DELTA + diff].len);
+        } else if ((book != HCB_ZERO) && (book != HCB_NONE)) {
+            int diff = clamp_sf_diff(coder->sf[cnt] - lastsf);
+            bits += book12[SF_DELTA + diff].len; lastsf += diff;
+            if (write) PutBit(stream, book12[SF_DELTA + diff].data, book12[SF_DELTA + diff].len);
         }
-        else if (book == HCB_PNS)
-        {
-            diff = coder->sf[cnt] - lastpns;
-
-            if (initpns)
-            {
-                initpns = 0;
-
-                length = 9;
-                bits += length;
-                lastpns += diff;
-
-                if (write)
-                    PutBit(stream, diff + 256, length);
-                continue;
-            }
-
-            diff = clamp_sf_diff(diff);
-
-            length = book12[SF_DELTA + diff].len;
-            bits += length;
-            lastpns += diff;
-
-            if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
-        }
-        else if ((book != HCB_ZERO) && (book != HCB_NONE))
-        {
-            diff = coder->sf[cnt] - lastsf;
-            diff = clamp_sf_diff(diff);
-            length = book12[SF_DELTA + diff].len;
-
-            bits += length;
-            lastsf += diff;
-
-            if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
-        }
-
-    }
-    return bits;
+    } return bits;
 }
