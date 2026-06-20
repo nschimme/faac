@@ -1,6 +1,7 @@
 *.o
 *.so
 *.a
+.cache/
 *.ncb
 *.plg
 *.aps
