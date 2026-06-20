@@ -61,6 +61,23 @@ CPUCaps get_cpu_caps(void)
 # endif
         if (edx & (1 << 26)) // SSE2
             caps |= CPU_CAP_SSE2;
+
+        if (ecx & (1 << 28)) { // AVX
+            /* Check if OS saves YMM state */
+            unsigned long long xcr0 = 0;
+# ifdef _MSC_VER
+            xcr0 = _xgetbv(0);
+# elif defined(__GNUC__) || defined(__clang__)
+            unsigned int low, high;
+            __asm__ volatile("xgetbv" : "=a"(low), "=d"(high) : "c"(0));
+            xcr0 = ((unsigned long long)high << 32) | low;
+# endif
+            if ((xcr0 & 6) == 6) { // XMM and YMM state saved by OS
+                caps |= CPU_CAP_AVX;
+                if (ecx & (1 << 12)) // FMA
+                    caps |= CPU_CAP_FMA;
+            }
+        }
     }
 #endif
 
@@ -76,6 +93,12 @@ void init_simd_functions(SimdFunctions *simd, CPUCaps caps)
     if (caps & CPU_CAP_SSE2) {
         simd->quantize = quantize_sse2;
         simd->fft_proc = fft_proc_sse2;
+    }
+#endif
+
+#if defined(HAVE_AVX)
+    if (caps & CPU_CAP_AVX) {
+        simd->fft_proc = fft_proc_avx;
     }
 #endif
 }
