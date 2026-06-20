@@ -32,9 +32,7 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
 
     for (win = wstart; win < wend; win++)
     {
-        int l;
-        for (l = 0; l < len; l++)
-            s_out[l] = 0.0;
+        memset(s_out, 0, len * sizeof(faac_real));
         s_out += BLOCK_LEN_SHORT;
     }
 }
@@ -46,23 +44,30 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
     int win;
 
-    for (win = wstart; win < wend; win++)
-    {
-        int l;
-        if (in_phase)
+    if (in_phase) {
+        for (win = wstart; win < wend; win++)
+        {
+            int l;
             for (l = 0; l < len; l++)
             {
                 sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
                 sr_out[l] = 0.0;
             }
-        else
+            sl_out += BLOCK_LEN_SHORT;
+            sr_out += BLOCK_LEN_SHORT;
+        }
+    } else {
+        for (win = wstart; win < wend; win++)
+        {
+            int l;
             for (l = 0; l < len; l++)
             {
                 sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
                 sl_out[l] = 0.0;
             }
-        sl_out += BLOCK_LEN_SHORT;
-        sr_out += BLOCK_LEN_SHORT;
+            sl_out += BLOCK_LEN_SHORT;
+            sr_out += BLOCK_LEN_SHORT;
+        }
     }
 }
 
@@ -74,25 +79,38 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
     int win;
 
-    for (win = wstart; win < wend; win++)
-    {
-        int l;
-        if (in_phase)
-        {
-            if (zero_sr)
+    if (in_phase) {
+        if (zero_sr) {
+            for (win = wstart; win < wend; win++) {
+                int l;
                 for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; sr_out[l] = 0.0; }
-            else
+                sl_out += BLOCK_LEN_SHORT;
+                sr_out += BLOCK_LEN_SHORT;
+            }
+        } else {
+            for (win = wstart; win < wend; win++) {
+                int l;
                 for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; }
+                sl_out += BLOCK_LEN_SHORT;
+                sr_out += BLOCK_LEN_SHORT;
+            }
         }
-        else
-        {
-            if (zero_sr)
+    } else {
+        if (zero_sr) {
+            for (win = wstart; win < wend; win++) {
+                int l;
                 for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; sr_out[l] = 0.0; }
-            else
+                sl_out += BLOCK_LEN_SHORT;
+                sr_out += BLOCK_LEN_SHORT;
+            }
+        } else {
+            for (win = wstart; win < wend; win++) {
+                int l;
                 for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; }
+                sl_out += BLOCK_LEN_SHORT;
+                sr_out += BLOCK_LEN_SHORT;
+            }
         }
-        sl_out += BLOCK_LEN_SHORT;
-        sr_out += BLOCK_LEN_SHORT;
     }
 }
 
@@ -145,10 +163,12 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         for (win = wstart; win < wend; win++)
         {
             int l;
+            const faac_real * restrict p_sl = sl_ptr;
+            const faac_real * restrict p_sr = sr_ptr;
             for (l = 0; l < len; l++)
             {
-                faac_real lx = sl_ptr[l];
-                faac_real rx = sr_ptr[l];
+                faac_real lx = *p_sl++;
+                faac_real rx = *p_sr++;
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;
@@ -267,10 +287,12 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         for (win = wstart; win < wend; win++)
         {
             int l;
+            const faac_real * restrict p_sl = sl_ptr;
+            const faac_real * restrict p_sr = sr_ptr;
             for (l = 0; l < len; l++)
             {
-                faac_real lx = sl_ptr[l];
-                faac_real rx = sr_ptr[l];
+                faac_real lx = *p_sl++;
+                faac_real rx = *p_sr++;
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;
@@ -362,10 +384,12 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         for (win = wstart; win < wend; win++)
         {
             int l;
+            const faac_real * restrict p_sl = sl_ptr;
+            const faac_real * restrict p_sr = sr_ptr;
             for (l = 0; l < len; l++)
             {
-                faac_real lx = sl_ptr[l];
-                faac_real rx = sr_ptr[l];
+                faac_real lx = *p_sl++;
+                faac_real rx = *p_sr++;
 
                 enrgl += lx * lx;
                 enrgr += rx * rx;

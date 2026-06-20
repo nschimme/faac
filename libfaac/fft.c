@@ -131,20 +131,21 @@ static void fft_proc(
 	   Twiddle factor W_N^0 is always (1, 0).
 	   Eliminate all multiplications and table lookups.
 	*/
+	faac_real * __restrict p_xr = xr;
+	faac_real * __restrict p_xi = xi;
 	for (pos = 0; pos < size; pos += 2)
 	{
-		faac_real v2r, v2i;
-		int x1 = pos;
-		int x2 = pos + 1;
+		faac_real v2r = p_xr[1];
+		faac_real v2i = p_xi[1];
+		faac_real v1r = p_xr[0];
+		faac_real v1i = p_xi[0];
 
-		v2r = xr[x2];
-		v2i = xi[x2];
-
-		xr[x2] = xr[x1] - v2r;
-		xr[x1] += v2r;
-
-		xi[x2] = xi[x1] - v2i;
-		xi[x1] += v2i;
+		p_xr[1] = v1r - v2r;
+		p_xr[0] = v1r + v2r;
+		p_xi[1] = v1i - v2i;
+		p_xi[0] = v1i + v2i;
+		p_xr += 2;
+		p_xi += 2;
 	}
 
 	/* Second stage: step = 2
@@ -155,32 +156,32 @@ static void fft_proc(
 	if (size >= 4) {
 		for (pos = 0; pos < size; pos += 4)
 		{
-			faac_real v2r, v2i;
-			int x1 = pos;
-			int x2 = pos + 2;
+			faac_real * __restrict pxr1 = xr + pos;
+			faac_real * __restrict pxi1 = xi + pos;
+			faac_real * __restrict pxr2 = xr + pos + 2;
+			faac_real * __restrict pxi2 = xi + pos + 2;
 
 			/* shift = 0: Rotation by 0 degrees */
-			v2r = xr[x2];
-			v2i = xi[x2];
+			faac_real v2r = *pxr2;
+			faac_real v2i = *pxi2;
+			faac_real v1r = *pxr1;
+			faac_real v1i = *pxi1;
 
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
+			*pxr2++ = v1r - v2r;
+			*pxr1++ = v1r + v2r;
+			*pxi2++ = v1i - v2i;
+			*pxi1++ = v1i + v2i;
 
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			/* shift = 1: Rotation by -90 degrees (W_4^1 = -j) */
+			v2r = *pxi2;
+			v2i = -*pxr2;
+			v1r = *pxr1;
+			v1i = *pxi1;
 
-			/* shift = 1: Rotation by -90 degrees */
-			x1++;
-			x2++;
-
-			v2r = xi[x2];
-			v2i = -xr[x2];
-
-			xr[x2] = xr[x1] - v2r;
-			xr[x1] += v2r;
-
-			xi[x2] = xi[x1] - v2i;
-			xi[x1] += v2i;
+			*pxr2 = v1r - v2r;
+			*pxr1 = v1r + v2r;
+			*pxi2 = v1i - v2i;
+			*pxi1 = v1i + v2i;
 		}
 	}
 
@@ -188,32 +189,34 @@ static void fft_proc(
 	estep = size >> 2;
 	for (step = 4; step < size; step *= 2)
 	{
-		int x1;
-		int x2 = 0;
 		estep >>= 1;
 		for (pos = 0; pos < size; pos += (2 * step))
 		{
-			x1 = x2;
-			x2 += step;
+			faac_real * __restrict pxr1 = xr + pos;
+			faac_real * __restrict pxi1 = xi + pos;
+			faac_real * __restrict pxr2 = xr + pos + step;
+			faac_real * __restrict pxi2 = xi + pos + step;
 			exp = 0;
 			for (shift = 0; shift < step; shift++)
 			{
-				faac_real v2r, v2i;
+				faac_real x2r = *pxr2;
+				faac_real x2i = *pxi2;
+				faac_real r_f = refac[exp];
+				faac_real i_f = imfac[exp];
 
-				v2r = xr[x2] * refac[exp] - xi[x2] * imfac[exp];
-				v2i = xr[x2] * imfac[exp] + xi[x2] * refac[exp];
+				faac_real v2r = x2r * r_f - x2i * i_f;
+				faac_real v2i = x2r * i_f + x2i * r_f;
 
-				xr[x2] = xr[x1] - v2r;
-				xr[x1] += v2r;
+				faac_real x1r = *pxr1;
+				faac_real x1i = *pxi1;
 
-				xi[x2] = xi[x1] - v2i;
+				*pxr2++ = x1r - v2r;
+				*pxr1++ = x1r + v2r;
 
-				xi[x1] += v2i;
+				*pxi2++ = x1i - v2i;
+				*pxi1++ = x1i + v2i;
 
 				exp += estep;
-
-				x1++;
-				x2++;
 			}
 		}
 	}
