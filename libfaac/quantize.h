@@ -31,6 +31,7 @@ typedef struct
     int max_cbs;
     int max_l;
     int pnslevel;
+    int heMode;     /* 1 when encoding the AAC-LC core of an HE-AAC stream */
 } AACQuantCfg;
 
 #ifdef FAAC_PRECISION_SINGLE
