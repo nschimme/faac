@@ -61,9 +61,12 @@ typedef struct SBRInfo {
     int noiseData[MAX_CHANNELS][SBR_MAX_NOISE_BANDS];
     int invfMode [MAX_CHANNELS];   /* bs_invf_mode; currently fixed at 3 (strongest) */
 
-    /* 64-band analysis via a 128-point complex FFT (twiddles for the pre-rotation). */
-    faac_real twidCos[128];
-    faac_real twidSin[128];
+    /* 64-band analysis via a single 64-point complex FFT: twidCos/Sin pre-rotate
+     * the even/odd-packed window output; oddCos/Sin recombine the two halves. */
+    faac_real twidCos[64];
+    faac_real twidSin[64];
+    faac_real oddCos[64];
+    faac_real oddSin[64];
     FFT_Tables fftTables;
 } SBRInfo;
 
