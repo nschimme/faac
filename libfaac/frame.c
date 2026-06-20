@@ -330,8 +330,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->sampleBuff[channel] = NULL;
     }
 
+    /* Initialize SIMD function pointers */
+    init_simd_functions(&hEncoder->simd, get_cpu_caps());
+
     /* Initialize coder functions */
-	fft_initialize( &hEncoder->fft_tables );
+	fft_initialize( &hEncoder->fft_tables, hEncoder->simd.fft_proc );
 
 	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate, hEncoder->srInfo->cb_width_long,
@@ -595,7 +598,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), &hEncoder->simd);
     }
 
     // fix max_sfb in CPE mode

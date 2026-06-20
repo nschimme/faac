@@ -30,7 +30,7 @@
 #define MAXLOGM 9
 #define MAXLOGR 8
 
-void fft_initialize( FFT_Tables *fft_tables )
+void fft_initialize( FFT_Tables *fft_tables, FFTProcFunc fft_proc )
 {
 	int i;
 	fft_tables->costbl		= AllocMemory( (MAXLOGM+1) * sizeof( fft_tables->costbl[0] ) );
@@ -43,6 +43,7 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
 	}
+	fft_tables->fft_proc = fft_proc;
 }
 
 void fft_terminate( FFT_Tables *fft_tables )
@@ -116,7 +117,7 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 	}
 }
 
-static void fft_proc(
+void fft_proc_scalar(
 		faac_real *xr,
 		faac_real *xi,
 		fftfloat *refac, 
@@ -260,7 +261,7 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 
 	reorder2( fft_tables, xr, xi, logm);
 
-	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
+	fft_tables->fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
 }
 
 void rfft( FFT_Tables *fft_tables, faac_real *x, int logm)

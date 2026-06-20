@@ -15,6 +15,13 @@ if config_h.get('HAVE_SSE2')
         gnu_symbol_visibility: 'hidden'
     )
     quantize_simd_libs += quantize_sse
+
+    fft_sse = static_library('fft_sse', 'fft_sse.c',
+        include_directories: ['..', '../include'],
+        c_args: c_args + sse2_flag,
+        gnu_symbol_visibility: 'hidden'
+    )
+    quantize_simd_libs += fft_sse
 endif
 
 common_src = [

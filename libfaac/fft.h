@@ -23,20 +23,38 @@
 #define _FFT_H_
 
 #include "faac_real.h"
+#include "cpu_compute.h"
 
-typedef faac_real fftfloat;
+typedef float fftfloat;
 
 typedef struct
 {
     fftfloat **costbl;
     fftfloat **negsintbl;
     unsigned short **reordertbl;
+    FFTProcFunc fft_proc;
 } FFT_Tables;
 
-void fft_initialize		( FFT_Tables *fft_tables );
+void fft_initialize		( FFT_Tables *fft_tables, FFTProcFunc fft_proc );
 void fft_terminate	( FFT_Tables *fft_tables );
 
 void rfft			( FFT_Tables *fft_tables, faac_real *x, int logm );
 void fft			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
+
+void fft_proc_scalar(
+		faac_real *xr,
+		faac_real *xi,
+		fftfloat *refac,
+		fftfloat *imfac,
+		int size);
+
+#if defined(HAVE_SSE2)
+void fft_proc_sse2(
+		faac_real *xr,
+		faac_real *xi,
+		fftfloat *refac,
+		fftfloat *imfac,
+		int size);
+#endif
 
 #endif

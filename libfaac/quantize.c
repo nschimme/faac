@@ -33,13 +33,7 @@
                      + __GNUC_PATCHLEVEL__)
 #endif
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-
-#if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
-#endif
-
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
     int cnt;
@@ -56,7 +50,6 @@ static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi
     }
 }
 
-static QuantizeFunc qfunc = quantize_scalar;
 static faac_real sfstep;
 static faac_real max_quant_limit;
 
@@ -65,14 +58,6 @@ static faac_real max_quant_limit;
 
 void QuantizeInit(void)
 {
-#if defined(HAVE_SSE2)
-    CPUCaps caps = get_cpu_caps();
-    if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
-    else
-#endif
-        qfunc = quantize_scalar;
-
     /* 2^0.25 (1.50515 dB) step from AAC specs */
     sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
 
@@ -321,10 +306,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          SimdFunctions *simd = (SimdFunctions *)coderInfo->simd;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              qfunc(xr, xi, end, sfacfix);
+              simd->quantize(xr, xi, end, sfacfix);
               xi += end;
           }
           huffbook(coderInfo, xitab, gsize * end);
@@ -337,7 +323,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, SimdFunctions *simd)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];
@@ -351,6 +337,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
+    coder->simd = simd;
 
     gxr = xr;
     for (cnt = 0; cnt < coder->groups.n; cnt++)

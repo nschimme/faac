@@ -29,6 +29,17 @@ typedef enum {
     CPU_CAP_SSE2 = (1 << 0)
 } CPUCaps;
 
+#include "faac_real.h"
+
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*FFTProcFunc)(faac_real *xr, faac_real *xi, float *refac, float *imfac, int size);
+
+typedef struct {
+    QuantizeFunc quantize;
+    FFTProcFunc fft_proc;
+} SimdFunctions;
+
 CPUCaps get_cpu_caps(void);
+void init_simd_functions(SimdFunctions *simd, CPUCaps caps);
 
 #endif

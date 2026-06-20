@@ -22,6 +22,8 @@
 #endif
 
 #include "cpu_compute.h"
+#include "quantize.h"
+#include "fft.h"
 
 #if defined(SSE2_ARCH)
 # ifdef _MSC_VER
@@ -63,4 +65,17 @@ CPUCaps get_cpu_caps(void)
 #endif
 
     return caps;
+}
+
+void init_simd_functions(SimdFunctions *simd, CPUCaps caps)
+{
+    simd->quantize = quantize_scalar;
+    simd->fft_proc = fft_proc_scalar;
+
+#if defined(HAVE_SSE2)
+    if (caps & CPU_CAP_SSE2) {
+        simd->quantize = quantize_sse2;
+        simd->fft_proc = fft_proc_sse2;
+    }
+#endif
 }

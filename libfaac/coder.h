@@ -106,6 +106,7 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+    void *simd;
 
     TnsInfo tnsInfo;
 } CoderInfo;

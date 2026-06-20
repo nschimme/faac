@@ -84,6 +84,9 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
+    /* SIMD function pointers */
+    SimdFunctions simd;
+
     /* FFT Tables */
     FFT_Tables	fft_tables;
 } faacEncStruct;
