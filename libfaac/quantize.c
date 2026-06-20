@@ -306,11 +306,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          SimdFunctions *simd = (SimdFunctions *)coderInfo->simd;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
-              simd->quantize(xr, xi, end, sfacfix);
+              coderInfo->simd->quantize(xr, xi, end, sfacfix);
               xi += end;
           }
           huffbook(coderInfo, xitab, gsize * end);
@@ -323,7 +322,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, SimdFunctions *simd)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, struct SimdFunctions *simd)
 {
     faac_real bandlvl[MAX_SCFAC_BANDS];
     faac_real bandenrg[MAX_SCFAC_BANDS];

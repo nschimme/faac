@@ -22,6 +22,7 @@
 #endif
 
 #include <immintrin.h>
+#include <assert.h>
 #include "faac_real.h"
 #include "fft.h"
 
@@ -33,7 +34,7 @@ void fft_proc_sse2(
     int size)
 {
     int step, shift, pos;
-    int exp, estep;
+    int estep;
 
     /* First stage: step = 1 */
     for (pos = 0; pos < size; pos += 2)
@@ -85,16 +86,24 @@ void fft_proc_sse2(
         }
     }
 
-    /* Standard Radix-2 loop from stage 3 (step = 4) */
+    /* Standard Radix-2 loop from stage 3 (step = 4)
+     * Twiddle tables (refac/imfac) store factors for each stage contiguously.
+     * The offset 'estep' points to the beginning of factors for the current stage.
+     */
     estep = 0;
     for (step = 4; step < size; step *= 2)
     {
+        /* In Radix-2, step is always a power of 2. For stage 3 onwards,
+         * step is at least 4, ensuring it is always a multiple of 4.
+         */
+        assert((step & 3) == 0);
+
         for (pos = 0; pos < size; pos += (2 * step))
         {
             int x1 = pos;
             int x2 = pos + step;
 
-            for (shift = 0; shift <= step - 4; shift += 4)
+            for (shift = 0; shift < step; shift += 4)
             {
                 __m128 xr1, xi1, xr2, xi2, wr, wi;
                 __m128 v2r, v2i, tr, ti;
@@ -110,7 +119,7 @@ void fft_proc_sse2(
                 xr2 = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&xr[x2])), _mm_cvtpd_ps(_mm_loadu_pd(&xr[x2+2])));
                 xi2 = _mm_movelh_ps(_mm_cvtpd_ps(_mm_loadu_pd(&xi[x2])), _mm_cvtpd_ps(_mm_loadu_pd(&xi[x2+2])));
 #endif
-                /* Load twiddle factors from contiguous tables */
+                /* Load twiddle factors from stage-contiguous tables */
                 wr = _mm_loadu_ps(&refac[estep + shift]);
                 wi = _mm_loadu_ps(&imfac[estep + shift]);
 
@@ -146,28 +155,6 @@ void fft_proc_sse2(
 #endif
                 x1 += 4;
                 x2 += 4;
-            }
-
-            /* Scalar remainder for shift */
-            exp = estep + shift;
-            for (; shift < step; shift++)
-            {
-                faac_real v2r, v2i;
-                faac_real wr_s = refac[exp];
-                faac_real wi_s = imfac[exp];
-
-                v2r = xr[x2] * wr_s - xi[x2] * wi_s;
-                v2i = xr[x2] * wi_s + xi[x2] * wr_s;
-
-                xr[x2] = xr[x1] - v2r;
-                xr[x1] += v2r;
-
-                xi[x2] = xi[x1] - v2i;
-                xi[x1] += v2i;
-
-                exp++;
-                x1++;
-                x2++;
             }
         }
         estep += step;

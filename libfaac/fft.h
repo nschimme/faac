@@ -25,6 +25,10 @@
 #include "faac_real.h"
 #include "cpu_compute.h"
 
+/* Twiddle factor precision is fixed to single-precision float.
+ * This ensures 4-wide SSE2 SIMD compatibility and maximizes throughput
+ * even when the encoder's core precision (faac_real) is set to double.
+ */
 typedef float fftfloat;
 
 typedef struct

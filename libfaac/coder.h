@@ -52,6 +52,8 @@ enum WINDOW_TYPE {
 #define LEN_TNS_NFILTL 2
 #define LEN_TNS_NFILTS 1
 
+struct SimdFunctions;
+
 typedef struct {
     int order;                           /* Filter order */
     int direction;                       /* Filtering direction */
@@ -106,7 +108,7 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
-    void *simd;
+    struct SimdFunctions *simd;
 
     TnsInfo tnsInfo;
 } CoderInfo;

@@ -23,7 +23,8 @@
 
 #include "coder.h"
 #include "faac_real.h"
-#include "cpu_compute.h"
+
+struct SimdFunctions;
 
 typedef struct
 {
@@ -50,7 +51,7 @@ enum {
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void BlocStat(void);
-int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg, SimdFunctions *simd);
+int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg, struct SimdFunctions *simd);
 void QuantizeInit(void);
 
 void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);

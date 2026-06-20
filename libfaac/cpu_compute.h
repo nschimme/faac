@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2026 Nils Schimmelmann
+ * Copyright (C) 2025 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,7 @@ typedef enum {
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 typedef void (*FFTProcFunc)(faac_real * __restrict xr, faac_real * __restrict xi, const float * __restrict refac, const float * __restrict imfac, int size);
 
-typedef struct {
+typedef struct SimdFunctions {
     QuantizeFunc quantize;
     FFTProcFunc fft_proc;
 } SimdFunctions;
