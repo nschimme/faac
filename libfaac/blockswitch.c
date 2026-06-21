@@ -34,8 +34,6 @@ typedef float psyfloat;
 
 typedef struct
 {
-  /* bandwidth */
-  int bandS;
   int lastband;
 
   /* band volumes */
@@ -62,15 +60,13 @@ static struct {
  * transient. */
 #define PSY_TD_THRESH ((faac_real)0.5)
 
-static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
+static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;
   int lastband = psydata->lastband;  /* time-domain energy lives at band 0 only */
   int sfb, win;
   psyfloat *lasteng;
-
-  (void)quality;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
@@ -214,9 +210,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 {
   unsigned int channel;
 
-  // limit switching threshold
-  if (quality < 0.4)
-      quality = 0.4;
+  (void)quality;  /* the detector's threshold is fixed; kept only for the interface */
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -230,8 +224,8 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
 	int leftChan = channel;
 	int rightChan = channelInfo[channel].paired_ch;
 
-	PsyCheckShort(&psyInfo[leftChan], quality);
-	PsyCheckShort(&psyInfo[rightChan], quality);
+	PsyCheckShort(&psyInfo[leftChan]);
+	PsyCheckShort(&psyInfo[rightChan]);
       }
       else if (channelInfo[channel].type == ELEMENT_LFE)
       {				/* LFE */
@@ -240,7 +234,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
       }
       else if (channelInfo[channel].type == ELEMENT_SCE)
       {				/* SCE */
-	PsyCheckShort(&psyInfo[channel], quality);
+	PsyCheckShort(&psyInfo[channel]);
       }
     }
   }
