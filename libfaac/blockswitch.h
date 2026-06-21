@@ -34,7 +34,6 @@ extern "C" {
 
 #include "coder.h"
 #include "channels.h"
-#include "fft.h"
 
 typedef struct {
 	int size;
@@ -71,9 +70,8 @@ void (*PsyCalculate) (ChannelInfo *channelInfo, GlobalPsyInfo *gpsyInfo,
 		PsyInfo *psyInfo, int *cb_width_long, int num_cb_long,
 		int *cb_width_short, int num_cb_short,
 		unsigned int numChannels, faac_real quality);
-void (*PsyBufferUpdate) ( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-		faac_real *newSamples, unsigned int bandwidth,
-		int *cb_width_short, int num_cb_short);
+void (*PsyBufferUpdate) (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+		faac_real *newSamples);
 void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 } psymodel_t;

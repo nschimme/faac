@@ -398,7 +398,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     unsigned int useLfe = hEncoder->config.useLfe;
     unsigned int useTns = hEncoder->config.useTns;
     unsigned int jointmode = hEncoder->config.jointmode;
-    unsigned int bandWidth = hEncoder->config.bandWidth;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
@@ -494,13 +493,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		if (channelInfo[channel].type != ELEMENT_LFE)
 		{
 			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->fft_tables,
 					&hEncoder->gpsyInfo,
 					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel],
-					bandWidth,
-					hEncoder->srInfo->cb_width_short,
-					hEncoder->srInfo->num_cb_short);
+					hEncoder->next3SampleBuff[channel]);
 		}
     }
 

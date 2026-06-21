@@ -20,14 +20,11 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <string.h>
 
 #include "blockswitch.h"
 #include "coder.h"
-#include "fft.h"
 #include "util.h"
-#include "filtbank.h"
 #include <faac.h>
 
 typedef float psyfloat;
@@ -240,16 +237,13 @@ static void PsyCalculate(ChannelInfo * channelInfo, GlobalPsyInfo * gpsyInfo,
   }
 }
 
-static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    faac_real *newSamples, unsigned int bandwidth,
-			    int *cb_width_short, int num_cb_short)
+static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
+			    faac_real *newSamples)
 {
   int win;
   faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
-
-  (void)fft_tables; (void)bandwidth; (void)cb_width_short; (void)num_cb_short;
 
   memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
   memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
