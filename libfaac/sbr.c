@@ -96,7 +96,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate)
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -137,19 +137,17 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate)
         sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
         sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
     }
-    fft_initialize(&sbr->fftTables);
-    /* Build the logm=6 FFT tables now so analysis calls never allocate. */
-    {
-        faac_real xr[64] = {0}, xi[64] = {0};
-        fft(&sbr->fftTables, xr, xi, 6);
-    }
+    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
+     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
+     * logm=6 table is built lazily on first use, single-threaded per encoder. */
+    sbr->fftTables = fft_tables;
     return sbr;
 }
 
 void SBREnd(SBRInfo *sbr)
 {
     if (!sbr) return;
-    fft_terminate(&sbr->fftTables);
+    /* fftTables is borrowed from the encoder; the core terminates it. */
     FreeMemory(sbr);
 }
 
@@ -192,7 +190,7 @@ static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * rest
         xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
     }
-    fft(&sbr->fftTables, xr, xi, 6);
+    fft(sbr->fftTables, xr, xi, 6);
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
