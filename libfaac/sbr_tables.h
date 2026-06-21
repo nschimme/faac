@@ -9,12 +9,12 @@
  *
  * Third-party attribution for data values reproduced in this file:
  *
- *   - sbr_qmf_window_us640[] (640-tap QMF prototype) — transcribed from
+ *   - qmf_c[640] (640-tap QMF prototype) — transcribed from
  *     FAAD2 libfaad/sbr_qmf_c.h qmf_c[].
  *     Copyright (c) 2003-2005 M. Bakker, Nero AG.
  *     Licensed under the GPLv2 or later.
  *
- *   - sbr_fs_offset[6][16] — identical to FAAD2's offset[6][16]
+ *   - sbr_offset[7][16] — identical to FAAD2's offset[7][16]
  *     (same source file and copyright as above).
  *
  *   - SBR Huffman tables — cross-checked against FAAD2 sbr_huff.c
@@ -78,7 +78,7 @@ static const faac_real h_sbr_qmf[64] = {
  * Used for the 64-band encoder-side analysis QMF.  Values from
  * FAAD2 libfaad/sbr_qmf_c.h qmf_c[].
  * ------------------------------------------------------------------ */
-static const faac_real sbr_qmf_window_us640[640] = {
+static const faac_real qmf_c[640] = {
     (faac_real)+0.0000000000e+00f, (faac_real)-5.5252865047e-04f, (faac_real)-5.6176925738e-04f, (faac_real)-4.9475180896e-04f,
     (faac_real)-4.8752279712e-04f, (faac_real)-4.8937912498e-04f, (faac_real)-5.0407143497e-04f, (faac_real)-5.2265642972e-04f,
     (faac_real)-5.4665656337e-04f, (faac_real)-5.6778025613e-04f, (faac_real)-5.8709304852e-04f, (faac_real)-6.1327473938e-04f,
@@ -244,7 +244,7 @@ static const faac_real sbr_qmf_window_us640[640] = {
 /* ------------------------------------------------------------------
  * SBR start-frequency offset table
  * ISO 14496-3:2009 Table 4.87  (bs_start_freq → k0 offset from start_min)
- * Identical to the FAAD2 offset[6][16] table.
+ * Identical to the FAAD2 offset[7][16] table (sbr_offset).
  *
  * Row selection by full SBR sample rate:
  *   row 0 : Fs_sbr  = 16000 Hz
@@ -254,13 +254,14 @@ static const faac_real sbr_qmf_window_us640[640] = {
  *   row 4 : 44100 ≤ Fs_sbr ≤ 64000 Hz
  *   row 5 : Fs_sbr  > 64000 Hz
  * ------------------------------------------------------------------ */
-static const signed char sbr_fs_offset[6][16] = {
+static const signed char sbr_offset[7][16] = {
     /* 16000   */ {-8,-7,-6,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7},
     /* 22050   */ {-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13},
     /* 24000   */ {-5,-3,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16},
     /* 32000   */ {-6,-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16},
     /* 44-64k  */ {-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20},
     /* >64k    */ {-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24},
+    /* Mode 0  */ { 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24,28,33},
 };
 
 /* ------------------------------------------------------------------
