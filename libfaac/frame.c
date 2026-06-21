@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 
 #include <stdio.h>
@@ -242,7 +241,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
               &hEncoder->aacquantCfg);
 
     // reset psymodel
-    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
+    hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
     if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
 		config->psymodelidx = (sizeof(psymodellist) / sizeof(psymodellist[0])) - 2;
 
@@ -350,7 +349,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     unsigned int channel;
 
     /* Deinitialize coder functions */
-    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
+    hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
 
     FilterBankEnd(hEncoder);
 

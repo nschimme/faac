@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,14 +25,16 @@
 #include "util.h"
 #include <faac.h>
 
+typedef float psyfloat;
+
 typedef struct
 {
   /* Per-sub-block high-pass energy, oldest to newest. The four-deep history
      is what PsyCheckShort's +-2 sub-block lookahead reaches across. */
-  faac_real engPrev[8];
-  faac_real eng[8];
-  faac_real engNext[8];
-  faac_real engNext2[8];
+  psyfloat engPrev[8];
+  psyfloat eng[8];
+  psyfloat engNext[8];
+  psyfloat engNext2[8];
 }
 psydata_t;
 
@@ -42,20 +43,20 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH ((faac_real)0.5)
+#define PSY_TD_THRESH ((psyfloat)0.5)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win, haveprev = 0;
-  faac_real lasteng = 0.0;
+  psyfloat lasteng = 0.0f;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
   {
-      faac_real eng;
+      psyfloat eng;
 
       if (win < PREVS)
           eng = psydata->engPrev[win + 8 - PREVS];
@@ -66,8 +67,8 @@ static void PsyCheckShort(PsyInfo * psyInfo)
 
       if (haveprev)
       {
-          faac_real toteng = (eng < lasteng) ? eng : lasteng;
-          faac_real volchg = FAAC_FABS(eng - lasteng);
+          psyfloat toteng = (eng < lasteng) ? eng : lasteng;
+          psyfloat volchg = (psyfloat)FAAC_FABS(eng - lasteng);
 
           /* Relying on IEEE divide: silence beside energy gives inf (fires
              short on the onset/offset), two silent sub-blocks give 0/0=NaN
@@ -113,9 +114,11 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psyInfo[channel].sizeS = size;
 }
 
-static void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
+static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
+
+  (void)gpsyInfo;
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -175,23 +178,23 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
   memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
 
+  // shift bufs
+  memcpy(psydata->engPrev, psydata->eng, 8 * sizeof(psyfloat));
+  memcpy(psydata->eng, psydata->engNext, 8 * sizeof(psyfloat));
+  memcpy(psydata->engNext, psydata->engNext2, 8 * sizeof(psyfloat));
+
   for (win = 0; win < 8; win++)
   {
     /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
      * difference carries across the sub-block boundary instead of resetting. */
     faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
-    faac_real e = 0.0;
+    psyfloat e = 0.0f;
     int l, n = 2 * psyInfo->sizeS;
-
-    // shift bufs
-    psydata->engPrev[win] = psydata->eng[win];
-    psydata->eng[win] = psydata->engNext[win];
-    psydata->engNext[win] = psydata->engNext2[win];
 
     for (l = 0; l < n; l++)
     {
       faac_real d = seg[l] - seg[l - 1];
-      e += d * d;
+      e += (psyfloat)(d * d);
     }
     psydata->engNext2[win] = e;
   }
