@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-#define RESAMPLE_FILTER_LEN 63  /* anti-alias FIR filter taps (Kaiser, β=6, fc=11.5kHz@48kHz) */
+#define RESAMPLE_FILTER_LEN 63  /* anti-alias FIR taps (equiripple half-band, -6dB at fs/4 = 12kHz@48kHz) */
 
 typedef struct Resampler {
     faac_real  buf[MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* per-channel history */
