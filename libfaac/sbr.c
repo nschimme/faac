@@ -106,11 +106,12 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate)
     sbr->sampleRate = sampleRate;
     unsigned long rate_per_ch = bitRate / channels;
     sbr->bs_amp_res = (rate_per_ch < 20000) ? 0 : 1;
-    if (rate_per_ch < 24000) {
-        sbr->bs_start_freq = 12;
-        sbr->bs_alter_scale = 1;
-        sbr->dk = 2;
-    } else if (rate_per_ch <= 32000) {
+    /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
+     * a ViSQOL sweep showed pushing it lower hurts at every bitrate (SBR's
+     * parametric 8-12 kHz reconstruction is perceptually worse than the real,
+     * if bit-starved, core there) -- including the low-rate range, where the old
+     * bs_start_freq=12 cost ~0.4 MOS vs 15. */
+    if (rate_per_ch <= 32000) {
         sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
