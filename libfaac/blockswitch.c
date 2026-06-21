@@ -43,32 +43,32 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH ((psyfloat)0.5)
+#define PSY_TD_THRESH ((faac_real)0.5)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win, haveprev = 0;
-  psyfloat lasteng = 0.0f;
+  faac_real lasteng = 0.0;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
   for (win = 0; win < PREVS + 8 + NEXTS; win++)
   {
-      psyfloat eng;
+      faac_real eng;
 
       if (win < PREVS)
-          eng = psydata->engPrev[win + 8 - PREVS];
+          eng = (faac_real)psydata->engPrev[win + 8 - PREVS];
       else if (win < (PREVS + 8))
-          eng = psydata->eng[win - PREVS];
+          eng = (faac_real)psydata->eng[win - PREVS];
       else
-          eng = psydata->engNext[win - PREVS - 8];
+          eng = (faac_real)psydata->engNext[win - PREVS - 8];
 
       if (haveprev)
       {
-          psyfloat toteng = (eng < lasteng) ? eng : lasteng;
-          psyfloat volchg = (psyfloat)FAAC_FABS(eng - lasteng);
+          faac_real toteng = (eng < lasteng) ? eng : lasteng;
+          faac_real volchg = FAAC_FABS(eng - lasteng);
 
           /* Relying on IEEE divide: silence beside energy gives inf (fires
              short on the onset/offset), two silent sub-blocks give 0/0=NaN
@@ -186,15 +186,15 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
      * difference carries across the sub-block boundary instead of resetting. */
     faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
-    psyfloat e = 0.0f;
+    faac_real e = 0.0;
     int l, n = 2 * psyInfo->sizeS;
 
     for (l = 0; l < n; l++)
     {
       faac_real d = seg[l] - seg[l - 1];
-      e += (psyfloat)(d * d);
+      e += d * d;
     }
-    psydata->engNext2[win] = e;
+    psydata->engNext2[win] = (psyfloat)e;
   }
 
   memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));

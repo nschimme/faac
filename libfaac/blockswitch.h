@@ -32,6 +32,7 @@ extern "C" {
 
 #include "coder.h"
 #include "channels.h"
+#include "fft.h"
 
 typedef struct {
 	int size;
@@ -48,8 +49,13 @@ typedef struct {
 typedef struct {
 	faac_real sampleRate;
 
+	/* Hann window */
+	faac_real *hannWindow;
+	faac_real *hannWindowS;
+
 	/* shared work buffers */
 	faac_real *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns) */
+	faac_real *sharedWorkBuffShort; /* Used for 256-sample windows (psy) */
 	faac_real *mdctXr;              /* MDCT pre-twiddle work buffer (xr) */
 	faac_real *mdctXi;              /* MDCT pre-twiddle work buffer (xi) */
 
