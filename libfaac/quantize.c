@@ -174,12 +174,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     bandenrg[sfb] = avge;
     /* Track peak magnitude to identify potential Huffman overflows. */
     bandmaxe[sfb] = FAAC_SQRT(maxe);
-    /* maxe is a single-window peak; avge/avgenrg are summed over the gsize
-     * grouped short windows. Scaling maxe by gsize puts the tonal term on the
-     * same scale. The HE core skips it: benchmarked higher MOS with the raw
-     * peak, and the heMode floor below already protects quiet bands. */
-    if (!heMode)
-        maxe *= gsize;
 
     avgenrg = (totenrg / last) * (end - start);
 
