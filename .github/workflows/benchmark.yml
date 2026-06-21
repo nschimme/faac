@@ -34,7 +34,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc ffmpeg
+          sudo apt-get install -y meson ninja-build bc faad
 
       - name: Checkout Candidate
         uses: actions/checkout@v4
