@@ -351,7 +351,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             hEncoder->resampler = ResampleOpen(hEncoder->numChannels);
         if (!hEncoder->sbrInfo)
             hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate,
-                                        hEncoder->config.bitRate * hEncoder->numChannels);
+                                        hEncoder->config.bitRate * hEncoder->numChannels,
+                                        &hEncoder->fft_tables);
         if (!HeAacBuffersAlloc(hEncoder))
             return 0;
         /* Core bandwidth tracks the SBR crossover kx (a QMF band of the
