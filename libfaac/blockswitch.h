@@ -60,8 +60,7 @@ typedef struct
 {
 void (*PsyInit) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate);
-void (*PsyEnd) (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
-		unsigned int numChannels);
+void (*PsyEnd) (PsyInfo *psyInfo, unsigned int numChannels);
 void (*PsyCalculate) (ChannelInfo *channelInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 void (*PsyBufferUpdate) (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,

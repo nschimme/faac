@@ -114,11 +114,9 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psyInfo[channel].sizeS = size;
 }
 
-static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels)
+static void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-
-  (void)gpsyInfo;
 
   for (channel = 0; channel < numChannels; channel++)
   {
