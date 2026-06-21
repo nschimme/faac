@@ -47,23 +47,6 @@ typedef struct
 psydata_t;
 
 
-static void Hann(GlobalPsyInfo * gpsyInfo, faac_real *inSamples, int size)
-{
-  int i;
-
-  /* Applying Hann window */
-  if (size == BLOCK_LEN_LONG * 2)
-  {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindow[i];
-  }
-  else
-  {
-    for (i = 0; i < size; i++)
-      inSamples[i] *= gpsyInfo->hannWindowS[i];
-  }
-}
-
 #define PRINTSTAT 0
 #if PRINTSTAT
 static struct {
@@ -72,14 +55,22 @@ static struct {
 } frames;
 #endif
 
+/* The high-pass first difference (d[n]=x[n]-x[n-1]) de-weights bass, whose
+ * broadband energy would otherwise mask HF attacks and false-trigger short
+ * blocks on stationary music; what's left tracks the band where pre-echo is
+ * audible. A relative energy jump between sub-blocks past this threshold is a
+ * transient. */
+#define PSY_TD_THRESH ((faac_real)0.5)
+
 static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = psyInfo->data;
-  int lastband = psydata->lastband;
-  int firstband = 2;
+  int lastband = psydata->lastband;  /* time-domain energy lives at band 0 only */
   int sfb, win;
   psyfloat *lasteng;
+
+  (void)quality;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
@@ -100,13 +91,13 @@ static void PsyCheckShort(PsyInfo * psyInfo, faac_real quality)
           faac_real toteng = 0.0;
           faac_real volchg = 0.0;
 
-          for (sfb = firstband; sfb < lastband; sfb++)
+          for (sfb = 0; sfb < lastband; sfb++)
           {
               toteng += (eng[sfb] < lasteng[sfb]) ? eng[sfb] : lasteng[sfb];
               volchg += FAAC_FABS(eng[sfb] - lasteng[sfb]);
           }
 
-          if ((volchg / toteng * quality) > 3.0)
+          if (volchg / toteng > PSY_TD_THRESH)
           {
               psyInfo->block_type = ONLY_SHORT_WINDOW;
               break;
@@ -127,19 +118,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 		    int *cb_width_short, int num_cb_short)
 {
   unsigned int channel;
-  int i, j, size;
+  int j, size;
 
-  gpsyInfo->hannWindow =
-    (faac_real *) AllocMemory(2 * BLOCK_LEN_LONG * sizeof(faac_real));
-  gpsyInfo->hannWindowS =
-    (faac_real *) AllocMemory(2 * BLOCK_LEN_SHORT * sizeof(faac_real));
-
-  for (i = 0; i < BLOCK_LEN_LONG * 2; i++)
-    gpsyInfo->hannWindow[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
-					     (BLOCK_LEN_LONG * 2)));
-  for (i = 0; i < BLOCK_LEN_SHORT * 2; i++)
-    gpsyInfo->hannWindowS[i] = 0.5 * (1 - FAAC_COS(2.0 * M_PI * (i + 0.5) /
-					      (BLOCK_LEN_SHORT * 2)));
   gpsyInfo->sampleRate = (faac_real) sampleRate;
 
   for (channel = 0; channel < numChannels; channel++)
@@ -188,10 +168,7 @@ static void PsyEnd(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int num
   unsigned int channel;
   int j;
 
-  if (gpsyInfo->hannWindow)
-    FreeMemory(gpsyInfo->hannWindow);
-  if (gpsyInfo->hannWindowS)
-    FreeMemory(gpsyInfo->hannWindowS);
+  (void)gpsyInfo;
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -275,26 +252,21 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
 {
   int win;
   faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;
-  faac_real *transBuffS = gpsyInfo->sharedWorkBuffShort;
   psydata_t *psydata = psyInfo->data;
   psyfloat *tmp;
-  int sfb;
 
-  psydata->bandS = psyInfo->sizeS * bandwidth * 2 / gpsyInfo->sampleRate;
+  (void)fft_tables; (void)bandwidth; (void)cb_width_short; (void)num_cb_short;
 
   memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
   memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
 
   for (win = 0; win < 8; win++)
   {
-    int first = 0;
-    int last = 0;
-
-    memcpy(transBuffS, transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2,
-	   2 * psyInfo->sizeS * sizeof(faac_real));
-
-    Hann(gpsyInfo, transBuffS, 2 * psyInfo->sizeS);
-    MDCT( fft_tables, transBuffS, 2 * psyInfo->sizeS, gpsyInfo->mdctXr, gpsyInfo->mdctXi);
+    /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
+     * difference carries across the sub-block boundary instead of resetting. */
+    faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
+    faac_real e = 0.0;
+    int l, n = 2 * psyInfo->sizeS;
 
     // shift bufs
     tmp = psydata->engPrev[win];
@@ -303,31 +275,13 @@ static void PsyBufferUpdate( FFT_Tables *fft_tables, GlobalPsyInfo * gpsyInfo, P
     psydata->engNext[win] = psydata->engNext2[win];
     psydata->engNext2[win] = tmp;
 
-    for (sfb = 0; sfb < num_cb_short; sfb++)
+    for (l = 0; l < n; l++)
     {
-      faac_real e;
-      int l;
-
-      first = last;
-      last = first + cb_width_short[sfb];
-
-      if (first < 1)
-          first = 1;
-
-      if (first >= psydata->bandS) // band out of range
-          break;
-
-      e = 0.0;
-      for (l = first; l < last; l++)
-          e += transBuffS[l] * transBuffS[l];
-
-      psydata->engNext2[win][sfb] = e;
+      faac_real d = seg[l] - seg[l - 1];
+      e += d * d;
     }
-    psydata->lastband = sfb;
-    for (; sfb < num_cb_short; sfb++)
-    {
-        psydata->engNext2[win][sfb] = 0;
-    }
+    psydata->engNext2[win][0] = e;
+    psydata->lastband = 1;
   }
 
   memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
