@@ -253,6 +253,8 @@ static const faac_real qmf_c[640] = {
  *   row 3 : Fs_sbr  = 32000 Hz
  *   row 4 : 44100 ≤ Fs_sbr ≤ 64000 Hz
  *   row 5 : Fs_sbr  > 64000 Hz
+ *   row 6 : Single-rate SBR (bs_samplerate_mode = 0); used when SBR and core
+ *           run at the same rate. FAAC only supports standard dual-rate HE-AAC.
  * ------------------------------------------------------------------ */
 static const signed char sbr_offset[7][16] = {
     /* 16000   */ {-8,-7,-6,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7},
@@ -261,7 +263,7 @@ static const signed char sbr_offset[7][16] = {
     /* 32000   */ {-6,-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16},
     /* 44-64k  */ {-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20},
     /* >64k    */ {-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24},
-    /* Mode 0  */ { 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24,28,33},
+        /* Mode 0  */ { 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24,28,33}, /* Single-rate SBR (bs_samplerate_mode=0); not used in FAAC dual-rate HE-AAC */
 };
 
 /* ------------------------------------------------------------------
