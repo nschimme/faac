@@ -255,8 +255,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
+            /* HE wins below ~28 kbit/s/ch; at/above it (e.g. 32 kbit/s/ch =
+             * 64 kbit/s stereo) SBR's top-octave reconstruction costs up to a
+             * full MOS on percussive material (measured via ViSQOL), so let the
+             * LC core take over. The Fs-scaled term keeps the core (Fs/2) from
+             * being starved at lower sample rates. */
             unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate * 3 / 4 - 4000);
-            rate_ok = (rate_per_ch >= 15000 && rate_per_ch <= max_he_rate);
+            if (max_he_rate > 28000) max_he_rate = 28000;
+            /* Floor at 12 kbit/s/ch: below the ceiling HE only widens its lead as
+             * the rate drops (LC bandwidth-starves first while SBR keeps the top
+             * octave), so HE stays the better choice all the way down. */
+            rate_ok = (rate_per_ch >= 12000 && rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= 60); /* VBR: HE-AAC for <= ~100 kbps */
         }
