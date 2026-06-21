@@ -67,10 +67,10 @@ typedef struct SBRInfo {
     faac_real twidSin[64];
     faac_real oddCos[64];
     faac_real oddSin[64];
-    FFT_Tables fftTables;
+    FFT_Tables *fftTables;   /* borrowed: the encoder's shared core FFT tables */
 } SBRInfo;
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate);
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, int fast_mode);
 #include "bitstream.h"
