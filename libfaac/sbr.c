@@ -36,7 +36,7 @@ static int compute_kx(int sampleRate, int bs_start_freq)
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
     int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
-    int kx = start_min + sbr_fs_offset[row][bs_start_freq & 15];
+    int kx = start_min + sbr_offset[row][bs_start_freq & 15];
     if (kx < 1) kx = 1;
     if (kx > 63) kx = 63;
     return kx;
@@ -173,7 +173,7 @@ static inline faac_real fast_log2(faac_real x)
 static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
-    const faac_real * restrict proto = sbr_qmf_window_us640;
+    const faac_real * restrict proto = qmf_c;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m, n1 = 2 * m + 1;
         faac_real a = proto[n0]       * ovl_pos[639 - n0]
