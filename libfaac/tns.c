@@ -135,6 +135,14 @@ void TnsInit(faacEncStruct* hEncoder)
     unsigned long t_gate_bps      = 64000UL;
     faac_real t_spectral_frac     = (faac_real)TNS_SPECTRAL_FRAC;
     faac_real t_calibration       = (faac_real)TNS_CALIBRATION;
+    /* Dynamic TNS calibration: increase threshold at lower bitrates where
+     * bitstream overhead is more critical. Scaling factor up to 1.25.
+     * Restricted to high sample rates (music) to preserve VoIP baseline. */
+    if (hEncoder->sampleRate >= 44100 && effectiveBitratePerCh < 64000) {
+        faac_real alpha = (64000.0 - (faac_real)effectiveBitratePerCh) / 48000.0;
+        t_calibration *= (1.0 + 0.25 * alpha);
+    }
+
     faac_real t_thresh_floor      = (faac_real)TNS_THRESH_FLOOR;
     faac_real t_thresh_cap        = (faac_real)TNS_THRESH_CAP;
     int       t_maxorder          = tnsMaxOrderLongLow;
@@ -156,6 +164,14 @@ void TnsInit(faacEncStruct* hEncoder)
     unsigned long t_gate_bps      = 64000UL;
     faac_real t_spectral_frac     = (faac_real)TNS_SPECTRAL_FRAC;
     faac_real t_calibration       = (faac_real)TNS_CALIBRATION;
+    /* Dynamic TNS calibration: increase threshold at lower bitrates where
+     * bitstream overhead is more critical. Scaling factor up to 1.25.
+     * Restricted to high sample rates (music) to preserve VoIP baseline. */
+    if (hEncoder->sampleRate >= 44100 && effectiveBitratePerCh < 64000) {
+        faac_real alpha = (64000.0 - (faac_real)effectiveBitratePerCh) / 48000.0;
+        t_calibration *= (1.0 + 0.25 * alpha);
+    }
+
     faac_real t_thresh_floor      = (faac_real)TNS_THRESH_FLOOR;
     faac_real t_thresh_cap        = (faac_real)TNS_THRESH_CAP;
     int       t_maxorder          = tnsMaxOrderLongLow;
