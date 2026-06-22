@@ -166,7 +166,8 @@ static int huffcode(int *qs /* quantized spectrum */,
 
 /* Lowest base codebook whose range-pair covers |maxq| (keeps the decoder in
  * range, cf. the escape/out-of-range guards). Returns the lower book of the
- * pair; HCB_ZERO for an empty band, HCB_ESC for the escape book. */
+ * pair; HCB_ZERO for an empty band, HCB_ESC for the escape book. Shared by
+ * huffbook() (per-band selection) and section_optimize() (merge re-costing). */
 static int book_for_maxq(int maxq)
 {
     if (maxq < 1) return HCB_ZERO;
@@ -178,13 +179,60 @@ static int book_for_maxq(int maxq)
     return HCB_ESC;
 }
 
-/* Select the cheapest codebook for one spectral band; symbols are NOT emitted
- * here (deferred to emit_spectral). Called by huffman_finalize() for every band
- * still marked HCB_NONE (qlevel() resolves zero/PNS/IS bands). */
+/* Bit cost of coding [qs,len) under BOTH books of a range-pair in one traversal.
+ * `base` is the lower book (HCB_1, HCB_3, HCB_5, HCB_7, HCB_9 — never ESC).
+ * The two books of a pair share the same fetch and polynomial space mapping;
+ * we fuse both lookups into a single pass to accelerate the greedy merge search.
+ * Results match two huffcode(..., 0) calls exactly. */
+/* huff_count_pair() per-tuple bodies: accumulate the length of each tuple under
+ * both books of the pair (la == base, lb == base+1). la/lb/c0/c1 are the
+ * enclosing locals; sign bits add equally to both books. */
+#define CP_S4(p) do { int _i = IDX_S4(p); c0 += la[_i]; c1 += lb[_i]; } while (0)
+#define CP_S2(p) do { int _i = IDX_S2(p); c0 += la[_i]; c1 += lb[_i]; } while (0)
+
+#define CP_MAG(p, n, idx_expr) \
+    do { \
+        if (!mag_nonzero_##n(p)) { c0 += la[0]; c1 += lb[0]; } \
+        else { \
+            int _i = (idx_expr), _s = 0; \
+            for (int _j = 0; _j < (n); _j++) if ((p)[_j]) _s++; \
+            c0 += la[_i] + _s; c1 += lb[_i] + _s; \
+        } \
+    } while (0)
+
+#define CP_M4(p)    CP_MAG(p, 4, IDX_M4(p))
+#define CP_M2_7(p)  CP_MAG(p, 2, IDX_M2(p, DIM_M2_7))
+#define CP_M2_12(p) CP_MAG(p, 2, IDX_M2(p, DIM_M2_12))
+
+static void huff_count_pair(const int *qs, int len, int base, int *pc0, int *pc1)
+{
+    const uint8_t *la = huff_len + huff_offset[base - 1];
+    const uint8_t *lb = huff_len + huff_offset[base];
+    int c0 = 0, c1 = 0;
+
+    switch (base)
+    {
+    case HCB_1:  FOR_TUPLES(4, CP_S4);    break;  /* HCB_1, HCB_2: signed 4-tuple */
+    case HCB_3:  FOR_TUPLES(4, CP_M4);    break;  /* HCB_3, HCB_4: magnitude 4-tuple */
+    case HCB_5:  FOR_TUPLES(2, CP_S2);    break;  /* HCB_5, HCB_6: signed 2-tuple */
+    case HCB_7:  FOR_TUPLES(2, CP_M2_7);  break;  /* HCB_7, HCB_8: magnitude 2-tuple */
+    default:     FOR_TUPLES(2, CP_M2_12); break;  /* HCB_9, HCB_10: magnitude 2-tuple */
+    }
+    *pc0 = c0;
+    *pc1 = c1;
+}
+
+/* Select the cheapest codebook for one spectral band and cache its bit cost in
+ * coder->blen[]; symbols are NOT emitted here (deferred to emit_spectral after
+ * greedy merge has finalised the books). Only the band's own tier range-pair
+ * is costed (cost_pair[]), which is all section_optimize needs to sum same-tier
+ * spans for free; cross-tier spans recost on demand. Called by huffman_finalize()
+ * for every band still marked HCB_NONE (qlevel() resolves zero/PNS/IS bands). */
 static void huffbook(CoderInfo *coder, int band)
 {
     int *qs = coder->qspec + coder->qoffset[band];
     int len = coder->qlen[band];
+    int *cp = coder->cost_pair[band];
     int maxq = 0, base, i;
 
     for (i = 0; i < len; i++)
@@ -194,16 +242,71 @@ static void huffbook(CoderInfo *coder, int band)
     }
 
     base = book_for_maxq(maxq);
-    if (base == HCB_ZERO || base == HCB_ESC)
+    if (base == HCB_ZERO)
     {
-        coder->book[band] = base;
+        coder->book[band] = HCB_ZERO;
+        coder->blen[band] = 0;
+        cp[0] = cp[1] = 0;
+    }
+    else if (base == HCB_ESC)
+    {
+        int c = huffcode(qs, len, HCB_ESC, 0);
+        coder->book[band] = HCB_ESC;
+        coder->blen[band] = c;
+        cp[0] = cp[1] = c;   /* ESC tier has no pair partner */
     }
     else
     {
         /* range-pair: keep whichever of {base, base+1} codes the band shorter */
-        int c0 = huffcode(qs, len, base, 0);
-        int c1 = huffcode(qs, len, base + 1, 0);
-        coder->book[band] = (c1 < c0) ? base + 1 : base;
+        int c0, c1;
+        huff_count_pair(qs, len, base, &c0, &c1);
+        cp[0] = c0;
+        cp[1] = c1;
+        if (c1 < c0)
+        {
+            coder->book[band] = base + 1;
+            coder->blen[band] = c1;
+        }
+        else
+        {
+            coder->book[band] = base;
+            coder->blen[band] = c0;
+        }
+    }
+}
+
+/* Range tier of a spectral book (higher tier covers larger |coef|); 0 for
+ * HCB_ZERO and non-spectral books. */
+static int book_tier(int book)
+{
+    switch (book)
+    {
+    case HCB_1:
+    case HCB_2:  return 1;
+    case HCB_3:
+    case HCB_4:  return 2;
+    case HCB_5:
+    case HCB_6:  return 3;
+    case HCB_7:
+    case HCB_8:  return 4;
+    case HCB_9:
+    case HCB_10: return 5;
+    case HCB_ESC:    return 6;
+    default:         return 0;
+    }
+}
+
+static int tier_base_book(int tier)
+{
+    switch (tier)
+    {
+    case 1: return HCB_1;
+    case 2: return HCB_3;
+    case 3: return HCB_5;
+    case 4: return HCB_7;
+    case 5: return HCB_9;
+    case 6: return HCB_ESC;
+    default: return HCB_ZERO;
     }
 }
 
@@ -212,6 +315,142 @@ static void huffbook(CoderInfo *coder, int band)
 static int is_spectral(int book)
 {
     return book >= 1 && book <= HCB_ESC;
+}
+
+/* Sentinel cost for a range-pair partner that doesn't exist (ESC tier). Far
+ * above any real span cost, so min() never picks it; never added to. */
+#define COST_INF (1 << 28)
+
+/* Greedy merge ("codebook hysteresis"): per group, absorb the next
+ * spectral band into the open section whenever recoding the span under a shared
+ * covering book costs fewer extra bits than the section header it saves. Lossless
+ * - only reassigns spectral books, never touching scalefactors or band class.
+ * Costed lazily: run0/run1 hold the span's cost under the covering tier's
+ * base/base+1; a same-tier band adds its cached cost_pair[] for free, a cross-tier
+ * one recosts only the contiguous qspec slice that changed. */
+static void section_optimize(CoderInfo *coder)
+{
+    int shortwin = (coder->block_type == ONLY_SHORT_WINDOW);
+    int maxcnt = shortwin ? 7 : 31;   /* section run length writebooks() can encode */
+    int header = 4 + (shortwin ? 3 : 5); /* bits saved by dropping one section header */
+    int g;
+
+    for (g = 0; g < coder->groups.n; g++)
+    {
+        int band = g * coder->sfbn;
+        int maxband = band + coder->sfbn;
+
+        while (band < maxband)
+        {
+            int sec_start, sec_tier, sec_spec;
+            int sec_ofs, sec_len;
+            int run0, run1;   /* span cost under covering base / base+1 */
+
+            if (!is_spectral(coder->book[band]))
+            {
+                band++;
+                continue;
+            }
+
+            sec_start = band;
+            sec_tier  = book_tier(coder->book[band]);
+            sec_ofs   = coder->qoffset[band];
+            sec_len   = coder->qlen[band];
+            sec_spec  = coder->blen[band];
+            run0 = coder->cost_pair[band][0];
+            run1 = (sec_tier < 6) ? coder->cost_pair[band][1] : COST_INF;
+            band++;
+
+            /* Greedy merge: absorb adjacent bands if header savings > bit increase.
+             * Cap at maxcnt so the saved-header model stays exact. */
+            while (band < maxband
+                   && is_spectral(coder->book[band])
+                   && (band - sec_start) < maxcnt)
+            {
+                int t = book_tier(coder->book[band]);
+                int cand_tier = (t > sec_tier) ? t : sec_tier;
+                int ofs = coder->qoffset[band], ln = coder->qlen[band];
+                int base, best_book, best_cost, k;
+                int n0, n1;
+
+                if (cand_tier == sec_tier)
+                {
+                    if (t == sec_tier)
+                    {
+                        /* band already costed under the covering pair: free */
+                        n0 = run0 + coder->cost_pair[band][0];
+                        n1 = (sec_tier < 6) ? run1 + coder->cost_pair[band][1]
+                                            : COST_INF;
+                    }
+                    else
+                    {
+                        /* lower-tier band under the higher covering book: recost it */
+                        int cbase = tier_base_book(sec_tier);
+                        if (sec_tier < 6)
+                        {
+                            int a0, a1;
+                            huff_count_pair(coder->qspec + ofs, ln, cbase, &a0, &a1);
+                            n0 = run0 + a0;
+                            n1 = run1 + a1;
+                        }
+                        else
+                        {
+                            n0 = run0 + huffcode(coder->qspec + ofs, ln, cbase, 0);
+                            n1 = COST_INF;
+                        }
+                    }
+                }
+                else
+                {
+                    /* covering tier rises to t: recost the existing span under the
+                     * new higher book; the raising band is already under its own
+                     * (== new covering) pair. */
+                    int nbase = tier_base_book(t);
+                    if (t < 6)
+                    {
+                        int s0, s1;
+                        huff_count_pair(coder->qspec + sec_ofs, sec_len, nbase, &s0, &s1);
+                        n0 = s0 + coder->cost_pair[band][0];
+                        n1 = s1 + coder->cost_pair[band][1];
+                    }
+                    else
+                    {
+                        n0 = huffcode(coder->qspec + sec_ofs, sec_len, nbase, 0)
+                             + coder->cost_pair[band][0];
+                        n1 = COST_INF;
+                    }
+                }
+
+                base = tier_base_book(cand_tier);
+                if (n1 < n0)
+                {
+                    best_cost = n1;
+                    best_book = base + 1;
+                }
+                else
+                {
+                    best_cost = n0;
+                    best_book = base;
+                }
+
+                if (best_cost - sec_spec - coder->blen[band] < header)
+                {
+                    for (k = sec_start; k <= band; k++)
+                        coder->book[k] = best_book;
+                    sec_tier = cand_tier;
+                    sec_len += ln;
+                    sec_spec = best_cost;
+                    run0 = n0;
+                    run1 = n1;
+                    band++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /* Emit Huffman symbols for all spectral bands in band order, filling coder->s[]
@@ -289,18 +528,20 @@ void huffman_finalize(CoderInfo *coder)
     int b;
 
     /* qlevel() leaves every spectral, non-empty band marked HCB_NONE; resolve
-     * each to its cheapest codebook before emitting. */
+     * each to its cheapest codebook before merging and emitting. */
     for (b = 0; b < coder->bandcnt; b++)
         if (coder->book[b] == HCB_NONE)
             huffbook(coder, b);
 
+    section_optimize(coder);
     emit_spectral(coder);
     finalize_sf_chain(coder);
 }
 
 /* Write (or size) the section layout: 4-bit book + run length per maximal run of
  * equal adjacent books. The count field is cntbits wide (5 long / 3 short), so a
- * run past maxcnt splits into repeated full sections. RLE-encodes books[]. */
+ * run past maxcnt splits into repeated full sections. greedy merge grows the
+ * runs; this just RLE-encodes the final books[]. */
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {
     int bits = 0;

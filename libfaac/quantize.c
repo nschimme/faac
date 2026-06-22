@@ -190,8 +190,9 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 enum {MAXSHORTBAND = 36};
 
 /* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
- * zero, or sfac underflow): it occupies no qspec range (qlen 0). Caller still
- * sets book[] and bumps bandcnt. */
+ * zero, or sfac underflow): it occupies no qspec range (qlen 0), so the merge
+ * treats it as a hard section boundary. Caller still sets book[] and bumps
+ * bandcnt; blen is a spectral cost the merge never reads for a non-spectral band. */
 static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
 {
     coderInfo->qoffset[coderInfo->bandcnt] = qofs;
@@ -400,8 +401,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* Select codebooks, emit symbols, and finalize global_gain + the scalefactor
-     * delta chains for writesf() — all on the retained quantized spectrum. */
+    /* Select codebooks, merge adjacent spectral sections, emit symbols, and
+     * finalize global_gain + the scalefactor delta chains for writesf() — all on
+     * the retained quantized spectrum (lossless: only spectral books change). */
     huffman_finalize(coder);
 
     return 1;

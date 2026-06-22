@@ -18,7 +18,8 @@
 /* Compact Huffman LUT: codeword lengths (huff_len) and codewords (huff_data) for
  * the HCB_1..HCB_ESC live in two flat arrays, sliced per book by huff_offset.
  * Lengths and codewords are split (not interleaved {len,code}) so the bit-count
- * path - run for every codebook trial - streams only the uint8 lengths. */
+ * path - run for every codebook trial and every section-merge re-cost - streams
+ * only the uint8 lengths. */
 #include <stdint.h>
 #include "huffdata.h"
 
