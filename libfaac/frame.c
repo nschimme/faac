@@ -100,38 +100,6 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     return (bw > nyquist) ? nyquist : bw;
 }
 
-/* HE-AAC scratch buffers: full-rate input for SBR analysis and the half-rate
- * core fed to the LC encoder. Allocated lazily, sized for one frame. */
-static void HeAacBuffersFree(faacEncStruct *hEncoder)
-{
-    int channel;
-    for (channel = 0; channel < MAX_CHANNELS; channel++) {
-        if (hEncoder->heFullRatePtr[channel]) {
-            FreeMemory(hEncoder->heFullRatePtr[channel]);
-            hEncoder->heFullRatePtr[channel] = NULL;
-        }
-        if (hEncoder->heHalfRatePtr[channel]) {
-            FreeMemory(hEncoder->heHalfRatePtr[channel]);
-            hEncoder->heHalfRatePtr[channel] = NULL;
-        }
-    }
-}
-
-static int HeAacBuffersAlloc(faacEncStruct *hEncoder)
-{
-    unsigned int i;
-    for (i = 0; i < hEncoder->numChannels; i++) {
-        if (!hEncoder->heFullRatePtr[i]) {
-            hEncoder->heFullRatePtr[i] = (faac_real *)AllocMemory(2 * FRAME_LEN * sizeof(faac_real));
-            if (!hEncoder->heFullRatePtr[i]) { HeAacBuffersFree(hEncoder); return 0; }
-        }
-        if (!hEncoder->heHalfRatePtr[i]) {
-            hEncoder->heHalfRatePtr[i] = (faac_real *)AllocMemory(FRAME_LEN * sizeof(faac_real));
-            if (!hEncoder->heHalfRatePtr[i]) { HeAacBuffersFree(hEncoder); return 0; }
-        }
-    }
-    return 1;
-}
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
@@ -348,15 +316,16 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate,
                                         hEncoder->config.bitRate * hEncoder->numChannels,
                                         &hEncoder->fft_tables);
-        if (!HeAacBuffersAlloc(hEncoder))
-            return 0;
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth =
             (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) /
                            (2 * SBR_QMF_BANDS_64));
     } else {
-        HeAacBuffersFree(hEncoder);
+        if (hEncoder->resampler) {
+            ResampleClose(hEncoder->resampler);
+            hEncoder->resampler = NULL;
+        }
     }
 
     /* Input FIFO: one frame of leftover capacity; allocated once, reset on
@@ -572,7 +541,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
         SBREnd(hEncoder->sbrInfo);
         hEncoder->sbrInfo = NULL;
     }
-    HeAacBuffersFree(hEncoder);
 
     /* Free handle */
     if (hEncoder)
@@ -598,8 +566,11 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer,
 
     if (full_spch <= 0 || full_spch > 2 * FRAME_LEN) return -1;
 
+    Resampler *rs = hEncoder->resampler;
+    faac_real *fullPtrs[MAX_CHANNELS];
     for (channel = 0; channel < numChannels; channel++) {
-        faac_real *fullRate = hEncoder->heFullRatePtr[channel];
+        faac_real *fullRate = rs->fullRate[channel];
+        fullPtrs[channel] = fullRate;
         switch (hEncoder->config.inputFormat) {
             case FAAC_INPUT_16BIT: {
                 short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
@@ -618,11 +589,11 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer,
             }
             default: break;
         }
-        heHalfRate[channel] = hEncoder->heHalfRatePtr[channel];
+        heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, hEncoder->heFullRatePtr, numChannels, full_spch, hEncoder->config.sbr_fast);
-    Resample2to1(hEncoder->resampler, hEncoder->heFullRatePtr, full_spch, hEncoder->heHalfRatePtr);
+    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, full_spch, hEncoder->config.sbr_fast);
+    Resample2to1(rs, full_spch);
     return 0;
 }
 

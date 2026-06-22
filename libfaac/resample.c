@@ -52,10 +52,7 @@ void ResampleClose(Resampler *r)
     FreeMemory(r);
 }
 
-int Resample2to1(Resampler *r,
-                 faac_real *input[MAX_CHANNELS],
-                 int input_len,
-                 faac_real *output[MAX_CHANNELS])
+int Resample2to1(Resampler *r, int input_len)
 {
     int output_len = input_len / 2;
     const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
@@ -64,8 +61,8 @@ int Resample2to1(Resampler *r,
     int ch, i, j;
 
     for (ch = 0; ch < r->channels; ch++) {
-        faac_real * __restrict in  = input[ch];
-        faac_real * __restrict out = output[ch];
+        faac_real * __restrict in  = r->fullRate[ch];
+        faac_real * __restrict out = r->halfRate[ch];
         faac_real * __restrict hist = r->buf[ch];
 
         /* Fixed-size buffers to avoid VLA (MSVC portability): history + one
