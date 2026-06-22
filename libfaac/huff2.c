@@ -483,6 +483,46 @@ static void emit_spectral(CoderInfo *coder)
     }
 }
 
+/* With books final, seed global_gain and reconstruct the intensity/PNS
+ * scalefactor delta chains so coder->sf[] holds exactly what writesf() will
+ * encode (the regular-band chain is pre-clamped in qlevel). global_gain is an
+ * 8-bit field that seeds the decoder's regular chain, so it must come from a
+ * regular band's sf, never an intensity/PNS band (different scale, can be
+ * negative) which would truncate on write and desync the chains. */
+static void finalize_sf_chain(CoderInfo *coder)
+{
+    int cnt, lastis = 0, lastpns;
+
+    coder->global_gain = 0;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if (!book)
+            continue;
+        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2) && (book != HCB_PNS))
+        {
+            coder->global_gain = coder->sf[cnt];
+            break;
+        }
+    }
+
+    lastpns = coder->global_gain - SF_PNS_OFFSET;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+        {
+            lastis += clamp_sf_diff(coder->sf[cnt] - lastis);
+            coder->sf[cnt] = lastis;
+        }
+        else if (book == HCB_PNS)
+        {
+            lastpns += clamp_sf_diff(coder->sf[cnt] - lastpns);
+            coder->sf[cnt] = lastpns;
+        }
+    }
+}
+
 void huffman_finalize(CoderInfo *coder)
 {
     int b;
@@ -495,6 +535,7 @@ void huffman_finalize(CoderInfo *coder)
 
     section_optimize(coder);
     emit_spectral(coder);
+    finalize_sf_chain(coder);
 }
 
 /* Write (or size) the section layout: 4-bit book + run length per maximal run of

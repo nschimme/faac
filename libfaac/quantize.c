@@ -384,10 +384,9 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     int cnt;
     faac_real *gxr;
 
-    coder->global_gain = 0;
-
+    /* global_gain and datacnt are owned by the Huffman stage (finalize_sf_chain /
+     * emit_spectral); quantize only produces book/sf/qspec. */
     coder->bandcnt = 0;
-    coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
     int qofs = 0;                 /* running write index into coder->qspec[] */
@@ -402,49 +401,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* Merge adjacent spectral sections and emit their symbols under the merged
-     * books, all on the retained quantized spectrum (lossless: only spectral
-     * books change). */
+    /* Select codebooks, merge adjacent spectral sections, emit symbols, and
+     * finalize global_gain + the scalefactor delta chains for writesf() — all on
+     * the retained quantized spectrum (lossless: only spectral books change). */
     huffman_finalize(coder);
 
-    /* global_gain seeds the decoder's regular scalefactor chain and is written
-     * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity
-     * and PNS bands store stereo-position / noise-energy on a different scale
-     * (PNS can be negative); seeding from one truncates on the 8-bit write and
-     * desyncs the encoder and decoder chains. */
-    coder->global_gain = 0;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if (!book)
-            continue;
-        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2) && (book != HCB_PNS))
-        {
-            coder->global_gain = coder->sf[cnt];
-            break;
-        }
-    }
-
-    int lastis  = 0;
-    int lastpns = coder->global_gain - SF_PNS_OFFSET;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-        {
-            int diff = coder->sf[cnt] - lastis;
-            diff = clamp_sf_diff(diff);
-            lastis += diff;
-            coder->sf[cnt] = lastis;
-        }
-        else if (book == HCB_PNS)
-        {
-            int diff = coder->sf[cnt] - lastpns;
-            diff = clamp_sf_diff(diff);
-            lastpns += diff;
-            coder->sf[cnt] = lastpns;
-        }
-    }
     return 1;
 }
 
