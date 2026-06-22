@@ -20,6 +20,7 @@
 #ifndef HUFF2_H
 #define HUFF2_H
 
+#include <stdint.h>
 #include "bitstream.h"
 
 /* Huffman Codebooks */

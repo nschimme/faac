@@ -360,6 +360,9 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel;
 
+    if (!hEncoder)
+        return -1;
+
     /* Deinitialize coder functions */
     hEncoder->psymodel->PsyEnd(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels);
 
@@ -381,8 +384,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     if (hEncoder->psyInfo) FreeMemory(hEncoder->psyInfo);
 
     /* Free handle */
-    if (hEncoder)
-		FreeMemory(hEncoder);
+    FreeMemory(hEncoder);
 
     BlocStat();
 

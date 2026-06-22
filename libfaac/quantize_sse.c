@@ -22,6 +22,7 @@
 #endif
 
 #include <immintrin.h>
+#include <stdint.h>
 #include "faac_real.h"
 #include "quantize.h"
 

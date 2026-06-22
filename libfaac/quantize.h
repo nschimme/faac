@@ -21,6 +21,7 @@
 #ifndef QUANTIZE_H
 #define QUANTIZE_H
 
+#include <stdint.h>
 #include "coder.h"
 #include "faac_real.h"
 

@@ -35,6 +35,7 @@ extern "C" {
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
 #define MAX_SHORT_WINDOWS 8
+#define MAX_TNS_WINDOWS 1
 #define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
 
 enum WINDOW_TYPE {
@@ -76,7 +77,10 @@ typedef struct {
     int tnsMaxBandsShort;
     int tnsMaxOrderLong;
     int tnsMaxOrderShort;
-    TnsWindowData windowData[1]; /* TNS data per window */
+    /* TNS is currently only implemented for long blocks (1 window).
+     * For short blocks, TNS is explicitly disabled in TnsEncode.
+     * Reducing this from MAX_SHORT_WINDOWS saves ~7.7KB per channel. */
+    TnsWindowData windowData[MAX_TNS_WINDOWS];
 } TnsInfo;
 
 typedef struct {
