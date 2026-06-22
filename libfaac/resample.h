@@ -15,7 +15,9 @@
 extern "C" {
 #endif
 
-#define RESAMPLE_FILTER_LEN 63  /* anti-alias FIR taps (equiripple half-band, -6dB at fs/4 = 12kHz@48kHz) */
+/* 63-tap equiripple half-band FIR, -6 dB at Fs/4. Minimum length for ≥60 dB alias
+ * rejection in [Fs/4..Fs/2]; SBR crossover at 7-9.5 kHz is well inside the passband. */
+#define RESAMPLE_FILTER_LEN 63
 
 typedef struct Resampler {
     faac_real  buf[MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* per-channel history */
