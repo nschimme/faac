@@ -222,26 +222,18 @@ static void huff_count_pair(const int *qs, int len, int base, int *pc0, int *pc1
     *pc1 = c1;
 }
 
-/* Select the cheapest codebook for one band and cache its spectral bit cost in
+/* Select the cheapest codebook for one spectral band and cache its bit cost in
  * coder->blen[]; symbols are NOT emitted here (deferred to emit_spectral after
  * greedy merge has finalised the books). Only the band's own tier range-pair
  * is costed (cost_pair[]), which is all section_optimize needs to sum same-tier
- * spans for free; cross-tier spans recost on demand. */
-int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
-             int len)
+ * spans for free; cross-tier spans recost on demand. Called by huffman_finalize()
+ * for every band still marked HCB_NONE (qlevel() resolves zero/PNS/IS bands). */
+static void huffbook(CoderInfo *coder, int band)
 {
-    int bandcnt = coder->bandcnt;
-    int *cp = coder->cost_pair[bandcnt];
+    int *qs = coder->qspec + coder->qoffset[band];
+    int len = coder->qlen[band];
+    int *cp = coder->cost_pair[band];
     int maxq = 0, base, i;
-
-    if (len == 0)
-    {
-        coder->book[bandcnt] = HCB_ZERO;
-        coder->blen[bandcnt] = 0;
-        cp[0] = cp[1] = 0;
-        return 0;
-    }
 
     for (i = 0; i < len; i++)
     {
@@ -252,15 +244,15 @@ int huffbook(CoderInfo *coder,
     base = book_for_maxq(maxq);
     if (base == HCB_ZERO)
     {
-        coder->book[bandcnt] = HCB_ZERO;
-        coder->blen[bandcnt] = 0;
+        coder->book[band] = HCB_ZERO;
+        coder->blen[band] = 0;
         cp[0] = cp[1] = 0;
     }
     else if (base == HCB_ESC)
     {
         int c = huffcode(qs, len, HCB_ESC, 0);
-        coder->book[bandcnt] = HCB_ESC;
-        coder->blen[bandcnt] = c;
+        coder->book[band] = HCB_ESC;
+        coder->blen[band] = c;
         cp[0] = cp[1] = c;   /* ESC tier has no pair partner */
     }
     else
@@ -272,17 +264,15 @@ int huffbook(CoderInfo *coder,
         cp[1] = c1;
         if (c1 < c0)
         {
-            coder->book[bandcnt] = base + 1;
-            coder->blen[bandcnt] = c1;
+            coder->book[band] = base + 1;
+            coder->blen[band] = c1;
         }
         else
         {
-            coder->book[bandcnt] = base;
-            coder->blen[bandcnt] = c0;
+            coder->book[band] = base;
+            coder->blen[band] = c0;
         }
     }
-
-    return 0;
 }
 
 /* Range tier of a spectral book (higher tier covers larger |coef|); 0 for
@@ -495,6 +485,14 @@ static void emit_spectral(CoderInfo *coder)
 
 void huffman_finalize(CoderInfo *coder)
 {
+    int b;
+
+    /* qlevel() leaves every spectral, non-empty band marked HCB_NONE; resolve
+     * each to its cheapest codebook before merging and emitting. */
+    for (b = 0; b < coder->bandcnt; b++)
+        if (coder->book[b] == HCB_NONE)
+            huffbook(coder, b);
+
     section_optimize(coder);
     emit_spectral(coder);
 }

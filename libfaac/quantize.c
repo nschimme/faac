@@ -332,6 +332,7 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
+          int len = gsize * end, k, nonzero = 0;
           xi = coderInfo->qspec + *p_qofs;
           for (win = 0; win < gsize; win++)
           {
@@ -339,11 +340,17 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
-          /* huffbook() sets book[] + blen[]; retain coeffs for section_optimize. */
+          /* Lay out the band; huffman_finalize() picks its codebook later (band
+           * left HCB_NONE). A band that quantized entirely to zero codes as
+           * HCB_ZERO and, like an underflow zero, must not advance the
+           * scalefactor delta chain below, so resolve that case here. */
           coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
-          coderInfo->qlen[coderInfo->bandcnt] = gsize * end;
-          huffbook(coderInfo, coderInfo->qspec + *p_qofs, gsize * end);
-          *p_qofs += gsize * end;
+          coderInfo->qlen[coderInfo->bandcnt] = len;
+          for (k = 0; k < len; k++)
+              if (coderInfo->qspec[*p_qofs + k]) { nonzero = 1; break; }
+          if (!nonzero)
+              coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
+          *p_qofs += len;
       }
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * PNS and IS bands are independent and don't seed the regular-band chain. */
