@@ -90,8 +90,10 @@ int huffbook(CoderInfo *coderInfo,
              int *qs /* quantized spectrum */,
              int len);
 
-void section_optimize(CoderInfo *coder);
-void emit_spectral(CoderInfo *coder);
+/* Finalize the Huffman stage on the retained quantized spectrum: greedily merge
+ * adjacent spectral sections, then emit the spectral symbols under the merged
+ * books. Selection (huffbook) has already cached each band's cost. */
+void huffman_finalize(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

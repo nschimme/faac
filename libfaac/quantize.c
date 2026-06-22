@@ -190,13 +190,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 enum {MAXSHORTBAND = 36};
 
 /* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
- * zero, or sfac underflow): it occupies no qspec range and so is a hard section
- * boundary for section_optimize(). Caller still sets book[] and bumps bandcnt. */
+ * zero, or sfac underflow): it occupies no qspec range (qlen 0), so the merge
+ * treats it as a hard section boundary. Caller still sets book[] and bumps
+ * bandcnt; blen is a spectral cost the merge never reads for a non-spectral band. */
 static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
 {
     coderInfo->qoffset[coderInfo->bandcnt] = qofs;
     coderInfo->qlen[coderInfo->bandcnt] = 0;
-    coderInfo->blen[coderInfo->bandcnt] = 0;
 }
 
 // use band quality levels to quantize a group of windows
@@ -380,11 +380,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* Greedily merge adjacent spectral sections to amortise section headers,
-     * then emit the spectral symbols under the finalised books. Both operate on
-     * the retained quantized spectrum; only spectral books change (lossless). */
-    section_optimize(coder);
-    emit_spectral(coder);
+    /* Merge adjacent spectral sections and emit their symbols under the merged
+     * books, all on the retained quantized spectrum (lossless: only spectral
+     * books change). */
+    huffman_finalize(coder);
 
     /* global_gain seeds the decoder's regular scalefactor chain and is written
      * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity

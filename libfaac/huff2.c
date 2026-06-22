@@ -338,7 +338,7 @@ static int is_spectral(int book)
  * Costed lazily: run0/run1 hold the span's cost under the covering tier's
  * base/base+1; a same-tier band adds its cached cost_pair[] for free, a cross-tier
  * one recosts only the contiguous qspec slice that changed. */
-void section_optimize(CoderInfo *coder)
+static void section_optimize(CoderInfo *coder)
 {
     int shortwin = (coder->block_type == ONLY_SHORT_WINDOW);
     int maxcnt = shortwin ? 7 : 31;   /* section run length writebooks() can encode */
@@ -466,7 +466,7 @@ void section_optimize(CoderInfo *coder)
 /* Emit Huffman symbols for all spectral bands in band order, filling coder->s[]
  * for WriteSpectralData(). Adjacent bands with the same book are combined into
  * a single huffcode call to maximize throughput. */
-void emit_spectral(CoderInfo *coder)
+static void emit_spectral(CoderInfo *coder)
 {
     int b;
 
@@ -491,6 +491,12 @@ void emit_spectral(CoderInfo *coder)
             b++;
         }
     }
+}
+
+void huffman_finalize(CoderInfo *coder)
+{
+    section_optimize(coder);
+    emit_spectral(coder);
 }
 
 /* Write (or size) the section layout: 4-bit book + run length per maximal run of
