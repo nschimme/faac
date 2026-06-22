@@ -88,9 +88,11 @@ static inline int clamp_sf_diff(int diff)
     return diff;
 }
 
-int huffbook(CoderInfo *coderInfo,
-             int *qs /* quantized spectrum */,
-             int len);
+/* Finalize the Huffman stage on the retained quantized spectrum: select a
+ * codebook for every spectral band, then emit the spectral symbols. quantize.c
+ * lays out the spectrum and resolves non-spectral bands (zero/PNS/intensity);
+ * this owns all codebook selection. */
+void huffman_finalize(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

@@ -15,13 +15,16 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 
 #include <math.h>
 
 #include "util.h"
-#include "coder.h"  // FRAME_LEN
+#include "coder.h"
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -79,4 +82,3 @@ int CountLeadingZeros(unsigned int x)
     return n;
 #endif
 }
-
