@@ -40,11 +40,39 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-/* L/R -> M/S transform: preserves both Mid and Side channels.
- * This maximizes stereo coherence by maintaining full phase information,
- * relying on the quantizer to naturally drop bits in silent channels. */
-static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
-                            int start, int len, int wstart, int wend)
+/* Gated Mono strategy: collapses to a single channel (Mid or Side).
+ * Provides significant bit-savings at the cost of spatial fidelity. */
+static inline void apply_ms_mono(faac_real * restrict sl0, faac_real * restrict sr0,
+                                 int start, int len, int wstart, int wend, int in_phase)
+{
+    faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
+    faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
+    int win;
+
+    for (win = wstart; win < wend; win++)
+    {
+        int l;
+        if (in_phase)
+            for (l = 0; l < len; l++)
+            {
+                sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
+                sr_out[l] = 0.0;
+            }
+        else
+            for (l = 0; l < len; l++)
+            {
+                sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
+                sl_out[l] = 0.0;
+            }
+        sl_out += BLOCK_LEN_SHORT;
+        sr_out += BLOCK_LEN_SHORT;
+    }
+}
+
+/* L/R -> M/S transform: preserves both channels to maintain stereo image.
+ * Relies on the quantizer to naturally drop silent Side channels. */
+static inline void apply_ms_true(faac_real * restrict sl0, faac_real * restrict sr0,
+                                 int start, int len, int wstart, int wend)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -203,7 +231,6 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             cr->sf[*sfcnt] = -pan;
             cr->book[*sfcnt] = hcb;
 
-            /* Intensity coding is signaled via the right channel codebook. */
             apply_is(sl0, sr0, start, len, wstart, wend,
                      hcb == HCB_INTENSITY, vfix, /*zero_sr=*/0);
         }
@@ -212,11 +239,12 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 /* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R.
- * True M/S transform preserves both channels for spatial image fidelity. */
+ * Hybrid strategy: prefers True M/S for coherence, but allows mono-collapse
+ * when phase is extremely dominant to save bits. Threshold is quality-adaptive. */
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
+                    faac_real thrmid, faac_real thrside, faac_real coll_thr
                    )
 {
     int sfb;
@@ -263,16 +291,17 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
         enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
 
-        /* M/S decision: Trigger True M/S transform when correlated. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
             ms = 1;
-            apply_ms(sl0, sr0, start, len, wstart, wend);
+            if (enrgs > (enrgd * coll_thr))
+                apply_ms_mono(sl0, sr0, start, len, wstart, wend, 1);
+            else if (enrgd > (enrgs * coll_thr))
+                apply_ms_mono(sl0, sr0, start, len, wstart, wend, 0);
+            else
+                apply_ms_true(sl0, sr0, start, len, wstart, wend);
         }
 
-        /* one channel far quieter than the other: zero it (the louder one
-         * masks the loss). Skip if just M/S-coded: sl/sr hold mid/side now,
-         * so zeroing one would silence the band on decode. */
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             if (enrgl < enrgr)
@@ -285,14 +314,12 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
     }
 }
 
-/* Per-band joint stereo: IS above is_start_sfb, M/S below, L/R fallback.
- * IS and M/S are mutually exclusive per scale factor band.
- * Returns 1 if any band was M/S coded (caller must then signal ms_used). */
+/* Per-band joint stereo: IS above is_start_sfb, M/S below, L/R fallback. */
 static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                  int wstart, int wend,
                  faac_real thrmid, faac_real thrside, faac_real isthr,
-                 int is_start_sfb
+                 int is_start_sfb, faac_real coll_thr
                 )
 {
     int sfb;
@@ -350,8 +377,6 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             continue;
         }
 
-        /* If either channel is zero its log10 ratio is -inf; FAAC_LRINT
-         * on -inf is undefined behaviour.  Skip IS for such bands. */
         if ((sfb >= is_start_sfb) && (enrgl > 0.0) && (enrgr > 0.0))
         {
             int hcb = HCB_NONE;
@@ -402,12 +427,17 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             }
         }
 
-        /* M/S decision: Trigger True M/S transform when correlated. */
+        /* M/S decision: Quality-adaptive hybrid transform. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
             ms = 1;
             msused = 1;
-            apply_ms(sl0, sr0, start, len, wstart, wend);
+            if (enrgs * 0.25 > (enrgd * 0.25 * coll_thr))
+                apply_ms_mono(sl0, sr0, start, len, wstart, wend, 1);
+            else if (enrgd * 0.25 > (enrgs * 0.25 * coll_thr))
+                apply_ms_mono(sl0, sr0, start, len, wstart, wend, 0);
+            else
+                apply_ms_true(sl0, sr0, start, len, wstart, wend);
         }
 
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
@@ -437,11 +467,23 @@ void AACstereo(CoderInfo *coder,
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
+    faac_real sidemin = 0.1; /* -20dB */
+    faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
+    faac_real coll_thr = 30.0;
+
+    /* Adaptive M/S collapse threshold:
+     * 64kbps  (q=1.0) -> Aggressive (~5.0) to save bits for MOS.
+     * 128kbps (q=4.0) -> Conservative (~35.0) to preserve image. */
+    const char *env_coll = getenv("FAAC_STEREO_MS_COLLAPSE_THR");
+    if (env_coll) coll_thr = atof(env_coll);
+    else {
+        coll_thr = 5.0 + 10.0 * (quality - 1.0);
+        if (coll_thr < 5.0) coll_thr = 5.0;
+        if (coll_thr > 50.0) coll_thr = 50.0;
+    }
 
     thrmid = 1.0;
     thrside = 0.0;
@@ -452,9 +494,8 @@ void AACstereo(CoderInfo *coder,
     switch (mode)
     {
     case JOINT_MIXED:
-        /* Use 1.0x (legacy 0.85x) multiplier for M/S in mixed mode to maximize
-         * use of True M/S transform for spatial preservation. */
-        thrmid = thr075 / quality;
+        /* 0.85x tighter M/S than pure JOINT_MS (IS carries the rest) */
+        thrmid = (thr075 * 0.85) / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
         thrside = sidemin / quality;
@@ -560,11 +601,13 @@ void AACstereo(CoderInfo *coder,
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
 
-            /* all thresholds loosen as quality drops; the 5.5kHz IS floor
-             * scales with quality to preserve more phase at higher bitrates.
-             * Sweeps show ~7.7kHz floor at q=1.0 (128kbps) balances MOS best. */
-            int is_freq = FAAC_LRINT(5500.0 + 4500.0 * (quality - 0.5));
-            if (is_freq < 5500) is_freq = 5500;
+            int is_freq;
+            const char *env_f = getenv("FAAC_STEREO_IS_FLOOR");
+            if (env_f) is_freq = atoi(env_f);
+            else {
+                is_freq = FAAC_LRINT(5500.0 + 4500.0 * (quality - 0.5));
+                if (is_freq < 5500) is_freq = 5500;
+            }
 
             int cap = (sampleRate * 7) / 20;
             if (is_freq > cap)
@@ -589,7 +632,7 @@ void AACstereo(CoderInfo *coder,
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
+                        start, end, thrmid, thrside, coll_thr);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
@@ -597,7 +640,7 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb);
+                                thrmid, thrside, isthr, is_start_sfb, coll_thr);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;
