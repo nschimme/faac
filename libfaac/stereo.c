@@ -40,8 +40,9 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-/* L/R -> M/S transform: preserves both channels to maintain stereo image.
- * Relies on the quantizer to naturally drop silent Side channels. */
+/* L/R -> M/S transform: preserves both Mid and Side channels.
+ * This maximizes stereo coherence by maintaining full phase information,
+ * relying on the quantizer to naturally drop bits in silent channels. */
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend)
 {
@@ -95,9 +96,7 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
 }
 
 
-/* Intensity Stereo: send one combined channel + per-band L/R level ratio;
- * the decoder re-pans it. Discards inter-channel phase, so it is gated by
- * phthr and skipped on low bands where phase still matters. */
+/* Intensity Stereo: send one combined channel + per-band L/R level ratio. */
 static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                    faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                    int wstart, int wend, faac_real phthr
@@ -137,8 +136,6 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         const faac_real * restrict sl_ptr = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real * restrict sr_ptr = sr0 + wstart * BLOCK_LEN_SHORT + start;
 
-        /* one pass: accumulate L/R energies and the L*R cross term, then
-         * derive sum/diff energies via |l+-r|^2 = l^2 + r^2 +- 2*l*r */
         enrgl = enrgr = enrglr = 0.0;
         for (win = wstart; win < wend; win++)
         {
@@ -157,25 +154,18 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
-        /* float cancellation for L~=+-R can round these below zero; clamp before FAAC_SQRT (NaN guard) */
         if (enrgs < 0.0) enrgs = 0.0;
         if (enrgd < 0.0) enrgd = 0.0;
 
-        /* IS pays off when one phase collapses most energy into a single
-         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
-        ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+        ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
         ethr *= ethr;
         ethr *= phthr;
         efix = enrgl + enrgr;
-        /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
-         * trigger spuriously, and vfix=sqrt(0/0) would be NaN. */
         if (efix <= 0.0)
         {
             (*sfcnt)++;
             continue;
         }
-        /* in-phase (l+r) vs out-of-phase (l-r); vfix renormalises the kept
-         * channel so its energy matches the original L+R total */
         if (enrgs >= ethr)
         {
             hcb = HCB_INTENSITY;
@@ -189,20 +179,14 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         if (hcb != HCB_NONE)
         {
-            /* If either channel is zero its log10 ratio is -inf; FAAC_LRINT
-             * on -inf is undefined behaviour.  Skip to L/R coding instead. */
             if (enrgl == 0.0 || enrgr == 0.0)
             {
                 (*sfcnt)++;
                 continue;
             }
-            /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
-             * the intensity position the decoder uses to re-spread the band */
             int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
             int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
 
-            /* pan beyond +-30 steps: the quieter channel is inaudible,
-             * so drop it entirely (HCB_ZERO) instead of IS-coding */
             if (pan > 30)
             {
                 cl->book[*sfcnt] = HCB_ZERO;
@@ -219,8 +203,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             cr->sf[*sfcnt] = -pan;
             cr->book[*sfcnt] = hcb;
 
-            /* JOINT_IS leaves the right channel intact; the intensity
-             * codebook marks the band, so its spectrum is not coded. */
+            /* Intensity coding is signaled via the right channel codebook. */
             apply_is(sl0, sr0, start, len, wstart, wend,
                      hcb == HCB_INTENSITY, vfix, /*zero_sr=*/0);
         }
@@ -229,8 +212,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 /* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R.
- * True M/S preserves both channels to improve stereo coherence;
- * bits are saved naturally by the quantizer on silent/masked channels. */
+ * True M/S transform preserves both channels for spatial image fidelity. */
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
@@ -281,9 +263,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
         enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
 
-        /* M/S decision: Trigger M/S coding when the L/R channels are correlated.
-         * True M/S preserves both channels; the quantizer will naturally zero
-         * out a silent Side channel (mono bit-savings) without forced collapse. */
+        /* M/S decision: Trigger True M/S transform when correlated. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
         {
             ms = 1;
@@ -360,13 +340,10 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
         }
         enrgs = enrgl + enrgr + 2.0 * enrglr;
         enrgd = enrgl + enrgr - 2.0 * enrglr;
-        /* float cancellation for L~=+-R can round these below zero; clamp before FAAC_SQRT (NaN guard) */
         if (enrgs < 0.0) enrgs = 0.0;
         if (enrgd < 0.0) enrgd = 0.0;
 
         efix = enrgl + enrgr;
-        /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
-         * trigger spuriously, and vfix=sqrt(0/0) would be NaN. */
         if (efix <= 0.0)
         {
             channel->msInfo.ms_used[(*sfcnt)++] = 0;
@@ -382,7 +359,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             faac_real ethr;
             faac_real vfix;
 
-            ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+            ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
             ethr *= ethr;
             ethr /= isthr;
 
@@ -419,16 +396,13 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
-                /* drop the right channel: the codebook + intensity position
-                 * carry the band, so its spectrum is not coded */
                 apply_is(sl0, sr0, start, len, wstart, wend,
                          hcb == HCB_INTENSITY, vfix, /*zero_sr=*/1);
                 continue;
             }
         }
 
-        /* M/S decision: Trigger M/S coding when the L/R channels are correlated.
-         * True M/S preserves both channels to improve stereo coherence. */
+        /* M/S decision: Trigger True M/S transform when correlated. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
             ms = 1;
@@ -463,8 +437,8 @@ void AACstereo(CoderInfo *coder,
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    faac_real sidemin = 0.1; /* -20dB */
-    faac_real sidemax = 0.3; /* ~-10.5dB */
+    static const faac_real sidemin = 0.1; /* -20dB */
+    static const faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
@@ -478,7 +452,7 @@ void AACstereo(CoderInfo *coder,
     switch (mode)
     {
     case JOINT_MIXED:
-        /* 1.0x (legacy 0.85x) multiplier for M/S in mixed mode to maximize
+        /* Use 1.0x (legacy 0.85x) multiplier for M/S in mixed mode to maximize
          * use of True M/S transform for spatial preservation. */
         thrmid = thr075 / quality;
         if (thrmid > thrmax)
@@ -588,7 +562,7 @@ void AACstereo(CoderInfo *coder,
 
             /* all thresholds loosen as quality drops; the 5.5kHz IS floor
              * scales with quality to preserve more phase at higher bitrates.
-             * Sweeps show ~7.7kHz at q=1.0 (128kbps) balances MOS best. */
+             * Sweeps show ~7.7kHz floor at q=1.0 (128kbps) balances MOS best. */
             int is_freq = FAAC_LRINT(5500.0 + 4500.0 * (quality - 0.5));
             if (is_freq < 5500) is_freq = 5500;
 
