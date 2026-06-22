@@ -10,6 +10,7 @@
 #define RESAMPLE_H
 
 #include "faac_real.h"
+#include "coder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,32 +21,19 @@ extern "C" {
 #define RESAMPLE_FILTER_LEN 63
 
 typedef struct Resampler {
-    faac_real  buf[MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* per-channel history */
+    faac_real  buf     [MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* FIR overlap state (carries between frames) */
+    faac_real  fullRate[MAX_CHANNELS][2 * FRAME_LEN];       /* full-rate input: caller fills, SBR reads, FIR consumes */
+    faac_real  halfRate[MAX_CHANNELS][FRAME_LEN];           /* downsampled output: written by Resample2to1 */
     int        channels;
 } Resampler;
 
-/**
- * ResampleOpen - allocate and zero-initialise a Resampler.
- */
 Resampler *ResampleOpen(int channels);
-
-/** ResampleClose - free a Resampler allocated by ResampleOpen. */
 void ResampleClose(Resampler *r);
 
-/**
- * Resample2to1 - downsample by 2 with anti-alias FIR.
- *
- * @r         : resampler state (updated in-place)
- * @input     : per-channel input arrays, each of length input_len
- * @input_len : number of full-rate samples per channel (= FRAME_LEN)
- * @output    : per-channel output arrays, each of length input_len/2
- *
- * Returns number of output samples produced per channel (= input_len/2).
- */
-int Resample2to1(Resampler *r,
-                 faac_real *input[MAX_CHANNELS],
-                 int input_len,
-                 faac_real *output[MAX_CHANNELS]);
+/* Resample2to1 - 2:1 downsample from r->fullRate into r->halfRate.
+ * input_len: full-rate samples per channel (≤ 2*FRAME_LEN).
+ * Returns output samples produced per channel (= input_len/2). */
+int Resample2to1(Resampler *r, int input_len);
 
 #ifdef __cplusplus
 }
