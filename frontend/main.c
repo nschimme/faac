@@ -185,7 +185,6 @@ static help_t help_mp4[] = {
 };
 
 static help_t help_advanced[] = {
-    {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
     {"--joint 0\tDisable joint stereo coding.\n"},
     {"--joint 1\tUse Mid/Side coding.\n"},
@@ -431,7 +430,7 @@ int main(int argc, char *argv[])
     const unsigned int objectType = LOW;
     int jointmode = -1;
     int pnslevel = -1;
-    static int useTns = 0;
+    static int useTns = 1;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
     int cutOff = -1;
@@ -1011,8 +1010,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
     fprintf(stderr, "Object type: Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
-    if (myFormat->useTns)
-        fprintf(stderr, " + TNS");
 
     switch(myFormat->jointmode) {
     case JOINT_MS:
