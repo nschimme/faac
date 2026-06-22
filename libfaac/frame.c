@@ -292,10 +292,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
-#if 0
-    if (config->bitRate < MinBitrate())
-        return 0;
-#endif
 
     if (config->bitRate && !config->bandWidth)
     {

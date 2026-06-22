@@ -214,10 +214,6 @@ static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * rest
     }
 }
 
-static void qmf_analysis_64_slot_energy(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
-{
-    qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, energy, kx, k2);
-}
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, int fast_mode)
 {
@@ -237,9 +233,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
         memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-        /* Temporal decimation: analyse 1-in-(dec_mask+1) slots.
-         * fast_mode 0=every slot, 1=1-in-4 (saves ~75% FFT work), 2=1-in-8. */
-        int dec_mask = (fast_mode >= 2) ? 7 : (fast_mode >= 1) ? 3 : 1;
+        /* Temporal decimation: !(slot & dec_mask) selects which slots run the QMF FFT.
+         * fast_mode 0=every slot (16), 1=1-in-4 (saves ~75% FFT work), 2=1-in-8. */
+        int dec_mask = (fast_mode >= 2) ? 7 : (fast_mode >= 1) ? 3 : 0;
         for (int slot = 0; slot < num_slots; slot++) {
             faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
             const faac_real * restrict p_in = timeDomain[ch] + slot * SBR_QMF_BANDS_64;
@@ -253,7 +249,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             ssum += stot;
 
             if (!(slot & dec_mask)) {
-                qmf_analysis_64_slot_energy(sbr, ovl_pos, slotEnergy, kx, k2);
+                qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, slotEnergy, kx, k2);
                 sampled++;
                 int h = clamp_int(slot / half_slots, 0, 1);
                 for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
