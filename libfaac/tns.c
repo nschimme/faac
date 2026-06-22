@@ -156,7 +156,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     /* Perform analysis and filtering for each window */
     for (w=0;w<numberOfWindows;w++) {
 
-        TnsWindowData* windowData = &tnsInfo->windowData[w];
+        TnsWindowData* windowData = &tnsInfo->windowData[0];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
         faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
         faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
@@ -233,7 +233,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
     /* Perform filtering for each window */
     for(w=0;w<numberOfWindows;w++)
     {
-        TnsWindowData* windowData = &tnsInfo->windowData[w];
+        TnsWindowData* windowData = &tnsInfo->windowData[0];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
 
         startIndex = w * windowSize + sfbOffsetTable[startBand];

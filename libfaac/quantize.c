@@ -33,13 +33,13 @@
                      + __GNUC_PATCHLEVEL__)
 #endif
 
-typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int16_t * __restrict xi, int n, faac_real sfacfix);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
+extern void quantize_sse2(const faac_real * __restrict xr, int16_t * __restrict xi, int n, faac_real sfacfix);
 #endif
 
-static void quantize_scalar(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+static void quantize_scalar(const faac_real * __restrict xr, int16_t * __restrict xi, int n, faac_real sfacfix)
 {
     const faac_real magic = MAGIC_NUMBER;
     int cnt;
@@ -213,8 +213,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[FRAME_LEN];
-      int *xi;
+      int16_t xitab[FRAME_LEN];
+      int16_t *xi;
       int start, end;
       const faac_real *xr;
       int win;

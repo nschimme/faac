@@ -64,7 +64,7 @@ static inline int clamp_sf_diff(int diff)
 }
 
 int huffbook(CoderInfo *coderInfo,
-             int *qs /* quantized spectrum */,
+             int16_t *qs /* quantized spectrum */,
              int len);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);

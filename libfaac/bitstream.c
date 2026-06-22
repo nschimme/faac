@@ -562,7 +562,7 @@ static int WriteTNSData(CoderInfo *coderInfo,
     /* Write TNS data */
     bits += (numWindows * len_tns_nfilt);
     for (w=0;w<numWindows;w++) {
-        TnsWindowData* windowDataPtr = &tnsInfoPtr->windowData[w];
+        TnsWindowData* windowDataPtr = &tnsInfoPtr->windowData[0];
         int numFilters = windowDataPtr->numFilters;
         if (writeFlag) {
             PutBit(bitStream,numFilters,len_tns_nfilt); /* n_filt[] = 0 */

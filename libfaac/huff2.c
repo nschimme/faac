@@ -56,7 +56,7 @@ static int escape(int x, int *code)
 
 #define arrlen(array) (sizeof(array) / sizeof(*array))
 
-static int huffcode(int *qs /* quantized spectrum */,
+static int huffcode(int16_t *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)
@@ -66,7 +66,8 @@ static int huffcode(int *qs /* quantized spectrum */,
     hcode16_t *book;
     int cnt;
     int bits = 0, blen;
-    int ofs, *qp;
+    int ofs;
+    int16_t *qp;
     int data = 0;
     int idx;
     int datacnt;
@@ -309,7 +310,7 @@ static int huffcode(int *qs /* quantized spectrum */,
 
 
 int huffbook(CoderInfo *coder,
-             int *qs /* quantized spectrum */,
+             int16_t *qs /* quantized spectrum */,
              int len)
 {
     int cnt;

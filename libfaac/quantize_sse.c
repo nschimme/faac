@@ -25,7 +25,7 @@
 #include "faac_real.h"
 #include "quantize.h"
 
-void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix)
+void quantize_sse2(const faac_real * __restrict xr, int16_t * __restrict xi, int n, faac_real sfacfix)
 {
     const __m128 zero = _mm_setzero_ps();
     const __m128 sfac = _mm_set1_ps(sfacfix);
@@ -63,7 +63,9 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         __m128i m_int = _mm_castps_si128(sign_mask);
         xi_vec = _mm_sub_epi32(_mm_xor_si128(xi_vec, m_int), m_int);
 
-        _mm_storeu_si128((__m128i*)&xi[cnt], xi_vec);
+        // Pack 32-bit integers to 16-bit signed integers with saturation
+        __m128i packed = _mm_packs_epi32(xi_vec, _mm_setzero_si128());
+        _mm_storel_epi64((__m128i*)&xi[cnt], packed);
     }
 
     // Safe scalar remainder loop for widths not multiple of 4

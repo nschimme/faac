@@ -69,11 +69,11 @@ typedef struct {
     faac_real *overlapBuff[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
-    CoderInfo coderInfo[MAX_CHANNELS];
-    ChannelInfo channelInfo[MAX_CHANNELS];
+    CoderInfo *coderInfo;
+    ChannelInfo *channelInfo;
 
     /* Psychoacoustics data */
-    PsyInfo psyInfo[MAX_CHANNELS];
+    PsyInfo *psyInfo;
     GlobalPsyInfo gpsyInfo;
 
     /* Configuration data */
