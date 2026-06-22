@@ -13,7 +13,6 @@
 #include "sbr_tables.h"
 #include "bitstream.h"
 #include "util.h"
-#include "coder.h"
 
 static int clamp_int(int x, int lo, int hi)
 {
@@ -31,6 +30,8 @@ static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int off
     return table[sym].len;
 }
 
+/* kx and k2 implement ISO 14496-3:2009 §4.6.18.3.2 (Master Frequency Band Table).
+ * temp (Table 4.84) and max_span (Table 4.85) are mandatory spec constants; do not tune. */
 static int compute_kx(int sampleRate, int bs_start_freq)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -70,11 +71,14 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     }
     if (k2 > 64) k2 = 64;
     if (k2 <= kx) k2 = kx + 1;
+    /* ISO 14496-3:2009 Table 4.85: max SBR span (48 bands ≤32 kHz, 35 ≤44.1 kHz, 32 above). */
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
     if (k2 - kx > max_span) k2 = kx + max_span;
     return k2;
 }
 
+/* ISO 14496-3:2009 §4.6.18.3.2 master_frequency_table_fs():
+ * uniform dk-spaced edges kx..k2, remainder distributed to first/last pair. */
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
@@ -105,13 +109,13 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
     unsigned long rate_per_ch = bitRate / channels;
-    sbr->bs_amp_res = (rate_per_ch < 20000) ? 0 : 1;
+    sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
      * a ViSQOL sweep showed pushing it lower hurts at every bitrate (SBR's
      * parametric 8-12 kHz reconstruction is perceptually worse than the real,
      * if bit-starved, core there) -- including the low-rate range, where the old
      * bs_start_freq=12 cost ~0.4 MOS vs 15. */
-    if (rate_per_ch <= 32000) {
+    if (rate_per_ch <= SBR_COARSE_TABLE_BITRATE_BPS) {
         sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 1;
         sbr->dk = 2;
@@ -125,13 +129,13 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
-    sbr->transientThresh = (faac_real)16.0;
+    sbr->transientThresh = SBR_TRANSIENT_THRESH_DEFAULT;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
     build_freq_table(sbr);
     /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
-    for (int m = 0; m < 64; m++) {
+    for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
         sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
         sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
         sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
@@ -151,13 +155,18 @@ void SBREnd(SBRInfo *sbr)
     FreeMemory(sbr);
 }
 
+/* Schlick '94 linear mantissa approx: log2(1+m) ≈ m*(A - B*m); max error ~0.086 bits.
+ * Adequate: SBR envelope quantiser step is 1.5-3 dB (0.5-1 bit). */
+#define FAST_LOG2_A         1.3424f
+#define FAST_LOG2_B         0.3427f
+#define FAST_LOG2_MANT_NORM (1.0f / (1 << 23))  /* 23-bit mantissa → [0, 1) */
 static inline faac_real fast_log2(faac_real x)
 {
     union { float f; int32_t i; } vx;
     vx.f = (float)x;
     int32_t exp = (vx.i >> 23) & 0xFF;
-    float m = (float)(vx.i & 0x7FFFFF) * (1.0f / 8388608.0f);
-    return (faac_real)(exp - 127) + (faac_real)(m * (1.3424f - 0.3427f * m));
+    float m = (float)(vx.i & 0x7FFFFF) * FAST_LOG2_MANT_NORM;
+    return (faac_real)(exp - 127) + (faac_real)(m * (FAST_LOG2_A - FAST_LOG2_B * m));
 }
 
 /* 64-band analysis slot energy via a single 64-point complex FFT.
@@ -169,7 +178,8 @@ static inline faac_real fast_log2(faac_real x)
  * odd-DFTs of a,b. Pack c[m]=a[m]+j*b[m], pre-twiddle, and run ONE 64-point
  * FFT; A_k and B_k fall out of D_k and D_{63-k} via the conjugate symmetry of
  * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
- * matches it to machine precision. */
+ * matches it to machine precision. Energy (magnitude squared) is sufficient:
+ * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
 static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
@@ -224,9 +234,11 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     for (int ch = 0; ch < nch; ch++) {
         faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
         sampled = 0;
-        memcpy(workspace, sbr->qmfOvl64[ch], SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
         memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
+        /* Temporal decimation: analyse 1-in-(dec_mask+1) slots.
+         * fast_mode 0=every slot, 1=1-in-4 (saves ~75% FFT work), 2=1-in-8. */
         int dec_mask = (fast_mode >= 2) ? 7 : (fast_mode >= 1) ? 3 : 1;
         for (int slot = 0; slot < num_slots; slot++) {
             faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
@@ -247,9 +259,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
             }
         }
-        faac_real ratio = smax * (faac_real)sampled / (ssum + (faac_real)1e-15);
+        /* Peak-to-mean slot power ratio: >transientThresh (~12 dB) → 2-envelope frame. */
+        faac_real ratio = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
         if (ratio > tratio) tratio = ratio;
-        memcpy(sbr->qmfOvl64[ch], workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        memcpy(sbr->ch[ch].qmfOvl64, workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
     sbr->numEnvelopes = (tratio > sbr->transientThresh) ? 2 : 1;
@@ -257,11 +270,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     int n_env = sbr->numEnvelopes;
 
     for (int ch = 0; ch < nch; ch++) {
-        /* Noise floor and inverse-filtering mode are fixed placeholders: the
-         * decoder gets a zero noise floor and strongest inverse filtering.
-         * Adapting them from per-band tonality is a known TODO. */
-        int noise_level = 0;
-        sbr->invfMode[ch] = 3;
+        int noise_level = 0; /* min injection: non-zero noise is destructive if miscalibrated (TODO) */
+        sbr->ch[ch].invfMode = 3; /* HIVAR: strongest pre-whitening; conservative until tonality adapts (TODO) */
+        /* Huffman delta range: ISO Table 4.100 extents (3dB res: ±31, 1.5dB res: ±60). */
         int dlav = sbr->eff_amp_res ? 31 : 60;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
@@ -278,15 +289,15 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(e_slots * (k_hi - k_lo));
                 faac_real factor = sbr->eff_amp_res ? (faac_real)1.0 : (faac_real)2.0;
-                int level = FAAC_LRINT(factor * (fast_log2(E + (faac_real)1e-20) - (faac_real)6.0));
+                int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
                     raw_level = clamp_int(raw_level, 0, sbr->eff_amp_res ? 63 : 127);
-                    sbr->envData[ch][e][b] = raw_level;
+                    sbr->ch[ch].envData[e][b] = raw_level;
                     prevLevel = raw_level;
                 } else {
                     int delta = clamp_int(raw_level - prevLevel, -dlav, dlav);
-                    sbr->envData[ch][e][b] = delta;
+                    sbr->ch[ch].envData[e][b] = delta;
                     prevLevel += delta;
                 }
             }
@@ -294,11 +305,11 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         int prevNoise = -1;
         for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
             if (prevNoise < 0) {
-                sbr->noiseData[ch][nb] = noise_level;
+                sbr->ch[ch].noiseData[nb] = noise_level;
                 prevNoise = noise_level;
             } else {
                 int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                sbr->noiseData[ch][nb] = delta; prevNoise += delta;
+                sbr->ch[ch].noiseData[nb] = delta; prevNoise += delta;
             }
         }
     }
@@ -306,19 +317,21 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
+    /* ISO 14496-3:2009 §4.6.18.5 sbr_header() */
     if (wf) {
-        PutBit(bs, sbr->bs_amp_res, 1);
-        PutBit(bs, sbr->bs_start_freq, 4);
-        PutBit(bs, sbr->bs_stop_freq, 4);
-        PutBit(bs, sbr->bs_xover_band, 3);
-        PutBit(bs, 0, 2);
-        PutBit(bs, 1, 1);
-        PutBit(bs, 0, 1);
-        PutBit(bs, 0, 2);
-        PutBit(bs, sbr->bs_alter_scale, 1);
-        PutBit(bs, 0, 2);
+        PutBit(bs, sbr->bs_amp_res,     1); /* bs_amp_res: 0=1.5dB, 1=3dB */
+        PutBit(bs, sbr->bs_start_freq,  4); /* bs_start_freq: crossover index */
+        PutBit(bs, sbr->bs_stop_freq,   4); /* bs_stop_freq: high-band ceil */
+        PutBit(bs, sbr->bs_xover_band,  3); /* bs_xover_band: low-res split (0=none) */
+        PutBit(bs, 0,                   2); /* bs_reserved */
+        PutBit(bs, 1,                   1); /* bs_header_extra_1 = 1 (alter_scale present) */
+        PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 (limiter fields absent) */
+        /* bs_header_extra_1 fields: */
+        PutBit(bs, 0,                   2); /* bs_freq_scale = 0 (linear master table) */
+        PutBit(bs, sbr->bs_alter_scale, 1); /* bs_alter_scale: 1=coarser at low bitrate */
+        PutBit(bs, 0,                   2); /* bs_noise_bands = 0 (→ 1 noise band) */
     }
-    return 21;
+    return 1+4+4+3+2+1+1+2+1+2; /* = 21; keep in sync with PutBit sequence */
 }
 
 static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf)
@@ -341,7 +354,7 @@ static int write_sbr_dtdf(SBRInfo *sbr, BitStream *bs, int wf)
 static int write_sbr_invf(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 {
     for (int nb = 0; nb < sbr->numNoiseBands; nb++)
-        if (wf) PutBit(bs, sbr->invfMode[ch], 2);
+        if (wf) PutBit(bs, sbr->ch[ch].invfMode, 2);
     return 2 * sbr->numNoiseBands;
 }
 
@@ -354,7 +367,7 @@ static int write_sbr_envelope(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 
     for (int e = 0; e < sbr->numEnvelopes; e++) {
         for (int b = 0; b < sbr->numBands; b++) {
-            int val = sbr->envData[ch][e][b];
+            int val = sbr->ch[ch].envData[e][b];
             if (b == 0) {
                 int first_bits = sbr->eff_amp_res ? 6 : 7;
                 if (wf) PutBit(bs, clamp_int(val, 0, (1 << first_bits) - 1), first_bits);
@@ -373,7 +386,7 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
     int n_q = sbr->numEnvelopes > 1 ? 2 : 1;
     for (int ne = 0; ne < n_q; ne++) {
         for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            int val = sbr->noiseData[ch][nb];
+            int val = sbr->ch[ch].noiseData[nb];
             if (nb == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 30), 5); bits += 5; }
             else bits += put_huff(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, val, wf);
         }
