@@ -14,6 +14,15 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
@@ -86,12 +95,12 @@ static inline int clamp_sf_diff(int diff)
     return diff;
 }
 
-/* Finalize the Huffman stage on the retained quantized spectrum: select a
- * codebook for every spectral band, greedily merge adjacent sections, then emit
- * the spectral symbols under the merged books. quantize.c lays out the spectrum
- * and resolves non-spectral bands (zero/PNS/intensity); this owns all codebook
- * selection. */
-void huffman_finalize(CoderInfo *coder);
+int huffbook(CoderInfo *coderInfo,
+             int *qs /* quantized spectrum */,
+             int len);
+
+void section_optimize(CoderInfo *coder);
+void emit_spectral(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

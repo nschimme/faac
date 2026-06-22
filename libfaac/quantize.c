@@ -15,6 +15,18 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
@@ -28,9 +40,7 @@
 #include "cpu_compute.h"
 
 #ifdef __GNUC__
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
+#define GCC_VERSION (__GNUC__ * 10000                      + __GNUC_MINOR__ * 100                      + __GNUC_PATCHLEVEL__)
 #endif
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
@@ -164,7 +174,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
     faac_real avge = bandenrg[sfb];
-    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb];
+    /* Restore peak scaling: peak energy must be consistent with avge scale. */
+    faac_real maxe = (bandmaxe[sfb] * bandmaxe[sfb]) * gsize;
     faac_real target;
 
     start = cb_offset[sfb];
@@ -190,13 +201,16 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 enum {MAXSHORTBAND = 36};
 
 /* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
- * zero, or sfac underflow): it occupies no qspec range (qlen 0), so the merge
- * treats it as a hard section boundary. Caller still sets book[] and bumps
- * bandcnt; blen is a spectral cost the merge never reads for a non-spectral band. */
+ * zero, or sfac underflow): it occupies no qspec range and so is a hard section
+ * boundary for section_optimize(). Caller still sets book[] and bumps bandcnt. */
 static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
 {
-    coderInfo->qoffset[coderInfo->bandcnt] = qofs;
-    coderInfo->qlen[coderInfo->bandcnt] = 0;
+    int bandcnt = coderInfo->bandcnt;
+    coderInfo->qoffset[bandcnt] = qofs;
+    coderInfo->qlen[bandcnt] = 0;
+    coderInfo->blen[bandcnt] = 0;
+    coderInfo->maxq[bandcnt] = 0;
+    for (int k = 1; k <= 11; k++) coderInfo->band_costs[bandcnt][k] = 0;
 }
 
 // use band quality levels to quantize a group of windows
@@ -332,7 +346,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
       else
       {
-          int len = gsize * end, k, nonzero = 0;
           xi = coderInfo->qspec + *p_qofs;
           for (win = 0; win < gsize; win++)
           {
@@ -340,17 +353,11 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
-          /* Lay out the band; huffman_finalize() picks its codebook later (band
-           * left HCB_NONE). A band that quantized entirely to zero codes as
-           * HCB_ZERO and, like an underflow zero, must not advance the
-           * scalefactor delta chain below, so resolve that case here. */
+          /* huffbook() sets book[] + blen[]; retain coeffs for section_optimize. */
           coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
-          coderInfo->qlen[coderInfo->bandcnt] = len;
-          for (k = 0; k < len; k++)
-              if (coderInfo->qspec[*p_qofs + k]) { nonzero = 1; break; }
-          if (!nonzero)
-              coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
-          *p_qofs += len;
+          coderInfo->qlen[coderInfo->bandcnt] = gsize * end;
+          huffbook(coderInfo, coderInfo->qspec + *p_qofs, gsize * end);
+          *p_qofs += gsize * end;
       }
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * PNS and IS bands are independent and don't seed the regular-band chain. */
@@ -358,21 +365,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       if (book != HCB_ZERO && book != HCB_PNS && book != HCB_INTENSITY && book != HCB_INTENSITY2)
           *p_last_abs = sf_abs;
       coderInfo->sf[coderInfo->bandcnt++] += sf_rel;
-    }
-}
-
-/* Per-frame reset of a channel's section state before stereo/quantization:
- * every band starts with no codebook (HCB_NONE) and zero scalefactor. AACstereo()
- * then pre-loads intensity bands, qlevel() resolves the rest, and a band still
- * HCB_NONE marks spectral data for huffman_finalize() to assign a book. */
-void ResetCoderSections(CoderInfo *coder)
-{
-    int band, nband = coder->groups.n * coder->sfbn;
-
-    for (band = 0; band < nband; band++)
-    {
-        coder->book[band] = HCB_NONE;
-        coder->sf[band] = 0;
     }
 }
 
@@ -384,9 +376,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     int cnt;
     faac_real *gxr;
 
-    /* global_gain and datacnt are owned by the Huffman stage (finalize_sf_chain /
-     * emit_spectral); quantize only produces book/sf/qspec. */
+    coder->global_gain = 0;
+
     coder->bandcnt = 0;
+    coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
     int qofs = 0;                 /* running write index into coder->qspec[] */
@@ -401,11 +394,50 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* Select codebooks, merge adjacent spectral sections, emit symbols, and
-     * finalize global_gain + the scalefactor delta chains for writesf() — all on
-     * the retained quantized spectrum (lossless: only spectral books change). */
-    huffman_finalize(coder);
+    /* Greedily merge adjacent spectral sections to amortise section headers,
+     * then emit the spectral symbols under the finalised books. Both operate on
+     * the retained quantized spectrum; only spectral books change (lossless). */
+    section_optimize(coder);
+    emit_spectral(coder);
 
+    /* global_gain seeds the decoder's regular scalefactor chain and is written
+     * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity
+     * and PNS bands store stereo-position / noise-energy on a different scale
+     * (PNS can be negative); seeding from one truncates on the 8-bit write and
+     * desyncs the encoder and decoder chains. */
+    coder->global_gain = 0;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if (!book)
+            continue;
+        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2) && (book != HCB_PNS))
+        {
+            coder->global_gain = coder->sf[cnt];
+            break;
+        }
+    }
+
+    int lastis  = 0;
+    int lastpns = coder->global_gain - SF_PNS_OFFSET;
+    for (cnt = 0; cnt < coder->bandcnt; cnt++)
+    {
+        int book = coder->book[cnt];
+        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
+        {
+            int diff = coder->sf[cnt] - lastis;
+            diff = clamp_sf_diff(diff);
+            lastis += diff;
+            coder->sf[cnt] = lastis;
+        }
+        else if (book == HCB_PNS)
+        {
+            int diff = coder->sf[cnt] - lastpns;
+            diff = clamp_sf_diff(diff);
+            lastpns += diff;
+            coder->sf[cnt] = lastpns;
+        }
+    }
     return 1;
 }
 

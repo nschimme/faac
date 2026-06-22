@@ -100,10 +100,12 @@ typedef struct {
     int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
     int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
     int blen[MAX_SCFAC_BANDS];    /* cached spectral bit cost of chosen book */
-    /* Cost of coding this band under its own tier's range-pair: [0]=base book,
-     * [1]=base+1 (==[0] for the ESC tier, which has no pair partner). Lets the
-     * merge sum same-tier spans for free; cross-tier spans recost on demand. */
-    int cost_pair[MAX_SCFAC_BANDS][2];
+    int maxq[MAX_SCFAC_BANDS];    /* cached peak magnitude per band */
+
+    /* Pre-calculated bit costs for all 11 spectral books (index 1..11).
+     * Populated by huffbook() calling the fused huff_count_all_books kernel.
+     * Allows section_optimize to sum span costs in O(1) during the merge. */
+    int band_costs[MAX_SCFAC_BANDS][12];
 
     struct {
         int n;
