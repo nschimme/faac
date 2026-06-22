@@ -23,11 +23,17 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "util.h"
 
+/* Escape suffix for HCB_ESC: a magnitude |q| >= LAV_ESC is sent as the pair
+ * index LAV_ESC (emitted by the caller) plus this suffix - a unary prefix of
+ * `preflen` ones and a zero, then the low `preflen+4` bits of x.
+ * preflen counts how far x is past the 16-window, so the suffix is 2*preflen+5
+ * bits. Uses CountLeadingZeros for O(1) bit-length calculation. */
 static int escape(int x, int *code)
 {
-    int preflen = 0;
-    int base = 32;
+    int preflen;
+    int base;
 
     if (x > MAX_HUFF_ESC_VAL)
     {
@@ -35,265 +41,158 @@ static int escape(int x, int *code)
         return 0;
     }
 
-    *code = 0;
-    while (base <= x)
-    {
-        base <<= 1;
-        *code <<= 1;
-        *code |= 1;
-        preflen++;
-    }
-    base >>= 1;
+    preflen = 31 - CountLeadingZeros(x) - 4;
+    base = 1 << (preflen + 4);
 
-    // separator
-    *code <<= 1;
-
+    *code = (1 << (preflen + 1)) - 2; /* preflen 1s and a 0 */
     *code <<= (preflen + 4);
     *code |= (x - base);
 
     return (preflen << 1) + 5;
 }
 
-#define arrlen(array) (sizeof(array) / sizeof(*array))
+/* Tuple fetch: safely reads up to N coefficients from [qs+ofs, len), zero-padding
+ * if the band end is reached. Prevents out-of-bounds reads for misaligned SFBs. */
+#define FETCH4(q, qs, ofs, len) \
+    int q[4] = {0}; \
+    if ((len) - (ofs) >= 4) { \
+        q[0] = (qs)[(ofs)]; q[1] = (qs)[(ofs)+1]; q[2] = (qs)[(ofs)+2]; q[3] = (qs)[(ofs)+3]; \
+    } else { \
+        for (int j = 0; j < (len) - (ofs); j++) q[j] = (qs)[(ofs) + j]; \
+    }
 
+#define FETCH2(q, qs, ofs, len) \
+    int q[2] = {0}; \
+    if ((len) - (ofs) >= 2) { \
+        q[0] = (qs)[(ofs)]; q[1] = (qs)[(ofs)+1]; \
+    } else if ((len) - (ofs) == 1) { \
+        q[0] = (qs)[(ofs)]; \
+    }
+
+/* Tuple indexing: maps signed or magnitude tuples into the polynomial space
+ * of the Huffman LUTs. Signed books fold sign into the index (biased by 40)
+ * to eliminate explicit sign bits for low-energy coefficients. */
+#define IDX_S4(q) (DIM_S4*DIM_S4*DIM_S4*(q)[0] + DIM_S4*DIM_S4*(q)[1] + DIM_S4*(q)[2] + (q)[3] + 40)
+#define IDX_S2(q) (DIM_S2*(q)[0] + (q)[1] + 40)
+#define IDX_M4(q) (DIM_M4*DIM_M4*DIM_M4*abs((q)[0]) + DIM_M4*DIM_M4*abs((q)[1]) + DIM_M4*abs((q)[2]) + abs((q)[3]))
+#define IDX_M2(q, b) ((b)*abs((q)[0]) + abs((q)[1]))
+
+/* Magnitude sign accounting: appends sign bits to the bit count (always) and the
+ * codeword (if coder != NULL) for magnitude-mapped codebooks. */
+#define ADD_SIGNS(bits, data, q, n, coder) \
+    for (int j = 0; j < (n); j++) { \
+        if ((q)[j]) { \
+            (bits)++; \
+            if (coder) { (data) <<= 1; if ((q)[j] < 0) (data) |= 1; } \
+        } \
+    }
+
+/* Traversal helpers: encapsulate the loop boilerplate for spectral processing. */
+#define SIGNED_STEP(n, fetch_macro, idx_macro) \
+    fetch_macro(q, qs, ofs, len); \
+    idx = idx_macro; \
+    blen = blens[idx]; \
+    if (coder) { \
+        coder->s[datacnt].data = bdata[idx]; \
+        coder->s[datacnt++].len = blen; \
+    } \
+    bits += blen;
+
+#define MAGNITUDE_STEP4(fetch_macro, idx_macro) \
+    fetch_macro(q, qs, ofs, len); \
+    if (!(q[0]|q[1]|q[2]|q[3])) { \
+        blen = blens[0]; \
+        if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; } \
+    } else { \
+        idx = idx_macro; blen = blens[idx]; \
+        if (coder) data = bdata[idx]; \
+        ADD_SIGNS(blen, data, q, 4, coder); \
+        if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } \
+    } \
+    bits += blen;
+
+#define MAGNITUDE_STEP2(fetch_macro, idx_macro) \
+    fetch_macro(q, qs, ofs, len); \
+    if (!(q[0]|q[1])) { \
+        blen = blens[0]; \
+        if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; } \
+    } else { \
+        idx = idx_macro; blen = blens[idx]; \
+        if (coder) data = bdata[idx]; \
+        ADD_SIGNS(blen, data, q, 2, coder); \
+        if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } \
+    } \
+    bits += blen;
+
+/* Code `len` coeffs under book `bnum`, returning bit count. coder == NULL only
+ * sizes (the hot cost path); else also emits codewords to coder->s[]. len/code
+ * tables are split (huff_len/huff_data, sliced by huff_offset) so the cost path
+ * streams uint8 lengths only to minimize cache pressure. */
 static int huffcode(int *qs /* quantized spectrum */,
                     int len,
                     int bnum,
                     CoderInfo *coder)
 {
-    static hcode16_t * const hmap[12] = {0, book01, book02, book03, book04,
-      book05, book06, book07, book08, book09, book10, book11};
-    hcode16_t *book;
-    int cnt;
-    int bits = 0, blen;
-    int ofs, *qp;
+    const uint8_t *blens = huff_len + huff_offset[bnum - 1];
+    const uint16_t *bdata = huff_data + huff_offset[bnum - 1];
+    int bits = 0, blen, ofs, idx, datacnt = coder ? coder->datacnt : 0;
     int data = 0;
-    int idx;
-    int datacnt;
 
-    if (coder)
-        datacnt = coder->datacnt;
-    else
-        datacnt = 0;
-
-    book = hmap[bnum];
     switch (bnum)
     {
-    case 1:
-    case 2:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * qp[0] + 9 * qp[1] + 3 * qp[2] + qp[3] + 40;
-            if (idx < 0 || idx >= arrlen(book01))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case HCB_1:
+    case HCB_2:
+        for (ofs = 0; ofs < len; ofs += 4) { SIGNED_STEP(4, FETCH4, IDX_S4(q)); }
         break;
-    case 3:
-    case 4:
-        for(ofs = 0; ofs < len; ofs += 4)
-        {
-            qp = qs+ofs;
-            idx = 27 * abs(qp[0]) + 9 * abs(qp[1]) + 3 * abs(qp[2]) + abs(qp[3]);
-            if (idx < 0 || idx >= arrlen(book03))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                // add sign bits
-                for(cnt = 0; cnt < 4; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case HCB_3:
+    case HCB_4:
+        for (ofs = 0; ofs < len; ofs += 4) { MAGNITUDE_STEP4(FETCH4, IDX_M4(q)); }
         break;
-    case 5:
-    case 6:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 9 * qp[0] + qp[1] + 40;
-            if (idx < 0 || idx >= arrlen(book05))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (coder)
-            {
-                data = book[idx].data;
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case HCB_5:
+    case HCB_6:
+        for (ofs = 0; ofs < len; ofs += 2) { SIGNED_STEP(2, FETCH2, IDX_S2(q)); }
         break;
-    case 7:
-    case 8:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 8 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book07))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case HCB_7:
+    case HCB_8:
+        for (ofs = 0; ofs < len; ofs += 2) { MAGNITUDE_STEP2(FETCH2, IDX_M2(q, DIM_M2_7)); }
         break;
-    case 9:
-    case 10:
-        for(ofs = 0; ofs < len; ofs += 2)
-        {
-            qp = qs+ofs;
-            idx = 13 * abs(qp[0]) + abs(qp[1]);
-            if (idx < 0 || idx >= arrlen(book09))
-            {
-                return -1;
-            }
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
-            }
-            else
-            {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
-                {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
-                }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
-        }
+    case HCB_9:
+    case HCB_10:
+        for (ofs = 0; ofs < len; ofs += 2) { MAGNITUDE_STEP2(FETCH2, IDX_M2(q, DIM_M2_12)); }
         break;
     case HCB_ESC:
-        for(ofs = 0; ofs < len; ofs += 2)
+        for (ofs = 0; ofs < len; ofs += 2)
         {
-            int x0, x1;
-
-            qp = qs+ofs;
-
-            x0 = abs(qp[0]);
-            x1 = abs(qp[1]);
-            if (x0 > 16)
-                x0 = 16;
-            if (x1 > 16)
-                x1 = 16;
-            idx = 17 * x0 + x1;
-            if (idx < 0 || idx >= arrlen(book11))
+            FETCH2(q, qs, ofs, len);
+            if (!(q[0] | q[1]))
             {
-                return -1;
-            }
-
-            blen = book[idx].len;
-            if (!coder)
-            {
-                for(cnt = 0; cnt < 2; cnt++)
-                    if(qp[cnt])
-                        blen++;
+                blen = blens[0];
+                if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; }
             }
             else
             {
-                data = book[idx].data;
-                for(cnt = 0; cnt < 2; cnt++)
+                int aq0 = abs(q[0]), aq1 = abs(q[1]);
+                int x0 = (aq0 > LAV_ESC) ? LAV_ESC : aq0;
+                int x1 = (aq1 > LAV_ESC) ? LAV_ESC : aq1;
+                idx = DIM_ESC * x0 + x1;
+                blen = blens[idx];
+                if (coder) data = bdata[idx];
+                ADD_SIGNS(blen, data, q, 2, coder);
+                if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; }
+                if (aq0 >= LAV_ESC)
                 {
-                    if(qp[cnt])
-                    {
-                        blen++;
-                        data <<= 1;
-                        if (qp[cnt] < 0)
-                            data |= 1;
-                    }
+                    int eb = escape(aq0, &data);
+                    bits += eb;
+                    if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = eb; }
                 }
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
+                if (aq1 >= LAV_ESC)
+                {
+                    int eb = escape(aq1, &data);
+                    bits += eb;
+                    if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = eb; }
+                }
             }
             bits += blen;
-
-            if (x0 >= 16)
-            {
-                blen = escape(abs(qp[0]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
-
-            if (x1 >= 16)
-            {
-                blen = escape(abs(qp[1]), &data);
-                if (coder)
-                {
-                    coder->s[datacnt].data = data;
-                    coder->s[datacnt++].len = blen;
-                }
-                bits += blen;
-            }
         }
         break;
     default:
@@ -301,67 +200,393 @@ static int huffcode(int *qs /* quantized spectrum */,
         return -1;
     }
 
-    if (coder)
-        coder->datacnt = datacnt;
-
+    if (coder) coder->datacnt = datacnt;
     return bits;
 }
 
+/* Lowest base codebook whose range-pair covers |maxq| (keeps the decoder in
+ * range, cf. the escape/out-of-range guards). Returns the lower book of the
+ * pair; HCB_ZERO for an empty band, HCB_ESC for the escape book. Shared by
+ * huffbook() (per-band selection) and section_optimize() (merge re-costing). */
+static int book_for_maxq(int maxq)
+{
+    if (maxq < 1) return HCB_ZERO;
+    if (maxq < LAV_1 + 1) return HCB_1;
+    if (maxq < LAV_2 + 1) return HCB_3;
+    if (maxq < LAV_4 + 1) return HCB_5;
+    if (maxq < LAV_7 + 1) return HCB_7;
+    if (maxq < LAV_12 + 1) return HCB_9;
+    return HCB_ESC;
+}
 
+/* Bit cost of coding [qs,len) under BOTH books of a range-pair in one traversal.
+ * `base` is the lower book (HCB_1, HCB_3, HCB_5, HCB_7, HCB_9 — never ESC).
+ * The two books of a pair share the same fetch and polynomial space mapping;
+ * we fuse both lookups into a single pass to accelerate the greedy merge search.
+ * Results match two huffcode(..., 0) calls exactly. */
+static void huff_count_pair(const int *qs, int len, int base, int *pc0, int *pc1)
+{
+    const uint8_t *la = huff_len + huff_offset[base - 1];
+    const uint8_t *lb = huff_len + huff_offset[base];
+    int c0 = 0, c1 = 0, ofs;
+
+#define COUNT_SIGNS(q, n) \
+    int s = 0; for (int j = 0; j < (n); j++) if ((q)[j]) s++;
+
+    switch (base)
+    {
+    case HCB_1:   /* HCB_1, HCB_2: signed 4-tuple, no sign bits */
+        for (ofs = 0; ofs < len; ofs += 4)
+        {
+            FETCH4(q, qs, ofs, len);
+            int idx = IDX_S4(q);
+            c0 += la[idx];
+            c1 += lb[idx];
+        }
+        break;
+    case HCB_3:   /* HCB_3, HCB_4: magnitude 4-tuple + sign bits */
+        for (ofs = 0; ofs < len; ofs += 4)
+        {
+            FETCH4(q, qs, ofs, len);
+            if (!(q[0]|q[1]|q[2]|q[3]))
+            {
+                c0 += la[0];
+                c1 += lb[0];
+            }
+            else
+            {
+                int idx = IDX_M4(q);
+                COUNT_SIGNS(q, 4);
+                c0 += la[idx] + s;
+                c1 += lb[idx] + s;
+            }
+        }
+        break;
+    case HCB_5:   /* HCB_5, HCB_6: signed 2-tuple, no sign bits */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            FETCH2(q, qs, ofs, len);
+            int idx = IDX_S2(q);
+            c0 += la[idx];
+            c1 += lb[idx];
+        }
+        break;
+    case HCB_7:   /* HCB_7, HCB_8: magnitude 2-tuple + sign bits */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            FETCH2(q, qs, ofs, len);
+            if (!(q[0]|q[1]))
+            {
+                c0 += la[0];
+                c1 += lb[0];
+            }
+            else
+            {
+                int idx = IDX_M2(q, DIM_M2_7);
+                COUNT_SIGNS(q, 2);
+                c0 += la[idx] + s;
+                c1 += lb[idx] + s;
+            }
+        }
+        break;
+    default:  /* base == HCB_9: HCB_9, HCB_10: magnitude 2-tuple + sign */
+        for (ofs = 0; ofs < len; ofs += 2)
+        {
+            FETCH2(q, qs, ofs, len);
+            if (!(q[0]|q[1]))
+            {
+                c0 += la[0];
+                c1 += lb[0];
+            }
+            else
+            {
+                int idx = IDX_M2(q, DIM_M2_12);
+                COUNT_SIGNS(q, 2);
+                c0 += la[idx] + s;
+                c1 += lb[idx] + s;
+            }
+        }
+        break;
+    }
+    *pc0 = c0;
+    *pc1 = c1;
+}
+
+/* Select the cheapest codebook for one band and cache its spectral bit cost in
+ * coder->blen[]; symbols are NOT emitted here (deferred to emit_spectral after
+ * greedy merge has finalised the books). Only the band's own tier range-pair
+ * is costed (cost_pair[]), which is all section_optimize needs to sum same-tier
+ * spans for free; cross-tier spans recost on demand. */
 int huffbook(CoderInfo *coder,
              int *qs /* quantized spectrum */,
              int len)
 {
-    int cnt;
-    int maxq = 0;
-    int bookmin, lenmin;
+    int bandcnt = coder->bandcnt;
+    int *cp = coder->cost_pair[bandcnt];
+    int maxq = 0, base, i;
 
-    for (cnt = 0; cnt < len; cnt++)
+    if (len == 0)
     {
-        int q = abs(qs[cnt]);
-        if (maxq < q)
-            maxq = q;
+        coder->book[bandcnt] = HCB_ZERO;
+        coder->blen[bandcnt] = 0;
+        cp[0] = cp[1] = 0;
+        return 0;
     }
 
-#define BOOKMIN(n)bookmin=n;lenmin=huffcode(qs,len,bookmin,0);if(huffcode(qs,len,bookmin+1,0)<lenmin)bookmin++;
+    for (i = 0; i < len; i++)
+    {
+        int aq = abs(qs[i]);
+        if (aq > maxq) maxq = aq;
+    }
 
-    if (maxq < 1)
+    base = book_for_maxq(maxq);
+    if (base == HCB_ZERO)
     {
-        bookmin = HCB_ZERO;
-        lenmin = 0;
+        coder->book[bandcnt] = HCB_ZERO;
+        coder->blen[bandcnt] = 0;
+        cp[0] = cp[1] = 0;
     }
-    else if (maxq < 2)
+    else if (base == HCB_ESC)
     {
-        BOOKMIN(1);
-    }
-    else if (maxq < 3)
-    {
-        BOOKMIN(3);
-    }
-    else if (maxq < 5)
-    {
-        BOOKMIN(5);
-    }
-    else if (maxq < 8)
-    {
-        BOOKMIN(7);
-    }
-    else if (maxq < 13)
-    {
-        BOOKMIN(9);
+        int c = huffcode(qs, len, HCB_ESC, 0);
+        coder->book[bandcnt] = HCB_ESC;
+        coder->blen[bandcnt] = c;
+        cp[0] = cp[1] = c;   /* ESC tier has no pair partner */
     }
     else
     {
-        bookmin = HCB_ESC;
+        /* range-pair: keep whichever of {base, base+1} codes the band shorter */
+        int c0, c1;
+        huff_count_pair(qs, len, base, &c0, &c1);
+        cp[0] = c0;
+        cp[1] = c1;
+        if (c1 < c0)
+        {
+            coder->book[bandcnt] = base + 1;
+            coder->blen[bandcnt] = c1;
+        }
+        else
+        {
+            coder->book[bandcnt] = base;
+            coder->blen[bandcnt] = c0;
+        }
     }
-
-    if (bookmin > HCB_ZERO)
-        huffcode(qs, len, bookmin, coder);
-    coder->book[coder->bandcnt] = bookmin;
 
     return 0;
 }
 
+/* Range tier of a spectral book (higher tier covers larger |coef|); 0 for
+ * HCB_ZERO and non-spectral books. */
+static int book_tier(int book)
+{
+    switch (book)
+    {
+    case HCB_1:
+    case HCB_2:  return 1;
+    case HCB_3:
+    case HCB_4:  return 2;
+    case HCB_5:
+    case HCB_6:  return 3;
+    case HCB_7:
+    case HCB_8:  return 4;
+    case HCB_9:
+    case HCB_10: return 5;
+    case HCB_ESC:    return 6;
+    default:         return 0;
+    }
+}
+
+static int tier_base_book(int tier)
+{
+    switch (tier)
+    {
+    case 1: return HCB_1;
+    case 2: return HCB_3;
+    case 3: return HCB_5;
+    case 4: return HCB_7;
+    case 5: return HCB_9;
+    case 6: return HCB_ESC;
+    default: return HCB_ZERO;
+    }
+}
+
+/* A band carries Huffman-coded spectral data iff its book is in [1, HCB_ESC].
+ * HCB_ZERO/PNS/intensity carry none and act as hard section boundaries. */
+static int is_spectral(int book)
+{
+    return book >= 1 && book <= HCB_ESC;
+}
+
+/* Sentinel cost for a range-pair partner that doesn't exist (ESC tier). Far
+ * above any real span cost, so min() never picks it; never added to. */
+#define COST_INF (1 << 28)
+
+/* Greedy merge ("codebook hysteresis"): per group, absorb the next
+ * spectral band into the open section whenever recoding the span under a shared
+ * covering book costs fewer extra bits than the section header it saves. Lossless
+ * - only reassigns spectral books, never touching scalefactors or band class.
+ * Costed lazily: run0/run1 hold the span's cost under the covering tier's
+ * base/base+1; a same-tier band adds its cached cost_pair[] for free, a cross-tier
+ * one recosts only the contiguous qspec slice that changed. */
+void section_optimize(CoderInfo *coder)
+{
+    int shortwin = (coder->block_type == ONLY_SHORT_WINDOW);
+    int maxcnt = shortwin ? 7 : 31;   /* section run length writebooks() can encode */
+    int header = 4 + (shortwin ? 3 : 5); /* bits saved by dropping one section header */
+    int g;
+
+    for (g = 0; g < coder->groups.n; g++)
+    {
+        int band = g * coder->sfbn;
+        int maxband = band + coder->sfbn;
+
+        while (band < maxband)
+        {
+            int sec_start, sec_tier, sec_spec;
+            int sec_ofs, sec_len;
+            int run0, run1;   /* span cost under covering base / base+1 */
+
+            if (!is_spectral(coder->book[band]))
+            {
+                band++;
+                continue;
+            }
+
+            sec_start = band;
+            sec_tier  = book_tier(coder->book[band]);
+            sec_ofs   = coder->qoffset[band];
+            sec_len   = coder->qlen[band];
+            sec_spec  = coder->blen[band];
+            run0 = coder->cost_pair[band][0];
+            run1 = (sec_tier < 6) ? coder->cost_pair[band][1] : COST_INF;
+            band++;
+
+            /* Greedy merge: absorb adjacent bands if header savings > bit increase.
+             * Cap at maxcnt so the saved-header model stays exact. */
+            while (band < maxband
+                   && is_spectral(coder->book[band])
+                   && (band - sec_start) < maxcnt)
+            {
+                int t = book_tier(coder->book[band]);
+                int cand_tier = (t > sec_tier) ? t : sec_tier;
+                int ofs = coder->qoffset[band], ln = coder->qlen[band];
+                int base, best_book, best_cost, k;
+                int n0, n1;
+
+                if (cand_tier == sec_tier)
+                {
+                    if (t == sec_tier)
+                    {
+                        /* band already costed under the covering pair: free */
+                        n0 = run0 + coder->cost_pair[band][0];
+                        n1 = (sec_tier < 6) ? run1 + coder->cost_pair[band][1]
+                                            : COST_INF;
+                    }
+                    else
+                    {
+                        /* lower-tier band under the higher covering book: recost it */
+                        int cbase = tier_base_book(sec_tier);
+                        if (sec_tier < 6)
+                        {
+                            int a0, a1;
+                            huff_count_pair(coder->qspec + ofs, ln, cbase, &a0, &a1);
+                            n0 = run0 + a0;
+                            n1 = run1 + a1;
+                        }
+                        else
+                        {
+                            n0 = run0 + huffcode(coder->qspec + ofs, ln, cbase, 0);
+                            n1 = COST_INF;
+                        }
+                    }
+                }
+                else
+                {
+                    /* covering tier rises to t: recost the existing span under the
+                     * new higher book; the raising band is already under its own
+                     * (== new covering) pair. */
+                    int nbase = tier_base_book(t);
+                    if (t < 6)
+                    {
+                        int s0, s1;
+                        huff_count_pair(coder->qspec + sec_ofs, sec_len, nbase, &s0, &s1);
+                        n0 = s0 + coder->cost_pair[band][0];
+                        n1 = s1 + coder->cost_pair[band][1];
+                    }
+                    else
+                    {
+                        n0 = huffcode(coder->qspec + sec_ofs, sec_len, nbase, 0)
+                             + coder->cost_pair[band][0];
+                        n1 = COST_INF;
+                    }
+                }
+
+                base = tier_base_book(cand_tier);
+                if (n1 < n0)
+                {
+                    best_cost = n1;
+                    best_book = base + 1;
+                }
+                else
+                {
+                    best_cost = n0;
+                    best_book = base;
+                }
+
+                if (best_cost - sec_spec - coder->blen[band] < header)
+                {
+                    for (k = sec_start; k <= band; k++)
+                        coder->book[k] = best_book;
+                    sec_tier = cand_tier;
+                    sec_len += ln;
+                    sec_spec = best_cost;
+                    run0 = n0;
+                    run1 = n1;
+                    band++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
+}
+
+/* Emit Huffman symbols for all spectral bands in band order, filling coder->s[]
+ * for WriteSpectralData(). Adjacent bands with the same book are combined into
+ * a single huffcode call to maximize throughput. */
+void emit_spectral(CoderInfo *coder)
+{
+    int b;
+
+    coder->datacnt = 0;
+    for (b = 0; b < coder->bandcnt; )
+    {
+        int book = coder->book[b];
+        if (is_spectral(book))
+        {
+            int ofs = coder->qoffset[b];
+            int len = coder->qlen[b];
+            b++;
+            while (b < coder->bandcnt && coder->book[b] == book)
+            {
+                len += coder->qlen[b];
+                b++;
+            }
+            huffcode(coder->qspec + ofs, len, book, coder);
+        }
+        else
+        {
+            b++;
+        }
+    }
+}
+
+/* Write (or size) the section layout: 4-bit book + run length per maximal run of
+ * equal adjacent books. The count field is cntbits wide (5 long / 3 short), so a
+ * run past maxcnt splits into repeated full sections. greedy merge grows the
+ * runs; this just RLE-encodes the final books[]. */
 int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {
     int bits = 0;
@@ -369,10 +594,13 @@ int writebooks(CoderInfo *coder, BitStream *stream, int write)
     int group;
     int bookbits = 4;
 
-    if (coder->block_type == ONLY_SHORT_WINDOW){
+    if (coder->block_type == ONLY_SHORT_WINDOW)
+    {
         maxcnt = 7;
         cntbits = 3;
-    } else {
+    }
+    else
+    {
         maxcnt = 31;
         cntbits = 5;
     }
@@ -386,7 +614,8 @@ int writebooks(CoderInfo *coder, BitStream *stream, int write)
         {
             int book = coder->book[band++];
             int bookcnt = 1;
-            if (write) {
+            if (write)
+            {
                 PutBit(stream, book, bookbits);
             }
             bits += bookbits;
@@ -405,12 +634,16 @@ int writebooks(CoderInfo *coder, BitStream *stream, int write)
             while (bookcnt >= maxcnt)
             {
                 if (write)
+                {
                     PutBit(stream, maxcnt, cntbits);
+                }
                 bits += cntbits;
                 bookcnt -= maxcnt;
             }
             if (write)
+            {
                 PutBit(stream, bookcnt, cntbits);
+            }
             bits += cntbits;
         }
     }
@@ -428,6 +661,10 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     int lastpns;
     int initpns = 1;
 
+    /* Three independent DPCM chains share HCB_DELTA, each seeded so its first delta
+     * is self-contained: intensity positions from 0, scalefactors from global_gain
+     * (itself the first regular sf), PNS energies from global_gain - SF_PNS_OFFSET.
+     * The decoder rebuilds each by the same running sum, so deltas match. */
     lastsf = coder->global_gain;
     lastis = 0;
     lastpns = coder->global_gain - SF_PNS_OFFSET;
@@ -438,18 +675,20 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
     {
         int book = coder->book[cnt];
 
-        if ((book == HCB_INTENSITY) || (book== HCB_INTENSITY2))
+        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
         {
             diff = coder->sf[cnt] - lastis;
             diff = clamp_sf_diff(diff);
-            length = book12[SF_DELTA + diff].len;
+            length = huff_len_delta[SF_DELTA + diff];
 
             bits += length;
 
             lastis += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
+            {
+                PutBit(stream, huff_data_delta[SF_DELTA + diff], length);
+            }
         }
         else if (book == HCB_PNS)
         {
@@ -457,6 +696,9 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
 
             if (initpns)
             {
+                /* First PNS band has no prior energy to delta against, so the
+                 * spec sends a raw 9-bit value (diff + 256) instead of an HCB_DELTA
+                 * code; later PNS bands delta off this one. */
                 initpns = 0;
 
                 length = 9;
@@ -464,30 +706,36 @@ int writesf(CoderInfo *coder, BitStream *stream, int write)
                 lastpns += diff;
 
                 if (write)
+                {
                     PutBit(stream, diff + 256, length);
+                }
                 continue;
             }
 
             diff = clamp_sf_diff(diff);
 
-            length = book12[SF_DELTA + diff].len;
+            length = huff_len_delta[SF_DELTA + diff];
             bits += length;
             lastpns += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
+            {
+                PutBit(stream, huff_data_delta[SF_DELTA + diff], length);
+            }
         }
         else if ((book != HCB_ZERO) && (book != HCB_NONE))
         {
             diff = coder->sf[cnt] - lastsf;
             diff = clamp_sf_diff(diff);
-            length = book12[SF_DELTA + diff].len;
+            length = huff_len_delta[SF_DELTA + diff];
 
             bits += length;
             lastsf += diff;
 
             if (write)
-                PutBit(stream, book12[SF_DELTA + diff].data, length);
+            {
+                PutBit(stream, huff_data_delta[SF_DELTA + diff], length);
+            }
         }
 
     }

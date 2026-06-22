@@ -92,6 +92,19 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    /* Retained quantized spectrum + per-band metadata, so the greedy section
+     * merge (section_optimize) can re-cost adjacent spectral bands under a
+     * shared codebook before symbols are emitted (emit_spectral). Only spectral
+     * bands (HCB_1..HCB_ESC) occupy qspec; non-spectral bands get qlen 0. */
+    int qspec[FRAME_LEN + 4];     /* packed quantized coeffs, in band order, +padding */
+    int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
+    int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
+    int blen[MAX_SCFAC_BANDS];    /* cached spectral bit cost of chosen book */
+    /* Cost of coding this band under its own tier's range-pair: [0]=base book,
+     * [1]=base+1 (==[0] for the ESC tier, which has no pair partner). Lets the
+     * merge sum same-tier spans for free; cross-tier spans recost on demand. */
+    int cost_pair[MAX_SCFAC_BANDS][2];
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
