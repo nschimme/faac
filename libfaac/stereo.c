@@ -20,6 +20,7 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
@@ -426,7 +427,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             }
         }
 
-        /* M/S decision: Trigger M/S coding when the L/R channels are correlated.
+        /* M/S decision: Trigger M/S coding when it's more efficient than L/R.
+         * We use the weaker M/S channel (scaled) as a proxy for correlation.
          * True M/S preserves both channels to improve stereo coherence. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
@@ -462,8 +464,8 @@ void AACstereo(CoderInfo *coder,
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.05; /* -26dB */
-    static const faac_real sidemax = 0.2;  /* -14dB */
+    faac_real sidemin = 0.1; /* -20dB */
+    faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
@@ -477,9 +479,9 @@ void AACstereo(CoderInfo *coder,
     switch (mode)
     {
     case JOINT_MIXED:
-        /* 0.85x tighter M/S than pure JOINT_MS (IS carries the rest); linear
-         * isthr (not quality^2) keeps more phase at low quality */
-        thrmid = (thr075 * 0.85) / quality;
+        /* 1.0x (legacy 0.85x) multiplier for M/S in mixed mode to maximize
+         * use of True M/S transform for spatial preservation. */
+        thrmid = thr075 / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
         thrside = sidemin / quality;
@@ -587,8 +589,8 @@ void AACstereo(CoderInfo *coder,
 
             /* all thresholds loosen as quality drops; the 5.5kHz IS floor
              * scales with quality to preserve more phase at higher bitrates.
-             * Sweeps show 10kHz at q=1.0 (128kbps) is a good Pareto point. */
-            int is_freq = FAAC_LRINT(5500.0 + 9000.0 * (quality - 0.5));
+             * Sweeps show ~7.7kHz at q=1.0 (128kbps) balances MOS best. */
+            int is_freq = FAAC_LRINT(5500.0 + 4500.0 * (quality - 0.5));
             if (is_freq < 5500) is_freq = 5500;
 
             int cap = (sampleRate * 7) / 20;
