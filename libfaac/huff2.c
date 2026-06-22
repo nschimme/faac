@@ -51,23 +51,22 @@ static int escape(int x, int *code)
     return (preflen << 1) + 5;
 }
 
-/* Tuple fetch: safely reads up to N coefficients from [qs+ofs, len), zero-padding
- * if the band end is reached. Prevents out-of-bounds reads for misaligned SFBs. */
-#define FETCH4(q, qs, ofs, len) \
-    int q[4] = {0}; \
-    if ((len) - (ofs) >= 4) { \
-        q[0] = (qs)[(ofs)]; q[1] = (qs)[(ofs)+1]; q[2] = (qs)[(ofs)+2]; q[3] = (qs)[(ofs)+3]; \
-    } else { \
-        for (int j = 0; j < (len) - (ofs); j++) q[j] = (qs)[(ofs) + j]; \
-    }
-
-#define FETCH2(q, qs, ofs, len) \
-    int q[2] = {0}; \
-    if ((len) - (ofs) >= 2) { \
-        q[0] = (qs)[(ofs)]; q[1] = (qs)[(ofs)+1]; \
-    } else if ((len) - (ofs) == 1) { \
-        q[0] = (qs)[(ofs)]; \
-    }
+/* Drive a per-tuple BODY over [qs, len). Full stride-aligned tuples are read
+ * directly from qs via a pointer (no copy, no per-iteration bounds branch) — this
+ * is the hot path. A trailing partial tuple (len not a stride multiple) is
+ * zero-padded once. Spectral SFBs are stride-aligned in practice, so the tail is a
+ * safety net for misalignment that does not run in the inner loop. */
+#define FOR_TUPLES(stride, BODY) \
+    do { \
+        int _ofs, _full = len - (len % (stride)); \
+        for (_ofs = 0; _ofs < _full; _ofs += (stride)) \
+            BODY(qs + _ofs); \
+        if (_ofs < len) { \
+            int _pad[stride] = {0}, _j; \
+            for (_j = 0; _j < len - _ofs; _j++) _pad[_j] = qs[_ofs + _j]; \
+            BODY(_pad); \
+        } \
+    } while (0)
 
 /* Tuple indexing: maps signed or magnitude tuples into the polynomial space
  * of the Huffman LUTs. Signed books fold sign into the index (biased by 40)
@@ -77,52 +76,56 @@ static int escape(int x, int *code)
 #define IDX_M4(q) (DIM_M4*DIM_M4*DIM_M4*abs((q)[0]) + DIM_M4*DIM_M4*abs((q)[1]) + DIM_M4*abs((q)[2]) + abs((q)[3]))
 #define IDX_M2(q, b) ((b)*abs((q)[0]) + abs((q)[1]))
 
-/* Magnitude sign accounting: appends sign bits to the bit count (always) and the
- * codeword (if coder != NULL) for magnitude-mapped codebooks. */
-#define ADD_SIGNS(bits, data, q, n, coder) \
-    for (int j = 0; j < (n); j++) { \
-        if ((q)[j]) { \
-            (bits)++; \
-            if (coder) { (data) <<= 1; if ((q)[j] < 0) (data) |= 1; } \
+/* huffcode() per-tuple bodies, driven by FOR_TUPLES over a tuple pointer p.
+ * coder == NULL sizes only; else also emits the codeword to coder->s[]. blens,
+ * bdata, coder, datacnt and bits are the enclosing huffcode() locals.
+ * Signed books fold sign into the index, so they emit bdata[idx] verbatim;
+ * magnitude books look up the |coef| index then append one sign bit per nonzero
+ * coefficient to both the length and (when emitting) the codeword. */
+#define EMIT_LEN(d, l) \
+    do { if (coder) { coder->s[datacnt].data = (d); coder->s[datacnt++].len = (l); } \
+         bits += (l); } while (0)
+
+#define HC_SIGNED(p, idx_expr) \
+    do { int _i = (idx_expr); EMIT_LEN(bdata[_i], blens[_i]); } while (0)
+
+#define HC_MAG(p, n, idx_expr) \
+    do { \
+        if (!mag_nonzero_##n(p)) { EMIT_LEN(bdata[0], blens[0]); } \
+        else { \
+            int _i = (idx_expr), _l = blens[_i], _d = coder ? bdata[_i] : 0; \
+            for (int _j = 0; _j < (n); _j++) if ((p)[_j]) \
+                { _l++; if (coder) { _d <<= 1; if ((p)[_j] < 0) _d |= 1; } } \
+            EMIT_LEN(_d, _l); \
         } \
-    }
+    } while (0)
 
-/* Traversal helpers: encapsulate the loop boilerplate for spectral processing. */
-#define SIGNED_STEP(n, fetch_macro, idx_macro) \
-    fetch_macro(q, qs, ofs, len); \
-    idx = idx_macro; \
-    blen = blens[idx]; \
-    if (coder) { \
-        coder->s[datacnt].data = bdata[idx]; \
-        coder->s[datacnt++].len = blen; \
-    } \
-    bits += blen;
+#define mag_nonzero_4(p) ((p)[0] | (p)[1] | (p)[2] | (p)[3])
+#define mag_nonzero_2(p) ((p)[0] | (p)[1])
 
-#define MAGNITUDE_STEP4(fetch_macro, idx_macro) \
-    fetch_macro(q, qs, ofs, len); \
-    if (!(q[0]|q[1]|q[2]|q[3])) { \
-        blen = blens[0]; \
-        if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; } \
-    } else { \
-        idx = idx_macro; blen = blens[idx]; \
-        if (coder) data = bdata[idx]; \
-        ADD_SIGNS(blen, data, q, 4, coder); \
-        if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } \
-    } \
-    bits += blen;
+#define HC_S4(p)  HC_SIGNED(p, IDX_S4(p))
+#define HC_S2(p)  HC_SIGNED(p, IDX_S2(p))
+#define HC_M4(p)  HC_MAG(p, 4, IDX_M4(p))
+#define HC_M2_7(p)  HC_MAG(p, 2, IDX_M2(p, DIM_M2_7))
+#define HC_M2_12(p) HC_MAG(p, 2, IDX_M2(p, DIM_M2_12))
 
-#define MAGNITUDE_STEP2(fetch_macro, idx_macro) \
-    fetch_macro(q, qs, ofs, len); \
-    if (!(q[0]|q[1])) { \
-        blen = blens[0]; \
-        if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; } \
-    } else { \
-        idx = idx_macro; blen = blens[idx]; \
-        if (coder) data = bdata[idx]; \
-        ADD_SIGNS(blen, data, q, 2, coder); \
-        if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; } \
-    } \
-    bits += blen;
+/* ESC book (11): magnitude 2-tuple clamped to LAV_ESC, with an escape-coded
+ * suffix carrying the full magnitude for any coefficient at the clamp. */
+#define HC_ESC(p) \
+    do { \
+        if (!mag_nonzero_2(p)) { EMIT_LEN(bdata[0], blens[0]); } \
+        else { \
+            int _a0 = abs((p)[0]), _a1 = abs((p)[1]); \
+            int _x0 = (_a0 > LAV_ESC) ? LAV_ESC : _a0; \
+            int _x1 = (_a1 > LAV_ESC) ? LAV_ESC : _a1; \
+            int _i = DIM_ESC * _x0 + _x1, _l = blens[_i], _d = coder ? bdata[_i] : 0; \
+            for (int _j = 0; _j < 2; _j++) if ((p)[_j]) \
+                { _l++; if (coder) { _d <<= 1; if ((p)[_j] < 0) _d |= 1; } } \
+            EMIT_LEN(_d, _l); \
+            if (_a0 >= LAV_ESC) { int _ed = 0, _eb = escape(_a0, &_ed); EMIT_LEN(_ed, _eb); } \
+            if (_a1 >= LAV_ESC) { int _ed = 0, _eb = escape(_a1, &_ed); EMIT_LEN(_ed, _eb); } \
+        } \
+    } while (0)
 
 /* Code `len` coeffs under book `bnum`, returning bit count. coder == NULL only
  * sizes (the hot cost path); else also emits codewords to coder->s[]. len/code
@@ -135,65 +138,22 @@ static int huffcode(int *qs /* quantized spectrum */,
 {
     const uint8_t *blens = huff_len + huff_offset[bnum - 1];
     const uint16_t *bdata = huff_data + huff_offset[bnum - 1];
-    int bits = 0, blen, ofs, idx, datacnt = coder ? coder->datacnt : 0;
-    int data = 0;
+    int bits = 0, datacnt = coder ? coder->datacnt : 0;
 
     switch (bnum)
     {
     case HCB_1:
-    case HCB_2:
-        for (ofs = 0; ofs < len; ofs += 4) { SIGNED_STEP(4, FETCH4, IDX_S4(q)); }
-        break;
+    case HCB_2:  FOR_TUPLES(4, HC_S4);    break;
     case HCB_3:
-    case HCB_4:
-        for (ofs = 0; ofs < len; ofs += 4) { MAGNITUDE_STEP4(FETCH4, IDX_M4(q)); }
-        break;
+    case HCB_4:  FOR_TUPLES(4, HC_M4);    break;
     case HCB_5:
-    case HCB_6:
-        for (ofs = 0; ofs < len; ofs += 2) { SIGNED_STEP(2, FETCH2, IDX_S2(q)); }
-        break;
+    case HCB_6:  FOR_TUPLES(2, HC_S2);    break;
     case HCB_7:
-    case HCB_8:
-        for (ofs = 0; ofs < len; ofs += 2) { MAGNITUDE_STEP2(FETCH2, IDX_M2(q, DIM_M2_7)); }
-        break;
+    case HCB_8:  FOR_TUPLES(2, HC_M2_7);  break;
     case HCB_9:
-    case HCB_10:
-        for (ofs = 0; ofs < len; ofs += 2) { MAGNITUDE_STEP2(FETCH2, IDX_M2(q, DIM_M2_12)); }
-        break;
+    case HCB_10: FOR_TUPLES(2, HC_M2_12); break;
     case HCB_ESC:
-        for (ofs = 0; ofs < len; ofs += 2)
-        {
-            FETCH2(q, qs, ofs, len);
-            if (!(q[0] | q[1]))
-            {
-                blen = blens[0];
-                if (coder) { coder->s[datacnt].data = bdata[0]; coder->s[datacnt++].len = blen; }
-            }
-            else
-            {
-                int aq0 = abs(q[0]), aq1 = abs(q[1]);
-                int x0 = (aq0 > LAV_ESC) ? LAV_ESC : aq0;
-                int x1 = (aq1 > LAV_ESC) ? LAV_ESC : aq1;
-                idx = DIM_ESC * x0 + x1;
-                blen = blens[idx];
-                if (coder) data = bdata[idx];
-                ADD_SIGNS(blen, data, q, 2, coder);
-                if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = blen; }
-                if (aq0 >= LAV_ESC)
-                {
-                    int eb = escape(aq0, &data);
-                    bits += eb;
-                    if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = eb; }
-                }
-                if (aq1 >= LAV_ESC)
-                {
-                    int eb = escape(aq1, &data);
-                    bits += eb;
-                    if (coder) { coder->s[datacnt].data = data; coder->s[datacnt++].len = eb; }
-                }
-            }
-            bits += blen;
-        }
+        FOR_TUPLES(2, HC_ESC);
         break;
     default:
         fprintf(stderr, "%s(%d) book %d out of range\n", __FILE__, __LINE__, bnum);
@@ -224,89 +184,39 @@ static int book_for_maxq(int maxq)
  * The two books of a pair share the same fetch and polynomial space mapping;
  * we fuse both lookups into a single pass to accelerate the greedy merge search.
  * Results match two huffcode(..., 0) calls exactly. */
+/* huff_count_pair() per-tuple bodies: accumulate the length of each tuple under
+ * both books of the pair (la == base, lb == base+1). la/lb/c0/c1 are the
+ * enclosing locals; sign bits add equally to both books. */
+#define CP_S4(p) do { int _i = IDX_S4(p); c0 += la[_i]; c1 += lb[_i]; } while (0)
+#define CP_S2(p) do { int _i = IDX_S2(p); c0 += la[_i]; c1 += lb[_i]; } while (0)
+
+#define CP_MAG(p, n, idx_expr) \
+    do { \
+        if (!mag_nonzero_##n(p)) { c0 += la[0]; c1 += lb[0]; } \
+        else { \
+            int _i = (idx_expr), _s = 0; \
+            for (int _j = 0; _j < (n); _j++) if ((p)[_j]) _s++; \
+            c0 += la[_i] + _s; c1 += lb[_i] + _s; \
+        } \
+    } while (0)
+
+#define CP_M4(p)    CP_MAG(p, 4, IDX_M4(p))
+#define CP_M2_7(p)  CP_MAG(p, 2, IDX_M2(p, DIM_M2_7))
+#define CP_M2_12(p) CP_MAG(p, 2, IDX_M2(p, DIM_M2_12))
+
 static void huff_count_pair(const int *qs, int len, int base, int *pc0, int *pc1)
 {
     const uint8_t *la = huff_len + huff_offset[base - 1];
     const uint8_t *lb = huff_len + huff_offset[base];
-    int c0 = 0, c1 = 0, ofs;
-
-#define COUNT_SIGNS(q, n) \
-    int s = 0; for (int j = 0; j < (n); j++) if ((q)[j]) s++;
+    int c0 = 0, c1 = 0;
 
     switch (base)
     {
-    case HCB_1:   /* HCB_1, HCB_2: signed 4-tuple, no sign bits */
-        for (ofs = 0; ofs < len; ofs += 4)
-        {
-            FETCH4(q, qs, ofs, len);
-            int idx = IDX_S4(q);
-            c0 += la[idx];
-            c1 += lb[idx];
-        }
-        break;
-    case HCB_3:   /* HCB_3, HCB_4: magnitude 4-tuple + sign bits */
-        for (ofs = 0; ofs < len; ofs += 4)
-        {
-            FETCH4(q, qs, ofs, len);
-            if (!(q[0]|q[1]|q[2]|q[3]))
-            {
-                c0 += la[0];
-                c1 += lb[0];
-            }
-            else
-            {
-                int idx = IDX_M4(q);
-                COUNT_SIGNS(q, 4);
-                c0 += la[idx] + s;
-                c1 += lb[idx] + s;
-            }
-        }
-        break;
-    case HCB_5:   /* HCB_5, HCB_6: signed 2-tuple, no sign bits */
-        for (ofs = 0; ofs < len; ofs += 2)
-        {
-            FETCH2(q, qs, ofs, len);
-            int idx = IDX_S2(q);
-            c0 += la[idx];
-            c1 += lb[idx];
-        }
-        break;
-    case HCB_7:   /* HCB_7, HCB_8: magnitude 2-tuple + sign bits */
-        for (ofs = 0; ofs < len; ofs += 2)
-        {
-            FETCH2(q, qs, ofs, len);
-            if (!(q[0]|q[1]))
-            {
-                c0 += la[0];
-                c1 += lb[0];
-            }
-            else
-            {
-                int idx = IDX_M2(q, DIM_M2_7);
-                COUNT_SIGNS(q, 2);
-                c0 += la[idx] + s;
-                c1 += lb[idx] + s;
-            }
-        }
-        break;
-    default:  /* base == HCB_9: HCB_9, HCB_10: magnitude 2-tuple + sign */
-        for (ofs = 0; ofs < len; ofs += 2)
-        {
-            FETCH2(q, qs, ofs, len);
-            if (!(q[0]|q[1]))
-            {
-                c0 += la[0];
-                c1 += lb[0];
-            }
-            else
-            {
-                int idx = IDX_M2(q, DIM_M2_12);
-                COUNT_SIGNS(q, 2);
-                c0 += la[idx] + s;
-                c1 += lb[idx] + s;
-            }
-        }
-        break;
+    case HCB_1:  FOR_TUPLES(4, CP_S4);    break;  /* HCB_1, HCB_2: signed 4-tuple */
+    case HCB_3:  FOR_TUPLES(4, CP_M4);    break;  /* HCB_3, HCB_4: magnitude 4-tuple */
+    case HCB_5:  FOR_TUPLES(2, CP_S2);    break;  /* HCB_5, HCB_6: signed 2-tuple */
+    case HCB_7:  FOR_TUPLES(2, CP_M2_7);  break;  /* HCB_7, HCB_8: magnitude 2-tuple */
+    default:     FOR_TUPLES(2, CP_M2_12); break;  /* HCB_9, HCB_10: magnitude 2-tuple */
     }
     *pc0 = c0;
     *pc1 = c1;
