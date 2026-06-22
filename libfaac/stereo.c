@@ -216,7 +216,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
-            cl->book[*sfcnt] = hcb;
+            cr->book[*sfcnt] = hcb;
 
             /* JOINT_IS leaves the right channel intact; the intensity
              * codebook marks the band, so its spectrum is not coded. */
@@ -588,7 +588,7 @@ void AACstereo(CoderInfo *coder,
             /* all thresholds loosen as quality drops; the 5.5kHz IS floor
              * scales with quality to preserve more phase at higher bitrates.
              * Sweeps show 10kHz at q=1.0 (128kbps) is a good Pareto point. */
-            int is_freq = FAAC_LRINT(5500.0 + 4500.0 * (quality - 0.5));
+            int is_freq = FAAC_LRINT(5500.0 + 9000.0 * (quality - 0.5));
             if (is_freq < 5500) is_freq = 5500;
 
             int cap = (sampleRate * 7) / 20;
