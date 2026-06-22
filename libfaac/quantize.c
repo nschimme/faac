@@ -106,6 +106,12 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
  * MAXE_FLOOR_FACTOR: ~ -23 dB (10^-2.3) */
 #define AVGE_FLOOR_FACTOR 0.0010
 #define MAXE_FLOOR_FACTOR 0.0050
+/* HE-AAC core maxe floor: -17 dB. Tighter than MAXE_FLOOR_FACTOR because at Fs/2,
+ * peak energy in the highest bands routinely falls near the floor and would
+ * otherwise quantize to zero, leaving SBR nothing to reconstruct. */
+#define HE_MAXE_FLOOR_FACTOR      0.0200
+/* Short-window boost: transients concentrate energy into a narrower tile → smaller margin. */
+#define HE_SHORT_BLOCK_FLOOR_BOOST ((faac_real)1.5)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
@@ -188,20 +194,19 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
         target *= SHORT_PENALTY;
     target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
 
-    /* HE-AAC core only: stronger floor so quiet bands just below the SBR
-     * crossover survive quantization. At the halved core sample rate the
-     * default floors leave the target ~5 decades below rmsx and the
-     * magic-offset rounding truncates whole bands to zero, which SBR then
-     * mirrors into the high band as silence. */
+    /* HE-AAC core only: raise masking floor so bands near the SBR crossover survive
+     * quantization. At Fs/2 the default floors are too loose and whole bands
+     * round to zero; SBR then mirrors that silence into the high band. */
     if (heMode) {
-        faac_real avge_floor = avgenrg * (faac_real)0.005;   /* -23 dB */
+        /* avge floor = -23 dB (MAXE_FLOOR_FACTOR): crossover bands have low avg energy. */
+        faac_real avge_floor = avgenrg * MAXE_FLOOR_FACTOR;
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
-        faac_real maxe_floor = avgenrg * (faac_real)0.02;    /* -17 dB */
+        faac_real maxe_floor = avgenrg * HE_MAXE_FLOOR_FACTOR;
         faac_real maxe_eff = maxe > maxe_floor ? maxe : maxe_floor;
         faac_real target_floor = NOISETONE * FAAC_POW(avge_eff/avgenrg, powm);
         target_floor += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe_eff/avgenrg, powm);
         target_floor *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
-        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= 1.5;
+        if (coderInfo->block_type == ONLY_SHORT_WINDOW) target_floor *= HE_SHORT_BLOCK_FLOOR_BOOST;
         if (target < target_floor) target = target_floor;
     }
 
