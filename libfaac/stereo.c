@@ -427,8 +427,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             }
         }
 
-        /* M/S decision: Trigger M/S coding when it's more efficient than L/R.
-         * We use the weaker M/S channel (scaled) as a proxy for correlation.
+        /* M/S decision: Trigger M/S coding when the L/R channels are correlated.
          * True M/S preserves both channels to improve stereo coherence. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
