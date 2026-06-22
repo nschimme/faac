@@ -1,0 +1,100 @@
+Computing inter-channel coherence error for 98 stereo samples (4 cores)...
+  (1/98) music_low_15-Good-evening.441.16b48k.wav: 0.1878
+  (2/98) music_low_12-German-male-speech.441.16b48k.wav: 0.0056
+  (3/98) music_low_21-classic.441.16b48k.wav: 0.0842
+  (4/98) music_low_24-Greensleeves-Korean-male-speech.441.16b48k.wav: 0.1806
+  (5/98) music_low_25-This-is-the-end.441.16b48k.wav: 0.1102
+  (6/98) music_low_4-Sound-English-male.441.16b48k.wav: 0.0038
+  (7/98) music_low_35_SQAM_glockenspiel_cut.16b48k.wav: 0.0943
+  (8/98) music_low_27-last-song-drums-and-trampets.441.16b48k.wav: 0.2110
+  (9/98) music_low_9-Have-big-expensive-car.441.16b48k.wav: 0.1162
+  (10/98) music_low_Asleep__4.11-4.31_.16b48k.wav: 0.1105
+  (11/98) music_low_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav: 0.1233
+  (12/98) music_low_Changes.16b48k.wav: 0.2504
+  (13/98) music_low_Coral.16b48k.wav: 0.0509
+  (14/98) music_low_ExitMusic.16b48k.wav: 0.0550
+  (15/98) music_low_Girl_In_The_Fire__Sample_.16b48k.wav: 0.0517
+  (16/98) music_low_Greatest_Love_of_All_2min57.16b48k.wav: 0.1253
+  (17/98) music_low_Jupiter, the Bringer of Jolity.16b48k.wav: 0.1158
+  (18/98) music_low_Hey Tonight.16b48k.wav: 0.0382
+  (19/98) music_low_Hotel California.16b48k.wav: 0.0598
+  (20/98) music_low_Last_Of_The_Mohicanz__Sample_.16b48k.wav: 0.0385
+  (21/98) music_low_NewYorkCity.16b48k.wav: 0.0781
+  (22/98) music_low_Only Time.16b48k.wav: 0.0996
+  (23/98) music_low_Robots_old.16b48k.wav: 0.0397
+  (24/98) music_low_Severance__1.31-1.51_.16b48k.wav: 0.0977
+  (25/98) music_low_Shinsho_pool_3min45_4min4.16b48k.wav: 0.0410
+  (26/98) music_low_SinceAlways.16b48k.wav: 0.0524
+  (27/98) music_low_SlavesOfFear.16b48k.wav: 0.0963
+  (28/98) music_low_The Chastising of Renegade.16b48k.wav: 0.2320
+  (29/98) music_low_Through The Fire And Flames.16b48k.wav: 0.1093
+  (30/98) music_low_Waiting.16b48k.wav: 0.1207
+  (31/98) music_low_TrosYGareg.16b48k.wav: 0.0720
+  (32/98) music_low_With Love (Outro).16b48k.wav: 0.0922
+  (33/98) music_low_bah.wav: 0.1065
+  (34/98) music_low_bonhemian_rhapsody.16b48k.wav: 0.0771
+  (35/98) music_low_bas.wav: 0.0654
+  (36/98) music_low_clapton_44k.16b48k.wav: 0.0535
+  (37/98) music_low_girl.16b48k.wav: 0.1408
+  (38/98) music_low_hrp.wav: 0.0761
+  (39/98) music_low_liberate.16b48k.wav: 0.0845
+  (40/98) music_low_lob.wav: 0.0713
+  (41/98) music_low_cst.wav: 0.0493
+  (42/98) music_low_mof.wav: 0.1624
+  (43/98) music_low_sandman.16b48k.wav: 0.1089
+  (44/98) music_low_fms.wav: 0.0345
+  (45/98) music_low_take_your_finger_frin_my_head.16b48k.wav: 0.1401
+  (46/98) music_low_glk.wav: 0.0979
+  (47/98) music_low_velvet.16b48k.wav: 0.1922
+  (48/98) music_low_qrt.wav: 0.0843
+  (49/98) music_low_trumpet.16b48k.wav: 0.0464
+  (50/98) music_std_24-Greensleeves-Korean-male-speech.441.16b48k.wav: 0.1800
+  (51/98) music_std_15-Good-evening.441.16b48k.wav: 0.1839
+  (52/98) music_std_21-classic.441.16b48k.wav: 0.0845
+  (53/98) music_std_12-German-male-speech.441.16b48k.wav: 0.0040
+  (54/98) music_std_25-This-is-the-end.441.16b48k.wav: 0.1055
+  (55/98) music_std_27-last-song-drums-and-trampets.441.16b48k.wav: 0.2098
+  (56/98) music_std_35_SQAM_glockenspiel_cut.16b48k.wav: 0.0932
+  (57/98) music_std_4-Sound-English-male.441.16b48k.wav: 0.0028
+  (58/98) music_std_9-Have-big-expensive-car.441.16b48k.wav: 0.1159
+  (59/98) music_std_Asleep__4.11-4.31_.16b48k.wav: 0.1103
+  (60/98) music_std_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav: 0.0827
+  (61/98) music_std_Changes.16b48k.wav: 0.2539
+  (62/98) music_std_Coral.16b48k.wav: 0.0494
+  (63/98) music_std_ExitMusic.16b48k.wav: 0.0548
+  (64/98) music_std_Girl_In_The_Fire__Sample_.16b48k.wav: 0.0482
+  (65/98) music_std_Greatest_Love_of_All_2min57.16b48k.wav: 0.1239
+  (66/98) music_std_Jupiter, the Bringer of Jolity.16b48k.wav: 0.0701
+  (67/98) music_std_Hey Tonight.16b48k.wav: 0.0186
+  (68/98) music_std_Hotel California.16b48k.wav: 0.0588
+  (69/98) music_std_Last_Of_The_Mohicanz__Sample_.16b48k.wav: 0.0436
+  (70/98) music_std_Robots_old.16b48k.wav: 0.0395
+  (71/98) music_std_NewYorkCity.16b48k.wav: 0.0753
+  (72/98) music_std_Only Time.16b48k.wav: 0.1003
+  (73/98) music_std_Severance__1.31-1.51_.16b48k.wav: 0.0965
+  (74/98) music_std_SlavesOfFear.16b48k.wav: 0.0727
+  (75/98) music_std_Shinsho_pool_3min45_4min4.16b48k.wav: 0.0404
+  (76/98) music_std_SinceAlways.16b48k.wav: 0.0273
+  (77/98) music_std_The Chastising of Renegade.16b48k.wav: 0.2301
+  (78/98) music_std_Through The Fire And Flames.16b48k.wav: 0.0831
+  (79/98) music_std_TrosYGareg.16b48k.wav: 0.0623
+  (80/98) music_std_Waiting.16b48k.wav: 0.1170
+  (81/98) music_std_With Love (Outro).16b48k.wav: 0.0790
+  (82/98) music_std_bah.wav: 0.1067
+  (83/98) music_std_bas.wav: 0.0647
+  (84/98) music_std_cst.wav: 0.0394
+  (85/98) music_std_girl.16b48k.wav: 0.1395
+  (86/98) music_std_bonhemian_rhapsody.16b48k.wav: 0.0759
+  (87/98) music_std_clapton_44k.16b48k.wav: 0.0499
+  (88/98) music_std_glk.wav: 0.0961
+  (89/98) music_std_fms.wav: 0.0326
+  (90/98) music_std_hrp.wav: 0.0700
+  (91/98) music_std_liberate.16b48k.wav: 0.0790
+  (92/98) music_std_mof.wav: 0.1643
+  (93/98) music_std_lob.wav: 0.0534
+  (94/98) music_std_qrt.wav: 0.0847
+  (95/98) music_std_sandman.16b48k.wav: 0.1055
+  (96/98) music_std_take_your_finger_frin_my_head.16b48k.wav: 0.1317
+  (97/98) music_std_trumpet.16b48k.wav: 0.0462
+  (98/98) music_std_velvet.16b48k.wav: 0.1434
+Phase 3 (stereo image) complete.
