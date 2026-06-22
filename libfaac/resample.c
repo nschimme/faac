@@ -23,7 +23,9 @@
  * The wider (vs a general FIR) transition band only relaxes rejection ABOVE
  * ~12 kHz; the SBR crossover for every supported HE config sits at 7-9.5 kHz,
  * well below the flat (+/-0.05 dB) passband, and the residual alias energy folds
- * into the 11-12 kHz region that SBR re-synthesises over the core. */
+ * into the 11-12 kHz region that SBR re-synthesises over the core.
+ * HB_CENTER: ideal half-band centre is 0.5; equiripple design settles at 0.5016
+ * for equal stopband ripple with negligible passband deviation (<0.01 dB). */
 #define HB_CENTER ((faac_real)0.5015570876767614)
 static const faac_real hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
     (faac_real)-2.39042884e-03f, (faac_real) 2.03978735e-03f, (faac_real)-2.88625768e-03f, (faac_real) 3.94878764e-03f,

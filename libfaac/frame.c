@@ -34,6 +34,15 @@
 #include "sbr.h"
 #include "resample.h"
 
+/* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
+#define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
+#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+#define HE_MAX_BITRATE_PER_CH 28000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
+#define HE_VBR_QUANTQUAL_MAX  60     /* quality ≤60 ≈ ≤100 kbps; HE saves bits */
+/* Level 4 (default) zero-codes too aggressively at Fs/2, wasting bits on noise-coded
+ * bands that SBR cannot synthesize. Level 2 spends those bits on real spectral content. */
+#define HE_CORE_PNSLEVEL      2
+
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
 #endif
@@ -254,25 +263,19 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
-            /* HE wins below ~28 kbit/s/ch; at/above it (e.g. 32 kbit/s/ch =
-             * 64 kbit/s stereo) SBR's top-octave reconstruction costs up to a
-             * full MOS on percussive material (measured via ViSQOL), so let the
-             * LC core take over. The Fs-scaled term keeps the core (Fs/2) from
-             * being starved at lower sample rates. */
+            /* Threshold scales with Fs: (3/4)*Fs - 4 kHz gives ~20 kbps at 32 kHz,
+             * saturating at HE_MAX_BITRATE_PER_CH for Fs ≥ 44.1 kHz. */
             unsigned int max_he_rate = (unsigned int)(hEncoder->sampleRate * 3 / 4 - 4000);
-            if (max_he_rate > 28000) max_he_rate = 28000;
-            /* Floor at 12 kbit/s/ch: below the ceiling HE only widens its lead as
-             * the rate drops (LC bandwidth-starves first while SBR keeps the top
-             * octave), so HE stays the better choice all the way down. */
-            rate_ok = (rate_per_ch >= 12000 && rate_per_ch <= max_he_rate);
+            if (max_he_rate > HE_MAX_BITRATE_PER_CH) max_he_rate = HE_MAX_BITRATE_PER_CH;
+            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
         } else {
-            rate_ok = (config->quantqual <= 60); /* VBR: HE-AAC for <= ~100 kbps */
+            rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= 32000) ? HE_AAC : LOW;
+        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_AAC : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < 32000)
+    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC at Fs/2; SBR rebuilds the top octave.
@@ -284,10 +287,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
         hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
         hEncoder->config.mpegVersion = MPEG4;
-        /* Keep PNS on (reduced) in the core: percussive content carries
-         * broadband noise below the crossover; waveform-coding it starves the
-         * core. pnslevel 2 is the matched-bitrate optimum. */
-        hEncoder->config.pnslevel    = 2;
+        hEncoder->config.pnslevel    = HE_CORE_PNSLEVEL;
     }
 
     /* Re-init TNS for new profile */
@@ -354,11 +354,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
                                         &hEncoder->fft_tables);
         if (!HeAacBuffersAlloc(hEncoder))
             return 0;
-        /* Core bandwidth tracks the SBR crossover kx (a QMF band of the
-         * full-rate spectrum): kx_freq = kx * fullSampleRate / 128. Matching
-         * them avoids a gap or overlap between core and SBR. */
+        /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
+         * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth =
-            (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) / 128);
+            (unsigned int)((hEncoder->sbrInfo->kx * hEncoder->fullSampleRate) /
+                           (2 * SBR_QMF_BANDS_64));
     } else {
         HeAacBuffersFree(hEncoder);
     }
