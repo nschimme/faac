@@ -39,6 +39,8 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
+/* L/R -> M/S transform: preserves both channels to maintain stereo image.
+ * Relies on the quantizer to naturally drop silent Side channels. */
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend)
 {
@@ -225,9 +227,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     }
 }
 
-/* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R. Lossless when
- * both are kept; here a near-silent side is dropped to save bits, gated by
- * thrmid. thrside additionally zeroes a channel that is far quieter. */
+/* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R.
+ * True M/S preserves both channels to improve stereo coherence;
+ * bits are saved naturally by the quantizer on silent/masked channels. */
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
@@ -424,10 +426,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             }
         }
 
-        /* M/S decision: Trigger M/S coding when it's more efficient than L/R.
-         * We use the weaker M/S channel (scaled) as a proxy for correlation.
-         * True M/S preserves both channels; the quantizer will naturally zero
-         * out a silent Side channel (mono bit-savings) without forced collapse. */
+        /* M/S decision: Trigger M/S coding when the L/R channels are correlated.
+         * True M/S preserves both channels to improve stereo coherence. */
         if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
         {
             ms = 1;
