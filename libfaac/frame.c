@@ -243,13 +243,15 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     /* HE-AAC: encode the core as AAC-LC at Fs/2; SBR rebuilds the top octave.
      * Keep the original rate for SBR and the ASC. */
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->fullSampleRate == 0) {
-        hEncoder->fullSampleRate     = hEncoder->sampleRate;
-        hEncoder->fullSampleRateIdx  = hEncoder->sampleRateIdx;
-        hEncoder->sampleRate         = hEncoder->sampleRate / 2;
-        hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
-        hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
+    if (hEncoder->config.aacObjectType == HE_AAC) {
         hEncoder->config.mpegVersion = MPEG4;
+        if (hEncoder->fullSampleRate == 0) {
+            hEncoder->fullSampleRate     = hEncoder->sampleRate;
+            hEncoder->fullSampleRateIdx  = hEncoder->sampleRateIdx;
+            hEncoder->sampleRate         = hEncoder->sampleRate / 2;
+            hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
+            hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
+        }
     }
 
     /* Re-init TNS for new profile */
