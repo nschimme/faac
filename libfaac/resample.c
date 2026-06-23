@@ -40,11 +40,15 @@
  * HB_CENTER: ideal half-band centre is 0.5; equiripple design settles at 0.5016
  * for equal stopband ripple with negligible passband deviation (<0.01 dB). */
 #define HB_CENTER ((faac_real)0.5015570876767614)
-static const faac_real hb_even_compact[16] = {
-    (faac_real)-2.3904288400e-03f, (faac_real)+2.0397873500e-03f, (faac_real)-2.8862576800e-03f, (faac_real)+3.9487876400e-03f,
-    (faac_real)-5.2674733600e-03f, (faac_real)+6.8940842400e-03f, (faac_real)-8.8978263400e-03f, (faac_real)+1.1377479800e-02f,
-    (faac_real)-1.4481539000e-02f, (faac_real)+1.8449164200e-02f, (faac_real)-2.3693792400e-02f, (faac_real)+3.1000578400e-02f,
-    (faac_real)-4.2059612200e-02f, (faac_real)+6.1281530000e-02f, (faac_real)-1.0487041500e-01f, (faac_real)+3.1877738900e-01f
+static const faac_real hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
+    (faac_real)-2.39042884e-03f, (faac_real) 2.03978735e-03f, (faac_real)-2.88625768e-03f, (faac_real) 3.94878764e-03f,
+    (faac_real)-5.26747336e-03f, (faac_real) 6.89408424e-03f, (faac_real)-8.89782634e-03f, (faac_real) 1.13774798e-02f,
+    (faac_real)-1.44815390e-02f, (faac_real) 1.84491642e-02f, (faac_real)-2.36937924e-02f, (faac_real) 3.10005784e-02f,
+    (faac_real)-4.20596122e-02f, (faac_real) 6.12815300e-02f, (faac_real)-1.04870415e-01f, (faac_real) 3.18777389e-01f,
+    (faac_real) 3.18777389e-01f, (faac_real)-1.04870415e-01f, (faac_real) 6.12815300e-02f, (faac_real)-4.20596122e-02f,
+    (faac_real) 3.10005784e-02f, (faac_real)-2.36937924e-02f, (faac_real) 1.84491642e-02f, (faac_real)-1.44815390e-02f,
+    (faac_real) 1.13774798e-02f, (faac_real)-8.89782634e-03f, (faac_real) 6.89408424e-03f, (faac_real)-5.26747336e-03f,
+    (faac_real) 3.94878764e-03f, (faac_real)-2.88625768e-03f, (faac_real) 2.03978735e-03f, (faac_real)-2.39042884e-03f,
 };
 
 Resampler *ResampleOpen(int channels)
@@ -69,9 +73,6 @@ int Resample2to1(Resampler *r, int input_len)
     const int NEVEN = RESAMPLE_FILTER_LEN / 2 + 1;    /* 32 even (non-zero) taps */
     int ch, i, j;
 
-    faac_real hb[32];
-    for (i = 0; i < 16; i++) { hb[i] = hb_even_compact[i]; hb[31-i] = hb_even_compact[i]; }
-
     for (ch = 0; ch < r->channels; ch++) {
         faac_real * __restrict in  = r->fullRate[ch];
         faac_real * __restrict out = r->halfRate[ch];
@@ -94,11 +95,16 @@ int Resample2to1(Resampler *r, int input_len)
         for (i = 0; i < elen; i++)
             even[i] = combined[2 * i];
 
-                for (i = 0; i < output_len; i++) {
+        for (i = 0; i < output_len; i++) {
             const faac_real * __restrict e = even + i;
-            faac_real sum = 0;
-            for (j = 0; j < NEVEN; j++) sum += hb[j] * e[j];
-            *out++ = sum + HB_CENTER * combined[2 * i + HALF];
+            faac_real a0 = 0, a1 = 0, a2 = 0, a3 = 0;
+            for (j = 0; j < NEVEN; j += 4) {
+                a0 += hb_even[j + 0] * e[j + 0];
+                a1 += hb_even[j + 1] * e[j + 1];
+                a2 += hb_even[j + 2] * e[j + 2];
+                a3 += hb_even[j + 3] * e[j + 3];
+            }
+            *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
         }
 
         memcpy(hist, combined + actual_input, H * sizeof(faac_real));
