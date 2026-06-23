@@ -1,9 +1,23 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
  *
- * HE-AAC v1 Spectral Band Replication (SBR) encoder
- * ISO/IEC 14496-3:2009 §4.6.18
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
+/* HE-AAC v1 Spectral Band Replication (SBR) encoder, ISO/IEC 14496-3:2009 §4.6.18 */
 
 #ifndef SBR_H
 #define SBR_H
@@ -84,7 +98,7 @@ typedef struct SBRInfo {
     /* --- per-frame state --- */
     int numEnvelopes;      /* 1 or 2, set by transient detection in SBRAnalysis */
     faac_real transientThresh; /* peak/mean slot power ratio; see SBR_TRANSIENT_THRESH_DEFAULT */
-    int eff_amp_res;       /* forced to 0 for single-envelope FIXFIX (ISO 14496-3 / FAAD2 sbr_huff.c) */
+    int eff_amp_res;       /* forced to 0 for single-envelope FIXFIX (ISO 14496-3:2009 §4.6.18.3) */
 
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];

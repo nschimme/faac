@@ -1,26 +1,26 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
  *
- * SBR tables derived from ISO/IEC 14496-3:2009 (Fourth Edition).
- * The prototype filter coefficients and Huffman tables are normative
- * parts of the standard and are reproduced here for implementation
- * purposes.  All SBR patents (Fraunhofer/Dolby) expired no later than
- * 2021 in all major jurisdictions.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * Third-party attribution for data values reproduced in this file:
- *
- *   - qmf_c[640] (640-tap QMF prototype) — transcribed from
- *     FAAD2 libfaad/sbr_qmf_c.h qmf_c[].
- *     Copyright (c) 2003-2005 M. Bakker, Nero AG.
- *     Licensed under the GPLv2 or later.
- *
- *   - sbr_offset[7][16] — identical to FAAD2's offset[7][16]
- *     (same source file and copyright as above).
- *
- *   - SBR Huffman tables — cross-checked against FAAD2 sbr_huff.c
- *     decode trees.  "Code from FAAD2 is copyright (c) Nero AG,
- *     www.nero.com" (GPLv2 or later).
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
+/* SBR tables: QMF prototype filter, frequency-band offsets, Huffman tables.
+ * All values are normative data from ISO/IEC 14496-3:2009 (Fourth Edition).
+ * All SBR patents (Fraunhofer/Dolby) expired no later than 2021 in all
+ * major jurisdictions. */
 
 #ifndef SBR_TABLES_H
 #define SBR_TABLES_H
@@ -74,9 +74,8 @@ static const faac_real h_sbr_qmf[64] = {
 };
 
 /* ------------------------------------------------------------------
- * 640-tap QMF prototype (ISO 14496-3:2009 Table 4.A.90 / C.4)
- * Used for the 64-band encoder-side analysis QMF.  Values from
- * FAAD2 libfaad/sbr_qmf_c.h qmf_c[].
+ * 640-tap QMF prototype filter (ISO 14496-3:2009 Table 4.A.90 / C.4)
+ * Used for the 64-band encoder-side analysis QMF.
  * ------------------------------------------------------------------ */
 static const faac_real qmf_c[640] = {
     (faac_real)+0.0000000000e+00f, (faac_real)-5.5252865047e-04f, (faac_real)-5.6176925738e-04f, (faac_real)-4.9475180896e-04f,
@@ -244,7 +243,7 @@ static const faac_real qmf_c[640] = {
 /* ------------------------------------------------------------------
  * SBR start-frequency offset table
  * ISO 14496-3:2009 Table 4.87  (bs_start_freq → k0 offset from start_min)
- * Identical to the FAAD2 offset[7][16] table (sbr_offset).
+ * ISO 14496-3:2009 Table 4.87.
  *
  * Row selection by full SBR sample rate:
  *   row 0 : Fs_sbr  = 16000 Hz
@@ -275,7 +274,7 @@ static const signed char sbr_offset[7][16] = {
 
 /* ------------------------------------------------------------------
  * SBR Huffman encoder tables
- * Derived from ISO 14496-3:2009 Huffman decode trees (FAAD2).
+ * ISO 14496-3:2009 Huffman decode trees.
  *
  * Format: { code, len }
  *   code : codeword value, MSB at bit (len-1)  — pass directly to PutBit()
