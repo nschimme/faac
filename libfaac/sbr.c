@@ -237,11 +237,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real tratio = (faac_real)0.0;
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
-    int sampled = 0;
+    int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
         faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
-        sampled = 0;
         memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
         memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
@@ -262,7 +261,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 #endif
             {
                 qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, slotEnergy, kx, k2);
-                sampled++;
                 int h = clamp_int(slot / half_slots, 0, 1);
                 for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
             }
