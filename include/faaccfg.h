@@ -129,7 +129,6 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
-    int sbr_fast; /* SBR temporal decimation: 0=2x (norm), 1=4x (fast), 2=8x (extreme) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

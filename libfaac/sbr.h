@@ -115,7 +115,7 @@ typedef struct SBRInfo {
 
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, int fast_mode);
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples);
 #include "bitstream.h"
 int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag);
 
