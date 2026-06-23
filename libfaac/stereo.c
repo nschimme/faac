@@ -24,7 +24,7 @@
 #include "huff2.h"
 
 
-static inline void zero_channel(faac_real * restrict s0, int start, int len,
+static void zero_channel(faac_real * restrict s0, int start, int len,
                                 int wstart, int wend)
 {
     faac_real * restrict s_out = s0 + wstart * BLOCK_LEN_SHORT + start;
@@ -39,7 +39,7 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
+static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
@@ -66,7 +66,7 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     }
 }
 
-static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
+static void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend,
                             int in_phase, faac_real vfix, int zero_sr)
 {
@@ -100,7 +100,7 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
 /* Intensity Stereo: send one combined channel + per-band L/R level ratio;
  * the decoder re-pans it. Discards inter-channel phase, so it is gated by
  * phthr and skipped on low bands where phase still matters. */
-static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
+static __attribute__((noinline)) void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                    faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                    int wstart, int wend, faac_real phthr
                   )
@@ -233,7 +233,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 /* Mid/Side: code mid=(L+R)/2 and side=(L-R)/2 instead of L/R. Lossless when
  * both are kept; here a near-silent side is dropped to save bits, gated by
  * thrmid. thrside additionally zeroes a channel that is far quieter. */
-static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
+static __attribute__((noinline)) void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
                     faac_real thrmid, faac_real thrside
@@ -324,7 +324,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 /* Per-band joint stereo: IS above is_start_sfb, M/S below, L/R fallback.
  * IS and M/S are mutually exclusive per scale factor band.
  * Returns 1 if any band was M/S coded (caller must then signal ms_used). */
-static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
+static __attribute__((noinline)) int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                  int wstart, int wend,
                  faac_real thrmid, faac_real thrside, faac_real isthr,

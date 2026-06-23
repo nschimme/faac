@@ -211,7 +211,7 @@ static inline faac_real fast_log2(faac_real x)
  * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
  * matches it to machine precision. Energy (magnitude squared) is sufficient:
  * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
-static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+static __attribute__((noinline)) void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
     const faac_real * restrict proto = sbr->proto;
@@ -342,21 +342,12 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 {
-    /* ISO 14496-3:2009 §4.6.18.5 sbr_header() */
     if (wf) {
-        PutBit(bs, sbr->bs_amp_res,     1); /* bs_amp_res: 0=1.5dB, 1=3dB */
-        PutBit(bs, sbr->bs_start_freq,  4); /* bs_start_freq: crossover index */
-        PutBit(bs, sbr->bs_stop_freq,   4); /* bs_stop_freq: high-band ceil */
-        PutBit(bs, sbr->bs_xover_band,  3); /* bs_xover_band: low-res split (0=none) */
-        PutBit(bs, 0,                   2); /* bs_reserved */
-        PutBit(bs, 1,                   1); /* bs_header_extra_1 = 1 (alter_scale present) */
-        PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 (limiter fields absent) */
-        /* bs_header_extra_1 fields: */
-        PutBit(bs, 0,                   2); /* bs_freq_scale = 0 (linear master table) */
-        PutBit(bs, sbr->bs_alter_scale, 1); /* bs_alter_scale: 1=coarser at low bitrate */
-        PutBit(bs, 0,                   2); /* bs_noise_bands = 0 (→ 1 noise band) */
+        PutBit(bs, sbr->bs_amp_res, 1); PutBit(bs, sbr->bs_start_freq, 4); PutBit(bs, sbr->bs_stop_freq, 4);
+        PutBit(bs, sbr->bs_xover_band, 3); PutBit(bs, 0, 2); PutBit(bs, 1, 1); PutBit(bs, 0, 1);
+        PutBit(bs, 0, 2); PutBit(bs, sbr->bs_alter_scale, 1); PutBit(bs, 0, 2);
     }
-    return 1+4+4+3+2+1+1+2+1+2; /* = 21; keep in sync with PutBit sequence */
+    return 21;
 }
 
 static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf)
@@ -421,33 +412,22 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
 
 static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
 {
-    int bits = 0;
-    if (id_aac == ID_CPE) {
-        if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); }
-        bits += 2;
-        bits += write_sbr_grid(sbr, bs, wf);
-        bits += write_sbr_grid(sbr, bs, wf);
-        bits += write_sbr_dtdf(sbr, bs, wf);
-        bits += write_sbr_dtdf(sbr, bs, wf);
-        bits += write_sbr_invf(sbr, bs, 0, wf);
-        bits += write_sbr_invf(sbr, bs, 1, wf);
-        bits += write_sbr_envelope(sbr, bs, 0, wf);
-        bits += write_sbr_envelope(sbr, bs, 1, wf);
-        bits += write_sbr_noise(sbr, bs, 0, wf);
-        bits += write_sbr_noise(sbr, bs, 1, wf);
-        if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); PutBit(bs, 0, 1); }
-        bits += 3;
-    } else {
-        if (wf) PutBit(bs, 0, 1);
-        bits += 1;
-        bits += write_sbr_grid(sbr, bs, wf);
-        bits += write_sbr_dtdf(sbr, bs, wf);
-        bits += write_sbr_invf(sbr, bs, 0, wf);
-        bits += write_sbr_envelope(sbr, bs, 0, wf);
-        bits += write_sbr_noise(sbr, bs, 0, wf);
-        if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); }
-        bits += 2;
+    int bits = 0, ch, nch = (id_aac == ID_CPE) ? 2 : 1;
+    if (wf) {
+        PutBit(bs, 0, 1);
+        if (nch == 2) PutBit(bs, 0, 1);
     }
+    bits += nch;
+    for (ch = 0; ch < nch; ch++) bits += write_sbr_grid(sbr, bs, wf);
+    for (ch = 0; ch < nch; ch++) bits += write_sbr_dtdf(sbr, bs, wf);
+    for (ch = 0; ch < nch; ch++) bits += write_sbr_invf(sbr, bs, ch, wf);
+    for (ch = 0; ch < nch; ch++) bits += write_sbr_envelope(sbr, bs, ch, wf);
+    for (ch = 0; ch < nch; ch++) bits += write_sbr_noise(sbr, bs, ch, wf);
+    if (wf) {
+        PutBit(bs, 0, 1); PutBit(bs, 0, 1);
+        if (nch == 2) PutBit(bs, 0, 1);
+    }
+    bits += (nch == 2) ? 3 : 2;
     return bits;
 }
 
@@ -456,13 +436,17 @@ int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag)
     if (!sbr || !sbr->sbrPresent) return 0;
     int sendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
     int sbrBits = 1 + (sendHeader ? write_sbr_header(sbr, NULL, 0) : 0) + write_sbr_data(sbr, NULL, id_aac, 0);
-    int fillBytes = (4 + sbrBits + 7) / 8, padBits = (fillBytes * 8) - (4 + sbrBits), totalBits = 0;
-#define WB(v,n) do { if (writeFlag) PutBit(bs,(v),(n)); totalBits += (n); } while(0)
-    WB(ID_FIL, 3); if (fillBytes < 15) WB(fillBytes, 4); else { WB(15, 4); WB(fillBytes - 14, 8); }
-    WB(SBR_EXT_TYPE_SBR, 4); WB(sendHeader, 1);
-    if (sendHeader) totalBits += write_sbr_header(sbr, writeFlag ? bs : NULL, writeFlag);
-    totalBits += write_sbr_data(sbr, writeFlag ? bs : NULL, id_aac, writeFlag);
-    if (padBits > 0) WB(0, padBits);
-    if (writeFlag) { sbr->headerSent = 1; sbr->frameCount++; }
-    return totalBits;
+    int fillBytes = (4 + sbrBits + 7) / 8, padBits = (fillBytes * 8) - (4 + sbrBits);
+    if (writeFlag) {
+        PutBit(bs, ID_FIL, 3);
+        if (fillBytes < 15) PutBit(bs, fillBytes, 4);
+        else { PutBit(bs, 15, 4); PutBit(bs, fillBytes - 14, 8); }
+        PutBit(bs, SBR_EXT_TYPE_SBR, 4);
+        PutBit(bs, sendHeader, 1);
+        if (sendHeader) write_sbr_header(sbr, bs, 1);
+        write_sbr_data(sbr, bs, id_aac, 1);
+        if (padBits > 0) PutBit(bs, 0, padBits);
+        sbr->headerSent = 1; sbr->frameCount++;
+    }
+    return 3 + (fillBytes < 15 ? 4 : 12) + 4 + sbrBits + padBits;
 }
