@@ -25,14 +25,37 @@
 /* Huffman Codebooks */
 enum {
     HCB_ZERO = 0,
+    HCB_1, HCB_2, HCB_3, HCB_4, HCB_5,
+    HCB_6, HCB_7, HCB_8, HCB_9, HCB_10,
     HCB_ESC = 11,
+    HCB_DELTA = 12,
     HCB_PNS = 13,
     HCB_INTENSITY2 = 14,
     HCB_INTENSITY = 15,
     HCB_NONE
 };
 
-/* Maximum value representable by Huffman Book 11 escape sequences.
+/* Largest Absolute Value (LAV) per book class */
+enum {
+    LAV_1   = 1,
+    LAV_2   = 2,
+    LAV_4   = 4,
+    LAV_7   = 7,
+    LAV_12  = 12,
+    LAV_ESC = 16
+};
+
+/* Polynomial space dimensions for spectral books */
+enum {
+    DIM_S4 = 3,  /* HCB_1 to HCB_2: 3^4 = 81 */
+    DIM_M4 = 3,  /* HCB_3 to HCB_4: 3^4 = 81 */
+    DIM_S2 = 9,  /* HCB_5 to HCB_6: 9^2 = 81 */
+    DIM_M2_7 = 8,  /* HCB_7 to HCB_8: 8^2 = 64 */
+    DIM_M2_12 = 13, /* HCB_9 to HCB_10: 13^2 = 169 */
+    DIM_ESC = 17   /* HCB_ESC: 17^2 = 289 */
+};
+
+/* Maximum value representable by HCB_ESC escape sequences.
  * Values >= 8192 would cause bitstream overflow/sync loss. */
 #define MAX_HUFF_ESC_VAL 8191
 
@@ -52,7 +75,7 @@ enum {
 
 /**
  * Restrict scalefactor delta to the spec-defined +/- SF_DELTA range.
- * This ensures the delta remains valid for Book 12 Huffman encoding.
+ * This ensures the delta remains valid for HCB_DELTA Huffman encoding.
  */
 static inline int clamp_sf_diff(int diff)
 {
@@ -63,9 +86,11 @@ static inline int clamp_sf_diff(int diff)
     return diff;
 }
 
-int huffbook(CoderInfo *coderInfo,
-             int *qs /* quantized spectrum */,
-             int len);
+/* Finalize the Huffman stage on the retained quantized spectrum: select a
+ * codebook for every spectral band, then emit the spectral symbols. quantize.c
+ * lays out the spectrum and resolves non-spectral bands (zero/PNS/intensity);
+ * this owns all codebook selection. */
+void huffman_finalize(CoderInfo *coder);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

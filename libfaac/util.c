@@ -15,13 +15,16 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
  */
 
 #include <math.h>
 
 #include "util.h"
-#include "coder.h"  // FRAME_LEN
+#include "coder.h"
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 /* Returns the sample rate index */
 int GetSRIndex(unsigned int sampleRate)
@@ -54,3 +57,24 @@ unsigned int MinBitrate()
     return 8000;
 }
 
+/* Portable CLZ (returns 32 for x==0); lets escape() get a magnitude's bit-length
+ * in O(1) instead of the old shift-until-fits loop. */
+int CountLeadingZeros(unsigned int x)
+{
+    if (x == 0) return 32;
+#ifdef _MSC_VER
+    unsigned long leading_zero;
+    _BitScanReverse(&leading_zero, x);
+    return 31 - leading_zero;
+#elif defined(__GNUC__) || defined(__clang__)
+    return __builtin_clz(x);
+#else
+    int n = 0;
+    if (x <= 0x0000FFFF) { n += 16; x <<= 16; }
+    if (x <= 0x00FFFFFF) { n += 8; x <<= 8; }
+    if (x <= 0x0FFFFFFF) { n += 4; x <<= 4; }
+    if (x <= 0x3FFFFFFF) { n += 2; x <<= 2; }
+    if (x <= 0x7FFFFFFF) { n += 1; x <<= 1; }
+    return n;
+#endif
+}

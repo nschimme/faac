@@ -92,6 +92,13 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    /* Retained quantized spectrum: quantize lays the coeffs out band-by-band,
+     * then huffman_finalize() selects books and emits symbols in a second pass.
+     * Only spectral bands (HCB_1..HCB_ESC) occupy qspec; non-spectral get qlen 0. */
+    int qspec[FRAME_LEN + 4];     /* packed quantized coeffs, in band order, +padding */
+    int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
+    int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
