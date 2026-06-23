@@ -103,9 +103,8 @@ typedef struct SBRInfo {
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
 
-    /* --- QMF analysis tables (init once, borrowed FFT tables) ---
-     * twidCos/Sin pre-rotate the even/odd-packed window output;
-     * oddCos/Sin recombine the two real-subsequence DFTs. */
+    /* --- QMF analysis tables (init once, borrowed FFT tables) --- */
+    faac_real *proto;        /* 640-tap prototype filter (reconstructed in RAM) */
     faac_real twidCos[SBR_QMF_BANDS_64];
     faac_real twidSin[SBR_QMF_BANDS_64];
     faac_real oddCos [SBR_QMF_BANDS_64];

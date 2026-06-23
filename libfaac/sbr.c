@@ -38,8 +38,11 @@ static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int off
     int sym = delta + offset;
     if (sym < 0) sym = 0;
     if (sym >= nsyms) sym = nsyms - 1;
-    if (writeFlag) PutBit(bs, table[sym].code, table[sym].len);
-    return table[sym].len;
+    unsigned int entry = table[sym];
+    unsigned int code = entry >> 8;
+    unsigned char len = entry & 0xFF;
+    if (writeFlag) PutBit(bs, code, len);
+    return len;
 }
 
 /* kx and k2 implement ISO 14496-3:2009 §4.6.18.3.2 (Master Frequency Band Table).
@@ -145,7 +148,22 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
-    build_freq_table(sbr);
+        build_freq_table(sbr);
+
+    /* Reconstruct 640-tap QMF prototype filter from compact table. */
+    sbr->proto = (faac_real *)AllocMemory(640 * sizeof(faac_real));
+    if (!sbr->proto) {
+        SBREnd(sbr);
+        return NULL;
+    }
+
+    for (int i = 0; i <= 320; i++) sbr->proto[i] = qmf_c_compact[i];
+    for (int i = 321; i < 640; i++) {
+        int target = 640 - i;
+        faac_real sign = (target == 128 || target == 256) ? (faac_real)-1.0 : (faac_real)1.0;
+        sbr->proto[i] = sign * qmf_c_compact[target];
+    }
+
     /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
     for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
         sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
@@ -163,6 +181,7 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
 void SBREnd(SBRInfo *sbr)
 {
     if (!sbr) return;
+    if (sbr->proto) FreeMemory(sbr->proto);
     /* fftTables is borrowed from the encoder; the core terminates it. */
     FreeMemory(sbr);
 }
@@ -195,7 +214,7 @@ static inline faac_real fast_log2(faac_real x)
 static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
-    const faac_real * restrict proto = qmf_c;
+    const faac_real * restrict proto = sbr->proto;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m, n1 = 2 * m + 1;
         faac_real a = proto[n0]       * ovl_pos[639 - n0]
