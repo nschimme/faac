@@ -92,6 +92,17 @@ typedef struct {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
+    /* Retained quantized spectrum: quantize lays the coeffs out band-by-band,
+     * then huffman_finalize() selects books and emits symbols in a second pass.
+     * Only spectral bands (HCB_1..HCB_ESC) occupy qspec; non-spectral get qlen 0. */
+    int qspec[FRAME_LEN + 4];     /* packed quantized coeffs, in band order, +padding */
+    int qoffset[MAX_SCFAC_BANDS]; /* per-band start index into qspec[] */
+    int qlen[MAX_SCFAC_BANDS];    /* per-band coeff count (0 if non-spectral) */
+    /* Cost of coding this band under its own tier's range-pair: [0]=base book,
+     * [1]=base+1 (==[0] for the ESC tier, no pair partner). Seeds section_optimize's
+     * DP so same-tier spans sum for free; cross-tier spans it recosts on demand. */
+    int cost_pair[MAX_SCFAC_BANDS][2];
+
     struct {
         int n;
         int len[MAX_SHORT_WINDOWS];
