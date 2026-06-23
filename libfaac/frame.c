@@ -39,9 +39,6 @@
 #define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
 #define HE_MAX_BITRATE_PER_CH 28000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 #define HE_VBR_QUANTQUAL_MAX  60     /* quality ≤60 ≈ ≤100 kbps; HE saves bits */
-/* Level 4 (default) zero-codes too aggressively at Fs/2, wasting bits on noise-coded
- * bands that SBR cannot synthesize. Level 2 spends those bits on real spectral content. */
-#define HE_CORE_PNSLEVEL      2
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -255,7 +252,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
         hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
         hEncoder->config.mpegVersion = MPEG4;
-        hEncoder->config.pnslevel    = HE_CORE_PNSLEVEL;
     }
 
     /* Re-init TNS for new profile */
