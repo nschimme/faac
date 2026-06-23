@@ -43,7 +43,7 @@ static unsigned short tnsMinBandNumberLong[12] =
 static unsigned short tnsMaxBandsLongLow[12] =
 { 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
 
-static unsigned short tnsMaxOrderLongLow = 8;
+static unsigned short tnsMaxOrderLongLow = 12;
 
 /* TNS pre-gate thresholds: prevent activation on silent or non-beneficial frames. */
 #define TNS_ENERGY_FLOOR      0.16  /* min MDCT RMS floor */
@@ -53,7 +53,7 @@ static unsigned short tnsMaxOrderLongLow = 8;
 /* TNS bit-budget analysis constants. */
 #define TNS_SPECTRAL_FRAC   0.65    /* fraction of frame bits for spectral lines */
 #define TNS_FIXED_OVERHEAD  14      /* fixed bitstream overhead per filter */
-#define TNS_CALIBRATION     1.029   /* calibration against corpus anchor */
+#define TNS_CALIBRATION     1.10    /* calibration against corpus anchor */
 #define TNS_THRESH_FLOOR    1.10    /* minimum gain for TNS utility */
 #define TNS_THRESH_CAP      1.80    /* adaptive threshold cap */
 
