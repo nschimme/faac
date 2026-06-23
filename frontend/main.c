@@ -185,7 +185,6 @@ static help_t help_mp4[] = {
 };
 
 static help_t help_advanced[] = {
-    {"--tns  \tEnable coding of TNS, temporal noise shaping.\n"},
     {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n"},
     {"--joint 0\tDisable joint stereo coding.\n"},
     {"--joint 1\tUse Mid/Side coding.\n"},
@@ -431,7 +430,7 @@ int main(int argc, char *argv[])
     const unsigned int objectType = LOW;
     int jointmode = -1;
     int pnslevel = -1;
-    static int useTns = 0;
+    static int useTns = 1;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
     int cutOff = -1;
@@ -528,7 +527,6 @@ int main(int argc, char *argv[])
             {"pcmsamplebits", 1, 0, 'B'},
             {"pcmchannels", 1, 0, 'C'},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
-            {"tns", 0, &useTns, 1},
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"license", 0, 0, 'L'},
