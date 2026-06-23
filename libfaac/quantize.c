@@ -123,16 +123,32 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
+  totenrg = 0.0;
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
+      faac_real avge = 0.0, maxe = 0.0;
+      start = cb_offset[sfb];
+      end = cb_offset[sfb + 1];
+      for (win = 0; win < gsize; win++)
       {
-          totenrg += xr[cnt] * xr[cnt];
+          xr = xr0 + win * BLOCK_LEN_SHORT + start;
+          int n = end - start;
+          for (cnt = 0; cnt < n; cnt++)
+          {
+              faac_real val = xr[cnt];
+              faac_real e = val * val;
+              avge += e;
+              if (maxe < e)
+                  maxe = e;
+          }
       }
+      bandenrg[sfb] = avge;
+      /* Track peak magnitude to identify potential Huffman overflows. */
+      bandmaxe[sfb] = FAAC_SQRT(maxe);
+      totenrg += avge;
   }
-  enrgcnt = gsize * total_len;
 
+  enrgcnt = gsize * total_len;
   if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -140,7 +156,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -148,30 +163,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
+    faac_real avge = bandenrg[sfb];
+    faac_real maxe = (bandmaxe[sfb] * bandmaxe[sfb]) * gsize;
     faac_real target;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
-
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    /* Track peak magnitude to identify potential Huffman overflows. */
-    bandmaxe[sfb] = FAAC_SQRT(maxe);
 
     avgenrg = (totenrg / last) * (end - start);
 
@@ -191,6 +188,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 }
 
 enum {MAXSHORTBAND = 36};
+
+/* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
+ * zero, or sfac underflow): it occupies no qspec range and so is a hard section
+ * boundary for section_optimize(). Caller still sets book[] and bumps bandcnt. */
+static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
+{
+    coderInfo->qoffset[coderInfo->bandcnt] = qofs;
+    coderInfo->qlen[coderInfo->bandcnt] = 0;
+    coderInfo->blen[coderInfo->bandcnt] = 0;
+}
+
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -199,7 +207,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandmaxe,
                    int gnum,
                    int pnslevel,
-                   int *p_last_abs  /* previous active band's absolute stored scalefactor */
+                   int *p_last_abs, /* previous active band's absolute stored scalefactor */
+                   int *p_qofs      /* running write index into coderInfo->qspec[] */
                   )
 {
     int sb;
@@ -213,7 +222,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -221,6 +229,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
+          /* Pre-assigned (intensity/PNS/pan-zero): no spectral data, section boundary. */
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->bandcnt++;
           continue;
       }
@@ -233,12 +243,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
       if (bandqual[sb] < pnsthr)
       {
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -312,21 +324,26 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       end -= start;
-      xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          /* Underflowed to silence: a zero band, no spectral data emitted. */
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
       {
+          xi = coderInfo->qspec + *p_qofs;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
-          huffbook(coderInfo, xitab, gsize * end);
+          /* huffbook() sets book[] + blen[]; retain coeffs for section_optimize. */
+          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
+          coderInfo->qlen[coderInfo->bandcnt] = gsize * end;
+          huffbook(coderInfo, coderInfo->qspec + *p_qofs, gsize * end);
+          *p_qofs += gsize * end;
       }
       /* Track sf_abs (full bitstream value) for the next band's delta check.
        * HCB_ZERO bands don't participate in the regular-band delta chain. */
@@ -350,6 +367,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
+    int qofs = 0;                 /* running write index into coder->qspec[] */
 
     gxr = xr;
     for (cnt = 0; cnt < coder->groups.n; cnt++)
@@ -357,9 +375,15 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
               (faac_real)aacquantCfg->quality/DEFQUAL);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-               aacquantCfg->pnslevel, &lastsf);
+               aacquantCfg->pnslevel, &lastsf, &qofs);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
+
+    /* Greedily merge adjacent spectral sections to amortise section headers,
+     * then emit the spectral symbols under the finalised books. Both operate on
+     * the retained quantized spectrum; only spectral books change (lossless). */
+    section_optimize(coder);
+    emit_spectral(coder);
 
     /* global_gain seeds the decoder's regular scalefactor chain and is written
      * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity
