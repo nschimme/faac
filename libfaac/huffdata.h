@@ -12,37 +12,23 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    along with this program.  See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  See the GNU General Public License for more details.
 ****************************************************************************/
 
 #ifndef HUFFDATA_H
 #define HUFFDATA_H
 
 #include "huff2.h"
-
 #include <stdint.h>
 
-typedef struct {
-    const uint16_t len;
-    const uint16_t data;
-} hcode16_t;
+extern const uint8_t huff_len[];
+extern const uint16_t huff_data[];
+extern const int huff_offset[];
 
-typedef struct {
-    const uint32_t len;
-    const uint32_t data;
-} hcode32_t;
-
-extern hcode16_t book01[81];
-extern hcode16_t book02[81];
-extern hcode16_t book03[81];
-extern hcode16_t book04[81];
-extern hcode16_t book05[81];
-extern hcode16_t book06[81];
-extern hcode16_t book07[64];
-extern hcode16_t book08[64];
-extern hcode16_t book09[169];
-extern hcode16_t book10[169];
-extern hcode16_t book11[289];
-extern hcode32_t book12[2 * SF_DELTA + 1];
+extern const uint8_t huff_len_delta[];
+extern const uint32_t huff_data_delta[];
 
 #endif /* HUFFDATA_H */
