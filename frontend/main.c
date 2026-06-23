@@ -195,7 +195,7 @@ static help_t help_advanced[] = {
     {"--joint 3\tUse Mixed Mode (dynamic M/S and IS) coding (default).\n"},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n"},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
-    {"--object-type X\tForce AAC object type: lc, he-aac, or auto (default)\n"},
+    {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
     {0}
@@ -538,7 +538,6 @@ int main(int argc, char *argv[])
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
-            {"profile", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
             {"artist", 1, 0, ARTIST_FLAG},
@@ -776,13 +775,12 @@ int main(int argc, char *argv[])
         case OBJTYPE_FLAG:
             if (!strcmp(optarg, "lc"))
                 objectType = LOW;
-            else if (!strcmp(optarg, "he-aac") || !strcmp(optarg, "heaac") ||
-                     !strcmp(optarg, "he-aac-v1") || !strcmp(optarg, "heaac-v1"))
+            else if (!strcmp(optarg, "he-aac-v1"))
                 objectType = HE_AAC;
             else if (!strcmp(optarg, "auto"))
                 objectType = AAC_AUTO;
             else
-                dieMessage = "Unrecognised object type (use lc, he-aac, or auto)!\n";
+                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
             break;
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
