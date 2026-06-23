@@ -188,8 +188,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
-    hEncoder->config.sbr_fast = config->sbr_fast;
-
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     switch( hEncoder->config.inputFormat )
@@ -393,7 +391,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
-    hEncoder->config.sbr_fast = 1; /* default 4x SBR temporal decimation */
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -587,7 +584,7 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer,
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, full_spch, hEncoder->config.sbr_fast);
+    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, full_spch);
     Resample2to1(rs, full_spch);
     return 0;
 }
