@@ -237,14 +237,6 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real tratio = (faac_real)0.0;
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
-    /* FAAC_SBR_DECIMATION=N: analyse every Nth slot per frame (build-time, -Dsbr-decimation).
-     * More analyses = better SBR envelope accuracy = higher MOS; fewer = faster encode.
-     * Only affects HE-AAC; LC is unchanged.
-     *   1: every slot  -- reference quality; MOS delta: 0
-     *   2: every 2nd   -- ~20% faster HE-AAC encode; MOS delta: -0.004
-     *   4: every 4th   -- ~30% faster HE-AAC encode; MOS delta: -0.015
-     *   8: every 8th   -- ~36% faster HE-AAC encode; MOS delta: -0.028 */
-
     int sampled = 0;
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
