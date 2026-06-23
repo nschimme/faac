@@ -95,7 +95,6 @@ enum flags
     HELP_ADVANCED,
     OPT_JOINT,
     OPT_PNS,
-    OPT_SBR_FAST,
     OBJTYPE_FLAG
 };
 
@@ -434,7 +433,6 @@ int main(int argc, char *argv[])
     unsigned int objectType = AAC_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
-    int sbr_fast = -1;
     static int useTns = 0;
     enum container_format container = NO_CONTAINER;
     enum stream_format stream = ADTS_STREAM;
@@ -526,7 +524,6 @@ int main(int argc, char *argv[])
             {"raw", 0, 0, 'r'},
             {"joint", required_argument, 0, OPT_JOINT},
             {"pns", required_argument, 0, OPT_PNS},
-            {"sbr-fast", required_argument, 0, OPT_SBR_FAST},
             {"cutoff", 1, 0, 'c'},
             {"quality", 1, 0, 'q'},
             {"pcmraw", 0, 0, 'P'},
@@ -807,9 +804,6 @@ int main(int argc, char *argv[])
         case OPT_PNS:
             pnslevel = atoi(optarg);
             break;
-        case OPT_SBR_FAST:
-            sbr_fast = atoi(optarg);
-            break;
         case '?':
         default:
             help('?');
@@ -963,8 +957,6 @@ int main(int argc, char *argv[])
 
     if (pnslevel >= 0)
         myFormat->pnslevel = pnslevel;
-    if (sbr_fast >= 0)
-        myFormat->sbr_fast = sbr_fast;
     if (quantqual > 0)
     {
         myFormat->quantqual = quantqual;
