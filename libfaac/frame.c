@@ -307,7 +307,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
-    hEncoder->aacquantCfg.heMode = (hEncoder->config.aacObjectType == HE_AAC);
 
     if (hEncoder->config.aacObjectType == HE_AAC) {
         if (!hEncoder->resampler)
@@ -813,7 +812,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg), hEncoder->config.aacObjectType);
     }
 
     // fix max_sfb in CPE mode
