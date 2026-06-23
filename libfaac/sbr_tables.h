@@ -32,48 +32,6 @@ extern "C" {
 #endif
 
 /* ------------------------------------------------------------------
- * 64-tap QMF analysis prototype filter
- * ISO 14496-3:2009 Table C.1 / Table 4.82
- * Used for the 32-band encoder-side analysis QMF.
- * ------------------------------------------------------------------ */
-static const faac_real h_sbr_qmf[64] = {
-    /* n = 0..31 */
-     (faac_real) 0.00000000e+00, (faac_real) 5.36548976e-04,
-     (faac_real) 1.49098137e-03, (faac_real) 3.14336202e-03,
-     (faac_real) 5.27748948e-03, (faac_real) 7.68975685e-03,
-     (faac_real) 1.01109461e-02, (faac_real) 1.20138462e-02,
-     (faac_real) 1.28756718e-02, (faac_real) 1.20264939e-02,
-     (faac_real) 8.97602006e-03, (faac_real) 2.51825292e-03,
-    (faac_real)-7.29687483e-03, (faac_real)-2.08397195e-02,
-    (faac_real)-3.62228565e-02, (faac_real)-5.23067017e-02,
-    (faac_real)-6.69739674e-02, (faac_real)-7.82829581e-02,
-    (faac_real)-8.40448915e-02, (faac_real)-8.21108721e-02,
-    (faac_real)-7.07856267e-02, (faac_real)-4.88382545e-02,
-    (faac_real)-1.65773682e-02, (faac_real) 2.50142761e-02,
-     (faac_real) 7.14696624e-02, (faac_real) 1.24418671e-01,
-     (faac_real) 1.80857862e-01, (faac_real) 2.39440231e-01,
-     (faac_real) 2.98457860e-01, (faac_real) 3.56453777e-01,
-     (faac_real) 4.12082039e-01, (faac_real) 4.64118950e-01,
-    /* n = 32..63 (symmetric) */
-     (faac_real) 4.64118950e-01, (faac_real) 4.12082039e-01,
-     (faac_real) 3.56453777e-01, (faac_real) 2.98457860e-01,
-     (faac_real) 2.39440231e-01, (faac_real) 1.80857862e-01,
-     (faac_real) 1.24418671e-01, (faac_real) 7.14696624e-02,
-     (faac_real) 2.50142761e-02, (faac_real)-1.65773682e-02,
-    (faac_real)-4.88382545e-02, (faac_real)-7.07856267e-02,
-    (faac_real)-8.21108721e-02, (faac_real)-8.40448915e-02,
-    (faac_real)-7.82829581e-02, (faac_real)-6.69739674e-02,
-    (faac_real)-5.23067017e-02, (faac_real)-3.62228565e-02,
-    (faac_real)-2.08397195e-02, (faac_real)-7.29687483e-03,
-     (faac_real) 2.51825292e-03, (faac_real) 8.97602006e-03,
-     (faac_real) 1.20264939e-02, (faac_real) 1.28756718e-02,
-     (faac_real) 1.20138462e-02, (faac_real) 1.01109461e-02,
-     (faac_real) 7.68975685e-03, (faac_real) 5.27748948e-03,
-     (faac_real) 3.14336202e-03, (faac_real) 1.49098137e-03,
-     (faac_real) 5.36548976e-04, (faac_real) 0.00000000e+00 /* h[62],h[63] */
-};
-
-/* ------------------------------------------------------------------
  * 640-tap QMF prototype filter (ISO 14496-3:2009 Table 4.A.90 / C.4)
  * Used for the 64-band encoder-side analysis QMF.
  * ------------------------------------------------------------------ */
