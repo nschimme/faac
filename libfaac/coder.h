@@ -22,6 +22,7 @@
 #ifndef CODER_H
 #define CODER_H
 
+#include <stdint.h>
 #include "faac_real.h"
 
 #ifdef __cplusplus
@@ -90,11 +91,11 @@ typedef struct {
     int desired_block_type;
 
     int global_gain;
-    int sf[MAX_SCFAC_BANDS];
-    int book[MAX_SCFAC_BANDS];
+    int16_t sf[MAX_SCFAC_BANDS];
+    int16_t book[MAX_SCFAC_BANDS];
     int bandcnt;
     int sfbn;
-    int sfb_offset[NSFB_LONG + 1];
+    int16_t sfb_offset[NSFB_LONG + 1];
 
     struct {
         int n;
@@ -104,10 +105,8 @@ typedef struct {
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
 
-    struct {
-        int data;
-        int len;
-    } s[DATASIZE];
+    int data[DATASIZE];
+    uint8_t len[DATASIZE];
     int datacnt;
 
 

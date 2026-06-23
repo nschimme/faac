@@ -104,7 +104,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                int numberOfBands,       /* Number of bands per window */
                int maxSfb,              /* max_sfb */
                enum WINDOW_TYPE blockType,   /* block type */
-               int* sfbOffsetTable,     /* Scalefactor band offset table */
+               int16_t* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
                faac_real* temp)
 {
@@ -193,7 +193,7 @@ void TnsEncodeFilterOnly(TnsInfo* tnsInfo,           /* TNS info */
                          int numberOfBands,          /* Number of bands per window */
                          int maxSfb,                 /* max_sfb */
                          enum WINDOW_TYPE blockType, /* block type */
-                         int* sfbOffsetTable,        /* Scalefactor band offset table */
+                         int16_t* sfbOffsetTable,        /* Scalefactor band offset table */
                          faac_real* spec,               /* Spectral data array */
                          faac_real* temp)
 {

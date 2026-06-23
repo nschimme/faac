@@ -319,13 +319,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
-    hEncoder->coderInfo = (CoderInfo*)AllocMemory(numChannels * sizeof(CoderInfo));
-    hEncoder->channelInfo = (ChannelInfo*)AllocMemory(numChannels * sizeof(ChannelInfo));
-    hEncoder->psyInfo = (PsyInfo*)AllocMemory(numChannels * sizeof(PsyInfo));
-    SetMemory(hEncoder->coderInfo, 0, numChannels * sizeof(CoderInfo));
-    SetMemory(hEncoder->channelInfo, 0, numChannels * sizeof(ChannelInfo));
-    SetMemory(hEncoder->psyInfo, 0, numChannels * sizeof(PsyInfo));
-
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -379,9 +372,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 			FreeMemory (hEncoder->next3SampleBuff[channel]);
     }
 
-    if (hEncoder->coderInfo) FreeMemory(hEncoder->coderInfo);
-    if (hEncoder->channelInfo) FreeMemory(hEncoder->channelInfo);
-    if (hEncoder->psyInfo) FreeMemory(hEncoder->psyInfo);
 
     /* Free handle */
     FreeMemory(hEncoder);

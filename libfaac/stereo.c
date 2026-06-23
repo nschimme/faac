@@ -107,7 +107,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 {
     int sfb;
     int sfmin;
-    const int * restrict sfb_offset = cl->sfb_offset;
+    const int16_t * restrict sfb_offset = cl->sfb_offset;
 
     if (!phthr)
         return;
@@ -241,7 +241,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 {
     int sfb;
     int sfmin;
-    const int * restrict sfb_offset = coder->sfb_offset;
+    const int16_t * restrict sfb_offset = coder->sfb_offset;
 
     if (coder->block_type == ONLY_SHORT_WINDOW)
         sfmin = 1;
@@ -334,7 +334,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
     int sfb;
     int sfmin;
     int msused = 0;
-    const int * restrict sfb_offset = cl->sfb_offset;
+    const int16_t * restrict sfb_offset = cl->sfb_offset;
 
     if (cl->block_type == ONLY_SHORT_WINDOW)
         sfmin = 1;

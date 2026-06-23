@@ -112,7 +112,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality)
 {
   int sfb, start, end, cnt;
-  int *cb_offset = coderInfo->sfb_offset;
+  int16_t *cb_offset = coderInfo->sfb_offset;
   int last;
   faac_real avgenrg;
   faac_real powm = 0.4;
@@ -437,7 +437,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 
 enum {MINSFB = 2};
 
-static void calce(faac_real * __restrict xr, const int * __restrict bands, faac_real e[NSFB_SHORT], int maxsfb,
+static void calce(faac_real * __restrict xr, const int16_t * __restrict bands, faac_real e[NSFB_SHORT], int maxsfb,
                   int maxl)
 {
     int sfb;

@@ -626,8 +626,8 @@ static int WriteSpectralData(CoderInfo *coderInfo,
 
     if (writeFlag) {
         for(i = 0; i < coderInfo->datacnt; i++) {
-            int data = coderInfo->s[i].data;
-            int len = coderInfo->s[i].len;
+            int data = coderInfo->data[i];
+            int len = (int)coderInfo->len[i];
             if (len > 0) {
                 PutBit(bitStream, data, len);
                 bits += len;
@@ -635,7 +635,7 @@ static int WriteSpectralData(CoderInfo *coderInfo,
         }
     } else {
         for(i = 0; i < coderInfo->datacnt; i++) {
-            bits += coderInfo->s[i].len;
+            bits += (int)coderInfo->len[i];
         }
     }
 
