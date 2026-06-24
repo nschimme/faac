@@ -266,7 +266,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     int n_env = sbr->numEnvelopes;
 
     for (int ch = 0; ch < nch; ch++) {
-        int noise_level = 0; /* min injection: non-zero noise is destructive if miscalibrated (TODO) */
+        int noise_level = SBR_NOISE_LEVEL_DEFAULT; /* see sbr.h: 0 over-injected noise */
         sbr->ch[ch].invfMode = 3; /* HIVAR: strongest pre-whitening; conservative until tonality adapts (TODO) */
         /* Huffman delta range: ISO Table 4.100 extents (3dB res: ±31, 1.5dB res: ±60). */
         int dlav = sbr->eff_amp_res ? 31 : 60;
