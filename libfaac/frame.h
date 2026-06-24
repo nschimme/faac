@@ -36,6 +36,7 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
+#include "stereo.h"
 
 #include <faaccfg.h>
 
@@ -83,6 +84,8 @@ typedef struct {
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
+
+    StereoTuning stereoTuning;
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
