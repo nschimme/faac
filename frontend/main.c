@@ -478,6 +478,7 @@ int main(int argc, char *argv[])
     uint64_t encoded_samples = 0;
     unsigned int delay_samples;
     unsigned int frameSize;
+    unsigned int frameInSamples;
     uint64_t input_samples = 0;
     char *faac_id_string;
     char *faac_copyright_string;
@@ -982,12 +983,11 @@ int main(int argc, char *argv[])
                     objectType == HE_AAC ? "HE-AAC v1" : "Low Complexity");
     }
 
-    /* libfaac buffers input internally, so we keep feeding samplesInput-sized
-     * chunks regardless of object type. HE-AAC downsamples 2:1, so each output
-     * frame still represents 2x frameSize input samples; account for that in the
-     * MP4 sample timing (frame_samples below) only. */
-    if (objectType == HE_AAC)
-        delay_samples = 2 * frameSize;
+    /* Each output frame covers frameInSamples input samples per channel at the
+     * original rate: FRAME_LEN for LC, 2*FRAME_LEN for HE-AAC (whose core runs
+     * at half the input rate). Derived from the resolved object type. */
+    frameInSamples = ((objectType == HE_AAC) ? 2 : 1) * frameSize;
+    delay_samples = frameInSamples;
 
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)
@@ -1086,7 +1086,7 @@ int main(int argc, char *argv[])
     long begin = GetTickCount();
 #endif
     if (infile->samples)
-        frames = ((infile->samples + 1023) / 1024) + 1;
+        frames = ((infile->samples + frameInSamples - 1) / frameInSamples) + 1;
     else
         frames = 0;
     currentFrame = 0;
@@ -1177,7 +1177,7 @@ int main(int argc, char *argv[])
                             ((double) infile->samples / infile->samplerate *
                              currentFrame / frames), timeused,
                             timeused * frames / currentFrame,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)frameInSamples * currentFrame / infile->samplerate) /
                             timeused,
                             timeused * (frames -
                                         currentFrame) / currentFrame);
@@ -1188,7 +1188,7 @@ int main(int argc, char *argv[])
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)frameInSamples * currentFrame / infile->samplerate) /
                             timeused);
                 }
 
