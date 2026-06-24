@@ -161,7 +161,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     bits += (numFillBits - bitsLeftAfterFill);
 
     /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
+    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
         bits += SBRWriteBitstream(hEncoder->sbrInfo, bitStream, id_aac, 1);
     }
@@ -250,7 +250,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     bits += (numFillBits - bitsLeftAfterFill);
 
     /* HE-AAC: account for the SBR fill-element payload */
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo) {
+    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
         bits += SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
     }
@@ -291,7 +291,7 @@ static int WriteADTSHeader(faacEncStruct* hEncoder,
         PutBit(bitStream, 1, 1); /* protection absent */
         /* HE-AAC signals AAC-LC here: core is LC at Fs/2, SBR lives in fill elements */
         {
-            int adts_profile = (hEncoder->config.aacObjectType == HE_AAC)
+            int adts_profile = (hEncoder->config.aacObjectType == HE_V1)
                              ? LOW - 1 : hEncoder->config.aacObjectType - 1;
             PutBit(bitStream, adts_profile, 2); /* profile */
         }

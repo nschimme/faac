@@ -166,7 +166,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
                 LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
                 LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-                config->aacObjectType = (data != CB_ERR) ? (unsigned int)data : AAC_AUTO;
+                config->aacObjectType = (data != CB_ERR) ? (unsigned int)data : AUTO;
             }
 
             GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
@@ -347,11 +347,11 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
             LRESULT idx;
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)AAC_AUTO);
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)AUTO);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)LOW);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
-            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)HE_AAC);
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)HE_V1);
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
@@ -438,7 +438,7 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
             LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
             LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            if (data == (LRESULT)HE_AAC) {
+            if (data == (LRESULT)HE_V1) {
                 SendMessage(hMPG, CB_SETCURSEL, 0, 0);
                 EnableWindow(hMPG, FALSE);
             } else {
