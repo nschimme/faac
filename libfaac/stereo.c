@@ -500,15 +500,16 @@ static inline int env_int(const char *name, int def)
 void StereoTuningInit(StereoTuning *tune)
 {
     /* Defaults chosen via MOS-gated benchmark sweeps to balance stereo image
-     * coherence (ic_err) and monaural fidelity (MOS). coll_thr=10 at q=1.0
-     * (128k) is conservative to avoid the MOS regression of true M/S. */
+     * coherence (ic_err) and monaural fidelity (MOS). Conservative values
+     * (coll_thr_mid=1.5, is_freq_lo=5500) are used at 128k to avoid
+     * monaural regressions. */
     tune->coll_thr_lo = env_real("FAAC_COLL_THR_LO", 1.0);
-    tune->coll_thr_mid = env_real("FAAC_COLL_THR_MID", 10.0);
+    tune->coll_thr_mid = env_real("FAAC_COLL_THR_MID", 1.5);
     tune->coll_thr_hi = env_real("FAAC_COLL_THR_HI", 60.0);
     tune->coll_thr_scale = env_real("FAAC_COLL_THR_SCALE", 1.0);
-    tune->is_freq_lo = env_int("FAAC_IS_FREQ_LO", 6000);
+    tune->is_freq_lo = env_int("FAAC_IS_FREQ_LO", 5500);
     tune->is_freq_hi = env_int("FAAC_IS_FREQ_HI", 10000);
-    tune->thrside_scale = env_real("FAAC_THRSIDE_SCALE", 0.9);
+    tune->thrside_scale = env_real("FAAC_THRSIDE_SCALE", 1.6);
 }
 
 void AACstereo(CoderInfo *coder,
@@ -544,22 +545,27 @@ void AACstereo(CoderInfo *coder,
         coll_thr = tune->coll_thr_lo;
         is_freq = tune->is_freq_lo;
     }
-    else if (quality < 1.0)
-    {
-        faac_real f = (quality - 0.5) * 2.0; /* 0..1 */
-        coll_thr = tune->coll_thr_lo + (tune->coll_thr_mid - tune->coll_thr_lo) * f;
-        is_freq = tune->is_freq_lo + FAAC_LRINT((7500.0 - (faac_real)tune->is_freq_lo) * f);
-    }
-    else if (quality < 4.0)
-    {
-        faac_real f = (quality - 1.0) / 3.0; /* 0..1 */
-        coll_thr = tune->coll_thr_mid + (tune->coll_thr_hi - tune->coll_thr_mid) * f;
-        is_freq = 7500 + FAAC_LRINT(((faac_real)tune->is_freq_hi - 7500.0) * f);
-    }
     else
     {
-        coll_thr = tune->coll_thr_hi;
-        is_freq = tune->is_freq_hi;
+        /* is_freq interpolation: linear between 0.5 and 4.0 */
+        faac_real f_is = min(1.0, (quality - 0.5) / 3.5);
+        is_freq = tune->is_freq_lo + FAAC_LRINT((faac_real)(tune->is_freq_hi - tune->is_freq_lo) * f_is);
+
+        if (quality < 1.0)
+        {
+            faac_real f = (quality - 0.5) * 2.0; /* 0..1 */
+            coll_thr = tune->coll_thr_lo + (tune->coll_thr_mid - tune->coll_thr_lo) * f;
+        }
+        else if (quality < 4.0)
+        {
+            faac_real f = (quality - 1.0) / 3.0; /* 0..1 */
+            coll_thr = tune->coll_thr_mid + (tune->coll_thr_hi - tune->coll_thr_mid) * f;
+        }
+        else
+        {
+            coll_thr = tune->coll_thr_hi;
+            is_freq = tune->is_freq_hi;
+        }
     }
     coll_thr *= tune->coll_thr_scale;
 
