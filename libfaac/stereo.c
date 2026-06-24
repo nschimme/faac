@@ -141,10 +141,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     else
         sfmin = 8;
 
-    for (sfb = 0; sfb < sfmin; sfb++)
-    {
-        (*sfcnt)++;
-    }
+    *sfcnt += sfmin;
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++)
     {
@@ -184,19 +181,21 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         if (enrgs < 0.0) enrgs = 0.0;
         if (enrgd < 0.0) enrgd = 0.0;
 
-        /* IS pays off when one phase collapses most energy into a single
-         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
-        ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
-        ethr *= ethr;
-        ethr *= phthr;
+        /* Skip completely silent bands first: efix==0 makes ethr==0 so IS
+         * would trigger spuriously, and vfix=sqrt(0/0) would be NaN. Doing
+         * this before ethr also skips its two FAAC_SQRT on empty bands. */
         efix = enrgl + enrgr;
-        /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
-         * trigger spuriously, and vfix=sqrt(0/0) would be NaN. */
         if (efix <= 0.0)
         {
             (*sfcnt)++;
             continue;
         }
+
+        /* IS pays off when one phase collapses most energy into a single
+         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
+        ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
+        ethr *= ethr;
+        ethr *= phthr;
         /* in-phase (l+r) vs out-of-phase (l-r); vfix renormalises the kept
          * channel so its energy matches the original L+R total */
         if (enrgs >= ethr)
