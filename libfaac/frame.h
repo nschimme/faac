@@ -98,8 +98,8 @@ typedef struct {
 
     /* Input FIFO: decouples the caller's per-call chunk size from the encoder
      * frame size. faacEncEncode appends whatever it is handed (any count) and
-     * emits one frame once a full frame (FRAME_LEN samples/ch) has accumulated.
-     * Stores format-converted faac_real. */
+     * emits one frame once a full frame (mult*FRAME_LEN samples/ch, mult = 2 for
+     * HE-AAC, 1 for LC) has accumulated. Stores format-converted faac_real. */
     faac_real    *inputFifo[MAX_CHANNELS];
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
