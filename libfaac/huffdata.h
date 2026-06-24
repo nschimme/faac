@@ -27,9 +27,11 @@ typedef struct {
     const uint16_t data;
 } hcode16_t;
 
+/* Bitfields pack 8 B -> 4 B; the compiler folds the layout, so every
+ * { len, data } literal in huffdata.c is unchanged. Used only by book12. */
 typedef struct {
-    const uint32_t len;
-    const uint32_t data;
+    const uint32_t len  : 8;    /* lengths <= 19      */
+    const uint32_t data : 24;   /* codes are <= 19 bits */
 } hcode32_t;
 
 extern hcode16_t book01[81];
