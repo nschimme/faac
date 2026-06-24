@@ -323,15 +323,18 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         }
     }
 
-    /* Input FIFO: one frame of leftover capacity; allocated once, reset on
-     * each (re)configuration so a stale partial frame is never carried over. */
+    /* Input FIFO: holds one frame plus up to one full incoming chunk of leftover.
+     * Allocate the HE-sized maximum (mult==2) once so toggling object type across
+     * SetConfiguration calls never needs a realloc; the overflow bound (cap)
+     * tracks the resolved object type. */
     {
+        unsigned int mult = (hEncoder->config.aacObjectType == HE_AAC) ? 2 : 1;
         unsigned int channel;
         for (channel = 0; channel < hEncoder->numChannels; channel++)
             if (!hEncoder->inputFifo[channel])
                 hEncoder->inputFifo[channel] =
-                    (faac_real *)AllocMemory(2 * FRAME_LEN * sizeof(faac_real));
-        hEncoder->inputFifoCap  = 2 * FRAME_LEN;
+                    (faac_real *)AllocMemory(2 * 2 * FRAME_LEN * sizeof(faac_real));
+        hEncoder->inputFifoCap  = 2 * mult * FRAME_LEN;
         hEncoder->inputFifoFill = 0;
     }
 
@@ -443,6 +446,47 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     return hEncoder;
 }
 
+int FAACAPI faacEncClose(faacEncHandle hpEncoder)
+{
+    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
+    unsigned int channel;
+
+    /* Deinitialize coder functions */
+    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
+
+    FilterBankEnd(hEncoder);
+
+    fft_terminate(&hEncoder->fft_tables);
+
+    /* Free remaining buffer memory */
+    for (channel = 0; channel < hEncoder->numChannels; channel++)
+	{
+		if (hEncoder->sampleBuff[channel])
+			FreeMemory(hEncoder->sampleBuff[channel]);
+		if (hEncoder->next3SampleBuff[channel])
+			FreeMemory (hEncoder->next3SampleBuff[channel]);
+		if (hEncoder->inputFifo[channel])
+			FreeMemory (hEncoder->inputFifo[channel]);
+    }
+
+    if (hEncoder->resampler) {
+        ResampleClose(hEncoder->resampler);
+        hEncoder->resampler = NULL;
+    }
+    if (hEncoder->sbrInfo) {
+        SBREnd(hEncoder->sbrInfo);
+        hEncoder->sbrInfo = NULL;
+    }
+
+    /* Free handle */
+    if (hEncoder)
+		FreeMemory(hEncoder);
+
+    BlocStat();
+
+    return 0;
+}
+
 /* Append the caller's (interleaved) input to the per-channel input FIFO,
  * de-interleaving and converting to faac_real once here so the rest of the
  * encoder is agnostic to the input format. samplesInput may be any count that
@@ -456,8 +500,6 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
 
     if (spch == 0)
         return 0;
-    if (spch > FRAME_LEN)  /* caller exceeded one nominal frame per channel */
-        return -1;
     if (hEncoder->inputFifoFill + spch > hEncoder->inputFifoCap)
         return -1;
 
@@ -504,99 +546,39 @@ static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
     hEncoder->inputFifoFill = rem;
 }
 
-int FAACAPI faacEncClose(faacEncHandle hpEncoder)
-{
-    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    unsigned int channel;
-
-    /* Deinitialize coder functions */
-    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
-
-    FilterBankEnd(hEncoder);
-
-    fft_terminate(&hEncoder->fft_tables);
-
-    /* Free remaining buffer memory */
-    for (channel = 0; channel < hEncoder->numChannels; channel++)
-	{
-		if (hEncoder->sampleBuff[channel])
-			FreeMemory(hEncoder->sampleBuff[channel]);
-		if (hEncoder->next3SampleBuff[channel])
-			FreeMemory (hEncoder->next3SampleBuff[channel]);
-		if (hEncoder->inputFifo[channel])
-			FreeMemory (hEncoder->inputFifo[channel]);
-    }
-
-    if (hEncoder->resampler) {
-        ResampleClose(hEncoder->resampler);
-        hEncoder->resampler = NULL;
-    }
-    if (hEncoder->sbrInfo) {
-        SBREnd(hEncoder->sbrInfo);
-        hEncoder->sbrInfo = NULL;
-    }
-
-    /* Free handle */
-    if (hEncoder)
-		FreeMemory(hEncoder);
-
-    BlocStat();
-
-    return 0;
-}
-
-/* HE-AAC per-frame front end: de-interleave the full-rate input, run SBR
- * analysis on it, then 2:1 downsample to produce the AAC-LC core signal.
+/* HE-AAC per-frame front end: take one assembled full-rate frame from the FIFO
+ * front (realPerCh real samples/ch, the rest silence-padded), run SBR analysis
+ * on it, then 2:1 downsample to produce the AAC-LC core signal. The FIFO is not
+ * consumed here; the caller drops the frame after the core has read heHalfRate.
  * Cold path, kept out of the LC fast path. */
 #if defined(__GNUC__)
 __attribute__((cold, noinline))
 #endif
-static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer,
-                             unsigned int samplesInput, faac_real *heHalfRate[MAX_CHANNELS])
+static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
+                         faac_real *heHalfRate[MAX_CHANNELS])
 {
-    unsigned int channel, i;
+    unsigned int channel;
     unsigned int numChannels = hEncoder->numChannels;
-    int full_spch = (int)(samplesInput / numChannels);
-
-    if (full_spch <= 0 || full_spch > 2 * FRAME_LEN) return -1;
-
     Resampler *rs = hEncoder->resampler;
     faac_real *fullPtrs[MAX_CHANNELS];
+
     for (channel = 0; channel < numChannels; channel++) {
         faac_real *fullRate = rs->fullRate[channel];
         fullPtrs[channel] = fullRate;
-        switch (hEncoder->config.inputFormat) {
-            case FAAC_INPUT_16BIT: {
-                short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
-                for (i = 0; i < (unsigned)full_spch; i++) { fullRate[i] = (faac_real)*src; src += numChannels; }
-                break;
-            }
-            case FAAC_INPUT_32BIT: {
-                int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
-                for (i = 0; i < (unsigned)full_spch; i++) { fullRate[i] = (1.0f/256) * (faac_real)*src; src += numChannels; }
-                break;
-            }
-            case FAAC_INPUT_FLOAT: {
-                float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
-                for (i = 0; i < (unsigned)full_spch; i++) { fullRate[i] = (faac_real)*src; src += numChannels; }
-                break;
-            }
-            default: break;
-        }
+        memcpy(fullRate, hEncoder->inputFifo[channel], realPerCh * sizeof(faac_real));
         /* Final partial frame: silence-pad the unfilled full-rate tail so the
          * resampler (and thus the core) never consumes a stale tail from a prior
-         * frame. SBRAnalysis below reads only [0, full_spch), so it is unaffected. */
-        if (full_spch < 2 * FRAME_LEN)
-            memset(fullRate + full_spch, 0, (2 * FRAME_LEN - full_spch) * sizeof(faac_real));
+         * frame. SBRAnalysis below reads only [0, realPerCh), so it is unaffected. */
+        if (realPerCh < 2 * FRAME_LEN)
+            memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(faac_real));
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, full_spch);
+    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh);
     /* With the tail zero-padded, decimate the whole 2*FRAME_LEN frame so the
      * entire FRAME_LEN of halfRate is written (real samples + FIR decay to
-     * silence); on a full frame full_spch == 2*FRAME_LEN, so this is unchanged. */
+     * silence); on a full frame realPerCh == 2*FRAME_LEN, so this is unchanged. */
     Resample2to1(rs, 2 * FRAME_LEN);
-    return 0;
 }
 
 int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
@@ -623,10 +605,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
     /* The input FIFO decouples the caller's chunk size from the encoder frame
-     * size: append whatever we were handed, then emit at most one frame. While
-     * fewer than a full frame is buffered we return 0 without touching any
-     * per-frame state, so the encoder behaves identically regardless of the
-     * caller's chunk size. */
+     * size: append whatever we were handed, then emit at most one frame. A frame
+     * is mult*FRAME_LEN samples/channel (mult==2 for HE-AAC, whose core runs at
+     * Fs/2). While fewer than a full frame is buffered we just return 0 without
+     * touching any per-frame state, so the encoder behaves identically regardless
+     * of the caller's chunk size. */
+    unsigned int mult = (hEncoder->config.aacObjectType == HE_AAC) ? 2 : 1;
+    unsigned int frameSamplesPerCh = mult * FRAME_LEN;
     int flushing = (samplesInput == 0);
     int realPerCh;          /* real (non-padded) input samples/ch in this frame */
 
@@ -634,20 +619,21 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
             return -1;
 
-    if (hEncoder->inputFifoFill >= FRAME_LEN)
-        realPerCh = (int)FRAME_LEN;               /* full frame ready */
+    if (hEncoder->inputFifoFill >= frameSamplesPerCh)
+        realPerCh = (int)frameSamplesPerCh;           /* full frame ready */
     else if (flushing && hEncoder->inputFifoFill > 0)
-        realPerCh = (int)hEncoder->inputFifoFill; /* final partial frame */
+        realPerCh = (int)hEncoder->inputFifoFill;     /* final partial frame */
     else if (flushing)
-        realPerCh = 0;                            /* drain core lookahead */
+        realPerCh = 0;                                /* drain core lookahead */
     else
-        return 0;                                 /* accumulating */
+        return 0;                                     /* accumulating */
 
     /* Increase frame number */
     hEncoder->frameNum++;
 
     /* A pure (FIFO-empty) flush frame pushes silence to drain the core's
-     * algorithmic delay; a final partial frame still carries real samples. */
+     * algorithmic delay; a final partial frame still carries real samples and is
+     * counted like a data frame, matching the pre-FIFO behaviour. */
     if (realPerCh == 0)
         hEncoder->flushFrame++;
 
@@ -661,10 +647,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate. */
     faac_real *heHalfRate[MAX_CHANNELS] = {0};
-    if (hEncoder->config.aacObjectType == HE_AAC && hEncoder->sbrInfo &&
-        hEncoder->resampler && samplesInput > 0)
-        if (doHEAACPreprocess(hEncoder, inputBuffer, samplesInput, heHalfRate) < 0)
-            return -1;
+    if (realPerCh > 0 && hEncoder->config.aacObjectType == HE_AAC &&
+        hEncoder->sbrInfo && hEncoder->resampler)
+        doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
 
     /* Update current sample buffers */
     for (channel = 0; channel < numChannels; channel++)
@@ -693,9 +678,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
         else
         {
-            /* Take one frame from the FIFO front (already faac_real),
+            /* LC: take one frame from the FIFO front (already faac_real),
              * silence-padding a short final frame. */
             unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
+
             memcpy(hEncoder->next3SampleBuff[channel], hEncoder->inputFifo[channel],
                    spc * sizeof(faac_real));
             for (i = spc; i < FRAME_LEN; i++)
@@ -714,9 +700,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
-    /* Drop the consumed frame from the FIFO front. */
+    /* Drop the consumed frame from the FIFO front (both the LC copy and the
+     * HE doHEAACFrame read the leading frameSamplesPerCh samples). */
     if (realPerCh > 0)
-        consumeInputFifo(hEncoder, FRAME_LEN);
+        consumeInputFifo(hEncoder, frameSamplesPerCh);
 
     if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
         return 0;

@@ -982,21 +982,12 @@ int main(int argc, char *argv[])
                     objectType == HE_AAC ? "HE-AAC v1" : "Low Complexity");
     }
 
-    /* HE-AAC consumes 2x input samples per frame (the encoder downsamples
-     * 2:1 internally), so grow samplesInput and the PCM buffer to match. */
+    /* libfaac buffers input internally, so we keep feeding samplesInput-sized
+     * chunks regardless of object type. HE-AAC downsamples 2:1, so each output
+     * frame still represents 2x frameSize input samples; account for that in the
+     * MP4 sample timing (frame_samples below) only. */
     if (objectType == HE_AAC)
-    {
-        samplesInput *= 2;
-        frameSize     = samplesInput / infile->channels;
-        delay_samples = frameSize;
-        free(pcmbuf);
-        pcmbuf = (float *) malloc(samplesInput * sizeof(float));
-        if (!pcmbuf)
-        {
-            fprintf(stderr, "Out of memory allocating PCM buffer\n");
-            return 1;
-        }
-    }
+        delay_samples = 2 * frameSize;
 
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)
