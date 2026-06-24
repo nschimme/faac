@@ -25,6 +25,7 @@
 #ifndef SBR_TABLES_H
 #define SBR_TABLES_H
 
+#include <stdint.h>
 #include "faac_real.h"
 
 #ifdef __cplusplus
@@ -246,10 +247,11 @@ static const signed char sbr_offset[7][16] = {
  *                      Also used for freq-domain noise floor coding.
  * ------------------------------------------------------------------ */
 
-/* Encoder entry: { codeword, bit-length } */
+/* Encoder entry: { codeword, bit-length }. Bitfields pack 8 B -> 4 B; the
+ * compiler folds the layout, so every { code, len } literal below is unchanged. */
 typedef struct {
-    unsigned int code;
-    unsigned char len;
+    uint32_t code : 24;   /* codes are <= 20 bits */
+    uint32_t len  : 8;    /* lengths are <= 20    */
 } SBRHuffEntry;
 
 /*
