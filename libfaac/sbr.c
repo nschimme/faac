@@ -322,14 +322,17 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
             }
         }
-        int prevNoise = -1;
-        for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            if (prevNoise < 0) {
-                sbr->ch[ch].noiseData[nb] = noise_level;
-                prevNoise = noise_level;
-            } else {
-                int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                sbr->ch[ch].noiseData[nb] = delta; prevNoise += delta;
+        int n_q = n_env > 1 ? 2 : 1;
+        for (int ne = 0; ne < n_q; ne++) {
+            int prevNoise = -1;
+            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+                if (prevNoise < 0) {
+                    sbr->ch[ch].noiseData[ne][nb] = noise_level;
+                    prevNoise = noise_level;
+                } else {
+                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
+                    sbr->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
+                }
             }
         }
     }
@@ -434,7 +437,7 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
     int n_q = sbr->numEnvelopes > 1 ? 2 : 1;
     for (int ne = 0; ne < n_q; ne++) {
         for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            int val = sbr->ch[ch].noiseData[nb];
+            int val = sbr->ch[ch].noiseData[ne][nb];
             if (nb == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 30), 5); bits += 5; }
             else bits += put_huff(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, val, wf);
         }

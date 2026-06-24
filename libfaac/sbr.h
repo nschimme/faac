@@ -38,6 +38,7 @@ extern "C" {
 #define SBR_QMF_OVL_LEN_64   576
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     2
+#define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 /* Re-transmit header every 30 frames (~0.7 s): lets decoders seek to any frame. */
 #define SBR_HEADER_PERIOD    30
@@ -78,7 +79,7 @@ extern "C" {
 typedef struct SBRChannel {
     faac_real qmfOvl64[SBR_QMF_OVL_LEN_64]; /* QMF overlap state (carries across frames) */
     int envData  [SBR_MAX_ENVELOPES][SBR_MAX_BANDS]; /* quantised envelope indices */
-    int noiseData[SBR_MAX_NOISE_BANDS];              /* quantised noise floor indices */
+    int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS]; /* quantised noise floor indices */
     int invfMode;                                    /* bs_invf_mode (0–3) */
 } SBRChannel;
 
