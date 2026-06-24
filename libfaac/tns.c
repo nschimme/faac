@@ -176,8 +176,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         if (sac) {
             faac_real avg_tonality = 0;
             int n_tonal = 0;
-            /* Map QMF bands to TNS bands approx. */
-            for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
+            /* Average tonality from QMF bands (0-31) that overlap the core spectrum. */
+            for (int k = 0; k < 32; k++) {
                 avg_tonality += sac->bandTonality[k];
                 n_tonal++;
             }
