@@ -99,20 +99,18 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
 
 /* Intensity Stereo: send one combined channel + per-band L/R level ratio;
  * the decoder re-pans it. Discards inter-channel phase, so it is gated by
- * phthr and skipped on low bands where phase still matters. */
+ * inv_isthr and skipped on low bands where phase still matters. */
 static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
                    faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
-                   int wstart, int wend, faac_real phthr
+                   int wstart, int wend, faac_real inv_isthr
                   )
 {
     int sfb;
     int sfmin;
     const int * restrict sfb_offset = cl->sfb_offset;
 
-    if (!phthr)
+    if (!inv_isthr)
         return;
-
-    phthr = 1.0 / phthr;
 
     /* low bands skip IS: phase still audible there */
     if (cl->block_type == ONLY_SHORT_WINDOW)
@@ -164,10 +162,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
         if (enrgd < 0.0) enrgd = 0.0;
 
         /* IS pays off when one phase collapses most energy into a single
-         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
+         * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by inv_isthr */
         ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
         ethr *= ethr;
-        ethr *= phthr;
+        ethr *= inv_isthr;
         efix = enrgl + enrgr;
         /* Skip completely silent bands: efix==0 makes ethr==0 so IS would
          * trigger spuriously, and vfix=sqrt(0/0) would be NaN. */
@@ -200,8 +198,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
              * the intensity position the decoder uses to re-spread the band */
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            faac_real inv_efix = 1.0 / efix;
+            int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+            int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
             /* pan beyond +-30 steps: the quieter channel is inaudible,
              * so drop it entirely (HCB_ZERO) instead of IS-coding */
@@ -327,7 +326,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                  int wstart, int wend,
-                 faac_real thrmid, faac_real thrside, faac_real isthr,
+                 faac_real thrmid, faac_real thrside, faac_real inv_isthr,
                  int is_start_sfb
                 )
 {
@@ -400,7 +399,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
             ethr *= ethr;
-            ethr /= isthr;
+            ethr *= inv_isthr;
 
             if (enrgs >= ethr)
             {
@@ -415,8 +414,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (hcb != HCB_NONE)
             {
-                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
                 if (pan > 30)
                 {
@@ -505,6 +505,8 @@ void AACstereo(CoderInfo *coder,
     thrside = 0.0;
     isthr = 1.0;
 
+    faac_real inv_quality = 1.0 / quality;
+
     /* all thresholds loosen as quality drops (divide by quality) and are
      * clamped so aggressive joint coding never kicks in at high quality */
     switch (mode)
@@ -512,32 +514,32 @@ void AACstereo(CoderInfo *coder,
     case JOINT_MIXED:
         /* 0.85x tighter M/S than pure JOINT_MS (IS carries the rest); linear
          * isthr (not quality^2) keeps more phase at low quality */
-        thrmid = (thr075 * 0.85) / quality;
+        thrmid = (thr075 * 0.85) * inv_quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
-        thrside = sidemin / quality;
+        thrside = sidemin * inv_quality;
         if (thrside > sidemax)
             thrside = sidemax;
         thrmid += 1.0;
 
-        isthr = 0.18 / quality;
+        isthr = 0.18 * inv_quality;
         isthr += 1.0;
         if (isthr > isthrmax + 1.0)
             isthr = isthrmax + 1.0;
         break;
     case JOINT_MS:
-        thrmid = thr075 / quality;
+        thrmid = thr075 * inv_quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
 
-        thrside = sidemin / quality;
+        thrside = sidemin * inv_quality;
         if (thrside > sidemax)
             thrside = sidemax;
 
         thrmid += 1.0;
         break;
     case JOINT_IS:
-        isthr = 0.18 / (quality * quality);
+        isthr = 0.18 * (inv_quality * inv_quality);
         isthr += 1.0;
         if (isthr > isthrmax + 1.0)
             isthr = isthrmax + 1.0;
@@ -548,6 +550,8 @@ void AACstereo(CoderInfo *coder,
     thrmid *= thrmid;
     thrside *= thrside;
     isthr *= isthr;
+
+    faac_real inv_isthr = 1.0 / isthr;
 
     for (chn = 0; chn < maxchan; chn++)
     {
@@ -595,8 +599,6 @@ void AACstereo(CoderInfo *coder,
         if (mode == JOINT_MIXED)
         {
             int sfb;
-            int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
-                          ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
             /* cap the 5.5kHz IS floor at 70% of Nyquist: at low sample rates
              * 5.5kHz can exceed the top band and disable IS for the whole frame */
             int is_freq = 5500;
@@ -605,10 +607,11 @@ void AACstereo(CoderInfo *coder,
                 is_freq = cap;
 
             is_start_sfb = coder[chn].sfbn;
+            int shift = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 8 : 11;
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++)
             {
                 /* bin center -> Hz: offset * fs / mdctlen */
-                int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen;
+                int freq = (coder[chn].sfb_offset[sfb] * sampleRate) >> shift;
                 if (freq >= is_freq)
                 {
                     is_start_sfb = sfb;
@@ -626,12 +629,12 @@ void AACstereo(CoderInfo *coder,
                         start, end, thrmid, thrside);
                 break;
             case JOINT_IS:
-                stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
+                stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, inv_isthr);
                 break;
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb);
+                                thrmid, thrside, inv_isthr, is_start_sfb);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;
