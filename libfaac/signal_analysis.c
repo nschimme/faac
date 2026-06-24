@@ -78,8 +78,9 @@ void AnalyzeSignal(struct SignalAnalysis *sa, faac_real *fullPtrs[], int nch, in
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
                     qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
 
-                    /* Phase 4: Envelope border alignment. */
-                    int h = (slot >= smax_idx) ? 1 : 0;
+                    /* Phase 4: Envelope border alignment (quantized to match bitstream). */
+                    int border = get_sbr_quantized_border(num_slots, smax_idx);
+                    int h = (slot >= border) ? 1 : 0;
 
                     for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
                         faac_real energy = slotEnergy[k];

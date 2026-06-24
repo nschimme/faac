@@ -127,6 +127,15 @@ struct SignalAnalysis;
 
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
+
+static inline int get_sbr_quantized_border(int numSlots, int transientSlot)
+{
+    int dist = numSlots - transientSlot;
+    int rel_bord = (dist - 2) >> 1;
+    if (rel_bord < 0) rel_bord = 0;
+    if (rel_bord > 3) rel_bord = 3;
+    return numSlots - (2 * rel_bord + 2);
+}
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
 #include "bitstream.h"

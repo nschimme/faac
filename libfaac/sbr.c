@@ -284,8 +284,8 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 
         /* Huffman delta range: ISO Table 4.100 extents (3dB res: ±31, 1.5dB res: ±60). */
         int dlav = sbr->eff_amp_res ? 31 : 60;
-        /* Phase 4: SBR envelope border at the transient. */
-        int border = (n_env > 1 && sa && sa->valid) ? sa->ch[ch].transientSlot : half_slots;
+        /* Phase 4: SBR envelope border at the transient (quantized to match bitstream). */
+        int border = (n_env > 1 && sa && sa->valid) ? get_sbr_quantized_border(num_slots, sa->ch[ch].transientSlot) : half_slots;
 
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
@@ -378,15 +378,15 @@ static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf, SignalAnalysis *s
         bits += 3;
     } else if (frame_class == SBR_FRAME_CLASS_VARFIX) {
         int ch = 0; /* use channel 0 transient for the grid */
-        /* bs_rel_bord = (dist - 2) / 2. */
         int dist = sa->numSlots - sa->ch[ch].transientSlot;
         int rel_bord = clamp_int((dist - 2) >> 1, 0, 3);
         if (wf) {
-            PutBit(bs, rel_bord, 2); /* bs_rel_bord */
-            PutBit(bs, 1, 2);        /* bs_num_env = 1 -> 2 envelopes */
+            PutBit(bs, rel_bord, 2); /* bs_rel_bord[0] */
+            PutBit(bs, 1, 2);        /* bs_num_env = 1 (2 envelopes) */
+            PutBit(bs, 0, 2);        /* bs_pointer = 0 */
             for (int i = 0; i < 2; i++) PutBit(bs, sbr->bs_freq_res, 1);
         }
-        bits += 2 + 2 + 2;
+        bits += 2 + 2 + 2 + 2;
     }
 
     return bits;
