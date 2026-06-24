@@ -35,9 +35,7 @@ static int clamp_int(int x, int lo, int hi)
 
 static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta, int writeFlag)
 {
-    int sym = delta + offset;
-    if (sym < 0) sym = 0;
-    if (sym >= nsyms) sym = nsyms - 1;
+    int sym = clamp_int(delta + offset, 0, nsyms - 1);
     if (writeFlag) PutBit(bs, table[sym].code, table[sym].len);
     return table[sym].len;
 }
@@ -49,10 +47,7 @@ static int compute_kx(int sampleRate, int bs_start_freq)
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
     int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
-    int kx = start_min + sbr_offset[row][bs_start_freq & 15];
-    if (kx < 1) kx = 1;
-    if (kx > 63) kx = 63;
-    return kx;
+    return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
@@ -81,12 +76,9 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     } else {
         k2 = 64;
     }
-    if (k2 > 64) k2 = 64;
-    if (k2 <= kx) k2 = kx + 1;
     /* ISO 14496-3:2009 Table 4.85: max SBR span (48 bands ≤32 kHz, 35 ≤44.1 kHz, 32 above). */
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
-    if (k2 - kx > max_span) k2 = kx + max_span;
-    return k2;
+    return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
 }
 
 /* ISO 14496-3:2009 §4.6.18.3.2 master_frequency_table_fs():
@@ -94,9 +86,7 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
-    int n_master = ((k2 - kx + (dk & 2)) >> dk) << 1;
-    if (n_master < 1) n_master = 1;
-    if (n_master > SBR_MAX_BANDS) n_master = SBR_MAX_BANDS;
+    int n_master = clamp_int(((k2 - kx + (dk & 2)) >> dk) << 1, 1, SBR_MAX_BANDS);
     int f_master[SBR_MAX_BANDS + 1];
     for (int k = 1; k <= n_master; k++) f_master[k] = dk;
     int k2diff = (k2 - kx) - n_master * dk;
