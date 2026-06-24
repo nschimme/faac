@@ -123,16 +123,32 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
-  for (win = 0; win < gsize; win++)
+  totenrg = 0.0;
+  for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-      xr = xr0 + win * BLOCK_LEN_SHORT;
-      for (cnt = 0; cnt < total_len; cnt++)
+      faac_real avge = 0.0, maxe = 0.0;
+      start = cb_offset[sfb];
+      end = cb_offset[sfb + 1];
+      for (win = 0; win < gsize; win++)
       {
-          totenrg += xr[cnt] * xr[cnt];
+          xr = xr0 + win * BLOCK_LEN_SHORT + start;
+          int n = end - start;
+          for (cnt = 0; cnt < n; cnt++)
+          {
+              faac_real val = xr[cnt];
+              faac_real e = val * val;
+              avge += e;
+              if (maxe < e)
+                  maxe = e;
+          }
       }
+      bandenrg[sfb] = avge;
+      /* Track peak magnitude to identify potential Huffman overflows. */
+      bandmaxe[sfb] = FAAC_SQRT(maxe);
+      totenrg += avge;
   }
-  enrgcnt = gsize * total_len;
 
+  enrgcnt = gsize * total_len;
   if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
@@ -140,7 +156,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           bandqual[sfb] = 0.0;
           bandenrg[sfb] = 0.0;
       }
-
       return;
   }
 
@@ -148,30 +163,12 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
-    faac_real avge, maxe;
+    faac_real avge = bandenrg[sfb];
+    faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb];
     faac_real target;
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
-
-    avge = 0.0;
-    maxe = 0.0;
-    for (win = 0; win < gsize; win++)
-    {
-        xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
-        for (cnt = 0; cnt < n; cnt++)
-        {
-            faac_real val = xr[cnt];
-            faac_real e = val * val;
-            avge += e;
-            if (maxe < e)
-                maxe = e;
-        }
-    }
-    bandenrg[sfb] = avge;
-    /* Track peak magnitude to identify potential Huffman overflows. */
-    bandmaxe[sfb] = FAAC_SQRT(maxe);
 
     avgenrg = (totenrg / last) * (end - start);
 
@@ -191,6 +188,17 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 }
 
 enum {MAXSHORTBAND = 36};
+
+/* A band that carries no spectral data (pre-assigned intensity/PNS, noise-floor
+ * zero, or sfac underflow): it occupies no qspec range (qlen 0), so the merge
+ * treats it as a hard section boundary. Caller still sets book[] and bumps
+ * bandcnt; blen is a spectral cost the merge never reads for a non-spectral band. */
+static void mark_band_nonspectral(CoderInfo *coderInfo, int qofs)
+{
+    coderInfo->qoffset[coderInfo->bandcnt] = qofs;
+    coderInfo->qlen[coderInfo->bandcnt] = 0;
+}
+
 // use band quality levels to quantize a group of windows
 static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict xr0,
@@ -199,7 +207,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
                    const faac_real * __restrict bandmaxe,
                    int gnum,
                    int pnslevel,
-                   int *p_last_abs  /* previous active band's absolute stored scalefactor */
+                   int *p_last_abs, /* previous active band's absolute stored scalefactor */
+                   int *p_qofs      /* running write index into coderInfo->qspec[] */
                   )
 {
     int sb;
@@ -213,7 +222,6 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       int sf_rel;   /* relative scalefactor index: SF_OFFSET - sfac */
       faac_real rmsx;
       faac_real etot;
-      int xitab[FRAME_LEN];
       int *xi;
       int start, end;
       const faac_real *xr;
@@ -221,6 +229,8 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if (coderInfo->book[coderInfo->bandcnt] != HCB_NONE)
       {
+          /* Pre-assigned (intensity/PNS/pan-zero): no spectral data, section boundary. */
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->bandcnt++;
           continue;
       }
@@ -233,12 +243,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt++] = HCB_ZERO;
           continue;
       }
 
       if (bandqual[sb] < pnsthr)
       {
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=
               FAAC_LRINT(FAAC_LOG10(etot) * (0.5 * sfstep));
@@ -312,33 +324,47 @@ static void qlevel(CoderInfo * __restrict coderInfo,
       }
 
       end -= start;
-      xi = xitab;
       if (sfacfix <= 0.0)
       {
-          memset(xi, 0, gsize * end * sizeof(int));
+          /* Underflowed to silence: a zero band, no spectral data emitted. */
+          mark_band_nonspectral(coderInfo, *p_qofs);
           coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
       }
       else
       {
+          int len = gsize * end, k, nonzero = 0;
+          xi = coderInfo->qspec + *p_qofs;
           for (win = 0; win < gsize; win++)
           {
               xr = xr0 + win * BLOCK_LEN_SHORT + start;
               qfunc(xr, xi, end, sfacfix);
               xi += end;
           }
-          huffbook(coderInfo, xitab, gsize * end);
+          /* Lay out the band; huffman_finalize() picks its codebook later (band
+           * left HCB_NONE). A band that quantized entirely to zero codes as
+           * HCB_ZERO and, like an underflow zero, must not advance the
+           * scalefactor delta chain below, so resolve that case here. */
+          coderInfo->qoffset[coderInfo->bandcnt] = *p_qofs;
+          coderInfo->qlen[coderInfo->bandcnt] = len;
+          for (k = 0; k < len; k++)
+              if (coderInfo->qspec[*p_qofs + k]) { nonzero = 1; break; }
+          if (!nonzero)
+              coderInfo->book[coderInfo->bandcnt] = HCB_ZERO;
+          *p_qofs += len;
       }
       /* Track sf_abs (full bitstream value) for the next band's delta check.
-       * HCB_ZERO bands don't participate in the regular-band delta chain. */
-      if (coderInfo->book[coderInfo->bandcnt] != HCB_ZERO)
+       * PNS and IS bands are independent and don't seed the regular-band chain. */
+      int book = coderInfo->book[coderInfo->bandcnt];
+      if (book != HCB_ZERO && book != HCB_PNS && book != HCB_INTENSITY && book != HCB_INTENSITY2)
           *p_last_abs = sf_abs;
       coderInfo->sf[coderInfo->bandcnt++] += sf_rel;
     }
 }
 
-/* Per-frame reset of a channel's section state: every band starts with no codebook
- * (HCB_NONE) and zero scalefactor. AACstereo() then pre-loads intensity bands and
- * qlevel() resolves the rest. */
+/* Per-frame reset of a channel's section state before stereo/quantization:
+ * every band starts with no codebook (HCB_NONE) and zero scalefactor. AACstereo()
+ * then pre-loads intensity bands, qlevel() resolves the rest, and a band still
+ * HCB_NONE marks spectral data for huffman_finalize() to assign a book. */
 void ResetCoderSections(CoderInfo *coder)
 {
     int band, nband = coder->groups.n * coder->sfbn;
@@ -358,12 +384,12 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     int cnt;
     faac_real *gxr;
 
-    coder->global_gain = 0;
-
+    /* global_gain and datacnt are owned by the Huffman stage (finalize_sf_chain /
+     * emit_spectral); quantize only produces book/sf/qspec. */
     coder->bandcnt = 0;
-    coder->datacnt = 0;
 
     int lastsf = SF_CHAIN_UNSET;  /* no previous band yet; first active band skips delta clamp */
+    int qofs = 0;                 /* running write index into coder->qspec[] */
 
     gxr = xr;
     for (cnt = 0; cnt < coder->groups.n; cnt++)
@@ -371,48 +397,15 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
               (faac_real)aacquantCfg->quality/DEFQUAL);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-               aacquantCfg->pnslevel, &lastsf);
+               aacquantCfg->pnslevel, &lastsf, &qofs);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
     }
 
-    /* global_gain seeds the decoder's regular scalefactor chain and is written
-     * as 8 bits, so it must be a regular band's sf in [0, SF_MAX_ABS]. Intensity
-     * and PNS bands store stereo-position / noise-energy on a different scale
-     * (PNS can be negative); seeding from one truncates on the 8-bit write and
-     * desyncs the encoder and decoder chains. */
-    coder->global_gain = 0;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if (!book)
-            continue;
-        if ((book != HCB_INTENSITY) && (book != HCB_INTENSITY2) && (book != HCB_PNS))
-        {
-            coder->global_gain = coder->sf[cnt];
-            break;
-        }
-    }
+    /* Select codebooks, merge adjacent spectral sections, emit symbols, and
+     * finalize global_gain + the scalefactor delta chains for writesf() — all on
+     * the retained quantized spectrum (lossless: only spectral books change). */
+    huffman_finalize(coder);
 
-    int lastis  = 0;
-    int lastpns = coder->global_gain - SF_PNS_OFFSET;
-    for (cnt = 0; cnt < coder->bandcnt; cnt++)
-    {
-        int book = coder->book[cnt];
-        if ((book == HCB_INTENSITY) || (book == HCB_INTENSITY2))
-        {
-            int diff = coder->sf[cnt] - lastis;
-            diff = clamp_sf_diff(diff);
-            lastis += diff;
-            coder->sf[cnt] = lastis;
-        }
-        else if (book == HCB_PNS)
-        {
-            int diff = coder->sf[cnt] - lastpns;
-            diff = clamp_sf_diff(diff);
-            lastpns += diff;
-            coder->sf[cnt] = lastpns;
-        }
-    }
     return 1;
 }
 
