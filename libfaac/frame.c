@@ -589,11 +589,19 @@ static int doHEAACPreprocess(faacEncStruct *hEncoder, int32_t *inputBuffer,
             }
             default: break;
         }
+        /* Final partial frame: silence-pad the unfilled full-rate tail so the
+         * resampler (and thus the core) never consumes a stale tail from a prior
+         * frame. SBRAnalysis below reads only [0, full_spch), so it is unaffected. */
+        if (full_spch < 2 * FRAME_LEN)
+            memset(fullRate + full_spch, 0, (2 * FRAME_LEN - full_spch) * sizeof(faac_real));
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
     SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, full_spch);
-    Resample2to1(rs, full_spch);
+    /* With the tail zero-padded, decimate the whole 2*FRAME_LEN frame so the
+     * entire FRAME_LEN of halfRate is written (real samples + FIR decay to
+     * silence); on a full frame full_spch == 2*FRAME_LEN, so this is unchanged. */
+    Resample2to1(rs, 2 * FRAME_LEN);
     return 0;
 }
 

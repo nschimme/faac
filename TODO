@@ -24,8 +24,9 @@ HE-AAC v1 follow-ups:
   variable frame classes VARFIX/FIXVAR/VARVAR + bs_rel_bord; today only FIXFIX
   (equal-spaced borders) is written, so 2-envelope frames just split at the midpoint.
 - write_sbr_noise: use dedicated noise Huffman tables, not the envelope table
-- zero-pad HE scratch buffers on the final partial frame (stale tail fed to core)
+  (BLOCKED: numNoiseBands is hardcoded to 1, so the delta-coded nb>0 branch that
+  would use a noise table never runs; this is a no-op until multi-noise-band
+  coding lands -- see the shared-detector / tonality follow-ups above).
 - validate MP4 container path: explicit-hierarchy ASC + full-rate samplerate
-- document --sbr-fast and --profile in help; clamp sbr-fast to 0..2
 - simplify compute_kx/compute_k2 magic numbers (cite ISO 14496-3 tables)
 - add SBR/resample sanity tests
