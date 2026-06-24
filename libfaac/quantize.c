@@ -394,7 +394,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-              (faac_real)aacquantCfg->quality/DEFQUAL, (objectType == HE_AAC));
+              (faac_real)aacquantCfg->quality/DEFQUAL, (objectType == HE_V1));
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
