@@ -20,6 +20,7 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
@@ -220,8 +221,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
              * the intensity position the decoder uses to re-spread the band */
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+                faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
             /* pan beyond +-30 steps: the quieter channel is inaudible,
              * so drop it entirely (HCB_ZERO) instead of IS-coding */
@@ -338,7 +340,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                  int wstart, int wend,
-                 faac_real thrmid, faac_real thrside, faac_real isthr,
+                 faac_real thrmid, faac_real thrside, faac_real inv_isthr,
                  int is_start_sfb, faac_real coll_thr
                 )
 {
@@ -411,7 +413,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
             ethr *= ethr;
-            ethr /= isthr;
+            ethr *= inv_isthr;
 
             if (enrgs >= ethr)
             {
@@ -426,8 +428,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (hcb != HCB_NONE)
             {
-                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
                 if (pan > 30)
                 {
@@ -443,6 +446,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 }
                 cl->sf[*sfcnt] = sf;
                 cr->sf[*sfcnt] = -pan;
+                /* signaling intensity stereo by right channel codebook */
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
@@ -484,6 +488,32 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
     return msused;
 }
 
+static inline faac_real env_real(const char *name, faac_real def)
+{
+    const char *e = getenv(name);
+    return e ? (faac_real)atof(e) : def;
+}
+
+static inline int env_int(const char *name, int def)
+{
+    const char *e = getenv(name);
+    return e ? atoi(e) : def;
+}
+
+void StereoTuningInit(StereoTuning *tune)
+{
+    /* Defaults chosen via MOS-gated benchmark sweeps to balance stereo image
+     * coherence (ic_err) and monaural fidelity (MOS). Conservative values
+     * (coll_thr_mid=1.5, is_freq_lo=5500) are used at 128k to avoid
+     * monaural regressions. */
+    tune->coll_thr_lo = env_real("FAAC_COLL_THR_LO", 1.0);
+    tune->coll_thr_mid = env_real("FAAC_COLL_THR_MID", 1.5);
+    tune->coll_thr_hi = env_real("FAAC_COLL_THR_HI", 60.0);
+    tune->coll_thr_scale = env_real("FAAC_COLL_THR_SCALE", 1.0);
+    tune->is_freq_lo = env_int("FAAC_IS_FREQ_LO", 5500);
+    tune->is_freq_hi = env_int("FAAC_IS_FREQ_HI", 10000);
+    tune->thrside_scale = env_real("FAAC_THRSIDE_SCALE", 1.6);
+}
 
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
@@ -491,46 +521,56 @@ void AACstereo(CoderInfo *coder,
                int maxchan,
                faac_real quality,
                int mode,
-               int sampleRate
+               int sampleRate,
+               const StereoTuning *tune
               )
 {
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.05; /* -26dB */
-    static const faac_real sidemax = 0.2; /* -14dB */
+    static const faac_real sidemin_base = 0.05; /* -26dB */
+    static const faac_real sidemax_base = 0.2; /* -14dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
     faac_real coll_thr;
     int is_freq;
+    faac_real sidemin = sidemin_base * tune->thrside_scale;
+    faac_real sidemax = sidemax_base * tune->thrside_scale;
 
     /* Quality-adaptive hybrid gate. coll_thr is the mid/side dominance ratio
      * above which a band is collapsed to one channel (apply_ms_mono) rather
      * than kept as true M/S; is_freq is the intensity-stereo floor frequency.
-     * Low quality -> aggressive bit-saving (coll_thr 1.0, IS from 5.5 kHz);
-     * high quality -> spatial fidelity (coll_thr 60.0, IS from 10 kHz).
+     * Low quality -> aggressive bit-saving; high quality -> spatial fidelity.
      * Piecewise-linear and continuous at the 0.5/1.0/4.0 breakpoints. */
     if (quality <= 0.5)
     {
-        coll_thr = 1.0;
-        is_freq = 5500;
-    }
-    else if (quality < 1.0)
-    {
-        coll_thr = 1.0 + 48.0 * (quality - 0.5);
-        is_freq = 5500 + FAAC_LRINT(4000.0 * (quality - 0.5));
-    }
-    else if (quality < 4.0)
-    {
-        coll_thr = 25.0 + (35.0 / 3.0) * (quality - 1.0);
-        is_freq = 7500 + FAAC_LRINT(833.0 * (quality - 1.0));
+        coll_thr = tune->coll_thr_lo;
+        is_freq = tune->is_freq_lo;
     }
     else
     {
-        coll_thr = 60.0;
-        is_freq = 10000;
+        /* is_freq interpolation: linear between 0.5 and 4.0 */
+        faac_real f_is = min(1.0, (quality - 0.5) / 3.5);
+        is_freq = tune->is_freq_lo + FAAC_LRINT((faac_real)(tune->is_freq_hi - tune->is_freq_lo) * f_is);
+
+        if (quality < 1.0)
+        {
+            faac_real f = (quality - 0.5) * 2.0; /* 0..1 */
+            coll_thr = tune->coll_thr_lo + (tune->coll_thr_mid - tune->coll_thr_lo) * f;
+        }
+        else if (quality < 4.0)
+        {
+            faac_real f = (quality - 1.0) / 3.0; /* 0..1 */
+            coll_thr = tune->coll_thr_mid + (tune->coll_thr_hi - tune->coll_thr_mid) * f;
+        }
+        else
+        {
+            coll_thr = tune->coll_thr_hi;
+            is_freq = tune->is_freq_hi;
+        }
     }
+    coll_thr *= tune->coll_thr_scale;
 
     thrmid = 1.0;
     thrside = 0.0;
@@ -663,7 +703,7 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb, coll_thr);
+                                thrmid, thrside, 1.0 / isthr, is_start_sfb, coll_thr);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;
