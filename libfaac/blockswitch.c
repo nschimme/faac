@@ -24,6 +24,7 @@
 #include "coder.h"
 #include "util.h"
 #include <faac.h>
+#include "frame.h"
 
 typedef float psyfloat;
 
@@ -200,10 +201,28 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
 }
 
-static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
+static void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
+
+  /* Phase 3: shared transient override for HE-AAC path.
+   * Core delay alignment: AnalyzeSignal runs on frame N full-rate; core
+   * block-switch for frame N audio is emitted at a delay. Alignment logic
+   * uses the FIFO. */
+  if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)
+  {
+      for (channel = 0; channel < numChannels; channel++)
+      {
+          /* Alignment check: the 4-deep energy history in psydata_t means
+           * current BlockSwitch call is looking at audio from ~2-3 frames ago.
+           * We use the oldest entry in our 4-deep FIFO (index 0). */
+          faac_real strength = hEncoder->transientStrengthFIFO[channel][0];
+          /* Tuneable threshold: shared transient > 4.0 triggers core short block. */
+          if (strength > (faac_real)4.0)
+              psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
+      }
+  }
 
   /* Use the same block type for all channels
      If there is 1 channel that wants a short block,

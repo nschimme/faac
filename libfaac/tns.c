@@ -107,7 +107,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+               faac_real* temp,
+               SignalAnalysisChannel *sac)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -168,7 +169,26 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
-        if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
+        faac_real gate = DEF_TNS_GAIN_THRESH;
+        /* Phase 5: Shared tonality bias for TNS gate.
+         * Tonal audio (high tonality) needs LESS whitening -> raise the gate.
+         * Noisy audio needs MORE whitening -> lower the gate. */
+        if (sac) {
+            faac_real avg_tonality = 0;
+            int n_tonal = 0;
+            /* Map QMF bands to TNS bands approx. */
+            for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
+                avg_tonality += sac->bandTonality[k];
+                n_tonal++;
+            }
+            if (n_tonal > 0) {
+                avg_tonality /= n_tonal;
+                /* Scale gate from 1.2 (noisy) to 1.6 (tonal). */
+                gate = 1.2 + 0.4 * avg_tonality;
+            }
+        }
+
+        if (gain > gate) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);

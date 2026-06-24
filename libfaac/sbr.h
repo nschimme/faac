@@ -123,11 +123,19 @@ typedef struct SBRInfo {
     FFT_Tables *fftTables;   /* borrowed: the encoder's shared core FFT tables */
 } SBRInfo;
 
+struct SignalAnalysis;
+
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples);
+void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
 #include "bitstream.h"
-int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag);
+int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
+
+#define SBR_FRAME_CLASS_FIXFIX  0
+#define SBR_FRAME_CLASS_FIXVAR  1
+#define SBR_FRAME_CLASS_VARFIX  2
+#define SBR_FRAME_CLASS_VARVAR  3
 
 #ifdef __cplusplus
 }

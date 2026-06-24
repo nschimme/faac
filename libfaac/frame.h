@@ -36,10 +36,11 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
+#include "signal_analysis.h"
 
 #include <faaccfg.h>
 
-typedef struct {
+typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -100,6 +101,11 @@ typedef struct {
     unsigned int  fullSampleRateIdx; /* GetSRIndex(fullSampleRate) */
     struct Resampler *resampler;     /* 2:1 FIR downsampler; owns full/half-rate staging buffers */
     struct SBRInfo   *sbrInfo;       /* SBR analysis state and bitstream data */
+
+    /* Shared signal analysis (Phase 1-5) */
+    SignalAnalysis  signalAnalysis;
+    faac_real transientStrengthFIFO[MAX_CHANNELS][4];
+    int       transientSlotFIFO[MAX_CHANNELS][4];
 } faacEncStruct;
 
 #ifdef __cplusplus

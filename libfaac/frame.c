@@ -577,7 +577,18 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh);
+    /* Phase 1: shared signal analysis over the full-rate input. */
+    AnalyzeSignal(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
+
+    /* Update the transient FIFO (Phase 3 alignment). */
+    for (channel = 0; channel < numChannels; channel++) {
+        memmove(&hEncoder->transientStrengthFIFO[channel][0], &hEncoder->transientStrengthFIFO[channel][1], 3 * sizeof(faac_real));
+        memmove(&hEncoder->transientSlotFIFO[channel][0], &hEncoder->transientSlotFIFO[channel][1], 3 * sizeof(int));
+        hEncoder->transientStrengthFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientStrength;
+        hEncoder->transientSlotFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientSlot;
+    }
+
+    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
     /* With the tail zero-padded, decimate the whole 2*FRAME_LEN frame so the
      * entire FRAME_LEN of halfRate is written (real samples + FIR decay to
      * silence); on a full frame realPerCh == 2*FRAME_LEN, so this is unchanged. */
@@ -714,7 +725,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
 
-    hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+    hEncoder->psymodel->BlockSwitch(hEncoder, coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -772,12 +783,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+            struct SignalAnalysisChannel *sac = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)
+                                               ? &hEncoder->signalAnalysis.ch[channel] : NULL;
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong, sac);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -842,7 +855,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
             int id_aac = (numChannels > 1) ? ID_CPE : ID_SCE;
-            sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0);
+            sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0, &hEncoder->signalAnalysis);
         }
 
         if (totalBits > sbrBits)

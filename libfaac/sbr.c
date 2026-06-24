@@ -182,7 +182,7 @@ static inline faac_real fast_log2(faac_real x)
  * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
  * matches it to machine precision. Energy (magnitude squared) is sufficient:
  * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
-static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
     const faac_real * restrict proto = qmf_c;
@@ -217,65 +217,89 @@ static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * rest
 }
 
 
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples)
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
     int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
-    faac_real slotEnergy[SBR_QMF_BANDS_64];
     faac_real tratio = (faac_real)0.0;
-    faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
-    int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
-        faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
-        memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
-        memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
+        /* Phase 1/4: Use shared energies from SignalAnalysis (one QMF pass). */
+        if (sa && sa->valid) {
+            faac_real ratio = sa->ch[ch].transientStrength;
+            if (ratio > tratio) tratio = ratio;
+            memcpy(bandHalfE[ch][0], sa->ch[ch].bandHalfE[0], SBR_QMF_BANDS_64 * sizeof(faac_real));
+            memcpy(bandHalfE[ch][1], sa->ch[ch].bandHalfE[1], SBR_QMF_BANDS_64 * sizeof(faac_real));
+        } else {
+            /* Fallback (LC/none): run the pass if sa is missing. */
+            faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+            memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-        for (int slot = 0; slot < num_slots; slot++) {
-            faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
-            const faac_real * restrict p_in = timeDomain[ch] + slot * SBR_QMF_BANDS_64;
-
-            faac_real stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
-                stot += val * val;
-            }
-            if (stot > smax) smax = stot;
-            ssum += stot;
-
+            for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-            if (slot % FAAC_SBR_DECIMATION == 0)
+                if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-            {
-                qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, slotEnergy, kx, k2);
-                int h = clamp_int(slot / half_slots, 0, 1);
-                for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
+                {
+                    faac_real slotEnergy[SBR_QMF_BANDS_64];
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
+                    int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
+                    for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
+                }
             }
         }
-        /* Peak-to-mean slot power ratio: >transientThresh (~12 dB) → 2-envelope frame. */
-        faac_real ratio = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
-        if (ratio > tratio) tratio = ratio;
-        memcpy(sbr->ch[ch].qmfOvl64, workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        /* Overlap is managed by SBRAnalysis (always). SignalAnalysis read it. */
+        memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
     sbr->numEnvelopes = (tratio > sbr->transientThresh) ? 2 : 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     int n_env = sbr->numEnvelopes;
+    int sampled = (sa && sa->valid) ? sa->sampled : (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
 
     for (int ch = 0; ch < nch; ch++) {
         int noise_level = SBR_NOISE_LEVEL_DEFAULT; /* see sbr.h: 0 over-injected noise */
-        sbr->ch[ch].invfMode = 3; /* HIVAR: strongest pre-whitening; conservative until tonality adapts (TODO) */
+        int invf_mode = 3; /* HIVAR: strongest pre-whitening */
+
+        /* Phase 5: Tonality-driven noise floor / invf mode. */
+        if (sa && sa->valid) {
+            faac_real avg_tonality = (faac_real)0.0;
+            for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
+            avg_tonality /= (faac_real)(k2 - kx);
+
+            /* Tonal (flat energy) -> less noise (higher noise_level index), weaker pre-whitening.
+             * 0.0=noise-like, 1.0=tonal. */
+            noise_level = (int)FAAC_LRINT(4.0 + 10.0 * avg_tonality);
+            if (noise_level > 30) noise_level = 30;
+
+            if (avg_tonality > 0.8) invf_mode = 0;      /* NONE */
+            else if (avg_tonality > 0.5) invf_mode = 1; /* LOW */
+            else if (avg_tonality > 0.2) invf_mode = 2; /* MID */
+            else invf_mode = 3;                         /* HIGH */
+        }
+        sbr->ch[ch].invfMode = invf_mode;
+
         /* Huffman delta range: ISO Table 4.100 extents (3dB res: ±31, 1.5dB res: ±60). */
         int dlav = sbr->eff_amp_res ? 31 : 60;
+        /* Phase 4: SBR envelope border at the transient. */
+        int border = (n_env > 1 && sa && sa->valid) ? sa->ch[ch].transientSlot : half_slots;
+
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1] > k_lo ? sbr->bandEdges[b+1] : k_lo + 1;
                 if (k_hi > SBR_QMF_BANDS_64) k_hi = SBR_QMF_BANDS_64;
-                int e_slots = (n_env == 1) ? sampled : sampled / 2;
+                int e_slots;
+                if (n_env == 1) {
+                    e_slots = sampled;
+                } else {
+                    /* Estimate sampled slots in each envelope. */
+                    if (e == 0) e_slots = (border - 1) / FAAC_SBR_DECIMATION + 1;
+                    else e_slots = sampled - ((border - 1) / FAAC_SBR_DECIMATION + 1);
+                }
                 if (e_slots < 1) e_slots = 1;
                 faac_real E = 0;
                 if (n_env == 1) {
@@ -330,14 +354,42 @@ static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
     return 1+4+4+3+2+1+1+2+1+2; /* = 21; keep in sync with PutBit sequence */
 }
 
-static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf)
+static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf, SignalAnalysis *sa)
 {
-    if (wf) {
-        PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2);
-        PutBit(bs, sbr->numEnvelopes > 1 ? 1 : 0, 2);
-        PutBit(bs, sbr->bs_freq_res, 1);
+    int bits = 0;
+    int frame_class = SBR_FRAME_CLASS_FIXFIX;
+
+    /* Phase 4: SBR envelope border at the transient.
+     * If we have 2 envelopes, place the border at the transient slot. */
+    if (sbr->numEnvelopes > 1 && sa && sa->valid) {
+        /* Use VARFIX: variable border at the transient, followed by fixed.
+         * bs_rel_bord = distance from the end of the frame. */
+        frame_class = SBR_FRAME_CLASS_VARFIX;
     }
-    return 5;
+
+    if (wf) PutBit(bs, frame_class, 2);
+    bits += 2;
+
+    if (frame_class == SBR_FRAME_CLASS_FIXFIX) {
+        if (wf) {
+            PutBit(bs, sbr->numEnvelopes > 1 ? 1 : 0, 2); /* bs_num_env = 2^(n-1) */
+            PutBit(bs, sbr->bs_freq_res, 1);
+        }
+        bits += 3;
+    } else if (frame_class == SBR_FRAME_CLASS_VARFIX) {
+        int ch = 0; /* use channel 0 transient for the grid */
+        /* bs_rel_bord = (dist - 2) / 2. */
+        int dist = sa->numSlots - sa->ch[ch].transientSlot;
+        int rel_bord = clamp_int((dist - 2) >> 1, 0, 3);
+        if (wf) {
+            PutBit(bs, rel_bord, 2); /* bs_rel_bord */
+            PutBit(bs, 1, 2);        /* bs_num_env = 1 -> 2 envelopes */
+            for (int i = 0; i < 2; i++) PutBit(bs, sbr->bs_freq_res, 1);
+        }
+        bits += 2 + 2 + 2;
+    }
+
+    return bits;
 }
 
 static int write_sbr_dtdf(SBRInfo *sbr, BitStream *bs, int wf)
@@ -390,14 +442,14 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
     return bits;
 }
 
-static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
+static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf, SignalAnalysis *sa)
 {
     int bits = 0;
     if (id_aac == ID_CPE) {
         if (wf) { PutBit(bs, 0, 1); PutBit(bs, 0, 1); }
         bits += 2;
-        bits += write_sbr_grid(sbr, bs, wf);
-        bits += write_sbr_grid(sbr, bs, wf);
+        bits += write_sbr_grid(sbr, bs, wf, sa);
+        bits += write_sbr_grid(sbr, bs, wf, sa);
         bits += write_sbr_dtdf(sbr, bs, wf);
         bits += write_sbr_dtdf(sbr, bs, wf);
         bits += write_sbr_invf(sbr, bs, 0, wf);
@@ -411,7 +463,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
     } else {
         if (wf) PutBit(bs, 0, 1);
         bits += 1;
-        bits += write_sbr_grid(sbr, bs, wf);
+        bits += write_sbr_grid(sbr, bs, wf, sa);
         bits += write_sbr_dtdf(sbr, bs, wf);
         bits += write_sbr_invf(sbr, bs, 0, wf);
         bits += write_sbr_envelope(sbr, bs, 0, wf);
@@ -422,17 +474,17 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
     return bits;
 }
 
-int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag)
+int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, SignalAnalysis *sa)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
     int sendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
-    int sbrBits = 1 + (sendHeader ? write_sbr_header(sbr, NULL, 0) : 0) + write_sbr_data(sbr, NULL, id_aac, 0);
+    int sbrBits = 1 + (sendHeader ? write_sbr_header(sbr, NULL, 0) : 0) + write_sbr_data(sbr, NULL, id_aac, 0, sa);
     int fillBytes = (4 + sbrBits + 7) / 8, padBits = (fillBytes * 8) - (4 + sbrBits), totalBits = 0;
 #define WB(v,n) do { if (writeFlag) PutBit(bs,(v),(n)); totalBits += (n); } while(0)
     WB(ID_FIL, 3); if (fillBytes < 15) WB(fillBytes, 4); else { WB(15, 4); WB(fillBytes - 14, 8); }
     WB(SBR_EXT_TYPE_SBR, 4); WB(sendHeader, 1);
     if (sendHeader) totalBits += write_sbr_header(sbr, writeFlag ? bs : NULL, writeFlag);
-    totalBits += write_sbr_data(sbr, writeFlag ? bs : NULL, id_aac, writeFlag);
+    totalBits += write_sbr_data(sbr, writeFlag ? bs : NULL, id_aac, writeFlag, sa);
     if (padBits > 0) WB(0, padBits);
     if (writeFlag) { sbr->headerSent = 1; sbr->frameCount++; }
     return totalBits;

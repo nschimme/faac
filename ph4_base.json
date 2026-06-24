@@ -1,0 +1,61 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_cst.wav": {
+      "mos": 3.3482620655930315,
+      "size": 54606,
+      "bitrate": 67.00186412815582,
+      "bitrate_target": 64,
+      "time": 0.03603196144104004,
+      "md5": "98411822d44caa7afcbe8b275e355e3c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "cst.wav",
+      "ic_err": 0.07097719422759032
+    },
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 3.2055155491764165,
+      "size": 65034,
+      "bitrate": 66.359988704292,
+      "bitrate_target": 64,
+      "time": 0.04242110252380371,
+      "md5": "35ba1f9e3ac7089cd5dc553e2a2f50d3",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav",
+      "ic_err": 0.004886265153808192
+    },
+    "music_low_Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "mos": 4.311045369350383,
+      "size": 81336,
+      "bitrate": 65.0688,
+      "bitrate_target": 64,
+      "time": 0.05188798904418945,
+      "md5": "ba18ba033b1d33116bb67f7654675652",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Shinsho_pool_3min45_4min4.16b48k.wav",
+      "ic_err": 0.041229946318220204
+    },
+    "music_low_Coral.16b48k.wav": {
+      "mos": 3.2878917794900087,
+      "size": 81675,
+      "bitrate": 65.34,
+      "bitrate_target": 64,
+      "time": 0.05299663543701172,
+      "md5": "e3088da8b7482b314257c31af0ab5936",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Coral.16b48k.wav",
+      "ic_err": 0.06851762693762233
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.477039253333411,
+    "silence.wav": 1.4275803946666201,
+    "sine.wav": 2.489388887000132,
+    "sweep.wav": 2.384006695999839,
+    "overall": 2.1945038077500003
+  },
+  "lib_size": 107680
+}

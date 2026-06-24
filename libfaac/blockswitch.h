@@ -20,6 +20,9 @@
 #ifndef BLOCKSWITCH_H
 #define BLOCKSWITCH_H
 
+struct faacEncStruct;
+struct SignalAnalysis;
+
 #include "faac_real.h"
 
 #ifdef __cplusplus
@@ -57,7 +60,7 @@ void (*PsyCalculate) (ChannelInfo *channelInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 void (*PsyBufferUpdate) (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 		faac_real *newSamples);
-void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
+void (*BlockSwitch) (struct faacEncStruct *hEncoder, CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 } psymodel_t;
 
