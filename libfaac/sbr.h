@@ -48,9 +48,12 @@ extern "C" {
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
-/* Peak-to-mean QMF slot power ratio that triggers 2-envelope framing; 16 ≈ 12 dB.
- * Tuned via ViSQOL — below this single-envelope pre-echo is inaudible. */
-#define SBR_TRANSIENT_THRESH_DEFAULT    ((faac_real)16.0)
+/* Peak-to-mean QMF slot power ratio that triggers 2-envelope (transient) framing;
+ * 4 ≈ 6 dB. ViSQOL sweep {2,3,4,5,6,8} over percussive + tonal music: 4.0 is the
+ * optimum. Lower over-triggers and regresses tonal clips (the equal-split second
+ * envelope costs bits/precision); higher leaves percussive pre-echo unprotected.
+ * The old 16 (≈ 12 dB) effectively never fired, so SBR always ran single-envelope. */
+#define SBR_TRANSIENT_THRESH_DEFAULT    ((faac_real)4.0)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                ((faac_real)1e-15)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
