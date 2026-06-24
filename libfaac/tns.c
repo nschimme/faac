@@ -53,7 +53,7 @@ static unsigned short tnsMaxBandsShortLow[12] =
 { 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
 
-static unsigned short tnsMaxOrderLongLow  = 8;
+static unsigned short tnsMaxOrderLongLow  = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
 
 /* TNS break-even gain analysis constants. */
