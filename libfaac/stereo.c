@@ -221,8 +221,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
              * the intensity position the decoder uses to re-spread the band */
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+                faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
             /* pan beyond +-30 steps: the quieter channel is inaudible,
              * so drop it entirely (HCB_ZERO) instead of IS-coding */
@@ -339,7 +340,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                  int wstart, int wend,
-                 faac_real thrmid, faac_real thrside, faac_real isthr,
+                 faac_real thrmid, faac_real thrside, faac_real inv_isthr,
                  int is_start_sfb, faac_real coll_thr
                 )
 {
@@ -412,7 +413,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
             ethr *= ethr;
-            ethr /= isthr;
+            ethr *= inv_isthr;
 
             if (enrgs >= ethr)
             {
@@ -427,8 +428,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (hcb != HCB_NONE)
             {
-                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
                 if (pan > 30)
                 {
@@ -444,6 +446,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 }
                 cl->sf[*sfcnt] = sf;
                 cr->sf[*sfcnt] = -pan;
+                /* signaling intensity stereo by right channel codebook */
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
@@ -700,7 +703,7 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb, coll_thr);
+                                thrmid, thrside, 1.0 / isthr, is_start_sfb, coll_thr);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;
