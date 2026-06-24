@@ -29,12 +29,12 @@
 #define MPEG4 0
 
 /* AAC object types */
+#define AUTO     0  /* pick LC or HE-AAC from bitrate */
 #define MAIN     1
 #define LOW      2
 #define SSR      3
 #define LTP      4
-#define HE_AAC   5  /* HE-AAC v1: AAC-LC core + SBR */
-#define AAC_AUTO 6  /* pick LC or HE-AAC from bitrate (default) */
+#define HE_V1    5  /* HE-AAC v1: AAC-LC core + SBR */
 
 /* Input Formats */
 #define FAAC_INPUT_NULL    0

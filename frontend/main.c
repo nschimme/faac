@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 
     faacEncConfigurationPtr myFormat;
     unsigned int mpegVersion = MPEG4;
-    unsigned int objectType = AAC_AUTO;
+    unsigned int objectType = AUTO;
     int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
@@ -774,9 +774,9 @@ int main(int argc, char *argv[])
             if (!strcmp(optarg, "lc"))
                 objectType = LOW;
             else if (!strcmp(optarg, "he-aac-v1"))
-                objectType = HE_AAC;
+                objectType = HE_V1;
             else if (!strcmp(optarg, "auto"))
-                objectType = AAC_AUTO;
+                objectType = AUTO;
             else
                 dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
             break;
@@ -974,19 +974,19 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* AAC_AUTO may have resolved to LC or HE-AAC; read back the decision. */
+    /* AUTO may have resolved to LC or HE-AAC; read back the decision. */
     {
         unsigned int userRequestedType = objectType;
         objectType = myFormat->aacObjectType;
-        if (userRequestedType == AAC_AUTO)
+        if (userRequestedType == AUTO)
             fprintf(stderr, "Auto-selected: %s\n",
-                    objectType == HE_AAC ? "HE-AAC v1" : "Low Complexity");
+                    objectType == HE_V1 ? "HE-AAC v1" : "Low Complexity");
     }
 
     /* Each output frame covers frameInSamples input samples per channel at the
      * original rate: FRAME_LEN for LC, 2*FRAME_LEN for HE-AAC (whose core runs
      * at half the input rate). Derived from the resolved object type. */
-    frameInSamples = ((objectType == HE_AAC) ? 2 : 1) * frameSize;
+    frameInSamples = ((objectType == HE_V1) ? 2 : 1) * frameSize;
     delay_samples = frameInSamples;
 
     /* initialize MP4 creation */
@@ -1042,7 +1042,7 @@ int main(int argc, char *argv[])
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
     fprintf(stderr, "Object type: %s",
-            (objectType == HE_AAC) ? "HE-AAC v1" : "Low Complexity");
+            (objectType == HE_V1) ? "HE-AAC v1" : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");
