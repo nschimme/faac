@@ -100,7 +100,7 @@ static inline void apply_ms_true(faac_real * restrict sl0, faac_real * restrict 
  * never coded.  Always zeroing it keeps any stale side energy out. */
 static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend,
-                            int in_phase, faac_real vfix)
+                            int in_phase, faac_real vfix, int zero_sr)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -110,9 +110,19 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
     {
         int l;
         if (in_phase)
-            for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; sr_out[l] = 0.0; }
+        {
+            if (zero_sr)
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; sr_out[l] = 0.0; }
+            else
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] + sr_out[l]) * vfix; }
+        }
         else
-            for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; sr_out[l] = 0.0; }
+        {
+            if (zero_sr)
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; sr_out[l] = 0.0; }
+            else
+                for (l = 0; l < len; l++) { sl_out[l] = (sl_out[l] - sr_out[l]) * vfix; }
+        }
         sl_out += BLOCK_LEN_SHORT;
         sr_out += BLOCK_LEN_SHORT;
     }
@@ -241,12 +251,13 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             cl->sf[*sfcnt] = sf;
             cr->sf[*sfcnt] = -pan;
+            /* Pure JOINT_IS signals via right channel codebook */
             cr->book[*sfcnt] = hcb;
 
             /* the intensity codebook marks the band, so the right channel
-             * spectrum is not coded; apply_is zeroes it to be safe. */
+             * spectrum is not coded; Pure JOINT_IS leaves it intact in memory. */
             apply_is(sl0, sr0, start, len, wstart, wend,
-                     hcb == HCB_INTENSITY, vfix);
+                     hcb == HCB_INTENSITY, vfix, /*zero_sr=*/0);
         }
         (*sfcnt)++;
     }
@@ -446,14 +457,14 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
                 }
                 cl->sf[*sfcnt] = sf;
                 cr->sf[*sfcnt] = -pan;
-                /* signaling intensity stereo by right channel codebook */
+                /* Mixed Mode Intensity Stereo signals via right channel codebook */
                 cr->book[*sfcnt] = hcb;
                 channel->msInfo.ms_used[(*sfcnt)++] = 0;
 
                 /* drop the right channel: the codebook + intensity position
                  * carry the band, so its spectrum is not coded */
                 apply_is(sl0, sr0, start, len, wstart, wend,
-                         hcb == HCB_INTENSITY, vfix);
+                         hcb == HCB_INTENSITY, vfix, /*zero_sr=*/1);
                 continue;
             }
         }
@@ -466,9 +477,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             msused = 1;
             /* mid/side imbalanced beyond coll_thr: collapse to the dominant
              * one (lossy, saves bits); otherwise keep both via true M/S */
-            if (enrgs > (enrgd * coll_thr))
+            if (enrgs * 0.25 > (enrgd * 0.25 * coll_thr))
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 1);
-            else if (enrgd > (enrgs * coll_thr))
+            else if (enrgd * 0.25 > (enrgs * 0.25 * coll_thr))
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 0);
             else
                 apply_ms_true(sl0, sr0, start, len, wstart, wend);
