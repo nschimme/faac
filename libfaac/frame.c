@@ -391,7 +391,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.name = libfaacName;
     hEncoder->config.copyright = libCopyright;
     hEncoder->config.mpegVersion = MPEG4;
-    hEncoder->config.aacObjectType = AAC_AUTO;
+    /* Default to AAC-LC so existing callers that never set aacObjectType keep
+     * emitting the same LC bitstream and frame size. HE-AAC and AAC_AUTO are
+     * strictly opt-in: the caller must request them explicitly. */
+    hEncoder->config.aacObjectType = LOW;
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
