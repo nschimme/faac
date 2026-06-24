@@ -9,7 +9,20 @@
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
 
 HE-AAC v1 follow-ups:
-- compute SBR noise floor and inverse-filtering mode from tonality (now fixed 0 / 3)
+- shared signal detector ("share the detector, not the filter"): one analysis
+  pass over the (full-rate, HF-bearing) input yielding transient position/strength
+  and per-band tonality, consumed by every actuator that today rolls its own:
+  core block-switch (blockswitch.c), SBR numEnvelopes + envelope border + noise
+  floor + invf mode (sbr.c SBRAnalysis), and the TNS whitening gate. Run it on
+  the full-rate signal in doHEAACPreprocess (already de-interleaved as fullPtrs).
+- SBR noise floor / invf mode from tonality (now fixed 4 / 3). A first adaptive
+  try (across-band spectral flatness of QMF band energies -> noise level) was
+  net-NEGATIVE: broadband-bright clips read as "flat" and kept noise, peaky-noisy
+  clips read as "tonal" and lost it. Needs a within-band/temporal tonality measure
+  (or the proper original-vs-transposed-estimate ratio), not band-energy flatness.
+- SBR envelope border at the transient (kills highband pre-echo): needs the
+  variable frame classes VARFIX/FIXVAR/VARVAR + bs_rel_bord; today only FIXFIX
+  (equal-spaced borders) is written, so 2-envelope frames just split at the midpoint.
 - write_sbr_noise: use dedicated noise Huffman tables, not the envelope table
 - zero-pad HE scratch buffers on the final partial frame (stale tail fed to core)
 - validate MP4 container path: explicit-hierarchy ASC + full-rate samplerate
