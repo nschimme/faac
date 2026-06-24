@@ -58,6 +58,13 @@ extern "C" {
 #define SBR_ENERGY_FLOOR                ((faac_real)1e-15)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
 #define SBR_LOG_ENERGY_FLOOR            ((faac_real)1e-20)
+/* Coded SBR noise-floor level; higher value = LOWER injected noise (ISO 14496-3
+ * §4.6.18.6.4). The previous 0 injected the maximum noise floor, swamping the
+ * highband. A full-corpus ViSQOL sweep nets positive as this rises, but a fixed
+ * value is a content tradeoff (tonal clips want less noise, breathy/noisy ones
+ * more): 4 is the safe floor (net +0.006, worst-case -0.06); 8+ breaches -0.25 on
+ * noisy clips. A tonality-adaptive floor is the real fix (TODO). */
+#define SBR_NOISE_LEVEL_DEFAULT         4
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       ((faac_real)6.0)
 /* Below 20 kbps/ch, 1.5 dB envelope resolution (bs_amp_res=0) recovers ~0.3 dB MOS;
