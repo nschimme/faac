@@ -83,15 +83,14 @@ int Resample2to1(Resampler *r, int input_len)
          * (decimated) copy used for the unit-stride inner product. */
         faac_real combined[RESAMPLE_FILTER_LEN - 1 + 2 * FRAME_LEN];
         faac_real even[(RESAMPLE_FILTER_LEN - 1 + 2 * FRAME_LEN) / 2 + 1];
-        int actual_input = input_len > 2 * FRAME_LEN ? 2 * FRAME_LEN : input_len;
 
-        memcpy(combined,     hist, H            * sizeof(faac_real));
-        memcpy(combined + H, in,   actual_input * sizeof(faac_real));
+        memcpy(combined,     hist, H         * sizeof(faac_real));
+        memcpy(combined + H, in,   input_len * sizeof(faac_real));
 
         /* Even-phase samples: even[t] = combined[2t]. Output i is then
          * sum_m hb_even[m]*even[i+m] (the non-zero even taps applied at unit
          * stride) plus the centre tap on the odd-phase sample combined[2i+31]. */
-        int elen = (H + actual_input + 1) / 2;
+        int elen = (H + input_len + 1) / 2;
         for (i = 0; i < elen; i++)
             even[i] = combined[2 * i];
 
@@ -107,7 +106,7 @@ int Resample2to1(Resampler *r, int input_len)
             *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
         }
 
-        memcpy(hist, combined + actual_input, H * sizeof(faac_real));
+        memcpy(hist, combined + input_len, H * sizeof(faac_real));
     }
 
     return output_len;
