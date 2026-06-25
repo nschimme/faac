@@ -33,6 +33,8 @@ Makefile*
 /missing
 /stamp-h1
 .vs/
+.cache/
+/build/
 /project/msvc/bin/
 /project/msvc/intermediate/
 *.user
