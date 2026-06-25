@@ -323,11 +323,17 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
             /* mid/side imbalanced beyond coll_thr: collapse to the dominant
              * one (lossy, saves bits); otherwise keep both via true M/S */
             if (enrgs > (enrgd * coll_thr))
+            {
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 1);
+            }
             else if (enrgd > (enrgs * coll_thr))
+            {
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 0);
+            }
             else
+            {
                 apply_ms_true(sl0, sr0, start, len, wstart, wend);
+            }
         }
 
         /* one channel far quieter than the other: zero it (the louder one
@@ -478,11 +484,17 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             /* mid/side imbalanced beyond coll_thr: collapse to the dominant
              * one (lossy, saves bits); otherwise keep both via true M/S */
             if (enrgs * 0.25 > (enrgd * 0.25 * coll_thr))
+            {
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 1);
+            }
             else if (enrgd * 0.25 > (enrgs * 0.25 * coll_thr))
+            {
                 apply_ms_mono(sl0, sr0, start, len, wstart, wend, 0);
+            }
             else
+            {
                 apply_ms_true(sl0, sr0, start, len, wstart, wend);
+            }
         }
 
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
