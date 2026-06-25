@@ -333,7 +333,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         for (channel = 0; channel < hEncoder->numChannels; channel++)
             if (!hEncoder->inputFifo[channel])
                 hEncoder->inputFifo[channel] =
-                    (faac_real *)AllocMemory(2 * 2 * FRAME_LEN * sizeof(faac_real));
+                    (faac_real *)AllocMemory(2 * mult * FRAME_LEN * sizeof(faac_real));
         hEncoder->inputFifoCap  = 2 * mult * FRAME_LEN;
         hEncoder->inputFifoFill = 0;
     }
