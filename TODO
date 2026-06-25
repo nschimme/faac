@@ -3,18 +3,15 @@
 - optimize codebook list (section_data)
 - optimize CPE windows grouping
 - Add bit reservoir control
-- Add resampler and downmixer (hans-juergen, Oct 17, 2004)
-- Add HE AAC (hans-juergen, Oct 17, 2004)
 - Test TNS(arcen, Apr 8th, 2012)
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
 
 HE-AAC v1 follow-ups:
-- shared signal detector ("share the detector, not the filter"): one analysis
-  pass over the (full-rate, HF-bearing) input yielding transient position/strength
-  and per-band tonality, consumed by every actuator that today rolls its own:
-  core block-switch (blockswitch.c), SBR numEnvelopes + envelope border + noise
-  floor + invf mode (sbr.c SBRAnalysis), and the TNS whitening gate. Run it on
-  the full-rate signal in doHEAACPreprocess (already de-interleaved as fullPtrs).
+(The shared signal detector shipped as sbr_analysis.c: one full-rate pass yielding
+transient strength + per-band tonality, feeding the core block-switch and SBR
+numEnvelopes. Wiring it to the TNS whitening gate was evaluated and dropped -- a
+tonality-adaptive gate gave no MOS gain over the fixed 1.4 LC default on the full
+49-clip ViSQOL corpus, so TNS is not a detector consumer.)
 - SBR noise floor / invf mode from tonality (now fixed 4 / 3). A first adaptive
   try (across-band spectral flatness of QMF band energies -> noise level) was
   net-NEGATIVE: broadband-bright clips read as "flat" and kept noise, peaky-noisy
@@ -23,6 +20,8 @@ HE-AAC v1 follow-ups:
 - SBR envelope border at the transient (kills highband pre-echo): needs the
   variable frame classes VARFIX/FIXVAR/VARVAR + bs_rel_bord; today only FIXFIX
   (equal-spaced borders) is written, so 2-envelope frames just split at the midpoint.
+  This also forces a struct change: numEnvelopes/eff_amp_res are frame-global in
+  SBRInfo today (one shared grid); per-channel borders mean they move into SBRChannel.
 - write_sbr_noise: use dedicated noise Huffman tables, not the envelope table
   (BLOCKED: numNoiseBands is hardcoded to 1, so the delta-coded nb>0 branch that
   would use a noise table never runs; this is a no-op until multi-noise-band

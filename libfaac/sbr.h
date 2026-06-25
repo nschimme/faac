@@ -108,8 +108,11 @@ typedef struct SBRInfo {
     int bs_alter_scale;
 
     /* --- per-frame state --- */
+    /* numEnvelopes/eff_amp_res are frame-global because the encoder emits one shared
+     * FIXFIX grid for all channels. When the variable envelope grid lands (VARFIX/
+     * FIXVAR + bs_rel_bord, see ../TODO), per-channel transients place their own
+     * borders and these must move into SBRChannel. */
     int numEnvelopes;      /* 1 or 2, set by transient detection in SBRAnalysis */
-    faac_real transientThresh; /* peak/mean slot power ratio; see SBR_TRANSIENT_THRESH_DEFAULT */
     int eff_amp_res;       /* forced to 0 for single-envelope FIXFIX (ISO 14496-3:2009 §4.6.18.3) */
 
     /* --- per-channel state --- */
