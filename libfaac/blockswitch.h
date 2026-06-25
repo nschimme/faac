@@ -29,6 +29,8 @@ extern "C" {
 #include "coder.h"
 #include "channels.h"
 
+struct faacEncStruct;
+
 typedef struct {
 	int size;
 	int sizeS;
@@ -55,7 +57,7 @@ void (*PsyCalculate) (ChannelInfo *channelInfo, PsyInfo *psyInfo,
 void (*PsyBufferUpdate) (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 		faac_real * restrict p_lookahead1,
 		faac_real * restrict p_lookahead2);
-void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
+void (*BlockSwitch) (struct faacEncStruct *hEncoder, CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
 } psymodel_t;
 

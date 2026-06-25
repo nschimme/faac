@@ -38,6 +38,7 @@ extern "C" {
 #define SBR_QMF_OVL_LEN_64   576
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     2
+#define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 /* Re-transmit header every 30 frames (~0.7 s): lets decoders seek to any frame. */
 #define SBR_HEADER_PERIOD    30
@@ -78,7 +79,7 @@ extern "C" {
 typedef struct SBRChannel {
     faac_real qmfOvl64[SBR_QMF_OVL_LEN_64]; /* QMF overlap state (carries across frames) */
     int envData  [SBR_MAX_ENVELOPES][SBR_MAX_BANDS]; /* quantised envelope indices */
-    int noiseData[SBR_MAX_NOISE_BANDS];              /* quantised noise floor indices */
+    int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS]; /* quantised noise floor indices */
     int invfMode;                                    /* bs_invf_mode (0–3) */
 } SBRChannel;
 
@@ -123,11 +124,15 @@ typedef struct SBRInfo {
     FFT_Tables *fftTables;   /* borrowed: the encoder's shared core FFT tables */
 } SBRInfo;
 
+struct SignalAnalysis;
+
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples);
+
+void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
 #include "bitstream.h"
-int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag);
+int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
 
 #ifdef __cplusplus
 }
