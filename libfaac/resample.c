@@ -39,16 +39,16 @@
  * into the 11-12 kHz region that SBR re-synthesises over the core.
  * HB_CENTER: ideal half-band centre is 0.5; equiripple design settles at 0.5016
  * for equal stopband ripple with negligible passband deviation (<0.01 dB). */
-#define HB_CENTER ((faac_real)0.5015570876767614)
-static const faac_real hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
-    (faac_real)-2.39042884e-03f, (faac_real) 2.03978735e-03f, (faac_real)-2.88625768e-03f, (faac_real) 3.94878764e-03f,
-    (faac_real)-5.26747336e-03f, (faac_real) 6.89408424e-03f, (faac_real)-8.89782634e-03f, (faac_real) 1.13774798e-02f,
-    (faac_real)-1.44815390e-02f, (faac_real) 1.84491642e-02f, (faac_real)-2.36937924e-02f, (faac_real) 3.10005784e-02f,
-    (faac_real)-4.20596122e-02f, (faac_real) 6.12815300e-02f, (faac_real)-1.04870415e-01f, (faac_real) 3.18777389e-01f,
-    (faac_real) 3.18777389e-01f, (faac_real)-1.04870415e-01f, (faac_real) 6.12815300e-02f, (faac_real)-4.20596122e-02f,
-    (faac_real) 3.10005784e-02f, (faac_real)-2.36937924e-02f, (faac_real) 1.84491642e-02f, (faac_real)-1.44815390e-02f,
-    (faac_real) 1.13774798e-02f, (faac_real)-8.89782634e-03f, (faac_real) 6.89408424e-03f, (faac_real)-5.26747336e-03f,
-    (faac_real) 3.94878764e-03f, (faac_real)-2.88625768e-03f, (faac_real) 2.03978735e-03f, (faac_real)-2.39042884e-03f,
+#define HB_CENTER 0.5015570876767614f
+static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
+    -2.39042884e-03f,  2.03978735e-03f, -2.88625768e-03f,  3.94878764e-03f,
+    -5.26747336e-03f,  6.89408424e-03f, -8.89782634e-03f,  1.13774798e-02f,
+    -1.44815390e-02f,  1.84491642e-02f, -2.36937924e-02f,  3.10005784e-02f,
+    -4.20596122e-02f,  6.12815300e-02f, -1.04870415e-01f,  3.18777389e-01f,
+     3.18777389e-01f, -1.04870415e-01f,  6.12815300e-02f, -4.20596122e-02f,
+     3.10005784e-02f, -2.36937924e-02f,  1.84491642e-02f, -1.44815390e-02f,
+     1.13774798e-02f, -8.89782634e-03f,  6.89408424e-03f, -5.26747336e-03f,
+     3.94878764e-03f, -2.88625768e-03f,  2.03978735e-03f, -2.39042884e-03f,
 };
 
 Resampler *ResampleOpen(int channels)
