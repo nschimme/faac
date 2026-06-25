@@ -37,9 +37,11 @@ extern "C" {
 #endif /* __cplusplus */
 
 
+struct SignalAnalysisChannel;
+
 void TnsInit(faacEncStruct* hEncoder);
 void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
-               int* sfbOffsetTable,faac_real* spec, faac_real* temp);
+               int* sfbOffsetTable,faac_real* spec, faac_real* temp, struct SignalAnalysisChannel *sac);
 
 #ifdef __cplusplus
 }

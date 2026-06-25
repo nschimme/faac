@@ -25,13 +25,7 @@
 #include "sbr_tables.h"
 #include "bitstream.h"
 #include "util.h"
-
-static int clamp_int(int x, int lo, int hi)
-{
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
+#include "signal_analysis.h"
 
 static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta, int writeFlag)
 {
@@ -182,7 +176,7 @@ static inline faac_real fast_log2(faac_real x)
  * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
  * matches it to machine precision. Energy (magnitude squared) is sufficient:
  * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
-static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
     const faac_real * restrict proto = qmf_c;
@@ -217,64 +211,82 @@ static void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * rest
 }
 
 
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples)
+void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
     int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
-    faac_real slotEnergy[SBR_QMF_BANDS_64];
     faac_real tratio = (faac_real)0.0;
-    faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
-    int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
-        faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
-        memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
-        memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
+        /* Phase 1: Use shared transient strength and accumulated energies. */
+        if (sa && sa->valid) {
+            faac_real ratio = sa->ch[ch].transientStrength;
+            if (ratio > tratio) tratio = ratio;
+            memcpy(bandHalfE[ch][0], sa->ch[ch].bandHalfE[0], SBR_QMF_BANDS_64 * sizeof(faac_real));
+            memcpy(bandHalfE[ch][1], sa->ch[ch].bandHalfE[1], SBR_QMF_BANDS_64 * sizeof(faac_real));
+        } else {
+            /* Fallback (LC path or missing analysis). */
+            faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+            memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-        for (int slot = 0; slot < num_slots; slot++) {
-            faac_real *ovl_pos = workspace + slot * SBR_QMF_BANDS_64;
-            const faac_real * restrict p_in = timeDomain[ch] + slot * SBR_QMF_BANDS_64;
-
-            faac_real stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
-                stot += val * val;
-            }
-            if (stot > smax) smax = stot;
-            ssum += stot;
-
+            for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-            if (slot % FAAC_SBR_DECIMATION == 0)
+                if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-            {
-                qmf_analysis_64_slot_energy_fft(sbr, ovl_pos, slotEnergy, kx, k2);
-                int h = clamp_int(slot / half_slots, 0, 1);
-                for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
+                {
+                    faac_real slotEnergy[SBR_QMF_BANDS_64];
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
+                    int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
+                    for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
+                }
             }
         }
-        /* Peak-to-mean slot power ratio: >transientThresh (~12 dB) → 2-envelope frame. */
-        faac_real ratio = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
-        if (ratio > tratio) tratio = ratio;
-        memcpy(sbr->ch[ch].qmfOvl64, workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
+        memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
     sbr->numEnvelopes = (tratio > sbr->transientThresh) ? 2 : 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     int n_env = sbr->numEnvelopes;
+    int sampled = (sa && sa->valid) ? sa->sampled : (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
 
     for (int ch = 0; ch < nch; ch++) {
-        int noise_level = SBR_NOISE_LEVEL_DEFAULT; /* see sbr.h: 0 over-injected noise */
-        sbr->ch[ch].invfMode = 3; /* HIVAR: strongest pre-whitening; conservative until tonality adapts (TODO) */
-        /* Huffman delta range: ISO Table 4.100 extents (3dB res: ±31, 1.5dB res: ±60). */
+        int noise_level = SBR_NOISE_LEVEL_DEFAULT;
+        int invf_mode = 3;
+
+        /* Phase 5: Tonality-driven noise floor / invf mode.
+         * Note: Higher noiseData value = LOWER injected noise.
+         * Tonality measure is E_orig / E_transposed.
+         * High tonality (tonality -> 1.0) = original matches transposed = tonal = LESS noise needed = HIGHER noise_level.
+         * Low tonality (tonality -> 0.0) = original much lower than transposed = noisy = MORE noise needed = LOWER noise_level. */
+        if (sa && sa->valid) {
+            faac_real avg_tonality = (faac_real)0.0;
+            for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
+            avg_tonality /= (faac_real)(k2 - kx);
+
+            /* Scale noise_level from 4 (safe floor) to 12 (min noise).
+             * Higher value = LOWER injected noise.
+             * Low tonality content (noisy) needs more noise (lower noise_level). */
+            noise_level = 4 + (int)FAAC_LRINT(8.0 * avg_tonality);
+            noise_level = clamp_int(noise_level, 4, 12);
+
+            /* invfMode: 0=OFF, 1=LOW, 2=MID, 3=HIGH whitening.
+             * Tonal content (high tonality) wants OFF; noisy (low tonality) wants HIGH. */
+            if (avg_tonality > 0.8) invf_mode = 0;
+            else if (avg_tonality > 0.5) invf_mode = 1;
+            else if (avg_tonality > 0.2) invf_mode = 2;
+            else invf_mode = 3;
+        }
+        sbr->ch[ch].invfMode = invf_mode;
+
         int dlav = sbr->eff_amp_res ? 31 : 60;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
             for (int b = 0; b < sbr->numBands; b++) {
-                int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1] > k_lo ? sbr->bandEdges[b+1] : k_lo + 1;
-                if (k_hi > SBR_QMF_BANDS_64) k_hi = SBR_QMF_BANDS_64;
+                int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
                 int e_slots = (n_env == 1) ? sampled : sampled / 2;
                 if (e_slots < 1) e_slots = 1;
                 faac_real E = 0;
@@ -298,14 +310,17 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
             }
         }
-        int prevNoise = -1;
-        for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            if (prevNoise < 0) {
-                sbr->ch[ch].noiseData[nb] = noise_level;
-                prevNoise = noise_level;
-            } else {
-                int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                sbr->ch[ch].noiseData[nb] = delta; prevNoise += delta;
+        int n_q = n_env > 1 ? 2 : 1;
+        for (int ne = 0; ne < n_q; ne++) {
+            int prevNoise = -1;
+            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+                if (prevNoise < 0) {
+                    sbr->ch[ch].noiseData[ne][nb] = noise_level;
+                    prevNoise = noise_level;
+                } else {
+                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
+                    sbr->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
+                }
             }
         }
     }
@@ -332,6 +347,13 @@ static int write_sbr_header(SBRInfo *sbr, BitStream *bs, int wf)
 
 static int write_sbr_grid(SBRInfo *sbr, BitStream *bs, int wf)
 {
+    /* Phase 4: SBR envelope border at the transient (REVERTED).
+     * We tried implementing VARFIX/FIXVAR frame classes to place the border
+     * at the discovered transient (killing pre-echo), but encountered
+     * complex SBR bitstream constraints (border monotonicity, noise-envelope
+     * alignment, bs_pointer requirements) that led to decoder errors.
+     * Reverting to FIXFIX (equal split) for stability; adaptive parameters
+     * from shared tonality are still active. */
     if (wf) {
         PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2);
         PutBit(bs, sbr->numEnvelopes > 1 ? 1 : 0, 2);
@@ -382,7 +404,7 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, int wf)
     int n_q = sbr->numEnvelopes > 1 ? 2 : 1;
     for (int ne = 0; ne < n_q; ne++) {
         for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            int val = sbr->ch[ch].noiseData[nb];
+            int val = sbr->ch[ch].noiseData[ne][nb];
             if (nb == 0) { if (wf) PutBit(bs, clamp_int(val, 0, 30), 5); bits += 5; }
             else bits += put_huff(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, val, wf);
         }
@@ -422,7 +444,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int wf)
     return bits;
 }
 
-int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag)
+int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
     int sendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
