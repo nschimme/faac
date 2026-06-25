@@ -31,6 +31,11 @@
 extern "C" {
 #endif
 
+/* Always-float storage for the half-band FIR coefficients: inherently
+ * float-precision design constants, kept independent of faac_real so a double
+ * build doesn't store them at 2x width. Products promote to faac_real at use. */
+typedef float resfloat;
+
 /* 63-tap equiripple half-band FIR, -6 dB at Fs/4. Minimum length for ≥60 dB alias
  * rejection in [Fs/4..Fs/2]; SBR crossover at 7-9.5 kHz is well inside the passband. */
 #define RESAMPLE_FILTER_LEN 63
