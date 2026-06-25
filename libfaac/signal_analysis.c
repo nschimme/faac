@@ -28,7 +28,7 @@
 
 /* AnalyzeSignal: compute transient position, strength, per-band tonality,
  * and accumulate envelope energies over the full-rate signal in ONE pass. */
-void AnalyzeSignal(struct SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
+void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
@@ -78,9 +78,8 @@ void AnalyzeSignal(struct SignalAnalysis *sa, faac_real *fullPtrs[], int nch, in
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
                     qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
 
-                    /* Phase 4: Envelope border alignment (quantized to match bitstream). */
-                    int border = get_sbr_quantized_border(num_slots, smax_idx);
-                    int h = (slot >= border) ? 1 : 0;
+                    /* Split energy for SBR FIXFIX grid at midpoint. */
+                    int h = (slot >= (num_slots / 2)) ? 1 : 0;
 
                     for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
                         faac_real energy = slotEnergy[k];
@@ -92,7 +91,7 @@ void AnalyzeSignal(struct SignalAnalysis *sa, faac_real *fullPtrs[], int nch, in
             }
         }
 
-        /* Phase 2: Compute tonality from accumulated metrics. */
+        /* Compute tonality from accumulated metrics. */
         for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
             if (sumE2[k] > SBR_ENERGY_FLOOR) {
                 sa->ch[ch].bandTonality[k] = (sumE[k] * sumE[k]) / ((faac_real)sampled * sumE2[k]);

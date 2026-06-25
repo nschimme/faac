@@ -577,15 +577,13 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    /* Phase 1: shared signal analysis over the full-rate input. */
+    /* Shared signal analysis (Phases 1-5). */
     AnalyzeSignal(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
 
     /* Update the transient FIFO (Phase 3 alignment). */
     for (channel = 0; channel < numChannels; channel++) {
         memmove(&hEncoder->transientStrengthFIFO[channel][0], &hEncoder->transientStrengthFIFO[channel][1], 3 * sizeof(faac_real));
-        memmove(&hEncoder->transientSlotFIFO[channel][0], &hEncoder->transientSlotFIFO[channel][1], 3 * sizeof(int));
         hEncoder->transientStrengthFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientStrength;
-        hEncoder->transientSlotFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientSlot;
     }
 
     SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
@@ -783,8 +781,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            struct SignalAnalysisChannel *sac = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)
-                                               ? &hEncoder->signalAnalysis.ch[channel] : NULL;
+            SignalAnalysisChannel *sac = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)
+                                        ? &hEncoder->signalAnalysis.ch[channel] : NULL;
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,

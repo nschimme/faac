@@ -20,9 +20,6 @@
 #ifndef BLOCKSWITCH_H
 #define BLOCKSWITCH_H
 
-struct faacEncStruct;
-struct SignalAnalysis;
-
 #include "faac_real.h"
 
 #ifdef __cplusplus
@@ -31,6 +28,8 @@ extern "C" {
 
 #include "coder.h"
 #include "channels.h"
+
+struct faacEncStruct;
 
 typedef struct {
 	int size;

@@ -34,21 +34,24 @@ extern "C" {
 #define SBR_QMF_BANDS_64 64
 #endif
 
-/* Forward declaration for SBRInfo */
+#ifndef MAX_CHANNELS
+#define MAX_CHANNELS 64
+#endif
+
 struct SBRInfo;
 
-/* signal_analysis.h — per-frame, per-channel full-rate analysis. */
+/* SignalAnalysisChannel: per-frame, per-channel full-rate analysis results. */
 typedef struct SignalAnalysisChannel {
-    int   transientSlot;      /* QMF slot index of peak attack (−1 = none)  */
-    faac_real transientStrength; /* peak/mean slot-power ratio (today's tratio) */
-    faac_real bandTonality[SBR_QMF_BANDS_64]; /* 0=noise-like .. 1=tonal     */
+    int       transientSlot;      /* QMF slot index of peak attack (-1 = none) */
+    faac_real transientStrength; /* peak/mean slot-power ratio (tratio) */
+    faac_real bandTonality[SBR_QMF_BANDS_64]; /* 0=noise-like .. 1=tonal */
     faac_real bandHalfE[2][SBR_QMF_BANDS_64]; /* Accumulated QMF energy per envelope */
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {
-    int valid;                /* set only on the HE path                     */
+    int valid;                /* set only on the HE path */
     int numSlots;
-    int sampled;              /* decimation-aware slot count (for Phase 1 byte-identity) */
+    int sampled;              /* decimation-aware slot count */
     SignalAnalysisChannel ch[MAX_CHANNELS];
 } SignalAnalysis;
 
