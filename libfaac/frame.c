@@ -789,14 +789,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            SignalAnalysisChannel *sac = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)
-                                        ? &hEncoder->signalAnalysis.ch[channel] : NULL;
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong, sac);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
