@@ -125,7 +125,6 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
-    sbr->transientThresh = SBR_TRANSIENT_THRESH_DEFAULT;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
@@ -248,7 +247,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
-    sbr->numEnvelopes = (tratio > sbr->transientThresh) ? 2 : 1;
+    sbr->numEnvelopes = (tratio > SBR_TRANSIENT_THRESH_DEFAULT) ? 2 : 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     int n_env = sbr->numEnvelopes;
     int sampled = (sa && sa->valid) ? sa->sampled : (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
