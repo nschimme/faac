@@ -47,7 +47,7 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
-#include "signal_analysis.h"
+#include "sbr_analysis.h"
 
 #include <faaccfg.h>
 

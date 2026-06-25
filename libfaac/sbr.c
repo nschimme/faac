@@ -25,7 +25,7 @@
 #include "sbr_tables.h"
 #include "bitstream.h"
 #include "util.h"
-#include "signal_analysis.h"
+#include "sbr_analysis.h"
 
 static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta, int writeFlag)
 {
