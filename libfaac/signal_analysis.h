@@ -45,6 +45,7 @@ typedef struct SignalAnalysisChannel {
     int       transientSlot;      /* QMF slot index of peak attack (-1 = none) */
     faac_real transientStrength; /* peak/mean slot-power ratio (tratio) */
     int       wantShort;          /* core block-switch decision */
+    faac_real lastVal;            /* time-domain sample carryover for HP filter */
     faac_real bandTonality[SBR_QMF_BANDS_64]; /* 0=noise-like .. 1=tonal */
     faac_real bandHalfE[2][SBR_QMF_BANDS_64]; /* Accumulated QMF energy per envelope */
 } SignalAnalysisChannel;

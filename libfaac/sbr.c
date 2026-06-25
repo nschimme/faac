@@ -267,10 +267,11 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
             avg_tonality /= (faac_real)(k2 - kx);
 
-            /* Scale noise_level from 0 (max noise) to 12 (min noise).
-             * SBR_NOISE_LEVEL_DEFAULT was 4. */
-            noise_level = (int)FAAC_LRINT(12.0 * avg_tonality);
-            noise_level = clamp_int(noise_level, 0, 30);
+            /* Scale noise_level from 4 (safe floor) to 12 (min noise).
+             * Higher value = LOWER injected noise.
+             * Low tonality content (noisy) needs more noise (lower noise_level). */
+            noise_level = 4 + (int)FAAC_LRINT(8.0 * avg_tonality);
+            noise_level = clamp_int(noise_level, 4, 12);
 
             /* invfMode: 0=OFF, 1=LOW, 2=MID, 3=HIGH whitening.
              * Tonal content (high tonality) wants OFF; noisy (low tonality) wants HIGH. */

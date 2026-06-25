@@ -41,46 +41,51 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
     for (int ch = 0; ch < nch; ch++) {
         faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
         int smax_idx = 0;
+        faac_real slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
 
-        /* First pass: Time-domain energy to find transient position. */
+        /* First pass: Time-domain energy to find transient position AND high-pass energy. */
+        sa->ch[ch].wantShort = 0;
+        faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
             const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
             faac_real stot = (faac_real)0.0;
+            faac_real hp_stot = (faac_real)0.0;
             for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
                 faac_real val = *p_in++;
                 stot += val * val;
+                faac_real d = val - val_in;
+                hp_stot += d * d;
+                val_in = val;
             }
+            if (slot < 128) slot_hp_eng[slot] = hp_stot;
+
             if (stot > smax) {
                 smax = stot;
                 smax_idx = slot;
             }
             ssum += stot;
         }
+        sa->ch[ch].lastVal = val_in;
 
         sa->ch[ch].transientStrength = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
 
-        /* Ported PsyCheckShort relative-jump logic onto slot energies. */
-        sa->ch[ch].wantShort = 0;
-        faac_real last_stot = 0.0;
+        /* Ported PsyCheckShort relative-jump logic onto HP slot energies. */
+        faac_real last_hp_eng = 0.0;
         int have_last = 0;
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
-            faac_real stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
-                stot += val * val;
-            }
+            if (slot >= 128) break;
+            faac_real hp_eng = slot_hp_eng[slot];
             if (have_last) {
-                faac_real toteng = (stot < last_stot) ? stot : last_stot;
-                faac_real volchg = (stot > last_stot) ? (stot - last_stot) : (last_stot - stot);
+                faac_real toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
+                faac_real volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
                 /* PSY_TD_THRESH = 0.5 */
                 if (volchg > ((faac_real)0.5 * toteng)) {
                     sa->ch[ch].wantShort = 1;
                     break;
                 }
             }
-            last_stot = stot;
+            last_hp_eng = hp_eng;
             have_last = 1;
         }
 
@@ -115,31 +120,21 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             }
         }
 
-        /* Tonality = spectral stability across slots (tonality = sumE^2 / (sampled * sumE2)).
-         * Steady tones have stable per-slot energy (low variance), so sumE^2 approaches sampled * sumE2.
-         * Noise has high per-slot energy variance, so sumE^2 is much lower. */
-        for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
-            if (sumE2[k] > SBR_ENERGY_FLOOR) {
-                sa->ch[ch].bandTonality[k] = (sumE[k] * sumE[k]) / ((faac_real)sampled * sumE2[k]);
-            } else {
-                sa->ch[ch].bandTonality[k] = (faac_real)0.0;
-            }
-        }
-
-        /* HE-AAC only: bias the tonality measure using the original-vs-transposed ratio.
+        /* Phase 4: Tonality = original-vs-transposed band-energy ratio.
          * SBR reconstructs highband k from lowband (k - kx).
-         * Ratio[k] = E_orig[k] / (E_orig[k-kx] + floor).
-         * If Ratio[k] is low (original HF is much quieter than LF patch), then the
-         * reconstructed HF will be TOO LOUD/TONAL and needs noise/whitening.
-         * Final tonality = Temporal_Tonality * min(1.0, Ratio). */
+         * Tonality[k] = min(1.0, E_orig[k] / (E_orig[k-kx] + floor)).
+         * High tonality (-> 1.0) means the HF content matches the LF patch in energy;
+         * low tonality means the HF is much quieter/noisier than the patch. */
+        for (int k = 0; k < SBR_QMF_BANDS_64; k++)
+            sa->ch[ch].bandTonality[k] = (faac_real)0.0;
+
         if (sbr) {
             int kx = sbr->kx;
             for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);
-                if (ratio < (faac_real)1.0)
-                    sa->ch[ch].bandTonality[k] *= ratio;
+                sa->ch[ch].bandTonality[k] = (ratio > (faac_real)1.0) ? (faac_real)1.0 : ratio;
             }
         }
 

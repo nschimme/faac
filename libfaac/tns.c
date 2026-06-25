@@ -183,9 +183,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             }
             if (n_tonal > 0) {
                 avg_tonality /= n_tonal;
-                /* Scale gate from 1.2 (noisy) to 1.6 (tonal).
-                 * Note: E_orig/E_transposed ratio also tends to 1.0 for tonal content. */
-                gate = 1.2 + 0.4 * avg_tonality;
+                /* Scale gate from 1.1 (noisy) to 1.6 (tonal).
+                 * Lower gate (-> 1.1) means TNS triggers MORE easily on noisy content.
+                 * Higher gate (-> 1.6) means TNS triggers LESS easily on tonal content. */
+                gate = 1.1 + 0.5 * avg_tonality;
             }
         }
 
