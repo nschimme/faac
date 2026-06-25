@@ -26,8 +26,9 @@
 #include "config.h"
 #endif
 
-#include "faac_real.h"
+#include "bitstream.h"
 #include "coder.h"
+#include "faac_real.h"
 #include "fft.h"
 
 #ifdef __cplusplus
@@ -131,7 +132,6 @@ void SBREnd(SBRInfo *sbr);
 
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
-#include "bitstream.h"
 int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
 
 #ifdef __cplusplus
