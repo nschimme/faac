@@ -20,7 +20,6 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
-#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
@@ -40,6 +39,11 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
+/* M/S Transform with scaled side injection.
+ * Instead of zeroing the weaker channel (mono-collapse), we keep both but
+ * attenuate the weaker one by 'alpha'. This preserves the inter-channel
+ * phase relationship (coherence) while saving bits. 'lo_sfb' bands get
+ * full side (alpha=1.0) to protect spatial localization. */
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase,
                             faac_real alpha)
@@ -54,18 +58,14 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
         if (in_phase)
             for (l = 0; l < len; l++)
             {
-                faac_real mid = 0.5 * (sl_out[l] + sr_out[l]);
-                faac_real side = 0.5 * (sl_out[l] - sr_out[l]);
-                sl_out[l] = mid;
-                sr_out[l] = alpha * side;
+                sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
+                sr_out[l] = 0.0;
             }
         else
             for (l = 0; l < len; l++)
             {
-                faac_real mid = 0.5 * (sl_out[l] + sr_out[l]);
-                faac_real side = 0.5 * (sl_out[l] - sr_out[l]);
-                sr_out[l] = side;
-                sl_out[l] = alpha * mid;
+                sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
+                sl_out[l] = 0.0;
             }
         sl_out += BLOCK_LEN_SHORT;
         sr_out += BLOCK_LEN_SHORT;
@@ -312,8 +312,9 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                 faac_real a = 0.0;
                 faac_real total_enrg = enrgl + enrgr;
                 faac_real side_enrg = (phase == PH_IN) ? enrgd : enrgs;
-                /* Side-energy gate: only inject side if it's significant (>1% energy).
-                 * Prevents coherence regression on mono clips while restoring stereo image. */
+                /* Side-energy gate (10%): only inject side if it's significant (>10% total energy).
+                 * Prevents introducing quantization noise on nearly-monaural signals
+                 * while restoring the stereo image for true stereo content. */
                 if ((side_enrg * 10.0) > total_enrg)
                     a = (sfb < lo_sfb) ? 1.0 : alpha;
                 apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN, a);
@@ -478,6 +479,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
             if (ms)
             {
                 faac_real a = 0.0;
+                /* enrgs/enrgd in mixed() are computed without the 0.5 mid/side factor,
+                 * so we scale by 0.25 to get true side energy for the gate. */
                 faac_real side_enrg = (phase == PH_IN) ? enrgd * 0.25 : enrgs * 0.25;
                 if ((side_enrg * 10.0) > (enrgl + enrgr))
                     a = (sfb < lo_sfb) ? 1.0 : alpha;
@@ -519,45 +522,27 @@ void AACstereo(CoderInfo *coder,
     faac_real thrmid, thrside;
     faac_real isthr;
     faac_real ms_alpha;
-    static int ms_lo_sfb = 2;
-    static faac_real env_alpha = -1.0;
-    static int initialized = 0;
+    const int lo_sfb = 2;
 
-    if (!initialized)
+    /* Dynamic alpha based on quality (bitrate): restores stereo image
+     * while protecting monaural MOS at low bitrates.
+     * q=0.37 (~48k) -> 0.01, q=0.5 (~64k) -> 0.03, q=1.0 (~128k) -> 0.10 */
+    if (quality <= 0.5)
     {
-        char *env = getenv("FAAC_MS_SIDE");
-        if (env) env_alpha = (faac_real)atof(env);
-        env = getenv("FAAC_MS_SIDE_LO_SFB");
-        if (env) ms_lo_sfb = atoi(env);
-        initialized = 1;
+        faac_real f = (quality - 0.37) / (0.5 - 0.37);
+        if (f < 0.0) f = 0.0;
+        ms_alpha = 0.01 + f * (0.03 - 0.01);
     }
-
-    if (env_alpha >= 0.0)
+    else if (quality <= 1.0)
     {
-        ms_alpha = env_alpha;
+        faac_real f = (quality - 0.5) / (1.0 - 0.5);
+        ms_alpha = 0.03 + f * (0.10 - 0.03);
     }
     else
     {
-        /* Dynamic alpha based on quality (bitrate): restores stereo image
-         * while protecting monaural MOS at low bitrates.
-         * q=0.37 (~48k) -> 0.01, q=0.5 (~64k) -> 0.03, q=1.0 (~128k) -> 0.10 */
-        if (quality <= 0.5)
-        {
-            faac_real f = (quality - 0.37) / (0.5 - 0.37);
-            if (f < 0.0) f = 0.0;
-            ms_alpha = 0.01 + f * (0.03 - 0.01);
-        }
-        else if (quality <= 1.0)
-        {
-            faac_real f = (quality - 0.5) / (1.0 - 0.5);
-            ms_alpha = 0.03 + f * (0.10 - 0.03);
-        }
-        else
-        {
-            faac_real f = (quality - 1.0) / (4.0 - 1.0);
-            if (f > 1.0) f = 1.0;
-            ms_alpha = 0.10 + f * (0.30 - 0.10);
-        }
+        faac_real f = (quality - 1.0) / (4.0 - 1.0);
+        if (f > 1.0) f = 1.0;
+        ms_alpha = 0.10 + f * (0.30 - 0.10);
     }
 
     thrmid = 1.0;
@@ -682,7 +667,7 @@ void AACstereo(CoderInfo *coder,
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside, ms_alpha, ms_lo_sfb);
+                        start, end, thrmid, thrside, ms_alpha, lo_sfb);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
@@ -690,7 +675,7 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb, ms_alpha, ms_lo_sfb);
+                                thrmid, thrside, isthr, is_start_sfb, ms_alpha, lo_sfb);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;
