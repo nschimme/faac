@@ -178,7 +178,7 @@ static inline faac_real fast_log2(faac_real x)
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
-    const faac_real * restrict proto = qmf_c;
+    const sbrfloat * restrict proto = qmf_c;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m, n1 = 2 * m + 1;
         faac_real a = proto[n0]       * ovl_pos[639 - n0]
