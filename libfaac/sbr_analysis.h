@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef SIGNAL_ANALYSIS_H
-#define SIGNAL_ANALYSIS_H
+#ifndef SBR_ANALYSIS_H
+#define SBR_ANALYSIS_H
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
