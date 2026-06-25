@@ -44,9 +44,6 @@ extern "C" {
 #define SBR_HEADER_PERIOD    30
 
 #define SBR_FRAME_CLASS_FIXFIX  0
-#define SBR_FRAME_CLASS_FIXVAR  1
-#define SBR_FRAME_CLASS_VARFIX  2
-#define SBR_FRAME_CLASS_VARVAR  3
 
 /* EXT_SBR_DATA / EXT_SBR_DATA_CRC fill-element extension types (ISO 14496-3 §4.6.18) */
 #define SBR_EXT_TYPE_SBR     0xd
@@ -131,16 +128,6 @@ struct SignalAnalysis;
 
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
-
-static inline int get_sbr_quantized_border(int numSlots, int transientSlot)
-{
-    /* bs_rel_bord = (dist / 2) - 1. dist must be even and >= 2. */
-    int dist = numSlots - transientSlot;
-    int rel_bord = (dist >> 1) - 1;
-    if (rel_bord < 0) rel_bord = 0;
-    if (rel_bord > 3) rel_bord = 3;
-    return numSlots - 2 * (rel_bord + 1);
-}
 
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);

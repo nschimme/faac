@@ -60,6 +60,30 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         sa->ch[ch].transientStrength = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
 
+        /* Ported PsyCheckShort relative-jump logic onto slot energies. */
+        sa->ch[ch].wantShort = 0;
+        faac_real last_stot = 0.0;
+        int have_last = 0;
+        for (int slot = 0; slot < num_slots; slot++) {
+            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
+            faac_real stot = (faac_real)0.0;
+            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
+                faac_real val = *p_in++;
+                stot += val * val;
+            }
+            if (have_last) {
+                faac_real toteng = (stot < last_stot) ? stot : last_stot;
+                faac_real volchg = (stot > last_stot) ? (stot - last_stot) : (last_stot - stot);
+                /* PSY_TD_THRESH = 0.5 */
+                if (volchg > ((faac_real)0.5 * toteng)) {
+                    sa->ch[ch].wantShort = 1;
+                    break;
+                }
+            }
+            last_stot = stot;
+            have_last = 1;
+        }
+
         /* Prepare for single QMF pass and tonality/energy accumulation. */
         faac_real sumE[SBR_QMF_BANDS_64], sumE2[SBR_QMF_BANDS_64];
         memset(sumE, 0, sizeof(sumE));
@@ -91,7 +115,9 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             }
         }
 
-        /* Compute tonality from accumulated metrics. */
+        /* Tonality = spectral stability across slots (tonality = sumE^2 / (sampled * sumE2)).
+         * Steady tones have stable per-slot energy (low variance), so sumE^2 approaches sampled * sumE2.
+         * Noise has high per-slot energy variance, so sumE^2 is much lower. */
         for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
             if (sumE2[k] > SBR_ENERGY_FLOOR) {
                 sa->ch[ch].bandTonality[k] = (sumE[k] * sumE[k]) / ((faac_real)sampled * sumE2[k]);
@@ -99,5 +125,23 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
                 sa->ch[ch].bandTonality[k] = (faac_real)0.0;
             }
         }
+
+        /* HE-AAC only: bias the tonality measure using the original-vs-transposed ratio.
+         * SBR reconstructs highband k from lowband (k - kx).
+         * Ratio[k] = E_orig[k] / (E_orig[k-kx] + floor).
+         * If Ratio[k] is low (original HF is much quieter than LF patch), then the
+         * reconstructed HF will be TOO LOUD/TONAL and needs noise/whitening.
+         * Final tonality = Temporal_Tonality * min(1.0, Ratio). */
+        if (sbr) {
+            int kx = sbr->kx;
+            for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
+                faac_real e_hf = sumE[k];
+                faac_real e_lf = sumE[k - kx];
+                faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);
+                if (ratio < (faac_real)1.0)
+                    sa->ch[ch].bandTonality[k] *= ratio;
+            }
+        }
+
     }
 }

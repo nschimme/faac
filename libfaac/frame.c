@@ -584,6 +584,8 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
     for (channel = 0; channel < numChannels; channel++) {
         memmove(&hEncoder->transientStrengthFIFO[channel][0], &hEncoder->transientStrengthFIFO[channel][1], 3 * sizeof(faac_real));
         hEncoder->transientStrengthFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientStrength;
+        memmove(&hEncoder->wantShortFIFO[channel][0], &hEncoder->wantShortFIFO[channel][1], 3 * sizeof(int));
+        hEncoder->wantShortFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].wantShort;
     }
 
     SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
@@ -705,10 +707,14 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		/* LFE psychoacoustic can run without it */
 		if (channelInfo[channel].type != ELEMENT_LFE)
 		{
-			hEncoder->psymodel->PsyBufferUpdate(
-					&hEncoder->gpsyInfo,
-					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel]);
+            /* Shared detector replacement on HE: skip half-rate PsyBufferUpdate. */
+            if (hEncoder->config.aacObjectType != HE_V1 || !hEncoder->signalAnalysis.valid)
+            {
+                hEncoder->psymodel->PsyBufferUpdate(
+                        &hEncoder->gpsyInfo,
+                        &hEncoder->psyInfo[channel],
+                        hEncoder->next3SampleBuff[channel]);
+            }
 		}
     }
 
@@ -721,7 +727,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         return 0;
 
     /* Psychoacoustics */
-    hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
+    /* Shared detector replacement on HE: skip half-rate PsyCalculate. */
+    if (hEncoder->config.aacObjectType != HE_V1 || !hEncoder->signalAnalysis.valid)
+        hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
 
     hEncoder->psymodel->BlockSwitch(hEncoder, coderInfo, hEncoder->psyInfo, numChannels);
 

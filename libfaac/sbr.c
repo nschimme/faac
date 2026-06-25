@@ -27,13 +27,6 @@
 #include "util.h"
 #include "signal_analysis.h"
 
-static int clamp_int(int x, int lo, int hi)
-{
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
-
 static int put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta, int writeFlag)
 {
     int sym = clamp_int(delta + offset, 0, nsyms - 1);
@@ -264,15 +257,23 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         int invf_mode = 3;
 
-        /* Phase 5: Tonality-driven noise floor / invf mode. */
+        /* Phase 5: Tonality-driven noise floor / invf mode.
+         * Note: Higher noiseData value = LOWER injected noise.
+         * Tonality measure is E_orig / E_transposed.
+         * High tonality (tonality -> 1.0) = original matches transposed = tonal = LESS noise needed = HIGHER noise_level.
+         * Low tonality (tonality -> 0.0) = original much lower than transposed = noisy = MORE noise needed = LOWER noise_level. */
         if (sa && sa->valid) {
             faac_real avg_tonality = (faac_real)0.0;
             for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
             avg_tonality /= (faac_real)(k2 - kx);
 
-            noise_level = (int)FAAC_LRINT(4.0 + 10.0 * avg_tonality);
-            if (noise_level > 30) noise_level = 30;
+            /* Scale noise_level from 0 (max noise) to 12 (min noise).
+             * SBR_NOISE_LEVEL_DEFAULT was 4. */
+            noise_level = (int)FAAC_LRINT(12.0 * avg_tonality);
+            noise_level = clamp_int(noise_level, 0, 30);
 
+            /* invfMode: 0=OFF, 1=LOW, 2=MID, 3=HIGH whitening.
+             * Tonal content (high tonality) wants OFF; noisy (low tonality) wants HIGH. */
             if (avg_tonality > 0.8) invf_mode = 0;
             else if (avg_tonality > 0.5) invf_mode = 1;
             else if (avg_tonality > 0.2) invf_mode = 2;

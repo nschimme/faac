@@ -105,6 +105,7 @@ typedef struct faacEncStruct {
     /* Shared signal analysis (Phases 1-5) */
     SignalAnalysis  signalAnalysis;
     faac_real transientStrengthFIFO[MAX_CHANNELS][4];
+    int       wantShortFIFO[MAX_CHANNELS][4];
 } faacEncStruct;
 
 #ifdef __cplusplus

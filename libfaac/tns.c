@@ -171,8 +171,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         faac_real gate = DEF_TNS_GAIN_THRESH;
         /* Phase 5: Shared tonality bias for TNS gate.
-         * Tonal audio (high tonality) needs LESS whitening -> raise the gate.
-         * Noisy audio needs MORE whitening -> lower the gate. */
+         * Tonal audio (high tonality -> 1.0) needs LESS whitening -> raise the gate.
+         * Noisy audio (low tonality -> 0.0) needs MORE whitening -> lower the gate. */
         if (sac) {
             faac_real avg_tonality = 0;
             int n_tonal = 0;
@@ -183,7 +183,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             }
             if (n_tonal > 0) {
                 avg_tonality /= n_tonal;
-                /* Scale gate from 1.2 (noisy) to 1.6 (tonal). */
+                /* Scale gate from 1.2 (noisy) to 1.6 (tonal).
+                 * Note: E_orig/E_transposed ratio also tends to 1.0 for tonal content. */
                 gate = 1.2 + 0.4 * avg_tonality;
             }
         }

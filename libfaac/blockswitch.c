@@ -214,13 +214,14 @@ static void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, P
   {
       for (channel = 0; channel < numChannels; channel++)
       {
-          /* Alignment check: the 4-deep energy history in psydata_t means
-           * current BlockSwitch call is looking at audio from ~2-3 frames ago.
-           * We use the oldest entry in our 4-deep FIFO (index 0). */
-          faac_real strength = hEncoder->transientStrengthFIFO[channel][0];
-          /* Tuneable threshold: shared transient > 4.0 triggers core short block. */
-          if (strength > (faac_real)4.0)
+          /* Alignment check: current BlockSwitch call is looking at audio
+           * from ~3 frames ago. We use index 0 in our FIFO. */
+          int wantShort = hEncoder->wantShortFIFO[channel][0];
+
+          if (wantShort)
               psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
+          else
+              psyInfo[channel].block_type = ONLY_LONG_WINDOW;
       }
   }
 
