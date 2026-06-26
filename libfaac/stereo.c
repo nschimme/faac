@@ -53,16 +53,16 @@ static inline void apply_ms(faac_real * restrict sl, faac_real * restrict sr,
         if (in_phase)
             for (int l = 0; l < len; l++)
             {
-                faac_real mid = 0.5 * (sl[l] + sr[l]);
-                faac_real side = 0.5 * (sl[l] - sr[l]);
-                sl[l] = mid; sr[l] = side * alpha;
+                faac_real m = 0.5 * (sl[l] + sr[l]);
+                faac_real s = 0.5 * (sl[l] - sr[l]);
+                sl[l] = m; sr[l] = s * alpha;
             }
         else
             for (int l = 0; l < len; l++)
             {
-                faac_real mid = 0.5 * (sl[l] - sr[l]);
-                faac_real side = 0.5 * (sl[l] + sr[l]);
-                sr[l] = mid; sl[l] = side * alpha;
+                faac_real m = 0.5 * (sl[l] - sr[l]);
+                faac_real s = 0.5 * (sl[l] + sr[l]);
+                sr[l] = m; sl[l] = s * alpha;
             }
         sl += BLOCK_LEN_SHORT;
         sr += BLOCK_LEN_SHORT;
