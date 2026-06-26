@@ -85,8 +85,6 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
-    StereoTuning stereoTuning;
-
     /* FFT Tables */
     FFT_Tables	fft_tables;
 

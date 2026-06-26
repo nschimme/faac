@@ -23,29 +23,13 @@
 #include "channels.h"
 #include "util.h"
 
-typedef struct {
-    faac_real coll_thr_lo;
-    faac_real coll_thr_mid;
-    faac_real coll_thr_hi;
-    faac_real coll_thr_scale;
-    faac_real is_freq_lo;
-    faac_real is_freq_hi;
-    faac_real thrside_scale;
-    faac_real ms_side;
-    faac_real ms_side_lo_sfb;
-    faac_real alpha_lo;
-    faac_real alpha_mid;
-    faac_real alpha_hi;
-} StereoTuning;
-
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
                int maxchan,
                faac_real quality,
                int mode,
-               int sampleRate,
-               const StereoTuning *tune
+               int sampleRate
               );
 
 #endif

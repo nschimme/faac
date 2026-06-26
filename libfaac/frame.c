@@ -326,36 +326,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     /* find correct sampling rate depending parameters */
     hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
 
-    /* Initialize stereo tuning defaults; can be overridden via environment */
-    hEncoder->stereoTuning.coll_thr_lo = 1.0;
-    hEncoder->stereoTuning.coll_thr_mid = 1.5;
-    hEncoder->stereoTuning.coll_thr_hi = 60.0;
-    hEncoder->stereoTuning.coll_thr_scale = 1.0;
-    hEncoder->stereoTuning.is_freq_lo = 5500.0;
-    hEncoder->stereoTuning.is_freq_hi = 10000.0;
-    hEncoder->stereoTuning.thrside_scale = 1.6;
-    hEncoder->stereoTuning.ms_side = 0.02;
-    hEncoder->stereoTuning.ms_side_lo_sfb = 2.0;
-    hEncoder->stereoTuning.alpha_lo = 0.30;
-    hEncoder->stereoTuning.alpha_mid = 0.50;
-    hEncoder->stereoTuning.alpha_hi = 0.30;
-    {
-        char *env;
-        if ((env = getenv("FAAC_COLL_THR_LO"))) hEncoder->stereoTuning.coll_thr_lo = atof(env);
-        if ((env = getenv("FAAC_COLL_THR_MID"))) hEncoder->stereoTuning.coll_thr_mid = atof(env);
-        if ((env = getenv("FAAC_COLL_THR_HI"))) hEncoder->stereoTuning.coll_thr_hi = atof(env);
-        if ((env = getenv("FAAC_COLL_THR_SCALE"))) hEncoder->stereoTuning.coll_thr_scale = atof(env);
-        if ((env = getenv("FAAC_IS_FREQ_LO"))) hEncoder->stereoTuning.is_freq_lo = atof(env);
-        if ((env = getenv("FAAC_IS_FREQ_HI"))) hEncoder->stereoTuning.is_freq_hi = atof(env);
-        if ((env = getenv("FAAC_THRSIDE_SCALE"))) hEncoder->stereoTuning.thrside_scale = atof(env);
-        if ((env = getenv("FAAC_MS_SIDE"))) hEncoder->stereoTuning.ms_side = atof(env);
-        if ((env = getenv("FAAC_MS_SIDE_LO_SFB"))) hEncoder->stereoTuning.ms_side_lo_sfb = atof(env);
-        if ((env = getenv("FAAC_MS_ALPHA_LO"))) hEncoder->stereoTuning.alpha_lo = atof(env);
-        if ((env = getenv("FAAC_MS_ALPHA_MID"))) hEncoder->stereoTuning.alpha_mid = atof(env);
-        if ((env = getenv("FAAC_MS_ALPHA_HI"))) hEncoder->stereoTuning.alpha_hi = atof(env);
-    }
-
-
     for (channel = 0; channel < numChannels; channel++)
 	{
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
@@ -671,9 +641,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (channelInfo[channel].present)
             ResetCoderSections(&coderInfo[channel]);
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
-              &hEncoder->stereoTuning);
+    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels, (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
