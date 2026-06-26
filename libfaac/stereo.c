@@ -53,16 +53,16 @@ static inline void apply_ms(faac_real * restrict sl, faac_real * restrict sr,
         if (in_phase)
             for (int l = 0; l < len; l++)
             {
-                faac_real m = 0.5 * (sl[l] + sr[l]);
-                faac_real s = 0.5 * (sl[l] - sr[l]);
-                sl[l] = m; sr[l] = s * alpha;
+                faac_real mid = 0.5 * (sl[l] + sr[l]);
+                faac_real side = 0.5 * (sl[l] - sr[l]);
+                sl[l] = mid; sr[l] = side * alpha;
             }
         else
             for (int l = 0; l < len; l++)
             {
-                faac_real m = 0.5 * (sl[l] - sr[l]);
-                faac_real s = 0.5 * (sl[l] + sr[l]);
-                sr[l] = m; sl[l] = s * alpha;
+                faac_real mid = 0.5 * (sl[l] - sr[l]);
+                faac_real side = 0.5 * (sl[l] + sr[l]);
+                sr[l] = mid; sl[l] = side * alpha;
             }
         sl += BLOCK_LEN_SHORT;
         sr += BLOCK_LEN_SHORT;
@@ -88,15 +88,15 @@ static inline void apply_is(faac_real * restrict sl, faac_real * restrict sr,
 }
 
 /* Content-adaptive M/S scaling: protects spatial anchors (low SFBs) and
- * monaural-dominant content (side < 15% total). */
+ * monaural-dominant content (side energy < 2% total). */
 static inline faac_real get_ms_alpha(int sfb, int sfmin, faac_real side_e,
                                      faac_real total_e, faac_real alpha,
-                                     faac_real sidemin_q)
+                                     faac_real sidemin_q_en)
 {
     if (total_e <= 0.0) return 0.0;
     faac_real side_ratio = side_e / total_e;
-    if (sfb < sfmin + 2 || side_ratio < 0.15) return 1.0;
-    if (side_ratio < sidemin_q) return 0.0;
+    if (sfb < sfmin + 2 || side_ratio < 0.10) return 1.0;
+    if (side_ratio < sidemin_q_en) return 0.0;
     return alpha;
 }
 
@@ -107,9 +107,9 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                        faac_real * restrict sl0, faac_real * restrict sr0,
                        int * restrict sfcnt, int wstart, int wend,
                        int mode, int is_start_sfb,
-                       faac_real alpha, faac_real coll_thr,
+                       faac_real alpha, faac_real thrmid,
                        faac_real inv_isthr, faac_real thrside,
-                       faac_real sidemin_q)
+                       faac_real sidemin_q_en)
 {
     int msused = 0;
     int sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
@@ -168,11 +168,11 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         if (!done && (mode == JOINT_MS || (mode == JOINT_MIXED && sfb < is_start_sfb)))
         {
-            faac_real enrgs_f = enrgl + enrgr + 2.0 * enrglr;
-            faac_real enrgd_f = enrgl + enrgr - 2.0 * enrglr;
-            if (max(enrgs_f, enrgd_f) >= min(enrgs_f, enrgd_f) * coll_thr) {
-                int phase_in = (enrgs_f >= enrgd_f);
-                faac_real a = get_ms_alpha(sfb, sfmin, (phase_in ? enrgd_f : enrgs_f) * 0.25, efix * 0.25, alpha, sidemin_q);
+            faac_real enrgs_m = (enrgl + enrgr + 2.0 * enrglr) * 0.25;
+            faac_real enrgd_m = (enrgl + enrgr - 2.0 * enrglr) * 0.25;
+            if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_m, enrgd_m)) {
+                int phase_in = (enrgs_m >= enrgd_m);
+                faac_real a = get_ms_alpha(sfb, sfmin, (phase_in ? enrgd_m : enrgs_m), efix * 0.5, alpha, sidemin_q_en);
                 apply_ms(sl0, sr0, start, len, wstart, wend, phase_in, a);
                 if (channel) channel->msInfo.ms_used[*sfcnt] = 1;
                 msused = 1; done = 1;
@@ -193,21 +193,26 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS],
                int maxchan, faac_real quality, int mode, int sampleRate)
 {
-    static const faac_real sidemin = 0.05, sidemax = 0.2;
-    faac_real alpha, coll_thr, is_freq, inv_isthr, thrside, sidemin_q;
+    static const faac_real sidemin = 0.05, sidemax = 0.2, thr075 = 1.09 - 1.0, thrmax = 1.25 - 1.0;
+    faac_real alpha, thrmid, is_freq, inv_isthr, thrside, sidemin_q_en;
 
-    /* Nodes derived via grid sweep to minimize IC error while preserving bits for monaural MOS. */
+    /* Piecewise linear interpolation for quality-adaptive parameters.
+     * Nodes derived via grid sweep to minimize IC error on speech/music
+     * while preserving bit budget for monaural MOS (ViSQOL). */
     if (quality <= 0.5) {
         faac_real f = (max(0.37, quality) - 0.37) * (1.0 / 0.13);
-        alpha = 0.01 + f * 0.02; coll_thr = 1.0; is_freq = 5500.0;
+        alpha = 0.01 + f * 0.02; is_freq = 5500.0;
     } else if (quality <= 1.0) {
         faac_real f = (quality - 0.5) * 2.0;
-        alpha = 0.03 + f * 0.07; coll_thr = 1.0 + f * 0.5; is_freq = 5500.0 + f * 2000.0;
+        alpha = 0.03 + f * 0.07; is_freq = 5500.0 + f * 2000.0;
     } else {
         faac_real f = (min(4.0, quality) - 1.0) * (1.0 / 3.0);
-        alpha = 0.10 + f * 0.20; coll_thr = 1.5 + f * 58.5; is_freq = 7500.0 + f * 2500.0;
+        alpha = 0.10 + f * 0.20; is_freq = 7500.0 + f * 2500.0;
     }
     if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
+
+    thrmid = min((mode == JOINT_MIXED ? (thr075 * 0.85) : thr075) / quality, thrmax) + 1.0;
+    thrmid *= thrmid;
 
     faac_real is_r = (mode == JOINT_IS) ? 0.18 / (quality * quality) : 0.18 / quality;
     faac_real is_tmp = min(is_r + 1.0, M_SQRT2);
@@ -215,7 +220,8 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
 
     faac_real ts_tmp = min((sidemin * 1.6) / quality, sidemax * 1.6);
     thrside = ts_tmp * ts_tmp;
-    sidemin_q = sidemin / quality;
+    faac_real sm_q = sidemin / quality;
+    sidemin_q_en = sm_q * sm_q;
 
     for (int chn = 0; chn < maxchan; chn++) {
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left) continue;
@@ -240,7 +246,7 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         int sfcnt = 0, start = 0, msused = 0;
         for (int group = 0; group < coder[chn].groups.n; group++) {
             int end = start + coder[chn].groups.len[group];
-            msused |= process_cpe(coder + chn, coder + rch, channel + chn, s[chn], s[rch], &sfcnt, start, end, mode, is_start_sfb, alpha, coll_thr, inv_isthr, thrside, sidemin_q);
+            msused |= process_cpe(coder + chn, coder + rch, channel + chn, s[chn], s[rch], &sfcnt, start, end, mode, is_start_sfb, alpha, thrmid, inv_isthr, thrside, sidemin_q_en);
             start = end;
         }
         if (msused) channel[chn].msInfo.is_present = channel[rch].msInfo.is_present = 1;
