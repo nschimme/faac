@@ -101,6 +101,7 @@ int FAACAPI faacEncGetVersion( char **faac_id_string,
   return FAAC_CFG_VERSION;
 }
 
+
 int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuffer,unsigned long* pSizeOfDecoderSpecificInfo)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
@@ -131,6 +132,7 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
         return -3;
     }
 }
+
 
 faacEncConfigurationPtr FAACAPI faacEncGetCurrentConfiguration(faacEncHandle hpEncoder)
 {
@@ -511,6 +513,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 	{
 		faac_real *tmp;
 
+
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
@@ -641,7 +644,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (channelInfo[channel].present)
             ResetCoderSections(&coderInfo[channel]);
 
-    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels, (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
+    AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
@@ -701,6 +705,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     return frameBytes;
 }
+
 
 /* Scalefactorband data table for 1024 transform length */
 static SR_INFO srInfo[12+1] =
