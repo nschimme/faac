@@ -94,7 +94,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 
         gain = LevinsonDurbin(order, length, &spec[startIndex], tnsFilter->kCoeffs);
 
-        if (gain > 1.4) {
+        if (gain > 1.6) {
             QuantizeReflectionCoeffs(order, 4, tnsFilter->kCoeffs, tnsFilter->index);
             windowData->numFilters = 1;
             windowData->coefResolution = 4;
