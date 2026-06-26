@@ -47,10 +47,10 @@ static unsigned short tnsMinBandNumberShort[12] =
 /* Low Profile TNS Parameters         */
 /**************************************/
 static unsigned short tnsMaxBandsLongLow[12] =
-{ 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
+{ 41, 41, 47, 49, 49, 51, 47, 47, 43, 43, 43, 40 };
 
 static unsigned short tnsMaxBandsShortLow[12] =
-{ 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
+{ 12, 12, 12, 14, 14, 14, 15, 15, 15, 15, 15, 15 };
 
 static unsigned short tnsMaxOrderLongLow  = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
@@ -117,16 +117,20 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
-        /* Analysis disabled for short windows to balance throughput. */
-        tnsInfo->tnsDataPresent = 0;
-        return;
+        numberOfWindows = MAX_SHORT_WINDOWS;
+        windowSize = BLOCK_LEN_SHORT;
+        startBand = tnsInfo->tnsMinBandNumberShort;
+        stopBand = numberOfBands;
+        order = tnsInfo->tnsMaxOrderShort;
+        startBand = min(startBand,tnsInfo->tnsMaxBandsShort);
+        stopBand = min(stopBand,tnsInfo->tnsMaxBandsShort);
+        break;
 
     default:
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
         stopBand = numberOfBands;
-        lengthInBands = stopBand - startBand;
         order = tnsInfo->tnsMaxOrderLong;
         startBand = min(startBand,tnsInfo->tnsMaxBandsLong);
         stopBand = min(stopBand,tnsInfo->tnsMaxBandsLong);
@@ -139,6 +143,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     stopBand = min(stopBand,maxSfb);
     startBand = max(startBand,0);
     stopBand = max(stopBand,0);
+
+    /* lengthInBands must be calculated AFTER clamping to ensure bitstream consistency */
+    lengthInBands = stopBand - startBand;
 
     tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
@@ -154,6 +161,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         windowData->coefResolution = DEF_TNS_COEFF_RES;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+
+        if (length <= 0) continue;
+
         gain = LevinsonDurbin(order,length,&spec[startIndex],k);
 
         if (gain > DEF_TNS_GAIN_THRESH) {  /* Use TNS */
@@ -164,7 +174,18 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
             windowData->numFilters++;
             tnsInfo->tnsDataPresent=1;
-            tnsFilter->direction = 0;
+
+            /* Energy slant detection for filtering direction (ISO/IEC 14496-3 4.6.8.4.3) */
+            {
+                faac_real en_low = 0.0, en_high = 0.0;
+                int mid = length / 2;
+                int j;
+                for (j = 0; j < mid; j++)
+                    en_low += spec[startIndex + j] * spec[startIndex + j];
+                for (j = mid; j < length; j++)
+                    en_high += spec[startIndex + j] * spec[startIndex + j];
+                tnsFilter->direction = (en_low < en_high) ? 1 : 0;
+            }
 
             tnsFilter->coefCompress = 1;
             for (i = 1; i <= truncatedOrder; i++) {
@@ -268,16 +289,29 @@ static void QuantizeReflectionCoeffs(int fOrder,
                               faac_real* kArray,
                               int* indexArray)
 {
-    faac_real iqfac,iqfac_m;
+    faac_real iqfac;
     int i;
+    int min_idx, max_idx;
 
-    iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
-    iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
+    /* Spec-mandated quantization steps (ISO/IEC 14496-3 4.6.8.4.2) */
+    if (coeffRes == 4) {
+        iqfac = 15.0 / M_PI;
+        min_idx = -8;
+        max_idx = 7;
+    } else {
+        iqfac = 7.0 / M_PI;
+        min_idx = -4;
+        max_idx = 3;
+    }
 
     /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
-        kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
+        int idx = (int)floor(FAAC_ASIN(kArray[i]) * iqfac + 0.5);
+        /* Clamp to available bit resolution range to prevent aliasing in bitstream */
+        if (idx < min_idx) idx = min_idx;
+        if (idx > max_idx) idx = max_idx;
+        indexArray[i] = idx;
+        kArray[i] = FAAC_SIN((faac_real)idx / iqfac);
     }
 }
 
