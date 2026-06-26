@@ -40,7 +40,8 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
 }
 
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
-                            int start, int len, int wstart, int wend, int in_phase)
+                            int start, int len, int wstart, int wend,
+                            int in_phase, faac_real alpha)
 {
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -50,17 +51,25 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     {
         int l;
         if (in_phase)
+        {
             for (l = 0; l < len; l++)
             {
-                sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
-                sr_out[l] = 0.0;
+                faac_real mid = 0.5 * (sl_out[l] + sr_out[l]);
+                faac_real side = 0.5 * (sl_out[l] - sr_out[l]);
+                sl_out[l] = mid;
+                sr_out[l] = side * alpha;
             }
+        }
         else
+        {
             for (l = 0; l < len; l++)
             {
-                sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
-                sl_out[l] = 0.0;
+                faac_real mid = 0.5 * (sl_out[l] - sr_out[l]);
+                faac_real side = 0.5 * (sl_out[l] + sr_out[l]);
+                sr_out[l] = mid;
+                sl_out[l] = side * alpha;
             }
+        }
         sl_out += BLOCK_LEN_SHORT;
         sr_out += BLOCK_LEN_SHORT;
     }
@@ -235,7 +244,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
                     int wstart, int wend,
-                    faac_real thrmid, faac_real thrside
+                    faac_real thrmid, faac_real thrside,
+                    faac_real alpha, faac_real coll_thr,
+                    faac_real ms_side, int ms_side_lo_sfb,
+                    faac_real sidemin_q
                    )
 {
     int sfb;
@@ -282,27 +294,29 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         enrgs = 0.25 * (enrgl + enrgr + 2.0 * enrglr);
         enrgd = 0.25 * (enrgl + enrgr - 2.0 * enrglr);
 
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs, enrgd))
+        if (max(enrgs, enrgd) >= min(enrgs, enrgd) * coll_thr)
         {
             enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
+            int phase = (enrgs >= enrgd) ? PH_IN : PH_OUT;
+            faac_real a = alpha;
 
-            /* keep whichever of mid/side holds nearly all the energy and
-             * drop the other; in-phase content collapses to mid, anti-phase
-             * to side */
-            if ((enrgs * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
+            ms = 1;
 
-            if (ms)
-                apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN);
+            faac_real side_enrg = (phase == PH_IN) ? enrgd : enrgs;
+            faac_real mid_enrg = (phase == PH_IN) ? enrgs : enrgd;
+            faac_real total_enrg = mid_enrg + side_enrg;
+
+            if (total_enrg > 0.0)
+            {
+                faac_real side_ratio = side_enrg / total_enrg;
+                if (sfb < sfmin + ms_side_lo_sfb)
+                    a = 1.0;
+                else if (side_ratio > ms_side)
+                    a = 1.0;
+                else if (side_ratio < (sidemin_q / 2.0))
+                    a = 0.0;
+            }
+            apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN, a);
         }
 
         /* one channel far quieter than the other: zero it (the louder one
@@ -323,11 +337,14 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
 /* Per-band joint stereo: IS above is_start_sfb, M/S below, L/R fallback.
  * IS and M/S are mutually exclusive per scale factor band.
  * Returns 1 if any band was M/S coded (caller must then signal ms_used). */
-static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo * restrict channel,
-                 faac_real * restrict sl0, faac_real * restrict sr0, int * restrict sfcnt,
+static int mixed(CoderInfo * cl, CoderInfo * cr, ChannelInfo * channel,
+                 faac_real * sl0, faac_real * sr0, int * sfcnt,
                  int wstart, int wend,
                  faac_real thrmid, faac_real thrside, faac_real isthr,
-                 int is_start_sfb
+                 int is_start_sfb,
+                 faac_real alpha, faac_real coll_thr,
+                 faac_real ms_side, int ms_side_lo_sfb,
+                 faac_real sidemin_q
                 )
 {
     int sfb;
@@ -444,27 +461,30 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
         /* M/S decision: enrgs/enrgd are computed without the 0.5 mid/side
          * factor of midside(), hence the 0.25 energy compensation. */
-        if ((min(enrgl, enrgr) * thrmid) >= max(enrgs * 0.25, enrgd * 0.25))
+        if (max(enrgs, enrgd) >= min(enrgs, enrgd) * coll_thr)
         {
             enum {PH_NONE, PH_IN, PH_OUT};
-            int phase = PH_NONE;
+            int phase = (enrgs >= enrgd) ? PH_IN : PH_OUT;
+            faac_real a = alpha;
 
-            if ((enrgs * 0.25 * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_IN;
-            }
-            else if ((enrgd * 0.25 * thrmid * 2.0) >= (enrgl + enrgr))
-            {
-                ms = 1;
-                phase = PH_OUT;
-            }
+            ms = 1;
+            msused = 1;
 
-            if (ms)
+            faac_real side_enrg = (phase == PH_IN) ? enrgd * 0.25 : enrgs * 0.25;
+            faac_real mid_enrg = (phase == PH_IN) ? enrgs * 0.25 : enrgd * 0.25;
+            faac_real total_enrg = mid_enrg + side_enrg;
+
+            if (total_enrg > 0.0)
             {
-                msused = 1;
-                apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN);
+                faac_real side_ratio = side_enrg / total_enrg;
+                if (sfb < sfmin + ms_side_lo_sfb)
+                    a = 1.0;
+                else if (side_ratio > ms_side)
+                    a = 1.0;
+                else if (side_ratio < (sidemin_q / 2.0))
+                    a = 0.0;
             }
+            apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN, a);
         }
 
         if (!ms && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
@@ -488,21 +508,47 @@ void AACstereo(CoderInfo *coder,
                int maxchan,
                faac_real quality,
                int mode,
-               int sampleRate
+               int sampleRate,
+               const StereoTuning *tune
               )
 {
     int chn;
     static const faac_real thr075 = 1.09 /* ~0.75dB */ - 1.0;
     static const faac_real thrmax = 1.25 /* ~2dB */ - 1.0;
-    static const faac_real sidemin = 0.1; /* -20dB */
-    static const faac_real sidemax = 0.3; /* ~-10.5dB */
+    static const faac_real sidemin = 0.05; /* -26dB */
+    static const faac_real sidemax = 0.2; /* -14dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
     faac_real thrmid, thrside;
     faac_real isthr;
+    faac_real alpha, coll_thr, is_freq;
 
     thrmid = 1.0;
     thrside = 0.0;
     isthr = 1.0;
+
+    /* Piecewise linear interpolation for quality-adaptive parameters */
+    if (quality <= 0.5)
+    {
+        faac_real f = (max(0.37, quality) - 0.37) / (0.5 - 0.37);
+        alpha = 0.01 + f * (0.03 - 0.01);
+        coll_thr = tune->coll_thr_lo;
+        is_freq = tune->is_freq_lo;
+    }
+    else if (quality <= 1.0)
+    {
+        faac_real f = (quality - 0.5) / (1.0 - 0.5);
+        alpha = 0.03 + f * (0.10 - 0.03);
+        coll_thr = tune->coll_thr_lo + f * (tune->coll_thr_mid - tune->coll_thr_lo);
+        is_freq = tune->is_freq_lo + f * (7500.0 - tune->is_freq_lo);
+    }
+    else
+    {
+        faac_real f = (min(4.0, quality) - 1.0) / (4.0 - 1.0);
+        alpha = 0.10 + f * (0.30 - 0.10);
+        coll_thr = tune->coll_thr_mid + f * (tune->coll_thr_hi - tune->coll_thr_mid);
+        is_freq = 7500.0 + f * (tune->is_freq_hi - 7500.0);
+    }
+    coll_thr *= tune->coll_thr_scale;
 
     /* all thresholds loosen as quality drops (divide by quality) and are
      * clamped so aggressive joint coding never kicks in at high quality */
@@ -514,9 +560,9 @@ void AACstereo(CoderInfo *coder,
         thrmid = (thr075 * 0.85) / quality;
         if (thrmid > thrmax)
             thrmid = thrmax;
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
+        thrside = (sidemin * tune->thrside_scale) / quality;
+        if (thrside > (sidemax * tune->thrside_scale))
+            thrside = (sidemax * tune->thrside_scale);
         thrmid += 1.0;
 
         isthr = 0.18 / quality;
@@ -529,9 +575,9 @@ void AACstereo(CoderInfo *coder,
         if (thrmid > thrmax)
             thrmid = thrmax;
 
-        thrside = sidemin / quality;
-        if (thrside > sidemax)
-            thrside = sidemax;
+        thrside = (sidemin * tune->thrside_scale) / quality;
+        if (thrside > (sidemax * tune->thrside_scale))
+            thrside = (sidemax * tune->thrside_scale);
 
         thrmid += 1.0;
         break;
@@ -596,19 +642,19 @@ void AACstereo(CoderInfo *coder,
             int sfb;
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
                           ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
-            /* cap the 5.5kHz IS floor at 70% of Nyquist: at low sample rates
-             * 5.5kHz can exceed the top band and disable IS for the whole frame */
-            int is_freq = 5500;
+            /* cap the IS floor at 70% of Nyquist: at low sample rates
+             * it can exceed the top band and disable IS for the whole frame */
             int cap = (sampleRate * 7) / 20;
-            if (is_freq > cap)
-                is_freq = cap;
+            int ifreq = (int)is_freq;
+            if (ifreq > cap)
+                ifreq = cap;
 
             is_start_sfb = coder[chn].sfbn;
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++)
             {
                 /* bin center -> Hz: offset * fs / mdctlen */
                 int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen;
-                if (freq >= is_freq)
+                if (freq >= ifreq)
                 {
                     is_start_sfb = sfb;
                     break;
@@ -622,7 +668,9 @@ void AACstereo(CoderInfo *coder,
             switch(mode) {
             case JOINT_MS:
                 midside(coder + chn, channel + chn, s[chn], s[rch], &sfcnt,
-                        start, end, thrmid, thrside);
+                        start, end, thrmid, thrside, alpha, coll_thr,
+                        tune->ms_side, (int)tune->ms_side_lo_sfb,
+                        sidemin / quality);
                 break;
             case JOINT_IS:
                 stereo(coder + chn, coder + rch, s[chn], s[rch], &sfcnt, start, end, isthr);
@@ -630,7 +678,9 @@ void AACstereo(CoderInfo *coder,
             case JOINT_MIXED:
                 msused |= mixed(coder + chn, coder + rch, channel + chn,
                                 s[chn], s[rch], &sfcnt, start, end,
-                                thrmid, thrside, isthr, is_start_sfb);
+                                thrmid, thrside, isthr, is_start_sfb,
+                                alpha, coll_thr, tune->ms_side,
+                                (int)tune->ms_side_lo_sfb, sidemin / quality);
                 break;
             default:
                 sfcnt += coder[chn].sfbn;

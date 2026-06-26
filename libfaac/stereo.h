@@ -17,8 +17,23 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+#ifndef STEREO_H
+#define STEREO_H
+
 #include "channels.h"
 #include "util.h"
+
+typedef struct {
+    faac_real coll_thr_lo;
+    faac_real coll_thr_mid;
+    faac_real coll_thr_hi;
+    faac_real coll_thr_scale;
+    faac_real is_freq_lo;
+    faac_real is_freq_hi;
+    faac_real thrside_scale;
+    faac_real ms_side;
+    faac_real ms_side_lo_sfb;
+} StereoTuning;
 
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
@@ -26,5 +41,8 @@ void AACstereo(CoderInfo *coder,
                int maxchan,
                faac_real quality,
                int mode,
-               int sampleRate
+               int sampleRate,
+               const StereoTuning *tune
               );
+
+#endif
