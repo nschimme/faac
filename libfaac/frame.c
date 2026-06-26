@@ -101,7 +101,6 @@ int FAACAPI faacEncGetVersion( char **faac_id_string,
   return FAAC_CFG_VERSION;
 }
 
-
 int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuffer,unsigned long* pSizeOfDecoderSpecificInfo)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
@@ -132,7 +131,6 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
         return -3;
     }
 }
-
 
 faacEncConfigurationPtr FAACAPI faacEncGetCurrentConfiguration(faacEncHandle hpEncoder)
 {
@@ -336,9 +334,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->stereoTuning.is_freq_lo = 5500.0;
     hEncoder->stereoTuning.is_freq_hi = 10000.0;
     hEncoder->stereoTuning.thrside_scale = 1.6;
-    hEncoder->stereoTuning.ms_side = 0.1;
+    hEncoder->stereoTuning.ms_side = 0.02;
     hEncoder->stereoTuning.ms_side_lo_sfb = 2.0;
-
+    hEncoder->stereoTuning.alpha_lo = 0.30;
+    hEncoder->stereoTuning.alpha_mid = 0.50;
+    hEncoder->stereoTuning.alpha_hi = 0.30;
     {
         char *env;
         if ((env = getenv("FAAC_COLL_THR_LO"))) hEncoder->stereoTuning.coll_thr_lo = atof(env);
@@ -350,7 +350,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         if ((env = getenv("FAAC_THRSIDE_SCALE"))) hEncoder->stereoTuning.thrside_scale = atof(env);
         if ((env = getenv("FAAC_MS_SIDE"))) hEncoder->stereoTuning.ms_side = atof(env);
         if ((env = getenv("FAAC_MS_SIDE_LO_SFB"))) hEncoder->stereoTuning.ms_side_lo_sfb = atof(env);
+        if ((env = getenv("FAAC_MS_ALPHA_LO"))) hEncoder->stereoTuning.alpha_lo = atof(env);
+        if ((env = getenv("FAAC_MS_ALPHA_MID"))) hEncoder->stereoTuning.alpha_mid = atof(env);
+        if ((env = getenv("FAAC_MS_ALPHA_HI"))) hEncoder->stereoTuning.alpha_hi = atof(env);
     }
+
 
     for (channel = 0; channel < numChannels; channel++)
 	{
@@ -536,7 +540,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
-
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
@@ -730,7 +733,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     return frameBytes;
 }
-
 
 /* Scalefactorband data table for 1024 transform length */
 static SR_INFO srInfo[12+1] =

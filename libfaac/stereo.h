@@ -33,6 +33,9 @@ typedef struct {
     faac_real thrside_scale;
     faac_real ms_side;
     faac_real ms_side_lo_sfb;
+    faac_real alpha_lo;
+    faac_real alpha_mid;
+    faac_real alpha_hi;
 } StereoTuning;
 
 void AACstereo(CoderInfo *coder,
