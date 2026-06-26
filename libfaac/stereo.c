@@ -20,6 +20,7 @@
 #define _USE_MATH_DEFINES
 
 #include <math.h>
+#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 
@@ -39,11 +40,6 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-/* M/S Transform with scaled side injection.
- * Instead of zeroing the weaker channel (mono-collapse), we keep both but
- * attenuate the weaker one by 'alpha'. This preserves the inter-channel
- * phase relationship (coherence) while saving bits. 'lo_sfb' bands get
- * full side (alpha=1.0) to protect spatial localization. */
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase,
                             faac_real alpha)
@@ -51,22 +47,16 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     faac_real * restrict sl_out = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr_out = sr0 + wstart * BLOCK_LEN_SHORT + start;
     int win;
-
     for (win = wstart; win < wend; win++)
     {
         int l;
-        if (in_phase)
-            for (l = 0; l < len; l++)
-            {
-                sl_out[l] = 0.5 * (sl_out[l] + sr_out[l]);
-                sr_out[l] = 0.0;
-            }
-        else
-            for (l = 0; l < len; l++)
-            {
-                sr_out[l] = 0.5 * (sl_out[l] - sr_out[l]);
-                sl_out[l] = 0.0;
-            }
+        for (l = 0; l < len; l++)
+        {
+            faac_real mid = 0.5 * (sl_out[l] + sr_out[l]);
+            faac_real side = 0.5 * (sl_out[l] - sr_out[l]);
+            if (in_phase) { sl_out[l] = mid; sr_out[l] = alpha * side; }
+            else { sr_out[l] = side; sl_out[l] = alpha * mid; }
+        }
         sl_out += BLOCK_LEN_SHORT;
         sr_out += BLOCK_LEN_SHORT;
     }
@@ -308,15 +298,13 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
             }
 
             if (ms)
-            {
+                {
                 faac_real a = 0.0;
                 faac_real total_enrg = enrgl + enrgr;
                 faac_real side_enrg = (phase == PH_IN) ? enrgd : enrgs;
-                /* Side-energy gate (10%): only inject side if it's significant (>10% total energy).
-                 * Prevents introducing quantization noise on nearly-monaural signals
-                 * while restoring the stereo image for true stereo content. */
-                if ((side_enrg * 10.0) > total_enrg)
-                    a = (sfb < lo_sfb) ? 1.0 : alpha;
+                /* Aggressive gate (66%): force mono-collapse unless side is dominant
+                 * to protect bit budget for monaural MOS. */
+                if ((side_enrg * 1.5) > total_enrg) a = (sfb < (sfmin + lo_sfb)) ? 1.0 : alpha;
                 apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN, a);
             }
         }
@@ -478,14 +466,16 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (ms)
             {
-                faac_real a = 0.0;
-                /* enrgs/enrgd in mixed() are computed without the 0.5 mid/side factor,
-                 * so we scale by 0.25 to get true side energy for the gate. */
-                faac_real side_enrg = (phase == PH_IN) ? enrgd * 0.25 : enrgs * 0.25;
-                if ((side_enrg * 10.0) > (enrgl + enrgr))
-                    a = (sfb < lo_sfb) ? 1.0 : alpha;
                 msused = 1;
+                {
+                faac_real a = 0.0;
+                faac_real total_enrg = enrgl + enrgr;
+                faac_real side_enrg = (phase == PH_IN) ? enrgd : enrgs;
+                /* Aggressive gate (66%): force mono-collapse unless side is dominant
+                 * to protect bit budget for monaural MOS. */
+                if ((side_enrg * 1.5) > total_enrg) a = (sfb < (sfmin + lo_sfb)) ? 1.0 : alpha;
                 apply_ms(sl0, sr0, start, len, wstart, wend, phase == PH_IN, a);
+            }
             }
         }
 
@@ -519,30 +509,22 @@ void AACstereo(CoderInfo *coder,
     static const faac_real sidemin = 0.1; /* -20dB */
     static const faac_real sidemax = 0.3; /* ~-10.5dB */
     static const faac_real isthrmax = M_SQRT2 - 1.0;
-    faac_real thrmid, thrside;
+        faac_real thrmid, thrside;
     faac_real isthr;
     faac_real ms_alpha;
     const int lo_sfb = 2;
 
-    /* Dynamic alpha based on quality (bitrate): restores stereo image
-     * while protecting monaural MOS at low bitrates.
-     * q=0.37 (~48k) -> 0.01, q=0.5 (~64k) -> 0.03, q=1.0 (~128k) -> 0.10 */
-    if (quality <= 0.5)
-    {
-        faac_real f = (quality - 0.37) / (0.5 - 0.37);
+    if (quality <= 0.5) {
+        faac_real f = (quality - 0.37) / 0.13;
         if (f < 0.0) f = 0.0;
-        ms_alpha = 0.01 + f * (0.03 - 0.01);
-    }
-    else if (quality <= 1.0)
-    {
-        faac_real f = (quality - 0.5) / (1.0 - 0.5);
-        ms_alpha = 0.03 + f * (0.10 - 0.03);
-    }
-    else
-    {
-        faac_real f = (quality - 1.0) / (4.0 - 1.0);
+        ms_alpha = 0.10 + f * (0.20 - 0.10);
+    } else if (quality <= 1.0) {
+        faac_real f = (quality - 0.5) / 0.5;
+        ms_alpha = 0.20 + f * (0.40 - 0.20);
+    } else {
+        faac_real f = (quality - 1.0) / 3.0;
         if (f > 1.0) f = 1.0;
-        ms_alpha = 0.10 + f * (0.30 - 0.10);
+        ms_alpha = 0.40 + f * (0.75 - 0.40);
     }
 
     thrmid = 1.0;
