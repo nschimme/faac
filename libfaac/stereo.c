@@ -14,9 +14,6 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with this program.  Reflect on images that may already have been added to your prompt.
-
-    You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ****************************************************************************/
 
@@ -130,13 +127,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     if (!phthr)
         return;
 
-    phthr = 1.0 / phthr;
+    const faac_real inv_phthr = 1.0 / phthr;
 
     /* low bands skip IS: phase still audible there */
-    if (cl->block_type == ONLY_SHORT_WINDOW)
-        sfmin = 1;
-    else
-        sfmin = 8;
+    sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
 
     *sfcnt += sfmin;
 
@@ -190,7 +184,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
          * channel: gate on (sqrt(L)+sqrt(R))^2 scaled by phthr */
         ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
         ethr *= ethr;
-        ethr *= phthr;
+        ethr *= inv_phthr;
         /* in-phase (l+r) vs out-of-phase (l-r); vfix renormalises the kept
          * channel so its energy matches the original L+R total */
         if (enrgs >= ethr)
@@ -215,8 +209,9 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             /* pan = L/R level ratio in scalefactor steps (~1.5 dB each),
              * the intensity position the decoder uses to re-spread the band */
-            int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-            int pan = FAAC_LRINT(FAAC_LOG10(enrgr/efix) * step) - sf;
+            const faac_real inv_efix = 1.0 / efix;
+            int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+            int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
             /* pan beyond +-30 steps: the quieter channel is inaudible,
              * so drop it entirely (HCB_ZERO) instead of IS-coding */
@@ -276,10 +271,7 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
     int sfmin;
     const int * restrict sfb_offset = coder->sfb_offset;
 
-    if (coder->block_type == ONLY_SHORT_WINDOW)
-        sfmin = 1;
-    else
-        sfmin = 8;
+    sfmin = (coder->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
 
     for (sfb = 0; sfb < sfmin; sfb++)
     {
@@ -361,15 +353,14 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
     int msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
 
-    if (cl->block_type == ONLY_SHORT_WINDOW)
-        sfmin = 1;
-    else
-        sfmin = 8;
+    sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
 
     for (sfb = 0; sfb < sfmin; sfb++)
     {
         channel->msInfo.ms_used[(*sfcnt)++] = 0;
     }
+
+    const faac_real inv_isthr = 1.0 / isthr;
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++)
     {
@@ -425,7 +416,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             ethr = FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr);
             ethr *= ethr;
-            ethr /= isthr;
+            ethr *= inv_isthr;
 
             if (enrgs >= ethr)
             {
@@ -440,8 +431,9 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr, ChannelInfo *
 
             if (hcb != HCB_NONE)
             {
-                int sf = FAAC_LRINT(FAAC_LOG10(enrgl / efix) * step);
-                int pan = FAAC_LRINT(FAAC_LOG10(enrgr / efix) * step) - sf;
+                const faac_real inv_efix = 1.0 / efix;
+                int sf = FAAC_LRINT(FAAC_LOG10(enrgl * inv_efix) * step);
+                int pan = FAAC_LRINT(FAAC_LOG10(enrgr * inv_efix) * step) - sf;
 
                 if (pan > 30)
                 {
@@ -527,23 +519,23 @@ void AACstereo(CoderInfo *coder,
     if (quality <= 0.5)
     {
         faac_real f = (max(0.37, quality) - 0.37) / (0.5 - 0.37);
-        alpha = 0.01 + f * (0.10 - 0.01);
+        alpha = 0.01 + f * (0.03 - 0.01);
         coll_thr = 1.0;
-        is_freq = 5500.0;
+        is_freq = 5500.0; if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
     }
     else if (quality <= 1.0)
     {
         faac_real f = (quality - 0.5) / (1.0 - 0.5);
-        alpha = 0.10 + f * (0.25 - 0.10);
-        coll_thr = 1.0 + f * (1.2 - 1.0);
-        is_freq = 5500.0 + f * (8500.0 - 5500.0);
+        alpha = 0.03 + f * (0.10 - 0.03);
+        coll_thr = 1.0 + f * (1.5 - 1.0);
+        is_freq = 5500.0 + f * (7500.0 - 5500.0); if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
     }
     else
     {
         faac_real f = (min(4.0, quality) - 1.0) / (4.0 - 1.0);
-        alpha = 0.25 + f * (0.50 - 0.25);
-        coll_thr = 1.2 + f * (10.0 - 1.2);
-        is_freq = 8500.0 + f * (12000.0 - 8500.0);
+        alpha = 0.10 + f * (0.30 - 0.10);
+        coll_thr = 1.5 + f * (60.0 - 1.5);
+        is_freq = 7500.0 + f * (10000.0 - 7500.0); if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
     }
 
     /* all thresholds loosen as quality drops (divide by quality) and are
@@ -636,21 +628,13 @@ void AACstereo(CoderInfo *coder,
         if (mode == JOINT_MIXED)
         {
             int sfb;
-            int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW)
-                          ? (2 * BLOCK_LEN_SHORT) : (2 * BLOCK_LEN_LONG);
-            /* cap the IS floor at 70% of Nyquist: at low sample rates
-             * it can exceed the top band and disable IS for the whole frame */
-            int cap = (sampleRate * 7) / 20;
-            int ifreq = (int)is_freq;
-            if (ifreq > cap)
-                ifreq = cap;
+            const int mdctlen_shift = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 8 : 11;
+            const int ifreq_bin = (int)(((long long)is_freq << mdctlen_shift) / sampleRate);
 
             is_start_sfb = coder[chn].sfbn;
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++)
             {
-                /* bin center -> Hz: offset * fs / mdctlen */
-                int freq = (coder[chn].sfb_offset[sfb] * sampleRate) / mdctlen;
-                if (freq >= ifreq)
+                if (coder[chn].sfb_offset[sfb] >= ifreq_bin)
                 {
                     is_start_sfb = sfb;
                     break;
