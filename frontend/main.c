@@ -975,13 +975,7 @@ int main(int argc, char *argv[])
     }
 
     /* AUTO may have resolved to LC or HE-AAC; read back the decision. */
-    {
-        unsigned int userRequestedType = objectType;
-        objectType = myFormat->aacObjectType;
-        if (userRequestedType == AUTO)
-            fprintf(stderr, "Auto-selected: %s\n",
-                    objectType == HE_V1 ? "HE-AAC v1" : "Low Complexity");
-    }
+    objectType = myFormat->aacObjectType;
 
     /* Each output frame covers frameInSamples input samples per channel at the
      * original rate: FRAME_LEN for LC, 2*FRAME_LEN for HE-AAC (whose core runs
