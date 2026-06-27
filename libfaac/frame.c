@@ -336,7 +336,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
+        int i;
         hEncoder->sampleBuff[channel] = NULL;
+        for (i = 0; i < LOOKAHEAD_FRAMES; i++)
+            hEncoder->lookahead[channel][i] = NULL;
     }
 
     /* Initialize coder functions */
@@ -431,10 +434,12 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     /* Free remaining buffer memory */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
+        int i;
 		if (hEncoder->sampleBuff[channel])
 			FreeMemory(hEncoder->sampleBuff[channel]);
-		if (hEncoder->next3SampleBuff[channel])
-			FreeMemory (hEncoder->next3SampleBuff[channel]);
+		for (i = 0; i < LOOKAHEAD_FRAMES; i++)
+			if (hEncoder->lookahead[channel][i])
+				FreeMemory (hEncoder->lookahead[channel][i]);
 		if (hEncoder->inputFifo[channel])
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
@@ -500,9 +505,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (realPerCh == 0)
         hEncoder->flushFrame++;
 
-    /* After 4 flush frames all samples have been encoded,
+    /* After enough flush frames all samples have been encoded (4 core delay + 3 lookahead + margin),
        return 0 bytes written */
-    if (hEncoder->flushFrame > 4)
+    if (hEncoder->flushFrame > (CORE_DELAY + LOOKAHEAD_FRAMES + 1))
         return 0;
 
     /* Determine the channel configuration */
@@ -512,31 +517,36 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
-
+        int j;
 
 		if (!hEncoder->sampleBuff[channel])
 			hEncoder->sampleBuff[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+        for (j = 0; j < LOOKAHEAD_FRAMES; j++)
+            if (!hEncoder->lookahead[channel][j])
+                hEncoder->lookahead[channel][j] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
+        /* Rotate FIFO: sampleBuff <- look[0] <- look[1] <- ... <- look[N-1] <- new */
 		tmp = hEncoder->sampleBuff[channel];
-
-		hEncoder->sampleBuff[channel]	= hEncoder->next3SampleBuff[channel];
-		hEncoder->next3SampleBuff[channel]	= tmp;
+		hEncoder->sampleBuff[channel] = hEncoder->lookahead[channel][0];
+        for (j = 0; j < LOOKAHEAD_FRAMES - 1; j++)
+            hEncoder->lookahead[channel][j] = hEncoder->lookahead[channel][j + 1];
+		hEncoder->lookahead[channel][LOOKAHEAD_FRAMES - 1] = tmp;
 
         if (realPerCh == 0)
         {
             /* start flushing*/
             for (i = 0; i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
+                hEncoder->lookahead[channel][LOOKAHEAD_FRAMES - 1][i] = 0.0;
         }
         else
         {
             /* Take one frame from the FIFO front (already faac_real),
              * silence-padding a short final frame. */
             unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
-            memcpy(hEncoder->next3SampleBuff[channel], hEncoder->inputFifo[channel],
+            memcpy(hEncoder->lookahead[channel][LOOKAHEAD_FRAMES - 1], hEncoder->inputFifo[channel],
                    spc * sizeof(faac_real));
             for (i = spc; i < FRAME_LEN; i++)
-                hEncoder->next3SampleBuff[channel][i] = 0.0;
+                hEncoder->lookahead[channel][LOOKAHEAD_FRAMES - 1][i] = 0.0;
 		}
 
 		/* Psychoacoustics */
@@ -547,7 +557,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			hEncoder->psymodel->PsyBufferUpdate(
 					&hEncoder->gpsyInfo,
 					&hEncoder->psyInfo[channel],
-					hEncoder->next3SampleBuff[channel]);
+					hEncoder->lookahead[channel][LOOKAHEAD_FRAMES - 1]);
 		}
     }
 
@@ -555,12 +565,38 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (realPerCh > 0)
         consumeInputFifo(hEncoder, FRAME_LEN);
 
-    if (hEncoder->frameNum <= 3) /* Still filling up the buffers */
+    if (hEncoder->frameNum <= LOOKAHEAD_FRAMES) /* Still filling up the buffers (3 lookahead frames) */
         return 0;
 
     /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
 
+    {
+        /* Shift wantShortFIFO and push new decisions */
+        for (channel = 0; channel < numChannels; channel++) {
+            int i;
+            for (i = 0; i < MAX_WANT_SHORT_FIFO - 1; i++)
+                hEncoder->wantShortFIFO[channel][i] = hEncoder->wantShortFIFO[channel][i + 1];
+            hEncoder->wantShortFIFO[channel][MAX_WANT_SHORT_FIFO - 1] = (hEncoder->psyInfo[channel].block_type == ONLY_SHORT_WINDOW);
+        }
+
+        /* Synchronize within CPEs */
+        for (channel = 0; channel < numChannels; channel++) {
+            if (channelInfo[channel].present &&
+                channelInfo[channel].type == ELEMENT_CPE &&
+                channelInfo[channel].ch_is_left) {
+                int rch = channelInfo[channel].paired_ch;
+                int i;
+                for (i = 0; i < MAX_WANT_SHORT_FIFO; i++) {
+                    if (hEncoder->wantShortFIFO[channel][i] || hEncoder->wantShortFIFO[rch][i]) {
+                        hEncoder->wantShortFIFO[channel][i] = hEncoder->wantShortFIFO[rch][i] = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    /* BlockSwitch will now use the synchronized wantShortFIFO from index 0 */
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
@@ -571,7 +607,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			coderInfo[channel].block_type = ONLY_LONG_WINDOW;
 		}
     }
-    else if ((hEncoder->frameNum <= 4) || (shortctl == SHORTCTL_NOLONG))
+    else if ((hEncoder->frameNum <= (LOOKAHEAD_FRAMES + 1)) || (shortctl == SHORTCTL_NOLONG))
     {
 		for (channel = 0; channel < numChannels; channel++)
 		{

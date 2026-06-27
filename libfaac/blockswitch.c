@@ -23,6 +23,8 @@
 #include "blockswitch.h"
 #include "coder.h"
 #include "util.h"
+#include <stddef.h>
+#include "frame.h"
 #include <faac.h>
 
 typedef float psyfloat;
@@ -203,21 +205,17 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-  int desire = ONLY_LONG_WINDOW;
-
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
-      desire = ONLY_SHORT_WINDOW;
-  }
+  faacEncStruct *hEncoder = (faacEncStruct *)((char *)psyInfo - offsetof(faacEncStruct, psyInfo));
 
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
+    int desire = ONLY_LONG_WINDOW;
+
+    /* A transient in the immediate future (lookahead index 1) triggers
+     * a transition (LONG_START_WINDOW) in the current frame. */
+    if (hEncoder->wantShortFIFO[channel][1])
+        desire = ONLY_SHORT_WINDOW;
 
     if (desire == ONLY_SHORT_WINDOW
 	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)

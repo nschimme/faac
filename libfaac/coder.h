@@ -32,6 +32,12 @@ extern "C" {
 #define BLOCK_LEN_LONG 1024
 #define BLOCK_LEN_SHORT 128
 
+/* Lookahead and delay constants */
+#define CORE_DELAY 4
+#define LOOKAHEAD_FRAMES 3
+#define TOTAL_BUFFER_FRAMES (1 + LOOKAHEAD_FRAMES)
+#define MAX_WANT_SHORT_FIFO (TOTAL_BUFFER_FRAMES)
+
 #define NSFB_LONG  51
 #define NSFB_SHORT 15
 #define MAX_SHORT_WINDOWS 8
