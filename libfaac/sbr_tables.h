@@ -11,7 +11,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
-
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -217,8 +217,7 @@ static const sbrfloat qmf_c[640] = {
  *   row 3 : Fs_sbr  = 32000 Hz
  *   row 4 : 44100 ≤ Fs_sbr ≤ 64000 Hz
  *   row 5 : Fs_sbr  > 64000 Hz
- *   row 6 : Single-rate SBR (bs_samplerate_mode = 0); used when SBR and core
- *           run at the same rate. FAAC only supports standard dual-rate HE-AAC.
+ *   row 6 : Single-rate SBR
  * ------------------------------------------------------------------ */
 static const signed char sbr_offset[7][16] = {
     /* 16000   */ {-8,-7,-6,-5,-4,-3,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7},
@@ -227,7 +226,7 @@ static const signed char sbr_offset[7][16] = {
     /* 32000   */ {-6,-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16},
     /* 44-64k  */ {-4,-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20},
     /* >64k    */ {-2,-1, 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24},
-        /* Mode 0  */ { 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24,28,33}, /* Single-rate SBR (bs_samplerate_mode=0); not used in FAAC dual-rate HE-AAC */
+    /* Mode 0  */ { 0, 1, 2, 3, 4, 5, 6, 7, 9,11,13,16,20,24,28,33}
 };
 
 /* ------------------------------------------------------------------
