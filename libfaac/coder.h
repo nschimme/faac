@@ -35,8 +35,13 @@ extern "C" {
 /* Lookahead and delay constants */
 #define CORE_DELAY 4
 #define LOOKAHEAD_FRAMES 2
-#define TOTAL_BUFFER_FRAMES (1 + 1 + LOOKAHEAD_FRAMES) /* 1 past + 1 current + 2 lookahead */
-#define MAX_WANT_SHORT_FIFO (TOTAL_BUFFER_FRAMES)
+
+/* Transient detection bitmask flags */
+#define TF_NEXT2 (1 << 0) /* Lookahead 2 (newest frame) */
+#define TF_NEXT  (1 << 1) /* Lookahead 1 frame */
+#define TF_CURR  (1 << 2) /* Current frame being encoded */
+#define TF_PAST  (1 << 3) /* Past frame (for MDCT overlap) */
+#define TF_ALL   (TF_PAST | TF_CURR | TF_NEXT | TF_NEXT2)
 
 #define NSFB_LONG  51
 #define NSFB_SHORT 15

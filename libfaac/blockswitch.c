@@ -192,11 +192,8 @@ static void BlockSwitch(CoderInfo * restrict coderInfo, PsyInfo * restrict psyIn
     int lasttype = coderInfo[channel].block_type;
     int desire = ONLY_LONG_WINDOW;
 
-    /* Current and future transients (lookahead) inform window sequencing.
-     * Index 1: current frame. Index 2 & 3: future lookahead context. */
-    if (hEncoder->wantShortFIFO[channel][1] ||
-        hEncoder->wantShortFIFO[channel][2] ||
-        hEncoder->wantShortFIFO[channel][3])
+    /* Current and future transients (lookahead) inform window sequencing. */
+    if (hEncoder->transientFlags[channel] & (TF_CURR | TF_NEXT | TF_NEXT2))
         desire = ONLY_SHORT_WINDOW;
 
     if (desire == ONLY_SHORT_WINDOW

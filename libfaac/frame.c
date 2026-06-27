@@ -336,9 +336,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
-        int i;
-        for (i = 0; i < TOTAL_BUFFER_FRAMES; i++)
-            hEncoder->audioFIFO[channel][i] = NULL;
+        hEncoder->pastSamples[channel] = NULL;
+        hEncoder->currentSamples[channel] = NULL;
+        hEncoder->nextSamples[channel] = NULL;
+        hEncoder->next2Samples[channel] = NULL;
     }
 
     /* Initialize coder functions */
@@ -433,10 +434,14 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     /* Free remaining buffer memory */
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
-        int i;
-		for (i = 0; i < TOTAL_BUFFER_FRAMES; i++)
-			if (hEncoder->audioFIFO[channel][i])
-				FreeMemory (hEncoder->audioFIFO[channel][i]);
+		if (hEncoder->pastSamples[channel])
+			FreeMemory(hEncoder->pastSamples[channel]);
+		if (hEncoder->currentSamples[channel])
+			FreeMemory(hEncoder->currentSamples[channel]);
+		if (hEncoder->nextSamples[channel])
+			FreeMemory(hEncoder->nextSamples[channel]);
+		if (hEncoder->next2Samples[channel])
+			FreeMemory(hEncoder->next2Samples[channel]);
 		if (hEncoder->inputFifo[channel])
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
@@ -514,34 +519,38 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
-        int j;
 
-        for (j = 0; j < TOTAL_BUFFER_FRAMES; j++) {
-            if (!hEncoder->audioFIFO[channel][j])
-                hEncoder->audioFIFO[channel][j] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
-        }
+        if (!hEncoder->pastSamples[channel])
+            hEncoder->pastSamples[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+        if (!hEncoder->currentSamples[channel])
+            hEncoder->currentSamples[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+        if (!hEncoder->nextSamples[channel])
+            hEncoder->nextSamples[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+        if (!hEncoder->next2Samples[channel])
+            hEncoder->next2Samples[channel] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
 
-        /* Rotate FIFO: [0] past, [1] current, [2..4] lookahead */
-		tmp = hEncoder->audioFIFO[channel][0];
-        for (j = 0; j < TOTAL_BUFFER_FRAMES - 1; j++)
-            hEncoder->audioFIFO[channel][j] = hEncoder->audioFIFO[channel][j + 1];
-		hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 1] = tmp;
+        /* Rotate pointers: past <- current <- next <- next2 <- new */
+		tmp = hEncoder->pastSamples[channel];
+		hEncoder->pastSamples[channel] = hEncoder->currentSamples[channel];
+		hEncoder->currentSamples[channel] = hEncoder->nextSamples[channel];
+		hEncoder->nextSamples[channel] = hEncoder->next2Samples[channel];
+		hEncoder->next2Samples[channel] = tmp;
 
         if (realPerCh == 0)
         {
             /* start flushing*/
             for (i = 0; i < FRAME_LEN; i++)
-                hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 1][i] = 0.0;
+                hEncoder->next2Samples[channel][i] = 0.0;
         }
         else
         {
             /* Take one frame from the FIFO front (already faac_real),
              * silence-padding a short final frame. */
             unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
-            memcpy(hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 1], hEncoder->inputFifo[channel],
+            memcpy(hEncoder->next2Samples[channel], hEncoder->inputFifo[channel],
                    spc * sizeof(faac_real));
             for (i = spc; i < FRAME_LEN; i++)
-                hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 1][i] = 0.0;
+                hEncoder->next2Samples[channel][i] = 0.0;
 		}
 
 		/* Psychoacoustics */
@@ -552,8 +561,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			hEncoder->psymodel->PsyBufferUpdate(
 					&hEncoder->gpsyInfo,
 					&hEncoder->psyInfo[channel],
-					hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 1],
-                    hEncoder->audioFIFO[channel][TOTAL_BUFFER_FRAMES - 2]);
+					hEncoder->next2Samples[channel],
+                    hEncoder->nextSamples[channel]);
 		}
     }
 
@@ -568,12 +577,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
 
     {
-        /* Shift wantShortFIFO and push new decisions */
+        /* Shift transient flags and push newest decision (TF_NEXT2) */
         for (channel = 0; channel < numChannels; channel++) {
-            int i;
-            for (i = 0; i < MAX_WANT_SHORT_FIFO - 1; i++)
-                hEncoder->wantShortFIFO[channel][i] = hEncoder->wantShortFIFO[channel][i + 1];
-            hEncoder->wantShortFIFO[channel][MAX_WANT_SHORT_FIFO - 1] = (hEncoder->psyInfo[channel].block_type == ONLY_SHORT_WINDOW);
+            hEncoder->transientFlags[channel] <<= 1;
+            hEncoder->transientFlags[channel] &= TF_ALL;
+            if (hEncoder->psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+                hEncoder->transientFlags[channel] |= TF_NEXT2;
         }
 
         /* Synchronize within CPEs */
@@ -582,17 +591,13 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 channelInfo[channel].type == ELEMENT_CPE &&
                 channelInfo[channel].ch_is_left) {
                 int rch = channelInfo[channel].paired_ch;
-                int i;
-                for (i = 0; i < MAX_WANT_SHORT_FIFO; i++) {
-                    if (hEncoder->wantShortFIFO[channel][i] || hEncoder->wantShortFIFO[rch][i]) {
-                        hEncoder->wantShortFIFO[channel][i] = hEncoder->wantShortFIFO[rch][i] = 1;
-                    }
-                }
+                hEncoder->transientFlags[channel] = hEncoder->transientFlags[rch] =
+                    (hEncoder->transientFlags[channel] | hEncoder->transientFlags[rch]);
             }
         }
     }
 
-    /* BlockSwitch will now use the synchronized wantShortFIFO */
+    /* BlockSwitch will now use the synchronized transientFlags */
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
 
     /* force block type */
@@ -615,8 +620,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         FilterBank(hEncoder,
             &coderInfo[channel],
-            hEncoder->audioFIFO[channel][1], /* current */
-            hEncoder->audioFIFO[channel][0], /* past */
+            hEncoder->currentSamples[channel],
+            hEncoder->pastSamples[channel],
             hEncoder->freqBuff[channel]);
     }
 

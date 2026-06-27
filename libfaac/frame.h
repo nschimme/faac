@@ -56,11 +56,14 @@ typedef struct {
     /* Scalefactorband data */
     SR_INFO *srInfo;
 
-    /* sample buffers: 1 past + 1 current + 3 lookahead frames */
-    faac_real *audioFIFO[MAX_CHANNELS][TOTAL_BUFFER_FRAMES];
+    /* sample buffers: 1 past + 1 current + 2 lookahead frames */
+    faac_real *pastSamples[MAX_CHANNELS];
+    faac_real *currentSamples[MAX_CHANNELS];
+    faac_real *nextSamples[MAX_CHANNELS];
+    faac_real *next2Samples[MAX_CHANNELS];
 
-    /* transient detection FIFOs */
-    int wantShortFIFO[MAX_CHANNELS][MAX_WANT_SHORT_FIFO];
+    /* transient detection flags (bitmask) */
+    unsigned int transientFlags[MAX_CHANNELS];
 
     /* Filterbank buffers */
     faac_real *sin_window_long;
