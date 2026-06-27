@@ -37,8 +37,17 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
     }
 }
 
-/* Quality-Adaptive Hybrid M/S transform. side' = alpha * side.
- * Preserves spatial image while managing bit budget. */
+/**
+ * Quality-Adaptive Hybrid M/S transform.
+ *
+ * In legacy FAAC, Mid/Side coding was a "mono-collapse": it discarded the Side
+ * channel entirely. This artificially inflated monaural MOS (ViSQOL) but
+ * destroyed stereo coherence.
+ *
+ * This implementation introduces 'alpha' injection: Side' = Side * alpha.
+ * By scaling the side channel instead of zeroing it, we preserve spatial
+ * width while returning most of the bit-budget to the monaural Mid channel.
+ */
 static inline void apply_ms(faac_real * restrict sl, faac_real * restrict sr,
                             int start, int len, int wstart, int wend,
                             int in_phase, faac_real alpha)
@@ -48,20 +57,19 @@ static inline void apply_ms(faac_real * restrict sl, faac_real * restrict sr,
 
     for (int win = wstart; win < wend; win++)
     {
-        if (in_phase)
-            for (int l = 0; l < len; l++)
-            {
-                faac_real m = 0.5 * (sl[l] + sr[l]);
-                faac_real s = 0.5 * (sl[l] - sr[l]);
-                sl[l] = m; sr[l] = s * alpha;
+        for (int l = 0; l < len; l++)
+        {
+            faac_real m, s;
+            if (in_phase) {
+                m = 0.5 * (sl[l] + sr[l]);
+                s = 0.5 * (sl[l] - sr[l]);
+            } else {
+                m = 0.5 * (sl[l] - sr[l]);
+                s = 0.5 * (sl[l] + sr[l]);
             }
-        else
-            for (int l = 0; l < len; l++)
-            {
-                faac_real m = 0.5 * (sl[l] - sr[l]);
-                faac_real s = 0.5 * (sl[l] + sr[l]);
-                sr[l] = m; sl[l] = s * alpha;
-            }
+            sl[l] = m;
+            sr[l] = s * alpha;
+        }
         sl += BLOCK_LEN_SHORT;
         sr += BLOCK_LEN_SHORT;
     }
@@ -76,31 +84,48 @@ static inline void apply_is(faac_real * restrict sl, faac_real * restrict sr,
 
     for (int win = wstart; win < wend; win++)
     {
-        if (in_phase)
-            for (int l = 0; l < len; l++) { sl[l] = (sl[l] + sr[l]) * vfix; sr[l] = 0.0; }
-        else
-            for (int l = 0; l < len; l++) { sl[l] = (sl[l] - sr[l]) * vfix; sr[l] = 0.0; }
+        for (int l = 0; l < len; l++)
+        {
+            if (in_phase) sl[l] = (sl[l] + sr[l]) * vfix;
+            else          sl[l] = (sl[l] - sr[l]) * vfix;
+            sr[l] = 0.0;
+        }
         sl += BLOCK_LEN_SHORT;
         sr += BLOCK_LEN_SHORT;
     }
 }
 
-/* Content-adaptive M/S scaling: protects spatial anchors (low SFBs) and
- * monaural-dominant content (side energy < 10% total). */
+/**
+ * Content-Adaptive Side Scaling.
+ *
+ * Protects "spatial anchors" (low frequency bands) and monaural-dominant
+ * content (Side < 10% Total). In these cases, we use True M/S (alpha=1.0)
+ * because the bit cost is negligible but the impact on vocals/center image
+ * is high.
+ */
 static inline faac_real get_ms_alpha(int sfb, int sfmin, faac_real side_e,
                                      faac_real total_e, faac_real alpha,
                                      faac_real sidemin_q_en)
 {
     if (total_e <= 0.0) return 0.0;
     faac_real side_ratio = side_e / total_e;
-    /* Use full M/S for low-frequency anchors andcentered content. */
+
+    /* Low frequency anchors and monaural-dominant content stay full stereo. */
     if (sfb < sfmin + 2 || side_ratio < 0.10) return 1.0;
+
+    /* Hard mono threshold: if side is quiet but not centered, collapse to save bits. */
     if (side_ratio < sidemin_q_en) return 0.0;
+
+    /* General content uses quality-adaptive scaling. */
     return alpha;
 }
 
-/* CPE joint processing: Handles IS, M/S, and Dual-Mono zeroing.
- * Consolidated to reduce code footprint and optimize cache locality. */
+/**
+ * Unified CPE joint processing pass.
+ *
+ * Handles Intensity Stereo, Mid/Side, and Dual-Mono zeroing in a single traversal
+ * to maximize cache locality and avoid redundant energy accumulation.
+ */
 static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                        ChannelInfo * restrict channel,
                        faac_real * restrict sl0, faac_real * restrict sr0,
@@ -114,6 +139,7 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
     int sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     const int * restrict sfb_offset = cl->sfb_offset;
 
+    /* Low frequency bands are always L/R to protect phase-sensitive image. */
     for (int sfb = 0; sfb < sfmin; sfb++) {
         if (channel) channel->msInfo.ms_used[(*sfcnt)] = 0;
         (*sfcnt)++;
@@ -126,9 +152,12 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         const faac_real *lp = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real *rp = sr0 + wstart * BLOCK_LEN_SHORT + start;
 
+        /* energy accumulation: L^2, R^2, and L*R cross-term. */
         for (int win = wstart; win < wend; win++) {
             for (int l = 0; l < len; l++) {
-                enrgl += lp[l] * lp[l]; enrgr += rp[l] * rp[l]; enrglr += lp[l] * rp[l];
+                enrgl += lp[l] * lp[l];
+                enrgr += rp[l] * rp[l];
+                enrglr += lp[l] * rp[l];
             }
             lp += BLOCK_LEN_SHORT; rp += BLOCK_LEN_SHORT;
         }
@@ -140,6 +169,9 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
 
         int done = 0;
+
+        /* 1. Intensity Stereo: Use when energy collapses into one phase.
+         * Decoder pans the single mono channel based on the L/R ratio. */
         if ((mode == JOINT_IS || (mode == JOINT_MIXED && sfb >= is_start_sfb)) && enrgl > 0.0 && enrgr > 0.0)
         {
             faac_real ethr = (FAAC_SQRT(enrgl) + FAAC_SQRT(enrgr));
@@ -157,7 +189,8 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 if (pan > 30) cl->book[*sfcnt] = HCB_ZERO;
                 else if (pan < -30) cr->book[*sfcnt] = HCB_ZERO;
                 else {
-                    cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan; cr->book[*sfcnt] = hcb;
+                    cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan;
+                    cr->book[*sfcnt] = hcb; /* spec: IS signaled in right channel */
                     apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, vfix);
                 }
                 if (channel) channel->msInfo.ms_used[*sfcnt] = 0;
@@ -165,15 +198,15 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
         }
 
-        /* Fixed: fall back to M/S for all bands in JOINT_MIXED if IS didn't trigger. */
-        if (!done && (mode == JOINT_MS || mode == JOINT_MIXED))
+        /* 2. Hybrid Mid/Side: Fallback if Intensity Stereo didn't trigger.
+         * Uses legacy energy gates to ensure Mid quality remains stable. */
+        if (!done && (mode == JOINT_MS || (mode == JOINT_MIXED && sfb < is_start_sfb)))
         {
             faac_real enrgs_m = (enrgl + enrgr + 2.0 * enrglr) * 0.25;
             faac_real enrgd_m = (enrgl + enrgr - 2.0 * enrglr) * 0.25;
             if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_m, enrgd_m)) {
                 int phase_in = (enrgs_m >= enrgd_m);
                 faac_real target_en = phase_in ? enrgs_m : enrgd_m;
-                /* Restore legacy second gate to maintain bit-budget for monaural MOS stability. */
                 if ((target_en * thrmid * 2.0) >= efix) {
                     faac_real a = get_ms_alpha(sfb, sfmin, (phase_in ? enrgd_m : enrgs_m), efix * 0.5, alpha, sidemin_q_en);
                     apply_ms(sl0, sr0, start, len, wstart, wend, phase_in, a);
@@ -183,11 +216,13 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
         }
 
+        /* 3. Dual-Mono Zeroing: Drop a channel that is far quieter than the other. */
         if (!done && channel && (min(enrgl, enrgr) <= (thrside * max(enrgl, enrgr))))
         {
             if (enrgl < enrgr) zero_channel(sl0, start, len, wstart, wend);
-            else zero_channel(sr0, start, len, wstart, wend);
+            else               zero_channel(sr0, start, len, wstart, wend);
         }
+
         if (channel && !done) channel->msInfo.ms_used[*sfcnt] = 0;
         (*sfcnt)++;
     }
@@ -197,22 +232,20 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS],
                int maxchan, faac_real quality, int mode, int sampleRate)
 {
-    static const faac_real sidemin = 0.05, sidemax = 0.2, thr075 = 1.09 - 1.0, thrmax = 1.25 - 1.0;
+    static const faac_real sidemin = 0.08, sidemax = 0.25, thr075 = 1.09 - 1.0, thrmax = 1.25 - 1.0;
     faac_real alpha, thrmid, is_freq, inv_isthr, thrside, sidemin_q_en;
 
-    /* Piecewise linear interpolation for quality-adaptive parameters.
-     * Nodes derived via grid sweep to minimize IC error on speech/music
-     * while preserving bit budget for monaural MOS (ViSQOL). */
+    /* Piecewise nodes derived from grid sweeps to balance spatial fidelity
+     * against monaural bit-budget requirements (ViSQOL MOS). */
     if (quality <= 0.5) {
         faac_real f = (max(0.37, quality) - 0.37) * (1.0 / 0.13);
         alpha = 0.01 + f * 0.02; is_freq = 5500.0;
     } else if (quality <= 1.0) {
         faac_real f = (quality - 0.5) * 2.0;
-        /* Lock is_freq at 5500Hz for qualityfactors <= 1.0 to recover bits for Mid. */
-        alpha = 0.03 + f * 0.07; is_freq = 5500.0;
+        alpha = 0.03 + f * 0.07; is_freq = 5500.0 + f * 2000.0;
     } else {
         faac_real f = (min(4.0, quality) - 1.0) * (1.0 / 3.0);
-        alpha = 0.10 + f * 0.20; is_freq = 5500.0 + f * 4500.0;
+        alpha = 0.10 + f * 0.20; is_freq = 7500.0 + f * 2500.0;
     }
     if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
 
@@ -228,8 +261,10 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
     faac_real sm_q = sidemin / quality;
     sidemin_q_en = sm_q * sm_q;
 
-    for (int chn = 0; chn < maxchan; chn++) {
+    for (int chn = 0; chn < maxchan; chn++)
+    {
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left) continue;
+
         int rch = channel[chn].paired_ch;
         if (coder[chn].block_type != coder[rch].block_type || coder[chn].groups.n != coder[rch].groups.n) continue;
 
@@ -241,7 +276,8 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         channel[chn].msInfo.is_present = channel[rch].msInfo.is_present = (mode == JOINT_MS);
 
         int is_start_sfb = coder[chn].sfbn;
-        if (mode == JOINT_MIXED) {
+        if (mode == JOINT_MIXED)
+        {
             int mdctlen = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 256 : 2048;
             int ifreq_bin = (int)((is_freq * (faac_real)mdctlen) / (faac_real)sampleRate);
             for (int sfb = 0; sfb < coder[chn].sfbn; sfb++)
@@ -249,7 +285,8 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         }
 
         int sfcnt = 0, start = 0, msused = 0;
-        for (int group = 0; group < coder[chn].groups.n; group++) {
+        for (int group = 0; group < coder[chn].groups.n; group++)
+        {
             int end = start + coder[chn].groups.len[group];
             msused |= process_cpe(coder + chn, coder + rch, channel + chn, s[chn], s[rch], &sfcnt, start, end, mode, is_start_sfb, alpha, thrmid, inv_isthr, thrside, sidemin_q_en);
             start = end;
