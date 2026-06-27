@@ -101,8 +101,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         order = tnsInfo->tnsMaxOrderLong;
     }
 
+    /* Clamp maxBands to available bands to avoid out-of-bounds */
     maxBands = min(maxBands, numberOfBands);
-    maxBands = min(maxBands, maxSfb);
     startBand = min(startBand, maxBands);
 
     tnsInfo->tnsDataPresent = 0;
@@ -112,16 +112,19 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         TnsFilterData* tnsFilter = windowData->tnsFilter;
 
         windowData->numFilters = 0;
-        int startIndex = w * windowSize + sfbOffsetTable[startBand];
+        /* startIndex is relative to the start of the current window */
+        int windowOffset = w * windowSize;
+        int startIndex = windowOffset + sfbOffsetTable[startBand];
         int lengthInLines = sfbOffsetTable[maxBands] - sfbOffsetTable[startBand];
 
         if (lengthInLines <= order) continue;
 
         gain = LevinsonDurbin(order, lengthInLines, &spec[startIndex], tnsFilter->kCoeffs);
 
+        /* TNS gain threshold. AAC spec suggests TNS should be used if it provides
+           significant prediction gain. 1.6 is approx 2dB. */
         if (gain > 1.6) {
-            /* Energy slant heuristic for direction:
-               Higher energy at high frequencies suggests backward filtering. */
+            /* Energy slant heuristic for direction */
             faac_real e_low = 0, e_high = 0;
             int mid = lengthInLines / 2;
             int i;
@@ -135,7 +138,6 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
             windowData->coefResolution = 4;
             tnsInfo->tnsDataPresent = 1;
             tnsFilter->order = order;
-            /* In AAC, length field is the number of SFBs. */
             tnsFilter->length = maxBands - startBand;
             tnsFilter->coefCompress = 0;
 
@@ -154,8 +156,7 @@ static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter
     if (order <= 0) return;
 
     /* Copy original spectral coefficients to temp for FIR (Moving Average) filtering.
-       The encoder must use FIR to be the inverse of the decoder's IIR filter.
-       Sign convention: spec_filt[n] = original[n] - prediction[n] */
+       The encoder must use FIR to be the inverse of the decoder's IIR filter. */
     memcpy(temp, spec, length * sizeof(faac_real));
 
     if (filter->direction == 0) { /* Forward */
@@ -164,6 +165,7 @@ static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter
             for (j = 1; j <= order && j <= i; j++) {
                 acc += a[j] * temp[i - j];
             }
+            /* Prediction error: e[n] = x[n] + sum(a[j] * x[n-j]) */
             spec[i] += acc;
         }
     } else { /* Backward */
@@ -233,11 +235,10 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray)
     faac_real a[TNS_MAX_ORDER + 1][TNS_MAX_ORDER + 1];
     int i, j;
     /* Standard Step-up: converts reflection coefficients to prediction coefficients.
-       ISO/IEC 14496-3, 4.6.8.4.3. Note: The spec uses 'k' as transmitted,
-       but some sources negate them here. We follow standard LPC convention. */
+       ISO/IEC 14496-3, 4.6.8.4.3 */
     for (i = 1; i <= fOrder; i++) {
-        a[i][i] = -kArray[i];
-        for (j = 1; j < i; j++) a[i][j] = a[i - 1][j] - kArray[i] * a[i - 1][i - j];
+        a[i][i] = kArray[i];
+        for (j = 1; j < i; j++) a[i][j] = a[i - 1][j] + kArray[i] * a[i - 1][i - j];
     }
     aArray[0] = 1.0;
     for (i = 1; i <= fOrder; i++) aArray[i] = a[fOrder][i];
