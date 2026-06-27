@@ -56,30 +56,55 @@ static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
 static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray, int* indexArray);
 static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter, faac_real * temp);
 
+/* TNS max bands based on ISO/IEC 14496-3 Table 4.84 and 4.85 */
+static const int tnsMaxBandsLongLow[13] = {
+    31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 40, 40
+};
+static const int tnsMaxBandsShortLow[13] = {
+    9, 9, 10, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15
+};
+
 void TnsInit(faacEncStruct* hEncoder)
 {
+    int ch;
+    int idx = hEncoder->sampleRateIdx;
+    if (idx > 12) idx = 12;
+
+    for (ch = 0; ch < hEncoder->numChannels; ch++) {
+        TnsInfo *tns = &hEncoder->coderInfo[ch].tnsInfo;
+        tns->tnsMaxBandsLong = tnsMaxBandsLongLow[idx];
+        tns->tnsMaxBandsShort = tnsMaxBandsShortLow[idx];
+        tns->tnsMinBandNumberLong = 12;
+        tns->tnsMinBandNumberShort = 2;
+        tns->tnsMaxOrderLong = 12;
+        tns->tnsMaxOrderShort = 7;
+    }
 }
 
 void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)
 {
-    int numberOfWindows, windowSize, startBand, stopBand, order;
+    int numberOfWindows, windowSize, startBand, order, maxBands;
     int w;
     faac_real gain;
 
     if (blockType == ONLY_SHORT_WINDOW) {
         numberOfWindows = 8;
         windowSize = 128;
-        startBand = 2;
-        order = 7;
+        startBand = tnsInfo->tnsMinBandNumberShort;
+        maxBands = tnsInfo->tnsMaxBandsShort;
+        order = tnsInfo->tnsMaxOrderShort;
     } else {
         numberOfWindows = 1;
         windowSize = 1024;
-        startBand = 12;
-        order = 12;
+        startBand = tnsInfo->tnsMinBandNumberLong;
+        maxBands = tnsInfo->tnsMaxBandsLong;
+        order = tnsInfo->tnsMaxOrderLong;
     }
 
-    stopBand = min(numberOfBands, maxSfb);
-    startBand = min(startBand, stopBand);
+    maxBands = min(maxBands, numberOfBands);
+    maxBands = min(maxBands, maxSfb);
+    startBand = min(startBand, maxBands);
+
     tnsInfo->tnsDataPresent = 0;
 
     for (w = 0; w < numberOfWindows; w++) {
@@ -88,24 +113,32 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 
         windowData->numFilters = 0;
         int startIndex = w * windowSize + sfbOffsetTable[startBand];
-        int length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
+        int lengthInLines = sfbOffsetTable[maxBands] - sfbOffsetTable[startBand];
 
-        if (length <= 0) continue;
+        if (lengthInLines <= order) continue;
 
-        gain = LevinsonDurbin(order, length, &spec[startIndex], tnsFilter->kCoeffs);
+        gain = LevinsonDurbin(order, lengthInLines, &spec[startIndex], tnsFilter->kCoeffs);
 
         if (gain > 1.6) {
+            /* Energy slant heuristic for direction */
+            faac_real e_low = 0, e_high = 0;
+            int mid = lengthInLines / 2;
+            int i;
+            for (i = 0; i < mid; i++) e_low += spec[startIndex + i] * spec[startIndex + i];
+            for (i = mid; i < lengthInLines; i++) e_high += spec[startIndex + i] * spec[startIndex + i];
+
+            tnsFilter->direction = (e_high > e_low) ? 1 : 0;
+
             QuantizeReflectionCoeffs(order, 4, tnsFilter->kCoeffs, tnsFilter->index);
             windowData->numFilters = 1;
             windowData->coefResolution = 4;
             tnsInfo->tnsDataPresent = 1;
             tnsFilter->order = order;
-            tnsFilter->length = stopBand - startBand;
-            tnsFilter->direction = 0;
+            tnsFilter->length = maxBands - startBand;
             tnsFilter->coefCompress = 0;
 
             StepUp(order, tnsFilter->kCoeffs, tnsFilter->aCoeffs);
-            TnsFilter(length, &spec[startIndex], tnsFilter, temp);
+            TnsFilter(lengthInLines, &spec[startIndex], tnsFilter, temp);
         }
     }
 }
@@ -151,7 +184,7 @@ static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray
         float min_err = 1e10f;
         int best_idx = 0;
         for (j = 0; j < num_vals; j++) {
-            float err = (float)fabs(kArray[i] - (faac_real)map[j]);
+            float err = (float)FAAC_FABS(kArray[i] - (faac_real)map[j]);
             if (err < min_err) { min_err = err; best_idx = j; }
         }
         indexArray[i] = best_idx;
@@ -172,8 +205,8 @@ static void Autocorrelation(int maxOrder, int dataSize, const faac_real * data, 
 
 static faac_real LevinsonDurbin(int fOrder, int dataSize, const faac_real * data, faac_real * kArray)
 {
-    faac_real r[TNS_MAX_ORDER + 1];
-    faac_real a[TNS_MAX_ORDER + 1][TNS_MAX_ORDER + 1];
+    faac_real r[TNS_MAX_ORDER + 1] = {0};
+    faac_real a[TNS_MAX_ORDER + 1][TNS_MAX_ORDER + 1] = {{0}};
     faac_real e;
     int i, j;
 
