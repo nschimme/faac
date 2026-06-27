@@ -28,12 +28,10 @@ static inline void zero_channel(faac_real * restrict s0, int start, int len,
                                 int wstart, int wend)
 {
     faac_real * restrict s_out = s0 + wstart * BLOCK_LEN_SHORT + start;
-    int win;
 
-    for (win = wstart; win < wend; win++)
+    for (int win = wstart; win < wend; win++)
     {
-        int l;
-        for (l = 0; l < len; l++)
+        for (int l = 0; l < len; l++)
             s_out[l] = 0.0;
         s_out += BLOCK_LEN_SHORT;
     }
@@ -95,6 +93,7 @@ static inline faac_real get_ms_alpha(int sfb, int sfmin, faac_real side_e,
 {
     if (total_e <= 0.0) return 0.0;
     faac_real side_ratio = side_e / total_e;
+    /* Use full M/S for low-frequency anchors andcentered content. */
     if (sfb < sfmin + 2 || side_ratio < 0.10) return 1.0;
     if (side_ratio < sidemin_q_en) return 0.0;
     return alpha;
@@ -166,7 +165,8 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
         }
 
-        if (!done && (mode == JOINT_MS || (mode == JOINT_MIXED && sfb < is_start_sfb)))
+        /* Fixed: fall back to M/S for all bands in JOINT_MIXED if IS didn't trigger. */
+        if (!done && (mode == JOINT_MS || mode == JOINT_MIXED))
         {
             faac_real enrgs_m = (enrgl + enrgr + 2.0 * enrglr) * 0.25;
             faac_real enrgd_m = (enrgl + enrgr - 2.0 * enrglr) * 0.25;
@@ -208,10 +208,11 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         alpha = 0.01 + f * 0.02; is_freq = 5500.0;
     } else if (quality <= 1.0) {
         faac_real f = (quality - 0.5) * 2.0;
-        alpha = 0.03 + f * 0.07; is_freq = 5500.0 + f * 2000.0;
+        /* Lock is_freq at 5500Hz for qualityfactors <= 1.0 to recover bits for Mid. */
+        alpha = 0.03 + f * 0.07; is_freq = 5500.0;
     } else {
         faac_real f = (min(4.0, quality) - 1.0) * (1.0 / 3.0);
-        alpha = 0.10 + f * 0.20; is_freq = 7500.0 + f * 2500.0;
+        alpha = 0.10 + f * 0.20; is_freq = 5500.0 + f * 4500.0;
     }
     if (is_freq > (sampleRate * 0.35)) is_freq = sampleRate * 0.35;
 
