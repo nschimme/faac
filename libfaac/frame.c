@@ -557,7 +557,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
 
             offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+            for (sb = 0; sb < hEncoder->srInfo->num_cb_short; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
@@ -566,7 +566,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             /* Apply TNS before spectral grouping for short windows */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
                 TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
+                          hEncoder->srInfo->num_cb_short,
                           coderInfo[channel].sfbn,
                           coderInfo[channel].block_type,
                           coderInfo[channel].sfb_offset,
@@ -583,7 +583,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].groups.len[0] = 1;
 
             offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+            for (sb = 0; sb < hEncoder->srInfo->num_cb_long; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
@@ -592,7 +592,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             /* Perform TNS analysis and filtering for long blocks */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
                 TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
+                          hEncoder->srInfo->num_cb_long,
                           coderInfo[channel].sfbn,
                           coderInfo[channel].block_type,
                           coderInfo[channel].sfb_offset,
