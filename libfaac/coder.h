@@ -42,6 +42,7 @@ extern "C" {
 #define TF_CURR  (1 << 2) /* Current frame being encoded */
 #define TF_PAST  (1 << 3) /* Past frame (for MDCT overlap) */
 #define TF_ALL   (TF_PAST | TF_CURR | TF_NEXT | TF_NEXT2)
+#define TF_LOOKAHEAD (TF_CURR | TF_NEXT | TF_NEXT2)
 
 #define NSFB_LONG  51
 #define NSFB_SHORT 15

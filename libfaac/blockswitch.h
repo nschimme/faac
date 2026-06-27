@@ -33,9 +33,6 @@ typedef struct {
 	int size;
 	int sizeS;
 
-	/* Previous input samples */
-	faac_real *prevSamples;
-
 	int block_type;
 
         void *data;
