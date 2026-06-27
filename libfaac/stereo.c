@@ -88,7 +88,7 @@ static inline void apply_is(faac_real * restrict sl, faac_real * restrict sr,
 }
 
 /* Content-adaptive M/S scaling: protects spatial anchors (low SFBs) and
- * monaural-dominant content (side energy < 2% total). */
+ * monaural-dominant content (side energy < 10% total). */
 static inline faac_real get_ms_alpha(int sfb, int sfmin, faac_real side_e,
                                      faac_real total_e, faac_real alpha,
                                      faac_real sidemin_q_en)
@@ -158,7 +158,7 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 if (pan > 30) cl->book[*sfcnt] = HCB_ZERO;
                 else if (pan < -30) cr->book[*sfcnt] = HCB_ZERO;
                 else {
-                    cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan; cl->book[*sfcnt] = hcb;
+                    cl->sf[*sfcnt] = sf; cr->sf[*sfcnt] = -pan; cr->book[*sfcnt] = hcb;
                     apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, vfix);
                 }
                 if (channel) channel->msInfo.ms_used[*sfcnt] = 0;
@@ -172,10 +172,14 @@ static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             faac_real enrgd_m = (enrgl + enrgr - 2.0 * enrglr) * 0.25;
             if ((min(enrgl, enrgr) * thrmid) >= max(enrgs_m, enrgd_m)) {
                 int phase_in = (enrgs_m >= enrgd_m);
-                faac_real a = get_ms_alpha(sfb, sfmin, (phase_in ? enrgd_m : enrgs_m), efix * 0.5, alpha, sidemin_q_en);
-                apply_ms(sl0, sr0, start, len, wstart, wend, phase_in, a);
-                if (channel) channel->msInfo.ms_used[*sfcnt] = 1;
-                msused = 1; done = 1;
+                faac_real target_en = phase_in ? enrgs_m : enrgd_m;
+                /* Restore legacy second gate to maintain bit-budget for monaural MOS stability. */
+                if ((target_en * thrmid * 2.0) >= efix) {
+                    faac_real a = get_ms_alpha(sfb, sfmin, (phase_in ? enrgd_m : enrgs_m), efix * 0.5, alpha, sidemin_q_en);
+                    apply_ms(sl0, sr0, start, len, wstart, wend, phase_in, a);
+                    if (channel) channel->msInfo.ms_used[*sfcnt] = 1;
+                    msused = 1; done = 1;
+                }
             }
         }
 
