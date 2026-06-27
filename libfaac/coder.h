@@ -34,8 +34,8 @@ extern "C" {
 
 /* Lookahead and delay constants */
 #define CORE_DELAY 4
-#define LOOKAHEAD_FRAMES 3
-#define TOTAL_BUFFER_FRAMES (1 + LOOKAHEAD_FRAMES)
+#define LOOKAHEAD_FRAMES 2
+#define TOTAL_BUFFER_FRAMES (1 + 1 + LOOKAHEAD_FRAMES) /* 1 past + 1 current + 2 lookahead */
 #define MAX_WANT_SHORT_FIFO (TOTAL_BUFFER_FRAMES)
 
 #define NSFB_LONG  51

@@ -90,7 +90,6 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 		    unsigned int sampleRate)
 {
   unsigned int channel;
-  int size;
 
   gpsyInfo->sampleRate = (faac_real) sampleRate;
 
@@ -99,32 +98,14 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     psydata_t *psydata = (psydata_t *)AllocMemory(sizeof(psydata_t));
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].size = BLOCK_LEN_LONG;
+    psyInfo[channel].sizeS = BLOCK_LEN_SHORT;
   }
-
-  size = BLOCK_LEN_LONG;
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    psyInfo[channel].size = size;
-
-    psyInfo[channel].prevSamples =
-      (faac_real *) AllocMemory(size * sizeof(faac_real));
-    memset(psyInfo[channel].prevSamples, 0, size * sizeof(faac_real));
-  }
-
-  size = BLOCK_LEN_SHORT;
-  for (channel = 0; channel < numChannels; channel++)
-    psyInfo[channel].sizeS = size;
 }
 
 static void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-
-  for (channel = 0; channel < numChannels; channel++)
-  {
-    if (psyInfo[channel].prevSamples)
-      FreeMemory(psyInfo[channel].prevSamples);
-  }
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -168,15 +149,16 @@ static void PsyCalculate(ChannelInfo * channelInfo, PsyInfo * psyInfo,
   }
 }
 
-static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
-			    faac_real *newSamples)
+static void PsyBufferUpdate(GlobalPsyInfo * restrict gpsyInfo, PsyInfo * restrict psyInfo,
+			    faac_real * restrict newSamples, faac_real * restrict prevSamples)
 {
   int win;
-  faac_real *transBuff = gpsyInfo->sharedWorkBuffLong;
+  faac_real * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = (psydata_t *)psyInfo->data;
 
-  memcpy(transBuff, psyInfo->prevSamples, psyInfo->size * sizeof(faac_real));
-  memcpy(transBuff + psyInfo->size, newSamples, psyInfo->size * sizeof(faac_real));
+  /* Use shared work buffer for contiguous transient analysis */
+  memcpy(transBuff, prevSamples, BLOCK_LEN_LONG * sizeof(faac_real));
+  memcpy(transBuff + BLOCK_LEN_LONG, newSamples, BLOCK_LEN_LONG * sizeof(faac_real));
 
   // shift bufs
   memcpy(psydata->engPrev, psydata->eng, 8 * sizeof(psyfloat));
@@ -198,11 +180,9 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     }
     psydata->engNext2[win] = (psyfloat)e;
   }
-
-  memcpy(psyInfo->prevSamples, newSamples, psyInfo->size * sizeof(faac_real));
 }
 
-static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
+static void BlockSwitch(CoderInfo * restrict coderInfo, PsyInfo * restrict psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
   faacEncStruct *hEncoder = (faacEncStruct *)((char *)psyInfo - offsetof(faacEncStruct, psyInfo));
@@ -212,9 +192,11 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
     int lasttype = coderInfo[channel].block_type;
     int desire = ONLY_LONG_WINDOW;
 
-    /* A transient in the immediate future (lookahead index 1) triggers
-     * a transition (LONG_START_WINDOW) in the current frame. */
-    if (hEncoder->wantShortFIFO[channel][1])
+    /* Current and future transients (lookahead) inform window sequencing.
+     * Index 1: current frame. Index 2 & 3: future lookahead context. */
+    if (hEncoder->wantShortFIFO[channel][1] ||
+        hEncoder->wantShortFIFO[channel][2] ||
+        hEncoder->wantShortFIFO[channel][3])
         desire = ONLY_SHORT_WINDOW;
 
     if (desire == ONLY_SHORT_WINDOW

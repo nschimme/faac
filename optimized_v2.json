@@ -1,0 +1,121 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_Hey Tonight.16b48k.wav": {
+      "mos": 3.005245770406952,
+      "size": 83374,
+      "bitrate": 66.6992,
+      "bitrate_target": 64,
+      "time": 0.03771638870239258,
+      "md5": "de93a136886dac57677149d3aeac2f07",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Hey Tonight.16b48k.wav",
+      "ic_err": 0.029161526299704445
+    },
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 3.2648043915479956,
+      "size": 66171,
+      "bitrate": 67.52017118048568,
+      "bitrate_target": 64,
+      "time": 0.04625725746154785,
+      "md5": "7b6731b116206f345bfe4988c1e70872",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav",
+      "ic_err": 0.003353541346837833
+    },
+    "music_low_27-last-song-drums-and-trampets.441.16b48k.wav": {
+      "mos": 3.265140866821353,
+      "size": 84646,
+      "bitrate": 67.95037942928818,
+      "bitrate_target": 64,
+      "time": 0.040350914001464844,
+      "md5": "1a61c62b0871ff6f24b9af87bf1d0c1c",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "27-last-song-drums-and-trampets.441.16b48k.wav",
+      "ic_err": 0.013060151743003696
+    },
+    "music_low_Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav": {
+      "mos": 2.877958407667675,
+      "size": 85503,
+      "bitrate": 68.4024,
+      "bitrate_target": 64,
+      "time": 0.03877115249633789,
+      "md5": "df0c48fc484f8ee2f7b51c8d8e53ab56",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav",
+      "ic_err": 0.07911569234154732
+    },
+    "music_low_bah.wav": {
+      "mos": 3.61451766008239,
+      "size": 77564,
+      "bitrate": 65.44564988910315,
+      "bitrate_target": 64,
+      "time": 0.03526926040649414,
+      "md5": "88441ba1e77a9cf0841ff476411752f5",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "bah.wav",
+      "ic_err": 0.007207522496270173
+    },
+    "music_low_The Chastising of Renegade.16b48k.wav": {
+      "mos": 3.137352342294017,
+      "size": 85906,
+      "bitrate": 68.7248,
+      "bitrate_target": 64,
+      "time": 0.04621267318725586,
+      "md5": "cf5fba795e92ff6b8cb4b304d8062c1b",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "The Chastising of Renegade.16b48k.wav",
+      "ic_err": 0.017338526381761497
+    },
+    "music_low_girl.16b48k.wav": {
+      "mos": 2.9539402798328087,
+      "size": 94411,
+      "bitrate": 75.5288,
+      "bitrate_target": 64,
+      "time": 0.045183658599853516,
+      "md5": "b7df839bd3abb764440c2a4a2c9c89f8",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "girl.16b48k.wav",
+      "ic_err": 0.02027766823709137
+    },
+    "music_low_Only Time.16b48k.wav": {
+      "mos": 2.6810080385138537,
+      "size": 82340,
+      "bitrate": 65.872,
+      "bitrate_target": 64,
+      "time": 0.03483414649963379,
+      "md5": "edabf5d02e4641cfce1c5ca0c504f569",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Only Time.16b48k.wav",
+      "ic_err": 0.07328468595060807
+    },
+    "music_low_mof.wav": {
+      "mos": 3.023338488851044,
+      "size": 86602,
+      "bitrate": 69.2816,
+      "bitrate_target": 64,
+      "time": 0.03871417045593262,
+      "md5": "f99847530d43ed15e9cd855620038a1f",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "mof.wav",
+      "ic_err": 0.01994467507027389
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.396689548999954,
+    "silence.wav": 1.3874218143331138,
+    "sine.wav": 2.4058687746667906,
+    "sweep.wav": 2.3331904930000746,
+    "overall": 2.1307926577499834
+  },
+  "lib_size": 86384
+}

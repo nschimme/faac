@@ -92,24 +92,22 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
 }
 
-void FilterBank(faacEncStruct* hEncoder,
-                CoderInfo *coderInfo,
-                faac_real *p_in_data,
-                faac_real *p_out_mdct,
-                faac_real *p_overlap)
+void FilterBank(faacEncStruct* restrict hEncoder,
+                CoderInfo * restrict coderInfo,
+                faac_real * restrict p_in_data,
+                faac_real * restrict p_prev_data,
+                faac_real * restrict p_out_mdct)
 {
     faac_real *p_o_buf, *first_window, *second_window;
-    faac_real *transf_buf;
+    faac_real * restrict transf_buf;
     int k, i;
     int block_type = coderInfo->block_type;
 
     transf_buf = hEncoder->gpsyInfo.sharedWorkBuffLong;
 
     /* create / shift old values */
-    /* We use p_overlap here as buffer holding the last frame time signal*/
-    memcpy(transf_buf, p_overlap, BLOCK_LEN_LONG*sizeof(faac_real));
+    memcpy(transf_buf, p_prev_data, BLOCK_LEN_LONG*sizeof(faac_real));
     memcpy(transf_buf+BLOCK_LEN_LONG, p_in_data, BLOCK_LEN_LONG*sizeof(faac_real));
-    memcpy(p_overlap, p_in_data, BLOCK_LEN_LONG*sizeof(faac_real));
 
     /*  Window shape processing */
     switch (coderInfo->prev_window_shape) {
