@@ -37,17 +37,19 @@ Copyright(c)1996.
 #define M_PI 3.14159265358979323846
 #endif
 
-/* Spec-compliant TNS coefficient maps from ISO/IEC 14496-3, Table 4.83 */
-static const float tns_coef_0_3[8] = {
-    0.0000000000f, 0.3420201433f, 0.6427876097f, 0.8660254038f,
-    -0.9848077530f, -0.8660254038f, -0.6427876097f, -0.3420201433f
+/* Spec-compliant TNS coefficient maps from ISO/IEC 14496-3 (Offset-based centered mapping) */
+/* 4-bit resolution: k = sin((index - 8) * (pi/2) / 7.5) */
+static const float tns_map_4[16] = {
+    -0.9945218954f, -0.9945218954f, -0.9510565163f, -0.8660254038f,
+    -0.7431448255f, -0.5877852523f, -0.4067366431f, -0.2079116908f,
+     0.0000000000f,  0.2079116908f,  0.4067366431f,  0.5877852523f,
+     0.7431448255f,  0.8660254038f,  0.9510565163f,  0.9945218954f
 };
 
-static const float tns_coef_0_4[16] = {
-    0.0000000000f, 0.1837495178f, 0.3612416662f, 0.5264321629f,
-    0.6736956436f, 0.7980172273f, 0.8951632914f, 0.9618256432f,
-    -0.9957341763f, -0.9618256432f, -0.8951632914f, -0.7980172273f,
-    -0.6736956436f, -0.5264321629f, -0.3612416662f, -0.1837495178f
+/* 3-bit resolution: k = sin((index - 4) * (pi/2) / 3.5) */
+static const float tns_map_3[8] = {
+    -0.9749279122f, -0.9749279122f, -0.7818314825f, -0.4338837391f,
+     0.0000000000f,  0.4338837391f,  0.7818314825f,  0.9749279122f
 };
 
 static void Autocorrelation(int maxOrder, int dataSize, const faac_real * data, faac_real * rArray);
@@ -57,12 +59,16 @@ static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray
 static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter, faac_real * temp);
 
 /* TNS max bands based on ISO/IEC 14496-3 Table 4.84 and 4.85 */
-static const int tnsMaxBandsLongLow[13] = {
+static const int tnsMaxBandsLongTable[13] = {
     31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 40, 40
 };
-static const int tnsMaxBandsShortLow[13] = {
+static const int tnsMaxBandsShortTable[13] = {
     9, 9, 10, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15
 };
+
+/* TNS min band tables for sample rate dependency */
+static const int tnsMinBandNumberLongTable[13] = { 11, 12, 15, 16, 17, 25, 26, 26, 26, 26, 26, 26, 26 };
+static const int tnsMinBandNumberShortTable[13] = { 2, 2, 2, 3, 3, 4, 6, 6, 6, 6, 6, 6, 6 };
 
 void TnsInit(faacEncStruct* hEncoder)
 {
@@ -72,10 +78,10 @@ void TnsInit(faacEncStruct* hEncoder)
 
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *tns = &hEncoder->coderInfo[ch].tnsInfo;
-        tns->tnsMaxBandsLong = tnsMaxBandsLongLow[idx];
-        tns->tnsMaxBandsShort = tnsMaxBandsShortLow[idx];
-        tns->tnsMinBandNumberLong = 12;
-        tns->tnsMinBandNumberShort = 2;
+        tns->tnsMaxBandsLong = tnsMaxBandsLongTable[idx];
+        tns->tnsMaxBandsShort = tnsMaxBandsShortTable[idx];
+        tns->tnsMinBandNumberLong = tnsMinBandNumberLongTable[idx];
+        tns->tnsMinBandNumberShort = tnsMinBandNumberShortTable[idx];
         tns->tnsMaxOrderLong = 12;
         tns->tnsMaxOrderShort = 7;
     }
@@ -85,7 +91,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 {
     int numberOfWindows, windowSize, startBand, order, maxBands;
     int w;
-    faac_real gain;
+    faac_real gain, thresh;
 
     if (blockType == ONLY_SHORT_WINDOW) {
         numberOfWindows = 8;
@@ -93,14 +99,18 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
         startBand = tnsInfo->tnsMinBandNumberShort;
         maxBands = tnsInfo->tnsMaxBandsShort;
         order = tnsInfo->tnsMaxOrderShort;
+        thresh = 1.4;
     } else {
         numberOfWindows = 1;
         windowSize = 1024;
         startBand = tnsInfo->tnsMinBandNumberLong;
         maxBands = tnsInfo->tnsMaxBandsLong;
         order = tnsInfo->tnsMaxOrderLong;
+        thresh = 1.6;
     }
 
+    /* Important: Decoder hardcodes tns_max_bands based on sampling frequency.
+       We must analyze up to this band for correct bitstream alignment. */
     maxBands = min(maxBands, numberOfBands);
     startBand = min(startBand, maxBands);
 
@@ -120,7 +130,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE
 
         int actualOrder = LevinsonDurbin(order, lengthInLines, &spec[startIndex], tnsFilter->kCoeffs, &gain);
 
-        if (gain > 1.6) {
+        if (gain > thresh) {
             /* Energy slant heuristic for direction */
             faac_real e_low = 0, e_high = 0;
             int mid = lengthInLines / 2;
@@ -151,6 +161,8 @@ static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter
 
     if (order <= 0) return;
 
+    /* Copy original spectral coefficients to temp for FIR (Moving Average) filtering.
+       Sign convention: spec_filt[n] = original[n] + prediction[n] */
     memcpy(temp, spec, length * sizeof(faac_real));
 
     if (filter->direction == 0) { /* Forward */
@@ -175,7 +187,7 @@ static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter
 static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray, int* indexArray)
 {
     int i, j;
-    const float* map = (coeffRes == 4) ? tns_coef_0_4 : tns_coef_0_3;
+    const float* map = (coeffRes == 4) ? tns_map_4 : tns_map_3;
     int num_vals = (coeffRes == 4) ? 16 : 8;
     for (i = 1; i <= fOrder; i++) {
         float min_err = 1e10f;
@@ -223,7 +235,7 @@ static int LevinsonDurbin(int fOrder, int dataSize, const faac_real * data, faac
         for (j = 1; j < i; j++) s += a[i - 1][j] * r[i - j];
 
         faac_real k = -s / e;
-        if (FAAC_FABS(k) >= 1.0) break;
+        if (FAAC_FABS(k) >= 0.99) break;
 
         kArray[i] = k;
         a[i][i] = k;
