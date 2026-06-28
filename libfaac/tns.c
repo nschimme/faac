@@ -150,7 +150,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
 
         windowData->numFilters=0;
-        windowData->coefResolution = DEF_TNS_COEFF_RES;
+        windowData->coefResolution = (blockType == ONLY_SHORT_WINDOW) ? 3 : 4;
         startIndex = w * windowSize + sfbOffsetTable[startBand];
         length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
@@ -158,10 +158,10 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(maxOrder,length,&spec[startIndex],k);
 
-        /* TNS activation threshold. Spec-compliant encoders use ~1.4. Refined to 1.25 for higher lift. */
-        if (gain > 1.25) {  /* Use TNS */
+        /* TNS activation threshold. Spec-compliant encoders use ~1.4. Conservative to ensure positive MOS. */
+        if (gain > 1.4) {  /* Use TNS */
             int truncatedOrder;
-            QuantizeReflectionCoeffs(maxOrder,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            QuantizeReflectionCoeffs(maxOrder,windowData->coefResolution,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(maxOrder,DEF_TNS_COEFF_THRESH,k,tnsFilter->index);
             if (truncatedOrder == 0) continue;
 
@@ -175,11 +175,12 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             for (i = mid; i < length; i++) high_e += (double)spec[startIndex + i] * spec[startIndex + i];
             tnsFilter->direction = (high_e > low_e) ? 1 : 0;
 
+            /* Coeff compression logic: indices 0..max_q can be compressed as MSB is 0 */
             tnsFilter->coefCompress = 1;
+            int max_q = (windowData->coefResolution == 4) ? 7 : 3;
             for (i = 1; i <= truncatedOrder; i++) {
                 int idx = tnsFilter->index[i];
-                /* If mapped index is outside 0..3 and 12..15, no compression */
-                if (idx > 3 && idx < 12) {
+                if (idx > max_q) {
                     tnsFilter->coefCompress = 0;
                     break;
                 }
@@ -251,6 +252,14 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int*
     return 0;
 }
 
+/*
+ * QuantizeReflectionCoeffs:
+ * Implementation of ISO/IEC 14496-3 Table 4.83
+ * Index mapping for coeff_res = 4:
+ * index 0: 0.0
+ * index 1..7: sin(-idx * pi / 15)
+ * index 8..15: sin((15-idx) * pi / 15)
+ */
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
                               faac_real* kArray,
@@ -259,29 +268,36 @@ static void QuantizeReflectionCoeffs(int fOrder,
     int i;
     double pi = M_PI;
     double divisor = (coeffRes == 4) ? 15.0 : 7.0;
+    int max_q = (coeffRes == 4) ? 7 : 3;
+    int mask = (1 << coeffRes) - 1;
 
     for (i = 1; i <= fOrder; i++) {
         double k = (double)kArray[i];
-        int idx;
+        int q;
+
         if (k > 0.99) k = 0.99;
         if (k < -0.99) k = -0.99;
-        if (k >= 0) {
-            idx = (int)(asin(k) * divisor / pi + 0.5);
-            if (idx > (coeffRes == 4 ? 7 : 3)) idx = (coeffRes == 4 ? 7 : 3);
-        } else {
-            idx = (int)(asin(k) * divisor / pi - 0.5);
-            if (idx < (coeffRes == 4 ? -7 : -3)) idx = (coeffRes == 4 ? -7 : -3);
-            idx = (1 << coeffRes) - 1 + idx;
-        }
-        indexArray[i] = idx;
 
-        /* Inverse quantize for StepUp using the asymmetric mapping */
-        if (idx == 0) {
-            kArray[i] = 0.0;
-        } else if (idx <= (coeffRes == 4 ? 7 : 3)) {
-            kArray[i] = (faac_real)sin(idx * pi / divisor);
+        q = (int)round(asin(k) * divisor / pi);
+        if (q > max_q) q = max_q;
+        if (q < -max_q) q = -max_q;
+
+        if (q == 0) {
+            indexArray[i] = 0;
+        } else if (q < 0) {
+            indexArray[i] = -q;
         } else {
-            kArray[i] = (faac_real)-sin(((1 << coeffRes) - 1 - idx) * pi / divisor);
+            indexArray[i] = mask - q;
+        }
+
+        /* Inverse quantize for StepUp */
+        int idx = indexArray[i];
+        if (idx == 0 || idx == mask) {
+            kArray[i] = 0.0;
+        } else if (idx <= max_q) {
+            kArray[i] = (faac_real)sin(-idx * pi / divisor);
+        } else {
+            kArray[i] = (faac_real)sin((mask - idx) * pi / divisor);
         }
     }
 }
@@ -311,6 +327,11 @@ static void Autocorrelation(int maxOrder,
         rArray[0] += d * d;
         for (order = 1; order <= n; order++)
             rArray[order] += d * data[index + order];
+    }
+
+    /* Lag windowing to smooth the spectrum and stabilize the filter */
+    for (order = 1; order <= maxOrder; order++) {
+        rArray[order] *= (1.0f - 0.001f * order * order);
     }
 }
 
