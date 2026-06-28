@@ -598,11 +598,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
 
             offset = 0;
-            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+            for (sb = 0; sb < hEncoder->srInfo->num_cb_short; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+
+            /* Apply TNS before spectral grouping for short windows */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          hEncoder->srInfo->num_cb_short,
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
+
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
@@ -619,17 +632,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
+    /* Perform TNS analysis and filtering for long blocks */
     for (channel = 0; channel < numChannels; channel++) {
-        if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+        if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          hEncoder->srInfo->num_cb_long,
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
         }
     }
 
