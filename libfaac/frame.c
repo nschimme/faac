@@ -176,9 +176,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.aacObjectType != LOW)
         return 0;
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
@@ -204,7 +201,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
+    if (config->quantqual > maxqual)
+        config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
+
     hEncoder->config.bitRate = config->bitRate;
+    hEncoder->config.quantqual = config->quantqual;
+
+    /* Re-init TNS after intent, bitRate and quantqual are committed. */
+    TnsInit(hEncoder);
+    config->useTns = hEncoder->config.useTns;
 
     if (!config->bandWidth)
     {
@@ -218,13 +225,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-    if (config->quantqual > maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
-    hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -598,24 +598,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
 
             offset = 0;
-            for (sb = 0; sb < hEncoder->srInfo->num_cb_short; sb++) {
+            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
                 coderInfo[channel].sfb_offset[sb] = offset;
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-
-            /* Apply TNS before spectral grouping for short windows */
-            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-                TnsEncode(&(coderInfo[channel].tnsInfo),
-                          hEncoder->srInfo->num_cb_short,
-                          coderInfo[channel].sfbn,
-                          coderInfo[channel].block_type,
-                          coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
-
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
@@ -632,19 +619,17 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering for long blocks */
+    /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
-        if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-                TnsEncode(&(coderInfo[channel].tnsInfo),
-                          hEncoder->srInfo->num_cb_long,
-                          coderInfo[channel].sfbn,
-                          coderInfo[channel].block_type,
-                          coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
+        if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+            TnsEncode(&(coderInfo[channel].tnsInfo),
+                      coderInfo[channel].sfbn,
+                      coderInfo[channel].sfbn,
+                      coderInfo[channel].block_type,
+                      coderInfo[channel].sfb_offset,
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+        } else {
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
     }
 
