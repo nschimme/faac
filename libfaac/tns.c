@@ -158,8 +158,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(maxOrder,length,&spec[startIndex],k);
 
-        /* TNS activation threshold. Spec-compliant encoders use ~1.4. Conservative to ensure positive MOS. */
-        if (gain > 1.4) {  /* Use TNS */
+        /* TNS activation threshold. Spec-compliant encoders use ~1.4. */
+        if (gain > 1.1) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(maxOrder,windowData->coefResolution,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(maxOrder,DEF_TNS_COEFF_THRESH,k,tnsFilter->index);
@@ -255,10 +255,10 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int*
 /*
  * QuantizeReflectionCoeffs:
  * Implementation of ISO/IEC 14496-3 Table 4.83
- * Index mapping for coeff_res = 4:
- * index 0: 0.0
- * index 1..7: sin(-idx * pi / 15)
- * index 8..15: sin((15-idx) * pi / 15)
+ * Index mapping:
+ * idx = 0 -> 0.0
+ * idx 1..max_q -> sin(-idx * pi / divisor)
+ * idx mask..mask-max_q+1 -> sin((mask+1-idx) * pi / divisor)
  */
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
@@ -287,17 +287,17 @@ static void QuantizeReflectionCoeffs(int fOrder,
         } else if (q < 0) {
             indexArray[i] = -q;
         } else {
-            indexArray[i] = mask - q;
+            indexArray[i] = mask + 1 - q;
         }
 
         /* Inverse quantize for StepUp */
         int idx = indexArray[i];
-        if (idx == 0 || idx == mask) {
+        if (idx == 0) {
             kArray[i] = 0.0;
         } else if (idx <= max_q) {
             kArray[i] = (faac_real)sin(-idx * pi / divisor);
         } else {
-            kArray[i] = (faac_real)sin((mask - idx) * pi / divisor);
+            kArray[i] = (faac_real)sin((mask + 1 - idx) * pi / divisor);
         }
     }
 }
@@ -327,11 +327,6 @@ static void Autocorrelation(int maxOrder,
         rArray[0] += d * d;
         for (order = 1; order <= n; order++)
             rArray[order] += d * data[index + order];
-    }
-
-    /* Lag windowing to smooth the spectrum and stabilize the filter */
-    for (order = 1; order <= maxOrder; order++) {
-        rArray[order] *= (1.0f - 0.001f * order * order);
     }
 }
 
