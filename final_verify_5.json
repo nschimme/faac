@@ -1,0 +1,157 @@
+{
+  "sha": null,
+  "matrix": {
+    "music_low_12-German-male-speech.441.16b48k.wav": {
+      "mos": 1.8114211346179037,
+      "size": 38589,
+      "bitrate": 39.37579733846793,
+      "bitrate_target": 64,
+      "time": 0.03210306167602539,
+      "md5": "f7cc6f823899f1e38f03bceac555fd8a",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "12-German-male-speech.441.16b48k.wav",
+      "ic_err": 0.12012431027203149
+    },
+    "music_low_Coral.16b48k.wav": {
+      "mos": 1.7019707287884287,
+      "size": 42327,
+      "bitrate": 33.8616,
+      "bitrate_target": 64,
+      "time": 0.03596901893615723,
+      "md5": "f938c5103184426e740b94967e333dc1",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Coral.16b48k.wav",
+      "ic_err": 0.10509724174724014
+    },
+    "music_low_25-This-is-the-end.441.16b48k.wav": {
+      "mos": 1.7815415123584568,
+      "size": 41596,
+      "bitrate": 36.23205290214205,
+      "bitrate_target": 64,
+      "time": 0.03396749496459961,
+      "md5": "b4fc4f43efea57799b6296e2097ec7ab",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "25-This-is-the-end.441.16b48k.wav",
+      "ic_err": 0.10283358326823089
+    },
+    "music_low_9-Have-big-expensive-car.441.16b48k.wav": {
+      "mos": 1.378502813636123,
+      "size": 42018,
+      "bitrate": 34.629697718499365,
+      "bitrate_target": 64,
+      "time": 0.05046272277832031,
+      "md5": "e09b1bfa8864c26e877ec6ae0a765453",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "9-Have-big-expensive-car.441.16b48k.wav",
+      "ic_err": 0.10100448598993743
+    },
+    "music_low_Shinsho_pool_3min45_4min4.16b48k.wav": {
+      "mos": 3.800217512135541,
+      "size": 44462,
+      "bitrate": 35.5696,
+      "bitrate_target": 64,
+      "time": 0.0346226692199707,
+      "md5": "2f3f5c8ac77cfe9c3a8d749b9b28593f",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Shinsho_pool_3min45_4min4.16b48k.wav",
+      "ic_err": 0.09883147970223106
+    },
+    "music_low_NewYorkCity.16b48k.wav": {
+      "mos": 1.5439848994678678,
+      "size": 44880,
+      "bitrate": 35.904,
+      "bitrate_target": 64,
+      "time": 0.03600049018859863,
+      "md5": "56945c4b4e7609bbcf8c2dfd1921aa85",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "NewYorkCity.16b48k.wav",
+      "ic_err": 0.09199680190408349
+    },
+    "music_low_Hey Tonight.16b48k.wav": {
+      "mos": 1.9004208840083887,
+      "size": 46883,
+      "bitrate": 37.5064,
+      "bitrate_target": 64,
+      "time": 0.03630876541137695,
+      "md5": "1a96e2c3537b447af74154ed1fb3aea9",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Hey Tonight.16b48k.wav",
+      "ic_err": 0.22508808603500058
+    },
+    "music_low_Through The Fire And Flames.16b48k.wav": {
+      "mos": 3.2061788804008513,
+      "size": 44911,
+      "bitrate": 35.9288,
+      "bitrate_target": 64,
+      "time": 0.03497195243835449,
+      "md5": "28c2a316eee6bb9b5a7c3b20b8194f7f",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "Through The Fire And Flames.16b48k.wav",
+      "ic_err": 0.07483308113281809
+    },
+    "music_low_cst.wav": {
+      "mos": 3.404254916548897,
+      "size": 27597,
+      "bitrate": 33.86167169074307,
+      "bitrate_target": 64,
+      "time": 0.02357959747314453,
+      "md5": "591bc867b11220d02bc8a28afe5170d6",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "cst.wav",
+      "ic_err": 0.04676507131276051
+    },
+    "music_low_hrp.wav": {
+      "mos": 2.729213379834685,
+      "size": 41935,
+      "bitrate": 38.152260590811885,
+      "bitrate_target": 64,
+      "time": 0.030589580535888672,
+      "md5": "e1c2f82faa24b0f5dc8744960c488f25",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "hrp.wav",
+      "ic_err": 0.03244290455653091
+    },
+    "music_low_bah.wav": {
+      "mos": 2.2851481263486964,
+      "size": 46140,
+      "bitrate": 38.93123466921793,
+      "bitrate_target": 64,
+      "time": 0.03399205207824707,
+      "md5": "16024334b6ed19cb13aacad99df5be20",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "bah.wav",
+      "ic_err": 0.07759883334070006
+    },
+    "music_low_qrt.wav": {
+      "mos": 2.7845453733958814,
+      "size": 51913,
+      "bitrate": 41.5304,
+      "bitrate_target": 64,
+      "time": 0.03565692901611328,
+      "md5": "8ed673b5955ad4de21d01b2e1e2db57d",
+      "thresh": 3.5,
+      "scenario": "music_low",
+      "filename": "qrt.wav",
+      "ic_err": 0.007959639114763406
+    }
+  },
+  "throughput": {
+    "noise.wav": 2.9336742579998827,
+    "silence.wav": 1.811293633666234,
+    "sine.wav": 3.5759280120000767,
+    "sweep.wav": 2.9509694533332245,
+    "overall": 2.8179663392498546
+  },
+  "lib_size": 86424
+}

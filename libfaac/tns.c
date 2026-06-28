@@ -159,7 +159,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         gain = LevinsonDurbin(maxOrder,length,&spec[startIndex],k);
 
         /* TNS activation threshold. Spec-compliant encoders use ~1.4. */
-        if (gain > 1.1) {  /* Use TNS */
+        if (gain > 1.25) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(maxOrder,windowData->coefResolution,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(maxOrder,DEF_TNS_COEFF_THRESH,k,tnsFilter->index);
@@ -175,12 +175,14 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
             for (i = mid; i < length; i++) high_e += (double)spec[startIndex + i] * spec[startIndex + i];
             tnsFilter->direction = (high_e > low_e) ? 1 : 0;
 
-            /* Coeff compression logic: indices 0..max_q can be compressed as MSB is 0 */
+            /* Coeff compression logic: indices fall within the reduced bit-width range */
             tnsFilter->coefCompress = 1;
-            int max_q = (windowData->coefResolution == 4) ? 7 : 3;
+            int upper = (1 << (windowData->coefResolution - 2)) - 1;
+            int lower = -(1 << (windowData->coefResolution - 2));
             for (i = 1; i <= truncatedOrder; i++) {
                 int idx = tnsFilter->index[i];
-                if (idx > max_q) {
+                /* Standard 2's complement range check for coef_compress */
+                if (idx < lower || idx > upper) {
                     tnsFilter->coefCompress = 0;
                     break;
                 }
@@ -263,10 +265,6 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int*
 /*
  * QuantizeReflectionCoeffs:
  * Implementation of ISO/IEC 14496-3 Table 4.83
- * Index mapping:
- * idx = 0 -> 0.0
- * idx 1..max_q -> sin(-idx * pi / divisor)
- * idx mask..mask-max_q+1 -> sin((mask+1-idx) * pi / divisor)
  */
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
@@ -275,9 +273,9 @@ static void QuantizeReflectionCoeffs(int fOrder,
 {
     int i;
     double pi = M_PI;
-    double divisor = (coeffRes == 4) ? 15.0 : 7.0;
-    int max_q = (coeffRes == 4) ? 7 : 3;
-    int mask = (1 << coeffRes) - 1;
+    double divisor = (coeffRes == 4) ? 16.0 : 8.0;
+    int max_q = (1 << (coeffRes - 1)) - 1;
+    int min_q = -(1 << (coeffRes - 1));
 
     for (i = 1; i <= fOrder; i++) {
         double k = (double)kArray[i];
@@ -286,27 +284,15 @@ static void QuantizeReflectionCoeffs(int fOrder,
         if (k > 0.99) k = 0.99;
         if (k < -0.99) k = -0.99;
 
-        q = (int)round(FAAC_ASIN(k) * divisor / pi);
+        /* Standard quantization formula: q = round(asin(k) * 2^res / pi) */
+        q = (int)FAAC_LRINT(FAAC_ASIN(k) * divisor / pi);
         if (q > max_q) q = max_q;
-        if (q < -max_q) q = -max_q;
+        if (q < min_q) q = min_q;
 
-        if (q == 0) {
-            indexArray[i] = 0;
-        } else if (q < 0) {
-            indexArray[i] = -q;
-        } else {
-            indexArray[i] = mask + 1 - q;
-        }
+        indexArray[i] = q;
 
-        /* Inverse quantize for StepUp */
-        int idx = indexArray[i];
-        if (idx == 0) {
-            kArray[i] = 0.0;
-        } else if (idx <= max_q) {
-            kArray[i] = (faac_real)FAAC_SIN(-idx * pi / divisor);
-        } else {
-            kArray[i] = (faac_real)FAAC_SIN((mask + 1 - idx) * pi / divisor);
-        }
+        /* Inverse quantize for StepUp and internal encoder filtering */
+        kArray[i] = (faac_real)FAAC_SIN(q * pi / divisor);
     }
 }
 
