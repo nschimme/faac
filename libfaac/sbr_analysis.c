@@ -30,7 +30,9 @@
  * and accumulate envelope energies over the full-rate signal in ONE pass. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
-    int num_slots = numSamples / SBR_QMF_BANDS_64;
+    int qmf_bands = (sbr && sbr->singleRate) ? 32 : SBR_QMF_BANDS_64;
+    int hop = (sbr && sbr->singleRate) ? 32 : 64;
+    int num_slots = numSamples / hop;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
@@ -47,10 +49,10 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
+            const faac_real * restrict p_in = fullPtrs[ch] + slot * hop;
             faac_real stot = (faac_real)0.0;
             faac_real hp_stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
+            for (int n = 0; n < hop; n++) {
                 faac_real val = *p_in++;
                 stot += val * val;
                 faac_real d = val - val_in;
@@ -105,16 +107,25 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * hop, slotEnergy, 0, SBR_QMF_BANDS_64);
 
                     /* Split energy for SBR FIXFIX grid at midpoint. */
                     int h = (slot >= (num_slots / 2)) ? 1 : 0;
 
-                    for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
-                        faac_real energy = slotEnergy[k];
-                        sa->ch[ch].bandHalfE[h][k] += energy;
-                        sumE[k] += energy;
-                        sumE2[k] += energy * energy;
+                    if (sbr && sbr->singleRate) {
+                        for (int k = 0; k < 32; k++) {
+                            faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+                            sa->ch[ch].bandHalfE[h][k] += energy;
+                            sumE[k] += energy;
+                            sumE2[k] += energy * energy;
+                        }
+                    } else {
+                        for (int k = 0; k < 64; k++) {
+                            faac_real energy = slotEnergy[k];
+                            sa->ch[ch].bandHalfE[h][k] += energy;
+                            sumE[k] += energy;
+                            sumE2[k] += energy * energy;
+                        }
                     }
                 }
             }
@@ -130,7 +141,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         if (sbr) {
             int kx = sbr->kx;
-            for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
+            for (int k = kx; k < qmf_bands; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);

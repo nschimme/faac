@@ -1036,7 +1036,7 @@ int main(int argc, char *argv[])
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
     fprintf(stderr, "Object type: %s",
-            (objectType == HE_V1) ? "HE-AAC v1" : "Low Complexity");
+            (objectType == HE_V1) ? (myFormat->sbr_single_rate ? "HE-AAC v1 (Single-rate)" : "HE-AAC v1") : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");

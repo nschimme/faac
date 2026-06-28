@@ -129,6 +129,8 @@ typedef struct faacEncConfiguration
 	*/
     int channel_map[64];
     int pnslevel;
+    /* 1 = HE-AAC core at full rate (single-rate), 0 = dual-rate (Fs/2 core) */
+    int sbr_single_rate;
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 #pragma pack(pop)

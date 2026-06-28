@@ -125,7 +125,7 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
     }
 
     if (hEncoder->config.aacObjectType == HE_V1) {
-        /* Explicit-hierarchy ASC: AAC-LC core (Fs/2) wrapped with an SBR
+        /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR
          * extension (sync 0x2b7, type 5) carrying the full output rate. */
         *pSizeOfDecoderSpecificInfo = 5;
         *ppBuffer = malloc(5);
@@ -133,7 +133,7 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
         memset(*ppBuffer, 0, 5);
         pBitStream = OpenBitStream(5, *ppBuffer);
         PutBit(pBitStream, LOW,                         5);  /* core object type */
-        PutBit(pBitStream, hEncoder->sampleRateIdx,     4);  /* core (Fs/2) rate */
+        PutBit(pBitStream, hEncoder->sampleRateIdx,     4);  /* core rate (Fs/2 or Fs) */
         PutBit(pBitStream, hEncoder->numChannels,       4);
         PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
         PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
@@ -141,7 +141,8 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
         PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
         PutBit(pBitStream, 5,                           5);  /* extObjectType = SBR */
         PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
-        PutBit(pBitStream, hEncoder->fullSampleRateIdx, 4);  /* SBR output rate */
+        /* SBR output rate: same as core for single-rate, 2*core for dual-rate. */
+        PutBit(pBitStream, hEncoder->fullSampleRateIdx, 4);
         CloseBitStream(pBitStream);
         return 0;
     }
@@ -188,7 +189,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+    hEncoder->config.sbr_single_rate = config->sbr_single_rate;
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
+
+    /* Restore native Fs if this handle was previously resolved to HE-AAC v1.
+     * This ensures SetConfiguration always begins from a consistent base. */
+    if (hEncoder->fullSampleRate > 0) {
+        hEncoder->sampleRate    = hEncoder->fullSampleRate;
+        hEncoder->sampleRateIdx = hEncoder->fullSampleRateIdx;
+        hEncoder->srInfo        = &srInfo[hEncoder->sampleRateIdx];
+        hEncoder->fullSampleRate = 0;
+    }
 
     switch( hEncoder->config.inputFormat )
     {
@@ -222,6 +233,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
+    hEncoder->sbr_single_rate = hEncoder->config.sbr_single_rate;
     if (hEncoder->config.aacObjectType == AUTO) {
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
@@ -236,21 +248,31 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         }
         hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
+    } else if (hEncoder->config.aacObjectType == HE_V1) {
+        /* User is forcing HE-AAC v1. If it's outside our optimal range for
+         * dual-rate SBR (> 28 kbps/ch), force Single-rate SBR (core at Fs). */
+        if (config->bitRate > HE_MAX_BITRATE_PER_CH) {
+            hEncoder->sbr_single_rate = 1;
+        }
     }
+    config->sbr_single_rate = hEncoder->sbr_single_rate;
 
     if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
         return 0;
 
-    /* HE-AAC: encode the core as AAC-LC at Fs/2; SBR rebuilds the top octave.
-     * Keep the original rate for SBR and the ASC. */
+    /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave.
+     * Dual-rate (default) halves the core rate to Fs/2. Single-rate
+     * (forced > 28k) keeps the core at Fs. */
     if (hEncoder->config.aacObjectType == HE_V1) {
         hEncoder->config.mpegVersion = MPEG4;
         if (hEncoder->fullSampleRate == 0) {
             hEncoder->fullSampleRate     = hEncoder->sampleRate;
             hEncoder->fullSampleRateIdx  = hEncoder->sampleRateIdx;
-            hEncoder->sampleRate         = hEncoder->sampleRate / 2;
-            hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
-            hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
+            if (!hEncoder->sbr_single_rate) {
+                hEncoder->sampleRate         = hEncoder->sampleRate / 2;
+                hEncoder->sampleRateIdx      = GetSRIndex(hEncoder->sampleRate);
+                hEncoder->srInfo             = &srInfo[hEncoder->sampleRateIdx];
+            }
         }
     }
 
@@ -310,6 +332,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         if (!hEncoder->sbrInfo)
             hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate,
                                         hEncoder->config.bitRate * hEncoder->numChannels,
+                                        hEncoder->sbr_single_rate,
                                         &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -328,12 +351,12 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
      * SetConfiguration calls never needs a realloc; the overflow bound (cap)
      * tracks the resolved object type. */
     {
-        unsigned int mult = (hEncoder->config.aacObjectType == HE_V1) ? 2 : 1;
+        unsigned int mult = (hEncoder->config.aacObjectType == HE_V1 && !hEncoder->sbr_single_rate) ? 2 : 1;
         unsigned int channel;
         for (channel = 0; channel < hEncoder->numChannels; channel++)
             if (!hEncoder->inputFifo[channel])
                 hEncoder->inputFifo[channel] =
-                    (faac_real *)AllocMemory(2 * mult * FRAME_LEN * sizeof(faac_real));
+                    (faac_real *)AllocMemory(2 * 2 * FRAME_LEN * sizeof(faac_real));
         hEncoder->inputFifoCap  = 2 * mult * FRAME_LEN;
         hEncoder->inputFifoFill = 0;
     }
@@ -571,8 +594,9 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         /* Final partial frame: silence-pad the unfilled full-rate tail so the
          * resampler (and thus the core) never consumes a stale tail from a prior
          * frame. SBRAnalysis below reads only [0, realPerCh), so it is unaffected. */
-        if (realPerCh < 2 * FRAME_LEN)
-            memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(faac_real));
+        unsigned int full_frame_len = hEncoder->sbr_single_rate ? FRAME_LEN : 2 * FRAME_LEN;
+        if (realPerCh < full_frame_len)
+            memset(fullRate + realPerCh, 0, (full_frame_len - realPerCh) * sizeof(faac_real));
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
@@ -588,10 +612,18 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
     }
 
     SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
-    /* With the tail zero-padded, decimate the whole 2*FRAME_LEN frame so the
-     * entire FRAME_LEN of halfRate is written (real samples + FIR decay to
-     * silence); on a full frame realPerCh == 2*FRAME_LEN, so this is unchanged. */
-    Resample2to1(rs, 2 * FRAME_LEN);
+
+    if (hEncoder->sbr_single_rate) {
+        /* Single-rate: providing the full-rate signal directly to the core.
+         * Copy from rs->fullRate to rs->halfRate (which the core reads). */
+        for (channel = 0; channel < numChannels; channel++)
+            memcpy(rs->halfRate[channel], rs->fullRate[channel], FRAME_LEN * sizeof(faac_real));
+    } else {
+        /* Dual-rate: With the tail zero-padded, decimate the whole 2*FRAME_LEN
+         * frame so the entire FRAME_LEN of halfRate is written (real samples +
+         * FIR decay to silence). */
+        Resample2to1(rs, 2 * FRAME_LEN);
+    }
 }
 
 int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
@@ -619,11 +651,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
     /* The input FIFO decouples the caller's chunk size from the encoder frame
      * size: append whatever we were handed, then emit at most one frame. A frame
-     * is mult*FRAME_LEN samples/channel (mult==2 for HE-AAC, whose core runs at
-     * Fs/2). While fewer than a full frame is buffered we just return 0 without
-     * touching any per-frame state, so the encoder behaves identically regardless
-     * of the caller's chunk size. */
-    unsigned int mult = (hEncoder->config.aacObjectType == HE_V1) ? 2 : 1;
+     * is mult*FRAME_LEN samples/channel (mult==2 for dual-rate HE-AAC, 1 for
+     * single-rate HE or LC). While fewer than a full frame is buffered we just
+     * return 0 without touching any per-frame state. */
+    unsigned int mult = (hEncoder->config.aacObjectType == HE_V1 && !hEncoder->sbr_single_rate) ? 2 : 1;
     unsigned int frameSamplesPerCh = mult * FRAME_LEN;
     int flushing = (samplesInput == 0);
     int realPerCh;          /* real (non-padded) input samples/ch in this frame */

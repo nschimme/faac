@@ -88,6 +88,7 @@ typedef struct SBRInfo {
     int frameCount;
     int numChannels;
     int sampleRate;        /* full output rate; the core runs at sampleRate/2 */
+    int singleRate;        /* 1 = HE core at full rate, 0 = dual-rate (Fs/2 core) */
 
     /* --- frequency band configuration (set at init, constant per stream) --- */
     int kx;
@@ -128,7 +129,7 @@ typedef struct SBRInfo {
 
 struct SignalAnalysis;
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
 void SBREnd(SBRInfo *sbr);
 
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);

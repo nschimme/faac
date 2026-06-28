@@ -36,11 +36,13 @@ static void put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int of
 
 /* kx and k2 implement ISO 14496-3:2009 §4.6.18.3.2 (Master Frequency Band Table).
  * temp (Table 4.84) and max_span (Table 4.85) are mandatory spec constants; do not tune. */
-static int compute_kx(int sampleRate, int bs_start_freq)
+static int compute_kx(int sampleRate, int bs_start_freq, int singleRate)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
-    int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
+    int row;
+    if (singleRate) row = 6;
+    else row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
@@ -96,7 +98,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables)
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -104,6 +106,7 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
+    sbr->singleRate = singleRate;
     unsigned long rate_per_ch = bitRate / channels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
@@ -126,8 +129,20 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
+    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq, singleRate);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
+
+    /* In single-rate mode, the QMF produces 64 bands over 2048 samples, but
+     * we only have 1024 samples per frame. We use a 32-sample hop (producing
+     * 32 slots) and consolidate the 64 QMF bands into 32 bands by summing
+     * adjacent pairs. All bitstream indexing (kx, k2, frequency tables) must
+     * therefore operate in this 32-band space. */
+    if (singleRate) {
+        sbr->kx >>= 1;
+        sbr->k2 >>= 1;
+        if (sbr->k2 <= sbr->kx) sbr->k2 = sbr->kx + 1;
+    }
+
     build_freq_table(sbr);
     /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
     for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
@@ -212,7 +227,8 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
-    int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
+    int hop = sbr->singleRate ? 32 : 64;
+    int num_slots = numSamples / hop, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
     int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
@@ -238,9 +254,15 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * hop, slotEnergy, 0, 64);
                     int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
-                    for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
+                    if (sbr->singleRate) {
+                        for (int k = kx; k < k2; k++)
+                            bandHalfE[ch][h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+                    } else {
+                        for (int k = kx; k < k2; k++)
+                            bandHalfE[ch][h][k] += slotEnergy[k];
+                    }
                 }
             }
         }
@@ -296,7 +318,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(e_slots * (k_hi - k_lo));
                 faac_real factor = sbr->eff_amp_res ? (faac_real)1.0 : (faac_real)2.0;
-                int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
+                /* SBR_ENV_LEVEL_LOG2_OFFSET (6.0) normalizes 64-band QMF energy.
+                 * Consolidating to 32 bands adds 3dB (+1.0 log2). */
+                faac_real offset = sbr->singleRate ? (SBR_ENV_LEVEL_LOG2_OFFSET + 1.0f) : SBR_ENV_LEVEL_LOG2_OFFSET;
+                int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - offset));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
                     raw_level = clamp_int(raw_level, 0, sbr->eff_amp_res ? 63 : 127);
