@@ -525,7 +525,7 @@ void AACstereo(CoderInfo * restrict coder,
     faac_real isthr;
     faac_real alpha_node = 0.0;
     int is_freq = 5500;
-    faac_real q = quality;
+    faac_real q = (quality > 2.0) ? 2.0 : quality;
 
     thrmid = 1.0;
     thrside = 0.0;
