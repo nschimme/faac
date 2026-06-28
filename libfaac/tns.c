@@ -158,7 +158,7 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         gain = LevinsonDurbin(maxOrder,length,&spec[startIndex],k);
 
-        /* TNS activation threshold. Spec-compliant encoders use ~1.4 */
+        /* TNS activation threshold. Spec-compliant encoders use ~1.4. Refined to 1.25 for higher lift. */
         if (gain > 1.25) {  /* Use TNS */
             int truncatedOrder;
             QuantizeReflectionCoeffs(maxOrder,DEF_TNS_COEFF_RES,k,tnsFilter->index);
