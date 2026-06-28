@@ -250,6 +250,20 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     sbr->numEnvelopes = (tratio > SBR_TRANSIENT_THRESH_DEFAULT) ? 2 : 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     int n_env = sbr->numEnvelopes;
+
+    /* Frame envelope grid. Step 2a emits a VARFIX grid whose borders are the
+     * FIXFIX equal split ([0, mid, end]); this exercises the variable-grid
+     * bitstream path with a known-good geometry. Step 2b moves the inner border
+     * onto the transient (and re-integrates the envelope energies to match). */
+    if (n_env > 1) {
+        sbr->frameClass = SBR_FRAME_CLASS_VARFIX;
+        sbr->tEnv[0] = 0;
+        sbr->tEnv[1] = SBR_NUM_TIME_SLOTS / 2;
+        sbr->tEnv[2] = SBR_NUM_TIME_SLOTS;
+        sbr->bsPointer = 0;
+    } else {
+        sbr->frameClass = SBR_FRAME_CLASS_FIXFIX;
+    }
     int sampled = (sa && sa->valid) ? sa->sampled : (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
 
     for (int ch = 0; ch < nch; ch++) {
@@ -347,13 +361,32 @@ static void write_sbr_header(SBRInfo *sbr, BitStream *bs)
     PutBit(bs, 0,                   2); /* bs_noise_bands = 0 (→ 1 noise band) */
 }
 
+/* bs_pointer width = ceil(log2(bs_num_env + 1)), indexed by bs_num_env.
+ * Mirrors FFmpeg/FAAD2 ceil_log2[] (max num_env here is SBR_MAX_ENVELOPES=2). */
+static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
+
 static void write_sbr_grid(SBRInfo *sbr, BitStream *bs)
 {
-    /* FIXFIX: equal-spaced borders, one bs_freq_res for all envelopes.
-     * Variable frame classes (VARFIX/FIXVAR/VARVAR) land in a later step. */
-    PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2);
-    PutBit(bs, sbr->numEnvelopes > 1 ? 1 : 0, 2);
-    PutBit(bs, sbr->bs_freq_res, 1);
+    if (sbr->frameClass == SBR_FRAME_CLASS_VARFIX) {
+        /* VARFIX: variable leading borders, fixed trailing border. Mirrors the
+         * inverse of FFmpeg read_sbr_grid()'s VARFIX case: t_env[0]=bs_var_bord_0,
+         * each lead border adds 2*bs_rel+2, the trailing border is numTimeSlots
+         * (not transmitted), then bs_pointer and per-envelope bs_freq_res. */
+        int num_env = sbr->numEnvelopes;
+        PutBit(bs, SBR_FRAME_CLASS_VARFIX, 2);
+        PutBit(bs, sbr->tEnv[0], 2);                 /* bs_var_bord_0 */
+        PutBit(bs, num_env - 1, 2);                  /* bs_num_rel_0   */
+        for (int i = 0; i < num_env - 1; i++)
+            PutBit(bs, (sbr->tEnv[i + 1] - sbr->tEnv[i] - 2) / 2, 2); /* bs_rel_bord */
+        PutBit(bs, sbr->bsPointer, sbr_ceil_log2[num_env]);
+        for (int i = 0; i < num_env; i++)            /* bs_freq_res[1..num_env] */
+            PutBit(bs, sbr->bs_freq_res, 1);
+    } else {
+        /* FIXFIX: equal-spaced borders, one bs_freq_res for all envelopes. */
+        PutBit(bs, SBR_FRAME_CLASS_FIXFIX, 2);
+        PutBit(bs, sbr->numEnvelopes > 1 ? 1 : 0, 2);
+        PutBit(bs, sbr->bs_freq_res, 1);
+    }
 }
 
 static void write_sbr_dtdf(SBRInfo *sbr, BitStream *bs)
