@@ -1,32 +1,31 @@
-/************************* MPEG-2 NBC Audio Decoder **************************
- *                                                                           *
-"This software module was originally developed in the course of
-development of the MPEG-2 NBC/MPEG-4 Audio standard ISO/IEC 13818-7,
-14496-1,2 and 3. This software module is an implementation of a part of one or more
-MPEG-2 NBC/MPEG-4 Audio tools as specified by the MPEG-2 NBC/MPEG-4
-Audio standard. ISO/IEC  gives users of the MPEG-2 NBC/MPEG-4 Audio
-standards free license to this software module or modifications thereof for use in
-hardware or software products claiming conformance to the MPEG-2 NBC/MPEG-4
-Audio  standards. Those intending to use this software module in hardware or
-software products are advised that this use may infringe existing patents.
-The original developer of this software module and his/her company, the subsequent
-editors and their companies, and ISO/IEC have no liability for use of this software
-module or modifications thereof in an implementation. Copyright is not released for
-non MPEG-2 NBC/MPEG-4 Audio conforming products.The original developer
-retains full right to use the code for his/her  own purpose, assign or donate the
-code to a third party and to inhibit third party from using the code for non
-MPEG-2 NBC/MPEG-4 Audio conforming products. This copyright notice must
-be included in all copies or derivative works."
-Copyright(c)1996.
- *                                                                           *
- ****************************************************************************/
+/**********************************************************************
+
+This software module was originally developed by Texas Instruments
+and edited by         in the course of
+development of the MPEG-2 NBC/MPEG-4 Audio standard
+ISO/IEC 13818-7, 14496-1,2 and 3. This software module is an
+implementation of a part of one or more MPEG-2 NBC/MPEG-4 Audio tools
+as specified by the MPEG-2 NBC/MPEG-4 Audio standard. ISO/IEC gives
+users of the MPEG-2 NBC/MPEG-4 Audio standards free license to this
+software module or modifications thereof for use in hardware or
+software products claiming conformance to the MPEG-2 NBC/ MPEG-4 Audio
+standards. Those intending to use this software module in hardware or
+software products are advised that this use may infringe existing
+patents. The original developer of this software module and his/her
+company, the subsequent editors and their companies, and ISO/IEC have
+no liability for use of this software module or modifications thereof
+in an implementation. Copyright is not released for non MPEG-2
+NBC/MPEG-4 Audio conforming products. The original developer retains
+full right to use the code for his/her own purpose, assign or donate
+the code to a third party and to inhibit third party from using the
+code for non MPEG-2 NBC/MPEG-4 Audio conforming products. This
+copyright notice must be included in all copies or derivative works.
+
+Copyright (c) 1997.
+**********************************************************************/
 
 #include <math.h>
-#include <stdint.h>
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-
 #include "frame.h"
 #include "coder.h"
 #include "bitstream.h"
@@ -37,228 +36,351 @@ Copyright(c)1996.
 #define M_PI 3.14159265358979323846
 #endif
 
-/* Spec-compliant TNS coefficient maps from ISO/IEC 14496-3 (Offset-based centered mapping) */
-/* 4-bit resolution: k = sin((index - 8) * (pi/2) / 7.5) */
-static const float tns_map_4[16] = {
-    -0.9945218954f, -0.9945218954f, -0.9510565163f, -0.8660254038f,
-    -0.7431448255f, -0.5877852523f, -0.4067366431f, -0.2079116908f,
-     0.0000000000f,  0.2079116908f,  0.4067366431f,  0.5877852523f,
-     0.7431448255f,  0.8660254038f,  0.9510565163f,  0.9945218954f
-};
+/***********************************************/
+/* TNS Profile/Frequency Dependent Parameters  */
+/***********************************************/
+/* Limit bands to > 2.0 kHz (Approximate) */
+static unsigned short tnsMinBandNumberLong[12] =
+{ 11, 12, 15, 12, 12, 15, 16, 17, 20, 25, 26, 24 };
+static unsigned short tnsMinBandNumberShort[12] =
+{ 2, 2, 2, 2, 2, 3, 3, 4, 6, 6, 8, 10 };
 
-/* 3-bit resolution: k = sin((index - 4) * (pi/2) / 3.5) */
-static const float tns_map_3[8] = {
-    -0.9749279122f, -0.9749279122f, -0.7818314825f, -0.4338837391f,
-     0.0000000000f,  0.4338837391f,  0.7818314825f,  0.9749279122f
-};
+/**************************************/
+/* Low Profile TNS Parameters         */
+/**************************************/
+/* Aligned with ISO/IEC 14496-3:2005 Tables 4.113 - 4.117 */
+static unsigned short tnsMaxBandsLongLow[12] =
+{ 31, 31, 31, 46, 46, 34, 40, 42, 51, 46, 46, 39 };
 
-static void Autocorrelation(int maxOrder, int dataSize, const faac_real * data, faac_real * rArray);
-static int LevinsonDurbin(int maxOrder, int dataSize, const faac_real * data, faac_real * kArray, faac_real * gain);
+static unsigned short tnsMaxBandsShortLow[12] =
+{ 9, 9, 9, 14, 14, 10, 14, 14, 14, 14, 14, 14 };
+
+static unsigned short tnsMaxOrderLongLow  = 12;
+static unsigned short tnsMaxOrderShortLow = 7;
+
+/*************************/
+/* Function prototypes   */
+/*************************/
+static void Autocorrelation(int maxOrder,
+                     int dataSize,
+                     const faac_real * restrict data,
+                     faac_real * restrict rArray);
+
+static faac_real LevinsonDurbin(int maxOrder,
+                      int dataSize,
+                      const faac_real * restrict data,
+                      faac_real * restrict kArray);
+
 static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray);
-static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray, int* indexArray);
-static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter, faac_real * temp);
 
-/* TNS max bands based on ISO/IEC 14496-3 Table 4.84 and 4.85 */
-static const int tnsMaxBandsLongTable[13] = {
-    31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 40, 40
-};
-static const int tnsMaxBandsShortTable[13] = {
-    9, 9, 10, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15
-};
+static void QuantizeReflectionCoeffs(int fOrder,int coeffRes,faac_real* rArray,int* indexArray);
+static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int* indexArray);
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp);
 
-/* TNS min band tables for sample rate dependency */
-static const int tnsMinBandNumberLongTable[13] = { 11, 12, 15, 16, 17, 25, 26, 26, 26, 26, 26, 26, 26 };
-static const int tnsMinBandNumberShortTable[13] = { 2, 2, 2, 3, 3, 4, 6, 6, 6, 6, 6, 6, 6 };
-
+/*****************************************************/
+/* InitTns:                                          */
+/*****************************************************/
 void TnsInit(faacEncStruct* hEncoder)
 {
-    int ch;
-    int idx = hEncoder->sampleRateIdx;
-    if (idx > 12) idx = 12;
+    unsigned int channel;
+    int fsIndex = hEncoder->sampleRateIdx;
 
-    for (ch = 0; ch < hEncoder->numChannels; ch++) {
-        TnsInfo *tns = &hEncoder->coderInfo[ch].tnsInfo;
-        tns->tnsMaxBandsLong = tnsMaxBandsLongTable[idx];
-        tns->tnsMaxBandsShort = tnsMaxBandsShortTable[idx];
-        tns->tnsMinBandNumberLong = tnsMinBandNumberLongTable[idx];
-        tns->tnsMinBandNumberShort = tnsMinBandNumberShortTable[idx];
-        tns->tnsMaxOrderLong = 12;
-        tns->tnsMaxOrderShort = 7;
+    if (fsIndex > 11) fsIndex = 11;
+
+    for (channel = 0; channel < hEncoder->numChannels; channel++) {
+        TnsInfo *tnsInfo = &hEncoder->coderInfo[channel].tnsInfo;
+
+        tnsInfo->tnsMaxBandsLong       = tnsMaxBandsLongLow[fsIndex];
+        tnsInfo->tnsMaxBandsShort      = tnsMaxBandsShortLow[fsIndex];
+        tnsInfo->tnsMaxOrderLong       = tnsMaxOrderLongLow;
+        tnsInfo->tnsMaxOrderShort      = tnsMaxOrderShortLow;
+        tnsInfo->tnsMinBandNumberLong  = tnsMinBandNumberLong[fsIndex];
+        tnsInfo->tnsMinBandNumberShort = tnsMinBandNumberShort[fsIndex];
     }
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numberOfBands, int maxSfb, enum WINDOW_TYPE blockType, int* sfbOffsetTable, faac_real* spec, faac_real* temp)
+
+/*****************************************************/
+/* TnsEncode:                                        */
+/*****************************************************/
+void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
+               int numberOfBands,       /* Number of bands per window */
+               int maxSfb,              /* max_sfb */
+               enum WINDOW_TYPE blockType,   /* block type */
+               int* sfbOffsetTable,     /* Scalefactor band offset table */
+               faac_real* spec,            /* Spectral data array */
+               faac_real* temp)
 {
-    int numberOfWindows, windowSize, startBand, order, maxBands;
-    int w;
-    faac_real gain, thresh;
+    int numberOfWindows,windowSize;
+    int startBand,stopBand,maxOrder;    /* Bands over which to apply TNS */
+    int w, i;
+    int startIndex,length;
+    faac_real gain;
 
     if (blockType == ONLY_SHORT_WINDOW) {
         numberOfWindows = 8;
-        windowSize = 128;
+        windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberShort;
-        maxBands = tnsInfo->tnsMaxBandsShort;
-        order = tnsInfo->tnsMaxOrderShort;
-        thresh = 1.4;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsShort);
+        maxOrder = tnsInfo->tnsMaxOrderShort;
     } else {
         numberOfWindows = 1;
-        windowSize = 1024;
+        windowSize = BLOCK_LEN_LONG;
         startBand = tnsInfo->tnsMinBandNumberLong;
-        maxBands = tnsInfo->tnsMaxBandsLong;
-        order = tnsInfo->tnsMaxOrderLong;
-        thresh = 1.6;
+        stopBand = min(numberOfBands, tnsInfo->tnsMaxBandsLong);
+        maxOrder = tnsInfo->tnsMaxOrderLong;
     }
 
-    /* Important: Decoder hardcodes tns_max_bands based on sampling frequency.
-       We must analyze up to this band for correct bitstream alignment. */
-    maxBands = min(maxBands, numberOfBands);
-    startBand = min(startBand, maxBands);
+    /* Make sure that start and stop bands < maxSfb */
+    startBand = min(startBand, maxSfb);
+    stopBand = min(stopBand, maxSfb);
+    startBand = max(startBand, 0);
+    stopBand = max(stopBand, 0);
 
-    tnsInfo->tnsDataPresent = 0;
+    tnsInfo->tnsDataPresent = 0;     /* default TNS not used */
 
-    for (w = 0; w < numberOfWindows; w++) {
+    /* Perform analysis and filtering for each window */
+    for (w=0;w<numberOfWindows;w++) {
+
         TnsWindowData* windowData = &tnsInfo->windowData[w];
         TnsFilterData* tnsFilter = windowData->tnsFilter;
+        faac_real* k = tnsFilter->kCoeffs;    /* reflection coeffs */
+        faac_real* a = tnsFilter->aCoeffs;    /* prediction coeffs */
 
-        memset(windowData, 0, sizeof(TnsWindowData));
+        windowData->numFilters=0;
+        windowData->coefResolution = DEF_TNS_COEFF_RES;
+        startIndex = w * windowSize + sfbOffsetTable[startBand];
+        length = sfbOffsetTable[stopBand] - sfbOffsetTable[startBand];
 
-        int windowOffset = w * windowSize;
-        int startIndex = windowOffset + sfbOffsetTable[startBand];
-        int lengthInLines = sfbOffsetTable[maxBands] - sfbOffsetTable[startBand];
+        if (length <= 0) continue;
 
-        if (lengthInLines <= order) continue;
+        gain = LevinsonDurbin(maxOrder,length,&spec[startIndex],k);
 
-        int actualOrder = LevinsonDurbin(order, lengthInLines, &spec[startIndex], tnsFilter->kCoeffs, &gain);
+        /* TNS activation threshold. Spec-compliant encoders use ~1.4 */
+        if (gain > 1.25) {  /* Use TNS */
+            int truncatedOrder;
+            QuantizeReflectionCoeffs(maxOrder,DEF_TNS_COEFF_RES,k,tnsFilter->index);
+            truncatedOrder = TruncateCoeffs(maxOrder,DEF_TNS_COEFF_THRESH,k,tnsFilter->index);
+            if (truncatedOrder == 0) continue;
 
-        if (gain > thresh) {
-            /* Energy slant heuristic for direction */
-            faac_real e_low = 0, e_high = 0;
-            int mid = lengthInLines / 2;
-            int i;
-            for (i = 0; i < mid; i++) e_low += spec[startIndex + i] * spec[startIndex + i];
-            for (i = mid; i < lengthInLines; i++) e_high += spec[startIndex + i] * spec[startIndex + i];
-
-            tnsFilter->direction = (e_high > e_low) ? 1 : 0;
-
-            QuantizeReflectionCoeffs(actualOrder, 4, tnsFilter->kCoeffs, tnsFilter->index);
             windowData->numFilters = 1;
-            windowData->coefResolution = 4;
             tnsInfo->tnsDataPresent = 1;
-            tnsFilter->order = actualOrder;
-            tnsFilter->length = maxBands - startBand;
 
-            StepUp(actualOrder, tnsFilter->kCoeffs, tnsFilter->aCoeffs);
-            TnsFilter(lengthInLines, &spec[startIndex], tnsFilter, temp);
+            /* Direction logic: check energy slant */
+            double low_e = 0, high_e = 0;
+            int mid = length / 2;
+            for (i = 0; i < mid; i++) low_e += (double)spec[startIndex + i] * spec[startIndex + i];
+            for (i = mid; i < length; i++) high_e += (double)spec[startIndex + i] * spec[startIndex + i];
+            tnsFilter->direction = (high_e > low_e) ? 1 : 0;
+
+            tnsFilter->coefCompress = 1;
+            for (i = 1; i <= truncatedOrder; i++) {
+                int idx = tnsFilter->index[i];
+                /* If mapped index is outside 0..3 and 12..15, no compression */
+                if (idx > 3 && idx < 12) {
+                    tnsFilter->coefCompress = 0;
+                    break;
+                }
+            }
+
+            tnsFilter->length = stopBand - startBand;
+            tnsFilter->order = truncatedOrder;
+            StepUp(truncatedOrder,k,a);    /* Compute predictor coefficients */
+            TnsInvFilter(length,&spec[startIndex],tnsFilter,temp);      /* Filter */
         }
     }
 }
 
-static void TnsFilter(int length, faac_real * spec, const TnsFilterData * filter, faac_real * temp)
+static void TnsInvFilter(int length, faac_real * restrict spec,
+                         const TnsFilterData * restrict filter,
+                         faac_real * restrict temp)
 {
     int i, j;
     const int order = filter->order;
-    const faac_real * a = filter->aCoeffs;
+    const faac_real * restrict a = filter->aCoeffs;
 
-    if (order <= 0) return;
-
-    /* Copy original spectral coefficients to temp for FIR (Moving Average) filtering.
-       Sign convention: spec_filt[n] = original[n] + prediction[n] */
-    memcpy(temp, spec, length * sizeof(faac_real));
-
-    if (filter->direction == 0) { /* Forward */
-        for (i = 0; i < length; i++) {
-            faac_real acc = 0;
-            for (j = 1; j <= order && j <= i; j++) {
-                acc += a[j] * temp[i - j];
-            }
-            spec[i] += acc;
+    if (filter->direction) {
+        /* Backward direction (high-to-low index) */
+        temp[length-1] = spec[length-1];
+        for (i = length-2; i > (length-1-order); i--) {
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= (length-1-i); j++)
+                acc += temp[i+j] * a[j];
+            spec[i] = acc;
         }
-    } else { /* Backward */
-        for (i = length - 1; i >= 0; i--) {
-            faac_real acc = 0;
-            for (j = 1; j <= order && (i + j) < length; j++) {
-                acc += a[j] * temp[i + j];
-            }
-            spec[i] += acc;
+        for (i = length-1-order; i >= 0; i--) {
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= order; j++)
+                acc += temp[i+j] * a[j];
+            spec[i] = acc;
+        }
+    } else {
+        /* Forward direction (low-to-high index) */
+        temp[0] = spec[0];
+        for (i = 1; i < order; i++) {
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= i; j++)
+                acc += temp[i-j] * a[j];
+            spec[i] = acc;
+        }
+        for (i = order; i < length; i++) {
+            faac_real acc = spec[i];
+            temp[i] = acc;
+            for (j = 1; j <= order; j++)
+                acc += temp[i-j] * a[j];
+            spec[i] = acc;
         }
     }
 }
 
-static void QuantizeReflectionCoeffs(int fOrder, int coeffRes, faac_real* kArray, int* indexArray)
+static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int* indexArray)
 {
-    int i, j;
-    const float* map = (coeffRes == 4) ? tns_map_4 : tns_map_3;
-    int num_vals = (coeffRes == 4) ? 16 : 8;
+    int i;
+    for (i = fOrder; i >= 1; i--) {
+        if (FAAC_FABS(kArray[i]) > threshold) {
+             return i;
+        }
+        kArray[i] = 0.0;
+        indexArray[i] = 0;
+    }
+    return 0;
+}
+
+static void QuantizeReflectionCoeffs(int fOrder,
+                              int coeffRes,
+                              faac_real* kArray,
+                              int* indexArray)
+{
+    int i;
+    double pi = M_PI;
+    double divisor = (coeffRes == 4) ? 15.0 : 7.0;
+
     for (i = 1; i <= fOrder; i++) {
-        float min_err = 1e10f;
-        int best_idx = 0;
-        for (j = 0; j < num_vals; j++) {
-            float err = (float)FAAC_FABS(kArray[i] - (faac_real)map[j]);
-            if (err < min_err) { min_err = err; best_idx = j; }
+        double k = (double)kArray[i];
+        int idx;
+        if (k > 0.99) k = 0.99;
+        if (k < -0.99) k = -0.99;
+        if (k >= 0) {
+            idx = (int)(asin(k) * divisor / pi + 0.5);
+            if (idx > (coeffRes == 4 ? 7 : 3)) idx = (coeffRes == 4 ? 7 : 3);
+        } else {
+            idx = (int)(asin(k) * divisor / pi - 0.5);
+            if (idx < (coeffRes == 4 ? -7 : -3)) idx = (coeffRes == 4 ? -7 : -3);
+            idx = (1 << coeffRes) - 1 + idx;
         }
-        indexArray[i] = best_idx;
-        kArray[i] = (faac_real)map[best_idx];
+        indexArray[i] = idx;
+
+        /* Inverse quantize for StepUp using the asymmetric mapping */
+        if (idx == 0) {
+            kArray[i] = 0.0;
+        } else if (idx <= (coeffRes == 4 ? 7 : 3)) {
+            kArray[i] = (faac_real)sin(idx * pi / divisor);
+        } else {
+            kArray[i] = (faac_real)-sin(((1 << coeffRes) - 1 - idx) * pi / divisor);
+        }
     }
 }
 
-static void Autocorrelation(int maxOrder, int dataSize, const faac_real * data, faac_real * rArray)
+static void Autocorrelation(int maxOrder,
+                     int dataSize,
+                     const faac_real * restrict data,
+                     faac_real * restrict rArray)
 {
-    int i, j;
-    for (i = 0; i <= maxOrder; i++) {
-        rArray[i] = 0;
-        for (j = 0; j < dataSize - i; j++) {
-            rArray[i] += data[j] * data[j + i];
-        }
+    int order, index;
+
+    for (order = 0; order <= maxOrder; order++)
+        rArray[order] = 0.0;
+
+    int limit = dataSize - maxOrder;
+    for (index = 0; index < limit; index++) {
+        const faac_real d = data[index];
+        const faac_real * restrict dp = &data[index + 1];
+        rArray[0] += d * d;
+        for (order = 1; order <= maxOrder; order++)
+            rArray[order] += d * dp[order - 1];
+    }
+
+    for (; index < dataSize; index++) {
+        const faac_real d = data[index];
+        int n = dataSize - 1 - index;
+        rArray[0] += d * d;
+        for (order = 1; order <= n; order++)
+            rArray[order] += d * data[index + order];
     }
 }
 
-static int LevinsonDurbin(int fOrder, int dataSize, const faac_real * data, faac_real * kArray, faac_real * gain)
+static faac_real LevinsonDurbin(int fOrder,
+                      int dataSize,
+                      const faac_real * restrict data,
+                      faac_real * restrict kArray)
 {
-    faac_real r[TNS_MAX_ORDER + 1];
-    faac_real a[TNS_MAX_ORDER + 1][TNS_MAX_ORDER + 1];
-    faac_real e;
-    int i, j;
+    int order,i;
+    faac_real signal;
+    faac_real error, kTemp;
+    faac_real aArray1[TNS_MAX_ORDER+1];
+    faac_real aArray2[TNS_MAX_ORDER+1];
+    faac_real rArray[TNS_MAX_ORDER+1] = {0};
+    faac_real* aPtr = aArray1;
+    faac_real* aLastPtr = aArray2;
+    faac_real* aTemp;
 
-    memset(r, 0, sizeof(r));
-    memset(a, 0, sizeof(a));
-    memset(kArray, 0, (fOrder + 1) * sizeof(faac_real));
+    Autocorrelation(fOrder,dataSize,data,rArray);
+    signal=rArray[0];
 
-    Autocorrelation(fOrder, dataSize, data, r);
-    if (r[0] < 1e-9) {
-        *gain = 1.0;
+    if (signal <= 1e-6) {
+        for (order=0;order<=fOrder;order++) kArray[order]=0.0;
         return 0;
+    } else {
+        aPtr[0]=1.0;
+        aLastPtr[0]=1.0;
+        error=rArray[0];
+
+        for (order=1;order<=fOrder;order++) {
+            kTemp = aLastPtr[0]*rArray[order-0];
+            for (i=1;i<order;i++) {
+                kTemp += aLastPtr[i]*rArray[order-i];
+            }
+            if (error <= 0.0 || FAAC_FABS(kTemp) >= error) {
+                error = 0.0;
+                break;
+            }
+            kTemp = -kTemp/error;
+            kArray[order]=kTemp;
+            aPtr[order]=kTemp;
+            for (i=1;i<order;i++) {
+                aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
+            }
+            error = error * (1.0 - kTemp*kTemp);
+            if (error <= 0.0) break;
+
+            aTemp=aLastPtr;
+            aLastPtr=aPtr;
+            aPtr=aTemp;
+        }
+        if (error <= 1e-9) return 100.0;
+        return signal/error;
     }
-
-    e = r[0];
-    for (i = 1; i <= fOrder; i++) {
-        faac_real s = r[i];
-        for (j = 1; j < i; j++) s += a[i - 1][j] * r[i - j];
-
-        faac_real k = -s / e;
-        if (FAAC_FABS(k) >= 0.99) break;
-
-        kArray[i] = k;
-        a[i][i] = k;
-        for (j = 1; j < i; j++) a[i][j] = a[i - 1][j] + k * a[i - 1][i - j];
-        e *= (1.0 - k * k);
-        if (e < 1e-9) { i++; break; }
-    }
-
-    *gain = r[0] / (e > 1e-10 ? e : 1e-10);
-    return i - 1;
 }
 
-static void StepUp(int fOrder, faac_real* kArray, faac_real* aArray)
+static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
 {
-    faac_real a[TNS_MAX_ORDER + 1][TNS_MAX_ORDER + 1];
-    int i, j;
-    memset(a, 0, sizeof(a));
-    memset(aArray, 0, (fOrder + 1) * sizeof(faac_real));
+    faac_real aTemp[TNS_MAX_ORDER+2];
+    int i,order;
 
-    for (i = 1; i <= fOrder; i++) {
-        a[i][i] = kArray[i];
-        for (j = 1; j < i; j++) a[i][j] = a[i - 1][j] + kArray[i] * a[i - 1][i - j];
+    for (i=0; i<=TNS_MAX_ORDER; i++) aArray[i] = 0.0;
+    aArray[0]=1.0;
+    aTemp[0]=1.0;
+    for (order=1;order<=fOrder;order++) {
+        for (i=1;i<=order;i++) {
+            aTemp[i] = aArray[i] + kArray[order]*aArray[order-i];
+        }
+        for (i=1;i<=order;i++) {
+            aArray[i]=aTemp[i];
+        }
     }
-    aArray[0] = 1.0;
-    for (i = 1; i <= fOrder; i++) aArray[i] = a[fOrder][i];
 }
