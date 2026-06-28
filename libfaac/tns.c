@@ -48,12 +48,13 @@ static unsigned short tnsMinBandNumberShort[12] =
 /**************************************/
 /* Low Profile TNS Parameters         */
 /**************************************/
-/* Aligned with ISO/IEC 14496-3:2005 Tables 4.113 - 4.117 */
+/* Aligned with ISO/IEC 14496-3:2005 Tables 4.113 - 4.117, indexed by the
+ * MPEG-4 sampling_frequency_index (0=96kHz .. 11=8kHz). */
 static unsigned short tnsMaxBandsLongLow[12] =
-{ 31, 31, 31, 46, 46, 34, 40, 42, 51, 46, 46, 39 };
+{ 31, 31, 34, 40, 42, 51, 46, 46, 42, 42, 42, 39 };
 
 static unsigned short tnsMaxBandsShortLow[12] =
-{ 9, 9, 9, 14, 14, 10, 14, 14, 14, 14, 14, 14 };
+{ 9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14 };
 
 static unsigned short tnsMaxOrderLongLow  = 12;
 static unsigned short tnsMaxOrderShortLow = 7;
@@ -264,7 +265,13 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray, int*
 
 /*
  * QuantizeReflectionCoeffs:
- * Implementation of ISO/IEC 14496-3 Table 4.83
+ * Implementation of ISO/IEC 14496-3 reflection-coefficient quantization
+ * (the same asymmetric inverse-quant factors used by a conforming decoder).
+ * The mapping is NOT symmetric about zero: non-negative indices use a divisor of
+ * 2^(res-1)-0.5 (i.e. sin(q*pi/15) for res=4, sin(q*pi/7) for res=3) and
+ * negative indices use 2^(res-1)+0.5 (sin(q*pi/17), sin(q*pi/9)).
+ * Dequantizing with the same factors makes the coefficients the encoder
+ * filters with bit-exact with what a conforming decoder reconstructs.
  */
 static void QuantizeReflectionCoeffs(int fOrder,
                               int coeffRes,
@@ -272,8 +279,9 @@ static void QuantizeReflectionCoeffs(int fOrder,
                               int* indexArray)
 {
     int i;
-    double pi = M_PI;
-    double divisor = (coeffRes == 4) ? 16.0 : 8.0;
+    /* iqfac for non-negative indices, iqfac_m for negative indices */
+    const double iqfac   = ((1 << (coeffRes - 1)) - 0.5) / (M_PI / 2.0);
+    const double iqfac_m = ((1 << (coeffRes - 1)) + 0.5) / (M_PI / 2.0);
     int max_q = (1 << (coeffRes - 1)) - 1;
     int min_q = -(1 << (coeffRes - 1));
 
@@ -284,15 +292,16 @@ static void QuantizeReflectionCoeffs(int fOrder,
         if (k > 0.99) k = 0.99;
         if (k < -0.99) k = -0.99;
 
-        /* Standard quantization formula: q = round(asin(k) * 2^res / pi) */
-        q = (int)FAAC_LRINT(FAAC_ASIN(k) * divisor / pi);
+        /* Quantize: q = round(asin(k) * iqfac), sign-dependent factor */
+        q = (int)FAAC_LRINT(FAAC_ASIN(k) * ((k >= 0.0) ? iqfac : iqfac_m));
         if (q > max_q) q = max_q;
         if (q < min_q) q = min_q;
 
         indexArray[i] = q;
 
-        /* Inverse quantize for StepUp and internal encoder filtering */
-        kArray[i] = (faac_real)FAAC_SIN(q * pi / divisor);
+        /* Inverse quantize for StepUp and internal encoder filtering,
+         * matching the decoder's asymmetric dequantization. */
+        kArray[i] = (faac_real)FAAC_SIN(q / ((q >= 0) ? iqfac : iqfac_m));
     }
 }
 
