@@ -46,12 +46,14 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
+    /* Pass 1: time-domain transient detection for every channel. The frame grid
+     * needs the strongest transient across channels before energies are binned,
+     * so detection and QMF energy accumulation are now separate passes. */
     for (int ch = 0; ch < nch; ch++) {
         faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
         int smax_idx = 0;
         faac_real slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
 
-        /* First pass: Time-domain energy to find transient position AND high-pass energy. */
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
@@ -96,8 +98,57 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             last_hp_eng = hp_eng;
             have_last = 1;
         }
+    }
 
-        /* Prepare for single QMF pass and tonality/energy accumulation. */
+    /* Choose the frame envelope grid from the strongest transient. A 2-envelope
+     * frame is signalled as VARFIX with bs_var_bord_0=0 and a single inner border
+     * placed at (or just before) the transient; reachable inner borders are the
+     * even slots {2,4,6,8} of the 16-slot SBR grid (2*bs_rel_bord+2). split is the
+     * matching border in the analysis-slot domain that the energy pass bins at. */
+    faac_real frameStrength = (faac_real)0.0;
+    int frameSlot = 0;
+    for (int ch = 0; ch < nch; ch++) {
+        if (sa->ch[ch].transientStrength > frameStrength) {
+            frameStrength = sa->ch[ch].transientStrength;
+            frameSlot = sa->ch[ch].transientSlot;
+        }
+    }
+
+    int split = num_slots;   /* default: single envelope spans the whole frame */
+    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
+        int rel = clamp_int((Ts - 2) / 2, 0, 3);
+        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
+        sa->numEnvelopes = 2;
+        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+        sa->tEnv[0] = 0;
+        sa->tEnv[1] = innerSbr;
+        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+        sa->bsPointer = 0;
+        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+    } else {
+        sa->numEnvelopes = 1;
+        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
+        sa->tEnv[0] = 0;
+        sa->tEnv[1] = SBR_NUM_TIME_SLOTS;
+        sa->bsPointer = 0;
+    }
+
+    /* Count decimated slots per envelope for energy normalisation. */
+    sa->envSampled[0] = sa->envSampled[1] = 0;
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+#endif
+        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+        sa->envSampled[h]++;
+    }
+    if (sa->envSampled[0] < 1) sa->envSampled[0] = 1;
+    if (sa->numEnvelopes > 1 && sa->envSampled[1] < 1) sa->envSampled[1] = 1;
+
+    /* Pass 2: accumulate QMF band energy into the two envelope bins and compute
+     * per-band tonality. bandHalfE[0] is [0, split), bandHalfE[1] is [split, end). */
+    for (int ch = 0; ch < nch; ch++) {
         faac_real sumE[SBR_QMF_BANDS_64], sumE2[SBR_QMF_BANDS_64];
         memset(sumE, 0, sizeof(sumE));
         memset(sumE2, 0, sizeof(sumE2));
@@ -162,6 +213,5 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
                 sa->ch[ch].bandTonality[k] = (ratio > (faac_real)1.0) ? (faac_real)1.0 : ratio;
             }
         }
-
     }
 }

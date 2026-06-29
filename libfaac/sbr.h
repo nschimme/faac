@@ -42,7 +42,17 @@ extern "C" {
 /* Re-transmit header every 30 frames (~0.7 s): lets decoders seek to any frame. */
 #define SBR_HEADER_PERIOD    30
 
+/* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). FIXFIX uses
+ * equal-spaced borders; the variable classes place borders explicitly. */
 #define SBR_FRAME_CLASS_FIXFIX  0
+#define SBR_FRAME_CLASS_FIXVAR  1
+#define SBR_FRAME_CLASS_VARFIX  2
+#define SBR_FRAME_CLASS_VARVAR  3
+
+/* Envelope time-slot resolution the decoder uses for an AAC-LC core frame
+ * (FFmpeg/FAAD2 pass numTimeSlots=16). All bs_rel_bord/t_env values written in
+ * a variable grid live in [0, SBR_NUM_TIME_SLOTS]. */
+#define SBR_NUM_TIME_SLOTS   16
 
 /* EXT_SBR_DATA / EXT_SBR_DATA_CRC fill-element extension types (ISO 14496-3 §4.6.18) */
 #define SBR_EXT_TYPE_SBR     0xd
@@ -117,6 +127,14 @@ typedef struct SBRInfo {
      * borders and these must move into SBRChannel. */
     int numEnvelopes;      /* 1 or 2, set by transient detection in SBRAnalysis */
     int eff_amp_res;       /* forced to 0 for single-envelope FIXFIX (ISO 14496-3:2009 §4.6.18.3) */
+
+    /* Envelope time grid for the frame (frame-global, shared by both channels of
+     * a CPE). frameClass selects FIXFIX or VARFIX; tEnv[0..numEnvelopes] are the
+     * envelope borders in SBR time slots ([0, SBR_NUM_TIME_SLOTS]) and are only
+     * emitted for the variable classes. bsPointer marks the transient envelope. */
+    int frameClass;
+    int tEnv[SBR_MAX_ENVELOPES + 1];
+    int bsPointer;
 
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
