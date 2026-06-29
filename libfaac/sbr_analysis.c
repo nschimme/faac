@@ -38,8 +38,7 @@
  *    qmf_bands = 32. Consolidated SBR analysis. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
-    int hop = 64;
-    int num_slots = numSamples / hop;
+    int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
@@ -56,10 +55,10 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + slot * hop;
+            const faac_real * restrict p_in = fullPtrs[ch] + (slot * SBR_QMF_BANDS_64);
             faac_real stot = (faac_real)0.0;
             faac_real hp_stot = (faac_real)0.0;
-            for (int n = 0; n < hop; n++) {
+            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
                 faac_real val = *p_in++;
                 stot += val * val;
                 faac_real d = val - val_in;
@@ -114,7 +113,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * hop, slotEnergy, 0, SBR_QMF_BANDS_64);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
 
                     /* Split energy for SBR FIXFIX grid at midpoint. */
                     int h = (slot >= (num_slots / 2)) ? 1 : 0;

@@ -234,8 +234,7 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
-    int hop = 64;
-    int num_slots = numSamples / hop, kx = sbr->kx, k2 = sbr->k2;
+    int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
     int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
@@ -261,7 +260,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * hop, slotEnergy, 0, 64);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, kx, k2);
                     int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
                     if (sbr->singleRate) {
                         for (int k = kx; k < k2; k++)
