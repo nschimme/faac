@@ -35,42 +35,63 @@
 
 mp4config_t mp4config = { 0 };
 static FILE *g_fout = NULL;
+static uint8_t *g_membuf = NULL;
+static size_t g_mempos = 0;
+static size_t g_memcap = 0;
+
+static inline void mem_write(const void *data, size_t size) {
+    if (g_membuf) {
+        if (g_mempos + size > g_memcap) {
+            g_memcap = (g_mempos + size) * 2;
+            g_membuf = (uint8_t *)realloc(g_membuf, g_memcap);
+        }
+        if (g_membuf) {
+            memcpy(g_membuf + g_mempos, data, size);
+            g_mempos += size;
+        }
+    } else {
+        fwrite(data, 1, size, g_fout);
+    }
+}
 
 static inline void put_u32(uint32_t val) {
-    uint8_t buf[4];
-    buf[0] = (uint8_t)(val >> 24);
-    buf[1] = (uint8_t)(val >> 16);
-    buf[2] = (uint8_t)(val >> 8);
-    buf[3] = (uint8_t)val;
-    fwrite(buf, 1, 4, g_fout);
+    uint32_t be = ((val >> 24) & 0xFF) | ((val >> 8) & 0xFF00) | ((val << 8) & 0xFF0000) | ((val << 24) & 0xFF000000);
+    mem_write(&be, 4);
 }
 
 static inline void put_u16(uint16_t val) {
-    uint8_t buf[2];
-    buf[0] = (uint8_t)(val >> 8);
-    buf[1] = (uint8_t)val;
-    fwrite(buf, 1, 2, g_fout);
+    uint16_t be = (uint16_t)((val >> 8) | (val << 8));
+    mem_write(&be, 2);
 }
 
-static void put_u8(uint8_t val) { fwrite(&val, 1, 1, g_fout); }
+static inline void put_u8(uint8_t val) { mem_write(&val, 1); }
 
-static void put_data(const void *data, size_t size) { fwrite(data, 1, size, g_fout); }
+static inline void put_data(const void *data, size_t size) { mem_write(data, size); }
 
 /* ISO-BMFF box framing: every box is [4-byte size][4-byte FourCC][payload].
  * start_atom writes a zero size placeholder and returns its file offset;
  * end_atom seeks back to fill in the real size once the payload is complete. */
 static long start_atom(const char *name) {
-    long pos = ftell(g_fout);
+    long pos = g_membuf ? (long)g_mempos : ftell(g_fout);
     put_u32(0); // placeholder
     put_data(name, 4);
     return pos;
 }
 
 static void end_atom(long pos) {
-    long curr = ftell(g_fout);
-    fseek(g_fout, pos, SEEK_SET);
-    put_u32((uint32_t)(curr - pos));
-    fseek(g_fout, curr, SEEK_SET);
+    if (g_membuf) {
+        uint32_t size = (uint32_t)(g_mempos - pos);
+        g_membuf[pos + 0] = (uint8_t)(size >> 24);
+        g_membuf[pos + 1] = (uint8_t)(size >> 16);
+        g_membuf[pos + 2] = (uint8_t)(size >> 8);
+        g_membuf[pos + 3] = (uint8_t)size;
+    } else {
+        long curr = ftell(g_fout);
+        fseek(g_fout, pos, SEEK_SET);
+        uint8_t buf[4] = { (uint8_t)((curr - pos) >> 24), (uint8_t)((curr - pos) >> 16), (uint8_t)((curr - pos) >> 8), (uint8_t)(curr - pos) };
+        fwrite(buf, 1, 4, g_fout);
+        fseek(g_fout, curr, SEEK_SET);
+    }
 }
 
 static uint32_t get_mp4_time(void) {
@@ -81,9 +102,11 @@ static uint32_t get_mp4_time(void) {
  * with 7 payload bits per byte; the MSB (0x80) is a continuation flag.
  * We always emit 4 size bytes to keep box layout predictable. */
 static void put_descriptor(uint8_t tag, uint32_t size) {
-    put_u8(tag);
+    uint8_t buf[5];
+    buf[0] = tag;
     for (int i = 3; i >= 0; i--)
-        put_u8(((size >> (7 * i)) & 0x7f) | (i ? 0x80 : 0));
+        buf[4 - i] = ((size >> (7 * i)) & 0x7f) | (i ? 0x80 : 0);
+    mem_write(buf, 5);
 }
 
 int mp4atom_open(char *name, int over) {
@@ -104,7 +127,7 @@ int mp4atom_open(char *name, int over) {
 
     if (!over && access(name, 0) == 0) return 1;
     if (!(g_fout = fopen(name, "wb"))) return 1;
-    setvbuf(g_fout, NULL, _IOFBF, 65536);
+    setvbuf(g_fout, NULL, _IOFBF, 1048576);
     mp4config.mdatsize = 0;
     mp4config.frame.bufsize = 0x4000;
     mp4config.frame.data = malloc(mp4config.frame.bufsize);
@@ -121,10 +144,18 @@ int mp4atom_close(void) {
         free(mp4config.frame.data);
         mp4config.frame.data = NULL;
     }
+    if (g_membuf) {
+        free(g_membuf);
+        g_membuf = NULL;
+    }
     return 0;
 }
 
 int mp4atom_head(void) {
+    g_mempos = 0;
+    g_memcap = 1024;
+    g_membuf = malloc(g_memcap);
+
     long ftyp = start_atom("ftyp");
     put_data("M4A ", 4);
     put_u32(0);
@@ -135,6 +166,11 @@ int mp4atom_head(void) {
     long free_box = start_atom("free");
     end_atom(free_box);
 
+    /* Write out the header and switch back to direct file output */
+    fwrite(g_membuf, 1, g_mempos, g_fout);
+    free(g_membuf);
+    g_membuf = NULL;
+
     /* Record payload start offset so mp4atom_tail() can back-patch the mdat
      * box size once all frames have been written and the total is known. */
     mp4config.mdatofs = (uint32_t)ftell(g_fout) + 8;
@@ -144,7 +180,7 @@ int mp4atom_head(void) {
 }
 
 int mp4atom_frame(uint8_t * buf, int size, int samples) {
-    put_data(buf, size);
+    fwrite(buf, 1, size, g_fout);
     mp4config.mdatsize += size;
     mp4config.samples  += samples;
     if (mp4config.framesamples < (uint32_t)samples)
@@ -256,8 +292,13 @@ int mp4atom_tail(void) {
     put_u32(mp4config.mdatsize + 8);
     fseek(g_fout, pos, SEEK_SET);
 
-    mp4config.bitrate.avg = (uint32_t)(8.0 * mp4config.mdatsize * mp4config.samplerate / mp4config.samples);
+    mp4config.bitrate.avg = (uint32_t)((uint64_t)8 * mp4config.mdatsize * mp4config.samplerate / mp4config.samples);
     if (!mp4config.bitrate.max) mp4config.bitrate.max = mp4config.bitrate.avg;
+
+    /* Buffer the entire moov atom in memory to avoid fseek/ftell flushes */
+    g_mempos = 0;
+    g_memcap = 65536 + mp4config.frame.ents * 4;
+    g_membuf = malloc(g_memcap);
 
     long moov = start_atom("moov");
 
@@ -404,17 +445,23 @@ int mp4atom_tail(void) {
     put_u32(0);                      // sample_size: 0 = variable
     put_u32(mp4config.frame.ents);   // sample_count
     if (mp4config.frame.ents) {
-        uint8_t *tmp = malloc(mp4config.frame.ents * 4);
-        if (tmp) {
-            for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
-                uint32_t val = mp4config.frame.data[i];
-                tmp[i * 4 + 0] = (uint8_t)(val >> 24);
-                tmp[i * 4 + 1] = (uint8_t)(val >> 16);
-                tmp[i * 4 + 2] = (uint8_t)(val >> 8);
-                tmp[i * 4 + 3] = (uint8_t)val;
+        size_t size = (size_t)mp4config.frame.ents * 4;
+        if (g_membuf) {
+            if (g_mempos + size > g_memcap) {
+                g_memcap = g_mempos + size + 0x4000;
+                g_membuf = realloc(g_membuf, g_memcap);
             }
-            fwrite(tmp, 1, mp4config.frame.ents * 4, g_fout);
-            free(tmp);
+            if (g_membuf) {
+                uint8_t *p = g_membuf + g_mempos;
+                for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
+                    uint32_t val = mp4config.frame.data[i];
+                    *p++ = (uint8_t)(val >> 24);
+                    *p++ = (uint8_t)(val >> 16);
+                    *p++ = (uint8_t)(val >> 8);
+                    *p++ = (uint8_t)val;
+                }
+                g_mempos += size;
+            }
         } else {
             for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
                 put_u32(mp4config.frame.data[i]);
@@ -474,6 +521,13 @@ int mp4atom_tail(void) {
     end_atom(meta);
     end_atom(udta);
     end_atom(moov);
+
+    if (g_membuf) {
+        fwrite(g_membuf, 1, g_mempos, g_fout);
+        free(g_membuf);
+        g_membuf = NULL;
+    }
+
     return 0;
 }
 
