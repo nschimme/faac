@@ -117,7 +117,7 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,
                   faac_real * __restrict bandenrg, faac_real * __restrict bandmaxe, int gnum, faac_real quality,
-                  int heCore)
+                  unsigned int objectType)
 {
   int sfb, start, end, cnt;
   int *cb_offset = coderInfo->sfb_offset;
@@ -198,7 +198,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     /* HE-AAC core only: raise masking floor so bands near the SBR crossover survive
      * quantization. At Fs/2 the default floors are too loose and whole bands
      * round to zero; SBR then mirrors that silence into the high band. */
-    if (heCore) {
+    if (objectType == HE_V1) {
         /* avge floor = -23 dB (MAXE_FLOOR_FACTOR): crossover bands have low avg energy. */
         faac_real avge_floor = avgenrg * MAXE_FLOOR_FACTOR;
         faac_real avge_eff = avge > avge_floor ? avge : avge_floor;
@@ -394,7 +394,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     for (cnt = 0; cnt < coder->groups.n; cnt++)
     {
         bmask(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
-              (faac_real)aacquantCfg->quality/DEFQUAL, (objectType == HE_V1));
+              (faac_real)aacquantCfg->quality/DEFQUAL, objectType);
         qlevel(coder, gxr, bandlvl, bandenrg, bandmaxe, cnt,
                aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[cnt] * BLOCK_LEN_SHORT;
