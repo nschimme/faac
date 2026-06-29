@@ -477,8 +477,21 @@ int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, st
 
     /* Pass 1: measure the payload by replaying it into a counting sink. This is
      * the single source of truth for the fill_element byte count. */
+    /* Measure the payload by emitting into a throwaway stack buffer. Backing the
+     * counter with real memory keeps PutBit on its single write path — no
+     * per-call NULL test in the global hot loop. The buffer is sized to the
+     * array-bound worst case (CPE, both channels maxed) so the counting pass can
+     * never overrun it, even though the assert below would (in a debug build)
+     * already flag any payload that overflows fill_element's esc_count.
+     *   per ch: grid + dtdf + invf(2*noisebands)
+     *         + env (numEnv * (7 + (bands-1)*20))      [20 = max env huff len]
+     *         + noise (noiseEnv * (5 + (noisebands-1)*20))
+     * which at SBR_MAX_* is ~690 bytes for a CPE; round up generously. */
+    unsigned char scratch[1024];
     BitStream counter;
-    memset(&counter, 0, sizeof(counter)); /* data==NULL => PutBit only counts */
+    memset(&counter, 0, sizeof(counter));
+    counter.data = scratch;
+    counter.size = sizeof(scratch);
     emit_sbr_payload(sbr, &counter, id_aac, sendHeader);
     int payloadBits = (int)counter.numBit;          /* ext_type + flag + header + data */
     int fillBytes = (payloadBits + 7) / 8;
