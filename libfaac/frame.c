@@ -189,7 +189,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
-    hEncoder->config.sbr_single_rate = config->sbr_single_rate;
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     /* Restore native Fs if this handle was previously resolved to HE-AAC v1.
@@ -233,7 +232,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
-    hEncoder->sbr_single_rate = hEncoder->config.sbr_single_rate;
+    hEncoder->sbr_single_rate = 0;
     if (hEncoder->config.aacObjectType == AUTO) {
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
@@ -255,7 +254,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
             hEncoder->sbr_single_rate = 1;
         }
     }
-    config->sbr_single_rate = hEncoder->sbr_single_rate;
 
     if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
         return 0;
@@ -334,6 +332,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
                                         hEncoder->config.bitRate * hEncoder->numChannels,
                                         hEncoder->sbr_single_rate,
                                         &hEncoder->fft_tables);
+        else
+            SBRUpdate(hEncoder->sbrInfo, hEncoder->config.bitRate * hEncoder->numChannels,
+                      hEncoder->sbr_single_rate);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth =

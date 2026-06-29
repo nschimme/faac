@@ -38,8 +38,7 @@
  *    qmf_bands = 32. Consolidated SBR analysis. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
-    int qmf_bands = (sbr && sbr->singleRate) ? 32 : SBR_QMF_BANDS_64;
-    int hop = (sbr && sbr->singleRate) ? 32 : 64;
+    int hop = 64;
     int num_slots = numSamples / hop;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     faac_real workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
@@ -149,7 +148,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         if (sbr) {
             int kx = sbr->kx;
-            for (int k = kx; k < qmf_bands; k++) {
+            for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);

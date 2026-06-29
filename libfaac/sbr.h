@@ -67,9 +67,6 @@ extern "C" {
 #define SBR_NOISE_LEVEL_DEFAULT         4
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       ((faac_real)6.0)
-/* Single-rate normalisation: 1024-sample frame with 32-sample hop gives 32 slots;
- * consolidated 32-band QMF (sum of 2 adjacent 64-band ones) adds 3 dB (+1.0 log2). */
-#define SBR_ENV_LEVEL_LOG2_OFFSET_SINGLE ((faac_real)7.0)
 
 /* sbr_offset table row for Single-rate SBR (Mode 0 in Table 4.87) */
 #define SBR_OFFSET_ROW_SINGLE_RATE      6
@@ -137,6 +134,7 @@ typedef struct SBRInfo {
 struct SignalAnalysis;
 
 SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
+void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate);
 void SBREnd(SBRInfo *sbr);
 
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);

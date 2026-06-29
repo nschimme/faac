@@ -106,8 +106,27 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int single
     sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
+
+    SBRUpdate(sbr, bitRate, singleRate);
+
+    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
+    for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
+        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
+        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
+        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
+        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
+    }
+    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
+     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
+     * logm=6 table is built lazily on first use, single-threaded per encoder. */
+    sbr->fftTables = fft_tables;
+    return sbr;
+}
+
+void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
+{
     sbr->singleRate = singleRate;
-    unsigned long rate_per_ch = bitRate / channels;
+    unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
      * a ViSQOL sweep showed pushing it lower hurts at every bitrate (SBR's
@@ -129,8 +148,8 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int single
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq, singleRate);
-    sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
+    sbr->kx = compute_kx(sbr->sampleRate, sbr->bs_start_freq, singleRate);
+    sbr->k2 = compute_k2(sbr->sampleRate, sbr->kx, sbr->bs_stop_freq);
 
     /* In single-rate mode, the QMF produces 64 bands over 2048 samples, but
      * we only have 1024 samples per frame. We use a 32-sample hop (producing
@@ -144,18 +163,6 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int single
     }
 
     build_freq_table(sbr);
-    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
-    for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
-        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
-        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
-        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
-        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
-    }
-    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
-     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
-     * logm=6 table is built lazily on first use, single-threaded per encoder. */
-    sbr->fftTables = fft_tables;
-    return sbr;
 }
 
 void SBREnd(SBRInfo *sbr)
@@ -227,7 +234,7 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
-    int hop = sbr->singleRate ? 32 : 64;
+    int hop = 64;
     int num_slots = numSamples / hop, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
     int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
@@ -318,8 +325,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(e_slots * (k_hi - k_lo));
                 faac_real factor = sbr->eff_amp_res ? (faac_real)1.0 : (faac_real)2.0;
-                faac_real offset = sbr->singleRate ? SBR_ENV_LEVEL_LOG2_OFFSET_SINGLE : SBR_ENV_LEVEL_LOG2_OFFSET;
-                int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - offset));
+                int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
                     raw_level = clamp_int(raw_level, 0, sbr->eff_amp_res ? 63 : 127);
