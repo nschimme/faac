@@ -202,22 +202,24 @@ static inline faac_real fast_log2(faac_real x)
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
-    const sbrfloat * restrict proto = qmf_c;
+    const sbrfloat * restrict p0 = qmf_c;
+    const sbrfloat * restrict p1 = qmf_c + 1;
     for (int m = 0; m < 64; m++) {
-        int n0 = 2 * m, n1 = 2 * m + 1;
-        faac_real a = proto[n0]       * ovl_pos[639 - n0]
-                    + proto[n0 + 128] * ovl_pos[511 - n0]
-                    + proto[n0 + 256] * ovl_pos[383 - n0]
-                    + proto[n0 + 384] * ovl_pos[255 - n0]
-                    + proto[n0 + 512] * ovl_pos[127 - n0];
-        faac_real b = proto[n1]       * ovl_pos[639 - n1]
-                    + proto[n1 + 128] * ovl_pos[511 - n1]
-                    + proto[n1 + 256] * ovl_pos[383 - n1]
-                    + proto[n1 + 384] * ovl_pos[255 - n1]
-                    + proto[n1 + 512] * ovl_pos[127 - n1];
+        int n0 = 2 * m;
+        faac_real a = p0[0]   * ovl_pos[639 - n0]
+                    + p0[128] * ovl_pos[511 - n0]
+                    + p0[256] * ovl_pos[383 - n0]
+                    + p0[384] * ovl_pos[255 - n0]
+                    + p0[512] * ovl_pos[127 - n0];
+        faac_real b = p1[0]   * ovl_pos[638 - n0]
+                    + p1[128] * ovl_pos[510 - n0]
+                    + p1[256] * ovl_pos[382 - n0]
+                    + p1[384] * ovl_pos[254 - n0]
+                    + p1[512] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
         xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        p0 += 2; p1 += 2;
     }
     fft(sbr->fftTables, xr, xi, 6);
     for (int k = kx; k < k2; k++) {
@@ -227,8 +229,12 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
         faac_real Ai = (faac_real)0.5 * (xi[kr] - xi[k]);
         faac_real Br = (faac_real)-0.5 * (xi[k] + xi[kr]);
         faac_real Bi = (faac_real)0.5 * (xr[kr] - xr[k]);
-        faac_real Sr = Ar + sbr->oddCos[k] * Br - sbr->oddSin[k] * Bi;
-        faac_real Si = Ai + sbr->oddCos[k] * Bi + sbr->oddSin[k] * Br;
+        /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
+         * Si = Ai + w_k_real * Bi + w_k_imag * Br */
+        faac_real wr = sbr->oddCos[k];
+        faac_real wi = sbr->oddSin[k];
+        faac_real Sr = Ar + wr * Br - wi * Bi;
+        faac_real Si = Ai + wr * Bi + wi * Br;
         energy[k] = Sr * Sr + Si * Si;
     }
 }
