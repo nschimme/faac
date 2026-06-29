@@ -1,21 +1,25 @@
 /****************************************************************************
-    MP4 output module
+    MP4 output declarations
 
-    Copyright (C) 2017 Krzysztof Nikiel
+    Copyright (C) 2026 Nils Schimmelmann
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
+    This library is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ****************************************************************************/
+
+#ifndef MP4WRITE_H
+#define MP4WRITE_H
 
 #include <stdint.h>
 
@@ -40,7 +44,7 @@ typedef struct
     uint32_t framesamples;
     struct
     {
-        uint16_t *data;
+        uint32_t *data;
         uint32_t ents;
         uint32_t bufsize;
     } frame;
@@ -94,3 +98,5 @@ int mp4atom_tail(void);
 int mp4atom_frame(uint8_t * bitbuf, int bytesWritten, int frame_samples);
 int mp4atom_close(void);
 int mp4tag_add(const char *name, const char *data);
+
+#endif
