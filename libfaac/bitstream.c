@@ -780,15 +780,6 @@ int PutBit(BitStream *bitStream,
     if (numBit == 0)
         return 0;
 
-    /* Counting sink: a BitStream with a NULL buffer only advances the bit
-     * position, so the same emit code can be replayed to measure its length
-     * before it is written for real (see SBRWriteBitstream). */
-    if (bitStream->data == NULL) {
-        bitStream->currentBit += numBit;
-        bitStream->numBit = bitStream->currentBit;
-        return 0;
-    }
-
     /* Hoist bitstream state for faster access */
     unsigned int currentBit = (unsigned int)bitStream->currentBit;
     unsigned int bitOffset = currentBit & 7;
