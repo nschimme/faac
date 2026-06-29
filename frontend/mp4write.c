@@ -125,22 +125,103 @@ int mp4atom_frame(uint8_t * buf, int size, int samples) {
     put_data(buf, size);
     mp4config.mdatsize += size;
     mp4config.samples  += samples;
+    if (mp4config.framesamples < (uint32_t)samples)
+        mp4config.framesamples = samples;
+    /* Rolling 1-second window for maxBitrate (ESDS DecoderConfigDescriptor field). */
+    mp4config.bitrate.size    += size;
+    mp4config.bitrate.samples += samples;
+    if ((uint32_t)mp4config.bitrate.samples >= mp4config.samplerate) {
+        uint32_t br = (uint32_t)(8.0 * mp4config.bitrate.size
+                                 * mp4config.samplerate / mp4config.bitrate.samples);
+        if (mp4config.bitrate.max < br)
+            mp4config.bitrate.max = br;
+        mp4config.bitrate.size    = 0;
+        mp4config.bitrate.samples = 0;
+    }
     if ((mp4config.frame.ents + 1) * 2 > mp4config.frame.bufsize) {
         mp4config.frame.bufsize += 0x4000;
         mp4config.frame.data = realloc(mp4config.frame.data, mp4config.frame.bufsize);
     }
     mp4config.frame.data[mp4config.frame.ents++] = (uint16_t)size;
-    if (mp4config.buffersize < size) mp4config.buffersize = (uint16_t)size;
+    if (mp4config.buffersize < size)
+        mp4config.buffersize = (uint16_t)size;
     return 0;
 }
 
 static void put_tag(const char *name, const char *data) {
-    if (!data) return;
+    if (!data)
+        return;
     long box      = start_atom(name);
     long data_box = start_atom("data");
-    put_u32(1); // type: text
-    put_u32(0); // locale
+    put_u32(1);                        // type: text (UTF-8)
+    put_u32(0);                        // locale
     put_data(data, strlen(data));
+    end_atom(data_box);
+    end_atom(box);
+}
+
+/* iTunes numeric tag: uint8 value (e.g. cpil compilation flag). */
+static void put_tag_u8(const char *name, uint8_t val) {
+    long box      = start_atom(name);
+    long data_box = start_atom("data");
+    put_u32(0x15);                     // type: uint8
+    put_u32(0);                        // locale
+    put_u8(val);
+    end_atom(data_box);
+    end_atom(box);
+}
+
+/* iTunes genre tag: single uint16 ID (1-based iTunes genre index). */
+static void put_tag_genre(uint16_t genre) {
+    long box      = start_atom("gnre");
+    long data_box = start_atom("data");
+    put_u32(0);                        // type: uint16
+    put_u32(0);                        // locale
+    put_u16(genre);
+    end_atom(data_box);
+    end_atom(box);
+}
+
+/* iTunes track/disc tag: four uint16 fields (padding, number, total, padding). */
+static void put_tag_index(const char *name, uint16_t num, uint16_t total) {
+    long box      = start_atom(name);
+    long data_box = start_atom("data");
+    put_u32(0);                        // type: uint16
+    put_u32(0);                        // locale
+    put_u16(0);                        // padding
+    put_u16(num);
+    put_u16(total);
+    put_u16(0);                        // padding
+    end_atom(data_box);
+    end_atom(box);
+}
+
+/* iTunes cover art tag: binary image data (JPEG or PNG). */
+static void put_tag_image(const uint8_t *data, int size) {
+    long box      = start_atom("covr");
+    long data_box = start_atom("data");
+    put_u32(0x0d);                     // type: image (JPEG/PNG)
+    put_u32(0);                        // locale
+    put_data(data, size);
+    end_atom(data_box);
+    end_atom(box);
+}
+
+/* iTunes freeform tag (----): mean/name/data triple for custom attributes. */
+static void put_tag_ext(const char *mean, const char *name, const char *val) {
+    long box      = start_atom("----");
+    long mean_box = start_atom("mean");
+    put_u32(0);                        // version/flags
+    put_data(mean, strlen(mean));
+    end_atom(mean_box);
+    long name_box = start_atom("name");
+    put_u32(0);                        // version/flags
+    put_data(name, strlen(name));
+    end_atom(name_box);
+    long data_box = start_atom("data");
+    put_u32(1);                        // type: text (UTF-8)
+    put_u32(0);                        // locale
+    put_data(val, strlen(val));
     end_atom(data_box);
     end_atom(box);
 }
@@ -268,7 +349,9 @@ int mp4atom_tail(void) {
     put_descriptor(4, 13 + 5 + mp4config.asc.size);                  // DecoderConfigDescriptor
     put_u8(0x40);                    // objectTypeIndication: Audio ISO/IEC 14496-3
     put_u8(0x15);                    // streamType: AudioStream
-    put_u32(0x001800);               // bufferSizeDB
+    put_u8(0);                       // bufferSizeDB high byte
+    put_u8(0x18);                    // bufferSizeDB mid byte (6144 bytes)
+    put_u8(0);                       // bufferSizeDB low byte
     put_u32(mp4config.bitrate.max);  // maxBitrate
     put_u32(mp4config.bitrate.avg);  // avgBitrate
     put_descriptor(5, mp4config.asc.size);                            // DecSpecificInfo
@@ -327,10 +410,28 @@ int mp4atom_tail(void) {
     long ilst = start_atom("ilst");
     put_tag("\xa9" "too", mp4config.tag.encoder);
     put_tag("\xa9" "ART", mp4config.tag.artist);
+    put_tag("soar",       mp4config.tag.artistsort);
+    put_tag("\xa9" "wrt", mp4config.tag.composer);
+    put_tag("soco",       mp4config.tag.composersort);
     put_tag("\xa9" "nam", mp4config.tag.title);
+    if (mp4config.tag.genre)
+        put_tag_genre((uint16_t)mp4config.tag.genre);
     put_tag("\xa9" "alb", mp4config.tag.album);
+    put_tag("aART",       mp4config.tag.albumartist);
+    put_tag("soaa",       mp4config.tag.albumartistsort);
+    put_tag("soal",       mp4config.tag.albumsort);
+    if (mp4config.tag.compilation)
+        put_tag_u8("cpil", mp4config.tag.compilation);
+    if (mp4config.tag.trackno)
+        put_tag_index("trkn", (uint16_t)mp4config.tag.trackno, (uint16_t)mp4config.tag.ntracks);
+    if (mp4config.tag.discno)
+        put_tag_index("disk", (uint16_t)mp4config.tag.discno, (uint16_t)mp4config.tag.ndiscs);
     put_tag("\xa9" "day", mp4config.tag.year);
+    if (mp4config.tag.cover.data)
+        put_tag_image(mp4config.tag.cover.data, mp4config.tag.cover.size);
     put_tag("\xa9" "cmt", mp4config.tag.comment);
+    for (int i = 0; i < mp4config.tag.extnum; i++)
+        put_tag_ext("faac", mp4config.tag.ext[i].name, mp4config.tag.ext[i].data);
     end_atom(ilst);
     end_atom(meta);
     end_atom(udta);
@@ -338,4 +439,12 @@ int mp4atom_tail(void) {
     return 0;
 }
 
-int mp4tag_add(const char *name, const char *data) { return 0; }
+int mp4tag_add(const char *name, const char *data) {
+    int idx = mp4config.tag.extnum;
+    if (idx >= TAGMAX)
+        return -1;
+    mp4config.tag.ext[idx].name = name;
+    mp4config.tag.ext[idx].data = data;
+    mp4config.tag.extnum++;
+    return 0;
+}
