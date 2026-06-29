@@ -254,18 +254,28 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+            if (sbr->singleRate) {
+                for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+                    if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                {
-                    faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, kx, k2);
-                    int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
-                    if (sbr->singleRate) {
+                    {
+                        faac_real slotEnergy[SBR_QMF_BANDS_64];
+                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, 64);
+                        int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
                         for (int k = kx; k < k2; k++)
                             bandHalfE[ch][h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
-                    } else {
+                    }
+                }
+            } else {
+                for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+                    if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+                    {
+                        faac_real slotEnergy[SBR_QMF_BANDS_64];
+                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, kx, k2);
+                        int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
                         for (int k = kx; k < k2; k++)
                             bandHalfE[ch][h][k] += slotEnergy[k];
                     }

@@ -55,13 +55,13 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + (slot * SBR_QMF_BANDS_64);
+            const faac_real * restrict p_in = &fullPtrs[ch][slot * SBR_QMF_BANDS_64];
             faac_real stot = (faac_real)0.0;
             faac_real hp_stot = (faac_real)0.0;
             for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
+                const faac_real val = p_in[n];
                 stot += val * val;
-                faac_real d = val - val_in;
+                const faac_real d = val - val_in;
                 hp_stot += d * d;
                 val_in = val;
             }
@@ -73,7 +73,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             }
             ssum += stot;
         }
-        sa->ch[ch].lastVal = val_in;
+        sa->ch[ch].lastVal = fullPtrs[ch][num_slots * SBR_QMF_BANDS_64 - 1];
 
         sa->ch[ch].transientStrength = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
@@ -107,25 +107,32 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(faac_real));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+            if (sbr && sbr->singleRate) {
+                for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+                    if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                {
-                    faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
-
-                    /* Split energy for SBR FIXFIX grid at midpoint. */
-                    int h = (slot >= (num_slots / 2)) ? 1 : 0;
-
-                    if (sbr && sbr->singleRate) {
+                    {
+                        faac_real slotEnergy[SBR_QMF_BANDS_64];
+                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
+                        int h = (slot >= (num_slots / 2)) ? 1 : 0;
                         for (int k = 0; k < 32; k++) {
                             faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
                             sa->ch[ch].bandHalfE[h][k] += energy;
                             sumE[k] += energy;
                             sumE2[k] += energy * energy;
                         }
-                    } else {
+                    }
+                }
+            } else {
+                for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+                    if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+                    {
+                        faac_real slotEnergy[SBR_QMF_BANDS_64];
+                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
+                        int h = (slot >= (num_slots / 2)) ? 1 : 0;
                         for (int k = 0; k < 64; k++) {
                             faac_real energy = slotEnergy[k];
                             sa->ch[ch].bandHalfE[h][k] += energy;
@@ -147,7 +154,8 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         if (sbr) {
             int kx = sbr->kx;
-            for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
+            int qmf_bands = sbr->singleRate ? 32 : SBR_QMF_BANDS_64;
+            for (int k = kx; k < qmf_bands; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);

@@ -587,18 +587,24 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
     unsigned int numChannels = hEncoder->numChannels;
     Resampler *rs = hEncoder->resampler;
     faac_real *fullPtrs[MAX_CHANNELS];
-    unsigned int full_frame_len = hEncoder->sbr_single_rate ? FRAME_LEN : 2 * FRAME_LEN;
-
-    for (channel = 0; channel < numChannels; channel++) {
-        faac_real *fullRate = rs->fullRate[channel];
-        fullPtrs[channel] = fullRate;
-        memcpy(fullRate, hEncoder->inputFifo[channel], realPerCh * sizeof(faac_real));
-        /* Final partial frame: silence-pad the unfilled full-rate tail so the
-         * resampler (and thus the core) never consumes a stale tail from a prior
-         * frame. SBRAnalysis below reads only [0, realPerCh), so it is unaffected. */
-        if (realPerCh < (int)full_frame_len)
-            memset(fullRate + realPerCh, 0, (full_frame_len - realPerCh) * sizeof(faac_real));
-        heHalfRate[channel] = rs->halfRate[channel];
+    if (hEncoder->sbr_single_rate) {
+        for (channel = 0; channel < numChannels; channel++) {
+            faac_real *fullRate = rs->fullRate[channel];
+            fullPtrs[channel] = fullRate;
+            memcpy(fullRate, hEncoder->inputFifo[channel], realPerCh * sizeof(faac_real));
+            if (realPerCh < FRAME_LEN)
+                memset(fullRate + realPerCh, 0, (FRAME_LEN - realPerCh) * sizeof(faac_real));
+            heHalfRate[channel] = rs->halfRate[channel];
+        }
+    } else {
+        for (channel = 0; channel < numChannels; channel++) {
+            faac_real *fullRate = rs->fullRate[channel];
+            fullPtrs[channel] = fullRate;
+            memcpy(fullRate, hEncoder->inputFifo[channel], realPerCh * sizeof(faac_real));
+            if (realPerCh < 2 * FRAME_LEN)
+                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(faac_real));
+            heHalfRate[channel] = rs->halfRate[channel];
+        }
     }
 
     /* Shared signal analysis (Phases 1-5). */
@@ -655,7 +661,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
      * is mult*FRAME_LEN samples/channel (mult==2 for dual-rate HE-AAC, 1 for
      * single-rate HE or LC). While fewer than a full frame is buffered we just
      * return 0 without touching any per-frame state. */
-    unsigned int mult = (hEncoder->config.aacObjectType != HE_V1) ? 1 : (hEncoder->sbr_single_rate ? 1 : 2);
+    unsigned int mult;
+    if (hEncoder->config.aacObjectType != HE_V1) mult = 1;
+    else mult = hEncoder->sbr_single_rate ? 1 : 2;
     unsigned int frameSamplesPerCh = mult * FRAME_LEN;
     int flushing = (samplesInput == 0);
     int realPerCh;          /* real (non-padded) input samples/ch in this frame */
