@@ -247,23 +247,20 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
-    sbr->numEnvelopes = (tratio > SBR_TRANSIENT_THRESH_DEFAULT) ? 2 : 1;
+    /* Adopt the frame grid chosen by AnalyzeSignal (which also binned the
+     * envelope energies over these borders). The fallback path has no analysis,
+     * so it stays single-envelope FIXFIX. */
+    if (sa && sa->valid) {
+        sbr->numEnvelopes = sa->numEnvelopes;
+        sbr->frameClass   = sa->frameClass;
+        sbr->bsPointer    = sa->bsPointer;
+        for (int i = 0; i <= sa->numEnvelopes; i++) sbr->tEnv[i] = sa->tEnv[i];
+    } else {
+        sbr->numEnvelopes = (tratio > SBR_TRANSIENT_THRESH_DEFAULT) ? 2 : 1;
+        sbr->frameClass   = SBR_FRAME_CLASS_FIXFIX;
+    }
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     int n_env = sbr->numEnvelopes;
-
-    /* Frame envelope grid. Step 2a emits a VARFIX grid whose borders are the
-     * FIXFIX equal split ([0, mid, end]); this exercises the variable-grid
-     * bitstream path with a known-good geometry. Step 2b moves the inner border
-     * onto the transient (and re-integrates the envelope energies to match). */
-    if (n_env > 1) {
-        sbr->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sbr->tEnv[0] = 0;
-        sbr->tEnv[1] = SBR_NUM_TIME_SLOTS / 2;
-        sbr->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sbr->bsPointer = 0;
-    } else {
-        sbr->frameClass = SBR_FRAME_CLASS_FIXFIX;
-    }
     int sampled = (sa && sa->valid) ? sa->sampled : (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
 
     for (int ch = 0; ch < nch; ch++) {
@@ -300,7 +297,11 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             int prevLevel = -1;
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
-                int e_slots = (n_env == 1) ? sampled : sampled / 2;
+                /* Slots per envelope: with a variable border the two envelopes
+                 * are unequal, so use the analysis bin counts when available. */
+                int e_slots = (n_env == 1) ? sampled
+                            : (sa && sa->valid) ? sa->envSampled[e]
+                            : sampled / 2;
                 if (e_slots < 1) e_slots = 1;
                 faac_real E = 0;
                 if (n_env == 1) {

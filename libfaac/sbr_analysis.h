@@ -34,6 +34,10 @@ extern "C" {
 #define SBR_QMF_BANDS_64 64
 #endif
 
+#ifndef SBR_MAX_ENVELOPES
+#define SBR_MAX_ENVELOPES 2
+#endif
+
 #ifndef MAX_CHANNELS
 #define MAX_CHANNELS 64
 #endif
@@ -54,6 +58,19 @@ typedef struct SignalAnalysis {
     int valid;                /* set only on the HE path */
     int numSlots;
     int sampled;              /* decimation-aware slot count */
+
+    /* Frame envelope grid, chosen once for the whole frame from the strongest
+     * transient across channels. The QMF energy in each channel's bandHalfE[] is
+     * integrated over these borders, and the grid is replayed into the bitstream
+     * (see SBRInfo.frameClass/tEnv/bsPointer). frameClass is FIXFIX or VARFIX;
+     * tEnv[0..numEnvelopes] are borders in SBR time slots; envSampled[] is the
+     * decimated-slot count in each envelope (for energy normalisation). */
+    int frameClass;
+    int numEnvelopes;
+    int tEnv[SBR_MAX_ENVELOPES + 1];
+    int bsPointer;
+    int envSampled[SBR_MAX_ENVELOPES];
+
     SignalAnalysisChannel ch[MAX_CHANNELS];
 } SignalAnalysis;
 
