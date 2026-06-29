@@ -25,23 +25,19 @@
 #include "huffdata.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "util.h"
 
 /* Escape coding for HCB_ESC as per ISO/IEC 14496-3.
  * Represents values |q| >= 16 by sending 16 plus an escape suffix. */
 static int escape(int x, int *code)
 {
-    int preflen = 0;
-    int base = 16;
-
     if (x > MAX_HUFF_ESC_VAL) {
         fprintf(stderr, "Huffman escape value out of range: %d\n", x);
         return 0;
     }
 
-    while (x >= (base << 1)) {
-        base <<= 1;
-        preflen++;
-    }
+    int preflen = 31 - CountLeadingZeros(x) - 4;
+    int base = 1 << (preflen + 4);
 
     /* Unary prefix: preflen 1s followed by a 0 */
     *code = (1 << (preflen + 1)) - 2;
@@ -113,11 +109,8 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
         break;
     case HCB_7:
     case HCB_8:
-    case HCB_9:
-    case HCB_10: {
-        int dim = (bnum < HCB_9) ? DIM_M2_7 : DIM_M2_12;
         for (i = 0; i < len; i += 2) {
-            int idx = dim * abs(qs[i]) + abs(qs[i+1]);
+            int idx = DIM_M2_7 * abs(qs[i]) + abs(qs[i+1]);
             int blen = book[idx].len;
             int data = book[idx].data;
             for (j = 0; j < 2; j++) {
@@ -133,7 +126,25 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
             bits += blen;
         }
         break;
-    }
+    case HCB_9:
+    case HCB_10:
+        for (i = 0; i < len; i += 2) {
+            int idx = DIM_M2_12 * abs(qs[i]) + abs(qs[i+1]);
+            int blen = book[idx].len;
+            int data = book[idx].data;
+            for (j = 0; j < 2; j++) {
+                if (qs[i+j]) {
+                    blen++;
+                    if (coder) data = (data << 1) | (qs[i+j] < 0);
+                }
+            }
+            if (coder) {
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
+            bits += blen;
+        }
+        break;
     case HCB_ESC:
         for (i = 0; i < len; i += 2) {
             int x0 = abs(qs[i]), x1 = abs(qs[i+1]);

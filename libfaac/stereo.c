@@ -23,7 +23,7 @@
 #include "stereo.h"
 #include "huff2.h"
 
-static void zero_channel(faac_real * restrict s0, int start, int len, int wstart, int wend)
+static inline void zero_channel(faac_real * restrict s0, int start, int len, int wstart, int wend)
 {
     faac_real * restrict s = s0 + wstart * BLOCK_LEN_SHORT + start;
     int win, i;
@@ -37,8 +37,8 @@ static void zero_channel(faac_real * restrict s0, int start, int len, int wstart
 /* When one component (mid or side) dominates, collapse both channels to that
  * component and zero the other — it costs no bits and the signal loss is masked.
  * Factor of 0.5 keeps the coded amplitude on the same scale as L/R. */
-static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
-                     int start, int len, int wstart, int wend, int in_phase)
+static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
+                            int start, int len, int wstart, int wend, int in_phase)
 {
     faac_real * restrict sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -60,8 +60,8 @@ static void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
     }
 }
 
-static void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
-                     int start, int len, int wstart, int wend, int in_phase, faac_real vfix)
+static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
+                            int start, int len, int wstart, int wend, int in_phase, faac_real vfix)
 {
     faac_real * restrict sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
     faac_real * restrict sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
