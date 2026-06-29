@@ -34,7 +34,7 @@
 #include "mp4write.h"
 
 mp4config_t mp4config = { 0 };
-static FILE *g_fout = NULL;
+static FILE *((FILE *)mp4config.fout) = NULL;
 static uint8_t *g_membuf = NULL;
 static size_t g_mempos = 0;
 static size_t g_memcap = 0;
@@ -55,7 +55,7 @@ static inline void mem_write(const void *data, size_t size) {
         memcpy(g_membuf + g_mempos, data, size);
         g_mempos += size;
     } else {
-        fwrite(data, 1, size, g_fout);
+        fwrite(data, 1, size, ((FILE *)mp4config.fout));
     }
 }
 
@@ -76,14 +76,14 @@ static inline void put_data(const void *data, size_t size) { mem_write(data, siz
 /* ISO-BMFF box framing: every box is [4-byte size][4-byte FourCC][payload].
  * start_atom writes a zero size placeholder and returns its file offset;
  * end_atom seeks back to fill in the real size once the payload is complete. */
-static long start_atom(const char *name) {
-    long pos = g_membuf ? (long)g_mempos : ftell(g_fout);
+static inline long start_atom(const char *name) {
+    long pos = g_membuf ? (long)g_mempos : ftell(((FILE *)mp4config.fout));
     put_u32(0); // placeholder
     put_data(name, 4);
     return pos;
 }
 
-static void end_atom(long pos) {
+static inline void end_atom(long pos) {
     if (g_membuf) {
         uint32_t size = (uint32_t)(g_mempos - pos);
         g_membuf[pos + 0] = (uint8_t)(size >> 24);
@@ -91,11 +91,11 @@ static void end_atom(long pos) {
         g_membuf[pos + 2] = (uint8_t)(size >> 8);
         g_membuf[pos + 3] = (uint8_t)size;
     } else {
-        long curr = ftell(g_fout);
-        fseek(g_fout, pos, SEEK_SET);
+        long curr = ftell(((FILE *)mp4config.fout));
+        fseek(((FILE *)mp4config.fout), pos, SEEK_SET);
         uint8_t buf[4] = { (uint8_t)((curr - pos) >> 24), (uint8_t)((curr - pos) >> 16), (uint8_t)((curr - pos) >> 8), (uint8_t)(curr - pos) };
-        fwrite(buf, 1, 4, g_fout);
-        fseek(g_fout, curr, SEEK_SET);
+        fwrite(buf, 1, 4, ((FILE *)mp4config.fout));
+        fseek(((FILE *)mp4config.fout), curr, SEEK_SET);
     }
 }
 
@@ -131,19 +131,20 @@ int mp4atom_open(char *name, int over) {
     /* Do NOT wipe mp4config.tag as it may have been populated by --tag options */
 
     if (!over && access(name, 0) == 0) return 1;
-    if (!(g_fout = fopen(name, "wb"))) return 1;
-    setvbuf(g_fout, NULL, _IOFBF, 1048576);
+    mp4config.fout = fopen(name, "wb");
+    if (!mp4config.fout) return 1;
+    setvbuf(((FILE *)mp4config.fout), NULL, _IOFBF, 1048576);
     mp4config.mdatsize = 0;
-    mp4config.frame.bufsize = 0x4000;
-    mp4config.frame.data = malloc(mp4config.frame.bufsize);
+    mp4config.frame.bufsize = 1048576;
+    mp4config.frame.data = (uint32_t *)malloc(mp4config.frame.bufsize);
     mp4config.frame.ents = 0;
     return 0;
 }
 
 int mp4atom_close(void) {
-    if (g_fout) {
-        fclose(g_fout);
-        g_fout = NULL;
+    if (((FILE *)mp4config.fout)) {
+        fclose(((FILE *)mp4config.fout));
+        ((FILE *)mp4config.fout) = NULL;
     }
     if (mp4config.frame.data) {
         free(mp4config.frame.data);
@@ -172,51 +173,18 @@ int mp4atom_head(void) {
     end_atom(free_box);
 
     /* Write out the header and switch back to direct file output */
-    fwrite(g_membuf, 1, g_mempos, g_fout);
+    fwrite(g_membuf, 1, g_mempos, ((FILE *)mp4config.fout));
     free(g_membuf);
     g_membuf = NULL;
 
     /* Record payload start offset so mp4atom_tail() can back-patch the mdat
      * box size once all frames have been written and the total is known. */
-    mp4config.mdatofs = (uint32_t)ftell(g_fout) + 8;
+    mp4config.mdatofs = (uint32_t)ftell(((FILE *)mp4config.fout)) + 8;
     put_u32(0);
     put_data("mdat", 4);
     return 0;
 }
 
-int mp4atom_frame(uint8_t * buf, int size, int samples) {
-    fwrite(buf, 1, size, g_fout);
-    mp4config.mdatsize += size;
-    mp4config.samples  += samples;
-    if (mp4config.framesamples < (uint32_t)samples)
-        mp4config.framesamples = samples;
-    /* Rolling 1-second window for maxBitrate (ESDS DecoderConfigDescriptor field). */
-    mp4config.bitrate.size    += size;
-    mp4config.bitrate.samples += samples;
-    if ((uint32_t)mp4config.bitrate.samples >= mp4config.samplerate) {
-        uint32_t br = (uint32_t)((uint64_t)8 * mp4config.bitrate.size
-                                 * mp4config.samplerate / mp4config.bitrate.samples);
-        if (mp4config.bitrate.max < br)
-            mp4config.bitrate.max = br;
-        mp4config.bitrate.size    = 0;
-        mp4config.bitrate.samples = 0;
-    }
-    if ((mp4config.frame.ents + 1) * sizeof(uint32_t) > mp4config.frame.bufsize) {
-        void *tmp;
-        mp4config.frame.bufsize *= 2;
-        tmp = realloc(mp4config.frame.data, mp4config.frame.bufsize);
-        if (!tmp) {
-            free(mp4config.frame.data);
-            mp4config.frame.data = NULL;
-            return 0;
-        }
-        mp4config.frame.data = (uint32_t *)tmp;
-    }
-    mp4config.frame.data[mp4config.frame.ents++] = (uint32_t)size;
-    if (mp4config.buffersize < size)
-        mp4config.buffersize = (uint16_t)size;
-    return 0;
-}
 
 static void put_tag(const char *name, const char *data) {
     if (!data)
@@ -297,12 +265,12 @@ static void put_tag_ext(const char *mean, const char *name, const char *val) {
 }
 
 int mp4atom_tail(void) {
-    long pos = ftell(g_fout);
+    long pos = ftell(((FILE *)mp4config.fout));
     /* Back-patch mdat: seek to the 4-byte size field (8 bytes before payload start)
      * and write payload size + 8 header bytes, then return to write moov. */
-    fseek(g_fout, mp4config.mdatofs - 8, SEEK_SET);
+    fseek(((FILE *)mp4config.fout), mp4config.mdatofs - 8, SEEK_SET);
     put_u32(mp4config.mdatsize + 8);
-    fseek(g_fout, pos, SEEK_SET);
+    fseek(((FILE *)mp4config.fout), pos, SEEK_SET);
 
     mp4config.bitrate.avg = (uint32_t)((uint64_t)8 * mp4config.mdatsize * mp4config.samplerate / mp4config.samples);
     if (!mp4config.bitrate.max) mp4config.bitrate.max = mp4config.bitrate.avg;
@@ -540,7 +508,7 @@ int mp4atom_tail(void) {
     end_atom(moov);
 
     if (g_membuf) {
-        fwrite(g_membuf, 1, g_mempos, g_fout);
+        fwrite(g_membuf, 1, g_mempos, ((FILE *)mp4config.fout));
         free(g_membuf);
         g_membuf = NULL;
     }

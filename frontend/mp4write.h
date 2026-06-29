@@ -22,6 +22,8 @@
 #define MP4WRITE_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 enum {TAGMAX = 100};
 
@@ -54,6 +56,7 @@ typedef struct
         uint8_t *data;
         unsigned long size;
     } asc;
+    void *fout;
     uint32_t mdatofs;
     uint32_t mdatsize;
 
@@ -95,7 +98,41 @@ extern mp4config_t mp4config;
 int mp4atom_open(char *name, int over);
 int mp4atom_head(void);
 int mp4atom_tail(void);
-int mp4atom_frame(uint8_t * bitbuf, int bytesWritten, int frame_samples);
+static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
+    mp4config.mdatsize += size;
+    mp4config.samples  += samples;
+    if (mp4config.framesamples < samples)
+        mp4config.framesamples = samples;
+
+    mp4config.bitrate.size    += (int)size;
+    mp4config.bitrate.samples += (int)samples;
+    if ((uint32_t)mp4config.bitrate.samples >= mp4config.samplerate) {
+        uint32_t br = (uint32_t)((uint64_t)8 * mp4config.bitrate.size
+                                 * mp4config.samplerate / mp4config.bitrate.samples);
+        if (mp4config.bitrate.max < br)
+            mp4config.bitrate.max = br;
+        mp4config.bitrate.size    = 0;
+        mp4config.bitrate.samples = 0;
+    }
+
+    if ((mp4config.frame.ents + 1) * sizeof(uint32_t) > mp4config.frame.bufsize) {
+        void *tmp;
+        uint32_t new_size = mp4config.frame.bufsize ? mp4config.frame.bufsize * 2 : 0x4000;
+        tmp = realloc(mp4config.frame.data, new_size);
+        if (!tmp) {
+            free(mp4config.frame.data);
+            mp4config.frame.data = NULL;
+            return -1;
+        }
+        mp4config.frame.data = (uint32_t *)tmp;
+        mp4config.frame.bufsize = new_size;
+    }
+    mp4config.frame.data[mp4config.frame.ents++] = size;
+    if (mp4config.buffersize < (uint16_t)size)
+        mp4config.buffersize = (uint16_t)size;
+    return 0;
+}
+
 int mp4atom_close(void);
 int mp4tag_add(const char *name, const char *data);
 
