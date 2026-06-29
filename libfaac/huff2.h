@@ -62,6 +62,12 @@ enum {
  * Values >= 8192 would cause bitstream overflow/sync loss. */
 #define MAX_HUFF_ESC_VAL 8191
 
+/* Scalefactor step constants (ISO 14496-3 §8.3.4): one SF unit = 2^(1/4) in amplitude.
+ * AMPL converts a log10 amplitude ratio to scalefactor index steps (= 4/log10(2)).
+ * ENRG is AMPL/2 — use when the input ratio is energy (squared amplitude). */
+#define SF_STEP_AMPL  13.287712379549461
+#define SF_STEP_ENRG  (SF_STEP_AMPL / 2.0)
+
 /* Scalefactor Management */
 enum {
     /* Baseline scalefactor value used in bitstream */

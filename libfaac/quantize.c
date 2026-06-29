@@ -62,9 +62,7 @@ void QuantizeInit(void)
 #endif
         qfunc = quantize_scalar;
 
-    /* One AAC scalefactor unit = 2^0.25 in amplitude; sfstep is the
-     * log10 multiplier that converts gain to sf units (ISO 14496-3 §8.3.4). */
-    sfstep = 1.0 / FAAC_LOG10(FAAC_SQRT(FAAC_SQRT(2.0)));
+    sfstep = SF_STEP_AMPL;
     max_quant_limit = FAAC_POW((faac_real)MAX_HUFF_ESC_VAL + 1.0 - MAGIC_NUMBER, 4.0/3.0);
 }
 

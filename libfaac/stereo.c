@@ -136,8 +136,8 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             /* IS pan is in log-scale steps of ~1.5 dB (10/log10(2) per octave →
              * 10/1.50515 ≈ 6.64 steps/dB).  |pan| > 30 means the channel is more
              * than ~4.5 dB below the other — effectively silent; zero it instead. */
-            int sf  = FAAC_LRINT(FAAC_LOG10(el / etot) * (10 / 1.50515));
-            int pan = FAAC_LRINT(FAAC_LOG10(er / etot) * (10 / 1.50515)) - sf;
+            int sf  = FAAC_LRINT(FAAC_LOG10(el / etot) * SF_STEP_ENRG);
+            int pan = FAAC_LRINT(FAAC_LOG10(er / etot) * SF_STEP_ENRG) - sf;
             if (pan > 30) {
                 cl->book[*sfcnt] = HCB_ZERO;
             } else if (pan < -30) {
@@ -242,8 +242,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
             th = th * th / isthr;
             int hcb = (em >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
             if (hcb != HCB_NONE) {
-                int sf  = FAAC_LRINT(FAAC_LOG10(el / etot) * (10 / 1.50515));
-                int pan = FAAC_LRINT(FAAC_LOG10(er / etot) * (10 / 1.50515)) - sf;
+                int sf  = FAAC_LRINT(FAAC_LOG10(el / etot) * SF_STEP_ENRG);
+                int pan = FAAC_LRINT(FAAC_LOG10(er / etot) * SF_STEP_ENRG) - sf;
                 if (pan > 30) {
                     cl->book[*sfcnt] = HCB_ZERO;
                 } else if (pan < -30) {
