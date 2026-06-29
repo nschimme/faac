@@ -83,6 +83,8 @@ extern "C" {
 /* Below 32 kbps/ch use dk=2/alter_scale=1 for fewer bands and lower overhead.
  * Net-positive on ViSQOL at ≤32 kbps; above it finer resolution is worth the bits. */
 #define SBR_COARSE_TABLE_BITRATE_BPS    32000u
+/* sbr_offset table row for Single-rate SBR (Mode 0, ISO 14496-3:2009 Table 4.87). */
+#define SBR_OFFSET_ROW_SINGLE_RATE      6
 
 /* Per-channel SBR state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
@@ -97,7 +99,8 @@ typedef struct SBRInfo {
     int headerSent;
     int frameCount;
     int numChannels;
-    int sampleRate;        /* full output rate; the core runs at sampleRate/2 */
+    int sampleRate;        /* full output rate; the core runs at sampleRate/2 (dual-rate) or Fs (single-rate) */
+    int singleRate;        /* 1 = HE core at full rate (rare), 0 = dual-rate (Fs/2 core) */
 
     /* --- frequency band configuration (set at init, constant per stream) --- */
     int kx;
@@ -157,7 +160,10 @@ typedef struct SBRInfo {
 
 struct SignalAnalysis;
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
+/* Recompute the bitrate/single-rate-dependent band config without reallocating;
+ * lets SetConfiguration toggle sub-mode on an existing handle. */
+void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate);
 void SBREnd(SBRInfo *sbr);
 
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);

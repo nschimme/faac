@@ -26,6 +26,30 @@
 #include "config.h"
 #endif
 
+/* Single-rate (rare) Pass-2 energy accumulation: the 64-band QMF is folded to 32
+ * bands by summing adjacent pairs. Out of line so the dual-rate/LC loop in
+ * AnalyzeSignal compiles exactly as it did before single-rate existed. */
+static void analyze_energy_single_rate(struct SBRInfo *sbr, const faac_real *workspace,
+                                       int num_slots, int split, int numEnvelopes,
+                                       faac_real bandHalfE[2][SBR_QMF_BANDS_64],
+                                       faac_real *sumE, faac_real *sumE2)
+{
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+#endif
+        faac_real slotEnergy[SBR_QMF_BANDS_64];
+        qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+        int h = (numEnvelopes > 1 && slot >= split) ? 1 : 0;
+        for (int k = 0; k < 32; k++) {
+            faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+            bandHalfE[h][k] += energy;
+            sumE[k] += energy;
+            sumE2[k] += energy * energy;
+        }
+    }
+}
+
 /* AnalyzeSignal: compute transient position, strength, per-band tonality,
  * and accumulate envelope energies over the full-rate signal in ONE pass. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
@@ -150,6 +174,10 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(faac_real));
 
+            if (sbr->singleRate) {
+                analyze_energy_single_rate(sbr, workspace, num_slots, split, sa->numEnvelopes,
+                                           sa->ch[ch].bandHalfE, sumE, sumE2);
+            } else
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)
@@ -180,7 +208,8 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         if (sbr) {
             int kx = sbr->kx;
-            for (int k = kx; k < SBR_QMF_BANDS_64; k++) {
+            int qmf_bands = sbr->singleRate ? 32 : SBR_QMF_BANDS_64;
+            for (int k = kx; k < qmf_bands; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);
