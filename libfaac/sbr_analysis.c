@@ -72,16 +72,16 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
+        const faac_real * restrict p_in = fullPtrs[ch];
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
             faac_real stot = (faac_real)0.0;
             faac_real hp_stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
-                stot += val * val;
-                faac_real d = val - val_in;
-                hp_stot += d * d;
-                val_in = val;
+            for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
+                faac_real v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
+                stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
+                faac_real d0 = v0 - val_in, d1 = v1 - v0, d2 = v2 - v1, d3 = v3 - v2;
+                hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+                val_in = v3; p_in += 4;
             }
             if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
@@ -188,11 +188,12 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
                     int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 
-                    for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
-                        faac_real energy = slotEnergy[k];
-                        sa->ch[ch].bandHalfE[h][k] += energy;
-                        sumE[k] += energy;
-                        sumE2[k] += energy * energy;
+                    faac_real * restrict bE = sa->ch[ch].bandHalfE[h];
+                    for (int k = 0; k < SBR_QMF_BANDS_64; k += 4) {
+                        faac_real e0 = slotEnergy[k+0], e1 = slotEnergy[k+1], e2 = slotEnergy[k+2], e3 = slotEnergy[k+3];
+                        bE[k+0] += e0; bE[k+1] += e1; bE[k+2] += e2; bE[k+3] += e3;
+                        sumE[k+0] += e0; sumE[k+1] += e1; sumE[k+2] += e2; sumE[k+3] += e3;
+                        sumE2[k+0] += e0*e0; sumE2[k+1] += e1*e1; sumE2[k+2] += e2*e2; sumE2[k+3] += e3*e3;
                     }
                 }
             }
