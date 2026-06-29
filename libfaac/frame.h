@@ -108,6 +108,7 @@ typedef struct faacEncStruct {
     /* HE-AAC / SBR state */
     unsigned long fullSampleRate;    /* original input Fs, stored when HE-AAC halves it for the core */
     unsigned int  fullSampleRateIdx; /* GetSRIndex(fullSampleRate) */
+    int           sbr_single_rate;   /* 1 = HE core at full rate (rare), 0 = dual-rate (Fs/2 core) */
     struct Resampler *resampler;     /* 2:1 FIR downsampler; owns full/half-rate staging buffers */
     struct SBRInfo   *sbrInfo;       /* SBR analysis state and bitstream data */
 

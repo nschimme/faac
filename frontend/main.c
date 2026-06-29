@@ -1035,8 +1035,10 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (myFormat->pnslevel > 0)
         fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
+    /* Report single-rate mode based on our logic (HE_V1 + forced bitrate).
+     * bitRate here has been updated to the per-channel rate. */
     fprintf(stderr, "Object type: %s",
-            (objectType == HE_V1) ? "HE-AAC v1" : "Low Complexity");
+            (objectType == HE_V1) ? ((bitRate > 28000) ? "HE-AAC v1 (Single-rate)" : "HE-AAC v1") : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
     if (myFormat->useTns)
         fprintf(stderr, " + TNS");

@@ -36,11 +36,12 @@ static void put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int of
 
 /* kx and k2 implement ISO 14496-3:2009 §4.6.18.3.2 (Master Frequency Band Table).
  * temp (Table 4.84) and max_span (Table 4.85) are mandatory spec constants; do not tune. */
-static int compute_kx(int sampleRate, int bs_start_freq)
+static int compute_kx(int sampleRate, int bs_start_freq, int singleRate)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
-    int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
+    int row = singleRate ? SBR_OFFSET_ROW_SINGLE_RATE
+            : (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
@@ -96,7 +97,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables)
+SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -104,7 +105,31 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
-    unsigned long rate_per_ch = bitRate / channels;
+
+    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft);
+     * rate-independent, so they live in the one-time init, not SBRUpdate. */
+    for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
+        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
+        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
+        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
+        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
+    }
+    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
+     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
+     * logm=6 table is built lazily on first use, single-threaded per encoder. */
+    sbr->fftTables = fft_tables;
+
+    SBRUpdate(sbr, bitRate, singleRate);
+    return sbr;
+}
+
+/* Band/bitrate configuration; split out of SBRInit so SetConfiguration can
+ * re-resolve the sub-mode on an existing handle without reallocating. */
+void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
+{
+    int sampleRate = sbr->sampleRate;
+    sbr->singleRate = singleRate;
+    unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
      * a ViSQOL sweep showed pushing it lower hurts at every bitrate (SBR's
@@ -126,21 +151,20 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
+    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq, singleRate);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
-    build_freq_table(sbr);
-    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft). */
-    for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
-        sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
-        sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
-        sbr->oddCos[m] = (faac_real)cos(M_PI * (2 * m + 1) / 128.0);
-        sbr->oddSin[m] = (faac_real)sin(M_PI * (2 * m + 1) / 128.0);
+
+    /* Single-rate (rare): the QMF spans 64 bands over 2048 samples, but a
+     * single-rate frame is only 1024 samples. AnalyzeSignal/SBRAnalysis run a
+     * 32-sample hop (32 slots) and fold the 64 QMF bands into 32 by summing
+     * adjacent pairs, so all bitstream indexing lives in the 32-band space. */
+    if (singleRate) {
+        sbr->kx >>= 1;
+        sbr->k2 >>= 1;
+        if (sbr->k2 <= sbr->kx) sbr->k2 = sbr->kx + 1;
     }
-    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
-     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
-     * logm=6 table is built lazily on first use, single-threaded per encoder. */
-    sbr->fftTables = fft_tables;
-    return sbr;
+
+    build_freq_table(sbr);
 }
 
 void SBREnd(SBRInfo *sbr)
@@ -210,6 +234,25 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 }
 
 
+/* Single-rate (rare) fallback energy accumulation: the 64-band QMF is folded to
+ * 32 bands by summing adjacent pairs. Kept out of line so the dual-rate path in
+ * SBRAnalysis below compiles exactly as it did before single-rate existed. */
+static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *workspace,
+                                            int num_slots, int half_slots, int kx, int k2,
+                                            faac_real bandHalfE[2][SBR_QMF_BANDS_64])
+{
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+#endif
+        faac_real slotEnergy[SBR_QMF_BANDS_64];
+        qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+        int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
+        for (int k = kx; k < k2; k++)
+            bandHalfE[h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+    }
+}
+
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
@@ -236,6 +279,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
+            if (sbr->singleRate) {
+                sbr_fallback_energy_single_rate(sbr, workspace, num_slots, half_slots, kx, k2, bandHalfE[ch]);
+            } else
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)
