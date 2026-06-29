@@ -67,6 +67,13 @@ extern "C" {
 #define SBR_NOISE_LEVEL_DEFAULT         4
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       ((faac_real)6.0)
+/* Single-rate normalisation: 1024-sample frame with 32-sample hop gives 32 slots;
+ * consolidated 32-band QMF (sum of 2 adjacent 64-band ones) adds 3 dB (+1.0 log2). */
+#define SBR_ENV_LEVEL_LOG2_OFFSET_SINGLE ((faac_real)7.0)
+
+/* sbr_offset table row for Single-rate SBR (Mode 0 in Table 4.87) */
+#define SBR_OFFSET_ROW_SINGLE_RATE      6
+
 /* Below 20 kbps/ch, 1.5 dB envelope resolution (bs_amp_res=0) recovers ~0.3 dB MOS;
  * above it Huffman savings from 3 dB steps outweigh precision. */
 #define SBR_AMP_RES_BITRATE_BPS         20000u

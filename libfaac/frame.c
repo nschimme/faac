@@ -347,9 +347,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     }
 
     /* Input FIFO: holds one frame plus up to one full incoming chunk of leftover.
-     * Allocate the HE-sized maximum (mult==2) once so toggling object type across
-     * SetConfiguration calls never needs a realloc; the overflow bound (cap)
-     * tracks the resolved object type. */
+     * Allocate the HE-sized maximum (dual-rate HE-AAC frame = 2*FRAME_LEN) once
+     * so toggling object types across SetConfiguration calls never needs a
+     * realloc; the overflow bound (cap) tracks the resolved object type. */
     {
         unsigned int mult = (hEncoder->config.aacObjectType == HE_V1 && !hEncoder->sbr_single_rate) ? 2 : 1;
         unsigned int channel;

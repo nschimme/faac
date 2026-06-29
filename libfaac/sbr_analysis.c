@@ -27,7 +27,15 @@
 #endif
 
 /* AnalyzeSignal: compute transient position, strength, per-band tonality,
- * and accumulate envelope energies over the full-rate signal in ONE pass. */
+ * and accumulate envelope energies over the full-rate signal in ONE pass.
+ *
+ * Robustness for LC/HE-AAC paths:
+ * 1. Default (LC): sbr == NULL. Uses 64-sample hop over 1024 samples (16 slots).
+ *    qmf_bands = 64. No SBR energy or tonality calculated.
+ * 2. Dual-rate HE: sbr->singleRate = 0. Uses 64-sample hop over 2048 samples (32 slots).
+ *    qmf_bands = 64. Full SBR analysis.
+ * 3. Single-rate HE: sbr->singleRate = 1. Uses 32-sample hop over 1024 samples (32 slots).
+ *    qmf_bands = 32. Consolidated SBR analysis. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int qmf_bands = (sbr && sbr->singleRate) ? 32 : SBR_QMF_BANDS_64;

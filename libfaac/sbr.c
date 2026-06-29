@@ -41,7 +41,7 @@ static int compute_kx(int sampleRate, int bs_start_freq, int singleRate)
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
     int row;
-    if (singleRate) row = 6;
+    if (singleRate) row = SBR_OFFSET_ROW_SINGLE_RATE;
     else row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
@@ -318,9 +318,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                 }
                 E /= (faac_real)(e_slots * (k_hi - k_lo));
                 faac_real factor = sbr->eff_amp_res ? (faac_real)1.0 : (faac_real)2.0;
-                /* SBR_ENV_LEVEL_LOG2_OFFSET (6.0) normalizes 64-band QMF energy.
-                 * Consolidating to 32 bands adds 3dB (+1.0 log2). */
-                faac_real offset = sbr->singleRate ? (SBR_ENV_LEVEL_LOG2_OFFSET + 1.0f) : SBR_ENV_LEVEL_LOG2_OFFSET;
+                faac_real offset = sbr->singleRate ? SBR_ENV_LEVEL_LOG2_OFFSET_SINGLE : SBR_ENV_LEVEL_LOG2_OFFSET;
                 int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - offset));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
