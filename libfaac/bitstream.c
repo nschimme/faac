@@ -664,56 +664,30 @@ static int WriteAACFillBits(BitStream* bitStream,
                             int numBits,
                             int writeFlag)
 {
-    int numberOfBitsLeft = numBits;
-
-    /* Need at least (LEN_SE_ID + LEN_F_CNT) bits for a fill_element */
-    int minNumberOfBits = LEN_SE_ID + LEN_F_CNT;
-
-    while (numberOfBitsLeft >= minNumberOfBits)
-    {
-        int numberOfBytes;
-        int maxCount;
-
-        if (writeFlag) {
-            PutBit(bitStream, ID_FIL, LEN_SE_ID);   /* Write fill_element ID */
-        }
-        numberOfBitsLeft -= minNumberOfBits;    /* Subtract for ID,count */
-
-        numberOfBytes = (int)(numberOfBitsLeft/LEN_BYTE);
-        maxCount = (1<<LEN_F_CNT) - 1;  /* Max count without escaping */
-
-        /* if we have less than maxCount bytes, write them now */
-        if (numberOfBytes < maxCount) {
-            int i;
+    int n = numBits;
+    while (n >= 7) {
+        int b = (n - 7) / 8;
+        if (b < 15) {
             if (writeFlag) {
-                PutBit(bitStream, numberOfBytes, LEN_F_CNT);
-                for (i = 0; i < numberOfBytes; i++) {
-                    PutBit(bitStream, 0, LEN_BYTE);
-                }
+                PutBit(bitStream, ID_FIL, 3);
+                PutBit(bitStream, b, 4);
+                for (int i = 0; i < b; i++) PutBit(bitStream, 0, 8);
             }
-            /* otherwise, we need to write an escape count */
-        }
-        else {
-            int maxEscapeCount, maxNumberOfBytes, escCount;
-            int i;
+            n -= (7 + b * 8);
+        } else {
+            b = (n - 15) / 8;
+            if (b > 269) b = 269;
+            int e = b - 14;
             if (writeFlag) {
-                PutBit(bitStream, maxCount, LEN_F_CNT);
+                PutBit(bitStream, ID_FIL, 3);
+                PutBit(bitStream, 15, 4);
+                PutBit(bitStream, e, 8);
+                for (int i = 0; i < b; i++) PutBit(bitStream, 0, 8);
             }
-            maxEscapeCount = (1<<LEN_BYTE) - 1;  /* Max escape count */
-            maxNumberOfBytes = maxCount + maxEscapeCount;
-            numberOfBytes = (numberOfBytes > maxNumberOfBytes ) ? (maxNumberOfBytes) : (numberOfBytes);
-            escCount = numberOfBytes - maxCount;
-            if (writeFlag) {
-                PutBit(bitStream, escCount, LEN_BYTE);
-                for (i = 0; i < numberOfBytes-1; i++) {
-                    PutBit(bitStream, 0, LEN_BYTE);
-                }
-            }
+            n -= (15 + b * 8);
         }
-        numberOfBitsLeft -= LEN_BYTE*numberOfBytes;
     }
-
-    return numberOfBitsLeft;
+    return n;
 }
 
 static int FindGroupingBits(CoderInfo *coderInfo)

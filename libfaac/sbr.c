@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>
 
 #include "sbr.h"
 #include "sbr_tables.h"
@@ -448,13 +449,35 @@ int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, st
     if (!sbr || !sbr->sbrPresent) return 0;
     int sendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
     int sbrBits = 1 + (sendHeader ? write_sbr_header(sbr, NULL, 0) : 0) + write_sbr_data(sbr, NULL, id_aac, 0);
-    int fillBytes = (4 + sbrBits + 7) / 8, padBits = (fillBytes * 8) - (4 + sbrBits), totalBits = 0;
-#define WB(v,n) do { if (writeFlag) PutBit(bs,(v),(n)); totalBits += (n); } while(0)
-    WB(ID_FIL, 3); if (fillBytes < 15) WB(fillBytes, 4); else { WB(15, 4); WB(fillBytes - 14, 8); }
-    WB(SBR_EXT_TYPE_SBR, 4); WB(sendHeader, 1);
-    if (sendHeader) totalBits += write_sbr_header(sbr, writeFlag ? bs : NULL, writeFlag);
-    totalBits += write_sbr_data(sbr, writeFlag ? bs : NULL, id_aac, writeFlag);
-    if (padBits > 0) WB(0, padBits);
-    if (writeFlag) { sbr->headerSent = 1; sbr->frameCount++; }
-    return totalBits;
+    int payloadBits = 4 + sbrBits;
+    int fillBytes = (payloadBits + 7) / 8;
+    int padBits = (fillBytes * 8) - payloadBits;
+
+    if (!writeFlag) {
+        return (7 * 7) + (fillBytes < 15 ? 7 : 15) + fillBytes * 8;
+    }
+
+    int current_phase = bs->numBit % 8;
+    int n_pad = (current_phase - 1 + 8) % 8;
+    for (int i = 0; i < n_pad; i++) {
+        PutBit(bs, ID_FIL, 3);
+        PutBit(bs, 0, 4);
+    }
+
+    PutBit(bs, ID_FIL, 3);
+    if (fillBytes < 15) {
+        PutBit(bs, fillBytes, 4);
+    } else {
+        PutBit(bs, 15, 4);
+        PutBit(bs, fillBytes - 14, 8);
+    }
+    PutBit(bs, SBR_EXT_TYPE_SBR, 4);
+    PutBit(bs, sendHeader, 1);
+    if (sendHeader) write_sbr_header(sbr, bs, 1);
+    write_sbr_data(sbr, bs, id_aac, 1);
+    if (padBits > 0) PutBit(bs, 0, padBits);
+
+    sbr->headerSent = 1;
+    sbr->frameCount++;
+    return (n_pad * 7) + (fillBytes < 15 ? 7 : 15) + fillBytes * 8;
 }
