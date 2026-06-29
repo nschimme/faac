@@ -33,45 +33,23 @@
 
 #include "mp4write.h"
 
-#if defined (__GNUC__) || defined (__clang__)
-# define BSWAP32(x) __builtin_bswap32(x)
-#elif defined (_MSC_VER)
-# define BSWAP32(x) _byteswap_ulong(x)
-#else
-# define BSWAP32(x) (((x & 0xFF) << 24) | ((x & 0xFF00) << 8) | ((x & 0xFF0000) >> 8) | ((x & 0xFF000000) >> 24))
-#endif
-
-#ifdef WORDS_BIGENDIAN
-# define BE32(x) (x)
-#else
-# define BE32(x) BSWAP32(x)
-#endif
-
 mp4config_t mp4config = { 0 };
 static FILE *g_fout = NULL;
 
 static inline void put_u32(uint32_t val) {
-    uint32_t be = BE32(val);
-    fwrite(&be, 1, 4, g_fout);
+    uint8_t buf[4];
+    buf[0] = (uint8_t)(val >> 24);
+    buf[1] = (uint8_t)(val >> 16);
+    buf[2] = (uint8_t)(val >> 8);
+    buf[3] = (uint8_t)val;
+    fwrite(buf, 1, 4, g_fout);
 }
 
-#if defined (__GNUC__) || defined (__clang__)
-# define BSWAP16(x) __builtin_bswap16(x)
-#elif defined (_MSC_VER)
-# define BSWAP16(x) _byteswap_ushort(x)
-#else
-# define BSWAP16(x) (((x & 0xFF) << 8) | ((x & 0xFF00) >> 8))
-#endif
-
-#ifdef WORDS_BIGENDIAN
-# define BE16(x) (x)
-#else
-# define BE16(x) BSWAP16(x)
-#endif
-
 static inline void put_u16(uint16_t val) {
-    uint16_t be = BE16(val);
-    fwrite(&be, 1, 2, g_fout);
+    uint8_t buf[2];
+    buf[0] = (uint8_t)(val >> 8);
+    buf[1] = (uint8_t)val;
+    fwrite(buf, 1, 2, g_fout);
 }
 
 static void put_u8(uint8_t val) { fwrite(&val, 1, 1, g_fout); }
@@ -110,7 +88,19 @@ static void put_descriptor(uint8_t tag, uint32_t size) {
 
 int mp4atom_open(char *name, int over) {
     mp4atom_close();
-    memset(&mp4config, 0, sizeof(mp4config));
+
+    mp4config.samplerate = 0;
+    mp4config.samples = 0;
+    mp4config.channels = 0;
+    mp4config.bits = 0;
+    mp4config.buffersize = 0;
+    memset(&mp4config.bitrate, 0, sizeof(mp4config.bitrate));
+    mp4config.framesamples = 0;
+    mp4config.mdatofs = 0;
+    mp4config.mdatsize = 0;
+    mp4config.asc.data = NULL;
+    mp4config.asc.size = 0;
+    /* Do NOT wipe mp4config.tag as it may have been populated by --tag options */
 
     if (!over && access(name, 0) == 0) return 1;
     if (!(g_fout = fopen(name, "wb"))) return 1;
@@ -414,12 +404,16 @@ int mp4atom_tail(void) {
     put_u32(0);                      // sample_size: 0 = variable
     put_u32(mp4config.frame.ents);   // sample_count
     if (mp4config.frame.ents) {
-        uint32_t *tmp = malloc(mp4config.frame.ents * sizeof(uint32_t));
+        uint8_t *tmp = malloc(mp4config.frame.ents * 4);
         if (tmp) {
             for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
-                tmp[i] = BE32(mp4config.frame.data[i]);
+                uint32_t val = mp4config.frame.data[i];
+                tmp[i * 4 + 0] = (uint8_t)(val >> 24);
+                tmp[i * 4 + 1] = (uint8_t)(val >> 16);
+                tmp[i * 4 + 2] = (uint8_t)(val >> 8);
+                tmp[i * 4 + 3] = (uint8_t)val;
             }
-            fwrite(tmp, 1, mp4config.frame.ents * sizeof(uint32_t), g_fout);
+            fwrite(tmp, 1, mp4config.frame.ents * 4, g_fout);
             free(tmp);
         } else {
             for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
