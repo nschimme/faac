@@ -218,6 +218,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
     faac_real tratio = (faac_real)0.0;
 
+    /* New frame: the cached fill-element payload (built by SBRWriteBitstream) is now
+     * stale. Invalidate it so the next write rebuilds from this frame's envelopes. */
+    sbr->payloadValid = 0;
+
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
         /* Phase 1: Use shared transient strength and accumulated energies. */
@@ -470,30 +474,41 @@ static void emit_sbr_payload(SBRInfo *sbr, BitStream *bs, int id_aac, int sendHe
     write_sbr_data(sbr, bs, id_aac);
 }
 
+/* Replay a byte-aligned, MSB-first payload (as packed into payloadBuf by PutBit)
+ * into the real bitstream. This is the "dumb write" — no grid/Huffman logic, so it
+ * reproduces the cached emit bit-for-bit. */
+static void blit_payload(BitStream *bs, const unsigned char *buf, int nbits)
+{
+    int fullBytes = nbits >> 3, rem = nbits & 7;
+    for (int i = 0; i < fullBytes; i++) PutBit(bs, buf[i], 8);
+    if (rem) PutBit(bs, buf[fullBytes] >> (8 - rem), rem);
+}
+
 int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
-    int sendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
 
-    /* Pass 1: measure the payload by replaying it into a counting sink. This is
-     * the single source of truth for the fill_element byte count. */
-    /* Measure the payload by emitting into a throwaway stack buffer. Backing the
-     * counter with real memory keeps PutBit on its single write path — no
-     * per-call NULL test in the global hot loop. The buffer is sized to the
-     * array-bound worst case (CPE, both channels maxed) so the counting pass can
-     * never overrun it, even though the assert below would (in a debug build)
-     * already flag any payload that overflows fill_element's esc_count.
-     *   per ch: grid + dtdf + invf(2*noisebands)
-     *         + env (numEnv * (7 + (bands-1)*20))      [20 = max env huff len]
-     *         + noise (noiseEnv * (5 + (noisebands-1)*20))
-     * which at SBR_MAX_* is ~690 bytes for a CPE; round up generously. */
-    unsigned char scratch[1024];
-    BitStream counter;
-    memset(&counter, 0, sizeof(counter));
-    counter.data = scratch;
-    counter.size = sizeof(scratch);
-    emit_sbr_payload(sbr, &counter, id_aac, sendHeader);
-    int payloadBits = (int)counter.numBit;          /* ext_type + flag + header + data */
+    /* Build the payload once per frame, then reuse it across the three call sites
+     * (CountBitstream, the real WriteBitstream, and rate control). The length and
+     * bytes are frozen once SBRAnalysis finishes — they depend only on sbr state
+     * plus the header-period flag — so re-emitting the grid/Huffman logic on every
+     * call is pure waste. SBRAnalysis clears payloadValid once per frame; the first
+     * write after it rebuilds. Built before frameCount++ so cachedSendHeader is the
+     * value all of this frame's calls must use. payloadBuf is sized to the array-
+     * bound worst case (~690 bytes for a maxed CPE); the assert below still guards
+     * the separate fill_element esc_count limit. */
+    if (!sbr->payloadValid) {
+        sbr->cachedSendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
+        BitStream cb;
+        memset(&cb, 0, sizeof(cb));
+        cb.data = sbr->payloadBuf;
+        cb.size = sizeof(sbr->payloadBuf);
+        emit_sbr_payload(sbr, &cb, id_aac, sbr->cachedSendHeader);
+        sbr->payloadBits = (int)cb.numBit;          /* ext_type + flag + header + data */
+        sbr->payloadValid = 1;
+    }
+
+    int payloadBits = sbr->payloadBits;
     int fillBytes = (payloadBits + 7) / 8;
     int padBits = fillBytes * 8 - payloadBits;
 
@@ -510,8 +525,8 @@ int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, st
     if (fillBytes < 15) WB(fillBytes, 4);
     else { WB(15, 4); WB(fillBytes - 14, 8); }
 
-    /* Pass 2: emit the same payload for real (or just account for it). */
-    if (writeFlag) emit_sbr_payload(sbr, bs, id_aac, sendHeader);
+    /* Blit the cached payload for real (counting-only callers just account for it). */
+    if (writeFlag) blit_payload(bs, sbr->payloadBuf, payloadBits);
     totalBits += payloadBits;
     if (padBits > 0) WB(0, padBits);
 #undef WB
