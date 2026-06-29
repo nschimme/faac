@@ -28,8 +28,30 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <fcntl.h>
+
+/* Convert a string from the system ANSI code page to UTF-8.
+ * MP4 text tags (data box type=1) must be UTF-8; on Windows argv[] arrives
+ * in CP_ACP, so smart apostrophes and other non-ASCII become invalid UTF-8
+ * without this conversion. Returns a malloc'd string; leaked on exit is fine
+ * for a short-lived CLI process. */
+static char *ansi_to_utf8(const char *s)
+{
+    if (!s)
+        return NULL;
+    int wn = MultiByteToWideChar(CP_ACP, 0, s, -1, NULL, 0);
+    wchar_t *ws = malloc(wn * sizeof(wchar_t));
+    MultiByteToWideChar(CP_ACP, 0, s, -1, ws, wn);
+    int un = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
+    char *us = malloc(un);
+    WideCharToMultiByte(CP_UTF8, 0, ws, -1, us, un, NULL, NULL);
+    free(ws);
+    return us;
+}
+#define TAG_ARG(x) ansi_to_utf8(x)
+
 #else
 #include <signal.h>
+#define TAG_ARG(x) (x)
 #endif
 
 /* the BSD derivatives don't define __unix__ */
@@ -652,31 +674,31 @@ int main(int argc, char *argv[])
             container = MP4_CONTAINER;
             break;
         case ARTIST_FLAG:
-            artist = optarg;
+            artist = TAG_ARG(optarg);
             break;
         case ARTIST_SORT_FLAG:
-            artistsort = optarg;
+            artistsort = TAG_ARG(optarg);
             break;
         case WRITER_FLAG:
-            composer = optarg;
+            composer = TAG_ARG(optarg);
             break;
         case WRITER_SORT_FLAG:
-            composersort = optarg;
+            composersort = TAG_ARG(optarg);
             break;
         case TITLE_FLAG:
-            title = optarg;
+            title = TAG_ARG(optarg);
             break;
         case ALBUM_FLAG:
-            album = optarg;
+            album = TAG_ARG(optarg);
             break;
         case ALBUM_ARTIST_FLAG:
-            albumartist = optarg;
+            albumartist = TAG_ARG(optarg);
             break;
         case ALBUM_ARTIST_SORT_FLAG:
-            albumartistsort = optarg;
+            albumartistsort = TAG_ARG(optarg);
             break;
         case ALBUM_SORT_FLAG:
-            albumsort = optarg;
+            albumsort = TAG_ARG(optarg);
             break;
         case TRACK_FLAG:
             if (sscanf(optarg, "%d/%d", &trackno, &ntracks) < 1)
@@ -693,18 +715,21 @@ int main(int argc, char *argv[])
             genre++;
             break;
         case YEAR_FLAG:
-            year = optarg;
+            year = TAG_ARG(optarg);
             break;
         case COMMENT_FLAG:
-            comment = optarg;
+            comment = TAG_ARG(optarg);
             break;
         case TAG_FLAG:
-            tagname = optarg;
-            if (!(tagval = strchr(optarg, ',')))
-                dieMessage = "Missing tag value.\n";
-            else
-                *(char *)tagval++ = 0;
-            mp4tag_add(tagname, tagval);
+            {
+                char *converted = TAG_ARG(optarg);
+                tagname = converted;
+                if (!(tagval = strchr(converted, ',')))
+                    dieMessage = "Missing tag value.\n";
+                else
+                    *(char *)tagval++ = 0;
+                mp4tag_add(tagname, tagval);
+            }
             break;
         case COVER_ART_FLAG:
             {
