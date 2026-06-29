@@ -26,16 +26,32 @@
 #include "config.h"
 #endif
 
+/* Single-rate (rare) Pass-2 energy accumulation: the 64-band QMF is folded to 32
+ * bands by summing adjacent pairs. Out of line so the dual-rate/LC loop in
+ * AnalyzeSignal compiles exactly as it did before single-rate existed. */
+static void analyze_energy_single_rate(struct SBRInfo *sbr, const faac_real *workspace,
+                                       int num_slots, int split, int numEnvelopes,
+                                       faac_real bandHalfE[2][SBR_QMF_BANDS_64],
+                                       faac_real *sumE, faac_real *sumE2)
+{
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+#endif
+        faac_real slotEnergy[SBR_QMF_BANDS_64];
+        qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+        int h = (numEnvelopes > 1 && slot >= split) ? 1 : 0;
+        for (int k = 0; k < 32; k++) {
+            faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+            bandHalfE[h][k] += energy;
+            sumE[k] += energy;
+            sumE2[k] += energy * energy;
+        }
+    }
+}
+
 /* AnalyzeSignal: compute transient position, strength, per-band tonality,
- * and accumulate envelope energies over the full-rate signal in ONE pass.
- *
- * Robustness for LC/HE-AAC paths:
- * 1. Default (LC): sbr == NULL. Uses 64-sample hop over 1024 samples (16 slots).
- *    qmf_bands = 64. No SBR energy or tonality calculated.
- * 2. Dual-rate HE: sbr->singleRate = 0. Uses 64-sample hop over 2048 samples (32 slots).
- *    qmf_bands = 64. Full SBR analysis.
- * 3. Single-rate HE: sbr->singleRate = 1. Uses 32-sample hop over 1024 samples (32 slots).
- *    qmf_bands = 32. Consolidated SBR analysis. */
+ * and accumulate envelope energies over the full-rate signal in ONE pass. */
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
@@ -57,13 +73,13 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = &fullPtrs[ch][slot * SBR_QMF_BANDS_64];
+            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
             faac_real stot = (faac_real)0.0;
             faac_real hp_stot = (faac_real)0.0;
             for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                const faac_real val = p_in[n];
+                faac_real val = *p_in++;
                 stot += val * val;
-                const faac_real d = val - val_in;
+                faac_real d = val - val_in;
                 hp_stot += d * d;
                 val_in = val;
             }
@@ -75,7 +91,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             }
             ssum += stot;
         }
-        sa->ch[ch].lastVal = fullPtrs[ch][num_slots * SBR_QMF_BANDS_64 - 1];
+        sa->ch[ch].lastVal = val_in;
 
         sa->ch[ch].transientStrength = smax * (faac_real)sampled / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
@@ -158,38 +174,25 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(faac_real));
 
-            if (sbr && sbr->singleRate) {
-                for (int slot = 0; slot < num_slots; slot++) {
+            if (sbr->singleRate) {
+                analyze_energy_single_rate(sbr, workspace, num_slots, split, sa->numEnvelopes,
+                                           sa->ch[ch].bandHalfE, sumE, sumE2);
+            } else
+            for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                    if (slot % FAAC_SBR_DECIMATION == 0)
+                if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                    {
-                        faac_real slotEnergy[SBR_QMF_BANDS_64];
-                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
-                        int h = (slot >= (num_slots / 2)) ? 1 : 0;
-                        for (int k = 0; k < 32; k++) {
-                            faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
-                            sa->ch[ch].bandHalfE[h][k] += energy;
-                            sumE[k] += energy;
-                            sumE2[k] += energy * energy;
-                        }
-                    }
-                }
-            } else {
-                for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-                    if (slot % FAAC_SBR_DECIMATION == 0)
-#endif
-                    {
-                        faac_real slotEnergy[SBR_QMF_BANDS_64];
-                        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot * SBR_QMF_BANDS_64), slotEnergy, 0, SBR_QMF_BANDS_64);
-                        int h = (slot >= (num_slots / 2)) ? 1 : 0;
-                        for (int k = 0; k < 64; k++) {
-                            faac_real energy = slotEnergy[k];
-                            sa->ch[ch].bandHalfE[h][k] += energy;
-                            sumE[k] += energy;
-                            sumE2[k] += energy * energy;
-                        }
+                {
+                    faac_real slotEnergy[SBR_QMF_BANDS_64];
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+
+                    int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+
+                    for (int k = 0; k < SBR_QMF_BANDS_64; k++) {
+                        faac_real energy = slotEnergy[k];
+                        sa->ch[ch].bandHalfE[h][k] += energy;
+                        sumE[k] += energy;
+                        sumE2[k] += energy * energy;
                     }
                 }
             }
