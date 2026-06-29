@@ -199,8 +199,9 @@ static void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, P
   {
       for (channel = 0; channel < numChannels; channel++)
       {
-          /* Alignment check: current BlockSwitch call is looking at audio
-           * from ~3 frames ago. We use index 0 in our FIFO. */
+          /* Alignment: the core frame being coded now lags the freshest SBR
+           * analysis by LOOKAHEAD_DEPTH frames; FIFO index 0 holds that frame's
+           * decision (FIFO sized SBR_DETECT_FIFO so [0] is LOOKAHEAD_DEPTH back). */
           int wantShort = hEncoder->wantShortFIFO[channel][0];
 
           if (wantShort)
