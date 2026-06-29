@@ -203,32 +203,40 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 {
     faac_real xr[64], xi[64];
     const sbrfloat * restrict proto = qmf_c;
+    const faac_real * restrict tcos = sbr->twidCos;
+    const faac_real * restrict tsin = sbr->twidSin;
+
     for (int m = 0; m < 64; m++) {
-        int n0 = 2 * m, n1 = 2 * m + 1;
-        faac_real a = proto[n0]       * ovl_pos[639 - n0]
-                    + proto[n0 + 128] * ovl_pos[511 - n0]
-                    + proto[n0 + 256] * ovl_pos[383 - n0]
-                    + proto[n0 + 384] * ovl_pos[255 - n0]
-                    + proto[n0 + 512] * ovl_pos[127 - n0];
-        faac_real b = proto[n1]       * ovl_pos[639 - n1]
-                    + proto[n1 + 128] * ovl_pos[511 - n1]
-                    + proto[n1 + 256] * ovl_pos[383 - n1]
-                    + proto[n1 + 384] * ovl_pos[255 - n1]
-                    + proto[n1 + 512] * ovl_pos[127 - n1];
+        int n0 = m << 1;
+        int n1 = n0 + 1;
+        faac_real a = (faac_real)proto[n0]       * ovl_pos[639 - n0]
+                    + (faac_real)proto[n0 + 128] * ovl_pos[511 - n0]
+                    + (faac_real)proto[n0 + 256] * ovl_pos[383 - n0]
+                    + (faac_real)proto[n0 + 384] * ovl_pos[255 - n0]
+                    + (faac_real)proto[n0 + 512] * ovl_pos[127 - n0];
+        faac_real b = (faac_real)proto[n1]       * ovl_pos[639 - n1]
+                    + (faac_real)proto[n1 + 128] * ovl_pos[511 - n1]
+                    + (faac_real)proto[n1 + 256] * ovl_pos[383 - n1]
+                    + (faac_real)proto[n1 + 384] * ovl_pos[255 - n1]
+                    + (faac_real)proto[n1 + 512] * ovl_pos[127 - n1];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
-        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
-        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        xr[m] = a * tcos[m] - b * tsin[m];
+        xi[m] = -(a * tsin[m] + b * tcos[m]);
     }
     fft(sbr->fftTables, xr, xi, 6);
+
+    const faac_real * restrict ocos = sbr->oddCos;
+    const faac_real * restrict osin = sbr->oddSin;
+
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        faac_real Ar = (faac_real)0.5 * (xr[k] + xr[kr]);
-        faac_real Ai = (faac_real)0.5 * (xi[kr] - xi[k]);
-        faac_real Br = (faac_real)-0.5 * (xi[k] + xi[kr]);
-        faac_real Bi = (faac_real)0.5 * (xr[kr] - xr[k]);
-        faac_real Sr = Ar + sbr->oddCos[k] * Br - sbr->oddSin[k] * Bi;
-        faac_real Si = Ai + sbr->oddCos[k] * Bi + sbr->oddSin[k] * Br;
+        faac_real Ar = 0.5 * (xr[k] + xr[kr]);
+        faac_real Ai = 0.5 * (xi[kr] - xi[k]);
+        faac_real Br = -0.5 * (xi[k] + xi[kr]);
+        faac_real Bi = 0.5 * (xr[kr] - xr[k]);
+        faac_real Sr = Ar + ocos[k] * Br - osin[k] * Bi;
+        faac_real Si = Ai + ocos[k] * Bi + osin[k] * Br;
         energy[k] = Sr * Sr + Si * Si;
     }
 }
@@ -246,20 +254,20 @@ static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *works
         if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
         faac_real slotEnergy[SBR_QMF_BANDS_64];
-        qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
-        int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
+        qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot << 6), slotEnergy, 0, SBR_QMF_BANDS_64);
+        int h = (slot >= half_slots) ? 1 : 0;
         for (int k = kx; k < k2; k++)
-            bandHalfE[h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
+            bandHalfE[h][k] += slotEnergy[k << 1] + slotEnergy[(k << 1) + 1];
     }
 }
 
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
-    int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
+    int num_slots = numSamples >> 6, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
-    int half_slots = num_slots / 2 > 0 ? num_slots / 2 : 1;
+    int half_slots = num_slots >> 1 > 0 ? num_slots >> 1 : 1;
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
-    faac_real tratio = (faac_real)0.0;
+    faac_real tratio = 0.0;
 
     /* New frame: the cached fill-element payload (built by SBRWriteBitstream) is now
      * stale. Invalidate it so the next write rebuilds from this frame's envelopes. */
@@ -288,8 +296,8 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
-                    int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot << 6), slotEnergy, kx, k2);
+                    int h = (slot >= half_slots) ? 1 : 0;
                     for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
                 }
             }
@@ -323,7 +331,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
          * High tonality (tonality -> 1.0) = original matches transposed = tonal = LESS noise needed = HIGHER noise_level.
          * Low tonality (tonality -> 0.0) = original much lower than transposed = noisy = MORE noise needed = LOWER noise_level. */
         if (sa && sa->valid) {
-            faac_real avg_tonality = (faac_real)0.0;
+            faac_real avg_tonality = 0.0;
             for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
             avg_tonality /= (faac_real)(k2 - kx);
 
@@ -351,7 +359,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                  * are unequal, so use the analysis bin counts when available. */
                 int e_slots = (n_env == 1) ? sampled
                             : (sa && sa->valid) ? sa->envSampled[e]
-                            : sampled / 2;
+                            : sampled >> 1;
                 if (e_slots < 1) e_slots = 1;
                 faac_real E = 0;
                 if (n_env == 1) {
@@ -360,7 +368,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
                     for (int k = k_lo; k < k_hi; k++) E += bandHalfE[ch][e][k];
                 }
                 E /= (faac_real)(e_slots * (k_hi - k_lo));
-                faac_real factor = sbr->eff_amp_res ? (faac_real)1.0 : (faac_real)2.0;
+                faac_real factor = sbr->eff_amp_res ? 1.0 : 2.0;
                 int level = FAAC_LRINT(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
@@ -428,7 +436,7 @@ static void write_sbr_grid(SBRInfo *sbr, BitStream *bs)
         PutBit(bs, sbr->tEnv[0], 2);                 /* bs_var_bord_0 */
         PutBit(bs, num_env - 1, 2);                  /* bs_num_rel_0   */
         for (int i = 0; i < num_env - 1; i++)
-            PutBit(bs, (sbr->tEnv[i + 1] - sbr->tEnv[i] - 2) / 2, 2); /* bs_rel_bord */
+            PutBit(bs, (sbr->tEnv[i + 1] - sbr->tEnv[i] - 2) >> 1, 2); /* bs_rel_bord */
         PutBit(bs, sbr->bsPointer, sbr_ceil_log2[num_env]);
         for (int i = 0; i < num_env; i++)            /* bs_freq_res[1..num_env] */
             PutBit(bs, sbr->bs_freq_res, 1);
@@ -555,8 +563,8 @@ int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, st
     }
 
     int payloadBits = sbr->payloadBits;
-    int fillBytes = (payloadBits + 7) / 8;
-    int padBits = fillBytes * 8 - payloadBits;
+    int fillBytes = (payloadBits + 7) >> 3;
+    int padBits = (fillBytes << 3) - payloadBits;
 
     /* The fill_element count escapes through an 8-bit field, so a single
      * extension_payload tops out at 15 + 255 - 1 = 269 bytes. A larger SBR

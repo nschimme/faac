@@ -110,9 +110,9 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 /* HE-AAC core maxe floor: -17 dB. Tighter than MAXE_FLOOR_FACTOR because at Fs/2,
  * peak energy in the highest bands routinely falls near the floor and would
  * otherwise quantize to zero, leaving SBR nothing to reconstruct. */
-#define HE_MAXE_FLOOR_FACTOR      0.0200
+#define HE_MAXE_FLOOR_FACTOR      0.0125
 /* Short-window boost: transients concentrate energy into a narrower tile → smaller margin. */
-#define HE_SHORT_BLOCK_FLOOR_BOOST ((faac_real)1.5)
+#define HE_SHORT_BLOCK_FLOOR_BOOST ((faac_real)1.35)
 
 // band sound masking
 static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, faac_real * __restrict bandqual,

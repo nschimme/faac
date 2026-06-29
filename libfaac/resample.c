@@ -67,16 +67,16 @@ void ResampleClose(Resampler *r)
 
 int Resample2to1(Resampler *r, int input_len)
 {
-    int output_len = input_len / 2;
+    int output_len = input_len >> 1;
     const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
     const int HALF = RESAMPLE_FILTER_LEN / 2;         /* 31 */
     const int NEVEN = RESAMPLE_FILTER_LEN / 2 + 1;    /* 32 even (non-zero) taps */
     int ch, i, j;
 
     for (ch = 0; ch < r->channels; ch++) {
-        faac_real * __restrict in  = r->fullRate[ch];
-        faac_real * __restrict out = r->halfRate[ch];
-        faac_real * __restrict hist = r->buf[ch];
+        const faac_real * restrict in  = r->fullRate[ch];
+        faac_real * restrict out = r->halfRate[ch];
+        faac_real * restrict hist = r->buf[ch];
 
         /* Fixed-size buffers to avoid VLA (MSVC portability): history + one
          * full-rate HE frame (2 * FRAME_LEN input samples), plus the even-phase
@@ -90,20 +90,18 @@ int Resample2to1(Resampler *r, int input_len)
         /* Even-phase samples: even[t] = combined[2t]. Output i is then
          * sum_m hb_even[m]*even[i+m] (the non-zero even taps applied at unit
          * stride) plus the centre tap on the odd-phase sample combined[2i+31]. */
-        int elen = (H + input_len + 1) / 2;
+        int elen = (H + input_len + 1) >> 1;
         for (i = 0; i < elen; i++)
-            even[i] = combined[2 * i];
+            even[i] = combined[i << 1];
 
         for (i = 0; i < output_len; i++) {
-            const faac_real * __restrict e = even + i;
-            faac_real a0 = 0, a1 = 0, a2 = 0, a3 = 0;
-            for (j = 0; j < NEVEN; j += 4) {
-                a0 += hb_even[j + 0] * e[j + 0];
-                a1 += hb_even[j + 1] * e[j + 1];
-                a2 += hb_even[j + 2] * e[j + 2];
-                a3 += hb_even[j + 3] * e[j + 3];
+            const faac_real * restrict e = even + i;
+            faac_real acc = 0.0;
+            /* Symmetric FIR optimization: hb_even[j] == hb_even[NEVEN-1-j] */
+            for (j = 0; j < (NEVEN >> 1); j++) {
+                acc += (faac_real)hb_even[j] * (e[j] + e[NEVEN - 1 - j]);
             }
-            *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
+            out[i] = acc + (faac_real)HB_CENTER * combined[(i << 1) + HALF];
         }
 
         memcpy(hist, combined + input_len, H * sizeof(faac_real));

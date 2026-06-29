@@ -66,20 +66,23 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
      * needs the strongest transient across channels before energies are binned,
      * so detection and QMF energy accumulation are now separate passes. */
     for (int ch = 0; ch < nch; ch++) {
-        faac_real smax = (faac_real)0.0, ssum = (faac_real)0.0;
+        faac_real smax = 0.0, ssum = 0.0;
         int smax_idx = 0;
         faac_real slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
 
         sa->ch[ch].wantShort = 0;
         faac_real val_in = sa->ch[ch].lastVal;
+        const faac_real * restrict p_in_ch = fullPtrs[ch];
+
         for (int slot = 0; slot < num_slots; slot++) {
-            const faac_real * restrict p_in = fullPtrs[ch] + slot * SBR_QMF_BANDS_64;
-            faac_real stot = (faac_real)0.0;
-            faac_real hp_stot = (faac_real)0.0;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                faac_real val = *p_in++;
-                stot += val * val;
+            faac_real stot = 0.0;
+            faac_real hp_stot = 0.0;
+            const faac_real * restrict p_in = p_in_ch + (slot << 6); /* slot * 64 */
+
+            for (int n = 0; n < 64; n++) {
+                faac_real val = p_in[n];
                 faac_real d = val - val_in;
+                stot += val * val;
                 hp_stot += d * d;
                 val_in = val;
             }
@@ -99,14 +102,15 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
         /* Ported PsyCheckShort relative-jump logic onto HP slot energies. */
         faac_real last_hp_eng = 0.0;
         int have_last = 0;
-        for (int slot = 0; slot < num_slots; slot++) {
-            if (slot >= 128) break;
+        int slots_to_check = (num_slots < 128) ? num_slots : 128;
+
+        for (int slot = 0; slot < slots_to_check; slot++) {
             faac_real hp_eng = slot_hp_eng[slot];
             if (have_last) {
                 faac_real toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
                 faac_real volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
                 /* PSY_TD_THRESH = 0.5 */
-                if (volchg > ((faac_real)0.5 * toteng)) {
+                if (volchg > (0.5 * toteng)) {
                     sa->ch[ch].wantShort = 1;
                     break;
                 }
@@ -121,7 +125,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
      * placed at (or just before) the transient; reachable inner borders are the
      * even slots {2,4,6,8} of the 16-slot SBR grid (2*bs_rel_bord+2). split is the
      * matching border in the analysis-slot domain that the energy pass bins at. */
-    faac_real frameStrength = (faac_real)0.0;
+    faac_real frameStrength = 0.0;
     int frameSlot = 0;
     for (int ch = 0; ch < nch; ch++) {
         if (sa->ch[ch].transientStrength > frameStrength) {
@@ -132,16 +136,16 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
     int split = num_slots;   /* default: single envelope spans the whole frame */
     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
-        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
-        int rel = clamp_int((Ts - 2) / 2, 0, 3);
-        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
+        int Ts = (num_slots > 0) ? (frameSlot * SBR_NUM_TIME_SLOTS) / num_slots : 0; /* 0..16 */
+        int rel = clamp_int((Ts - 2) >> 1, 0, 3);
+        int innerSbr = (rel << 1) + 2;                  /* {2,4,6,8} */
         sa->numEnvelopes = 2;
         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
         sa->tEnv[0] = 0;
         sa->tEnv[1] = innerSbr;
         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
         sa->bsPointer = 0;
-        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+        split = clamp_int((innerSbr * num_slots) / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
     } else {
         sa->numEnvelopes = 1;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
@@ -184,7 +188,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+                    qmf_analysis_64_slot_energy_fft(sbr, workspace + (slot << 6), slotEnergy, 0, SBR_QMF_BANDS_64);
 
                     int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 
@@ -204,7 +208,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
          * High tonality (-> 1.0) means the HF content matches the LF patch in energy;
          * low tonality means the HF is much quieter/noisier than the patch. */
         for (int k = 0; k < SBR_QMF_BANDS_64; k++)
-            sa->ch[ch].bandTonality[k] = (faac_real)0.0;
+            sa->ch[ch].bandTonality[k] = 0.0;
 
         if (sbr) {
             int kx = sbr->kx;
@@ -213,7 +217,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];
                 faac_real ratio = e_hf / (e_lf + SBR_ENERGY_FLOOR);
-                sa->ch[ch].bandTonality[k] = (ratio > (faac_real)1.0) ? (faac_real)1.0 : ratio;
+                sa->ch[ch].bandTonality[k] = (ratio > 1.0) ? 1.0 : ratio;
             }
         }
     }
