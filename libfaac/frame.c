@@ -603,6 +603,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+
+            /* TNS analysis and filtering (must be before spectral grouping) */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
+
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
@@ -616,20 +629,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-        }
-    }
 
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            /* TNS analysis and filtering */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
         }
     }
 
