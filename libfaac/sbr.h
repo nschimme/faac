@@ -131,6 +131,17 @@ typedef struct SBRInfo {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
 
+    /* Cached SBR fill-element payload for the current frame. The payload length and
+     * bytes are frozen once SBRAnalysis finishes, so emit it once and reuse it across
+     * the rate-control / CountBitstream / WriteBitstream calls (the real write blits
+     * payloadBuf instead of re-running the grid/Huffman emit). Invalidated once per
+     * frame by SBRAnalysis and rebuilt on the next write; payloadBuf is sized to the
+     * array-bound worst case (~690 bytes for a maxed CPE). See SBRWriteBitstream. */
+    int payloadValid;         /* 0 until the payload is built for the current frame */
+    int payloadBits;          /* ext_type + flag + header + data */
+    int cachedSendHeader;
+    unsigned char payloadBuf[1024];
+
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
 
