@@ -32,6 +32,12 @@
 #define FIFO_AHEAD1     2
 #define FIFO_AHEAD2     3
 
+/* Depth of the HE shared-detector decision FIFO. Sized so index 0 lines up with
+   the core frame currently being coded: the core lags the freshest SBR analysis
+   by LOOKAHEAD_DEPTH frames, so index 0 must be LOOKAHEAD_DEPTH entries behind
+   the newest (one extra slot for the newest entry itself). */
+#define SBR_DETECT_FIFO (LOOKAHEAD_DEPTH + 1)
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -114,8 +120,12 @@ typedef struct faacEncStruct {
 
     /* Shared signal analysis (Phases 1-5) */
     SignalAnalysis  signalAnalysis;
-    faac_real transientStrengthFIFO[MAX_CHANNELS][4];
-    int       wantShortFIFO[MAX_CHANNELS][4];
+    /* Shared-detector FIFO: holds the HE block-switch decision for the last
+       SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the
+       core frame being coded now, which lags the freshest analysis by the core
+       lookahead (LOOKAHEAD_DEPTH frames); newest sits at SBR_DETECT_FIFO-1. */
+    faac_real transientStrengthFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+    int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
 } faacEncStruct;
 
 #ifdef __cplusplus

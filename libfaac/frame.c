@@ -610,12 +610,14 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
     /* Shared signal analysis (Phases 1-5). */
     AnalyzeSignal(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
 
-    /* Update the transient FIFO (Phase 3 alignment). */
+    /* Update the transient FIFO (Phase 3 alignment). Shift down by one and push
+     * the newest decision at SBR_DETECT_FIFO-1; index 0 stays aligned with the
+     * core frame being coded (LOOKAHEAD_DEPTH frames behind this analysis). */
     for (channel = 0; channel < numChannels; channel++) {
-        memmove(&hEncoder->transientStrengthFIFO[channel][0], &hEncoder->transientStrengthFIFO[channel][1], 3 * sizeof(faac_real));
-        hEncoder->transientStrengthFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].transientStrength;
-        memmove(&hEncoder->wantShortFIFO[channel][0], &hEncoder->wantShortFIFO[channel][1], 3 * sizeof(int));
-        hEncoder->wantShortFIFO[channel][3] = hEncoder->signalAnalysis.ch[channel].wantShort;
+        memmove(&hEncoder->transientStrengthFIFO[channel][0], &hEncoder->transientStrengthFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(faac_real));
+        hEncoder->transientStrengthFIFO[channel][SBR_DETECT_FIFO - 1] = hEncoder->signalAnalysis.ch[channel].transientStrength;
+        memmove(&hEncoder->wantShortFIFO[channel][0], &hEncoder->wantShortFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
+        hEncoder->wantShortFIFO[channel][SBR_DETECT_FIFO - 1] = hEncoder->signalAnalysis.ch[channel].wantShort;
     }
 
     SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
