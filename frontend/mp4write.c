@@ -42,13 +42,18 @@ static size_t g_memcap = 0;
 static inline void mem_write(const void *data, size_t size) {
     if (g_membuf) {
         if (g_mempos + size > g_memcap) {
+            void *tmp;
             g_memcap = (g_mempos + size) * 2;
-            g_membuf = (uint8_t *)realloc(g_membuf, g_memcap);
+            tmp = realloc(g_membuf, g_memcap);
+            if (!tmp) {
+                free(g_membuf);
+                g_membuf = NULL;
+                return;
+            }
+            g_membuf = (uint8_t *)tmp;
         }
-        if (g_membuf) {
-            memcpy(g_membuf + g_mempos, data, size);
-            g_mempos += size;
-        }
+        memcpy(g_membuf + g_mempos, data, size);
+        g_mempos += size;
     } else {
         fwrite(data, 1, size, g_fout);
     }
@@ -197,8 +202,15 @@ int mp4atom_frame(uint8_t * buf, int size, int samples) {
         mp4config.bitrate.samples = 0;
     }
     if ((mp4config.frame.ents + 1) * sizeof(uint32_t) > mp4config.frame.bufsize) {
+        void *tmp;
         mp4config.frame.bufsize *= 2;
-        mp4config.frame.data = realloc(mp4config.frame.data, mp4config.frame.bufsize);
+        tmp = realloc(mp4config.frame.data, mp4config.frame.bufsize);
+        if (!tmp) {
+            free(mp4config.frame.data);
+            mp4config.frame.data = NULL;
+            return 0;
+        }
+        mp4config.frame.data = (uint32_t *)tmp;
     }
     mp4config.frame.data[mp4config.frame.ents++] = (uint32_t)size;
     if (mp4config.buffersize < size)
@@ -448,20 +460,25 @@ int mp4atom_tail(void) {
         size_t size = (size_t)mp4config.frame.ents * 4;
         if (g_membuf) {
             if (g_mempos + size > g_memcap) {
+                void *tmp;
                 g_memcap = g_mempos + size + 0x4000;
-                g_membuf = realloc(g_membuf, g_memcap);
-            }
-            if (g_membuf) {
-                uint8_t *p = g_membuf + g_mempos;
-                for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
-                    uint32_t val = mp4config.frame.data[i];
-                    *p++ = (uint8_t)(val >> 24);
-                    *p++ = (uint8_t)(val >> 16);
-                    *p++ = (uint8_t)(val >> 8);
-                    *p++ = (uint8_t)val;
+                tmp = realloc(g_membuf, g_memcap);
+                if (!tmp) {
+                    free(g_membuf);
+                    g_membuf = NULL;
+                    return 0;
                 }
-                g_mempos += size;
+                g_membuf = (uint8_t *)tmp;
             }
+            uint8_t *p = g_membuf + g_mempos;
+            for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
+                uint32_t val = mp4config.frame.data[i];
+                *p++ = (uint8_t)(val >> 24);
+                *p++ = (uint8_t)(val >> 16);
+                *p++ = (uint8_t)(val >> 8);
+                *p++ = (uint8_t)val;
+            }
+            g_mempos += size;
         } else {
             for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
                 put_u32(mp4config.frame.data[i]);
