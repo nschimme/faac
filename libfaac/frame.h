@@ -31,6 +31,15 @@
 #define FIFO_CURR       1
 #define FIFO_AHEAD1     2
 #define FIFO_AHEAD2     3
+#define FIFO_AHEAD3     4   /* HE-AAC only: extra slot for the deeper core delay */
+
+/* HE-AAC runs the core one frame deeper than LC. SBR analysis and the shared
+   block-switch detector both key off the freshest input frame, while the core
+   codes a delayed copy of that frame; the decoder expects the SBR high band to
+   lead the core by a fixed amount that matches a 3-frame core delay. So HE uses
+   LOOKAHEAD_DEPTH_HE; LC keeps LOOKAHEAD_DEPTH (lower latency, no SBR). */
+#define LOOKAHEAD_DEPTH_HE (LOOKAHEAD_DEPTH + 1)
+#define FIFO_SLOTS_MAX     (LOOKAHEAD_DEPTH_HE + 2)   /* PAST, CURR, AHEAD1..3 */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -68,8 +77,9 @@ typedef struct faacEncStruct {
     /* Scalefactorband data */
     SR_INFO *srInfo;
 
-    /* sample buffers: FIFO_PAST (MDCT overlap), FIFO_CURR, FIFO_AHEAD1, FIFO_AHEAD2 */
-    faac_real *audioFIFO[MAX_CHANNELS][4];
+    /* sample buffers: FIFO_PAST (MDCT overlap), FIFO_CURR, FIFO_AHEAD1..3.
+     * LC uses the first 4 slots (depth LOOKAHEAD_DEPTH); HE uses all 5. */
+    faac_real *audioFIFO[MAX_CHANNELS][FIFO_SLOTS_MAX];
 
     /* Filterbank buffers */
     faac_real *sin_window_long;

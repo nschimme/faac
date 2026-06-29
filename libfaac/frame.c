@@ -456,7 +456,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
-        for (buf = 0; buf < 4; buf++) {
+        for (buf = 0; buf < FIFO_SLOTS_MAX; buf++) {
             hEncoder->audioFIFO[channel][buf] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
             memset(hEncoder->audioFIFO[channel][buf], 0, FRAME_LEN*sizeof(faac_real));
         }
@@ -494,7 +494,7 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
         int buf;
-        for (buf = 0; buf < 4; buf++) {
+        for (buf = 0; buf < FIFO_SLOTS_MAX; buf++) {
             if (hEncoder->audioFIFO[channel][buf])
                 FreeMemory(hEncoder->audioFIFO[channel][buf]);
         }
@@ -669,6 +669,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     int flushing = (samplesInput == 0);
     int realPerCh;          /* real (non-padded) input samples/ch in this frame */
 
+    /* HE runs the core one frame deeper than LC so the SBR high band and the
+     * shared-detector block decision stay aligned with the core frame they
+     * accompany (see frame.h). laDepth drives the FIFO rotation length and the
+     * warmup/flush counters; LC keeps the shallower LOOKAHEAD_DEPTH. */
+    int heActive = (hEncoder->config.aacObjectType == HE_V1 &&
+                    hEncoder->sbrInfo && hEncoder->resampler);
+    unsigned int laDepth  = heActive ? LOOKAHEAD_DEPTH_HE : LOOKAHEAD_DEPTH;
+    unsigned int nslots   = laDepth + 2;        /* PAST + CURR + laDepth ahead */
+    unsigned int freshIdx = nslots - 1;         /* newest frame enters here */
+
     if (samplesInput > 0)
         if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
             return -1;
@@ -691,9 +701,9 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (realPerCh == 0)
         hEncoder->flushFrame++;
 
-    /* After LOOKAHEAD_DEPTH + 1 flush frames all samples have been encoded,
+    /* After laDepth + 1 flush frames all samples have been encoded,
        return 0 bytes written */
-    if (hEncoder->flushFrame > (LOOKAHEAD_DEPTH + 1))
+    if (hEncoder->flushFrame > (laDepth + 1))
         return 0;
 
     /* Determine the channel configuration */
@@ -709,22 +719,24 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
 	{
 		faac_real *tmp;
+		unsigned int s;
 
+		/* Rotate the active FIFO window (nslots wide) down by one frame; the
+		 * freed newest slot (freshIdx) takes this frame's input below. */
 		tmp = hEncoder->audioFIFO[channel][FIFO_PAST];
-		hEncoder->audioFIFO[channel][FIFO_PAST]  = hEncoder->audioFIFO[channel][FIFO_CURR];
-		hEncoder->audioFIFO[channel][FIFO_CURR]  = hEncoder->audioFIFO[channel][FIFO_AHEAD1];
-		hEncoder->audioFIFO[channel][FIFO_AHEAD1] = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
-		hEncoder->audioFIFO[channel][FIFO_AHEAD2] = tmp;
+		for (s = 0; s + 1 < nslots; s++)
+			hEncoder->audioFIFO[channel][s] = hEncoder->audioFIFO[channel][s + 1];
+		hEncoder->audioFIFO[channel][freshIdx] = tmp;
 
         if (realPerCh == 0)
         {
             /* start flushing*/
-            memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(faac_real));
+            memset(hEncoder->audioFIFO[channel][freshIdx], 0, FRAME_LEN * sizeof(faac_real));
         }
         else if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
         {
             /* core feeds on the SBR-downsampled signal, not the raw input */
-            memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(faac_real));
+            memcpy(hEncoder->audioFIFO[channel][freshIdx], heHalfRate[channel], FRAME_LEN * sizeof(faac_real));
         }
         else
         {
@@ -732,10 +744,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
              * silence-padding a short final frame. */
             unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
 
-            memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel],
+            memcpy(hEncoder->audioFIFO[channel][freshIdx], hEncoder->inputFifo[channel],
                    spc * sizeof(faac_real));
             if (spc < FRAME_LEN)
-                memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(faac_real));
+                memset(hEncoder->audioFIFO[channel][freshIdx] + spc, 0, (FRAME_LEN - spc) * sizeof(faac_real));
 		}
 
 		/* Psychoacoustics */
@@ -760,7 +772,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (realPerCh > 0)
         consumeInputFifo(hEncoder, frameSamplesPerCh);
 
-    if (hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
+    if (hEncoder->frameNum <= laDepth) /* Still filling up the buffers */
         return 0;
 
     /* Psychoacoustics */
@@ -778,7 +790,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 			coderInfo[channel].block_type = ONLY_LONG_WINDOW;
 		}
     }
-    else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
+    else if ((hEncoder->frameNum <= (laDepth + 1)) || (shortctl == SHORTCTL_NOLONG))
     {
 		for (channel = 0; channel < numChannels; channel++)
 		{
