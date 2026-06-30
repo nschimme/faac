@@ -19,19 +19,41 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <string.h>
 #include "stereo.h"
 #include "huff2.h"
 #include "util.h"
 
+static inline void calculate_energies(const faac_real * restrict sl0, const faac_real * restrict sr0,
+                               int start, int len, int wstart, int wend,
+                               faac_real * restrict el_out, faac_real * restrict er_out, faac_real * restrict elr_out)
+{
+    faac_real el = 0, er = 0, elr = 0;
+    int win, i;
+
+    for (win = wstart; win < wend; win++) {
+        const faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+        const faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+        for (i = 0; i < len; i++) {
+            faac_real l = sl[i];
+            faac_real r = sr[i];
+            el  += l * l;
+            er  += r * r;
+            elr += l * r;
+        }
+    }
+    *el_out = el;
+    *er_out = er;
+    *elr_out = elr;
+}
+
 /* Fast memory-clearing utility for suppressed channels. */
 static inline void apply_mute(faac_real * restrict s0, int start, int len, int wstart, int wend)
 {
-    faac_real * restrict s = s0 + wstart * BLOCK_LEN_SHORT + start;
-    int win, i;
+    int win;
     for (win = wstart; win < wend; win++) {
-        for (i = 0; i < len; i++)
-            s[i] = 0.0;
-        s += BLOCK_LEN_SHORT;
+        faac_real * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
+        memset(s, 0, len * sizeof(faac_real));
     }
 }
 
@@ -41,46 +63,50 @@ static inline void apply_mute(faac_real * restrict s0, int start, int len, int w
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
-    faac_real * restrict sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
-    faac_real * restrict sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
     int win, i;
-    for (win = wstart; win < wend; win++) {
-        if (in_phase) {
+    if (in_phase) {
+        for (win = wstart; win < wend; win++) {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sl[i] = 0.5 * (sl[i] + sr[i]);
                 sr[i] = 0.0;
             }
-        } else {
+        }
+    } else {
+        for (win = wstart; win < wend; win++) {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sr[i] = 0.5 * (sl[i] - sr[i]);
                 sl[i] = 0.0;
             }
         }
-        sl += BLOCK_LEN_SHORT;
-        sr += BLOCK_LEN_SHORT;
     }
 }
 
 static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase, faac_real vfix)
 {
-    faac_real * restrict sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
-    faac_real * restrict sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
     int win, i;
-    for (win = wstart; win < wend; win++) {
-        if (in_phase) {
+    if (in_phase) {
+        for (win = wstart; win < wend; win++) {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sl[i] = (sl[i] + sr[i]) * vfix;
                 sr[i] = 0.0;
             }
-        } else {
+        }
+    } else {
+        for (win = wstart; win < wend; win++) {
+            faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sl[i] = (sl[i] - sr[i]) * vfix;
                 sr[i] = 0.0;
             }
         }
-        sl += BLOCK_LEN_SHORT;
-        sr += BLOCK_LEN_SHORT;
     }
 }
 
@@ -94,20 +120,8 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     const int * restrict sfb_offset = cl->sfb_offset;
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        faac_real el = 0, er = 0, elr = 0;
-        const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
-        const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
-        int win, i;
-
-        for (win = wstart; win < wend; win++) {
-            for (i = 0; i < len; i++) {
-                el  += sl[i] * sl[i];
-                er  += sr[i] * sr[i];
-                elr += sl[i] * sr[i];
-            }
-            sl += BLOCK_LEN_SHORT;
-            sr += BLOCK_LEN_SHORT;
-        }
+        faac_real el, er, elr;
+        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
         faac_real es   = el + er + 2.0*elr;
         faac_real ed   = el + er - 2.0*elr;
         faac_real etot = el + er;
@@ -119,8 +133,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
          * in-phase (es) or out-of-phase (ed) sum exceeds this margin, IS coding saves
          * bits over independent quantization.  HCB_INTENSITY = decoder adds the
          * right channel from the left; HCB_INTENSITY2 = decoder subtracts. */
-        faac_real th = (FAAC_SQRT(el) + FAAC_SQRT(er));
-        th = th * th * inv_phthr;
+        faac_real th = (el + er + 2.0 * FAAC_SQRT(el * er)) * inv_phthr;
 
         int hcb = HCB_NONE;
         faac_real vfix = 1.0;
@@ -157,19 +170,8 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
         channel->msInfo.ms_used[(*sfcnt)++] = 0;
     for (sfb = sfmin; sfb < coder->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        faac_real el = 0, er = 0, elr = 0;
-        const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
-        const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
-        int win, i;
-        for (win = wstart; win < wend; win++) {
-            for (i = 0; i < len; i++) {
-                el  += sl[i] * sl[i];
-                er  += sr[i] * sr[i];
-                elr += sl[i] * sr[i];
-            }
-            sl += BLOCK_LEN_SHORT;
-            sr += BLOCK_LEN_SHORT;
-        }
+        faac_real el, er, elr;
+        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
         /* em = ((L+R)/2)^2, es = ((L-R)/2)^2: energy of the mid and side components
          * after the M/S transform.  The 0.25 factor accounts for the halving in apply_ms. */
         faac_real em = 0.25 * (el + er + 2.0*elr);
@@ -211,19 +213,8 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
         channel->msInfo.ms_used[(*sfcnt)++] = 0;
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        faac_real el = 0, er = 0, elr = 0;
-        const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
-        const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
-        int win, i;
-        for (win = wstart; win < wend; win++) {
-            for (i = 0; i < len; i++) {
-                el  += sl[i] * sl[i];
-                er  += sr[i] * sr[i];
-                elr += sl[i] * sr[i];
-            }
-            sl += BLOCK_LEN_SHORT;
-            sr += BLOCK_LEN_SHORT;
-        }
+        faac_real el, er, elr;
+        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
         faac_real em   = el + er + 2.0*elr;
         faac_real ed   = el + er - 2.0*elr;
         faac_real etot = el + er;
@@ -235,8 +226,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
 
         if (sfb >= is_start_sfb && el > 0 && er > 0) {
-            faac_real th = (FAAC_SQRT(el) + FAAC_SQRT(er));
-            th = th * th * inv_isthr;
+            faac_real th = (el + er + 2.0 * FAAC_SQRT(el * er)) * inv_isthr;
             int hcb = (em >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
             if (hcb != HCB_NONE) {
                 faac_real inv_etot = 1.0 / etot;
