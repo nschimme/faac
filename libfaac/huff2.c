@@ -39,41 +39,102 @@ static int escape(int x, int *code)
     int preflen = 31 - CountLeadingZeros(x) - 4;
     int base = 1 << (preflen + 4);
 
-    /* Unary prefix: preflen 1s followed by a 0 */
-    *code = (1 << (preflen + 1)) - 2;
-    /* Escape suffix is (preflen+4) bits: base starts at 16 (= 2^4), so the
-     * value field is always at least 4 bits; each additional doubling adds one. */
-    *code = (*code << (preflen + 4)) | (x - base);
+    if (code) {
+        /* Unary prefix: preflen 1s followed by a 0 */
+        *code = (1 << (preflen + 1)) - 2;
+        /* Escape suffix is (preflen+4) bits: base starts at 16 (= 2^4), so the
+         * value field is always at least 4 bits; each additional doubling adds one. */
+        *code = (*code << (preflen + 4)) | (x - base);
+    }
 
     return (preflen + 1) + (preflen + 4);
 }
 
-#define arrlen(array) (sizeof(array) / sizeof(*array))
+static hcode16_t * const hmap[12] = {
+    NULL, book01, book02, book03, book04, book05,
+    book06, book07, book08, book09, book10, book11
+};
 
-/* spectral Huffman coding: map quantized coeffs to codewords.
- * coder == NULL triggers sizing mode (returns bit count only). */
-static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
+/* Fast bit-length sizing for quantization trials. */
+static int huffcode_size(int *qs, int len, int bnum)
 {
-    static hcode16_t * const hmap[12] = {
-        NULL, book01, book02, book03, book04, book05,
-        book06, book07, book08, book09, book10, book11
-    };
     hcode16_t *book = hmap[bnum];
     int bits = 0;
-    int i, j;
-    int datacnt = coder ? coder->datacnt : 0;
+    int i;
 
     switch (bnum) {
     case HCB_1:
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            int blen = book[idx].len;
-            if (coder) {
-                coder->s[datacnt].data = book[idx].data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            bits += book[idx].len;
+        }
+        break;
+    case HCB_3:
+    case HCB_4:
+        for (i = 0; i < len; i += 4) {
+            int idx = DIM_M4*DIM_M4*DIM_M4 * abs(qs[i]) + DIM_M4*DIM_M4 * abs(qs[i+1]) + DIM_M4 * abs(qs[i+2]) + abs(qs[i+3]);
+            bits += book[idx].len;
+            /* Branchless sign-bit counting */
+            bits += (qs[i] != 0) + (qs[i+1] != 0) + (qs[i+2] != 0) + (qs[i+3] != 0);
+        }
+        break;
+    case HCB_5:
+    case HCB_6:
+        for (i = 0; i < len; i += 2) {
+            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
+            bits += book[idx].len;
+        }
+        break;
+    case HCB_7:
+    case HCB_8:
+        for (i = 0; i < len; i += 2) {
+            int idx = DIM_M2_7 * abs(qs[i]) + abs(qs[i+1]);
+            bits += book[idx].len;
+            bits += (qs[i] != 0) + (qs[i+1] != 0);
+        }
+        break;
+    case HCB_9:
+    case HCB_10:
+        for (i = 0; i < len; i += 2) {
+            int idx = DIM_M2_12 * abs(qs[i]) + abs(qs[i+1]);
+            bits += book[idx].len;
+            bits += (qs[i] != 0) + (qs[i+1] != 0);
+        }
+        break;
+    case HCB_ESC:
+        for (i = 0; i < len; i += 2) {
+            int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
+            int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
+            int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
+            int idx = DIM_ESC * v0 + v1;
+            bits += book[idx].len;
+            bits += (qs[i] != 0) + (qs[i+1] != 0);
+            if (x0 >= LAV_ESC) bits += escape(x0, NULL);
+            if (x1 >= LAV_ESC) bits += escape(x1, NULL);
+        }
+        break;
+    default:
+        break;
+    }
+
+    return bits;
+}
+
+/* Bitstream mutation function, called once per finalized frame. */
+static void huffcode_write(int *qs, int len, int bnum, CoderInfo *coder)
+{
+    hcode16_t *book = hmap[bnum];
+    int i, j;
+    int datacnt = coder->datacnt;
+
+    switch (bnum) {
+    case HCB_1:
+    case HCB_2:
+        for (i = 0; i < len; i += 4) {
+            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_3:
@@ -85,26 +146,19 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
             for (j = 0; j < 4; j++) {
                 if (qs[i+j]) {
                     blen++;
-                    if (coder) data = (data << 1) | (qs[i+j] < 0);
+                    data = (data << 1) | (qs[i+j] < 0);
                 }
             }
-            if (coder) {
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_5:
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            int blen = book[idx].len;
-            if (coder) {
-                coder->s[datacnt].data = book[idx].data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_7:
@@ -116,14 +170,11 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
             for (j = 0; j < 2; j++) {
                 if (qs[i+j]) {
                     blen++;
-                    if (coder) data = (data << 1) | (qs[i+j] < 0);
+                    data = (data << 1) | (qs[i+j] < 0);
                 }
             }
-            if (coder) {
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_9:
@@ -135,14 +186,11 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
             for (j = 0; j < 2; j++) {
                 if (qs[i+j]) {
                     blen++;
-                    if (coder) data = (data << 1) | (qs[i+j] < 0);
+                    data = (data << 1) | (qs[i+j] < 0);
                 }
             }
-            if (coder) {
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_ESC:
@@ -155,43 +203,33 @@ static int huffcode(int *qs, int len, int bnum, CoderInfo *coder)
             int data = book[idx].data;
             if (qs[i]) {
                 blen++;
-                if (coder) data = (data << 1) | (qs[i] < 0);
+                data = (data << 1) | (qs[i] < 0);
             }
             if (qs[i+1]) {
                 blen++;
-                if (coder) data = (data << 1) | (qs[i+1] < 0);
+                data = (data << 1) | (qs[i+1] < 0);
             }
-            if (coder) {
-                coder->s[datacnt].data = data;
-                coder->s[datacnt++].len = blen;
-            }
-            bits += blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
             if (x0 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x0, &esc_code);
-                if (coder) {
-                    coder->s[datacnt].data = esc_code;
-                    coder->s[datacnt++].len = esc_len;
-                }
-                bits += esc_len;
+                coder->s[datacnt].data = esc_code;
+                coder->s[datacnt++].len = esc_len;
             }
             if (x1 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x1, &esc_code);
-                if (coder) {
-                    coder->s[datacnt].data = esc_code;
-                    coder->s[datacnt++].len = esc_len;
-                }
-                bits += esc_len;
+                coder->s[datacnt].data = esc_code;
+                coder->s[datacnt++].len = esc_len;
             }
         }
         break;
     default:
-        return -1;
+        break;
     }
 
-    if (coder) coder->datacnt = datacnt;
-    return bits;
+    coder->datacnt = datacnt;
 }
 
 /* Pick the codebook that minimizes the bit cost for a given band. */
@@ -220,13 +258,13 @@ int huffbook(CoderInfo *coder, int *qs, int len)
 
         if (pair_base != HCB_ESC) {
             bookmin = pair_base;
-            lenmin = huffcode(qs, len, bookmin, NULL);
-            int len2 = huffcode(qs, len, bookmin + 1, NULL);
+            lenmin = huffcode_size(qs, len, bookmin);
+            int len2 = huffcode_size(qs, len, bookmin + 1);
             if (len2 < lenmin) bookmin++;
         } else {
             bookmin = HCB_ESC;
         }
-        huffcode(qs, len, bookmin, coder);
+        huffcode_write(qs, len, bookmin, coder);
     }
 
     /* Record the chosen book at the current band slot, but do NOT advance

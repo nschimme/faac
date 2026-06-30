@@ -377,27 +377,33 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
     if (hEncoder->inputFifoFill + spch > hEncoder->inputFifoCap)
         return -1;
 
-    for (channel = 0; channel < numChannels; channel++) {
-        faac_real *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
-        switch (hEncoder->config.inputFormat) {
-            case FAAC_INPUT_16BIT: {
+    switch (hEncoder->config.inputFormat) {
+        case FAAC_INPUT_16BIT: {
+            for (channel = 0; channel < numChannels; channel++) {
+                faac_real *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
                 short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (faac_real)*src; src += numChannels; }
-                break;
             }
-            case FAAC_INPUT_32BIT: {
+            break;
+        }
+        case FAAC_INPUT_32BIT: {
+            for (channel = 0; channel < numChannels; channel++) {
+                faac_real *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
                 int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (1.0f/256) * (faac_real)*src; src += numChannels; }
-                break;
             }
-            case FAAC_INPUT_FLOAT: {
+            break;
+        }
+        case FAAC_INPUT_FLOAT: {
+            for (channel = 0; channel < numChannels; channel++) {
+                faac_real *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
                 float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
                 for (i = 0; i < spch; i++) { dst[i] = (faac_real)*src; src += numChannels; }
-                break;
             }
-            default:
-                return -1;
+            break;
         }
+        default:
+            return -1;
     }
     hEncoder->inputFifoFill += spch;
     return 0;
