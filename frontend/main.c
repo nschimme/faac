@@ -20,6 +20,9 @@
  *
  */
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -51,8 +54,8 @@
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
 #else
-# include "getopt_win.h"
-# include "getopt_win.c"
+# include "getopt.h"
+# include "getopt.c"
 #endif
 
 #include "mp4write.h"
