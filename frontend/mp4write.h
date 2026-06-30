@@ -21,6 +21,10 @@
 #ifndef MP4WRITE_H
 #define MP4WRITE_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -95,17 +99,11 @@ int mp4atom_open(char *name, int over);
 int mp4atom_head(void);
 int mp4atom_tail(void);
 int mp4tag_add(const char *name, const char *data);
+int mp4atom_close(void);
 
-static inline int mp4atom_close(void) {
-    if (mp4config.fout) {
-        fclose((FILE *)mp4config.fout);
-        mp4config.fout = NULL;
-    }
-    if (mp4config.frame.data) {
-        free(mp4config.frame.data);
-        mp4config.frame.data = NULL;
-    }
-    return 0;
+static inline void mp4write_fwrite(const void *ptr, size_t size, size_t nmemb) {
+    if (mp4config.fout)
+        fwrite(ptr, size, nmemb, (FILE *)mp4config.fout);
 }
 
 static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
@@ -124,12 +122,12 @@ static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
         mp4config.bitrate.samples = 0;
     }
 
-    if ((mp4config.frame.ents + 1) * sizeof(uint32_t) > mp4config.frame.bufsize) {
-        uint32_t new_size = mp4config.frame.bufsize ? mp4config.frame.bufsize * 2 : 0x4000;
-        uint32_t *tmp = (uint32_t *)realloc(mp4config.frame.data, new_size);
+    if (mp4config.frame.ents >= mp4config.frame.bufsize) {
+        uint32_t new_cap = mp4config.frame.bufsize ? mp4config.frame.bufsize * 2 : 1024;
+        uint32_t *tmp = (uint32_t *)realloc(mp4config.frame.data, new_cap * sizeof(uint32_t));
         if (!tmp) return -1;
         mp4config.frame.data = tmp;
-        mp4config.frame.bufsize = new_size;
+        mp4config.frame.bufsize = new_cap;
     }
     mp4config.frame.data[mp4config.frame.ents++] = size;
     if (mp4config.buffersize < (uint16_t)size)

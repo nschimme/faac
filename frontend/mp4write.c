@@ -18,6 +18,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 ****************************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,7 +45,8 @@ static size_t g_memcap = 0;
 static inline void mem_write(const void *data, size_t size) {
     if (g_membuf) {
         if (g_mempos + size > g_memcap) {
-            size_t new_cap = (g_memcap + size) * 2;
+            size_t new_cap = g_memcap ? g_memcap * 2 : 1024;
+            while (g_mempos + size > new_cap) new_cap *= 2;
             void *tmp = realloc(g_membuf, new_cap);
             if (!tmp) {
                 free(g_membuf);
@@ -53,7 +58,7 @@ static inline void mem_write(const void *data, size_t size) {
         }
         memcpy(g_membuf + g_mempos, data, size);
         g_mempos += size;
-    } else {
+    } else if (mp4config.fout) {
         fwrite(data, 1, size, (FILE *)mp4config.fout);
     }
 }
@@ -79,7 +84,7 @@ static inline void put_u8(uint8_t val) { mem_write(&val, 1); }
 static inline void put_data(const void *data, size_t size) { mem_write(data, size); }
 
 static inline long start_atom(const char *name) {
-    long pos = g_membuf ? (long)g_mempos : ftell((FILE *)mp4config.fout);
+    long pos = g_membuf ? (long)g_mempos : (mp4config.fout ? ftell((FILE *)mp4config.fout) : 0);
     put_u32(0);
     put_data(name, 4);
     return pos;
@@ -92,7 +97,7 @@ static inline void end_atom(long pos) {
         g_membuf[pos + 1] = (uint8_t)(size >> 16);
         g_membuf[pos + 2] = (uint8_t)(size >> 8);
         g_membuf[pos + 3] = (uint8_t)size;
-    } else {
+    } else if (mp4config.fout) {
         long curr = ftell((FILE *)mp4config.fout);
         fseek((FILE *)mp4config.fout, pos, SEEK_SET);
         put_u32((uint32_t)(curr - pos));
@@ -119,16 +124,15 @@ int mp4atom_open(char *name, int over) {
     if (!over && access(name, 0) == 0) return 1;
     mp4config.fout = fopen(name, "wb");
     if (!mp4config.fout) return 1;
-    setvbuf((FILE *)mp4config.fout, NULL, _IOFBF, 1048576);
 
-    mp4config.frame.bufsize = 0x4000;
-    mp4config.frame.data = (uint32_t *)malloc(mp4config.frame.bufsize);
+    mp4config.frame.bufsize = 1024;
+    mp4config.frame.data = (uint32_t *)malloc(mp4config.frame.bufsize * sizeof(uint32_t));
     return 0;
 }
 
 int mp4atom_head(void) {
     g_mempos = 0;
-    g_memcap = 4096;
+    g_memcap = 1024;
     g_membuf = (uint8_t *)malloc(g_memcap);
 
     long ftyp = start_atom("ftyp");
@@ -141,11 +145,13 @@ int mp4atom_head(void) {
     long free_box = start_atom("free");
     end_atom(free_box);
 
-    fwrite(g_membuf, 1, g_mempos, (FILE *)mp4config.fout);
+    if (mp4config.fout) {
+        fwrite(g_membuf, 1, g_mempos, (FILE *)mp4config.fout);
+    }
     free(g_membuf);
     g_membuf = NULL;
 
-    mp4config.mdatofs = (uint32_t)ftell((FILE *)mp4config.fout) + 8;
+    mp4config.mdatofs = (uint32_t)(mp4config.fout ? ftell((FILE *)mp4config.fout) : 0) + 8;
     put_u32(0);
     put_data("mdat", 4);
     return 0;
@@ -224,12 +230,13 @@ static void put_tag_ext(const char *mean, const char *name, const char *val) {
 }
 
 int mp4atom_tail(void) {
+    if (!mp4config.fout) return 0;
     long pos = ftell((FILE *)mp4config.fout);
     fseek((FILE *)mp4config.fout, mp4config.mdatofs - 8, SEEK_SET);
     put_u32(mp4config.mdatsize + 8);
     fseek((FILE *)mp4config.fout, pos, SEEK_SET);
 
-    mp4config.bitrate.avg = (uint32_t)((uint64_t)8 * mp4config.mdatsize * mp4config.samplerate / mp4config.samples);
+    mp4config.bitrate.avg = (uint32_t)((uint64_t)8 * mp4config.mdatsize * mp4config.samplerate / (mp4config.samples ? mp4config.samples : 1));
     if (!mp4config.bitrate.max) mp4config.bitrate.max = mp4config.bitrate.avg;
 
     g_mempos = 0;
@@ -322,13 +329,14 @@ int mp4atom_tail(void) {
     long stsz = start_atom("stsz");
     put_u32(0); put_u32(0); put_u32(mp4config.frame.ents);
     if (mp4config.frame.ents) {
-        size_t size = (size_t)mp4config.frame.ents * 4;
-        if (g_mempos + size > g_memcap) {
-            void *tmp;
-            g_memcap = g_mempos + size + 0x4000;
-            tmp = realloc(g_membuf, g_memcap);
+        size_t stsz_size = (size_t)mp4config.frame.ents * 4;
+        if (g_mempos + stsz_size > g_memcap) {
+            size_t new_cap = g_memcap ? g_memcap * 2 : 1024;
+            while (g_mempos + stsz_size > new_cap) new_cap *= 2;
+            void *tmp = realloc(g_membuf, new_cap);
             if (!tmp) return 0;
             g_membuf = (uint8_t *)tmp;
+            g_memcap = new_cap;
         }
         uint8_t *p = g_membuf + g_mempos;
         for (uint32_t i = 0; i < mp4config.frame.ents; i++) {
@@ -338,7 +346,7 @@ int mp4atom_tail(void) {
             *p++ = (uint8_t)(val >> 8);
             *p++ = (uint8_t)val;
         }
-        g_mempos += size;
+        g_mempos += stsz_size;
     }
     end_atom(stsz);
 
@@ -384,7 +392,9 @@ int mp4atom_tail(void) {
     end_atom(udta);
     end_atom(moov);
 
-    fwrite(g_membuf, 1, g_mempos, (FILE *)mp4config.fout);
+    if (mp4config.fout) {
+        fwrite(g_membuf, 1, g_mempos, (FILE *)mp4config.fout);
+    }
     free(g_membuf);
     g_membuf = NULL;
     return 0;
@@ -396,5 +406,21 @@ int mp4tag_add(const char *name, const char *data) {
     mp4config.tag.ext[idx].name = name;
     mp4config.tag.ext[idx].data = data;
     mp4config.tag.extnum++;
+    return 0;
+}
+
+int mp4atom_close(void) {
+    if (mp4config.fout) {
+        fclose((FILE *)mp4config.fout);
+        mp4config.fout = NULL;
+    }
+    if (mp4config.frame.data) {
+        free(mp4config.frame.data);
+        mp4config.frame.data = NULL;
+    }
+    if (g_membuf) {
+        free(g_membuf);
+        g_membuf = NULL;
+    }
     return 0;
 }
