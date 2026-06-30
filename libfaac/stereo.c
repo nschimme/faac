@@ -135,6 +135,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
             faac_real inv_etot = 1.0 / etot;
             int sf  = FAAC_LRINT(FAAC_LOG10(el * inv_etot) * SF_STEP_ENRG);
             int pan = FAAC_LRINT(FAAC_LOG10(er * inv_etot) * SF_STEP_ENRG) - sf;
+            if (pan > 30 || pan < -30) { (*sfcnt)++; continue; }
             cl->sf[*sfcnt]   = sf;
             cr->sf[*sfcnt]   = -pan;
             cr->book[*sfcnt] = hcb;
