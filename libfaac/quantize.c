@@ -134,7 +134,7 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     for (sfb = 0; sfb < coderInfo->sfbn; sfb++) {
         int start = cb_offset[sfb], end = cb_offset[sfb+1];
         faac_real avge = bandenrg[sfb];
-        faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb] * (faac_real)gsize;
+        faac_real maxe = bandmaxe[sfb] * bandmaxe[sfb];
 
         faac_real ref_avge = (totenrg * inv_block_len) * (end - start);
         if (avge < ref_avge * AVGE_FLOOR_FACTOR) avge = ref_avge * AVGE_FLOOR_FACTOR;
