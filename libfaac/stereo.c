@@ -90,6 +90,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     if (!inv_phthr) return;
 
+    *sfcnt += sfmin;
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = cl->sfb_offset[sfb], len = cl->sfb_offset[sfb+1] - start;
         faac_real el = 0, er = 0, elr = 0;
