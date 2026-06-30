@@ -26,11 +26,12 @@
 /* Fast memory-clearing utility for suppressed channels. */
 static inline void apply_mute(faac_real * restrict s0, int start, int len, int wstart, int wend)
 {
+    faac_real * restrict s = s0 + wstart * BLOCK_LEN_SHORT + start;
     int win, i;
     for (win = wstart; win < wend; win++) {
-        faac_real * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
         for (i = 0; i < len; i++)
             s[i] = 0.0;
+        s += BLOCK_LEN_SHORT;
     }
 }
 
