@@ -22,6 +22,7 @@
 #define MP4WRITE_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,12 +31,9 @@ enum {TAGMAX = 100};
 typedef struct
 {
     uint32_t samplerate;
-    // total sound samples
     uint32_t samples;
     uint32_t channels;
-    // sample depth
     uint32_t bits;
-    // buffer config
     uint16_t buffersize;
     struct {
         uint32_t max;
@@ -50,7 +48,6 @@ typedef struct
         uint32_t ents;
         uint32_t bufsize;
     } frame;
-    // AudioSpecificConfig data:
     struct
     {
         uint8_t *data;
@@ -62,7 +59,6 @@ typedef struct
 
     struct
     {
-        // meta fields
         const char *encoder;
         const char *artist;
         const char *artistsort;
@@ -98,6 +94,20 @@ extern mp4config_t mp4config;
 int mp4atom_open(char *name, int over);
 int mp4atom_head(void);
 int mp4atom_tail(void);
+int mp4tag_add(const char *name, const char *data);
+
+static inline int mp4atom_close(void) {
+    if (mp4config.fout) {
+        fclose((FILE *)mp4config.fout);
+        mp4config.fout = NULL;
+    }
+    if (mp4config.frame.data) {
+        free(mp4config.frame.data);
+        mp4config.frame.data = NULL;
+    }
+    return 0;
+}
+
 static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
     mp4config.mdatsize += size;
     mp4config.samples  += samples;
@@ -107,8 +117,7 @@ static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
     mp4config.bitrate.size    += (int)size;
     mp4config.bitrate.samples += (int)samples;
     if ((uint32_t)mp4config.bitrate.samples >= mp4config.samplerate) {
-        uint32_t br = (uint32_t)((uint64_t)8 * mp4config.bitrate.size
-                                 * mp4config.samplerate / mp4config.bitrate.samples);
+        uint32_t br = (uint32_t)((uint64_t)8 * mp4config.bitrate.size * mp4config.samplerate / mp4config.bitrate.samples);
         if (mp4config.bitrate.max < br)
             mp4config.bitrate.max = br;
         mp4config.bitrate.size    = 0;
@@ -116,12 +125,10 @@ static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
     }
 
     if ((mp4config.frame.ents + 1) * sizeof(uint32_t) > mp4config.frame.bufsize) {
-        void *tmp;
         uint32_t new_size = mp4config.frame.bufsize ? mp4config.frame.bufsize * 2 : 0x4000;
-        tmp = realloc(mp4config.frame.data, new_size);
-        if (!tmp)
-            return -1;
-        mp4config.frame.data = (uint32_t *)tmp;
+        uint32_t *tmp = (uint32_t *)realloc(mp4config.frame.data, new_size);
+        if (!tmp) return -1;
+        mp4config.frame.data = tmp;
         mp4config.frame.bufsize = new_size;
     }
     mp4config.frame.data[mp4config.frame.ents++] = size;
@@ -129,8 +136,4 @@ static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
         mp4config.buffersize = (uint16_t)size;
     return 0;
 }
-
-int mp4atom_close(void);
-int mp4tag_add(const char *name, const char *data);
-
 #endif

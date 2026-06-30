@@ -1188,9 +1188,8 @@ int main(int argc, char *argv[])
                 frame_samples = delay_samples;
 
             if (container == MP4_CONTAINER) {
-                fwrite(bitbuf, 1, bytesWritten, (FILE *)mp4config.fout);
-                mp4_record_frame((uint32_t)bytesWritten, (uint32_t)frame_samples);
-            } else
+                fwrite(bitbuf, 1, bytesWritten, (FILE *)mp4config.fout); mp4_record_frame((uint32_t)bytesWritten, (uint32_t)frame_samples); }
+            else
                 fwrite(bitbuf, 1, bytesWritten, outfile);
 
             encoded_samples += frame_samples;
@@ -1198,7 +1197,7 @@ int main(int argc, char *argv[])
     }
     fprintf(stderr, "\n");
 
-    if (container == MP4_CONTAINER)
+    if (container == MP4_CONTAINER && mp4config.fout)
     {
         char *version_string = malloc(strlen(faac_id_string) + 6);
 

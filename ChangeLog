@@ -1,8 +1,9 @@
-2026-06-29  Nils Schimmelmann <nschimme@users.sourceforge.net>
+2026-06-30  Nils Schimmelmann <nschimme@users.sourceforge.net>
 
 	* Relicensed MP4 output module to LGPL v2.1:
 	- MP4 output module (mp4write.c/h) fully rewritten under LGPL v2.1.
 	- Nils Schimmelmann relicensed his prior contributions to LGPL v2.1.
+	- Performance optimized to ensure parity with previous GPLv3 code.
 
 1.50 (Apr 16, 2026)
 
