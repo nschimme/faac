@@ -120,7 +120,6 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   int gsize = coderInfo->groups.len[gnum];
   const faac_real *xr;
   int win;
-  int enrgcnt = 0;
   int total_len = coderInfo->sfb_offset[coderInfo->sfbn];
 
   for (win = 0; win < gsize; win++)
@@ -131,9 +130,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
           totenrg += xr[cnt] * xr[cnt];
       }
   }
-  enrgcnt = gsize * total_len;
 
-  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)enrgcnt))
+  if (totenrg < ((NOISEFLOOR * NOISEFLOOR) * (faac_real)(gsize * total_len)))
   {
       for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
       {
@@ -145,6 +143,8 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
   }
 
   last = (coderInfo->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
+  faac_real inv_last = 1.0 / last;
+  faac_real base_avgenrg = totenrg * inv_last;
 
   for (sfb = 0; sfb < coderInfo->sfbn; sfb++)
   {
@@ -153,13 +153,13 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
 
     start = cb_offset[sfb];
     end = cb_offset[sfb + 1];
+    int n = end - start;
 
     avge = 0.0;
     maxe = 0.0;
     for (win = 0; win < gsize; win++)
     {
         xr = xr0 + win * BLOCK_LEN_SHORT + start;
-        int n = end - start;
         for (cnt = 0; cnt < n; cnt++)
         {
             faac_real val = xr[cnt];
@@ -173,18 +173,19 @@ static void bmask(CoderInfo * __restrict coderInfo, faac_real * __restrict xr0, 
     /* Track peak magnitude to identify potential Huffman overflows. */
     bandmaxe[sfb] = FAAC_SQRT(maxe);
 
-    avgenrg = (totenrg / last) * (end - start);
+    avgenrg = base_avgenrg * n;
 
     /* Apply floors to inputs before the pow() calls. The masking formula is
      * monotonic, so flooring inputs is equivalent to flooring the output. */
     if (avge < avgenrg * AVGE_FLOOR_FACTOR) avge = avgenrg * AVGE_FLOOR_FACTOR;
     if (maxe < avgenrg * MAXE_FLOOR_FACTOR) maxe = avgenrg * MAXE_FLOOR_FACTOR;
 
-    target = NOISETONE * FAAC_POW(avge/avgenrg, powm);
-    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe/avgenrg, powm);
+    faac_real inv_avgenrg = 1.0 / avgenrg;
+    target = NOISETONE * FAAC_POW(avge * inv_avgenrg, powm);
+    target += (1.0 - NOISETONE) * TONEMASK * FAAC_POW(maxe * inv_avgenrg, powm);
     if (coderInfo->block_type == ONLY_SHORT_WINDOW)
         target *= SHORT_PENALTY;
-    target *= 10.0 / (1.0 + ((faac_real)(start+end)/last));
+    target *= 10.0 / (1.0 + (faac_real)(start + end) * inv_last);
 
     bandqual[sfb] = target * quality;
   }
@@ -227,9 +228,10 @@ static void qlevel(CoderInfo * __restrict coderInfo,
 
       start = coderInfo->sfb_offset[sb];
       end = coderInfo->sfb_offset[sb+1];
+      int n = end - start;
 
-      etot = bandenrg[sb] / (faac_real)gsize;
-      rmsx = FAAC_SQRT(etot / (end - start));
+      etot = bandenrg[sb] * (1.0 / (faac_real)gsize);
+      rmsx = FAAC_SQRT(etot / (faac_real)n);
 
       if ((rmsx < NOISEFLOOR) || (!bandqual[sb]))
       {

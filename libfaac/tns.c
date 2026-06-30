@@ -319,8 +319,25 @@ static void Autocorrelation(int maxOrder,                      /* Maximum autoco
         const faac_real d = data[index];
         const faac_real * restrict dp = &data[index + 1];
         rArray[0] += d * d;
-        for (order = 1; order <= maxOrder; order++)
-            rArray[order] += d * dp[order - 1];
+        /* Unroll the inner loop for the standard TNS_MAX_ORDER (12).
+         * Guard against overflow when maxOrder < 12 (e.g. short blocks). */
+        if (maxOrder >= 12) {
+            rArray[1]  += d * dp[0];
+            rArray[2]  += d * dp[1];
+            rArray[3]  += d * dp[2];
+            rArray[4]  += d * dp[3];
+            rArray[5]  += d * dp[4];
+            rArray[6]  += d * dp[5];
+            rArray[7]  += d * dp[6];
+            rArray[8]  += d * dp[7];
+            rArray[9]  += d * dp[8];
+            rArray[10] += d * dp[9];
+            rArray[11] += d * dp[10];
+            rArray[12] += d * dp[11];
+        } else {
+            for (order = 1; order <= maxOrder; order++)
+                rArray[order] += d * dp[order - 1];
+        }
     }
 
     for (; index < dataSize; index++) {
