@@ -118,9 +118,10 @@ static size_t g_memcap = 0;
 
 static inline void mem_write(const void *data, size_t size) {
     if (g_membuf) {
-        if (g_mempos + size > g_memcap) {
+        size_t end = g_mempos + size;
+        if (end > g_memcap) {
             size_t new_cap = g_memcap ? g_memcap * 2 : 1024;
-            while (g_mempos + size > new_cap) new_cap *= 2;
+            while (end > new_cap) new_cap *= 2;
             void *tmp = realloc(g_membuf, new_cap);
             if (!tmp) {
                 free(g_membuf);
@@ -131,7 +132,7 @@ static inline void mem_write(const void *data, size_t size) {
             g_memcap = new_cap;
         }
         memcpy(g_membuf + g_mempos, data, size);
-        g_mempos += size;
+        g_mempos = end;
     } else if (g_mp4.fout) {
         fwrite(data, 1, size, g_mp4.fout);
     }
@@ -552,10 +553,11 @@ int mp4_finish(void) {
         uint8_t *p = g_membuf + g_mempos;
         for (uint32_t i = 0; i < g_mp4.frame.ents; i++) {
             uint32_t val = g_mp4.frame.data[i];
-            *p++ = (uint8_t)(val >> 24);
-            *p++ = (uint8_t)(val >> 16);
-            *p++ = (uint8_t)(val >> 8);
-            *p++ = (uint8_t)val;
+            p[0] = (uint8_t)(val >> 24);
+            p[1] = (uint8_t)(val >> 16);
+            p[2] = (uint8_t)(val >> 8);
+            p[3] = (uint8_t)val;
+            p += 4;
         }
         g_mempos += stsz_size;
     }
