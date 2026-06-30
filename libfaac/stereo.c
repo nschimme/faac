@@ -90,10 +90,10 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 {
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     if (!inv_phthr) return;
-
     *sfcnt += sfmin;
+    const int * restrict sfb_offset = cl->sfb_offset;
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
-        int start = cl->sfb_offset[sfb], len = cl->sfb_offset[sfb+1] - start;
+        int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         faac_real el = 0, er = 0, elr = 0;
         const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -152,10 +152,11 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real thrmid, faac_real thrside_sq)
 {
     int sfb, sfmin = (coder->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
+    const int * restrict sfb_offset = coder->sfb_offset;
     for (sfb = 0; sfb < sfmin; sfb++)
         channel->msInfo.ms_used[(*sfcnt)++] = 0;
     for (sfb = sfmin; sfb < coder->sfbn; sfb++) {
-        int start = coder->sfb_offset[sfb], len = coder->sfb_offset[sfb+1] - start;
+        int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         faac_real el = 0, er = 0, elr = 0;
         const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
@@ -205,10 +206,11 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
                  faac_real thrmid, faac_real inv_isthr, faac_real thrside_sq, int is_start_sfb)
 {
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
+    const int * restrict sfb_offset = cl->sfb_offset;
     for (sfb = 0; sfb < sfmin; sfb++)
         channel->msInfo.ms_used[(*sfcnt)++] = 0;
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
-        int start = cl->sfb_offset[sfb], len = cl->sfb_offset[sfb+1] - start;
+        int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         faac_real el = 0, er = 0, elr = 0;
         const faac_real *sl = sl0 + wstart * BLOCK_LEN_SHORT + start;
         const faac_real *sr = sr0 + wstart * BLOCK_LEN_SHORT + start;
