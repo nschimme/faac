@@ -22,8 +22,6 @@
    06/19/2015 - Ludvik Jerabek - Fixed maximum option limitation caused by option_a (255) and option_w (65535) structure val variable
    09/24/2022 - Ludvik Jerabek - Updated to match most recent getopt release
    09/25/2022 - Ludvik Jerabek - Fixed memory allocation (malloc call) issue for wchar_t*
-   08/24/2025 - Ludvik Jerabek - Added reentrant function declarations, updated argv types to char ** and wchar_t **, added cross-compilation support
-   08/24/2025 - Ludvik Jerabek - Updated to match glibc 2.42 getopt
 
 
    **DISCLAIMER**
@@ -40,13 +38,26 @@
    EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 */
 
-#ifndef _GETOPT_H
-#define _GETOPT_H 1
+#ifndef FAAC_GETOPT_H
+#define FAAC_GETOPT_H
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#ifdef HAVE_GETOPT_H
+#if defined(__GNUC__) || defined(__clang__)
+#include_next <getopt.h>
+#else
+#include <getopt.h>
+#endif
+#else
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
+// Standard GNU options
 #define no_argument		0
 #define required_argument	1
 #define optional_argument	2
@@ -93,4 +104,6 @@ extern int getopt_long_only_w(int argc, wchar_t* const * argv, const wchar_t* op
 }
 #endif
 
-#endif /* _GETOPT_H */
+#endif /* HAVE_GETOPT_H */
+
+#endif /* FAAC_GETOPT_H */

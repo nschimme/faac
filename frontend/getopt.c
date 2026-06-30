@@ -23,8 +23,6 @@ Revisions:
 06/19/2015 - Ludvik Jerabek - Fixed maximum option limitation caused by option_a (255) and option_w (65535) structure val variable
 09/24/2022 - Ludvik Jerabek - Updated to match most recent getopt release
 09/25/2022 - Ludvik Jerabek - Fixed memory allocation (malloc call) issue for wchar_t*
-08/24/2025 - Ludvik Jerabek - Added reentrant function declarations, updated argv types to char ** and wchar_t **, added cross-compilation support
-08/24/2025 - Ludvik Jerabek - Updated to match glibc 2.42 getopt
 
 **DISCLAIMER**
 THIS MATERIAL IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
@@ -39,6 +37,10 @@ PROFITS, BUSINESS INTERRUPTION, LOSS OF PROGRAMS OR OTHER DATA ON
 YOUR INFORMATION HANDLING SYSTEM OR OTHERWISE, EVEN If WE ARE
 EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include "getopt.h"
 
@@ -62,15 +64,6 @@ EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 #else
 #define _GETOPT_THROW
 #endif
-
-/* File locking */
-# if defined(_WIN32)
-#  define flockfile(fp)   _lock_file(fp)
-#  define funlockfile(fp) _unlock_file(fp)
-# else
-#  define flockfile(fp)   /* nop */
-#  define funlockfile(fp) /* nop */
-# endif
 
 
 int optind = 1;
@@ -574,7 +567,8 @@ exchange_w(wchar_t** argv, struct _getopt_data_w* d)
         if (top - middle > middle - bottom)
         {
             int len = middle - bottom;
-            for (int i = 0; i < len; i++)
+            int i;
+            for (i = 0; i < len; i++)
             {
                 tem = argv[bottom + i];
                 argv[bottom + i] = argv[top - (middle - bottom) + i];
@@ -585,7 +579,8 @@ exchange_w(wchar_t** argv, struct _getopt_data_w* d)
         else
         {
             int len = top - middle;
-            for (int i = 0; i < len; i++)
+            int i;
+            for (i = 0; i < len; i++)
             {
                 tem = argv[bottom + i];
                 argv[bottom + i] = argv[middle + i];
@@ -599,13 +594,6 @@ exchange_w(wchar_t** argv, struct _getopt_data_w* d)
     d->__last_nonopt = d->optind;
 }
 
-struct option_w
-{
-    const wchar_t* name;
-    int has_arg;
-    int* flag;
-    int val;
-};
 
 static int
 process_long_option_w(int argc, wchar_t** argv, const wchar_t* optstring,
