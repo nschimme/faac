@@ -284,24 +284,30 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
     faac_real inv_quality = 1.0 / quality;
     faac_real thrmid = 1.0, isthr = 1.0, thrside = 0.0;
 
-    if (mode == JOINT_MIXED) {
-        thrmid = (0.09 * 0.85) * inv_quality;
-        if (thrmid > 0.25) thrmid = 0.25;
-        thrmid += 1.0;
-        isthr = 0.18 * inv_quality + 1.0;
-        if (isthr > M_SQRT2) isthr = M_SQRT2;
-        thrside = 0.1 * inv_quality;
-        if (thrside > 0.3) thrside = 0.3;
-    } else if (mode == JOINT_MS) {
-        thrmid = (1.09 - 1.0) * inv_quality;
-        if (thrmid > 0.25) thrmid = 0.25;
-        thrmid += 1.0;
-        thrside = 0.1 * inv_quality;
-        if (thrside > 0.3) thrside = 0.3;
-    } else if (mode == JOINT_IS) {
-        isthr = 0.18 * (inv_quality * inv_quality);
-        isthr += 1.0;
-        if (isthr > M_SQRT2) isthr = M_SQRT2;
+    switch (mode) {
+        case JOINT_MIXED:
+            thrmid = (0.09 * 0.85) * inv_quality;
+            if (thrmid > 0.25) thrmid = 0.25;
+            thrmid += 1.0;
+            isthr = 0.18 * inv_quality + 1.0;
+            if (isthr > M_SQRT2) isthr = M_SQRT2;
+            thrside = 0.1 * inv_quality;
+            if (thrside > 0.3) thrside = 0.3;
+            break;
+        case JOINT_MS:
+            thrmid = (1.09 - 1.0) * inv_quality;
+            if (thrmid > 0.25) thrmid = 0.25;
+            thrmid += 1.0;
+            thrside = 0.1 * inv_quality;
+            if (thrside > 0.3) thrside = 0.3;
+            break;
+        case JOINT_IS:
+            isthr = 0.18 * (inv_quality * inv_quality);
+            isthr += 1.0;
+            if (isthr > M_SQRT2) isthr = M_SQRT2;
+            break;
+        default:
+            return;
     }
     /* Pre-square thresholds so per-band energy comparisons need no sqrt.
      * Each threshold scales inversely with quality — higher quality encodes
@@ -348,15 +354,21 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
 
         for (g = 0; g < coder[chn].groups.n; g++) {
             int end = start + coder[chn].groups.len[g];
-            if (mode == JOINT_MIXED)
-                msused |= mixed(coder+chn, coder+rch, channel+chn, s[chn], s[rch],
-                                &sfcnt, start, end, thrmid, inv_isthr, thrside_sq, is_start_sfb);
-            else if (mode == JOINT_MS)
-                midside(coder+chn, channel+chn, s[chn], s[rch], &sfcnt, start, end, thrmid, thrside_sq);
-            else if (mode == JOINT_IS)
-                stereo(coder+chn, coder+rch, s[chn], s[rch], &sfcnt, start, end, inv_isthr);
-            else
-                sfcnt += coder[chn].sfbn;
+            switch (mode) {
+                case JOINT_MIXED:
+                    msused |= mixed(coder+chn, coder+rch, channel+chn, s[chn], s[rch],
+                                    &sfcnt, start, end, thrmid, inv_isthr, thrside_sq, is_start_sfb);
+                    break;
+                case JOINT_MS:
+                    midside(coder+chn, channel+chn, s[chn], s[rch], &sfcnt, start, end, thrmid, thrside_sq);
+                    break;
+                case JOINT_IS:
+                    stereo(coder+chn, coder+rch, s[chn], s[rch], &sfcnt, start, end, inv_isthr);
+                    break;
+                default:
+                    sfcnt += coder[chn].sfbn;
+                    break;
+            }
             start = end;
         }
         if (mode == JOINT_MIXED && msused) {
