@@ -18,6 +18,10 @@ foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
+foreach f: ['fwrite_unlocked']
+    config_h.set('HAVE_' + f.to_upper(), cc.has_function(f, prefix: '#include <stdio.h>', args: '-D_GNU_SOURCE'))
+endforeach
+
 
 libm = cc.find_library('m', required: false)
 

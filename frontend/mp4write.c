@@ -36,6 +36,25 @@
 
 #include "mp4write.h"
 
+#if defined(_MSC_VER)
+#define BSWAP32(x) _byteswap_ulong(x)
+#define BSWAP16(x) _byteswap_ushort(x)
+#elif defined(__GNUC__) || defined(__clang__)
+#define BSWAP32(x) __builtin_bswap32(x)
+#define BSWAP16(x) __builtin_bswap16(x)
+#else
+static inline uint32_t BSWAP32(uint32_t x) {
+    return ((x << 24) | ((x << 8) & 0x00FF0000) | ((x >> 8) & 0x0000FF00) | (x >> 24));
+}
+static inline uint16_t BSWAP16(uint16_t x) {
+    return ((x << 8) | (x >> 8));
+}
+#endif
+
+#ifndef HAVE_FWRITE_UNLOCKED
+#define fwrite_unlocked fwrite
+#endif
+
 enum {
     MP4_EPOCH_OFFSET = 2082844800, /* seconds from 1904-01-01 to 1970-01-01 */
 
@@ -133,24 +152,33 @@ static inline void mem_write(const void *data, size_t size) {
         memcpy(g_membuf + g_mempos, data, size);
         g_mempos += size;
     } else if (g_mp4.fout) {
-        fwrite(data, 1, size, g_mp4.fout);
+        fwrite_unlocked(data, 1, size, g_mp4.fout);
     }
 }
 
+
 static inline void put_u32(uint32_t val) {
-    uint8_t buf[4];
-    buf[0] = (uint8_t)(val >> 24);
-    buf[1] = (uint8_t)(val >> 16);
-    buf[2] = (uint8_t)(val >> 8);
-    buf[3] = (uint8_t)val;
-    mem_write(buf, 4);
+#ifndef WORDS_BIGENDIAN
+    val = BSWAP32(val);
+#endif
+    if (g_membuf && g_mempos + 4 <= g_memcap) {
+        memcpy(g_membuf + g_mempos, &val, 4);
+        g_mempos += 4;
+    } else {
+        mem_write(&val, 4);
+    }
 }
 
 static inline void put_u16(uint16_t val) {
-    uint8_t buf[2];
-    buf[0] = (uint8_t)(val >> 8);
-    buf[1] = (uint8_t)val;
-    mem_write(buf, 2);
+#ifndef WORDS_BIGENDIAN
+    val = BSWAP16(val);
+#endif
+    if (g_membuf && g_mempos + 2 <= g_memcap) {
+        memcpy(g_membuf + g_mempos, &val, 2);
+        g_mempos += 2;
+    } else {
+        mem_write(&val, 2);
+    }
 }
 
 static inline void put_u8(uint8_t val) { mem_write(&val, 1); }
@@ -170,10 +198,10 @@ static inline long start_atom(const char *name) {
 static inline void end_atom(long pos) {
     if (g_membuf) {
         uint32_t size = (uint32_t)(g_mempos - pos);
-        g_membuf[pos + 0] = (uint8_t)(size >> 24);
-        g_membuf[pos + 1] = (uint8_t)(size >> 16);
-        g_membuf[pos + 2] = (uint8_t)(size >> 8);
-        g_membuf[pos + 3] = (uint8_t)size;
+#ifndef WORDS_BIGENDIAN
+        size = BSWAP32(size);
+#endif
+        memcpy(g_membuf + pos, &size, 4);
     } else if (g_mp4.fout) {
         long curr = ftell(g_mp4.fout);
         fseek(g_mp4.fout, pos, SEEK_SET);
@@ -193,8 +221,10 @@ static uint32_t get_mp4_time(void) {
 static void put_descriptor(uint8_t tag, uint32_t size) {
     uint8_t buf[5];
     buf[0] = tag;
-    for (int i = 3; i >= 0; i--)
-        buf[4 - i] = ((size >> (7 * i)) & 0x7f) | (i ? 0x80 : 0);
+    buf[1] = ((size >> 21) & 0x7f) | 0x80;
+    buf[2] = ((size >> 14) & 0x7f) | 0x80;
+    buf[3] = ((size >> 7) & 0x7f) | 0x80;
+    buf[4] = (size & 0x7f);
     mem_write(buf, 5);
 }
 
@@ -222,6 +252,7 @@ int mp4_open(const char *path, int overwrite) {
     if (!overwrite && access(path, 0) == 0) return 1;
     g_mp4.fout = fopen(path, "wb");
     if (!g_mp4.fout) return 1;
+    setvbuf(g_mp4.fout, NULL, _IOFBF, 65536);
 
     g_mp4.frame.bufsize = 1024;
     g_mp4.frame.data = (uint32_t *)malloc(g_mp4.frame.bufsize * sizeof(uint32_t));
@@ -231,16 +262,10 @@ int mp4_open(const char *path, int overwrite) {
     g_membuf = (uint8_t *)malloc(g_memcap);
 
     long ftyp = start_atom("ftyp");
-    put_data("M4A ", 4);
-    put_u32(0);
-    put_data("M4A mp42isom", 12);
-    put_u32(0);
+    put_data("M4A \0\0\0\0M4A mp42isom", 20);
     end_atom(ftyp);
 
-    long free_box = start_atom("free");
-    end_atom(free_box);
-
-    fwrite(g_membuf, 1, g_mempos, g_mp4.fout);
+    fwrite_unlocked(g_membuf, 1, g_mempos, g_mp4.fout);
     free(g_membuf);
     g_membuf = NULL;
 
@@ -308,7 +333,7 @@ int mp4_add_custom_tag(const char *name, const char *value) {
 int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
     if (!g_mp4.fout) return -1;
 
-    if (fwrite(data, 1, size, g_mp4.fout) != size)
+    if (fwrite_unlocked(data, 1, size, g_mp4.fout) != size)
         return -1;
     g_mp4.mdatsize += size;
     g_mp4.samples += samples;
@@ -323,7 +348,7 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
             if (g_mp4.bitrate.max < br)
                 g_mp4.bitrate.max = br;
             g_mp4.bitrate.size = 0;
-            g_mp4.bitrate.samples = 0;
+            g_mp4.bitrate.samples -= g_mp4.samplerate;
         }
         g_mp4.framesamples = samples;
     }
@@ -550,13 +575,14 @@ int mp4_finish(void) {
             g_memcap = new_cap;
         }
         uint8_t *p = g_membuf + g_mempos;
+#ifdef WORDS_BIGENDIAN
+        memcpy(p, g_mp4.frame.data, stsz_size);
+#else
         for (uint32_t i = 0; i < g_mp4.frame.ents; i++) {
-            uint32_t val = g_mp4.frame.data[i];
-            *p++ = (uint8_t)(val >> 24);
-            *p++ = (uint8_t)(val >> 16);
-            *p++ = (uint8_t)(val >> 8);
-            *p++ = (uint8_t)val;
+            uint32_t val = BSWAP32(g_mp4.frame.data[i]);
+            memcpy(p + i * 4, &val, 4);
         }
+#endif
         g_mempos += stsz_size;
     }
     end_atom(stsz);
@@ -594,7 +620,7 @@ int mp4_finish(void) {
     end_atom(udta);
     end_atom(moov);
 
-    fwrite(g_membuf, 1, g_mempos, g_mp4.fout);
+    fwrite_unlocked(g_membuf, 1, g_mempos, g_mp4.fout);
     free(g_membuf);
     g_membuf = NULL;
     return 0;
