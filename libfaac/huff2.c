@@ -55,6 +55,12 @@ static hcode16_t * const hmap[12] = {
     book06, book07, book08, book09, book10, book11
 };
 
+/* Bitwise branchless non-zero check: returns 1 if x != 0, else 0. */
+static inline int is_nonzero(int x)
+{
+    return (int)(((unsigned int)x | (unsigned int)-x) >> 31);
+}
+
 /* Fast bit-length sizing for quantization trials. */
 static int huffcode_size(int *qs, int len, int bnum)
 {
@@ -75,8 +81,8 @@ static int huffcode_size(int *qs, int len, int bnum)
         for (i = 0; i < len; i += 4) {
             int idx = DIM_M4*DIM_M4*DIM_M4 * abs(qs[i]) + DIM_M4*DIM_M4 * abs(qs[i+1]) + DIM_M4 * abs(qs[i+2]) + abs(qs[i+3]);
             bits += book[idx].len;
-            /* Branchless sign-bit counting */
-            bits += (qs[i] != 0) + (qs[i+1] != 0) + (qs[i+2] != 0) + (qs[i+3] != 0);
+            /* Branchless sign-bit counting using bitwise logic */
+            bits += is_nonzero(qs[i]) + is_nonzero(qs[i+1]) + is_nonzero(qs[i+2]) + is_nonzero(qs[i+3]);
         }
         break;
     case HCB_5:
@@ -91,7 +97,7 @@ static int huffcode_size(int *qs, int len, int bnum)
         for (i = 0; i < len; i += 2) {
             int idx = DIM_M2_7 * abs(qs[i]) + abs(qs[i+1]);
             bits += book[idx].len;
-            bits += (qs[i] != 0) + (qs[i+1] != 0);
+            bits += is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
         }
         break;
     case HCB_9:
@@ -99,7 +105,7 @@ static int huffcode_size(int *qs, int len, int bnum)
         for (i = 0; i < len; i += 2) {
             int idx = DIM_M2_12 * abs(qs[i]) + abs(qs[i+1]);
             bits += book[idx].len;
-            bits += (qs[i] != 0) + (qs[i+1] != 0);
+            bits += is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
         }
         break;
     case HCB_ESC:
@@ -109,7 +115,7 @@ static int huffcode_size(int *qs, int len, int bnum)
             int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
             int idx = DIM_ESC * v0 + v1;
             bits += book[idx].len;
-            bits += (qs[i] != 0) + (qs[i+1] != 0);
+            bits += is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
             if (x0 >= LAV_ESC) bits += escape(x0, NULL);
             if (x1 >= LAV_ESC) bits += escape(x1, NULL);
         }

@@ -20,9 +20,21 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <string.h>
 #include "stereo.h"
 #include "huff2.h"
 #include "util.h"
+
+/* Fast memory-clearing utility for suppressed channels. */
+static inline void apply_mute(faac_real * restrict s0, int start, int len, int wstart, int wend)
+{
+    int win, i;
+    for (win = wstart; win < wend; win++) {
+        faac_real * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
+        for (i = 0; i < len; i++)
+            s[i] = 0.0;
+    }
+}
 
 /* When one component (mid or side) dominates, collapse both channels to that
  * component and zero the other — it costs no bits and the signal loss is masked.
@@ -136,7 +148,7 @@ static void stereo(CoderInfo * restrict cl, CoderInfo * restrict cr,
 static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                     faac_real * restrict sl0, faac_real * restrict sr0,
                     int * restrict sfcnt, int wstart, int wend,
-                    faac_real thrmid)
+                    faac_real thrmid, faac_real thrside_sq)
 {
     int sfb, sfmin = (coder->block_type == ONLY_SHORT_WINDOW) ? 1 : 8;
     for (sfb = 0; sfb < sfmin; sfb++)
@@ -172,6 +184,15 @@ static void midside(CoderInfo * restrict coder, ChannelInfo * restrict channel,
                 apply_ms(sl0, sr0, start, len, wstart, wend, 0);
             }
         }
+        /* If M/S wasn't used, check if one channel completely masks the other.
+         * Muting the dominated channel forces HCB_ZERO, bypassing expensive Huffman sizing. */
+        if (!ms) {
+            if (el <= er * thrside_sq) {
+                apply_mute(sl0, start, len, wstart, wend);
+            } else if (er <= el * thrside_sq) {
+                apply_mute(sr0, start, len, wstart, wend);
+            }
+        }
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
     }
 }
@@ -180,7 +201,7 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
                  ChannelInfo * restrict channel,
                  faac_real * restrict sl0, faac_real * restrict sr0,
                  int * restrict sfcnt, int wstart, int wend,
-                 faac_real thrmid, faac_real inv_isthr, int is_start_sfb)
+                 faac_real thrmid, faac_real inv_isthr, faac_real thrside_sq, int is_start_sfb)
 {
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
     for (sfb = 0; sfb < sfmin; sfb++)
@@ -240,6 +261,14 @@ static int mixed(CoderInfo * restrict cl, CoderInfo * restrict cr,
         }
         if (ms)
             msused = 1;
+        else {
+            /* Sparsity check: if one channel completely masks the other. */
+            if (el <= er * thrside_sq) {
+                apply_mute(sl0, start, len, wstart, wend);
+            } else if (er <= el * thrside_sq) {
+                apply_mute(sr0, start, len, wstart, wend);
+            }
+        }
         channel->msInfo.ms_used[(*sfcnt)++] = ms;
     }
     return msused;
@@ -250,12 +279,14 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
 {
     int chn;
     faac_real inv_quality = 1.0 / quality;
-    faac_real thrmid = 1.0, isthr = 1.0;
+    faac_real thrmid = 1.0, isthr = 1.0, thrside = 0.0;
 
     if (mode == JOINT_MS) {
         thrmid = (1.09 - 1.0) * inv_quality;
         if (thrmid > 0.25) thrmid = 0.25;
         thrmid += 1.0;
+        thrside = 0.1 * inv_quality;
+        if (thrside > 0.3) thrside = 0.3;
     } else if (mode == JOINT_IS) {
         isthr = 0.18 * (inv_quality * inv_quality);
         isthr += 1.0;
@@ -266,12 +297,15 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         thrmid += 1.0;
         isthr = 0.18 * inv_quality + 1.0;
         if (isthr > M_SQRT2) isthr = M_SQRT2;
+        thrside = 0.1 * inv_quality;
+        if (thrside > 0.3) thrside = 0.3;
     }
-    /* Pre-square IS threshold so per-band energy comparisons need no sqrt.
+    /* Pre-square thresholds so per-band energy comparisons need no sqrt.
      * Each threshold scales inversely with quality — higher quality encodes
      * apply stereo coding more conservatively, touching the signal less. */
     thrmid *= thrmid;
     faac_real inv_isthr = 1.0 / (isthr * isthr);
+    faac_real thrside_sq = thrside * thrside;
 
     for (chn = 0; chn < maxchan; chn++) {
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left)
@@ -309,12 +343,12 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         for (g = 0; g < coder[chn].groups.n; g++) {
             int end = start + coder[chn].groups.len[g];
             if (mode == JOINT_MS)
-                midside(coder+chn, channel+chn, s[chn], s[rch], &sfcnt, start, end, thrmid);
+                midside(coder+chn, channel+chn, s[chn], s[rch], &sfcnt, start, end, thrmid, thrside_sq);
             else if (mode == JOINT_IS)
                 stereo(coder+chn, coder+rch, s[chn], s[rch], &sfcnt, start, end, inv_isthr);
             else if (mode == JOINT_MIXED)
                 msused |= mixed(coder+chn, coder+rch, channel+chn, s[chn], s[rch],
-                                &sfcnt, start, end, thrmid, inv_isthr, is_start_sfb);
+                                &sfcnt, start, end, thrmid, inv_isthr, thrside_sq, is_start_sfb);
             else
                 sfcnt += coder[chn].sfbn;
             start = end;
