@@ -34,7 +34,6 @@
 #include "mp4write.h"
 
 mp4config_t mp4config = { 0 };
-static FILE *((FILE *)mp4config.fout) = NULL;
 static uint8_t *g_membuf = NULL;
 static size_t g_mempos = 0;
 static size_t g_memcap = 0;
@@ -60,13 +59,19 @@ static inline void mem_write(const void *data, size_t size) {
 }
 
 static inline void put_u32(uint32_t val) {
-    uint32_t be = ((val >> 24) & 0xFF) | ((val >> 8) & 0xFF00) | ((val << 8) & 0xFF0000) | ((val << 24) & 0xFF000000);
-    mem_write(&be, 4);
+    uint8_t buf[4];
+    buf[0] = (uint8_t)(val >> 24);
+    buf[1] = (uint8_t)(val >> 16);
+    buf[2] = (uint8_t)(val >> 8);
+    buf[3] = (uint8_t)val;
+    mem_write(buf, 4);
 }
 
 static inline void put_u16(uint16_t val) {
-    uint16_t be = (uint16_t)((val >> 8) | (val << 8));
-    mem_write(&be, 2);
+    uint8_t buf[2];
+    buf[0] = (uint8_t)(val >> 8);
+    buf[1] = (uint8_t)val;
+    mem_write(buf, 2);
 }
 
 static inline void put_u8(uint8_t val) { mem_write(&val, 1); }
@@ -142,9 +147,9 @@ int mp4atom_open(char *name, int over) {
 }
 
 int mp4atom_close(void) {
-    if (((FILE *)mp4config.fout)) {
-        fclose(((FILE *)mp4config.fout));
-        ((FILE *)mp4config.fout) = NULL;
+    if (mp4config.fout) {
+        fclose((FILE *)mp4config.fout);
+        mp4config.fout = NULL;
     }
     if (mp4config.frame.data) {
         free(mp4config.frame.data);

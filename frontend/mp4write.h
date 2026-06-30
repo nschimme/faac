@@ -119,11 +119,8 @@ static inline int mp4_record_frame(uint32_t size, uint32_t samples) {
         void *tmp;
         uint32_t new_size = mp4config.frame.bufsize ? mp4config.frame.bufsize * 2 : 0x4000;
         tmp = realloc(mp4config.frame.data, new_size);
-        if (!tmp) {
-            free(mp4config.frame.data);
-            mp4config.frame.data = NULL;
+        if (!tmp)
             return -1;
-        }
         mp4config.frame.data = (uint32_t *)tmp;
         mp4config.frame.bufsize = new_size;
     }
