@@ -309,6 +309,9 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
         if (!channel[chn].present || channel[chn].type != ELEMENT_CPE || !channel[chn].ch_is_left)
             continue;
         int rch = channel[chn].paired_ch;
+        channel[chn].common_window = 0;
+        channel[chn].msInfo.is_present = 0;
+        channel[rch].msInfo.is_present = 0;
         if (coder[chn].block_type != coder[rch].block_type || coder[chn].groups.n != coder[rch].groups.n)
             continue;
         int g, ok = 1;
