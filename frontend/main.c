@@ -51,8 +51,8 @@
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
 #else
-# include "getopt.h"
-# include "getopt.c"
+# include "getopt_win.h"
+# include "getopt_win.c"
 #endif
 
 #include "mp4write.h"
