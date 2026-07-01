@@ -199,13 +199,6 @@ static inline faac_real fast_log2(faac_real x)
  * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
  * matches it to machine precision. Energy (magnitude squared) is sufficient:
  * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
-/* Reached only through the cold HE dispatcher (doHEAACFrame). Under whole-program
- * LTO that coldness propagates here and the kernel is size-optimized (scalar,
- * un-vectorized); hot keeps this DSP loop vectorized while the dispatcher itself
- * stays out of the LC fast path. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
 void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
@@ -266,13 +259,6 @@ static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *works
     }
 }
 
-/* Reached only through the cold HE dispatcher (doHEAACFrame). Under whole-program
- * LTO that coldness propagates here and the kernel is size-optimized (scalar,
- * un-vectorized); hot keeps this DSP loop vectorized while the dispatcher itself
- * stays out of the LC fast path. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
 void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
