@@ -156,23 +156,7 @@ typedef struct SBRInfo {
 struct SignalAnalysis;
 
 struct Resampler;
-
-typedef struct SBRContext {
-    unsigned long fullSampleRate;
-    unsigned int  fullSampleRateIdx;
-    int           sbr_single_rate;
-    SBRInfo      *sbrInfo;
-    struct Resampler *resampler;
-
-    /* Shared signal analysis */
-    SignalAnalysis  signalAnalysis;
-    /* Shared-detector FIFO: holds the HE block-switch decision for the last
-       SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the
-       core frame being coded now, which lags the freshest analysis by the core
-       lookahead (LOOKAHEAD_DEPTH frames); newest sits at SBR_DETECT_FIFO-1. */
-    faac_real transientStrengthFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
-    int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
-} SBRContext;
+typedef struct SBRContext SBRContext;
 
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
 /* Recompute the bitrate/single-rate-dependent band config without reallocating;
@@ -184,12 +168,21 @@ SBRContext *SbrContextInit(int channels);
 void SbrContextEnd(SBRContext *sbrCtx);
 int SbrGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize);
 unsigned int SbrGetXOverBandwidth(SBRContext *sbrCtx);
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables);
+void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, faac_real *inputFifo[MAX_CHANNELS], faac_real *heHalfRate[MAX_CHANNELS]);
+int SbrContextIsPresent(SBRContext *sCtx);
+void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate);
+void SbrContextResolveRate(SBRContext *sCtx, int sbr_single_rate, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
+int SbrContextIsSingleRate(SBRContext *sCtx);
+int SbrContextIsAnalysisValid(SBRContext *sCtx);
+int SbrContextGetWantShort(SBRContext *sCtx, int channel, int index);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
 void SbrEncode(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
 int SbrWrite(SBRInfo *sbr, struct BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
 
-int SbrGetBits(struct faacEncStruct *hEncoder, struct BitStream *bs, int writeFlag);
+int SbrGetBits(SBRContext *sCtx, struct BitStream *bs, int channels, int aacObjectType, int writeFlag);
 
 #ifdef __cplusplus
 }

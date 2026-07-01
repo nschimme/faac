@@ -30,6 +30,23 @@
 #include "resample.h"
 #include "frame.h"
 
+typedef struct SBRContext {
+    unsigned long fullSampleRate;
+    unsigned int  fullSampleRateIdx;
+    int           sbr_single_rate;
+    SBRInfo      *sbrInfo;
+    struct Resampler *resampler;
+
+    /* Shared signal analysis */
+    SignalAnalysis  signalAnalysis;
+    /* Shared-detector FIFO: holds the HE block-switch decision for the last
+       SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the
+       core frame being coded now, which lags the freshest analysis by the core
+       lookahead (LOOKAHEAD_DEPTH frames); newest sits at SBR_DETECT_FIFO-1. */
+    faac_real transientStrengthFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+    int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+} SBRContext;
+
 static void put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta)
 {
     int sym = clamp_int(delta + offset, 0, nsyms - 1);
@@ -232,6 +249,117 @@ unsigned int SbrGetXOverBandwidth(SBRContext *sbrCtx)
      * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
     return (unsigned int)((sbrCtx->sbrInfo->kx * sbrCtx->fullSampleRate) /
                            (2 * SBR_QMF_BANDS_64));
+}
+
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables)
+{
+    if (!sCtx) return;
+    if (!sCtx->sbrInfo)
+        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate,
+                                bitrate,
+                                sCtx->sbr_single_rate,
+                                fft_tables);
+    else
+        SbrUpdate(sCtx->sbrInfo, bitrate, sCtx->sbr_single_rate);
+}
+
+void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, faac_real *inputFifo[MAX_CHANNELS], faac_real *heHalfRate[MAX_CHANNELS])
+{
+    unsigned int channel;
+    Resampler *rs = sCtx->resampler;
+    faac_real *fullPtrs[MAX_CHANNELS];
+
+    for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+        faac_real *fullRate = rs->fullRate[channel];
+        fullPtrs[channel] = fullRate;
+        memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(faac_real));
+        /* Final partial frame: silence-pad the unfilled full-rate tail to
+         * prevent the resampler from consuming stale data. SbrEncode reads
+         * only [0, realPerCh), so it is unaffected. */
+        if (realPerCh < 2 * FRAME_LEN)
+            memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(faac_real));
+        heHalfRate[channel] = rs->halfRate[channel];
+    }
+
+    /* Shared signal analysis. */
+    SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, realPerCh, sCtx->sbrInfo);
+
+    /* Update the transient FIFO. Shift down by one and push
+     * the newest decision at SBR_DETECT_FIFO-1; index 0 stays aligned with the
+     * core frame being coded (LOOKAHEAD_DEPTH frames behind this analysis). */
+    for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+        memmove(&sCtx->transientStrengthFIFO[channel][0], &sCtx->transientStrengthFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(faac_real));
+        sCtx->transientStrengthFIFO[channel][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[channel].transientStrength;
+        memmove(&sCtx->wantShortFIFO[channel][0], &sCtx->wantShortFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
+        sCtx->wantShortFIFO[channel][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[channel].wantShort;
+    }
+
+    SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, realPerCh, &sCtx->signalAnalysis);
+
+    if (sCtx->sbr_single_rate) {
+        /* Single-rate (rare): the core runs at full Fs, so it consumes the
+         * full-rate signal directly — no 2:1 decimation. Stage it into halfRate
+         * (the buffer the core reads). */
+        for (channel = 0; channel < (unsigned int)numChannels; channel++)
+            memcpy(rs->halfRate[channel], rs->fullRate[channel], FRAME_LEN * sizeof(faac_real));
+    } else {
+        /* Dual-rate decimation: produces the halved-rate core signal. */
+        Resample(rs, 2 * FRAME_LEN);
+    }
+}
+
+extern SR_INFO srInfo[12+1];
+
+void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
+{
+    if (sCtx && sCtx->fullSampleRate > 0) {
+        *sampleRate    = sCtx->fullSampleRate;
+        *sampleRateIdx = sCtx->fullSampleRateIdx;
+        *srInfoPtr     = &srInfo[*sampleRateIdx];
+        sCtx->fullSampleRate = 0;
+    }
+}
+
+unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
+{
+    return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
+}
+
+void SbrContextResolveRate(SBRContext *sCtx, int sbr_single_rate, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
+{
+    if (sCtx->fullSampleRate == 0) {
+        sCtx->fullSampleRate     = *sampleRate;
+        sCtx->fullSampleRateIdx  = *sampleRateIdx;
+        sCtx->sbr_single_rate    = sbr_single_rate;
+        if (!sbr_single_rate) {
+            *sampleRate         = *sampleRate / 2;
+            *sampleRateIdx      = GetSRIndex(*sampleRate);
+            *srInfoPtr          = &srInfo[*sampleRateIdx];
+        }
+    }
+}
+
+int SbrContextIsSingleRate(SBRContext *sCtx)
+{
+    return sCtx ? sCtx->sbr_single_rate : 0;
+}
+
+int SbrContextIsAnalysisValid(SBRContext *sCtx)
+{
+    return sCtx ? sCtx->signalAnalysis.valid : 0;
+}
+
+int SbrContextGetWantShort(SBRContext *sCtx, int channel, int index)
+{
+    if (sCtx && channel < MAX_CHANNELS && index < SBR_DETECT_FIFO) {
+        return sCtx->wantShortFIFO[channel][index];
+    }
+    return 0;
+}
+
+int SbrContextIsPresent(SBRContext *sCtx)
+{
+    return (sCtx && sCtx->sbrInfo) ? 1 : 0;
 }
 
 /* Optimized log2 approximation for energy-to-decibel conversion.
@@ -639,12 +767,11 @@ int SbrWrite(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct Sign
     return totalBits;
 }
 
-int SbrGetBits(faacEncStruct *hEncoder, BitStream *bs, int writeFlag)
+int SbrGetBits(SBRContext *sCtx, BitStream *bs, int channels, int aacObjectType, int writeFlag)
 {
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrContext) {
-        SBRContext *sCtx = hEncoder->sbrContext;
+    if (aacObjectType == HE_V1 && sCtx) {
         if (sCtx->sbrInfo) {
-            int id_aac = (hEncoder->numChannels > 1) ? ID_CPE : ID_SCE;
+            int id_aac = (channels > 1) ? ID_CPE : ID_SCE;
             return SbrWrite(sCtx->sbrInfo, bs, id_aac, writeFlag, &sCtx->signalAnalysis);
         }
     }

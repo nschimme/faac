@@ -161,7 +161,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     bits += (numFillBits - bitsLeftAfterFill);
 
     /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
-    bits += SbrGetBits(hEncoder, bitStream, 1);
+    bits += SbrGetBits(hEncoder->sbrContext, bitStream, (int)numChannel, (int)hEncoder->config.aacObjectType, 1);
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
@@ -247,7 +247,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     bits += (numFillBits - bitsLeftAfterFill);
 
     /* HE-AAC: account for the SBR fill-element payload */
-    bits += SbrGetBits(hEncoder, NULL, 0);
+    bits += SbrGetBits(hEncoder->sbrContext, NULL, (int)numChannel, (int)hEncoder->config.aacObjectType, 0);
 
     /* Write ID_END terminator */
     bits += LEN_SE_ID;
