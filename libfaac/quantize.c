@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <faac.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -88,6 +89,13 @@ static faac_real gain_with_overflow_clamp(int *sfac, faac_real band_peak)
 #define AVG_ENERGY_FLOOR_FRAC  0.0010  // -30 dB floor, keeps quiet bands from collapsing the target
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050  // ~-23 dB floor, same purpose for peak energy
 
+/* HE-AAC core only: tighter than PEAK_ENERGY_FLOOR_FRAC (-17 dB). At Fs/2, peak
+ * energy in the highest bands routinely falls near the floor and would
+ * otherwise quantize to zero, leaving SBR nothing to reconstruct. */
+#define HE_PEAK_ENERGY_FLOOR_FRAC  0.0200
+/* Short-window boost: transients concentrate energy into a narrower tile -> smaller margin. */
+#define HE_SHORT_BLOCK_FLOOR_BOOST ((faac_real)1.5)
+
 typedef struct
 {
     faac_real sum;      /* energy summed across group windows */
@@ -133,7 +141,7 @@ static faac_real treble_rolloff(int lo, int hi, faac_real inv_block_len)
     return 10.0 / (1.0 + (faac_real)(lo + hi) * inv_block_len);
 }
 
-static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, faac_real quality,
+static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, faac_real quality, unsigned int objectType,
                                     const BandEnergy * __restrict be,
                                     faac_real * __restrict target_out, faac_real * __restrict avg_out)
 {
@@ -176,6 +184,21 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, faac_rea
         if (ci->block_type == ONLY_SHORT_WINDOW)
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
+
+        /* HE-AAC core only: raise masking floor so bands near the SBR crossover survive
+         * quantization. At Fs/2 the default floors are too loose and whole bands
+         * round to zero; SBR then mirrors that silence into the high band. */
+        if (objectType == HE_V1) {
+            faac_real avg_floor = ref * PEAK_ENERGY_FLOOR_FRAC;
+            faac_real avg_eff = avg > avg_floor ? avg : avg_floor;
+            faac_real peak_floor = ref * HE_PEAK_ENERGY_FLOOR_FRAC;
+            faac_real peak_eff = peak > peak_floor ? peak : peak_floor;
+            faac_real target_floor = AVG_ENERGY_WEIGHT * loudness(avg_eff / ref)
+                                    + (1.0 - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak_eff / ref);
+            target_floor *= treble_rolloff(lo, hi, inv_block_len);
+            if (ci->block_type == ONLY_SHORT_WINDOW) target_floor *= HE_SHORT_BLOCK_FLOOR_BOOST;
+            if (target < target_floor) target = target_floor;
+        }
 
         target_out[sfb] = target * quality;
         avg_out[sfb] = be[sfb].sum;
@@ -298,7 +321,7 @@ void ResetCoderSections(CoderInfo *coder)
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg, unsigned int objectType)
 {
     faac_real target[MAX_SCFAC_BANDS], bandenrg[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
@@ -314,7 +337,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         measure_band_energy(coder, gxr, i, be);
         for (sfb = 0; sfb < coder->sfbn; sfb++)
             bandpeak[sfb] = be[sfb].peak_amp;
-        derive_masking_targets(coder, i, (faac_real)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
+        derive_masking_targets(coder, i, (faac_real)aacquantCfg->quality / DEFQUAL, objectType, be, target, bandenrg);
         assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }

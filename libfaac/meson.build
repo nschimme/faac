@@ -74,7 +74,6 @@ common_args = {
 
 default_lib = get_option('default_library')
 
-# LTO on the static archive ships unportable compiler bytecode, so keep it off.
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',
@@ -99,7 +98,7 @@ if default_lib == 'shared' or default_lib == 'both'
     )
 endif
 
-# Prefer the LTO shared library for the frontend and pkgconfig.
+# Prefer the shared library for the frontend and pkgconfig.
 if default_lib == 'static'
     libfaac = libfaac_static
 else

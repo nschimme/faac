@@ -1,0 +1,83 @@
+/*
+ * FAAC - Freeware Advanced Audio Coder
+ * Copyright (C) 2026 Nils Schimmelmann
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#ifndef SBR_ANALYSIS_H
+#define SBR_ANALYSIS_H
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "faac_real.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef SBR_QMF_BANDS_64
+#define SBR_QMF_BANDS_64 64
+#endif
+
+#ifndef SBR_MAX_ENVELOPES
+#define SBR_MAX_ENVELOPES 2
+#endif
+
+#ifndef MAX_CHANNELS
+#define MAX_CHANNELS 64
+#endif
+
+struct SBRInfo;
+
+/* SignalAnalysisChannel: per-frame, per-channel full-rate analysis results. */
+typedef struct SignalAnalysisChannel {
+    int       transientSlot;      /* QMF slot index of peak attack (-1 = none) */
+    faac_real transientStrength; /* peak/mean slot-power ratio (tratio) */
+    int       wantShort;          /* core block-switch decision */
+    faac_real lastVal;            /* time-domain sample carryover for HP filter */
+    faac_real bandTonality[SBR_QMF_BANDS_64]; /* 0=noise-like .. 1=tonal */
+    faac_real bandHalfE[2][SBR_QMF_BANDS_64]; /* Accumulated QMF energy per envelope */
+} SignalAnalysisChannel;
+
+typedef struct SignalAnalysis {
+    int valid;                /* set only on the HE path */
+    int numSlots;
+    int sampled;              /* decimation-aware slot count */
+
+    /* Frame envelope grid, chosen once for the whole frame from the strongest
+     * transient across channels. The QMF energy in each channel's bandHalfE[] is
+     * integrated over these borders, and the grid is replayed into the bitstream
+     * (see SBRInfo.frameClass/tEnv/bsPointer). frameClass is FIXFIX or VARFIX;
+     * tEnv[0..numEnvelopes] are borders in SBR time slots; envSampled[] is the
+     * decimated-slot count in each envelope (for energy normalisation). */
+    int frameClass;
+    int numEnvelopes;
+    int tEnv[SBR_MAX_ENVELOPES + 1];
+    int bsPointer;
+    int envSampled[SBR_MAX_ENVELOPES];
+
+    SignalAnalysisChannel ch[MAX_CHANNELS];
+} SignalAnalysis;
+
+void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
