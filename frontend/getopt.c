@@ -15,10 +15,6 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- * Sponsored in part by the Defense Advanced Research Projects
- * Agency (DARPA) and Air Force Research Laboratory, Air Force
- * Materiel Command, USAF, under agreement number F39502-99-1-0512.
  */
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -51,28 +47,24 @@
 
 #include "getopt.h"
 
-#if !defined(HAVE_GETOPT_H)
+/* Only compile this implementation if we don't have a system getopt.h */
+#ifndef HAVE_GETOPT_H
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#define REPLACE_GETOPT          /* use this getopt as the system getopt(3) */
-
-#ifdef REPLACE_GETOPT
 int     opterr = 1;             /* if error message should be printed */
 int     optind = 1;             /* index into parent argv vector */
 int     optopt = '?';           /* character checked for validity */
-#undef  optreset                /* see getopt.h */
-#define optreset                __mingw_optreset
 int     optreset;               /* reset getopt */
 char    *optarg;                /* argument associated with option */
-#endif
 
 #define PRINT_ERROR     ((opterr) && (*options != ':'))
 
@@ -85,17 +77,10 @@ char    *optarg;                /* argument associated with option */
 #define BADARG          ((*options == ':') ? (int)':' : (int)'?')
 #define INORDER         (int)1
 
-#if defined(_WIN32) && !defined(__CYGWIN__)
-#define __progname __argv[0]
-#else
-static char *__progname = "faac";
-#endif
+/* Portable program name for error reporting */
+static const char *__progname = "faac";
 
-#ifdef __CYGWIN__
-static char EMSG[] = "";
-#else
 #define EMSG            ""
-#endif
 
 static int getopt_internal(int, char * const *, const char *,
                            const struct option *, int *, int);
@@ -337,7 +322,7 @@ getopt_internal(int nargc, char * const *nargv, const char *options,
 
         /*
          * XXX Some GNU programs (like cvs) set optind to 0 instead of
-         * Work around this.
+         * using optreset.  Work around this.
          */
         if (optind == 0)
                 optind = 1;
@@ -507,25 +492,21 @@ start:
         return (optchar);
 }
 
-#ifdef REPLACE_GETOPT
 /*
  * getopt --
  *      Parse argc/argv argument vector.
- *
- * [eventually this will replace the BSD getopt]
  */
-WINGETOPT_API int
+int
 getopt(int nargc, char * const *nargv, const char *options)
 {
         return (getopt_internal(nargc, nargv, options, NULL, NULL, 0));
 }
-#endif /* REPLACE_GETOPT */
 
 /*
  * getopt_long --
  *      Parse argc/argv argument vector.
  */
-WINGETOPT_API int
+int
 getopt_long(int nargc, char * const *nargv, const char *options,
     const struct option *long_options, int *idx)
 {
@@ -537,7 +518,7 @@ getopt_long(int nargc, char * const *nargv, const char *options,
  * getopt_long_only --
  *      Parse argc/argv argument vector.
  */
-WINGETOPT_API int
+int
 getopt_long_only(int nargc, char * const *nargv, const char *options,
     const struct option *long_options, int *idx)
 {
