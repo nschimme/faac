@@ -52,6 +52,13 @@ static void analyze_energy_single_rate(struct SBRInfo *sbr, const faac_real *wor
 
 /* AnalyzeSignal: compute transient position, strength, per-band tonality,
  * and accumulate envelope energies over the full-rate signal in ONE pass. */
+/* Reached only through the cold HE dispatcher (doHEAACFrame). Under whole-program
+ * LTO that coldness propagates here and the kernel is size-optimized (scalar,
+ * un-vectorized); hot keeps this DSP loop vectorized while the dispatcher itself
+ * stays out of the LC fast path. */
+#if defined(__GNUC__)
+__attribute__((hot))
+#endif
 void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
