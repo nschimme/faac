@@ -27,6 +27,8 @@
 #include "bitstream.h"
 #include "util.h"
 #include "sbr_analysis.h"
+#include "resample.h"
+#include "frame.h"
 
 static void put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int offset, int delta)
 {
@@ -170,6 +172,66 @@ void SbrEnd(SBRInfo *sbr)
     if (!sbr) return;
     /* fftTables is borrowed from the encoder; the core terminates it. */
     FreeMemory(sbr);
+}
+
+SBRContext *SbrContextInit(int channels)
+{
+    SBRContext *sbrCtx = (SBRContext *)AllocMemory(sizeof(SBRContext));
+    if (sbrCtx) {
+        SetMemory(sbrCtx, 0, sizeof(SBRContext));
+        sbrCtx->resampler = ResampleInit(channels);
+        if (!sbrCtx->resampler) {
+            FreeMemory(sbrCtx);
+            return NULL;
+        }
+    }
+    return sbrCtx;
+}
+
+void SbrContextEnd(SBRContext *sbrCtx)
+{
+    if (!sbrCtx) return;
+    if (sbrCtx->sbrInfo) {
+        SbrEnd(sbrCtx->sbrInfo);
+    }
+    if (sbrCtx->resampler) {
+        ResampleEnd(sbrCtx->resampler);
+    }
+    FreeMemory(sbrCtx);
+}
+
+int SbrGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize)
+{
+    /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
+     * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
+     * Fs/2 for dual-rate SBR and Fs for single-rate. */
+    *pSize = 5;
+    *ppBuffer = (unsigned char *)malloc(5);
+    if (*ppBuffer == NULL) return -3;
+    memset(*ppBuffer, 0, 5);
+    BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
+    PutBit(pBitStream, LOW,                         5);  /* core object type */
+    PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2 dual-rate, Fs single-rate) */
+    PutBit(pBitStream, channels,                     4);
+    PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
+    PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
+    PutBit(pBitStream, 0, 1);                            /* extensionFlag */
+    PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
+    PutBit(pBitStream, 5,                           5);  /* extObjectType = SBR */
+    PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
+    /* SBR output rate: 2*core for dual-rate, same as core for single-rate. */
+    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);
+    CloseBitStream(pBitStream);
+    return 0;
+}
+
+unsigned int SbrGetXOverBandwidth(SBRContext *sbrCtx)
+{
+    if (!sbrCtx || !sbrCtx->sbrInfo) return 0;
+    /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
+     * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
+    return (unsigned int)((sbrCtx->sbrInfo->kx * sbrCtx->fullSampleRate) /
+                           (2 * SBR_QMF_BANDS_64));
 }
 
 /* Optimized log2 approximation for energy-to-decibel conversion.
@@ -575,4 +637,16 @@ int SbrWrite(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct Sign
 
     if (writeFlag) { sbr->headerSent = 1; sbr->frameCount++; }
     return totalBits;
+}
+
+int SbrGetBits(faacEncStruct *hEncoder, BitStream *bs, int writeFlag)
+{
+    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrContext) {
+        SBRContext *sCtx = hEncoder->sbrContext;
+        if (sCtx->sbrInfo) {
+            int id_aac = (hEncoder->numChannels > 1) ? ID_CPE : ID_SCE;
+            return SbrWrite(sCtx->sbrInfo, bs, id_aac, writeFlag, &sCtx->signalAnalysis);
+        }
+    }
+    return 0;
 }

@@ -24,14 +24,34 @@
 #include "config.h"
 #endif
 
-#include "bitstream.h"
 #include "coder.h"
 #include "faac_real.h"
 #include "fft.h"
+#include "sbr_analysis.h"
+
+/* Input sample FIFO slots, each one frame (FRAME_LEN samples) wide, relative to
+   the frame currently being coded (FIFO_CURR): one frame behind (FIFO_PAST,
+   reused as the MDCT overlap) and two frames ahead. The two ahead slots are
+   needed because the block-switch energy analysis works on 2-frame-wide windows
+   and keeps one window of lookahead, whose far edge reaches two frames ahead. */
+#define LOOKAHEAD_DEPTH 2
+#define FIFO_PAST       0
+#define FIFO_CURR       1
+#define FIFO_AHEAD1     2
+#define FIFO_AHEAD2     3
+
+/* Depth of the HE shared-detector decision FIFO. Sized so index 0 lines up with
+   the core frame currently being coded: the core lags the freshest SBR analysis
+   by LOOKAHEAD_DEPTH frames, so index 0 must be LOOKAHEAD_DEPTH entries behind
+   the newest (one extra slot for the newest entry itself). */
+#define SBR_DETECT_FIFO (LOOKAHEAD_DEPTH + 1)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct BitStream;
+struct faacEncStruct;
 
 #define SBR_QMF_BANDS_64     64
 #define SBR_QMF_OVL_LEN_64   576
@@ -135,15 +155,41 @@ typedef struct SBRInfo {
 
 struct SignalAnalysis;
 
+struct Resampler;
+
+typedef struct SBRContext {
+    unsigned long fullSampleRate;
+    unsigned int  fullSampleRateIdx;
+    int           sbr_single_rate;
+    SBRInfo      *sbrInfo;
+    struct Resampler *resampler;
+
+    /* Shared signal analysis */
+    SignalAnalysis  signalAnalysis;
+    /* Shared-detector FIFO: holds the HE block-switch decision for the last
+       SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the
+       core frame being coded now, which lags the freshest analysis by the core
+       lookahead (LOOKAHEAD_DEPTH frames); newest sits at SBR_DETECT_FIFO-1. */
+    faac_real transientStrengthFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+    int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+} SBRContext;
+
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
 /* Recompute the bitrate/single-rate-dependent band config without reallocating;
  * lets SetConfiguration toggle sub-mode on an existing handle. */
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate);
 void SbrEnd(SBRInfo *sbr);
 
+SBRContext *SbrContextInit(int channels);
+void SbrContextEnd(SBRContext *sbrCtx);
+int SbrGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize);
+unsigned int SbrGetXOverBandwidth(SBRContext *sbrCtx);
+
 void SbrQmfAnalysis(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);
 void SbrEncode(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
-int SbrWrite(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
+int SbrWrite(SBRInfo *sbr, struct BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa);
+
+int SbrGetBits(struct faacEncStruct *hEncoder, struct BitStream *bs, int writeFlag);
 
 #ifdef __cplusplus
 }
