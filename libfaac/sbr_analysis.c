@@ -19,6 +19,7 @@
 
 #include "sbr_analysis.h"
 #include "sbr.h"
+#include "sbr_internal.h"
 #include "util.h"
 #include <string.h>
 
