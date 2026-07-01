@@ -50,7 +50,7 @@ extern "C" {
 
 #include <faaccfg.h>
 
-typedef struct {
+typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
