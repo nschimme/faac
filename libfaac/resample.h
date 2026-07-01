@@ -31,29 +31,21 @@
 extern "C" {
 #endif
 
-/* Always-float storage for the half-band FIR coefficients: inherently
- * float-precision design constants, kept independent of faac_real so a double
- * build doesn't store them at 2x width. Products promote to faac_real at use. */
 typedef float resfloat;
 
-/* 63-tap equiripple half-band FIR, -6 dB at Fs/4. Minimum length for ≥60 dB alias
- * rejection in [Fs/4..Fs/2]; SBR crossover at 7-9.5 kHz is well inside the passband. */
 #define RESAMPLE_FILTER_LEN 63
 
 typedef struct Resampler {
     faac_real  buf     [MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* FIR overlap state (carries between frames) */
     faac_real  fullRate[MAX_CHANNELS][2 * FRAME_LEN];       /* full-rate input: caller fills, SBR reads, FIR consumes */
-    faac_real  halfRate[MAX_CHANNELS][FRAME_LEN];           /* downsampled output: written by Resample2to1 */
+    faac_real  halfRate[MAX_CHANNELS][FRAME_LEN];           /* downsampled output: written by Resample */
     int        channels;
 } Resampler;
 
-Resampler *ResampleOpen(int channels);
-void ResampleClose(Resampler *r);
+Resampler *ResampleInit(int channels);
+void ResampleEnd(Resampler *r);
 
-/* Resample2to1 - 2:1 downsample from r->fullRate into r->halfRate.
- * input_len: full-rate samples per channel (≤ 2*FRAME_LEN).
- * Returns output samples produced per channel (= input_len/2). */
-int Resample2to1(Resampler *r, int input_len);
+int Resample(Resampler *r, int input_len);
 
 #ifdef __cplusplus
 }

@@ -192,7 +192,7 @@ static void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, P
   int desire = ONLY_LONG_WINDOW;
 
   /* Shared transient override for HE-AAC path.
-   * Core delay alignment: AnalyzeSignal runs on frame N full-rate; core
+   * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
    * uses the FIFO. */
   if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->signalAnalysis.valid)

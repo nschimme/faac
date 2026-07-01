@@ -41,6 +41,7 @@ common_src = [
     'quantize.h',
     'sbr.c',
     'sbr.h',
+    'sbr_tables.c',
     'sbr_tables.h',
     'sbr_analysis.c',
     'sbr_analysis.h',

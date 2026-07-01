@@ -34,8 +34,8 @@ static void put_huff(BitStream *bs, const SBRHuffEntry *table, int nsyms, int of
     PutBit(bs, table[sym].code, table[sym].len);
 }
 
-/* kx and k2 implement ISO 14496-3:2009 §4.6.18.3.2 (Master Frequency Band Table).
- * temp (Table 4.84) and max_span (Table 4.85) are mandatory spec constants; do not tune. */
+/* SBR master frequency band table (ISO 14496-3:2009 §4.6.18.3.2).
+ * kx and k2 constants are spec-mandatory to ensure decoder compatibility. */
 static int compute_kx(int sampleRate, int bs_start_freq, int singleRate)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -76,8 +76,9 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
 }
 
-/* ISO 14496-3:2009 §4.6.18.3.2 master_frequency_table_fs():
- * uniform dk-spaced edges kx..k2, remainder distributed to first/last pair. */
+/* Distribute QMF bands into SBR master bands using uniform dk-spacing.
+ * Residual bands are merged into the first/last pairs to maintain a
+ * monotonic frequency grid. */
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
@@ -97,7 +98,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables)
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -106,8 +107,9 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int single
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
 
-    /* Twiddles for the 64-point FFT-based QMF (see qmf_analysis_64_slot_energy_fft);
-     * rate-independent, so they live in the one-time init, not SBRUpdate. */
+    /* Pre-calculate twiddle factors for the FFT-based QMF analysis.
+     * These coefficients rotate the subband indices into the odd-frequency
+     * DFT space required by the SBR modulation kernel. */
     for (int m = 0; m < SBR_QMF_BANDS_64; m++) {
         sbr->twidCos[m] = (faac_real)cos(M_PI * m / 64.0);
         sbr->twidSin[m] = (faac_real)sin(M_PI * m / 64.0);
@@ -119,23 +121,21 @@ SBRInfo *SBRInit(int channels, int sampleRate, unsigned long bitRate, int single
      * logm=6 table is built lazily on first use, single-threaded per encoder. */
     sbr->fftTables = fft_tables;
 
-    SBRUpdate(sbr, bitRate, singleRate);
+    SbrUpdate(sbr, bitRate, singleRate);
     return sbr;
 }
 
-/* Band/bitrate configuration; split out of SBRInit so SetConfiguration can
- * re-resolve the sub-mode on an existing handle without reallocating. */
-void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
+/* Re-resolve SBR operational parameters (crossover, resolution) when the
+ * bitrate or sample rate changes, avoiding handle reallocation. */
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
 {
     int sampleRate = sbr->sampleRate;
     sbr->singleRate = singleRate;
     unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
-    /* Crossover at the top index (kx ~ 11.6 kHz, just under the Fs/2 core ceiling):
-     * a ViSQOL sweep showed pushing it lower hurts at every bitrate (SBR's
-     * parametric 8-12 kHz reconstruction is perceptually worse than the real,
-     * if bit-starved, core there) -- including the low-rate range, where the old
-     * bs_start_freq=12 cost ~0.4 MOS vs 15. */
+    /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
+     * Higher-order parametric reconstruction below 10 kHz is audible and
+     * generally inferior to the bit-starved LC core. */
     if (rate_per_ch <= SBR_COARSE_TABLE_BITRATE_BPS) {
         sbr->bs_start_freq = 15;
         sbr->bs_alter_scale = 1;
@@ -145,7 +145,7 @@ void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
         sbr->bs_alter_scale = 0;
         sbr->dk = 1;
     }
-    /* k2 lands ~3/4 of the way to Nyquist (18.4 kHz at 48 kHz input). */
+    /* Stop frequency covers approximately 75% of the upper octave. */
     sbr->bs_stop_freq = 10;
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
@@ -154,10 +154,8 @@ void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq, singleRate);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
 
-    /* Single-rate (rare): the QMF spans 64 bands over 2048 samples, but a
-     * single-rate frame is only 1024 samples. AnalyzeSignal/SBRAnalysis run a
-     * 32-sample hop (32 slots) and fold the 64 QMF bands into 32 by summing
-     * adjacent pairs, so all bitstream indexing lives in the 32-band space. */
+    /* Single-rate folding: reduces the 64-band subband space to 32 bands
+     * to fit the 1024-sample frame length while preserving spectral span. */
     if (singleRate) {
         sbr->kx >>= 1;
         sbr->k2 >>= 1;
@@ -167,15 +165,15 @@ void SBRUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
     build_freq_table(sbr);
 }
 
-void SBREnd(SBRInfo *sbr)
+void SbrEnd(SBRInfo *sbr)
 {
     if (!sbr) return;
     /* fftTables is borrowed from the encoder; the core terminates it. */
     FreeMemory(sbr);
 }
 
-/* Schlick '94 linear mantissa approx: log2(1+m) ≈ m*(A - B*m); max error ~0.086 bits.
- * Adequate: SBR envelope quantiser step is 1.5-3 dB (0.5-1 bit). */
+/* Optimized log2 approximation for energy-to-decibel conversion.
+ * Precision is sufficient for the 1.5/3.0 dB envelope quantizer. */
 #define FAST_LOG2_A         1.3424f
 #define FAST_LOG2_B         0.3427f
 #define FAST_LOG2_MANT_NORM (1.0f / (1 << 23))  /* 23-bit mantissa → [0, 1) */
@@ -188,25 +186,15 @@ static inline faac_real fast_log2(faac_real x)
     return (faac_real)(exp - 127) + (faac_real)(m * (FAST_LOG2_A - FAST_LOG2_B * m));
 }
 
-/* 64-band analysis slot energy via a single 64-point complex FFT.
- *
- * Energy discards the per-band unit-modulus phase, so the modulation is just
- * the odd-frequency DFT S_k = sum_{n<128} u[n]*exp(-j*pi*(2k+1)*n/128) of the
- * REAL 128-tap window output u. Split u into even/odd a[m]=u[2m], b[m]=u[2m+1]
- * (m<64): S_k = A_k + w_k*B_k with w_k=exp(-j*pi*(2k+1)/128) and A,B the 64-pt
- * odd-DFTs of a,b. Pack c[m]=a[m]+j*b[m], pre-twiddle, and run ONE 64-point
- * FFT; A_k and B_k fall out of D_k and D_{63-k} via the conjugate symmetry of
- * the two real subsequences. ~2x fewer FFT flops than the 128-point form;
- * matches it to machine precision. Energy (magnitude squared) is sufficient:
- * the bitstream carries per-band magnitudes; the decoder reconstructs phase. */
-/* Reached only through the cold HE dispatcher (doHEAACFrame). Under whole-program
- * LTO that coldness propagates here and the kernel is size-optimized (scalar,
- * un-vectorized); hot keeps this DSP loop vectorized while the dispatcher itself
- * stays out of the LC fast path. */
+/* 64-band subband energy analysis using a 64-point complex FFT.
+ * Leverages conjugate symmetry to extract two 64-point real-subsequence
+ * DFTs from one complex transform, reducing FLOPs by ~50% compared to
+ * a standard 128-point implementation. Phase info is discarded as the
+ * SBR bitstream only transmits envelope magnitudes. */
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
-void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
+void SbrQmfAnalysis(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2)
 {
     faac_real xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
@@ -247,9 +235,8 @@ void qmf_analysis_64_slot_energy_fft(SBRInfo *sbr, const faac_real * restrict ov
 }
 
 
-/* Single-rate (rare) fallback energy accumulation: the 64-band QMF is folded to
- * 32 bands by summing adjacent pairs. Kept out of line so the dual-rate path in
- * SBRAnalysis below compiles exactly as it did before single-rate existed. */
+/* Single-rate fallback energy accumulation. Folds 64 QMF bands into 32 by
+ * summing adjacent pairs. */
 static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *workspace,
                                             int num_slots, int half_slots, int kx, int k2,
                                             faac_real bandHalfE[2][SBR_QMF_BANDS_64])
@@ -259,7 +246,7 @@ static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *works
         if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
         faac_real slotEnergy[SBR_QMF_BANDS_64];
-        qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
+        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
         int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
         for (int k = kx; k < k2; k++)
             bandHalfE[h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
@@ -273,7 +260,7 @@ static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *works
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
-void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
+void SbrEncode(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64, kx = sbr->kx, k2 = sbr->k2;
     int nch = clamp_int(numChannels, 1, 2);
@@ -281,7 +268,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     faac_real bandHalfE[2][2][SBR_QMF_BANDS_64];
     faac_real tratio = (faac_real)0.0;
 
-    /* New frame: the cached fill-element payload (built by SBRWriteBitstream) is now
+    /* New frame: the cached fill-element payload (built by SbrWrite) is now
      * stale. Invalidate it so the next write rebuilds from this frame's envelopes. */
     sbr->payloadValid = 0;
 
@@ -308,7 +295,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    qmf_analysis_64_slot_energy_fft(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
+                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, k2);
                     int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
                     for (int k = kx; k < k2; k++) bandHalfE[ch][h][k] += slotEnergy[k];
                 }
@@ -317,9 +304,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
     }
 
-    /* Adopt the frame grid chosen by AnalyzeSignal (which also binned the
-     * envelope energies over these borders). The fallback path has no analysis,
-     * so it stays single-envelope FIXFIX. */
+    /* Adopt the temporal grid and envelope borders from the psychoacoustic
+     * detector. Fallback to a single-envelope FIXFIX grid if analysis data
+     * is unavailable. */
     if (sa && sa->valid) {
         sbr->numEnvelopes = sa->numEnvelopes;
         sbr->frameClass   = sa->frameClass;
@@ -337,11 +324,10 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         int invf_mode = 3;
 
-        /* Tonality-driven noise floor / invf mode.
-         * Note: Higher noiseData value = LOWER injected noise.
-         * Tonality measure is E_orig / E_transposed.
-         * High tonality (tonality -> 1.0) = original matches transposed = tonal = LESS noise needed = HIGHER noise_level.
-         * Low tonality (tonality -> 0.0) = original much lower than transposed = noisy = MORE noise needed = LOWER noise_level. */
+        /* Adaptive noise floor and inverse filtering mode.
+         * Tonal content requires less noise injection (higher noiseData) and
+         * lower whitening (invfMode). Noisy content requires more noise and
+         * stronger whitening to hide transposition artifacts. */
         if (sa && sa->valid) {
             faac_real avg_tonality = (faac_real)0.0;
             for (int k = kx; k < k2; k++) avg_tonality += sa->ch[ch].bandTonality[k];
@@ -367,8 +353,8 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
             int prevLevel = -1;
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
-                /* Slots per envelope: with a variable border the two envelopes
-                 * are unequal, so use the analysis bin counts when available. */
+                /* Weight energy by the number of QMF slots per envelope to
+                 * maintain normalized power levels across variable borders. */
                 int e_slots = (n_env == 1) ? sampled
                             : (sa && sa->valid) ? sa->envSampled[e]
                             : sampled / 2;
@@ -410,11 +396,9 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
     }
 }
 
-/* The SBR writer is single-pass: every helper unconditionally emits into the
- * BitStream it is given. Bit counting is done by replaying the exact same emit
- * sequence into a counting sink (a BitStream with data==NULL, see PutBit), so
- * the measured length and the written length can never diverge. This is what
- * lets the data-dependent variable grid (VARFIX) be counted safely. */
+/* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
+ * Replays the write sequence into a counting sink during rate control to
+ * ensure accurate bit budget allocation. */
 
 static void write_sbr_header(SBRInfo *sbr, BitStream *bs)
 {
@@ -432,8 +416,7 @@ static void write_sbr_header(SBRInfo *sbr, BitStream *bs)
     PutBit(bs, 0,                   2); /* bs_noise_bands = 0 (→ 1 noise band) */
 }
 
-/* bs_pointer width = ceil(log2(bs_num_env + 1)), indexed by bs_num_env.
- * Mirrors FFmpeg/FAAD2 ceil_log2[] (max num_env here is SBR_MAX_ENVELOPES=2). */
+/* Width of the transient pointer field, indexed by number of envelopes. */
 static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
 
 static void write_sbr_grid(SBRInfo *sbr, BitStream *bs)
@@ -550,19 +533,12 @@ static void blit_payload(BitStream *bs, const unsigned char *buf, int nbits)
     if (rem) PutBit(bs, buf[fullBytes] >> (8 - rem), rem);
 }
 
-int SBRWriteBitstream(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa)
+int SbrWrite(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
 
-    /* Build the payload once per frame, then reuse it across the three call sites
-     * (CountBitstream, the real WriteBitstream, and rate control). The length and
-     * bytes are frozen once SBRAnalysis finishes — they depend only on sbr state
-     * plus the header-period flag — so re-emitting the grid/Huffman logic on every
-     * call is pure waste. SBRAnalysis clears payloadValid once per frame; the first
-     * write after it rebuilds. Built before frameCount++ so cachedSendHeader is the
-     * value all of this frame's calls must use. payloadBuf is sized to the array-
-     * bound worst case (~690 bytes for a maxed CPE); the assert below still guards
-     * the separate fill_element esc_count limit. */
+    /* Cache SBR payload to avoid redundant Huffman encoding during rate control.
+     * The payload remains invariant once the subband analysis is complete. */
     if (!sbr->payloadValid) {
         sbr->cachedSendHeader = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
         BitStream cb;

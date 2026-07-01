@@ -23,22 +23,11 @@
 #include "coder.h"
 #include "util.h"
 
-/* Anti-alias half-band FIR for the exact 2:1 decimation (RESAMPLE_FILTER_LEN
- * taps, equiripple, -6 dB at fs/4 = 12 kHz @48 k). A half-band filter has every
- * second tap equal to zero, so only the 32 even-indexed taps plus the centre
- * tap are non-zero: ~half the multiplies of a general FIR for the same length.
- *
- * The non-zero even taps are stored here in polyphase form: hb_even[m] is the
- * full filter's tap 2m. They are applied to the even-phase (decimated) input,
- * a unit-stride dot product that auto-vectorises (NEON/SSE) cleanly. The centre
- * tap multiplies the odd-phase sample directly.
- *
- * The wider (vs a general FIR) transition band only relaxes rejection ABOVE
- * ~12 kHz; the SBR crossover for every supported HE config sits at 7-9.5 kHz,
- * well below the flat (+/-0.05 dB) passband, and the residual alias energy folds
- * into the 11-12 kHz region that SBR re-synthesises over the core.
- * HB_CENTER: ideal half-band centre is 0.5; equiripple design settles at 0.5016
- * for equal stopband ripple with negligible passband deviation (<0.01 dB). */
+/* Equiripple half-band FIR for 2:1 decimation.
+ * Leverages the zero-valued odd-indexed taps and symmetric even-indexed taps
+ * to reduce the computational load by ~75% compared to a general FIR.
+ * The passband is flat within 0.05 dB up to the SBR crossover region,
+ * ensuring the core signal remains transparent before SBR reconstruction. */
 #define HB_CENTER 0.5015570876767614f
 static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
     -2.39042884e-03f,  2.03978735e-03f, -2.88625768e-03f,  3.94878764e-03f,
@@ -51,7 +40,7 @@ static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
      3.94878764e-03f, -2.88625768e-03f,  2.03978735e-03f, -2.39042884e-03f,
 };
 
-Resampler *ResampleOpen(int channels)
+Resampler *ResampleInit(int channels)
 {
     Resampler *r = (Resampler *)AllocMemory(sizeof(Resampler));
     if (!r) return NULL;
@@ -60,7 +49,7 @@ Resampler *ResampleOpen(int channels)
     return r;
 }
 
-void ResampleClose(Resampler *r)
+void ResampleEnd(Resampler *r)
 {
     FreeMemory(r);
 }
@@ -72,7 +61,7 @@ void ResampleClose(Resampler *r)
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
-int Resample2to1(Resampler *r, int input_len)
+int Resample(Resampler *r, int input_len)
 {
     int output_len = input_len / 2;
     const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
@@ -91,9 +80,7 @@ int Resample2to1(Resampler *r, int input_len)
         memcpy(combined,     hist, H         * sizeof(faac_real));
         memcpy(combined + H, in,   input_len * sizeof(faac_real));
 
-        /* Symmetry: hb_even[j] == hb_even[31-j]. Output i is then
-         * sum_{j<16} hb_even[j]*(combined[2i+2j] + combined[2i+2(31-j)])
-         * plus the centre tap on the odd-phase sample combined[2i+31]. */
+/* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
         for (i = 0; i < output_len; i++) {
             const faac_real * __restrict c = combined + 2 * i;
             faac_real a0 = 0, a1 = 0, a2 = 0, a3 = 0;
