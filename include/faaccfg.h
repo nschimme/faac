@@ -22,17 +22,19 @@
 #ifndef _FAACCFG_H_
 #define _FAACCFG_H_
 
-#define FAAC_CFG_VERSION 105
+#define FAAC_CFG_VERSION 106
 
 /* MPEG ID's */
 #define MPEG2 1
 #define MPEG4 0
 
 /* AAC object types */
-#define MAIN 1
-#define LOW  2
-#define SSR  3
-#define LTP  4
+#define AUTO     0  /* pick LC or HE-AAC from bitrate */
+#define MAIN     1
+#define LOW      2
+#define SSR      3
+#define LTP      4
+#define HE_V1    5  /* HE-AAC v1: AAC-LC core + SBR */
 
 /* Input Formats */
 #define FAAC_INPUT_NULL    0
