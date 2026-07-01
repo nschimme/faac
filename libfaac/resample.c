@@ -65,6 +65,13 @@ void ResampleClose(Resampler *r)
     FreeMemory(r);
 }
 
+/* Reached only through the cold HE dispatcher (doHEAACFrame). Under whole-program
+ * LTO that coldness propagates here and the kernel is size-optimized (scalar,
+ * un-vectorized); hot keeps this DSP loop vectorized while the dispatcher itself
+ * stays out of the LC fast path. */
+#if defined(__GNUC__)
+__attribute__((hot))
+#endif
 int Resample2to1(Resampler *r, int input_len)
 {
     int output_len = input_len / 2;
