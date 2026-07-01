@@ -266,7 +266,7 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
     int n1 = N2 - 1;  /* descending: N/2 - 1 - 2i */
     int n2 = 0;       /* ascending: 2i */
 
-    /* Phase 1: i < N/8 */
+    /* i < N/8 */
     for (i = 0; i < N8; i++) {
 
         /* calculate real and imaginary parts of g(n) or G(p) */
@@ -290,7 +290,7 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
         n2 += 2;
     }
 
-    /* Phase 2: i >= N/8 */
+    /* i >= N/8 */
     for (; i < N4; i++) {
 
         /* calculate real and imaginary parts of g(n) or G(p) */

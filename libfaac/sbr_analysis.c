@@ -208,7 +208,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
             }
         }
 
-        /* Phase 4: Tonality = original-vs-transposed band-energy ratio.
+        /* Tonality = original-vs-transposed band-energy ratio.
          * SBR reconstructs highband k from lowband (k - kx).
          * Tonality[k] = min(1.0, E_orig[k] / (E_orig[k-kx] + floor)).
          * High tonality (-> 1.0) means the HF content matches the LF patch in energy;
@@ -218,7 +218,7 @@ void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSa
 
         if (sbr) {
             int kx = sbr->kx;
-            /* bandTonality is only consumed over [kx, k2) (SBRAnalysis Phase 5). */
+            /* bandTonality is only consumed over [kx, k2). */
             for (int k = kx; k < sbr->k2; k++) {
                 faac_real e_hf = sumE[k];
                 faac_real e_lf = sumE[k - kx];

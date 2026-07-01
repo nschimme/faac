@@ -118,7 +118,7 @@ typedef struct faacEncStruct {
     struct Resampler *resampler;     /* 2:1 FIR downsampler; owns full/half-rate staging buffers */
     struct SBRInfo   *sbrInfo;       /* SBR analysis state and bitstream data */
 
-    /* Shared signal analysis (Phases 1-5) */
+    /* Shared signal analysis */
     SignalAnalysis  signalAnalysis;
     /* Shared-detector FIFO: holds the HE block-switch decision for the last
        SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the

@@ -191,7 +191,7 @@ static void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, P
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
 
-  /* Phase 3: shared transient override for HE-AAC path.
+  /* Shared transient override for HE-AAC path.
    * Core delay alignment: AnalyzeSignal runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
    * uses the FIFO. */

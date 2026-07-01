@@ -287,7 +287,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
 
     memset(bandHalfE, 0, sizeof(bandHalfE));
     for (int ch = 0; ch < nch; ch++) {
-        /* Phase 1: Use shared transient strength and accumulated energies. */
+        /* Use shared transient strength and accumulated energies. */
         if (sa && sa->valid) {
             faac_real ratio = sa->ch[ch].transientStrength;
             if (ratio > tratio) tratio = ratio;
@@ -337,7 +337,7 @@ void SBRAnalysis(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChann
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         int invf_mode = 3;
 
-        /* Phase 5: Tonality-driven noise floor / invf mode.
+        /* Tonality-driven noise floor / invf mode.
          * Note: Higher noiseData value = LOWER injected noise.
          * Tonality measure is E_orig / E_transposed.
          * High tonality (tonality -> 1.0) = original matches transposed = tonal = LESS noise needed = HIGHER noise_level.

@@ -605,10 +605,10 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
-    /* Shared signal analysis (Phases 1-5). */
+    /* Shared signal analysis. */
     AnalyzeSignal(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
 
-    /* Update the transient FIFO (Phase 3 alignment). Shift down by one and push
+    /* Update the transient FIFO. Shift down by one and push
      * the newest decision at SBR_DETECT_FIFO-1; index 0 stays aligned with the
      * core frame being coded (LOOKAHEAD_DEPTH frames behind this analysis). */
     for (channel = 0; channel < numChannels; channel++) {
