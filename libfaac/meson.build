@@ -17,16 +17,30 @@ if config_h.get('HAVE_SSE2')
     quantize_simd_libs += quantize_sse
 endif
 
-# EXPERIMENT (heaac-lto-align): whole-program LTO, no SBR split.
-# The prior fix carved sbr.c/sbr_analysis.c/resample.c into their own non-LTO
-# static library because whole-program LTO regressed the SBR hot path's
-# throughput *in CI*. Local measurement (callgrind Ir + cache-sim + wall-clock)
-# shows LTO is otherwise a no-op here: bit-identical output, identical .text
-# size, identical instruction stream. Its only effect is function reordering,
-# which mis-aligns the hot QMF loop's entry on the CI runner's microarchitecture
-# (invisible on the dev box). So instead of excluding SBR from LTO, keep LTO
-# uniform and defend the layout directly with -falign-functions/-falign-loops
-# (see lto_align_args below). CI is the only instrument that can confirm this.
+# SBR/resample sources are built as their own always-non-LTO static library
+# (same pattern as quantize_sse above) rather than folded into common_src.
+# Benchmarked bit-identical either way (LTO never changes this codebase's
+# output), but whole-program LTO measurably regresses this hot path's
+# throughput (see PR history) while helping everything else. Compiling these
+# sources once, outside the LTO unit, and linking the result into both
+# library kinds keeps LTO's throughput/size win on the LC-only code without
+# paying its SBR-path cost.
+sbr_src = [
+    'sbr.c',
+    'sbr.h',
+    'sbr_tables.h',
+    'resample.c',
+    'resample.h',
+    'sbr_analysis.c',
+    'sbr_analysis.h',
+]
+libfaac_sbr = static_library('faac_sbr', sbr_src,
+    include_directories: ['..', '../include'],
+    c_args: c_args,
+    gnu_symbol_visibility: 'hidden',
+    override_options: ['b_lto=false'],
+)
+
 common_src = [
     'bitstream.c',
     'bitstream.h',
@@ -49,13 +63,6 @@ common_src = [
     'huffdata.h',
     'quantize.c',
     'quantize.h',
-    'sbr.c',
-    'sbr.h',
-    'sbr_tables.h',
-    'sbr_analysis.c',
-    'sbr_analysis.h',
-    'resample.c',
-    'resample.h',
     'stereo.c',
     'stereo.h',
     'tns.c',
@@ -64,12 +71,6 @@ common_src = [
     'util.h',
 ]
 
-# Cache-line-align function and loop entry points. Under LTO the linker reorders
-# functions freely; forcing 32-byte alignment keeps hot-loop entries off the bad
-# offsets that stall the CI CPU's front-end, so LTO's reordering can't hurt.
-# Applied at both compile and link time so LTO's link-time codegen honours them.
-lto_align_args = ['-falign-functions=32', '-falign-loops=32']
-
 libfaac = disabler()
 
 common_args = {
@@ -77,7 +78,7 @@ common_args = {
     'c_args' : c_args,
     'link_args' : link_args,
     'dependencies' : [libm],
-    'link_with' : quantize_simd_libs,
+    'link_with' : quantize_simd_libs + [libfaac_sbr],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
 }
@@ -85,7 +86,7 @@ common_args = {
 default_lib = get_option('default_library')
 
 # LTO on the static archive ships unportable compiler bytecode, so keep it off
-# there regardless. (The shared lib below is the one CI benchmarks / installs.)
+# there regardless (matches libfaac_sbr, which is always non-LTO - see above).
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',
@@ -101,8 +102,6 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
-          'c_args' : c_args + lto_align_args,
-          'link_args' : link_args + lto_align_args,
           'version' : '0.0.0',
           'vs_module_defs' : 'libfaac.def',
           'override_options' : ['b_lto=true'],
