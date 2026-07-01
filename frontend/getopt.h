@@ -1,45 +1,16 @@
-/* Getopt for Microsoft C
-   This code is a modification of the Free Software Foundation, Inc.
-   Getopt library for parsing command line argument the purpose was
-   to provide a Microsoft Visual C friendly derivative. This code
-   provides functionality for both Unicode and Multibyte builds.
+#ifndef __GETOPT_H__
+/**
+ * DISCLAIMER
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is a part of the w64 mingw-runtime package.
+ *
+ * The w64 mingw-runtime package and its code is distributed in the hope that it
+ * will be useful but WITHOUT ANY WARRANTY.  ALL WARRANTIES, EXPRESSED OR
+ * IMPLIED ARE HEREBY DISCLAIMED.  This includes but is not limited to
+ * warranties of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ */
 
-   Date: 02/03/2011 - Ludvik Jerabek - Initial Release
-   Version: 1.1
-   Comment: Supports getopt, getopt_long, and getopt_long_only
-   and POSIXLY_CORRECT environment flag
-   License: LGPL
-
-   Revisions:
-   02/03/2011 - Ludvik Jerabek - Initial Release
-   02/20/2011 - Ludvik Jerabek - Fixed compiler warnings at Level 4
-   07/05/2011 - Ludvik Jerabek - Added no_argument, required_argument, optional_argument defs
-   08/03/2011 - Ludvik Jerabek - Fixed non-argument runtime bug which caused runtime exception
-   08/09/2011 - Ludvik Jerabek - Added code to export functions for DLL and LIB
-   02/15/2012 - Ludvik Jerabek - Fixed _GETOPT_THROW definition missing in implementation file
-   08/01/2012 - Ludvik Jerabek - Created separate functions for char and wchar_t characters so single dll can do both unicode and ansi
-   10/15/2012 - Ludvik Jerabek - Modified to match latest GNU features
-   06/19/2015 - Ludvik Jerabek - Fixed maximum option limitation caused by option_a (255) and option_w (65535) structure val variable
-   09/24/2022 - Ludvik Jerabek - Updated to match most recent getopt release
-   09/25/2022 - Ludvik Jerabek - Fixed memory allocation (malloc call) issue for wchar_t*
-
-
-   **DISCLAIMER**
-   THIS MATERIAL IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
-   EITHER EXPRESS OR IMPLIED, INCLUDING, BUT Not LIMITED TO, THE
-   IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-   PURPOSE, OR NON-INFRINGEMENT. SOME JURISDICTIONS DO NOT ALLOW THE
-   EXCLUSION OF IMPLIED WARRANTIES, SO THE ABOVE EXCLUSION MAY NOT
-   APPLY TO YOU. IN NO EVENT WILL I BE LIABLE TO ANY PARTY FOR ANY
-   DIRECT, INDIRECT, SPECIAL OR OTHER CONSEQUENTIAL DAMAGES FOR ANY
-   USE OF THIS MATERIAL INCLUDING, WITHOUT LIMITATION, ANY LOST
-   PROFITS, BUSINESS INTERRUPTION, LOSS OF PROGRAMS OR OTHER DATA ON
-   YOUR INFORMATION HANDLING SYSTEM OR OTHERWISE, EVEN If WE ARE
-   EXPRESSLY ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
-*/
-
-#ifndef FAAC_GETOPT_H
-#define FAAC_GETOPT_H
+#define __GETOPT_H__
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -53,57 +24,99 @@
 #endif
 #else
 
-#ifdef  __cplusplus
+/* All the headers include this file. */
+#ifndef _WIN32
+#define WINGETOPT_API
+#else
+#include <crtdefs.h>
+#if defined( WINGETOPT_SHARED_LIB )
+# if defined( BUILDING_WINGETOPT_DLL )
+#  define WINGETOPT_API __declspec(dllexport)
+# else
+#  define WINGETOPT_API __declspec(dllimport)
+# endif
+#else
+# define WINGETOPT_API
+#endif
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
-// Standard GNU options
-#define no_argument		0
-#define required_argument	1
-#define optional_argument	2
+WINGETOPT_API extern int optind;                /* index of first non-option in argv      */
+WINGETOPT_API extern int optopt;                /* single option character, as parsed     */
+WINGETOPT_API extern int opterr;                /* flag to enable built-in diagnostics... */
+                                /* (user may set to zero, to suppress)    */
 
-extern char *optarg;
-extern int optind;
-extern int opterr;
-extern int optopt;
+WINGETOPT_API extern char *optarg;              /* pointer to argument of current option  */
 
-struct option
+WINGETOPT_API extern int getopt(int nargc, char * const *nargv, const char *options);
+
+#ifdef _BSD_SOURCE
+/*
+ * BSD adds the non-standard `optreset' feature, for reinitialisation
+ * of `getopt' parsing.  We support this feature, for applications which
+ * proclaim their BSD heritage, before including this header; however,
+ * to maintain portability, developers are advised to avoid it.
+ */
+# define optreset  __mingw_optreset
+WINGETOPT_API extern int optreset;
+#endif
+#ifdef __plusplus
+}
+#endif
+/*
+ * POSIX requires the `getopt' API to be specified in `unistd.h';
+ * thus, `unistd.h' includes this header.  However, we do not want
+ * to expose the `getopt_long' or `getopt_long_only' APIs, when
+ * included in this manner.  Thus, close the standard __GETOPT_H__
+ * declarations block, and open an additional __GETOPT_LONG_H__
+ * specific block, only when *not* __UNISTD_H_SOURCED__, in which
+ * to declare the extended API.
+ */
+#endif /* !defined(HAVE_GETOPT_H) */
+
+#if !defined(HAVE_GETOPT_H) && !defined(__UNISTD_H_SOURCED__) && !defined(__GETOPT_LONG_H__)
+#define __GETOPT_LONG_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct option           /* specification for a long form option...      */
 {
-  const char *name;
-  int has_arg;
-  int *flag;
-  int val;
+  const char *name;             /* option name, without leading hyphens */
+  int         has_arg;          /* does it take an argument?            */
+  int        *flag;             /* where to save its status, or NULL    */
+  int         val;              /* its associated status value          */
 };
 
-extern int getopt (int ___argc, char *const *___argv, const char *__shortopts);
-extern int getopt_long (int ___argc, char *const *___argv,
-			const char *__shortopts,
-		        const struct option *__longopts, int *__longind);
-extern int getopt_long_only (int ___argc, char *const *___argv,
-			     const char *__shortopts,
-		             const struct option *__longopts, int *__longind);
-
-// Unicode support
-struct option_w
+enum                    /* permitted values for its `has_arg' field...  */
 {
-    const wchar_t* name;
-    int has_arg;
-    int* flag;
-    int val;
+  no_argument = 0,              /* option never takes an argument       */
+  required_argument,            /* option always requires an argument   */
+  optional_argument             /* option may take an argument          */
 };
 
-extern wchar_t* optarg_w;
-extern int getopt_w(int argc, wchar_t* const * argv, const wchar_t* optstring);
-extern int getopt_long_w(int argc, wchar_t* const * argv, const wchar_t* options,
-                                     const struct option_w* long_options, int* opt_index);
-extern int getopt_long_only_w(int argc, wchar_t* const * argv, const wchar_t* options,
-                                          const struct option_w* long_options, int* opt_index);
+WINGETOPT_API extern int getopt_long(int nargc, char * const *nargv, const char *options,
+    const struct option *long_options, int *idx);
+WINGETOPT_API extern int getopt_long_only(int nargc, char * const *nargv, const char *options,
+    const struct option *long_options, int *idx);
+/*
+ * Previous MinGW implementation had...
+ */
+#ifndef HAVE_DECL_GETOPT
+/*
+ * ...for the long form API only; keep this for compatibility.
+ */
+# define HAVE_DECL_GETOPT       1
+#endif
 
-
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
-#endif /* HAVE_GETOPT_H */
+#endif /* !defined(HAVE_GETOPT_H) && !defined(__UNISTD_H_SOURCED__) && !defined(__GETOPT_LONG_H__) */
 
-#endif /* FAAC_GETOPT_H */
+#endif /* __GETOPT_H__ */

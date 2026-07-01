@@ -7,7 +7,7 @@ project('faac', 'c',
         'c_std=gnu99,c99',
     ])
 
-add_global_arguments(['-DHAVE_CONFIG_H', '-D_GNU_SOURCE'], language: 'c')
+add_global_arguments('-DHAVE_CONFIG_H', language: 'c')
 
 config_h = configuration_data()
 config_h.set_quoted('PACKAGE', meson.project_name())
