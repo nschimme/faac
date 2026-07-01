@@ -68,7 +68,9 @@ common_args = {
 
 default_lib = get_option('default_library')
 
-# LTO on the static archive ships unportable compiler bytecode, so keep it off.
+# LTO measurably regressed the HE-AAC v1 single-rate SBR hot path (both
+# throughput and MOS - see benchmark comparison in PR history), so keep it
+# off on both library kinds rather than tuning it further.
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',
@@ -86,12 +88,12 @@ if default_lib == 'shared' or default_lib == 'both'
         kwargs : common_args + {
           'version' : '0.0.0',
           'vs_module_defs' : 'libfaac.def',
-          'override_options' : ['b_lto=true'],
+          'override_options' : ['b_lto=false'],
         },
     )
 endif
 
-# Prefer the LTO shared library for the frontend and pkgconfig.
+# Prefer the shared library for the frontend and pkgconfig.
 if default_lib == 'static'
     libfaac = libfaac_static
 else
