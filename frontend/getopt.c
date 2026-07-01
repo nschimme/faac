@@ -10,12 +10,15 @@
  *
  * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
  * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
-
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Sponsored in part by the Defense Advanced Research Projects
+ * Agency (DARPA) and Air Force Research Laboratory, Air Force
+ * Materiel Command, USAF, under agreement number F39502-99-1-0512.
  */
 /*-
  * Copyright (c) 2000 The NetBSD Foundation, Inc.
@@ -45,10 +48,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "getopt.h"
 
@@ -515,7 +514,7 @@ start:
  *
  * [eventually this will replace the BSD getopt]
  */
-int
+WINGETOPT_API int
 getopt(int nargc, char * const *nargv, const char *options)
 {
         return (getopt_internal(nargc, nargv, options, NULL, NULL, 0));
@@ -526,7 +525,7 @@ getopt(int nargc, char * const *nargv, const char *options)
  * getopt_long --
  *      Parse argc/argv argument vector.
  */
-int
+WINGETOPT_API int
 getopt_long(int nargc, char * const *nargv, const char *options,
     const struct option *long_options, int *idx)
 {
@@ -538,7 +537,7 @@ getopt_long(int nargc, char * const *nargv, const char *options,
  * getopt_long_only --
  *      Parse argc/argv argument vector.
  */
-int
+WINGETOPT_API int
 getopt_long_only(int nargc, char * const *nargv, const char *options,
     const struct option *long_options, int *idx)
 {

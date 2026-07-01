@@ -25,10 +25,10 @@
 #else
 
 /* All the headers include this file. */
-#ifndef _WIN32
-#define WINGETOPT_API
-#else
+#if defined(_WIN32)
 #include <crtdefs.h>
+#endif
+
 #if defined( WINGETOPT_SHARED_LIB )
 # if defined( BUILDING_WINGETOPT_DLL )
 #  define WINGETOPT_API __declspec(dllexport)
@@ -37,7 +37,6 @@
 # endif
 #else
 # define WINGETOPT_API
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -63,7 +62,7 @@ WINGETOPT_API extern int getopt(int nargc, char * const *nargv, const char *opti
 # define optreset  __mingw_optreset
 WINGETOPT_API extern int optreset;
 #endif
-#ifdef __plusplus
+#ifdef __cplusplus
 }
 #endif
 /*
