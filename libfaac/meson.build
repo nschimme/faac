@@ -54,6 +54,12 @@ common_src = [
     'util.h',
 ]
 
+# Cache-line-align function and loop entry points. Under LTO the linker reorders
+# functions freely; forcing 32-byte alignment keeps hot-loop entries off the bad
+# offsets that stall the CI CPU's front-end, so LTO's reordering can't hurt.
+# Applied at both compile and link time so LTO's link-time codegen honours them.
+lto_align_args = ['-falign-functions=32', '-falign-loops=32']
+
 libfaac = disabler()
 
 common_args = {
@@ -84,6 +90,8 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
+          'c_args' : c_args + lto_align_args,
+          'link_args' : link_args + lto_align_args,
           'version' : '0.0.0',
           'vs_module_defs' : 'libfaac.def',
           'override_options' : ['b_lto=true'],
