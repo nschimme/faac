@@ -44,27 +44,21 @@ extern "C" {
 
 struct SBRInfo;
 
-/* SignalAnalysisChannel: per-frame, per-channel full-rate analysis results. */
 typedef struct SignalAnalysisChannel {
-    int       transientSlot;      /* QMF slot index of peak attack (-1 = none) */
-    faac_real transientStrength; /* peak/mean slot-power ratio (tratio) */
-    int       wantShort;          /* core block-switch decision */
-    faac_real lastVal;            /* time-domain sample carryover for HP filter */
-    faac_real bandTonality[SBR_QMF_BANDS_64]; /* 0=noise-like .. 1=tonal */
-    faac_real bandHalfE[2][SBR_QMF_BANDS_64]; /* Accumulated QMF energy per envelope */
+    int       transientSlot;
+    faac_real transientStrength;
+    int       wantShort;
+    faac_real lastVal;
+    faac_real bandTonality[SBR_QMF_BANDS_64];
+    faac_real bandHalfE[2][SBR_QMF_BANDS_64];
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {
-    int valid;                /* set only on the HE path */
+    int valid;
     int numSlots;
-    int sampled;              /* decimation-aware slot count */
+    int sampled;
 
-    /* Frame envelope grid, chosen once for the whole frame from the strongest
-     * transient across channels. The QMF energy in each channel's bandHalfE[] is
-     * integrated over these borders, and the grid is replayed into the bitstream
-     * (see SBRInfo.frameClass/tEnv/bsPointer). frameClass is FIXFIX or VARFIX;
-     * tEnv[0..numEnvelopes] are borders in SBR time slots; envSampled[] is the
-     * decimated-slot count in each envelope (for energy normalisation). */
+    /* Frame envelope grid configuration. Synchronized across all channels. */
     int frameClass;
     int numEnvelopes;
     int tEnv[SBR_MAX_ENVELOPES + 1];
@@ -74,7 +68,7 @@ typedef struct SignalAnalysis {
     SignalAnalysisChannel ch[MAX_CHANNELS];
 } SignalAnalysis;
 
-void AnalyzeSignal(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
+void SbrAnalyze(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
 
 #ifdef __cplusplus
 }

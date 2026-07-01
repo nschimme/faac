@@ -163,7 +163,7 @@ int WriteBitstream(faacEncStruct* hEncoder,
     /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
     if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
-        bits += SBRWriteBitstream(hEncoder->sbrInfo, bitStream, id_aac, 1, &hEncoder->signalAnalysis);
+        bits += SbrWrite(hEncoder->sbrInfo, bitStream, id_aac, 1, &hEncoder->signalAnalysis);
     }
 
     /* Write ID_END terminator */
@@ -252,7 +252,7 @@ static int CountBitstream(faacEncStruct* hEncoder,
     /* HE-AAC: account for the SBR fill-element payload */
     if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
         int id_aac = (numChannel > 1) ? ID_CPE : ID_SCE;
-        bits += SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0, &hEncoder->signalAnalysis);
+        bits += SbrWrite(hEncoder->sbrInfo, NULL, id_aac, 0, &hEncoder->signalAnalysis);
     }
 
     /* Write ID_END terminator */

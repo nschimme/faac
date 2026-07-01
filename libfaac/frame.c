@@ -327,14 +327,14 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         if (!hEncoder->resampler)
-            hEncoder->resampler = ResampleOpen(hEncoder->numChannels);
+            hEncoder->resampler = ResampleInit(hEncoder->numChannels);
         if (!hEncoder->sbrInfo)
-            hEncoder->sbrInfo = SBRInit(hEncoder->numChannels, hEncoder->fullSampleRate,
+            hEncoder->sbrInfo = SbrInit(hEncoder->numChannels, hEncoder->fullSampleRate,
                                         hEncoder->config.bitRate * hEncoder->numChannels,
                                         hEncoder->sbr_single_rate,
                                         &hEncoder->fft_tables);
         else
-            SBRUpdate(hEncoder->sbrInfo, hEncoder->config.bitRate * hEncoder->numChannels,
+            SbrUpdate(hEncoder->sbrInfo, hEncoder->config.bitRate * hEncoder->numChannels,
                       hEncoder->sbr_single_rate);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -343,7 +343,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
                            (2 * SBR_QMF_BANDS_64));
     } else {
         if (hEncoder->resampler) {
-            ResampleClose(hEncoder->resampler);
+            ResampleEnd(hEncoder->resampler);
             hEncoder->resampler = NULL;
         }
     }
@@ -503,11 +503,11 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
     }
 
     if (hEncoder->resampler) {
-        ResampleClose(hEncoder->resampler);
+        ResampleEnd(hEncoder->resampler);
         hEncoder->resampler = NULL;
     }
     if (hEncoder->sbrInfo) {
-        SBREnd(hEncoder->sbrInfo);
+        SbrEnd(hEncoder->sbrInfo);
         hEncoder->sbrInfo = NULL;
     }
 
@@ -597,16 +597,16 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         faac_real *fullRate = rs->fullRate[channel];
         fullPtrs[channel] = fullRate;
         memcpy(fullRate, hEncoder->inputFifo[channel], realPerCh * sizeof(faac_real));
-        /* Final partial frame: silence-pad the unfilled full-rate tail so the
-         * resampler (and thus the core) never consumes a stale tail from a prior
-         * frame. SBRAnalysis below reads only [0, realPerCh), so it is unaffected. */
+        /* Final partial frame: silence-pad the unfilled full-rate tail to
+         * prevent the resampler from consuming stale data. SbrEncode reads
+         * only [0, realPerCh), so it is unaffected. */
         if (realPerCh < 2 * FRAME_LEN)
             memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(faac_real));
         heHalfRate[channel] = rs->halfRate[channel];
     }
 
     /* Shared signal analysis. */
-    AnalyzeSignal(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
+    SbrAnalyze(&hEncoder->signalAnalysis, fullPtrs, (int)numChannels, (int)realPerCh, hEncoder->sbrInfo);
 
     /* Update the transient FIFO. Shift down by one and push
      * the newest decision at SBR_DETECT_FIFO-1; index 0 stays aligned with the
@@ -618,7 +618,7 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         hEncoder->wantShortFIFO[channel][SBR_DETECT_FIFO - 1] = hEncoder->signalAnalysis.ch[channel].wantShort;
     }
 
-    SBRAnalysis(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
+    SbrEncode(hEncoder->sbrInfo, fullPtrs, numChannels, (int)realPerCh, &hEncoder->signalAnalysis);
 
     if (hEncoder->sbr_single_rate) {
         /* Single-rate (rare): the core runs at full Fs, so it consumes the
@@ -627,11 +627,8 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
         for (channel = 0; channel < numChannels; channel++)
             memcpy(rs->halfRate[channel], rs->fullRate[channel], FRAME_LEN * sizeof(faac_real));
     } else {
-        /* Dual-rate (default): with the tail zero-padded, decimate the whole
-         * 2*FRAME_LEN frame so the entire FRAME_LEN of halfRate is written (real
-         * samples + FIR decay to silence); on a full frame realPerCh ==
-         * 2*FRAME_LEN, so this is unchanged. */
-        Resample2to1(rs, 2 * FRAME_LEN);
+        /* Dual-rate decimation: produces the halved-rate core signal. */
+        Resample(rs, 2 * FRAME_LEN);
     }
 }
 
@@ -896,7 +893,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sbrInfo) {
             int id_aac = (numChannels > 1) ? ID_CPE : ID_SCE;
-            sbrBits = SBRWriteBitstream(hEncoder->sbrInfo, NULL, id_aac, 0, &hEncoder->signalAnalysis);
+            sbrBits = SbrWrite(hEncoder->sbrInfo, NULL, id_aac, 0, &hEncoder->signalAnalysis);
         }
 
         if (totalBits > sbrBits)
