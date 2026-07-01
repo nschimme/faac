@@ -47,6 +47,21 @@ common_src = [
     'util.h',
 ]
 
+# Cache-line-align function and loop entry points. Under LTO the linker reorders
+# functions freely; forcing 32-byte alignment keeps hot-loop entries off the bad
+# offsets that stall the CPU's front-end, so LTO's reordering can't hurt.
+lto_align_c_args = []
+lto_align_link_args = []
+cc_for_lto = meson.get_compiler('c')
+lto_align_c_args = cc_for_lto.get_supported_arguments([
+  '-falign-functions=32',
+  '-falign-loops=32',
+])
+lto_align_link_args = cc_for_lto.get_supported_link_arguments([
+  '-falign-functions=32',
+  '-falign-loops=32',
+])
+
 libfaac = disabler()
 
 common_args = {
@@ -77,6 +92,8 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
+          'c_args' : c_args + lto_align_c_args,
+          'link_args' : link_args + lto_align_link_args,
           'version' : '0.0.0',
           'vs_module_defs' : 'libfaac.def',
           'override_options' : ['b_lto=true'],
