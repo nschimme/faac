@@ -81,12 +81,11 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     }
     else {
         /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        bw = min(20000 + ((bitRate - 128000) / 16), 20000u);
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
-    return (bw > nyquist) ? nyquist : bw;
+    return min(bw, nyquist);
 }
 
 int FAACAPI faacEncGetVersion( char **faac_id_string,
@@ -214,24 +213,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.bandWidth = config->bandWidth;
 
     // check bandwidth
-    if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
-    if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
+    hEncoder->config.bandWidth = clamp_uint(hEncoder->config.bandWidth, 100u,
+                                             hEncoder->sampleRate / 2);
 
-    if (config->quantqual > maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
+    config->quantqual = clamp_ulong(config->quantqual, (unsigned long)MINQUAL,
+                                     (unsigned long)maxqual);
 
     hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
-    if (config->pnslevel < 0)
-        config->pnslevel = 0;
-    if (config->pnslevel > 10)
-        config->pnslevel = 10;
+    config->pnslevel = clamp_int(config->pnslevel, 0, 10);
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
@@ -532,7 +524,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         {
             /* Take one frame from the FIFO front (already faac_real),
              * silence-padding a short final frame. */
-            unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
+            unsigned int spc = min((unsigned int)realPerCh, FRAME_LEN);
             memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel],
                    spc * sizeof(faac_real));
             if (spc < FRAME_LEN)
@@ -698,10 +690,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
         hEncoder->aacquantCfg.quality *= fix;
 
-        if (hEncoder->aacquantCfg.quality > maxqual)
-            hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < MINQUAL)
-            hEncoder->aacquantCfg.quality = MINQUAL;
+        hEncoder->aacquantCfg.quality = clamp_real(hEncoder->aacquantCfg.quality,
+                                                    (faac_real)MINQUAL, (faac_real)maxqual);
     }
 
     return frameBytes;

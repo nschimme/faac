@@ -153,8 +153,8 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         faac_real es   = el + er + 2.0*elr;
         faac_real ed   = el + er - 2.0*elr;
         faac_real etot = el + er;
-        if (es < 0) es = 0;
-        if (ed < 0) ed = 0;
+        es = max(es, (faac_real)0);
+        ed = max(ed, (faac_real)0);
         if (etot <= 0) {
             if (mode != JOINT_IS) channel->msInfo.ms_used[*sfcnt] = 0;
             (*sfcnt)++;
@@ -237,25 +237,19 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
 
     switch (mode) {
         case JOINT_MIXED:
-            thrmid = (0.09 * 0.85) * inv_quality;
-            if (thrmid > 0.25) thrmid = 0.25;
+            thrmid = min((faac_real)((0.09 * 0.85) * inv_quality), (faac_real)0.25);
             thrmid += 1.0;
-            isthr = 0.18 * inv_quality + 1.0;
-            if (isthr > M_SQRT2) isthr = M_SQRT2;
-            thrside = 0.1 * inv_quality;
-            if (thrside > 0.3) thrside = 0.3;
+            isthr = min((faac_real)(0.18 * inv_quality + 1.0), (faac_real)M_SQRT2);
+            thrside = min((faac_real)(0.1 * inv_quality), (faac_real)0.3);
             break;
         case JOINT_MS:
-            thrmid = (1.09 - 1.0) * inv_quality;
-            if (thrmid > 0.25) thrmid = 0.25;
+            thrmid = min((faac_real)((1.09 - 1.0) * inv_quality), (faac_real)0.25);
             thrmid += 1.0;
-            thrside = 0.1 * inv_quality;
-            if (thrside > 0.3) thrside = 0.3;
+            thrside = min((faac_real)(0.1 * inv_quality), (faac_real)0.3);
             break;
         case JOINT_IS:
             isthr = 0.18 * (inv_quality * inv_quality);
-            isthr += 1.0;
-            if (isthr > M_SQRT2) isthr = M_SQRT2;
+            isthr = min((faac_real)(isthr + 1.0), (faac_real)M_SQRT2);
             break;
         default:
             return;
@@ -294,7 +288,7 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
             int sfb;
             int mlen  = (coder[chn].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
             int ifreq = IS_START_FREQ_HZ, cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
-            if (ifreq > cap) ifreq = cap;
+            ifreq = min(ifreq, cap);
             for (sfb = 0; sfb < coder[chn].sfbn; sfb++) {
                 if ((coder[chn].sfb_offset[sfb] * sampleRate) / mlen >= ifreq) {
                     is_start_sfb = sfb;

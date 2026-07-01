@@ -66,7 +66,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   {
       faac_real eng = (faac_real)psydata->eng[ENG_WIN_CUR - PREVS + win];
 
-      faac_real toteng = (eng < lasteng) ? eng : lasteng;
+      faac_real toteng = min(eng, lasteng);
       faac_real volchg = FAAC_FABS(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */

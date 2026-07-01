@@ -110,8 +110,8 @@ static int huffcode_size(int *qs, int len, int bnum)
     case HCB_ESC:
         for (i = 0; i < len; i += 2) {
             int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
-            int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
-            int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
+            int v0 = min(x0, LAV_ESC);
+            int v1 = min(x1, LAV_ESC);
             int idx = DIM_ESC * v0 + v1;
             bits += book[idx].len;
             bits += is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
@@ -201,8 +201,8 @@ static void huffcode_write(int *qs, int len, int bnum, CoderInfo *coder)
     case HCB_ESC:
         for (i = 0; i < len; i += 2) {
             int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
-            int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
-            int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
+            int v0 = min(x0, LAV_ESC);
+            int v1 = min(x1, LAV_ESC);
             int idx = DIM_ESC * v0 + v1;
             int blen = book[idx].len;
             int data = book[idx].data;
@@ -245,7 +245,7 @@ int huffbook(CoderInfo *coder, int *qs, int len)
 
     for (i = 0; i < len; i++) {
         int q = abs(qs[i]);
-        if (maxq < q) maxq = q;
+        maxq = max(maxq, q);
     }
 
     if (maxq > 0) {

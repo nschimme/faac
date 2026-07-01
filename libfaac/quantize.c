@@ -25,6 +25,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 
 typedef void (*QuantizeFunc)(const faac_real * __restrict xr, int * __restrict xi, int n, faac_real sfacfix);
 
@@ -114,7 +115,7 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const faac_real
             {
                 faac_real e = line[k] * line[k];
                 sum += e;
-                if (e > peak) peak = e;
+                peak = max(peak, e);
             }
         }
         out[sfb].sum = sum;
@@ -168,8 +169,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, faac_rea
         faac_real target;
 
         // floor before pow(): formula is monotonic, so this floors the output too
-        if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
-        if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) peak = ref * PEAK_ENERGY_FLOOR_FRAC;
+        avg = max(avg, ref * AVG_ENERGY_FLOOR_FRAC);
+        peak = max(peak, ref * PEAK_ENERGY_FLOOR_FRAC);
 
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
                + (1.0 - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref);
@@ -211,7 +212,7 @@ static faac_real resolve_band_gain(int sfac, int sf_bias, faac_real band_peak, i
 
     if (sf_abs < 0 || sf_abs > SF_MAX_ABS)
     {
-        sf_abs = (sf_abs < 0) ? 0 : SF_MAX_ABS;
+        sf_abs = clamp_int(sf_abs, 0, SF_MAX_ABS);
         sf_rel = sf_abs - sf_bias;
         sfac = SF_OFFSET - sf_rel;
         gain = gain_with_overflow_clamp(&sfac, band_peak);
@@ -427,8 +428,8 @@ void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
         int onset_votes = 0;
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
-            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
-            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
+            run_min[sfb] = min(run_min[sfb], band_e[sfb]);
+            run_max[sfb] = max(run_max[sfb], band_e[sfb]);
             if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
         }
 

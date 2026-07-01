@@ -29,12 +29,49 @@ extern "C" {
 #include <stdlib.h>
 #include <memory.h>
 
-#ifndef max
-#define max(a, b) (((a) > (b)) ? (a) : (b))
+#if defined(__GNUC__) || defined(__clang__)
+#  ifndef max
+#    define max(a, b) __extension__({ __typeof__(a) _maxa = (a); __typeof__(b) _maxb = (b); _maxa > _maxb ? _maxa : _maxb; })
+#  endif
+#  ifndef min
+#    define min(a, b) __extension__({ __typeof__(a) _mina = (a); __typeof__(b) _minb = (b); _mina < _minb ? _mina : _minb; })
+#  endif
+#else
+#  ifndef max
+#    define max(a, b) (((a) > (b)) ? (a) : (b))
+#  endif
+#  ifndef min
+#    define min(a, b) (((a) < (b)) ? (a) : (b))
+#  endif
 #endif
-#ifndef min
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#endif
+
+static inline int clamp_int(int x, int lo, int hi)
+{
+    if (x < lo) return lo;
+    if (x > hi) return hi;
+    return x;
+}
+
+static inline unsigned int clamp_uint(unsigned int x, unsigned int lo, unsigned int hi)
+{
+    if (x < lo) return lo;
+    if (x > hi) return hi;
+    return x;
+}
+
+static inline unsigned long clamp_ulong(unsigned long x, unsigned long lo, unsigned long hi)
+{
+    if (x < lo) return lo;
+    if (x > hi) return hi;
+    return x;
+}
+
+static inline faac_real clamp_real(faac_real x, faac_real lo, faac_real hi)
+{
+    if (x < lo) return lo;
+    if (x > hi) return hi;
+    return x;
+}
 
 #ifndef M_PI
 #define M_PI        3.14159265358979323846

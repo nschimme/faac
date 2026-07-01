@@ -683,7 +683,7 @@ static int WriteAACFillBits(BitStream* bitStream,
             }
             maxEscapeCount = (1<<LEN_BYTE) - 1;  /* Max escape count */
             maxNumberOfBytes = maxCount + maxEscapeCount;
-            numberOfBytes = (numberOfBytes > maxNumberOfBytes ) ? (maxNumberOfBytes) : (numberOfBytes);
+            numberOfBytes = min(numberOfBytes, maxNumberOfBytes);
             escCount = numberOfBytes - maxCount;
             if (writeFlag) {
                 PutBit(bitStream, escCount, LEN_BYTE);
