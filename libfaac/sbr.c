@@ -31,10 +31,12 @@
 #include "bitstream.h"
 #include "sbr_internal.h"
 
-/* SBR master frequency band table (ISO 14496-3:2009 §4.6.18.3.2). kx/k2 are
+/* SBR master frequency band table (ISO/IEC 14496-3:2005 §4.6.18.3.2). kx/k2 are
  * spec-mandatory: the decoder reconstructs them from the sample rate alone, so
  * these must match its table exactly or the envelope band count desyncs. The
  * rate here is the full output rate (= 2*core), which is what the decoder uses. */
+
+/* SBR start frequency (kx). Crossover alignment prevents aliasing/gaps. */
 static int compute_kx(int sampleRate, int bs_start_freq)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -45,6 +47,7 @@ static int compute_kx(int sampleRate, int bs_start_freq)
 
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
 
+/* SBR stop frequency (k2). Bark-scale distribution maximizes bit efficiency. */
 static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 {
     if (bs_stop_freq == 14 || bs_stop_freq == 15) return 64;
@@ -69,7 +72,7 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     } else {
         k2 = 64;
     }
-    /* ISO 14496-3:2009 Table 4.85: max SBR span (48 bands ≤32 kHz, 35 ≤44.1 kHz, 32 above). */
+
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
     return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
 }
