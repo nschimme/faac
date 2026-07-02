@@ -97,7 +97,6 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
     return (bw > nyquist) ? nyquist : bw;
 }
 
-
 int FAACAPI faacEncGetVersion( char **faac_id_string,
 			      				char **faac_copyright_string)
 {
@@ -170,6 +169,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
     /* If this handle was previously resolved to HE-AAC, restore the native Fs so
@@ -433,41 +433,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     return hEncoder;
 }
 
-int FAACAPI faacEncClose(faacEncHandle hpEncoder)
-{
-    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    unsigned int channel;
-
-    /* Deinitialize coder functions */
-    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
-
-    FilterBankEnd(hEncoder);
-
-    fft_terminate(&hEncoder->fft_tables);
-
-    /* Free remaining buffer memory */
-    for (channel = 0; channel < hEncoder->numChannels; channel++)
-	{
-        int buf;
-        for (buf = 0; buf < 4; buf++) {
-            if (hEncoder->audioFIFO[channel][buf])
-                FreeMemory(hEncoder->audioFIFO[channel][buf]);
-        }
-		if (hEncoder->inputFifo[channel])
-			FreeMemory (hEncoder->inputFifo[channel]);
-    }
-
-    if (hEncoder->sbrContext) {
-        SbrContextEnd(hEncoder->sbrContext);
-        hEncoder->sbrContext = NULL;
-    }
-
-    /* Free handle */
-    if (hEncoder)
-		FreeMemory(hEncoder);
-
-    return 0;
-}
 
 /* Append the caller's (interleaved) input to the per-channel input FIFO,
  * de-interleaving and converting to faac_real once here so the rest of the
@@ -508,6 +473,42 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
         }
     }
     hEncoder->inputFifoFill += spch;
+    return 0;
+}
+
+int FAACAPI faacEncClose(faacEncHandle hpEncoder)
+{
+    faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
+    unsigned int channel;
+
+    /* Deinitialize coder functions */
+    hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
+
+    FilterBankEnd(hEncoder);
+
+    fft_terminate(&hEncoder->fft_tables);
+
+    /* Free remaining buffer memory */
+    for (channel = 0; channel < hEncoder->numChannels; channel++)
+	{
+        int buf;
+        for (buf = 0; buf < 4; buf++) {
+            if (hEncoder->audioFIFO[channel][buf])
+                FreeMemory(hEncoder->audioFIFO[channel][buf]);
+        }
+		if (hEncoder->inputFifo[channel])
+			FreeMemory (hEncoder->inputFifo[channel]);
+    }
+
+    if (hEncoder->sbrContext) {
+        SbrContextEnd(hEncoder->sbrContext);
+        hEncoder->sbrContext = NULL;
+    }
+
+    /* Free handle */
+    if (hEncoder)
+		FreeMemory(hEncoder);
+
     return 0;
 }
 
