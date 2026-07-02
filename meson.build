@@ -3,7 +3,7 @@ project('faac', 'c',
     default_options: [
         'default_library=both',
         'buildtype=release',
-        'warning_level=2',
+        'warning_level=3',
         'c_std=gnu11,c11',
     ])
 
