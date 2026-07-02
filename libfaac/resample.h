@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2001 Menno Bakker
+ * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -11,54 +11,44 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
-
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef UTIL_H
-#define UTIL_H
+/* 2:1 FIR downsampler for HE-AAC core signal preparation.
+ * Takes full-rate PCM (Fs) and produces half-rate PCM (Fs/2)
+ * for the AAC-LC core encoder. */
+
+#ifndef RESAMPLE_H
+#define RESAMPLE_H
 
 #include "faac_real.h"
+#include "coder.h"
 
 #ifdef __cplusplus
 extern "C" {
-#endif /* __cplusplus */
-
-#include <stdlib.h>
-#include <memory.h>
-
-#ifndef max
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-#endif
-#ifndef min
-#define min(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-static inline int clamp_int(int x, int lo, int hi)
-{
-    if (x < lo) return lo;
-    if (x > hi) return hi;
-    return x;
-}
+typedef float resfloat;
 
-#ifndef M_PI
-#define M_PI        3.14159265358979323846
-#endif
+#define RESAMPLE_FILTER_LEN 63
 
-/* Memory functions */
-#define AllocMemory(size) malloc(size)
-#define FreeMemory(block) free(block)
-#define SetMemory(block, value, size) memset(block, value, size)
+typedef struct Resampler {
+    faac_real  buf     [MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* FIR overlap state (carries between frames) */
+    faac_real  fullRate[MAX_CHANNELS][2 * FRAME_LEN];       /* full-rate input: caller fills, SBR reads, FIR consumes */
+    faac_real  halfRate[MAX_CHANNELS][FRAME_LEN];           /* downsampled output: written by Resample */
+    int        channels;
+} Resampler;
 
-int GetSRIndex(unsigned int sampleRate);
-unsigned int MaxBitrate(unsigned long sampleRate);
-unsigned int MinBitrate();
-int CountLeadingZeros(unsigned int x);
+Resampler *ResampleInit(int channels);
+void ResampleEnd(Resampler *r);
+
+int Resample(Resampler *r, int input_len);
 
 #ifdef __cplusplus
 }
-#endif /* __cplusplus */
+#endif
 
-#endif /* UTIL_H */
+#endif /* RESAMPLE_H */

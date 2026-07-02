@@ -39,6 +39,16 @@ common_src = [
     'huffdata.h',
     'quantize.c',
     'quantize.h',
+    'sbr.c',
+    'sbr.h',
+    'sbr_internal.h',
+    'sbr_bitstream.c',
+    'sbr_tables.c',
+    'sbr_tables.h',
+    'sbr_analysis.c',
+    'sbr_analysis.h',
+    'resample.c',
+    'resample.h',
     'stereo.c',
     'stereo.h',
     'tns.c',
@@ -61,7 +71,6 @@ common_args = {
 
 default_lib = get_option('default_library')
 
-# LTO on the static archive ships unportable compiler bytecode, so keep it off.
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',
@@ -84,7 +93,7 @@ if default_lib == 'shared' or default_lib == 'both'
     )
 endif
 
-# Prefer the LTO shared library for the frontend and pkgconfig.
+# Prefer the shared library for the frontend and pkgconfig.
 if default_lib == 'static'
     libfaac = libfaac_static
 else
