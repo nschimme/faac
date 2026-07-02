@@ -1,27 +1,8 @@
-- optimize codebook list (section_data): still greedy per-band choice, no
-  joint/DP optimization across section boundaries (huff2.c writebooks)
-- optimize CPE windows grouping: block-switch decision still per-channel,
-  not joint across the pair (blockswitch.c)
-- Add bit reservoir control: only a fixed end-of-frame padding calc exists
-  today (bitstream.c), no adaptive bit-spend/borrow
-- Test TNS(arcen, Apr 8th, 2012): tuned extensively (whitening gate,
-  short-window+TD gate, low-bitrate music) and found net-negative on the
-  49-clip ViSQOL corpus in every variant tried; kept disabled by default
+- optimize codebook list (section_data) via joint/DP optimization
+- optimize CPE windows grouping jointly across channel pairs
+- Add adaptive bit reservoir control
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
-
-HE-AAC v1 follow-ups:
-(shared signal detector shipped as sbr_analysis.c, feeding block-switch and
-SBR numEnvelopes; wiring it to the TNS whitening gate was tried and dropped,
-no MOS gain over the fixed 1.4 LC default)
-- SBR noise floor / invf mode from tonality (now fixed 4 / 3): a spectral-
-  flatness-based attempt was net-negative; needs a within-band/temporal
-  tonality measure instead
-- SBR envelope border at the transient: VARFIX is selected on transients
-  (sbr_adopt_envelope_grid), but numEnvelopes/eff_amp_res/tEnv live in
-  SBRInfo (frame-global, shared by both CPE channels); move to SBRChannel
-  for independent per-channel borders
-- write_sbr_noise: use dedicated noise Huffman tables (blocked on
-  numNoiseBands hardcoded to 1 in sbr.c)
-- attach ISO 14496-3 table citations directly to compute_kx/compute_k2
-  (file already cites the spec elsewhere in sbr.c, just not on these two)
-- add SBR/resample sanity tests
+- HE-AAC v1: SBR noise floor / invf mode from within-band tonality
+- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
+- HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
+- HE-AAC v1: Attach ISO 14496-3 citations to compute_kx/compute_k2
