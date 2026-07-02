@@ -23,6 +23,10 @@
 #include "channels.h"
 #include "util.h"
 
+#ifdef FAAC_STATS
+typedef struct faacEncStats faacEncStats;
+#endif
+
 void AACstereo(CoderInfo *coder,
                ChannelInfo *channel,
                faac_real *s[MAX_CHANNELS],
@@ -30,6 +34,9 @@ void AACstereo(CoderInfo *coder,
                faac_real quality,
                int mode,
                int sampleRate
+#ifdef FAAC_STATS
+               , faacEncStats *stats
+#endif
               );
 
 #endif

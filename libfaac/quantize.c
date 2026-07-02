@@ -227,7 +227,11 @@ static faac_real resolve_band_gain(int sfac, int sf_bias, faac_real band_peak, i
 static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * __restrict xr0,
                                    const faac_real * __restrict target, const faac_real * __restrict bandenrg,
                                    const faac_real * __restrict bandpeak, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs)
+                                   int * __restrict p_last_abs
+#ifdef FAAC_STATS
+                                   , faacEncStats *stats
+#endif
+)
 {
     int gsize = ci->groups.len[gnum];
     faac_real pns_threshold = 0.1 * (faac_real)pnslevel;
@@ -236,6 +240,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
         int band = ci->bandcnt;
+#ifdef FAAC_STATS
+        stats->totalBands++;
+#endif
 
         if (ci->book[band] != HCB_NONE)
         {
@@ -258,6 +265,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
         if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
+#ifdef FAAC_STATS
+            stats->pnsBands++;
+#endif
             ci->sf[band] += FAAC_LRINT(FAAC_LOG10(avg_per_window) * SF_STEP_ENRG);
             ci->bandcnt++;
             continue;
@@ -298,7 +308,11 @@ void ResetCoderSections(CoderInfo *coder)
     }
 }
 
-int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantCfg *aacquantCfg
+#ifdef FAAC_STATS
+              , faacEncStats *stats
+#endif
+)
 {
     faac_real target[MAX_SCFAC_BANDS], bandenrg[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
@@ -315,7 +329,11 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
         for (sfb = 0; sfb < coder->sfbn; sfb++)
             bandpeak[sfb] = be[sfb].peak_amp;
         derive_masking_targets(coder, i, (faac_real)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
-        assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
+        assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf
+#ifdef FAAC_STATS
+                              , stats
+#endif
+        );
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 

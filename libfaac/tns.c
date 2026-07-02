@@ -107,7 +107,11 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp)
+               faac_real* temp
+#ifdef FAAC_STATS
+               , faacEncStats *stats
+#endif
+)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */
@@ -119,6 +123,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     switch( blockType ) {
     case ONLY_SHORT_WINDOW :
 
+#ifdef FAAC_STATS
+        stats->shortBlocks++;
+#endif
         /* TNS not used for short blocks currently */
         tnsInfo->tnsDataPresent = 0;
         return;
@@ -134,6 +141,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         break;
 
     default:
+#ifdef FAAC_STATS
+        stats->longBlocks++;
+#endif
         numberOfWindows = 1;
         windowSize = BLOCK_LEN_SHORT;
         startBand = tnsInfo->tnsMinBandNumberLong;
@@ -170,6 +180,9 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
 
         if (gain>DEF_TNS_GAIN_THRESH) {  /* Use TNS */
             int truncatedOrder;
+#ifdef FAAC_STATS
+            stats->longBlocksTNS++;
+#endif
             QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,k,tnsFilter->index);
             truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,k);
             if (truncatedOrder == 0) continue;

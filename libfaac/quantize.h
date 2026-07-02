@@ -23,6 +23,10 @@
 #include "coder.h"
 #include "faac_real.h"
 
+#ifdef FAAC_STATS
+typedef struct faacEncStats faacEncStats;
+#endif
+
 typedef struct
 {
     faac_real quality;
@@ -48,7 +52,11 @@ enum {
 };
 
 void ResetCoderSections(CoderInfo *coderInfo);
-int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg);
+int BlocQuant(CoderInfo *coderInfo, faac_real *xr, AACQuantCfg *aacquantCfg
+#ifdef FAAC_STATS
+              , faacEncStats *stats
+#endif
+);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(faac_real *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void QuantizeInit(void);

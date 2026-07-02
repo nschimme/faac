@@ -32,6 +32,10 @@ Copyright (c) 1997.
 
 #include "faac_real.h"
 
+#ifdef FAAC_STATS
+typedef struct faacEncStats faacEncStats;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -39,7 +43,11 @@ extern "C" {
 
 void TnsInit(faacEncStruct* hEncoder);
 void TnsEncode(TnsInfo* tnsInfo, int numberOfBands,int maxSfb,enum WINDOW_TYPE blockType,
-               int* sfbOffsetTable,faac_real* spec, faac_real* temp);
+               int* sfbOffsetTable,faac_real* spec, faac_real* temp
+#ifdef FAAC_STATS
+               , faacEncStats *stats
+#endif
+);
 
 #ifdef __cplusplus
 }

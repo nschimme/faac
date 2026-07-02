@@ -355,6 +355,10 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
+#ifdef FAAC_STATS
+    memset(&hEncoder->stats, 0, sizeof(faacEncStats));
+#endif
+
     /* Return handle */
     return hEncoder;
 }
@@ -424,6 +428,22 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel;
+
+#ifdef FAAC_STATS
+    if (hEncoder->stats.totalFrames > 0)
+    {
+        double qavg = hEncoder->stats.totalQuality / hEncoder->stats.totalFrames;
+        double tr = 100.0 * hEncoder->stats.transientFrames / hEncoder->stats.totalFrames;
+        double tnsl = hEncoder->stats.longBlocks > 0 ? 100.0 * hEncoder->stats.longBlocksTNS / hEncoder->stats.longBlocks : 0.0;
+        double tnss = hEncoder->stats.shortBlocks > 0 ? 100.0 * hEncoder->stats.shortBlocksTNS / hEncoder->stats.shortBlocks : 0.0;
+        double ms = hEncoder->stats.totalBands > 0 ? 100.0 * hEncoder->stats.msBands / hEncoder->stats.totalBands : 0.0;
+        double is = hEncoder->stats.totalBands > 0 ? 100.0 * hEncoder->stats.isBands / hEncoder->stats.totalBands : 0.0;
+        double pns = hEncoder->stats.totalBands > 0 ? 100.0 * hEncoder->stats.pnsBands / hEncoder->stats.totalBands : 0.0;
+
+        fprintf(stderr, "Qavg: %.3f  Tr: %.1f%%  TNS(L): %.1f%%  TNS(S): %.1f%%  M/S: %.1f%%  I/S: %.1f%%  PNS: %.1f%%\n",
+                qavg, tr, tnsl, tnss, ms, is, pns);
+    }
+#endif
 
     /* Deinitialize coder functions */
     hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
@@ -559,10 +579,21 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
         return 0;
 
+#ifdef FAAC_STATS
+    hEncoder->stats.totalFrames++;
+#endif
+
     /* Psychoacoustics */
     hEncoder->psymodel->PsyCalculate(channelInfo, hEncoder->psyInfo, numChannels);
 
     hEncoder->psymodel->BlockSwitch(coderInfo, hEncoder->psyInfo, numChannels);
+
+#ifdef FAAC_STATS
+    if (coderInfo[0].block_type == ONLY_SHORT_WINDOW || coderInfo[0].block_type == LONG_SHORT_WINDOW)
+    {
+        hEncoder->stats.transientFrames++;
+    }
+#endif
 
     /* force block type */
     if (shortctl == SHORTCTL_NOSHORT)
@@ -625,7 +656,11 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong
+#ifdef FAAC_STATS
+                      , &hEncoder->stats
+#endif
+);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -646,11 +681,19 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate
+#ifdef FAAC_STATS
+              , &hEncoder->stats
+#endif
+);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg));
+                  &(hEncoder->aacquantCfg)
+#ifdef FAAC_STATS
+                  , &hEncoder->stats
+#endif
+        );
     }
 
     // fix max_sfb in CPE mode
@@ -703,6 +746,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
     }
+
+#ifdef FAAC_STATS
+    hEncoder->stats.totalQuality += hEncoder->aacquantCfg.quality;
+#endif
 
     return frameBytes;
 }
