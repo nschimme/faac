@@ -5,4 +5,3 @@
 - HE-AAC v1: SBR noise floor / invf mode from within-band tonality
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
 - HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
-- HE-AAC v1: Attach ISO 14496-3 citations to compute_kx/compute_k2
