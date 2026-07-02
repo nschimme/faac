@@ -74,7 +74,7 @@ int Resample(Resampler *r, int input_len)
         memcpy(combined,     hist, H         * sizeof(faac_real));
         memcpy(combined + H, in,   input_len * sizeof(faac_real));
 
-/* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
+        /* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
         for (i = 0; i < output_len; i++) {
             const faac_real * __restrict c = combined + 2 * i;
             faac_real a0 = 0, a1 = 0, a2 = 0, a3 = 0;
