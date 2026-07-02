@@ -142,6 +142,9 @@ void SbrAnalyze(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSampl
 
     /* Pass 2: Subband analysis. Accumulates energy across QMF bands within
      * the selected temporal envelopes. */
+    /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
+     * and never read, so skip their post-FFT extraction and accumulation. */
+    int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
     for (int ch = 0; ch < nch; ch++) {
         memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
@@ -156,12 +159,12 @@ void SbrAnalyze(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSampl
 #endif
                 {
                     faac_real slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, kEnd);
+                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
                     int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 
                     faac_real * restrict bE = sa->ch[ch].bandHalfE[h];
-                    for (int k = 0; k < kEnd; k++)
+                    for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
                 }
             }
