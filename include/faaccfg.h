@@ -71,6 +71,9 @@ typedef struct faacEncConfiguration
     /* AAC object type */
     unsigned int aacObjectType;
 
+#ifdef __GNUC__
+    __extension__
+#endif
     union {
         /* Joint coding mode */
         unsigned int jointmode;

@@ -47,7 +47,7 @@ extern "C" {
 
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
-unsigned int MinBitrate();
+unsigned int MinBitrate(void);
 int CountLeadingZeros(unsigned int x);
 
 #ifdef __cplusplus
