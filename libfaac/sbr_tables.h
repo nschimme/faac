@@ -18,7 +18,7 @@
  */
 
 /* SBR tables: QMF prototype filter, frequency-band offsets, Huffman tables.
- * All values are normative data from ISO/IEC 14496-3:2009 (Fourth Edition). */
+ * All values are normative data from ISO/IEC 14496-3:2005. */
 
 #ifndef SBR_TABLES_H
 #define SBR_TABLES_H
