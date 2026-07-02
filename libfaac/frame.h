@@ -38,7 +38,6 @@
 
 #include <faac.h>
 
-#ifdef FAAC_STATS
 typedef struct faacEncStats {
     unsigned int totalFrames;
     unsigned int transientFrames;
@@ -54,7 +53,6 @@ typedef struct faacEncStats {
     unsigned int shortBlocks;
     unsigned int shortBlocksTNS;
 } faacEncStats;
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -111,9 +109,7 @@ typedef struct {
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
 
-#ifdef FAAC_STATS
     faacEncStats stats;
-#endif
 
     /* FFT Tables */
     FFT_Tables	fft_tables;

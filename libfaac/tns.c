@@ -107,11 +107,8 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
                enum WINDOW_TYPE blockType,   /* block type */
                int* sfbOffsetTable,     /* Scalefactor band offset table */
                faac_real* spec,            /* Spectral data array */
-               faac_real* temp
-#ifdef FAAC_STATS
-               , faacEncStats *stats
-#endif
-)
+               faac_real* temp,
+               faacEncStats *stats)
 {
     int numberOfWindows,windowSize;
     int startBand,stopBand,order;    /* Bands over which to apply TNS */

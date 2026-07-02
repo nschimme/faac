@@ -355,9 +355,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
     QuantizeInit();
 
-#ifdef FAAC_STATS
     memset(&hEncoder->stats, 0, sizeof(faacEncStats));
-#endif
 
     /* Return handle */
     return hEncoder;
@@ -656,11 +654,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong
-#ifdef FAAC_STATS
-                      , &hEncoder->stats
-#endif
-);
+                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong,
+                      &hEncoder->stats);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
@@ -681,19 +676,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, channelInfo, hEncoder->freqBuff, numChannels,
-              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate
-#ifdef FAAC_STATS
-              , &hEncoder->stats
-#endif
-);
+              (faac_real)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
+              &hEncoder->stats);
 
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                  &(hEncoder->aacquantCfg)
-#ifdef FAAC_STATS
-                  , &hEncoder->stats
-#endif
-        );
+                  &(hEncoder->aacquantCfg), &hEncoder->stats);
     }
 
     // fix max_sfb in CPE mode

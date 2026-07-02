@@ -133,11 +133,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                faac_real * restrict sl0, faac_real * restrict sr0,
                                int * restrict sfcnt, int wstart, int wend,
                                faac_real thrmid, faac_real inv_isthr, faac_real thrside_sq,
-                               int is_start_sfb, int mode
-#ifdef FAAC_STATS
-                               , faacEncStats *stats
-#endif
-)
+                               int is_start_sfb, int mode, faacEncStats *stats)
 {
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
@@ -239,11 +235,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS],
-               int maxchan, faac_real quality, int mode, int sampleRate
-#ifdef FAAC_STATS
-               , faacEncStats *stats
-#endif
-)
+               int maxchan, faac_real quality, int mode, int sampleRate, faacEncStats *stats)
 {
     int chn;
     faac_real inv_quality = 1.0 / quality;
@@ -321,11 +313,7 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
             int end = start + coder[chn].groups.len[g];
             msused |= process_cpe(coder+chn, coder+rch, channel+chn, s[chn], s[rch],
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
-                                  is_start_sfb, mode
-#ifdef FAAC_STATS
-                                  , stats
-#endif
-            );
+                                  is_start_sfb, mode, stats);
             start = end;
         }
         if (mode == JOINT_MIXED && msused) {
