@@ -444,6 +444,9 @@ static int WriteICSInfo(CoderInfo *coderInfo,
     int grouping_bits;
     int bits = 0;
 
+    (void)objectType;
+    (void)common_window;
+
     if (writeFlag) {
         /* write out ics_info() information */
         PutBit(bitStream, 0, LEN_ICS_RESERV);  /* reserved Bit*/
@@ -520,6 +523,8 @@ static int WritePulseData(CoderInfo *coderInfo,
                           int writeFlag)
 {
     int bits = 0;
+
+    (void)coderInfo;
 
     if (writeFlag) {
         PutBit(bitStream, 0, LEN_PULSE_PRES);  /* no pulse_data_present */
@@ -604,7 +609,7 @@ static int WriteTNSData(CoderInfo *coderInfo,
                     if (writeFlag) {
                         int i;
                         for (i=1;i<=order;i++) {
-                            unsignedIndex = (unsigned long) (tnsFilterPtr->index[i])&(~(~0<<bitsToTransmit));
+                            unsignedIndex = (unsigned long) (tnsFilterPtr->index[i])&(~(~0U<<bitsToTransmit));
                             PutBit(bitStream,unsignedIndex,bitsToTransmit);
                         }
                     }
@@ -620,6 +625,8 @@ static int WriteGainControlData(CoderInfo *coderInfo,
                                 int writeFlag)
 {
     int bits = 0;
+
+    (void)coderInfo;
 
     if (writeFlag) {
         PutBit(bitStream, 0, LEN_GAIN_PRES);

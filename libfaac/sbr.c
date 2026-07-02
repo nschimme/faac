@@ -401,6 +401,9 @@ static void sbr_quantize_envelopes(SBRInfo *sbr, int nch, int kx, int k2, int sa
 {
     int n_env = sbr->numEnvelopes;
 
+    (void)kx;
+    (void)k2;
+
     for (int ch = 0; ch < nch; ch++) {
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         sbr->ch[ch].invfMode = 3;

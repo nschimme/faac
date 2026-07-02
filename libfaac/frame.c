@@ -276,7 +276,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
-    if (config->quantqual > maxqual)
+    if (config->quantqual > (unsigned long)maxqual)
         config->quantqual = maxqual;
     if (config->quantqual < MINQUAL)
         config->quantqual = MINQUAL;
@@ -934,5 +934,5 @@ SR_INFO srInfo[12+1] =
             4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 20
         }
     },
-    { -1 }
+    { -1, 0, 0, {0}, {0} }
 };

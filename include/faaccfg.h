@@ -73,12 +73,19 @@ typedef struct faacEncConfiguration
     /* AAC object type */
     unsigned int aacObjectType;
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
     union {
         /* Joint coding mode */
         unsigned int jointmode;
         /* compatibility alias */
         unsigned int allowMidside;
     };
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
     /* Use one of the channels as LFE channel */
     unsigned int useLfe;

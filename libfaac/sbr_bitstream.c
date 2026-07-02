@@ -167,6 +167,7 @@ static void blit_payload(BitStream *bs, const unsigned char *buf, int nbits)
 
 int SbrWrite(SBRInfo *sbr, BitStream *bs, int id_aac, int writeFlag, struct SignalAnalysis *sa)
 {
+    (void)sa;
     if (!sbr || !sbr->sbrPresent) return 0;
 
     /* Cache SBR payload to avoid redundant Huffman encoding during rate control.
