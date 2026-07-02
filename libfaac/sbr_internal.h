@@ -37,8 +37,7 @@ typedef struct SBRInfo {
     int headerSent;
     int frameCount;
     int numChannels;
-    int sampleRate;        /* full output rate; the core runs at sampleRate/2 (dual-rate) or Fs (single-rate) */
-    int singleRate;        /* 1 = HE core at full rate (rare), 0 = dual-rate (Fs/2 core) */
+    int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
 
     /* --- frequency band configuration (set at init, constant per stream) --- */
     int kx;
@@ -88,7 +87,6 @@ typedef struct SBRInfo {
 typedef struct SBRContext {
     unsigned long fullSampleRate;
     unsigned int  fullSampleRateIdx;
-    int           sbr_single_rate;
     SBRInfo      *sbrInfo;
     struct Resampler *resampler;
 
@@ -102,10 +100,10 @@ typedef struct SBRContext {
     int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
 } SBRContext;
 
-SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables);
-/* Recompute the bitrate/single-rate-dependent band config without reallocating;
- * lets SetConfiguration toggle sub-mode on an existing handle. */
-void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate);
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
+/* Recompute the bitrate-dependent band config without reallocating; lets
+ * SetConfiguration adjust an existing handle. */
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real * restrict energy, int kx, int k2);

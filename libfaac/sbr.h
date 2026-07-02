@@ -89,9 +89,6 @@ struct faacEncStruct;
 /* Rate-dependent resolution thresholds. */
 #define SBR_AMP_RES_BITRATE_BPS         20000u
 #define SBR_COARSE_TABLE_BITRATE_BPS    32000u
-/* sbr_offset table row for Single-rate SBR (Mode 0, ISO 14496-3:2009 Table 4.87). */
-#define SBR_OFFSET_ROW_SINGLE_RATE      6
-
 /* Max delta-coded step for envelope data, per bs_amp_res grid (ISO 14496-3
  * §4.6.18.3.6): the fine (amp_res=1) grid has half the step size of the coarse
  * grid, so its delta range must be roughly double to cover the same dB span. */
@@ -113,8 +110,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, fa
 int SbrContextIsPresent(SBRContext *sCtx);
 void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
 unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate);
-void SbrContextResolveRate(SBRContext *sCtx, int sbr_single_rate, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
-int SbrContextIsSingleRate(SBRContext *sCtx);
+void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);
 int SbrContextIsAnalysisValid(SBRContext *sCtx);
 int SbrContextGetWantShort(SBRContext *sCtx, int channel, int index);
 

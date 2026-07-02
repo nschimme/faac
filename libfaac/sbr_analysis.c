@@ -27,26 +27,6 @@
 #include "config.h"
 #endif
 
-/* Single-rate energy accumulation. Folds 64 QMF bands into 32 by summing
- * adjacent pairs to match the 1024-sample frame length. */
-static void analyze_energy_single_rate(struct SBRInfo *sbr, const faac_real *workspace,
-                                       int num_slots, int split, int numEnvelopes,
-                                       faac_real bandHalfE[2][SBR_QMF_BANDS_64])
-{
-    for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
-#endif
-        faac_real slotEnergy[SBR_QMF_BANDS_64];
-        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
-        int h = (numEnvelopes > 1 && slot >= split) ? 1 : 0;
-        for (int k = 0; k < 32; k++) {
-            faac_real energy = slotEnergy[2 * k] + slotEnergy[2 * k + 1];
-            bandHalfE[h][k] += energy;
-        }
-    }
-}
-
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
  * and subband energy accumulation. hot keeps it vectorized under LTO despite
  * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
@@ -170,10 +150,6 @@ void SbrAnalyze(SignalAnalysis *sa, faac_real *fullPtrs[], int nch, int numSampl
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(faac_real));
 
-            if (sbr->singleRate) {
-                analyze_energy_single_rate(sbr, workspace, num_slots, split, sa->numEnvelopes,
-                                           sa->ch[ch].bandHalfE);
-            } else
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)

@@ -31,14 +31,15 @@
 #include "bitstream.h"
 #include "sbr_internal.h"
 
-/* SBR master frequency band table (ISO 14496-3:2009 §4.6.18.3.2).
- * kx and k2 constants are spec-mandatory to ensure decoder compatibility. */
-static int compute_kx(int sampleRate, int bs_start_freq, int singleRate)
+/* SBR master frequency band table (ISO 14496-3:2009 §4.6.18.3.2). kx/k2 are
+ * spec-mandatory: the decoder reconstructs them from the sample rate alone, so
+ * these must match its table exactly or the envelope band count desyncs. The
+ * rate here is the full output rate (= 2*core), which is what the decoder uses. */
+static int compute_kx(int sampleRate, int bs_start_freq)
 {
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int start_min = ((temp << 7) + (sampleRate >> 1)) / sampleRate;
-    int row = singleRate ? SBR_OFFSET_ROW_SINGLE_RATE
-            : (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
+    int row = (sampleRate <= 16000) ? 0 : (sampleRate <= 22050) ? 1 : (sampleRate <= 24000) ? 2 : (sampleRate <= 32000) ? 3 : (sampleRate <= 64000) ? 4 : 5;
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
@@ -95,7 +96,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int singleRate, FFT_Tables *fft_tables)
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -118,16 +119,15 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int single
      * logm=6 table is built lazily on first use, single-threaded per encoder. */
     sbr->fftTables = fft_tables;
 
-    SbrUpdate(sbr, bitRate, singleRate);
+    SbrUpdate(sbr, bitRate);
     return sbr;
 }
 
 /* Re-resolve SBR operational parameters (crossover, resolution) when the
  * bitrate or sample rate changes, avoiding handle reallocation. */
-void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 {
     int sampleRate = sbr->sampleRate;
-    sbr->singleRate = singleRate;
     unsigned long rate_per_ch = bitRate / sbr->numChannels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
@@ -148,16 +148,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int singleRate)
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->numEnvelopes = 1;
     sbr->eff_amp_res = (sbr->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
-    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq, singleRate);
+    sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
-
-    /* Single-rate folding: reduces the 64-band subband space to 32 bands
-     * to fit the 1024-sample frame length while preserving spectral span. */
-    if (singleRate) {
-        sbr->kx >>= 1;
-        sbr->k2 >>= 1;
-        if (sbr->k2 <= sbr->kx) sbr->k2 = sbr->kx + 1;
-    }
 
     build_freq_table(sbr);
 }
@@ -199,14 +191,14 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
 {
     /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
      * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
-     * Fs/2 for dual-rate SBR and Fs for single-rate. */
+     * Fs/2 (dual-rate SBR); the extension declares the full output rate. */
     *pSize = 5;
     *ppBuffer = (unsigned char *)malloc(5);
     if (*ppBuffer == NULL) return -3;
     memset(*ppBuffer, 0, 5);
     BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
     PutBit(pBitStream, LOW,                         5);  /* core object type */
-    PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2 dual-rate, Fs single-rate) */
+    PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
     PutBit(pBitStream, channels,                     4);
     PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
     PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
@@ -214,8 +206,7 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
     PutBit(pBitStream, 5,                           5);  /* extObjectType = SBR */
     PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
-    /* SBR output rate: 2*core for dual-rate, same as core for single-rate. */
-    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);
+    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
     CloseBitStream(pBitStream);
     return 0;
 }
@@ -233,12 +224,9 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
 {
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
-        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate,
-                                bitrate,
-                                sCtx->sbr_single_rate,
-                                fft_tables);
+        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
     else
-        SbrUpdate(sCtx->sbrInfo, bitrate, sCtx->sbr_single_rate);
+        SbrUpdate(sCtx->sbrInfo, bitrate);
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, faac_real *inputFifo[MAX_CHANNELS], faac_real *heHalfRate[MAX_CHANNELS])
@@ -274,16 +262,8 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, fa
 
     SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, realPerCh, &sCtx->signalAnalysis);
 
-    if (sCtx->sbr_single_rate) {
-        /* Single-rate (rare): the core runs at full Fs, so it consumes the
-         * full-rate signal directly — no 2:1 decimation. Stage it into halfRate
-         * (the buffer the core reads). */
-        for (channel = 0; channel < (unsigned int)numChannels; channel++)
-            memcpy(rs->halfRate[channel], rs->fullRate[channel], FRAME_LEN * sizeof(faac_real));
-    } else {
-        /* Dual-rate decimation: produces the halved-rate core signal. */
-        Resample(rs, 2 * FRAME_LEN);
-    }
+    /* Dual-rate decimation: produces the halved-rate core signal. */
+    Resample(rs, 2 * FRAME_LEN);
 }
 
 extern SR_INFO srInfo[12+1];
@@ -303,23 +283,18 @@ unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
     return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
 }
 
-void SbrContextResolveRate(SBRContext *sCtx, int sbr_single_rate, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
+/* Dual-rate SBR: the AAC core encodes at Fs/2 while SBR reconstructs the top
+ * octave back to the full rate. Halve the core rate here; the full rate is kept
+ * in the context for SBR and the ASC. */
+void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
 {
     if (sCtx->fullSampleRate == 0) {
         sCtx->fullSampleRate     = *sampleRate;
         sCtx->fullSampleRateIdx  = *sampleRateIdx;
-        sCtx->sbr_single_rate    = sbr_single_rate;
-        if (!sbr_single_rate) {
-            *sampleRate         = *sampleRate / 2;
-            *sampleRateIdx      = GetSRIndex(*sampleRate);
-            *srInfoPtr          = &srInfo[*sampleRateIdx];
-        }
+        *sampleRate         = *sampleRate / 2;
+        *sampleRateIdx      = GetSRIndex(*sampleRate);
+        *srInfoPtr          = &srInfo[*sampleRateIdx];
     }
-}
-
-int SbrContextIsSingleRate(SBRContext *sCtx)
-{
-    return sCtx ? sCtx->sbr_single_rate : 0;
 }
 
 int SbrContextIsAnalysisValid(SBRContext *sCtx)
@@ -402,24 +377,6 @@ void SbrQmfAnalysis(SBRInfo *sbr, const faac_real * restrict ovl_pos, faac_real 
     }
 }
 
-
-/* Single-rate fallback energy accumulation. Folds 64 QMF bands into 32 by
- * summing adjacent pairs. */
-static void sbr_fallback_energy_single_rate(SBRInfo *sbr, const faac_real *workspace,
-                                            int num_slots, int half_slots, int kx, int k2,
-                                            faac_real bandHalfE[2][SBR_QMF_BANDS_64])
-{
-    for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
-#endif
-        faac_real slotEnergy[SBR_QMF_BANDS_64];
-        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, 0, SBR_QMF_BANDS_64);
-        int h = clamp_int(slot >= half_slots ? 1 : 0, 0, 1);
-        for (int k = kx; k < k2; k++)
-            bandHalfE[h][k] += slotEnergy[2 * k] + slotEnergy[2 * k + 1];
-    }
-}
 
 static void sbr_adopt_envelope_grid(SBRInfo *sbr, struct SignalAnalysis *sa, faac_real tratio)
 {
@@ -522,9 +479,6 @@ void SbrEncode(SBRInfo *sbr, faac_real *timeDomain[MAX_CHANNELS], int numChannel
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(faac_real));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, timeDomain[ch], numSamples * sizeof(faac_real));
 
-            if (sbr->singleRate) {
-                sbr_fallback_energy_single_rate(sbr, workspace, num_slots, half_slots, kx, k2, bandHalfE[ch]);
-            } else
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)
