@@ -476,6 +476,23 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
     return 0;
 }
 
+/* Drop n samples/channel from the front of the FIFO, shifting the leftover down. */
+static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
+{
+    unsigned int numChannels = hEncoder->numChannels;
+    unsigned int channel, rem;
+
+    if (n > hEncoder->inputFifoFill)
+        n = hEncoder->inputFifoFill;
+    rem = hEncoder->inputFifoFill - n;
+    if (rem)
+        for (channel = 0; channel < numChannels; channel++)
+            memmove(hEncoder->inputFifo[channel],
+                    hEncoder->inputFifo[channel] + n,
+                    rem * sizeof(faac_real));
+    hEncoder->inputFifoFill = rem;
+}
+
 int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
@@ -510,23 +527,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 		FreeMemory(hEncoder);
 
     return 0;
-}
-
-/* Drop n samples/channel from the front of the FIFO, shifting the leftover down. */
-static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
-{
-    unsigned int numChannels = hEncoder->numChannels;
-    unsigned int channel, rem;
-
-    if (n > hEncoder->inputFifoFill)
-        n = hEncoder->inputFifoFill;
-    rem = hEncoder->inputFifoFill - n;
-    if (rem)
-        for (channel = 0; channel < numChannels; channel++)
-            memmove(hEncoder->inputFifo[channel],
-                    hEncoder->inputFifo[channel] + n,
-                    rem * sizeof(faac_real));
-    hEncoder->inputFifoFill = rem;
 }
 
 /* HE-AAC per-frame front end: take one assembled full-rate frame from the FIFO
