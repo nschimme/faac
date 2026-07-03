@@ -57,6 +57,7 @@ static const struct {
 
 #define TNS_LPC_ORDER       8       /* Standard order for AAC-LC long windows */
 #define TNS_GAIN_LIMIT      1.4f    /* Minimum prediction gain for TNS usage */
+#define TNS_ATTACK_RATIO    1.4f    /* Min peak/mean sub-block energy to fire TNS */
 #define TNS_MAX_BITRATE     80000   /* High-bitrate threshold for TNS bypass */
 #define TNS_MIN_ENERGY      1e-9f   /* Energy floor for spectral analysis */
 
@@ -204,28 +205,28 @@ static void finalize_filter(int order, const float * restrict k, faac_real * res
 static void filter_spec(int length, int order, int direction,
                         const faac_real * restrict a, faac_real * restrict spec)
 {
-    faac_real hist[TNS_MAX_ORDER + 1];
+    /* Snapshot the original inputs so the FIR can index the delay line directly
+     * (no per-sample state shifting). length is bounded by the long block. */
+    faac_real hist[BLOCK_LEN_LONG];
     int i, j;
 
-    for (j = 0; j <= TNS_MAX_ORDER; j++) hist[j] = 0.0;
+    memcpy(hist, spec, length * sizeof(faac_real));
 
     if (direction) { /* Backward filtering (high to low frequency) */
         for (i = length - 1; i >= 0; i--) {
-            faac_real x = spec[i];
-            faac_real y = x;
-            for (j = 1; j <= order; j++) y += a[j] * hist[j];
-            for (j = order; j > 1; j--)  hist[j] = hist[j - 1];
-            hist[1] = x;
-            spec[i] = y;
+            faac_real acc = hist[i];
+            int jmax = min(order, length - 1 - i);
+            for (j = 1; j <= jmax; j++)
+                acc += a[j] * hist[i + j];
+            spec[i] = acc;
         }
     } else { /* Forward filtering (low to high frequency) */
         for (i = 0; i < length; i++) {
-            faac_real x = spec[i];
-            faac_real y = x;
-            for (j = 1; j <= order; j++) y += a[j] * hist[j];
-            for (j = order; j > 1; j--)  hist[j] = hist[j - 1];
-            hist[1] = x;
-            spec[i] = y;
+            faac_real acc = hist[i];
+            int jmax = min(order, i);
+            for (j = 1; j <= jmax; j++)
+                acc += a[j] * hist[i - j];
+            spec[i] = acc;
         }
     }
 }
@@ -264,6 +265,25 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
        because short-block transients are naturally handled by the filterbank's
        higher temporal resolution. */
     if (tnsInfo->tnsDisabled || blockType == ONLY_SHORT_WINDOW) return;
+
+    /* Temporal-flatness gate: TNS only pays off when the frame contains a real
+       temporal event (attack/decay edge) behind which the shaped quantization
+       noise can hide. On temporally flat frames — steady tones, smooth decay
+       tails — tonal spectra still yield high spectral prediction gain, so the
+       gain gate alone fires; the whitened spectrum then spreads quantization
+       noise across the whole block and is heard as reverb/smearing. Require a
+       clear peak in the sub-block energy envelope before enabling the tool. */
+    if (tdEnvelope && tdEnvelopeLen > 0) {
+        float peak = 0.0f, mean = 0.0f;
+        int w;
+        for (w = 0; w < tdEnvelopeLen; w++) {
+            float e = tdEnvelope[w];
+            mean += e;
+            if (e > peak) peak = e;
+        }
+        mean /= (float)tdEnvelopeLen;
+        if (peak < TNS_ATTACK_RATIO * mean) return;
+    }
 
     int b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     int b_stop  = min(tnsInfo->tnsMaxBandsLong, numBands);
