@@ -21,6 +21,7 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            padding: 2rem;
         }
         .container {
             background: var(--card);
@@ -28,7 +29,7 @@
             border-radius: 1rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 600px;
             text-align: center;
         }
         h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
@@ -42,10 +43,11 @@
         }
         .drop-zone.dragover { border-color: var(--primary); background: #eff6ff; }
         .drop-zone:hover { border-color: var(--primary); }
-        .settings { text-align: left; margin-bottom: 1rem; }
-        .settings label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; }
-        input[type="range"] { width: 100%; }
-        button {
+        .settings { text-align: left; margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; }
+        .settings label { flex: 1; font-size: 0.875rem; }
+        input[type="range"] { flex: 2; }
+        #qVal { min-width: 2.5rem; display: inline-block; font-weight: bold; }
+        button#encodeBtn {
             background: var(--primary);
             color: white;
             border: none;
@@ -56,7 +58,7 @@
             cursor: pointer;
             transition: opacity 0.2s;
         }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button#encodeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
         .progress-bar {
             height: 0.5rem;
             background: #e2e8f0;
@@ -72,24 +74,60 @@
             transition: width 0.1s;
         }
         #status { font-size: 0.875rem; margin-top: 0.5rem; color: #64748b; }
+
+        .history {
+            margin-top: 2rem;
+            text-align: left;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1rem;
+        }
+        .history h2 { font-size: 1.125rem; margin-bottom: 1rem; }
+        .history-list { list-style: none; padding: 0; }
+        .history-item {
+            background: #f1f5f9;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .history-header { display: flex; justify-content: space-between; align-items: center; font-weight: 500; font-size: 0.875rem; }
+        .history-controls { display: flex; gap: 0.5rem; align-items: center; }
+        .history-controls audio { height: 32px; flex: 1; }
+        .history-btn {
+            border: none;
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            font-size: 1.25rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .history-btn:hover { background: #f8fafc; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>FAAC WASM</h1>
+        <h1>FAAC Online 🚀</h1>
         <div class="drop-zone" id="dropZone">
-            <p>Click or drag audio file here</p>
+            <p>Click or drag audio file here 🎵</p>
             <input type="file" id="fileInput" hidden accept="audio/*">
         </div>
         <div class="settings">
             <label>Quality (VBR): <span id="qVal">100</span></label>
             <input type="range" id="quality" min="10" max="500" value="100">
         </div>
-        <button id="encodeBtn" disabled>Encode to M4A</button>
+        <button id="encodeBtn" disabled>Encode to M4A ⚙️</button>
         <div class="progress-bar" id="progressContainer">
             <div class="progress-fill" id="progressFill"></div>
         </div>
         <div id="status">Ready</div>
+
+        <div class="history">
+            <h2>Encoding History 📜</h2>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
     </div>
 
     <script>
@@ -101,6 +139,7 @@
         const status = document.getElementById('status');
         const progressFill = document.getElementById('progressFill');
         const progressContainer = document.getElementById('progressContainer');
+        const historyList = document.getElementById('historyList');
 
         let selectedFile = null;
         let worker = new Worker('worker.js');
@@ -109,7 +148,6 @@
 
         dropZone.onclick = () => fileInput.click();
 
-        // Prevent default drag behaviors
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             document.body.addEventListener(eventName, e => {
                 e.preventDefault();
@@ -117,7 +155,6 @@
             }, false);
         });
 
-        // Add visual cues for drag and drop
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
         });
@@ -126,13 +163,7 @@
             dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
         });
 
-        // Handle dropped files
-        dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            handleFiles(files);
-        }, false);
-
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
         fileInput.onchange = (e) => handleFiles(e.target.files);
 
         function handleFiles(files) {
@@ -148,21 +179,19 @@
 
             encodeBtn.disabled = true;
             progressContainer.style.display = 'block';
-            status.textContent = 'Decoding audio...';
+            status.textContent = 'Decoding audio... 📡';
 
             try {
                 const arrayBuffer = await selectedFile.arrayBuffer();
-                // Set sampleRate to 48000 for optimal FAAC quality
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-                status.textContent = 'Encoding to M4A...';
+                status.textContent = 'Encoding to M4A... 🔨';
 
                 const channels = audioBuffer.numberOfChannels;
                 const sampleRate = audioBuffer.sampleRate;
                 const pcmData = [];
                 for (let i = 0; i < channels; i++) {
-                    // Clone the buffer to allow transferring it to the worker
                     pcmData.push(audioBuffer.getChannelData(i).slice().buffer);
                 }
 
@@ -184,16 +213,10 @@
             const { type, data, progress } = e.data;
             if (type === 'progress') {
                 progressFill.style.width = `${progress}%`;
-                status.textContent = `Encoding: ${Math.round(progress)}%`;
+                status.textContent = `Encoding: ${Math.round(progress)}% ⌛`;
             } else if (type === 'done') {
-                const blob = new Blob([data], { type: 'audio/mp4' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a";
-                a.click();
-
-                status.textContent = 'Done!';
+                addHistoryItem(selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a", data);
+                status.textContent = 'Done! ✅';
                 encodeBtn.disabled = false;
                 progressFill.style.width = '0%';
             } else if (type === 'error') {
@@ -201,6 +224,41 @@
                 encodeBtn.disabled = false;
             }
         };
+
+        function addHistoryItem(filename, data) {
+            const blob = new Blob([data], { type: 'audio/mp4' });
+            const url = URL.createObjectURL(blob);
+
+            const li = document.createElement('li');
+            li.className = 'history-item';
+
+            li.innerHTML = `
+                <div class="history-header">
+                    <span>${filename}</span>
+                </div>
+                <div class="history-controls">
+                    <audio controls src="${url}"></audio>
+                    <button class="history-btn" title="Download">💾</button>
+                    <button class="history-btn" title="Delete">🗑️</button>
+                </div>
+            `;
+
+            const [dlBtn, delBtn] = li.querySelectorAll('.history-btn');
+
+            dlBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+            };
+
+            delBtn.onclick = () => {
+                URL.revokeObjectURL(url);
+                li.remove();
+            };
+
+            historyList.prepend(li);
+        }
     </script>
 </body>
 </html>

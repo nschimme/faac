@@ -122,7 +122,8 @@ int faac_check_image_header(const char *buf)
         return 0;
 }
 
-void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string)
+#define SETTAG(id, x) if(x) mp4_set_tag(id, x)
+void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string, faac_metadata_t *metadata)
 {
     unsigned char *ascData = NULL;
     unsigned long ascSize = 0;
@@ -130,8 +131,6 @@ void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string)
 
     faacEncGetDecoderSpecificInfo(hEncoder, &ascData, &ascSize);
     mp4_set_decoder_config(ascData, ascSize);
-    if (ascData)
-        free(ascData);
 
     version_string = malloc(strlen(faac_id_string) + 6);
     if (version_string)
@@ -139,9 +138,33 @@ void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string)
         strcpy(version_string, "FAAC ");
         strcpy(version_string + 5, faac_id_string);
         mp4_set_encoder(version_string);
-        free(version_string);
+    }
+
+    if (metadata)
+    {
+        SETTAG(MP4TAG_ARTIST, metadata->artist);
+        SETTAG(MP4TAG_ARTISTSORT, metadata->artist_sort);
+        SETTAG(MP4TAG_COMPOSER, metadata->composer);
+        SETTAG(MP4TAG_COMPOSERSORT, metadata->composer_sort);
+        SETTAG(MP4TAG_TITLE, metadata->title);
+        SETTAG(MP4TAG_ALBUM, metadata->album);
+        SETTAG(MP4TAG_ALBUMARTIST, metadata->album_artist);
+        SETTAG(MP4TAG_ALBUMARTISTSORT, metadata->album_artist_sort);
+        SETTAG(MP4TAG_ALBUMSORT, metadata->album_sort);
+        SETTAG(MP4TAG_YEAR, metadata->year);
+        SETTAG(MP4TAG_COMMENT, metadata->comment);
+        if (metadata->track) mp4_set_track(metadata->track, metadata->ntracks);
+        if (metadata->disc) mp4_set_disc(metadata->disc, metadata->ndiscs);
+        if (metadata->compilation) mp4_set_compilation(metadata->compilation);
+        if (metadata->genre_id) mp4_set_genre(metadata->genre_id);
     }
 
     mp4_finish();
     mp4_close();
+
+    if (ascData)
+        free(ascData);
+    if (version_string)
+        free(version_string);
 }
+#undef SETTAG

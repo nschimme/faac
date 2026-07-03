@@ -2,6 +2,7 @@
 #define UTILS_H
 
 #include <faac.h>
+#include "mp4write.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,8 +29,29 @@ int *faac_mk_chan_map(int channels, int center, int lf);
 /* Check image header for supported formats (PNG, JPEG, GIF) */
 int faac_check_image_header(const char *buf);
 
+/* Metadata structure for MP4 */
+typedef struct {
+    const char *artist;
+    const char *artist_sort;
+    const char *title;
+    const char *album;
+    const char *album_sort;
+    const char *album_artist;
+    const char *album_artist_sort;
+    const char *composer;
+    const char *composer_sort;
+    const char *year;
+    const char *comment;
+    int genre_id;
+    uint32_t track;
+    uint32_t ntracks;
+    uint32_t disc;
+    uint32_t ndiscs;
+    int compilation;
+} faac_metadata_t;
+
 /* Write MP4 metadata and finalize the file */
-void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string);
+void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string, faac_metadata_t *metadata);
 
 #ifdef __cplusplus
 }

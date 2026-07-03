@@ -232,6 +232,9 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 int bytesWritten = 0;
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
+                uint64_t input_samples = 0;
+                uint64_t encoded_samples = 0;
+                unsigned int delay_samples = inputSamples / numChannels;
 
                 unsigned int bytesInput = 0;
                 DWORD numberOfBytesWritten = 0;
@@ -262,10 +265,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                     SendMessage(hWnd,WM_SETTEXT,0,(LPARAM)HeaderText);
 
                     totalBytesRead += bytesInput;
+                    input_samples += (bytesInput / sizeof(int)) / numChannels;
 
                     timeElapsed = (GetTickCount () - startTime);
                     // Calculate playing time in seconds from samples per channel
-                    double playingTime = (double)totalBytesRead / (numChannels * sizeof(int) * sampleRate);
+                    double playingTime = (double)input_samples / sampleRate;
 
                     if (timeElapsed > (lastUpdated + 200))
                     {
@@ -274,8 +278,8 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                         lastUpdated = timeElapsed;
 
-                        factor = faac_calc_speed(totalBytesRead / (numChannels * sizeof(int)), sampleRate, (double)timeElapsed / 1000.0);
-                        timeLeft = faac_calc_eta(totalBytesRead / (numChannels * sizeof(int)), infile->samples, (double)timeElapsed / 1000.0);
+                        factor = faac_calc_speed(input_samples, sampleRate, (double)timeElapsed / 1000.0);
+                        timeLeft = faac_calc_eta(input_samples, infile->samples, (double)timeElapsed / 1000.0);
 
                         sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
                                 "Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
@@ -311,7 +315,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                     if (use_mp4)
                     {
-                        mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
+                        uint64_t frame_samples = input_samples - encoded_samples;
+                        if (frame_samples > delay_samples)
+                            frame_samples = delay_samples;
+                        mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+                        encoded_samples += frame_samples;
                     }
                     else
                     {
@@ -326,7 +334,13 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                     if (bytesWritten > 0)
                     {
                         if (use_mp4)
-                            mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
+                        {
+                            uint64_t frame_samples = input_samples - encoded_samples;
+                            if (frame_samples > delay_samples)
+                                frame_samples = delay_samples;
+                            mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+                            encoded_samples += frame_samples;
+                        }
                         else
                             WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
                     }
@@ -336,7 +350,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 {
                     char *id_string, *copyright_string;
                     faac_check_version(&id_string, &copyright_string);
-                    faac_mp4_finish(hEncoder, id_string);
+                    faac_mp4_finish(hEncoder, id_string, NULL);
                 }
                 else
                 {

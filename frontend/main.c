@@ -123,7 +123,7 @@ static help_t help_qual[] = {
     {"-c <freq>\tSet the bandwidth in Hz.\n",
     "\t\tThe actual frequency is adjusted to maximize upper spectral band\n"
     "\t\tusage.\n"},
-    {0}
+    {NULL, NULL}
 };
 
 static help_t help_io[] = {
@@ -162,8 +162,8 @@ static help_t help_io[] = {
     "\t\tin your multichannel input files if they haven't been reordered\n"
     "\t\talready).\n"},
     {"--ignorelength\tIgnore wav length from header (useful with files over 4 GB)\n"},
-    {"--overwrite\t\tOverwrite existing output file"},
-    {0}
+    {"--overwrite\t\tOverwrite existing output file", NULL},
+    {NULL, NULL}
 };
 
 static help_t help_mp4[] = {
@@ -187,7 +187,7 @@ static help_t help_mp4[] = {
     "\t\tSupported image formats are GIF, JPEG, and PNG.\n"},
     {"--comment <string>\tSet comment\n"},
     {"--creation-time <value>\tSet creation/modification time (auto, now, or timestamp)\n"},
-    {0}
+    {NULL, NULL}
 };
 
 static help_t help_advanced[] = {
@@ -201,7 +201,7 @@ static help_t help_advanced[] = {
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n"},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n"},
-    {0}
+    {NULL, NULL}
 };
 
 static struct {
@@ -385,7 +385,6 @@ int main(int argc, char *argv[])
 
     char *audioFileName = NULL;
     char *aacFileName = NULL;
-    char *aacFileExt = NULL;
     int aacFileNameGiven = 0;
 
     float *pcmbuf;
@@ -425,6 +424,7 @@ int main(int argc, char *argv[])
     static int ignorelen = 0;
     int verbose = 1;
     static int overwrite = 0;
+    char *aacFileExt = NULL;
 
 #ifndef _WIN32
     // install signal handler
@@ -623,11 +623,11 @@ int main(int argc, char *argv[])
             albumsort = optarg;
             break;
         case TRACK_FLAG:
-            if (sscanf(optarg, "%d/%d", &trackno, &ntracks) < 1)
+            if (sscanf(optarg, "%u/%u", &trackno, &ntracks) < 1)
                 dieMessage = "Wrong track number.\n";
             break;
         case DISC_FLAG:
-            if (sscanf(optarg, "%d/%d", &discno, &ndiscs) < 1)
+            if (sscanf(optarg, "%u/%u", &discno, &ndiscs) < 1)
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
@@ -1132,23 +1132,25 @@ int main(int argc, char *argv[])
 
     if (container == MP4_CONTAINER)
     {
-#define SETTAG(id, x) if(x) mp4_set_tag(id, x)
-        SETTAG(MP4TAG_ARTIST, artist);
-        SETTAG(MP4TAG_ARTISTSORT, artistsort);
-        SETTAG(MP4TAG_COMPOSER, composer);
-        SETTAG(MP4TAG_COMPOSERSORT, composersort);
-        SETTAG(MP4TAG_TITLE, title);
-        SETTAG(MP4TAG_ALBUM, album);
-        SETTAG(MP4TAG_ALBUMARTIST, albumartist);
-        SETTAG(MP4TAG_ALBUMARTISTSORT, albumartistsort);
-        SETTAG(MP4TAG_ALBUMSORT, albumsort);
-        SETTAG(MP4TAG_YEAR, year);
-        SETTAG(MP4TAG_COMMENT, comment);
-#undef SETTAG
-        if (trackno) mp4_set_track(trackno, ntracks);
-        if (discno) mp4_set_disc(discno, ndiscs);
-        if (compilation) mp4_set_compilation(compilation);
-        if (genre) mp4_set_genre(genre);
+        faac_metadata_t metadata = { 0 };
+        metadata.artist = artist;
+        metadata.artist_sort = artistsort;
+        metadata.composer = composer;
+        metadata.composer_sort = composersort;
+        metadata.title = title;
+        metadata.album = album;
+        metadata.album_artist = albumartist;
+        metadata.album_artist_sort = albumartistsort;
+        metadata.album_sort = albumsort;
+        metadata.year = year;
+        metadata.comment = comment;
+        metadata.track = trackno;
+        metadata.ntracks = ntracks;
+        metadata.disc = discno;
+        metadata.ndiscs = ndiscs;
+        metadata.compilation = compilation;
+        metadata.genre_id = genre;
+
         if (artData && artSize)
             mp4_set_cover(artData, (int)artSize);
 
@@ -1209,7 +1211,7 @@ int main(int argc, char *argv[])
             mp4_set_creation_time(final_creation_time);
         }
 
-        faac_mp4_finish(hEncoder, faac_id_string);
+        faac_mp4_finish(hEncoder, faac_id_string, &metadata);
 
         if (verbose >= 2)
         {
