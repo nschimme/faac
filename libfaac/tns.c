@@ -366,6 +366,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
         faac_real orig_e = 0.0, filt_e = 0.0;
         int i;
         for (i = 0; i < length; i++) trial[i] = (faac_real)wspec[i];
+        /* cppcheck-suppress uninitvar ; trial[0..length) is filled above and
+           filter_spec touches only the first `length` elements */
         filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
         for (i = 0; i < length; i++) {
             orig_e += (faac_real)wspec[i] * (faac_real)wspec[i];
