@@ -35,6 +35,11 @@ typedef struct {
 
 	int block_type;
 
+	/* Transient strength above which a frame always goes short. Equal to
+	   the base detection threshold when TNS is unavailable (band empty);
+	   raised when TNS can cover borderline transients in long windows. */
+	faac_real td_hard;
+
         void *data;
 } PsyInfo;
 
@@ -66,6 +71,12 @@ extern psymodel_t psymodel2;
  * detection). *len is set to the number of sub-blocks. Used by TNS to choose
  * filter direction from the real temporal envelope. */
 const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len);
+
+/* Configure the joint block-switch/TNS decision: when tnsActive, borderline
+ * transients (strength between the base threshold and td_hard) may stay in
+ * long windows with TNS covering the pre-echo. Call after TnsInit so the
+ * effective (bitrate-gated) TNS state is known. */
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive);
 
 #ifdef __cplusplus
 }
