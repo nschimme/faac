@@ -45,7 +45,6 @@ enum WINDOW_TYPE {
 };
 
 #define TNS_MAX_ORDER 12
-#define DEF_TNS_GAIN_THRESH 1.4
 #define DEF_TNS_COEFF_THRESH 0.1
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
@@ -70,12 +69,17 @@ typedef struct {
 
 typedef struct {
     int tnsDataPresent;
+    int tnsDisabled;
     int tnsMinBandNumberLong;
     int tnsMinBandNumberShort;
     int tnsMaxBandsLong;
     int tnsMaxBandsShort;
     int tnsMaxOrderLong;
     int tnsMaxOrderShort;
+    int nFiltLong;
+    faac_real quality;
+    faac_real gainThreshLong;
+    faac_real measuredGainThresh;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 

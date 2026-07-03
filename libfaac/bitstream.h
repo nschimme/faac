@@ -91,7 +91,7 @@ extern "C" {
 
 enum {ADTS_FRAMESIZE = 1 << 13};
 
-typedef struct BitStream
+typedef struct
 {
   unsigned char *data;      /* data bits */
   long numBit;          /* number of bits in buffer */
