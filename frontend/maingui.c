@@ -25,6 +25,8 @@
 #include <stdlib.h>
 
 #include "input.h"
+#include "utils.h"
+#include "mp4write.h"
 
 #include <faac.h>
 #include "resource.h"
@@ -73,11 +75,12 @@ static BOOL SelectFileName(HWND hParent, char *filename, BOOL forReading)
 
         return GetOpenFileName (&ofn);
     } else {
-        char filters [] = { "AAC Files (*.aac)\0*.aac\0" \
+        char filters [] = { "MP4 Files (*.m4a)\0*.m4a\0" \
+            "AAC Files (*.aac)\0*.aac\0" \
             "All Files (*.*)\0*.*\0\0" };
 
         ofn.lpstrFilter = filters;
-        ofn.lpstrDefExt = "aac";
+        ofn.lpstrDefExt = "m4a";
 
         ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
         ofn.lpstrTitle = "Select Output File";
@@ -104,13 +107,15 @@ static void AwakeDialogControls(HWND hWnd)
 
     SetDlgItemText (hWnd, IDC_INPUTFILENAME, inputFilename);
 
-    strncpy(outputFilename, inputFilename, sizeof(outputFilename) - 5);
-    outputFilename[sizeof(outputFilename) - 5] = '\0';
-
-    pExt = strrchr(outputFilename, '.');
-
-    if (pExt == NULL) lstrcat(outputFilename, ".aac");
-    else lstrcpy(pExt, ".aac");
+    {
+        char *newOutput = faac_get_output_filename(inputFilename, 1);
+        if (newOutput)
+        {
+            strncpy(outputFilename, newOutput, sizeof(outputFilename) - 1);
+            outputFilename[sizeof(outputFilename) - 1] = '\0';
+            free(newOutput);
+        }
+    }
 
     EnableWindow(GetDlgItem(hWnd, IDC_OUTPUTFILENAME), TRUE);
     EnableWindow(GetDlgItem(hWnd, IDC_SELECT_OUTPUTFILE), TRUE);
@@ -147,7 +152,8 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
         if (hEncoder)
         {
-            HANDLE hOutfile;
+            HANDLE hOutfile = INVALID_HANDLE_VALUE;
+            int use_mp4 = faac_is_mp4_filename(outputFilename);
 	    char szTemp[256];
 
             /* set encoder configuration */
@@ -161,7 +167,15 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             config->useLfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
             config->outputFormat = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? 0 : 1;
 
-            config->mpegVersion = SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
+            if (use_mp4)
+            {
+                config->mpegVersion = MPEG4;
+                config->outputFormat = RAW_STREAM;
+            }
+            else
+            {
+                config->mpegVersion = SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
+            }
             config->aacObjectType = SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_GETCURSEL, 0, 0);
             config->aacObjectType = LOW;
 
@@ -196,10 +210,24 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 	    SetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp);
 
             /* open the output file */
-            hOutfile = CreateFile(outputFilename, GENERIC_WRITE, 0, NULL,
-                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (use_mp4)
+            {
+                if (mp4_open(outputFilename, 1))
+                {
+                    MessageBox(hWnd, "Couldn't create MP4 output file!", "Error", MB_OK | MB_ICONSTOP);
+                    faacEncClose(hEncoder);
+                    wav_close(infile);
+                    return 0;
+                }
+                mp4_set_format(sampleRate, numChannels, infile->samplebytes * 8);
+            }
+            else
+            {
+                hOutfile = CreateFile(outputFilename, GENERIC_WRITE, 0, NULL,
+                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            }
 
-            if (hOutfile != INVALID_HANDLE_VALUE)
+            if (use_mp4 || hOutfile != INVALID_HANDLE_VALUE)
             {
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
@@ -211,8 +239,8 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 char HeaderText[50];
                 char Percentage[5];
 
-                pcmbuf = (int*)LocalAlloc(0, inputSamples*sizeof(int));
-                bitbuf = (unsigned char*)LocalAlloc(0, maxOutputBytes*sizeof(unsigned char));
+                pcmbuf = (int*)malloc(inputSamples*sizeof(int));
+                bitbuf = (unsigned char*)malloc(maxOutputBytes*sizeof(unsigned char));
 
                 SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
                 SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
@@ -235,26 +263,26 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                     totalBytesRead += bytesInput;
 
-                    timeElapsed = (GetTickCount () - startTime) / 10;
+                    timeElapsed = (GetTickCount () - startTime);
                     timeEncoded = 100.0 * totalBytesRead / (sampleRate * numChannels * sizeof (int));
 
-                    if (timeElapsed > (lastUpdated + 20))
+                    if (timeElapsed > (lastUpdated + 200))
                     {
-                        float factor;
-			unsigned timeLeft;
+                        double factor;
+                        double timeLeft;
 
                         lastUpdated = timeElapsed;
 
-                        factor = (float) timeEncoded / (float) (timeElapsed ? timeElapsed : 1);
-			timeLeft = 10.0 * infile->samples / sampleRate / factor - 0.1 * timeElapsed;
+                        factor = faac_calc_speed(totalBytesRead / (numChannels * sizeof(int)), sampleRate, (double)timeElapsed / 1000.0);
+                        timeLeft = faac_calc_eta(totalBytesRead / (numChannels * sizeof(int)), infile->samples, (double)timeElapsed / 1000.0);
 
-			sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
-				"Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
-				timeEncoded / 6000, 0.01 * (timeEncoded % 6000),
-				timeElapsed / 6000, 0.01 * (timeElapsed % 6000),
-				factor,
-				timeLeft / 600, 0.1 * (timeLeft % 600)
-			       );
+                        sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
+                                "Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
+                                timeEncoded / 6000, 0.01 * (timeEncoded % 6000),
+                                timeElapsed / 60000, 0.001 * (timeElapsed % 60000),
+                                (float)factor,
+                                (int)timeLeft / 60, (float)((int)(timeLeft * 10) % 600) / 10.0f
+                               );
 
                         SetDlgItemText(hWnd, IDC_TIME, szTemp);
                     }
@@ -280,13 +308,30 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                         break;
                     }
 
-                    WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
-
+                    if (use_mp4)
+                    {
+                        mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
+                    }
+                    else
+                    {
+                        WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
                     }
 
-                CloseHandle(hOutfile);
-                if (pcmbuf) LocalFree(pcmbuf);
-                if (bitbuf) LocalFree(bitbuf);
+                }
+
+                if (use_mp4)
+                {
+                    char *id_string, *copyright_string;
+                    faac_check_version(&id_string, &copyright_string);
+                    faac_mp4_finish(hEncoder, id_string);
+                }
+                else
+                {
+                    CloseHandle(hOutfile);
+                }
+
+                if (pcmbuf) free(pcmbuf);
+                if (bitbuf) free(bitbuf);
             }
 
             faacEncClose(hEncoder);
@@ -312,25 +357,19 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
     case WM_INITDIALOG:
       {
-        unsigned long samplesInput, maxBytesOutput;
-	faacEncHandle hEncoder =
-	  faacEncOpen(44100, 2, &samplesInput, &maxBytesOutput);
-	faacEncConfigurationPtr myFormat =
-	  faacEncGetCurrentConfiguration(hEncoder);
-
-	if (myFormat->version == FAAC_CFG_VERSION)
-	{
-	  char txt[100];
-	  sprintf(txt, "libfaac version %s", myFormat->name);
-	  SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
-	}
-	else
-	{
-	  MessageBox(hWnd, "wrong libfaac version", "FAAC",
-		     MB_OK | MB_ICONERROR);
+        char *id_string, *copyright_string;
+        if (faac_check_version(&id_string, &copyright_string))
+        {
+          char txt[100];
+          sprintf(txt, "libfaac version %s", id_string);
+          SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
+        }
+        else
+        {
+          MessageBox(hWnd, "wrong libfaac version", "FAAC",
+                     MB_OK | MB_ICONERROR);
           PostMessage(hWnd, WM_CLOSE, 0, 0);
-	}
-	faacEncClose(hEncoder);
+        }
       }
 
         inputFilename[0] = 0x00;

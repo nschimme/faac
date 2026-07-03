@@ -59,6 +59,7 @@
 #endif
 
 #include "mp4write.h"
+#include "utils.h"
 
 #ifdef _WIN32
 # undef stderr
@@ -358,69 +359,6 @@ static void help(int mode)
     }
 }
 
-static int check_image_header(const char *buf)
-{
-    if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
-        return 1;               /* PNG */
-    else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
-             !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
-        return 1;               /* JPEG */
-    else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
-        return 1;               /* GIF */
-    else
-        return 0;
-}
-
-static int *mkChanMap(int channels, int center, int lf)
-{
-    int *map;
-    int inpos;
-    int outpos;
-
-    if (!center && !lf)
-        return NULL;
-
-    if (channels < 3)
-        return NULL;
-
-    if (lf > 0)
-        lf--;
-    else
-        lf = channels - 1;      // default AAC position
-
-    if (center > 0)
-        center--;
-    else
-        center = 0;             // default AAC position
-
-    map = malloc(channels * sizeof(map[0]));
-    memset(map, 0, channels * sizeof(map[0]));
-
-    outpos = 0;
-    if ((center >= 0) && (center < channels))
-        map[outpos++] = center;
-
-    inpos = 0;
-    for (; outpos < (channels - 1); inpos++)
-    {
-        if (inpos == center)
-            continue;
-        if (inpos == lf)
-            continue;
-
-        map[outpos++] = inpos;
-    }
-    if (outpos < channels)
-    {
-        if ((lf >= 0) && (lf < channels))
-            map[outpos] = lf;
-        else
-            map[outpos] = inpos;
-    }
-
-    return map;
-}
-
 #define fprintf if(verbose)fprintf
 
 int main(int argc, char *argv[])
@@ -495,8 +433,7 @@ int main(int argc, char *argv[])
 #endif
 
     // get faac version
-    if (faacEncGetVersion(&faac_id_string, &faac_copyright_string) ==
-        FAAC_CFG_VERSION)
+    if (faac_check_version(&faac_id_string, &faac_copyright_string))
     {
         fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
                 faac_id_string);
@@ -742,7 +679,7 @@ int main(int argc, char *argv[])
                         artData = NULL;
                     }
                     else if (artSize < 12
-                             || !check_image_header((const char *) artData))
+                             || !faac_check_image_header((const char *) artData))
                     {
                         /* the above expression checks the image signature */
                         dieMessage = "Unsupported cover image file format!\n";
@@ -829,25 +766,16 @@ int main(int argc, char *argv[])
     /* generate the output file name, if necessary */
     if (!aacFileNameGiven)
     {
-        char *t = strrchr(audioFileName, '.');
-        int l = t ? strlen(audioFileName) - strlen(t) : strlen(audioFileName);
-
-        aacFileExt = container == MP4_CONTAINER ? ".m4a" : ".aac";
-
-        aacFileName = malloc(l + 1 + 4);
-        memcpy(aacFileName, audioFileName, l);
-        memcpy(aacFileName + l, aacFileExt, 4);
-        aacFileName[l + 4] = '\0';
+        aacFileName = faac_get_output_filename(audioFileName, container == MP4_CONTAINER);
     }
     else
     {
-        aacFileExt = strrchr(aacFileName, '.');
-
-        if (aacFileExt
-            && (!strcmp(".m4a", aacFileExt) || !strcmp(".m4b", aacFileExt)
-                || !strcmp(".mp4", aacFileExt)))
+        if (faac_is_mp4_filename(aacFileName))
             container = MP4_CONTAINER;
     }
+
+    if (!aacFileExt && aacFileName)
+        aacFileExt = strrchr(aacFileName, '.');
 
     /* open the audio input file */
     if (rawChans > 0)           // use raw input
@@ -906,7 +834,7 @@ int main(int argc, char *argv[])
     delay_samples = frameSize;  // encoder delay 1024 samples
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
     bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
-    chanmap = mkChanMap(infile->channels, chanC, chanLF);
+    chanmap = faac_mk_chan_map(infile->channels, chanC, chanLF);
     if (chanmap)
     {
         fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
@@ -1152,10 +1080,8 @@ int main(int argc, char *argv[])
                             ((double) infile->samples / infile->samplerate *
                              currentFrame / frames), timeused,
                             timeused * frames / currentFrame,
-                            (1024.0 * currentFrame / infile->samplerate) /
-                            timeused,
-                            timeused * (frames -
-                                        currentFrame) / currentFrame);
+                            faac_calc_speed(currentFrame * 1024, infile->samplerate, timeused),
+                            faac_calc_eta(currentFrame * 1024, infile->samples, timeused));
                 }
                 else
                 {
@@ -1163,8 +1089,7 @@ int main(int argc, char *argv[])
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
-                            (1024.0 * currentFrame / infile->samplerate) /
-                            timeused);
+                            faac_calc_speed(currentFrame * 1024, infile->samplerate, timeused));
                 }
 
                 fflush(stderr);
@@ -1207,17 +1132,6 @@ int main(int argc, char *argv[])
 
     if (container == MP4_CONTAINER)
     {
-        char *version_string = malloc(strlen(faac_id_string) + 6);
-        unsigned char *ascData = NULL;
-        unsigned long ascSize = 0;
-
-        faacEncGetDecoderSpecificInfo(hEncoder, &ascData, &ascSize);
-        mp4_set_decoder_config(ascData, ascSize);
-        strcpy(version_string, "FAAC ");
-        strcpy(version_string + 5, faac_id_string);
-
-        mp4_set_encoder(version_string);
-
 #define SETTAG(id, x) if(x) mp4_set_tag(id, x)
         SETTAG(MP4TAG_ARTIST, artist);
         SETTAG(MP4TAG_ARTISTSORT, artistsort);
@@ -1295,10 +1209,7 @@ int main(int argc, char *argv[])
             mp4_set_creation_time(final_creation_time);
         }
 
-        mp4_finish();
-        mp4_close();
-
-        free(version_string);
+        faac_mp4_finish(hEncoder, faac_id_string);
 
         if (verbose >= 2)
         {
