@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FAAC Online - Advanced Audio Coder</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <style>
         :root {
             --primary: #2563eb;
@@ -39,6 +40,7 @@
             transition: border-color 0.2s;
             margin-bottom: 1rem;
         }
+        .drop-zone.dragover { border-color: var(--primary); background: #eff6ff; }
         .drop-zone:hover { border-color: var(--primary); }
         .settings { text-align: left; margin-bottom: 1rem; }
         .settings label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; }
@@ -106,13 +108,40 @@
         qualityInput.oninput = () => qVal.textContent = qualityInput.value;
 
         dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => {
-            selectedFile = e.target.files[0];
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // Add visual cues for drag and drop
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        // Handle dropped files
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        }, false);
+
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        function handleFiles(files) {
+            selectedFile = files[0];
             if (selectedFile) {
                 encodeBtn.disabled = false;
                 status.textContent = `Selected: ${selectedFile.name}`;
             }
-        };
+        }
 
         encodeBtn.onclick = async () => {
             if (!selectedFile) return;
@@ -121,25 +150,33 @@
             progressContainer.style.display = 'block';
             status.textContent = 'Decoding audio...';
 
-            const arrayBuffer = await selectedFile.arrayBuffer();
-            const audioCtx = new AudioContext({ sampleRate: 44100 });
-            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            try {
+                const arrayBuffer = await selectedFile.arrayBuffer();
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-            status.textContent = 'Encoding to M4A...';
+                status.textContent = 'Encoding to M4A...';
 
-            const channels = audioBuffer.numberOfChannels;
-            const sampleRate = audioBuffer.sampleRate;
-            const pcmData = [];
-            for (let i = 0; i < channels; i++) {
-                pcmData.push(audioBuffer.getChannelData(i));
+                const channels = audioBuffer.numberOfChannels;
+                const sampleRate = audioBuffer.sampleRate;
+                const pcmData = [];
+                for (let i = 0; i < channels; i++) {
+                    // Clone the buffer to allow transferring it to the worker
+                    pcmData.push(audioBuffer.getChannelData(i).slice().buffer);
+                }
+
+                worker.postMessage({
+                    pcmData,
+                    sampleRate,
+                    channels,
+                    quality: parseInt(qualityInput.value)
+                }, pcmData);
+
+                audioCtx.close();
+            } catch (err) {
+                status.textContent = 'Error: ' + err.message;
+                encodeBtn.disabled = false;
             }
-
-            worker.postMessage({
-                pcmData,
-                sampleRate,
-                channels,
-                quality: parseInt(qualityInput.value)
-            }, pcmData.map(c => c.buffer));
         };
 
         worker.onmessage = (e) => {
