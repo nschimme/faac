@@ -17,7 +17,9 @@ jobs:
 
       - name: Build FAAC WASM
         run: |
-          emcc -O3 -Iinclude -Ifrontend libfaac/*.c frontend/wasm.c frontend/mp4write.c frontend/utils.c \
+          # Compile everything except SSE-specific files which WASM doesn't support
+          SOURCES=$(ls libfaac/*.c | grep -v "quantize_sse.c")
+          emcc -O3 -Iinclude -Ifrontend $SOURCES frontend/wasm.c frontend/mp4write.c frontend/utils.c \
             -DMAX_CHANNELS=6 -DFAAC_PRECISION_DOUBLE=1 -DPACKAGE_VERSION=\"1.50.0\" \
             -o frontend/faac.js \
             -s WASM=1 \
