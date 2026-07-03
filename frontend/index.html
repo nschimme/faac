@@ -8,12 +8,15 @@
     <style>
         :root {
             --primary: #2563eb;
+            --primary-hover: #1d4ed8;
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
         }
         body {
-            font-family: -apple-system, system-ui, sans-serif;
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             display: flex;
@@ -25,127 +28,327 @@
         }
         .container {
             background: var(--card);
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             width: 100%;
-            max-width: 600px;
+            max-width: 640px;
             text-align: center;
         }
-        h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
+        h1 { margin-bottom: 2rem; font-size: 2rem; font-weight: 800; color: #0f172a; }
+
         .drop-zone {
-            border: 2px dashed #cbd5e1;
-            padding: 2rem;
-            border-radius: 0.5rem;
+            border: 2px dashed var(--border);
+            padding: 3rem 2rem;
+            border-radius: 1rem;
             cursor: pointer;
-            transition: border-color 0.2s;
-            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+            margin-bottom: 2rem;
+            background: #fafafa;
         }
-        .drop-zone.dragover { border-color: var(--primary); background: #eff6ff; }
-        .drop-zone:hover { border-color: var(--primary); }
-        .settings { text-align: left; margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; }
-        .settings label { flex: 1; font-size: 0.875rem; }
-        input[type="range"] { flex: 2; }
-        #qVal { min-width: 2.5rem; display: inline-block; font-weight: bold; }
+        .drop-zone.dragover { border-color: var(--primary); background: #f0f7ff; }
+        .drop-zone:hover { border-color: var(--primary); background: #f8fafc; }
+        .drop-zone p { margin: 0; font-size: 1.125rem; color: var(--text-muted); }
+        .file-info { margin-top: 1rem; font-weight: 500; color: var(--primary); }
+
+        /* Segmented Control */
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 0.25rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .tab {
+            flex: 1;
+            padding: 0.625rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: var(--card);
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .control-group { text-align: left; margin-bottom: 1.5rem; }
+        .control-group label { display: block; margin-bottom: 0.75rem; font-weight: 600; font-size: 0.875rem; color: #475569; }
+
+        .dynamic-control { min-height: 4rem; }
+        .hidden { display: none; }
+
+        input[type="range"] { width: 100%; height: 6px; background: #e2e8f0; border-radius: 5px; appearance: none; outline: none; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: var(--primary); border-radius: 50%; cursor: pointer; transition: transform 0.1s; }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        select { width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--border); background: white; font-size: 1rem; outline: none; }
+        select:focus { border-color: var(--primary); ring: 2px solid var(--primary); }
+
+        .val-display { float: right; font-weight: 700; color: var(--primary); }
+        .hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; display: block; }
+
         button#encodeBtn {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
+            padding: 1rem;
+            border-radius: 0.75rem;
             width: 100%;
-            font-weight: 600;
+            font-size: 1.125rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: opacity 0.2s;
-        }
-        button#encodeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .progress-bar {
-            height: 0.5rem;
-            background: #e2e8f0;
-            border-radius: 1rem;
-            overflow: hidden;
+            transition: background 0.2s;
             margin-top: 1rem;
-            display: none;
-        }
-        .progress-fill {
-            height: 100%;
-            background: var(--primary);
-            width: 0%;
-            transition: width 0.1s;
-        }
-        #status { font-size: 0.875rem; margin-top: 0.5rem; color: #64748b; }
-
-        .history {
-            margin-top: 2rem;
-            text-align: left;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 1rem;
-        }
-        .history h2 { font-size: 1.125rem; margin-bottom: 1rem; }
-        .history-list { list-style: none; padding: 0; }
-        .history-item {
-            background: #f1f5f9;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            margin-bottom: 0.75rem;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             gap: 0.5rem;
         }
-        .history-header { display: flex; justify-content: space-between; align-items: center; font-weight: 500; font-size: 0.875rem; }
-        .history-controls { display: flex; gap: 0.5rem; align-items: center; }
-        .history-controls audio { height: 32px; flex: 1; }
+        button#encodeBtn:hover { background: var(--primary-hover); }
+        button#encodeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Advanced Options */
+        .advanced-toggle {
+            display: block;
+            margin: 1.5rem auto 0;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: underline;
+        }
+        .advanced-panel {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .progress-container { margin-top: 2rem; display: none; }
+        .progress-bar { height: 0.75rem; background: #e2e8f0; border-radius: 1rem; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s; }
+        #status { font-size: 0.875rem; margin-top: 0.75rem; color: var(--text-muted); font-weight: 500; }
+
+        .history { margin-top: 3rem; text-align: left; border-top: 2px solid #f1f5f9; padding-top: 2rem; }
+        .history h2 { font-size: 1.25rem; margin-bottom: 1.5rem; color: #0f172a; }
+        .history-item {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            transition: transform 0.2s;
+        }
+        .history-item:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .history-header { display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 0.875rem; }
+        .history-controls { display: flex; gap: 0.75rem; align-items: center; }
+        audio { height: 36px; flex: 1; }
         .history-btn {
             border: none;
-            background: white;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
+            background: #f1f5f9;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
             cursor: pointer;
-            font-size: 1.25rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            font-size: 1.125rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .history-btn:hover { background: #f8fafc; }
+        .history-btn:hover { background: #e2e8f0; }
+
+        /* Switches */
+        .switch-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>FAAC Online 🚀</h1>
+
         <div class="drop-zone" id="dropZone">
             <p>Click or drag audio file here 🎵</p>
+            <div id="fileInfo" class="file-info hidden"></div>
             <input type="file" id="fileInput" hidden accept="audio/*">
         </div>
-        <div class="settings">
-            <label>Quality (VBR): <span id="qVal">100</span></label>
-            <input type="range" id="quality" min="10" max="500" value="100">
+
+        <div class="tabs">
+            <button class="tab active" data-mode="VBR">VBR</button>
+            <button class="tab" data-mode="CBR">CBR</button>
+            <button class="tab" data-mode="ABR">ABR</button>
         </div>
-        <button id="encodeBtn" disabled>Encode to M4A ⚙️</button>
-        <div class="progress-bar" id="progressContainer">
-            <div class="progress-fill" id="progressFill"></div>
+
+        <div class="dynamic-control">
+            <div id="vbrControl" class="control-group">
+                <label>Quality (VBR) <span class="val-display" id="qValDisplay">100</span></label>
+                <input type="range" id="quality" min="10" max="500" value="100">
+                <span class="hint" id="vbrHint">Recommended for general use (High Quality)</span>
+            </div>
+
+            <div id="cbrControl" class="control-group hidden">
+                <label>Bitrate (CBR)</label>
+                <select id="cbrBitrate">
+                    <option value="64">64 kbps (Low)</option>
+                    <option value="96">96 kbps (Medium)</option>
+                    <option value="128" selected>128 kbps (Recommended)</option>
+                    <option value="192">192 kbps (High Quality)</option>
+                    <option value="256">256 kbps (Excellent)</option>
+                    <option value="320">320 kbps (Maximum)</option>
+                </select>
+                <span class="hint">Fixed bitrate for consistent file sizes</span>
+            </div>
+
+            <div id="abrControl" class="control-group hidden">
+                <label>Target Bitrate (ABR) <span class="val-display" id="abrValDisplay">160 kbps</span></label>
+                <input type="range" id="abrBitrate" min="32" max="512" value="160" step="8">
+                <span class="hint">Average bitrate for flexible complexity handling</span>
+            </div>
         </div>
-        <div id="status">Ready</div>
+
+        <button id="encodeBtn" disabled>
+            <span>Encode to M4A</span> ⚙️
+        </button>
+
+        <button class="advanced-toggle" id="advancedToggle">Advanced Audio Settings 🛠️</button>
+
+        <div class="advanced-panel hidden" id="advancedPanel">
+            <div class="advanced-grid">
+                <div class="control-group">
+                    <label>AAC Profile</label>
+                    <select id="objectType">
+                        <option value="2" selected>Low Complexity (LC)</option>
+                        <option value="1">Main</option>
+                        <option value="3">SSR</option>
+                        <option value="4">LTP</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Joint Mode</label>
+                    <select id="jointMode">
+                        <option value="3" selected>Mixed (Auto)</option>
+                        <option value="1">Mid/Side</option>
+                        <option value="2">Intensity</option>
+                        <option value="0">None (Stereo)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="switch-container">
+                <label>Temporal Noise Shaping (TNS)</label>
+                <label class="switch">
+                    <input type="checkbox" id="useTns" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-group">
+                <label>PNS Level <span class="val-display" id="pnsValDisplay">0</span></label>
+                <input type="range" id="pnsLevel" min="0" max="10" value="0">
+            </div>
+
+            <div class="control-group">
+                <label>Bandwidth Cutoff (Hz) <span class="val-display" id="cutoffValDisplay">Auto</span></label>
+                <input type="range" id="cutoff" min="0" max="24000" value="0" step="500">
+            </div>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="status">Ready</div>
+        </div>
 
         <div class="history">
             <h2>Encoding History 📜</h2>
-            <ul class="history-list" id="historyList"></ul>
+            <ul id="historyList" class="history-list"></ul>
         </div>
     </div>
 
     <script>
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
         const encodeBtn = document.getElementById('encodeBtn');
-        const qualityInput = document.getElementById('quality');
-        const qVal = document.getElementById('qVal');
-        const status = document.getElementById('status');
         const progressFill = document.getElementById('progressFill');
         const progressContainer = document.getElementById('progressContainer');
+        const status = document.getElementById('status');
         const historyList = document.getElementById('historyList');
+        const advancedToggle = document.getElementById('advancedToggle');
+        const advancedPanel = document.getElementById('advancedPanel');
+
+        // Inputs
+        const tabs = document.querySelectorAll('.tab');
+        const qualityInput = document.getElementById('quality');
+        const abrInput = document.getElementById('abrBitrate');
+        const cbrInput = document.getElementById('cbrBitrate');
+        const qValDisplay = document.getElementById('qValDisplay');
+        const abrValDisplay = document.getElementById('abrValDisplay');
+        const vbrHint = document.getElementById('vbrHint');
+        const pnsInput = document.getElementById('pnsLevel');
+        const pnsValDisplay = document.getElementById('pnsValDisplay');
+        const cutoffInput = document.getElementById('cutoff');
+        const cutoffValDisplay = document.getElementById('cutoffValDisplay');
 
         let selectedFile = null;
+        let activeMode = 'VBR';
         let worker = new Worker('worker.js');
 
-        qualityInput.oninput = () => qVal.textContent = qualityInput.value;
+        // Tab Switching Logic
+        tabs.forEach(tab => {
+            tab.onclick = () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeMode = tab.dataset.mode;
 
+                document.getElementById('vbrControl').classList.add('hidden');
+                document.getElementById('cbrControl').classList.add('hidden');
+                document.getElementById('abrControl').classList.add('hidden');
+
+                if (activeMode === 'VBR') document.getElementById('vbrControl').classList.remove('hidden');
+                else if (activeMode === 'CBR') document.getElementById('cbrControl').classList.remove('hidden');
+                else if (activeMode === 'ABR') document.getElementById('abrControl').classList.remove('hidden');
+            };
+        });
+
+        // Value Updates
+        qualityInput.oninput = () => {
+            const val = qualityInput.value;
+            qValDisplay.textContent = val;
+            if (val < 50) vbrHint.textContent = "Low Quality (Smallest size)";
+            else if (val < 150) vbrHint.textContent = "Recommended for general use (High Quality)";
+            else if (val < 250) vbrHint.textContent = "Very High Quality (Archival)";
+            else vbrHint.textContent = "Lossless-like Quality (Maximum size)";
+        };
+
+        abrInput.oninput = () => abrValDisplay.textContent = abrInput.value + " kbps";
+        pnsInput.oninput = () => pnsValDisplay.textContent = pnsInput.value;
+        cutoffInput.oninput = () => cutoffValDisplay.textContent = cutoffInput.value == 0 ? "Auto" : cutoffInput.value + " Hz";
+
+        advancedToggle.onclick = () => advancedPanel.classList.toggle('hidden');
+
+        // File Selection
         dropZone.onclick = () => fileInput.click();
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -170,7 +373,9 @@
             selectedFile = files[0];
             if (selectedFile) {
                 encodeBtn.disabled = false;
-                status.textContent = `Selected: ${selectedFile.name}`;
+                fileInfo.classList.remove('hidden');
+                fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                status.textContent = 'Ready to encode';
             }
         }
 
@@ -195,11 +400,25 @@
                     pcmData.push(audioBuffer.getChannelData(i).slice().buffer);
                 }
 
+                // Prepare parameters
+                let quality = 0;
+                let bitrate = 0;
+
+                if (activeMode === 'VBR') quality = parseInt(qualityInput.value);
+                else if (activeMode === 'CBR') bitrate = parseInt(cbrInput.value);
+                else if (activeMode === 'ABR') bitrate = parseInt(abrInput.value);
+
                 worker.postMessage({
                     pcmData,
                     sampleRate,
                     channels,
-                    quality: parseInt(qualityInput.value)
+                    quality,
+                    bitrate,
+                    objectType: parseInt(document.getElementById('objectType').value),
+                    useTns: document.getElementById('useTns').checked,
+                    pnsLevel: parseInt(document.getElementById('pnsLevel').value),
+                    jointMode: parseInt(document.getElementById('jointMode').value),
+                    cutoff: parseInt(document.getElementById('cutoff').value)
                 }, pcmData);
 
                 audioCtx.close();

@@ -23,7 +23,9 @@ typedef struct {
 } faac_wasm_t;
 
 EMSCRIPTEN_KEEPALIVE
-faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quality, int use_mp4) {
+faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quality,
+                            int object_type, int use_tns, int pns_level, int joint_mode,
+                            int cutoff, int use_mp4) {
     faac_wasm_t *ctx = malloc(sizeof(faac_wasm_t));
     if (!ctx) return NULL;
     memset(ctx, 0, sizeof(faac_wasm_t));
@@ -38,15 +40,23 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
     config->inputFormat = FAAC_INPUT_FLOAT;
     config->outputFormat = use_mp4 ? RAW_STREAM : ADTS_STREAM;
     config->mpegVersion = MPEG4;
-    config->aacObjectType = LOW;
-    config->useTns = 1;
-    config->jointmode = JOINT_MIXED;
+
+    // Advanced settings
+    config->aacObjectType = (object_type > 0) ? object_type : LOW;
+    config->useTns = use_tns;
+    config->pnslevel = pns_level;
+    if (joint_mode >= 0)
+        config->jointmode = joint_mode;
+
+    if (cutoff > 0)
+        config->bandWidth = cutoff;
 
     if (quality > 0) {
         config->quantqual = quality;
         config->bitRate = 0;
     } else if (bitrate > 0) {
         config->bitRate = (bitrate * 1000) / channels;
+        config->quantqual = 0;
     }
 
     if (!faacEncSetConfiguration(ctx->hEncoder, config)) {

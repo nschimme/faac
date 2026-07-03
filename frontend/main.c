@@ -1237,7 +1237,7 @@ int main(int argc, char *argv[])
         free(pcmbuf);
     if (bitbuf)
         free(bitbuf);
-    if (aacFileNameGiven)
+    if (aacFileName)
         free(aacFileName);
 
     return 0;
