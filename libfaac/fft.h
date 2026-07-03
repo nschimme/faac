@@ -31,10 +31,22 @@ typedef struct
     fftfloat **costbl;
     fftfloat **negsintbl;
     unsigned short **reordertbl;
+    /* MDCT pre/post-twiddle factors cos/sin(freq*(i+1/8)), one table pair per
+     * transform size (indexed by the size's fft logm). Precomputing them
+     * breaks the serial cos/sin recurrence that kept the MDCT twiddle loops
+     * from vectorizing, and is more accurate than the recurrence. */
+    fftfloat *mdct_cos[16];
+    fftfloat *mdct_sin[16];
 } FFT_Tables;
 
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
+
+/* Return cached MDCT twiddle tables of length 1<<logm for angular step freq;
+ * builds them on first use. Returns 0 on success, nonzero if allocation
+ * failed (caller must fall back to computing twiddles itself). */
+int mdct_twiddles	( FFT_Tables *fft_tables, int logm, faac_real freq,
+			const fftfloat **tcos, const fftfloat **tsin );
 
 void rfft			( FFT_Tables *fft_tables, faac_real *x, int logm );
 void fft			( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm );
