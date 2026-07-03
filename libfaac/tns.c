@@ -403,8 +403,10 @@ static faac_real LevinsonDurbin(int fOrder,                      /* Filter order
             aPtr=aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
-        if (error <= 0.0) return DEF_TNS_GAIN_THRESH + 1.0;
-        return signal/error;    /* return the gain */
+        if (error > 0.0)
+            return (faac_real)(signal / error);    /* return the gain */
+
+        return (faac_real)(DEF_TNS_GAIN_THRESH + 1.0);
     }
 }
 

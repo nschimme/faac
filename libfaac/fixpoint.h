@@ -22,12 +22,10 @@
 
 #include <stdint.h>
 
-/* Use Q1.31 for high precision twiddle factors and intermediate results */
 typedef int32_t int32_q31;
 #define Q31_ONE 2147483647
 #define Q31_BIT 31
 
-/* Standard multiplication for Q1.31 */
 static inline int32_q31 fix_mul_q31(int32_q31 a, int32_q31 b) {
     return (int32_q31)(((int64_t)a * b) >> Q31_BIT);
 }
@@ -35,11 +33,6 @@ static inline int32_q31 fix_mul_q31(int32_q31 a, int32_q31 b) {
 #define FIX_SIN_LUT_SIZE 1024
 extern const int32_q31 fix_sin_lut[FIX_SIN_LUT_SIZE + 1];
 
-/**
- * @brief Fixed-point sine function using LUT and linear interpolation.
- * @param theta Angle in units of (PI/2), scaled by 2^30.
- * @return sin(theta) in Q1.31.
- */
 static inline int32_q31 fix_sin(int32_t theta) {
     int32_t idx;
     int32_t frac;

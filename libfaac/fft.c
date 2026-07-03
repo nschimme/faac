@@ -355,10 +355,6 @@ static void check_tables( FFT_Tables *fft_tables, int logm)
 		int i;
 		for (i = 0; i < n4; i++) {
 #ifdef FAAC_PRECISION_FIXED
-			/* freq * (i + 0.125) = (2*PI/N) * (i + 0.125) = (PI/2) * (4/N) * (i + 0.125)
-			   N = 4 * FFT size = 4 * size
-			   theta_fixed = ((i + 0.125) / size) * 2^30
-			*/
 			int32_t theta_fixed = (int32_t)((((int64_t)i << 30) + ((int64_t)1 << 27)) / size);
 			fft_tables->mdct_cos[logm][i] = (fftfloat)fix_cos(theta_fixed);
 			fft_tables->mdct_sin[logm][i] = (fftfloat)fix_sin(theta_fixed);

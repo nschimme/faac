@@ -54,7 +54,7 @@ static faac_real max_quant_limit;
 
 void QuantizeInit(void)
 {
-#if defined(HAVE_SSE2)
+#if defined(HAVE_SSE2) && !defined(FAAC_PRECISION_FIXED)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;
