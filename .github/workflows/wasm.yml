@@ -10,7 +10,7 @@ jobs:
   build-wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -18,8 +18,10 @@ jobs:
       - name: Build FAAC WASM
         run: |
           emcc -O3 -Iinclude -Ifrontend libfaac/*.c frontend/wasm.c frontend/mp4write.c frontend/utils.c \
+            -DMAX_CHANNELS=6 -DFAAC_PRECISION_DOUBLE=1 \
             -o frontend/faac.js \
             -s WASM=1 \
+            -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_faac_wasm_init", "_faac_wasm_encode", "_faac_wasm_close"]' \
             -s EXPORTED_RUNTIME_METHODS='["FS", "HEAPF32"]' \
             -s EXPORT_NAME='faacModule' \
             -s MODULARIZE=1 \
@@ -33,7 +35,7 @@ jobs:
           zip -r faac-wasm.zip dist/
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: faac-wasm
           path: faac-wasm.zip
