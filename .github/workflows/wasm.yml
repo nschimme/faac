@@ -1,0 +1,46 @@
+name: WASM Build and Deploy
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build FAAC WASM
+        run: |
+          emcc -O3 -Iinclude -Ifrontend libfaac/*.c frontend/wasm.c frontend/mp4write.c frontend/utils.c \
+            -o frontend/faac.js \
+            -s WASM=1 \
+            -s EXPORTED_RUNTIME_METHODS='["FS", "HEAPF32"]' \
+            -s EXPORT_NAME='faacModule' \
+            -s MODULARIZE=1 \
+            -s FORCE_FILESYSTEM=1 \
+            -s ALLOW_MEMORY_GROWTH=1
+
+      - name: Prepare Artifacts
+        run: |
+          mkdir -p dist
+          cp frontend/index.html frontend/worker.js frontend/faac.js frontend/faac.wasm dist/
+          zip -r faac-wasm.zip dist/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: faac-wasm
+          path: faac-wasm.zip
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/master'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist

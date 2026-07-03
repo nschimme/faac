@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAAC Online - Advanced Audio Coder</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+        }
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            margin-bottom: 1rem;
+        }
+        .drop-zone:hover { border-color: var(--primary); }
+        .settings { text-align: left; margin-bottom: 1rem; }
+        .settings label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; }
+        input[type="range"] { width: 100%; }
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .progress-bar {
+            height: 0.5rem;
+            background: #e2e8f0;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 1rem;
+            display: none;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.1s;
+        }
+        #status { font-size: 0.875rem; margin-top: 0.5rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FAAC WASM</h1>
+        <div class="drop-zone" id="dropZone">
+            <p>Click or drag audio file here</p>
+            <input type="file" id="fileInput" hidden accept="audio/*">
+        </div>
+        <div class="settings">
+            <label>Quality (VBR): <span id="qVal">100</span></label>
+            <input type="range" id="quality" min="10" max="500" value="100">
+        </div>
+        <button id="encodeBtn" disabled>Encode to M4A</button>
+        <div class="progress-bar" id="progressContainer">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="status">Ready</div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const encodeBtn = document.getElementById('encodeBtn');
+        const qualityInput = document.getElementById('quality');
+        const qVal = document.getElementById('qVal');
+        const status = document.getElementById('status');
+        const progressFill = document.getElementById('progressFill');
+        const progressContainer = document.getElementById('progressContainer');
+
+        let selectedFile = null;
+        let worker = new Worker('worker.js');
+
+        qualityInput.oninput = () => qVal.textContent = qualityInput.value;
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                encodeBtn.disabled = false;
+                status.textContent = `Selected: ${selectedFile.name}`;
+            }
+        };
+
+        encodeBtn.onclick = async () => {
+            if (!selectedFile) return;
+
+            encodeBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            status.textContent = 'Decoding audio...';
+
+            const arrayBuffer = await selectedFile.arrayBuffer();
+            const audioCtx = new AudioContext({ sampleRate: 44100 });
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+            status.textContent = 'Encoding to M4A...';
+
+            const channels = audioBuffer.numberOfChannels;
+            const sampleRate = audioBuffer.sampleRate;
+            const pcmData = [];
+            for (let i = 0; i < channels; i++) {
+                pcmData.push(audioBuffer.getChannelData(i));
+            }
+
+            worker.postMessage({
+                pcmData,
+                sampleRate,
+                channels,
+                quality: parseInt(qualityInput.value)
+            }, pcmData.map(c => c.buffer));
+        };
+
+        worker.onmessage = (e) => {
+            const { type, data, progress } = e.data;
+            if (type === 'progress') {
+                progressFill.style.width = `${progress}%`;
+                status.textContent = `Encoding: ${Math.round(progress)}%`;
+            } else if (type === 'done') {
+                const blob = new Blob([data], { type: 'audio/mp4' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a";
+                a.click();
+
+                status.textContent = 'Done!';
+                encodeBtn.disabled = false;
+                progressFill.style.width = '0%';
+            } else if (type === 'error') {
+                status.textContent = 'Error: ' + data;
+                encodeBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

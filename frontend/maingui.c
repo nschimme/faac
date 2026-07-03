@@ -177,7 +177,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 config->mpegVersion = SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
             }
             config->aacObjectType = SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_GETCURSEL, 0, 0);
-            config->aacObjectType = LOW;
+            if (config->aacObjectType == CB_ERR) config->aacObjectType = LOW;
 
             GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
 	    config->quantqual = atoi(szTemp);
