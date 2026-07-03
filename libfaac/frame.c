@@ -445,7 +445,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
 
-    BlocStat();
     TnsPrintStats(hEncoder);
 
     /* Free handle */

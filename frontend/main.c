@@ -47,6 +47,9 @@
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
+#include <time.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
@@ -89,6 +92,7 @@ enum flags
     WRITER_FLAG,
     WRITER_SORT_FLAG,
     TAG_FLAG,
+    CREATION_TIME_FLAG,
     HELP_QUAL,
     HELP_IO,
     HELP_MP4,
@@ -181,6 +185,7 @@ static help_t help_mp4[] = {
     {"--cover-art <filename>\tRead cover art from file X\n",
     "\t\tSupported image formats are GIF, JPEG, and PNG.\n"},
     {"--comment <string>\tSet comment\n"},
+    {"--creation-time <value>\tSet creation/modification time (auto, now, or timestamp)\n"},
     {0}
 };
 
@@ -468,7 +473,8 @@ int main(int argc, char *argv[])
         *album = NULL, *albumartist = NULL,
         *albumartistsort = NULL, *albumsort = NULL,
         *year = NULL, *comment = NULL, *composer = NULL,
-        *composersort = NULL, *tagname = 0, *tagval = 0;
+        *composersort = NULL, *tagname = 0, *tagval = 0,
+        *creation_time_str = NULL;
     int genre = 0;
     uint8_t *artData = NULL;
     uint64_t artSize = 0;
@@ -553,6 +559,7 @@ int main(int argc, char *argv[])
             {"ignorelength", 0, &ignorelen, 1},
             {"tag", 1, 0, TAG_FLAG},
             {"overwrite", 0, &overwrite, 1},
+            {"creation-time", 1, 0, CREATION_TIME_FLAG},
             {0, 0, 0, 0}
         };
         int c = -1;
@@ -704,7 +711,11 @@ int main(int argc, char *argv[])
                 dieMessage = "Missing tag value.\n";
             else
                 *(char *)tagval++ = 0;
-            mp4tag_add(tagname, tagval);
+            if (!dieMessage && mp4_add_custom_tag(tagname, tagval))
+                dieMessage = "Couldn't add tag (out of memory).\n";
+            break;
+        case CREATION_TIME_FLAG:
+            creation_time_str = optarg;
             break;
         case COVER_ART_FLAG:
             {
@@ -966,16 +977,13 @@ int main(int argc, char *argv[])
             return 1;
         }
 
-        if (mp4atom_open(aacFileName, overwrite))
+        if (mp4_open(aacFileName, overwrite))
         {
             fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
             return 1;
         }
-        mp4atom_head();
 
-        mp4config.samplerate = infile->samplerate;
-        mp4config.channels = infile->channels;
-        mp4config.bits = infile->samplebytes * 8;
+        mp4_set_format(infile->samplerate, infile->channels, infile->samplebytes * 8);
     }
     else
     {
@@ -1187,9 +1195,9 @@ int main(int argc, char *argv[])
             if (frame_samples > delay_samples)
                 frame_samples = delay_samples;
 
-            if (container == MP4_CONTAINER)
-                mp4atom_frame(bitbuf, bytesWritten, frame_samples);
-            else
+            if (container == MP4_CONTAINER) {
+                mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+            } else
                 fwrite(bitbuf, 1, bytesWritten, outfile);
 
             encoded_samples += frame_samples;
@@ -1200,51 +1208,105 @@ int main(int argc, char *argv[])
     if (container == MP4_CONTAINER)
     {
         char *version_string = malloc(strlen(faac_id_string) + 6);
+        unsigned char *ascData = NULL;
+        unsigned long ascSize = 0;
 
-        faacEncGetDecoderSpecificInfo(hEncoder,
-                                      &mp4config.asc.data,
-                                      &mp4config.asc.size);
+        faacEncGetDecoderSpecificInfo(hEncoder, &ascData, &ascSize);
+        mp4_set_decoder_config(ascData, ascSize);
         strcpy(version_string, "FAAC ");
         strcpy(version_string + 5, faac_id_string);
 
-        mp4config.tag.encoder = version_string;
+        mp4_set_encoder(version_string);
 
-#define SETTAG(x) if(x)mp4config.tag.x=x
-        SETTAG(artist);
-        SETTAG(artistsort);
-        SETTAG(composer);
-        SETTAG(composersort);
-        SETTAG(title);
-        SETTAG(album);
-        SETTAG(albumartist);
-        SETTAG(albumartistsort);
-        SETTAG(albumsort);
-        SETTAG(trackno);
-        SETTAG(ntracks);
-        SETTAG(discno);
-        SETTAG(ndiscs);
-        SETTAG(compilation);
-        SETTAG(year);
-        SETTAG(genre);
-        SETTAG(comment);
+#define SETTAG(id, x) if(x) mp4_set_tag(id, x)
+        SETTAG(MP4TAG_ARTIST, artist);
+        SETTAG(MP4TAG_ARTISTSORT, artistsort);
+        SETTAG(MP4TAG_COMPOSER, composer);
+        SETTAG(MP4TAG_COMPOSERSORT, composersort);
+        SETTAG(MP4TAG_TITLE, title);
+        SETTAG(MP4TAG_ALBUM, album);
+        SETTAG(MP4TAG_ALBUMARTIST, albumartist);
+        SETTAG(MP4TAG_ALBUMARTISTSORT, albumartistsort);
+        SETTAG(MP4TAG_ALBUMSORT, albumsort);
+        SETTAG(MP4TAG_YEAR, year);
+        SETTAG(MP4TAG_COMMENT, comment);
+#undef SETTAG
+        if (trackno) mp4_set_track(trackno, ntracks);
+        if (discno) mp4_set_disc(discno, ndiscs);
+        if (compilation) mp4_set_compilation(compilation);
+        if (genre) mp4_set_genre(genre);
         if (artData && artSize)
+            mp4_set_cover(artData, (int)artSize);
+
         {
-            mp4config.tag.cover.data = artData;
-            mp4config.tag.cover.size = artSize;
+            uint32_t final_creation_time = 0;
+            if (creation_time_str)
+            {
+                if (!strcmp(creation_time_str, "auto"))
+                {
+                    if (strcmp(audioFileName, "-") == 0)
+                    {
+                        fprintf(stderr, "cannot use --creation-time auto with stdin, defaulting to 0\n");
+                    }
+                    else
+                    {
+                        struct stat st;
+                        if (stat(audioFileName, &st) == 0)
+                        {
+                            final_creation_time = (uint32_t)st.st_mtime;
+                        }
+                        else
+                        {
+                            fprintf(stderr, "couldn't stat() input file %s, defaulting to 0\n", audioFileName);
+                        }
+                    }
+                }
+                else if (!strcmp(creation_time_str, "now"))
+                {
+                    final_creation_time = (uint32_t)time(NULL);
+                }
+                else
+                {
+                    char *endptr;
+                    errno = 0;
+                    final_creation_time = (uint32_t)strtoul(creation_time_str, &endptr, 10);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "invalid creation time %s, defaulting to 0\n", creation_time_str);
+                        final_creation_time = 0;
+                    }
+                }
+            }
+            else
+            {
+                const char *sde = getenv("SOURCE_DATE_EPOCH");
+                if (sde)
+                {
+                    char *endptr;
+                    errno = 0;
+                    final_creation_time = (uint32_t)strtoul(sde, &endptr, 10);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "invalid SOURCE_DATE_EPOCH %s, ignoring\n", sde);
+                        final_creation_time = 0;
+                    }
+                }
+            }
+            mp4_set_creation_time(final_creation_time);
         }
 
-        mp4atom_tail();
-        mp4atom_close();
+        mp4_finish();
+        mp4_close();
 
         free(version_string);
 
         if (verbose >= 2)
         {
-            fprintf(stderr, "%u frames\n", mp4config.frame.ents);
-            fprintf(stderr, "%u output samples\n", mp4config.samples);
-            fprintf(stderr, "max bitrate: %u\n", mp4config.bitrate.max);
-            fprintf(stderr, "avg bitrate: %u\n", mp4config.bitrate.avg);
-            fprintf(stderr, "max frame size: %u\n", mp4config.buffersize);
+            fprintf(stderr, "%u frames\n", mp4_frame_count());
+            fprintf(stderr, "%u output samples\n", mp4_sample_count());
+            fprintf(stderr, "max bitrate: %u\n", mp4_max_bitrate());
+            fprintf(stderr, "avg bitrate: %u\n", mp4_avg_bitrate());
+            fprintf(stderr, "max frame size: %u\n", mp4_max_frame_size());
         }
     }
     else
