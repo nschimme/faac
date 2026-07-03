@@ -247,13 +247,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
        higher temporal resolution. */
     if (tnsInfo->tnsDisabled || blockType == ONLY_SHORT_WINDOW) return;
 
-    /* Temporal-flatness gate: TNS only pays off when the frame contains a real
-       temporal event (attack/decay edge) behind which the shaped quantization
-       noise can hide. On temporally flat frames — steady tones, smooth decay
-       tails — tonal spectra still yield high spectral prediction gain, so the
-       gain gate alone fires; the whitened spectrum then spreads quantization
-       noise across the whole block and is heard as reverb/smearing. Require a
-       clear peak in the sub-block energy envelope before enabling the tool. */
+    /* Tonal but temporally flat frames pass the gain gate too; without a real
+       transient to hide behind, whitening just smears noise as reverb. */
     if (tdEnvelope && tdEnvelopeLen > 0) {
         float peak = 0.0f, mean = 0.0f;
         int w;
@@ -304,7 +299,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
        the frame, shaping noise towards the temporal masking region of the transient. */
     filter->direction = (tdEnvelope && tdEnvelopeLen >= 2 && tdEnvelope[tdEnvelopeLen - 1] > tdEnvelope[0]) ? 1 : 0;
 
-    /* Check for coefficient compression possibility */
+    /* Narrower encoding saves a bit per coefficient when it's lossless. */
     filter->coefCompress = 1;
     int limit = 1 << (DEF_TNS_COEFF_RES - 2);
     for (int i = 1; i <= order; i++) {
