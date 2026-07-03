@@ -232,6 +232,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
 
+                int bytesWritten = 0;
                 unsigned int bytesInput = 0;
                 DWORD numberOfBytesWritten = 0;
                 int *pcmbuf;
@@ -247,7 +248,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                 for ( ;; )
                 {
-                    int bytesWritten;
                     UINT timeElapsed;
 
                     bytesInput = wav_read_int24(infile, pcmbuf, inputSamples, NULL) * sizeof(int);

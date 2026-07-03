@@ -45,7 +45,9 @@ onmessage = async (e) => {
         Module._free(pcmPtr);
 
         const outData = Module.FS.readFile('output.bin');
-        postMessage({ type: 'done', data: outData }, [outData.buffer]);
+        // Copy to a new buffer to avoid resizable buffer issues in postMessage
+        const result = new Uint8Array(outData);
+        postMessage({ type: 'done', data: result }, [result.buffer]);
 
         // Cleanup virtual file
         Module.FS.unlink('output.bin');

@@ -72,7 +72,7 @@ if default_lib == 'static' or default_lib == 'both'
     )
 endif
 
-if default_lib == 'shared' or default_lib == 'both'
+if (default_lib == 'shared' or default_lib == 'both') and target_machine.system() != 'emscripten'
     libfaac_shared = shared_library(
         'faac',
         common_src,
