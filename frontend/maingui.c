@@ -229,10 +229,10 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
             if (use_mp4 || hOutfile != INVALID_HANDLE_VALUE)
             {
+                int bytesWritten = 0;
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
 
-                int bytesWritten = 0;
                 unsigned int bytesInput = 0;
                 DWORD numberOfBytesWritten = 0;
                 int *pcmbuf;
