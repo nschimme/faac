@@ -49,7 +49,7 @@ static char *libCopyright =
 
 static const psymodellist_t psymodellist[] = {
   {&psymodel2, "knipsycho psychoacoustic"},
-  {NULL}
+  {NULL, NULL}
 };
 
 static SR_INFO srInfo[12+1];
@@ -116,12 +116,16 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
     }
 
     *pSizeOfDecoderSpecificInfo = 2;
-    *ppBuffer = malloc(2);
+    *ppBuffer = (unsigned char *)malloc(2);
 
     if(*ppBuffer != NULL){
-
         memset(*ppBuffer,0,*pSizeOfDecoderSpecificInfo);
-        pBitStream = OpenBitStream(*pSizeOfDecoderSpecificInfo, *ppBuffer);
+        pBitStream = OpenBitStream((int)*pSizeOfDecoderSpecificInfo, *ppBuffer);
+        if (!pBitStream) {
+            free(*ppBuffer);
+            *ppBuffer = NULL;
+            return -3;
+        }
         PutBit(pBitStream, hEncoder->config.aacObjectType, 5);
         PutBit(pBitStream, hEncoder->sampleRateIdx, 4);
         PutBit(pBitStream, hEncoder->numChannels, 4);
@@ -219,7 +223,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
-    if (config->quantqual > maxqual)
+    if (config->quantqual > (unsigned long)maxqual)
         config->quantqual = maxqual;
     if (config->quantqual < MINQUAL)
         config->quantqual = MINQUAL;
@@ -241,8 +245,11 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         unsigned int channel;
         for (channel = 0; channel < hEncoder->numChannels; channel++)
             if (!hEncoder->inputFifo[channel])
+            {
                 hEncoder->inputFifo[channel] =
                     (faac_real *)AllocMemory(2 * FRAME_LEN * sizeof(faac_real));
+                if (!hEncoder->inputFifo[channel]) return 0;
+            }
         hEncoder->inputFifoCap  = 2 * FRAME_LEN;
         hEncoder->inputFifoFill = 0;
     }
@@ -254,8 +261,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 
     // reset psymodel
     hEncoder->psymodel->PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
-    if (config->psymodelidx >= (sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
-		config->psymodelidx = (sizeof(psymodellist) / sizeof(psymodellist[0])) - 2;
+    if (config->psymodelidx >= (int)(sizeof(psymodellist) / sizeof(psymodellist[0]) - 1))
+		config->psymodelidx = (int)(sizeof(psymodellist) / sizeof(psymodellist[0])) - 2;
 
     hEncoder->config.psymodelidx = config->psymodelidx;
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
@@ -278,13 +285,14 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     unsigned int channel;
     faacEncStruct* hEncoder;
 
-    if (numChannels > MAX_CHANNELS)
+    if (numChannels < 1 || numChannels > MAX_CHANNELS)
 	return NULL;
 
     *inputSamples = FRAME_LEN*numChannels;
     *maxOutputBytes = ADTS_FRAMESIZE;
 
     hEncoder = (faacEncStruct*)AllocMemory(sizeof(faacEncStruct));
+    if (!hEncoder) return NULL;
     SetMemory(hEncoder, 0, sizeof(faacEncStruct));
 
     hEncoder->numChannels = numChannels;
@@ -339,6 +347,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
         for (buf = 0; buf < 4; buf++) {
             hEncoder->audioFIFO[channel][buf] = (faac_real*)AllocMemory(FRAME_LEN*sizeof(faac_real));
+            if (!hEncoder->audioFIFO[channel][buf])
+            {
+                faacEncClose(hEncoder);
+                return NULL;
+            }
             memset(hEncoder->audioFIFO[channel][buf], 0, FRAME_LEN*sizeof(faac_real));
         }
     }
@@ -670,6 +683,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     }
     /* Write the AAC bitstream */
     bitStream = OpenBitStream(bufferSize, outputBuffer);
+    if (!bitStream)
+        return -1;
 
     if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
         return -1;
@@ -810,5 +825,5 @@ static SR_INFO srInfo[12+1] =
             4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 20
         }
     },
-    { -1 }
+{ -1, 0, 0, {0}, {0} }
 };
