@@ -54,6 +54,47 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
 	}
+
+	for( i = 0; i < 16; i++ )
+	{
+		fft_tables->mdct_cos[i]	= NULL;
+		fft_tables->mdct_sin[i]	= NULL;
+	}
+}
+
+int mdct_twiddles( FFT_Tables *fft_tables, int logm, faac_real freq,
+		const fftfloat **tcos, const fftfloat **tsin )
+{
+	if( logm < 0 || logm >= 16 )
+		return 1;
+
+	if( fft_tables->mdct_cos[logm] == NULL )
+	{
+		int i;
+		int size = 1 << logm;
+		fftfloat *c = AllocMemory( size * sizeof(fftfloat) );
+		fftfloat *s = AllocMemory( size * sizeof(fftfloat) );
+
+		if( !c || !s )
+		{
+			if (c) FreeMemory(c);
+			if (s) FreeMemory(s);
+			return 1;
+		}
+
+		for( i = 0; i < size; i++ )
+		{
+			faac_real theta = freq * ((faac_real)i + (faac_real)0.125);
+			c[i] = (fftfloat)FAAC_COS(theta);
+			s[i] = (fftfloat)FAAC_SIN(theta);
+		}
+		fft_tables->mdct_cos[logm] = c;
+		fft_tables->mdct_sin[logm] = s;
+	}
+
+	*tcos = fft_tables->mdct_cos[logm];
+	*tsin = fft_tables->mdct_sin[logm];
+	return 0;
 }
 
 void fft_terminate( FFT_Tables *fft_tables )
@@ -70,6 +111,16 @@ void fft_terminate( FFT_Tables *fft_tables )
 			
 		if( fft_tables->reordertbl[i] != NULL )
 			FreeMemory( fft_tables->reordertbl[i] );
+	}
+
+	for( i = 0; i < 16; i++ )
+	{
+		if( fft_tables->mdct_cos[i] != NULL )
+			FreeMemory( fft_tables->mdct_cos[i] );
+		if( fft_tables->mdct_sin[i] != NULL )
+			FreeMemory( fft_tables->mdct_sin[i] );
+		fft_tables->mdct_cos[i] = NULL;
+		fft_tables->mdct_sin[i] = NULL;
 	}
 
 	FreeMemory( fft_tables->costbl );
