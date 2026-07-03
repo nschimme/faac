@@ -39,6 +39,16 @@ common_src = [
     'huffdata.h',
     'quantize.c',
     'quantize.h',
+    'sbr.c',
+    'sbr.h',
+    'sbr_internal.h',
+    'sbr_bitstream.c',
+    'sbr_tables.c',
+    'sbr_tables.h',
+    'sbr_analysis.c',
+    'sbr_analysis.h',
+    'resample.c',
+    'resample.h',
     'stereo.c',
     'stereo.h',
     'tns.c',
@@ -47,18 +57,49 @@ common_src = [
     'util.h',
 ]
 
-libfaac = library('faac', common_src,
-    include_directories: ['..', '../include'],
-    c_args: c_args,
-    link_args: link_args,
-    dependencies: [ libm ],
-    link_with: quantize_simd_libs,
-    vs_module_defs: 'libfaac.def',
-    install: true,
-    version: '0.0.0',
-    gnu_symbol_visibility: 'hidden'
-)
+libfaac = disabler()
 
+common_args = {
+    'include_directories' : ['..', '../include'],
+    'c_args' : c_args,
+    'link_args' : link_args,
+    'dependencies' : [libm],
+    'link_with' : quantize_simd_libs,
+    'install' : true,
+    'gnu_symbol_visibility' : 'hidden',
+}
+
+default_lib = get_option('default_library')
+
+# LTO on the static archive ships unportable compiler bytecode, so keep it off.
+if default_lib == 'static' or default_lib == 'both'
+    libfaac_static = static_library(
+        'faac',
+        common_src,
+        kwargs : common_args + {
+          'override_options' : ['b_lto=false'],
+        },
+    )
+endif
+
+if default_lib == 'shared' or default_lib == 'both'
+    libfaac_shared = shared_library(
+        'faac',
+        common_src,
+        kwargs : common_args + {
+          'version' : '0.0.0',
+          'vs_module_defs' : 'libfaac.def',
+          'override_options' : ['b_lto=true'],
+        },
+    )
+endif
+
+# Prefer the LTO shared library for the frontend and pkgconfig.
+if default_lib == 'static'
+    libfaac = libfaac_static
+else
+    libfaac = libfaac_shared
+endif
 
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(

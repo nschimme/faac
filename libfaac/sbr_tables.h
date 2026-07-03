@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Huffman codebook tables reproduced from ISO/IEC 14496-3 (non-copyrightable facts)
+ * SBR tables reproduced from ISO/IEC 14496-3 (non-copyrightable facts)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,34 +17,37 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef HUFFDATA_H
-#define HUFFDATA_H
+/* SBR tables: QMF prototype filter, frequency-band offsets, Huffman tables.
+ * All values are normative data from ISO/IEC 14496-3:2005. */
 
-#include "huff2.h"
+#ifndef SBR_TABLES_H
+#define SBR_TABLES_H
 
 #include <stdint.h>
 
-typedef struct {
-    const uint16_t len;
-    const uint16_t data;
-} hcode16_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef float sbrfloat;
 
 typedef struct {
-    const uint32_t len  : 8;    /* lengths <= 19        */
-    const uint32_t data : 24;   /* codes are <= 19 bits */
-} hcode32_t;
+    uint32_t code : 24;
+    uint32_t len  : 8;
+} SBRHuffEntry;
 
-extern hcode16_t book01[81];
-extern hcode16_t book02[81];
-extern hcode16_t book03[81];
-extern hcode16_t book04[81];
-extern hcode16_t book05[81];
-extern hcode16_t book06[81];
-extern hcode16_t book07[64];
-extern hcode16_t book08[64];
-extern hcode16_t book09[169];
-extern hcode16_t book10[169];
-extern hcode16_t book11[289];
-extern hcode32_t book12[2 * SF_DELTA + 1];
+#define F_HUFF_ENV_1_5DB_OFFSET  60
+#define F_HUFF_ENV_1_5DB_NSYMS   121
+#define F_HUFF_ENV_3_0DB_OFFSET  31
+#define F_HUFF_ENV_3_0DB_NSYMS   63
 
-#endif /* HUFFDATA_H */
+extern const sbrfloat qmf_c[640];
+extern const signed char sbr_offset[6][16];
+extern const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS];
+extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SBR_TABLES_H */

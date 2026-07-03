@@ -18,6 +18,8 @@ foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
+config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
+
 
 libm = cc.find_library('m', required: false)
 
@@ -30,6 +32,8 @@ if get_option('floating-point') == 'double'
 else
     config_h.set('FAAC_PRECISION_SINGLE', 1)
 endif
+
+config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 

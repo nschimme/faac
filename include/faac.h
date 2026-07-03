@@ -80,9 +80,13 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hEncoder, unsigned char 
 					  unsigned long *pSizeOfDecoderSpecificInfo);
 
 
-/* samplesInput may be any count in [0, inputSamples]. The library buffers input
- * internally and emits one frame once enough has accumulated, returning 0 while
- * priming, accumulating, or flushing. Exceeding inputSamples returns -1. Pass
+/* samplesInput may be any count from 0 up to the inputSamples value reported by
+ * faacEncOpen; libfaac buffers the input internally and emits one frame once a
+ * full frame has accumulated, so the caller's chunk size is decoupled from the
+ * encoder frame size. Because each call returns at most one frame, samplesInput
+ * must not exceed inputSamples (feed larger blocks as successive <= inputSamples
+ * chunks); passing more returns -1. The call may return 0 bytes while
+ * accumulating a frame (and, as before, while priming or flushing). Pass
  * samplesInput == 0 to flush at end of stream. */
 int FAACAPI faacEncEncode(faacEncHandle hEncoder, int32_t * inputBuffer, unsigned int samplesInput,
 			 unsigned char *outputBuffer,
