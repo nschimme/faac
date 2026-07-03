@@ -1,4 +1,4 @@
-importScripts('faac.js');
+importScripts('faac-wasm.js');
 
 let Module;
 

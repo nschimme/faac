@@ -6,11 +6,16 @@ on:
   pull_request:
     branches: [ "master" ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build-wasm:
     runs-on: ubuntu-latest
     env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - uses: actions/checkout@v4
 
@@ -28,19 +33,30 @@ jobs:
       - name: Prepare Artifacts
         run: |
           mkdir -p dist
-          cp frontend/index.html frontend/worker.js build-wasm/frontend/faac.js build-wasm/frontend/faac.wasm dist/
+          cp frontend/index.html frontend/worker.js build-wasm/frontend/faac-wasm.js build-wasm/frontend/faac-wasm.wasm dist/
           cp frontend/faac.ico dist/favicon.ico
           zip -r faac-wasm.zip dist/
 
-      - name: Upload Artifact
+      - name: Upload zip artifact
         uses: actions/upload-artifact@v4
         with:
           name: faac-wasm
           path: faac-wasm.zip
 
-      - name: Deploy to GitHub Pages
+      - name: Upload Pages artifact
         if: github.ref == 'refs/heads/master'
-        uses: peaceiris/actions-gh-pages@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          path: ./dist
+
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    needs: build-wasm
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

@@ -46,7 +46,11 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
         config->bitRate = (bitrate * 1000) / channels;
     }
 
-    faacEncSetConfiguration(ctx->hEncoder, config);
+    if (!faacEncSetConfiguration(ctx->hEncoder, config)) {
+        faacEncClose(ctx->hEncoder);
+        free(ctx);
+        return NULL;
+    }
 
     ctx->bitbuf = malloc(ctx->maxBytesOutput);
     ctx->is_mp4 = use_mp4;

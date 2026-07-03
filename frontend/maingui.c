@@ -320,6 +320,18 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                 }
 
+                /* flush encoder */
+                do {
+                    bytesWritten = faacEncEncode(hEncoder, NULL, 0, bitbuf, maxOutputBytes);
+                    if (bytesWritten > 0)
+                    {
+                        if (use_mp4)
+                            mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
+                        else
+                            WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
+                    }
+                } while (bytesWritten > 0);
+
                 if (use_mp4)
                 {
                     char *id_string, *copyright_string;
