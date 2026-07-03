@@ -251,17 +251,14 @@ static void qlevel(CoderInfo * __restrict coderInfo,
               if (tw->numFilters > 0)
               {
                   int f;
-                  int topBand = coderInfo->sfbn;
-                  /* TNS filters are stored and applied from top frequency down. */
+                  /* Bugs 2 & 5: use explicit startBand and stopBand to fix PNS inhibition mapping. */
                   for (f = 0; f < tw->numFilters; f++)
                   {
-                      int l_len = tw->tnsFilter[f].length;
-                      if (sb >= topBand - l_len && sb < topBand)
+                      if (sb >= tw->tnsFilter[f].startBand && sb < tw->tnsFilter[f].stopBand)
                       {
                           is_tns = 1;
                           break;
                       }
-                      topBand -= l_len;
                   }
                   if (is_tns) break;
               }

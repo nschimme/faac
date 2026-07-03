@@ -52,10 +52,23 @@ enum WINDOW_TYPE {
 #define LEN_TNS_NFILTS 1
 
 typedef struct {
+    unsigned long g1_attempts;
+    unsigned long g1_accepts;
+    unsigned long g4_attempts;
+    unsigned long g4_accepts;
+    unsigned long c1_attempts;
+    unsigned long c1_accepts;
+    unsigned long forward_count;
+    unsigned long backward_count;
+} TnsStats;
+
+typedef struct {
     int order;                           /* Filter order */
     int direction;                       /* Filtering direction */
     int coefCompress;                    /* Are coeffs compressed? */
     int length;                          /* Length, in bands */
+    int startBand;                       /* Start band for PNS inhibition */
+    int stopBand;                        /* Stop band for PNS inhibition */
     faac_real aCoeffs[TNS_MAX_ORDER+1];     /* AR Coefficients */
     faac_real kCoeffs[TNS_MAX_ORDER+1];     /* Reflection Coefficients */
     int index[TNS_MAX_ORDER+1];          /* Coefficient indices */
@@ -80,6 +93,7 @@ typedef struct {
     faac_real quality;
     faac_real gainThreshLong;
     faac_real measuredGainThresh;
+    TnsStats stats;
     TnsWindowData windowData[MAX_SHORT_WINDOWS]; /* TNS data per window */
 } TnsInfo;
 
