@@ -237,7 +237,38 @@ static void qlevel(CoderInfo * __restrict coderInfo,
           continue;
       }
 
-      if (bandqual[sb] < pnsthr)
+      int is_tns = 0;
+      if (coderInfo->tnsInfo.tnsDataPresent)
+      {
+          int w_idx;
+          int w_start = 0;
+          for (w_idx = 0; w_idx < gnum; w_idx++)
+              w_start += coderInfo->groups.len[w_idx];
+
+          for (w_idx = w_start; w_idx < w_start + gsize; w_idx++)
+          {
+              TnsWindowData *tw = &coderInfo->tnsInfo.windowData[w_idx];
+              if (tw->numFilters > 0)
+              {
+                  int f;
+                  int topBand = coderInfo->sfbn;
+                  /* TNS filters are stored and applied from top frequency down. */
+                  for (f = 0; f < tw->numFilters; f++)
+                  {
+                      int l_len = tw->tnsFilter[f].length;
+                      if (sb >= topBand - l_len && sb < topBand)
+                      {
+                          is_tns = 1;
+                          break;
+                      }
+                      topBand -= l_len;
+                  }
+                  if (is_tns) break;
+              }
+          }
+      }
+
+      if (bandqual[sb] < pnsthr && !is_tns)
       {
           coderInfo->book[coderInfo->bandcnt] = HCB_PNS;
           coderInfo->sf[coderInfo->bandcnt] +=

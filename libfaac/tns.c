@@ -70,6 +70,8 @@ static unsigned short tnsMaxOrderShortLow = 7;
 #define TNS_THRESH_FLOOR    1.10    /* Minimum gain threshold for TNS utility */
 #define TNS_THRESH_CAP      1.60    /* Maximum adaptive threshold cap (tuned) */
 
+#define DEF_TNS_MEASURED_GAIN_THRESH 1.4 /* min measured gain ratio (orig_e / filt_e) */
+
 #define TNS_GATE_CEILING    80000   /* Bitrate gate ceiling (tuned) */
 
 /*************************/
@@ -97,6 +99,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  faac_real * restrict out,
                                  const int * restrict sfbOffsetTable,
                                  const faac_real * restrict sfbEnergy,
+                                 const faac_real * restrict sfbThreshold,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine);
 
@@ -136,6 +139,7 @@ void TnsInit(faacEncStruct* hEncoder)
 
         /* Internal TNS state: disabled if gated or explicitly forced off. */
         tnsInfo->tnsDisabled = !hEncoder->config.useTns;
+        tnsInfo->quality = (faac_real)quality / DEFQUAL;
 
         if (tnsInfo->tnsDisabled) {
             continue;
@@ -144,6 +148,19 @@ void TnsInit(faacEncStruct* hEncoder)
         /* Order 8 captures the dominant spectral resonances without
          * overfitting noise at the bitrates where TNS operates. */
         tnsInfo->tnsMaxOrderLong = tnsMaxOrderLongLow;
+        tnsInfo->nFiltLong = 1;
+        char *env_nf = getenv("FAAC_TNS_NFILT");
+        if (env_nf) {
+            tnsInfo->nFiltLong = atoi(env_nf);
+            if (tnsInfo->nFiltLong < 1) tnsInfo->nFiltLong = 1;
+            if (tnsInfo->nFiltLong > (1 << LEN_TNS_NFILTL)) tnsInfo->nFiltLong = (1 << LEN_TNS_NFILTL);
+        }
+
+        tnsInfo->measuredGainThresh = (faac_real)DEF_TNS_MEASURED_GAIN_THRESH;
+        char *env = getenv("FAAC_TNS_C1");
+        if (env) {
+            tnsInfo->measuredGainThresh = (faac_real)atof(env);
+        }
 
         /* Long-window gain threshold via break-even bit budget formula. */
         {
@@ -230,36 +247,60 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
     for (w=0;w<numberOfWindows;w++) {
 
         TnsWindowData* windowData = &tnsInfo->windowData[w];
-        TnsFilterData* tnsFilter = windowData->tnsFilter;
         faac_real sfbEnergy[NSFB_LONG];
         faac_real* wspec = spec + w * windowSize;
 
         windowData->numFilters=0;
         windowData->coefResolution = DEF_TNS_COEFF_RES;
 
-        /* Combined pre-gate and per-SFB energy accumulation. */
+        /* Per-band masking thresholds and energy accumulation. */
+        faac_real sfbThreshold[NSFB_LONG];
+        faac_real totenrg = 0.0;
+        int total_len = sfbOffsetTable[numberOfBands];
+        for (i = 0; i < total_len; i++) totenrg += wspec[i] * wspec[i];
+
         {
             faac_real sumsq = 0.0, suma = 0.0, maxa = 0.0;
-            int sfb;
-            for (sfb = startBand; sfb < stopBand; sfb++) {
-                faac_real e = 0.0;
-                int j;
+            int sfb, j;
+            faac_real powm = 0.4;
+
+            for (sfb = 0; sfb < numberOfBands; sfb++) {
+                faac_real avge, maxe, target;
                 int sfb_start = sfbOffsetTable[sfb];
                 int sfb_end = sfbOffsetTable[sfb + 1];
-                const faac_real *pspec = &wspec[sfb_start];
                 int n = sfb_end - sfb_start;
+                faac_real avgenrg = (totenrg / (faac_real)total_len) * (faac_real)n;
 
+                avge = 0.0;
+                maxe = 0.0;
                 for (j = 0; j < n; j++) {
-                    faac_real v = pspec[j];
-                    faac_real va = (faac_real)FAAC_FABS(v);
-                    e    += v * v;
-                    suma += va;
-                    if (va > maxa) maxa = va;
+                    faac_real v = wspec[sfb_start + j];
+                    faac_real e = v * v;
+                    avge += e;
+                    if (maxe < e) maxe = e;
                 }
-                sfbEnergy[sfb] = e;
-                sumsq += e;
+
+                /* Apply floors to inputs before the pow() calls. */
+                if (avge < avgenrg * 0.0010) avge = avgenrg * 0.0010;
+                if (maxe < avgenrg * 0.0050) maxe = avgenrg * 0.0050;
+
+                target = 0.2 * FAAC_POW(avge/avgenrg, powm);
+                target += 0.8 * 0.45 * FAAC_POW(maxe/avgenrg, powm);
+                target *= 10.0 / (1.0 + ((faac_real)(sfb_start + sfb_end) / (faac_real)total_len));
+                sfbThreshold[sfb] = target * tnsInfo->quality;
+
+                if (sfb >= startBand && sfb < stopBand) {
+                    sfbEnergy[sfb] = avge;
+                    sumsq += avge;
+                    for (j = 0; j < n; j++) {
+                        faac_real va = (faac_real)FAAC_FABS(wspec[sfb_start + j]);
+                        suma += va;
+                        if (va > maxa) maxa = va;
+                    }
+                }
             }
 
+            /* Pre-gate thresholds: energy floor, flatness, and peak-to-mean ratio. */
             if (sumsq < (faac_real)TNS_ENERGY_FLOOR * (faac_real)length
                 || suma <= 0.0
                 || sumsq * (faac_real)length < (faac_real)TNS_FLATNESS_K * suma * suma
@@ -269,34 +310,101 @@ void TnsEncode(TnsInfo* tnsInfo,       /* TNS info */
         }
 
         /* Run Levinson-Durbin on whitened spectrum to focus on within-band correlation. */
-        WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy,
+        WhitenSpectrumForTns(wspec, temp, sfbOffsetTable, sfbEnergy, sfbThreshold,
                              startBand, stopBand,
                              startIndex, startIndex + length);
-        gain = LevinsonDurbin(order,length,&temp[startIndex],tnsFilter->kCoeffs);
 
-        if (gain > tnsInfo->gainThreshLong) {
-            int truncatedOrder;
-            QuantizeReflectionCoeffs(order,DEF_TNS_COEFF_RES,tnsFilter->kCoeffs,tnsFilter->index);
-            truncatedOrder = TruncateCoeffs(order,DEF_TNS_COEFF_THRESH,tnsFilter->kCoeffs);
-            if (truncatedOrder == 0) continue;
+        int n_filt_max = (blockType == ONLY_SHORT_WINDOW) ? 1 : tnsInfo->nFiltLong;
+        int top_band = stopBand;
+        for (int f = 0; f < n_filt_max; f++) {
+            TnsFilterData tnsFilter;
+            int l_start_band, l_stop_band;
+            int l_start_index, l_length;
+            int l_order = order / n_filt_max;
+            int l_length_in_bands = (f == n_filt_max - 1) ? (top_band - startBand) : (lengthInBands / n_filt_max);
 
-            windowData->numFilters++;
-            tnsInfo->tnsDataPresent=1;
-            tnsFilter->direction = 0;
+            l_stop_band = top_band;
+            l_start_band = top_band - l_length_in_bands;
+            l_start_index = sfbOffsetTable[l_start_band];
+            l_length = sfbOffsetTable[l_stop_band] - l_start_index;
+            top_band = l_start_band;
 
-            tnsFilter->coefCompress = 1;
-            for (i = 1; i <= truncatedOrder; i++) {
-                int limit = 1 << (DEF_TNS_COEFF_RES - 2);
-                if (tnsFilter->index[i] < -limit || tnsFilter->index[i] >= limit) {
-                    tnsFilter->coefCompress = 0;
-                    break;
+            if (l_length <= 0) continue;
+
+            gain = LevinsonDurbin(l_order, l_length, &temp[l_start_index], tnsFilter.kCoeffs);
+
+            if (gain > tnsInfo->gainThreshLong) {
+                int truncatedOrder;
+                QuantizeReflectionCoeffs(l_order, DEF_TNS_COEFF_RES, tnsFilter.kCoeffs, tnsFilter.index);
+                truncatedOrder = TruncateCoeffs(l_order, DEF_TNS_COEFF_THRESH, tnsFilter.kCoeffs);
+                if (truncatedOrder == 0) continue;
+
+                tnsFilter.direction = 0;
+                tnsFilter.coefCompress = 1;
+                for (i = 1; i <= truncatedOrder; i++) {
+                    int limit = 1 << (DEF_TNS_COEFF_RES - 2);
+                    if (tnsFilter.index[i] < -limit || tnsFilter.index[i] >= limit) {
+                        tnsFilter.coefCompress = 0;
+                        break;
+                    }
                 }
-            }
 
-            tnsFilter->length = lengthInBands;
-            tnsFilter->order = truncatedOrder;
-            StepUp(truncatedOrder,tnsFilter->kCoeffs,tnsFilter->aCoeffs);
-            TnsInvFilter(length,&wspec[startIndex],tnsFilter,temp);
+                tnsFilter.length = l_length_in_bands;
+                tnsFilter.order = truncatedOrder;
+                StepUp(truncatedOrder, tnsFilter.kCoeffs, tnsFilter.aCoeffs);
+
+            /* TNS Outcome Gate: Re-measure actual energy reduction using quantized coefficients.
+             * Quantization error can degrade the prediction gain calculated during LPC analysis.
+             * We reject filters that don't meet the measured gain threshold (default 1.4)
+             * to avoid coding overhead without perceptual benefit. */
+                {
+                    int m, k;
+                    faac_real orig_e = 0.0, filt_e = 0.0;
+                const faac_real * __restrict a = tnsFilter.aCoeffs;
+                faac_real * __restrict fspec = temp + 1024; /* scratch: avoid overwriting whitened spec */
+                const faac_real * __restrict src = &wspec[l_start_index];
+
+                    fspec[0] = src[0];
+                    for (m = 1; m < truncatedOrder; m++) {
+                        faac_real acc = src[m];
+                        for (k = 1; k <= m; k++) acc += src[m - k] * a[k];
+                        fspec[m] = acc;
+                    }
+                    for (m = truncatedOrder; m < l_length; m++) {
+                        faac_real acc = src[m];
+                        for (k = 1; k <= truncatedOrder; k++) acc += src[m - k] * a[k];
+                        fspec[m] = acc;
+                    }
+
+                    for (m = 0; m < l_length; m++) {
+                        orig_e += src[m] * src[m];
+                        filt_e += fspec[m] * fspec[m];
+                    }
+
+                    if (orig_e < tnsInfo->measuredGainThresh * filt_e) {
+                        continue;
+                    }
+                }
+
+            /* Direction Selection: Forward/Backward filtering decision.
+             * Optimal direction follows the signal's temporal energy skew.
+             * Lacking direct time-domain envelope access, we utilize spectral tilt
+             * as a heuristic proxy for temporal distribution. */
+                {
+                    int t;
+                    faac_real tilt = 0.0;
+                const faac_real * __restrict l_src = &wspec[l_start_index];
+                    for (t = 0; t < l_length - 1; t++) {
+                        tilt += (faac_real)FAAC_FABS(l_src[t+1]) - (faac_real)FAAC_FABS(l_src[t]);
+                    }
+                    tnsFilter.direction = (tilt > 0.0);
+                }
+
+                windowData->tnsFilter[windowData->numFilters] = tnsFilter;
+                TnsInvFilter(l_length, &wspec[l_start_index], &windowData->tnsFilter[windowData->numFilters], temp + 1024);
+                windowData->numFilters++;
+                tnsInfo->tnsDataPresent = 1;
+            }
         }
     }
 }
@@ -552,6 +660,7 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
                                  faac_real * restrict out,
                                  const int * restrict sfbOffsetTable,
                                  const faac_real * restrict sfbEnergy,
+                                 const faac_real * restrict sfbThreshold,
                                  int startBand, int stopBand,
                                  int startLine, int stopLine)
 {
@@ -562,9 +671,20 @@ static void WhitenSpectrumForTns(const faac_real * restrict spec,
         return;
 
     for (sfb = startBand; sfb < stopBand; sfb++) {
-        invE[sfb] = (sfbEnergy[sfb] > (faac_real)0.0)
-                  ? (faac_real)(1.0 / FAAC_SQRT(sfbEnergy[sfb]))
-                  : (faac_real)0.0;
+        faac_real e = sfbEnergy[sfb];
+        /* Lever 2: Weighted LPC fit using masking thresholds.
+         * rms_band = sqrt(threshold/width). Weight = 1/rms_band.
+         * If threshold is not available or Lever 2 is disabled, fallback to energy. */
+        if (sfbThreshold && sfbThreshold[sfb] > 0.0) {
+            int width = sfbOffsetTable[sfb+1] - sfbOffsetTable[sfb];
+            faac_real rms = FAAC_SQRT(sfbThreshold[sfb] / width);
+            faac_real r_floor = 0.01;
+            invE[sfb] = (faac_real)(1.0 / (rms > r_floor ? rms : r_floor));
+        } else {
+            invE[sfb] = (e > (faac_real)0.0)
+                      ? (faac_real)(1.0 / FAAC_SQRT(e))
+                      : (faac_real)0.0;
+        }
     }
 
     /* RTL smoothing: process per SFB to remove branch from hot loop. */
