@@ -18,7 +18,7 @@ jobs:
       - name: Build FAAC WASM
         run: |
           emcc -O3 -Iinclude -Ifrontend libfaac/*.c frontend/wasm.c frontend/mp4write.c frontend/utils.c \
-            -DMAX_CHANNELS=6 -DFAAC_PRECISION_DOUBLE=1 \
+            -DMAX_CHANNELS=6 -DFAAC_PRECISION_DOUBLE=1 -DPACKAGE_VERSION=\"1.50.0\" \
             -o frontend/faac.js \
             -s WASM=1 \
             -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_faac_wasm_init", "_faac_wasm_encode", "_faac_wasm_close"]' \
