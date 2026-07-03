@@ -18,23 +18,16 @@
  */
 
 /**
- * Temporal Noise Shaping (TNS) implementation for MPEG-4 AAC-LC.
+ * Temporal Noise Shaping (TNS) for MPEG-4 AAC-LC.
  *
- * This implementation is designed to be highly efficient and distinct in
- * expression to ensure LGPL compliance while providing optimal performance
- * on modern CPU architectures.
+ * TNS whitens the spectrum in the frequency domain with a linear-predictive
+ * (LPC) filter. Because frequency and time are duals, a whitening filter in
+ * frequency shapes the quantization-noise envelope in time; matching that
+ * envelope to the signal's temporal envelope hides noise that would otherwise
+ * be audible as pre-echo ahead of sharp transients.
  *
- * Senior Signal Engineer's Note: TNS operates by whitening the spectrum in
- * the frequency domain using linear predictive coding (LPC). Because the
- * frequency and time domains are duals, a whitening filter in frequency
- * corresponds to an envelope-shaping effect in time. By matching the
- * quantization noise envelope to the signal's temporal envelope, we
- * effectively mask noise that would otherwise be heard as pre-echo before
- * sharp transients.
- *
- * This version uses float-precision arithmetic for the TNS analysis stages,
- * which provides a performance boost through better autovectorization while
- * remaining more than accurate enough for a whitening filter application.
+ * The analysis stages use float arithmetic, which is accurate enough for a
+ * whitening filter and vectorizes well.
  */
 
 #include <math.h>
@@ -42,6 +35,7 @@
 #include <string.h>
 #include "frame.h"
 #include "coder.h"
+#include "bitstream.h"
 #include "tns.h"
 #include "util.h"
 
@@ -61,10 +55,8 @@ static const struct {
 #define TNS_MAX_BITRATE     80000   /* High-bitrate threshold for TNS bypass */
 #define TNS_MIN_ENERGY      1e-9f   /* Energy floor for spectral analysis */
 
-/**
- * Estimate autocorrelation for a segment of spectral data.
- * Optimized with local float buffer to encourage compiler autovectorization.
- */
+/* Autocorrelation over the TNS band, lags 0..order. The float scratch copy
+   keeps the inner dot product in single precision so it vectorizes cleanly. */
 static void calc_autocorr(int order, int length,
                           const faac_real * restrict spec,
                           float * restrict r)
@@ -72,7 +64,6 @@ static void calc_autocorr(int order, int length,
     float work[BLOCK_LEN_LONG];
     int lag, i;
 
-    /* Local copy to float for faster math and better vectorization potential */
     for (i = 0; i < length; i++) work[i] = (float)spec[i];
 
     for (lag = 0; lag <= order; lag++) {
@@ -81,7 +72,6 @@ static void calc_autocorr(int order, int length,
         const float * p2 = work + lag;
         int n = length - lag;
 
-        /* Dot product pattern: easily recognized by modern compilers */
         for (i = 0; i < n; i++) {
             acc += p1[i] * p2[i];
         }
@@ -89,10 +79,8 @@ static void calc_autocorr(int order, int length,
     }
 }
 
-/**
- * Solve the Yule-Walker equations using Levinson-Durbin recursion.
- * Returns the prediction gain (original energy / residual energy).
- */
+/* Levinson-Durbin recursion: reflection coeffs k[] from autocorrelation r[].
+   Returns the prediction gain (r[0]/residual), the profit signal for the gate. */
 static float compute_lpc(int order, const float * restrict r,
                          float * restrict k)
 {
@@ -120,12 +108,12 @@ static float compute_lpc(int order, const float * restrict r,
         }
 
         float rc = -lambda / err;
-        /* Constrain reflection coefficient for filter stability */
+        /* Clamp inside the unit circle so the synthesis filter stays stable. */
         if (rc > 0.999f) rc = 0.999f;
         else if (rc < -0.999f) rc = -0.999f;
         k[i] = rc;
 
-        /* Update LPC coefficients using symmetric property */
+        /* Symmetric in-place update touches each a[] pair once. */
         int half = (i + 1) / 2;
         for (j = 1; j < half; j++) {
             float t1 = a[j];
@@ -142,16 +130,15 @@ static float compute_lpc(int order, const float * restrict r,
         if (err <= 0.0f) break;
     }
 
-    if (err <= 1e-15f) return 100.0f; /* Perfect prediction case */
+    if (err <= 1e-15f) return 100.0f; /* residual underflow: treat as huge gain */
 
     return r[0] / err;
 }
 
-/**
- * Quantize reflection coefficients for bitstream transmission.
- * MPEG-4 AAC uses arcsine-domain quantization to better match human
- * perception of filter sensitivity.
- */
+/* Quantize the reflection coeffs to transmission indices. AAC quantizes in the
+   arcsine domain, where coeffs near +/-1 (the perceptually sensitive ones) get
+   finer steps. k[] is overwritten with the requantized values so the encoder
+   filters with exactly what the decoder will reconstruct. */
 static void quantize_coeffs(int order, int res, float * restrict k, int * restrict idx)
 {
     const float s_p = (float)(((1 << (res - 1)) - 0.5f) / (M_PI / 2));
@@ -168,16 +155,13 @@ static void quantize_coeffs(int order, int res, float * restrict k, int * restri
         else if (q < i_min) q = i_min;
         idx[i] = q;
 
-        /* Requantize for local encoder filtering to match decoder exactly */
         s = (q >= 0) ? s_p : s_n;
         k[i] = sinf((float)q / s);
     }
 }
 
-/**
- * Convert reflection coefficients back to FIR predictor coefficients.
- * Uses a symmetric update to efficiently compute higher-order filters.
- */
+/* Reflection coeffs -> FIR predictor taps, same symmetric step as the LPC
+   recursion but run once on the final (quantized) k[]. */
 static void finalize_filter(int order, const float * restrict k, faac_real * restrict a)
 {
     int i, m;
@@ -198,15 +182,12 @@ static void finalize_filter(int order, const float * restrict k, faac_real * res
     }
 }
 
-/**
- * Apply the TNS analysis filter (FIR) to the spectral data.
- * The filter can be applied in forward or backward direction across frequency.
- */
+/* In-place TNS analysis FIR across the band. Snapshot the input first so the
+   delay line reads original samples directly instead of shifting state each
+   step; direction picks which end of the band the prediction leans on. */
 static void filter_spec(int length, int order, int direction,
                         const faac_real * restrict a, faac_real * restrict spec)
 {
-    /* Snapshot the original inputs so the FIR can index the delay line directly
-     * (no per-sample state shifting). length is bounded by the long block. */
     faac_real hist[BLOCK_LEN_LONG];
     int i, j;
 
@@ -339,4 +320,74 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     tnsInfo->windowData[0].numFilters = 1;
     tnsInfo->windowData[0].coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
+}
+
+int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)
+{
+    TnsInfo *tns = &coderInfo->tnsInfo;
+
+    /* Field widths differ between the eight short windows and the single long
+       window; select the short-block set only for an actual short block. */
+    const int shortBlock = (coderInfo->block_type == ONLY_SHORT_WINDOW);
+    const int numWindows = shortBlock ? MAX_SHORT_WINDOWS : 1;
+    const int nfiltBits  = shortBlock ? LEN_TNS_NFILTS  : LEN_TNS_NFILTL;
+    const int lenBits    = shortBlock ? LEN_TNS_LENGTHS : LEN_TNS_LENGTHL;
+    const int ordBits    = shortBlock ? LEN_TNS_ORDERS  : LEN_TNS_ORDERL;
+
+    int bits = LEN_TNS_PRES;
+    int w;
+
+    if (writeFlag)
+        PutBit(bitStream, tns->tnsDataPresent, LEN_TNS_PRES);
+
+    if (!tns->tnsDataPresent)
+        return bits;
+
+    for (w = 0; w < numWindows; w++) {
+        const TnsWindowData *win = &tns->windowData[w];
+        const int nfilt = win->numFilters;
+        int f;
+
+        bits += nfiltBits;
+        if (writeFlag)
+            PutBit(bitStream, nfilt, nfiltBits);
+
+        if (!nfilt)
+            continue;
+
+        /* coef_res rides the wire biased by the 3-bit floor the syntax assumes. */
+        bits += LEN_TNS_COEFF_RES;
+        if (writeFlag)
+            PutBit(bitStream, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+
+        for (f = 0; f < nfilt; f++) {
+            const TnsFilterData *filt = &win->tnsFilter[f];
+            const int order = filt->order;
+
+            bits += lenBits + ordBits;
+            if (writeFlag) {
+                PutBit(bitStream, filt->length, lenBits);
+                PutBit(bitStream, order, ordBits);
+            }
+
+            if (!order)
+                continue;
+
+            /* coefCompress drops the redundant MSB when every index fits the
+               narrower range; the decoder sign-extends back to coef_res width. */
+            const int coefBits = win->coefResolution - filt->coefCompress;
+            const unsigned long mask = ~(~0UL << coefBits);
+            int i;
+
+            bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS + order * coefBits;
+            if (writeFlag) {
+                PutBit(bitStream, filt->direction, LEN_TNS_DIRECTION);
+                PutBit(bitStream, filt->coefCompress, LEN_TNS_COMPRESS);
+                for (i = 1; i <= order; i++)
+                    PutBit(bitStream, (unsigned long)filt->index[i] & mask, coefBits);
+            }
+        }
+    }
+
+    return bits;
 }

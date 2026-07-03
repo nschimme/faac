@@ -32,6 +32,7 @@ Copyright (c) 1997.
 #include "channels.h"
 #include "huff2.h"
 #include "bitstream.h"
+#include "tns.h"
 #include "util.h"
 
 static int CountBitstream(faacEncStruct* hEncoder,
@@ -71,9 +72,6 @@ static int WriteICS(CoderInfo *coderInfo,
 static int WritePulseData(CoderInfo *coderInfo,
                           BitStream *bitStream,
                           int writeFlag);
-static int WriteTNSData(CoderInfo *coderInfo,
-                        BitStream *bitStream,
-                        int writeFlag);
 static int WriteGainControlData(CoderInfo *coderInfo,
                                 BitStream *bitStream,
                                 int writeFlag);
@@ -494,7 +492,7 @@ static int WriteICS(CoderInfo *coderInfo,
     bits += writesf(coderInfo, bitStream, writeFlag);
 
     bits += WritePulseData(coderInfo, bitStream, writeFlag);
-    bits += WriteTNSData(coderInfo, bitStream, writeFlag);
+    bits += TnsWriteBitstream(coderInfo, bitStream, writeFlag);
     bits += WriteGainControlData(coderInfo, bitStream, writeFlag);
 
     bits += WriteSpectralData(coderInfo, bitStream, writeFlag);
@@ -515,91 +513,6 @@ static int WritePulseData(CoderInfo *coderInfo,
 
     bits += LEN_PULSE_PRES;
 
-    return bits;
-}
-
-static int WriteTNSData(CoderInfo *coderInfo,
-                        BitStream *bitStream,
-                        int writeFlag)
-{
-    int bits = 0;
-    int numWindows;
-    int len_tns_nfilt;
-    int len_tns_length;
-    int len_tns_order;
-    int filtNumber;
-    int resInBits;
-    int bitsToTransmit;
-    unsigned long unsignedIndex;
-    int w;
-
-    TnsInfo* tnsInfoPtr = &coderInfo->tnsInfo;
-
-    if (writeFlag) {
-        PutBit(bitStream,tnsInfoPtr->tnsDataPresent,LEN_TNS_PRES);
-    }
-    bits += LEN_TNS_PRES;
-
-    /* If TNS is not present, bail */
-    if (!tnsInfoPtr->tnsDataPresent) {
-        return bits;
-    }
-
-    /* Set window-dependent TNS parameters */
-    if (coderInfo->block_type == ONLY_SHORT_WINDOW) {
-        numWindows = MAX_SHORT_WINDOWS;
-        len_tns_nfilt = LEN_TNS_NFILTS;
-        len_tns_length = LEN_TNS_LENGTHS;
-        len_tns_order = LEN_TNS_ORDERS;
-    }
-    else {
-        numWindows = 1;
-        len_tns_nfilt = LEN_TNS_NFILTL;
-        len_tns_length = LEN_TNS_LENGTHL;
-        len_tns_order = LEN_TNS_ORDERL;
-    }
-
-    /* Write TNS data */
-    bits += (numWindows * len_tns_nfilt);
-    for (w=0;w<numWindows;w++) {
-        TnsWindowData* windowDataPtr = &tnsInfoPtr->windowData[w];
-        int numFilters = windowDataPtr->numFilters;
-        if (writeFlag) {
-            PutBit(bitStream,numFilters,len_tns_nfilt); /* n_filt[] = 0 */
-        }
-        if (numFilters) {
-            bits += LEN_TNS_COEFF_RES;
-            resInBits = windowDataPtr->coefResolution;
-            if (writeFlag) {
-                PutBit(bitStream,resInBits-DEF_TNS_RES_OFFSET,LEN_TNS_COEFF_RES);
-            }
-            bits += numFilters * (len_tns_length+len_tns_order);
-            for (filtNumber=0;filtNumber<numFilters;filtNumber++) {
-                TnsFilterData* tnsFilterPtr=&windowDataPtr->tnsFilter[filtNumber];
-                int order = tnsFilterPtr->order;
-                if (writeFlag) {
-                    PutBit(bitStream,tnsFilterPtr->length,len_tns_length);
-                    PutBit(bitStream,order,len_tns_order);
-                }
-                if (order) {
-                    bits += (LEN_TNS_DIRECTION + LEN_TNS_COMPRESS);
-                    if (writeFlag) {
-                        PutBit(bitStream,tnsFilterPtr->direction,LEN_TNS_DIRECTION);
-                        PutBit(bitStream,tnsFilterPtr->coefCompress,LEN_TNS_COMPRESS);
-                    }
-                    bitsToTransmit = resInBits - tnsFilterPtr->coefCompress;
-                    bits += order * bitsToTransmit;
-                    if (writeFlag) {
-                        int i;
-                        for (i=1;i<=order;i++) {
-                            unsignedIndex = (unsigned long) (tnsFilterPtr->index[i])&(~(~0<<bitsToTransmit));
-                            PutBit(bitStream,unsignedIndex,bitsToTransmit);
-                        }
-                    }
-                }
-            }
-        }
-    }
     return bits;
 }
 

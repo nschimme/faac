@@ -70,8 +70,7 @@ void FilterBankInit(faacEncStruct* hEncoder)
     CalculateKBDWindow(hEncoder->kbd_window_long, 4, BLOCK_LEN_LONG*2);
     CalculateKBDWindow(hEncoder->kbd_window_short, 6, BLOCK_LEN_SHORT*2);
 
-    /* Increase to 4x to provide scratch space for TNS re-filtering gates. */
-    hEncoder->gpsyInfo.sharedWorkBuffLong = (faac_real*)AllocMemory(4*BLOCK_LEN_LONG*sizeof(faac_real));
+    hEncoder->gpsyInfo.sharedWorkBuffLong = (faac_real*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(faac_real));
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)

@@ -17,21 +17,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-/**
- * Temporal Noise Shaping (TNS)
- *
- * This implementation provides a clean-room LGPL version of the AAC TNS tool.
- * TNS is used to control the temporal shape of quantization noise by applying
- * a predictive filter across the frequency axis. This is particularly effective
- * for transient signals where it helps to suppress audible pre-echoes by
- * leveraging the temporal masking properties of the human auditory system.
- *
- * Performance optimizations include:
- * - Efficient pointer arithmetic for better autovectorization.
- * - Minimal stack-based memory usage.
- * - Single-pass algorithm structures where applicable.
- * - Focus on long-window TNS (MPEG-4 AAC-LC), as short-window TNS was
- *   found to provide marginal benefit for the added complexity.
+/*
+ * Temporal Noise Shaping (TNS): a predictive filter along the frequency axis
+ * that reshapes quantization noise in time so it hides behind transients
+ * instead of leaking out as pre-echo. Long-window only here; short windows
+ * already have the temporal resolution to not need it.
  */
 
 #ifndef TNS_H
@@ -46,32 +36,23 @@ extern "C" {
 struct faacEncStruct;
 typedef struct faacEncStruct faacEncStruct;
 
-/**
- * Initialize TNS parameters for the given encoder instance.
- * Sets up bitrate-dependent thresholds and frequency band limits.
- */
+/* Latch the per-channel band limits and gain threshold; also resolves whether
+ * TNS runs at all, since it is gated off above TNS_MAX_BITRATE. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/**
- * Perform TNS analysis and filtering on a single channel's spectral data.
- *
- * TNS analysis is performed in-place on the spectral coefficients (`spec`).
- * If a significant prediction gain is found, the spectrum is filtered using
- * an FIR analysis filter. The produced filter parameters are stored in
- * `tnsInfo` for bitstream encoding.
- *
- * @param tnsInfo Channel-specific TNS state.
- * @param numBands Total number of scalefactor bands.
- * @param blockType Current window type (LONG, SHORT, etc.).
- * @param sfbOffsetTable Table of spectral line offsets for each SFB.
- * @param spec Spectral coefficients (modified in-place).
- * @param tdEnvelope Time-domain energy envelope for direction heuristics.
- * @param tdEnvelopeLen Number of sub-blocks in the envelope.
- */
+/* Analyse one channel and, if it pays off, whiten `spec` in place. tdEnvelope
+ * is the block switcher's sub-block energy: it both gates the tool (needs a
+ * real temporal event to hide noise behind) and picks the filter direction. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
                faac_real* spec,
                const float* tdEnvelope, int tdEnvelopeLen);
+
+/* Serialize this channel's tns_data() syntax element. writeFlag==0 only tallies
+ * the bit cost (the rate loop needs the size before committing the frame).
+ * Returns the number of bits written/counted. */
+int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream,
+                      int writeFlag);
 
 #ifdef __cplusplus
 }
