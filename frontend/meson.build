@@ -16,3 +16,13 @@ if target_machine.system() == 'windows'
         install: true
     )
 endif
+
+if target_machine.system() == 'emscripten'
+    faac_wasm = executable('faac',
+        ['wasm.c', 'utils.c', 'mp4write.c', 'utils.h', 'mp4write.h'],
+        include_directories: ['..', '../include'],
+        link_with: libfaac,
+        name_suffix: 'js',
+        install: true
+    )
+endif

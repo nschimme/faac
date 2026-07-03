@@ -152,7 +152,8 @@
 
             try {
                 const arrayBuffer = await selectedFile.arrayBuffer();
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                // Set sampleRate to 48000 for optimal FAAC quality
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
                 status.textContent = 'Encoding to M4A...';

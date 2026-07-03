@@ -1,0 +1,17 @@
+[binaries]
+c = 'emcc'
+ar = 'emar'
+nm = 'emnm'
+strip = 'emstrip'
+
+[host_machine]
+system = 'emscripten'
+cpu_family = 'wasm32'
+cpu = 'wasm32'
+endian = 'little'
+
+[properties]
+needs_exe_wrapper = true
+# We can provide extra compiler and linker flags here
+c_args = ['-msimd128']
+c_link_args = ['-msimd128', '-sWASM=1', '-sEXPORTED_FUNCTIONS=["_malloc", "_free", "_faac_wasm_init", "_faac_wasm_encode", "_faac_wasm_close"]', '-sEXPORTED_RUNTIME_METHODS=["FS", "HEAPF32"]', '-sEXPORT_NAME="faacModule"', '-sMODULARIZE=1', '-sFORCE_FILESYSTEM=1', '-sALLOW_MEMORY_GROWTH=1']

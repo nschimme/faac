@@ -248,7 +248,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 for ( ;; )
                 {
                     int bytesWritten;
-                    UINT timeElapsed, timeEncoded;
+                    UINT timeElapsed;
 
                     bytesInput = wav_read_int24(infile, pcmbuf, inputSamples, NULL) * sizeof(int);
 
@@ -264,7 +264,8 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                     totalBytesRead += bytesInput;
 
                     timeElapsed = (GetTickCount () - startTime);
-                    timeEncoded = 100.0 * totalBytesRead / (sampleRate * numChannels * sizeof (int));
+                    // Calculate playing time in seconds from samples per channel
+                    double playingTime = (double)totalBytesRead / (numChannels * sizeof(int) * sampleRate);
 
                     if (timeElapsed > (lastUpdated + 200))
                     {
@@ -278,7 +279,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                         sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
                                 "Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
-                                timeEncoded / 6000, 0.01 * (timeEncoded % 6000),
+                                (int)playingTime / 60, (float)((int)(playingTime * 10) % 600) / 10.0f,
                                 timeElapsed / 60000, 0.001 * (timeElapsed % 60000),
                                 (float)factor,
                                 (int)timeLeft / 60, (float)((int)(timeLeft * 10) % 600) / 10.0f

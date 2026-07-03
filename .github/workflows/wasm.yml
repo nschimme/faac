@@ -12,29 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y meson ninja-build
+
       - name: Install Emscripten
         uses: mymindstorm/setup-emsdk@v14
 
-      - name: Build FAAC WASM
+      - name: Build FAAC WASM via Meson
         run: |
-          # Compile everything except SSE-specific files which WASM doesn't support
-          # We use FAAC_PRECISION_SINGLE for better SIMD autovectorization performance
-          SOURCES=$(ls libfaac/*.c | grep -v "quantize_sse.c")
-          emcc -O3 -msimd128 -Iinclude -Ifrontend $SOURCES frontend/wasm.c frontend/mp4write.c frontend/utils.c \
-            -DMAX_CHANNELS=6 -DFAAC_PRECISION_SINGLE=1 -DPACKAGE_VERSION=\"1.50.0\" \
-            -o frontend/faac.js \
-            -s WASM=1 \
-            -s EXPORTED_FUNCTIONS='["_malloc", "_free", "_faac_wasm_init", "_faac_wasm_encode", "_faac_wasm_close"]' \
-            -s EXPORTED_RUNTIME_METHODS='["FS", "HEAPF32"]' \
-            -s EXPORT_NAME='faacModule' \
-            -s MODULARIZE=1 \
-            -s FORCE_FILESYSTEM=1 \
-            -s ALLOW_MEMORY_GROWTH=1
+          meson setup build-wasm --cross-file frontend/emscripten.cross -Dfloating-point=single -Dfrontend=true
+          ninja -C build-wasm
 
       - name: Prepare Artifacts
         run: |
           mkdir -p dist
-          cp frontend/index.html frontend/worker.js frontend/faac.js frontend/faac.wasm dist/
+          cp frontend/index.html frontend/worker.js build-wasm/frontend/faac.js build-wasm/frontend/faac.wasm dist/
           cp frontend/faac.ico dist/favicon.ico
           zip -r faac-wasm.zip dist/
 

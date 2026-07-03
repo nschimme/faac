@@ -18,7 +18,8 @@ onmessage = async (e) => {
 
     try {
         const ctx = Module._faac_wasm_init(sampleRate, channels, 0, quality, 1);
-        const totalSamples = pcmData[0].length;
+        const pcmViews = pcmData.map(buf => new Float32Array(buf));
+        const totalSamples = pcmViews[0].length;
         const blockSize = 1024;
 
         // Interleave PCM data
@@ -30,7 +31,7 @@ onmessage = async (e) => {
 
             for (let s = 0; i + s < totalSamples && s < blockSize; s++) {
                 for (let c = 0; c < channels; c++) {
-                    interleaved[s * channels + c] = pcmData[c][i + s];
+                    interleaved[s * channels + c] = pcmViews[c][i + s];
                 }
             }
 
