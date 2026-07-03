@@ -202,6 +202,26 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
 
+  /* Debug/measurement knob: FAAC_FORCE_LONG=1 disables block switching so
+     pre-echo stays in long blocks (used to validate TNS metrics). */
+  {
+    static int forceLong = -1;
+    if (forceLong < 0)
+    {
+      const char *env = getenv("FAAC_FORCE_LONG");
+      forceLong = env && env[0] == '1';
+    }
+    if (forceLong)
+    {
+      for (channel = 0; channel < numChannels; channel++)
+      {
+        coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        coderInfo[channel].desired_block_type = ONLY_LONG_WINDOW;
+      }
+      return;
+    }
+  }
+
   /* Use the same block type for all channels
      If there is 1 channel that wants a short block,
      use a short block on all channels.

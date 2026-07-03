@@ -56,8 +56,6 @@ typedef struct {
     int direction;                       /* Filtering direction */
     int coefCompress;                    /* Are coeffs compressed? */
     int length;                          /* Length, in bands */
-    int startBand;                       /* Start band for PNS inhibition */
-    int stopBand;                        /* Stop band for PNS inhibition */
     faac_real aCoeffs[TNS_MAX_ORDER+1];  /* LPC (AR) coefficients */
     int index[TNS_MAX_ORDER+1];          /* Quantized reflection-coeff indices */
 } TnsFilterData;
@@ -73,6 +71,7 @@ typedef struct {
     int tnsDisabled;
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
+    int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
     int tnsMaxOrderLong;
     faac_real gainThreshLong;
     /* Long windows use windowData[0]; the array stays sized for MAX_SHORT_WINDOWS

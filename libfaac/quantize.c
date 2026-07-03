@@ -255,39 +255,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
             continue;
         }
 
-        /* TNS/PNS contract: a band covered by any TNS filter must not be
-         * replaced by PNS, since TNS has already shaped its noise. TnsEncode
-         * ran in place before quantization; we query its filter band ranges
-         * [startBand, stopBand) as the single coupling point. */
-        int is_tns = 0;
-        if (ci->tnsInfo.tnsDataPresent)
-        {
-            int w_idx;
-            int w_start = 0;
-            for (w_idx = 0; w_idx < gnum; w_idx++)
-                w_start += ci->groups.len[w_idx];
-
-            for (w_idx = w_start; w_idx < w_start + gsize; w_idx++)
-            {
-                TnsWindowData *tw = &ci->tnsInfo.windowData[w_idx];
-                if (tw->numFilters > 0)
-                {
-                    int f;
-                    /* Bugs 2 & 5: use explicit startBand and stopBand to fix PNS inhibition mapping. */
-                    for (f = 0; f < tw->numFilters; f++)
-                    {
-                        if (sb >= tw->tnsFilter[f].startBand && sb < tw->tnsFilter[f].stopBand)
-                        {
-                            is_tns = 1;
-                            break;
-                        }
-                    }
-                    if (is_tns) break;
-                }
-            }
-        }
-
-        if (target[sb] < pns_threshold && !is_tns)
+        /* TNS/PNS contract: PNS is allowed inside TNS-covered bands. The
+         * decoder inverse-filters the substituted noise along with the rest
+         * of the range, temporally shaping it — the two tools compose. */
+        if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
             ci->sf[band] += FAAC_LRINT(FAAC_LOG10(avg_per_window) * SF_STEP_ENRG);

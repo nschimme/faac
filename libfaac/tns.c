@@ -32,6 +32,9 @@
 
 #include <math.h>
 #include <stdlib.h>
+#ifdef FAAC_TNS_TUNING
+#include <stdio.h>
+#endif
 #include <string.h>
 #include "frame.h"
 #include "coder.h"
@@ -49,22 +52,23 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
+#define TNS_ATTACK_RATIO    1.4f    /* Min peak/mean sub-block energy to fire TNS */
 #define TNS_LPC_ORDER       8       /* Standard order for AAC-LC long windows */
 #define TNS_GAIN_LIMIT      1.4f    /* Minimum prediction gain for TNS usage */
-#define TNS_ATTACK_RATIO    1.4f    /* Min peak/mean sub-block energy to fire TNS */
+#define TNS_GAIN_CLAMP      6.0f    /* Reject above: poles near the unit circle
+                                       make the synthesis filter ring (noise blowup) */
+#define TNS_MEASURED_GAIN   1.4f    /* Outcome gate: the quantized filter must
+                                       reduce band energy by at least this factor */
 #define TNS_MAX_BITRATE     80000   /* High-bitrate threshold for TNS bypass */
 #define TNS_MIN_ENERGY      1e-9f   /* Energy floor for spectral analysis */
 
 /* Autocorrelation over the TNS band, lags 0..order. The float scratch copy
    keeps the inner dot product in single precision so it vectorizes cleanly. */
-static void calc_autocorr(int order, int length,
-                          const faac_real * restrict spec,
-                          float * restrict r)
+static void calc_autocorr_f(int order, int length,
+                            const float * restrict work,
+                            float * restrict r)
 {
-    float work[BLOCK_LEN_LONG];
     int lag, i;
-
-    for (i = 0; i < length; i++) work[i] = (float)spec[i];
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
@@ -228,6 +232,7 @@ void TnsInit(faacEncStruct* hEncoder)
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
         info->tnsDisabled = gated;
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
+        info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
         info->tnsMaxOrderLong = TNS_LPC_ORDER;
         info->gainThreshLong = (faac_real)TNS_GAIN_LIMIT;
@@ -248,7 +253,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     if (tnsInfo->tnsDisabled || blockType == ONLY_SHORT_WINDOW) return;
 
     /* Tonal but temporally flat frames pass the gain gate too; without a real
-       transient to hide behind, whitening just smears noise as reverb. */
+       transient to hide behind, whitening just smears noise as reverb. This
+       cheap early-out also skips the LPC work on the common path. */
     if (tdEnvelope && tdEnvelopeLen > 0) {
         float peak = 0.0f, mean = 0.0f;
         int w;
@@ -274,13 +280,40 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     for (int i = 0; i < length; i++) energy += band[i] * band[i];
     if (energy < (faac_real)TNS_MIN_ENERGY) return;
 
+    /* Fit the LPC on an energy-normalized copy of the band: each sfb scaled to
+       unit RMS (floored so near-silent bands can't blow up a bin). Without
+       this the fit is dominated by the loudest harmonics and the filter
+       whitens tonality instead of modeling the temporal envelope. */
+    float wspec[BLOCK_LEN_LONG];
+    {
+        float maxrms = 0.0f, floorrms;
+        int b;
+        for (b = b_start; b < b_stop; b++) {
+            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+            float e = 0.0f;
+            for (int i = s0; i < s1; i++) e += (float)(spec[i] * spec[i]);
+            float rms = sqrtf(e / (float)(s1 - s0));
+            if (rms > maxrms) maxrms = rms;
+        }
+        floorrms = maxrms * 0.01f;
+        if (floorrms < 1e-9f) floorrms = 1e-9f;
+        for (b = b_start; b < b_stop; b++) {
+            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+            float e = 0.0f;
+            for (int i = s0; i < s1; i++) e += (float)(spec[i] * spec[i]);
+            float rms = sqrtf(e / (float)(s1 - s0));
+            float wgt = 1.0f / (rms > floorrms ? rms : floorrms);
+            for (int i = s0; i < s1; i++) wspec[i - i_start] = (float)spec[i] * wgt;
+        }
+    }
+
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
 
-    calc_autocorr(TNS_LPC_ORDER, length, band, r);
+    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     float gain = compute_lpc(TNS_LPC_ORDER, r, k);
 
-    if (gain < TNS_GAIN_LIMIT) return;
+    if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP) return;
 
     TnsFilterData *filter = &tnsInfo->windowData[0].tnsFilter[0];
     quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
@@ -291,14 +324,26 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     if (order == 0) return;
 
     filter->order = order;
-    filter->startBand = b_start;
-    filter->stopBand = b_stop;
-    filter->length = b_stop - b_start;
+    /* The decoder anchors the filter region at the TOP — its num_swb, the FULL
+       swb table count for the sample rate, not max_sfb — and walks DOWN by
+       `length`, clamping both ends to min(tns_max_band, max_sfb). For its
+       region to land exactly on [b_start, b_stop], length must span from that
+       table top down to b_start — not just the bands we filtered. */
+    filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Direction Heuristic: Backward filtering is used if energy rises across
-       the frame, shaping noise towards the temporal masking region of the transient. */
-    filter->direction = (tdEnvelope && tdEnvelopeLen >= 2 && tdEnvelope[tdEnvelopeLen - 1] > tdEnvelope[0]) ? 1 : 0;
-
+    /* Direction heuristic: run the filter in the direction of the signal's
+       temporal energy so the shaped quantization noise lands in the loud,
+       masked part of the frame instead of spilling into the quiet part.
+       Backward filtering when the early half of the frame carries the energy. */
+    if (tdEnvelope && tdEnvelopeLen >= 2) {
+        float e_early = 0.0f, e_late = 0.0f;
+        int w, half = tdEnvelopeLen / 2;
+        for (w = 0; w < half; w++) e_early += tdEnvelope[w];
+        for (; w < tdEnvelopeLen; w++) e_late += tdEnvelope[w];
+        filter->direction = (e_early > e_late) ? 1 : 0;
+    } else {
+        filter->direction = 0;
+    }
     /* Narrower encoding saves a bit per coefficient when it's lossless. */
     filter->coefCompress = 1;
     int limit = 1 << (DEF_TNS_COEFF_RES - 2);
@@ -310,11 +355,42 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     }
 
     finalize_filter(order, k, filter->aCoeffs);
+
+    /* Outcome gate, measured in the same energy-normalized domain the filter
+       was fitted in: filter a scratch copy with the QUANTIZED coefficients in
+       the chosen direction and keep TNS only if it actually reduced weighted
+       energy by TNS_MEASURED_GAIN. The pre-quantization Levinson estimate can
+       overpromise; a filter that fails this bar just smears noise. */
+    {
+        faac_real trial[BLOCK_LEN_LONG];
+        faac_real orig_e = 0.0, filt_e = 0.0;
+        int i;
+        for (i = 0; i < length; i++) trial[i] = (faac_real)wspec[i];
+        filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
+        for (i = 0; i < length; i++) {
+            orig_e += (faac_real)wspec[i] * (faac_real)wspec[i];
+            filt_e += trial[i] * trial[i];
+        }
+        if (filt_e < (faac_real)TNS_MIN_ENERGY) filt_e = (faac_real)TNS_MIN_ENERGY;
+        if (orig_e < (faac_real)TNS_MEASURED_GAIN * filt_e) return;
+    }
+
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
 
     tnsInfo->windowData[0].numFilters = 1;
     tnsInfo->windowData[0].coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
+
+#ifdef FAAC_TNS_TUNING
+    {
+        static int fired = 0;
+        static double gsum = 0.0;
+        fired++; gsum += gain;
+        if (fired % 50 == 0)
+            fprintf(stderr, "TNS: fired=%d avg_gain=%.2f order=%d dir=%d len=%d\n",
+                    fired, gsum / fired, order, filter->direction, filter->length);
+    }
+#endif
 }
 
 int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)

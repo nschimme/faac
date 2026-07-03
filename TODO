@@ -5,5 +5,12 @@
 - Add bit reservoir control
 - Add resampler and downmixer (hans-juergen, Oct 17, 2004)
 - Add HE AAC (hans-juergen, Oct 17, 2004)
-- Test TNS(arcen, Apr 8th, 2012)
+- Co-tune block switching with TNS: raise the switching threshold so borderline
+  transients stay in long windows (cheaper in bits, better frequency resolution)
+  and let TNS shape their pre-echo. Force-long zimtohrli A/B proved TNS can carry
+  this (+0.11 MOS @32k, above ffmpeg); today the switcher fires first so TNS gets
+  only leftover frames and shipped benefit is ~0. Joint retune of blockswitch
+  thresholds + TNS gates + bit allocation; validate with score_preecho.py --tns-ab
+  (faac-benchmark) plus full ViSQOL guardrail. Only after this, revisit
+  short-window TNS for the sharp attacks that still smear inside short blocks.
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
