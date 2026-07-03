@@ -268,6 +268,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
+    /* After PsyInit (which resets td_hard) and TnsInit (which settles the
+       effective TNS state above). */
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -367,6 +370,7 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     FilterBankInit(hEncoder);
 
     TnsInit(hEncoder);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns);
 
     QuantizeInit();
 
