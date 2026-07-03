@@ -304,7 +304,9 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 1;
+    /* TNS is off by default for library consumers, preserving the behaviour of
+     * programs that link libfaac. The faac CLI opts in via its own default. */
+    hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -444,8 +446,6 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 		if (hEncoder->inputFifo[channel])
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
-
-    TnsPrintStats(hEncoder);
 
     /* Free handle */
     if (hEncoder)
@@ -604,14 +604,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             }
             coderInfo[channel].sfb_offset[sb] = offset;
 
-            /* TNS analysis and filtering (must be before spectral grouping) */
+            /* TNS analysis and filtering (must be before spectral grouping;
+             * it filters freqBuff in place so all downstream stages, including
+             * the quantizer's PNS inhibition, see the filtered spectrum). */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                int tdEnvLen;
+                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
                 TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
                           coderInfo[channel].sfbn,
                           coderInfo[channel].block_type,
                           coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                          hEncoder->freqBuff[channel],
+                          tdEnv, tdEnvLen);
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
             }
@@ -630,14 +634,18 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             }
             coderInfo[channel].sfb_offset[sb] = offset;
 
-            /* TNS analysis and filtering */
+            /* TNS analysis and filtering (in place on freqBuff, before
+             * stereo/quantization; see the long-comment at the short-block
+             * call site above for the ordering contract). */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                int tdEnvLen;
+                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
                 TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
                           coderInfo[channel].sfbn,
                           coderInfo[channel].block_type,
                           coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                          hEncoder->freqBuff[channel],
+                          tdEnv, tdEnvLen);
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
             }

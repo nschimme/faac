@@ -185,6 +185,15 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   }
 }
 
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  if (len)
+    *len = SUBBLOCKS_PER_FRAME;
+  /* psyfloat is float; the CUR window holds the current frame's sub-blocks. */
+  return (const float *)&psydata->eng[ENG_WIN_CUR];
+}
+
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;

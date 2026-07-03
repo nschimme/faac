@@ -61,6 +61,12 @@ void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 
 extern psymodel_t psymodel2;
 
+/* Return the current frame's per-sub-block time-domain energy envelope (the
+ * high-pass sub-block energies the block switcher computes for transient
+ * detection). *len is set to the number of sub-blocks. Used by TNS to choose
+ * filter direction from the real temporal envelope. */
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

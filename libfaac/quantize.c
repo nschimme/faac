@@ -255,6 +255,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
             continue;
         }
 
+        /* TNS/PNS contract: a band covered by any TNS filter must not be
+         * replaced by PNS, since TNS has already shaped its noise. TnsEncode
+         * ran in place before quantization; we query its filter band ranges
+         * [startBand, stopBand) as the single coupling point. */
         int is_tns = 0;
         if (ci->tnsInfo.tnsDataPresent)
         {
