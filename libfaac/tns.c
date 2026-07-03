@@ -52,6 +52,7 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
+#define TNS_ATTACK_RATIO    1.4f    /* Min peak/mean sub-block energy to fire TNS */
 #define TNS_LPC_ORDER       8       /* Standard order for AAC-LC long windows */
 #define TNS_GAIN_LIMIT      1.4f    /* Minimum prediction gain for TNS usage */
 #define TNS_GAIN_CLAMP      6.0f    /* Reject above: poles near the unit circle
