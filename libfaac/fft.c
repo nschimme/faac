@@ -26,8 +26,8 @@
 
 #include "fft.h"
 #include "util.h"
+#include "fixpoint.h"
 
-#define MAXLOGM 9
 #define MAXLOGR 8
 
 void fft_initialize( FFT_Tables *fft_tables )
@@ -42,6 +42,8 @@ void fft_initialize( FFT_Tables *fft_tables )
 		fft_tables->costbl[i]		= NULL;
 		fft_tables->negsintbl[i]	= NULL;
 		fft_tables->reordertbl[i]	= NULL;
+		fft_tables->mdct_cos[i]		= NULL;
+		fft_tables->mdct_sin[i]		= NULL;
 	}
 }
 
@@ -59,6 +61,12 @@ void fft_terminate( FFT_Tables *fft_tables )
 			
 		if( fft_tables->reordertbl[i] != NULL )
 			FreeMemory( fft_tables->reordertbl[i] );
+
+		if( fft_tables->mdct_cos[i] != NULL )
+			FreeMemory( fft_tables->mdct_cos[i] );
+
+		if( fft_tables->mdct_sin[i] != NULL )
+			FreeMemory( fft_tables->mdct_sin[i] );
 	}
 
 	FreeMemory( fft_tables->costbl );
@@ -115,6 +123,94 @@ static void reorder2( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int 
 		xi[j] = tmp;
 	}
 }
+
+#ifdef FAAC_PRECISION_FIXED
+static void fft_proc_fixed(
+		int32_q31 * __restrict xr,
+		int32_q31 * __restrict xi,
+		const int32_q31 * __restrict refac,
+		const int32_q31 * __restrict imfac,
+		int size)
+{
+	int step, shift, pos;
+	int exp, estep;
+
+	for (pos = 0; pos < size; pos += 2)
+	{
+		int32_q31 v2r, v2i;
+		int x1 = pos;
+		int x2 = pos + 1;
+
+		v2r = xr[x2];
+		v2i = xi[x2];
+
+		xr[x2] = xr[x1] - v2r;
+		xr[x1] += v2r;
+
+		xi[x2] = xi[x1] - v2i;
+		xi[x1] += v2i;
+	}
+
+	if (size >= 4) {
+		for (pos = 0; pos < size; pos += 4)
+		{
+			int32_q31 v2r, v2i;
+			int x1 = pos;
+			int x2 = pos + 2;
+
+			v2r = xr[x2];
+			v2i = xi[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+
+			x1++;
+			x2++;
+
+			v2r = xi[x2];
+			v2i = -xr[x2];
+
+			xr[x2] = xr[x1] - v2r;
+			xr[x1] += v2r;
+
+			xi[x2] = xi[x1] - v2i;
+			xi[x1] += v2i;
+		}
+	}
+
+	estep = 0;
+	for (step = 4; step < size; step *= 2)
+	{
+		for (pos = 0; pos < size; pos += (2 * step))
+		{
+			int x1 = pos;
+			int x2 = pos + step;
+			exp = estep;
+			for (shift = 0; shift < step; shift++)
+			{
+				int32_q31 v2r, v2i;
+
+				v2r = fix_mul_q31(xr[x2], refac[exp]) - fix_mul_q31(xi[x2], imfac[exp]);
+				v2i = fix_mul_q31(xr[x2], imfac[exp]) + fix_mul_q31(xi[x2], refac[exp]);
+
+				xr[x2] = xr[x1] - v2r;
+				xr[x1] += v2r;
+
+				xi[x2] = xi[x1] - v2i;
+				xi[x1] += v2i;
+
+				exp++;
+				x1++;
+				x2++;
+			}
+		}
+		estep += step;
+	}
+}
+#endif
 
 static void fft_proc(
 		faac_real * __restrict xr,
@@ -239,11 +335,39 @@ static void check_tables( FFT_Tables *fft_tables, int logm)
 			int shift;
 			for (shift = 0; shift < step; shift++)
 			{
+#ifdef FAAC_PRECISION_FIXED
+				int32_t theta_fixed = (int32_t)((((int64_t)shift << 30) + (step >> 1)) / step);
+				fft_tables->costbl[logm][offset] = (fftfloat)fix_cos(theta_fixed);
+				fft_tables->negsintbl[logm][offset] = (fftfloat)-fix_sin(theta_fixed);
+#else
 				faac_real theta = M_PI * (faac_real)shift / (faac_real)step;
 				fft_tables->costbl[logm][offset] = (fftfloat)FAAC_COS(theta);
 				fft_tables->negsintbl[logm][offset] = (fftfloat)-FAAC_SIN(theta);
+#endif
 				offset++;
 			}
+		}
+
+		/* Initialize MDCT twiddle tables */
+		int n4 = size;
+		fft_tables->mdct_cos[logm] = AllocMemory(n4 * sizeof(fftfloat));
+		fft_tables->mdct_sin[logm] = AllocMemory(n4 * sizeof(fftfloat));
+		int i;
+		for (i = 0; i < n4; i++) {
+#ifdef FAAC_PRECISION_FIXED
+			/* freq * (i + 0.125) = (2*PI/N) * (i + 0.125) = (PI/2) * (4/N) * (i + 0.125)
+			   N = 4 * FFT size = 4 * size
+			   theta_fixed = ((i + 0.125) / size) * 2^30
+			*/
+			int32_t theta_fixed = (int32_t)((((int64_t)i << 30) + ((int64_t)1 << 27)) / size);
+			fft_tables->mdct_cos[logm][i] = (fftfloat)fix_cos(theta_fixed);
+			fft_tables->mdct_sin[logm][i] = (fftfloat)fix_sin(theta_fixed);
+#else
+			faac_real freq = (2.0 * M_PI) / (size << 2);
+			faac_real theta = freq * (i + 0.125);
+			fft_tables->mdct_cos[logm][i] = (fftfloat)FAAC_COS(theta);
+			fft_tables->mdct_sin[logm][i] = (fftfloat)FAAC_SIN(theta);
+#endif
 		}
 	}
 }
@@ -265,9 +389,16 @@ void fft( FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 
 	check_tables( fft_tables, logm);
 
+	if (xr == NULL || xi == NULL)
+		return;
+
 	reorder2( fft_tables, xr, xi, logm);
 
+#ifdef FAAC_PRECISION_FIXED
+	fft_proc_fixed( (int32_q31*)xr, (int32_q31*)xi, (const int32_q31*)fft_tables->costbl[logm], (const int32_q31*)fft_tables->negsintbl[logm], 1 << logm );
+#else
 	fft_proc( xr, xi, fft_tables->costbl[logm], fft_tables->negsintbl[logm], 1 << logm );
+#endif
 }
 
 void rfft( FFT_Tables *fft_tables, faac_real *x, int logm)

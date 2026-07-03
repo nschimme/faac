@@ -237,8 +237,7 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
 
 void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
 {
-    faac_real tempr, tempi, c, s, cold, cfreq, sfreq; /* temps for pre and post twiddle */
-    faac_real freq = TWOPI / N;
+    faac_real tempr, tempi;
     int i;
 
     /* Hoisted constants */
@@ -255,12 +254,12 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
     faac_real *base1 = data + (N4 - 1);
     faac_real *base2 = data + (N + N4 - 1);
 
-    /* prepare for recurrence relation in pre-twiddle */
-    cfreq = FAAC_COS(freq);
-    sfreq = FAAC_SIN(freq);
+    int logm = (N == BLOCK_LEN_SHORT * 2) ? 6 : 9;
+    /* ensure tables are initialized */
+    fft(fft_tables, NULL, NULL, logm);
 
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
+    const fftfloat *mcos = fft_tables->mdct_cos[logm];
+    const fftfloat *msin = fft_tables->mdct_sin[logm];
 
     /* Induction variables */
     int n1 = N2 - 1;  /* descending: N/2 - 1 - 2i */
@@ -268,6 +267,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
 
     /* Phase 1: i < N/8 */
     for (i = 0; i < N8; i++) {
+        faac_real c = mcos[i];
+        faac_real s = msin[i];
 
         /* calculate real and imaginary parts of g(n) or G(p) */
 
@@ -278,13 +279,13 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
         tempi = base0[n2] - base1[-n2];
 
         /* calculate pre-twiddled FFT input */
+#ifdef FAAC_PRECISION_FIXED
+        xr[i] = fix_mul_q31((int32_q31)tempr, (int32_q31)c) + fix_mul_q31((int32_q31)tempi, (int32_q31)s);
+        xi[i] = fix_mul_q31((int32_q31)tempi, (int32_q31)c) - fix_mul_q31((int32_q31)tempr, (int32_q31)s);
+#else
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+#endif
 
         n1 -= 2;
         n2 += 2;
@@ -292,6 +293,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
 
     /* Phase 2: i >= N/8 */
     for (; i < N4; i++) {
+        faac_real c = mcos[i];
+        faac_real s = msin[i];
 
         /* calculate real and imaginary parts of g(n) or G(p) */
 
@@ -302,31 +305,20 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
         tempi = base0[n2] + base2[-n2];
 
         /* calculate pre-twiddled FFT input */
+#ifdef FAAC_PRECISION_FIXED
+        xr[i] = fix_mul_q31((int32_q31)tempr, (int32_q31)c) + fix_mul_q31((int32_q31)tempi, (int32_q31)s);
+        xi[i] = fix_mul_q31((int32_q31)tempi, (int32_q31)c) - fix_mul_q31((int32_q31)tempr, (int32_q31)s);
+#else
         xr[i] = tempr * c + tempi * s;
         xi[i] = tempi * c - tempr * s;
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
+#endif
 
         n1 -= 2;
         n2 += 2;
     }
 
     /* Perform in-place complex FFT of length N/4 */
-    switch (N) {
-    case BLOCK_LEN_SHORT * 2:
-        fft( fft_tables, xr, xi, 6);
-        break;
-    case BLOCK_LEN_LONG * 2:
-        fft( fft_tables, xr, xi, 9);
-        break;
-    }
-
-    /* prepare for recurrence relations in post-twiddle */
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
+    fft( fft_tables, xr, xi, logm);
 
     /* Base pointers for output mapping */
     faac_real *base_even0 = data;
@@ -338,21 +330,23 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
 
     /* post-twiddle FFT output and then get output data */
     for (i = 0; i < N4; i++) {
+        faac_real c = mcos[i];
+        faac_real s = msin[i];
 
         /* get post-twiddled FFT output */
+#ifdef FAAC_PRECISION_FIXED
+        tempr = (fix_mul_q31((int32_q31)xr[i], (int32_q31)c) + fix_mul_q31((int32_q31)xi[i], (int32_q31)s)) << 1;
+        tempi = (fix_mul_q31((int32_q31)xi[i], (int32_q31)c) - fix_mul_q31((int32_q31)xr[i], (int32_q31)s)) << 1;
+#else
         tempr = 2. * (xr[i] * c + xi[i] * s);
         tempi = 2. * (xi[i] * c - xr[i] * s);
+#endif
 
         /* fill in output values */
         base_even0[n2] = -tempr;  /* first half even */
         base_odd0[-n2] =  tempi;  /* first half odd */
         base_even1[n2] = -tempi;  /* second half even */
         base_odd1[-n2] =  tempr;  /* second half odd */
-
-        /* use recurrence to prepare cosine and sine for next value of i */
-        cold = c;
-        c = c * cfreq - s * sfreq;
-        s = s * cfreq + cold * sfreq;
 
         n2 += 2;
     }

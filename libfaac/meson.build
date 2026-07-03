@@ -20,6 +20,8 @@ endif
 common_src = [
     'bitstream.c',
     'bitstream.h',
+    'fixpoint.c',
+    'fixpoint.h',
     'blockswitch.c',
     'blockswitch.h',
     'channels.c',

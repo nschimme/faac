@@ -6,7 +6,7 @@ option('frontend',
 option('floating-point',
     description: 'Floating point precision',
     type: 'combo',
-    choices: ['single', 'double'],
+    choices: ['single', 'double', 'fixed'],
     value: 'double')
 
 option('max-channels',

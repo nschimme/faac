@@ -29,8 +29,10 @@ config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HA
 
 if get_option('floating-point') == 'double'
     config_h.set('FAAC_PRECISION_DOUBLE', 1)
-else
+elif get_option('floating-point') == 'single'
     config_h.set('FAAC_PRECISION_SINGLE', 1)
+else
+    config_h.set('FAAC_PRECISION_FIXED', 1)
 endif
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))

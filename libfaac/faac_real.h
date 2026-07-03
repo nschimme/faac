@@ -26,7 +26,19 @@
 
 #include <math.h>
 
-#ifdef FAAC_PRECISION_SINGLE
+#ifdef FAAC_PRECISION_FIXED
+#include "fixpoint.h"
+typedef int32_q31 faac_real;
+#define FAAC_SIN fix_sin
+#define FAAC_COS fix_cos
+#define FAAC_SQRT sqrtf
+#define FAAC_FABS fabsf
+#define FAAC_LOG10 log10f
+#define FAAC_POW powf
+#define FAAC_ASIN asinf
+#define FAAC_LRINT lrintf
+#define FAAC_FLOOR floorf
+#elif defined(FAAC_PRECISION_SINGLE)
 typedef float faac_real;
 #define FAAC_SIN sinf
 #define FAAC_COS cosf

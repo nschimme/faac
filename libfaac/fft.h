@@ -26,11 +26,15 @@
 
 typedef faac_real fftfloat;
 
+#define MAXLOGM 9
+
 typedef struct
 {
     fftfloat **costbl;
     fftfloat **negsintbl;
     unsigned short **reordertbl;
+    fftfloat *mdct_cos[MAXLOGM+1];
+    fftfloat *mdct_sin[MAXLOGM+1];
 } FFT_Tables;
 
 void fft_initialize		( FFT_Tables *fft_tables );
