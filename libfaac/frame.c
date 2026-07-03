@@ -270,7 +270,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 			hEncoder->sampleRate);
     /* After PsyInit (which resets td_hard) and TnsInit (which settles the
        effective TNS state above). */
-    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -370,7 +371,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     FilterBankInit(hEncoder);
 
     TnsInit(hEncoder);
-    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
     QuantizeInit();
 
@@ -653,8 +655,12 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 
             /* TNS analysis and filtering (in place on freqBuff, before
              * stereo/quantization; see the long-comment at the short-block
-             * call site above for the ordering contract). */
-            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+             * call site above for the ordering contract). Borderline
+             * transients kept long by td_hard skip the analysis: TNS's
+             * gates decline nearly all of them, and the promotion win is
+             * long-window bits/resolution, not TNS coverage. */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)
+                && !hEncoder->psyInfo[channel].promoted_long) {
                 int tdEnvLen;
                 const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
                 TnsEncode(&(coderInfo[channel].tnsInfo),

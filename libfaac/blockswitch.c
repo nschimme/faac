@@ -59,7 +59,14 @@ psydata_t;
    speech +0.09 at 16k; ~15 % of short frames become long. */
 #define PSY_TD_HARD ((faac_real)2.0)
 
-void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive)
+/* Below this sample rate a long window is too long in time (1024 samples at
+   16 kHz = 64 ms vs 21 ms at 48 kHz) for borderline promotion to be safe:
+   the smearing it introduces spans most of a syllable. Measured as a
+   systematic ViSQOL speech regression at 16 kHz (worst -0.61 MOS). */
+#define PSY_TD_HARD_MIN_SR 32000
+
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive,
+                  unsigned int sampleRate)
 {
   faac_real hard = PSY_TD_THRESH;
   unsigned int channel;
@@ -67,7 +74,9 @@ void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive)
   if (tnsActive)
   {
     /* Tuning knob: FAAC_TD_THRESH overrides the hard ceiling (only
-       meaningful above the base threshold). Cached like FAAC_FORCE_LONG. */
+       meaningful above the base threshold), bypassing the sample-rate
+       gate so A/B harnesses can still probe low rates. Cached like
+       FAAC_FORCE_LONG. */
     static double envHard = -1.0;
     if (envHard < 0.0)
     {
@@ -76,7 +85,10 @@ void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive)
       if (envHard < 0.0)
         envHard = 0.0;
     }
-    hard = (envHard >= (double)PSY_TD_THRESH) ? (faac_real)envHard : PSY_TD_HARD;
+    if (envHard >= (double)PSY_TD_THRESH)
+      hard = (faac_real)envHard;
+    else if (sampleRate >= PSY_TD_HARD_MIN_SR)
+      hard = PSY_TD_HARD;
   }
 
   for (channel = 0; channel < numChannels; channel++)
@@ -92,6 +104,12 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   faac_real strength = 0.0;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
+
+  /* This analysis leads the frame being MDCT-encoded by one frame (its
+     envelope sits in the PREV window; see PsyGetCurEnvelope), so the
+     promotion flag consumed by TNS this frame is last call's decision. */
+  psyInfo->promoted_long = psyInfo->promoted_pending;
+  psyInfo->promoted_pending = 0;
 
   /* Search for transients across the current frame and its immediate temporal context.
      The search range is [curr-2, curr+9]. Track the strongest relative energy
@@ -114,6 +132,8 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       return;                            /* stationary: long */
 
   if (strength <= psyInfo->td_hard)
+  {
+      psyInfo->promoted_pending = 1;
       return;                            /* borderline: stay long; the long
                                             window's masking (and TNS when its
                                             gates agree) absorbs the pre-echo.
@@ -121,6 +141,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
                                             predictor here measured strictly
                                             worse than unconditional
                                             promotion. */
+  }
 
   psyInfo->block_type = ONLY_SHORT_WINDOW;
 }
@@ -146,6 +167,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   {
     psyInfo[channel].size = size;
     psyInfo[channel].td_hard = PSY_TD_THRESH; /* empty band until PsySetTdHard */
+    psyInfo[channel].promoted_long = 0;
+    psyInfo[channel].promoted_pending = 0;
   }
 
   size = BLOCK_LEN_SHORT;
