@@ -59,10 +59,15 @@ psydata_t;
    speech +0.09 at 16k; ~15 % of short frames become long. */
 #define PSY_TD_HARD ((faac_real)2.0)
 
-/* Below this sample rate a long window is too long in time (1024 samples at
-   16 kHz = 64 ms vs 21 ms at 48 kHz) for borderline promotion to be safe:
-   the smearing it introduces spans most of a syllable. Measured as a
-   systematic ViSQOL speech regression at 16 kHz (worst -0.61 MOS). */
+/* Promotion trades pre-echo for smearing quantization noise across the long
+   window, and that smear is audible in *milliseconds* while the window is
+   fixed in *samples*: 1024 samples is 21 ms at 48 kHz but 64 ms at 16 kHz --
+   most of a syllable, well past temporal masking. PSY_TD_HARD was tuned on
+   48 kHz material where the trade wins; at 16 kHz the same threshold tripled
+   the temporal damage and ViSQOL showed a systematic speech regression
+   (~200 clips one direction, worst -0.61 MOS). So don't retune the strength
+   threshold for low rates -- the cost side of the trade scales with window
+   duration, hence a sample-rate floor. 32 kHz keeps the window at <= 32 ms. */
 #define PSY_TD_HARD_MIN_SR 32000
 
 void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive,
