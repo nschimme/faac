@@ -190,8 +190,10 @@ const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   if (len)
     *len = SUBBLOCKS_PER_FRAME;
-  /* psyfloat is float; the CUR window holds the current frame's sub-blocks. */
-  return (const float *)&psydata->eng[ENG_WIN_CUR];
+  /* Due to the LOOKAHEAD_DEPTH=2 and the timing of PsyBufferUpdate, the
+     time-domain envelope for the frame currently being MDCT-encoded resides
+     in the PREV window. */
+  return (const float *)&psydata->eng[ENG_WIN_PREV];
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
