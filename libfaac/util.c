@@ -53,7 +53,7 @@ unsigned int MaxBitrate(unsigned long sampleRate)
 }
 
 /* Returns the minimum bitrate per channel for that sampling frequency */
-unsigned int MinBitrate(void)
+unsigned int MinBitrate()
 {
     return 8000;
 }

@@ -43,7 +43,6 @@ typedef struct
   int samplerate;
   int samples;
   int bigendian;
-  int swap;
   int isfloat;
 } pcmfile_t;
 

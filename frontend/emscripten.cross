@@ -12,6 +12,7 @@ endian = 'little'
 
 [properties]
 needs_exe_wrapper = true
-# We can provide extra compiler and linker flags here
+
+[built-in options]
 c_args = ['-msimd128']
 c_link_args = ['-msimd128', '-sWASM=1', '-sEXPORTED_FUNCTIONS=["_malloc", "_free", "_faac_wasm_init", "_faac_wasm_encode", "_faac_wasm_close"]', '-sEXPORTED_RUNTIME_METHODS=["FS", "HEAPF32"]', '-sEXPORT_NAME="faacModule"', '-sMODULARIZE=1', '-sFORCE_FILESYSTEM=1', '-sALLOW_MEMORY_GROWTH=1']
