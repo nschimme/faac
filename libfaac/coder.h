@@ -45,10 +45,6 @@ enum WINDOW_TYPE {
 };
 
 #define TNS_MAX_ORDER 12
-/* Min peak/mean sub-block energy for TNS to fire. Shared with the block
-   switcher, which predicts "will TNS cover this?" when deciding whether a
-   borderline transient may stay in a long window. */
-#define TNS_ATTACK_RATIO 1.4f
 #define DEF_TNS_COEFF_THRESH 0.1
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3

@@ -114,25 +114,13 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       return;                            /* stationary: long */
 
   if (strength <= psyInfo->td_hard)
-  {
-      /* Borderline transient. Keep it long only if TNS is predicted to fire
-         on it: check the same envelope gate TNS applies (peak/mean over the
-         CUR window's sub-blocks, which becomes TNS's PREV-window envelope
-         when this audio reaches the MDCT). The LPC-gain gates can't be
-         predicted before windowing, so TNS may still decline; td_hard is
-         tuned with that residual risk measured in. */
-      faac_real peak = 0.0, mean = 0.0;
-      for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
-      {
-          faac_real e = (faac_real)psydata->eng[ENG_WIN_CUR + win];
-          if (e > peak)
-              peak = e;
-          mean += e;
-      }
-      mean /= SUBBLOCKS_PER_FRAME;
-      if (peak >= (faac_real)TNS_ATTACK_RATIO * mean)
-          return;                        /* long + TNS covers the pre-echo */
-  }
+      return;                            /* borderline: stay long; the long
+                                            window's masking (and TNS when its
+                                            gates agree) absorbs the pre-echo.
+                                            An envelope-based "will TNS fire?"
+                                            predictor here measured strictly
+                                            worse than unconditional
+                                            promotion. */
 
   psyInfo->block_type = ONLY_SHORT_WINDOW;
 }
