@@ -35,6 +35,10 @@ endif
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
+if get_option('fft-type') == 'radix4'
+    config_h.set('USE_RADIX4_FFT', 1)
+endif
+
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
