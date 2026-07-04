@@ -106,6 +106,15 @@ typedef struct {
     } s[DATASIZE];
     int datacnt;
 
+    /* Coded bands' quantized coefficients, packed in band order — kept so
+       MergeSections can re-cost and merge sections before serialization. */
+    int quant[FRAME_LEN];
+    int quantcnt;
+    /* Per-band merge bookkeeping: off = start in quant[]; maxq = peak |coef|
+       (picks the merge target pair); bits/altbits = codeword cost under this
+       band's book and its range-pair partner, so a merge needs no re-sizing. */
+    struct { int off, maxq, bits, altbits; } bandmeta[MAX_SCFAC_BANDS];
+
 
     TnsInfo tnsInfo;
 } CoderInfo;

@@ -237,11 +237,13 @@ static void huffcode_write(int *qs, int len, int bnum, CoderInfo *coder)
     coder->datacnt = datacnt;
 }
 
-/* Pick the codebook that minimizes the bit cost for a given band. */
+/* Choose each band's codebook, deferring serialization: the coefficients are
+   kept so MergeSections can re-cost and merge sections before they're emitted. */
 int huffbook(CoderInfo *coder, int *qs, int len)
 {
     int i, maxq = 0;
     int bookmin = HCB_ZERO, lenmin = 0;
+    int band = coder->bandcnt;
 
     for (i = 0; i < len; i++) {
         int q = abs(qs[i]);
@@ -254,6 +256,7 @@ int huffbook(CoderInfo *coder, int *qs, int len)
          * bits — both books in a pair cover the same amplitude range but use
          * different codeword assignments optimized for different spectral shapes. */
         int pair_base;
+        int altlen;
         if (maxq <= LAV_1) pair_base = HCB_1;
         else if (maxq <= LAV_2) pair_base = HCB_3;
         else if (maxq <= LAV_4) pair_base = HCB_5;
@@ -262,21 +265,205 @@ int huffbook(CoderInfo *coder, int *qs, int len)
         else pair_base = HCB_ESC;
 
         if (pair_base != HCB_ESC) {
-            bookmin = pair_base;
-            lenmin = huffcode_size(qs, len, bookmin);
-            int len2 = huffcode_size(qs, len, bookmin + 1);
-            if (len2 < lenmin) bookmin++;
+            int len1 = huffcode_size(qs, len, pair_base);
+            int len2 = huffcode_size(qs, len, pair_base + 1);
+            if (len2 < len1) { bookmin = pair_base + 1; lenmin = len2; altlen = len1; }
+            else             { bookmin = pair_base;     lenmin = len1; altlen = len2; }
         } else {
             bookmin = HCB_ESC;
+            lenmin = huffcode_size(qs, len, HCB_ESC);
+            altlen = lenmin;   /* ESC has no pair partner */
         }
-        huffcode_write(qs, len, bookmin, coder);
+
+        /* qs already points into coder->quant (quantized in place): no copy. */
+        coder->bandmeta[band].off = coder->quantcnt;
+        coder->bandmeta[band].maxq = maxq;
+        coder->bandmeta[band].bits = lenmin;
+        coder->bandmeta[band].altbits = altlen;
+        coder->quantcnt += len;
     }
 
     /* Record the chosen book at the current band slot, but do NOT advance
        bandcnt: the caller (BlocQuant in quantize.c) owns that increment after
        it has also stored the band's scalefactor. */
-    coder->book[coder->bandcnt] = bookmin;
+    coder->book[band] = bookmin;
     return 0;
+}
+
+/* Spectral lines in band b (group length x sfb width); bands are group-major
+   (b = group*sfbn + sfb) like writebooks. */
+static int band_length(const CoderInfo *coder, int b)
+{
+    int g  = b / coder->sfbn;
+    int sb = b - g * coder->sfbn;
+    int width = coder->sfb_offset[sb + 1] - coder->sfb_offset[sb];
+    return coder->groups.len[g] * width;
+}
+
+/* Header bits for one book run: 4-bit id + a run field per max_run chunk plus a
+   final one (mirrors writebooks). */
+static inline int run_header_bits(int run, int max_run, int run_bits)
+{
+    return 4 + run_bits * (run / max_run + 1);
+}
+
+/* Codeword cost of coded band b under `book`. */
+static int band_cost(CoderInfo *coder, int b, int book)
+{
+    return huffcode_size(coder->quant + coder->bandmeta[b].off, band_length(coder, b), book);
+}
+
+/* A mismatched section wider than this can't repay a header saving under a
+   higher book, so skip it — also bounds the per-merge re-sizing work. */
+#define CROSS_MERGE_MAX_LINES 16
+
+/* Fuse two adjacent coded sections under one range-pair book when the section
+   header saved beats the extra codeword bits. The book only widens to a range
+   one section already spans, so coefficients and scalefactors are untouched —
+   lossless, just less framing. Per-band costs under both pair members are
+   precomputed (huffbook: bits/altbits), so only a small lower-range section is
+   ever re-sized; same-book neighbours already fuse for free in writebooks. */
+void MergeSections(CoderInfo *coder)
+{
+    int max_run  = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
+    int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
+    int g;
+
+    for (g = 0; g < coder->groups.n; g++) {
+        int base = g * coder->sfbn;
+        int end  = base + coder->sfbn;
+        int b = base;
+        if (b >= end) continue;
+
+        /* Scan each section once (run, plus cost under its book (sumB) and its
+           pair partner (sumA)), carrying the successor forward: one sweep. */
+        int bookA = coder->book[b];
+        int runA = 0, sumBA = 0, sumAA = 0;
+        while (b + runA < end && coder->book[b + runA] == bookA) {
+            sumBA += coder->bandmeta[b + runA].bits;
+            sumAA += coder->bandmeta[b + runA].altbits;
+            runA++;
+        }
+
+        while (b < end) {
+            int c = b + runA;
+            int merged = 0;
+
+            if (bookA >= HCB_1 && bookA <= HCB_ESC && c < end) {
+                int bookB = coder->book[c];
+                int runB = 0, sumBB = 0, sumAB = 0;
+                while (c + runB < end && coder->book[c + runB] == bookB) {
+                    sumBB += coder->bandmeta[c + runB].bits;
+                    sumAB += coder->bandmeta[c + runB].altbits;
+                    runB++;
+                }
+                int hi = c + runB, k;
+
+                if (bookB >= HCB_1 && bookB <= HCB_ESC && bookB != bookA) {
+                    /* Target pair = the higher of the two books' pairs (each book
+                       already bounds its range), so no rescan; only the lower-range
+                       section, if any, is re-sized. */
+                    int pairA = (bookA - 1) >> 1;
+                    int pairB = (bookB - 1) >> 1;
+                    int tgt_base = (pairA >= pairB ? pairA : pairB) * 2 + 1; /* pair 5 -> HCB_ESC */
+                    int m0 = tgt_base;
+                    int m1 = (tgt_base == HCB_ESC) ? tgt_base : tgt_base + 1;
+                    int sized_lo, sized_hi;
+                    if (pairA == pairB)      { sized_lo = sized_hi = b; }  /* nothing to size */
+                    else if (pairA > pairB)  { sized_lo = c; sized_hi = hi; }
+                    else                     { sized_lo = b; sized_hi = c; }
+
+                    /* Only worth trying for a small, narrow mismatched section. */
+                    int sized_lines = 0, sj;
+                    for (sj = sized_lo; sj < sized_hi; sj++)
+                        sized_lines += band_length(coder, sj);
+
+                    if ((sized_hi - sized_lo) <= 2 && sized_lines <= CROSS_MERGE_MAX_LINES) {
+                        /* Cost under each member = free section(s) from the sums
+                           (book==m0 ? sumB : sumA) + the re-sized section. */
+                        int cost0, cost1, size0 = 0, size1 = 0;
+                        for (sj = sized_lo; sj < sized_hi; sj++) {
+                            size0 += band_cost(coder, sj, m0);
+                            size1 += (m1 == m0) ? 0 : band_cost(coder, sj, m1);
+                        }
+                        /* Free-section contribution to m0 (and m1 = its complement). */
+                        int freeB0 = (sized_lo == c) ? 0 : ((bookA == m0) ? sumBA : sumAA);
+                        int freeB1 = (sized_lo == c) ? 0 : ((bookA == m0) ? sumAA : sumBA);
+                        int freeA0 = (sized_lo == b) ? 0 : ((bookB == m0) ? sumBB : sumAB);
+                        int freeA1 = (sized_lo == b) ? 0 : ((bookB == m0) ? sumAB : sumBB);
+                        cost0 = freeB0 + freeA0 + size0;
+                        cost1 = (m1 == m0) ? cost0 : freeB1 + freeA1 + size1;
+
+                        int best = (cost1 < cost0) ? m1 : m0;
+                        int best_cost = (cost1 < cost0) ? cost1 : cost0;
+                        int old_bits = sumBA + sumBB;
+                        int hdr_delta = run_header_bits(hi - b, max_run, run_bits)
+                                      - run_header_bits(runA, max_run, run_bits)
+                                      - run_header_bits(runB, max_run, run_bits);
+
+                        if (hdr_delta + best_cost - old_bits < 0) {
+                            int other = (best == m0) ? m1 : m0;
+                            for (k = b; k < hi; k++) {
+                                int oldbook = coder->book[k];
+                                coder->book[k] = best;
+                                if (k >= sized_lo && k < sized_hi) {
+                                    coder->bandmeta[k].bits    = band_cost(coder, k, best);
+                                    coder->bandmeta[k].altbits = (other == best) ? coder->bandmeta[k].bits
+                                                               : band_cost(coder, k, other);
+                                } else if (oldbook != best) {
+                                    /* free-section band flipped members: swap costs. */
+                                    int t = coder->bandmeta[k].bits;
+                                    coder->bandmeta[k].bits = coder->bandmeta[k].altbits;
+                                    coder->bandmeta[k].altbits = t;
+                                }
+                            }
+                            /* Merged run's totals are already known: update in
+                               O(1) and re-evaluate from b so it can chain. */
+                            bookA = best;
+                            runA = hi - b;
+                            sumBA = best_cost;
+                            sumAA = (best == m0) ? cost1 : cost0;  /* cost under the other member */
+                            merged = 1;
+                        }
+                    }
+                }
+
+                if (!merged) {
+                    /* Advance; the successor's scan becomes the new section A. */
+                    b = c; bookA = bookB;
+                    runA = runB; sumBA = sumBB; sumAA = sumAB;
+                }
+            } else {
+                /* A is non-coded or last: advance and scan the next section. */
+                b = c;
+                if (b < end) {
+                    bookA = coder->book[b];
+                    runA = 0; sumBA = 0; sumAA = 0;
+                    while (b + runA < end && coder->book[b + runA] == bookA) {
+                        sumBA += coder->bandmeta[b + runA].bits;
+                        sumAA += coder->bandmeta[b + runA].altbits;
+                        runA++;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* Serialize the deferred codewords into coder->s[] in band order, using each
+   band's final (post-merge) book. */
+void SerializeSpectralData(CoderInfo *coder)
+{
+    int b;
+
+    coder->datacnt = 0;
+    for (b = 0; b < coder->bandcnt; b++) {
+        int book = coder->book[b];
+        if (book < HCB_1 || book > HCB_ESC) continue;   /* ZERO/PNS/IS/NONE */
+
+        huffcode_write(coder->quant + coder->bandmeta[b].off,
+                       band_length(coder, b), book, coder);
+    }
 }
 
 /* Encode the section data (codebook indices and run lengths). */

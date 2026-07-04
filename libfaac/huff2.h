@@ -100,5 +100,7 @@ int huffbook(CoderInfo *coderInfo,
              int len);
 int writebooks(CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(CoderInfo *coder, BitStream *bitStream, int writeFlag);
+void MergeSections(CoderInfo *coder);
+void SerializeSpectralData(CoderInfo *coder);
 
 #endif /* HUFF2_H */
