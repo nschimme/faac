@@ -17,9 +17,9 @@ option('max-channels',
     value: 8)
 
 # FFT implementation type: pick the algorithm for spectral analysis.
-# radix4: Radix-4 Decimation-in-Frequency (DIF) (optimized, ~20% faster).
+# radix4: Radix-4 Decimation-in-Frequency (DIF) (optimized).
 # radix2: Standard Radix-2 implementation (portable, baseline speed).
-#   radix4: ~20% faster overall encode; MOS d: 0 -- default
+#   radix4: ~10% faster overall encode; MOS d: 0 -- default
 #   radix2: reference implementation (MOS d: 0)
 option('fft-type',
     description: 'FFT implementation type (radix2: standard, radix4: optimized DIF)',

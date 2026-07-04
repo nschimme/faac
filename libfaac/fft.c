@@ -333,7 +333,12 @@ static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
 	}
 }
 
-static void radix4_dif_proc(faac_real *xr, faac_real *xi, int logm, const fftfloat *costbl, const fftfloat *sintbl)
+static void radix4_dif_proc(
+    faac_real * restrict xr,
+    faac_real * restrict xi,
+    int logm,
+    const fftfloat * restrict costbl,
+    const fftfloat * restrict sintbl)
 {
 	int n = 1 << logm;
 	int n2 = n;
@@ -350,19 +355,55 @@ static void radix4_dif_proc(faac_real *xr, faac_real *xi, int logm, const fftflo
 		n2 >>= 2;
 		for (i = 0; i < n; i += n1)
 		{
-			for (j = 0; j < n2; j++)
+			/* j = 0 case: twiddles are all (1, 0).
+			   Handled inside the loop to avoid code duplication, but with
+			   hoisted twiddle checks.
+			*/
+			int idx1 = i;
+			int idx2 = idx1 + n2;
+			int idx3 = idx2 + n2;
+			int idx4 = idx3 + n2;
+
+			r1 = xr[idx1]; i1 = xi[idx1];
+			r2 = xr[idx2]; i2 = xi[idx2];
+			r3 = xr[idx3]; i3 = xi[idx3];
+			r4 = xr[idx4]; i4 = xi[idx4];
+
+			t1 = r1 + r3; t2 = i1 + i3;
+			t3 = r2 + r4; t4 = i2 + i4;
+			t5 = r1 - r3; t6 = i1 - i3;
+			t7 = r2 - r4; t8 = i2 - i4;
+
+			xr[idx1] = t1 + t3;
+			xi[idx1] = t2 + t4;
+
+			xr[idx3] = t5 + t8;
+			xi[idx3] = t6 - t7;
+			xr[idx2] = t1 - t3;
+			xi[idx2] = t2 - t4;
+			xr[idx4] = t5 - t8;
+			xi[idx4] = t6 + t7;
+
+			for (j = 1; j < n2; j++)
 			{
-				int idx1 = i + j;
-				int idx2 = idx1 + n2;
-				int idx3 = idx2 + n2;
-				int idx4 = idx3 + n2;
+				int tw_idx = j << (2 * k);
+				idx1 = i + j;
+				idx2 = idx1 + n2;
+				idx3 = idx2 + n2;
+				idx4 = idx3 + n2;
+
+				c1 = costbl[tw_idx];
+				s1 = sintbl[tw_idx];
+				c2 = costbl[2 * tw_idx];
+				s2 = sintbl[2 * tw_idx];
+				c3 = costbl[3 * tw_idx];
+				s3 = sintbl[3 * tw_idx];
 
 				r1 = xr[idx1]; i1 = xi[idx1];
 				r2 = xr[idx2]; i2 = xi[idx2];
 				r3 = xr[idx3]; i3 = xi[idx3];
 				r4 = xr[idx4]; i4 = xi[idx4];
 
-				/* Radix-4 Butterfly */
 				t1 = r1 + r3; t2 = i1 + i3;
 				t3 = r2 + r4; t4 = i2 + i4;
 				t5 = r1 - r3; t6 = i1 - i3;
@@ -371,38 +412,19 @@ static void radix4_dif_proc(faac_real *xr, faac_real *xi, int logm, const fftflo
 				xr[idx1] = t1 + t3;
 				xi[idx1] = t2 + t4;
 
-				r1 = t1 - t3; // X2
-				i1 = t2 - t4; // X2
-				r2 = t5 + t8; // X1
-				i2 = t6 - t7; // X1
-				r3 = t5 - t8; // X3
-				i3 = t6 + t7; // X3
+				r1 = t1 - t3;
+				i1 = t2 - t4;
+				r2 = t5 + t8;
+				i2 = t6 - t7;
+				r3 = t5 - t8;
+				i3 = t6 + t7;
 
-				if (j == 0)
-				{
-					/* To produce bit-reversed output, X1 and X2 are swapped */
-					xr[idx3] = r2; xi[idx3] = i2; // X1 -> Block 2
-					xr[idx2] = r1; xi[idx2] = i1; // X2 -> Block 1
-					xr[idx4] = r3; xi[idx4] = i3; // X3 -> Block 3
-				}
-				else
-				{
-					int tw_idx = j << (2 * k);
-					c1 = costbl[tw_idx];
-					s1 = sintbl[tw_idx];
-					c2 = costbl[2 * tw_idx];
-					s2 = sintbl[2 * tw_idx];
-					c3 = costbl[3 * tw_idx];
-					s3 = sintbl[3 * tw_idx];
-
-					/* Twiddle multiplication and bit-reversed assignment */
-					xr[idx3] = r2 * c1 - i2 * s1; // X1 * W^k -> Block 2
-					xi[idx3] = r2 * s1 + i2 * c1;
-					xr[idx2] = r1 * c2 - i1 * s2; // X2 * W^2k -> Block 1
-					xi[idx2] = r1 * s2 + i1 * c2;
-					xr[idx4] = r3 * c3 - i3 * s3; // X3 * W^3k -> Block 3
-					xi[idx4] = r3 * s3 + i3 * c3;
-				}
+				xr[idx3] = r2 * c1 - i2 * s1;
+				xi[idx3] = r2 * s1 + i2 * c1;
+				xr[idx2] = r1 * c2 - i1 * s2;
+				xi[idx2] = r1 * s2 + i1 * c2;
+				xr[idx4] = r3 * c3 - i3 * s3;
+				xi[idx4] = r3 * s3 + i3 * c3;
 			}
 		}
 	}
@@ -422,32 +444,15 @@ static void radix4_dif_proc(faac_real *xr, faac_real *xi, int logm, const fftflo
 	}
 }
 
-static void bit_reverse(FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
+static void bit_reverse(
+    faac_real * restrict xr,
+    faac_real * restrict xi,
+    int logm,
+    const unsigned short * restrict r)
 {
 	int i;
 	int size = 1 << logm;
-	const unsigned short *r;
 
-	if (fft_tables->reordertbl[logm] == NULL)
-	{
-		fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-		if (!fft_tables->reordertbl[logm]) return;
-
-		for (i = 0; i < size; i++)
-		{
-			int reversed = 0;
-			int b;
-			int tmp = i;
-			for (b = 0; b < logm; b++)
-			{
-				reversed = (reversed << 1) | (tmp & 1);
-				tmp >>= 1;
-			}
-			fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
-		}
-	}
-
-	r = fft_tables->reordertbl[logm];
 	for (i = 0; i < size; i++)
 	{
 		int j = (int)r[i];
@@ -465,8 +470,30 @@ void fft(FFT_Tables *fft_tables, faac_real *xr, faac_real *xi, int logm)
 	if (logm < 1) return;
 
 	check_tables_radix4(fft_tables, logm);
+
+	if (fft_tables->reordertbl[logm] == NULL)
+	{
+		int size = 1 << logm;
+		int i;
+		fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
+		if (!fft_tables->reordertbl[logm]) return;
+
+		for (i = 0; i < size; i++)
+		{
+			int reversed = 0;
+			int b;
+			int tmp = i;
+			for (b = 0; b < logm; b++)
+			{
+				reversed = (reversed << 1) | (tmp & 1);
+				tmp >>= 1;
+			}
+			fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
+		}
+	}
+
 	radix4_dif_proc(xr, xi, logm, fft_tables->costbl[logm], fft_tables->negsintbl[logm]);
-	bit_reverse(fft_tables, xr, xi, logm);
+	bit_reverse(xr, xi, logm, fft_tables->reordertbl[logm]);
 }
 
 #endif /* USE_RADIX4_FFT */
