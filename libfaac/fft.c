@@ -344,9 +344,6 @@ static void radix4_dif_proc(
 	int n2 = n;
 	int n1;
 	int i, j, k;
-	faac_real r1, r2, r3, r4, i1, i2, i3, i4;
-	faac_real t1, t2, t3, t4, t5, t6, t7, t8;
-	faac_real c1, s1, c2, s2, c3, s3;
 
 	/* Radix-4 stages */
 	for (k = 0; k < (logm >> 1); k++)
@@ -355,76 +352,75 @@ static void radix4_dif_proc(
 		n2 >>= 2;
 		for (i = 0; i < n; i += n1)
 		{
-			/* j = 0 case: twiddles are all (1, 0).
-			   Handled inside the loop to avoid code duplication, but with
-			   hoisted twiddle checks.
+			faac_real * restrict r1p = xr + i;
+			faac_real * restrict r2p = xr + i + n2;
+			faac_real * restrict r3p = xr + i + 2*n2;
+			faac_real * restrict r4p = xr + i + 3*n2;
+			faac_real * restrict i1p = xi + i;
+			faac_real * restrict i2p = xi + i + n2;
+			faac_real * restrict i3p = xi + i + 2*n2;
+			faac_real * restrict i4p = xi + i + 3*n2;
+
+			/* j = 0 case: twiddles are all (1, 0) */
+			{
+				faac_real r1 = *r1p, i1 = *i1p;
+				faac_real r2 = *r2p, i2 = *i2p;
+				faac_real r3 = *r3p, i3 = *i3p;
+				faac_real r4 = *r4p, i4 = *i4p;
+
+				faac_real t1 = r1 + r3, t2 = i1 + i3;
+				faac_real t3 = r2 + r4, t4 = i2 + i4;
+				faac_real t5 = r1 - r3, t6 = i1 - i3;
+				faac_real t7 = r2 - r4, t8 = i2 - i4;
+
+				*r1p = t1 + t3; *i1p = t2 + t4;
+				*r3p = t5 + t8; *i3p = t6 - t7;
+				*r2p = t1 - t3; *i2p = t2 - t4;
+				*r4p = t5 - t8; *i4p = t6 + t7;
+
+				r1p++; r2p++; r3p++; r4p++;
+				i1p++; i2p++; i3p++; i4p++;
+			}
+
+			/* Process j=1..n2-1 with twiddle lookups.
+			   Pointer-based access with unit stride aids autovectorization.
 			*/
-			int idx1 = i;
-			int idx2 = idx1 + n2;
-			int idx3 = idx2 + n2;
-			int idx4 = idx3 + n2;
-
-			r1 = xr[idx1]; i1 = xi[idx1];
-			r2 = xr[idx2]; i2 = xi[idx2];
-			r3 = xr[idx3]; i3 = xi[idx3];
-			r4 = xr[idx4]; i4 = xi[idx4];
-
-			t1 = r1 + r3; t2 = i1 + i3;
-			t3 = r2 + r4; t4 = i2 + i4;
-			t5 = r1 - r3; t6 = i1 - i3;
-			t7 = r2 - r4; t8 = i2 - i4;
-
-			xr[idx1] = t1 + t3;
-			xi[idx1] = t2 + t4;
-
-			xr[idx3] = t5 + t8;
-			xi[idx3] = t6 - t7;
-			xr[idx2] = t1 - t3;
-			xi[idx2] = t2 - t4;
-			xr[idx4] = t5 - t8;
-			xi[idx4] = t6 + t7;
-
 			for (j = 1; j < n2; j++)
 			{
 				int tw_idx = j << (2 * k);
-				idx1 = i + j;
-				idx2 = idx1 + n2;
-				idx3 = idx2 + n2;
-				idx4 = idx3 + n2;
+				const faac_real c1 = (faac_real)costbl[tw_idx];
+				const faac_real s1 = (faac_real)sintbl[tw_idx];
+				const faac_real c2 = (faac_real)costbl[2 * tw_idx];
+				const faac_real s2 = (faac_real)sintbl[2 * tw_idx];
+				const faac_real c3 = (faac_real)costbl[3 * tw_idx];
+				const faac_real s3 = (faac_real)sintbl[3 * tw_idx];
 
-				c1 = costbl[tw_idx];
-				s1 = sintbl[tw_idx];
-				c2 = costbl[2 * tw_idx];
-				s2 = sintbl[2 * tw_idx];
-				c3 = costbl[3 * tw_idx];
-				s3 = sintbl[3 * tw_idx];
+				faac_real r1 = *r1p, i1 = *i1p;
+				faac_real r2 = *r2p, i2 = *i2p;
+				faac_real r3 = *r3p, i3 = *i3p;
+				faac_real r4 = *r4p, i4 = *i4p;
 
-				r1 = xr[idx1]; i1 = xi[idx1];
-				r2 = xr[idx2]; i2 = xi[idx2];
-				r3 = xr[idx3]; i3 = xi[idx3];
-				r4 = xr[idx4]; i4 = xi[idx4];
+				faac_real t1 = r1 + r3, t2 = i1 + i3;
+				faac_real t3 = r2 + r4, t4 = i2 + i4;
+				faac_real t5 = r1 - r3, t6 = i1 - i3;
+				faac_real t7 = r2 - r4, t8 = i2 - i4;
 
-				t1 = r1 + r3; t2 = i1 + i3;
-				t3 = r2 + r4; t4 = i2 + i4;
-				t5 = r1 - r3; t6 = i1 - i3;
-				t7 = r2 - r4; t8 = i2 - i4;
+				*r1p = t1 + t3;
+				*i1p = t2 + t4;
 
-				xr[idx1] = t1 + t3;
-				xi[idx1] = t2 + t4;
+				r1 = t1 - t3; i1 = t2 - t4;
+				r2 = t5 + t8; i2 = t6 - t7;
+				r3 = t5 - t8; i3 = t6 + t7;
 
-				r1 = t1 - t3;
-				i1 = t2 - t4;
-				r2 = t5 + t8;
-				i2 = t6 - t7;
-				r3 = t5 - t8;
-				i3 = t6 + t7;
+				*r3p = r2 * c1 - i2 * s1;
+				*i3p = r2 * s1 + i2 * c1;
+				*r2p = r1 * c2 - i1 * s2;
+				*i2p = r1 * s2 + i1 * c2;
+				*r4p = r3 * c3 - i3 * s3;
+				*i4p = r3 * s3 + i3 * c3;
 
-				xr[idx3] = r2 * c1 - i2 * s1;
-				xi[idx3] = r2 * s1 + i2 * c1;
-				xr[idx2] = r1 * c2 - i1 * s2;
-				xi[idx2] = r1 * s2 + i1 * c2;
-				xr[idx4] = r3 * c3 - i3 * s3;
-				xi[idx4] = r3 * s3 + i3 * c3;
+				r1p++; r2p++; r3p++; r4p++;
+				i1p++; i2p++; i3p++; i4p++;
 			}
 		}
 	}
@@ -432,14 +428,17 @@ static void radix4_dif_proc(
 	/* Final Radix-2 stage if logm is odd */
 	if (logm & 1)
 	{
+		faac_real * restrict r1p = xr;
+		faac_real * restrict r2p = xr + 1;
+		faac_real * restrict i1p = xi;
+		faac_real * restrict i2p = xi + 1;
 		for (i = 0; i < n; i += 2)
 		{
-			r1 = xr[i]; i1 = xi[i];
-			r2 = xr[i + 1]; i2 = xi[i + 1];
-			xr[i] = r1 + r2;
-			xi[i] = i1 + i2;
-			xr[i + 1] = r1 - r2;
-			xi[i + 1] = i1 - i2;
+			faac_real r1 = *r1p, i1 = *i1p;
+			faac_real r2 = *r2p, i2 = *i2p;
+			*r1p = r1 + r2; *i1p = i1 + i2;
+			*r2p = r1 - r2; *i2p = i1 - i2;
+			r1p += 2; r2p += 2; i1p += 2; i2p += 2;
 		}
 	}
 }
