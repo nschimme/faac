@@ -51,17 +51,74 @@ psydata_t;
  * transient. */
 #define PSY_TD_THRESH ((faac_real)0.5)
 
+/* Hard-transient ceiling when TNS is active: transients with strength in
+   (PSY_TD_THRESH, PSY_TD_HARD] may stay in long windows with TNS covering
+   the pre-echo. Setting it equal to PSY_TD_THRESH empties the band (legacy
+   behavior). 2.0 chosen by a zimtohrli sweep over 0.7/1.0/1.5/2.0/4.0 at
+   20/40/64 kbps: +0.031 MOS at 20k (95% CI excludes 0), neutral above,
+   speech +0.09 at 16k; ~15 % of short frames become long. */
+#define PSY_TD_HARD ((faac_real)2.0)
+
+/* Promotion trades pre-echo for smearing quantization noise across the long
+   window, and that smear is audible in *milliseconds* while the window is
+   fixed in *samples*: 1024 samples is 21 ms at 48 kHz but 64 ms at 16 kHz --
+   most of a syllable, well past temporal masking. PSY_TD_HARD was tuned on
+   48 kHz material where the trade wins; at 16 kHz the same threshold tripled
+   the temporal damage and ViSQOL showed a systematic speech regression
+   (~200 clips one direction, worst -0.61 MOS). So don't retune the strength
+   threshold for low rates -- the cost side of the trade scales with window
+   duration, hence a sample-rate floor. 32 kHz keeps the window at <= 32 ms. */
+#define PSY_TD_HARD_MIN_SR 32000
+
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive,
+                  unsigned int sampleRate)
+{
+  faac_real hard = PSY_TD_THRESH;
+  unsigned int channel;
+
+  if (tnsActive)
+  {
+    /* Tuning knob: FAAC_TD_THRESH overrides the hard ceiling (only
+       meaningful above the base threshold), bypassing the sample-rate
+       gate so A/B harnesses can still probe low rates. Cached like
+       FAAC_FORCE_LONG. */
+    static double envHard = -1.0;
+    if (envHard < 0.0)
+    {
+      const char *env = getenv("FAAC_TD_THRESH");
+      envHard = env ? strtod(env, NULL) : 0.0;
+      if (envHard < 0.0)
+        envHard = 0.0;
+    }
+    if (envHard >= (double)PSY_TD_THRESH)
+      hard = (faac_real)envHard;
+    else if (sampleRate >= PSY_TD_HARD_MIN_SR)
+      hard = PSY_TD_HARD;
+  }
+
+  for (channel = 0; channel < numChannels; channel++)
+    psyInfo[channel].td_hard = hard;
+}
+
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   faac_real lasteng = (faac_real)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  faac_real strength = 0.0;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
+  /* This analysis leads the frame being MDCT-encoded by one frame (its
+     envelope sits in the PREV window; see PsyGetCurEnvelope), so the
+     promotion flag consumed by TNS this frame is last call's decision. */
+  psyInfo->promoted_long = psyInfo->promoted_pending;
+  psyInfo->promoted_pending = 0;
+
   /* Search for transients across the current frame and its immediate temporal context.
-     The search range is [curr-2, curr+9]. */
+     The search range is [curr-2, curr+9]. Track the strongest relative energy
+     jump; the short/long+TNS decision below needs the maximum, not the first. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
       faac_real eng = (faac_real)psydata->eng[ENG_WIN_CUR - PREVS + win];
@@ -70,13 +127,28 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       faac_real volchg = FAAC_FABS(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
-      {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
-      }
+      faac_real s = volchg / toteng;
+      if (s > strength)
+          strength = s;
       lasteng = eng;
   }
+
+  if (strength <= PSY_TD_THRESH)
+      return;                            /* stationary: long */
+
+  if (strength <= psyInfo->td_hard)
+  {
+      psyInfo->promoted_pending = 1;
+      return;                            /* borderline: stay long; the long
+                                            window's masking (and TNS when its
+                                            gates agree) absorbs the pre-echo.
+                                            An envelope-based "will TNS fire?"
+                                            predictor here measured strictly
+                                            worse than unconditional
+                                            promotion. */
+  }
+
+  psyInfo->block_type = ONLY_SHORT_WINDOW;
 }
 
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -99,6 +171,9 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
   for (channel = 0; channel < numChannels; channel++)
   {
     psyInfo[channel].size = size;
+    psyInfo[channel].td_hard = PSY_TD_THRESH; /* empty band until PsySetTdHard */
+    psyInfo[channel].promoted_long = 0;
+    psyInfo[channel].promoted_pending = 0;
   }
 
   size = BLOCK_LEN_SHORT;
@@ -186,10 +261,41 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   }
 }
 
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  if (len)
+    *len = SUBBLOCKS_PER_FRAME;
+  /* Due to the LOOKAHEAD_DEPTH=2 and the timing of PsyBufferUpdate, the
+     time-domain envelope for the frame currently being MDCT-encoded resides
+     in the PREV window. */
+  return (const float *)&psydata->eng[ENG_WIN_PREV];
+}
+
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
+
+  /* Debug/measurement knob: FAAC_FORCE_LONG=1 disables block switching so
+     pre-echo stays in long blocks (used to validate TNS metrics). */
+  {
+    static int forceLong = -1;
+    if (forceLong < 0)
+    {
+      const char *env = getenv("FAAC_FORCE_LONG");
+      forceLong = env && env[0] == '1';
+    }
+    if (forceLong)
+    {
+      for (channel = 0; channel < numChannels; channel++)
+      {
+        coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        coderInfo[channel].desired_block_type = ONLY_LONG_WINDOW;
+      }
+      return;
+    }
+  }
 
   /* Use the same block type for all channels
      If there is 1 channel that wants a short block,
@@ -199,6 +305,27 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
+  }
+
+  /* Measurement knob: FAAC_BS_STATS=1 reports the short-block rate so tuning
+     runs can see how many frames the joint decision keeps long. */
+  {
+    static int bsStats = -1;
+    if (bsStats < 0)
+    {
+      const char *env = getenv("FAAC_BS_STATS");
+      bsStats = env && env[0] == '1';
+    }
+    if (bsStats)
+    {
+      static long totalFrames = 0, shortFrames = 0;
+      totalFrames++;
+      if (desire == ONLY_SHORT_WINDOW)
+        shortFrames++;
+      if (totalFrames % 100 == 0)
+        fprintf(stderr, "BS_STATS frames=%ld short=%ld pct=%.1f\n",
+                totalFrames, shortFrames, 100.0 * shortFrames / totalFrames);
+    }
   }
 
   for (channel = 0; channel < numChannels; channel++)

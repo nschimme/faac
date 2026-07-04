@@ -255,6 +255,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
             continue;
         }
 
+        /* TNS/PNS contract: PNS is allowed inside TNS-covered bands. The
+         * decoder inverse-filters the substituted noise along with the rest
+         * of the range, temporally shaping it — the two tools compose. */
         if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;

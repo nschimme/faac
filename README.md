@@ -71,3 +71,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
    meson install
    ```
 
+___________________________________
+Benchmarking
+
+FAAC uses a dedicated benchmark suite to ensure quality and performance.
+The suite is hosted in a separate repository: https://github.com/nschimme/faac-benchmark
+
+Automated benchmarks run on every pull request. For instructions on how to
+run benchmarks locally, please refer to the README in the benchmark repository.
