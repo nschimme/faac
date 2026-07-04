@@ -162,6 +162,7 @@ void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string, faac_metadata
     mp4_finish();
     mp4_close();
 
+    /* Free data AFTER mp4_finish, as mp4_set_decoder_config and mp4_set_encoder only store pointers */
     if (ascData)
         free(ascData);
     if (version_string)
@@ -177,8 +178,8 @@ void faac_init_params(faac_params_t *params)
     params->use_tns = 0;
     params->joint_mode = JOINT_MIXED;
     params->shortctl = SHORTCTL_NORMAL;
-    params->pns_level = 4;
-    params->quality = 0;
+    params->pns_level = -1; /* -1 means use library default */
+    params->quality = 0;    /* 0 means use library default (ABR 64k or VBR 100) */
     params->bitrate = 0;
     params->output_format = ADTS_STREAM;
     params->input_format = FAAC_INPUT_FLOAT;
@@ -193,13 +194,16 @@ int faac_apply_params(faacEncHandle hEncoder, faac_params_t *params, int channel
     config->useTns = params->use_tns;
     config->useLfe = params->use_lfe;
     config->jointmode = params->joint_mode;
-    config->pnslevel = params->pns_level;
+    if (params->pns_level >= 0)
+        config->pnslevel = params->pns_level;
     config->shortctl = params->shortctl;
     config->outputFormat = params->output_format;
     config->inputFormat = params->input_format;
 
     if (params->cutoff > 0)
         config->bandWidth = params->cutoff;
+    else
+        config->bandWidth = 0; /* force recalculation based on bitRate/quality */
 
     if (params->quality > 0)
     {
