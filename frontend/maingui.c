@@ -182,6 +182,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
             params.quality = atoi(szTemp);
             params.bitrate = 0;
+            params.input_format = FAAC_INPUT_32BIT;
 
             if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
             {
@@ -408,7 +409,7 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         CheckDlgButton(hWnd, IDC_USELFE, FALSE);
         CheckDlgButton(hWnd, IDC_USERAW, FALSE);
-        CheckDlgButton(hWnd, IDC_USETNS, TRUE);
+        CheckDlgButton(hWnd, IDC_USETNS, FALSE);
         SetDlgItemText(hWnd, IDC_QUALITY, "100");
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 

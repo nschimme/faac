@@ -174,10 +174,12 @@ void faac_init_params(faac_params_t *params)
     memset(params, 0, sizeof(faac_params_t));
     params->mpeg_version = MPEG4;
     params->object_type = LOW;
-    params->use_tns = 1;
+    params->use_tns = 0;
     params->joint_mode = JOINT_MIXED;
     params->shortctl = SHORTCTL_NORMAL;
-    params->quality = 100;
+    params->pns_level = 4;
+    params->quality = 0;
+    params->bitrate = 0;
     params->output_format = ADTS_STREAM;
     params->input_format = FAAC_INPUT_FLOAT;
 }
