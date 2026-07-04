@@ -180,9 +180,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.aacObjectType != LOW)
         return 0;
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
@@ -208,7 +205,17 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
+    if (config->quantqual > (unsigned long)maxqual)
+        config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
+
     hEncoder->config.bitRate = config->bitRate;
+    hEncoder->config.quantqual = config->quantqual;
+
+    /* Re-init TNS after intent, bitRate and quantqual are committed. */
+    TnsInit(hEncoder);
+    config->useTns = hEncoder->config.useTns;
 
     if (!config->bandWidth)
     {
@@ -222,13 +229,6 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-    if (config->quantqual > (unsigned long)maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
-    hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -268,6 +268,10 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
+    /* After PsyInit (which resets td_hard) and TnsInit (which settles the
+       effective TNS state above). */
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -312,6 +316,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
+    /* TNS is off by default for library consumers, preserving the behaviour of
+     * programs that link libfaac. The faac CLI opts in via its own default. */
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
@@ -365,6 +371,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     FilterBankInit(hEncoder);
 
     TnsInit(hEncoder);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
     QuantizeInit();
 
@@ -614,6 +622,23 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+
+            /* TNS analysis and filtering (must be before spectral grouping;
+             * it filters freqBuff in place so all downstream stages, including
+             * the quantizer's PNS inhibition, see the filtered spectrum). */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
+                int tdEnvLen;
+                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel],
+                          tdEnv, tdEnvLen);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
+
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
@@ -627,20 +652,26 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-        }
-    }
 
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            /* TNS analysis and filtering (in place on freqBuff, before
+             * stereo/quantization; see the long-comment at the short-block
+             * call site above for the ordering contract). Borderline
+             * transients kept long by td_hard skip the analysis: TNS's
+             * gates decline nearly all of them, and the promotion win is
+             * long-window bits/resolution, not TNS coverage. */
+            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)
+                && !hEncoder->psyInfo[channel].promoted_long) {
+                int tdEnvLen;
+                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel],
+                          tdEnv, tdEnvLen);
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
         }
     }
 

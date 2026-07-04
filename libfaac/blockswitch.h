@@ -35,6 +35,19 @@ typedef struct {
 
 	int block_type;
 
+	/* Transient strength above which a frame always goes short. Equal to
+	   the base detection threshold when TNS is unavailable (band empty);
+	   raised when TNS can cover borderline transients in long windows. */
+	faac_real td_hard;
+
+	/* Set when the frame about to be MDCT-encoded is a borderline transient
+	   kept long by td_hard. Such frames skip TNS analysis: the promotion win
+	   comes from long-window bits/resolution, and TNS declines nearly all of
+	   them anyway. The psy decision leads the encode frame by one, hence the
+	   pending/current pair shifted in PsyCheckShort. */
+	int promoted_long;
+	int promoted_pending;
+
         void *data;
 } PsyInfo;
 
@@ -60,6 +73,22 @@ void (*BlockSwitch) (CoderInfo *coderInfo, PsyInfo *psyInfo,
 } psymodel_t;
 
 extern psymodel_t psymodel2;
+
+/* Return the current frame's per-sub-block time-domain energy envelope (the
+ * high-pass sub-block energies the block switcher computes for transient
+ * detection). *len is set to the number of sub-blocks. Used by TNS to choose
+ * filter direction from the real temporal envelope. */
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len);
+
+/* Configure the joint block-switch/TNS decision: when tnsActive, borderline
+ * transients (strength between the base threshold and td_hard) may stay in
+ * long windows with TNS covering the pre-echo. Call after TnsInit so the
+ * effective (bitrate-gated) TNS state is known. The band also stays empty
+ * below 32 kHz: there a 1024-sample long window spans 46+ ms, long enough
+ * that the temporal smearing from promotion is itself audible (measured as a
+ * systematic speech regression at 16 kHz). */
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive,
+		unsigned int sampleRate);
 
 #ifdef __cplusplus
 }

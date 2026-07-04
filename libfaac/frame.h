@@ -50,7 +50,12 @@ extern "C" {
 
 #include <faaccfg.h>
 
-typedef struct {
+#ifndef FAACENCSTRUCT_DEFINED
+#define FAACENCSTRUCT_DEFINED
+typedef struct faacEncStruct faacEncStruct;
+#endif
+
+struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -103,7 +108,7 @@ typedef struct {
     faac_real    *inputFifo[MAX_CHANNELS];
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
-} faacEncStruct;
+};
 
 #ifdef __cplusplus
 }

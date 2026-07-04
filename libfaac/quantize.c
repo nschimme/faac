@@ -255,7 +255,16 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
             continue;
         }
 
-        if (target[sb] < pns_threshold)
+        /* TNS/PNS interaction: inhibit PNS on TNS-covered bands to avoid
+         * structural conflicts between whitening and noise substitution. */
+        int is_tns = 0;
+        if (ci->tnsInfo.tnsDataPresent && ci->block_type == ONLY_LONG_WINDOW) {
+            int b_start = ci->tnsInfo.tnsNumSwbLong - ci->tnsInfo.windowData[0].tnsFilter[0].length;
+            int b_stop = ci->tnsInfo.tnsMaxBandsLong;
+            if (sb >= b_start && sb < b_stop) is_tns = 1;
+        }
+
+        if (!is_tns && target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
             ci->sf[band] += FAAC_LRINT(FAAC_LOG10(avg_per_window) * SF_STEP_ENRG);
