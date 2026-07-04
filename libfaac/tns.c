@@ -373,12 +373,11 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
        energy by TNS_MEASURED_GAIN. The pre-quantization Levinson estimate can
        overpromise; a filter that fails this bar just smears noise. */
     {
-        faac_real trial[BLOCK_LEN_LONG];
+        faac_real trial[BLOCK_LEN_LONG] = {0};
         faac_real orig_e = 0.0, filt_e = 0.0;
         int i;
         for (i = 0; i < length; i++) trial[i] = (faac_real)wspec[i];
-        /* cppcheck-suppress uninitvar ; trial[0..length) is filled above and
-           filter_spec touches only the first `length` elements */
+
         filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
         for (i = 0; i < length; i++) {
             orig_e += (faac_real)wspec[i] * (faac_real)wspec[i];
