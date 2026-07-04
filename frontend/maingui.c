@@ -23,6 +23,7 @@
 #include <commdlg.h>
 #include <commctrl.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "input.h"
 #include "utils.h"
@@ -94,7 +95,6 @@ static void AwakeDialogControls(HWND hWnd)
     char szTemp[64];
     pcmfile_t *infile = NULL;
     unsigned int sampleRate, numChannels;
-    char *pExt;
 
     if ((infile = wav_open_read(inputFilename, 0)) == NULL)
         return;
@@ -156,45 +156,47 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             int use_mp4 = faac_is_mp4_filename(outputFilename);
 	    char szTemp[256];
 
-            /* set encoder configuration */
-            faacEncConfigurationPtr config = faacEncGetCurrentConfiguration(hEncoder);
+            faac_params_t params;
+            faac_init_params(&params);
 
             {
                 LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
-                config->jointmode = (mode == CB_ERR) ? JOINT_MIXED : (unsigned int)mode;
+                params.joint_mode = (mode == CB_ERR) ? JOINT_MIXED : (int)mode;
             }
-            config->useTns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED ? 1 : 0;
-            config->useLfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
-            config->outputFormat = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? 0 : 1;
+            params.use_tns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED ? 1 : 0;
+            params.use_lfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
+            params.output_format = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED ? RAW_STREAM : ADTS_STREAM;
 
             if (use_mp4)
             {
-                config->mpegVersion = MPEG4;
-                config->outputFormat = RAW_STREAM;
+                params.mpeg_version = MPEG4;
+                params.output_format = RAW_STREAM;
             }
             else
             {
-                config->mpegVersion = SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
+                params.mpeg_version = (int)SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
             }
-            config->aacObjectType = SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_GETCURSEL, 0, 0);
-            if (config->aacObjectType == CB_ERR) config->aacObjectType = LOW;
+            params.object_type = (int)SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_GETCURSEL, 0, 0);
+            if (params.object_type == (int)CB_ERR) params.object_type = LOW;
 
             GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
-	    config->quantqual = atoi(szTemp);
-	    if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
-	    {
-            GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
-            config->bandWidth = atoi(szTemp);
-	    }
-	    else
-	      config->bandWidth = 0;
+            params.quality = atoi(szTemp);
+            params.bitrate = 0;
 
-            if (!faacEncSetConfiguration(hEncoder, config))
+            if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
+            {
+                GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
+                params.cutoff = atoi(szTemp);
+            }
+            else
+                params.cutoff = 0;
+
+            if (!faac_apply_params(hEncoder, &params, numChannels))
             {
                 faacEncClose(hEncoder);
                 wav_close(infile);
 
-                MessageBox (hWnd, "faacEncSetConfiguration failed!", "Error", MB_OK | MB_ICONSTOP);
+                MessageBox (hWnd, "faac_apply_params failed!", "Error", MB_OK | MB_ICONSTOP);
 
                 SendMessage(hWnd,WM_SETTEXT,0,(LPARAM)"FAAC GUI");
                 Encoding = FALSE;
@@ -203,11 +205,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 return 0;
             }
 
-	    sprintf(szTemp, "%ld", config->quantqual);
-	    SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
+            sprintf(szTemp, "%d", params.quality);
+            SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
 
-	    sprintf(szTemp, "%d", config->bandWidth);
-	    SetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp);
+            sprintf(szTemp, "%d", params.cutoff);
+            SetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp);
 
             /* open the output file */
             if (use_mp4)
@@ -232,7 +234,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 int bytesWritten = 0;
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
-                uint64_t input_samples = 0;
+                uint64_t current_input_samples = 0;
                 uint64_t encoded_samples = 0;
                 unsigned int delay_samples = inputSamples / numChannels;
 
@@ -265,11 +267,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                     SendMessage(hWnd,WM_SETTEXT,0,(LPARAM)HeaderText);
 
                     totalBytesRead += bytesInput;
-                    input_samples += (bytesInput / sizeof(int)) / numChannels;
+                    current_input_samples += (bytesInput / sizeof(int)) / numChannels;
 
                     timeElapsed = (GetTickCount () - startTime);
                     // Calculate playing time in seconds from samples per channel
-                    double playingTime = (double)input_samples / sampleRate;
+                    double playingTime = (double)current_input_samples / sampleRate;
 
                     if (timeElapsed > (lastUpdated + 200))
                     {
@@ -278,13 +280,13 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
                         lastUpdated = timeElapsed;
 
-                        factor = faac_calc_speed(input_samples, sampleRate, (double)timeElapsed / 1000.0);
-                        timeLeft = faac_calc_eta(input_samples, infile->samples, (double)timeElapsed / 1000.0);
+                        factor = faac_calc_speed(current_input_samples, sampleRate, (double)timeElapsed / 1000.0);
+                        timeLeft = faac_calc_eta(current_input_samples, (unsigned long)infile->samples, (double)timeElapsed / 1000.0);
 
                         sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
                                 "Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
                                 (int)playingTime / 60, (float)((int)(playingTime * 10) % 600) / 10.0f,
-                                timeElapsed / 60000, 0.001 * (timeElapsed % 60000),
+                                (int)(timeElapsed / 60000), 0.001f * (timeElapsed % 60000),
                                 (float)factor,
                                 (int)timeLeft / 60, (float)((int)(timeLeft * 10) % 600) / 10.0f
                                );
@@ -313,15 +315,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                         break;
                     }
 
-                    if (use_mp4)
+                    if (use_mp4 && bytesWritten > 0)
                     {
-                        uint64_t frame_samples = input_samples - encoded_samples;
-                        if (frame_samples > delay_samples)
-                            frame_samples = delay_samples;
                         mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
-                        encoded_samples += frame_samples;
                     }
-                    else
+                    else if (bytesWritten > 0)
                     {
                         WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
                     }
@@ -334,13 +332,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                     if (bytesWritten > 0)
                     {
                         if (use_mp4)
-                        {
-                            uint64_t frame_samples = input_samples - encoded_samples;
-                            if (frame_samples > delay_samples)
-                                frame_samples = delay_samples;
                             mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
-                            encoded_samples += frame_samples;
-                        }
                         else
                             WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
                     }

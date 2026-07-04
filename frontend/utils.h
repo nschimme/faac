@@ -53,6 +53,28 @@ typedef struct {
 /* Write MP4 metadata and finalize the file */
 void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string, faac_metadata_t *metadata);
 
+/* Shared encoder configuration parameters */
+typedef struct {
+    int mpeg_version;
+    int object_type;
+    int use_tns;
+    int use_lfe;
+    int joint_mode;
+    int pns_level;
+    int shortctl;
+    int cutoff;
+    int bitrate;   /* in bps */
+    int quality;   /* quantqual */
+    int output_format;
+    int input_format;
+} faac_params_t;
+
+/* Initialize params with recommended defaults */
+void faac_init_params(faac_params_t *params);
+
+/* Apply params to encoder instance */
+int faac_apply_params(faacEncHandle hEncoder, faac_params_t *params, int channels);
+
 #ifdef __cplusplus
 }
 #endif

@@ -99,7 +99,9 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OPT_TNS,
+    OPT_NO_TNS
 };
 
 typedef struct {
@@ -369,17 +371,10 @@ int main(int argc, char *argv[])
 
     unsigned long samplesInput, maxBytesOutput, totalBytesWritten = 0;
 
-    faacEncConfigurationPtr myFormat;
-    unsigned int mpegVersion = MPEG4;
-    const unsigned int objectType = LOW;
-    int jointmode = -1;
-    int pnslevel = -1;
-    static int useTns = 0;
+    faac_params_t params;
+    faac_init_params(&params);
+
     enum container_format container = NO_CONTAINER;
-    enum stream_format stream = ADTS_STREAM;
-    int cutOff = -1;
-    int bitRate = 0;
-    unsigned long quantqual = 0;
     int chanC = 3;
     int chanLF = 4;
 
@@ -398,8 +393,6 @@ int main(int argc, char *argv[])
     int rawBits = 16;
     int rawRate = 44100;
     int rawEndian = 1;
-
-    int shortctl = SHORTCTL_NORMAL;
 
     FILE *outfile = NULL;
 
@@ -466,8 +459,8 @@ int main(int argc, char *argv[])
             {"pcmsamplebits", 1, 0, 'B'},
             {"pcmchannels", 1, 0, 'C'},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
-            {"tns", 0, &useTns, 1},
-            {"no-tns", 0, &useTns, 0},
+            {"tns", 0, 0, OPT_TNS},
+            {"no-tns", 0, 0, OPT_NO_TNS},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
@@ -519,7 +512,7 @@ int main(int argc, char *argv[])
             break;
         case 'r':
             {
-                stream = RAW_STREAM;
+                params.output_format = RAW_STREAM;
                 break;
             }
         case 'c':
@@ -527,7 +520,7 @@ int main(int argc, char *argv[])
                 unsigned int i;
                 if (sscanf(optarg, "%u", &i) > 0)
                 {
-                    cutOff = i;
+                    params.cutoff = i;
                 }
                 break;
             }
@@ -536,7 +529,8 @@ int main(int argc, char *argv[])
                 unsigned int i;
                 if (sscanf(optarg, "%u", &i) > 0)
                 {
-                    bitRate = 1000 * i;
+                    params.bitrate = 1000 * i;
+                    params.quality = 0;
                 }
                 break;
             }
@@ -546,7 +540,10 @@ int main(int argc, char *argv[])
                 if (sscanf(optarg, "%u", &i) > 0)
                 {
                     if (i > 0)
-                        quantqual = i;
+                    {
+                        params.quality = i;
+                        params.bitrate = 0;
+                    }
                 }
                 break;
             }
@@ -697,21 +694,21 @@ int main(int argc, char *argv[])
                 break;
             }
         case SHORTCTL_FLAG:
-            shortctl = atoi(optarg);
+            params.shortctl = atoi(optarg);
             break;
         case MPEGVERS_FLAG:
-            mpegVersion = atoi(optarg);
-            switch (mpegVersion)
             {
-            case 2:
-                mpegVersion = MPEG2;
-                break;
-            case 4:
-                mpegVersion = MPEG4;
-                break;
-            default:
-                dieMessage = "Unrecognised MPEG version!\n";
+                int ver = atoi(optarg);
+                if (ver == 2) params.mpeg_version = MPEG2;
+                else if (ver == 4) params.mpeg_version = MPEG4;
+                else dieMessage = "Unrecognised MPEG version!\n";
             }
+            break;
+        case OPT_TNS:
+            params.use_tns = 1;
+            break;
+        case OPT_NO_TNS:
+            params.use_tns = 0;
             break;
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
@@ -733,10 +730,10 @@ int main(int argc, char *argv[])
             return 1;
             break;
         case OPT_JOINT:
-            jointmode = atoi(optarg);
+            params.joint_mode = atoi(optarg);
             break;
         case OPT_PNS:
-            pnslevel = atoi(optarg);
+            params.pns_level = atoi(optarg);
             break;
         case '?':
         default:
@@ -823,8 +820,8 @@ int main(int argc, char *argv[])
 
     if (container == MP4_CONTAINER)
     {
-        mpegVersion = MPEG4;
-        stream = RAW_STREAM;
+        params.mpeg_version = MPEG4;
+        params.output_format = RAW_STREAM;
     }
 
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
@@ -836,56 +833,26 @@ int main(int argc, char *argv[])
                 chanC, chanLF);
     }
 
-    if (cutOff <= 0)
+    if (params.cutoff <= 0)
     {
-        if (cutOff < 0)         // default
-            cutOff = 0;
+        if (params.cutoff < 0)         // default
+            params.cutoff = 0;
         else                    // disabled
-            cutOff = infile->samplerate / 2;
+            params.cutoff = infile->samplerate / 2;
     }
-    if (cutOff > (infile->samplerate / 2))
-        cutOff = infile->samplerate / 2;
+    if (params.cutoff > (infile->samplerate / 2))
+        params.cutoff = infile->samplerate / 2;
 
-    /* put the options in the configuration struct */
-    myFormat = faacEncGetCurrentConfiguration(hEncoder);
-    myFormat->aacObjectType = objectType;
-    myFormat->mpegVersion = mpegVersion;
-    myFormat->useTns = useTns;
-    switch (shortctl)
-    {
-    case SHORTCTL_NOSHORT:
-        fprintf(stderr, "disabling short blocks\n");
-        myFormat->shortctl = shortctl;
-        break;
-    case SHORTCTL_NOLONG:
-        fprintf(stderr, "disabling long blocks\n");
-        myFormat->shortctl = shortctl;
-        break;
-    }
     if (infile->channels >= 6)
-        myFormat->useLfe = 1;
-    if (jointmode >= 0)
-        myFormat->jointmode = jointmode;
+        params.use_lfe = 1;
 
-    if (pnslevel > 0 && mpegVersion == MPEG2)
+    if (params.pns_level > 0 && params.mpeg_version == MPEG2)
     {
         fprintf(stderr, "PNS not allowed in MPEG-2 mode, disabling PNS\n");
-        pnslevel = 0;
+        params.pns_level = 0;
     }
 
-    if (pnslevel >= 0)
-        myFormat->pnslevel = pnslevel;
-    if (quantqual > 0)
-    {
-        myFormat->quantqual = quantqual;
-        myFormat->bitRate = 0;
-    }
-    if (bitRate)
-        myFormat->bitRate = bitRate / infile->channels;
-    myFormat->bandWidth = cutOff;
-    myFormat->outputFormat = stream;
-    myFormat->inputFormat = FAAC_INPUT_FLOAT;
-    if (!faacEncSetConfiguration(hEncoder, myFormat))
+    if (!faac_apply_params(hEncoder, &params, infile->channels))
     {
         fprintf(stderr, "Unsupported output format!\n");
         return 1;
@@ -926,26 +893,23 @@ int main(int argc, char *argv[])
         }
     }
 
-    cutOff = myFormat->bandWidth;
-    quantqual = myFormat->quantqual;
-    bitRate = myFormat->bitRate;
-    if (bitRate)
+    if (params.bitrate)
     {
-        fprintf(stderr, "Initial quantization quality: %ld\n", quantqual);
+        fprintf(stderr, "Initial quantization quality: %d\n", params.quality);
         fprintf(stderr, "Average bitrate: %d kbps/channel\n",
-                (bitRate + 500) / 1000);
+                (params.bitrate / infile->channels + 500) / 1000);
     }
     else
-        fprintf(stderr, "Quantization quality: %ld\n", quantqual);
-    fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
-    if (myFormat->pnslevel > 0)
-        fprintf(stderr, "PNS level: %d\n", myFormat->pnslevel);
+        fprintf(stderr, "Quantization quality: %d\n", params.quality);
+    fprintf(stderr, "Bandwidth: %d Hz\n", params.cutoff);
+    if (params.pns_level > 0)
+        fprintf(stderr, "PNS level: %d\n", params.pns_level);
     fprintf(stderr, "Object type: Low Complexity");
-    fprintf(stderr, " (MPEG-%d)", (mpegVersion == MPEG4) ? 4 : 2);
-    if (myFormat->useTns)
+    fprintf(stderr, " (MPEG-%d)", (params.mpeg_version == MPEG4) ? 4 : 2);
+    if (params.use_tns)
         fprintf(stderr, " + TNS");
 
-    switch(myFormat->jointmode) {
+    switch(params.joint_mode) {
     case JOINT_MS:
         fprintf(stderr, " + M/S");
         break;
@@ -956,7 +920,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, " + Mixed");
         break;
     }
-    if (myFormat->pnslevel > 0)
+    if (params.pns_level > 0)
         fprintf(stderr, " + PNS");
     fprintf(stderr, "\n");
 
@@ -964,7 +928,7 @@ int main(int argc, char *argv[])
     switch (container)
     {
     case NO_CONTAINER:
-        switch (stream)
+        switch (params.output_format)
         {
         case RAW_STREAM:
             fprintf(stderr, "Headerless AAC (RAW)\n");

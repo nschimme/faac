@@ -33,30 +33,22 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
         return NULL;
     }
 
-    faacEncConfigurationPtr config = faacEncGetCurrentConfiguration(ctx->hEncoder);
-    config->inputFormat = FAAC_INPUT_FLOAT;
-    config->outputFormat = use_mp4 ? RAW_STREAM : ADTS_STREAM;
-    config->mpegVersion = MPEG4;
+    faac_params_t params;
+    faac_init_params(&params);
 
-    // Advanced settings
-    config->aacObjectType = (object_type > 0) ? object_type : LOW;
-    config->useTns = use_tns;
-    config->pnslevel = pns_level;
+    params.object_type = (object_type > 0) ? object_type : LOW;
+    params.use_tns = use_tns;
+    params.pns_level = pns_level;
     if (joint_mode >= 0)
-        config->jointmode = joint_mode;
+        params.joint_mode = joint_mode;
 
-    if (cutoff > 0)
-        config->bandWidth = cutoff;
+    params.cutoff = cutoff;
+    params.quality = quality;
+    params.bitrate = bitrate * 1000;
 
-    if (quality > 0) {
-        config->quantqual = quality;
-        config->bitRate = 0;
-    } else if (bitrate > 0) {
-        config->bitRate = (bitrate * 1000) / channels;
-        config->quantqual = 0;
-    }
+    params.output_format = use_mp4 ? RAW_STREAM : ADTS_STREAM;
 
-    if (!faacEncSetConfiguration(ctx->hEncoder, config)) {
+    if (!faac_apply_params(ctx->hEncoder, &params, channels)) {
         faacEncClose(ctx->hEncoder);
         free(ctx);
         return NULL;
@@ -79,7 +71,6 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
 
 EMSCRIPTEN_KEEPALIVE
 int faac_wasm_encode(faac_wasm_t *ctx, float *pcm_data, int samples_read) {
-    // Scale normalized floats [-1, 1] to [-32768, 32768] as expected by FAAC
     if (pcm_data && samples_read > 0) {
         for (int i = 0; i < samples_read; i++) {
             pcm_data[i] *= 32768.0f;

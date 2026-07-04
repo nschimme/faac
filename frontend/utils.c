@@ -168,3 +168,47 @@ void faac_mp4_finish(faacEncHandle hEncoder, char *faac_id_string, faac_metadata
         free(version_string);
 }
 #undef SETTAG
+
+void faac_init_params(faac_params_t *params)
+{
+    memset(params, 0, sizeof(faac_params_t));
+    params->mpeg_version = MPEG4;
+    params->object_type = LOW;
+    params->use_tns = 1;
+    params->joint_mode = JOINT_MIXED;
+    params->shortctl = SHORTCTL_NORMAL;
+    params->quality = 100;
+    params->output_format = ADTS_STREAM;
+    params->input_format = FAAC_INPUT_FLOAT;
+}
+
+int faac_apply_params(faacEncHandle hEncoder, faac_params_t *params, int channels)
+{
+    faacEncConfigurationPtr config = faacEncGetCurrentConfiguration(hEncoder);
+
+    config->mpegVersion = params->mpeg_version;
+    config->aacObjectType = params->object_type;
+    config->useTns = params->use_tns;
+    config->useLfe = params->use_lfe;
+    config->jointmode = params->joint_mode;
+    config->pnslevel = params->pns_level;
+    config->shortctl = params->shortctl;
+    config->outputFormat = params->output_format;
+    config->inputFormat = params->input_format;
+
+    if (params->cutoff > 0)
+        config->bandWidth = params->cutoff;
+
+    if (params->quality > 0)
+    {
+        config->quantqual = params->quality;
+        config->bitRate = 0;
+    }
+    else if (params->bitrate > 0)
+    {
+        config->bitRate = params->bitrate / channels;
+        config->quantqual = 0;
+    }
+
+    return faacEncSetConfiguration(hEncoder, config);
+}
