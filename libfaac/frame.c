@@ -213,7 +213,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->config.bitRate = config->bitRate;
     hEncoder->config.quantqual = config->quantqual;
 
-    /* Re-init TNS after intent, bitRate and quantqual are committed. */
+    /* Re-init TNS after bitrate/quality commitment. */
     TnsInit(hEncoder);
     config->useTns = hEncoder->config.useTns;
 
@@ -268,8 +268,8 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
-    /* After PsyInit (which resets td_hard) and TnsInit (which settles the
-       effective TNS state above). */
+    /* Call after TnsInit to settle effective TNS/block-switch state. */
+
     PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
                  hEncoder->sampleRate);
 
@@ -316,8 +316,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    /* TNS is off by default for library consumers, preserving the behaviour of
-     * programs that link libfaac. The faac CLI opts in via its own default. */
+    /* Default TNS off for library consumers. */
+
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
@@ -623,9 +623,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             }
             coderInfo[channel].sfb_offset[sb] = offset;
 
-            /* TNS analysis and filtering (must be before spectral grouping;
-             * it filters freqBuff in place so all downstream stages, including
-             * the quantizer's PNS inhibition, see the filtered spectrum). */
+            /* TNS analysis and filtering must precede spectral grouping and PNS inhibition. */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
                 int tdEnvLen;
                 const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
@@ -653,12 +651,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             }
             coderInfo[channel].sfb_offset[sb] = offset;
 
-            /* TNS analysis and filtering (in place on freqBuff, before
-             * stereo/quantization; see the long-comment at the short-block
-             * call site above for the ordering contract). Borderline
-             * transients kept long by td_hard skip the analysis: TNS's
-             * gates decline nearly all of them, and the promotion win is
-             * long-window bits/resolution, not TNS coverage. */
+            /* Perform TNS analysis and filtering. Borderline transients stay long and skip analysis. */
             if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)
                 && !hEncoder->psyInfo[channel].promoted_long) {
                 int tdEnvLen;

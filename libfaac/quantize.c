@@ -255,8 +255,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
             continue;
         }
 
-        /* TNS/PNS interaction: inhibit PNS on TNS-covered bands to avoid
-         * structural conflicts between whitening and noise substitution. */
+        /* Inhibit PNS on TNS-covered bands to avoid
+            structural conflicts between whitening and noise substitution. */
         int is_tns = 0;
         if (ci->tnsInfo.tnsDataPresent && ci->block_type == ONLY_LONG_WINDOW) {
             int b_start = ci->tnsInfo.tnsNumSwbLong - ci->tnsInfo.windowData[0].tnsFilter[0].length;

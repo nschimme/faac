@@ -19,15 +19,8 @@
 
 /**
  * Temporal Noise Shaping (TNS) for MPEG-4 AAC-LC.
- *
- * TNS whitens the spectrum in the frequency domain with a linear-predictive
- * (LPC) filter. Because frequency and time are duals, a whitening filter in
- * frequency shapes the quantization-noise envelope in time; matching that
- * envelope to the signal's temporal envelope hides noise that would otherwise
- * be audible as pre-echo ahead of sharp transients.
- *
- * The analysis stages use float arithmetic, which is accurate enough for a
- * whitening filter and vectorizes well.
+ * Whitens spectral energy to shape quantization noise in time,
+ * hiding it under transients (pre-echo control).
  */
 
 #include <math.h>
@@ -40,13 +33,10 @@
 #include "tns.h"
 #include "util.h"
 
-/* TNS analysis runs once per long frame over a <=~500-bin band; its loops are
-   not hot enough to justify -O3 vectorization, which triples the object size.
-   Prefer small code here. */
+/* TNS analysis is restricted to long windows where temporal masking is weakest. */
 
 
-/* TNS Scalefactor Band Limits (ISO/IEC 14496-3 Table 4.4.48)
-   These limits ensure TNS is only applied above ~2kHz where it is most effective. */
+/* Normative SFB limits (ISO/IEC 14496-3 Table 4.4.48) target the >2kHz region. */
 static const struct {
     unsigned char min;
     unsigned char max;
@@ -64,8 +54,7 @@ static const struct {
                                        reduce band energy by at least this factor */
 #define TNS_MIN_ENERGY      1e-9f   /* Energy floor for spectral analysis */
 
-/* Autocorrelation over the TNS band, lags 0..order. The float scratch copy
-   keeps the inner dot product in single precision so it vectorizes cleanly. */
+/* Autocorrelation over the TNS band, lags 0..order. */
 static void calc_autocorr_f(int order, int length,
                             const float * work,
                             float * r)
@@ -85,8 +74,7 @@ static void calc_autocorr_f(int order, int length,
     }
 }
 
-/* Levinson-Durbin recursion: reflection coeffs k[] from autocorrelation r[].
-   Returns the prediction gain (r[0]/residual), the profit signal for the gate. */
+/* Levinson-Durbin recursion: reflection coeffs k[] from autocorrelation r[]. */
 static float compute_lpc(int order, const float * r,
                          float * k)
 {
@@ -141,10 +129,7 @@ static float compute_lpc(int order, const float * r,
     return r[0] / err;
 }
 
-/* Quantize the reflection coeffs to transmission indices. AAC quantizes in the
-   arcsine domain, where coeffs near +/-1 (the perceptually sensitive ones) get
-   finer steps. k[] is overwritten with the requantized values so the encoder
-   filters with exactly what the decoder will reconstruct. */
+/* Quantize reflection coeffs in the arcsine domain for finer resolution near +/-1. */
 static void quantize_coeffs(int order, int res, float * k, int * idx)
 {
     const float s_p = (float)(((1 << (res - 1)) - 0.5f) / (M_PI / 2));
@@ -166,8 +151,7 @@ static void quantize_coeffs(int order, int res, float * k, int * idx)
     }
 }
 
-/* Reflection coeffs -> FIR predictor taps, same symmetric step as the LPC
-   recursion but run once on the final (quantized) k[]. */
+/* Convert quantized reflection coeffs to FIR predictor taps (Step-up). */
 static void finalize_filter(int order, const float * k, faac_real * a)
 {
     int i, m;
@@ -188,9 +172,7 @@ static void finalize_filter(int order, const float * k, faac_real * a)
     }
 }
 
-/* In-place TNS analysis FIR across the band. Snapshot the input first so the
-   delay line reads original samples directly instead of shifting state each
-   step; direction picks which end of the band the prediction leans on. */
+/* In-place TNS analysis FIR filter. */
 static void filter_spec(int length, int order, int direction,
                         const faac_real * a, faac_real * spec)
 {
@@ -254,9 +236,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
        higher temporal resolution. */
     if (tnsInfo->tnsDisabled || blockType == ONLY_SHORT_WINDOW) return;
 
-    /* Tonal but temporally flat frames pass the gain gate too; without a real
-       transient to hide behind, whitening just smears noise as reverb. This
-       cheap early-out also skips the LPC work on the common path. */
+    /* Early-out for temporally flat frames to avoid unnecessary LPC work. */
     if (tdEnvelope && tdEnvelopeLen > 0) {
         float peak = 0.0f, mean = 0.0f;
         int w;
@@ -282,10 +262,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
     for (int i = 0; i < length; i++) energy += band[i] * band[i];
     if (energy < (faac_real)TNS_MIN_ENERGY) return;
 
-    /* Fit the LPC on an energy-normalized copy of the band: each sfb scaled to
-       unit RMS (floored so near-silent bands can't blow up a bin). Without
-       this the fit is dominated by the loudest harmonics and the filter
-       whitens tonality instead of modeling the temporal envelope. */
+    /* LPC fit is performed on an energy-normalized copy to avoid harmonic dominance. */
     float wspec[BLOCK_LEN_LONG];
     {
         float maxrms = 0.0f, floorrms;
@@ -333,10 +310,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
        table top down to b_start — not just the bands we filtered. */
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Direction heuristic: run the filter in the direction of the signal's
-       temporal energy so the shaped quantization noise lands in the loud,
-       masked part of the frame instead of spilling into the quiet part.
-       Backward filtering when the early half of the frame carries the energy. */
+    /* Run filter in the direction of temporal energy to keep shaped noise masked. */
     if (tdEnvelope && tdEnvelopeLen >= 2) {
         float e_early = 0.0f, e_late = 0.0f;
         int w, half = tdEnvelopeLen / 2;
@@ -358,11 +332,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
 
     finalize_filter(order, k, filter->aCoeffs);
 
-    /* Outcome gate, measured in the same energy-normalized domain the filter
-       was fitted in: filter a scratch copy with the QUANTIZED coefficients in
-       the chosen direction and keep TNS only if it actually reduced weighted
-       energy by TNS_MEASURED_GAIN. The pre-quantization Levinson estimate can
-       overpromise; a filter that fails this bar just smears noise. */
+    /* Measured gain gate ensures TNS only fires when the quantized filter effectively
+   whitens the band, preventing noise smearing on tonal signals. */
     {
         faac_real trial[BLOCK_LEN_LONG] = {0};
         faac_real orig_e = 0.0, filt_e = 0.0;
