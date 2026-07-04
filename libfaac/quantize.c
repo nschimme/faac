@@ -275,7 +275,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const faac_real * _
         {
             int sf_abs;
             faac_real gain = resolve_band_gain(sfac, sf_bias, bandpeak[sb], *p_last_abs, &sf_rel, &sf_abs);
-            int xi[FRAME_LEN];
+            /* Quantize straight into coder->quant so huffbook needs no copy; an
+               all-zero band just isn't committed (quantcnt not advanced). */
+            int *xi = ci->quant + ci->quantcnt;
             int win;
 
             for (win = 0; win < gsize; win++)
@@ -306,7 +308,7 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
     int i, lastsf = SF_CHAIN_UNSET;
     faac_real *gxr = xr;
 
-    coder->bandcnt = coder->datacnt = 0;
+    coder->bandcnt = coder->datacnt = coder->quantcnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
         int sfb;
@@ -350,6 +352,10 @@ int BlocQuant(CoderInfo * __restrict coder, faac_real * __restrict xr, AACQuantC
             coder->sf[i] = lastpns;
         }
     }
+
+    /* Losslessly merge sections, then serialize the deferred codewords. */
+    MergeSections(coder);
+    SerializeSpectralData(coder);
     return 1;
 }
 
