@@ -410,21 +410,16 @@ int main(int argc, char *argv[])
         *album = NULL, *albumartist = NULL,
         *albumartistsort = NULL, *albumsort = NULL,
         *year = NULL, *comment = NULL, *composer = NULL,
-        *composersort = NULL, *tagname = 0, *tagval = 0,
-        *creation_time_str = NULL;
+        *composersort = NULL, *creation_time_str = NULL;
     int genre = 0;
     uint8_t *artData = NULL;
     uint64_t artSize = 0;
-    uint64_t encoded_samples = 0;
-    unsigned int delay_samples;
-    unsigned int frameSize;
     uint64_t input_samples = 0;
     char *faac_id_string;
     char *faac_copyright_string;
     static int ignorelen = 0;
     int verbose = 1;
     static int overwrite = 0;
-    char *aacFileExt = NULL;
 
 #ifndef _WIN32
     // install signal handler
@@ -643,13 +638,18 @@ int main(int argc, char *argv[])
             comment = optarg;
             break;
         case TAG_FLAG:
-            tagname = optarg;
-            if (!(tagval = strchr(optarg, ',')))
-                dieMessage = "Missing tag value.\n";
-            else
-                *(char *)tagval++ = 0;
-            if (!dieMessage && mp4_add_custom_tag(tagname, tagval))
-                dieMessage = "Couldn't add tag (out of memory).\n";
+            {
+                char *tagname = optarg;
+                char *tagval = strchr(optarg, ',');
+                if (!tagval)
+                    dieMessage = "Missing tag value.\n";
+                else
+                {
+                    *tagval++ = 0;
+                    if (mp4_add_custom_tag(tagname, tagval))
+                        dieMessage = "Couldn't add tag (out of memory).\n";
+                }
+            }
             break;
         case CREATION_TIME_FLAG:
             creation_time_str = optarg;
@@ -774,9 +774,6 @@ int main(int argc, char *argv[])
             container = MP4_CONTAINER;
     }
 
-    if (!aacFileExt && aacFileName)
-        aacFileExt = strrchr(aacFileName, '.');
-
     /* open the audio input file */
     if (rawChans > 0)           // use raw input
     {
@@ -830,8 +827,6 @@ int main(int argc, char *argv[])
         stream = RAW_STREAM;
     }
 
-    frameSize = samplesInput / infile->channels;
-    delay_samples = frameSize;  // encoder delay 1024 samples
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
     bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
     chanmap = faac_mk_chan_map(infile->channels, chanC, chanLF);
@@ -1116,16 +1111,10 @@ int main(int argc, char *argv[])
 
         if (bytesWritten > 0)
         {
-            uint64_t frame_samples = input_samples - encoded_samples;
-            if (frame_samples > delay_samples)
-                frame_samples = delay_samples;
-
             if (container == MP4_CONTAINER) {
-                mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+                mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
             } else
                 fwrite(bitbuf, 1, bytesWritten, outfile);
-
-            encoded_samples += frame_samples;
         }
     }
     fprintf(stderr, "\n");

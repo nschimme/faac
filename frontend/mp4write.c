@@ -85,7 +85,7 @@ enum {
 
 static struct {
     uint32_t samplerate;
-    uint32_t samples;
+    uint64_t samples;
     uint32_t channels;
     uint32_t bits;
     uint16_t buffersize;
@@ -93,8 +93,8 @@ static struct {
     struct {
         uint32_t max;
         uint32_t avg;
-        uint32_t size;
-        uint32_t samples;
+        uint64_t size;
+        uint64_t samples;
     } bitrate;
 
     uint32_t framesamples;
@@ -112,7 +112,7 @@ static struct {
 
     FILE *fout;
     uint32_t mdatofs;
-    uint32_t mdatsize;
+    uint64_t mdatsize;
 
     uint32_t creation_time;
     const char *encoder;
@@ -481,7 +481,7 @@ int mp4_finish(void) {
        size placeholder left by mp4_open() */
     long pos = ftell(g_mp4.fout);
     fseek(g_mp4.fout, g_mp4.mdatofs - 8, SEEK_SET);
-    put_u32(g_mp4.mdatsize + 8);
+    put_u32((uint32_t)g_mp4.mdatsize + 8);
     fseek(g_mp4.fout, pos, SEEK_SET);
 
     g_mp4.bitrate.avg = (uint32_t)((uint64_t)8 * g_mp4.mdatsize * g_mp4.samplerate / (g_mp4.samples ? g_mp4.samples : 1));
@@ -498,7 +498,7 @@ int mp4_finish(void) {
     long mvhd = start_atom("mvhd");
     uint32_t now = get_mp4_time();
     put_u32(0); put_u32(now); put_u32(now);
-    put_u32(g_mp4.samplerate); put_u32(g_mp4.samples);
+    put_u32(g_mp4.samplerate); put_u32((uint32_t)g_mp4.samples);
     put_u32(MP4_FP1616_ONE); put_u16(MP4_FP0808_ONE); put_u16(0); put_u32(0); put_u32(0);
     put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
     put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
@@ -510,7 +510,7 @@ int mp4_finish(void) {
     long trak = start_atom("trak");
     long tkhd = start_atom("tkhd");
     put_u32(1); put_u32(now); put_u32(now); put_u32(MP4_TRACK_ID); put_u32(0);
-    put_u32(g_mp4.samples); put_u32(0); put_u32(0);
+    put_u32((uint32_t)g_mp4.samples); put_u32(0); put_u32(0);
     put_u16(0); put_u16(0); put_u16(MP4_FP0808_ONE); put_u16(0);
     put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
     put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
@@ -521,7 +521,7 @@ int mp4_finish(void) {
     long mdia = start_atom("mdia");
     long mdhd = start_atom("mdhd");
     put_u32(0); put_u32(now); put_u32(now);
-    put_u32(g_mp4.samplerate); put_u32(g_mp4.samples);
+    put_u32(g_mp4.samplerate); put_u32((uint32_t)g_mp4.samples);
     put_u16(0); put_u16(0);
     end_atom(mdhd);
 
@@ -575,7 +575,7 @@ int mp4_finish(void) {
 
     long stts = start_atom("stts");
     put_u32(0); put_u32(1);
-    put_u32(g_mp4.frame.ents); put_u32(g_mp4.framesamples);
+    put_u32(g_mp4.frame.ents); put_u32(1024);
     end_atom(stts);
 
     long stsc = start_atom("stsc");
@@ -663,7 +663,7 @@ int mp4_close(void) {
 }
 
 uint32_t mp4_frame_count(void) { return g_mp4.frame.ents; }
-uint32_t mp4_sample_count(void) { return g_mp4.samples; }
+uint32_t mp4_sample_count(void) { return (uint32_t)g_mp4.samples; }
 uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
 uint32_t mp4_max_frame_size(void) { return g_mp4.buffersize; }

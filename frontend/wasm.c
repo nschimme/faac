@@ -17,9 +17,6 @@ typedef struct {
     uint32_t samplerate;
     uint32_t channels;
     FILE *aac_out;
-    uint64_t input_samples;
-    uint64_t encoded_samples;
-    uint32_t delay_samples;
 } faac_wasm_t;
 
 EMSCRIPTEN_KEEPALIVE
@@ -69,9 +66,6 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
     ctx->is_mp4 = use_mp4;
     ctx->samplerate = samplerate;
     ctx->channels = channels;
-    ctx->input_samples = 0;
-    ctx->encoded_samples = 0;
-    ctx->delay_samples = ctx->samplesInput / channels;
 
     if (use_mp4) {
         mp4_open("output.bin", 1);
@@ -85,17 +79,18 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
 
 EMSCRIPTEN_KEEPALIVE
 int faac_wasm_encode(faac_wasm_t *ctx, float *pcm_data, int samples_read) {
-    int bytesWritten = faacEncEncode(ctx->hEncoder, (int32_t *)pcm_data, samples_read, ctx->bitbuf, ctx->maxBytesOutput);
+    // Scale normalized floats [-1, 1] to [-32768, 32768] as expected by FAAC
+    if (pcm_data && samples_read > 0) {
+        for (int i = 0; i < samples_read; i++) {
+            pcm_data[i] *= 32768.0f;
+        }
+    }
 
-    ctx->input_samples += samples_read / ctx->channels;
+    int bytesWritten = faacEncEncode(ctx->hEncoder, (int32_t *)pcm_data, samples_read, ctx->bitbuf, ctx->maxBytesOutput);
 
     if (bytesWritten > 0) {
         if (ctx->is_mp4) {
-            uint64_t frame_samples = ctx->input_samples - ctx->encoded_samples;
-            if (frame_samples > ctx->delay_samples)
-                frame_samples = ctx->delay_samples;
-            mp4_write_frame(ctx->bitbuf, bytesWritten, (uint32_t)frame_samples);
-            ctx->encoded_samples += frame_samples;
+            mp4_write_frame(ctx->bitbuf, bytesWritten, 1024);
         } else if (ctx->aac_out) {
             fwrite(ctx->bitbuf, 1, bytesWritten, ctx->aac_out);
         }
@@ -114,11 +109,7 @@ void faac_wasm_close(faac_wasm_t *ctx) {
         bytesWritten = faacEncEncode(ctx->hEncoder, NULL, 0, ctx->bitbuf, ctx->maxBytesOutput);
         if (bytesWritten > 0) {
             if (ctx->is_mp4) {
-                uint64_t frame_samples = ctx->input_samples - ctx->encoded_samples;
-                if (frame_samples > ctx->delay_samples)
-                    frame_samples = ctx->delay_samples;
-                mp4_write_frame(ctx->bitbuf, bytesWritten, (uint32_t)frame_samples);
-                ctx->encoded_samples += frame_samples;
+                mp4_write_frame(ctx->bitbuf, bytesWritten, 1024);
             } else if (ctx->aac_out) {
                 fwrite(ctx->bitbuf, 1, bytesWritten, ctx->aac_out);
             }

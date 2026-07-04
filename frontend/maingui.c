@@ -318,7 +318,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                         uint64_t frame_samples = input_samples - encoded_samples;
                         if (frame_samples > delay_samples)
                             frame_samples = delay_samples;
-                        mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+                        mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
                         encoded_samples += frame_samples;
                     }
                     else
@@ -338,7 +338,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                             uint64_t frame_samples = input_samples - encoded_samples;
                             if (frame_samples > delay_samples)
                                 frame_samples = delay_samples;
-                            mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples);
+                            mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
                             encoded_samples += frame_samples;
                         }
                         else
