@@ -42,6 +42,17 @@
 #include "tns.h"
 #include "util.h"
 
+/* TNS analysis runs once per long frame over a <=~500-bin band; its loops are
+   not hot enough to justify -O3 vectorization, which triples the object size.
+   Prefer small code here. */
+#if defined(__clang__)
+#define TNS_MINSIZE __attribute__((minsize))
+#elif defined(__GNUC__)
+#define TNS_MINSIZE __attribute__((optimize("Os")))
+#else
+#define TNS_MINSIZE
+#endif
+
 /* TNS Scalefactor Band Limits (ISO/IEC 14496-3 Table 4.4.48)
    These limits ensure TNS is only applied above ~2kHz where it is most effective. */
 static const struct {
@@ -64,7 +75,7 @@ static const struct {
 
 /* Autocorrelation over the TNS band, lags 0..order. The float scratch copy
    keeps the inner dot product in single precision so it vectorizes cleanly. */
-static void calc_autocorr_f(int order, int length,
+TNS_MINSIZE static void calc_autocorr_f(int order, int length,
                             const float * restrict work,
                             float * restrict r)
 {
@@ -85,7 +96,7 @@ static void calc_autocorr_f(int order, int length,
 
 /* Levinson-Durbin recursion: reflection coeffs k[] from autocorrelation r[].
    Returns the prediction gain (r[0]/residual), the profit signal for the gate. */
-static float compute_lpc(int order, const float * restrict r,
+TNS_MINSIZE static float compute_lpc(int order, const float * restrict r,
                          float * restrict k)
 {
     float a[TNS_MAX_ORDER + 1];
@@ -143,7 +154,7 @@ static float compute_lpc(int order, const float * restrict r,
    arcsine domain, where coeffs near +/-1 (the perceptually sensitive ones) get
    finer steps. k[] is overwritten with the requantized values so the encoder
    filters with exactly what the decoder will reconstruct. */
-static void quantize_coeffs(int order, int res, float * restrict k, int * restrict idx)
+TNS_MINSIZE static void quantize_coeffs(int order, int res, float * restrict k, int * restrict idx)
 {
     const float s_p = (float)(((1 << (res - 1)) - 0.5f) / (M_PI / 2));
     const float s_n = (float)(((1 << (res - 1)) + 0.5f) / (M_PI / 2));
@@ -166,7 +177,7 @@ static void quantize_coeffs(int order, int res, float * restrict k, int * restri
 
 /* Reflection coeffs -> FIR predictor taps, same symmetric step as the LPC
    recursion but run once on the final (quantized) k[]. */
-static void finalize_filter(int order, const float * restrict k, faac_real * restrict a)
+TNS_MINSIZE static void finalize_filter(int order, const float * restrict k, faac_real * restrict a)
 {
     int i, m;
     a[0] = 1.0;
@@ -189,7 +200,7 @@ static void finalize_filter(int order, const float * restrict k, faac_real * res
 /* In-place TNS analysis FIR across the band. Snapshot the input first so the
    delay line reads original samples directly instead of shifting state each
    step; direction picks which end of the band the prediction leans on. */
-static void filter_spec(int length, int order, int direction,
+TNS_MINSIZE static void filter_spec(int length, int order, int direction,
                         const faac_real * restrict a, faac_real * restrict spec)
 {
     faac_real hist[BLOCK_LEN_LONG];
@@ -216,7 +227,7 @@ static void filter_spec(int length, int order, int direction,
     }
 }
 
-void TnsInit(faacEncStruct* hEncoder)
+TNS_MINSIZE void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
@@ -239,7 +250,7 @@ void TnsInit(faacEncStruct* hEncoder)
     }
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numBands,
+TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
                faac_real* spec,
                const float* tdEnvelope, int tdEnvelopeLen)
@@ -395,7 +406,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
 #endif
 }
 
-int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)
+TNS_MINSIZE int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)
 {
     TnsInfo *tns = &coderInfo->tnsInfo;
 
