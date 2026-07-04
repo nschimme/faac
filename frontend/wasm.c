@@ -36,15 +36,14 @@ faac_wasm_t *faac_wasm_init(int samplerate, int channels, int bitrate, int quali
     faac_params_t params;
     faac_init_params(&params);
 
-    params.object_type = (object_type > 0) ? object_type : LOW;
-    params.use_tns = use_tns;
-    params.pns_level = pns_level;
-    if (joint_mode >= 0)
-        params.joint_mode = joint_mode;
+    if (object_type != -1) params.object_type = object_type;
+    if (use_tns != -1) params.use_tns = use_tns;
+    if (pns_level != -1) params.pns_level = pns_level;
+    if (joint_mode != -1) params.joint_mode = joint_mode;
 
-    params.cutoff = cutoff;
-    params.quality = quality;
-    params.bitrate = bitrate * 1000;
+    params.cutoff = (cutoff > 0) ? cutoff : 0;
+    params.quality = (quality > 0) ? quality : -1;
+    params.bitrate = (bitrate > 0) ? bitrate * 1000 : -1;
 
     params.output_format = use_mp4 ? RAW_STREAM : ADTS_STREAM;
 

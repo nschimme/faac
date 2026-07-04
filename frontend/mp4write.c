@@ -97,7 +97,7 @@ static struct {
         uint64_t samples;
     } bitrate;
 
-    uint32_t framesamples;
+    uint32_t last_duration;
 
     struct {
         uint32_t *data;
@@ -251,18 +251,18 @@ static void put_descriptor(uint8_t tag, uint32_t size) {
 
 /* Only resets per-output-file write state (frame table, mdat bookkeeping,
    bitrate accumulators). Tag/format config set by the caller, which may
-   happen before or after mp4_open() depending on the option, is left
+   happened before or after mp4_open() depending on the option, is left
    untouched. */
 static void reset_write_state(void) {
     free(g_mp4.frame.data);
     g_mp4.frame.data = NULL;
     g_mp4.frame.ents = 0;
     g_mp4.frame.bufsize = 0;
-    g_mp4.framesamples = 0;
     g_mp4.samples = 0;
     g_mp4.buffersize = 0;
     g_mp4.mdatofs = 0;
     g_mp4.mdatsize = 0;
+    g_mp4.last_duration = 0;
     memset(&g_mp4.bitrate, 0, sizeof(g_mp4.bitrate));
 }
 
@@ -358,10 +358,11 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
         return -1;
     g_mp4.mdatsize += size;
     g_mp4.samples += samples;
+    g_mp4.last_duration = samples;
 
     /* only count frames at the established frame length toward the
        bitrate window, so a shorter trailing frame doesn't skew it */
-    if (g_mp4.framesamples <= samples) {
+    if (samples == 1024) {
         g_mp4.bitrate.size += size;
         g_mp4.bitrate.samples += samples;
         if (g_mp4.bitrate.samples >= g_mp4.samplerate) {
@@ -371,7 +372,6 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
             g_mp4.bitrate.size = 0;
             g_mp4.bitrate.samples = 0;
         }
-        g_mp4.framesamples = samples;
     }
 
     if (g_mp4.frame.ents >= g_mp4.frame.bufsize) {
@@ -574,8 +574,15 @@ int mp4_finish(void) {
     end_atom(stsd);
 
     long stts = start_atom("stts");
-    put_u32(0); put_u32(1);
-    put_u32(g_mp4.frame.ents); put_u32(1024);
+    put_u32(0);
+    if (g_mp4.frame.ents > 1 && g_mp4.last_duration != 1024) {
+        put_u32(2);
+        put_u32(g_mp4.frame.ents - 1); put_u32(1024);
+        put_u32(1); put_u32(g_mp4.last_duration);
+    } else {
+        put_u32(1);
+        put_u32(g_mp4.frame.ents); put_u32(g_mp4.last_duration ? g_mp4.last_duration : 1024);
+    }
     end_atom(stts);
 
     long stsc = start_atom("stsc");

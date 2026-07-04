@@ -18,10 +18,10 @@ char *faac_get_output_filename(const char *input_filename, int container_mp4);
 int faac_is_mp4_filename(const char *filename);
 
 /* Calculate encoding speed factor */
-double faac_calc_speed(unsigned long current_sample, unsigned int samplerate, double time_used);
+double faac_calc_speed(uint64_t current_sample, unsigned int samplerate, double time_used);
 
 /* Calculate estimated time remaining in seconds */
-double faac_calc_eta(unsigned long current_sample, unsigned long total_samples, double time_used);
+double faac_calc_eta(uint64_t current_sample, uint64_t total_samples, double time_used);
 
 /* Create channel map for AAC */
 int *faac_mk_chan_map(int channels, int center, int lf);

@@ -79,8 +79,7 @@ enum flags
     MPEGVERS_FLAG,
     ARTIST_FLAG,
     ARTIST_SORT_FLAG,
-    TITLE_FLAG,
-    GENRE_FLAG,
+    TITLE_FLAG, GENRE_FLAG,
     ALBUM_FLAG,
     ALBUM_SORT_FLAG,
     ALBUM_ARTIST_FLAG,
@@ -503,7 +502,7 @@ int main(int argc, char *argv[])
         {
         case 'o':
             {
-                int l = strlen(optarg);
+                int l = (int)strlen(optarg);
                 aacFileName = malloc(l + 1);
                 memcpy(aacFileName, optarg, l);
                 aacFileName[l] = '\0';
@@ -520,7 +519,7 @@ int main(int argc, char *argv[])
                 unsigned int i;
                 if (sscanf(optarg, "%u", &i) > 0)
                 {
-                    params.cutoff = i;
+                    params.cutoff = (int)i;
                 }
                 break;
             }
@@ -529,8 +528,8 @@ int main(int argc, char *argv[])
                 unsigned int i;
                 if (sscanf(optarg, "%u", &i) > 0)
                 {
-                    params.bitrate = 1000 * i;
-                    params.quality = 0;
+                    params.bitrate = (int)(1000 * i);
+                    params.quality = -1;
                 }
                 break;
             }
@@ -541,8 +540,8 @@ int main(int argc, char *argv[])
                 {
                     if (i > 0)
                     {
-                        params.quality = i;
-                        params.bitrate = 0;
+                        params.quality = (int)i;
+                        params.bitrate = -1;
                     }
                 }
                 break;
@@ -623,7 +622,7 @@ int main(int argc, char *argv[])
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
-            genre = atoi(optarg);
+            genre = (int)atoi(optarg);
             if ((genre < 0) || (genre > 255))
                 dieMessage = "Genre number out of range.\n";
             genre++;
@@ -660,14 +659,14 @@ int main(int argc, char *argv[])
                     uint64_t r;
 
                     fseek(artFile, 0, SEEK_END);
-                    artSize = ftell(artFile);
+                    artSize = (uint64_t)ftell(artFile);
 
                     artData = malloc(artSize);
 
                     fseek(artFile, 0, SEEK_SET);
                     clearerr(artFile);
 
-                    r = fread(artData, artSize, 1, artFile);
+                    r = (uint64_t)fread(artData, (size_t)artSize, 1, artFile);
 
                     if (r != 1)
                     {
@@ -694,11 +693,11 @@ int main(int argc, char *argv[])
                 break;
             }
         case SHORTCTL_FLAG:
-            params.shortctl = atoi(optarg);
+            params.shortctl = (int)atoi(optarg);
             break;
         case MPEGVERS_FLAG:
             {
-                int ver = atoi(optarg);
+                int ver = (int)atoi(optarg);
                 if (ver == 2) params.mpeg_version = MPEG2;
                 else if (ver == 4) params.mpeg_version = MPEG4;
                 else dieMessage = "Unrecognised MPEG version!\n";
@@ -718,7 +717,7 @@ int main(int argc, char *argv[])
             rawEndian = 0;
             break;
         case 'v':
-            verbose = atoi(optarg);
+            verbose = (int)atoi(optarg);
             break;
         case HELP_QUAL:
         case HELP_IO:
@@ -730,10 +729,10 @@ int main(int argc, char *argv[])
             return 1;
             break;
         case OPT_JOINT:
-            params.joint_mode = atoi(optarg);
+            params.joint_mode = (int)atoi(optarg);
             break;
         case OPT_PNS:
-            params.pns_level = atoi(optarg);
+            params.pns_level = (int)atoi(optarg);
             break;
         case '?':
         default:
@@ -765,11 +764,6 @@ int main(int argc, char *argv[])
     {
         aacFileName = faac_get_output_filename(audioFileName, container == MP4_CONTAINER);
     }
-    else
-    {
-        if (faac_is_mp4_filename(aacFileName))
-            container = MP4_CONTAINER;
-    }
 
     /* open the audio input file */
     if (rawChans > 0)           // use raw input
@@ -780,7 +774,7 @@ int main(int argc, char *argv[])
             infile->bigendian = rawEndian;
             infile->channels = rawChans;
             infile->samplebytes = rawBits / 8;
-            infile->samplerate = rawRate;
+            infile->samplerate = (unsigned int)rawRate;
             infile->samples /= (infile->channels * infile->samplebytes);
         }
     }
@@ -838,10 +832,10 @@ int main(int argc, char *argv[])
         if (params.cutoff < 0)         // default
             params.cutoff = 0;
         else                    // disabled
-            params.cutoff = infile->samplerate / 2;
+            params.cutoff = (int)(infile->samplerate / 2);
     }
-    if (params.cutoff > (infile->samplerate / 2))
-        params.cutoff = infile->samplerate / 2;
+    if (params.cutoff > (int)(infile->samplerate / 2))
+        params.cutoff = (int)(infile->samplerate / 2);
 
     if (infile->channels >= 6)
         params.use_lfe = 1;
@@ -893,23 +887,25 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (params.bitrate)
+    faacEncConfigurationPtr current_cfg = faacEncGetCurrentConfiguration(hEncoder);
+
+    if (params.bitrate > 0)
     {
-        fprintf(stderr, "Initial quantization quality: %d\n", params.quality);
+        fprintf(stderr, "Initial quantization quality: %d\n", (int)current_cfg->quantqual);
         fprintf(stderr, "Average bitrate: %d kbps/channel\n",
                 (params.bitrate / infile->channels + 500) / 1000);
     }
     else
-        fprintf(stderr, "Quantization quality: %d\n", params.quality);
-    fprintf(stderr, "Bandwidth: %d Hz\n", params.cutoff);
-    if (params.pns_level > 0)
-        fprintf(stderr, "PNS level: %d\n", params.pns_level);
+        fprintf(stderr, "Quantization quality: %d\n", (int)current_cfg->quantqual);
+    fprintf(stderr, "Bandwidth: %d Hz\n", (int)current_cfg->bandWidth);
+    if (current_cfg->pnslevel > 0)
+        fprintf(stderr, "PNS level: %d\n", current_cfg->pnslevel);
     fprintf(stderr, "Object type: Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (params.mpeg_version == MPEG4) ? 4 : 2);
-    if (params.use_tns)
+    if (current_cfg->useTns)
         fprintf(stderr, " + TNS");
 
-    switch(params.joint_mode) {
+    switch(current_cfg->jointmode) {
     case JOINT_MS:
         fprintf(stderr, " + M/S");
         break;
@@ -920,7 +916,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, " + Mixed");
         break;
     }
-    if (params.pns_level > 0)
+    if (current_cfg->pnslevel > 0)
         fprintf(stderr, " + PNS");
     fprintf(stderr, "\n");
 
@@ -948,7 +944,7 @@ int main(int argc, char *argv[])
     long begin = GetTickCount();
 #endif
     if (infile->samples)
-        frames = ((infile->samples + 1023) / 1024) + 1;
+        frames = (int)((infile->samples + 1023) / 1024) + 1;
     else
         frames = 0;
     currentFrame = 0;
@@ -977,20 +973,20 @@ int main(int argc, char *argv[])
         {
             if (input_samples < infile->samples || infile->samples == 0)
                 samplesRead =
-                    wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
+                    (int)wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
             else
                 samplesRead = 0;
 
-            if (input_samples + (samplesRead / infile->channels) >
+            if (input_samples + (uint64_t)(samplesRead / infile->channels) >
                 infile->samples && infile->samples != 0)
                 samplesRead =
-                    (infile->samples - input_samples) * infile->channels;
+                    (int)((infile->samples - input_samples) * infile->channels);
         }
         else
             samplesRead =
-                wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
+                (int)wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
 
-        input_samples += samplesRead / infile->channels;
+        input_samples += (uint64_t)(samplesRead / infile->channels);
 
         /* call the actual encoding routine */
         bytesWritten = faacEncEncode(hEncoder,
@@ -1001,7 +997,7 @@ int main(int argc, char *argv[])
         {
             currentFrame++;
             showcnt--;
-            totalBytesWritten += bytesWritten;
+            totalBytesWritten += (unsigned long)bytesWritten;
         }
 
         if ((showcnt <= 0) || !bytesWritten)
@@ -1039,8 +1035,8 @@ int main(int argc, char *argv[])
                             ((double) infile->samples / infile->samplerate *
                              currentFrame / frames), timeused,
                             timeused * frames / currentFrame,
-                            faac_calc_speed(currentFrame * 1024, infile->samplerate, timeused),
-                            faac_calc_eta(currentFrame * 1024, infile->samples, timeused));
+                            faac_calc_speed((uint64_t)currentFrame * 1024, infile->samplerate, timeused),
+                            faac_calc_eta((uint64_t)currentFrame * 1024, infile->samples, timeused));
                 }
                 else
                 {
@@ -1048,7 +1044,7 @@ int main(int argc, char *argv[])
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
-                            faac_calc_speed(currentFrame * 1024, infile->samplerate, timeused));
+                            faac_calc_speed((uint64_t)currentFrame * 1024, infile->samplerate, timeused));
                 }
 
                 fflush(stderr);
@@ -1078,7 +1074,7 @@ int main(int argc, char *argv[])
             if (container == MP4_CONTAINER) {
                 mp4_write_frame(bitbuf, (uint32_t)bytesWritten, 1024);
             } else
-                fwrite(bitbuf, 1, bytesWritten, outfile);
+                fwrite(bitbuf, 1, (size_t)bytesWritten, outfile);
         }
     }
     fprintf(stderr, "\n");
@@ -1177,7 +1173,8 @@ int main(int argc, char *argv[])
     }
     else
     {
-        fclose(outfile);
+        if (outfile != stdout && outfile != NULL)
+            fclose(outfile);
     }
 
     faacEncClose(hEncoder);
@@ -1190,7 +1187,7 @@ int main(int argc, char *argv[])
         free(pcmbuf);
     if (bitbuf)
         free(bitbuf);
-    if (aacFileName)
+    if (aacFileNameGiven && aacFileName)
         free(aacFileName);
 
     return 0;

@@ -181,7 +181,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
             GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
             params.quality = atoi(szTemp);
-            params.bitrate = 0;
+            params.bitrate = -1;
             params.input_format = FAAC_INPUT_32BIT;
 
             if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
@@ -236,7 +236,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 UINT startTime = GetTickCount(), lastUpdated = 50;
                 DWORD totalBytesRead = 0;
                 uint64_t current_input_samples = 0;
-                uint64_t encoded_samples = 0;
                 unsigned int delay_samples = inputSamples / numChannels;
 
                 unsigned int bytesInput = 0;
@@ -282,7 +281,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                         lastUpdated = timeElapsed;
 
                         factor = faac_calc_speed(current_input_samples, sampleRate, (double)timeElapsed / 1000.0);
-                        timeLeft = faac_calc_eta(current_input_samples, (unsigned long)infile->samples, (double)timeElapsed / 1000.0);
+                        timeLeft = faac_calc_eta(current_input_samples, (uint64_t)infile->samples, (double)timeElapsed / 1000.0);
 
                         sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
                                 "Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",

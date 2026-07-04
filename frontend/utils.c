@@ -41,7 +41,7 @@ int faac_is_mp4_filename(const char *filename)
     return 0;
 }
 
-double faac_calc_speed(unsigned long current_sample, unsigned int samplerate, double time_used)
+double faac_calc_speed(uint64_t current_sample, unsigned int samplerate, double time_used)
 {
     if (time_used <= 0.0)
         return 0.0;
@@ -49,7 +49,7 @@ double faac_calc_speed(unsigned long current_sample, unsigned int samplerate, do
     return ((double)current_sample / (double)samplerate) / time_used;
 }
 
-double faac_calc_eta(unsigned long current_sample, unsigned long total_samples, double time_used)
+double faac_calc_eta(uint64_t current_sample, uint64_t total_samples, double time_used)
 {
     if (current_sample == 0 || time_used <= 0.0)
         return 0.0;
@@ -175,12 +175,14 @@ void faac_init_params(faac_params_t *params)
     memset(params, 0, sizeof(faac_params_t));
     params->mpeg_version = MPEG4;
     params->object_type = LOW;
-    params->use_tns = 0;
+    params->use_tns = 0; /* CLI baseline default */
+    params->use_lfe = -1;
     params->joint_mode = JOINT_MIXED;
     params->shortctl = SHORTCTL_NORMAL;
-    params->pns_level = -1; /* -1 means use library default */
-    params->quality = 0;    /* 0 means use library default (ABR 64k or VBR 100) */
-    params->bitrate = 0;
+    params->pns_level = 4;
+    params->quality = -1; /* default to lib's ABR mode unless user specifies -q */
+    params->bitrate = -1;
+    params->cutoff = 0;
     params->output_format = ADTS_STREAM;
     params->input_format = FAAC_INPUT_FLOAT;
 }
@@ -192,25 +194,21 @@ int faac_apply_params(faacEncHandle hEncoder, faac_params_t *params, int channel
     config->mpegVersion = params->mpeg_version;
     config->aacObjectType = params->object_type;
     config->useTns = params->use_tns;
-    config->useLfe = params->use_lfe;
+    if (params->use_lfe != -1) config->useLfe = params->use_lfe;
     config->jointmode = params->joint_mode;
-    if (params->pns_level >= 0)
-        config->pnslevel = params->pns_level;
+    config->pnslevel = params->pns_level;
     config->shortctl = params->shortctl;
     config->outputFormat = params->output_format;
     config->inputFormat = params->input_format;
 
-    if (params->cutoff > 0)
-        config->bandWidth = params->cutoff;
-    else
-        config->bandWidth = 0; /* force recalculation based on bitRate/quality */
+    config->bandWidth = params->cutoff;
 
-    if (params->quality > 0)
+    if (params->quality != -1)
     {
         config->quantqual = params->quality;
         config->bitRate = 0;
     }
-    else if (params->bitrate > 0)
+    else if (params->bitrate != -1)
     {
         config->bitRate = params->bitrate / channels;
         config->quantqual = 0;
