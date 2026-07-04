@@ -36,11 +36,10 @@ extern "C" {
 struct faacEncStruct;
 typedef struct faacEncStruct faacEncStruct;
 
-/* Latch the per-channel band limits and gain threshold; also resolves whether
- * TNS runs at all, since it is gated off above TNS_MAX_BITRATE. */
+/* Latch the per-channel band limits and gain threshold; also latch gain threshold. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one channel and, if it pays off, whiten `spec` in place. tdEnvelope
+/* Analyse one channel and, if it pays off, whiten spec in place. tdEnvelope
  * is the block switcher's sub-block energy: it both gates the tool (needs a
  * real temporal event to hide noise behind) and picks the filter direction. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,

@@ -32,6 +32,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+
 #include <string.h>
 #include "frame.h"
 #include "coder.h"
@@ -42,13 +43,7 @@
 /* TNS analysis runs once per long frame over a <=~500-bin band; its loops are
    not hot enough to justify -O3 vectorization, which triples the object size.
    Prefer small code here. */
-#if defined(__clang__)
-#define TNS_MINSIZE __attribute__((minsize))
-#elif defined(__GNUC__)
-#define TNS_MINSIZE __attribute__((optimize("Os")))
-#else
-#define TNS_MINSIZE
-#endif
+
 
 /* TNS Scalefactor Band Limits (ISO/IEC 14496-3 Table 4.4.48)
    These limits ensure TNS is only applied above ~2kHz where it is most effective. */
@@ -67,14 +62,13 @@ static const struct {
                                        make the synthesis filter ring (noise blowup) */
 #define TNS_MEASURED_GAIN   1.4f    /* Outcome gate: the quantized filter must
                                        reduce band energy by at least this factor */
-#define TNS_MAX_BITRATE     80000   /* High-bitrate threshold for TNS bypass */
 #define TNS_MIN_ENERGY      1e-9f   /* Energy floor for spectral analysis */
 
 /* Autocorrelation over the TNS band, lags 0..order. The float scratch copy
    keeps the inner dot product in single precision so it vectorizes cleanly. */
-TNS_MINSIZE static void calc_autocorr_f(int order, int length,
-                            const float * restrict work,
-                            float * restrict r)
+static void calc_autocorr_f(int order, int length,
+                            const float * work,
+                            float * r)
 {
     int lag, i;
 
@@ -93,8 +87,8 @@ TNS_MINSIZE static void calc_autocorr_f(int order, int length,
 
 /* Levinson-Durbin recursion: reflection coeffs k[] from autocorrelation r[].
    Returns the prediction gain (r[0]/residual), the profit signal for the gate. */
-TNS_MINSIZE static float compute_lpc(int order, const float * restrict r,
-                         float * restrict k)
+static float compute_lpc(int order, const float * r,
+                         float * k)
 {
     float a[TNS_MAX_ORDER + 1];
     float err;
@@ -151,7 +145,7 @@ TNS_MINSIZE static float compute_lpc(int order, const float * restrict r,
    arcsine domain, where coeffs near +/-1 (the perceptually sensitive ones) get
    finer steps. k[] is overwritten with the requantized values so the encoder
    filters with exactly what the decoder will reconstruct. */
-TNS_MINSIZE static void quantize_coeffs(int order, int res, float * restrict k, int * restrict idx)
+static void quantize_coeffs(int order, int res, float * k, int * idx)
 {
     const float s_p = (float)(((1 << (res - 1)) - 0.5f) / (M_PI / 2));
     const float s_n = (float)(((1 << (res - 1)) + 0.5f) / (M_PI / 2));
@@ -174,7 +168,7 @@ TNS_MINSIZE static void quantize_coeffs(int order, int res, float * restrict k, 
 
 /* Reflection coeffs -> FIR predictor taps, same symmetric step as the LPC
    recursion but run once on the final (quantized) k[]. */
-TNS_MINSIZE static void finalize_filter(int order, const float * restrict k, faac_real * restrict a)
+static void finalize_filter(int order, const float * k, faac_real * a)
 {
     int i, m;
     a[0] = 1.0;
@@ -197,8 +191,8 @@ TNS_MINSIZE static void finalize_filter(int order, const float * restrict k, faa
 /* In-place TNS analysis FIR across the band. Snapshot the input first so the
    delay line reads original samples directly instead of shifting state each
    step; direction picks which end of the band the prediction leans on. */
-TNS_MINSIZE static void filter_spec(int length, int order, int direction,
-                        const faac_real * restrict a, faac_real * restrict spec)
+static void filter_spec(int length, int order, int direction,
+                        const faac_real * a, faac_real * spec)
 {
     faac_real hist[BLOCK_LEN_LONG];
     int i, j;
@@ -224,7 +218,7 @@ TNS_MINSIZE static void filter_spec(int length, int order, int direction,
     }
 }
 
-TNS_MINSIZE void TnsInit(faacEncStruct* hEncoder)
+void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
@@ -233,7 +227,7 @@ TNS_MINSIZE void TnsInit(faacEncStruct* hEncoder)
     /* Bitrate estimation if quality mode is used */
     if (br == 0) br = hEncoder->config.quantqual * 640;
 
-    int gated = (br >= TNS_MAX_BITRATE) || !hEncoder->config.useTns;
+    int gated = !hEncoder->config.useTns;
     hEncoder->config.useTns = !gated;
 
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
@@ -247,7 +241,7 @@ TNS_MINSIZE void TnsInit(faacEncStruct* hEncoder)
     }
 }
 
-TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
+void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
                faac_real* spec,
                const float* tdEnvelope, int tdEnvelopeLen)
@@ -255,7 +249,7 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData[0].numFilters = 0;
 
-    /* TNS is currently restricted to long windows to prioritize efficiency and
+    /* TNS is currentlyed to long windows to prioritize efficiency and
        because short-block transients are naturally handled by the filterbank's
        higher temporal resolution. */
     if (tnsInfo->tnsDisabled || blockType == ONLY_SHORT_WINDOW) return;
@@ -375,7 +369,6 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
         int i;
         for (i = 0; i < length; i++) trial[i] = (faac_real)wspec[i];
 
-
         filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
         for (i = 0; i < length; i++) {
             orig_e += (faac_real)wspec[i] * (faac_real)wspec[i];
@@ -391,9 +384,10 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
     tnsInfo->windowData[0].coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
 
+
 }
 
-TNS_MINSIZE int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)
+int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)
 {
     TnsInfo *tns = &coderInfo->tnsInfo;
 
