@@ -180,6 +180,9 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (hEncoder->config.aacObjectType != LOW)
         return 0;
 
+    /* Re-init TNS for new profile */
+    TnsInit(hEncoder);
+
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
@@ -205,17 +208,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
-    if (config->quantqual > (unsigned long)maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
     hEncoder->config.bitRate = config->bitRate;
-    hEncoder->config.quantqual = config->quantqual;
-
-    /* Re-init TNS after bitrate/quality commitment. */
-    TnsInit(hEncoder);
-    config->useTns = hEncoder->config.useTns;
 
     if (!config->bandWidth)
     {
@@ -229,6 +222,13 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
 		hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
+
+    if (config->quantqual > (unsigned long)maxqual)
+        config->quantqual = maxqual;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
+
+    hEncoder->config.quantqual = config->quantqual;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -268,10 +268,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
     hEncoder->psymodel = (psymodel_t *)psymodellist[hEncoder->config.psymodelidx].ptr;
     hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
-    /* Call after TnsInit to settle effective TNS/block-switch state. */
-
-    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
-                 hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns, hEncoder->sampleRate);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -316,8 +313,6 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    /* Default TNS off for library consumers. */
-
     hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
@@ -348,6 +343,8 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].prev_window_shape = SINE_WINDOW;
         hEncoder->coderInfo[channel].window_shape = SINE_WINDOW;
         hEncoder->coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        hEncoder->psyInfo[channel].current.block_type = ONLY_LONG_WINDOW;
+
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
@@ -367,12 +364,11 @@ faacEncHandle FAACAPI faacEncOpen(unsigned long sampleRate,
 
 	hEncoder->psymodel->PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns, hEncoder->sampleRate);
 
     FilterBankInit(hEncoder);
 
     TnsInit(hEncoder);
-    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
-                 hEncoder->sampleRate);
 
     QuantizeInit();
 
@@ -591,6 +587,7 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		for (channel = 0; channel < numChannels; channel++)
 		{
 			coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+            hEncoder->psyInfo[channel].current.block_type = ONLY_LONG_WINDOW;
 		}
     }
     else if ((hEncoder->frameNum <= (LOOKAHEAD_DEPTH + 1)) || (shortctl == SHORTCTL_NOLONG))
@@ -598,6 +595,8 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
 		for (channel = 0; channel < numChannels; channel++)
 		{
 			coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+            hEncoder->psyInfo[channel].current.block_type = ONLY_SHORT_WINDOW;
+            hEncoder->psyInfo[channel].current.use_tns = 0;
 		}
     }
 
@@ -622,21 +621,6 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-
-            /* TNS analysis and filtering must precede spectral grouping and PNS inhibition. */
-            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)) {
-                int tdEnvLen;
-                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
-                TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
-                          coderInfo[channel].block_type,
-                          coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel],
-                          tdEnv, tdEnvLen);
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
-
             BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
@@ -650,21 +634,22 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
 
-            /* Perform TNS analysis and filtering. Borderline transients stay long and skip analysis. */
-            if ((channelInfo[channel].type != ELEMENT_LFE) && (useTns)
-                && !hEncoder->psyInfo[channel].promoted_long) {
-                int tdEnvLen;
-                const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
-                TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
-                          coderInfo[channel].block_type,
-                          coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel],
-                          tdEnv, tdEnvLen);
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
+    /* TNS analysis and filtering */
+    for (channel = 0; channel < numChannels; channel++) {
+        if (useTns && hEncoder->psyInfo[channel].current.use_tns) {
+            int tdEnvLen;
+            const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
+            TnsEncode(&(coderInfo[channel].tnsInfo),
+                      coderInfo[channel].sfbn,
+                      coderInfo[channel].block_type,
+                      coderInfo[channel].sfb_offset,
+                      hEncoder->freqBuff[channel],
+                      tdEnv, tdEnvLen);
+        } else {
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 
@@ -710,8 +695,10 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
     if (!bitStream)
         return -1;
 
-    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0)
+    if (WriteBitstream(hEncoder, coderInfo, channelInfo, bitStream, numChannels) < 0) {
+        CloseBitStream(bitStream);
         return -1;
+    }
 
     /* Close the bitstream and return the number of bytes written */
     frameBytes = CloseBitStream(bitStream);

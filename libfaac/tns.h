@@ -28,6 +28,7 @@
 #define TNS_H
 
 #include "faac_real.h"
+#include "coder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,10 +37,11 @@ extern "C" {
 struct faacEncStruct;
 typedef struct faacEncStruct faacEncStruct;
 
-/* Latch the per-channel band limits and gain threshold; also latch gain threshold. */
+/* Latch the per-channel band limits and gain threshold; also resolves whether
+ * it is active at all. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one channel and, if it pays off, whiten spec in place. tdEnvelope
+/* Analyse one channel and, if it pays off, whiten `spec` in place. tdEnvelope
  * is the block switcher's sub-block energy: it both gates the tool (needs a
  * real temporal event to hide noise behind) and picks the filter direction. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,
