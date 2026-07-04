@@ -32,9 +32,6 @@
 
 #include <math.h>
 #include <stdlib.h>
-#ifdef FAAC_TNS_TUNING
-#include <stdio.h>
-#endif
 #include <string.h>
 #include "frame.h"
 #include "coder.h"
@@ -378,6 +375,7 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
         int i;
         for (i = 0; i < length; i++) trial[i] = (faac_real)wspec[i];
 
+
         filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
         for (i = 0; i < length; i++) {
             orig_e += (faac_real)wspec[i] * (faac_real)wspec[i];
@@ -393,16 +391,6 @@ TNS_MINSIZE void TnsEncode(TnsInfo* tnsInfo, int numBands,
     tnsInfo->windowData[0].coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
 
-#ifdef FAAC_TNS_TUNING
-    {
-        static int fired = 0;
-        static double gsum = 0.0;
-        fired++; gsum += gain;
-        if (fired % 50 == 0)
-            fprintf(stderr, "TNS: fired=%d avg_gain=%.2f order=%d dir=%d len=%d\n",
-                    fired, gsum / fired, order, filter->direction, filter->length);
-    }
-#endif
 }
 
 TNS_MINSIZE int TnsWriteBitstream(CoderInfo* coderInfo, BitStream* bitStream, int writeFlag)

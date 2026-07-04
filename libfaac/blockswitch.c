@@ -76,25 +76,8 @@ void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive,
   faac_real hard = PSY_TD_THRESH;
   unsigned int channel;
 
-  if (tnsActive)
-  {
-    /* Tuning knob: FAAC_TD_THRESH overrides the hard ceiling (only
-       meaningful above the base threshold), bypassing the sample-rate
-       gate so A/B harnesses can still probe low rates. Cached like
-       FAAC_FORCE_LONG. */
-    static double envHard = -1.0;
-    if (envHard < 0.0)
-    {
-      const char *env = getenv("FAAC_TD_THRESH");
-      envHard = env ? strtod(env, NULL) : 0.0;
-      if (envHard < 0.0)
-        envHard = 0.0;
-    }
-    if (envHard >= (double)PSY_TD_THRESH)
-      hard = (faac_real)envHard;
-    else if (sampleRate >= PSY_TD_HARD_MIN_SR)
-      hard = PSY_TD_HARD;
-  }
+  if (tnsActive && sampleRate >= PSY_TD_HARD_MIN_SR)
+    hard = PSY_TD_HARD;
 
   for (channel = 0; channel < numChannels; channel++)
     psyInfo[channel].td_hard = hard;
@@ -277,25 +260,6 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
   unsigned int channel;
   int desire = ONLY_LONG_WINDOW;
 
-  /* Debug/measurement knob: FAAC_FORCE_LONG=1 disables block switching so
-     pre-echo stays in long blocks (used to validate TNS metrics). */
-  {
-    static int forceLong = -1;
-    if (forceLong < 0)
-    {
-      const char *env = getenv("FAAC_FORCE_LONG");
-      forceLong = env && env[0] == '1';
-    }
-    if (forceLong)
-    {
-      for (channel = 0; channel < numChannels; channel++)
-      {
-        coderInfo[channel].block_type = ONLY_LONG_WINDOW;
-        coderInfo[channel].desired_block_type = ONLY_LONG_WINDOW;
-      }
-      return;
-    }
-  }
 
   /* Use the same block type for all channels
      If there is 1 channel that wants a short block,
@@ -307,26 +271,6 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
       desire = ONLY_SHORT_WINDOW;
   }
 
-  /* Measurement knob: FAAC_BS_STATS=1 reports the short-block rate so tuning
-     runs can see how many frames the joint decision keeps long. */
-  {
-    static int bsStats = -1;
-    if (bsStats < 0)
-    {
-      const char *env = getenv("FAAC_BS_STATS");
-      bsStats = env && env[0] == '1';
-    }
-    if (bsStats)
-    {
-      static long totalFrames = 0, shortFrames = 0;
-      totalFrames++;
-      if (desire == ONLY_SHORT_WINDOW)
-        shortFrames++;
-      if (totalFrames % 100 == 0)
-        fprintf(stderr, "BS_STATS frames=%ld short=%ld pct=%.1f\n",
-                totalFrames, shortFrames, 100.0 * shortFrames / totalFrames);
-    }
-  }
 
   for (channel = 0; channel < numChannels; channel++)
   {
