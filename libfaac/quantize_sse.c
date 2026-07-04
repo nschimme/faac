@@ -37,14 +37,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
     // Process 4 elements per iteration
     for (; cnt <= n - 4; cnt += 4)
     {
-#ifdef FAAC_PRECISION_SINGLE
         __m128 x_orig = _mm_loadu_ps((const float*)&xr[cnt]);
-#else
-        // Convert 4 doubles to 4 floats via two 128-bit loads
-        __m128 low  = _mm_cvtpd_ps(_mm_loadu_pd(&xr[cnt]));
-        __m128 high = _mm_cvtpd_ps(_mm_loadu_pd(&xr[cnt + 2]));
-        __m128 x_orig = _mm_movelh_ps(low, high);
-#endif
         // Capture sign and Absolute value
         __m128 sign_mask = _mm_cmplt_ps(x_orig, zero);
         __m128 x = _mm_and_ps(x_orig, abs_mask);

@@ -34,11 +34,7 @@ typedef struct
 
 /* Rounding bias for the x^(3/4) quantization: 0.4054 minimizes average
  * quantization error for a uniform distribution (ISO 14496-3 §8.3.5). */
-#ifdef FAAC_PRECISION_SINGLE
 #define MAGIC_NUMBER 0.4054f
-#else
-#define MAGIC_NUMBER 0.4054
-#endif
 
 enum {
     DEFQUAL = 100,

@@ -26,7 +26,6 @@
 
 #include <math.h>
 
-#ifdef FAAC_PRECISION_SINGLE
 typedef float faac_real;
 #define FAAC_SIN sinf
 #define FAAC_COS cosf
@@ -37,17 +36,5 @@ typedef float faac_real;
 #define FAAC_ASIN asinf
 #define FAAC_LRINT lrintf
 #define FAAC_FLOOR floorf
-#else
-typedef double faac_real;
-#define FAAC_SIN sin
-#define FAAC_COS cos
-#define FAAC_SQRT sqrt
-#define FAAC_FABS fabs
-#define FAAC_LOG10 log10
-#define FAAC_POW pow
-#define FAAC_ASIN asin
-#define FAAC_LRINT lrint
-#define FAAC_FLOOR floor
-#endif
 
 #endif /* FAAC_REAL_H */
