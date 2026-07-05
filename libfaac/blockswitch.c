@@ -24,7 +24,6 @@ typedef struct {
 void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate) {
     faac_real hard = PSY_TD_THRESH;
     unsigned int ch;
-
     if (tnsActive) {
         static double envHard = -1.0;
         if (envHard < 0.0) {
@@ -34,10 +33,7 @@ void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, uns
         if (envHard >= (double)PSY_TD_THRESH) hard = (faac_real)envHard;
         else if (sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR) hard = PSY_TD_HARD;
     }
-
-    for (ch = 0; ch < numChannels; ch++) {
-        psyInfo[ch].td_hard = hard;
-    }
+    for (ch = 0; ch < numChannels; ch++) psyInfo[ch].td_hard = hard;
 }
 
 static void PsyCheckShort(PsyInfo * psyInfo) {
@@ -68,7 +64,6 @@ static void PsyCheckShort(PsyInfo * psyInfo) {
 static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels, unsigned int sampleRate) {
     unsigned int ch;
     gpsyInfo->sampleRate = (faac_real) sampleRate;
-
     for (ch = 0; ch < numChannels; ch++) {
         psyInfo[ch].data = AllocMemory(sizeof(psydata_t));
         if (psyInfo[ch].data) SetMemory(psyInfo[ch].data, 0, sizeof(psydata_t));
@@ -85,10 +80,7 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
 static void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels) {
     unsigned int ch;
     for (ch = 0; ch < numChannels; ch++) {
-        if (psyInfo[ch].data) {
-            FreeMemory(psyInfo[ch].data);
-            psyInfo[ch].data = NULL;
-        }
+        if (psyInfo[ch].data) { FreeMemory(psyInfo[ch].data); psyInfo[ch].data = NULL; }
     }
 }
 
@@ -99,9 +91,7 @@ static void PsyCalculate(ChannelInfo * channelInfo, PsyInfo * psyInfo, unsigned 
             if (channelInfo[ch].type == ELEMENT_LFE) {
                 psyInfo[ch].pending.block_type = ONLY_LONG_WINDOW;
                 psyInfo[ch].pending.use_tns = 0;
-            } else {
-                PsyCheckShort(&psyInfo[ch]);
-            }
+            } else PsyCheckShort(&psyInfo[ch]);
         }
     }
 }
@@ -109,22 +99,18 @@ static void PsyCalculate(ChannelInfo * channelInfo, PsyInfo * psyInfo, unsigned 
 static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_real * restrict p_lookahead1, faac_real * restrict p_lookahead2) {
     int win, l, n = 2 * BLOCK_LEN_SHORT;
     faac_real * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
-    psydata_t *psydata = (psydata_t *)psyInfo[0].data;
+    psydata_t *psydata = (psydata_t *)psyInfo->data;
 
-    psyInfo[0].current = psyInfo[0].pending;
+    /* Propagate strategy: frame currently being MDCT-coded gets its strategy here. */
+    psyInfo->current = psyInfo->pending;
 
     memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME, 2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
-
     memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(faac_real));
     memcpy(transBuff + BLOCK_LEN_LONG, p_lookahead2, BLOCK_LEN_LONG * sizeof(faac_real));
-
     for (win = 0; win < SUBBLOCKS_PER_FRAME; win++) {
         faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
         faac_real e = 0.0;
-        for (l = 0; l < n; l++) {
-            faac_real d = seg[l] - seg[l - 1];
-            e += d * d;
-        }
+        for (l = 0; l < n; l++) { faac_real d = seg[l] - seg[l - 1]; e += d * d; }
         psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
     }
 }
@@ -136,9 +122,7 @@ const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len) {
 }
 
 static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels) {
-    unsigned int ch;
-    int desire = ONLY_LONG_WINDOW;
-
+    unsigned int ch; int desire = ONLY_LONG_WINDOW;
     {
         static int forceLong = -1;
         if (forceLong < 0) {
@@ -153,15 +137,11 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
             return;
         }
     }
-
     for (ch = 0; ch < numChannels; ch++) {
         if (psyInfo[ch].pending.block_type == ONLY_SHORT_WINDOW) desire = ONLY_SHORT_WINDOW;
     }
-
     for (ch = 0; ch < numChannels; ch++) {
-        int lasttype = coderInfo[ch].block_type;
-        int type = desire;
-
+        int lasttype = coderInfo[ch].block_type; int type = desire;
         if (desire == ONLY_SHORT_WINDOW || coderInfo[ch].desired_block_type == ONLY_SHORT_WINDOW) {
             if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW) type = LONG_SHORT_WINDOW;
             else type = ONLY_SHORT_WINDOW;
@@ -169,15 +149,10 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
             if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW) type = SHORT_LONG_WINDOW;
             else type = ONLY_LONG_WINDOW;
         }
-
         coderInfo[ch].block_type = type;
         coderInfo[ch].desired_block_type = desire;
-        psyInfo[ch].current = psyInfo[ch].pending;
+        /* current.block_type is what TNS uses. Transitions are still LONG windows in MDCT sense. */
         psyInfo[ch].current.block_type = type;
-
-        if (desire == ONLY_SHORT_WINDOW) {
-            psyInfo[ch].current.use_tns = 0;
-        }
     }
 }
 
