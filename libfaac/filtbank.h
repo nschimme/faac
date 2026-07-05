@@ -16,7 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * $Id: filtbank.h,v 1.12 2012/03/01 18:34:17 knik Exp $
+ * $Id: filtbank.h,v 1.12f 2012/03/01 18:34:17 knik Exp $
  */
 
 #ifndef FILTBANK_H

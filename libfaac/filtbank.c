@@ -22,7 +22,7 @@ Copyright(c)1996.
  *                                                                           *
  ****************************************************************************/
 /*
- * $Id: filtbank.c,v 1.14 2012/03/01 18:34:17 knik Exp $
+ * $Id: filtbank.c,v 1.14f 2012/03/01 18:34:17 knik Exp $
  */
 
 /*
@@ -68,9 +68,9 @@ void FilterBankInit(faacEncStruct* hEncoder)
         return;
 
     for( i=0; i<BLOCK_LEN_LONG; i++ )
-        hEncoder->sin_window_long[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_LONG)) * (i + 0.5));
+        hEncoder->sin_window_long[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_LONG)) * (i + 0.5f));
     for( i=0; i<BLOCK_LEN_SHORT; i++ )
-        hEncoder->sin_window_short[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_SHORT)) * (i + 0.5));
+        hEncoder->sin_window_short[i] = FAAC_SIN((M_PI/(2*BLOCK_LEN_SHORT)) * (i + 0.5f));
 
     CalculateKBDWindow(hEncoder->kbd_window_long, 4, BLOCK_LEN_LONG*2);
     CalculateKBDWindow(hEncoder->kbd_window_short, 6, BLOCK_LEN_SHORT*2);
@@ -201,7 +201,7 @@ static faac_real Izero(faac_real x)
     int n;
 
     sum = u = n = 1;
-    halfx = x/2.0;
+    halfx = x/2.0f;
     do {
         temp = halfx/(faac_real)n;
         n += 1;
@@ -218,20 +218,20 @@ static void CalculateKBDWindow(faac_real* win, faac_real alpha, int length)
     int i;
     faac_real IBeta;
     faac_real tmp;
-    faac_real sum = 0.0;
+    faac_real sum = 0.0f;
 
     alpha *= M_PI;
-    IBeta = 1.0/Izero(alpha);
+    IBeta = 1.0f/Izero(alpha);
 
     /* calculate lower half of Kaiser Bessel window */
     for(i=0; i<(length>>1); i++) {
-        tmp = 4.0*(faac_real)i/(faac_real)length - 1.0;
-        win[i] = Izero(alpha*FAAC_SQRT(1.0-tmp*tmp))*IBeta;
+        tmp = 4.0f*(faac_real)i/(faac_real)length - 1.0f;
+        win[i] = Izero(alpha*FAAC_SQRT(1.0f-tmp*tmp))*IBeta;
         sum += win[i];
     }
 
-    sum = 1.0/sum;
-    tmp = 0.0;
+    sum = 1.0f/sum;
+    tmp = 0.0f;
 
     /* calculate lower half of window */
     for(i=0; i<(length>>1); i++) {
@@ -264,8 +264,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
     cfreq = FAAC_COS(freq);
     sfreq = FAAC_SIN(freq);
 
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
+    c = FAAC_COS(freq * 0.125f);
+    s = FAAC_SIN(freq * 0.125f);
 
     /* Induction variables */
     int n1 = N2 - 1;  /* descending: N/2 - 1 - 2i */
@@ -330,8 +330,8 @@ void MDCT( FFT_Tables *fft_tables, faac_real *data, int N, faac_real *work )
     }
 
     /* prepare for recurrence relations in post-twiddle */
-    c = FAAC_COS(freq * 0.125);
-    s = FAAC_SIN(freq * 0.125);
+    c = FAAC_COS(freq * 0.125f);
+    s = FAAC_SIN(freq * 0.125f);
 
     /* Base pointers for output mapping */
     faac_real *base_even0 = data;

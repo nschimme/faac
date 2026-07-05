@@ -284,7 +284,7 @@ int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {
     int bits = 0;
     /* Section run field is 3 bits for short windows (max 7 windows/section) and
-     * 5 bits for long windows (max 31 bands/section) — ISO 14496-3 §4.6.8.2. */
+     * 5 bits for long windows (max 31 bands/section) — ISO 14496-3 §4.6.8.2f. */
     int max_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
     int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
     int g;

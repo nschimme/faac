@@ -24,7 +24,7 @@ copyright notice must be included in all copies or derivative works.
 Copyright (c) 1997.
 **********************************************************************/
 /*
- * $Id: tns.c,v 1.11 2012/03/01 18:34:17 knik Exp $
+ * $Id: tns.c,v 1.11f 2012/03/01 18:34:17 knik Exp $
  */
 
 #include <math.h>
@@ -37,7 +37,7 @@ Copyright (c) 1997.
 /***********************************************/
 /* TNS Profile/Frequency Dependent Parameters  */
 /***********************************************/
-/* Limit bands to > 2.0 kHz */
+/* Limit bands to > 2.0f kHz */
 static unsigned short tnsMinBandNumberLong[12] =
 { 11, 12, 15, 16, 17, 20, 25, 26, 24, 28, 30, 31 };
 static unsigned short tnsMinBandNumberShort[12] =
@@ -269,8 +269,8 @@ static int TruncateCoeffs(int fOrder,faac_real threshold,faac_real* kArray)
     int i;
 
     for (i = fOrder; i >= 0; i--) {
-        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0;
-        if (kArray[i]!=0.0) return i;
+        kArray[i] = (FAAC_FABS(kArray[i])>threshold) ? kArray[i] : 0.0f;
+        if (kArray[i]!=0.0f) return i;
     }
 
     return 0;
@@ -289,12 +289,12 @@ static void QuantizeReflectionCoeffs(int fOrder,
     faac_real iqfac,iqfac_m;
     int i;
 
-    iqfac = ((1<<(coeffRes-1))-0.5)/(M_PI/2);
-    iqfac_m = ((1<<(coeffRes-1))+0.5)/(M_PI/2);
+    iqfac = ((1<<(coeffRes-1))-0.5f)/(M_PI/2);
+    iqfac_m = ((1<<(coeffRes-1))+0.5f)/(M_PI/2);
 
     /* Quantize and inverse quantize */
     for (i=1;i<=fOrder;i++) {
-        indexArray[i] = (kArray[i]>=0)?(int)(0.5+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5+(FAAC_ASIN(kArray[i])*iqfac_m));
+        indexArray[i] = (kArray[i]>=0)?(int)(0.5f+(FAAC_ASIN(kArray[i])*iqfac)):(int)(-0.5f+(FAAC_ASIN(kArray[i])*iqfac_m));
         kArray[i] = FAAC_SIN((faac_real)indexArray[i]/((indexArray[i]>=0)?iqfac:iqfac_m));
     }
 }
@@ -312,7 +312,7 @@ static void Autocorrelation(int maxOrder,                      /* Maximum autoco
     int order, index;
 
     for (order = 0; order <= maxOrder; order++)
-        rArray[order] = 0.0;
+        rArray[order] = 0.0f;
 
     int limit = dataSize - maxOrder;
     for (index = 0; index < limit; index++) {
@@ -364,18 +364,18 @@ static faac_real LevinsonDurbin(int fOrder,                      /* Filter order
     aLastPtr = aArray2;
     /* If there is no signal energy, return */
     if (!signal) {
-        kArray[0]=1.0;
+        kArray[0]=1.0f;
         for (order=1;order<=fOrder;order++) {
-            kArray[order]=0.0;
+            kArray[order]=0.0f;
         }
         return 0;
 
     } else {
 
         /* Set up first iteration */
-        kArray[0]=1.0;
-        aPtr[0]=1.0;        /* Ptr to predictor coeffs, current iteration*/
-        aLastPtr[0]=1.0;    /* Ptr to predictor coeffs, last iteration */
+        kArray[0]=1.0f;
+        aPtr[0]=1.0f;        /* Ptr to predictor coeffs, current iteration*/
+        aLastPtr[0]=1.0f;    /* Ptr to predictor coeffs, last iteration */
         error=rArray[0];
 
         /* Now perform recursion */
@@ -384,8 +384,8 @@ static faac_real LevinsonDurbin(int fOrder,                      /* Filter order
             for (i=1;i<order;i++) {
                 kTemp += aLastPtr[i]*rArray[order-i];
             }
-            if (error <= 0.0 || FAAC_FABS(kTemp) >= error) {
-                error = 0.0;
+            if (error <= 0.0f || FAAC_FABS(kTemp) >= error) {
+                error = 0.0f;
                 break;
             }
             kTemp = -kTemp/error;
@@ -395,7 +395,7 @@ static faac_real LevinsonDurbin(int fOrder,                      /* Filter order
                 aPtr[i] = aLastPtr[i] + kTemp*aLastPtr[order-i];
             }
             error = error * (1 - kTemp*kTemp);
-            if (error <= 0.0) break;
+            if (error <= 0.0f) break;
 
             /* Now make current iteration the last one */
             aTemp=aLastPtr;
@@ -403,7 +403,7 @@ static faac_real LevinsonDurbin(int fOrder,                      /* Filter order
             aPtr=aTemp;         /* Last becomes current */
         }
         /* If perfect prediction, trigger TNS */
-        if (error <= 0.0) return DEF_TNS_GAIN_THRESH + 1.0;
+        if (error <= 0.0f) return DEF_TNS_GAIN_THRESH + 1.0f;
         return signal/error;    /* return the gain */
     }
 }
@@ -419,10 +419,10 @@ static void StepUp(int fOrder,faac_real* kArray,faac_real* aArray)
     faac_real aTemp[TNS_MAX_ORDER+2];
     int i,order;
 
-    aArray[0]=1.0;
-    aTemp[0]=1.0;
+    aArray[0]=1.0f;
+    aTemp[0]=1.0f;
     for (order=1;order<=fOrder;order++) {
-        aArray[order]=0.0;
+        aArray[order]=0.0f;
         for (i=1;i<=order;i++) {
             aTemp[i] = aArray[i] + kArray[order]*aArray[order-i];
         }

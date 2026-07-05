@@ -27,8 +27,8 @@
 /* Intensity stereo applies only at and above this frequency; below it the ear
  * localizes from waveform detail, so panning the band would be audible. */
 #define IS_START_FREQ_HZ 5500
-/* Upper bound on the crossover, as a fraction of the sample rate (0.35*Fs =
- * 0.7*Nyquist), so the band stays well inside the coded spectrum. */
+/* Upper bound on the crossover, as a fraction of the sample rate (0.35f*Fs =
+ * 0.7f*Nyquist), so the band stays well inside the coded spectrum. */
 #define IS_FREQ_CAP_NUM  7
 #define IS_FREQ_CAP_DEN  20
 /* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
@@ -42,7 +42,7 @@ static inline void calculate_energies(const faac_real * restrict sl0, const faac
                                int start, int len, int wstart, int wend,
                                faac_real * restrict el_out, faac_real * restrict er_out, faac_real * restrict elr_out)
 {
-    faac_real el = 0, er = 0, elr = 0;
+    faac_real el = 0.0f, er = 0.0f, elr = 0.0f;
     int win, i;
 
     for (win = wstart; win < wend; win++) {
@@ -73,7 +73,7 @@ static inline void apply_mute(faac_real * restrict s0, int start, int len, int w
 
 /* When one component (mid or side) dominates, collapse both channels to that
  * component and zero the other — it costs no bits and the signal loss is masked.
- * Factor of 0.5 keeps the coded amplitude on the same scale as L/R. */
+ * Factor of 0.5f keeps the coded amplitude on the same scale as L/R. */
 static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
@@ -83,8 +83,8 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
             faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
             faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
-                sl[i] = 0.5 * (sl[i] + sr[i]);
-                sr[i] = 0.0;
+                sl[i] = 0.5f * (sl[i] + sr[i]);
+                sr[i] = 0.0f;
             }
         }
     } else {
@@ -92,8 +92,8 @@ static inline void apply_ms(faac_real * restrict sl0, faac_real * restrict sr0,
             faac_real * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
             faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
-                sr[i] = 0.5 * (sl[i] - sr[i]);
-                sl[i] = 0.0;
+                sr[i] = 0.5f * (sl[i] - sr[i]);
+                sl[i] = 0.0f;
             }
         }
     }
@@ -109,7 +109,7 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
             faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sl[i] = (sl[i] + sr[i]) * vfix;
-                sr[i] = 0.0;
+                sr[i] = 0.0f;
             }
         }
     } else {
@@ -118,7 +118,7 @@ static inline void apply_is(faac_real * restrict sl0, faac_real * restrict sr0,
             faac_real * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++) {
                 sl[i] = (sl[i] - sr[i]) * vfix;
-                sr[i] = 0.0;
+                sr[i] = 0.0f;
             }
         }
     }
@@ -150,8 +150,8 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         faac_real el, er, elr;
         calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
 
-        faac_real es   = el + er + 2.0*elr;
-        faac_real ed   = el + er - 2.0*elr;
+        faac_real es   = el + er + 2.0f*elr;
+        faac_real ed   = el + er - 2.0f*elr;
         faac_real etot = el + er;
         if (es < 0) es = 0;
         if (ed < 0) ed = 0;
@@ -165,10 +165,10 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
          * (sqrt(L)+sqrt(R))^2 to (L+R + 2*sqrt(L*R)) to eliminate one square
          * root per band while maintaining identical decision margins. */
         if ((mode == JOINT_IS || (mode == JOINT_MIXED && sfb >= is_start_sfb)) && el > 0 && er > 0) {
-            faac_real th = (el + er + 2.0 * FAAC_SQRT(el * er)) * inv_isthr;
+            faac_real th = (el + er + 2.0f * FAAC_SQRT(el * er)) * inv_isthr;
             int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
             if (hcb != HCB_NONE) {
-                faac_real inv_etot = 1.0 / etot;
+                faac_real inv_etot = 1.0f / etot;
                 int sf  = FAAC_LRINT(FAAC_LOG10(el * inv_etot) * SF_STEP_ENRG);
                 int pan = FAAC_LRINT(FAAC_LOG10(er * inv_etot) * SF_STEP_ENRG) - sf;
                 /* Extreme pan: drop the inaudible channel to HCB_ZERO instead of
@@ -200,13 +200,13 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         int ms = 0;
         if (mode == JOINT_MS || mode == JOINT_MIXED) {
             /* M/S fires when min(L,R) * thrmid ≥ dominant component: the weaker channel
-             * contributes enough to justify the transform overhead. 0.25 accounts for halving. */
-            faac_real em = 0.25 * es, side = 0.25 * ed;
+             * contributes enough to justify the transform overhead. 0.25f accounts for halving. */
+            faac_real em = 0.25f * es, side = 0.25f * ed;
             if (min(el, er) * thrmid >= max(em, side)) {
-                if (em * thrmid * 2.0 >= etot) {
+                if (em * thrmid * 2.0f >= etot) {
                     ms = 1;
                     apply_ms(sl0, sr0, start, len, wstart, wend, 1);
-                } else if (side * thrmid * 2.0 >= etot) {
+                } else if (side * thrmid * 2.0f >= etot) {
                     ms = 1;
                     apply_ms(sl0, sr0, start, len, wstart, wend, 0);
                 }
@@ -232,29 +232,29 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
                int maxchan, faac_real quality, int mode, int sampleRate)
 {
     int chn;
-    faac_real inv_quality = 1.0 / quality;
-    faac_real thrmid = 1.0, isthr = 1.0, thrside = 0.0;
+    faac_real inv_quality = 1.0f / quality;
+    faac_real thrmid = 1.0f, isthr = 1.0f, thrside = 0.0f;
 
     switch (mode) {
         case JOINT_MIXED:
-            thrmid = (0.09 * 0.85) * inv_quality;
-            if (thrmid > 0.25) thrmid = 0.25;
-            thrmid += 1.0;
-            isthr = 0.18 * inv_quality + 1.0;
+            thrmid = (0.09f * 0.85f) * inv_quality;
+            if (thrmid > 0.25f) thrmid = 0.25f;
+            thrmid += 1.0f;
+            isthr = 0.18f * inv_quality + 1.0f;
             if (isthr > M_SQRT2) isthr = M_SQRT2;
-            thrside = 0.1 * inv_quality;
-            if (thrside > 0.3) thrside = 0.3;
+            thrside = 0.1f * inv_quality;
+            if (thrside > 0.3f) thrside = 0.3f;
             break;
         case JOINT_MS:
-            thrmid = (1.09 - 1.0) * inv_quality;
-            if (thrmid > 0.25) thrmid = 0.25;
-            thrmid += 1.0;
-            thrside = 0.1 * inv_quality;
-            if (thrside > 0.3) thrside = 0.3;
+            thrmid = (1.09f - 1.0f) * inv_quality;
+            if (thrmid > 0.25f) thrmid = 0.25f;
+            thrmid += 1.0f;
+            thrside = 0.1f * inv_quality;
+            if (thrside > 0.3f) thrside = 0.3f;
             break;
         case JOINT_IS:
-            isthr = 0.18 * (inv_quality * inv_quality);
-            isthr += 1.0;
+            isthr = 0.18f * (inv_quality * inv_quality);
+            isthr += 1.0f;
             if (isthr > M_SQRT2) isthr = M_SQRT2;
             break;
         default:
@@ -264,7 +264,7 @@ void AACstereo(CoderInfo *coder, ChannelInfo *channel, faac_real *s[MAX_CHANNELS
      * Each threshold scales inversely with quality — higher quality encodes
      * apply stereo coding more conservatively, touching the signal less. */
     thrmid *= thrmid;
-    faac_real inv_isthr = 1.0 / (isthr * isthr);
+    faac_real inv_isthr = 1.0f / (isthr * isthr);
     faac_real thrside_sq = thrside * thrside;
 
     for (chn = 0; chn < maxchan; chn++) {

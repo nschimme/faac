@@ -246,14 +246,14 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                         lastUpdated = timeElapsed;
 
                         factor = (float) timeEncoded / (float) (timeElapsed ? timeElapsed : 1);
-			timeLeft = 10.0 * infile->samples / sampleRate / factor - 0.1 * timeElapsed;
+			timeLeft = 10.0f * infile->samples / sampleRate / factor - 0.1f * timeElapsed;
 
 			sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
 				"Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
-				timeEncoded / 6000, 0.01 * (timeEncoded % 6000),
-				timeElapsed / 6000, 0.01 * (timeElapsed % 6000),
+				timeEncoded / 6000, 0.01f * (timeEncoded % 6000),
+				timeElapsed / 6000, 0.01f * (timeElapsed % 6000),
 				factor,
-				timeLeft / 600, 0.1 * (timeLeft % 600)
+				timeLeft / 600, 0.1f * (timeLeft % 600)
 			       );
 
                         SetDlgItemText(hWnd, IDC_TIME, szTemp);

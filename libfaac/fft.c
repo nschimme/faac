@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * $Id: fft.c,v 1.12 2005/02/02 07:49:55 sur Exp $
+ * $Id: fft.c,v 1.12f 2005/02/02 07:49:55 sur Exp $
  * Copyright (C) 2002 Krzysztof Nikiel
  *
  * This library is free software; you can redistribute it and/or

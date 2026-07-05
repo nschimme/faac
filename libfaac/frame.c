@@ -37,8 +37,8 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05  /* +/- 5% deadband */
-#define RC_DAMPING_FACTOR      0.6   /* Control loop damping */
+#define RC_DEADBAND_THRESHOLD  0.05f  /* +/- 5% deadband */
+#define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
@@ -201,7 +201,7 @@ int FAACAPI faacEncSetConfiguration(faacEncHandle hpEncoder,
         {
             config->quantqual = (faac_real)config->bitRate * hEncoder->numChannels / 1280;
             if (config->quantqual > DEFQUAL)
-                config->quantqual = (config->quantqual - DEFQUAL) * 3.0 + DEFQUAL;
+                config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
     }
 
@@ -400,7 +400,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
             }
             case FAAC_INPUT_32BIT: {
                 int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
-                for (i = 0; i < spch; i++) { dst[i] = (1.0f/256) * (faac_real)*src; src += numChannels; }
+                for (i = 0; i < spch; i++) { dst[i] = (1.0f/256.0f) * (faac_real)*src; src += numChannels; }
                 break;
             }
             case FAAC_INPUT_FLOAT: {
@@ -699,16 +699,16 @@ int FAACAPI faacEncEncode(faacEncHandle hpEncoder,
             / hEncoder->sampleRate;
         faac_real fix = (faac_real)desbits / (faac_real)(frameBytes * 8);
 
-        if (fix < (1.0 - RC_DEADBAND_THRESHOLD)) {
+        if (fix < (1.0f - RC_DEADBAND_THRESHOLD)) {
             fix += RC_DEADBAND_THRESHOLD;
-        } else if (fix > (1.0 + RC_DEADBAND_THRESHOLD)) {
+        } else if (fix > (1.0f + RC_DEADBAND_THRESHOLD)) {
             fix -= RC_DEADBAND_THRESHOLD;
         } else {
-            fix = 1.0;
+            fix = 1.0f;
         }
 
         /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0) * RC_DAMPING_FACTOR + 1.0;
+        fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
         // printf("q: %.1f(f:%.4f)\n", hEncoder->aacquantCfg.quality, fix);
 
         hEncoder->aacquantCfg.quality *= fix;

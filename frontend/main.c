@@ -1142,27 +1142,27 @@ int main(int argc, char *argv[])
 
         if ((showcnt <= 0) || !bytesWritten)
         {
-            double timeused;
+            float timeused;
 #ifdef __unix__
             struct rusage usage;
 #endif
 #ifdef _WIN32
             char percent[MAX_PATH + 20];
-            timeused = (GetTickCount() - begin) * 1e-3;
+            timeused = (float)(GetTickCount() - begin) * 1e-3f;
 #else
 #ifdef __unix__
             if (getrusage(RUSAGE_SELF, &usage) == 0)
             {
-                timeused = (double) usage.ru_utime.tv_sec +
-                    (double) usage.ru_utime.tv_usec * 1e-6;
+                timeused = (float) usage.ru_utime.tv_sec +
+                    (float) usage.ru_utime.tv_usec * 1e-6f;
             }
             else
                 timeused = 0;
 #else
-            timeused = (double) clock() * (1.0 / CLOCKS_PER_SEC);
+            timeused = (float) clock() * (1.0f / (float)CLOCKS_PER_SEC);
 #endif
 #endif
-            if (currentFrame && (timeused > 0.1))
+            if (currentFrame && (timeused > 0.1f))
             {
                 showcnt += 50;
 
@@ -1171,13 +1171,13 @@ int main(int argc, char *argv[])
                     fprintf(stderr,
                             "\r%7d/%-7d (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
                             currentFrame, frames, currentFrame * 100 / frames,
-                            ((double) totalBytesWritten * 8.0 / 1000.0) /
-                            ((double) infile->samples / infile->samplerate *
-                             currentFrame / frames), timeused,
-                            timeused * frames / currentFrame,
-                            (1024.0 * currentFrame / infile->samplerate) /
-                            timeused,
-                            timeused * (frames -
+                            ((float) totalBytesWritten * 8.0f / 1000.0f) /
+                            ((float) infile->samples / (float)infile->samplerate *
+                             currentFrame / frames), (float)timeused,
+                            (float)timeused * frames / currentFrame,
+                            (1024.0f * currentFrame / (float)infile->samplerate) /
+                            (float)timeused,
+                            (float)timeused * (frames -
                                         currentFrame) / currentFrame);
                 }
                 else
@@ -1185,9 +1185,9 @@ int main(int argc, char *argv[])
                     fprintf(stderr,
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
-                            timeused,
-                            (1024.0 * currentFrame / infile->samplerate) /
-                            timeused);
+                            (float)timeused,
+                            (1024.0f * currentFrame / (float)infile->samplerate) /
+                            (float)timeused);
                 }
 
                 fflush(stderr);
@@ -1195,7 +1195,7 @@ int main(int argc, char *argv[])
                 if (frames != 0)
                 {
                     snprintf(percent, sizeof(percent), "%.2f%% encoding %s",
-                            100.0 * currentFrame / frames, audioFileName);
+                            100.0f * currentFrame / frames, audioFileName);
                     SetConsoleTitle(percent);
                 }
 #endif

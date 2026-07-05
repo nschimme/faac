@@ -42,7 +42,7 @@ void quantize_sse2(const faac_real * __restrict xr, int * __restrict xi, int n, 
         __m128 sign_mask = _mm_cmplt_ps(x_orig, zero);
         __m128 x = _mm_and_ps(x_orig, abs_mask);
 
-        // Math: (x * sfac)^0.75 + magic
+        // Math: (x * sfac)^0.75f + magic
         // Logic: sqrt( (x*sfac) * sqrt(x*sfac) )
         x = _mm_mul_ps(x, sfac);
         x = _mm_mul_ps(x, _mm_sqrt_ps(x));

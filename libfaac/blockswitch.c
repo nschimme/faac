@@ -49,7 +49,7 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH ((faac_real)0.5)
+#define PSY_TD_THRESH ((faac_real)0.5f)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -174,7 +174,7 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
      * difference carries across the sub-block boundary instead of resetting. */
     faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
-    faac_real e = 0.0;
+    faac_real e = 0.0f;
     int l, n = 2 * psyInfo->sizeS;
 
     for (l = 0; l < n; l++)
