@@ -25,8 +25,14 @@ void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, uns
     faac_real hard = PSY_TD_THRESH;
     unsigned int ch;
 
-    if (tnsActive && sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR) {
-        hard = PSY_TD_HARD;
+    if (tnsActive) {
+        static double envHard = -1.0;
+        if (envHard < 0.0) {
+            const char *env = getenv("FAAC_TD_THRESH");
+            envHard = env ? strtod(env, NULL) : 0.0;
+        }
+        if (envHard >= (double)PSY_TD_THRESH) hard = (faac_real)envHard;
+        else if (sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR) hard = PSY_TD_HARD;
     }
 
     for (ch = 0; ch < numChannels; ch++) {
@@ -49,9 +55,7 @@ static void PsyCheckShort(PsyInfo * psyInfo) {
         faac_real toteng = (eng < lasteng) ? eng : lasteng;
         faac_real volchg = FAAC_FABS(eng - lasteng);
         faac_real s = volchg / (toteng + (faac_real)1e-9);
-        if (s > strength) {
-            strength = s;
-        }
+        if (s > strength) strength = s;
         lasteng = eng;
     }
 
@@ -66,7 +70,8 @@ static void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int nu
     gpsyInfo->sampleRate = (faac_real) sampleRate;
 
     for (ch = 0; ch < numChannels; ch++) {
-        psyInfo[ch].data = AllocMemory(sizeof(psydata_t)); SetMemory(psyInfo[ch].data, 0, sizeof(psydata_t));
+        psyInfo[ch].data = AllocMemory(sizeof(psydata_t));
+        if (psyInfo[ch].data) SetMemory(psyInfo[ch].data, 0, sizeof(psydata_t));
         psyInfo[ch].size = BLOCK_LEN_LONG;
         psyInfo[ch].sizeS = BLOCK_LEN_SHORT;
         psyInfo[ch].td_hard = PSY_TD_THRESH;
@@ -81,7 +86,7 @@ static void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels) {
     unsigned int ch;
     for (ch = 0; ch < numChannels; ch++) {
         if (psyInfo[ch].data) {
-            free(psyInfo[ch].data);
+            FreeMemory(psyInfo[ch].data);
             psyInfo[ch].data = NULL;
         }
     }
@@ -106,7 +111,6 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_re
     faac_real * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
     psydata_t *psydata = (psydata_t *)psyInfo[0].data;
 
-    /* Strategy update: current <- pending */
     psyInfo[0].current = psyInfo[0].pending;
 
     memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME, 2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
@@ -117,7 +121,7 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_re
     for (win = 0; win < SUBBLOCKS_PER_FRAME; win++) {
         faac_real *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
         faac_real e = 0.0;
-        for (l = 1; l < n; l++) {
+        for (l = 0; l < n; l++) {
             faac_real d = seg[l] - seg[l - 1];
             e += d * d;
         }
@@ -127,9 +131,7 @@ static void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, faac_re
 
 const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len) {
     psydata_t *psydata = (psydata_t *)psyInfo->data;
-    if (len) {
-        *len = SUBBLOCKS_PER_FRAME;
-    }
+    if (len) *len = SUBBLOCKS_PER_FRAME;
     return (const float *)&psydata->eng[ENG_WIN_PREV];
 }
 
@@ -137,29 +139,39 @@ static void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int n
     unsigned int ch;
     int desire = ONLY_LONG_WINDOW;
 
-    if (psyInfo[0].pending.block_type == ONLY_SHORT_WINDOW) {
-        desire = ONLY_SHORT_WINDOW;
+    {
+        static int forceLong = -1;
+        if (forceLong < 0) {
+            const char *env = getenv("FAAC_FORCE_LONG");
+            forceLong = env && env[0] == '1';
+        }
+        if (forceLong) {
+            for (ch = 0; ch < numChannels; ch++) {
+                coderInfo[ch].block_type = ONLY_LONG_WINDOW;
+                coderInfo[ch].desired_block_type = ONLY_LONG_WINDOW;
+            }
+            return;
+        }
+    }
+
+    for (ch = 0; ch < numChannels; ch++) {
+        if (psyInfo[ch].pending.block_type == ONLY_SHORT_WINDOW) desire = ONLY_SHORT_WINDOW;
     }
 
     for (ch = 0; ch < numChannels; ch++) {
         int lasttype = coderInfo[ch].block_type;
         int type = desire;
 
-        if (lasttype == ONLY_LONG_WINDOW) {
-            if (type == ONLY_SHORT_WINDOW) {
-                type = LONG_SHORT_WINDOW;
-            }
-        } else if (lasttype == LONG_SHORT_WINDOW) {
-            type = ONLY_SHORT_WINDOW;
-        } else if (lasttype == ONLY_SHORT_WINDOW) {
-            if (type == ONLY_LONG_WINDOW) {
-                type = SHORT_LONG_WINDOW;
-            }
-        } else if (lasttype == SHORT_LONG_WINDOW) {
-            type = ONLY_LONG_WINDOW;
+        if (desire == ONLY_SHORT_WINDOW || coderInfo[ch].desired_block_type == ONLY_SHORT_WINDOW) {
+            if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW) type = LONG_SHORT_WINDOW;
+            else type = ONLY_SHORT_WINDOW;
+        } else {
+            if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW) type = SHORT_LONG_WINDOW;
+            else type = ONLY_LONG_WINDOW;
         }
 
         coderInfo[ch].block_type = type;
+        coderInfo[ch].desired_block_type = desire;
         psyInfo[ch].current = psyInfo[ch].pending;
         psyInfo[ch].current.block_type = type;
 

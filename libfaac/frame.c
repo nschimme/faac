@@ -116,13 +116,13 @@ int FAACAPI faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char*
     }
 
     *pSizeOfDecoderSpecificInfo = 2;
-    *ppBuffer = (unsigned char *)malloc(2);
+    *ppBuffer = (unsigned char *)AllocMemory(2);
 
     if(*ppBuffer != NULL){
         memset(*ppBuffer,0,*pSizeOfDecoderSpecificInfo);
         pBitStream = OpenBitStream((int)*pSizeOfDecoderSpecificInfo, *ppBuffer);
         if (!pBitStream) {
-            free(*ppBuffer);
+            FreeMemory(*ppBuffer);
             *ppBuffer = NULL;
             return -3;
         }
