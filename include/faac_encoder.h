@@ -89,9 +89,9 @@ typedef enum faac_status {
  * FAAC_OBJ_AUTO lets the library pick (currently AAC-LC).
  */
 enum faac_object_type {
-    FAAC_OBJ_AUTO      = 0,          /* let the library choose (resolves to AAC-LC) */
+    FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
     FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
-    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR       (not yet implemented)     */
+    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
     /* AOT 23 (LD), 39 (ELD), 42 (xHE-AAC/USAC) are intentionally NOT reserved
      * here; each would need its own additive configuration surface. */

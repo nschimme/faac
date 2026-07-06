@@ -8,6 +8,12 @@ Unreleased
 	  The classic `faacEnc*` API (`faac.h`) is unchanged.
 	* frontend: Port `faac` and the Win32 GUI to the modern API; this fixes
 	  the AudioSpecificConfig memory leak on the MP4 output path.
+	* Add HE-AAC v1 (AAC-LC core + Spectral Band Replication) encoding,
+	  exposed only through the modern API via `FAAC_OBJ_HE_AAC_V1` (or
+	  `FAAC_OBJ_AUTO`, which picks LC or HE-AAC from the bitrate). The legacy
+	  `faacEnc*` API stays LC-only, since its buffer sizes are fixed before
+	  the object type is known and cannot express HE-AAC's 2048-sample frame
+	  and half-rate core. CLI: `--object-type lc|he-aac-v1|auto`.
 
 1.50 (Apr 16, 2026)
 

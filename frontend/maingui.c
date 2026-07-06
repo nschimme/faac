@@ -149,8 +149,13 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         faac_params_init(&params);
         params.sample_rate  = sampleRate;
         params.num_channels = numChannels;
-        params.object_type  = FAAC_OBJ_LOW;
         params.input_format = FAAC_INPUT_32BIT;   /* wav_read_int24 -> 24-in-32 int */
+        {
+            HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
+            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+            params.object_type = (data != CB_ERR) ? (enum faac_object_type)data : FAAC_OBJ_AUTO;
+        }
         {
             LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
             params.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
@@ -322,8 +327,17 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"MPEG2");
         SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_SETCURSEL, 0, 0);
 
-        SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
-        SendMessage(GetDlgItem(hWnd, IDC_OBJECTTYPE), CB_SETCURSEL, 0, 0);
+        {
+            HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+            LRESULT idx;
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Auto");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)AUTO);
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Low Complexity");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)LOW);
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)HE_V1);
+            SendMessage(hOT, CB_SETCURSEL, 0, 0);
+        }
 
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"None");
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"M/S");
@@ -401,6 +415,21 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             break;
 	  }
 	  break;
+
+        case MAKEWPARAM(IDC_OBJECTTYPE, CBN_SELCHANGE):
+        {
+            HWND hOT  = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+            HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
+            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
+            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+            if (data == (LRESULT)HE_V1) {
+                SendMessage(hMPG, CB_SETCURSEL, 0, 0);
+                EnableWindow(hMPG, FALSE);
+            } else {
+                EnableWindow(hMPG, TRUE);
+            }
+            break;
+        }
         }
 
         break;

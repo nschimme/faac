@@ -21,16 +21,6 @@
 #ifndef FRAME_H
 #define FRAME_H
 
-/* Input sample FIFO slots, each one frame (FRAME_LEN samples) wide, relative to
-   the frame currently being coded (FIFO_CURR): one frame behind (FIFO_PAST,
-   reused as the MDCT overlap) and two frames ahead. The two ahead slots are
-   needed because the block-switch energy analysis works on 2-frame-wide windows
-   and keeps one window of lookahead, whose far edge reaches two frames ahead. */
-#define LOOKAHEAD_DEPTH 2
-#define FIFO_PAST       0
-#define FIFO_CURR       1
-#define FIFO_AHEAD1     2
-#define FIFO_AHEAD2     3
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -47,10 +37,11 @@ extern "C" {
 #include "blockswitch.h"
 #include "fft.h"
 #include "quantize.h"
+#include "sbr.h"
 
 #include <faaccfg.h>
 
-typedef struct {
+typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
 
@@ -98,8 +89,8 @@ typedef struct {
 
     /* Input FIFO: decouples the caller's per-call chunk size from the encoder
      * frame size. faacEncEncode appends whatever it is handed (any count) and
-     * emits one frame once a full frame (FRAME_LEN samples/ch) has accumulated.
-     * Stores format-converted faac_real. */
+     * emits one frame once a full frame (mult*FRAME_LEN samples/ch, mult = 2 for
+     * HE-AAC, 1 for LC) has accumulated. Stores format-converted faac_real. */
     faac_real    *inputFifo[MAX_CHANNELS];
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
@@ -109,7 +100,17 @@ typedef struct {
      * pointer the caller never frees. NULL until first built. */
     unsigned char *ascCache;
     unsigned long  ascCacheLen;
+
+    /* HE-AAC / SBR state */
+    struct SBRContext *sbrContext;   /* SBR analysis state and bitstream data */
 } faacEncStruct;
+
+/* Shared configuration worker behind faacEncSetConfiguration() and the modern
+ * faac_encoder_open(). allowHE enables HE-AAC/AUTO resolution (modern path);
+ * the legacy setter passes 0 to stay LC-only. Returns 1 on success, 0 on
+ * failure. */
+int faacEncApplyConfig(faacEncStruct* hEncoder,
+                       faacEncConfigurationPtr config, int allowHE);
 
 #ifdef __cplusplus
 }

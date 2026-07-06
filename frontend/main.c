@@ -98,7 +98,8 @@ enum flags
     HELP_MP4,
     HELP_ADVANCED,
     OPT_JOINT,
-    OPT_PNS
+    OPT_PNS,
+    OBJTYPE_FLAG
 };
 
 typedef struct {
@@ -198,6 +199,7 @@ static help_t help_advanced[] = {
     {"--joint 3\tUse Mixed Mode (dynamic M/S and IS) coding (default).\n", NULL},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n", NULL},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n", NULL},
+    {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n", NULL},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n", NULL},
     {NULL, NULL}
@@ -436,7 +438,7 @@ int main(int argc, char *argv[])
     faac_params params;
     faac_status fstatus;
     enum faac_mpeg_version mpegVersion = FAAC_MPEG4;
-    const enum faac_object_type objectType = FAAC_OBJ_LOW;
+    enum faac_object_type objectType = FAAC_OBJ_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
@@ -482,8 +484,8 @@ int main(int argc, char *argv[])
     uint8_t *artData = NULL;
     uint64_t artSize = 0;
     uint64_t encoded_samples = 0;
-    unsigned int delay_samples;
     unsigned int frameSize;
+    unsigned int frameInSamples;
     uint64_t input_samples = 0;
     const char *faac_id_string;
     const char *faac_copyright_string;
@@ -540,6 +542,7 @@ int main(int argc, char *argv[])
             {"tns", 0, &useTns, 1},
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
+            {"object-type", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
             {"createmp4", 0, 0, 'w'},
             {"artist", 1, 0, ARTIST_FLAG},
@@ -789,6 +792,16 @@ int main(int argc, char *argv[])
                 dieMessage = "Unrecognised MPEG version!\n";
             }
             break;
+        case OBJTYPE_FLAG:
+            if (!strcmp(optarg, "lc"))
+                objectType = FAAC_OBJ_LOW;
+            else if (!strcmp(optarg, "he-aac-v1"))
+                objectType = FAAC_OBJ_HE_AAC_V1;
+            else if (!strcmp(optarg, "auto"))
+                objectType = FAAC_OBJ_AUTO;
+            else
+                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
+            break;
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
             dieMessage = license;
@@ -970,7 +983,6 @@ int main(int argc, char *argv[])
     samplesInput   = (unsigned long)info.frame_samples * infile->channels;
     maxBytesOutput = info.max_output_bytes;
     frameSize = samplesInput / infile->channels;
-    delay_samples = frameSize;  // encoder delay 1024 samples
     pcmbuf = (float *) malloc(samplesInput * sizeof(float));
     bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
     if (!pcmbuf || !bitbuf)
@@ -984,6 +996,15 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
                 chanC, chanLF);
     }
+
+    /* AUTO may have resolved to LC or HE-AAC; read back the decision. */
+    objectType = info.object_type;
+
+    /* Per-channel input samples consumed per output frame at the original rate:
+     * FRAME_LEN for LC, 2*FRAME_LEN for HE-AAC (whose core runs at half the
+     * input rate). The resolved encoder already reports this via
+     * info.frame_samples, so frameSize already accounts for it. */
+    frameInSamples = frameSize;
 
     /* initialize MP4 creation */
     if (container == MP4_CONTAINER)
@@ -1036,7 +1057,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
     if (resolvedPns > 0)
         fprintf(stderr, "PNS level: %d\n", resolvedPns);
-    fprintf(stderr, "Object type: Low Complexity");
+    fprintf(stderr, "Object type: %s",
+            (objectType == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == FAAC_MPEG4) ? 4 : 2);
     if (params.use_tns)
         fprintf(stderr, " + TNS");
@@ -1084,7 +1106,7 @@ int main(int argc, char *argv[])
     long begin = GetTickCount();
 #endif
     if (infile->samples)
-        frames = ((infile->samples + 1023) / 1024) + 1;
+        frames = ((infile->samples + frameInSamples - 1) / frameInSamples) + 1;
     else
         frames = 0;
     currentFrame = 0;
@@ -1178,7 +1200,7 @@ int main(int argc, char *argv[])
                             ((double) infile->samples / infile->samplerate *
                              currentFrame / frames), timeused,
                             timeused * frames / currentFrame,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)frameInSamples * currentFrame / infile->samplerate) /
                             timeused,
                             timeused * (frames -
                                         currentFrame) / currentFrame);
@@ -1189,7 +1211,7 @@ int main(int argc, char *argv[])
                             "\r %7d | %7.1f | %7.2fx ",
                             currentFrame,
                             timeused,
-                            (1024.0 * currentFrame / infile->samplerate) /
+                            ((double)frameInSamples * currentFrame / infile->samplerate) /
                             timeused);
                 }
 
@@ -1219,8 +1241,8 @@ int main(int argc, char *argv[])
         if (bytesWritten > 0)
         {
             uint64_t frame_samples = input_samples - encoded_samples;
-            if (frame_samples > delay_samples)
-                frame_samples = delay_samples;
+            if (frame_samples > frameInSamples)
+                frame_samples = frameInSamples;
 
             if (container == MP4_CONTAINER) {
                 if (mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples))
