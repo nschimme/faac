@@ -1,3 +1,14 @@
+Unreleased
+
+	[ Nils Schimmelmann ]
+	* Add modern `faac_*` encoder API (`faac_encoder.h`) as a
+	  backward-compatible addition: parameters supplied once to
+	  `faac_encoder_open()`, uniform `faac_status` error reporting,
+	  resolved-property queries, and library-owned AudioSpecificConfig.
+	  The classic `faacEnc*` API (`faac.h`) is unchanged.
+	* frontend: Port `faac` and the Win32 GUI to the modern API; this fixes
+	  the AudioSpecificConfig memory leak on the MP4 output path.
+
 1.50 (Apr 16, 2026)
 
 	[ Fabian Greffrath ]

@@ -9,3 +9,15 @@ faacEncEncode                    @4
 faacEncClose                     @5
 faacEncGetDecoderSpecificInfo	 @6
 faacEncGetVersion				 @7
+;
+; modern faac_* encoder API (faac_encoder.h)
+;
+faac_max_channels                @8
+faac_version                     @9
+faac_params_init                 @10
+faac_encoder_open                @11
+faac_encoder_close               @12
+faac_encoder_get_info            @13
+faac_encoder_asc                 @14
+faac_encoder_encode              @15
+faac_strerror                    @16

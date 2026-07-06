@@ -458,6 +458,11 @@ int FAACAPI faacEncClose(faacEncHandle hpEncoder)
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
 
+    /* Modern API: release the cached AudioSpecificConfig (malloc'd by
+     * faacEncGetDecoderSpecificInfo). */
+    if (hEncoder->ascCache)
+        free(hEncoder->ascCache);
+
     /* Free handle */
     if (hEncoder)
 		FreeMemory(hEncoder);

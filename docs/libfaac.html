@@ -19,7 +19,13 @@ Contents
 <menu>
  <li><a href="#scope">Scope</a>
  <li><a href="#interface">Interface description</a>
- <li><a href="#usage">Usage</a>
+ <li><a href="#modern">Modern API (faac_encoder.h)</a>
+ <menu>
+  <li><a href="#modern-callseq">Calling sequence</a>
+  <li><a href="#modern-errors">Error handling</a>
+  <li><a href="#modern-funcref">Function reference</a>
+ </menu>
+ <li><a href="#usage">Legacy API (faac.h)</a>
  <menu>
   <li><a href="#callseq">Calling sequence</a>
  </menu>
@@ -64,10 +70,95 @@ following header file is provided for usage in C/C++ programs:<br><br>
 The encoder core resides in a statically linkable library called
 
 libfaac.lib <i>(Microsoft Window</i>s) or libfaac.a <i>(UNI</i>X). There
-are various example programs that show how to use the library.
+are various example programs that show how to use the library.<br><br>
+
+Two C interfaces are available:
+<ul>
+<li><b>faac_encoder.h</b> &mdash; the modern <b>faac_*</b> API. This is the
+    recommended surface for new code.
+<li><b>faac.h</b> &mdash; the classic <b>faacEnc*</b> API, frozen as of faac
+    1.50. It remains supported unchanged for existing callers.
+</ul>
+Both drive the same encoder core; a program uses one or the other. New code
+should prefer <b>faac_*</b>.
+
+<a name="modern">
+<h4>Modern API (faac_encoder.h)</h4>
+
+The modern API supplies all encoder parameters once, up front, to
+<i>faac_encoder_open()</i>. The encoder therefore never exists in a
+half-configured state, and every derived quantity (frame size, output-buffer
+bound, effective sample rate, resolved object type) is known and queryable the
+instant open returns. Every fallible call returns a <i>faac_status</i> code;
+fixed-width integer types and width-pinned enums keep the ABI identical across
+platforms.
+
+<a name="modern-callseq">
+<h5>Calling sequence</h5>
+<menu>
+<li>Zero-initialize a <i>faac_params</i> with <i>faac_params_init()</i>. This is
+ mandatory &mdash; it stamps <i>struct_size</i> and clears padding, which is how
+ the struct stays compatible as it grows in future releases.
+<li>Set the fields you care about (at minimum <i>sample_rate</i> and
+ <i>num_channels</i>), then call <i>faac_encoder_open()</i>.
+<li>Fill a <i>faac_encoder_info</i> with <i>faac_encoder_get_info()</i> (set its
+ <i>struct_size</i> first) and size your buffers from it: input PCM holds
+ <i>info.frame_samples</i> &times; <i>num_channels</i> samples; the output buffer
+ must be at least <i>info.max_output_bytes</i>. The same struct also reports the
+ resolved sample rate, object type, and rate-control settings. If you write a
+ raw stream, fetch the AudioSpecificConfig with <i>faac_encoder_asc()</i>
+ (library-owned &mdash; do <b>not</b> free it).
+<li>Call <i>faac_encoder_encode()</i> for each block of input; it emits at most
+ one frame per call and reports the byte count via an out-parameter.
+<li>Pass <i>in_samples</i> == 0 to flush; keep calling until
+ <i>bytes_written</i> is 0.
+<li>Call <i>faac_encoder_close()</i>, passing the address of your handle; it is
+ set to NULL on success.
+</menu>
+
+<a name="modern-errors">
+<h5>Error handling</h5>
+Every fallible entry point returns a <i>faac_status</i>. <i>FAAC_OK</i> is 0 and
+all error codes are negative, so <code>status &lt; 0</code> tests for failure.
+<i>faac_strerror()</i> maps any status to a static human-readable string (never
+NULL). Notable codes: <i>FAAC_ERR_INVALID_ARGUMENT</i> (NULL, bad
+<i>struct_size</i>, or an out-of-range field), <i>FAAC_ERR_UNSUPPORTED</i> (an
+object type this build does not implement, or a request with no ASC),
+<i>FAAC_ERR_OUTPUT_TOO_SMALL</i>, and <i>FAAC_ERR_INPUT_OVERFLOW</i>.
+
+<a name="modern-funcref">
+<h5>Function reference</h5>
+<pre>
+uint32_t    faac_max_channels(void);
+faac_status faac_version(const char **id, const char **copyright);
+
+faac_status faac_params_init(faac_params *p);
+faac_status faac_encoder_open(const faac_params *p, faac_encoder **out);
+faac_status faac_encoder_close(faac_encoder **enc);   /* sets *enc = NULL */
+
+/* resolved properties, valid after open; set out.struct_size first */
+faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *out);
+
+/* AudioSpecificConfig: library-owned, valid until close, do NOT free */
+faac_status faac_encoder_asc(faac_encoder *enc, const uint8_t **buf, uint32_t *len);
+
+faac_status faac_encoder_encode(faac_encoder *enc,
+                                const void *in, uint32_t in_samples,
+                                uint8_t *out, uint32_t out_cap,
+                                uint32_t *bytes_written);
+
+const char *faac_strerror(faac_status status);
+</pre>
+The <i>object_type</i> field of <i>faac_params</i> uses MPEG-4 Audio Object Type
+numbers: <i>FAAC_OBJ_LOW</i> (2) is AAC-LC. <i>FAAC_OBJ_HE_AAC_V1</i> (5) and
+<i>FAAC_OBJ_HE_AAC_V2</i> (29) are defined but not implemented in this release;
+requesting them returns <i>FAAC_ERR_UNSUPPORTED</i>.
 
 <a name="usage">
-<h4>Usage</h4>
+<h4>Legacy API (faac.h)</h4>
+
+The functions below are the classic interface, frozen as of faac 1.50 and kept
+for source compatibility. New code should use the modern API above.
 
 <a name="callseq">
 <h4>Calling sequence</h4>

@@ -27,6 +27,7 @@ common_src = [
     'coder.h',
     'cpu_compute.c',
     'cpu_compute.h',
+    'faac_encoder.c',
     'filtbank.c',
     'filtbank.h',
     'fft.c',
@@ -77,7 +78,9 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
-          'version' : '0.0.0',
+          # Major is the SONAME: bump it only on a removed/changed export. A purely
+          # additive release advertises itself with the minor.
+          'version' : '0.1.0',
           'vs_module_defs' : 'libfaac.def',
           'override_options' : ['b_lto=true'],
         },

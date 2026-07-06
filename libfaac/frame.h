@@ -103,6 +103,12 @@ typedef struct {
     faac_real    *inputFifo[MAX_CHANNELS];
     unsigned int  inputFifoFill;     /* samples per channel currently buffered */
     unsigned int  inputFifoCap;      /* per-channel capacity in samples */
+
+    /* Modern faac_* API: AudioSpecificConfig cached on first request and owned
+     * by the handle (freed at close), so faac_encoder_asc() can hand back a
+     * pointer the caller never frees. NULL until first built. */
+    unsigned char *ascCache;
+    unsigned long  ascCacheLen;
 } faacEncStruct;
 
 #ifdef __cplusplus
