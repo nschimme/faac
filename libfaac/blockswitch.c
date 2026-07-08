@@ -51,6 +51,30 @@ psydata_t;
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
 #define PSY_TD_THRESH ((faac_real)0.5)
+/* When TNS is active at >=32kHz, raise the short-block trigger so long blocks
+ * are kept more readily, giving TNS a chance to run instead of splintering the
+ * transient into short windows. Overridable via FAAC_TD_THRESH for tuning. */
+#define PSY_TD_HARD ((faac_real)2.0)
+#define PSY_TD_HARD_MIN_SR 32000
+
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate)
+{
+  faac_real hard = PSY_TD_THRESH;
+  unsigned int ch;
+
+  if (tnsActive)
+  {
+    static double envHard = -1.0;
+    if (envHard < 0.0)
+    {
+      const char *env = getenv("FAAC_TD_THRESH");
+      envHard = env ? strtod(env, NULL) : 0.0;
+    }
+    if (envHard >= (double)PSY_TD_THRESH) hard = (faac_real)envHard;
+    else if (sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR) hard = PSY_TD_HARD;
+  }
+  for (ch = 0; ch < numChannels; ch++) psyInfo[ch].td_hard = hard;
+}
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -58,11 +82,15 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   faac_real lasteng = (faac_real)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  faac_real strength = 0.0;
 
-  psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+  psyInfo->pending.use_tns = 1;
 
   /* Search for transients across the current frame and its immediate temporal context.
-     The search range is [curr-2, curr+9]. */
+     The search range is [curr-2, curr+9]. Track the strongest relative jump seen
+     (rather than breaking on the first hit) so PSY_TD_HARD can require a stronger
+     transient than PSY_TD_THRESH before committing to a short block. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
       faac_real eng = (faac_real)psydata->eng[ENG_WIN_CUR - PREVS + win];
@@ -71,12 +99,24 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       faac_real volchg = FAAC_FABS(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
-      {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
-      }
+      faac_real s = volchg / (toteng + (faac_real)1e-9);
+      if (s > strength) strength = s;
       lasteng = eng;
+  }
+
+  if (strength > PSY_TD_THRESH && strength > psyInfo->td_hard)
+  {
+      psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
+      psyInfo->pending.use_tns = 0;
+  }
+  else if (strength > PSY_TD_THRESH)
+  {
+      /* Promoted: this frame only stayed long because of the td_hard
+       * hysteresis margin, not because it's genuinely stationary. TNS's LPC
+       * gain gate rejects the vast majority of these anyway (they're
+       * borderline-transient, not tonal), so skip the analysis cost rather
+       * than pay for a filter that almost always gets thrown away. */
+      psyInfo->pending.use_tns = 0;
   }
 }
 
@@ -94,6 +134,11 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     if (!psydata) return;
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].td_hard = PSY_TD_THRESH;
+    psyInfo[channel].current.block_type = ONLY_LONG_WINDOW;
+    psyInfo[channel].current.use_tns = 0;
+    psyInfo[channel].pending.block_type = ONLY_LONG_WINDOW;
+    psyInfo[channel].pending.use_tns = 0;
   }
 
   size = BLOCK_LEN_LONG;
@@ -141,7 +186,8 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
               PsyCheckShort(&psyInfo[elem->channels[1]]);
               break;
           case ID_LFE:
-              psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
+              psyInfo[elem->channels[0]].pending.block_type = ONLY_LONG_WINDOW;
+              psyInfo[elem->channels[0]].pending.use_tns = 0;
               break;
           default:
               break;
@@ -156,6 +202,10 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   int win;
   faac_real * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = (psydata_t *)psyInfo->data;
+
+  /* Propagate strategy: the frame about to be MDCT-coded (this call) adopts the
+     decision computed as "pending" during the previous frame's lookahead. */
+  psyInfo->current = psyInfo->pending;
 
   /* Shift the energy windows down by one frame: PREV<-CUR, CUR<-NEXT, freeing
      the NEXT region for the freshly-computed lookahead window below. */
@@ -183,6 +233,17 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   }
 }
 
+/* Expose the raw sub-block energy window (PREV..CUR, i.e. the frame TNS is
+ * about to filter) so TNS can pick its filter direction from the same
+ * transient timeline block-switching already computed, instead of
+ * re-deriving it. */
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  if (len) *len = SUBBLOCKS_PER_FRAME;
+  return (const float *)&psydata->eng[ENG_WIN_PREV];
+}
+
 void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
@@ -191,7 +252,10 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   /* Shared transient override for HE-AAC path.
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
-   * uses the FIFO. */
+   * uses the FIFO.
+   * SBR only ever supplies block_type here -- use_tns is a core-only field
+   * SBR never touches; TNS is kept off HE frames (including SBR's warmup,
+   * before SbrContextIsAnalysisValid) at its frame.c consumption site instead. */
   if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsAnalysisValid(hEncoder->sbrContext))
   {
       for (channel = 0; channel < numChannels; channel++)
@@ -201,10 +265,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
            * decision (FIFO sized SBR_DETECT_FIFO so [0] is LOOKAHEAD_DEPTH back). */
           int wantShort = SbrContextGetWantShort(hEncoder->sbrContext, (int)channel, 0);
 
-          if (wantShort)
-              psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
-          else
-              psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+          psyInfo[channel].pending.block_type = wantShort ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
       }
   }
 
@@ -214,7 +275,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
    */
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+    if (psyInfo[channel].pending.block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
   }
 
@@ -238,5 +299,9 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
+    /* current.block_type is what TNS uses; keep it in lockstep with the
+       coder's actual chosen type (post start/stop-window transition logic)
+       rather than the raw pre-transition "pending" desire. */
+    psyInfo[channel].current.block_type = coderInfo[channel].block_type;
   }
 }

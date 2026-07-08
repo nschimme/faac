@@ -17,6 +17,7 @@
 #include "huff2.h"
 #include "frame.h"
 #include "sbr.h"
+#include "tns.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -131,50 +132,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
     if (writeFlag) PutBit(bs, 0, LEN_PULSE_PRES);
     bits += LEN_PULSE_PRES;
 
-    TnsInfo *tns = &coder->tnsInfo;
-    if (writeFlag) PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
-    bits += LEN_TNS_PRES;
-
-    if (tns->tnsDataPresent) {
-        int nf_len = (coder->block_type == ONLY_SHORT_WINDOW) ? LEN_TNS_NFILTS : LEN_TNS_NFILTL;
-        int l_len  = (coder->block_type == ONLY_SHORT_WINDOW) ? LEN_TNS_LENGTHS : LEN_TNS_LENGTHL;
-        int o_len  = (coder->block_type == ONLY_SHORT_WINDOW) ? LEN_TNS_ORDERS : LEN_TNS_ORDERL;
-        int num_w  = (coder->block_type == ONLY_SHORT_WINDOW) ? MAX_SHORT_WINDOWS : 1;
-
-        for (int w = 0; w < num_w; w++) {
-            TnsWindowData *win = &tns->windowData[w];
-            if (writeFlag) PutBit(bs, win->numFilters, nf_len);
-            bits += nf_len;
-
-            if (win->numFilters > 0) {
-                if (writeFlag) PutBit(bs, win->coefResolution - 3, LEN_TNS_COEFF_RES);
-                bits += LEN_TNS_COEFF_RES;
-
-                for (int f = 0; f < win->numFilters; f++) {
-                    TnsFilterData *flt = &win->tnsFilter[f];
-                    if (writeFlag) {
-                        PutBit(bs, flt->length, l_len);
-                        PutBit(bs, flt->order, o_len);
-                    }
-                    bits += l_len + o_len;
-
-                    if (flt->order > 0) {
-                        if (writeFlag) {
-                            PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                            PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
-                        }
-                        bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
-
-                        int res = win->coefResolution - flt->coefCompress;
-                        for (int i = 1; i <= flt->order; i++) {
-                            if (writeFlag) PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
-                            bits += res;
-                        }
-                    }
-                }
-            }
-        }
-    }
+    bits += TnsWriteBitstream(coder, bs, writeFlag);
 
     if (writeFlag) PutBit(bs, 0, LEN_GAIN_PRES);
     bits += LEN_GAIN_PRES;

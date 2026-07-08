@@ -334,6 +334,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
     PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -425,6 +427,8 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 
 	PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
     FilterBankInit(hEncoder);
 
@@ -710,17 +714,24 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
+    /* Perform TNS analysis and filtering.
+     * TNS stays off HE-AAC frames unconditionally (not just once SBR analysis
+     * is valid): gating on current.use_tns alone would leak TNS onto HE's
+     * warmup frames, where the core LC detector still runs and can set
+     * use_tns=1 before SbrContextIsAnalysisValid ever becomes true. */
     for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
+        if (useTns && hEncoder->config.aacObjectType != HE_V1 &&
+            hEncoder->psyInfo[channel].current.use_tns) {
+            int tdEnvLen;
+            const float *tdEnv = PsyGetCurEnvelope(&hEncoder->psyInfo[channel], &tdEnvLen);
             TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                      hEncoder->freqBuff[channel],
+                      tdEnv, tdEnvLen);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;
         }
     }
 

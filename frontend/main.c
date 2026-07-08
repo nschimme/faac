@@ -191,8 +191,7 @@ static help_t help_mp4[] = {
 };
 
 static help_t help_advanced[] = {
-    {"--tns  \tEnable coding of TNS, temporal noise shaping.\n", NULL},
-    {"--no-tns\tDisable coding of TNS, temporal noise shaping.\n", NULL},
+    {"--no-tns\tDisable coding of TNS, temporal noise shaping (on by default).\n", NULL},
     {"--joint 0\tDisable joint stereo coding.\n", NULL},
     {"--joint 1\tUse Mid/Side coding.\n", NULL},
     {"--joint 2\tUse Intensity Stereo coding.\n", NULL},
@@ -441,7 +440,7 @@ int main(int argc, char *argv[])
     enum faac_object_type objectType = FAAC_OBJ_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
-    static int useTns = 0;
+    static int useTns = 1;
     enum container_format container = NO_CONTAINER;
     enum faac_stream_format stream = FAAC_STREAM_ADTS;
     int cutOff = -1;
@@ -541,7 +540,6 @@ int main(int argc, char *argv[])
             {"pcmsamplebits", 1, 0, 'B'},
             {"pcmchannels", 1, 0, 'C'},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
-            {"tns", 0, &useTns, 1},
             {"no-tns", 0, &useTns, 0},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
