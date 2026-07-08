@@ -51,7 +51,7 @@ typedef struct {
 	faac_real sampleRate;
 
 	/* shared work buffers */
-	faac_real *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns, mdct) */
+	faac_real *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, mdct) */
 } GlobalPsyInfo;
 
 void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
