@@ -46,6 +46,12 @@ static const struct {
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
 
+/* A frame with no sub-block energy spike has no attack for TNS's noise
+ * buildup to hide behind, so the LPC work isn't worth its bit cost. Peak
+ * needs to clear this multiple of the mean sub-block energy to count as a
+ * real transient rather than run-of-the-mill fluctuation. */
+#define TNS_TD_PEAK_GATE    2.0f
+
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
     int lag, i;
@@ -224,7 +230,7 @@ void TnsInit(faacEncStruct* hEncoder)
 }
 
 void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+               float* spec, const float* tdEnvelope, int tdEnvelopeLen)
 {
     int b_start, b_stop, i_start, length;
     float *band, energy;
@@ -258,6 +264,20 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         energy += band[i] * band[i];
     if (energy < TNS_MIN_ENERGY)
         return;
+
+    /* No real attack in this frame means no transient for TNS's noise
+     * buildup to hide behind -- skip the LPC work. */
+    if (tdEnvelope && tdEnvelopeLen > 0) {
+        float peak = 0.0f, mean = 0.0f;
+
+        for (i = 0; i < tdEnvelopeLen; i++) {
+            if (tdEnvelope[i] > peak) peak = tdEnvelope[i];
+            mean += tdEnvelope[i];
+        }
+        mean /= (float)tdEnvelopeLen;
+        if (mean < TNS_MIN_ENERGY || peak < TNS_TD_PEAK_GATE * mean)
+            return;
+    }
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
@@ -328,9 +348,20 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Direction is fixed rather than picked from a transient envelope; that
-     * comes with FrameStrategy in a later commit. */
+    /* Run the prediction towards whichever half of the frame carries more
+     * energy, so quantization noise piles up on the side closer to the
+     * transient instead of leaking into the quiet half. */
     filter->direction = 0;
+    if (tdEnvelope && tdEnvelopeLen > 1) {
+        int half = tdEnvelopeLen / 2;
+        float e0 = 0.0f, e1 = 0.0f;
+
+        for (i = 0; i < half; i++)
+            e0 += tdEnvelope[i];
+        for (i = half; i < tdEnvelopeLen; i++)
+            e1 += tdEnvelope[i];
+        filter->direction = (e1 > e0) ? 1 : 0;
+    }
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */

@@ -105,7 +105,7 @@ FAACAPI faac_status faac_params_init(faac_params *p)
     p->object_type   = FAAC_OBJ_LOW;
     p->joint_mode    = FAAC_JOINT_MIXED;
     p->use_lfe       = false;
-    p->use_tns       = false;
+    p->use_tns       = true;
     p->bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
     p->bandwidth     = 0;              /* derive from bit_rate */
     p->quant_quality = 0;              /* derive from bit_rate */

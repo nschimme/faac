@@ -48,6 +48,20 @@ psydata_t;
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
 #define PSY_TD_THRESH (0.5f)
+/* TNS needs long blocks to run; above 32kHz with TNS on, raise the
+ * short-block trigger so borderline transients stay long. */
+#define PSY_TD_HARD (2.0f)
+#define PSY_TD_HARD_MIN_SR 32000
+
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate)
+{
+  float hard = PSY_TD_THRESH;
+  unsigned int ch;
+
+  if (tnsActive && sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR)
+    hard = PSY_TD_HARD;
+  for (ch = 0; ch < numChannels; ch++) psyInfo[ch].td_hard = hard;
+}
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -55,11 +69,15 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float strength = 0.0f;
 
-  psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+  psyInfo->pending.use_tns = 1;
 
   /* Search for transients across the current frame and its immediate temporal context.
-     The search range is [curr-2, curr+9]. */
+     The search range is [curr-2, curr+9]. Track the strongest relative jump seen
+     (rather than breaking on the first hit) so PSY_TD_HARD can require a stronger
+     transient than PSY_TD_THRESH before committing to a short block. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
       float eng = (float)psydata->eng[ENG_WIN_CUR - PREVS + win];
@@ -68,12 +86,21 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float volchg = fabsf(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
-      {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
-      }
+      float s = volchg / (toteng + 1e-9f);
+      if (s > strength) strength = s;
       lasteng = eng;
+  }
+
+  if (strength > PSY_TD_THRESH && strength > psyInfo->td_hard)
+  {
+      psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
+      psyInfo->pending.use_tns = 0;
+  }
+  else if (strength > PSY_TD_THRESH)
+  {
+      /* Kept long only by td_hard, not genuinely stationary -- TNS's gain
+       * gate rejects these anyway, so skip the analysis cost. */
+      psyInfo->pending.use_tns = 0;
   }
 }
 
@@ -91,6 +118,11 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     if (!psydata) return;
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].td_hard = PSY_TD_THRESH;
+    psyInfo[channel].current.block_type = ONLY_LONG_WINDOW;
+    psyInfo[channel].current.use_tns = 0;
+    psyInfo[channel].pending.block_type = ONLY_LONG_WINDOW;
+    psyInfo[channel].pending.use_tns = 0;
   }
 
   size = BLOCK_LEN_LONG;
@@ -138,7 +170,8 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
               PsyCheckShort(&psyInfo[elem->channels[1]]);
               break;
           case ID_LFE:
-              psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
+              psyInfo[elem->channels[0]].pending.block_type = ONLY_LONG_WINDOW;
+              psyInfo[elem->channels[0]].pending.use_tns = 0;
               break;
           default:
               break;
@@ -153,6 +186,11 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   int win;
   float * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = (psydata_t *)psyInfo->data;
+
+  /* block_type/use_tns were decided a frame early (PsyCalculate ran on the
+     lookahead buffer), because MDCT needs to know the window shape before
+     it can transform the frame that decision was made for. */
+  psyInfo->current = psyInfo->pending;
 
   /* Shift the energy windows down by one frame: PREV<-CUR, CUR<-NEXT, freeing
      the NEXT region for the freshly-computed lookahead window below. */
@@ -180,6 +218,15 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   }
 }
 
+/* Reuses block-switching's sub-block energy (PREV..CUR) so TNS doesn't
+ * re-derive the transient timeline for its filter direction. */
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  if (len) *len = SUBBLOCKS_PER_FRAME;
+  return (const float *)&psydata->eng[ENG_WIN_PREV];
+}
+
 void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
@@ -199,9 +246,9 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
           int wantShort = SbrContextGetWantShort(hEncoder->sbrContext, (int)channel, 0);
 
           if (wantShort)
-              psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
+              psyInfo[channel].pending.block_type = ONLY_SHORT_WINDOW;
           else
-              psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+              psyInfo[channel].pending.block_type = ONLY_LONG_WINDOW;
       }
   }
 
@@ -211,7 +258,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
    */
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+    if (psyInfo[channel].pending.block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
   }
 
@@ -235,5 +282,8 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
+    /* TNS reads current.block_type -- sync it to the coder's post-transition
+       type, not the raw pending desire. */
+    psyInfo[channel].current.block_type = coderInfo[channel].block_type;
   }
 }

@@ -27,10 +27,17 @@ extern "C" {
 struct faacEncStruct;
 
 typedef struct {
+	int block_type;
+	int use_tns;
+} FrameStrategy;
+
+typedef struct {
 	int size;
 	int sizeS;
 
-	int block_type;
+	FrameStrategy current;
+	FrameStrategy pending;
+	float td_hard;
 
         void *data;
 } PsyInfo;
@@ -52,6 +59,9 @@ void PsyBufferUpdate (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 		float * restrict p_lookahead2);
 void BlockSwitch (struct faacEncStruct *hEncoder, CoderInfo *coderInfo, PsyInfo *psyInfo,
 		unsigned int numChannels);
+
+const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len);
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate);
 
 #ifdef __cplusplus
 }
