@@ -596,10 +596,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (!hEncoder->isLfeChannel[channel] && useTns) {
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
-                      coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel], hEncoder->gpsyInfo.sharedWorkBuffLong);
+                      hEncoder->freqBuff[channel],
+                      NULL, 0);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
