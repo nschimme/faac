@@ -692,7 +692,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -705,6 +704,33 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+        }
+    }
+
+    /* Process window grouping jointly for CPEs, independently for SCE/LFE.
+     * Aligned window groups are critical for allowing MS/Intensity Stereo tools to compose. */
+    bool grouped[MAX_CHANNELS] = {false};
+    for (int e = 0; e < hEncoder->numElements; e++) {
+        AACElement *elem = &hEncoder->elements[e];
+        if (elem->type == ID_CPE) {
+            int lch = elem->channels[0];
+            int rch = elem->channels[1];
+            if (lch >= 0 && lch < (int)numChannels && rch >= 0 && rch < (int)numChannels) {
+                if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW && coderInfo[rch].block_type == ONLY_SHORT_WINDOW) {
+                    BlocGroupStereo(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
+                                    &coderInfo[lch], &coderInfo[rch],
+                                    &hEncoder->aacquantCfg);
+                    grouped[lch] = true;
+                    grouped[rch] = true;
+                }
+            }
+        }
+    }
+
+    /* Fallback for any channel not handled by CPE joint grouping */
+    for (channel = 0; channel < numChannels; channel++) {
+        if (!grouped[channel] && coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+            BlocGroup(hEncoder->freqBuff[channel], &coderInfo[channel], &hEncoder->aacquantCfg);
         }
     }
 
