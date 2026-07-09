@@ -1,5 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
+ * Quantization and psychoacoustic masking application
  * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
@@ -15,23 +16,22 @@
 
 #include <limits.h>
 #include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "quantize.h"
 #include "huff2.h"
-#include "cpu_compute.h"
+#include "util.h"
 
-typedef void (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
+typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
+extern int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 #endif
 
-static void quantize_scalar(const float * __restrict xr, int * __restrict xi, int n, float sfacfix)
+/* Standard x^(3/4) quantization loop: also tracks 'maxq' so callers can pick
+ * the tightest Huffman codebook without a second pass over xi[]. */
+static int quantize_scalar(const float * __restrict xr, int * __restrict xi, int n, float sfacfix)
 {
     const float magic = MAGIC_NUMBER;
-    int i;
+    int i, maxq = 0;
     for (i = 0; i < n; i++)
     {
         float val = xr[i];
@@ -39,12 +39,15 @@ static void quantize_scalar(const float * __restrict xr, int * __restrict xi, in
         tmp = sqrtf(tmp * sqrtf(tmp));
         int q = (int)(tmp + magic);
         xi[i] = (val < 0) ? -q : q;
+        if (q > maxq) maxq = q;
     }
+    return maxq;
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
 static float sfstep;
 static float max_quant_limit;
+static const float frac_pow[4] = { 1.0f, 1.189207115f, 1.414213562f, 1.681792831f };
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -53,7 +56,7 @@ void QuantizeInit(void)
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
-        qfunc = quantize_sse2;
+        qfunc = (QuantizeFunc)quantize_sse2;
     else
 #endif
         qfunc = quantize_scalar;
@@ -64,15 +67,21 @@ void QuantizeInit(void)
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
 }
 
+/* 2^(sfac/4) via ldexp on the fractional part; avoids a pow() call per band. */
+static float get_gain(int sfac)
+{
+    return ldexpf(frac_pow[sfac & 3], sfac >> 2);
+}
+
 /* sfac and gain are coupled; clamping one forces a recompute of the other. */
 static float gain_with_overflow_clamp(int *sfac, float band_peak)
 {
-    float gain = powf(10, *sfac / sfstep);
+    float gain = get_gain(*sfac);
     if (band_peak > 0.0f && gain * band_peak > max_quant_limit)
     {
         gain = max_quant_limit / band_peak;
         *sfac = (int)floorf(log10f(gain) * sfstep);
-        gain = powf(10, *sfac / sfstep);
+        gain = get_gain(*sfac);
     }
     return gain;
 }
@@ -92,21 +101,23 @@ typedef struct
     float peak_amp; /* sqrt of the largest single-coefficient energy seen */
 } BandEnergy;
 
-static void measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
-                                 int gnum, BandEnergy * __restrict out)
+/* Measures energy for scalefactor bands [sfb_lo, sfb_hi) across 'gsize' short
+ * windows starting at 'w'. Shared by BlocQuant (full band range, real group
+ * size) and BlocGroup (single window at a time, restricted band range). */
+static void measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
+                                 int gsize, int sfb_lo, int sfb_hi, BandEnergy * __restrict out)
 {
-    int gsize = ci->groups.len[gnum];
     int sfb;
 
-    for (sfb = 0; sfb < ci->sfbn; sfb++)
+    for (sfb = sfb_lo; sfb < sfb_hi; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
         float sum = 0.0f, peak = 0.0f;
-        int w;
+        int v;
 
-        for (w = 0; w < gsize; w++)
+        for (v = 0; v < gsize; v++)
         {
-            const float *line = xr0 + w * BLOCK_LEN_SHORT + lo;
+            const float *line = w + v * BLOCK_LEN_SHORT + lo;
             int k;
             for (k = 0; k < hi - lo; k++)
             {
@@ -222,7 +233,8 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
-static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
+static void assign_band_codebooks(CoderInfo * __restrict ci, CoderScratch * __restrict sc,
+                                   const float * __restrict xr0,
                                    const float * __restrict target, const float * __restrict bandenrg,
                                    const float * __restrict bandpeak, int gnum, int pnslevel,
                                    int * __restrict p_last_abs)
@@ -276,11 +288,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int sf_abs;
             float gain = resolve_band_gain(sfac, sf_bias, bandpeak[sb], *p_last_abs, &sf_rel, &sf_abs);
             int xi[FRAME_LEN];
-            int win;
+            int win, maxq = 0;
 
             for (win = 0; win < gsize; win++)
-                qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
-            huffbook(ci, xi, gsize * width);
+            {
+                int q = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                if (q > maxq) maxq = q;
+            }
+            huffbook(ci, sc, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
         }
 
@@ -305,17 +320,22 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     float bandpeak[MAX_SCFAC_BANDS];
     int i, lastsf = SF_CHAIN_UNSET;
     float *gxr = xr;
+    CoderScratch *sc = (CoderScratch *)AllocMemory(sizeof(CoderScratch));
+
+    if (!sc)
+        return 0;
+    SetMemory(sc, 0, sizeof(CoderScratch));
 
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
         int sfb;
 
-        measure_band_energy(coder, gxr, i, be);
+        measure_band_energy(coder, gxr, coder->groups.len[i], 0, coder->sfbn, be);
         for (sfb = 0; sfb < coder->sfbn; sfb++)
             bandpeak[sfb] = be[sfb].peak_amp;
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
-        assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
+        assign_band_codebooks(coder, sc, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 
@@ -350,6 +370,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             coder->sf[i] = lastpns;
         }
     }
+
+    MergeSections(coder, sc);
+    SerializeSpectralData(coder, sc);
+    FreeMemory(sc);
     return 1;
 }
 
@@ -374,20 +398,6 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
-                                int from_sfb, int to_sfb, float * __restrict e_out)
-{
-    int sfb;
-    for (sfb = from_sfb; sfb < to_sfb; sfb++)
-    {
-        float e = 0.0f;
-        int k;
-        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
-            e += w[k] * w[k];
-        e_out[sfb] = e;
-    }
-}
-
 void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 {
     if (coderInfo->block_type != ONLY_SHORT_WINDOW)
@@ -403,6 +413,7 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     int onset_quorum = (active_bands * 3) >> 2;
 
     float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
+    BandEnergy be[NSFB_SHORT];
     int win, group_start = 0;
 
     coderInfo->groups.n = 0;
@@ -415,7 +426,9 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
         for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
             w[k] = 0.0f;
 
-        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
+        measure_band_energy(coderInfo, w, 1, GROUP_MIN_SFB, maxsfb, be);
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            band_e[sfb] = be[sfb].sum;
 
         if (win == group_start)
         {
