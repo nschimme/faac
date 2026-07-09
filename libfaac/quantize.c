@@ -444,7 +444,7 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 }
 
 #ifndef JOINT_GROUP_MODE
-#define JOINT_GROUP_MODE 1 // 0: Logical OR of onsets, 1: Sum of energies
+#define JOINT_GROUP_MODE 0 // 0: Logical OR of onsets, 1: Sum of energies
 #endif
 
 /**
