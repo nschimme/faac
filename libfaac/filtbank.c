@@ -101,56 +101,6 @@ static void BuildWindowPair(WindowPair *wp, int halfLen, double kbdAlpha)
     FillKbdWindow(wp->kbd, halfLen, kbdAlpha);
 }
 
-static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
-{
-    if (fft_tables->costbl[logm] == NULL)
-    {
-        int size = 1 << logm;
-        int i;
-        fft_tables->costbl[logm] = AllocMemory(size * sizeof(*(fft_tables->costbl[0])));
-        fft_tables->negsintbl[logm] = AllocMemory(size * sizeof(*(fft_tables->negsintbl[0])));
-
-        if (!fft_tables->costbl[logm] || !fft_tables->negsintbl[logm])
-        {
-            if (fft_tables->costbl[logm]) FreeMemory(fft_tables->costbl[logm]);
-            if (fft_tables->negsintbl[logm]) FreeMemory(fft_tables->negsintbl[logm]);
-            fft_tables->costbl[logm] = fft_tables->negsintbl[logm] = NULL;
-            return;
-        }
-
-        for (i = 0; i < size; i++)
-        {
-            double theta = 2.0 * M_PI_DOUBLE * (double)i / (double)size;
-            fft_tables->costbl[logm][i] = (fftfloat)cos(theta);
-            fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
-        }
-    }
-}
-
-static void check_reorder_table(FFT_Tables *fft_tables, int logm)
-{
-    if (fft_tables->reordertbl[logm] == NULL)
-    {
-        int size = 1 << logm;
-        int i;
-        fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-        if (!fft_tables->reordertbl[logm]) return;
-
-        for (i = 0; i < size; i++)
-        {
-            int reversed = 0;
-            int b;
-            int tmp = i;
-            for (b = 0; b < logm; b++)
-            {
-                reversed = (reversed << 1) | (tmp & 1);
-                tmp >>= 1;
-            }
-            fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
-        }
-    }
-}
-
 /* Fuses MDCT pre-twiddle directly into stage 0 of Radix-4 DIF.
  * Normative reference: ISO/IEC 14496-3 Section 4.6.4.
  * This avoids intermediate scratchpad round-trips for N4 complex floats.

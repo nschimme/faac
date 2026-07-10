@@ -126,7 +126,7 @@ void fft_terminate(FFT_Tables *fft_tables)
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
 
-static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
+void check_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
     {
@@ -149,6 +149,30 @@ static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
             double theta = 2.0 * M_PI_DOUBLE * (double)i / (double)size;
             fft_tables->costbl[logm][i] = (fftfloat)cos(theta);
             fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
+        }
+    }
+}
+
+void check_reorder_table(FFT_Tables *fft_tables, int logm)
+{
+    if (fft_tables->reordertbl[logm] == NULL)
+    {
+        int size = 1 << logm;
+        int i;
+        fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
+        if (!fft_tables->reordertbl[logm]) return;
+
+        for (i = 0; i < size; i++)
+        {
+            int reversed = 0;
+            int b;
+            int tmp = i;
+            for (b = 0; b < logm; b++)
+            {
+                reversed = (reversed << 1) | (tmp & 1);
+                tmp >>= 1;
+            }
+            fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
         }
     }
 }
@@ -285,29 +309,9 @@ void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
     if (logm > FFT_MAXLOGM) return;
     if (logm < 1) return;
 
-    check_tables_radix4(fft_tables, logm);
-
-    if (fft_tables->reordertbl[logm] == NULL)
-    {
-        int size = 1 << logm;
-        int i;
-        fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-        if (!fft_tables->reordertbl[logm]) return;
-
-        for (i = 0; i < size; i++)
-        {
-            int reversed = 0;
-            int b;
-            int tmp = i;
-            for (b = 0; b < logm; b++)
-            {
-                reversed = (reversed << 1) | (tmp & 1);
-                tmp >>= 1;
-            }
-            fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
-        }
-    }
-
+    /* Tables and reorder structures are pre-initialized during FilterBankInit.
+     * This avoids hot-path branching and checks, optimizing SBR execution.
+     */
     radix4_dif_proc(xr, xi, logm, fft_tables->costbl[logm], fft_tables->negsintbl[logm]);
     bit_reverse(xr, xi, logm, fft_tables->reordertbl[logm]);
 }
