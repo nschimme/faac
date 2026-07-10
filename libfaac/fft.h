@@ -37,6 +37,18 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-void fft			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
+void fft64			( FFT_Tables *fft_tables, float *xr, float *xi );
+
+/* Runs Radix-4 DIF stages k_start..logm/2-1, plus the trailing radix-2
+ * stage for odd logm. k_start=0 is a full transform; filtbank.c's MDCT
+ * fuses stage 0 with its pre-twiddle fold and passes k_start=1 to resume
+ * here, so both callers share one engine instead of duplicating it. */
+void radix4_dif_run(
+    float * restrict xr,
+    float * restrict xi,
+    int logm,
+    int k_start,
+    const fftfloat * restrict costbl,
+    const fftfloat * restrict sintbl);
 
 #endif
