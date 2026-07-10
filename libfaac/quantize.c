@@ -372,7 +372,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 // short-window grouping: keep spectrally-similar windows together so they
 // share scalefactors; a transient onset starts a fresh group instead
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
-#define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
+#define GROUP_ONSET_RATIO 4.0f  // running max/min energy ratio that counts as a transient
 
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
                                 int from_sfb, int to_sfb, float * __restrict e_out)
@@ -444,7 +444,7 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 }
 
 #ifndef JOINT_GROUP_MODE
-#define JOINT_GROUP_MODE 0 // 0: Logical OR of onsets, 1: Sum of energies
+#define JOINT_GROUP_MODE 1 // 0: Logical OR of onsets, 1: Sum of energies
 #endif
 
 /**
