@@ -198,7 +198,10 @@ static void fused_pretwiddle_stage0(
     }
 }
 
-/* Performs remaining stages of Radix-4 DIF FFT starting from k = 1 */
+/* Performs remaining stages of Radix-4 DIF FFT starting from k = 1.
+ * Strides and indices are computed explicitly from k to ensure absolute
+ * mathematical transparency and prevent any iteration state dependency.
+ */
 static void optimized_radix4_dif_proc_k1(
     float * restrict xr,
     float * restrict xi,
@@ -207,14 +210,13 @@ static void optimized_radix4_dif_proc_k1(
     const fftfloat * restrict sintbl)
 {
     int n = 1 << logm;
-    int n2 = n >> 2;
-    int n1;
+    int n1, n2;
     int i, j, k;
 
     for (k = 1; k < (logm >> 1); k++)
     {
-        n1 = n2;
-        n2 >>= 2;
+        n1 = n >> (2 * k);
+        n2 = n >> (2 * k + 2);
         for (i = 0; i < n; i += n1)
         {
             float * restrict r1p = xr + i;
@@ -331,14 +333,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
     BuildWindowPair(&shortPair, BLOCK_LEN_SHORT, 6.0);
 
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
-
-    /* Pre-initialize Radix-4 tables and reorder tables for both block sizes.
-     * This avoids expensive branch checks and lazy-init safety concerns during hot path.
-     */
-    check_tables_radix4(&hEncoder->fft_tables, 9);
-    check_tables_radix4(&hEncoder->fft_tables, 6);
-    check_reorder_table(&hEncoder->fft_tables, 9);
-    check_reorder_table(&hEncoder->fft_tables, 6);
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)

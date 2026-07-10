@@ -37,9 +37,6 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-void check_tables_radix4( FFT_Tables *fft_tables, int logm );
-void check_reorder_table( FFT_Tables *fft_tables, int logm );
-
 void fft			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
 
 #endif

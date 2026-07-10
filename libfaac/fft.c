@@ -22,6 +22,9 @@
 #define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
 #define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
 
+static void check_tables_radix4(FFT_Tables *fft_tables, int logm);
+static void check_reorder_table(FFT_Tables *fft_tables, int logm);
+
 void fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
@@ -83,6 +86,14 @@ void fft_initialize(FFT_Tables *fft_tables)
             fft_tables->mdct_sin[logm] = s;
         }
     }
+
+    /* Eagerly initialize Radix-4 tables and reorder tables for both block sizes.
+     * This avoids expensive branch checks and lazy-init safety concerns during hot path.
+     */
+    check_tables_radix4(fft_tables, LOGM_LONG);
+    check_tables_radix4(fft_tables, LOGM_SHORT);
+    check_reorder_table(fft_tables, LOGM_LONG);
+    check_reorder_table(fft_tables, LOGM_SHORT);
 }
 
 void fft_terminate(FFT_Tables *fft_tables)
@@ -126,7 +137,7 @@ void fft_terminate(FFT_Tables *fft_tables)
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
 
-void check_tables_radix4(FFT_Tables *fft_tables, int logm)
+static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
     {
@@ -153,7 +164,7 @@ void check_tables_radix4(FFT_Tables *fft_tables, int logm)
     }
 }
 
-void check_reorder_table(FFT_Tables *fft_tables, int logm)
+static void check_reorder_table(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->reordertbl[logm] == NULL)
     {
