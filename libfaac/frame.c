@@ -693,6 +693,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+            /* Run independent grouping first */
+            BlocGroup(hEncoder->freqBuff[channel], &coderInfo[channel], &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -708,9 +710,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Process window grouping jointly for CPEs, independently for SCE/LFE.
-     * Aligned window groups are critical for allowing MS/Intensity Stereo tools to compose. */
-    bool grouped[MAX_CHANNELS] = {false};
+    /* Co-optimize CPE window grouping: only align them jointly if BOTH channels
+     * independently wanted to split their windows (both have transients, n > 1).
+     * If only one channel has a transient, keeping them independent saves
+     * scale-factor bits for the non-transient channel. */
     for (int e = 0; e < hEncoder->numElements; e++) {
         AACElement *elem = &hEncoder->elements[e];
         if (elem->type == ID_CPE) {
@@ -718,20 +721,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
             int rch = elem->channels[1];
             if (lch >= 0 && lch < (int)numChannels && rch >= 0 && rch < (int)numChannels) {
                 if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW && coderInfo[rch].block_type == ONLY_SHORT_WINDOW) {
-                    BlocGroupStereo(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
-                                    &coderInfo[lch], &coderInfo[rch],
-                                    &hEncoder->aacquantCfg);
-                    grouped[lch] = true;
-                    grouped[rch] = true;
+                    if (coderInfo[lch].groups.n > 1 && coderInfo[rch].groups.n > 1) {
+                        BlocGroupStereo(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
+                                        &coderInfo[lch], &coderInfo[rch],
+                                        &hEncoder->aacquantCfg);
+                    }
                 }
             }
-        }
-    }
-
-    /* Fallback for any channel not handled by CPE joint grouping */
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!grouped[channel] && coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-            BlocGroup(hEncoder->freqBuff[channel], &coderInfo[channel], &hEncoder->aacquantCfg);
         }
     }
 
