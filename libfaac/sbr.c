@@ -125,9 +125,9 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
         sbr->oddCos[m] = (float)cos(M_PI_DOUBLE * (2 * m + 1) / 128.0);
         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
     }
-    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
-     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
-     * logm=6 table is built lazily on first use, single-threaded per encoder. */
+    /* Borrow the encoder's shared core FFT tables (same fft64() routine, same
+     * logm=6 size as the short-block MDCT). The core owns init/terminate and
+     * eagerly builds the logm=6 table during fft_initialize. */
     sbr->fftTables = fft_tables;
 
     SbrUpdate(sbr, bitRate);
@@ -415,14 +415,21 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
         p0 += 2; p1 += 2;
     }
-    fft(sbr->fftTables, xr, xi, 6);
+    fft64(sbr->fftTables, xr, xi);
+    /* fft64's output is bit-reversed; gather natural bins k/kr through
+     * reordertbl instead of running a full 64-bin bit-reversal pass, since
+     * only this [kx, k2) subrange (plus mirrors) is ever consumed. */
+    const unsigned short * restrict reorder = sbr->fftTables->reordertbl[6];
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
+        int rk = reorder[k], rkr = reorder[kr];
+        float xrk = xr[rk], xrkr = xr[rkr];
+        float xik = xi[rk], xikr = xi[rkr];
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (xr[k] + xr[kr]);
-        float Ai = 0.5f * (xi[kr] - xi[k]);
-        float Br = -0.5f * (xi[k] + xi[kr]);
-        float Bi = 0.5f * (xr[kr] - xr[k]);
+        float Ar = 0.5f * (xrk + xrkr);
+        float Ai = 0.5f * (xikr - xik);
+        float Br = -0.5f * (xik + xikr);
+        float Bi = 0.5f * (xrkr - xrk);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
