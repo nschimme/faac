@@ -710,10 +710,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Co-optimize CPE window grouping: only align them jointly if BOTH channels
-     * independently wanted to split their windows (both have transients, n > 1).
-     * If only one channel has a transient, keeping them independent saves
-     * scale-factor bits for the non-transient channel. */
+    /* Co-optimize CPE window grouping: align them jointly to the dominant channel's grouping
+     * to enable MS/Intensity Stereo tools while avoiding double-split bit penalty. */
     for (int e = 0; e < hEncoder->numElements; e++) {
         AACElement *elem = &hEncoder->elements[e];
         if (elem->type == ID_CPE) {
@@ -721,10 +719,24 @@ int faacEncEncode(faacEncHandle hpEncoder,
             int rch = elem->channels[1];
             if (lch >= 0 && lch < (int)numChannels && rch >= 0 && rch < (int)numChannels) {
                 if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW && coderInfo[rch].block_type == ONLY_SHORT_WINDOW) {
-                    if (coderInfo[lch].groups.n > 1 && coderInfo[rch].groups.n > 1) {
-                        BlocGroupStereo(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
-                                        &coderInfo[lch], &coderInfo[rch],
-                                        &hEncoder->aacquantCfg);
+                    if (coderInfo[lch].groups.n > 1 || coderInfo[rch].groups.n > 1) {
+                        float sum_L = 0.0f;
+                        float sum_R = 0.0f;
+                        for (int i = 0; i < FRAME_LEN; i++) {
+                            sum_L += hEncoder->freqBuff[lch][i] * hEncoder->freqBuff[lch][i];
+                            sum_R += hEncoder->freqBuff[rch][i] * hEncoder->freqBuff[rch][i];
+                        }
+                        if (sum_L >= sum_R) {
+                            coderInfo[rch].groups.n = coderInfo[lch].groups.n;
+                            for (int i = 0; i < coderInfo[lch].groups.n; i++) {
+                                coderInfo[rch].groups.len[i] = coderInfo[lch].groups.len[i];
+                            }
+                        } else {
+                            coderInfo[lch].groups.n = coderInfo[rch].groups.n;
+                            for (int i = 0; i < coderInfo[rch].groups.n; i++) {
+                                coderInfo[lch].groups.len[i] = coderInfo[rch].groups.len[i];
+                            }
+                        }
                     }
                 }
             }
