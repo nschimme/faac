@@ -372,7 +372,8 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 // short-window grouping: keep spectrally-similar windows together so they
 // share scalefactors; a transient onset starts a fresh group instead
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
-#define GROUP_ONSET_RATIO 4.0f  // running max/min energy ratio that counts as a transient
+#define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient for mono
+#define GROUP_ONSET_RATIO_STEREO 4.0f  // running max/min energy ratio that counts as a transient for CPE
 
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
                                 int from_sfb, int to_sfb, float * __restrict e_out)
@@ -528,18 +529,18 @@ void BlocGroupStereo(float * __restrict xrL, float * __restrict xrR,
             {
                 if (band_e_L[sfb] < run_min_L[sfb]) run_min_L[sfb] = band_e_L[sfb];
                 if (band_e_L[sfb] > run_max_L[sfb]) run_max_L[sfb] = band_e_L[sfb];
-                if (run_max_L[sfb] > GROUP_ONSET_RATIO * run_min_L[sfb]) onset_votes_L++;
+                if (run_max_L[sfb] > GROUP_ONSET_RATIO_STEREO * run_min_L[sfb]) onset_votes_L++;
 
                 if (band_e_R[sfb] < run_min_R[sfb]) run_min_R[sfb] = band_e_R[sfb];
                 if (band_e_R[sfb] > run_max_R[sfb]) run_max_R[sfb] = band_e_R[sfb];
-                if (run_max_R[sfb] > GROUP_ONSET_RATIO * run_min_R[sfb]) onset_votes_R++;
+                if (run_max_R[sfb] > GROUP_ONSET_RATIO_STEREO * run_min_R[sfb]) onset_votes_R++;
             }
             else
             {
                 float sum_e = band_e_L[sfb] + band_e_R[sfb];
                 if (sum_e < run_min_L[sfb]) run_min_L[sfb] = sum_e;
                 if (sum_e > run_max_L[sfb]) run_max_L[sfb] = sum_e;
-                if (run_max_L[sfb] > GROUP_ONSET_RATIO * run_min_L[sfb]) onset_votes_sum++;
+                if (run_max_L[sfb] > GROUP_ONSET_RATIO_STEREO * run_min_L[sfb]) onset_votes_sum++;
             }
         }
 
