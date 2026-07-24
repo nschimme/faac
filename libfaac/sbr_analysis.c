@@ -140,8 +140,11 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * the selected temporal envelopes. */
     /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
      * and never read, so skip their post-FFT extraction and accumulation. */
-    int kx = sbr ? sbr->kx : 0;
+    int kx = (sbr && !sbr->is_he_v2) ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
+    if (sbr && sbr->is_he_v2) {
+        kEnd = SBR_QMF_BANDS_64;
+    }
     for (int ch = 0; ch < nch; ch++) {
         memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
 
