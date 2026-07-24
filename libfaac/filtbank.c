@@ -383,16 +383,19 @@ void FilterBank(faacEncStruct* hEncoder,
  * the post-twiddle unfolding with on-the-fly bit-reversed lookups.
  * Table check and initialization are perform during FilterBankInit.
  */
-static inline void MDCT_specialized(
-    FFT_Tables *fft_tables,
-    float * restrict data,
-    int N,
-    float * restrict work,
-    int logm)
+void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restrict work )
 {
+    assert(fft_tables != NULL);
+    assert(data != NULL);
+    assert(work != NULL);
+    assert(N == 2 * BLOCK_LEN_SHORT || N == 2 * BLOCK_LEN_LONG);
+
     const int N2 = N >> 1;
     const int N4 = N >> 2;
+    const int logm = (N == 2 * BLOCK_LEN_LONG) ? LOGM_LONG : LOGM_SHORT;
 
+    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
+    assert(N == (4 << logm));
     assert(fft_tables->mdct_cos[logm] != NULL);
     assert(fft_tables->mdct_sin[logm] != NULL);
     assert(fft_tables->costbl[logm] != NULL);
@@ -429,19 +432,5 @@ static inline void MDCT_specialized(
         data[N2 - 1 - n2_idx]    =  unfoldIm;
         data[N2 + n2_idx]        = -unfoldIm;
         data[N - 1 - n2_idx]     =  unfoldRe;
-    }
-}
-
-void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restrict work )
-{
-    assert(fft_tables != NULL);
-    assert(data != NULL);
-    assert(work != NULL);
-    assert(N == 2 * BLOCK_LEN_SHORT || N == 2 * BLOCK_LEN_LONG);
-
-    if (N == 2 * BLOCK_LEN_SHORT) {
-        MDCT_specialized(fft_tables, data, 2 * BLOCK_LEN_SHORT, work, LOGM_SHORT);
-    } else {
-        MDCT_specialized(fft_tables, data, 2 * BLOCK_LEN_LONG, work, LOGM_LONG);
     }
 }
