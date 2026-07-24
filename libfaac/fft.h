@@ -19,6 +19,9 @@
 
 #define FFT_MAXLOGM 9
 
+#define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
+#define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
+
 typedef float fftfloat;
 
 typedef struct
@@ -34,7 +37,7 @@ typedef struct
     fftfloat *mdct_sin[FFT_MAXLOGM + 1];
 } FFT_Tables;
 
-void fft_initialize		( FFT_Tables *fft_tables );
+int fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
 void fft64			( FFT_Tables *fft_tables, float *xr, float *xi );

@@ -13,20 +13,18 @@
  * Lesser General Public License for more details.
  */
 
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 
 #include "fft.h"
 #include "util.h"
 
-#define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
-#define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
-
 /* Radix-4 twiddle factor tables are pre-calculated once in double precision
  * to eliminate cumulative recurrence errors, then stored as single-precision
  * floats to optimize cache-line utilization in wide-vector registers.
  */
-static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
+static int build_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
     {
@@ -40,7 +38,7 @@ static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
             if (fft_tables->costbl[logm]) FreeMemory(fft_tables->costbl[logm]);
             if (fft_tables->negsintbl[logm]) FreeMemory(fft_tables->negsintbl[logm]);
             fft_tables->costbl[logm] = fft_tables->negsintbl[logm] = NULL;
-            return;
+            return 0;
         }
 
         for (i = 0; i < size; i++)
@@ -50,20 +48,21 @@ static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
             fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
         }
     }
+    return 1;
 }
 
 /* Bit-reversal tables are pre-calculated to map scrambled DIF FFT outputs
  * back to natural order. This transforms the O(N) random-access swapping pass
  * into an structured lookup, saving memory cycles in the hot path.
  */
-static void check_reorder_table(FFT_Tables *fft_tables, int logm)
+static int build_reorder_table(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->reordertbl[logm] == NULL)
     {
         int size = 1 << logm;
         int i;
         fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-        if (!fft_tables->reordertbl[logm]) return;
+        if (!fft_tables->reordertbl[logm]) return 0;
 
         for (i = 0; i < size; i++)
         {
@@ -78,9 +77,10 @@ static void check_reorder_table(FFT_Tables *fft_tables, int logm)
             fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
         }
     }
+    return 1;
 }
 
-void fft_initialize(FFT_Tables *fft_tables)
+int fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
     fft_tables->costbl = AllocMemory((FFT_MAXLOGM + 1) * sizeof(fft_tables->costbl[0]));
@@ -95,7 +95,7 @@ void fft_initialize(FFT_Tables *fft_tables)
         fft_tables->costbl = NULL;
         fft_tables->negsintbl = NULL;
         fft_tables->reordertbl = NULL;
-        return;
+        return 0;
     }
 
     for (i = 0; i < FFT_MAXLOGM + 1; i++)
@@ -128,7 +128,8 @@ void fft_initialize(FFT_Tables *fft_tables)
             {
                 if (c) FreeMemory(c);
                 if (s) FreeMemory(s);
-                continue;
+                fft_terminate(fft_tables);
+                return 0;
             }
 
             for (i = 0; i < size; i++)
@@ -145,10 +146,16 @@ void fft_initialize(FFT_Tables *fft_tables)
     /* Eagerly initialize Radix-4 tables and reorder tables for both block sizes.
      * This avoids expensive branch checks and lazy-init safety concerns during hot path.
      */
-    check_tables_radix4(fft_tables, LOGM_LONG);
-    check_tables_radix4(fft_tables, LOGM_SHORT);
-    check_reorder_table(fft_tables, LOGM_LONG);
-    check_reorder_table(fft_tables, LOGM_SHORT);
+    if (!build_tables_radix4(fft_tables, LOGM_LONG) ||
+        !build_tables_radix4(fft_tables, LOGM_SHORT) ||
+        !build_reorder_table(fft_tables, LOGM_LONG) ||
+        !build_reorder_table(fft_tables, LOGM_SHORT))
+    {
+        fft_terminate(fft_tables);
+        return 0;
+    }
+
+    return 1;
 }
 
 void fft_terminate(FFT_Tables *fft_tables)
@@ -192,7 +199,7 @@ void fft_terminate(FFT_Tables *fft_tables)
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
 
-static void radix4_dif_stage(
+static inline void radix4_dif_stage(
     float * restrict xr,
     float * restrict xi,
     int n,
@@ -278,7 +285,7 @@ static void radix4_dif_stage(
 }
 
 /* odd logm: 4^k can't fill it, one radix-2 stage mops up the remainder */
-static void radix4_dif_radix2_tail(
+static inline void radix4_dif_radix2_tail(
     float * restrict xr,
     float * restrict xi,
     int n)
@@ -306,6 +313,13 @@ void radix4_dif_run(
     const fftfloat * restrict costbl,
     const fftfloat * restrict sintbl)
 {
+    assert(xr != NULL);
+    assert(xi != NULL);
+    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
+    assert(k_start >= 0 && k_start < (logm >> 1));
+    assert(costbl != NULL);
+    assert(sintbl != NULL);
+
     int n = 1 << logm;
     int k;
 
@@ -328,6 +342,12 @@ void radix4_dif_run(
  */
 void fft64(FFT_Tables *fft_tables, float *xr, float *xi)
 {
+    assert(fft_tables != NULL);
+    assert(fft_tables->costbl != NULL);
+    assert(fft_tables->negsintbl != NULL);
+    assert(fft_tables->costbl[LOGM_SHORT] != NULL);
+    assert(fft_tables->negsintbl[LOGM_SHORT] != NULL);
+
     /* Tables are pre-initialized during FilterBankInit, avoiding hot-path
      * branching and checks. */
     radix4_dif_run(xr, xi, LOGM_SHORT, 0, fft_tables->costbl[LOGM_SHORT], fft_tables->negsintbl[LOGM_SHORT]);
