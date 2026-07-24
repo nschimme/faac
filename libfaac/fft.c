@@ -305,7 +305,10 @@ static inline void radix4_dif_radix2_tail(
     }
 }
 
-void radix4_dif_run(
+/* Specialized inline helper to allow the compiler to fully constant-fold
+ * loop counters, strides, and twiddle shift counts for known FFT sizes.
+ */
+static inline void radix4_dif_run_specialized(
     float * restrict xr,
     float * restrict xi,
     int logm,
@@ -315,8 +318,6 @@ void radix4_dif_run(
 {
     assert(xr != NULL);
     assert(xi != NULL);
-    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
-    assert(k_start >= 0 && k_start < (logm >> 1));
     assert(costbl != NULL);
     assert(sintbl != NULL);
 
@@ -328,6 +329,29 @@ void radix4_dif_run(
 
     if (logm & 1)
         radix4_dif_radix2_tail(xr, xi, n);
+}
+
+void radix4_dif_run(
+    float * restrict xr,
+    float * restrict xi,
+    int logm,
+    int k_start,
+    const fftfloat * restrict costbl,
+    const fftfloat * restrict sintbl)
+{
+    if (logm == LOGM_SHORT) {
+        if (k_start == 1) {
+            radix4_dif_run_specialized(xr, xi, LOGM_SHORT, 1, costbl, sintbl);
+        } else {
+            radix4_dif_run_specialized(xr, xi, LOGM_SHORT, 0, costbl, sintbl);
+        }
+    } else {
+        if (k_start == 1) {
+            radix4_dif_run_specialized(xr, xi, LOGM_LONG, 1, costbl, sintbl);
+        } else {
+            radix4_dif_run_specialized(xr, xi, LOGM_LONG, 0, costbl, sintbl);
+        }
+    }
 }
 
 /* Only called by SBR's QMF analysis, always at the fixed 64-point size, so
@@ -350,6 +374,5 @@ void fft64(FFT_Tables *fft_tables, float *xr, float *xi)
 
     /* Tables are pre-initialized during FilterBankInit, avoiding hot-path
      * branching and checks. */
-    radix4_dif_run(xr, xi, LOGM_SHORT, 0, fft_tables->costbl[LOGM_SHORT], fft_tables->negsintbl[LOGM_SHORT]);
+    radix4_dif_run_specialized(xr, xi, LOGM_SHORT, 0, fft_tables->costbl[LOGM_SHORT], fft_tables->negsintbl[LOGM_SHORT]);
 }
-
