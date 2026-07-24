@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 
+#include <assert.h>
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
@@ -105,7 +106,7 @@ static void BuildWindowPair(WindowPair *wp, int halfLen, double kbdAlpha)
  * Normative reference: ISO/IEC 14496-3 Section 4.6.4.
  * This avoids intermediate scratchpad round-trips for N4 complex floats.
  */
-static void fused_pretwiddle_stage0(
+static inline void fused_pretwiddle_stage0(
     const float * restrict data,
     int N,
     float * restrict xr,
@@ -115,6 +116,15 @@ static void fused_pretwiddle_stage0(
     const fftfloat * restrict costbl,
     const fftfloat * restrict sintbl)
 {
+    assert(data != NULL);
+    assert(xr != NULL);
+    assert(xi != NULL);
+    assert(cosT != NULL);
+    assert(sinT != NULL);
+    assert(costbl != NULL);
+    assert(sintbl != NULL);
+    assert(N == 2 * BLOCK_LEN_SHORT || N == 2 * BLOCK_LEN_LONG);
+
     const int N2 = N >> 1;
     const int N4 = N >> 2;
     const int n2 = N4 >> 2; /* stage 0: n2 = N4 / 4 */
@@ -375,9 +385,22 @@ void FilterBank(faacEncStruct* hEncoder,
  */
 void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restrict work )
 {
+    assert(fft_tables != NULL);
+    assert(data != NULL);
+    assert(work != NULL);
+    assert(N == 2 * BLOCK_LEN_SHORT || N == 2 * BLOCK_LEN_LONG);
+
     const int N2 = N >> 1;
     const int N4 = N >> 2;
-    const int logm = (N == 2 * BLOCK_LEN_LONG) ? 9 : 6;
+    const int logm = (N == 2 * BLOCK_LEN_LONG) ? LOGM_LONG : LOGM_SHORT;
+
+    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
+    assert(N == (4 << logm));
+    assert(fft_tables->mdct_cos[logm] != NULL);
+    assert(fft_tables->mdct_sin[logm] != NULL);
+    assert(fft_tables->costbl[logm] != NULL);
+    assert(fft_tables->negsintbl[logm] != NULL);
+    assert(fft_tables->reordertbl[logm] != NULL);
 
     const fftfloat * restrict cosT = fft_tables->mdct_cos[logm];
     const fftfloat * restrict sinT = fft_tables->mdct_sin[logm];
