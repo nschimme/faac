@@ -125,7 +125,10 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
         return -2; /* not supported */
     }
 
-    if ((hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) && hEncoder->sbrContext) {
+    /* IsHEAAC handles both HE_V1 and HE_V2 common paths */
+    if (IsHEAAC(hEncoder->config.aacObjectType) && hEncoder->sbrContext) {
+        /* hEncoder->numChannels represents core channels (1 for HE-AAC v2),
+         * whereas inputChannels represents input channels (2 for HE-AAC v2). */
         return SbrContextGetASC(hEncoder->sbrContext, hEncoder->sampleRateIdx, hEncoder->numChannels, ppBuffer, pSizeOfDecoderSpecificInfo, hEncoder->config.aacObjectType);
     }
 
@@ -221,7 +224,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        if (hEncoder->numChannels == 2 && rate_per_ch > 0 && rate_per_ch < 16000 && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
+        /* HE-AAC v2 auto-resolution is optimal at bitrates strictly below 12 kbps per channel (24 kbps total) */
+        if (hEncoder->numChannels == 2 && rate_per_ch > 0 && rate_per_ch < 12000 && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
             hEncoder->config.aacObjectType = HE_V2;
         } else {
             hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
@@ -229,23 +233,24 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if ((hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    /* IsHEAAC handles both HE_V1 and HE_V2 common paths */
+    if (IsHEAAC(hEncoder->config.aacObjectType) && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
-     * runs dual-rate at Fs/2; the original rate is kept for SBR and the ASC.
-     * (Single-rate SBR is not supported: decoders unconditionally reconstruct
-     * the SBR band table from 2*core_rate, so a full-Fs core is undecodeable.) */
-    if (hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) {
+     * runs dual-rate at Fs/2; the original rate is kept for SBR and the ASC. */
+    if (IsHEAAC(hEncoder->config.aacObjectType)) {
         hEncoder->config.mpegVersion = MPEG4;
 
         if (hEncoder->config.aacObjectType == HE_V2) {
             if (hEncoder->inputChannels != 2)
                 return 0;
+            /* Scale core channels to 1 (mono) while preserving input channels count */
             hEncoder->numChannels = 1;
         }
 
         if (!hEncoder->sbrContext) {
+            /* SBR needs inputChannels (2) for HE-AAC v2 resampler/analysis, but core numChannels (1) for HE-AAC v1 */
             int sbr_channels = (hEncoder->config.aacObjectType == HE_V2) ? hEncoder->inputChannels : hEncoder->numChannels;
             hEncoder->sbrContext = SbrContextInit(sbr_channels);
         }
@@ -306,8 +311,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
 
-    if (hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) {
+    /* IsHEAAC handles both HE_V1 and HE_V2 common paths */
+    if (IsHEAAC(hEncoder->config.aacObjectType)) {
         SBRContext *sCtx = hEncoder->sbrContext;
+        /* SBR needs inputChannels (2) for HE-AAC v2 resampler/analysis, but core numChannels (1) for HE-AAC v1 */
         int sbr_channels = (hEncoder->config.aacObjectType == HE_V2) ? hEncoder->inputChannels : hEncoder->numChannels;
         SbrContextUpdateConfig(sCtx, sbr_channels, hEncoder->config.bitRate * hEncoder->numChannels, &hEncoder->fft_tables, hEncoder->config.aacObjectType);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
@@ -553,7 +560,7 @@ int faacEncClose(faacEncHandle hpEncoder)
     FilterBankEnd(hEncoder);
     fft_terminate(&hEncoder->fft_tables);
 
-    for (channel = 0; channel < hEncoder->inputChannels; channel++)
+    for (channel = 0; channel < hEncoder->numChannels; channel++)
 	{
         int buf;
         for (buf = 0; buf < 4; buf++) {
@@ -649,10 +656,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate. */
     float *heHalfRate[MAX_CHANNELS] = {0};
-    if (realPerCh > 0 && (hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) && SbrContextIsPresent(hEncoder->sbrContext)) {
+    /* IsHEAAC handles both HE_V1 and HE_V2 common paths */
+    if (realPerCh > 0 && IsHEAAC(hEncoder->config.aacObjectType) && SbrContextIsPresent(hEncoder->sbrContext)) {
+        /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
         if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Mono downmix of the resampled half-rate signal */
+            /* Mono downmix of the resampled half-rate signal to feed mono core */
             for (int i = 0; i < FRAME_LEN; i++) {
                 heHalfRate[0][i] = 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }

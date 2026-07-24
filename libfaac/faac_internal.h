@@ -35,6 +35,10 @@ enum { MPEG4 = 0, MPEG2 = 1 };
  * choice between LOW and HE_V1 to faacEncApplyConfig. */
 enum { AUTO = 0, LOW = 2, HE_V1 = 5, HE_V2 = 29 };
 
+static inline int IsHEAAC(int aacObjectType) {
+    return (aacObjectType == HE_V1 || aacObjectType == HE_V2);
+}
+
 /* PCM input sample format. Named distinctly from the public faac_input_format
  * enumerators (<faac.h>) so the facade can include both headers; faac.c
  * _Static_asserts the two enumerations agree value-for-value. */

@@ -33,53 +33,6 @@ static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int ns
     return table[sym].len;
 }
 
-/* Standard SBR PS coarse IID Huffman table (delta-frequency) */
-static const struct {
-    uint32_t code;
-    uint8_t len;
-} huff_iid_df0[29] = {
-    {  14,   1 }, {  15,   3 }, {  13,   3 }, {  16,   4 }, {  12,   4 },
-    {  17,   5 }, {  11,   5 }, {  10,   6 }, {  18,   6 }, {  19,   6 },
-    {   9,   7 }, {  20,   8 }, {   8,   9 }, {   7,  10 }, {  21,  11 },
-    {  22,  13 }, {   6,  13 }, {  23,  14 }, {  24,  14 }, {   5,  15 },
-    {  25,  15 }, {   4,  16 }, {   3,  17 }, {   0,  17 }, {   1,  17 },
-    {   2,  17 }, {  26,  17 }, {  27,  18 }, {  28,  18 }
-};
-
-static int write_ps_payload(SBRInfo *sbr, BitStream *bs, bool write)
-{
-    int bits = 0;
-#define WB(v,n) do { if (write && bs) PutBit(bs,(v),(n)); bits += (n); } while(0)
-
-    WB(1, 1);           /* enable_ps_header = 1 */
-    WB(1, 1);           /* enable_iid = 1 */
-    WB(0, 3);           /* iid_mode = 0 (coarse, 10 bands) */
-    WB(0, 1);           /* enable_icc = 0 */
-    WB(0, 1);           /* enable_ext = 0 */
-
-    WB(0, 1);           /* frame_class = 0 (FIXFIX) */
-    WB(0, 2);           /* num_env_idx = 0 (1 envelope) */
-
-    WB(0, 1);           /* dt = 0 (delta-frequency coding) */
-
-    /* Write 10 coarse IID parameters */
-    int iid_idx_prev = 7; /* reference/previous value starts at 0 dB, which is index 7 */
-    for (int b = 0; b < 10; b++) {
-        int iid_idx = sbr->iid_indices[b];
-        int delta = iid_idx - iid_idx_prev;
-        if (delta < -14) delta = -14;
-        if (delta > 14) delta = 14;
-
-        int huff_idx = delta + 14;
-        WB(huff_iid_df0[huff_idx].code, huff_iid_df0[huff_idx].len);
-
-        iid_idx_prev = iid_idx;
-    }
-
-#undef WB
-    return bits;
-}
-
 static int write_sbr_header(SBRInfo *sbr, BitStream *bs, bool write)
 {
     int bits = 0;
@@ -212,28 +165,12 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
         WB(0, 1);               /* bs_add_harmonic_flag = 0 */
         if (aacObjectType == HE_V2) {
             WB(1, 1);           /* bs_extended_data = 1 */
-
-            int ps_bits = write_ps_payload(sbr, NULL, false);
-            int total_ps_bits = 2 + ps_bits;
-            int fillBytes = (total_ps_bits + 7) / 8;
-            int padBits = fillBytes * 8 - total_ps_bits;
-
-            if (fillBytes < 15) {
-                WB(fillBytes, 4);
-            } else {
-                WB(15, 4);
-                WB(fillBytes - 15, 8);
-            }
-
+            WB(1, 4);           /* bs_extension_size = 1 */
             WB(2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
-            if (write) {
-                write_ps_payload(sbr, bs, true);
-            }
-            bits += ps_bits;
-
-            if (padBits > 0) {
-                WB(0, padBits);
-            }
+            WB(0, 1);           /* enable_iid = 0 */
+            WB(0, 1);           /* enable_icc = 0 */
+            WB(0, 1);           /* enable_ext = 0 */
+            WB(0, 3);           /* 3 padding bits to align SBR extension to 1 byte */
         } else {
             WB(0, 1);           /* bs_extended_data = 0 */
         }

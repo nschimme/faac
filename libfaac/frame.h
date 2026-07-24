@@ -123,7 +123,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
  * needs two FRAME_LENs of input to emit one frame at the full rate; LC needs one. */
 static inline unsigned int faacFrameSamples(const faacEncStruct *hEncoder)
 {
-    return (hEncoder->config.aacObjectType == HE_V1 || hEncoder->config.aacObjectType == HE_V2) ? 2 * FRAME_LEN : FRAME_LEN;
+    return IsHEAAC(hEncoder->config.aacObjectType) ? 2 * FRAME_LEN : FRAME_LEN;
 }
 
 #ifdef __cplusplus
