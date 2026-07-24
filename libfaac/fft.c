@@ -318,6 +318,8 @@ static inline void radix4_dif_run_specialized(
 {
     assert(xr != NULL);
     assert(xi != NULL);
+    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
+    assert(k_start >= 0 && k_start < (logm >> 1));
     assert(costbl != NULL);
     assert(sintbl != NULL);
 
@@ -339,19 +341,10 @@ void radix4_dif_run(
     const fftfloat * restrict costbl,
     const fftfloat * restrict sintbl)
 {
-    if (logm == LOGM_SHORT) {
-        if (k_start == 1) {
-            radix4_dif_run_specialized(xr, xi, LOGM_SHORT, 1, costbl, sintbl);
-        } else {
-            radix4_dif_run_specialized(xr, xi, LOGM_SHORT, 0, costbl, sintbl);
-        }
-    } else {
-        if (k_start == 1) {
-            radix4_dif_run_specialized(xr, xi, LOGM_LONG, 1, costbl, sintbl);
-        } else {
-            radix4_dif_run_specialized(xr, xi, LOGM_LONG, 0, costbl, sintbl);
-        }
-    }
+    assert(logm == LOGM_SHORT || logm == LOGM_LONG);
+    assert(k_start == 0 || k_start == 1);
+
+    radix4_dif_run_specialized(xr, xi, logm, k_start, costbl, sintbl);
 }
 
 /* Only called by SBR's QMF analysis, always at the fixed 64-point size, so
