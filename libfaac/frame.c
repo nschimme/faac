@@ -224,12 +224,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        /* HE-AAC v2 auto-resolution is optimal at bitrates below or equal to 12 kbps per channel (24 kbps total) */
-        if (hEncoder->numChannels == 2 && rate_per_ch > 0 && rate_per_ch <= 12000 && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-            hEncoder->config.aacObjectType = HE_V2;
-        } else {
-            hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
-        }
+        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 

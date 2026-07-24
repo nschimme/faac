@@ -474,6 +474,41 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
 
     sbr_adopt_envelope_grid(sbr, sa);
     sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, bandHalfE);
+
+    if (sbr->is_he_v2 && nch == 2) {
+        static const int ps_band_limits[11] = { 0, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 };
+        for (int b = 0; b < 10; b++) {
+            float eL = 0.0f;
+            float eR = 0.0f;
+            int start = ps_band_limits[b];
+            int end = ps_band_limits[b + 1];
+            for (int h = 0; h < sa->numEnvelopes; h++) {
+                for (int k = start; k < end; k++) {
+                    eL += bandHalfE[0][h][k];
+                    eR += bandHalfE[1][h][k];
+                }
+            }
+            float ratio = eL / (eR + 1e-9f);
+            int iid_idx;
+            if (ratio < 0.008f) iid_idx = -7;      /* < -21 dB */
+            else if (ratio < 0.016f) iid_idx = -6; /* -18 dB */
+            else if (ratio < 0.031f) iid_idx = -5; /* -15 dB */
+            else if (ratio < 0.063f) iid_idx = -4; /* -12 dB */
+            else if (ratio < 0.125f) iid_idx = -3; /* -9 dB */
+            else if (ratio < 0.25f)  iid_idx = -2; /* -6 dB */
+            else if (ratio < 0.5f)   iid_idx = -1; /* -3 dB */
+            else if (ratio < 2.0f)   iid_idx = 0;  /* 0 dB */
+            else if (ratio < 4.0f)   iid_idx = 1;  /* +3 dB */
+            else if (ratio < 8.0f)   iid_idx = 2;  /* +6 dB */
+            else if (ratio < 16.0f)  iid_idx = 3;  /* +9 dB */
+            else if (ratio < 32.0f)  iid_idx = 4;  /* +12 dB */
+            else if (ratio < 64.0f)  iid_idx = 5;  /* +15 dB */
+            else if (ratio < 128.0f) iid_idx = 6;  /* +18 dB */
+            else                     iid_idx = 7;  /* >= +21 dB */
+
+            sbr->iid_indices[b] = iid_idx;
+        }
+    }
 }
 
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.

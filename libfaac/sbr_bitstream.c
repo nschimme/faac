@@ -165,14 +165,90 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
         WB(0, 1);               /* bs_add_harmonic_flag = 0 */
         if (aacObjectType == HE_V2) {
             WB(1, 1);           /* bs_extended_data = 1 */
-            WB(1, 4);           /* bs_extension_size = 1 */
-            WB(2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
-            WB(0, 1);           /* enable_iid = 0 */
-            WB(0, 1);           /* enable_icc = 0 */
-            WB(0, 1);           /* enable_ext = 0 */
-            WB(0, 3);           /* 3 padding bits to align SBR extension to 1 byte */
+
+            static const SBRHuffEntry ps_huff_iid_coarse[15] = {
+                { 32512, 15 }, /* -7: binary 111111100000000 */
+                { 8064,  13 }, /* -6: binary 1111110000000   */
+                { 1984,  11 }, /* -5: binary 11111000000     */
+                { 480,    9 }, /* -4: binary 111100000       */
+                { 112,    7 }, /* -3: binary 1110000         */
+                { 24,     5 }, /* -2: binary 11000           */
+                { 4,      3 }, /* -1: binary 100             */
+                { 0,      1 }, /*  0: binary 0               */
+                { 5,      3 }, /* +1: binary 101             */
+                { 25,     5 }, /* +2: binary 11001           */
+                { 113,    7 }, /* +3: binary 1110001         */
+                { 481,    9 }, /* +4: binary 111100001       */
+                { 1985,  11 }, /* +5: binary 11111000001     */
+                { 8065,  13 }, /* +6: binary 1111110000001   */
+                { 32513, 15 }  /* +7: binary 111111100000001 */
+            };
+
+            /* Helper function closure for PS payload counting and writing */
+            #define PS_WB(v,n) do { if (write) PutBit(bs,(v),(n)); ps_bits += (n); } while(0)
+            int ps_bits = 0;
+            PS_WB(2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
+            PS_WB(1, 1);           /* enable_iid = 1 */
+            PS_WB(1, 3);           /* iid_mode = 1 (10-band coarse) */
+            PS_WB(0, 1);           /* iid_coding_direction = 0 (DF) */
+
+            /* Absolute coding for first band */
+            int idx = sbr->iid_indices[0];
+            int array_idx = clamp_int(idx + 7, 0, 14);
+            PS_WB(ps_huff_iid_coarse[array_idx].code, ps_huff_iid_coarse[array_idx].len);
+
+            /* Delta coding for remaining 9 bands */
+            for (int b = 1; b < 10; b++) {
+                int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
+                int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
+            }
+
+            PS_WB(0, 1);           /* enable_icc = 0 */
+            PS_WB(0, 1);           /* enable_ext = 0 */
+
+            /* Padding to byte align SBR extension payload */
+            int ps_pad = (8 - (ps_bits & 7)) & 7;
+            if (ps_pad > 0) {
+                PS_WB(0, ps_pad);
+            }
+            #undef PS_WB
+
+            int ps_bytes = ps_bits / 8;
+            if (ps_bytes < 15) {
+                WB(ps_bytes, 4);
+            } else {
+                WB(15, 4);
+                WB(ps_bytes - 15, 8);
+            }
+
+            /* Perform actual write of the measured, padded PS payload */
+            if (write) {
+                PutBit(bs, 2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
+                PutBit(bs, 1, 1);           /* enable_iid = 1 */
+                PutBit(bs, 1, 3);           /* iid_mode = 1 (10-band coarse) */
+                PutBit(bs, 0, 1);           /* iid_coding_direction = 0 (DF) */
+
+                int idx2 = sbr->iid_indices[0];
+                int array_idx2 = clamp_int(idx2 + 7, 0, 14);
+                PutBit(bs, ps_huff_iid_coarse[array_idx2].code, ps_huff_iid_coarse[array_idx2].len);
+
+                for (int b = 1; b < 10; b++) {
+                    int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
+                    int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                    PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
+                }
+
+                PutBit(bs, 0, 1);           /* enable_icc = 0 */
+                PutBit(bs, 0, 1);           /* enable_ext = 0 */
+
+                if (ps_pad > 0) {
+                    PutBit(bs, 0, ps_pad);
+                }
+            }
+            bits += ps_bits;
         } else {
-            WB(0, 1);           /* bs_extended_data = 0 */
+            WB(0, 1);               /* bs_extended_data = 0 */
         }
     }
 #undef WB
