@@ -80,7 +80,7 @@ static int build_reorder_table(FFT_Tables *fft_tables, int logm)
     return 1;
 }
 
-void fft_initialize(FFT_Tables *fft_tables)
+int fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
     fft_tables->costbl = AllocMemory((FFT_MAXLOGM + 1) * sizeof(fft_tables->costbl[0]));
@@ -95,7 +95,7 @@ void fft_initialize(FFT_Tables *fft_tables)
         fft_tables->costbl = NULL;
         fft_tables->negsintbl = NULL;
         fft_tables->reordertbl = NULL;
-        return;
+        return 0;
     }
 
     for (i = 0; i < FFT_MAXLOGM + 1; i++)
@@ -128,7 +128,8 @@ void fft_initialize(FFT_Tables *fft_tables)
             {
                 if (c) FreeMemory(c);
                 if (s) FreeMemory(s);
-                continue;
+                fft_terminate(fft_tables);
+                return 0;
             }
 
             for (i = 0; i < size; i++)
@@ -151,7 +152,10 @@ void fft_initialize(FFT_Tables *fft_tables)
         !build_reorder_table(fft_tables, LOGM_SHORT))
     {
         fft_terminate(fft_tables);
+        return 0;
     }
+
+    return 1;
 }
 
 void fft_terminate(FFT_Tables *fft_tables)
@@ -195,11 +199,7 @@ void fft_terminate(FFT_Tables *fft_tables)
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
 
-#if defined(__GNUC__) || defined(__clang__)
-static inline __attribute__((always_inline)) void radix4_dif_stage(
-#else
 static inline void radix4_dif_stage(
-#endif
     float * restrict xr,
     float * restrict xi,
     int n,
@@ -285,11 +285,7 @@ static inline void radix4_dif_stage(
 }
 
 /* odd logm: 4^k can't fill it, one radix-2 stage mops up the remainder */
-#if defined(__GNUC__) || defined(__clang__)
-static inline __attribute__((always_inline)) void radix4_dif_radix2_tail(
-#else
 static inline void radix4_dif_radix2_tail(
-#endif
     float * restrict xr,
     float * restrict xi,
     int n)

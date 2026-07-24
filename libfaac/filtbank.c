@@ -106,11 +106,7 @@ static void BuildWindowPair(WindowPair *wp, int halfLen, double kbdAlpha)
  * Normative reference: ISO/IEC 14496-3 Section 4.6.4.
  * This avoids intermediate scratchpad round-trips for N4 complex floats.
  */
-#if defined(__GNUC__) || defined(__clang__)
-static inline __attribute__((always_inline)) void fused_pretwiddle_stage0(
-#else
 static inline void fused_pretwiddle_stage0(
-#endif
     const float * restrict data,
     int N,
     float * restrict xr,

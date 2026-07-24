@@ -37,7 +37,7 @@ typedef struct
     fftfloat *mdct_sin[FFT_MAXLOGM + 1];
 } FFT_Tables;
 
-void fft_initialize		( FFT_Tables *fft_tables );
+int fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
 void fft64			( FFT_Tables *fft_tables, float *xr, float *xi );
