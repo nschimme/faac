@@ -205,6 +205,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
             }
 
             PS_WB(0, 1);           /* enable_icc = 0 */
+            PS_WB(0, 1);           /* enable_ipdopd = 0 */
             PS_WB(0, 1);           /* enable_ext = 0 */
 
             /* Padding to byte align SBR extension payload */
@@ -240,6 +241,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
                 }
 
                 PutBit(bs, 0, 1);           /* enable_icc = 0 */
+                PutBit(bs, 0, 1);           /* enable_ipdopd = 0 */
                 PutBit(bs, 0, 1);           /* enable_ext = 0 */
 
                 if (ps_pad > 0) {
