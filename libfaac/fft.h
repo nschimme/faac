@@ -19,6 +19,9 @@
 
 #define FFT_MAXLOGM 9
 
+#define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
+#define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
+
 typedef float fftfloat;
 
 typedef struct
