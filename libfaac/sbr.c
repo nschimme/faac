@@ -419,7 +419,7 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
     /* fft64's output is bit-reversed; gather natural bins k/kr through
      * reordertbl instead of running a full 64-bin bit-reversal pass, since
      * only this [kx, k2) subrange (plus mirrors) is ever consumed. */
-    const unsigned short * restrict reorder = sbr->fftTables->reordertbl[6];
+    const unsigned short * restrict reorder = sbr->fftTables->reordertbl[LOGM_SHORT];
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         int rk = reorder[k], rkr = reorder[kr];
