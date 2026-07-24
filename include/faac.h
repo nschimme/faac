@@ -100,7 +100,7 @@ enum faac_object_type {
     FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
     FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
     FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
-    FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
+    FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS                            */
     /* AOT 23 (LD), 39 (ELD), 42 (xHE-AAC/USAC) are intentionally NOT reserved
      * here; each would need its own additive configuration surface. */
     FAAC_OBJ_MAX       = 0x7fffffff

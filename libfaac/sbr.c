@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -186,7 +187,7 @@ void SbrContextEnd(SBRContext *sbrCtx)
     FreeMemory(sbrCtx);
 }
 
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize)
+int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize, int aacObjectType)
 {
     /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
      * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
@@ -196,16 +197,30 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     if (*ppBuffer == NULL) return -3;
     memset(*ppBuffer, 0, 5);
     BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
-    PutBit(pBitStream, LOW,                         5);  /* core object type */
-    PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
-    PutBit(pBitStream, channels,                     4);
-    PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
-    PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
-    PutBit(pBitStream, 0, 1);                            /* extensionFlag */
-    PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
-    PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
-    PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
-    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
+    if (aacObjectType == HE_V2) {
+        PutBit(pBitStream, HE_V2,                       5);  /* core object type = 29 */
+        PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
+        PutBit(pBitStream, channels,                     4);  /* core channels (1 for HE-AAC v2) */
+        PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
+        PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
+        PutBit(pBitStream, 0, 1);                            /* extensionFlag */
+        PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
+        PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
+        PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
+        PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
+        PutBit(pBitStream, 1,                           1);  /* psPresentFlag = 1 */
+    } else {
+        PutBit(pBitStream, LOW,                         5);  /* core object type = 2 */
+        PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
+        PutBit(pBitStream, channels,                     4);
+        PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
+        PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
+        PutBit(pBitStream, 0, 1);                            /* extensionFlag */
+        PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
+        PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
+        PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
+        PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
+    }
     CloseBitStream(pBitStream);
     return 0;
 }
@@ -219,13 +234,15 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables)
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables, int aacObjectType)
 {
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
         sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
+    if (sCtx->sbrInfo)
+        sCtx->sbrInfo->is_he_v2 = (aacObjectType == HE_V2);
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
@@ -454,6 +471,32 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         memcpy(bandHalfE[ch][0], sa->ch[ch].bandHalfE[0], SBR_QMF_BANDS_64 * sizeof(float));
         memcpy(bandHalfE[ch][1], sa->ch[ch].bandHalfE[1], SBR_QMF_BANDS_64 * sizeof(float));
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    }
+
+    /* For HE-AAC v2, calculate coarse IID indices */
+    if (sbr->is_he_v2 && numChannels == 2) {
+        static const float iid_boundaries[14] = {
+            0.084f, 0.158f, 0.251f, 0.375f, 0.530f, 0.707f, 0.891f,
+            1.122f, 1.412f, 1.883f, 2.659f, 3.978f, 6.309f, 11.885f
+        };
+        static const int ps_band_limits[11] = { 0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 64 };
+        for (int b = 0; b < 10; b++) {
+            float energyL = 1e-6f;
+            float energyR = 1e-6f;
+            for (int k = ps_band_limits[b]; k < ps_band_limits[b+1]; k++) {
+                energyL += bandHalfE[0][0][k] + bandHalfE[0][1][k];
+                energyR += bandHalfE[1][0][k] + bandHalfE[1][1][k];
+            }
+            float ratio = energyL / energyR;
+            int idx = 14;
+            for (int i = 0; i < 14; i++) {
+                if (ratio < iid_boundaries[i]) {
+                    idx = i;
+                    break;
+                }
+            }
+            sbr->iid_indices[b] = idx;
+        }
     }
 
     sbr_adopt_envelope_grid(sbr, sa);
