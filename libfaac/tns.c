@@ -15,6 +15,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 #include "frame.h"
 #include "coder.h"
 #include "tns.h"
@@ -224,7 +225,7 @@ void TnsInit(faacEncStruct* hEncoder)
 }
 
 void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+               float* spec, PsyInfo* psyInfo)
 {
     int b_start, b_stop, i_start, length;
     float *band, energy;
@@ -233,7 +234,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain;
     TnsFilterData *filter;
-    int order, limit, i;
+    int order, limit, i, win;
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
@@ -328,9 +329,28 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Direction is fixed rather than picked from a transient envelope; that
-     * comes with FrameStrategy in a later commit. */
+    /* Determine filter direction dynamically based on the temporal position of the peak energy.
+     * Causal/forward prediction (direction=0) is ideal for energy peaks in the second half of the
+     * frame (to avoid pre-echo), while anti-causal/backward prediction (direction=1) is ideal for
+     * energy peaks in the first half of the frame. */
     filter->direction = 0;
+    if (psyInfo && psyInfo->data) {
+        psydata_t *psydata = (psydata_t *)psyInfo->data;
+        float max_eng = 0.0f;
+        int peak_idx = -1;
+
+        for (win = 0; win < SUBBLOCKS_PER_FRAME; win++) {
+            float eng = psydata->eng[ENG_WIN_CUR + win];
+            if (eng > max_eng) {
+                max_eng = eng;
+                peak_idx = win;
+            }
+        }
+
+        if (peak_idx >= 0 && peak_idx < 4) {
+            filter->direction = 1;
+        }
+    }
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */

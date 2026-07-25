@@ -31,23 +31,12 @@ typedef float psyfloat;
    It holds three 2-frame energy windows back to back: PREV, CUR and the one
    lookahead window NEXT. (Energy windows are 2 frames wide, which is why a single
    "next" window consumes the two-frames-ahead sample slot in the input FIFO.) */
-#define SUBBLOCKS_PER_FRAME 8
-#define ENG_WIN_PREV (0 * SUBBLOCKS_PER_FRAME)
-#define ENG_WIN_CUR  (1 * SUBBLOCKS_PER_FRAME)
-#define ENG_WIN_NEXT (2 * SUBBLOCKS_PER_FRAME)
-
-typedef struct
-{
-  psyfloat eng[3 * SUBBLOCKS_PER_FRAME];
-}
-psydata_t;
 
 /* The high-pass first difference (d[n]=x[n]-x[n-1]) de-weights bass, whose
  * broadband energy would otherwise mask HF attacks and false-trigger short
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH (0.5f)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {

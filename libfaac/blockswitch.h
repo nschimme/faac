@@ -26,6 +26,17 @@ extern "C" {
 
 struct faacEncStruct;
 
+#define SUBBLOCKS_PER_FRAME 8
+#define ENG_WIN_PREV (0 * SUBBLOCKS_PER_FRAME)
+#define ENG_WIN_CUR  (1 * SUBBLOCKS_PER_FRAME)
+#define ENG_WIN_NEXT (2 * SUBBLOCKS_PER_FRAME)
+#define PSY_TD_THRESH (0.5f)
+
+typedef struct
+{
+  float eng[3 * SUBBLOCKS_PER_FRAME];
+} psydata_t;
+
 typedef struct {
 	int size;
 	int sizeS;

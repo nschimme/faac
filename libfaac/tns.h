@@ -24,6 +24,7 @@
 #define TNS_H
 
 #include "coder.h"
+#include "blockswitch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +36,7 @@ void TnsInit(faacEncStruct* hEncoder);
 /* Analyse one channel and, if it pays off, whiten `spec` in place. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec);
+               float* spec, PsyInfo* psyInfo);
 
 #ifdef __cplusplus
 }
