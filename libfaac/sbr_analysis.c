@@ -105,14 +105,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     }
 
     int split = num_slots;   /* default: single envelope spans the whole frame */
-    if (sbr && sbr->is_he_v2) {
-        sa->numEnvelopes = 1;
-        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
-        split = num_slots;
-    } else if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
         int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
@@ -147,11 +140,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * the selected temporal envelopes. */
     /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
      * and never read, so skip their post-FFT extraction and accumulation. */
-    int kx = (sbr && !sbr->is_he_v2) ? sbr->kx : 0;
+    int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    if (sbr && sbr->is_he_v2) {
-        kEnd = SBR_QMF_BANDS_64;
-    }
     for (int ch = 0; ch < nch; ch++) {
         memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
 

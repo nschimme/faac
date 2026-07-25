@@ -490,21 +490,21 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
             }
             float ratio = eL / (eR + 1e-9f);
             int iid_idx;
-            if (ratio < 0.008f) iid_idx = -7;      /* < -21 dB */
-            else if (ratio < 0.016f) iid_idx = -6; /* -18 dB */
-            else if (ratio < 0.031f) iid_idx = -5; /* -15 dB */
-            else if (ratio < 0.063f) iid_idx = -4; /* -12 dB */
-            else if (ratio < 0.125f) iid_idx = -3; /* -9 dB */
-            else if (ratio < 0.25f)  iid_idx = -2; /* -6 dB */
-            else if (ratio < 0.5f)   iid_idx = -1; /* -3 dB */
-            else if (ratio < 2.0f)   iid_idx = 0;  /* 0 dB */
-            else if (ratio < 4.0f)   iid_idx = 1;  /* +3 dB */
-            else if (ratio < 8.0f)   iid_idx = 2;  /* +6 dB */
-            else if (ratio < 16.0f)  iid_idx = 3;  /* +9 dB */
-            else if (ratio < 32.0f)  iid_idx = 4;  /* +12 dB */
-            else if (ratio < 64.0f)  iid_idx = 5;  /* +15 dB */
-            else if (ratio < 128.0f) iid_idx = 6;  /* +18 dB */
-            else                     iid_idx = 7;  /* >= +21 dB */
+            if (ratio < 0.0112f) iid_idx = -7;      /* < -19.5 dB */
+            else if (ratio < 0.0224f) iid_idx = -6; /* -19.5 to -16.5 dB */
+            else if (ratio < 0.0447f) iid_idx = -5; /* -16.5 to -13.5 dB */
+            else if (ratio < 0.0891f) iid_idx = -4; /* -13.5 to -10.5 dB */
+            else if (ratio < 0.1778f) iid_idx = -3; /* -10.5 to -7.5 dB */
+            else if (ratio < 0.3548f) iid_idx = -2; /* -7.5 to -4.5 dB */
+            else if (ratio < 0.7079f) iid_idx = -1; /* -4.5 to -1.5 dB */
+            else if (ratio < 1.4125f) iid_idx = 0;  /* -1.5 to +1.5 dB */
+            else if (ratio < 2.8184f) iid_idx = 1;  /* +1.5 to +4.5 dB */
+            else if (ratio < 5.6234f) iid_idx = 2;  /* +4.5 to +7.5 dB */
+            else if (ratio < 11.2202f) iid_idx = 3; /* +7.5 to +10.5 dB */
+            else if (ratio < 22.3872f) iid_idx = 4; /* +10.5 to +13.5 dB */
+            else if (ratio < 44.6684f) iid_idx = 5; /* +13.5 to +16.5 dB */
+            else if (ratio < 89.1251f) iid_idx = 6; /* +16.5 to +19.5 dB */
+            else                     iid_idx = 7;  /* >= +19.5 dB */
 
             sbr->iid_indices[b] = iid_idx;
         }

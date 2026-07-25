@@ -138,7 +138,7 @@ static int write_sbr_noise(SBRInfo *sbr, BitStream *bs, int ch, bool write)
     return bits;
 }
 
-static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, int aacObjectType)
+static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, int aacObjectType)
 {
     int bits = 0;
 #define WB(v,n) do { if (write) PutBit(bs,(v),(n)); bits += (n); } while(0)
@@ -184,8 +184,8 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
                 { 32513, 15 }  /* +7: binary 111111100000001 */
             };
 
-            /* Helper function closure for PS payload counting and writing */
-            #define PS_WB(v,n) do { if (write) PutBit(bs,(v),(n)); ps_bits += (n); } while(0)
+            /* Helper function closure for PS payload counting */
+            #define PS_WB(v,n) do { ps_bits += (n); } while(0)
             int ps_bits = 0;
             PS_WB(2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
             PS_WB(1, 1);           /* enable_iid = 1 */
@@ -205,7 +205,6 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
             }
 
             PS_WB(0, 1);           /* enable_icc = 0 */
-            PS_WB(0, 1);           /* enable_ipdopd = 0 */
             PS_WB(0, 1);           /* enable_ext = 0 */
 
             /* Padding to byte align SBR extension payload */
@@ -215,7 +214,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
             }
             #undef PS_WB
 
-            int ps_bytes = ps_bits / 8;
+            int ps_bytes = (ps_bits + 7) / 8;
             if (ps_bytes < 15) {
                 WB(ps_bytes, 4);
             } else {
@@ -241,7 +240,6 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, bool write, i
                 }
 
                 PutBit(bs, 0, 1);           /* enable_icc = 0 */
-                PutBit(bs, 0, 1);           /* enable_ipdopd = 0 */
                 PutBit(bs, 0, 1);           /* enable_ext = 0 */
 
                 if (ps_pad > 0) {
