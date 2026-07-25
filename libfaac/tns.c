@@ -47,6 +47,12 @@ static const struct {
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
 
+/* A frame with no sub-block energy spike has no attack for TNS's noise
+ * buildup to hide behind, so the LPC work isn't worth its bit cost. Peak
+ * needs to clear this multiple of the mean sub-block energy to count as a
+ * real transient rather than run-of-the-mill fluctuation. */
+#define TNS_TD_PEAK_GATE    2.0f
+
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
     int lag, i;
@@ -260,6 +266,24 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     if (energy < TNS_MIN_ENERGY)
         return;
 
+    /* No real attack in this 2048-sample TNS window (previous + current frame, 16 subblocks)
+     * means no transient for TNS's noise buildup to hide behind -- skip the LPC work. */
+    if (psyInfo && psyInfo->data) {
+        psydata_t *psydata = (psydata_t *)psyInfo->data;
+        float peak = 0.0f, mean = 0.0f;
+
+        for (i = 0; i < 2 * SUBBLOCKS_PER_FRAME; i++) {
+            float eng = (i < SUBBLOCKS_PER_FRAME) ?
+                psydata->eng[ENG_WIN_PREV + i] :
+                psydata->eng[ENG_WIN_CUR + (i - SUBBLOCKS_PER_FRAME)];
+            if (eng > peak) peak = eng;
+            mean += eng;
+        }
+        mean /= (float)(2 * SUBBLOCKS_PER_FRAME);
+        if (mean < TNS_MIN_ENERGY || peak < TNS_TD_PEAK_GATE * mean)
+            return;
+    }
+
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
      * band has the most energy and ignore quieter ones -- but pre-echo is
@@ -329,25 +353,28 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Determine filter direction dynamically based on the temporal position of the peak energy.
+    /* Determine filter direction dynamically based on the temporal position of the peak energy
+     * across the exact 2048-sample MDCT window (previous + current frame, 16 subblocks).
      * Causal/forward prediction (direction=0) is ideal for energy peaks in the second half of the
-     * frame (to avoid pre-echo), while anti-causal/backward prediction (direction=1) is ideal for
-     * energy peaks in the first half of the frame. */
+     * window (current frame), while anti-causal/backward prediction (direction=1) is ideal for
+     * energy peaks in the first half of the window (previous frame). */
     filter->direction = 0;
     if (psyInfo && psyInfo->data) {
         psydata_t *psydata = (psydata_t *)psyInfo->data;
         float max_eng = 0.0f;
         int peak_idx = -1;
 
-        for (win = 0; win < SUBBLOCKS_PER_FRAME; win++) {
-            float eng = psydata->eng[ENG_WIN_CUR + win];
+        for (win = 0; win < 2 * SUBBLOCKS_PER_FRAME; win++) {
+            float eng = (win < SUBBLOCKS_PER_FRAME) ?
+                psydata->eng[ENG_WIN_PREV + win] :
+                psydata->eng[ENG_WIN_CUR + (win - SUBBLOCKS_PER_FRAME)];
             if (eng > max_eng) {
                 max_eng = eng;
                 peak_idx = win;
             }
         }
 
-        if (peak_idx >= 0 && peak_idx < 4) {
+        if (peak_idx >= 0 && peak_idx < SUBBLOCKS_PER_FRAME) {
             filter->direction = 1;
         }
     }
