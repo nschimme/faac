@@ -224,7 +224,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        if (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
+            hEncoder->config.aacObjectType = (hEncoder->numChannels == 2) ? HE_V2 : HE_V1;
+        } else {
+            hEncoder->config.aacObjectType = LOW;
+        }
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
