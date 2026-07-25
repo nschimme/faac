@@ -459,8 +459,6 @@ static void sbr_quantize_envelopes(SBRInfo *sbr, int nch, int sampled,
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa)
 {
     int nch = clamp_int(numChannels, 1, 2);
-    if (sbr->is_he_v2) nch = 1; /* Mono SBR core for HE-AAC v2 */
-
     float bandHalfE[2][2][SBR_QMF_BANDS_64];
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
@@ -477,16 +475,18 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
     sbr_adopt_envelope_grid(sbr, sa);
     sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, bandHalfE);
 
-    if (sbr->is_he_v2 && numChannels == 2) {
+    if (sbr->is_he_v2 && nch == 2) {
         static const int ps_band_limits[11] = { 0, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 };
         for (int b = 0; b < 10; b++) {
             float eL = 0.0f;
             float eR = 0.0f;
             int start = ps_band_limits[b];
             int end = ps_band_limits[b + 1];
-            for (int k = start; k < end; k++) {
-                eL += sa->ch[0].bandHalfE[0][k] + sa->ch[0].bandHalfE[1][k];
-                eR += sa->ch[1].bandHalfE[0][k] + sa->ch[1].bandHalfE[1][k];
+            for (int h = 0; h < sa->numEnvelopes; h++) {
+                for (int k = start; k < end; k++) {
+                    eL += bandHalfE[0][h][k];
+                    eR += bandHalfE[1][h][k];
+                }
             }
             float ratio = eL / (eR + 1e-9f);
             int iid_idx;

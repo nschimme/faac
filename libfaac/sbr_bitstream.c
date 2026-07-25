@@ -200,8 +200,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
             /* Delta coding for remaining 9 bands */
             for (int b = 1; b < 10; b++) {
                 int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
-                int diff_array_idx = (diff + 7) % 15;
-                if (diff_array_idx < 0) diff_array_idx += 15;
+                int diff_array_idx = (diff + 7 + 150) % 15;
                 PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
             }
 
@@ -236,8 +235,7 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
 
                 for (int b = 1; b < 10; b++) {
                     int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
-                    int diff_array_idx = (diff + 7) % 15;
-                    if (diff_array_idx < 0) diff_array_idx += 15;
+                    int diff_array_idx = (diff + 7 + 150) % 15;
                     PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
                 }
 
