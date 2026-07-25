@@ -224,7 +224,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        if (hEncoder->numChannels == 2 && rate_per_ch > 0 && rate_per_ch <= 12000 && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
+            hEncoder->config.aacObjectType = HE_V2;
+        } else {
+            hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        }
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
@@ -656,9 +660,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
         if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Mono downmix of the resampled half-rate signal to feed mono core */
+            /* Mono downmix of the resampled half-rate signal to feed mono core, scaled by sqrt(0.5) to preserve energy */
             for (int i = 0; i < FRAME_LEN; i++) {
-                heHalfRate[0][i] = 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
+                heHalfRate[0][i] = 0.70710678f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }
         }
     }
