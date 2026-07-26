@@ -541,6 +541,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
                     best_icc_idx = i;
                 }
             }
+            if (best_icc_idx < 3) best_icc_idx = 0; /* force fully coherent to save bits and prevent phase distortion */
             sbr->icc_indices[b] = best_icc_idx;
         }
 
