@@ -287,10 +287,13 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         return;
 
     /* No real attack in this 2048-sample TNS window (previous + current frame, 16 subblocks)
-     * means no transient for TNS's noise buildup to hide behind -- skip the LPC work. */
+     * means no transient for TNS's noise buildup to hide behind -- skip the LPC work.
+     * At lower bitrates, raise the peak gate to 3.5f to restrict TNS to extremely strong transients,
+     * protecting the limited bit budget of stationary/tonal frames from coefficient overhead starvation. */
     if (psyInfo && psyInfo->data) {
         psydata_t *psydata = (psydata_t *)psyInfo->data;
         float peak = 0.0f, mean = 0.0f;
+        float peak_gate = (lpc_order == 8) ? TNS_TD_PEAK_GATE : 3.5f;
 
         for (i = 0; i < 2 * SUBBLOCKS_PER_FRAME; i++) {
             float eng = (i < SUBBLOCKS_PER_FRAME) ?
@@ -300,7 +303,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
             mean += eng;
         }
         mean /= (float)(2 * SUBBLOCKS_PER_FRAME);
-        if (mean < TNS_MIN_ENERGY || peak < TNS_TD_PEAK_GATE * mean)
+        if (mean < TNS_MIN_ENERGY || peak < peak_gate * mean)
             return;
     }
 
