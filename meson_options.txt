@@ -16,7 +16,7 @@ option('sbr-decimation',
     type: 'integer',
     min: 1,
     max: 8,
-    value: 8)
+    value: 1)
 
 option('max-channels',
     description: 'Maximum number of channels',
@@ -36,4 +36,4 @@ option('tns-decimation',
     type: 'integer',
     min: 1,
     max: 8,
-    value: 1)
+    value: 8)

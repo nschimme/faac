@@ -252,7 +252,9 @@ void TnsInit(faacEncStruct* hEncoder)
     unsigned long br = hEncoder->config.bitRate;
     int max_order = 8;
 
-    if (br > 0) {
+    if (!hEncoder->config.useTns) {
+        max_order = 0;
+    } else if (br > 0) {
         if (br >= 64000) {
             max_order = 8;
         } else if (br >= 32000) {

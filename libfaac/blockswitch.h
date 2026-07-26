@@ -46,6 +46,7 @@ typedef struct {
 	int block_type;
 	float td_hard;
 	int tns_alert;
+	int tns_active;
 
         void *data;
 } PsyInfo;
