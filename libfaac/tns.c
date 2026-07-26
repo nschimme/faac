@@ -73,7 +73,7 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
  * input. The returned prediction gain (r[0]/final residual error) lets
  * TnsEncode reject a bad fit before spending any bits on coefficients --
  * free to report here, since the recursion already has both numbers. */
-static float compute_lpc(int order, const float * r, float * k)
+static float compute_lpc(int order, const float * r, float * k, int * final_order)
 {
     float a[TNS_MAX_ORDER + 1];
     float err;
@@ -82,11 +82,13 @@ static float compute_lpc(int order, const float * r, float * k)
     if (r[0] <= 0.0f) {
         for (i = 1; i <= order; i++)
             k[i] = 0.0f;
+        *final_order = 0;
         return 1.0f;
     }
 
     err = r[0];
     a[0] = 1.0f;
+    int actual_order = 0;
     for (i = 1; i <= order; i++) {
         float lambda = r[i];
         float rc;
@@ -96,8 +98,6 @@ static float compute_lpc(int order, const float * r, float * k)
             lambda += a[j] * r[i - j];
 
         if (err <= 0.0f) {
-            for (; i <= order; i++)
-                k[i] = 0.0f;
             break;
         }
 
@@ -117,10 +117,24 @@ static float compute_lpc(int order, const float * r, float * k)
             a[i / 2] += rc * a[i / 2];
         a[i] = rc;
 
+        float prev_err = err;
         err *= (1.0f - rc * rc);
-        if (err <= 0.0f)
+        actual_order = i;
+
+        if (err <= 0.0f) {
             break;
+        }
+
+        /* Dynamic Gating check: if gain improvement is less than 0.5%, stop recursion early */
+        if ((prev_err - err) / prev_err < 0.005f) {
+            break;
+        }
     }
+
+    for (i = actual_order + 1; i <= order; i++) {
+        k[i] = 0.0f;
+    }
+    *final_order = actual_order;
 
     /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
      * means a degenerate input rather than a genuinely great filter. Return
@@ -341,8 +355,34 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         }
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
+    /* Decimate the spectral lines by 2 to compute autocorrelation.
+     * Halves the autocorrelation loop complexity (N -> N/2) for massive performance gains,
+     * while retaining more than enough resolution for a low-order (8th-order) LPC filter. */
+    {
+        float dec_wspec[BLOCK_LEN_LONG / 2];
+        int dec_length = length / 2;
+        if (dec_length > TNS_LPC_ORDER) {
+            for (i = 0; i < dec_length; i++) {
+                dec_wspec[i] = wspec[2 * i];
+            }
+            calc_autocorr_f(TNS_LPC_ORDER, dec_length, dec_wspec, r);
+        } else {
+            calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+        }
+    }
+
+    /* Apply a lag window (bandwidth expansion) to autocorrelation coefficients
+     * to prevent overly aggressive resonances and chirping artifacts. */
+    {
+        float w_val = 1.0f;
+        for (i = 0; i <= TNS_LPC_ORDER; i++) {
+            r[i] *= w_val;
+            w_val *= 0.994f;
+        }
+    }
+
+    int final_order = TNS_LPC_ORDER;
+    gain = compute_lpc(TNS_LPC_ORDER, r, k, &final_order);
     if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP)
         return;
 
@@ -351,7 +391,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = final_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
@@ -372,7 +412,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
             e0 += tdEnvelope[i];
         for (i = half; i < tdEnvelopeLen; i++)
             e1 += tdEnvelope[i];
-        filter->direction = (e1 > e0) ? 1 : 0;
+        filter->direction = (e0 > e1) ? 1 : 0;
     }
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at

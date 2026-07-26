@@ -38,6 +38,7 @@ typedef float psyfloat;
 
 typedef struct
 {
+  psyfloat eng[3 * SUBBLOCKS_PER_FRAME];
   psyfloat eng_low[3 * SUBBLOCKS_PER_FRAME];
   psyfloat eng_high[3 * SUBBLOCKS_PER_FRAME];
 }
@@ -70,8 +71,10 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
-  float lastlow = (float)psydata->eng_low[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float lastlow = (float)psydata->eng_low[ENG_WIN_CUR - PREVS];
   float lasthigh = (float)psydata->eng_high[ENG_WIN_CUR - PREVS];
+  float strength_total = 0.0f;
   float strength_low = 0.0f;
   float strength_high = 0.0f;
 
@@ -82,8 +85,13 @@ static void PsyCheckShort(PsyInfo * psyInfo)
      The search range is [curr-2, curr+9]. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
+      float eng = (float)psydata->eng[ENG_WIN_CUR - PREVS + win];
       float low = (float)psydata->eng_low[ENG_WIN_CUR - PREVS + win];
       float high = (float)psydata->eng_high[ENG_WIN_CUR - PREVS + win];
+
+      float toteng = (eng < lasteng) ? eng : lasteng;
+      float volchg = fabsf(eng - lasteng);
+      float s_total = volchg / (toteng + 1e-9f);
 
       float totlow = (low < lastlow) ? low : lastlow;
       float vollow = fabsf(low - lastlow);
@@ -93,64 +101,65 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float volhigh = fabsf(high - lasthigh);
       float s_high = volhigh / (tothigh + 1e-9f);
 
+      if (s_total > strength_total) strength_total = s_total;
       if (s_low > strength_low) strength_low = s_low;
       if (s_high > strength_high) strength_high = s_high;
 
+      lasteng = eng;
       lastlow = low;
       lasthigh = high;
   }
 
+  int transient_total = (strength_total > PSY_TD_THRESH);
   int transient_low = (strength_low > PSY_TD_THRESH);
   int transient_high = (strength_high > PSY_TD_THRESH);
 
-  if (transient_low && transient_high)
+  if (transient_total)
   {
-      float s_broadband = (strength_low < strength_high) ? strength_low : strength_high;
-
-      if (psyInfo->tns_active)
+      if (transient_low && transient_high)
       {
-          if (s_broadband > psyInfo->td_hard)
+          // Broadband attack
+          if (psyInfo->tns_active)
           {
-              psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
-              psyInfo->pending.use_tns = 0;
+              if (strength_total > psyInfo->td_hard)
+              {
+                  psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
+                  psyInfo->pending.use_tns = 0;
+              }
+              else
+              {
+                  psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+                  psyInfo->pending.use_tns = 1; // Aggressively evaluate TNS (TNS alert)
+              }
           }
           else
           {
-              psyInfo->pending.block_type = ONLY_LONG_WINDOW;
-              psyInfo->pending.use_tns = 1; // Aggressively evaluate TNS (TNS alert)
-          }
-      }
-      else
-      {
-          if (s_broadband > PSY_TD_THRESH)
-          {
               psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
               psyInfo->pending.use_tns = 0;
           }
       }
-  }
-  else if (transient_high)
-  {
-      // High-Band-Only Spike.
-      if (psyInfo->tns_active)
+      else if (transient_high)
       {
-          // Suppress short block, force LONG, and let TNS handle it.
-          psyInfo->pending.block_type = ONLY_LONG_WINDOW;
-          psyInfo->pending.use_tns = 1;
+          // High-Band-Only Spike.
+          if (psyInfo->tns_active)
+          {
+              // Suppress short block, force LONG, and let TNS handle it.
+              psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+              psyInfo->pending.use_tns = 1;
+          }
+          else
+          {
+              // TNS not active: cannot handle it, so we must allow short block.
+              psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
+              psyInfo->pending.use_tns = 0;
+          }
       }
       else
       {
-          // TNS not active: cannot handle it, so we must allow short block.
-          psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
-          psyInfo->pending.use_tns = 0;
+          // Low-Band-Only Spike. Suppress short block, force LONG.
+          psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+          psyInfo->pending.use_tns = 1;
       }
-  }
-  else
-  {
-      // Low-Band-Only Spike or no transient. Suppress short block, force LONG.
-      // Standard TNS checks are still permitted to run.
-      psyInfo->pending.block_type = ONLY_LONG_WINDOW;
-      psyInfo->pending.use_tns = 1;
   }
 }
 
@@ -245,6 +254,8 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 
   /* Shift the energy windows down by one frame: PREV<-CUR, CUR<-NEXT, freeing
      the NEXT region for the freshly-computed lookahead window below. */
+  memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME,
+          2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
   memmove(psydata->eng_low, psydata->eng_low + SUBBLOCKS_PER_FRAME,
           2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
   memmove(psydata->eng_high, psydata->eng_high + SUBBLOCKS_PER_FRAME,
@@ -263,6 +274,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
      * difference carries across the sub-block boundary instead of resetting. */
     float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
+    float e = 0.0f;
     float e_low = 0.0f;
     float e_high = 0.0f;
     int l, n = 2 * psyInfo->sizeS;
@@ -271,12 +283,15 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     for (l = 0; l < n; l++)
     {
       float d = seg[l] - seg[l - 1];
+      e += d * d;
+
       float lp = alpha * lp_state + (1.0f - alpha) * d;
       lp_state = lp;
       float hp = d - lp;
       e_low += lp * lp;
       e_high += hp * hp;
     }
+    psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
     psydata->eng_low[ENG_WIN_NEXT + win] = (psyfloat)e_low;
     psydata->eng_high[ENG_WIN_NEXT + win] = (psyfloat)e_high;
   }
