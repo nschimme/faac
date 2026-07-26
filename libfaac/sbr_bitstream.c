@@ -188,9 +188,14 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
             #define PS_WB(v,n) do { ps_bits += (n); } while(0)
             int ps_bits = 0;
             PS_WB(2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
+            PS_WB(1, 1);           /* enable_ps_header = 1 */
             PS_WB(1, 1);           /* enable_iid = 1 */
-            PS_WB(1, 3);           /* iid_mode = 1 (10-band coarse) */
-            PS_WB(0, 1);           /* iid_coding_direction = 0 (DF) */
+            PS_WB(0, 3);           /* iid_mode = 0 (10-band coarse) */
+            PS_WB(0, 1);           /* enable_icc = 0 */
+            PS_WB(0, 1);           /* enable_ext = 0 */
+            PS_WB(0, 1);           /* frame_class = 0 (FIXFIX) */
+            PS_WB(0, 2);           /* num_env = 1 (binary 00) */
+            PS_WB(0, 1);           /* dt = 0 (frequency delta-coding) */
 
             /* Absolute coding for first band */
             int idx = sbr->iid_indices[0];
@@ -203,9 +208,6 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                 int diff_array_idx = (diff + 7 + 150) % 15;
                 PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
             }
-
-            PS_WB(0, 1);           /* enable_icc = 0 */
-            PS_WB(0, 1);           /* enable_ext = 0 */
 
             /* Padding to byte align SBR extension payload */
             int ps_pad = (8 - (ps_bits & 7)) & 7;
@@ -225,9 +227,14 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
             /* Perform actual write of the measured, padded PS payload */
             if (write) {
                 PutBit(bs, 2, 2);           /* bs_extension_id = EXTENSION_ID_PS = 2 */
+                PutBit(bs, 1, 1);           /* enable_ps_header = 1 */
                 PutBit(bs, 1, 1);           /* enable_iid = 1 */
-                PutBit(bs, 1, 3);           /* iid_mode = 1 (10-band coarse) */
-                PutBit(bs, 0, 1);           /* iid_coding_direction = 0 (DF) */
+                PutBit(bs, 0, 3);           /* iid_mode = 0 (10-band coarse) */
+                PutBit(bs, 0, 1);           /* enable_icc = 0 */
+                PutBit(bs, 0, 1);           /* enable_ext = 0 */
+                PutBit(bs, 0, 1);           /* frame_class = 0 (FIXFIX) */
+                PutBit(bs, 0, 2);           /* num_env = 1 (binary 00) */
+                PutBit(bs, 0, 1);           /* dt = 0 */
 
                 int idx2 = sbr->iid_indices[0];
                 int array_idx2 = clamp_int(idx2 + 7, 0, 14);
@@ -238,9 +245,6 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                     int diff_array_idx = (diff + 7 + 150) % 15;
                     PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
                 }
-
-                PutBit(bs, 0, 1);           /* enable_icc = 0 */
-                PutBit(bs, 0, 1);           /* enable_ext = 0 */
 
                 if (ps_pad > 0) {
                     PutBit(bs, 0, ps_pad);
