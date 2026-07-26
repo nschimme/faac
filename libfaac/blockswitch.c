@@ -131,9 +131,19 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   }
   else if (transient_high)
   {
-      // High-Band-Only Spike. Suppress short block, force LONG, and let TNS handle it.
-      psyInfo->pending.block_type = ONLY_LONG_WINDOW;
-      psyInfo->pending.use_tns = 1;
+      // High-Band-Only Spike.
+      if (psyInfo->tns_active)
+      {
+          // Suppress short block, force LONG, and let TNS handle it.
+          psyInfo->pending.block_type = ONLY_LONG_WINDOW;
+          psyInfo->pending.use_tns = 1;
+      }
+      else
+      {
+          // TNS not active: cannot handle it, so we must allow short block.
+          psyInfo->pending.block_type = ONLY_SHORT_WINDOW;
+          psyInfo->pending.use_tns = 0;
+      }
   }
   else
   {
