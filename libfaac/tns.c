@@ -220,6 +220,21 @@ void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
+    unsigned long br = hEncoder->config.bitRate;
+    int max_order = 8;
+
+    if (br > 0) {
+        if (br >= 64000) {
+            max_order = 8;
+        } else if (br >= 32000) {
+            max_order = 4;
+        } else {
+            max_order = 0; /* Disable TNS below 32 kbps per channel */
+        }
+    } else {
+        /* VBR mode: use 8th-order filters by default */
+        max_order = 8;
+    }
 
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
@@ -227,6 +242,7 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
+        info->tns_max_order = max_order;
     }
 }
 
@@ -241,9 +257,13 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     float gain;
     TnsFilterData *filter;
     int order, limit, i, win;
+    int lpc_order = tnsInfo->tns_max_order;
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
+
+    if (lpc_order <= 0)
+        return;
 
     /* Short windows already have the temporal resolution to not need TNS. */
     if (blockType == ONLY_SHORT_WINDOW)
@@ -256,7 +276,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     i_start = sfbOffsetTable[b_start];
     length = sfbOffsetTable[b_stop] - i_start;
-    if (length <= TNS_LPC_ORDER)
+    if (length <= lpc_order)
         return;
 
     band = spec + i_start;
@@ -334,31 +354,35 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         }
     }
 
-    /* Decimate the spectral lines by 2 to compute autocorrelation.
-     * Halves the autocorrelation loop complexity (N -> N/2) for massive performance gains,
+    /* Decimate the spectral lines to compute autocorrelation.
+     * Halves or quarters the autocorrelation loop complexity for massive performance gains,
      * while retaining more than enough resolution for a low-order (8th-order) LPC filter. */
+#if FAAC_TNS_DECIMATION > 1
     {
-        float dec_wspec[BLOCK_LEN_LONG / 2];
-        int dec_length = length / 2;
-        if (dec_length > TNS_LPC_ORDER) {
+        float dec_wspec[BLOCK_LEN_LONG / FAAC_TNS_DECIMATION];
+        int dec_length = length / FAAC_TNS_DECIMATION;
+        if (dec_length > lpc_order) {
             for (i = 0; i < dec_length; i++) {
-                dec_wspec[i] = wspec[2 * i];
+                dec_wspec[i] = wspec[FAAC_TNS_DECIMATION * i];
             }
-            calc_autocorr_f(TNS_LPC_ORDER, dec_length, dec_wspec, r);
+            calc_autocorr_f(lpc_order, dec_length, dec_wspec, r);
         } else {
-            calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+            calc_autocorr_f(lpc_order, length, wspec, r);
         }
     }
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
+#else
+    calc_autocorr_f(lpc_order, length, wspec, r);
+#endif
+    gain = compute_lpc(lpc_order, r, k);
     if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP)
         return;
 
     filter = &tnsInfo->windowData.tnsFilter[0];
-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = lpc_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)

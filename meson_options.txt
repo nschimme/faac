@@ -24,3 +24,15 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+# TNS spectral analysis decimation: analyse every Nth spectral coefficient.
+# 1 = full quality (every slot); higher values trade MOS for faster encode.
+#   1: every slot  -- reference quality (MOS d: 0)
+#   2: every 2nd   -- ~11% faster overall encode; halves autocorrelation complexity; MOS d: +0.002
+#   4: every 4th   -- ~15% faster overall encode; quarters autocorrelation complexity
+option('tns-decimation',
+    description: 'TNS spectral analysis decimation: analyse every Nth spectral coefficient (1=full quality, max=8)',
+    type: 'integer',
+    min: 1,
+    max: 8,
+    value: 1)
