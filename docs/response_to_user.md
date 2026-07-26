@@ -15,9 +15,9 @@ Here are the direct answers to your observations:
 * **Bitrate Mode (`-b`):** FAAC applies a hard low-pass filter (bandwidth limit) to squeeze the audio into your strict target bitrate without introducing heavy warbling artifacts.
 
 ### 3. Why HE-AAC with `-q` maxes out at `-q 60` (~33 kbps)
-* **By default (`AUTO` mode), FAAC only uses HE-AAC for low-quality targets.**
-* To protect quality, FAAC restricts HE-AAC to `-q 60` or below. Any value above `-q 60` automatically switches the encoder to AAC-LC, which offers much better fidelity at higher bitrates.
-* If you force HE-AAC at `-q 60`, you get a heavily quantized ~33 kbps stream, which sounds "meh."
+* **Under default (`AUTO`) mode, FAAC only resolves to HE-AAC for `-q 60` and below.**
+* If you do not specify an object type, the default `AUTO` mode decides between AAC-LC and HE-AAC automatically. To ensure optimal audio quality, the encoder limits HE-AAC selection to `-q 60` or below (yielding around 33 kbps). If you choose any value higher than `-q 60`, `AUTO` automatically switches to standard AAC-LC, which offers much better fidelity at higher bitrates.
+* **Can you go higher?** Yes, if you explicitly force HE-AAC using `--object-type he-aac-v1`, you can use higher `-q` settings. However, doing so is discouraged. HE-AAC's Spectral Band Replication (SBR) parametrically reconstructs high frequencies, which works great at low bitrates but is physically incapable of achieving true transparency at higher bitrates, where standard AAC-LC is far superior.
 
 ---
 
