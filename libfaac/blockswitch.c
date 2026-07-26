@@ -38,6 +38,19 @@ typedef float psyfloat;
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
 
+#define PSY_TD_HARD (2.0f)
+#define PSY_TD_HARD_MIN_SR 32000
+
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate)
+{
+  float hard = PSY_TD_THRESH;
+  unsigned int ch;
+
+  if (tnsActive && sampleRate >= (unsigned int)PSY_TD_HARD_MIN_SR)
+    hard = PSY_TD_HARD;
+  for (ch = 0; ch < numChannels; ch++) psyInfo[ch].td_hard = hard;
+}
+
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
@@ -57,7 +70,8 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float volchg = fabsf(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
+      float strength = volchg / (toteng + 1e-9f);
+      if (strength > PSY_TD_THRESH && strength > psyInfo->td_hard)
       {
           psyInfo->block_type = ONLY_SHORT_WINDOW;
           break;
@@ -80,6 +94,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     if (!psydata) return;
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
+    psyInfo[channel].td_hard = PSY_TD_THRESH;
   }
 
   size = BLOCK_LEN_LONG;

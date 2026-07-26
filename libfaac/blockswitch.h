@@ -42,6 +42,7 @@ typedef struct {
 	int sizeS;
 
 	int block_type;
+	float td_hard;
 
         void *data;
 } PsyInfo;
@@ -53,6 +54,7 @@ typedef struct {
 	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns, mdct) */
 } GlobalPsyInfo;
 
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate);
 void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate);
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
