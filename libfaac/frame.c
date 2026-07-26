@@ -214,9 +214,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * narrow-band core + SBR reconstruction collapses. */
     if (hEncoder->config.aacObjectType == AUTO) {
         unsigned long rate_per_ch = config->bitRate;
-        if (hEncoder->numChannels > 1) {
-            rate_per_ch /= hEncoder->numChannels;
-        }
         int rate_ok;
         if (rate_per_ch > 0) {
             /* Threshold scales with Fs: (3/4)*Fs - 4 kHz gives ~20 kbps at 32 kHz,
