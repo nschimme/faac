@@ -465,7 +465,8 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
     sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
 
-    for (int ch = 0; ch < nch; ch++) {
+    int copy_nch = sbr->is_he_v2 ? 2 : nch;
+    for (int ch = 0; ch < copy_nch; ch++) {
         /* Use shared transient strength and accumulated energies from SbrAnalyze. */
         memcpy(bandHalfE[ch][0], sa->ch[ch].bandHalfE[0], SBR_QMF_BANDS_64 * sizeof(float));
         memcpy(bandHalfE[ch][1], sa->ch[ch].bandHalfE[1], SBR_QMF_BANDS_64 * sizeof(float));
@@ -473,9 +474,11 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
     }
 
     sbr_adopt_envelope_grid(sbr, sa);
-    sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, bandHalfE);
 
-    if (sbr->is_he_v2 && nch == 2) {
+    int quant_nch = sbr->is_he_v2 ? 1 : nch;
+    sbr_quantize_envelopes(sbr, quant_nch, sa->sampled, sa, bandHalfE);
+
+    if (sbr->is_he_v2 && copy_nch == 2) {
         static const int ps_band_limits[11] = { 0, 2, 4, 6, 8, 12, 16, 24, 32, 48, 64 };
         for (int b = 0; b < 10; b++) {
             float eL = 0.0f;
