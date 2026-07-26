@@ -59,6 +59,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
+  psyInfo->tns_alert = 0;
 
   /* Search for transients across the current frame and its immediate temporal context.
      The search range is [curr-2, curr+9]. */
@@ -71,10 +72,30 @@ static void PsyCheckShort(PsyInfo * psyInfo)
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
       float strength = volchg / (toteng + 1e-9f);
-      if (strength > PSY_TD_THRESH && strength > psyInfo->td_hard)
+      if (strength > PSY_TD_THRESH)
       {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
+          psyInfo->tns_alert = 1; /* Serve as TNS alert */
+
+          /* Decompose transient strength into low and high bands to evaluate frequency spread */
+          float eng_L = (float)psydata->eng_low[ENG_WIN_CUR - PREVS + win];
+          float lasteng_L = (float)psydata->eng_low[ENG_WIN_CUR - PREVS + win - 1];
+          float toteng_L = (eng_L < lasteng_L) ? eng_L : lasteng_L;
+          float volchg_L = fabsf(eng_L - lasteng_L);
+          float strength_L = volchg_L / (toteng_L + 1e-9f);
+
+          float eng_H = (float)psydata->eng_high[ENG_WIN_CUR - PREVS + win];
+          float lasteng_H = (float)psydata->eng_high[ENG_WIN_CUR - PREVS + win - 1];
+          float toteng_H = (eng_H < lasteng_H) ? eng_H : lasteng_H;
+          float volchg_H = fabsf(eng_H - lasteng_H);
+          float strength_H = volchg_H / (toteng_H + 1e-9f);
+
+          int is_broadband = (strength_L > PSY_TD_THRESH && strength_H > PSY_TD_THRESH);
+
+          /* Switch to short window only if the transient is broadband AND exceeds td_hard */
+          if (is_broadband && strength > psyInfo->td_hard) {
+              psyInfo->block_type = ONLY_SHORT_WINDOW;
+              break;
+          }
       }
       lasteng = eng;
   }
@@ -157,11 +178,21 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   int win;
   float * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = (psydata_t *)psyInfo->data;
+  float alpha = 0.207f; /* default for 44.1k/48k */
+
+  if (gpsyInfo->sampleRate > 0.0f) {
+      float wc = 2.0f * 3.14159265f * 2000.0f / gpsyInfo->sampleRate;
+      alpha = wc / (1.0f + wc);
+  }
 
   /* Shift the energy windows down by one frame: PREV<-CUR, CUR<-NEXT, freeing
      the NEXT region for the freshly-computed lookahead window below. */
   memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME,
           2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
+  memmove(psydata->eng_low, psydata->eng_low + SUBBLOCKS_PER_FRAME,
+          2 * SUBBLOCKS_PER_FRAME * sizeof(float));
+  memmove(psydata->eng_high, psydata->eng_high + SUBBLOCKS_PER_FRAME,
+          2 * SUBBLOCKS_PER_FRAME * sizeof(float));
 
   /* Assembly of the newest 2048-sample window for energy analysis */
   memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(float));
@@ -173,14 +204,24 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
      * difference carries across the sub-block boundary instead of resetting. */
     float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
     float e = 0.0f;
+    float e_low = 0.0f, e_high = 0.0f;
+    float d_L = 0.0f;
     int l, n = 2 * psyInfo->sizeS;
 
     for (l = 0; l < n; l++)
     {
       float d = seg[l] - seg[l - 1];
       e += d * d;
+
+      /* Crossover filter splitting */
+      d_L = d_L + alpha * (d - d_L);
+      float d_H = d - d_L;
+      e_low += d_L * d_L;
+      e_high += d_H * d_H;
     }
     psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
+    psydata->eng_low[ENG_WIN_NEXT + win] = e_low;
+    psydata->eng_high[ENG_WIN_NEXT + win] = e_high;
   }
 }
 

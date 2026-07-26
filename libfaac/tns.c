@@ -239,9 +239,27 @@ void TnsInit(faacEncStruct* hEncoder)
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
 
+        int b_start = tns_sfb_range[fs].min;
+        int offset = 0;
+        int b;
+        for (b = 0; b < b_start; b++) {
+            offset += hEncoder->srInfo->cb_width_long[b];
+        }
+        while (b_start < hEncoder->srInfo->num_cb_long) {
+            float freq = (float)offset * (float)(hEncoder->sampleRate) / 2048.0f;
+            if (freq >= 1500.0f) {
+                break;
+            }
+            offset += hEncoder->srInfo->cb_width_long[b_start];
+            b_start++;
+        }
+        if (b_start > tns_sfb_range[fs].max) {
+            b_start = tns_sfb_range[fs].max;
+        }
+
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
-        info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
+        info->tnsMinBandNumberLong = b_start;
         info->tns_max_order = max_order;
     }
 }
@@ -264,6 +282,14 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     if (lpc_order <= 0)
         return;
+
+    /* At lower bitrates, only run TNS if the psychoacoustic model flagged a transient (tns_alert).
+     * This protects the limited bit budget of stationary/tonal frames from TNS overhead. */
+    if (lpc_order <= 4) {
+        if (!psyInfo || !psyInfo->tns_alert) {
+            return;
+        }
+    }
 
     /* Short windows already have the temporal resolution to not need TNS. */
     if (blockType == ONLY_SHORT_WINDOW)

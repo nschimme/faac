@@ -35,6 +35,8 @@ struct faacEncStruct;
 typedef struct
 {
   float eng[3 * SUBBLOCKS_PER_FRAME];
+  float eng_low[3 * SUBBLOCKS_PER_FRAME];
+  float eng_high[3 * SUBBLOCKS_PER_FRAME];
 } psydata_t;
 
 typedef struct {
@@ -43,6 +45,7 @@ typedef struct {
 
 	int block_type;
 	float td_hard;
+	int tns_alert;
 
         void *data;
 } PsyInfo;
