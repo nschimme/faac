@@ -73,6 +73,7 @@ struct SBRInfo {
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
     int iid_indices[10];     /* coarse IID indices calculated for HE-AAC v2 */
+    int icc_indices[10];     /* coarse ICC indices calculated for HE-AAC v2 */
     int is_he_v2;            /* whether HE-AAC v2 is active */
 
     /* QMF analysis twiddle factors. */
@@ -105,6 +106,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa);
 int SbrWrite(SBRInfo *sbr, struct BitStream *bs, int id_aac, int writeFlag, int aacObjectType);

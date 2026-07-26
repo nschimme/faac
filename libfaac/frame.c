@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 
 #include "frame.h"
 #include "coder.h"
@@ -627,9 +628,27 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
         if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Mono downmix of the resampled half-rate signal to feed mono core, scaled by 0.5f to preserve level */
+            /* Energy-preserving mono downmix of the resampled half-rate signal to feed mono core */
+            float sum_L2 = 0.0f;
+            float sum_R2 = 0.0f;
+            float sum_D2 = 0.0f;
             for (int i = 0; i < FRAME_LEN; i++) {
-                heHalfRate[0][i] = 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
+                float l = heHalfRate[0][i];
+                float r = heHalfRate[1][i];
+                float d = 0.5f * (l + r);
+                sum_L2 += l * l;
+                sum_R2 += r * r;
+                sum_D2 += d * d;
+            }
+            float target_energy = 0.5f * (sum_L2 + sum_R2);
+            float scale = 1.0f;
+            if (sum_D2 > 1e-9f) {
+                scale = sqrtf(target_energy / sum_D2);
+                if (scale < 0.5f) scale = 0.5f;
+                if (scale > 2.0f) scale = 2.0f;
+            }
+            for (int i = 0; i < FRAME_LEN; i++) {
+                heHalfRate[0][i] = scale * 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }
         }
     }

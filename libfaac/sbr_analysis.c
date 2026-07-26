@@ -146,26 +146,66 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         kx = 0;
         kEnd = 64;
     }
-    for (int ch = 0; ch < nch; ch++) {
-        memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
 
-        if (sbr) {
-            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-            memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
+    if (nch == 2 && sbr && sbr->is_he_v2) {
+        memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
+        memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
+        memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+        float workspaceL[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+        float workspaceR[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+
+        memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+        memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
+
+        memcpy(workspaceR, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+        memcpy(workspaceR + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
+
+        for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+            if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                {
-                    float slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+            {
+                float xrL[64], xiL[64];
+                float xrR[64], xiR[64];
+                SbrQmfAnalysisComplex(sbr, workspaceL + slot * SBR_QMF_BANDS_64, xrL, xiL, kx, kEnd);
+                SbrQmfAnalysisComplex(sbr, workspaceR + slot * SBR_QMF_BANDS_64, xrR, xiR, kx, kEnd);
 
-                    int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+                int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 
-                    float * restrict bE = sa->ch[ch].bandHalfE[h];
-                    for (int k = kx; k < kEnd; k++)
-                        bE[k] += slotEnergy[k];
+                float * restrict bEL = sa->ch[0].bandHalfE[h];
+                float * restrict bER = sa->ch[1].bandHalfE[h];
+                float * restrict bCross = sa->bandCrossE[h];
+
+                for (int k = kx; k < kEnd; k++) {
+                    bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
+                    bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
+                    bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
+                }
+            }
+        }
+    } else {
+        for (int ch = 0; ch < nch; ch++) {
+            memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
+
+            if (sbr) {
+                memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+                memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
+
+                for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+                    if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+                    {
+                        float slotEnergy[SBR_QMF_BANDS_64];
+                        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+
+                        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+
+                        float * restrict bE = sa->ch[ch].bandHalfE[h];
+                        for (int k = kx; k < kEnd; k++)
+                            bE[k] += slotEnergy[k];
+                    }
                 }
             }
         }

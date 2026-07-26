@@ -350,7 +350,7 @@ static inline float fast_log2(float x)
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2)
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
@@ -384,9 +384,20 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
         float wi = sbr->oddSin[k];
-        float Sr = Ar + wr * Br - wi * Bi;
-        float Si = Ai + wr * Bi + wi * Br;
-        energy[k] = Sr * Sr + Si * Si;
+        xr_out[k] = Ar + wr * Br - wi * Bi;
+        xi_out[k] = Ai + wr * Bi + wi * Br;
+    }
+}
+
+#if defined(__GNUC__)
+__attribute__((hot))
+#endif
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+{
+    float xr_out[64], xi_out[64];
+    SbrQmfAnalysisComplex(sbr, ovl_pos, xr_out, xi_out, kx, k2);
+    for (int k = kx; k < k2; k++) {
+        energy[k] = xr_out[k] * xr_out[k] + xi_out[k] * xi_out[k];
     }
 }
 
@@ -483,12 +494,14 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         for (int b = 0; b < 10; b++) {
             float eL = 0.0f;
             float eR = 0.0f;
+            float eLR = 0.0f;
             int start = ps_band_limits[b];
             int end = ps_band_limits[b + 1];
             for (int h = 0; h < sa->numEnvelopes; h++) {
                 for (int k = start; k < end; k++) {
                     eL += bandHalfE[0][h][k];
                     eR += bandHalfE[1][h][k];
+                    eLR += sa->bandCrossE[h][k];
                 }
             }
             float ratio = eL / (eR + 1e-9f);
@@ -510,6 +523,25 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
             else                     iid_idx = 7;  /* >= +19.5 dB */
 
             sbr->iid_indices[b] = iid_idx;
+
+            float norm = sqrtf(eL * eR) + 1e-9f;
+            float icc = eLR / norm;
+            if (icc > 1.0f) icc = 1.0f;
+            if (icc < -1.0f) icc = -1.0f;
+
+            /* Non-linear quantization table of 3-bit ICC:
+             * [1.0, 0.937, 0.84118, 0.60092, 0.36764, 0.0, -0.589, -1.0] */
+            static const float icc_quant_table[8] = { 1.0f, 0.937f, 0.84118f, 0.60092f, 0.36764f, 0.0f, -0.589f, -1.0f };
+            int best_icc_idx = 0;
+            float min_diff = 1e9f;
+            for (int i = 0; i < 8; i++) {
+                float diff = fabsf(icc - icc_quant_table[i]);
+                if (diff < min_diff) {
+                    min_diff = diff;
+                    best_icc_idx = i;
+                }
+            }
+            sbr->icc_indices[b] = best_icc_idx;
         }
     }
 }
