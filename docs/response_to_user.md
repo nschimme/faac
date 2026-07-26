@@ -15,16 +15,26 @@ Here are the direct answers to your observations:
 * **Bitrate Mode (`-b`):** FAAC applies a hard low-pass filter (bandwidth limit) to squeeze the audio into your strict target bitrate without introducing heavy warbling artifacts.
 
 ### 3. Why HE-AAC with `-q` maxes out at `-q 60` (~33 kbps)
-* **Under default (`AUTO`) mode, FAAC only resolves to HE-AAC for `-q 60` and below.**
-* If you do not specify an object type, the default `AUTO` mode decides between AAC-LC and HE-AAC automatically. To ensure optimal audio quality, the encoder limits HE-AAC selection to `-q 60` or below (yielding around 33 kbps). If you choose any value higher than `-q 60`, `AUTO` automatically switches to standard AAC-LC, which offers much better fidelity at higher bitrates.
-* **Can you go higher?** Yes, if you explicitly force HE-AAC using `--object-type he-aac-v1`, you can use higher `-q` settings. However, doing so is discouraged. HE-AAC's Spectral Band Replication (SBR) parametrically reconstructs high frequencies, which works great at low bitrates but is physically incapable of achieving true transparency at higher bitrates, where standard AAC-LC is far superior.
+* **By default (`AUTO` mode), FAAC switches to HE-AAC only for low-quality targets.**
+* When using quality-based VBR, the encoder limits HE-AAC selection to `-q 60` or below. If you choose any value higher than `-q 60`, FAAC automatically switches to standard LC-AAC, which offers much better fidelity at higher bitrates.
+* If you force HE-AAC at `-q 60`, you get a heavily quantized ~33 kbps stream, which sounds "meh."
 
 ---
 
-### Recommended Settings
+### Our Recommendation: Stick with the Default `AUTO` Mode
 
-* **For maximum quality (VBR):** Use standard AAC-LC with `-q 100` (no bandwidth limit, full transparency).
-* **For low-bitrate HE-AAC:** Specify your target bitrate with `-b` instead of `-q` (e.g., `-b 64 --object-type he-aac-v1`) to let the rate controller optimize SBR bit distribution.
+To make things easy, **we strongly recommend relying on FAAC's default `AUTO` mode** rather than manually forcing object types. The encoder is designed to automatically select the best tool for your target:
+
+* **For maximum quality (VBR testing):** Just use `-q 100` (or higher) with no other flags. FAAC will automatically select LC-AAC, preserve full frequency bandwidth, and provide excellent transparency.
+  ```bash
+  faac -q 100 -o output.m4a input.wav
+  ```
+* **For low-bitrate targets:** Just specify your target bitrate using `-b` (e.g., `-b 48` or `-b 64`). FAAC will automatically select the highly efficient HE-AAC profile and manage the bit distribution for you.
+  ```bash
+  faac -b 64 -o output.m4a input.wav
+  ```
+
+Letting the default `AUTO` mode handle the decision-making ensures you always get the optimal balance of bandwidth and quality for your target bit budget!
 
 Best regards,
 The FAAC Development Team
