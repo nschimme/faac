@@ -249,6 +249,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                 return 0;
             /* Scale core channels to 1 (mono) while preserving input channels count */
             hEncoder->numChannels = 1;
+            /* Scale bit budget of the mono core to the full stereo target */
+            config->bitRate *= 2;
         }
 
         if (!hEncoder->sbrContext) {
