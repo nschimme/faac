@@ -1,40 +1,40 @@
 Hello AiZ,
 
-Thank you for the detailed feedback and the foobar2000 ABX reports! Achieving 10/10 on both *Enola* and *Big Fun* is impressive and shows you have great ears.
+Thanks for the detailed feedback and the foobar2000 ABX reports! Achieving 10/10 on both *Enola* and *Big Fun* is an impressive result that shows you have excellent ears for highlighting compression artifacts.
 
-Here are the direct answers to your observations:
+Here are the direct technical reasons behind the behaviors you encountered:
 
 ### 1. Why `--tns` and `--no-tns` produce bit-identical files at `-b 56`
 * **Under 32 kbps per channel, TNS is automatically disabled.**
-* When encoding a stereo file with `-b 56`, each channel gets around 28 kbps. To protect the limited bit budget and avoid wasting bits on TNS coefficient overhead, FAAC dynamically disables TNS below 32 kbps/channel.
-* Consequently, both `--tns` and `--no-tns` bypass TNS and produce identical files at this bitrate. You will see different files if you encode at `-b 96` or higher.
+* At `-b 56` (stereo), the budget translates to ~28 kbps per channel. To prevent the fixed bitstream overhead of TNS coefficients from starving the core quantization loop on low-bitrate frames, FAAC dynamically disables TNS below 32 kbps/channel.
+* As a result, both paths bypass TNS and yield identical output. You will see different files if you test at higher bitrates (e.g. `-b 96` or above).
 
 ### 2. Why `-q` never sets bandwidth, but `-b` does
-* **`-q` (VBR) preserves the full spectrum, while `-b` (ABR) uses a low-pass filter to fit a budget.**
-* **Quality Mode (`-q`):** FAAC retains the entire frequency range up to the Nyquist limit, relying on the quantizer and psychoacoustic model to discard inaudible data.
-* **Bitrate Mode (`-b`):** FAAC applies a hard low-pass filter (bandwidth limit) to squeeze the audio into your strict target bitrate without introducing heavy warbling artifacts.
+* **`-q` (VBR) preserves the full spectrum, while `-b` (ABR/CBR) uses low-pass filtering to meet a strict budget.**
+* **VBR (`-q`):** FAAC retains the entire frequency spectrum up to the Nyquist limit, relying purely on the psychoacoustic model and quantizer to naturally drop inaudible coefficients.
+* **ABR/CBR (`-b`):** The encoder applies a dynamic bandwidth cutoff (low-pass filter) to squeeze the audio into your strict target bitrate without introducing heavy warbling or pre-echo.
 
 ### 3. Why HE-AAC with `-q` maxes out at `-q 60` (~33 kbps)
-* **By default (`AUTO` mode), FAAC switches to HE-AAC only for low-quality targets.**
-* When using quality-based VBR, the encoder limits HE-AAC selection to `-q 60` or below. If you choose any value higher than `-q 60`, FAAC automatically switches to standard LC-AAC, which offers much better fidelity at higher bitrates.
-* If you force HE-AAC at `-q 60`, you get a heavily quantized ~33 kbps stream, which sounds "meh."
+* **By default (`AUTO` mode), FAAC switches to HE-AAC only for low-bitrate targets where SBR is necessary.**
+* To protect fidelity, `AUTO` mode caps HE-AAC at `-q 60`. Any higher quality target automatically switches to standard AAC-LC, which offers much better fidelity than HE-AAC at higher bit budgets.
+* Specifying high VBR qualities like `-q 100` or above with `AUTO` will correctly use LC-AAC and avoid SBR entirely.
 
 ---
 
-### Our Recommendation: Stick with the Default `AUTO` Mode
+### Recommended Setup
 
-To make things easy, **we strongly recommend relying on FAAC's default `AUTO` mode** rather than manually forcing object types. The encoder is designed to automatically select the best tool for your target:
+We strongly recommend letting the default **`AUTO` mode** handle the choices for you, as it optimizes the codec profile based on your target:
 
-* **For maximum quality (VBR testing):** Just use `-q 100` (or higher) with no other flags. FAAC will automatically select LC-AAC, preserve full frequency bandwidth, and provide excellent transparency.
+* **For maximum fidelity (critical listening/ABX):** Use `-q 100` or higher. This defaults to standard AAC-LC, preserves full frequency bandwidth, and targets true transparency.
   ```bash
   faac -q 100 -o output.m4a input.wav
   ```
-* **For low-bitrate targets:** Just specify your target bitrate using `-b` (e.g., `-b 48` or `-b 64`). FAAC will automatically select the highly efficient HE-AAC profile and manage the bit distribution for you.
+* **For low-bitrate tests:** If you want to evaluate HE-AAC, use `-b` to set a targeted bitrate (e.g., `-b 64`). The encoder will automatically engage HE-AAC and optimize bit distribution for SBR.
   ```bash
   faac -b 64 -o output.m4a input.wav
   ```
 
-Letting the default `AUTO` mode handle the decision-making ensures you always get the optimal balance of bandwidth and quality for your target bit budget!
+Let us know if you run any further ABX tests with these settings!
 
 Best regards,
 The FAAC Development Team
