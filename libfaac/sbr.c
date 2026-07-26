@@ -565,6 +565,15 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
             sbr->icc_indices[b] = decoded;
             last_icc = decoded;
         }
+
+        int any_icc_active = 0;
+        for (int b = 0; b < 10; b++) {
+            if (sbr->icc_indices[b] > 0) {
+                any_icc_active = 1;
+                break;
+            }
+        }
+        sbr->enable_icc = any_icc_active;
     }
 }
 

@@ -223,8 +223,10 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
             PS_WB(1, 1);           /* enable_ps_header = 1 */
             PS_WB(1, 1);           /* enable_iid = 1 */
             PS_WB(0, 3);           /* iid_mode = 0 (10-band coarse) */
-            PS_WB(1, 1);           /* enable_icc = 1 */
-            PS_WB(0, 3);           /* icc_mode = 0 (10-band coarse) */
+            PS_WB(sbr->enable_icc, 1); /* enable_icc */
+            if (sbr->enable_icc) {
+                PS_WB(0, 3);       /* icc_mode = 0 (10-band coarse) */
+            }
             PS_WB(0, 1);           /* enable_ext = 0 */
             PS_WB(0, 1);           /* frame_class = 0 (FIXFIX) */
             PS_WB(1, 2);           /* num_env = 1 (binary 01) */
@@ -242,17 +244,19 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                 PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
             }
 
-            /* Absolute coding for first band of ICC */
-            int icc_idx = sbr->icc_indices[0];
-            int icc_array_idx = clamp_int(icc_idx + 7, 0, 14);
-            PS_WB(0, 1);           /* dt = 0 for ICC */
-            PS_WB(ps_huff_icc_coarse[icc_array_idx].code, ps_huff_icc_coarse[icc_array_idx].len);
+            if (sbr->enable_icc) {
+                /* Absolute coding for first band of ICC */
+                int icc_idx = sbr->icc_indices[0];
+                int icc_array_idx = clamp_int(icc_idx + 7, 0, 14);
+                PS_WB(0, 1);           /* dt = 0 for ICC */
+                PS_WB(ps_huff_icc_coarse[icc_array_idx].code, ps_huff_icc_coarse[icc_array_idx].len);
 
-            /* Delta coding for remaining 9 bands of ICC */
-            for (int b = 1; b < 10; b++) {
-                int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
-                int diff_array_idx = clamp_int(diff + 7, 0, 14);
-                PS_WB(ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
+                /* Delta coding for remaining 9 bands of ICC */
+                for (int b = 1; b < 10; b++) {
+                    int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
+                    int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                    PS_WB(ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
+                }
             }
 
             /* Padding to byte align SBR extension payload */
@@ -276,8 +280,10 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                 PutBit(bs, 1, 1);           /* enable_ps_header = 1 */
                 PutBit(bs, 1, 1);           /* enable_iid = 1 */
                 PutBit(bs, 0, 3);           /* iid_mode = 0 (10-band coarse) */
-                PutBit(bs, 1, 1);           /* enable_icc = 1 */
-                PutBit(bs, 0, 3);           /* icc_mode = 0 (10-band coarse) */
+                PutBit(bs, sbr->enable_icc, 1); /* enable_icc */
+                if (sbr->enable_icc) {
+                    PutBit(bs, 0, 3);       /* icc_mode = 0 (10-band coarse) */
+                }
                 PutBit(bs, 0, 1);           /* enable_ext = 0 */
                 PutBit(bs, 0, 1);           /* frame_class = 0 (FIXFIX) */
                 PutBit(bs, 1, 2);           /* num_env = 1 (binary 01) */
@@ -293,15 +299,17 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                     PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
                 }
 
-                int icc_idx2 = sbr->icc_indices[0];
-                int icc_array_idx2 = clamp_int(icc_idx2 + 7, 0, 14);
-                PutBit(bs, 0, 1);           /* dt = 0 for ICC */
-                PutBit(bs, ps_huff_icc_coarse[icc_array_idx2].code, ps_huff_icc_coarse[icc_array_idx2].len);
+                if (sbr->enable_icc) {
+                    int icc_idx2 = sbr->icc_indices[0];
+                    int icc_array_idx2 = clamp_int(icc_idx2 + 7, 0, 14);
+                    PutBit(bs, 0, 1);           /* dt = 0 for ICC */
+                    PutBit(bs, ps_huff_icc_coarse[icc_array_idx2].code, ps_huff_icc_coarse[icc_array_idx2].len);
 
-                for (int b = 1; b < 10; b++) {
-                    int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
-                    int diff_array_idx = clamp_int(diff + 7, 0, 14);
-                    PutBit(bs, ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
+                    for (int b = 1; b < 10; b++) {
+                        int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
+                        int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                        PutBit(bs, ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
+                    }
                 }
 
                 if (ps_pad > 0) {

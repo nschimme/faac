@@ -628,33 +628,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
         if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Energy-preserving mono downmix of the resampled half-rate signal to feed mono core */
-            float sum_L2 = 0.0f;
-            float sum_R2 = 0.0f;
-            float sum_D2 = 0.0f;
+            /* Mono downmix of the resampled half-rate signal to feed mono core, scaled by 0.5f to preserve level.
+             * Using standard sum downmix prevents any phase-mismatch or gain-pumping artifacts in monaural metrics. */
             for (int i = 0; i < FRAME_LEN; i++) {
-                float l = heHalfRate[0][i];
-                float r = heHalfRate[1][i];
-                float d = 0.5f * (l + r);
-                sum_L2 += l * l;
-                sum_R2 += r * r;
-                sum_D2 += d * d;
-            }
-            float target_energy = 0.5f * (sum_L2 + sum_R2);
-            float target_scale = 1.0f;
-            if (sum_D2 > 1e-9f) {
-                target_scale = sqrtf(target_energy / sum_D2);
-                if (target_scale < 0.5f) target_scale = 0.5f;
-                if (target_scale > 2.0f) target_scale = 2.0f;
-            }
-            if (hEncoder->last_scale == 0.0f) {
-                hEncoder->last_scale = target_scale;
-            } else {
-                hEncoder->last_scale = 0.1f * target_scale + 0.9f * hEncoder->last_scale;
-            }
-            float scale = hEncoder->last_scale;
-            for (int i = 0; i < FRAME_LEN; i++) {
-                heHalfRate[0][i] = scale * 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
+                heHalfRate[0][i] = 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }
         }
     }

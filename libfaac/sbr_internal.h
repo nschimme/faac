@@ -74,6 +74,7 @@ struct SBRInfo {
     SBRChannel ch[MAX_CHANNELS];
     int iid_indices[10];     /* coarse IID indices calculated for HE-AAC v2 */
     int icc_indices[10];     /* coarse ICC indices calculated for HE-AAC v2 */
+    int enable_icc;          /* adaptive enable_icc flag */
     int is_he_v2;            /* whether HE-AAC v2 is active */
 
     /* QMF analysis twiddle factors. */
