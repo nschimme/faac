@@ -641,12 +641,18 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 sum_D2 += d * d;
             }
             float target_energy = 0.5f * (sum_L2 + sum_R2);
-            float scale = 1.0f;
+            float target_scale = 1.0f;
             if (sum_D2 > 1e-9f) {
-                scale = sqrtf(target_energy / sum_D2);
-                if (scale < 0.5f) scale = 0.5f;
-                if (scale > 2.0f) scale = 2.0f;
+                target_scale = sqrtf(target_energy / sum_D2);
+                if (target_scale < 0.5f) target_scale = 0.5f;
+                if (target_scale > 2.0f) target_scale = 2.0f;
             }
+            if (hEncoder->last_scale == 0.0f) {
+                hEncoder->last_scale = target_scale;
+            } else {
+                hEncoder->last_scale = 0.1f * target_scale + 0.9f * hEncoder->last_scale;
+            }
+            float scale = hEncoder->last_scale;
             for (int i = 0; i < FRAME_LEN; i++) {
                 heHalfRate[0][i] = scale * 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }
