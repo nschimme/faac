@@ -915,7 +915,7 @@ int main(int argc, char *argv[])
     params.joint_mode    = (jointmode >= 0) ? (enum faac_joint_mode)jointmode
                                             : params.joint_mode;
     params.use_lfe       = (infile->channels >= 6);
-    params.use_tns       = useTns ? true : false;
+    params.use_tns       = (useTns == 1);
     params.short_control = (enum faac_shortctl_mode)shortctl;
     if (pnslevel >= 0)
         params.pns_level = pnslevel;
@@ -926,6 +926,25 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         params.bit_rate = bitRate / infile->channels;
+
+    if (useTns == -1) {
+        if (params.bit_rate > 0) {
+            /* Enable TNS automatically for bitrates >= 64kbps per channel (e.g. >= 128kbps stereo) */
+            if (params.bit_rate >= 64000) {
+                params.use_tns = true;
+            } else {
+                params.use_tns = false;
+            }
+        } else {
+            /* VBR mode: enable TNS by default if quality is high */
+            if (params.quant_quality >= 100) {
+                params.use_tns = true;
+            } else {
+                params.use_tns = false;
+            }
+        }
+    }
+
     params.bandwidth     = cutOff;
     params.output_format = stream;
     params.input_format  = FAAC_INPUT_FLOAT;
