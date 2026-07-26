@@ -210,7 +210,7 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, float * spec)
+static void filter_spec(int length, int order, int direction, const float * restrict a, float * restrict spec)
 {
     float hist[BLOCK_LEN_LONG];
     int i, j;
