@@ -60,6 +60,7 @@ typedef struct SignalAnalysis {
     int envSampled[SBR_MAX_ENVELOPES];
 
     SignalAnalysisChannel ch[MAX_CHANNELS];
+    float bandCrossE[2][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
