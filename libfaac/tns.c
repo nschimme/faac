@@ -55,16 +55,24 @@ static const struct {
 
 static void calc_autocorr_f(int order, int length, const float * __restrict work, float * __restrict r)
 {
-    int lag, i;
+    int lag;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
         const float * __restrict p1 = work;
         const float * __restrict p2 = work + lag;
         int n = length - lag;
+        int i = 0;
 
-        for (i = 0; i < n; i++)
+        for (; i <= n - 4; i += 4) {
             acc += p1[i] * p2[i];
+            acc += p1[i + 1] * p2[i + 1];
+            acc += p1[i + 2] * p2[i + 2];
+            acc += p1[i + 3] * p2[i + 3];
+        }
+        for (; i < n; i++) {
+            acc += p1[i] * p2[i];
+        }
         r[lag] = acc;
     }
 }
@@ -118,9 +126,22 @@ static float compute_lpc(int order, const float * r, float * k)
             a[i / 2] += rc * a[i / 2];
         a[i] = rc;
 
+        float prev_err = err;
         err *= (1.0f - rc * rc);
-        if (err <= 0.0f)
+        if (err <= 0.0f) {
+            for (int rest = i + 1; rest <= order; rest++) {
+                k[rest] = 0.0f;
+            }
             break;
+        }
+
+        /* Dynamic Gating check: if gain improvement is less than 0.5%, stop recursion early */
+        if ((prev_err - err) / prev_err < 0.005f) {
+            for (int rest = i + 1; rest <= order; rest++) {
+                k[rest] = 0.0f;
+            }
+            break;
+        }
     }
 
     /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
@@ -408,6 +429,17 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 #else
     calc_autocorr_f(lpc_order, length, wspec, r);
 #endif
+
+    /* Apply a lag window (bandwidth expansion) to autocorrelation coefficients
+     * to prevent overly aggressive resonances and chirping artifacts. */
+    {
+        float w_val = 1.0f;
+        for (i = 0; i <= lpc_order; i++) {
+            r[i] *= w_val;
+            w_val *= 0.994f;
+        }
+    }
+
     gain = compute_lpc(lpc_order, r, k);
     if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP)
         return;
