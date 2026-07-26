@@ -152,8 +152,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
         memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
 
-        float workspaceL[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
-        float workspaceR[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+        float workspaceL[SBR_QMF_OVL_LEN_64 + numSamples];
+        float workspaceR[SBR_QMF_OVL_LEN_64 + numSamples];
 
         memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
         memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));

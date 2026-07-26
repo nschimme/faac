@@ -166,22 +166,54 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
         if (aacObjectType == HE_V2) {
             WB(1, 1);           /* bs_extended_data = 1 */
 
-            static const SBRHuffEntry ps_huff_iid_coarse[15] = {
-                { 32512, 15 }, /* -7: binary 111111100000000 */
-                { 8064,  13 }, /* -6: binary 1111110000000   */
-                { 1984,  11 }, /* -5: binary 11111000000     */
-                { 480,    9 }, /* -4: binary 111100000       */
-                { 112,    7 }, /* -3: binary 1110000         */
-                { 24,     5 }, /* -2: binary 11000           */
-                { 4,      3 }, /* -1: binary 100             */
-                { 0,      1 }, /*  0: binary 0               */
-                { 5,      3 }, /* +1: binary 101             */
-                { 25,     5 }, /* +2: binary 11001           */
-                { 113,    7 }, /* +3: binary 1110001         */
-                { 481,    9 }, /* +4: binary 111100001       */
-                { 1985,  11 }, /* +5: binary 11111000001     */
-                { 8065,  13 }, /* +6: binary 1111110000001   */
-                { 32513, 15 }  /* +7: binary 111111100000001 */
+            static const SBRHuffEntry ps_huff_iid_coarse[29] = {
+                { 131067, 17 }, /* -14: binary 11111111111111011 */
+                { 131068, 17 }, /* -13: binary 11111111111111100 */
+                { 131069, 17 }, /* -12: binary 11111111111111101 */
+                { 131066, 17 }, /* -11: binary 11111111111111010 */
+                { 65532, 16 },  /* -10: binary 1111111111111100 */
+                { 32764, 15 },  /* -9: binary 111111111111100 */
+                { 8189, 13 },   /* -8: binary 1111111111101 */
+                { 1022, 10 },   /* -7: binary 1111111110 */
+                { 510, 9 },     /* -6: binary 111111110 */
+                { 126, 7 },     /* -5: binary 1111110 */
+                { 60, 6 },      /* -4: binary 111100 */
+                { 29, 5 },      /* -3: binary 11101 */
+                { 13, 4 },      /* -2: binary 1101 */
+                { 5, 3 },       /* -1: binary 101 */
+                { 0, 1 },       /*  0: binary 0 */
+                { 4, 3 },       /*  1: binary 100 */
+                { 12, 4 },      /*  2: binary 1100 */
+                { 28, 5 },      /*  3: binary 11100 */
+                { 61, 6 },      /*  4: binary 111101 */
+                { 62, 6 },      /*  5: binary 111110 */
+                { 254, 8 },     /*  6: binary 11111110 */
+                { 2046, 11 },   /*  7: binary 11111111110 */
+                { 8188, 13 },   /*  8: binary 1111111111100 */
+                { 16380, 14 },  /*  9: binary 11111111111100 */
+                { 16381, 14 },  /* 10: binary 11111111111101 */
+                { 32765, 15 },  /* 11: binary 111111111111101 */
+                { 131070, 17 }, /* 12: binary 11111111111111110 */
+                { 262142, 18 }, /* 13: binary 111111111111111110 */
+                { 262143, 18 }  /* 14: binary 111111111111111111 */
+            };
+
+            static const SBRHuffEntry ps_huff_icc_coarse[15] = {
+                { 16383, 14 },  /* -7: binary 11111111111111 */
+                { 16382, 14 },  /* -6: binary 11111111111110 */
+                { 4094, 12 },   /* -5: binary 111111111110 */
+                { 1022, 10 },   /* -4: binary 1111111110 */
+                { 126, 7 },     /* -3: binary 1111110 */
+                { 30, 5 },      /* -2: binary 11110 */
+                { 6, 3 },       /* -1: binary 110 */
+                { 0, 1 },       /*  0: binary 0 */
+                { 2, 2 },       /*  1: binary 10 */
+                { 14, 4 },      /*  2: binary 1110 */
+                { 62, 6 },      /*  3: binary 111110 */
+                { 254, 8 },     /*  4: binary 11111110 */
+                { 510, 9 },     /*  5: binary 111111110 */
+                { 2046, 11 },   /*  6: binary 11111111110 */
+                { 8190, 13 }    /*  7: binary 1111111111110 */
             };
 
             /* Helper function closure for PS payload counting */
@@ -200,13 +232,13 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
 
             /* Absolute coding for first band of IID */
             int idx = sbr->iid_indices[0];
-            int array_idx = clamp_int(idx + 7, 0, 14);
+            int array_idx = clamp_int(idx + 14, 0, 28);
             PS_WB(ps_huff_iid_coarse[array_idx].code, ps_huff_iid_coarse[array_idx].len);
 
             /* Delta coding for remaining 9 bands of IID */
             for (int b = 1; b < 10; b++) {
                 int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
-                int diff_array_idx = (diff + 7 + 150) % 15;
+                int diff_array_idx = clamp_int(diff + 14, 0, 28);
                 PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
             }
 
@@ -214,13 +246,13 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
             int icc_idx = sbr->icc_indices[0];
             int icc_array_idx = clamp_int(icc_idx + 7, 0, 14);
             PS_WB(0, 1);           /* dt = 0 for ICC */
-            PS_WB(ps_huff_iid_coarse[icc_array_idx].code, ps_huff_iid_coarse[icc_array_idx].len);
+            PS_WB(ps_huff_icc_coarse[icc_array_idx].code, ps_huff_icc_coarse[icc_array_idx].len);
 
             /* Delta coding for remaining 9 bands of ICC */
             for (int b = 1; b < 10; b++) {
                 int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
-                int diff_array_idx = (diff + 7 + 150) % 15;
-                PS_WB(ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
+                int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                PS_WB(ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
             }
 
             /* Padding to byte align SBR extension payload */
@@ -252,24 +284,24 @@ static int write_sbr_data(SBRInfo *sbr, BitStream *bs, int id_aac, int write, in
                 PutBit(bs, 0, 1);           /* dt = 0 */
 
                 int idx2 = sbr->iid_indices[0];
-                int array_idx2 = clamp_int(idx2 + 7, 0, 14);
+                int array_idx2 = clamp_int(idx2 + 14, 0, 28);
                 PutBit(bs, ps_huff_iid_coarse[array_idx2].code, ps_huff_iid_coarse[array_idx2].len);
 
                 for (int b = 1; b < 10; b++) {
                     int diff = sbr->iid_indices[b] - sbr->iid_indices[b - 1];
-                    int diff_array_idx = (diff + 7 + 150) % 15;
+                    int diff_array_idx = clamp_int(diff + 14, 0, 28);
                     PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
                 }
 
                 int icc_idx2 = sbr->icc_indices[0];
                 int icc_array_idx2 = clamp_int(icc_idx2 + 7, 0, 14);
                 PutBit(bs, 0, 1);           /* dt = 0 for ICC */
-                PutBit(bs, ps_huff_iid_coarse[icc_array_idx2].code, ps_huff_iid_coarse[icc_array_idx2].len);
+                PutBit(bs, ps_huff_icc_coarse[icc_array_idx2].code, ps_huff_icc_coarse[icc_array_idx2].len);
 
                 for (int b = 1; b < 10; b++) {
                     int diff = sbr->icc_indices[b] - sbr->icc_indices[b - 1];
-                    int diff_array_idx = (diff + 7 + 150) % 15;
-                    PutBit(bs, ps_huff_iid_coarse[diff_array_idx].code, ps_huff_iid_coarse[diff_array_idx].len);
+                    int diff_array_idx = clamp_int(diff + 7, 0, 14);
+                    PutBit(bs, ps_huff_icc_coarse[diff_array_idx].code, ps_huff_icc_coarse[diff_array_idx].len);
                 }
 
                 if (ps_pad > 0) {

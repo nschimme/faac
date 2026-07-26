@@ -111,6 +111,7 @@ typedef struct faacEncStruct {
 
     /* HE-AAC / SBR state */
     struct SBRContext *sbrContext;   /* SBR analysis state and bitstream data */
+    float last_scale;                /* Smoothed scale factor for energy-preserving downmix */
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

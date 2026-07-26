@@ -543,6 +543,28 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
             }
             sbr->icc_indices[b] = best_icc_idx;
         }
+
+        /* Delta-modulation reconstruction filter to ensure all deltas are strictly in [-14, 14]
+         * and decoded values never exceed legal boundaries */
+        int last_iid = 0;
+        for (int b = 0; b < 10; b++) {
+            int target = sbr->iid_indices[b];
+            int diff = target - last_iid;
+            diff = clamp_int(diff, -14, 14);
+            int decoded = last_iid + diff;
+            sbr->iid_indices[b] = decoded;
+            last_iid = decoded;
+        }
+
+        int last_icc = 0;
+        for (int b = 0; b < 10; b++) {
+            int target = sbr->icc_indices[b];
+            int diff = target - last_icc;
+            diff = clamp_int(diff, -7, 7);
+            int decoded = last_icc + diff;
+            sbr->icc_indices[b] = decoded;
+            last_icc = decoded;
+        }
     }
 }
 
