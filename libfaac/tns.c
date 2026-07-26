@@ -52,18 +52,26 @@ static const struct {
  * real transient rather than run-of-the-mill fluctuation. */
 #define TNS_TD_PEAK_GATE    2.0f
 
-static void calc_autocorr_f(int order, int length, const float * work, float * r)
+static void calc_autocorr_f(int order, int length, const float * restrict work, float * restrict r)
 {
-    int lag, i;
+    int lag;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
-        const float * p1 = work;
-        const float * p2 = work + lag;
+        const float * restrict p1 = work;
+        const float * restrict p2 = work + lag;
         int n = length - lag;
+        int i = 0;
 
-        for (i = 0; i < n; i++)
+        for (; i <= n - 4; i += 4) {
             acc += p1[i] * p2[i];
+            acc += p1[i + 1] * p2[i + 1];
+            acc += p1[i + 2] * p2[i + 2];
+            acc += p1[i + 3] * p2[i + 3];
+        }
+        for (; i < n; i++) {
+            acc += p1[i] * p2[i];
+        }
         r[lag] = acc;
     }
 }

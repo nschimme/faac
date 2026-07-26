@@ -302,7 +302,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 const float *PsyGetCurEnvelope(PsyInfo *psyInfo, int *len)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  if (len) *len = SUBBLOCKS_PER_FRAME;
+  if (len) *len = 2 * SUBBLOCKS_PER_FRAME;
   return (const float *)&psydata->eng_high[ENG_WIN_PREV];
 }
 
