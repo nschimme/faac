@@ -242,9 +242,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
@@ -261,6 +258,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         config->quantqual = DEFQUAL;
 
     hEncoder->config.bitRate = config->bitRate;
+
+    /* Re-init TNS for new profile, now that config.bitRate is fully set */
+    TnsInit(hEncoder);
 
     if (!config->bandWidth)
     {

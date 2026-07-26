@@ -185,33 +185,41 @@ static void finalize_filter(int order, const float * k, float * a)
     }
 }
 
+#define TNS_HIST_SIZE 16
+#define TNS_HIST_MASK 15
+
 /* direction picks which end of the band the recursion runs from: TNS wants
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
 static void filter_spec(int length, int order, int direction, const float * __restrict a, float * __restrict spec)
 {
-    float hist[BLOCK_LEN_LONG];
     int i, j;
+    float h[TNS_HIST_SIZE] = {0.0f};
 
-    memcpy(hist, spec, length * sizeof(float));
     if (direction) {
         for (i = length - 1; i >= 0; i--) {
-            float acc = hist[i];
+            float orig = spec[i];
+            float acc = orig;
             int jmax = min(order, length - 1 - i);
 
-            for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i + j];
+            for (j = 1; j <= jmax; j++) {
+                acc += a[j] * h[(i + j) & TNS_HIST_MASK];
+            }
             spec[i] = acc;
+            h[i & TNS_HIST_MASK] = orig;
         }
     } else {
         for (i = 0; i < length; i++) {
-            float acc = hist[i];
+            float orig = spec[i];
+            float acc = orig;
             int jmax = min(order, i);
 
-            for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i - j];
+            for (j = 1; j <= jmax; j++) {
+                acc += a[j] * h[(i - j) & TNS_HIST_MASK];
+            }
             spec[i] = acc;
+            h[i & TNS_HIST_MASK] = orig;
         }
     }
 }
@@ -343,6 +351,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
         int nbands = b_stop - b_start;
         int b;
+        float rms_cache[64]; /* Max bands is typically around 51 */
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
@@ -351,6 +360,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
             rms = sqrtf(e / (float)(s1 - s0));
+            rms_cache[b - b_start] = rms;
             if (rms > maxrms) maxrms = rms;
 
             /* rms_fl keeps logf() away from 0 for silent bands; folded into
@@ -372,12 +382,8 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
-
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
+            float rms = rms_cache[b - b_start];
+            float wgt = 1.0f / (rms > floorrms ? rms : floorrms);
             for (i = s0; i < s1; i++)
                 wspec[i - i_start] = (float)spec[i] * wgt;
         }
