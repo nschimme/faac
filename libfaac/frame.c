@@ -466,7 +466,6 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                            unsigned int samplesInput)
 {
-    unsigned int numChannels = hEncoder->numChannels;
     unsigned int inputChannels = hEncoder->inputChannels;
     unsigned int spch = samplesInput / inputChannels;
     unsigned int channel, i;
@@ -474,62 +473,25 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
     if (spch == 0) return 0;
     if (hEncoder->inputFifoFill + spch > hEncoder->inputFifoCap) return -1;
 
-    if (hEncoder->config.aacObjectType == HE_V2 && inputChannels == 2) {
-        float *dst = hEncoder->inputFifo[0] + hEncoder->inputFifoFill;
+    for (channel = 0; channel < inputChannels; channel++) {
+        float *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
         switch (hEncoder->config.inputFormat) {
             case INPUT_16BIT: {
-                short *srcL = (short *)inputBuffer + hEncoder->config.channel_map[0];
-                short *srcR = (short *)inputBuffer + hEncoder->config.channel_map[1];
-                for (i = 0; i < spch; i++) {
-                    dst[i] = 0.5f * ((float)*srcL + (float)*srcR);
-                    srcL += inputChannels;
-                    srcR += inputChannels;
-                }
+                short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += inputChannels; }
                 break;
             }
             case INPUT_32BIT: {
-                int32_t *srcL = (int32_t *)inputBuffer + hEncoder->config.channel_map[0];
-                int32_t *srcR = (int32_t *)inputBuffer + hEncoder->config.channel_map[1];
-                for (i = 0; i < spch; i++) {
-                    dst[i] = 0.5f * ((1.0f/256) * (float)*srcL + (1.0f/256) * (float)*srcR);
-                    srcL += inputChannels;
-                    srcR += inputChannels;
-                }
+                int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < spch; i++) { dst[i] = (1.0f/256) * (float)*src; src += inputChannels; }
                 break;
             }
             case INPUT_FLOAT: {
-                float *srcL = (float *)inputBuffer + hEncoder->config.channel_map[0];
-                float *srcR = (float *)inputBuffer + hEncoder->config.channel_map[1];
-                for (i = 0; i < spch; i++) {
-                    dst[i] = 0.5f * (*srcL + *srcR);
-                    srcL += inputChannels;
-                    srcR += inputChannels;
-                }
+                float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
+                for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += inputChannels; }
                 break;
             }
             default: return -1;
-        }
-    } else {
-        for (channel = 0; channel < numChannels; channel++) {
-            float *dst = hEncoder->inputFifo[channel] + hEncoder->inputFifoFill;
-            switch (hEncoder->config.inputFormat) {
-                case INPUT_16BIT: {
-                    short *src = (short *)inputBuffer + hEncoder->config.channel_map[channel];
-                    for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
-                    break;
-                }
-                case INPUT_32BIT: {
-                    int32_t *src = (int32_t *)inputBuffer + hEncoder->config.channel_map[channel];
-                    for (i = 0; i < spch; i++) { dst[i] = (1.0f/256) * (float)*src; src += numChannels; }
-                    break;
-                }
-                case INPUT_FLOAT: {
-                    float *src = (float *)inputBuffer + hEncoder->config.channel_map[channel];
-                    for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
-                    break;
-                }
-                default: return -1;
-            }
         }
     }
     hEncoder->inputFifoFill += spch;
@@ -539,13 +501,13 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
 /* Drop n samples/channel from the front of the FIFO, shifting the leftover down. */
 static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
 {
-    unsigned int numChannels = hEncoder->numChannels;
+    unsigned int inputChannels = hEncoder->inputChannels;
     unsigned int channel, rem;
 
     if (n > hEncoder->inputFifoFill) n = hEncoder->inputFifoFill;
     rem = hEncoder->inputFifoFill - n;
     if (rem)
-        for (channel = 0; channel < numChannels; channel++)
+        for (channel = 0; channel < inputChannels; channel++)
             memmove(hEncoder->inputFifo[channel], hEncoder->inputFifo[channel] + n, rem * sizeof(float));
     hEncoder->inputFifoFill = rem;
 }
@@ -568,6 +530,9 @@ int faacEncClose(faacEncHandle hpEncoder)
             if (hEncoder->audioFIFO[channel][buf])
                 FreeMemory(hEncoder->audioFIFO[channel][buf]);
         }
+    }
+    for (channel = 0; channel < hEncoder->inputChannels; channel++)
+    {
 		if (hEncoder->inputFifo[channel])
 			FreeMemory (hEncoder->inputFifo[channel]);
     }
@@ -662,9 +627,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
         if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Mono downmix of the resampled half-rate signal to feed mono core, scaled by sqrt(0.5) to preserve energy */
+            /* Mono downmix of the resampled half-rate signal to feed mono core, scaled by 0.5f to preserve level */
             for (int i = 0; i < FRAME_LEN; i++) {
-                heHalfRate[0][i] = 0.70710678f * (heHalfRate[0][i] + heHalfRate[1][i]);
+                heHalfRate[0][i] = 0.5f * (heHalfRate[0][i] + heHalfRate[1][i]);
             }
         }
     }
