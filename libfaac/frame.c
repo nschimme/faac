@@ -649,7 +649,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             /* start flushing*/
             memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(float));
         }
-        else if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
+        else if (IsHEAAC(hEncoder->config.aacObjectType) && heHalfRate[channel])
         {
             /* core feeds on the SBR-downsampled signal, not the raw input */
             memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
