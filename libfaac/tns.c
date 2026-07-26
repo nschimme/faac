@@ -41,7 +41,7 @@ static const struct {
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
  * below as the floor for RMS-normalization and the LPC residual check,
  * rather than inventing a separate near-zero constant for each. */
-#define TNS_MIN_ENERGY      1e-9f
+#define TNS_MIN_ENERGY      1e-5f
 /* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
  * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
@@ -53,14 +53,14 @@ static const struct {
  * real transient rather than run-of-the-mill fluctuation. */
 #define TNS_TD_PEAK_GATE    2.0f
 
-static void calc_autocorr_f(int order, int length, const float * work, float * r)
+static void calc_autocorr_f(int order, int length, const float * __restrict work, float * __restrict r)
 {
     int lag, i;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
-        const float * p1 = work;
-        const float * p2 = work + lag;
+        const float * __restrict p1 = work;
+        const float * __restrict p2 = work + lag;
         int n = length - lag;
 
         for (i = 0; i < n; i++)
@@ -189,7 +189,7 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, float * spec)
+static void filter_spec(int length, int order, int direction, const float * __restrict a, float * __restrict spec)
 {
     float hist[BLOCK_LEN_LONG];
     int i, j;
