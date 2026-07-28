@@ -55,12 +55,36 @@ jobs:
             echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
           fi
 
+      # Baseline and candidate are timed in this same job, on this same runner,
+      # so they are only comparable if a restored baseline was ALSO measured on
+      # this hardware. runner.os is just "Linux" and says nothing about the CPU,
+      # and the ubuntu-latest fleet is heterogeneous -- so fold a CPU
+      # fingerprint into the key. Different hardware now misses and re-measures
+      # the baseline here rather than silently reporting a cross-machine delta
+      # as a throughput regression.
+      - name: Fingerprint Runner Hardware
+        id: hw
+        run: |
+          # lscpu covers x86 and arm64 uniformly; the /proc/cpuinfo lines are an
+          # x86 fallback. Model + ISA flags + core count is what actually moves
+          # these timings. Every probe tolerates absence: a degraded fingerprint
+          # only costs a re-measured baseline, but a failed step costs the run.
+          fp=$( { lscpu 2>/dev/null | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
+                    || grep -E '^(model name|flags)' /proc/cpuinfo 2>/dev/null | head -2 \
+                    || echo "cpu unknown"; \
+                  uname -m; nproc; } | sha256sum | cut -c1-16)
+          echo "fp=$fp" >> $GITHUB_OUTPUT
+          echo "CPU fingerprint: $fp"
+          lscpu 2>/dev/null | grep -E '^(Model name|CPU\(s\)):' || true
+
       - name: Restore Baseline Results
         id: cache-baseline
         uses: actions/cache/restore@v4
         with:
           path: results/${{ matrix.arch }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.baseline-sha.outputs.sha }}
+          # No restore-keys: a partial-match fallback would reintroduce exactly
+          # the cross-hardware pairing this key exists to prevent.
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
 
       - name: Checkout Baseline
         if: steps.cache-baseline.outputs.cache-hit != 'true'
@@ -90,7 +114,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: results/${{ matrix.arch }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.baseline-sha.outputs.sha }}
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
 
       - name: Run Benchmark (Candidate)
         if: github.event_name == 'pull_request'
