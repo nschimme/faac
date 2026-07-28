@@ -54,7 +54,7 @@ extern "C" {
  *   #if defined(FAAC_VERSION_MAJOR) && (FAAC_VERSION_MAJOR >= 1)
  */
 #define FAAC_VERSION_MAJOR 1
-#define FAAC_VERSION_MINOR 0
+#define FAAC_VERSION_MINOR 1
 #define FAAC_VERSION_PATCH 0
 #define FAAC_VERSION_HEX \
     ((FAAC_VERSION_MAJOR << 16) | (FAAC_VERSION_MINOR << 8) | FAAC_VERSION_PATCH)
@@ -179,6 +179,12 @@ typedef struct faac_params {
                                             * NULL = identity. Caller-owned; copied by open(). */
     uint32_t                channel_map_count; /* entries in channel_map (0 if NULL) */
 
+    /* For fixed-packet transports that cannot fragment a frame (A2DP and
+     * similar). Best-effort: enforced by backing off quality over bounded
+     * retries, so incompressible input can still exceed it. Leave headroom
+     * above bit_rate or the retries dominate. */
+    uint32_t                max_bit_rate;  /* per-frame bits/sec PER CHANNEL cap; 0 = unlimited */
+
     uint32_t                reserved_trailing; /* explicit pad to 8-byte boundary; must be 0 */
 } faac_params;
 
@@ -203,6 +209,7 @@ typedef struct faac_encoder_info {
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */
     uint32_t                quant_quality;    /* resolved quantizer quality                          */
     int32_t                 pns_level;        /* resolved PNS level, 0..10                           */
+    uint32_t                max_bit_rate;     /* resolved peak cap, 0 if unlimited                   */
 } faac_encoder_info;
 
 /*

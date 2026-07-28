@@ -108,6 +108,12 @@ typedef struct faacEncStruct {
 
     /* HE-AAC / SBR state */
     struct SBRContext *sbrContext;   /* SBR analysis state and bitstream data */
+
+    /* Peak-limiter retry scratch, allocated per channel only when
+     * config.maxBitRate is set -- see faacEncApplyConfig/faacEncClose. Kept
+     * last so no existing field's offset depends on it. */
+    int *peakBookSnap[MAX_CHANNELS];
+    int *peakSfSnap[MAX_CHANNELS];
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
