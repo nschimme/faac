@@ -27,6 +27,12 @@
 #include "sbr_internal.h"
 #include "faac_internal.h"
 
+/* SBR_RESAMPLE_DELAY restates a property of resample.c's FIR, and the two live
+ * in different headers. Retuning that filter to a different length without
+ * moving the constant would silently reintroduce the skew it cancels. */
+_Static_assert(SBR_RESAMPLE_DELAY == RESAMPLE_FILTER_LEN / 2,
+               "SBR analysis delay must track the half-band decimator's group delay");
+
 /* SBR master frequency band table (ISO/IEC 14496-3:2005 §4.6.18.3.2). kx/k2 are
  * spec-mandatory: the decoder reconstructs them from the sample rate alone, so
  * these must match its table exactly or the envelope band count desyncs. The

@@ -155,7 +155,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 #endif
                 {
                     float slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64 + SBR_QMF_READ_OFFSET,
+                                   slotEnergy, kx, kEnd);
 
                     int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 

@@ -64,7 +64,29 @@ extern "C" {
 struct BitStream;
 
 #define SBR_QMF_BANDS_64     64
-#define SBR_QMF_OVL_LEN_64   576
+/* Group delay of the half-band decimator in resample.c, in full-rate samples.
+   The FIR is symmetric and RESAMPLE_FILTER_LEN (63) taps long, so its centre
+   sits at tap 31 and core output sample i carries full-rate time 2*i - 31. */
+#define SBR_RESAMPLE_DELAY   31
+/* History the QMF analysis keeps ahead of the current frame. The prototype is
+   640 taps and a slot advances by 64, so 576 samples would line slot s up with
+   full-rate samples [64s, 64s+64) -- the *undecimated* time base. The core does
+   not run on that time base: it reads the decimator's output, which lags by
+   SBR_RESAMPLE_DELAY. Carrying that many extra samples of history walks every
+   slot's window back by the same amount, so an envelope describes the audio the
+   core actually placed in that slot instead of audio 0.7 ms (at 44.1 kHz) later.
+   The 640-tap read window itself is unchanged; only where it starts moves.
+
+   The shift lives in the read offset rather than in this length. 576 + 31 would
+   express it directly, but it also pushes the frame's landing address in the
+   analysis workspace off a 64-float boundary, and that 8 KB copy runs once per
+   channel per frame -- measurably slower. Rounding the history up to a whole
+   slot keeps every bulk copy aligned; the QMF reads absorb the odd offset for
+   free because they are backwards stride-2 gathers, not contiguous loads. */
+#define SBR_QMF_OVL_LEN_64   640
+/* Where slot s starts reading, so its 640-tap window ends SBR_RESAMPLE_DELAY
+   samples earlier than the slot boundary. */
+#define SBR_QMF_READ_OFFSET  (SBR_QMF_BANDS_64 - SBR_RESAMPLE_DELAY)
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     2
 #define SBR_MAX_NOISE_ENVELOPES 2
