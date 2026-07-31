@@ -65,8 +65,14 @@ struct BitStream;
 
 #define SBR_QMF_BANDS_64     64
 #define SBR_QMF_OVL_LEN_64   576
+/* Group delay of the 640-tap QMF analysis prototype, in QMF slots: 640/2 = 320
+ * samples = 5 slots. Pass 1 finds the attack in the time domain, pass 2 measures
+ * energy through the QMF, so a border derived from a pass-1 slot index has to be
+ * pushed forward by this much or it lands ahead of the energy it is meant to
+ * bracket -- leaving the transient envelope sitting on pre-attack silence. */
+#define SBR_QMF_DELAY_SLOTS  5
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
+#define SBR_MAX_ENVELOPES     5
 #define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30
@@ -86,8 +92,13 @@ struct BitStream;
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
-/* Transient detection threshold (peak-to-mean power ratio). */
+/* Transient detection threshold: how far a QMF slot's power must rise above the
+ * running average of the slots before it to count as an attack. 4.0 = 6 dB. */
 #define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
+/* Weight of the newest slot in that running average. 0.25 gives a ~4-slot
+ * (~5.8 ms at 44.1 kHz) memory: long enough to average past one slot of
+ * ringing, short enough that a decaying note does not mask the next attack. */
+#define SBR_ATTACK_EMA_ALPHA            (0.25f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */

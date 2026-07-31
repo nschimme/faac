@@ -59,26 +59,44 @@ static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
 static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, bool write)
 {
     int bits = 0;
+    int num_env = fd->numEnvelopes;
 #define WB(v,n) do { if (write) PutBit(bs,(v),(n)); bits += (n); } while(0)
-    if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
+    switch (fd->frameClass) {
+    case SBR_FRAME_CLASS_VARFIX:
         /* VARFIX: variable leading borders, fixed trailing border. Mirrors the
          * inverse of FFmpeg read_sbr_grid()'s VARFIX case: t_env[0]=bs_var_bord_0,
          * each lead border adds 2*bs_rel+2, the trailing border is numTimeSlots
          * (not transmitted), then bs_pointer and per-envelope bs_freq_res. */
-        int num_env = fd->numEnvelopes;
         WB(SBR_FRAME_CLASS_VARFIX, 2);
-        WB(fd->tEnv[0], 2);                 /* bs_var_bord_0 */
+        WB(fd->tEnv[0], 2);                  /* bs_var_bord_0 */
         WB(num_env - 1, 2);                  /* bs_num_rel_0   */
         for (int i = 0; i < num_env - 1; i++)
             WB((fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2); /* bs_rel_bord */
         WB(fd->bsPointer, sbr_ceil_log2[num_env]);
         for (int i = 0; i < num_env; i++)    /* bs_freq_res[1..num_env] */
             WB(sbr->bs_freq_res, 1);
-    } else {
+        break;
+    case SBR_FRAME_CLASS_FIXVAR:
+        /* FIXVAR: leading border fixed at 0, variable trailing borders. The
+         * decoder reads the trailing border as numTimeSlots + bs_var_bord_1 --
+         * added, not subtracted, since the grid may run past the frame -- then
+         * walks *backwards*: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2.
+         * So the rel borders go out last-gap-first, the reverse of VARFIX. */
+        WB(SBR_FRAME_CLASS_FIXVAR, 2);
+        WB(fd->tEnv[num_env] - SBR_NUM_TIME_SLOTS, 2);  /* bs_var_bord_1 */
+        WB(num_env - 1, 2);                             /* bs_num_rel_1  */
+        for (int i = 0; i < num_env - 1; i++)
+            WB((fd->tEnv[num_env - i] - fd->tEnv[num_env - 1 - i] - 2) / 2, 2);
+        WB(fd->bsPointer, sbr_ceil_log2[num_env]);
+        for (int i = 0; i < num_env; i++)
+            WB(sbr->bs_freq_res, 1);
+        break;
+    default:
         /* FIXFIX: equal-spaced borders, one bs_freq_res for all envelopes. */
         WB(SBR_FRAME_CLASS_FIXFIX, 2);
-        WB(fd->numEnvelopes > 1 ? 1 : 0, 2);
+        WB(num_env > 1 ? 1 : 0, 2);
         WB(sbr->bs_freq_res, 1);
+        break;
     }
 #undef WB
     return bits;

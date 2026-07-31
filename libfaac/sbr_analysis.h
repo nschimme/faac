@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 #ifndef SBR_MAX_ENVELOPES
-#define SBR_MAX_ENVELOPES 2
+#define SBR_MAX_ENVELOPES 5
 #endif
 
 #ifndef MAX_CHANNELS
@@ -44,7 +44,10 @@ typedef struct SignalAnalysisChannel {
     float transientStrength;
     int       wantShort;
     float lastVal;
-    float bandHalfE[2][SBR_QMF_BANDS_64];
+    float slotEma;      /* running slot-energy average, carried across frames */
+    /* Per-envelope QMF band energy, binned over the grid chosen below. Only the
+     * first numEnvelopes rows are written; the quantizer reads no further. */
+    float bandE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {

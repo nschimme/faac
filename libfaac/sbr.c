@@ -425,17 +425,21 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     fd->frameClass   = sa->frameClass;
     fd->bsPointer    = sa->bsPointer;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
-    fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
+    /* The decoder overrides the header's bs_amp_res for a single-envelope FIXFIX
+     * frame only; every other class keeps it, so both conditions must be tested
+     * or a variable-grid frame would be quantized on the wrong dB step. */
+    fd->eff_amp_res = (fd->frameClass == SBR_FRAME_CLASS_FIXFIX && fd->numEnvelopes == 1)
+                      ? 0 : sbr->bs_amp_res;
 }
 
-static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
+static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
 
     for (int ch = 0; ch < nch; ch++) {
         /* Read-only alias; the quantizer never writes back through it. */
-        const float (* restrict bandHalfE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandHalfE;
+        const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandE;
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 
@@ -446,14 +450,10 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
                 int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
                 /* Weight energy by the number of QMF slots per envelope to
                  * maintain normalized power levels across variable borders. */
-                int e_slots = (n_env == 1) ? sampled : sa->envSampled[e];
+                int e_slots = sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
                 float E = 0;
-                if (n_env == 1) {
-                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[0][k] + bandHalfE[1][k];
-                } else {
-                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[e][k];
-                }
+                for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
                 E /= (float)(e_slots * (k_hi - k_lo));
                 float factor = fd->eff_amp_res ? 1.0f : 2.0f;
                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
@@ -497,7 +497,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
-    sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, fd);
+    sbr_quantize_envelopes(sbr, nch, sa, fd);
 }
 
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.

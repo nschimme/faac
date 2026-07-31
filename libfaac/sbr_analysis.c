@@ -23,6 +23,70 @@
 #include "config.h"
 #endif
 
+/* Envelope borders are transmitted as even offsets from a frame edge, and an
+ * envelope may not be empty (the decoder rejects non-monotone borders), so an
+ * inner border lives on an even slot in [2, numTimeSlots - 2]. */
+#define SBR_BORDER_MIN 2
+#define SBR_BORDER_MAX (SBR_NUM_TIME_SLOTS - 2)
+
+/* Build a grid that gives the transient its own two-slot envelope, plus the
+ * bs_pointer naming that envelope.
+ *
+ * bs_pointer is what keeps the attack from leaking backwards. Without it the
+ * decoder leaves e_a[1] at -1, runs its four-tap gain-smoothing filter straight
+ * through the border and ramps the high band in ahead of the transient; it also
+ * parks the second noise-floor border mid-frame instead of on the attack.
+ *
+ * The frame class follows from how far into the frame the transient sits,
+ * because each class only reaches so far: VARFIX steps borders forward from the
+ * frame start (2..8 slots per step, so 8 is the furthest a first inner border
+ * can land), FIXVAR steps them backward from the trailing border. Each encodes
+ * bs_pointer in its own direction, hence the two expressions below. */
+static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
+{
+    int e_t;    /* index of the envelope holding the transient */
+
+    sa->numEnvelopes = 3;
+    sa->tEnv[0] = 0;
+    sa->tEnv[3] = SBR_NUM_TIME_SLOTS;
+
+    if (Tb <= 8) {
+        /* Decoder: t_env[i+1] = t_env[i] + 2*bs_rel_bord + 2, e_a[1] = ptr - 1
+         * (and only when ptr > 1, which holds since e_t >= 1). */
+        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+        sa->tEnv[1] = Tb;
+        sa->tEnv[2] = Tb + 2;
+        e_t = 1;
+        sa->bsPointer = e_t + 1;
+    } else {
+        /* Decoder: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2, walking back
+         * from the trailing border, and e_a[1] = numEnvelopes + 1 - ptr. At the
+         * last legal border there is no room for a trailing envelope, so the
+         * transient becomes the final one instead. */
+        sa->frameClass = SBR_FRAME_CLASS_FIXVAR;
+        if (Tb <= SBR_BORDER_MAX - 2) {
+            sa->tEnv[1] = Tb;
+            sa->tEnv[2] = Tb + 2;
+            e_t = 1;
+        } else {
+            sa->tEnv[1] = Tb - 2;
+            sa->tEnv[2] = Tb;
+            e_t = 2;
+        }
+        sa->bsPointer = sa->numEnvelopes + 1 - e_t;
+    }
+}
+
+/* Which envelope a QMF slot falls in. Slots ahead of tEnv[0] belong to the
+ * previous frame's trailing envelope; fold them into envelope 0 rather than
+ * drop their energy. */
+static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
+{
+    int e = numEnvelopes - 1;
+    while (e > 0 && slot < envStart[e]) e--;
+    return e;
+}
+
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
  * and subband energy accumulation. hot keeps it vectorized under LTO despite
  * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
@@ -43,9 +107,20 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     /* Pass 1: Time-domain transient detection. Identifies the temporal position
      * and strength of transients across all channels. */
     for (int ch = 0; ch < nch; ch++) {
-        float smax = 0.0f, ssum = 0.0f;
-        int smax_idx = 0;
         float slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
+
+        /* Attack detection: score each slot against an exponential average of
+         * the slots before it, carried across frame boundaries.
+         *
+         * The frame's own peak-to-mean ratio cannot see a step onset -- a burst
+         * that opens mid-frame and stays open leaves no single slot dominant, so
+         * the ratio sits near 2 and never clears the threshold -- while a rise
+         * over the running average catches exactly that, and still catches an
+         * isolated click. It also puts transientSlot on the *onset* rather than
+         * on the loudest slot, which is where the envelope border belongs. */
+        float ema = sa->ch[ch].slotEma;
+        float bestRise = 0.0f;
+        int bestSlot = 0;
 
         sa->ch[ch].wantShort = 0;
         float val_in = sa->ch[ch].lastVal;
@@ -62,16 +137,24 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
             }
             if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
-            if (stot > smax) {
-                smax = stot;
-                smax_idx = slot;
+            /* Cold start (and the first frame after a reset): seed the average
+             * from the signal rather than let a rise over zero fire. */
+            if (ema <= 0.0f) {
+                ema = stot;
+            } else {
+                float rise = stot / (ema + SBR_ENERGY_FLOOR);
+                if (rise > bestRise) {
+                    bestRise = rise;
+                    bestSlot = slot;
+                }
             }
-            ssum += stot;
+            ema += SBR_ATTACK_EMA_ALPHA * (stot - ema);
         }
         sa->ch[ch].lastVal = val_in;
+        sa->ch[ch].slotEma = ema;
 
-        sa->ch[ch].transientStrength = smax * (float)sampled / (ssum + SBR_ENERGY_FLOOR);
-        sa->ch[ch].transientSlot = smax_idx;
+        sa->ch[ch].transientStrength = bestRise;
+        sa->ch[ch].transientSlot = bestSlot;
 
         /* Evaluate relative energy jumps to inform block switching. */
         float last_hp_eng = 0.0f;
@@ -104,18 +187,15 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         }
     }
 
-    int split = num_slots;   /* default: single envelope spans the whole frame */
     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
-        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
-        int rel = clamp_int((Ts - 2) / 2, 0, 3);
-        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
-        sa->numEnvelopes = 2;
-        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = innerSbr;
-        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
-        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+        /* Convert the pass-1 attack slot into a transmitted time slot, shifting
+         * it onto the QMF's view of the same event (see SBR_QMF_DELAY_SLOTS). */
+        int Ts = (num_slots > 0)
+                 ? (frameSlot + SBR_QMF_DELAY_SLOTS) * SBR_NUM_TIME_SLOTS / num_slots : 0;
+        /* Round the border down onto the even grid: the attack then sits inside
+         * the transient envelope rather than at the tail of the one before. */
+        int Tb = clamp_int(Ts & ~1, SBR_BORDER_MIN, SBR_BORDER_MAX);
+        sbr_grid_transient(sa, Tb);
     } else {
         sa->numEnvelopes = 1;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
@@ -124,17 +204,21 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->bsPointer = 0;
     }
 
+    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
+    int envStart[SBR_MAX_ENVELOPES + 1];
+    for (int e = 0; e <= sa->numEnvelopes; e++)
+        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+
     /* Count slots per envelope for power normalization. */
-    sa->envSampled[0] = sa->envSampled[1] = 0;
+    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
     for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
         if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
-        sa->envSampled[h]++;
+        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
     }
-    if (sa->envSampled[0] < 1) sa->envSampled[0] = 1;
-    if (sa->numEnvelopes > 1 && sa->envSampled[1] < 1) sa->envSampled[1] = 1;
+    for (int e = 0; e < sa->numEnvelopes; e++)
+        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
     /* Pass 2: Subband analysis. Accumulates energy across QMF bands within
      * the selected temporal envelopes. */
@@ -143,7 +227,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
     for (int ch = 0; ch < nch; ch++) {
-        memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
+        memset(sa->ch[ch].bandE, 0, sizeof(sa->ch[ch].bandE));
 
         if (sbr) {
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
@@ -157,9 +241,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
                     float slotEnergy[SBR_QMF_BANDS_64];
                     SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
-                    int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
-                    float * restrict bE = sa->ch[ch].bandHalfE[h];
+                    float * restrict bE = sa->ch[ch].bandE[e];
                     for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
                 }
