@@ -91,6 +91,17 @@ static int build_freq_table(SBRInfo *sbr)
     for (int k = 1; k <= n_master; k++) f_master[k] += f_master[k - 1];
     sbr->numBands = n_master;
     for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
+
+    /* Low-resolution table, derived exactly as the decoder does (ISO 14496-3
+     * §4.6.18.3.2.2): keep every other high-resolution edge, with the parity of
+     * the high band count deciding which. bs_xover_band is 0, so the high table
+     * is the master table itself. */
+    sbr->numBandsLow = (sbr->numBands + 1) >> 1;
+    int odd = sbr->numBands & 1;
+    sbr->bandEdgesLow[0] = sbr->bandEdges[0];
+    for (int b = 1; b <= sbr->numBandsLow; b++)
+        sbr->bandEdgesLow[b] = sbr->bandEdges[2 * b - odd];
+
     sbr->numNoiseBands = 1;
     return n_master;
 }
@@ -169,6 +180,7 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[0]      = 0;
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
+    fd->freqRes      = 1;   /* single envelope: same high-resolution table as a steady frame */
     for (int ch = 0; ch < SBR_MAX_CODED_CHANNELS; ch++) {
         fd->ch[ch].invfMode = 3;
         for (int ne = 0; ne < SBR_MAX_NOISE_ENVELOPES; ne++)
@@ -430,12 +442,24 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
      * or a variable-grid frame would be quantized on the wrong dB step. */
     fd->eff_amp_res = (fd->frameClass == SBR_FRAME_CLASS_FIXFIX && fd->numEnvelopes == 1)
                       ? 0 : sbr->bs_amp_res;
+    /* A transient frame codes three envelopes where a steady one codes a single
+     * envelope, so at high resolution it would spend three times the bits on the
+     * frames that can least afford it -- the rate controller takes those bits
+     * from the core, which is what the low-bitrate stereo regressions showed.
+     * Halve the band count there instead: the transient envelope is two slots
+     * long and its value is temporal, not spectral. */
+    fd->freqRes = (fd->numEnvelopes > 1) ? 0 : sbr->bs_freq_res;
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
+    /* Quantize over whichever table this frame's bs_freq_res selects, so the
+     * band count here matches what write_sbr_envelope emits and what the decoder
+     * reads back. */
+    int nb = sbr_env_bands(sbr, fd);
+    const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
         /* Read-only alias; the quantizer never writes back through it. */
@@ -446,8 +470,8 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
-            for (int b = 0; b < sbr->numBands; b++) {
-                int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
+            for (int b = 0; b < nb; b++) {
+                int k_lo = edges[b], k_hi = edges[b+1];
                 /* Weight energy by the number of QMF slots per envelope to
                  * maintain normalized power levels across variable borders. */
                 int e_slots = sa->envSampled[e];
