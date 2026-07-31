@@ -72,7 +72,11 @@ struct BitStream;
  * bracket -- leaving the transient envelope sitting on pre-attack silence. */
 #define SBR_QMF_DELAY_SLOTS  5
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     5
+/* A transient frame codes three envelopes -- one before the attack, a short one
+ * on it, one after -- and nothing here ever emits more. The spec allows 5, but
+ * every extra slot costs a full envData row in each delay-ring entry, so the
+ * bound tracks what the grid builder actually produces. */
+#define SBR_MAX_ENVELOPES     3
 #define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30

@@ -439,7 +439,7 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
 
     for (int ch = 0; ch < nch; ch++) {
         /* Read-only alias; the quantizer never writes back through it. */
-        const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandE;
+        const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 

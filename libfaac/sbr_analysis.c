@@ -141,7 +141,11 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
              * from the signal rather than let a rise over zero fire. */
             if (ema <= 0.0f) {
                 ema = stot;
-            } else {
+            } else if (stot > bestRise * ema) {
+                /* Guarded to keep the divide off the common path: a slot only
+                 * beats the incumbent if stot/ema > bestRise, and steady or
+                 * decaying material (silence above all) fails that on the
+                 * multiply alone. */
                 float rise = stot / (ema + SBR_ENERGY_FLOOR);
                 if (rise > bestRise) {
                     bestRise = rise;
@@ -224,10 +228,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * the selected temporal envelopes. */
     /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
      * and never read, so skip their post-FFT extraction and accumulation. */
+    /* Only the SBR element's own channels are quantized, so a 5.1 core would
+     * otherwise pay for four channels of QMF analysis whose result is dropped. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    for (int ch = 0; ch < nch; ch++) {
-        memset(sa->ch[ch].bandE, 0, sizeof(sa->ch[ch].bandE));
+    int nch_coded = (nch < SBR_MAX_CODED_CHANNELS) ? nch : SBR_MAX_CODED_CHANNELS;
+    for (int ch = 0; ch < nch_coded; ch++) {
+        memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
         if (sbr) {
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
@@ -243,7 +250,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 
                     int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
-                    float * restrict bE = sa->ch[ch].bandE[e];
+                    float * restrict bE = sa->bandE[ch][e];
                     for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
                 }

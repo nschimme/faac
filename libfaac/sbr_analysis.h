@@ -30,7 +30,11 @@ extern "C" {
 #endif
 
 #ifndef SBR_MAX_ENVELOPES
-#define SBR_MAX_ENVELOPES 5
+#define SBR_MAX_ENVELOPES 3
+#endif
+
+#ifndef SBR_MAX_CODED_CHANNELS
+#define SBR_MAX_CODED_CHANNELS 2
 #endif
 
 #ifndef MAX_CHANNELS
@@ -45,9 +49,6 @@ typedef struct SignalAnalysisChannel {
     int       wantShort;
     float lastVal;
     float slotEma;      /* running slot-energy average, carried across frames */
-    /* Per-envelope QMF band energy, binned over the grid chosen below. Only the
-     * first numEnvelopes rows are written; the quantizer reads no further. */
-    float bandE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {
@@ -62,7 +63,15 @@ typedef struct SignalAnalysis {
     int bsPointer;
     int envSampled[SBR_MAX_ENVELOPES];
 
+    /* Block switching needs a decision for every core channel, so pass 1 runs
+       full width. */
     SignalAnalysisChannel ch[MAX_CHANNELS];
+
+    /* Per-envelope QMF band energy, binned over the grid above; only the first
+       numEnvelopes rows are written. Indexed by *coded* channel, not core
+       channel: SBR codes a single SCE or CPE, so the quantizer never reads past
+       SBR_MAX_CODED_CHANNELS and pass 2 stops there. */
+    float bandE[SBR_MAX_CODED_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
