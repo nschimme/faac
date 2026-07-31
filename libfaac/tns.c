@@ -46,6 +46,46 @@ static const struct {
  * a pre-echo metric, 0.60 beats the looser 0.85 on music by ~0.1 dB. */
 #define TNS_PNS_SFM_SKIP    0.60f
 
+/* Build with -DTNS_DEBUG_STATS for a per-run breakdown of where frames leave
+ * TnsEncode, plus the prediction-gain distribution. Tuning TNS without knowing
+ * what fraction of frames it actually reaches is how thresholds end up silently
+ * rejecting every frame while still costing their full analysis. */
+#ifdef TNS_DEBUG_STATS
+#include <stdio.h>
+enum { TST_CALL, TST_SHORT, TST_BAND, TST_LEN, TST_ENERGY, TST_SFM,
+       TST_GAIN, TST_ORDER, TST_MEASURED, TST_N };
+static long tns_stat[TST_N];
+static long tns_gain_hist[8];
+#define TNS_STAT(x) (tns_stat[x]++)
+#define TNS_STAT_GAIN(g) (tns_gain_hist[(g) < 1.0f ? 0 : (g) < 1.1f ? 1 : (g) < 1.2f ? 2 \
+                          : (g) < 1.4f ? 3 : (g) < 2.0f ? 4 : (g) < 4.0f ? 5 \
+                          : (g) < 6.0f ? 6 : 7]++)
+__attribute__((destructor)) static void tns_stats_dump(void)
+{
+    static const char *sn[TST_N] = {"calls", "rej_short", "rej_bandrange", "rej_length",
+                                    "rej_energy", "rej_sfm", "rej_gain", "rej_order",
+                                    "rej_measured"};
+    static const char *gn[8] = {"<1.0", "1.0-1.1", "1.1-1.2", "1.2-1.4",
+                                "1.4-2.0", "2.0-4.0", "4.0-6.0", ">6.0"};
+    long applied = tns_stat[TST_CALL];
+    int i;
+
+    if (!tns_stat[TST_CALL]) return;
+    fprintf(stderr, "TNS_STATS ");
+    for (i = 0; i < TST_N; i++) {
+        fprintf(stderr, "%s=%ld ", sn[i], tns_stat[i]);
+        if (i) applied -= tns_stat[i];
+    }
+    fprintf(stderr, "applied=%ld (%.1f%%)\nTNS_GAIN_HIST ", applied,
+            100.0 * applied / tns_stat[TST_CALL]);
+    for (i = 0; i < 8; i++) fprintf(stderr, "%s=%ld ", gn[i], tns_gain_hist[i]);
+    fprintf(stderr, "\n");
+}
+#else
+#define TNS_STAT(x)      ((void)0)
+#define TNS_STAT_GAIN(g) ((void)0)
+#endif
+
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
     int lag, i;
@@ -237,27 +277,28 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
+    TNS_STAT(TST_CALL);
 
     /* Short windows already have the temporal resolution to not need TNS. */
     if (blockType == ONLY_SHORT_WINDOW)
-        return;
+        { TNS_STAT(TST_SHORT); return; }
 
     b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start)
-        return;
+        { TNS_STAT(TST_BAND); return; }
 
     i_start = sfbOffsetTable[b_start];
     length = sfbOffsetTable[b_stop] - i_start;
     if (length <= TNS_LPC_ORDER)
-        return;
+        { TNS_STAT(TST_LEN); return; }
 
     band = spec + i_start;
     energy = 0.0f;
     for (i = 0; i < length; i++)
         energy += band[i] * band[i];
     if (energy < TNS_MIN_ENERGY)
-        return;
+        { TNS_STAT(TST_ENERGY); return; }
 
     {
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
@@ -283,7 +324,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * replace anyway -- skip the LPC work; it only pays off on
          * tonal/peaky bands. */
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
-            return;
+            { TNS_STAT(TST_SFM); return; }
     }
 
     /* Fit the LPC on exactly the samples filter_spec will filter. A previous
@@ -298,8 +339,9 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     /* No upper bound: a high prediction gain is a strong temporal envelope,
      * which is exactly the frame TNS exists for. The old 6.0 clamp rejected
      * those as "near-singular" and discarded the tool's best cases. */
+    TNS_STAT_GAIN(gain);
     if (gain < TNS_GAIN_LIMIT)
-        return;
+        { TNS_STAT(TST_GAIN); return; }
 
     filter = &tnsInfo->windowData.tnsFilter[0];
     quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
@@ -310,7 +352,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
-        return;
+        { TNS_STAT(TST_ORDER); return; }
 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
@@ -349,7 +391,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < TNS_MEASURED_GAIN * filt_e)
-            return;
+            { TNS_STAT(TST_MEASURED); return; }
     }
 
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
