@@ -242,9 +242,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
 
-    /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
-
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
@@ -261,6 +258,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         config->quantqual = DEFQUAL;
 
     hEncoder->config.bitRate = config->bitRate;
+
+    /* Re-init TNS for new profile, now that config.bitRate is fully set */
+    TnsInit(hEncoder);
 
     if (!config->bandWidth)
     {
@@ -332,6 +332,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
     PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
 			hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -423,6 +425,8 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 
 	PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate);
+    PsySetTdHard(hEncoder->psyInfo, hEncoder->numChannels, hEncoder->config.useTns,
+                 hEncoder->sampleRate);
 
     FilterBankInit(hEncoder);
 
@@ -715,7 +719,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel],
+                      &(hEncoder->psyInfo[channel]));
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }

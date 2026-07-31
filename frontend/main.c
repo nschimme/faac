@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
     enum faac_object_type objectType = FAAC_OBJ_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
-    static int useTns = 0;
+    static int useTns = 1;
     enum container_format container = NO_CONTAINER;
     enum faac_stream_format stream = FAAC_STREAM_ADTS;
     int cutOff = -1;
@@ -926,6 +926,7 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         params.bit_rate = bitRate / infile->channels;
+
     params.bandwidth     = cutOff;
     params.output_format = stream;
     params.input_format  = FAAC_INPUT_FLOAT;

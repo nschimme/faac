@@ -66,6 +66,7 @@ typedef struct {
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
+    int tns_max_order;
     TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
 } TnsInfo;
 

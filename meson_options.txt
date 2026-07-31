@@ -24,3 +24,16 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+# TNS spectral analysis decimation: analyse every Nth spectral coefficient.
+# 1 = full quality (every slot); higher values trade MOS for faster encode.
+#   1: every slot  -- reference quality (Avg MOS: 4.301339)
+#   2: every 2nd   -- ~11% faster encode; Avg MOS: 4.301513 (MOS d: +0.000174) due to high-frequency regularisation
+#   4: every 4th   -- ~15% faster encode; Avg MOS: 4.302566 (MOS d: +0.001227) due to high-frequency regularisation
+#   8: every 8th   -- ~18% faster encode; Avg MOS: 4.303155 (MOS d: +0.001816) due to high-frequency regularisation
+option('tns-decimation',
+    description: 'TNS spectral analysis decimation: analyse every Nth spectral coefficient (1=full quality, max=8)',
+    type: 'integer',
+    min: 1,
+    max: 8,
+    value: 8)

@@ -26,11 +26,27 @@ extern "C" {
 
 struct faacEncStruct;
 
+#define SUBBLOCKS_PER_FRAME 8
+#define ENG_WIN_PREV (0 * SUBBLOCKS_PER_FRAME)
+#define ENG_WIN_CUR  (1 * SUBBLOCKS_PER_FRAME)
+#define ENG_WIN_NEXT (2 * SUBBLOCKS_PER_FRAME)
+#define PSY_TD_THRESH (0.5f)
+
+typedef struct
+{
+  float eng[3 * SUBBLOCKS_PER_FRAME];
+  float eng_low[3 * SUBBLOCKS_PER_FRAME];
+  float eng_high[3 * SUBBLOCKS_PER_FRAME];
+} psydata_t;
+
 typedef struct {
 	int size;
 	int sizeS;
 
 	int block_type;
+	float td_hard;
+	int tns_alert;
+	int tns_active;
 
         void *data;
 } PsyInfo;
@@ -42,6 +58,7 @@ typedef struct {
 	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns, mdct) */
 } GlobalPsyInfo;
 
+void PsySetTdHard(PsyInfo *psyInfo, unsigned int numChannels, int tnsActive, unsigned int sampleRate);
 void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate);
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
