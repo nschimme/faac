@@ -19,6 +19,10 @@
 #ifndef SBR_TABLES_H
 #define SBR_TABLES_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -42,7 +46,10 @@ extern const signed char sbr_offset[6][16];
 extern const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS];
 extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
 
-/* Parametric stereo delta tables, indexed by delta + offset. */
+/* Parametric stereo delta tables, indexed by delta + offset. Gated so a
+ * `parametric-stereo=false` build does not carry 352 bytes of rodata for a
+ * feature it cannot reach. */
+#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
 #define PS_HUFF_IID_OFFSET  14
 #define PS_HUFF_IID_NSYMS   29
 #define PS_HUFF_ICC_OFFSET  7
@@ -52,6 +59,7 @@ extern const SBRHuffEntry ps_huff_iid_df[PS_HUFF_IID_NSYMS];
 extern const SBRHuffEntry ps_huff_iid_dt[PS_HUFF_IID_NSYMS];
 extern const SBRHuffEntry ps_huff_icc_df[PS_HUFF_ICC_NSYMS];
 extern const SBRHuffEntry ps_huff_icc_dt[PS_HUFF_ICC_NSYMS];
+#endif
 
 #ifdef __cplusplus
 }

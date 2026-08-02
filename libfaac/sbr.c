@@ -254,7 +254,7 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
     PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
     PutBit(pBitStream, sbrCtx->fullSampleRateIdx,   4);  /* SBR output rate (2*core) */
-    if (aacObjectType == HE_V2) {
+    if (IsHEV2(aacObjectType)) {
         /* psPresentFlag is gated behind its own 11-bit sync, not appended bare
          * to the SBR extension (ISO 14496-3 1.6.2.1). */
         PutBit(pBitStream, 0x548,                  11);  /* syncExtensionType (PS) */
@@ -290,7 +290,7 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
     if (sCtx->sbrInfo)
-        sCtx->sbrInfo->is_he_v2 = (aacObjectType == HE_V2);
+        sCtx->sbrInfo->is_he_v2 = (IsHEV2(aacObjectType));
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
@@ -420,8 +420,12 @@ static inline float fast_log2(float x)
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
  * a standard 128-point implementation. Phase info is discarded as the
  * SBR bitstream only transmits envelope magnitudes. */
+/* noinline is deliberate. Both the HE-v1 energy path and the HE-v2 stereo path
+ * call this, and letting LTO inline it into each gave the FFT two call contexts,
+ * which it answered by cloning the entire transform (fft.part.0.constprop.0,
+ * +1442 bytes) -- for a body far too large to earn anything back from inlining. */
 #if defined(__GNUC__)
-__attribute__((hot))
+__attribute__((hot, noinline))
 #endif
 void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2)
 {
@@ -686,7 +690,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
     int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
     /* HE-AAC v2 analyses two input channels but codes one: the core sees a
      * downmix, so exactly one set of envelopes is quantized. */
-    int coded_nch = sbr->is_he_v2 ? 1 : nch;
+    int coded_nch = SbrIsHEV2(sbr) ? 1 : nch;
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
@@ -699,7 +703,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
 
     /* PS runs before the envelope quantizer: it derives the downmix gain, and
      * the envelopes must describe the gained downmix the core actually codes. */
-    if (sbr->is_he_v2 && nch == 2)
+    if (SbrIsHEV2(sbr) && nch == 2)
         sbr_analyze_parametric_stereo(sbr, sa, fd);
 
     sbr_quantize_envelopes(sbr, coded_nch, sa->sampled, sa, fd);

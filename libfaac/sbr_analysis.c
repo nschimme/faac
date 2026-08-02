@@ -23,10 +23,61 @@
 #include "config.h"
 #endif
 
+/* HE-AAC v2 stereo band analysis: per-band left/right energy plus the real part
+ * of the inter-channel cross product, which is what PS derives IID and ICC from.
+ *
+ * Split out of SbrAnalyze, and noinline, on purpose. Inline it and this branch
+ * is a second vectorized loop nest inside a hot function that every LC and
+ * HE-v1 encode runs, so those paths pay its register pressure and code size
+ * (+1054 bytes in SbrAnalyze.constprop.0, and ~3% throughput) to reach an if
+ * that is false for them. Out of line, the cost falls only on HE-v2. */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#endif
+static void SbrAnalyzeStereoBands(SignalAnalysis *sa, float *fullPtrs[], int numSamples,
+                                  struct SBRInfo *sbr, int num_slots, int split, int kx, int kEnd)
+{
+    memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
+    memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
+    memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+
+    float * restrict workspaceL = sa->qmfWork[0];
+    float * restrict workspaceR = sa->qmfWork[1];
+
+    memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
+
+    memcpy(workspaceR, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    memcpy(workspaceR + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
+
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+        {
+            float xrL[64], xiL[64];
+            float xrR[64], xiR[64];
+            SbrQmfAnalysisComplex(sbr, workspaceL + slot * SBR_QMF_BANDS_64, xrL, xiL, kx, kEnd);
+            SbrQmfAnalysisComplex(sbr, workspaceR + slot * SBR_QMF_BANDS_64, xrR, xiR, kx, kEnd);
+
+            int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+
+            float * restrict bEL = sa->ch[0].bandHalfE[h];
+            float * restrict bER = sa->ch[1].bandHalfE[h];
+            float * restrict bCross = sa->bandCrossE[h];
+
+            for (int k = kx; k < kEnd; k++) {
+                bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
+                bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
+                bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
+            }
+        }
+    }
+}
+
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
  * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
- * here (not split out) to stay under GCC's LTO auto-inline threshold. */
+ * only being reached through the cold dispatcher. */
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
@@ -141,48 +192,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * and never read, so skip their post-FFT extraction and accumulation. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    if (sbr && sbr->is_he_v2) {
+    if (sbr && SbrIsHEV2(sbr)) {
         kx = 0;
         kEnd = 64;
     }
 
-    if (nch == 2 && sbr && sbr->is_he_v2) {
-        memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
-        memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
-        memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
-
-        float * restrict workspaceL = sa->qmfWork[0];
-        float * restrict workspaceR = sa->qmfWork[1];
-
-        memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-        memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
-
-        memcpy(workspaceR, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-        memcpy(workspaceR + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
-
-        for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-            if (slot % FAAC_SBR_DECIMATION == 0)
-#endif
-            {
-                float xrL[64], xiL[64];
-                float xrR[64], xiR[64];
-                SbrQmfAnalysisComplex(sbr, workspaceL + slot * SBR_QMF_BANDS_64, xrL, xiL, kx, kEnd);
-                SbrQmfAnalysisComplex(sbr, workspaceR + slot * SBR_QMF_BANDS_64, xrR, xiR, kx, kEnd);
-
-                int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
-
-                float * restrict bEL = sa->ch[0].bandHalfE[h];
-                float * restrict bER = sa->ch[1].bandHalfE[h];
-                float * restrict bCross = sa->bandCrossE[h];
-
-                for (int k = kx; k < kEnd; k++) {
-                    bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
-                    bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
-                    bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
-                }
-            }
-        }
+    if (nch == 2 && sbr && SbrIsHEV2(sbr)) {
+        SbrAnalyzeStereoBands(sa, fullPtrs, numSamples, sbr, num_slots, split, kx, kEnd);
     } else {
         for (int ch = 0; ch < nch; ch++) {
             memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));

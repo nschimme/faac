@@ -19,6 +19,17 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "faac_internal.h"
+
+/* Read side of SBRInfo.is_he_v2. Goes through a macro so the
+ * `parametric-stereo=false` build folds every PS branch to a compile-time
+ * constant 0 and the feature drops out; see IsHEV2 in faac_internal.h. The
+ * write side keeps assigning the field, which then just stays 0. */
+#if defined(FAAC_PARAMETRIC_STEREO) && !FAAC_PARAMETRIC_STEREO
+# define SbrIsHEV2(sbr)  ((void)(sbr), 0)
+#else
+# define SbrIsHEV2(sbr)  ((sbr)->is_he_v2)
+#endif
 
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {

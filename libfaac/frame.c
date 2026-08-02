@@ -204,7 +204,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Only LC, HE-AAC v1, HE-AAC v2, and AUTO are supported object types. */
     if (hEncoder->config.aacObjectType != LOW &&
         hEncoder->config.aacObjectType != HE_V1 &&
-        hEncoder->config.aacObjectType != HE_V2 &&
+        !IsHEV2(hEncoder->config.aacObjectType) &&
         hEncoder->config.aacObjectType != AUTO)
         return 0;
 
@@ -262,7 +262,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (IsHEAAC(hEncoder->config.aacObjectType)) {
         hEncoder->config.mpegVersion = MPEG4;
 
-        if (hEncoder->config.aacObjectType == HE_V2) {
+        if (IsHEV2(hEncoder->config.aacObjectType)) {
             if (hEncoder->inputChannels != 2)
                 return 0;
             /* Scale core channels to 1 (mono) while preserving input channels count */
@@ -271,7 +271,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (!hEncoder->sbrContext) {
             /* SBR needs inputChannels (2) for HE-AAC v2 resampler/analysis, but core numChannels (1) for HE-AAC v1 */
-            int sbr_channels = (hEncoder->config.aacObjectType == HE_V2) ? hEncoder->inputChannels : hEncoder->numChannels;
+            int sbr_channels = (IsHEV2(hEncoder->config.aacObjectType)) ? hEncoder->inputChannels : hEncoder->numChannels;
             hEncoder->sbrContext = SbrContextInit(sbr_channels);
         }
 
@@ -342,7 +342,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (IsHEAAC(hEncoder->config.aacObjectType)) {
         SBRContext *sCtx = hEncoder->sbrContext;
         /* SBR needs inputChannels (2) for HE-AAC v2 resampler/analysis, but core numChannels (1) for HE-AAC v1 */
-        int sbr_channels = (hEncoder->config.aacObjectType == HE_V2) ? hEncoder->inputChannels : hEncoder->numChannels;
+        int sbr_channels = (IsHEV2(hEncoder->config.aacObjectType)) ? hEncoder->inputChannels : hEncoder->numChannels;
         SbrContextUpdateConfig(sCtx, sbr_channels, hEncoder->config.bitRate * hEncoder->numChannels, &hEncoder->fft_tables, hEncoder->config.aacObjectType);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -629,6 +629,24 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
 #define TNS_ATTACK_MIN 0.5f
 
+/* HE-AAC v2 only: fold the resampled half-rate stereo into the mono the core
+ * codes. The 0.5 keeps a correlated pair at its original level; the gain on top
+ * of it restores the energy a sum downmix loses as the channels decorrelate,
+ * which is the level the PS decoder assumes it gets back. SbrContextProcessFrame
+ * measured it from this same frame.
+ *
+ * Out of line so faacEncEncode does not carry a vectorized loop (+881 bytes when
+ * it was inlined) for a branch only HE-v2 ever takes. */
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
+static void doHEAACDownmix(faacEncStruct *hEncoder, float *heHalfRate[MAX_CHANNELS])
+{
+    float g = 0.5f * SbrContextGetDownmixGain(hEncoder->sbrContext);
+    for (int i = 0; i < FRAME_LEN; i++)
+        heHalfRate[0][i] = g * (heHalfRate[0][i] + heHalfRate[1][i]);
+}
+
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
                           unsigned int samplesInput,
@@ -695,17 +713,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     if (IsHEAAC(hEncoder->config.aacObjectType) && SbrContextIsPresent(hEncoder->sbrContext)) {
         /* Passes inputChannels (2) to SbrContextProcessFrame for high-quality stereo analysis */
         doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
-        if (hEncoder->config.aacObjectType == HE_V2) {
-            /* Fold the resampled half-rate stereo into the mono the core codes.
-             * The 0.5 keeps a correlated pair at its original level; the gain on
-             * top of it restores the energy a sum downmix loses as the channels
-             * decorrelate, which is the level the PS decoder assumes it gets
-             * back. SbrContextProcessFrame measured it from this same frame. */
-            float g = 0.5f * SbrContextGetDownmixGain(hEncoder->sbrContext);
-            for (int i = 0; i < FRAME_LEN; i++) {
-                heHalfRate[0][i] = g * (heHalfRate[0][i] + heHalfRate[1][i]);
-            }
-        }
+        if (IsHEV2(hEncoder->config.aacObjectType))
+            doHEAACDownmix(hEncoder, heHalfRate);
     }
 
     /* Update current sample buffers */
