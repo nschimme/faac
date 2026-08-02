@@ -565,9 +565,28 @@ static const float ps_iid_thresh_db[SBR_PS_IID_LEVELS - 1] = {
       1.0f,   3.0f,   5.5f,  8.5f, 12.0f, 16.0f, 21.5f
 };
 
-/* ICC values the decoder dequantizes to, for index 0..7 (Table 8.26). */
+/* What each ICC index actually *achieves*, not the nominal value it stands for.
+ *
+ * The spec's dequantization points (Table 8.26) are
+ *   { 1.0, 0.937, 0.84118, 0.60092, 0.36764, 0.0, -0.589, -1.0 }
+ * but those describe a per-band target, and what survives to the decoder's
+ * output is consistently more correlated than that -- the decorrelator is an
+ * allpass network of finite length and its effect is diluted by the bands PS
+ * groups together. Measured end to end through ffmpeg, forcing one index across
+ * all bands and reading back broadband coherence:
+ *
+ *     index      0      1      2      3      4      5      6      7
+ *     nominal  1.000  0.937  0.841  0.601  0.368  0.000 -0.589 -1.000
+ *     achieved 0.973  0.930  0.863  0.687  0.502  0.173 -0.441 -0.970
+ *
+ * Quantizing a measured source coherence against the nominal column therefore
+ * lands systematically too coherent -- the image collapses toward mono, by
+ * +0.108 on average across the corpus, which was essentially the whole of our
+ * stereo error. Choosing the index whose *achieved* value is nearest the source
+ * removes that bias. What we transmit is unchanged and still means exactly what
+ * the spec says; this only changes which index we pick. */
 static const float ps_icc_quant[SBR_PS_ICC_LEVELS] = {
-    1.0f, 0.937f, 0.84118f, 0.60092f, 0.36764f, 0.0f, -0.589f, -1.0f
+    0.973f, 0.930f, 0.863f, 0.687f, 0.502f, 0.173f, -0.441f, -0.970f
 };
 
 /* Estimate this frame's parametric stereo parameters into its delay-line slot,
