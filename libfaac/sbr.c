@@ -606,13 +606,14 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
     float totL = 0.0f, totR = 0.0f, totLR = 0.0f;
 
     for (int b = 0; b < SBR_PS_BANDS; b++) {
-        float eL = 0.0f, eR = 0.0f, eLR = 0.0f;
+        float eL = 0.0f, eR = 0.0f, eLR = 0.0f, eLRi = 0.0f;
 
         for (int h = 0; h < n_env; h++) {
             for (int k = ps_band_qmf[b][0]; k < ps_band_qmf[b][1]; k++) {
                 eL  += sa->ch[0].bandHalfE[h][k];
                 eR  += sa->ch[1].bandHalfE[h][k];
                 eLR += sa->bandCrossE[h][k];
+                eLRi += sa->bandCrossIm[h][k];
             }
         }
 
@@ -624,8 +625,13 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
             lvl++;
         fd->iid[b] = lvl - (SBR_PS_IID_LEVELS / 2);
 
-        /* ICC: normalized real cross-correlation, nearest quantized value. */
-        float icc = eLR / (sqrtf(eL * eR) + SBR_ENERGY_FLOOR);
+        /* ICC: normalized cross-correlation, nearest quantized value. Low
+         * bands use the signed real part, where in- versus out-of-phase is
+         * audible as such; above that, the magnitude, which cannot go negative.
+         * See SBR_PS_ICC_SIGNED_BANDS. */
+        float xnum = (b < SBR_PS_ICC_SIGNED_BANDS)
+                     ? eLR : sqrtf(eLR * eLR + eLRi * eLRi);
+        float icc = xnum / (sqrtf(eL * eR) + SBR_ENERGY_FLOOR);
         icc = clamp_float(icc, -1.0f, 1.0f);
         int best_icc = 0;
         float best_err = 2.0f;
