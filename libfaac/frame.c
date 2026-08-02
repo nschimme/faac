@@ -255,16 +255,27 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        /* AUTO never picks HE-AAC v2. Parametric stereo reconstructs the image
-         * from ten coarse IID/ICC bands, so its inter-channel coherence error
-         * is a floor that bits cannot lower -- measured flat at ~0.117 from 24
-         * to 56 kbps, while HE-AAC v1 coding two real channels falls from 0.088
-         * to 0.025 over the same span. v1 is the truer image at every rate in
-         * this window, and ahead on MOS too, so v2 has to be asked for by name.
+        /* AUTO never picks HE-AAC v2; it has to be asked for by name.
          *
-         * Raising the ceiling here is not the fix: the gap widens with rate. It
-         * would take finer PS resolution (iid_mode 1's 20 bands over the coarse
-         * 10) to move that floor. */
+         * Not for the reason first recorded here. That said v1 was ahead of v2
+         * on both the stereo image and MOS at every rate in this window, which
+         * was measured before three defects were found: v2 had no block
+         * switching at all, its ICC quantizer spent indices whose
+         * reconstruction cancels the band out of the mono downmix, and it
+         * measured coherence from the real cross term alone. With those fixed
+         * v2 leads v1 on MOS at 12-24 kbps and carries the truer image below
+         * 20 kbps (coherence error 0.22 against v1's 0.29 at 12 kbps).
+         *
+         * What still holds is that neither advantage lands inside this window.
+         * v2's gain is largest below HE_MIN_BITRATE_PER_CH, where AUTO does not
+         * choose HE-AAC at all; from 20 kbps up v1 remains the truer image, and
+         * the MOS margin thins to roughly nothing by 32 kbps. Enabling v2 here
+         * would trade image accuracy for a MOS delta inside the noise.
+         *
+         * The rate floor is the more interesting number: v2 reaches 12 kbps,
+         * where v1 floors near 17 and AAC-LC near 26. Any move to enable v2
+         * automatically belongs there, alongside a reconsidered
+         * HE_MIN_BITRATE_PER_CH -- not by widening this window upward. */
         hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
