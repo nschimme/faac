@@ -24,3 +24,13 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+# HE-AAC v2 parametric stereo (ISO/IEC 14496-3 §8.6.4).
+# When false, HE-AAC v2 is compiled out entirely: --object-type he-aac-v2 is
+# rejected at configuration time and the encoder is byte-identical to a build
+# that never had the feature. LC and HE-AAC v1 output is identical either way.
+# Costs ~4.5% library size when enabled.
+option('parametric-stereo',
+    description: 'Support HE-AAC v2 (parametric stereo); disable to compile it out entirely',
+    type: 'boolean',
+    value: true)

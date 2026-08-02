@@ -381,7 +381,12 @@ const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS] = {
  * Delta-coded IID and ICC, in frequency (df) and time (dt) variants. Indexed by
  * delta + offset; the spec gives code *lengths*, and the codes below are the
  * canonical assignment over them (verified against FFmpeg's aacpsdata.c). The
- * dt tables run to 20 bits, which is why SBRHuffEntry carries a 24-bit code. */
+ * dt tables run to 20 bits, which is why SBRHuffEntry carries a 24-bit code.
+ *
+ * Note these are NOT canonical in symbol order -- iid_df assigns its five
+ * 17-bit codes to symbols in the order 3, 0, 1, 2, 26 -- so they cannot be
+ * regenerated at init from stored lengths alone. The codes are the table. */
+#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
 
 const SBRHuffEntry ps_huff_iid_df[29] = {
     /* -14 */ { 0x01fffbu, 17 },
@@ -482,3 +487,5 @@ const SBRHuffEntry ps_huff_icc_dt[15] = {
     /*  +6 */ { 0x000ffeu, 12 },
     /*  +7 */ { 0x003fffu, 14 },
 };
+
+#endif /* FAAC_PARAMETRIC_STEREO */
