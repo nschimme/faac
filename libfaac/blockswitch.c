@@ -225,7 +225,12 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
    * uses the FIFO. */
-  if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsAnalysisValid(hEncoder->sbrContext))
+  /* IsHEAAC, not == HE_V1: HE-AAC v2 runs the same SBR analysis and needs the
+   * same shared decision. Testing for v1 alone left the v2 core falling back to
+   * the psychoacoustic block switcher while every other HE path used the shared
+   * detector, so v2 chose different windows for identical audio -- worth about
+   * 0.2 MOS, and the reason parametric stereo appeared to cost quality. */
+  if (IsHEAAC(hEncoder->config.aacObjectType) && SbrContextIsAnalysisValid(hEncoder->sbrContext))
   {
       for (channel = 0; channel < numChannels; channel++)
       {
