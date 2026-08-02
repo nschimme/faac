@@ -70,6 +70,9 @@ struct BitStream;
 #define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30
+/* Desired bs_stop_freq. SbrUpdate drops below this only if the resulting band
+ * table would be illegal at the current sample rate. */
+#define SBR_STOP_FREQ_TARGET 10
 
 /* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). */
 #define SBR_FRAME_CLASS_FIXFIX  0

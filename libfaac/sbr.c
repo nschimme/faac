@@ -43,8 +43,18 @@ static int compute_kx(int sampleRate, int bs_start_freq)
 
 static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
 
-/* SBR stop frequency (k2). Bark-scale distribution maximizes bit efficiency. */
-static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
+/* Widest span the band table may cover, per sample rate. */
+static int k2_max_span(int sampleRate)
+{
+    return (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
+}
+
+/* SBR stop frequency (k2), exactly as a decoder derives it from the sample rate
+ * and the transmitted bs_stop_freq. Deliberately unclamped: the decoder has no
+ * clamp, so clamping here while transmitting the original index would leave the
+ * two sides describing different band tables. Callers must check the result with
+ * k2_is_legal and pick a bs_stop_freq that passes. */
+static int compute_k2(int sampleRate, int bs_stop_freq)
 {
     if (bs_stop_freq == 14 || bs_stop_freq == 15) return 64;
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -69,8 +79,18 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
         k2 = 64;
     }
 
-    int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
-    return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
+    return k2;
+}
+
+/* Whether (kx, k2) yields a usable band table. A decoder that derives k2 <= kx
+ * reports a negative subband count and drops SBR entirely -- silently, as pure
+ * upsampling -- so an illegal pair must never be transmitted. */
+static int k2_is_legal(int sampleRate, int kx, int k2)
+{
+    int span = k2 - kx;
+    int max_span = k2_max_span(sampleRate);
+    if (kx + max_span > 64) max_span = 64 - kx;
+    return span >= 1 && span <= max_span;
 }
 
 /* Distribute QMF bands into SBR master bands using uniform dk-spacing.
@@ -142,11 +162,26 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
         sbr->dk = 1;
     }
     /* Stop frequency covers approximately 75% of the upper octave. */
-    sbr->bs_stop_freq = 10;
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
-    sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
+
+    /* Take the highest stop frequency at or below the target whose table is
+     * legal, so what we transmit and what we use always agree. At the shipped
+     * start frequency the target itself passes at every supported rate, so this
+     * settles on SBR_STOP_FREQ_TARGET on the first iteration; the loop exists so
+     * that changing either constant cannot silently emit a stream whose SBR a
+     * decoder discards. */
+    sbr->bs_stop_freq = 0;
+    sbr->k2 = sbr->kx + 1;
+    for (int sf = SBR_STOP_FREQ_TARGET; sf >= 0; sf--) {
+        int k2 = compute_k2(sampleRate, sf);
+        if (k2_is_legal(sampleRate, sbr->kx, k2)) {
+            sbr->bs_stop_freq = sf;
+            sbr->k2 = k2;
+            break;
+        }
+    }
 
     build_freq_table(sbr);
 }
