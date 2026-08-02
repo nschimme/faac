@@ -32,6 +32,22 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
+/* Parametric stereo needs more headroom than SBR alone. Measured against
+ * HE-AAC v1 from the same build, ViSQOL on the mono downmix, 8 clips -- a
+ * comparison the metric can arbitrate because both variants emit identical
+ * bandwidth, so its known bandwidth bias cancels:
+ *
+ *   Fs      16 kbps   32 kbps   64 kbps   v2 clip wins
+ *   24 kHz   -0.060    -0.092    -0.107      0-4 of 8
+ *   32 kHz   -0.018    -0.076    -0.061      2-4 of 8
+ *   44.1 kHz +0.044    -0.057    -0.010        6 of 8
+ *   48 kHz   +0.050    -0.018    +0.021      5-6 of 8
+ *
+ * v2 loses every cell at or below 32 kHz. From 44.1 kHz up it takes most clips,
+ * though the mean is close to zero -- its clearer advantage there is the stereo
+ * image (coherence error 0.15 against v1's 0.25 at 16 kbps) and being able to
+ * reach 12 kbps at all, where v1 floors near 17. */
+#define HE_V2_MIN_SAMPLE_RATE 44100
 #define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
@@ -263,6 +279,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (IsHEV2(hEncoder->config.aacObjectType)) {
             if (hEncoder->inputChannels != 2)
+                return 0;
+            /* Parametric stereo only pays from HE_V2_MIN_SAMPLE_RATE up. Below
+             * it the core is already narrow enough that folding two channels
+             * into one costs more than the halved channel count returns, and
+             * HE-AAC v1 wins at every rate measured. Rejected rather than
+             * silently downgraded, matching the stereo-input check above. */
+            if (hEncoder->sampleRate < HE_V2_MIN_SAMPLE_RATE)
                 return 0;
             /* Scale core channels to 1 (mono) while preserving input channels count */
             hEncoder->numChannels = 1;
