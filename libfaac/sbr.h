@@ -63,10 +63,9 @@ extern "C" {
 
 struct BitStream;
 
-#define SBR_QMF_BANDS_64     64
-#define SBR_QMF_OVL_LEN_64   576
+/* SBR_QMF_BANDS_64, SBR_QMF_OVL_LEN_64 and SBR_MAX_ENVELOPES come from
+ * sbr_analysis.h (included above), which sizes its arrays with them. */
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
 #define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30
@@ -85,6 +84,8 @@ struct BitStream;
 /* SBR extension types (ISO 14496-3 §4.6.18). */
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
+/* bs_extension_id inside an SBR payload's extended data (§8.6.4). */
+#define SBR_EXT_ID_PS        0x2
 
 /* Transient detection threshold (peak-to-mean power ratio). */
 #define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
@@ -113,6 +114,21 @@ struct BitStream;
 #define SBR_ENV_DELTA_LIMIT_HIRES       31
 #define SBR_ENV_DELTA_LIMIT_LORES       60
 
+/* --- HE-AAC v2 parametric stereo (ISO 14496-3 §8.6.4) --- */
+/* Parameter bands. iid_mode/icc_mode 0 is the 10-band "coarse" resolution: the
+ * cheapest legal mode, and the only one that stays affordable at 24-56 kbps. */
+#define SBR_PS_BANDS                    10
+/* IID quantizer: 15 levels, index -7..+7 (Table 8.24, default resolution). */
+#define SBR_PS_IID_LEVELS               15
+/* ICC quantizer: 8 levels, index 0..7 (Table 8.26). */
+#define SBR_PS_ICC_LEVELS               8
+/* Ceiling on the energy-preserving downmix gain (+6 dB). Unbounded, it diverges
+ * on near-antiphase material, where the sum downmix approaches silence. */
+#define SBR_PS_MAX_DOWNMIX_GAIN         (2.0f)
+/* One-pole coefficient for the downmix gain; low enough that the gain rides
+ * stereo-width changes instead of pumping on them. */
+#define SBR_PS_GAIN_SMOOTH              (0.25f)
+
 typedef struct SBRInfo SBRInfo;
 struct SignalAnalysis;
 
@@ -120,9 +136,10 @@ typedef struct SBRContext SBRContext;
 
 SBRContext *SbrContextInit(int channels);
 void SbrContextEnd(SBRContext *sbrCtx);
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize);
+int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize, int aacObjectType);
 unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx);
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables);
+float SbrContextGetDownmixGain(SBRContext *sbrCtx);
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables, int aacObjectType);
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS]);
 int SbrContextIsPresent(SBRContext *sCtx);
 void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfo);

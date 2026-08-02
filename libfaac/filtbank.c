@@ -135,7 +135,7 @@ void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
 
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
+    for (channel = 0; channel < hEncoder->inputChannels; channel++) {
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
     }
 

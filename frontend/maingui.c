@@ -547,6 +547,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
@@ -690,6 +692,20 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             {
                 LRESULT mode = GetComboData(hWnd, IDC_RATEMODE, RATEMODE_VBR);
                 ApplyRateModeUI(hWnd, (int)mode);
+            }
+            break;
+
+        case MAKEWPARAM(IDC_OBJECTTYPE, CBN_SELCHANGE):
+        {
+            HWND hOT  = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+            HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
+            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
+            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1 || data == (LRESULT)FAAC_OBJ_HE_AAC_V2) {
+                SendMessage(hMPG, CB_SETCURSEL, 0, 0);
+                EnableWindow(hMPG, FALSE);
+            } else {
+                EnableWindow(hMPG, TRUE);
             }
             break;
         }

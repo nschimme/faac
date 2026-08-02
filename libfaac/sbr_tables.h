@@ -42,6 +42,17 @@ extern const signed char sbr_offset[6][16];
 extern const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS];
 extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
 
+/* Parametric stereo delta tables, indexed by delta + offset. */
+#define PS_HUFF_IID_OFFSET  14
+#define PS_HUFF_IID_NSYMS   29
+#define PS_HUFF_ICC_OFFSET  7
+#define PS_HUFF_ICC_NSYMS   15
+
+extern const SBRHuffEntry ps_huff_iid_df[PS_HUFF_IID_NSYMS];
+extern const SBRHuffEntry ps_huff_iid_dt[PS_HUFF_IID_NSYMS];
+extern const SBRHuffEntry ps_huff_icc_df[PS_HUFF_ICC_NSYMS];
+extern const SBRHuffEntry ps_huff_icc_dt[PS_HUFF_ICC_NSYMS];
+
 #ifdef __cplusplus
 }
 #endif
