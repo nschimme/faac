@@ -140,12 +140,30 @@ struct BitStream;
  * the required compensation inside 1.00-1.12, a span one broadband gain can
  * actually represent, and costs only the widest decorrelation.
  *
- * Chosen by measuring the whole curve (10 clips, ViSQOL on the mono downmix vs
- * phase 3 coherence error, both against HE-AAC v1 from the same build). Index 3
- * is the knee: MOS beats v1 at every rate tested (+0.030 at 12k, +0.073 at 16k,
- * +0.028 at 24k) while the stereo image still beats it at 12k and 16k. Index 2
- * buys another 0.004 MOS and gives up that lead. */
+ * Chosen by measuring the whole curve (ViSQOL on the mono downmix vs phase 3
+ * coherence error, both against HE-AAC v1 from the same build). Index 3 is the
+ * knee. Index 4 is the alternative worth knowing about: it scores the same MOS
+ * and gives back roughly 0.03 of coherence error, so prefer it if the stereo
+ * image is ever weighted above MOS. */
 #define SBR_PS_ICC_MAX_INDEX            3
+
+/* Below this parameter band ICC is the signed real part of the cross product;
+ * at and above it, the magnitude, which cannot be negative.
+ *
+ * Re{L conj(R)} alone cannot separate two very different bands: one whose
+ * channels are genuinely decorrelated, and one whose channels are strongly
+ * coherent but phase-rotated. The second reads as a large negative coherence
+ * even though nothing is out of phase, and the quantizer then spends an index
+ * whose reconstruction cancels the band out of the mono downmix. Measured over
+ * 10 clips at 16 kbps, that mistake accounted for most of the traffic into the
+ * two negative indices -- one clip went from 7.0% of bands to 1.1%.
+ *
+ * The split is by frequency because the sign is only worth keeping where it is
+ * audible as such. Low down, in- versus out-of-phase is a real percept and the
+ * signed measure is right; higher up the ear follows the envelope rather than
+ * the fine phase structure, so coherence magnitude is the meaningful quantity
+ * and the sign is mostly measurement noise. */
+#define SBR_PS_ICC_SIGNED_BANDS         5
 /* Ceiling on the energy-preserving downmix gain (+6 dB). Unbounded, it diverges
  * on near-antiphase material, where the sum downmix approaches silence. */
 #define SBR_PS_MAX_DOWNMIX_GAIN         (2.0f)

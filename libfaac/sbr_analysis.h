@@ -71,6 +71,10 @@ typedef struct SignalAnalysis {
      * channels' band energies, so IID, ICC and the downmix gain all come out of
      * the one QMF pass. */
     float bandCrossE[2][SBR_QMF_BANDS_64];
+    /* Imaginary half of the same cross product. Re alone cannot tell a
+     * decorrelated band from a coherent one whose channels are phase-rotated;
+     * both halves give the coherence magnitude. */
+    float bandCrossIm[2][SBR_QMF_BANDS_64];
 
     /* QMF analysis scratch: overlap tail + the current frame, per analyzed
      * channel. Lives here (SignalAnalysis is heap-allocated inside SBRContext)

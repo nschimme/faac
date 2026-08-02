@@ -40,6 +40,7 @@ static void SbrAnalyzeStereoBands(SignalAnalysis *sa, float *fullPtrs[], int num
     memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
     memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
     memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+    memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
 
     float * restrict workspaceL = sa->qmfWork[0];
     float * restrict workspaceR = sa->qmfWork[1];
@@ -65,11 +66,13 @@ static void SbrAnalyzeStereoBands(SignalAnalysis *sa, float *fullPtrs[], int num
             float * restrict bEL = sa->ch[0].bandHalfE[h];
             float * restrict bER = sa->ch[1].bandHalfE[h];
             float * restrict bCross = sa->bandCrossE[h];
+            float * restrict bCrossI = sa->bandCrossIm[h];
 
             for (int k = kx; k < kEnd; k++) {
                 bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
                 bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
                 bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
+                bCrossI[k] += xrR[k] * xiL[k] - xrL[k] * xiR[k];
             }
         }
     }
