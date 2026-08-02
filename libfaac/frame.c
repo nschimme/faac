@@ -32,6 +32,10 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
+#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+#define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
+/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
+#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
 /* Parametric stereo needs more headroom than SBR alone. Measured against
  * HE-AAC v1 from the same build, ViSQOL on the mono downmix, 8 clips -- a
  * comparison the metric can arbitrate because both variants emit identical
@@ -48,10 +52,38 @@
  * image (coherence error 0.15 against v1's 0.25 at 16 kbps) and being able to
  * reach 12 kbps at all, where v1 floors near 17. */
 #define HE_V2_MIN_SAMPLE_RATE 44100
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
-#define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
-#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
+/* Upper bound of the HE-AAC v2 window, per channel.
+ *
+ * v2 leads v1 on MOS across the whole HE range, but that is only half the
+ * ledger: parametric stereo rebuilds the image from ten coarse bands, so above
+ * a point it buys monaural MOS by spending stereo accuracy -- exactly the trade
+ * phase 3 of the benchmark exists to catch. Both axes, 48 kHz stereo, against
+ * v1 from the same build:
+ *
+ *   kbps/ch          6      8     10     12
+ *   dMOS         +.041  +.092  +.079  +.051
+ *   coherence    v2 .244  .245   ~.246  .246
+ *                v1 .295  .254   ~.215  .173
+ *
+ * v2 is the truer image up to about 10 kbps/ch and clearly worse by 12, while
+ * the MOS lead is already thinning. Enabling it to the full HE ceiling cost
+ * 0.097 of stereo fidelity for 0.011 of MOS across the suite -- a bad trade,
+ * and the reason for this second bound rather than reusing
+ * HE_MAX_BITRATE_PER_CH. */
+#define HE_V2_MAX_BITRATE_PER_CH 10000
+/* Floor of the HE-AAC window. Below it AAC-LC is not merely worse, it stops
+ * honouring the requested rate at all: at 48 kHz stereo LC bottoms out near
+ * 26 kbps, so a 12 kbps request returns 26.2 (+114%) while HE-AAC v2 returns
+ * 12.5. Measured over 12 clips, MOS alongside the delivered rate:
+ *
+ *   stereo kbps   12     16     20     24
+ *   LC          1.723  1.722  1.727  1.831   delivered 26.2 26.3 27.0 30.0
+ *   HE-AAC v2   3.866  3.935  3.965  3.982   delivered 12.5 16.5 20.9 25.1
+ *
+ * The old 12000 excluded stereo below 24 kbps, which is where HE-AAC is most
+ * worth having and what it was designed for. The MOS column overstates the gap
+ * -- ViSQOL rewards SBR's wide band heavily -- but the delivered-rate column
+ * does not depend on any quality metric. */
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -274,7 +306,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         if (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE)
             hEncoder->config.aacObjectType =
                 (hEncoder->inputChannels == 2 &&
-                 hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE) ? HE_V2 : HE_V1;
+                 hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE &&
+                 rate_per_ch <= HE_V2_MAX_BITRATE_PER_CH) ? HE_V2 : HE_V1;
         else
             hEncoder->config.aacObjectType = LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
