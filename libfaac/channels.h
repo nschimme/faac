@@ -110,6 +110,18 @@ int WriteBitstream(struct faacEncStruct* hEncoder,
                    int numElements,
                    BitStream *bitStream);
 
+int WriteBitstreamDryRun(struct faacEncStruct* hEncoder,
+                         CoderInfo *coderInfo,
+                         AACElement *elements,
+                         int numElements,
+                         BitStream *bitStream);
+
+int WriteBitstreamWriteOnly(struct faacEncStruct* hEncoder,
+                            CoderInfo *coderInfo,
+                            AACElement *elements,
+                            int numElements,
+                            BitStream *bitStream);
+
 #ifdef __cplusplus
 }
 #endif

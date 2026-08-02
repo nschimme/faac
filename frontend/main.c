@@ -93,7 +93,8 @@ enum flags
     HELP_ADVANCED,
     OPT_JOINT,
     OPT_PNS,
-    OBJTYPE_FLAG
+    OBJTYPE_FLAG,
+    CAP_RATE_FLAG
 };
 
 typedef struct {
@@ -408,6 +409,7 @@ int main(int argc, char *argv[])
     int cutOff = -1;
     int bitRate = 0;
     unsigned long quantqual = 0;
+    unsigned int capRate = 0;
     int chanC = 3;
     int chanLF = 4;
 
@@ -529,6 +531,7 @@ int main(int argc, char *argv[])
             {"tag", 1, 0, TAG_FLAG},
             {"overwrite", 0, &overwrite, 1},
             {"creation-time", 1, 0, CREATION_TIME_FLAG},
+            {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {0, 0, 0, 0}
         };
         int c = -1;
@@ -765,6 +768,15 @@ int main(int argc, char *argv[])
             else
                 dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
             break;
+        case CAP_RATE_FLAG:
+            {
+                unsigned int i;
+                if (sscanf(optarg, "%u", &i) > 0)
+                {
+                    capRate = i;
+                }
+                break;
+            }
         case 'L':
             fprintf(stderr, "%s", faac_copyright_string);
             dieMessage = license;
@@ -926,6 +938,8 @@ int main(int argc, char *argv[])
     }
     if (bitRate)
         params.bit_rate = bitRate / infile->channels;
+    if (capRate)
+        params.max_bit_rate = capRate * 1000;
     params.bandwidth     = cutOff;
     params.output_format = stream;
     params.input_format  = FAAC_INPUT_FLOAT;

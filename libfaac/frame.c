@@ -762,46 +762,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
 
-    /* Hard per-frame ceiling, if configured. AACstereo has already mutated
-     * freqBuff in place, so a retry cannot re-run it -- snapshot its per-
-     * channel book/sf output instead, plus sfbn, which the CPE fix below
-     * rewrites. Non-limiter encodes skip all of this and run one pass. */
-    int peakBits = 0;
-    int sfbnSnap[MAX_CHANNELS];
-    if (hEncoder->config.maxBitRate)
+    if (!hEncoder->config.maxBitRate)
     {
-        peakBits = (int)((unsigned long long)numChannels * hEncoder->config.maxBitRate
-            * FRAME_LEN / hEncoder->sampleRate);
-
-        for (channel = 0; channel < numChannels; channel++) {
-            memcpy(hEncoder->peakBookSnap[channel], coderInfo[channel].book,
-                   MAX_SCFAC_BANDS * sizeof(int));
-            memcpy(hEncoder->peakSfSnap[channel], coderInfo[channel].sf,
-                   MAX_SCFAC_BANDS * sizeof(int));
-            sfbnSnap[channel] = coderInfo[channel].sfbn;
-        }
-    }
-
-    /* Quantize and write the frame, backing off quality and re-quantizing from
-     * the snapshot while it busts peakBits. Bounded rather than an exact-fit
-     * bit search, which can fail to terminate on pathological input. */
-    for (int attempt = 0; ; attempt++)
-    {
-        if (attempt)
-        {
-            hEncoder->aacquantCfg.quality *= PEAK_BACKOFF_FACTOR;
-            if (hEncoder->aacquantCfg.quality < MINQUAL)
-                hEncoder->aacquantCfg.quality = MINQUAL;
-
-            for (channel = 0; channel < numChannels; channel++) {
-                memcpy(coderInfo[channel].book, hEncoder->peakBookSnap[channel],
-                       MAX_SCFAC_BANDS * sizeof(int));
-                memcpy(coderInfo[channel].sf, hEncoder->peakSfSnap[channel],
-                       MAX_SCFAC_BANDS * sizeof(int));
-                coderInfo[channel].sfbn = sfbnSnap[channel];
-            }
-        }
-
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                       &(hEncoder->aacquantCfg));
@@ -827,14 +789,98 @@ int faacEncEncode(faacEncHandle hpEncoder,
             return -1;
 
         if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0)
+        {
+            CloseBitStream(bitStream);
             return -1;
+        }
 
         /* Close the bitstream and return the number of bytes written */
         frameBytes = CloseBitStream(bitStream);
+    }
+    else
+    {
+        /* Hard per-frame ceiling, if configured. AACstereo has already mutated
+         * freqBuff in place, so a retry cannot re-run it -- snapshot its per-
+         * channel book/sf output instead, plus sfbn, which the CPE fix below
+         * rewrites. Non-limiter encodes skip all of this and run one pass. */
+        int peakBits = (int)((unsigned long long)numChannels * hEncoder->config.maxBitRate
+            * FRAME_LEN / hEncoder->sampleRate);
+        int sfbnSnap[MAX_CHANNELS];
 
-        if (!peakBits || frameBytes * 8 <= peakBits || attempt >= PEAK_MAX_RETRIES
-            || hEncoder->aacquantCfg.quality <= MINQUAL)
-            break;
+        for (channel = 0; channel < numChannels; channel++) {
+            memcpy(hEncoder->peakBookSnap[channel], coderInfo[channel].book,
+                   MAX_SCFAC_BANDS * sizeof(int));
+            memcpy(hEncoder->peakSfSnap[channel], coderInfo[channel].sf,
+                   MAX_SCFAC_BANDS * sizeof(int));
+            sfbnSnap[channel] = coderInfo[channel].sfbn;
+        }
+
+        /* Quantize and write the frame, backing off quality and re-quantizing from
+         * the snapshot while it busts peakBits. Bounded rather than an exact-fit
+         * bit search, which can fail to terminate on pathological input. */
+        for (int attempt = 0; ; attempt++)
+        {
+            if (attempt)
+            {
+                hEncoder->aacquantCfg.quality *= PEAK_BACKOFF_FACTOR;
+                if (hEncoder->aacquantCfg.quality < MINQUAL)
+                    hEncoder->aacquantCfg.quality = MINQUAL;
+
+                for (channel = 0; channel < numChannels; channel++) {
+                    memcpy(coderInfo[channel].book, hEncoder->peakBookSnap[channel],
+                           MAX_SCFAC_BANDS * sizeof(int));
+                    memcpy(coderInfo[channel].sf, hEncoder->peakSfSnap[channel],
+                           MAX_SCFAC_BANDS * sizeof(int));
+                    coderInfo[channel].sfbn = sfbnSnap[channel];
+                }
+            }
+
+            for (channel = 0; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+                          &(hEncoder->aacquantCfg));
+            }
+
+            // fix max_sfb in CPE mode
+            for (int e = 0; e < hEncoder->numElements; e++)
+            {
+                if (hEncoder->elements[e].type == ID_CPE)
+                {
+                    CoderInfo *cil, *cir;
+
+                    cil = &coderInfo[hEncoder->elements[e].channels[0]];
+                    cir = &coderInfo[hEncoder->elements[e].channels[1]];
+
+                    cil->sfbn = cir->sfbn = max(cil->sfbn, cir->sfbn);
+                }
+            }
+
+            /* Write the AAC bitstream (dry run first to get exact size) */
+            bitStream = OpenBitStream(bufferSize, outputBuffer);
+            if (!bitStream)
+                return -1;
+
+            int dryRunBits = WriteBitstreamDryRun(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream);
+            if (dryRunBits < 0) {
+                CloseBitStream(bitStream);
+                return -1;
+            }
+
+            if (dryRunBits <= peakBits || attempt >= PEAK_MAX_RETRIES || hEncoder->aacquantCfg.quality <= MINQUAL)
+            {
+                /* Fits, or run out of retries; write actual bitstream and break */
+                if (WriteBitstreamWriteOnly(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0) {
+                    CloseBitStream(bitStream);
+                    return -1;
+                }
+                frameBytes = CloseBitStream(bitStream);
+                break;
+            }
+            else
+            {
+                /* Overshot and have retries remaining: skip writing and close the bitstream early */
+                CloseBitStream(bitStream);
+            }
+        }
     }
 
     /* Adjust quality to get correct average bitrate */

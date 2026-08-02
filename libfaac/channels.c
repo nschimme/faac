@@ -297,12 +297,48 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     return bits + pad;
 }
 
+static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int frameBytes)
+{
+    if (hEncoder->config.outputFormat == 1 && bs->data) {
+        bs->data[0] = 0xFF;
+        bs->data[1] = 0xF0 | (hEncoder->config.mpegVersion << 3) | 1;
+        bs->data[2] = (hEncoder->sampleRateIdx << 2) | (hEncoder->numChannels >> 2);
+        bs->data[3] = ((hEncoder->numChannels & 3) << 6) | (frameBytes >> 11);
+        bs->data[4] = (frameBytes >> 3) & 0xFF;
+        bs->data[5] = ((frameBytes & 7) << 5) | 0x1F;
+        bs->data[6] = 0xFC;
+    }
+}
+
 int WriteBitstream(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
+{
+    hEncoder->usedBytes = 0;
+    bs->currentBit = 0;
+    int bits = BuildFrame(hEncoder, coder, elems, nElems, bs, true);
+    if (bits < 0) return -1;
+    hEncoder->usedBytes = (bits + 7) >> 3;
+    if (hEncoder->usedBytes > bs->size) return -1;
+    if (hEncoder->usedBytes > ADTS_MAX_FRAME_SIZE) return -1;
+
+    PatchADTSHeader(hEncoder, bs, hEncoder->usedBytes);
+    return bits;
+}
+
+int WriteBitstreamDryRun(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
 {
     int bits = BuildFrame(hEncoder, coder, elems, nElems, bs, false);
     if (bits < 0) return -1;
     hEncoder->usedBytes = (bits + 7) >> 3;
     if (hEncoder->usedBytes > bs->size) return -1;
     if (hEncoder->usedBytes > ADTS_MAX_FRAME_SIZE) return -1;
-    return BuildFrame(hEncoder, coder, elems, nElems, bs, true);
+    return bits;
+}
+
+int WriteBitstreamWriteOnly(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
+{
+    bs->currentBit = 0;
+    int bits = BuildFrame(hEncoder, coder, elems, nElems, bs, true);
+    if (bits < 0) return -1;
+    PatchADTSHeader(hEncoder, bs, hEncoder->usedBytes);
+    return bits;
 }
