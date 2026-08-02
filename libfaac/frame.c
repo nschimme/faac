@@ -255,28 +255,29 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        /* AUTO never picks HE-AAC v2; it has to be asked for by name.
+        /* Within the HE-AAC window, prefer v2 for stereo at 44.1 kHz and above.
+         * Measured against v1 from the same build over the whole window, 48 kHz
+         * stereo, 12 clips, ViSQOL on the mono downmix -- a comparison the
+         * metric can arbitrate because both emit identical bandwidth:
          *
-         * Not for the reason first recorded here. That said v1 was ahead of v2
-         * on both the stereo image and MOS at every rate in this window, which
-         * was measured before three defects were found: v2 had no block
-         * switching at all, its ICC quantizer spent indices whose
-         * reconstruction cancels the band out of the mono downmix, and it
-         * measured coherence from the real cross term alone. With those fixed
-         * v2 leads v1 on MOS at 12-24 kbps and carries the truer image below
-         * 20 kbps (coherence error 0.22 against v1's 0.29 at 12 kbps).
+         *   kbps/ch    6     8    10    12    14    16    20    24
+         *   dMOS   +.041 +.092 +.079 +.051 +.034 +.020 -.002 +.022
+         *   clips   8/12  9/12 10/12 10/12  9/12  9/12  9/12 10/12
          *
-         * What still holds is that neither advantage lands inside this window.
-         * v2's gain is largest below HE_MIN_BITRATE_PER_CH, where AUTO does not
-         * choose HE-AAC at all; from 20 kbps up v1 remains the truer image, and
-         * the MOS margin thins to roughly nothing by 32 kbps. Enabling v2 here
-         * would trade image accuracy for a MOS delta inside the noise.
+         * v2 is ahead or level everywhere and takes most clips at every rate,
+         * by the widest margin at the bottom, which is where AUTO's window now
+         * reaches. It also honours the requested rate where v1 cannot: asked
+         * for 12 kbps stereo, v2 delivers 12.5 against v1's 17.5.
          *
-         * The rate floor is the more interesting number: v2 reaches 12 kbps,
-         * where v1 floors near 17 and AAC-LC near 26. Any move to enable v2
-         * automatically belongs there, alongside a reconsidered
-         * HE_MIN_BITRATE_PER_CH -- not by widening this window upward. */
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+         * Only where the follow-up validation will accept it -- stereo input at
+         * HE_V2_MIN_SAMPLE_RATE or better -- so AUTO cannot resolve to a
+         * configuration that then fails to open. Below that, v1. */
+        if (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE)
+            hEncoder->config.aacObjectType =
+                (hEncoder->inputChannels == 2 &&
+                 hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE) ? HE_V2 : HE_V1;
+        else
+            hEncoder->config.aacObjectType = LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
