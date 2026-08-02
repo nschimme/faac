@@ -199,7 +199,7 @@ static help_t help_advanced[] = {
     {"--joint 3\tUse Mixed Mode (dynamic M/S and IS) coding (default).\n", NULL},
     {"--pns <0 .. 10>\tPNS level; 0=disabled.\n", NULL},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n", NULL},
-    {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n", NULL},
+    {"--object-type X\tForce AAC object type: lc, he-aac-v1, he-aac-v2, or auto (default)\n", NULL},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n", NULL},
     {NULL, NULL}
@@ -768,10 +768,12 @@ int main(int argc, char *argv[])
                 objectType = FAAC_OBJ_LOW;
             else if (!strcmp(optarg, "he-aac-v1"))
                 objectType = FAAC_OBJ_HE_AAC_V1;
+            else if (!strcmp(optarg, "he-aac-v2"))
+                objectType = FAAC_OBJ_HE_AAC_V2;
             else if (!strcmp(optarg, "auto"))
                 objectType = FAAC_OBJ_AUTO;
             else
-                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
+                dieMessage = "Unrecognised object type (use lc, he-aac-v1, he-aac-v2, or auto)!\n";
             break;
         case CAP_RATE_FLAG:
             {
@@ -1050,6 +1052,7 @@ int main(int argc, char *argv[])
     if (resolvedPns > 0)
         fprintf(stderr, "PNS level: %d\n", resolvedPns);
     fprintf(stderr, "Object type: %s",
+            (objectType == FAAC_OBJ_HE_AAC_V2) ? "HE-AAC v2" :
             (objectType == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
     fprintf(stderr, " (MPEG-%d)", (mpegVersion == FAAC_MPEG4) ? 4 : 2);
     if (params.use_tns)

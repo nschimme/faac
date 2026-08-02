@@ -38,6 +38,13 @@ static inline int clamp_int(int x, int lo, int hi)
     return x;
 }
 
+static inline float clamp_float(float x, float lo, float hi)
+{
+    if (x < lo) return lo;
+    if (x > hi) return hi;
+    return x;
+}
+
 #ifndef M_PI
 #define M_PI        3.14159265358979323846f
 #endif

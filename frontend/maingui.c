@@ -331,6 +331,8 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 
@@ -417,7 +419,7 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
             LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
             LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1) {
+            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1 || data == (LRESULT)FAAC_OBJ_HE_AAC_V2) {
                 SendMessage(hMPG, CB_SETCURSEL, 0, 0);
                 EnableWindow(hMPG, FALSE);
             } else {
