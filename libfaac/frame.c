@@ -239,11 +239,17 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        if (hEncoder->numChannels == 2 && rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-            hEncoder->config.aacObjectType = HE_V2;
-        } else {
-            hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
-        }
+        /* AUTO never picks HE-AAC v2. Parametric stereo reconstructs the image
+         * from ten coarse IID/ICC bands, so its inter-channel coherence error
+         * is a floor that bits cannot lower -- measured flat at ~0.117 from 24
+         * to 56 kbps, while HE-AAC v1 coding two real channels falls from 0.088
+         * to 0.025 over the same span. v1 is the truer image at every rate in
+         * this window, and ahead on MOS too, so v2 has to be asked for by name.
+         *
+         * Raising the ceiling here is not the fix: the gap widens with rate. It
+         * would take finer PS resolution (iid_mode 1's 20 bands over the coarse
+         * 10) to move that floor. */
+        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
