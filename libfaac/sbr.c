@@ -629,7 +629,7 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
         icc = clamp_float(icc, -1.0f, 1.0f);
         int best_icc = 0;
         float best_err = 2.0f;
-        for (int i = 0; i < SBR_PS_ICC_LEVELS; i++) {
+        for (int i = 0; i <= SBR_PS_ICC_MAX_INDEX; i++) {
             float err = fabsf(icc - ps_icc_quant[i]);
             if (err < best_err) {
                 best_err = err;
