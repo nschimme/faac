@@ -97,16 +97,6 @@ struct SBRInfo {
 
     /* --- HE-AAC v2 parametric stereo state that is NOT per-frame payload --- */
     int is_he_v2;            /* constant for the stream */
-    /* Last *transmitted* PS parameters, the reference for time-differential
-     * coding. These belong here and not in SbrFrameData: they track emission
-     * order, and SbrWrite advances them as each delayed frame goes out, so they
-     * stay in step with the decoder's own running reference. The valid flags
-     * mirror what the decoder retains -- it zeroes its ICC reference on any
-     * frame that carries none, so a dropped ICC frame invalidates ours too. */
-    int iid_prev[SBR_PS_BANDS];
-    int icc_prev[SBR_PS_BANDS];
-    int iid_prev_valid;
-    int icc_prev_valid;
     /* Smoothed energy-preserving downmix gain. Deliberately undelayed: it is
      * applied to the core samples at analysis time, so it travels with the audio
      * through the core's own pipeline rather than with the coded payload. */
