@@ -88,6 +88,15 @@ struct BitStream;
 
 /* Transient detection threshold (peak-to-mean power ratio). */
 #define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
+
+/* Relative energy jump between adjacent QMF slots that makes the HE-AAC core
+ * ask for short blocks. Distinct from the LC path's PSY_TD_THRESH even though
+ * it was originally copied from it: this statistic is measured over one QMF
+ * slot -- 64 samples at the FULL rate, while the HE core runs at half rate --
+ * against the LC path's 128-sample sub-blocks at the core rate. Finer time
+ * resolution makes the same transient produce a larger relative jump, so the
+ * two constants are not interchangeable and never were. */
+#define SBR_TD_THRESH                   (0.5f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */

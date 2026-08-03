@@ -17,6 +17,7 @@
 #include "sbr.h"
 #include "sbr_internal.h"
 #include "util.h"
+#include "tuning.h"
 #include <string.h>
 
 #ifdef HAVE_CONFIG_H
@@ -35,6 +36,10 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
     float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+
+    float td_thresh = SBR_TD_THRESH;
+
+    FAAC_TUNE_F(td_thresh, sbr_td_thresh);
 
     sa->valid = 1;
     sa->numSlots = num_slots;
@@ -82,8 +87,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
             if (have_last) {
                 float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
                 float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
-                /* PSY_TD_THRESH = 0.5 */
-                if (volchg > (0.5f * toteng)) {
+                if (volchg > (td_thresh * toteng)) {
                     sa->ch[ch].wantShort = 1;
                     break;
                 }
