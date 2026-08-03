@@ -55,33 +55,40 @@
 /* There is deliberately no v2-specific upper bound: v2 runs to
  * HE_MAX_BITRATE_PER_CH, the same ceiling as v1.
  *
- * The two axes disagree, and this picks MOS. Parametric stereo rebuilds the
- * image from ten coarse bands no matter what it is given, so its coherence
- * error is flat with bitrate while v1's keeps improving -- the gap widens as
- * the rate rises. Measured on 14 clips at 48 kHz stereo, v1 and v2 from one
- * build, ViSQOL on the mono downmix (valid here: both emit identical bandwidth,
- * so the metric's bandwidth bias cancels) alongside phase 3 coherence error:
+ * The two axes disagree above 24 kbps, and this picks MOS. Parametric stereo
+ * synthesises the image from the transmitted parameters, so its coherence error
+ * is flat with bitrate while v1's keeps improving -- v1 codes two real channels
+ * and simply gets better as bits arrive. Measured on 14 clips at 48 kHz stereo,
+ * v1 and v2 from one build, ViSQOL on the mono downmix (valid here: both emit
+ * identical bandwidth, so the metric's bandwidth bias cancels) alongside phase 3
+ * coherence error:
  *
  *   stereo kbps      12     16     24     32     40     48     56
- *   dMOS vs v1    +.055  +.105  +.054  +.026  +.005  +.027  +.049
- *   clips won      --     --    12/14  11/14  11/14  12/14  12/14
- *   coherence  v2  .220   .221   .222   .222   .222   .222   .222
+ *   dMOS vs v1    +.036  +.084  +.031  +.004  -.015  +.008  +.027
+ *   clips won     10/14  12/14  12/14  10/14  10/14  12/14  12/14
+ *   coherence  v2  .151   .153   .154   .155   .155   .155   .155
  *              v1  .291   .250   .161   .139   .130   .126   .124
  *
- * MOS is ahead everywhere and v2 takes most clips at every rate, so on the
- * chosen axis nothing marks a ceiling short of the HE window's own. The cost is
- * real and grows with rate: expect the benchmark's stereo-fidelity phase to
- * regress across the whole window, by roughly 0.1 at the top. That is an
- * accepted trade, not an oversight.
+ * v2 is the truer image up to 24 kbps and the better MOS almost everywhere, so
+ * on the chosen axis nothing marks a ceiling short of the HE window's own. Above
+ * 24 kbps expect the benchmark's stereo-fidelity phase to regress, by about 0.03
+ * at the top. That is an accepted trade, not an oversight; a both-axes rule would
+ * put the ceiling at 24 kbps instead.
  *
- * The flat floor is a property of the encoder, not of parametric stereo. Both
- * resolution axes were raised and measured, and neither moved it: two envelopes
- * (time) was negative on both axes at every rate and every grid from 5.3 to
- * 100 ms, and 20 bands with iid_mode/icc_mode 1 (frequency) bought 0.001 of
- * coherence for 0.003-0.016 of MOS. What remains is the single broadband
- * downmix gain, which cannot invert a decoder gain applied per band; lifting
- * that needs a per-band, per-slot QMF-domain downmix and so a QMF synthesis
- * filterbank, which this encoder does not have. */
+ * Why the floor is flat, since it bounds what any tuning here can achieve: three
+ * things were raised and measured. Two envelopes (time resolution) was negative
+ * on both axes at every rate and every grid from 5.3 to 100 ms. Twenty parameter
+ * bands via iid_mode/icc_mode 1 (frequency resolution) bought 0.001 of coherence
+ * for 0.003-0.016 of MOS. Only uncapping the ICC quantizer moved it, from .222
+ * to .155 -- see SBR_PS_ICC_MAX_INDEX. None of them made it *fall with bitrate*,
+ * and none can: there is no residual channel to spend bits on.
+ *
+ * The prize is also small, which is worth knowing before tuning further. At a
+ * fixed rate, scoring v1-with-stereo-input against v1-with-the-mono-downmix
+ * gives the most parametric stereo could ever win -- stereo removed at zero cost,
+ * no payload, no decorrelator. That ceiling is +0.130 MOS at 16 kbps, +0.068 at
+ * 24 and +0.046 at 48, and v2 already collects 81%, 79% and 59% of it. The core
+ * codes JOINT_MIXED, so the second channel was never costing a full channel. */
 /* Floor of the HE-AAC window. Below it AAC-LC is not merely worse, it stops
  * honouring the requested rate at all: at 48 kHz stereo LC bottoms out near
  * 26 kbps, so a 12 kbps request returns 26.2 (+114%) while HE-AAC v2 returns

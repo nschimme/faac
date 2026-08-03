@@ -122,30 +122,50 @@ struct BitStream;
 #define SBR_PS_IID_LEVELS               15
 /* ICC quantizer: 8 levels, index 0..7 (Table 8.26). */
 #define SBR_PS_ICC_LEVELS               8
-/* Highest ICC index this encoder will transmit.
+/* Highest ICC index this encoder will transmit: the whole quantizer, uncapped.
  *
- * The downmix carries one broadband compensation gain, but the decoder undoes
- * it per band. For a centred image the two cancel exactly -- it reconstructs
- * sqrt((1+icc)/2) of the mono sum and the gain below is sqrt(2/(1+icc)) -- so
- * the problem is not the algebra, it is the range. Measured end to end through
- * the decoder, the fraction of the mono sum each index preserves is:
+ * There is a real cost to the top indices, and it is worth stating because it
+ * argues for a cap. The downmix carries one broadband compensation gain, but
+ * the decoder undoes it per band. For a centred image the two cancel exactly --
+ * it reconstructs sqrt((1+icc)/2) of the mono sum and the gain is
+ * sqrt(2/(1+icc)) -- so the problem is not the algebra, it is the range.
+ * Measured end to end through the decoder, the fraction of the mono sum each
+ * index preserves is:
  *
  *   index   0     1     2     3     4     5     6     7
  *   kept  1.00  0.98  0.96  0.89  0.83  0.71  0.45  0.002
  *
- * Indices 6 and 7 describe antiphase channels and need 2.2x and 500x to undo;
- * SBR_PS_MAX_DOWNMIX_GAIN caps the gain at 2.0, so those bands lose most of
- * their energy from the very downmix the core spent its bits coding -- and the
- * mono downmix is what a monaural quality metric scores. Stopping at 3 keeps
- * the required compensation inside 1.00-1.12, a span one broadband gain can
- * actually represent, and costs only the widest decorrelation.
+ * Indices 6 and 7 describe antiphase channels and need 2.2x and 500x to undo,
+ * while SBR_PS_MAX_DOWNMIX_GAIN stops at 2.0, so those bands do lose energy
+ * from the very downmix the core spent its bits coding.
  *
- * Chosen by measuring the whole curve (ViSQOL on the mono downmix vs phase 3
- * coherence error, both against HE-AAC v1 from the same build). Index 3 is the
- * knee. Index 4 is the alternative worth knowing about: it scores the same MOS
- * and gives back roughly 0.03 of coherence error, so prefer it if the stereo
- * image is ever weighted above MOS. */
-#define SBR_PS_ICC_MAX_INDEX            3
+ * That argument held this at 3 until it was measured end to end rather than
+ * reasoned about. The energy it predicts to be lost sits in bands that are
+ * near-antiphase and therefore near-silent in the mono sum to begin with, so
+ * the monaural penalty is far smaller than the gain table suggests, while the
+ * cap's cost to the stereo image is large and paid on every frame. 14 clips,
+ * 48 kHz stereo, ViSQOL on the mono downmix against phase 3 coherence error:
+ *
+ *   cap            3      4      5      7
+ *   MOS  16 kbps  3.989  3.984  3.968  3.967
+ *        24 kbps  4.034  4.027  4.011  4.011
+ *        48 kbps  4.106  4.100  4.090  4.088
+ *   coh  16 kbps  .2209  .1852  .1619  .1528
+ *        24 kbps  .2218  .1862  .1631  .1541
+ *        48 kbps  .2221  .1869  .1639  .1548
+ *
+ * Uncapping buys 0.067 of coherence error for 0.02 of MOS -- against 0.001 for
+ * doubling the parameter-band count, which is the alternative that looks more
+ * principled and is not. Index 7 also dominates 5 (0.009 better on coherence
+ * for 0.002 of MOS), so there is no interior knee to stop at: either the cap
+ * earns its place or it goes.
+ *
+ * Note what this does not fix: the floor drops but stays flat with bitrate
+ * (.1528/.1541/.1548). Parametric stereo has no residual channel, so the image
+ * is synthesised from the transmitted parameters and cannot get more accurate
+ * as bits arrive -- only the spectrum underneath it can. See
+ * HE_V2_MIN_SAMPLE_RATE in frame.c for what that implies for AUTO's window. */
+#define SBR_PS_ICC_MAX_INDEX            (SBR_PS_ICC_LEVELS - 1)
 
 /* Below this parameter band ICC is the signed real part of the cross product;
  * at and above it, the magnitude, which cannot be negative.
