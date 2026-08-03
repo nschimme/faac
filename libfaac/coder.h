@@ -66,7 +66,13 @@ typedef struct {
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
+    int tnsMinBandNumberShort;
+    int tnsMaxBandsShort;
+    int tnsNumSwbShort;
+    /* tns_data() is per window: one entry for a long block, MAX_SHORT_WINDOWS
+     * for EIGHT_SHORT_SEQUENCE. numWindows says how many are live. */
+    int numWindows;
+    TnsWindowData windowData[MAX_SHORT_WINDOWS];
 } TnsInfo;
 
 typedef struct CoderInfo {

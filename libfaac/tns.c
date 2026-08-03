@@ -33,6 +33,25 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
+/* TNS_MAX_BANDS for EIGHT_SHORT_SEQUENCE, Main/LC profile, same table and same
+ * indexing as above (ISO/IEC 14496-3 Table 4.157). A short window carries 128
+ * lines against the long window's 1024, so the band counts are far smaller. */
+static const unsigned char tns_max_bands_short[12] = {
+    9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14
+};
+
+/* The spec caps short-window filter order at 7, which is also all the
+ * bitstream can express: LEN_TNS_ORDERS is 3 bits. */
+#define TNS_MAX_ORDER_SHORT 7
+
+/* Segments the pre-autocorrelation normalization averages over on short
+ * windows. Per-scalefactor-band normalization is fine across a long window's
+ * wide bands, but a short window's low bands are 4 lines each: flattening every
+ * one of those to unit RMS erases the spectral envelope the LPC is meant to
+ * model, leaving it to fit noise. Coarse equal-width segments keep the envelope
+ * while still stopping the loudest region from dominating the fit. */
+#define TNS_NORM_SEGMENTS 4
+
 #define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
 /* Prediction-gain floor on the un-quantized fit. This is a cheap early-out, NOT
  * a quality knob: TNS_MEASURED_GAIN below is the same bar applied to the filter
@@ -277,20 +296,49 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
+
+        info->tnsMaxBandsShort = tns_max_bands_short[fs];
+        info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
+        /* The spec fixes the upper band limit but not where TNS starts, and
+         * the long start band above is a FAAC choice. Rather than invent a
+         * second magic table, translate that choice to short windows by
+         * frequency: a short window's 128 lines span the same bandwidth as the
+         * long window's 1024, so line k short == line 8k long. */
+        {
+            int long_start = 0, short_start = 0, b;
+
+            for (b = 0; b < info->tnsMinBandNumberLong &&
+                        b < hEncoder->srInfo->num_cb_long; b++)
+                long_start += hEncoder->srInfo->cb_width_long[b];
+
+            info->tnsMinBandNumberShort = info->tnsMaxBandsShort;
+            for (b = 0; b < hEncoder->srInfo->num_cb_short; b++) {
+                if (short_start * 8 >= long_start) {
+                    info->tnsMinBandNumberShort = b;
+                    break;
+                }
+                short_start += hEncoder->srInfo->cb_width_short[b];
+            }
+        }
     }
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+/* Analyse one window and, if the filter pays for itself, whiten it in place.
+ * Returns 1 if a filter was written to `win`. Shared by both block types: a
+ * long block is simply the one-window case, and tns_data() in the bitstream
+ * has the same shape for both, only with narrower fields for short windows. */
+static int tns_fit_window(TnsWindowData *win, float *spec, const int *sfbOffsetTable,
+                          int b_start, int b_stop, int numSwb, int max_order,
+                          int coarseNorm)
 {
-    int b_start, b_stop, i_start, length;
-    float *band, energy;
+    int seg_off[TNS_NORM_SEGMENTS + 1];
+    int nseg;
     float wspec[BLOCK_LEN_LONG];
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
-    float gain;
+    float *band, energy, gain;
     TnsFilterData *filter;
-    int order, limit, i;
+    int i_start, length, order, limit, i;
     int lpc_order = TNS_LPC_ORDER;
     float gain_limit = TNS_GAIN_LIMIT;
     float gain_clamp = INFINITY;
@@ -302,30 +350,21 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     FAAC_TUNE_F(gain_clamp, tns_gain_clamp);
     FAAC_TUNE_F(measured_gain, tns_measured);
     FAAC_TUNE_F(sfm_skip, tns_sfm);
-    lpc_order = clamp_int(lpc_order, 1, TNS_MAX_ORDER);
+    lpc_order = clamp_int(lpc_order, 1, max_order);
 
-    tnsInfo->tnsDataPresent = 0;
-    tnsInfo->windowData.numFilters = 0;
+    win->numFilters = 0;
     TNS_TALLY(frames);
 
-    /* Short windows already have the temporal resolution to not need TNS. */
-    if (blockType == ONLY_SHORT_WINDOW) {
-        TNS_TALLY(shortw);
-        goto done;
-    }
-
-    b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
-    b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start) {
         TNS_TALLY(range);
-        goto done;
+        return 0;
     }
 
     i_start = sfbOffsetTable[b_start];
     length = sfbOffsetTable[b_stop] - i_start;
     if (length <= lpc_order) {
         TNS_TALLY(range);
-        goto done;
+        return 0;
     }
 
     band = spec + i_start;
@@ -334,7 +373,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         energy += band[i] * band[i];
     if (energy < TNS_MIN_ENERGY) {
         TNS_TALLY(energy);
-        goto done;
+        return 0;
     }
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
@@ -342,14 +381,26 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
      * band has the most energy and ignore quieter ones -- but pre-echo is
      * audible in quiet bands too, so the filter needs to whiten across the
      * whole range, not just the peak. */
+    /* Segment boundaries the normalization below works over: one per
+     * scalefactor band for a long window, TNS_NORM_SEGMENTS equal slices of the
+     * line range for a short one. */
+    if (coarseNorm) {
+        nseg = TNS_NORM_SEGMENTS;
+        for (i = 0; i <= nseg; i++)
+            seg_off[i] = i_start + (length * i) / nseg;
+    } else {
+        nseg = b_stop - b_start;
+    }
+
     {
         float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
-        int nbands = b_stop - b_start;
+        int nbands = nseg;
         int b;
 
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+        for (b = 0; b < nseg; b++) {
+            int s0 = coarseNorm ? seg_off[b]     : sfbOffsetTable[b_start + b];
+            int s1 = coarseNorm ? seg_off[b + 1] : sfbOffsetTable[b_start + b + 1];
             float e = 0.0f, rms, rms_fl;
 
             for (i = s0; i < s1; i++)
@@ -370,7 +421,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * tonal/peaky bands. */
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > sfm_skip) {
             TNS_TALLY(sfm);
-            goto done;
+            return 0;
         }
 
         floorrms = maxrms * 0.01f;
@@ -380,8 +431,9 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * in a bandrms[] array measured ~1.2% SLOWER on TNS-heavy material:
          * ~800 multiply-adds out of L1 cost less than a dependent load that
          * stops this loop vectorizing. Left as-is deliberately. */
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+        for (b = 0; b < nseg; b++) {
+            int s0 = coarseNorm ? seg_off[b]     : sfbOffsetTable[b_start + b];
+            int s1 = coarseNorm ? seg_off[b + 1] : sfbOffsetTable[b_start + b + 1];
             float e = 0.0f, rms, wgt;
 
             for (i = s0; i < s1; i++)
@@ -397,16 +449,16 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     gain = compute_lpc(lpc_order, r, k);
     if (gain < gain_limit) {
         TNS_TALLY(gainlo);
-        goto done;
+        return 0;
     }
     /* err collapsed to ~0: a "perfect" fit means degenerate input, not a great
      * filter. compute_lpc reports that as INFINITY. */
     if (!isfinite(gain) || gain > gain_clamp) {
         TNS_TALLY(gainhi);
-        goto done;
+        return 0;
     }
 
-    filter = &tnsInfo->windowData.tnsFilter[0];
+    filter = &win->tnsFilter[0];
     quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
@@ -416,11 +468,11 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         order--;
     if (order == 0) {
         TNS_TALLY(order);
-        goto done;
+        return 0;
     }
 
     filter->order = order;
-    filter->length = tnsInfo->tnsNumSwbLong - b_start;
+    filter->length = numSwb - b_start;
 
     /* Direction is fixed rather than picked from a transient envelope; that
      * comes with FrameStrategy in a later commit. */
@@ -457,16 +509,49 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < measured_gain * filt_e) {
             TNS_TALLY(measured);
-            goto done;
+            return 0;
         }
     }
 
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
-    tnsInfo->windowData.numFilters = 1;
-    tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
-    tnsInfo->tnsDataPresent = 1;
+    win->numFilters = 1;
+    win->coefResolution = DEF_TNS_COEFF_RES;
     TNS_TALLY(applied);
+    return 1;
+}
 
-done:
+void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
+               float* spec)
+{
+    int w, any = 0;
+
+    tnsInfo->tnsDataPresent = 0;
+
+    if (blockType == ONLY_SHORT_WINDOW) {
+        /* Each of the 8 short windows gets its own filter over its own 128
+         * lines. This is where the transients are -- the block switcher sent
+         * this frame short precisely because it found one -- so skipping TNS
+         * here would leave it unused on the material it exists for. */
+        int b_start = min(tnsInfo->tnsMinBandNumberShort, numBands);
+        int b_stop = min(tnsInfo->tnsMaxBandsShort, numBands);
+
+        tnsInfo->numWindows = MAX_SHORT_WINDOWS;
+        for (w = 0; w < MAX_SHORT_WINDOWS; w++)
+            any |= tns_fit_window(&tnsInfo->windowData[w],
+                                  spec + w * BLOCK_LEN_SHORT, sfbOffsetTable,
+                                  b_start, b_stop, tnsInfo->tnsNumSwbShort,
+                                  TNS_MAX_ORDER_SHORT, 1);
+    } else {
+        tnsInfo->numWindows = 1;
+        any = tns_fit_window(&tnsInfo->windowData[0], spec, sfbOffsetTable,
+                             min(tnsInfo->tnsMinBandNumberLong, numBands),
+                             min(tnsInfo->tnsMaxBandsLong, numBands),
+                             tnsInfo->tnsNumSwbLong, TNS_MAX_ORDER, 0);
+    }
+
+    /* tns_data_present covers the whole frame; individual windows can still
+     * carry n_filt == 0. Only claim it when something was actually filtered,
+     * so a frame that declined everywhere costs no payload at all. */
+    tnsInfo->tnsDataPresent = any;
     tns_stats_report();
 }
