@@ -22,6 +22,7 @@
 #include "util.h"
 #include "faac_internal.h"
 #include "frame.h"
+#include "tuning.h"
 
 typedef float psyfloat;
 
@@ -55,6 +56,9 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float thresh = PSY_TD_THRESH;
+
+  FAAC_TUNE_F(thresh, td_thresh);
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
@@ -68,7 +72,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float volchg = fabsf(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
+      if (volchg / toteng > thresh)
       {
           psyInfo->block_type = ONLY_SHORT_WINDOW;
           break;
@@ -82,6 +86,8 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
 {
   unsigned int channel;
   int size;
+
+  FaacTuningInit();
 
   gpsyInfo->sampleRate = (float) sampleRate;
 
@@ -214,6 +220,32 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
   }
+
+  /* Pin every frame long so pre-echo stays in long blocks: the only way to
+     measure TNS on its own, since block switching otherwise removes the very
+     transients TNS exists to cover. Overrides the decision here rather than
+     returning early, so the window-sequence transitions below stay legal and a
+     force-long run still emits its (0%) BS_STATS line. */
+  if (FAAC_TUNE_ON(force_long))
+    desire = ONLY_LONG_WINDOW;
+
+#ifdef FAAC_TUNING
+  /* Short-block rate, so a threshold sweep can tell "TNS got better" apart
+     from "the block switcher stopped handing TNS anything to do". Format is
+     parsed positionally by score_preecho.py's last_bs_stats(); the interval is
+     short enough that clips of a few seconds still emit a line. */
+  if (FAAC_TUNE_ON(bs_stats))
+  {
+    static long totalFrames = 0, shortFrames = 0;
+
+    totalFrames++;
+    if (desire == ONLY_SHORT_WINDOW)
+      shortFrames++;
+    if (totalFrames % 25 == 0)
+      fprintf(stderr, "BS_STATS frames=%ld short=%ld pct=%.1f\n",
+              totalFrames, shortFrames, 100.0 * shortFrames / totalFrames);
+  }
+#endif
 
   for (channel = 0; channel < numChannels; channel++)
   {

@@ -55,6 +55,8 @@ common_src = [
     'stereo.h',
     'tns.c',
     'tns.h',
+    'tuning.c',
+    'tuning.h',
     'util.c',
     'util.h',
 ]

@@ -24,3 +24,12 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+# Measurement-only threshold overrides (see libfaac/tuning.h). Adds getenv()
+# reads and stderr instrumentation used by ../faac-benchmark's --env-ab and
+# --force-long sweeps. Never enable for a shipped build: it lets the
+# environment change encoder output.
+option('tuning',
+    description: 'Enable env-var threshold overrides and encoder instrumentation (measurement builds only)',
+    type: 'boolean',
+    value: false)
