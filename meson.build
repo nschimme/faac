@@ -31,6 +31,8 @@ config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
+config_h.set('FAAC_TUNING', get_option('tuning'))
+
 c_args = []
 if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']

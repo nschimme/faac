@@ -14,11 +14,13 @@
  */
 
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include "frame.h"
 #include "coder.h"
 #include "tns.h"
 #include "util.h"
+#include "tuning.h"
 
 /* Per-sample-rate scalefactor-band range TNS is allowed to filter over, from
  * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). Not
@@ -45,6 +47,33 @@ static const struct {
  * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
+
+#ifdef FAAC_TUNING
+/* Per-gate reject counts. An aggregate "TNS helped/hurt" number says nothing
+ * about which threshold to move; a funnel dominated by one stage does. */
+static struct {
+    long frames, applied;
+    long shortw, range, energy, sfm, gain, order, measured;
+} tnsStats;
+
+#define TNS_TALLY(field) do { if (FAAC_TUNE_ON(tns_stats)) tnsStats.field++; } while (0)
+
+static void tns_stats_report(void)
+{
+    if (!FAAC_TUNE_ON(tns_stats) || tnsStats.frames % 25 != 0)
+        return;
+    fprintf(stderr, "TNS_STATS frames=%ld applied=%ld pct=%.1f "
+                    "short=%ld range=%ld energy=%ld sfm=%ld gain=%ld "
+                    "order=%ld measured=%ld\n",
+            tnsStats.frames, tnsStats.applied,
+            100.0 * tnsStats.applied / tnsStats.frames,
+            tnsStats.shortw, tnsStats.range, tnsStats.energy, tnsStats.sfm,
+            tnsStats.gain, tnsStats.order, tnsStats.measured);
+}
+#else
+#define TNS_TALLY(field) ((void)0)
+#define tns_stats_report() ((void)0)
+#endif
 
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
@@ -117,11 +146,11 @@ static float compute_lpc(int order, const float * r, float * k)
     }
 
     /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
-     * means a degenerate input rather than a genuinely great filter. Return
-     * a gain past TNS_GAIN_CLAMP so the caller's sanity check rejects it,
-     * instead of dividing by ~0. */
+     * means a degenerate input rather than a genuinely great filter. Report
+     * infinite gain so the caller's upper bound rejects it whatever that bound
+     * is set to, instead of dividing by ~0. */
     if (err <= TNS_MIN_ENERGY)
-        return TNS_GAIN_CLAMP + 1.0f;
+        return INFINITY;
     return r[0] / err;
 }
 
@@ -214,6 +243,8 @@ void TnsInit(faacEncStruct* hEncoder)
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
 
+    FaacTuningInit();
+
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
 
@@ -234,30 +265,51 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     float gain;
     TnsFilterData *filter;
     int order, limit, i;
+    int lpc_order = TNS_LPC_ORDER;
+    float gain_limit = TNS_GAIN_LIMIT;
+    float gain_clamp = TNS_GAIN_CLAMP;
+    float measured_gain = TNS_MEASURED_GAIN;
+    float sfm_skip = TNS_PNS_SFM_SKIP;
+
+    FAAC_TUNE_I(lpc_order, tns_order);
+    FAAC_TUNE_F(gain_limit, tns_gain);
+    FAAC_TUNE_F(gain_clamp, tns_gain_clamp);
+    FAAC_TUNE_F(measured_gain, tns_measured);
+    FAAC_TUNE_F(sfm_skip, tns_sfm);
+    lpc_order = clamp_int(lpc_order, 1, TNS_MAX_ORDER);
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
+    TNS_TALLY(frames);
 
     /* Short windows already have the temporal resolution to not need TNS. */
-    if (blockType == ONLY_SHORT_WINDOW)
-        return;
+    if (blockType == ONLY_SHORT_WINDOW) {
+        TNS_TALLY(shortw);
+        goto done;
+    }
 
     b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
-    if (b_stop <= b_start)
-        return;
+    if (b_stop <= b_start) {
+        TNS_TALLY(range);
+        goto done;
+    }
 
     i_start = sfbOffsetTable[b_start];
     length = sfbOffsetTable[b_stop] - i_start;
-    if (length <= TNS_LPC_ORDER)
-        return;
+    if (length <= lpc_order) {
+        TNS_TALLY(range);
+        goto done;
+    }
 
     band = spec + i_start;
     energy = 0.0f;
     for (i = 0; i < length; i++)
         energy += band[i] * band[i];
-    if (energy < TNS_MIN_ENERGY)
-        return;
+    if (energy < TNS_MIN_ENERGY) {
+        TNS_TALLY(energy);
+        goto done;
+    }
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
@@ -290,8 +342,10 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * means the band is noise-like, which PNS (quantize.c) is about to
          * replace anyway -- skip the LPC work; it only pays off on
          * tonal/peaky bands. */
-        if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
-            return;
+        if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > sfm_skip) {
+            TNS_TALLY(sfm);
+            goto done;
+        }
 
         floorrms = maxrms * 0.01f;
         if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
@@ -309,21 +363,25 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         }
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP)
-        return;
+    calc_autocorr_f(lpc_order, length, wspec, r);
+    gain = compute_lpc(lpc_order, r, k);
+    if (gain < gain_limit || gain > gain_clamp) {
+        TNS_TALLY(gain);
+        goto done;
+    }
 
     filter = &tnsInfo->windowData.tnsFilter[0];
-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = lpc_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
-    if (order == 0)
-        return;
+    if (order == 0) {
+        TNS_TALLY(order);
+        goto done;
+    }
 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
@@ -361,12 +419,18 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         }
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
-        if (orig_e < TNS_MEASURED_GAIN * filt_e)
-            return;
+        if (orig_e < measured_gain * filt_e) {
+            TNS_TALLY(measured);
+            goto done;
+        }
     }
 
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
     tnsInfo->windowData.numFilters = 1;
     tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
+    TNS_TALLY(applied);
+
+done:
+    tns_stats_report();
 }
