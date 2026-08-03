@@ -776,6 +776,72 @@ int faacEncEncode(faacEncHandle hpEncoder,
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate);
 
+
+#ifdef FAAC_TUNING
+    /* How often a CPE carries two DIFFERENT TNS filters (or one filter and
+       none) on bands that M/S or IS then collapses into a single residual.
+       apply_ms writes sl = 0.5(sl+sr) and zeroes sr, so the decoder -- which
+       inverse-M/S's first, then applies each channel's own inverse filter --
+       reconstructs A_L^-1((A_L x_L + A_R x_R)/2). That is only (x_L+x_R)/2 when
+       A_L == A_R. apply_is has the same shape.
+
+       Measured at 96k stereo with every TNS gate forced open: 30-43% of
+       joint-coded frames carry mismatched filters (Hotel California 54 differing
+       + 80 one-sided out of 346 joint; Waiting 55 + 51 of 247), so the defect is
+       real and would bite hard.
+
+       In the shipped configuration it has ZERO exposure, because TNS applies to
+       no frames at all on stereo music at these rates -- 153 of 175 gate-passing
+       frames are short windows and the rest fail the gain gate. Fixing it
+       properly means splitting TnsEncode into analyse and apply phases so the
+       element can agree on one filter before anything is written in place;
+       TnsEncode filters in place, so there is no cheap "drop it on both"
+       retrofit. That restructure is not worth its risk while exposure is zero,
+       but it is a prerequisite for anything that raises TNS's stereo firing
+       rate -- flipping use_tns on, or loosening the gates. Re-run this census
+       first. */
+    if (FAAC_TUNE_ON(tns_stats))
+    {
+        static long cpeFrames, jointFrames, bothSame, bothDiff, onlyOne, neither;
+
+        for (int e = 0; e < hEncoder->numElements; e++)
+        {
+            AACElement *el = &hEncoder->elements[e];
+            TnsInfo *a, *b;
+            int joint = 0, sb;
+
+            if (el->type != ID_CPE)
+                continue;
+            cpeFrames++;
+
+            for (sb = 0; sb < MAX_SCFAC_BANDS; sb++)
+                if (el->msInfo.ms_used[sb]) { joint = 1; break; }
+            if (el->msInfo.is_present)
+                joint = 1;
+            if (!joint)
+                continue;
+            jointFrames++;
+
+            a = &coderInfo[el->channels[0]].tnsInfo;
+            b = &coderInfo[el->channels[1]].tnsInfo;
+            if (!a->tnsDataPresent && !b->tnsDataPresent)
+                neither++;
+            else if (a->tnsDataPresent != b->tnsDataPresent)
+                onlyOne++;
+            else if (memcmp(a->windowData.tnsFilter[0].index,
+                            b->windowData.tnsFilter[0].index,
+                            sizeof(a->windowData.tnsFilter[0].index)) == 0 &&
+                     a->windowData.tnsFilter[0].order == b->windowData.tnsFilter[0].order)
+                bothSame++;
+            else
+                bothDiff++;
+        }
+        if (cpeFrames && cpeFrames % 100 == 0)
+            fprintf(stderr, "TNS_CPE cpe=%ld joint=%ld neither=%ld same=%ld diff=%ld one=%ld\n",
+                    cpeFrames, jointFrames, neither, bothSame, bothDiff, onlyOne);
+    }
+#endif
+
     for (channel = 0; channel < numChannels; channel++) {
         BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                   &(hEncoder->aacquantCfg));
