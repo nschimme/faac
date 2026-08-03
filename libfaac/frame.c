@@ -64,9 +64,9 @@
  * coherence error:
  *
  *   stereo kbps      12     16     24     32     40     48     56
- *   dMOS vs v1    +.036  +.084  +.031  +.004  -.015  +.008  +.027
- *   clips won     10/14  12/14  12/14  10/14  10/14  12/14  12/14
- *   coherence  v2  .151   .153   .154   .155   .155   .155   .155
+ *   dMOS vs v1    +.058  +.104  +.052  +.023  +.008  +.032  +.051
+ *   clips won     11/14  13/14  12/14  11/14  11/14  12/14  12/14
+ *   coherence  v2  .151   .153   .154   .154   .154   .155   .155
  *              v1  .291   .250   .161   .139   .130   .126   .124
  *
  * v2 is the truer image up to 24 kbps and the better MOS almost everywhere, so
@@ -80,8 +80,9 @@
  * on both axes at every rate and every grid from 5.3 to 100 ms. Twenty parameter
  * bands via iid_mode/icc_mode 1 (frequency resolution) bought 0.001 of coherence
  * for 0.003-0.016 of MOS. Only uncapping the ICC quantizer moved it, from .222
- * to .155 -- see SBR_PS_ICC_MAX_INDEX. None of them made it *fall with bitrate*,
- * and none can: there is no residual channel to spend bits on.
+ * to .155 -- see SBR_PS_ICC_MAX_INDEX, and the per-band compensation in
+ * sbr_analyze_parametric_stereo that pays for it. None of them made it *fall
+ * with bitrate*, and none can: there is no residual channel to spend bits on.
  *
  * The prize is also small, which is worth knowing before tuning further. At a
  * fixed rate, scoring v1-with-stereo-input against v1-with-the-mono-downmix

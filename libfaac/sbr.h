@@ -160,6 +160,12 @@ struct BitStream;
  * for 0.002 of MOS), so there is no interior knee to stop at: either the cap
  * earns its place or it goes.
  *
+ * The 0.02 is since recovered in full: the energy the top indices lose is lost
+ * per band, and above the crossover the transmitted envelope can put it back
+ * per band. See the envelope rewrite at the end of
+ * sbr_analyze_parametric_stereo. The table above predates that and so still
+ * shows the cost.
+ *
  * Note what this does not fix: the floor drops but stays flat with bitrate
  * (.1528/.1541/.1548). Parametric stereo has no residual channel, so the image
  * is synthesised from the transmitted parameters and cannot get more accurate
