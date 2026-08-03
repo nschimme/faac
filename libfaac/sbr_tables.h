@@ -56,9 +56,7 @@ extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
 #define PS_HUFF_ICC_NSYMS   15
 
 extern const SBRHuffEntry ps_huff_iid_df[PS_HUFF_IID_NSYMS];
-extern const SBRHuffEntry ps_huff_iid_dt[PS_HUFF_IID_NSYMS];
 extern const SBRHuffEntry ps_huff_icc_df[PS_HUFF_ICC_NSYMS];
-extern const SBRHuffEntry ps_huff_icc_dt[PS_HUFF_ICC_NSYMS];
 #endif
 
 #ifdef __cplusplus

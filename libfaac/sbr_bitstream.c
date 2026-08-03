@@ -152,16 +152,15 @@ static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream
 #if defined(__GNUC__)
 __attribute__((cold, noinline, noclone))
 #endif
-static int write_ps_params(BitStream *bs, bool write, const int *cur, const int *prev,
-                           bool timeDelta, const SBRHuffEntry *table, int nsyms, int offset)
+static int write_ps_params(BitStream *bs, bool write, const int *cur,
+                           const SBRHuffEntry *table, int nsyms, int offset)
 {
     int bits = 0;
     int ref = 0;
 
     for (int b = 0; b < SBR_PS_BANDS; b++) {
-        if (timeDelta) ref = prev[b];
         bits += put_huff(bs, write, table, nsyms, offset, cur[b] - ref);
-        if (!timeDelta) ref = cur[b];
+        ref = cur[b];
     }
     return bits;
 }
@@ -175,32 +174,23 @@ static int write_ps_params(BitStream *bs, bool write, const int *cur, const int 
  * duplication this function exists to remove.
  *
  * fd is a delayed slot, so the parameters emitted here describe the same frame
- * as the envelopes alongside them. The dt references in sbr are not delayed:
- * they track emission order, which is what the decoder's own references do. */
+ * as the envelopes alongside them.
+ *
+ * Parameters are always frequency-delta coded. The format also offers a
+ * time-delta mode, and this encoder used to price both per frame and emit the
+ * cheaper one. It was removed: measured over 14 clips at 16/24/48 kbps it was
+ * worth 0.001 of MOS and nothing at all on the stereo image, while costing two
+ * extra Huffman tables, the trial-coding pass, and the previous-frame reference
+ * state with the invalidation rules that go with it -- 592 bytes for a payload
+ * of a few dozen bits a frame. Frequency-delta alone is also self-contained,
+ * which removes a class of bug: no frame's parameters depend on a reference the
+ * decoder might have zeroed. */
 #if defined(__GNUC__)
 __attribute__((cold, noinline, noclone))
 #endif
-static int write_ps_extension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int write)
+static int write_ps_extension(const SbrFrameData *fd, BitStream *bs, int write)
 {
     int bits = 0;
-    /* Time-delta needs a reference frame *and* is only worth it when it prices
-     * cheaper; frequency-delta is always legal, so it is the fallback. */
-    bool iid_dt = false, icc_dt = false;
-
-    if (sbr->iid_prev_valid) {
-        int df = write_ps_params(NULL, false, fd->iid, sbr->iid_prev, false,
-                                 ps_huff_iid_df, PS_HUFF_IID_NSYMS, PS_HUFF_IID_OFFSET);
-        int dt = write_ps_params(NULL, false, fd->iid, sbr->iid_prev, true,
-                                 ps_huff_iid_dt, PS_HUFF_IID_NSYMS, PS_HUFF_IID_OFFSET);
-        iid_dt = (dt < df);
-    }
-    if (fd->enable_icc && sbr->icc_prev_valid) {
-        int df = write_ps_params(NULL, false, fd->icc, sbr->icc_prev, false,
-                                 ps_huff_icc_df, PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
-        int dt = write_ps_params(NULL, false, fd->icc, sbr->icc_prev, true,
-                                 ps_huff_icc_dt, PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
-        icc_dt = (dt < df);
-    }
 
     /* Pass 0 sizes the payload, pass 1 emits it -- and is skipped entirely when
      * the caller only wants a bit count. */
@@ -222,16 +212,14 @@ static int write_ps_extension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *b
          * would mean *zero* envelopes, i.e. "hold the previous frame's image". */
         PS_WB(1, 2);                    /* bs_num_env_idx */
 
-        PS_WB(iid_dt, 1);               /* bs_iid_dt */
-        n += write_ps_params(emit ? bs : NULL, emit, fd->iid, sbr->iid_prev,
-                             iid_dt, iid_dt ? ps_huff_iid_dt : ps_huff_iid_df,
-                             PS_HUFF_IID_NSYMS, PS_HUFF_IID_OFFSET);
+        PS_WB(0, 1);                    /* bs_iid_dt = 0 (frequency delta) */
+        n += write_ps_params(emit ? bs : NULL, emit, fd->iid,
+                             ps_huff_iid_df, PS_HUFF_IID_NSYMS, PS_HUFF_IID_OFFSET);
 
         if (fd->enable_icc) {
-            PS_WB(icc_dt, 1);           /* bs_icc_dt */
-            n += write_ps_params(emit ? bs : NULL, emit, fd->icc, sbr->icc_prev,
-                                 icc_dt, icc_dt ? ps_huff_icc_dt : ps_huff_icc_df,
-                                 PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
+            PS_WB(0, 1);                /* bs_icc_dt = 0 (frequency delta) */
+            n += write_ps_params(emit ? bs : NULL, emit, fd->icc,
+                                 ps_huff_icc_df, PS_HUFF_ICC_NSYMS, PS_HUFF_ICC_OFFSET);
         }
 
         /* bs_extension_size counts whole bytes from bs_extension_id onward, so
@@ -253,31 +241,6 @@ static int write_ps_extension(SBRInfo *sbr, const SbrFrameData *fd, BitStream *b
     }
     bits += ps_bits;
 
-    /* Only advance the time-delta reference on the real write pass: SbrWrite is
-     * replayed against a counting sink during rate control, and letting those
-     * dry runs move the reference would decode as garbage. */
-    if (write) {
-        for (int b = 0; b < SBR_PS_BANDS; b++)
-            sbr->iid_prev[b] = fd->iid[b];
-        sbr->iid_prev_valid = 1;
-
-        if (fd->enable_icc) {
-            for (int b = 0; b < SBR_PS_BANDS; b++)
-                sbr->icc_prev[b] = fd->icc[b];
-            sbr->icc_prev_valid = 1;
-        } else {
-            /* A frame that carries no ICC does not leave the decoder's
-             * reference alone -- it zeroes it (ff_ps_read_data does
-             * "memset(ps->icc_par, 0, ...)" on the !enable_icc path). Coding the
-             * next ICC frame against our retained copy would then be decoded
-             * against zero, and since the bounds check is unsigned
-             * ("icc_par[e][b] > 7U") a negative result is not clamped but
-             * rejected outright: "illegal icc", and the frame is dropped.
-             * Dropping the reference here forces the next ICC frame back to
-             * frequency-delta, which is self-contained. */
-            sbr->icc_prev_valid = 0;
-        }
-    }
     return bits;
 }
 #endif /* FAAC_PARAMETRIC_STEREO */
@@ -310,7 +273,7 @@ static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
 #if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
         if (SbrIsHEV2(sbr)) {
             WB(1, 1);           /* bs_extended_data = 1 */
-            bits += write_ps_extension(sbr, fd, bs, write);
+            bits += write_ps_extension(fd, bs, write);
         } else
 #endif
         {
