@@ -267,6 +267,15 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int sf_rel = SF_OFFSET - sfac;
         int sf_bias = ci->sf[band];
 
+        /* Belt-and-braces: provably unreachable, and measured so. `target` is
+         * bounded above (peak/ref <= block_len/width, loudness compresses by
+         * ^0.4, treble_rolloff <= 10, quality <= MAXQUAL/DEFQUAL) at ~2550, and
+         * any band with rms < SILENCE_RMS was already zeroed above, so
+         * sfac = log10(target/rms)*sfstep <= ~51 and sf_rel >= 49. A counter
+         * over 40k bands across castanets, glockenspiel, bass, stereo music at
+         * 96k, near-lossless -q 2000 and 16 kbps found zero hits. Kept anyway:
+         * it guards an 8-bit bitstream field, and a correctly-predicted compare
+         * costs nothing. */
         if (sf_rel < SF_MIN)
         {
             ci->book[band] = HCB_ZERO;
