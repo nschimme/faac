@@ -44,7 +44,7 @@ extern "C" {
 typedef struct {
     float td_thresh;        /* FAAC_TD_THRESH       PSY_TD_THRESH */
     float tns_gain;         /* FAAC_TNS_GAIN        TNS_GAIN_LIMIT */
-    float tns_gain_clamp;   /* FAAC_TNS_GAIN_CLAMP  TNS_GAIN_CLAMP */
+    float tns_gain_clamp;   /* FAAC_TNS_GAIN_CLAMP  upper gain bound (default: none) */
     float tns_measured;     /* FAAC_TNS_MEASURED    TNS_MEASURED_GAIN */
     float tns_sfm;          /* FAAC_TNS_SFM         TNS_PNS_SFM_SKIP */
     int   tns_order;        /* FAAC_TNS_ORDER       TNS_LPC_ORDER */

@@ -34,9 +34,27 @@ static const struct {
 };
 
 #define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
-#define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_GAIN_CLAMP      6.0f  /* gain above this means a near-singular fit (e.g. a single strong tone); reject rather than risk an unstable filter */
-#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+/* Prediction-gain floor on the un-quantized fit. This is a cheap early-out, NOT
+ * a quality knob: TNS_MEASURED_GAIN below is the same bar applied to the filter
+ * actually transmitted, so it re-rejects everything a lower limit here would
+ * admit. Measured on 9 SQAM clips at 32k -- dropping this alone to 1.05 moves 75
+ * frames from this gate to that one and leaves the output byte-identical. Its
+ * real job is skipping quantize+trial-filter work on ~74% of frames. */
+#define TNS_GAIN_LIMIT      1.4f
+/* Deliberately unbounded above. A very high prediction gain looks like a
+ * near-singular fit worth rejecting, but compute_lpc already clamps the
+ * reflection coefficients to +-0.999, so the filter cannot be unstable however
+ * good the fit looks, and isfinite() catches the genuinely degenerate ones. A
+ * ceiling here only discards the strongest filters on exactly the material TNS
+ * exists for: at 6.0 it costs -0.034 zimtohrli over 9 SQAM clips at 32k (95% CI
+ * [+0.005, +0.072] for its removal) -- glockenspiel -0.124, castanets -0.136,
+ * flute -0.042, six clips bit-identical, nothing gained -- and spends bits. */
+/* Post-quantization re-check on the filter actually being transmitted -- the
+ * authoritative admission test. Sweeping this and TNS_GAIN_LIMIT together to
+ * 1.2/1.1/1.05 measured -0.013/-0.012/-0.007 zimtohrli over 9 SQAM clips at 32k
+ * (all CIs spanning zero), so 1.4 stays: loosening admits filters that hurt a
+ * few clips more than they help the rest. */
+#define TNS_MEASURED_GAIN   1.4f
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
@@ -53,7 +71,7 @@ static const struct {
  * about which threshold to move; a funnel dominated by one stage does. */
 static struct {
     long frames, applied;
-    long shortw, range, energy, sfm, gain, order, measured;
+    long shortw, range, energy, sfm, gainlo, gainhi, order, measured;
 } tnsStats;
 
 #define TNS_TALLY(field) do { if (FAAC_TUNE_ON(tns_stats)) tnsStats.field++; } while (0)
@@ -63,12 +81,12 @@ static void tns_stats_report(void)
     if (!FAAC_TUNE_ON(tns_stats) || tnsStats.frames % 25 != 0)
         return;
     fprintf(stderr, "TNS_STATS frames=%ld applied=%ld pct=%.1f "
-                    "short=%ld range=%ld energy=%ld sfm=%ld gain=%ld "
-                    "order=%ld measured=%ld\n",
+                    "short=%ld range=%ld energy=%ld sfm=%ld gainlo=%ld "
+                    "gainhi=%ld order=%ld measured=%ld\n",
             tnsStats.frames, tnsStats.applied,
             100.0 * tnsStats.applied / tnsStats.frames,
             tnsStats.shortw, tnsStats.range, tnsStats.energy, tnsStats.sfm,
-            tnsStats.gain, tnsStats.order, tnsStats.measured);
+            tnsStats.gainlo, tnsStats.gainhi, tnsStats.order, tnsStats.measured);
 }
 #else
 #define TNS_TALLY(field) ((void)0)
@@ -213,6 +231,13 @@ static void finalize_filter(int order, const float * k, float * a)
  * the analysis window. */
 static void filter_spec(int length, int order, int direction, const float * a, float * spec)
 {
+    /* This is an all-zero filter, so only the `order` most recent unfiltered
+     * inputs are live state and a TNS_MAX_ORDER ring would do. Measured both
+     * ways on TNS-heavy material: a shift register costs ~2% and a double-write
+     * ring ~1%, because the contiguous snapshot lets the tap loop vectorize
+     * against linear memory while ring indexing does not. 4 KB of stack is
+     * cheaper here than 1-2% of encode time -- don't "optimize" this again
+     * without measuring. */
     float hist[BLOCK_LEN_LONG];
     int i, j;
 
@@ -267,7 +292,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     int order, limit, i;
     int lpc_order = TNS_LPC_ORDER;
     float gain_limit = TNS_GAIN_LIMIT;
-    float gain_clamp = TNS_GAIN_CLAMP;
+    float gain_clamp = INFINITY;
     float measured_gain = TNS_MEASURED_GAIN;
     float sfm_skip = TNS_PNS_SFM_SKIP;
 
@@ -350,6 +375,10 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         floorrms = maxrms * 0.01f;
         if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
 
+        /* Recomputes the per-band energy the pass above already had. Caching it
+         * in a bandrms[] array measured ~1.2% SLOWER on TNS-heavy material:
+         * ~800 multiply-adds out of L1 cost less than a dependent load that
+         * stops this loop vectorizing. Left as-is deliberately. */
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
             float e = 0.0f, rms, wgt;
@@ -365,8 +394,14 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     calc_autocorr_f(lpc_order, length, wspec, r);
     gain = compute_lpc(lpc_order, r, k);
-    if (gain < gain_limit || gain > gain_clamp) {
-        TNS_TALLY(gain);
+    if (gain < gain_limit) {
+        TNS_TALLY(gainlo);
+        goto done;
+    }
+    /* err collapsed to ~0: a "perfect" fit means degenerate input, not a great
+     * filter. compute_lpc reports that as INFINITY. */
+    if (!isfinite(gain) || gain > gain_clamp) {
+        TNS_TALLY(gainhi);
         goto done;
     }
 
