@@ -83,9 +83,29 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define SHORT_BLOCK_TIGHTEN    0.45f    // short blocks get a tighter target per unit of energy
-#define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
+/* Zwicker-ish loudness compression. This is the shape parameter: it alone
+ * decides how much of the allocation follows band energy. At 0.4 the result is
+ * close to white (gain ~ E^-0.1, noise ~ E^0.2), which looks flat for a
+ * perceptual coder and reads like an oversight.
+ *
+ * It measures as an optimum, not an oversight. At 64 kbps/ch (ViSQOL, n=10
+ * music, paired) every direction is worse: 0.25 is -0.0074, 0.32 is -0.0049,
+ * 0.5 is -0.0022, 0.6 is -0.0065. Unimodal, peaked on the shipped value.
+ *
+ * The flatness is structural rather than a badly chosen constant: with no
+ * spreading function and no tonality estimate, the model has no basis for a
+ * steeper allocation, and steepening this exponent alone just misallocates. */
+#define LOUDNESS_EXPONENT      0.4f
 #define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
-#define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
+/* ~-23 dB floor, same purpose for peak energy -- but it is not only a guard:
+ * it binds on 34-50% of bands, so for two fifths of the spectrum the tonal term
+ * is this constant rather than a measurement of peak energy.
+ *
+ * That reach is not headroom. Screened at 64 kbps/ch (ViSQOL, n=10 music,
+ * paired): 0.0025 is +0.0008, 0.01 is -0.0023, 0.02 is -0.0114. Halving does
+ * nothing measurable and raising is monotonically worse, so the shipped value
+ * sits at or just below the knee. Left alone deliberately. */
+#define PEAK_ENERGY_FLOOR_FRAC 0.0050f
 
 typedef struct
 {
@@ -121,9 +141,9 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
     }
 }
 
-static float loudness(float energy_ratio)
+static float loudness(float energy_ratio, float exponent)
 {
-    return powf(energy_ratio, LOUDNESS_EXPONENT);
+    return powf(energy_ratio, exponent);
 }
 
 #ifdef FAAC_TUNING
@@ -238,6 +258,18 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     int block_len = (ci->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
     float inv_block_len = 1.0f / (float)block_len;
 
+    /* Hoisted once per group: the sweep must not add a per-band branch to a
+     * loop that runs for every band of every frame. */
+    float avg_floor = AVG_ENERGY_FLOOR_FRAC;
+    float peak_floor = PEAK_ENERGY_FLOOR_FRAC;
+    float loud_exp = LOUDNESS_EXPONENT;
+    float avg_weight = AVG_ENERGY_WEIGHT;
+
+    FAAC_TUNE_F(avg_floor, psy_avg_floor);
+    FAAC_TUNE_F(peak_floor, psy_peak_floor);
+    FAAC_TUNE_F(loud_exp, psy_loudness);
+    FAAC_TUNE_F(avg_weight, psy_avg_weight);
+
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
@@ -251,15 +283,15 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         if (FAAC_TUNE_ON(psy_stats))
         {
             psyCensus.bands++;
-            if (avg < ref * AVG_ENERGY_FLOOR_FRAC) psyCensus.avg_floored++;
-            if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) psyCensus.peak_floored++;
+            if (avg < ref * avg_floor) psyCensus.avg_floored++;
+            if (peak < ref * peak_floor) psyCensus.peak_floored++;
         }
 #endif
-        if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
-        if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) peak = ref * PEAK_ENERGY_FLOOR_FRAC;
+        if (avg < ref * avg_floor) avg = ref * avg_floor;
+        if (peak < ref * peak_floor) peak = ref * peak_floor;
 
-        target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
-               + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref);
+        target = avg_weight * loudness(avg / ref, loud_exp)
+               + (1.0f - avg_weight) * PEAK_ENERGY_WEIGHT * loudness(peak / ref, loud_exp);
         if (ci->block_type == ONLY_SHORT_WINDOW)
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);

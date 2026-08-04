@@ -72,6 +72,10 @@ void FaacTuningInit(void)
     faacTuning.tns_stats      = env_flag("FAAC_TNS_STATS");
     faacTuning.psy_stats      = env_flag("FAAC_PSY_STATS");
     faacTuning.psy_global     = env_f("FAAC_PSY_GLOBAL");
+    faacTuning.psy_avg_floor  = env_f("FAAC_PSY_AVG_FLOOR");
+    faacTuning.psy_peak_floor = env_f("FAAC_PSY_PEAK_FLOOR");
+    faacTuning.psy_loudness   = env_f("FAAC_PSY_LOUDNESS");
+    faacTuning.psy_avg_weight = env_f("FAAC_PSY_AVG_WEIGHT");
 
     /* Announce, so a sweep run against a non-tuning binary -- which would
      * ignore every knob and report a clean "no difference" -- is detectable. */

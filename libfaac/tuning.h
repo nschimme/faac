@@ -56,6 +56,10 @@ typedef struct {
     int   tns_stats;        /* FAAC_TNS_STATS       TNS gate funnel to stderr */
     int   psy_stats;        /* FAAC_PSY_STATS       masking-model census to stderr */
     float psy_global;       /* FAAC_PSY_GLOBAL      global masking-target scale */
+    float psy_avg_floor;    /* FAAC_PSY_AVG_FLOOR   AVG_ENERGY_FLOOR_FRAC */
+    float psy_peak_floor;   /* FAAC_PSY_PEAK_FLOOR  PEAK_ENERGY_FLOOR_FRAC */
+    float psy_loudness;     /* FAAC_PSY_LOUDNESS    LOUDNESS_EXPONENT */
+    float psy_avg_weight;   /* FAAC_PSY_AVG_WEIGHT  AVG_ENERGY_WEIGHT */
 } FaacTuning;
 
 extern FaacTuning faacTuning;
