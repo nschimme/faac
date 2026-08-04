@@ -62,17 +62,42 @@ jobs:
       # fingerprint into the key. Different hardware now misses and re-measures
       # the baseline here rather than silently reporting a cross-machine delta
       # as a throughput regression.
-      - name: Fingerprint Runner Hardware
+      - name: Fingerprint Runner Hardware and Toolchain
         id: hw
         run: |
           # lscpu covers x86 and arm64 uniformly; the /proc/cpuinfo lines are an
           # x86 fallback. Model + ISA flags + core count is what actually moves
           # these timings. Every probe tolerates absence: a degraded fingerprint
           # only costs a re-measured baseline, but a failed step costs the run.
-          fp=$( { lscpu 2>/dev/null | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
-                    || grep -E '^(model name|flags)' /proc/cpuinfo 2>/dev/null | head -2 \
-                    || echo "cpu unknown"; \
-                  uname -m; nproc; } | sha256sum | cut -c1-16)
+          #
+          # The compiler and meson versions are in here for the same reason the
+          # CPU is: a toolchain or runner-image bump changes both code size and
+          # timing with zero source change, and a baseline cached across that
+          # bump charges the difference to the pull request.
+          #
+          # Each probe runs in a subshell so `||` tests the whole pipeline. Left
+          # bare, `cc --version | head -1 || echo unknown` reports head's status,
+          # which is 0 on EOF -- so a missing compiler would silently drop its
+          # line from the fingerprint instead of substituting a marker, and two
+          # different toolchains would hash the same. That is the exact stale
+          # baseline this fingerprint exists to prevent.
+          # probe <label> <shell-command>: emit the command's output, or
+          # "<label> unknown" if it produced none.
+          probe() {
+            local label=$1 out
+            shift
+            # `|| true` because steps run under `bash -e`, where a failing
+            # command substitution would abort the step rather than fall back.
+            out=$(eval "$*" 2>/dev/null) || true
+            echo "${out:-$label unknown}"
+          }
+          fp=$( { probe cpu "lscpu | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
+                             || grep -E '^(model name|flags)' /proc/cpuinfo | head -2"; \
+                  uname -m; nproc; \
+                  probe cc "${CC:-cc} --version | head -1"; \
+                  probe triple "${CC:-cc} -dumpmachine"; \
+                  probe meson "meson --version"; } \
+                | sha256sum | cut -c1-16)
           echo "fp=$fp" >> $GITHUB_OUTPUT
           echo "CPU fingerprint: $fp"
           lscpu 2>/dev/null | grep -E '^(Model name|CPU\(s\)):' || true
@@ -108,6 +133,7 @@ jobs:
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
           run-name: ${{ matrix.arch }}_base
           output-json: ./results/${{ matrix.arch }}_base.json
+          build-dir: ./baseline/build_base
 
       - name: Save Baseline Results
         if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
@@ -124,6 +150,7 @@ jobs:
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
           run-name: ${{ matrix.arch }}_cand
           output-json: ./results/${{ matrix.arch }}_cand.json
+          build-dir: ./candidate/build_cand
 
       - name: Upload Results
         if: github.event_name == 'pull_request'
@@ -131,6 +158,77 @@ jobs:
         with:
           name: results-${{ matrix.arch }}
           path: results/*.json
+
+  footprint:
+    # Fast structural check: build both sides, measure code size only, no
+    # encodes and no MOS. The full benchmark answers this too, but it takes
+    # long enough that a size regression can sit unnoticed for several commits
+    # -- which is exactly what happened to f94a81a8.
+    name: Footprint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build
+
+      - name: Checkout Candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          fetch-depth: 0
+
+      - name: Resolve Baseline SHA
+        id: baseline-sha
+        run: |
+          cd candidate
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          # A root commit has no parent to compare against, so there is no
+          # footprint delta to compute. Emit an empty SHA and let the steps
+          # below skip; failing here would make the very first push to a new
+          # branch look like a broken workflow.
+          elif sha=$(git rev-parse --verify --quiet HEAD~1); then
+            echo "sha=$sha" >> $GITHUB_OUTPUT
+          else
+            echo "sha=" >> $GITHUB_OUTPUT
+            echo "::notice::No parent commit; skipping the footprint comparison."
+          fi
+
+      - name: Checkout Baseline
+        if: steps.baseline-sha.outputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.baseline-sha.outputs.sha }}
+          path: baseline
+
+      - name: Checkout Benchmark Suite
+        if: steps.baseline-sha.outputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          repository: nschimme/faac-benchmark
+          path: bench
+
+      - name: Build Both Sides
+        if: steps.baseline-sha.outputs.sha != ''
+        run: |
+          for d in baseline candidate; do
+            ( cd $d && meson setup build --buildtype=release && meson compile -C build )
+          done
+
+      - name: Measure and Compare
+        if: steps.baseline-sha.outputs.sha != ''
+        run: |
+          mkdir -p results
+          for pair in "baseline:base" "candidate:cand"; do
+            d=${pair%%:*}; tag=${pair##*:}
+            python3 bench/phase1_encode.py \
+              $d/build/frontend/faac $d/build/libfaac/libfaac.so \
+              lc results/lc_$tag.json --skip-mos --build-dir $d/build
+          done
+          # Only the footprint gate can fail here: this job measures nothing
+          # else, and a gate that was never measured must not vote.
+          python3 bench/compare_results.py results --gates footprint
 
   report:
     name: Consolidated Report
