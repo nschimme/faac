@@ -293,9 +293,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
-    /* Resolved here from the configured rate, because the ABR loop below
+    /* Both resolved here from the configured rate, because the ABR loop below
      * rewrites aacquantCfg.quality every frame. */
     hEncoder->aacquantCfg.start_stop_tighten = StartStopTighten(config->bitRate);
+    hEncoder->aacquantCfg.short_tighten = ShortBlockTighten(config->bitRate, hEncoder->sampleRate);
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;

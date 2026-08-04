@@ -82,7 +82,59 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define SILENCE_RMS            0.4f     // per-sample RMS gate for silence
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
-#define SHORT_BLOCK_TIGHTEN    0.45f    // short blocks get a tighter target per unit of energy
+/* Short blocks get a tighter target per unit of energy -- but how much they
+ * should is not a constant: it changes sign with bitrate. Screened at 0.8
+ * against 0.45 (ViSQOL, n=10 music, paired, kbps/channel):
+ *
+ *    32k  -0.0098  2W/5L      96k  +0.0054  5W/3L
+ *    48k  -0.0143  3W/4L     128k  +0.0092  7W/0L
+ *    64k  -0.0064  3W/4L     192k  +0.0074  3W/1L
+ *
+ * Where bits are scarce, spending them evenly across a transient's sub-blocks
+ * pays; where they are not, tightening over-serves short blocks at the expense
+ * of everything else. The crossover sits between 32k and 48k per channel, so
+ * interpolate between the measured anchors either side of it and clamp
+ * outside. 0.45 at or below 32k/ch keeps every low-rate encode bit-identical
+ * to master, and it holds at 0.8 above 64k/ch because nothing looser has been
+ * measured there.
+ *
+ * Resolved once from the configured bitrate, never from aacquantCfg.quality:
+ * the rate controller rewrites quality every frame to hit the target, so
+ * deriving tightening from it would close a feedback loop -- tighter targets
+ * spend fewer bits, the controller raises quality, which tightens further. */
+#define SHORT_TIGHTEN_LO       0.45f   // at or below SHORT_TIGHTEN_LO_RATE
+#define SHORT_TIGHTEN_HI       0.80f   // at or above SHORT_TIGHTEN_HI_RATE
+#define SHORT_TIGHTEN_LO_RATE  32000.0f  /* per channel */
+#define SHORT_TIGHTEN_HI_RATE  64000.0f   /* per channel */
+#define SHORT_TIGHTEN_MIN_SR   32000UL    /* anchors were measured at 48 kHz */
+
+float ShortBlockTighten(unsigned long bitRatePerChannel, unsigned long sampleRate)
+{
+    float r = (float)bitRatePerChannel;
+
+    /* Every anchor above was measured at 48 kHz. At 16 kHz a long window spans
+     * 128 ms rather than 43, and the content that goes there is speech, which
+     * is short-block-dominated in a way music is not. Loosening short blocks
+     * makes them cheaper, and on chop-heavy speech the rate controller then
+     * fails to spend the budget at all: on 16k_mono_40k the three worst clips
+     * came in at 28.0k, 27.6k and 29.2k against a 40k target -- 70% of the
+     * budget -- for -0.27, -0.13 and -0.12 MOS. The scenario mean stayed
+     * positive (+0.004, 157 wins to 113), so this is not a broken lever, just
+     * one whose anchors do not transfer. PSY_TD_THRESH is floored below
+     * 34.3 kHz for the same reason. */
+    if (sampleRate < SHORT_TIGHTEN_MIN_SR)
+        return SHORT_TIGHTEN_LO;
+
+    /* VBR has no configured rate to key off, and the effect has only been
+     * measured in ABR, so it stays at the low anchor there. */
+    if (r <= SHORT_TIGHTEN_LO_RATE)
+        return SHORT_TIGHTEN_LO;
+    if (r >= SHORT_TIGHTEN_HI_RATE)
+        return SHORT_TIGHTEN_HI;
+    return SHORT_TIGHTEN_LO + (SHORT_TIGHTEN_HI - SHORT_TIGHTEN_LO)
+           * (r - SHORT_TIGHTEN_LO_RATE)
+           / (SHORT_TIGHTEN_HI_RATE - SHORT_TIGHTEN_LO_RATE);
+}
 /* START and STOP are the frames either side of a transient: a long transform
  * straddling an attack, which smears quantisation noise back across the quiet
  * run-up. They want a tighter target than a steady long block, and a test for
@@ -119,7 +171,7 @@ float StartStopTighten(unsigned long bitRatePerChannel)
  * close to white (gain ~ E^-0.1, noise ~ E^0.2), which looks flat for a
  * perceptual coder and reads like an oversight.
  *
- * It measures as an optimum, not an oversight. At 64 kbps/ch (ViSQOL, n=10
+ * It measures as an optimum, not an oversight. At -b 64 (ViSQOL, n=10
  * music, paired) every direction is worse: 0.25 is -0.0074, 0.32 is -0.0049,
  * 0.5 is -0.0022, 0.6 is -0.0065. Unimodal, peaked on the shipped value.
  *
@@ -132,7 +184,7 @@ float StartStopTighten(unsigned long bitRatePerChannel)
  * it binds on 34-50% of bands, so for two fifths of the spectrum the tonal term
  * is this constant rather than a measurement of peak energy.
  *
- * That reach is not headroom. Screened at 64 kbps/ch (ViSQOL, n=10 music,
+ * That reach is not headroom. Screened at -b 64 (ViSQOL, n=10 music,
  * paired): 0.0025 is +0.0008, 0.01 is -0.0023, 0.02 is -0.0114. Halving does
  * nothing measurable and raising is monotonically worse, so the shipped value
  * sits at or just below the knee. Left alone deliberately. */
@@ -192,15 +244,6 @@ static struct {
     long pns_by_type[4], bands_by_type[4];
 } psyCensus;
 
-/* Block types are not all reachable in every run -- a corpus with no transients
- * never produces a START -- so the denominator is legitimately zero. */
-static double PsyPnsPct(int blockType)
-{
-    long n = psyCensus.bands_by_type[blockType];
-
-    return n ? 100.0 * psyCensus.pns_by_type[blockType] / n : 0.0;
-}
-
 static void PsyCensusReport(void)
 {
     long b = psyCensus.bands ? psyCensus.bands : 1;
@@ -223,10 +266,14 @@ static void PsyCensusReport(void)
             psyCensus.block_type[ONLY_SHORT_WINDOW],
             psyCensus.block_type[LONG_SHORT_WINDOW],
             psyCensus.block_type[SHORT_LONG_WINDOW],
-            PsyPnsPct(ONLY_LONG_WINDOW),
-            PsyPnsPct(ONLY_SHORT_WINDOW),
-            PsyPnsPct(LONG_SHORT_WINDOW),
-            PsyPnsPct(SHORT_LONG_WINDOW));
+            100.0 * psyCensus.pns_by_type[ONLY_LONG_WINDOW] /
+                (psyCensus.bands_by_type[ONLY_LONG_WINDOW] ?: 1),
+            100.0 * psyCensus.pns_by_type[ONLY_SHORT_WINDOW] /
+                (psyCensus.bands_by_type[ONLY_SHORT_WINDOW] ?: 1),
+            100.0 * psyCensus.pns_by_type[LONG_SHORT_WINDOW] /
+                (psyCensus.bands_by_type[LONG_SHORT_WINDOW] ?: 1),
+            100.0 * psyCensus.pns_by_type[SHORT_LONG_WINDOW] /
+                (psyCensus.bands_by_type[SHORT_LONG_WINDOW] ?: 1));
 }
 #endif
 
@@ -248,7 +295,7 @@ static float treble_rolloff(int lo, int hi, float inv_block_len)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    float start_stop_tighten,
+                                    float start_stop_tighten, float short_tighten,
                                     const BandEnergy * __restrict be,
                                     float * __restrict target_out, float * __restrict avg_out)
 {
@@ -306,11 +353,13 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
      * tightening factor once replaces a per-band compare with a multiply that
      * was already there. */
     float startstop = start_stop_tighten;
+    float shorttighten = short_tighten;
     float tighten;
 
     FAAC_TUNE_F(startstop, psy_startstop);
+    FAAC_TUNE_F(shorttighten, psy_short);
     if (ci->block_type == ONLY_SHORT_WINDOW)
-        tighten = SHORT_BLOCK_TIGHTEN;
+        tighten = shorttighten;
     else if (ci->block_type == LONG_SHORT_WINDOW || ci->block_type == SHORT_LONG_WINDOW)
         tighten = startstop;
     else
@@ -399,7 +448,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
      * straddling a transient -- it covers the quiet run-up as well, which
      * looks like a second route to pre-echo. Measured, that reasoning is
      * wrong: suppressing PNS on those windows costs -0.0106 zimtohrli (0 of 5
-     * clips improved) at 64 kbps/ch, and -0.0627 when combined with START/STOP
+     * clips improved) at -b 64, and -0.0627 when combined with START/STOP
      * target tightening. The bits PNS saves there are worth more than the
      * smearing costs. */
     float pns_threshold = 0.1f * (float)pnslevel;
@@ -514,7 +563,8 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         for (sfb = 0; sfb < coder->sfbn; sfb++)
             bandpeak[sfb] = be[sfb].peak_amp;
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL,
-                               aacquantCfg->start_stop_tighten, be, target, bandenrg);
+                               aacquantCfg->start_stop_tighten,
+                               aacquantCfg->short_tighten, be, target, bandenrg);
         assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }

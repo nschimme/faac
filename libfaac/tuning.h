@@ -61,6 +61,7 @@ typedef struct {
     float psy_loudness;     /* FAAC_PSY_LOUDNESS    LOUDNESS_EXPONENT */
     float psy_avg_weight;   /* FAAC_PSY_AVG_WEIGHT  AVG_ENERGY_WEIGHT */
     float psy_startstop;    /* FAAC_PSY_STARTSTOP   START/STOP window tightening */
+    float psy_short;        /* FAAC_PSY_SHORT      short-block tightening */
 } FaacTuning;
 
 extern FaacTuning faacTuning;
