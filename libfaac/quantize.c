@@ -21,6 +21,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "tuning.h"
 
 typedef void (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 
@@ -125,6 +126,59 @@ static float loudness(float energy_ratio)
     return powf(energy_ratio, LOUDNESS_EXPONENT);
 }
 
+#ifdef FAAC_TUNING
+/* Census of the masking model, so a constant is only swept once its branch is
+ * known to bind. Every one of these constants applies to every band of every
+ * frame, which makes them look like large levers; a floor that engages on 0.1%
+ * of bands is not a lever at all, whatever its value.
+ *
+ * Counts bands, not frames: the silence gate is the one group-level decision
+ * and is counted separately. */
+static struct {
+    long groups, silent_groups;
+    long bands, avg_floored, peak_floored, zeroed, pns;
+    long long block_type[4];
+    long pns_by_type[4], bands_by_type[4];
+} psyCensus;
+
+/* Block types are not all reachable in every run -- a corpus with no transients
+ * never produces a START -- so the denominator is legitimately zero. */
+static double PsyPnsPct(int blockType)
+{
+    long n = psyCensus.bands_by_type[blockType];
+
+    return n ? 100.0 * psyCensus.pns_by_type[blockType] / n : 0.0;
+}
+
+static void PsyCensusReport(void)
+{
+    long b = psyCensus.bands ? psyCensus.bands : 1;
+    long g = psyCensus.groups ? psyCensus.groups : 1;
+
+    fprintf(stderr,
+            "PSY_STATS groups=%ld silent=%.2f%% bands=%ld "
+            "avg_floor=%.2f%% peak_floor=%.2f%% zero=%.2f%% pns=%.2f%% "
+            /* Per group, not per frame: a short frame contributes several
+             * groups, so this over-weights short relative to BS_STATS. */
+            "groups_by_type=L%lld/S%lld/LS%lld/SL%lld "
+            "pns_by_type=L%.1f%%/S%.1f%%/LS%.1f%%/SL%.1f%%\n",
+            psyCensus.groups, 100.0 * psyCensus.silent_groups / g,
+            psyCensus.bands,
+            100.0 * psyCensus.avg_floored / b,
+            100.0 * psyCensus.peak_floored / b,
+            100.0 * psyCensus.zeroed / b,
+            100.0 * psyCensus.pns / b,
+            psyCensus.block_type[ONLY_LONG_WINDOW],
+            psyCensus.block_type[ONLY_SHORT_WINDOW],
+            psyCensus.block_type[LONG_SHORT_WINDOW],
+            psyCensus.block_type[SHORT_LONG_WINDOW],
+            PsyPnsPct(ONLY_LONG_WINDOW),
+            PsyPnsPct(ONLY_SHORT_WINDOW),
+            PsyPnsPct(LONG_SHORT_WINDOW),
+            PsyPnsPct(SHORT_LONG_WINDOW));
+}
+#endif
+
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
 static float treble_rolloff(int lo, int hi, float inv_block_len)
 {
@@ -143,9 +197,25 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     for (sfb = 0; sfb < ci->sfbn; sfb++)
         group_total += be[sfb].sum;
 
+#ifdef FAAC_TUNING
+    if (FAAC_TUNE_ON(psy_stats))
+    {
+        psyCensus.groups++;
+        psyCensus.block_type[ci->block_type & 3]++;
+        /* Periodic rather than atexit: matches BS_STATS, and keeps short clips
+         * from producing no line at all. */
+        if (psyCensus.groups % 200 == 0)
+            PsyCensusReport();
+    }
+#endif
+
     // whole group below the silence gate: force every band to a zero target
     if (group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len))
     {
+#ifdef FAAC_TUNING
+        if (FAAC_TUNE_ON(psy_stats))
+            psyCensus.silent_groups++;
+#endif
         for (sfb = 0; sfb < ci->sfbn; sfb++)
         {
             target_out[sfb] = 0.0f;
@@ -166,6 +236,14 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         float target;
 
         // floor before pow(): formula is monotonic, so this floors the output too
+#ifdef FAAC_TUNING
+        if (FAAC_TUNE_ON(psy_stats))
+        {
+            psyCensus.bands++;
+            if (avg < ref * AVG_ENERGY_FLOOR_FRAC) psyCensus.avg_floored++;
+            if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) psyCensus.peak_floored++;
+        }
+#endif
         if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
         if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) peak = ref * PEAK_ENERGY_FLOOR_FRAC;
 
@@ -244,10 +322,19 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
         int width = hi - lo;
         float avg_per_window = bandenrg[sb] / (float)gsize;
+
+#ifdef FAAC_TUNING
+        if (FAAC_TUNE_ON(psy_stats))
+            psyCensus.bands_by_type[ci->block_type & 3]++;
+#endif
         float rms = sqrtf(avg_per_window / width);
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
+#ifdef FAAC_TUNING
+            if (FAAC_TUNE_ON(psy_stats))
+                psyCensus.zeroed++;
+#endif
             ci->book[band] = HCB_ZERO;
             ci->bandcnt++;
             continue;
@@ -257,6 +344,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * TNS filter shapes the substituted noise too. */
         if (target[sb] < pns_threshold)
         {
+#ifdef FAAC_TUNING
+            if (FAAC_TUNE_ON(psy_stats))
+            {
+                psyCensus.pns++;
+                psyCensus.pns_by_type[ci->block_type & 3]++;
+            }
+#endif
             ci->book[band] = HCB_PNS;
             ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
             ci->bandcnt++;

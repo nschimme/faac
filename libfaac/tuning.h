@@ -54,6 +54,7 @@ typedef struct {
     int   force_long;       /* FAAC_FORCE_LONG      block switching off */
     int   bs_stats;         /* FAAC_BS_STATS        short-block rate to stderr */
     int   tns_stats;        /* FAAC_TNS_STATS       TNS gate funnel to stderr */
+    int   psy_stats;        /* FAAC_PSY_STATS       masking-model census to stderr */
 } FaacTuning;
 
 extern FaacTuning faacTuning;
