@@ -143,6 +143,42 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     psyInfo[channel].sizeS = size;
 }
 
+/* Strongest relative energy jump across the sub-blocks of the window the MDCT
+   is about to transform. ENG_WIN_PREV is exactly that window -- (FIFO_PAST,
+   FIFO_CURR) -- because PsyBufferUpdate has already shifted by the time TNS
+   runs.
+
+   Exposed so TNS can gate on the temporal envelope without recomputing it.
+   Recomputing cost 16.5 KB of vectorized loops in the release library, for a
+   statistic already sitting in psydata. Returns 0 when there is no usable
+   envelope (HE-AAC skips PsyBufferUpdate), so callers admit everything. */
+float PsyGetAttack(PsyInfo * psyInfo)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  float strength = 0.0f, total = 0.0f;
+  int win;
+
+  if (!psydata)
+    return 0.0f;
+
+  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
+  {
+    float e = (float)psydata->eng[ENG_WIN_PREV + win];
+
+    total += e;
+    if (win)
+    {
+      float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
+      float lo = (e < p) ? e : p;
+      float s = fabsf(e - p) / lo;      /* IEEE divide covers silence */
+
+      if (s > strength) strength = s;
+    }
+  }
+
+  return total > 0.0f ? strength : 0.0f;
+}
+
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;

@@ -48,7 +48,9 @@ typedef struct {
     float tns_measured;     /* FAAC_TNS_MEASURED    TNS_MEASURED_GAIN */
     float tns_sfm;          /* FAAC_TNS_SFM         TNS_PNS_SFM_SKIP */
     int   tns_order;        /* FAAC_TNS_ORDER       TNS_LPC_ORDER */
-    int   tns_dir;          /* FAAC_TNS_DIR         filter direction (0/1) */
+    int   tns_dir;          /* FAAC_TNS_DIR         filter direction (0/1/2/3) */
+    float tns_attack;       /* FAAC_TNS_ATTACK      temporal admission gate */
+    float sbr_td_thresh;    /* FAAC_SBR_TD_THRESH   HE-AAC transient threshold */
     int   force_long;       /* FAAC_FORCE_LONG      block switching off */
     int   bs_stats;         /* FAAC_BS_STATS        short-block rate to stderr */
     int   tns_stats;        /* FAAC_TNS_STATS       TNS gate funnel to stderr */
