@@ -111,22 +111,43 @@ jobs:
           # the cross-hardware pairing this key exists to prevent.
           key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
 
+      # Checked out and built even on a cache hit: the cached JSON carries the
+      # timings of whatever runner produced it, possibly days ago on another
+      # machine, and comparing those against a candidate timed here measures the
+      # gap between two hosts rather than between two builds. Re-timing needs
+      # the baseline binary. Building costs a few minutes; the MOS pass the
+      # cache actually saves costs thirty.
+      # A restored file is not necessarily a usable one: a partial upload or a
+      # truncated download leaves JSON that parses as garbage or not at all,
+      # and the refresh path would then either crash the run or silently hand
+      # the comparison a baseline with no matrix. Treat anything unreadable as
+      # a miss and re-measure it properly.
+      - name: Validate Restored Baseline
+        id: baseline-ok
+        if: steps.cache-baseline.outputs.cache-hit == 'true'
+        run: |
+          f=results/${{ matrix.arch }}_base.json
+          if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get('matrix') else 1)" "$f" 2>/dev/null; then
+            echo "usable=true" >> $GITHUB_OUTPUT
+          else
+            echo "usable=false" >> $GITHUB_OUTPUT
+            echo "::warning::Cached baseline unreadable or has no matrix; re-running the full baseline."
+          fi
+
       - name: Checkout Baseline
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.baseline-sha.outputs.sha }}
           path: baseline
 
       - name: Build Baseline
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
         run: |
           cd baseline
           meson setup build_base --buildtype=release
           ninja -C build_base
 
       - name: Run Benchmark (Baseline)
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        if: steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true'
         uses: nschimme/faac-benchmark@master
         with:
           faac-bin: ./baseline/build_base/frontend/faac
@@ -135,8 +156,29 @@ jobs:
           output-json: ./results/${{ matrix.arch }}_base.json
           build-dir: ./baseline/build_base
 
+      # Cache hit: the matrix is reusable, the timings are not. Re-measure only
+      # throughput, on this runner, and merge it into the cached JSON so the
+      # throughput gate compares like with like instead of skipping.
+      - name: Refresh Baseline Throughput
+        if: steps.cache-baseline.outputs.cache-hit == 'true' && steps.baseline-ok.outputs.usable == 'true'
+        uses: nschimme/faac-benchmark@master
+        with:
+          faac-bin: ./baseline/build_base/frontend/faac
+          libfaac-so: ./baseline/build_base/libfaac/libfaac.so
+          run-name: ${{ matrix.arch }}_base
+          output-json: ./results/${{ matrix.arch }}_base.json
+          build-dir: ./baseline/build_base
+          throughput-only: 'true'
+
+      # Saved only when a full baseline was just produced. The refresh path
+      # deliberately does not write back: its timings are valid for this runner
+      # and this run only, and caching them is precisely the cross-machine
+      # comparison this PR removes.
       - name: Save Baseline Results
-        if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
+        if: success() && (steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true')
+        # Re-measuring after an unusable restore hits a key that already
+        # exists; that is a cache write failing, not a benchmark failing.
+        continue-on-error: true
         uses: actions/cache/save@v4
         with:
           path: results/${{ matrix.arch }}_base.json
