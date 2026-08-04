@@ -105,6 +105,18 @@ FAACAPI faac_status faac_params_init(faac_params *p)
     p->object_type   = FAAC_OBJ_LOW;
     p->joint_mode    = FAAC_JOINT_MIXED;
     p->use_lfe       = false;
+    /* Off because it is measured inert on this corpus, not out of caution.
+     * On stereo music at 64-256 kbps TNS applies to 0 of 450 frames and buys
+     * +0.0002 MOS -- absence, not underperformance. The round trip is correct
+     * (ffmpeg and Apple AudioToolbox agree to 2dp with TNS forced on).
+     *
+     * The obvious explanation, that block switching takes the transient frames
+     * before TNS can see them, was tested and is false. Raising the
+     * block-switch threshold hands TNS 55-118 more long frames per clip; it
+     * still applies to zero of them, rejecting on prediction gain. The spectra
+     * in those frames are not predictable along frequency, so there is nothing
+     * for an LPC to whiten. Before flipping this on, re-measure -- do not
+     * assume the gates are what is holding it back. */
     p->use_tns       = false;
     p->bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
     p->bandwidth     = 0;              /* derive from bit_rate */
