@@ -21,6 +21,7 @@
 typedef struct
 {
     float quality;
+    float start_stop_tighten;   /* rate-gated START/STOP tightening, resolved once */
     int max_cbl;
     int max_cbs;
     int max_l;
@@ -41,6 +42,7 @@ enum {
 void ResetCoderSections(CoderInfo *coderInfo);
 int BlocQuant(CoderInfo *coderInfo, float *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
+float StartStopTighten(unsigned long bitRatePerChannel);
 void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
 void QuantizeInit(void);
 

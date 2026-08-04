@@ -76,6 +76,7 @@ void FaacTuningInit(void)
     faacTuning.psy_peak_floor = env_f("FAAC_PSY_PEAK_FLOOR");
     faacTuning.psy_loudness   = env_f("FAAC_PSY_LOUDNESS");
     faacTuning.psy_avg_weight = env_f("FAAC_PSY_AVG_WEIGHT");
+    faacTuning.psy_startstop  = env_f("FAAC_PSY_STARTSTOP");
 
     /* Announce, so a sweep run against a non-tuning binary -- which would
      * ignore every knob and report a clean "no difference" -- is detectable. */

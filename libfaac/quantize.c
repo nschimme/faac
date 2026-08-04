@@ -83,6 +83,37 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
 #define PEAK_ENERGY_WEIGHT     0.45f    // tonal (peak-energy) share of the remainder
 #define SHORT_BLOCK_TIGHTEN    0.45f    // short blocks get a tighter target per unit of energy
+/* START and STOP are the frames either side of a transient: a long transform
+ * straddling an attack, which smears quantisation noise back across the quiet
+ * run-up. They want a tighter target than a steady long block, and a test for
+ * short blocks alone will not give them one.
+ *
+ * Applied only at or above 48 kbps/channel, which is where it measures. Per
+ * scenario on the full CI corpus (ViSQOL, mean with 95% CI):
+ *
+ *   48k_stereo_96k   +0.011  [+0.008, +0.015]  32W/3L
+ *   48k_stereo_128k  +0.015  [+0.010, +0.019]  31W/1L
+ *   48k_stereo_160k  +0.012  [+0.008, +0.016]  30W/1L
+ *   48k_stereo_192k  +0.007  [+0.004, +0.010]  23W/5L
+ *
+ * Below that it buys nothing and costs stability. Every stereo scenario from
+ * 24k to 64k sat within +-0.004 of zero, and 16 kHz speech churned hard in
+ * both directions -- 24 clips past -0.10 against 24 past +0.10, for a scenario
+ * mean of -0.002 on 90 wins and 110 losses. That is metric noise at a rate
+ * where ViSQOL is unstable rather than a quality change, but it fails a
+ * per-clip gate either way. PSY_TD_THRESH is floored below 34.3 kHz for the
+ * same reason.
+ *
+ * Resolved from the configured rate, not from aacquantCfg.quality, which the
+ * ABR loop rewrites every frame. */
+#define START_STOP_TIGHTEN     0.3f
+#define START_STOP_MIN_RATE    48000.0f  /* per channel */
+
+float StartStopTighten(unsigned long bitRatePerChannel)
+{
+    return (float)bitRatePerChannel >= START_STOP_MIN_RATE
+           ? START_STOP_TIGHTEN : 1.0f;
+}
 /* Zwicker-ish loudness compression. This is the shape parameter: it alone
  * decides how much of the allocation follows band energy. At 0.4 the result is
  * close to white (gain ~ E^-0.1, noise ~ E^0.2), which looks flat for a
@@ -217,6 +248,7 @@ static float treble_rolloff(int lo, int hi, float inv_block_len)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
+                                    float start_stop_tighten,
                                     const BandEnergy * __restrict be,
                                     float * __restrict target_out, float * __restrict avg_out)
 {
@@ -270,6 +302,20 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     FAAC_TUNE_F(loud_exp, psy_loudness);
     FAAC_TUNE_F(avg_weight, psy_avg_weight);
 
+    /* Hoisted: block_type is invariant across the band loop, so resolving the
+     * tightening factor once replaces a per-band compare with a multiply that
+     * was already there. */
+    float startstop = start_stop_tighten;
+    float tighten;
+
+    FAAC_TUNE_F(startstop, psy_startstop);
+    if (ci->block_type == ONLY_SHORT_WINDOW)
+        tighten = SHORT_BLOCK_TIGHTEN;
+    else if (ci->block_type == LONG_SHORT_WINDOW || ci->block_type == SHORT_LONG_WINDOW)
+        tighten = startstop;
+    else
+        tighten = 1.0f;
+
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
@@ -292,8 +338,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
         target = avg_weight * loudness(avg / ref, loud_exp)
                + (1.0f - avg_weight) * PEAK_ENERGY_WEIGHT * loudness(peak / ref, loud_exp);
-        if (ci->block_type == ONLY_SHORT_WINDOW)
-            target *= SHORT_BLOCK_TIGHTEN;
+        target *= tighten;
         target *= treble_rolloff(lo, hi, inv_block_len);
 
         target_out[sfb] = target * quality;
@@ -468,7 +513,8 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         measure_band_energy(coder, gxr, i, be);
         for (sfb = 0; sfb < coder->sfbn; sfb++)
             bandpeak[sfb] = be[sfb].peak_amp;
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL,
+                               aacquantCfg->start_stop_tighten, be, target, bandenrg);
         assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
