@@ -349,6 +349,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                                    int * __restrict p_last_abs)
 {
     int gsize = ci->groups.len[gnum];
+    /* Deliberately block-type blind. PNS spreads synthetic noise across the
+     * whole window, so on a START or STOP window -- a long transform
+     * straddling a transient -- it covers the quiet run-up as well, which
+     * looks like a second route to pre-echo. Measured, that reasoning is
+     * wrong: suppressing PNS on those windows costs -0.0106 zimtohrli (0 of 5
+     * clips improved) at 64 kbps/ch, and -0.0627 when combined with START/STOP
+     * target tightening. The bits PNS saves there are worth more than the
+     * smearing costs. */
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
 
