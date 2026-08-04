@@ -55,6 +55,7 @@ typedef struct {
     int   bs_stats;         /* FAAC_BS_STATS        short-block rate to stderr */
     int   tns_stats;        /* FAAC_TNS_STATS       TNS gate funnel to stderr */
     int   psy_stats;        /* FAAC_PSY_STATS       masking-model census to stderr */
+    float psy_global;       /* FAAC_PSY_GLOBAL      global masking-target scale */
 } FaacTuning;
 
 extern FaacTuning faacTuning;

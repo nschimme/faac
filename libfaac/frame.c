@@ -329,6 +329,18 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
               hEncoder->sampleRate,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg);
+#ifdef FAAC_TUNING
+    /* Resolved bandwidth and object type, printed once. A VBR sweep that lowers
+     * -q past HE_VBR_QUANTQUAL_MAX flips AUTO from LC to HE-AAC and halves the
+     * core rate; without this line that reads as the swept constant changing
+     * the model, when it changed the codec. */
+    if (FAAC_TUNE_ON(psy_stats))
+        fprintf(stderr, "PSY_BW bw=%lu max_cbs=%d max_cbl=%d qual=%lu objtype=%d\n",
+                (unsigned long)hEncoder->config.bandWidth,
+                hEncoder->aacquantCfg.max_cbs, hEncoder->aacquantCfg.max_cbl,
+                (unsigned long)hEncoder->aacquantCfg.quality,
+                hEncoder->config.aacObjectType);
+#endif
 
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);

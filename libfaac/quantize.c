@@ -179,10 +179,21 @@ static void PsyCensusReport(void)
 }
 #endif
 
+/* Global scale of every masking target. Degenerate with treble_rolloff's
+ * numerator, PEAK_ENERGY_WEIGHT, SHORT_BLOCK_TIGHTEN and quality/DEFQUAL: all
+ * five multiply the same scalar. Exposed only so Stage 1 can demonstrate that
+ * degeneracy, never to be swept for a win -- in VBR it is just a different -q,
+ * and in ABR the rate controller absorbs it and re-emits it as changed quality,
+ * which also drives stereo and PNS. */
+#define PSY_GLOBAL_SCALE 10.0f
+
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
 static float treble_rolloff(int lo, int hi, float inv_block_len)
 {
-    return 10.0f / (1.0f + (float)(lo + hi) * inv_block_len);
+    float scale = PSY_GLOBAL_SCALE;
+
+    FAAC_TUNE_F(scale, psy_global);
+    return scale / (1.0f + (float)(lo + hi) * inv_block_len);
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
