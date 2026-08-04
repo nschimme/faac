@@ -46,8 +46,40 @@ psydata_t;
  * broadband energy would otherwise mask HF attacks and false-trigger short
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
- * transient. */
-#define PSY_TD_THRESH (0.5f)
+ * transient.
+ *
+ * 0.5 fires far too readily at 48 kHz -- 54.9% of frames go short on the SQAM
+ * set, and most of them do not need to. 0.7 measured +0.0199/+0.0151/+0.0129
+ * ViSQOL MOS at 64k/96k/128k (n=49, 32/28/26 wins against 10/9/6 losses) while
+ * spending no more bits.
+ *
+ * The mean keeps climbing above 0.7 -- 0.8 is +0.0215/+0.0223, 2.0 is +0.036 --
+ * but so does the worst case, and the worst case is what the gate tests. Raising
+ * the threshold withholds short blocks, and a few clips genuinely need them:
+ * Waiting.16b48k goes -0.039 / -0.069 / -0.107 / -0.22 at 0.6 / 0.7 / 0.8 / 2.0.
+ * 0.7 is where the corpus mean is still within 8% of its 64k plateau but no clip
+ * has yet fallen past -0.10. Chasing the mean past here trades 25 clips' worth
+ * of small gains for one clip's audible loss. */
+#define PSY_TD_THRESH_48K (0.7f)
+
+/* Floor for the scaled threshold. Sub-blocks are a fixed 128 samples, so their
+ * duration -- and with it how far a transient's energy jump is smeared before
+ * we measure it -- depends on the sample rate: 2.7 ms at 48 kHz but 8 ms at
+ * 16 kHz, which is why the 48 kHz value is scaled rather than applied flat.
+ *
+ * Scaling has to stop somewhere, and at 16 kHz the threshold is worth nothing
+ * in either direction (0.267 and 0.35 both land within +-0.005 of 0.5) while
+ * 0.8 costs -0.012 on 16k_mono_40k, 4 wins against 12 losses. So every rate at
+ * or below 34.3 kHz -- 16, 24 and 32 kHz -- sits on this floor and matches
+ * master exactly. 44.1 kHz interpolates to 0.643 and is not measured. */
+#define PSY_TD_THRESH_MIN (0.5f)
+
+static float PsyTdThresh(float sampleRate)
+{
+    float t = PSY_TD_THRESH_48K * (sampleRate / 48000.0f);
+
+    return (t < PSY_TD_THRESH_MIN) ? PSY_TD_THRESH_MIN : t;
+}
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -55,6 +87,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float thresh = psyInfo->td_thresh;
 
   psyInfo->block_type = ONLY_LONG_WINDOW;
 
@@ -68,7 +101,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float volchg = fabsf(eng - lasteng);
 
       /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
+      if (volchg / toteng > thresh)
       {
           psyInfo->block_type = ONLY_SHORT_WINDOW;
           break;
@@ -82,6 +115,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
 {
   unsigned int channel;
   int size;
+  float thresh;
 
   gpsyInfo->sampleRate = (float) sampleRate;
 
@@ -94,9 +128,11 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   }
 
   size = BLOCK_LEN_LONG;
+  thresh = PsyTdThresh(gpsyInfo->sampleRate);
   for (channel = 0; channel < numChannels; channel++)
   {
     psyInfo[channel].size = size;
+    psyInfo[channel].td_thresh = thresh;
   }
 
   size = BLOCK_LEN_SHORT;
@@ -250,6 +286,8 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
   }
+
+
 
   for (channel = 0; channel < numChannels; channel++)
   {
