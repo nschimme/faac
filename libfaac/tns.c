@@ -33,6 +33,34 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
+/* Filters per long window. The spec allows up to 3; this ships 1. Raising it
+ * is the obvious explanation for why TNS almost never admits a filter, and it
+ * is wrong -- the multi-filter path below exists to keep that answerable, not
+ * because it pays.
+ *
+ * The argument for 3 is real as far as it goes: one 8th-order fit across the
+ * whole 16..40 band span averages sub-ranges that need not share a temporal
+ * envelope, and the best of 3 sub-ranges beats the whole-range fit on 62-79%
+ * of frames, lifting average prediction gain from ~1.04 to ~1.15. Measured at
+ * -b 128 with TNS forced on, the frames that actually admit a filter go:
+ *
+ *   clip      1 filter   3 filters   3 filters, flatness gate off
+ *   sandman     0.0%       0.0%               0.0%
+ *   trumpet     0.0%       0.3%                --
+ *   Waiting     0.0%       0.3%               2.2%
+ *   fms         0.7%       0.7%               1.0%
+ *
+ * A prediction of 2-12% came from modelling only the first of three gates.
+ * Narrow sub-ranges look noise-like, so the spectral-flatness skip fires far
+ * more on them -- 194 of 354 sub-range fits on Waiting -- and what survives it
+ * still fails on prediction gain: 347 rejections on Waiting with that gate
+ * disabled outright. Even that ceiling is ~2%.
+ *
+ * The spectra are not predictable along frequency at any of these widths, and
+ * splitting the range does not change it. Default stays 1; FAAC_TNS_FILTERS
+ * keeps the path measurable without shipping it. */
+#define TNS_NUM_FILTERS     1
+
 #define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
 /* Prediction-gain floor on the un-quantized fit. This is a cheap early-out, NOT
  * a quality knob: TNS_MEASURED_GAIN below is the same bar applied to the filter
@@ -279,52 +307,32 @@ void TnsInit(faacEncStruct* hEncoder)
     }
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec, int direction)
+/* Fit one TNS filter over scalefactor bands [b0, b1) and, if it earns its
+ * place, whiten that range of `spec` in place and fill *filter.
+ *
+ * Returns 1 when a filter was written (order > 0), 0 otherwise. A 0 return is
+ * not a failure for the caller to route around: the spec allows an order-0
+ * filter, which covers its region and filters nothing, so a range that does
+ * not pay still occupies its slot and the regions stay contiguous. */
+static int tns_fit_range(int b0, int b1, int *sfbOffsetTable,
+                         float *spec, int direction, TnsFilterData *filter,
+                         int lpc_order, float gain_limit, float gain_clamp,
+                         float measured_gain, float sfm_skip)
 {
-    int b_start, b_stop, i_start, length;
+    int i_start = sfbOffsetTable[b0];
+    int length = sfbOffsetTable[b1] - i_start;
+    int b_start = b0, b_stop = b1;
     float *band, energy;
     float wspec[BLOCK_LEN_LONG];
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain;
-    TnsFilterData *filter;
     int order, limit, i;
-    int lpc_order = TNS_LPC_ORDER;
-    float gain_limit = TNS_GAIN_LIMIT;
-    float gain_clamp = INFINITY;
-    float measured_gain = TNS_MEASURED_GAIN;
-    float sfm_skip = TNS_PNS_SFM_SKIP;
 
-    FAAC_TUNE_I(lpc_order, tns_order);
-    FAAC_TUNE_F(gain_limit, tns_gain);
-    FAAC_TUNE_F(gain_clamp, tns_gain_clamp);
-    FAAC_TUNE_F(measured_gain, tns_measured);
-    FAAC_TUNE_F(sfm_skip, tns_sfm);
-    lpc_order = clamp_int(lpc_order, 1, TNS_MAX_ORDER);
-
-    tnsInfo->tnsDataPresent = 0;
-    tnsInfo->windowData.numFilters = 0;
-    TNS_TALLY(frames);
-
-    /* Short windows already have the temporal resolution to not need TNS. */
-    if (blockType == ONLY_SHORT_WINDOW) {
-        TNS_TALLY(shortw);
-        goto done;
-    }
-
-    b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
-    b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
-    if (b_stop <= b_start) {
-        TNS_TALLY(range);
-        goto done;
-    }
-
-    i_start = sfbOffsetTable[b_start];
-    length = sfbOffsetTable[b_stop] - i_start;
+    filter->order = 0;
     if (length <= lpc_order) {
         TNS_TALLY(range);
-        goto done;
+        return 0;
     }
 
     band = spec + i_start;
@@ -333,7 +341,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         energy += band[i] * band[i];
     if (energy < TNS_MIN_ENERGY) {
         TNS_TALLY(energy);
-        goto done;
+        return 0;
     }
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
@@ -369,7 +377,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * tonal/peaky bands. */
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > sfm_skip) {
             TNS_TALLY(sfm);
-            goto done;
+            return 0;
         }
 
         floorrms = maxrms * 0.01f;
@@ -394,18 +402,19 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     calc_autocorr_f(lpc_order, length, wspec, r);
     gain = compute_lpc(lpc_order, r, k);
+
+
     if (gain < gain_limit) {
         TNS_TALLY(gainlo);
-        goto done;
+        return 0;
     }
     /* err collapsed to ~0: a "perfect" fit means degenerate input, not a great
      * filter. compute_lpc reports that as INFINITY. */
     if (!isfinite(gain) || gain > gain_clamp) {
         TNS_TALLY(gainhi);
-        goto done;
+        return 0;
     }
 
-    filter = &tnsInfo->windowData.tnsFilter[0];
     quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
@@ -415,11 +424,10 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         order--;
     if (order == 0) {
         TNS_TALLY(order);
-        goto done;
+        return 0;
     }
 
     filter->order = order;
-    filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
     /* Fixed, and provably unchooseable from the analysis above: calc_autocorr_f
      * is invariant under sequence reversal, so both directions yield the same
@@ -459,15 +467,109 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < measured_gain * filt_e) {
             TNS_TALLY(measured);
-            goto done;
+            return 0;
         }
     }
 
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
-    tnsInfo->windowData.numFilters = 1;
-    tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
-    tnsInfo->tnsDataPresent = 1;
-    TNS_TALLY(applied);
+    return 1;
+}
+
+void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
+               float* spec, int direction)
+{
+    int b_start, b_stop, nfilt, f, applied = 0;
+    int lpc_order = TNS_LPC_ORDER;
+    float gain_limit = TNS_GAIN_LIMIT;
+    float gain_clamp = INFINITY;
+    float measured_gain = TNS_MEASURED_GAIN;
+    float sfm_skip = TNS_PNS_SFM_SKIP;
+    int edge[TNS_MAX_FILTERS + 1];
+
+    FAAC_TUNE_I(lpc_order, tns_order);
+    FAAC_TUNE_F(gain_limit, tns_gain);
+    FAAC_TUNE_F(gain_clamp, tns_gain_clamp);
+    FAAC_TUNE_F(measured_gain, tns_measured);
+    FAAC_TUNE_F(sfm_skip, tns_sfm);
+    lpc_order = clamp_int(lpc_order, 1, TNS_MAX_ORDER);
+
+    nfilt = TNS_NUM_FILTERS;
+    FAAC_TUNE_I(nfilt, tns_filters);
+    nfilt = clamp_int(nfilt, 1, TNS_MAX_FILTERS - 1);
+
+    tnsInfo->tnsDataPresent = 0;
+    tnsInfo->windowData.numFilters = 0;
+    TNS_TALLY(frames);
+
+    /* Short windows already have the temporal resolution to not need TNS. */
+    if (blockType == ONLY_SHORT_WINDOW) {
+        TNS_TALLY(shortw);
+        goto done;
+    }
+
+    b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
+    b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
+    if (b_stop <= b_start) {
+        TNS_TALLY(range);
+        goto done;
+    }
+
+    /* The shipping path, kept separate so it stays byte-exact with master --
+     * it has its own length convention, which the multi-filter path below does
+     * not share. */
+    if (nfilt == 1) {
+        if (tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
+                          direction, &tnsInfo->windowData.tnsFilter[0],
+                          lpc_order, gain_limit, gain_clamp, measured_gain,
+                          sfm_skip)) {
+            /* Spans from b_start to the top of the spectrum rather than to
+             * b_stop. That over-declares the region, and is harmless only
+             * because the decoder clamps the bottom edge at tns_min_band --
+             * with one filter there is nothing below it to displace. The
+             * multi-filter path below cannot rely on that, since each filter's
+             * region is measured from where the previous one ended. */
+            tnsInfo->windowData.tnsFilter[0].length =
+                tnsInfo->tnsNumSwbLong - b_start;
+            tnsInfo->windowData.numFilters = 1;
+            tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
+            tnsInfo->tnsDataPresent = 1;
+            TNS_TALLY(applied);
+        }
+        goto done;
+    }
+
+    /* Split [b_start, b_stop) into nfilt contiguous ranges of equal band
+     * count. A single 8th-order fit across the whole span averages sub-ranges
+     * that need not share a temporal envelope, which is why the whole-range
+     * prediction gain sits near 1.0 even on frames that do contain a
+     * transient. Measured, the best of 3 sub-ranges beats the whole-range fit
+     * on 62-79% of frames.
+     *
+     * Filters are transmitted top-down, each covering `length` bands measured
+     * from where the previous one stopped, so the edges are walked in reverse
+     * and every range is declared relative to b_stop. */
+    for (f = 0; f <= nfilt; f++)
+        edge[f] = b_start + (int)((long)(b_stop - b_start) * f / nfilt);
+
+    for (f = 0; f < nfilt; f++) {
+        int lo = edge[nfilt - 1 - f], hi = edge[nfilt - f];
+        TnsFilterData *flt = &tnsInfo->windowData.tnsFilter[f];
+
+        if (tns_fit_range(lo, hi, sfbOffsetTable, spec, direction,
+                          flt, lpc_order, gain_limit, gain_clamp,
+                          measured_gain, sfm_skip))
+            applied = 1;
+        else
+            flt->order = 0;   /* legal: covers the region, filters nothing */
+        flt->length = hi - lo;
+    }
+
+    if (applied) {
+        tnsInfo->windowData.numFilters = nfilt;
+        tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
+        tnsInfo->tnsDataPresent = 1;
+        TNS_TALLY(applied);
+    }
 
 done:
     tns_stats_report();
