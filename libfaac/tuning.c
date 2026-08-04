@@ -64,6 +64,7 @@ void FaacTuningInit(void)
     faacTuning.tns_measured   = env_f("FAAC_TNS_MEASURED");
     faacTuning.tns_sfm        = env_f("FAAC_TNS_SFM");
     faacTuning.tns_order      = env_i("FAAC_TNS_ORDER");
+    faacTuning.tns_dir        = env_i("FAAC_TNS_DIR");
     faacTuning.force_long     = env_flag("FAAC_FORCE_LONG");
     faacTuning.bs_stats       = env_flag("FAAC_BS_STATS");
     faacTuning.tns_stats      = env_flag("FAAC_TNS_STATS");

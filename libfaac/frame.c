@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "frame.h"
+#include "tuning.h"
 #include "coder.h"
 #include "channels.h"
 #include "bitstream.h"
@@ -714,11 +715,17 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->isLfeChannel[channel] && useTns) {
+            /* Pinned: see the direction note in tns.h. */
+            int tnsDir = 0;
+#ifdef FAAC_TUNING
+            if (faacTuning.tns_dir >= 0 && faacTuning.tns_dir <= 1)
+                tnsDir = faacTuning.tns_dir;
+#endif
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel], tnsDir);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }

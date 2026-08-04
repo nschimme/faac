@@ -280,7 +280,7 @@ void TnsInit(faacEncStruct* hEncoder)
 }
 
 void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+               float* spec, int direction)
 {
     int b_start, b_stop, i_start, length;
     float *band, energy;
@@ -421,9 +421,12 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
 
-    /* Direction is fixed rather than picked from a transient envelope; that
-     * comes with FrameStrategy in a later commit. */
-    filter->direction = 0;
+    /* Fixed, and provably unchooseable from the analysis above: calc_autocorr_f
+     * is invariant under sequence reversal, so both directions yield the same
+     * LPC fit and indistinguishable prediction gain. Direction has to come from
+     * the time-domain transient position, which TnsEncode never sees. Until it
+     * does, FAAC_TNS_DIR exists to measure which way is right. */
+    filter->direction = direction;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */

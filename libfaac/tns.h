@@ -33,9 +33,20 @@ extern "C" {
 void TnsInit(faacEncStruct* hEncoder);
 
 /* Analyse one channel and, if it pays off, whiten `spec` in place. */
+/* `direction` (0 = toward higher frequencies, 1 = toward lower) is a caller
+ * input because TnsEncode cannot derive it: the autocorrelation is invariant
+ * under sequence reversal, so both directions fit identically and the choice
+ * has to come from the time domain.
+ *
+ * Pinned at 0. Deriving it from the temporal envelope is the obvious move and
+ * measures -0.0114 MOS: the LPC gate admits spectrally predictable, i.e.
+ * decaying or stationary, frames, so on the frames TNS actually fires the
+ * envelope is never rising and an attack-position heuristic has nothing to
+ * say. Direction cannot be chosen usefully until admission is
+ * transient-driven. FAAC_TNS_DIR forces either value. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec);
+               float* spec, int direction);
 
 #ifdef __cplusplus
 }
