@@ -22,12 +22,13 @@ concurrency:
 
 jobs:
   benchmark:
-    name: Benchmark ${{ matrix.arch }}
+    name: Benchmark ${{ matrix.arch }} (${{ matrix.rate_control }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         arch: [amd64]
+        rate_control: [abr, vbr]
 
     steps:
       - name: Install build dependencies
@@ -55,24 +56,23 @@ jobs:
             echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
           fi
 
-      # Baseline and candidate are timed in this same job, on this same runner,
-      # so they are only comparable if a restored baseline was ALSO measured on
-      # this hardware. runner.os is just "Linux" and says nothing about the CPU,
-      # and the ubuntu-latest fleet is heterogeneous -- so fold a CPU
-      # fingerprint into the key. Different hardware now misses and re-measures
-      # the baseline here rather than silently reporting a cross-machine delta
-      # as a throughput regression.
-      - name: Fingerprint Runner Hardware
+      - name: Fingerprint Runner Hardware and Toolchain
         id: hw
         run: |
-          # lscpu covers x86 and arm64 uniformly; the /proc/cpuinfo lines are an
-          # x86 fallback. Model + ISA flags + core count is what actually moves
-          # these timings. Every probe tolerates absence: a degraded fingerprint
-          # only costs a re-measured baseline, but a failed step costs the run.
-          fp=$( { lscpu 2>/dev/null | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
-                    || grep -E '^(model name|flags)' /proc/cpuinfo 2>/dev/null | head -2 \
-                    || echo "cpu unknown"; \
-                  uname -m; nproc; } | sha256sum | cut -c1-16)
+          probe() {
+            local label=$1 out
+            shift
+            out=$(eval "$*" 2>/dev/null) || true
+            echo "${out:-$label unknown}"
+          }
+          fp=$( { probe cpu "lscpu | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
+                             || grep -E '^(model name|flags)' /proc/cpuinfo | head -2"; \
+                  uname -m; nproc; \
+                  probe os "lsb_release -ds || (grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2- | tr -d '\"') || uname -sr"; \
+                  probe cc "${CC:-cc} --version | head -1"; \
+                  probe triple "${CC:-cc} -dumpmachine"; \
+                  probe meson "meson --version"; } \
+                | sha256sum | cut -c1-16)
           echo "fp=$fp" >> $GITHUB_OUTPUT
           echo "CPU fingerprint: $fp"
           lscpu 2>/dev/null | grep -E '^(Model name|CPU\(s\)):' || true
@@ -81,40 +81,65 @@ jobs:
         id: cache-baseline
         uses: actions/cache/restore@v4
         with:
-          path: results/${{ matrix.arch }}_base.json
-          # No restore-keys: a partial-match fallback would reintroduce exactly
-          # the cross-hardware pairing this key exists to prevent.
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+          path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+
+      - name: Validate Restored Baseline
+        id: baseline-ok
+        if: steps.cache-baseline.outputs.cache-hit == 'true'
+        run: |
+          f=results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
+          if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get('matrix') else 1)" "$f" 2>/dev/null; then
+            echo "usable=true" >> $GITHUB_OUTPUT
+          else
+            echo "usable=false" >> $GITHUB_OUTPUT
+            echo "::warning::Cached baseline unreadable or has no matrix; re-running the full baseline."
+          fi
 
       - name: Checkout Baseline
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.baseline-sha.outputs.sha }}
           path: baseline
 
       - name: Build Baseline
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
         run: |
           cd baseline
           meson setup build_base --buildtype=release
           ninja -C build_base
 
       - name: Run Benchmark (Baseline)
-        if: steps.cache-baseline.outputs.cache-hit != 'true'
+        if: steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true'
         uses: nschimme/faac-benchmark@master
         with:
           faac-bin: ./baseline/build_base/frontend/faac
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
-          run-name: ${{ matrix.arch }}_base
-          output-json: ./results/${{ matrix.arch }}_base.json
+          rate-control: ${{ matrix.rate_control }}
+          run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_base
+          output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
+          build-dir: ./baseline/build_base
+          sha: ${{ steps.baseline-sha.outputs.sha }}
+
+      - name: Refresh Baseline Throughput
+        if: steps.cache-baseline.outputs.cache-hit == 'true' && steps.baseline-ok.outputs.usable == 'true'
+        uses: nschimme/faac-benchmark@master
+        with:
+          faac-bin: ./baseline/build_base/frontend/faac
+          libfaac-so: ./baseline/build_base/libfaac/libfaac.so
+          rate-control: ${{ matrix.rate_control }}
+          run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_base
+          output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
+          build-dir: ./baseline/build_base
+          throughput-only: 'true'
+          sha: ${{ steps.baseline-sha.outputs.sha }}
 
       - name: Save Baseline Results
-        if: success() && steps.cache-baseline.outputs.cache-hit != 'true'
+        if: success() && (steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true')
+        continue-on-error: true
         uses: actions/cache/save@v4
         with:
-          path: results/${{ matrix.arch }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+          path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
 
       - name: Run Benchmark (Candidate)
         if: github.event_name == 'pull_request'
@@ -122,15 +147,79 @@ jobs:
         with:
           faac-bin: ./candidate/build_cand/frontend/faac
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
-          run-name: ${{ matrix.arch }}_cand
-          output-json: ./results/${{ matrix.arch }}_cand.json
+          rate-control: ${{ matrix.rate_control }}
+          run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_cand
+          output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_cand.json
+          build-dir: ./candidate/build_cand
+          sha: ${{ github.event.pull_request.head.sha }}
 
       - name: Upload Results
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.arch }}
+          name: results-${{ matrix.arch }}-${{ matrix.rate_control }}
           path: results/*.json
+
+  footprint:
+    name: Footprint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build python3-numpy python3-scipy
+
+      - name: Checkout Candidate
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          fetch-depth: 0
+
+      - name: Resolve Baseline SHA
+        id: baseline-sha
+        run: |
+          cd candidate
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          elif sha=$(git rev-parse --verify --quiet HEAD~1); then
+            echo "sha=$sha" >> $GITHUB_OUTPUT
+          else
+            echo "sha=" >> $GITHUB_OUTPUT
+            echo "::notice::No parent commit; skipping the footprint comparison."
+          fi
+
+      - name: Checkout Baseline
+        if: steps.baseline-sha.outputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.baseline-sha.outputs.sha }}
+          path: baseline
+
+      - name: Checkout Benchmark Suite
+        if: steps.baseline-sha.outputs.sha != ''
+        uses: actions/checkout@v4
+        with:
+          repository: nschimme/faac-benchmark
+          path: bench
+
+      - name: Build Both Sides
+        if: steps.baseline-sha.outputs.sha != ''
+        run: |
+          for d in baseline candidate; do
+            ( cd $d && meson setup build --buildtype=release && meson compile -C build )
+          done
+
+      - name: Measure and Compare
+        if: steps.baseline-sha.outputs.sha != ''
+        run: |
+          mkdir -p results
+          for pair in "baseline:base" "candidate:cand"; do
+            d=${pair%%:*}; tag=${pair##*:}
+            python3 bench/phase1_encode.py \
+              $d/build/frontend/faac $d/build/libfaac/libfaac.so \
+              lc results/lc_$tag.json --skip-mos --build-dir $d/build
+          done
+          python3 bench/compare_results.py results --gates footprint
 
   report:
     name: Consolidated Report
