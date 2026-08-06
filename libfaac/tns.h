@@ -32,10 +32,15 @@ extern "C" {
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one channel and, if it pays off, whiten `spec` in place. */
+/* Analyse one channel and, if it pays off, whiten `spec` in place.
+ * tdEnvelope is the block-switcher's per-sub-block high-pass energy
+ * timeline for this frame (tdEnvelopeLen entries, see PsyGetCurEnvelope):
+ * used both to skip the LPC work on frames with no real attack to mask,
+ * and to pick which half of the block the filter should push its
+ * quantization noise towards. */
 void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec);
+               float* spec, const float* tdEnvelope, int tdEnvelopeLen);
 
 #ifdef __cplusplus
 }
