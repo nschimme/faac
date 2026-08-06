@@ -64,15 +64,36 @@ void QuantizeInit(void)
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
 }
 
+/* 2^(k/4), correctly rounded. Indexed by a scalefactor's remainder mod 4. */
+static const float pow2_quarter[4] = {
+    1.0f, 1.18920708f, 1.41421354f, 1.68179286f
+};
+
+/* SF_STEP_AMPL is 4/log10(2), so 10^(sfac/sfstep) is exactly 2^(sfac/4). With
+ * sfac an integer that is a table lookup and an exponent adjust, not a powf:
+ * the fractional quarter comes from the table and the integer part from ldexpf.
+ *
+ * The mask-and-divide is deliberate. sfac is routinely negative, and >> on a
+ * negative signed int is implementation-defined, so `sfac >> 2` would be a
+ * portability trap on the embedded targets rather than a shortcut. Every
+ * compiler folds this back to a shift for the two's-complement case anyway. */
+static float pow10_over_sfstep(int sfac)
+{
+    unsigned r = (unsigned)sfac & 3u;
+
+    return ldexpf(pow2_quarter[r], (sfac - (int)r) / 4);
+}
+
 /* sfac and gain are coupled; clamping one forces a recompute of the other. */
 static float gain_with_overflow_clamp(int *sfac, float band_peak)
 {
-    float gain = powf(10, *sfac / sfstep);
+    float gain = pow10_over_sfstep(*sfac);
     if (band_peak > 0.0f && gain * band_peak > max_quant_limit)
     {
         gain = max_quant_limit / band_peak;
-        *sfac = (int)floorf(log10f(gain) * sfstep);
-        gain = powf(10, *sfac / sfstep);
+        /* log10(gain) * sfstep is log2(gain) * 4, by the same identity. */
+        *sfac = (int)floorf(log2f(gain) * 4.0f);
+        gain = pow10_over_sfstep(*sfac);
     }
     return gain;
 }
