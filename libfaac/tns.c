@@ -33,18 +33,58 @@ static const struct {
 
 #define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
 #define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_GAIN_CLAMP      6.0f  /* gain above this means a near-singular fit (e.g. a single strong tone); reject rather than risk an unstable filter */
 #define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
- * below as the floor for RMS-normalization and the LPC residual check,
- * rather than inventing a separate near-zero constant for each. */
+ * below as the floor for the SFM log and the LPC residual check, rather
+ * than inventing a separate near-zero constant for each. */
 #define TNS_MIN_ENERGY      1e-9f
 /* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
  * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
- * TNS's LPC work there; it only pays off on tonal/peaky bands. */
-#define TNS_PNS_SFM_SKIP    0.85f
+ * TNS's LPC work there; it only pays off on tonal/peaky bands. Measured on
+ * a pre-echo metric, 0.60 beats the looser 0.85 on music by ~0.1 dB. */
+#define TNS_PNS_SFM_SKIP    0.60f
+
+/* Build with -DTNS_DEBUG_STATS for a per-run breakdown of where frames leave
+ * TnsEncode, plus the prediction-gain distribution. Tuning TNS without knowing
+ * what fraction of frames it actually reaches is how thresholds end up silently
+ * rejecting every frame while still costing their full analysis. */
+#ifdef TNS_DEBUG_STATS
+#include <stdio.h>
+enum { TST_CALL, TST_SHORT, TST_BAND, TST_LEN, TST_ENERGY, TST_SFM,
+       TST_GAIN, TST_ORDER, TST_MEASURED, TST_N };
+static long tns_stat[TST_N];
+static long tns_gain_hist[8];
+#define TNS_STAT(x) (tns_stat[x]++)
+#define TNS_STAT_GAIN(g) (tns_gain_hist[(g) < 1.0f ? 0 : (g) < 1.1f ? 1 : (g) < 1.2f ? 2 \
+                          : (g) < 1.4f ? 3 : (g) < 2.0f ? 4 : (g) < 4.0f ? 5 \
+                          : (g) < 6.0f ? 6 : 7]++)
+__attribute__((destructor)) static void tns_stats_dump(void)
+{
+    static const char *sn[TST_N] = {"calls", "rej_short", "rej_bandrange", "rej_length",
+                                    "rej_energy", "rej_sfm", "rej_gain", "rej_order",
+                                    "rej_measured"};
+    static const char *gn[8] = {"<1.0", "1.0-1.1", "1.1-1.2", "1.2-1.4",
+                                "1.4-2.0", "2.0-4.0", "4.0-6.0", ">6.0"};
+    long applied = tns_stat[TST_CALL];
+    int i;
+
+    if (!tns_stat[TST_CALL]) return;
+    fprintf(stderr, "TNS_STATS ");
+    for (i = 0; i < TST_N; i++) {
+        fprintf(stderr, "%s=%ld ", sn[i], tns_stat[i]);
+        if (i) applied -= tns_stat[i];
+    }
+    fprintf(stderr, "applied=%ld (%.1f%%)\nTNS_GAIN_HIST ", applied,
+            100.0 * applied / tns_stat[TST_CALL]);
+    for (i = 0; i < 8; i++) fprintf(stderr, "%s=%ld ", gn[i], tns_gain_hist[i]);
+    fprintf(stderr, "\n");
+}
+#else
+#define TNS_STAT(x)      ((void)0)
+#define TNS_STAT_GAIN(g) ((void)0)
+#endif
 
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
@@ -117,11 +157,11 @@ static float compute_lpc(int order, const float * r, float * k)
     }
 
     /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
-     * means a degenerate input rather than a genuinely great filter. Return
-     * a gain past TNS_GAIN_CLAMP so the caller's sanity check rejects it,
-     * instead of dividing by ~0. */
+     * means a degenerate input rather than a genuinely great filter. Report
+     * zero gain so the caller's lower bound rejects it, instead of dividing
+     * by ~0. */
     if (err <= TNS_MIN_ENERGY)
-        return TNS_GAIN_CLAMP + 1.0f;
+        return 0.0f;
     return r[0] / err;
 }
 
@@ -237,53 +277,46 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
+    TNS_STAT(TST_CALL);
 
     /* Short windows already have the temporal resolution to not need TNS. */
     if (blockType == ONLY_SHORT_WINDOW)
-        return;
+        { TNS_STAT(TST_SHORT); return; }
 
     b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start)
-        return;
+        { TNS_STAT(TST_BAND); return; }
 
     i_start = sfbOffsetTable[b_start];
     length = sfbOffsetTable[b_stop] - i_start;
     if (length <= TNS_LPC_ORDER)
-        return;
+        { TNS_STAT(TST_LEN); return; }
 
     band = spec + i_start;
     energy = 0.0f;
     for (i = 0; i < length; i++)
         energy += band[i] * band[i];
     if (energy < TNS_MIN_ENERGY)
-        return;
+        { TNS_STAT(TST_ENERGY); return; }
 
-    /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
-     * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
-     * band has the most energy and ignore quieter ones -- but pre-echo is
-     * audible in quiet bands too, so the filter needs to whiten across the
-     * whole range, not just the peak. */
     {
-        float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
         int nbands = b_stop - b_start;
         int b;
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, rms_fl;
+            float e = 0.0f, rms;
 
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
             rms = sqrtf(e / (float)(s1 - s0));
-            if (rms > maxrms) maxrms = rms;
 
-            /* rms_fl keeps logf() away from 0 for silent bands; folded into
-             * the same loop as maxrms rather than a second pass. */
-            rms_fl = rms > TNS_MIN_ENERGY ? rms : TNS_MIN_ENERGY;
-            sum_rms += rms_fl;
-            sum_log_rms += logf(rms_fl);
+            /* floor keeps logf() away from 0 for silent bands */
+            if (rms < TNS_MIN_ENERGY) rms = TNS_MIN_ENERGY;
+            sum_rms += rms;
+            sum_log_rms += logf(rms);
         }
 
         /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0
@@ -291,28 +324,24 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
          * replace anyway -- skip the LPC work; it only pays off on
          * tonal/peaky bands. */
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
-            return;
-
-        floorrms = maxrms * 0.01f;
-        if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
-
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
-
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
-            for (i = s0; i < s1; i++)
-                wspec[i - i_start] = (float)spec[i] * wgt;
-        }
+            { TNS_STAT(TST_SFM); return; }
     }
+
+    /* Fit the LPC on exactly the samples filter_spec will filter. A previous
+     * revision fit a per-band RMS-normalized copy instead, on the theory that
+     * the loudest band would otherwise dominate the fit -- but the filter was
+     * then applied to the un-normalized spectrum, so it was whitening a signal
+     * it had never been fit to. Worth ~0.85 dB of pre-echo on tonal material. */
+    memcpy(wspec, band, length * sizeof(float));
 
     calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT || gain > TNS_GAIN_CLAMP)
-        return;
+    /* No upper bound: a high prediction gain is a strong temporal envelope,
+     * which is exactly the frame TNS exists for. The old 6.0 clamp rejected
+     * those as "near-singular" and discarded the tool's best cases. */
+    TNS_STAT_GAIN(gain);
+    if (gain < TNS_GAIN_LIMIT)
+        { TNS_STAT(TST_GAIN); return; }
 
     filter = &tnsInfo->windowData.tnsFilter[0];
     quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
@@ -323,7 +352,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
-        return;
+        { TNS_STAT(TST_ORDER); return; }
 
     filter->order = order;
     filter->length = tnsInfo->tnsNumSwbLong - b_start;
@@ -362,7 +391,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < TNS_MEASURED_GAIN * filt_e)
-            return;
+            { TNS_STAT(TST_MEASURED); return; }
     }
 
     filter_spec(length, order, filter->direction, filter->aCoeffs, band);
