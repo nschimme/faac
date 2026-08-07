@@ -198,18 +198,23 @@ void FilterBank(faacEncStruct* hEncoder,
     const float *leftWin, *rightWin;
     int k;
 
-    /* Assemble the 2048-sample overlap window from the previous and
-       current frame's time-domain samples. */
-    memcpy(overlapBuf, p_prev_data, BLOCK_LEN_LONG*sizeof(float));
-    memcpy(overlapBuf+BLOCK_LEN_LONG, p_in_data, BLOCK_LEN_LONG*sizeof(float));
+    /* The 2048-sample overlap window is just p_prev_data followed by
+       p_in_data, so offset < 1024 reads the former and >= 1024 the latter.
+       Three of the four block types split exactly on that boundary and can
+       read the two buffers where they already are; materialising the
+       concatenation cost 8 KB of memcpy per channel per frame to hand the
+       windowing loops a pointer they did not need.
+
+       ONLY_SHORT is the exception -- its sub-blocks do cross the boundary --
+       so it still stages, but only over the span it reads. */
 
     /* isLong is a literal per case below, not carried in from before the
        switch, so SelectWindow's dispatch folds to a single compare. */
     switch (block_type) {
     case ONLY_LONG_WINDOW: {
-        WindowSeg left  = { p_out_mdct, overlapBuf,
+        WindowSeg left  = { p_out_mdct, p_prev_data,
                              SelectWindow(hEncoder, coderInfo->prev_window_shape, true), BLOCK_LEN_LONG, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG,
+        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, p_in_data,
                              SelectWindow(hEncoder, coderInfo->window_shape, true), BLOCK_LEN_LONG, true };
 
         ApplyWindowSeg(&left);
@@ -219,13 +224,13 @@ void FilterBank(faacEncStruct* hEncoder,
     }
 
     case LONG_SHORT_WINDOW: {
-        WindowSeg left  = { p_out_mdct, overlapBuf,
+        WindowSeg left  = { p_out_mdct, p_prev_data,
                              SelectWindow(hEncoder, coderInfo->prev_window_shape, true), BLOCK_LEN_LONG, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, overlapBuf+BLOCK_LEN_LONG+NFLAT_LS,
+        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, p_in_data+NFLAT_LS,
                              SelectWindow(hEncoder, coderInfo->window_shape, false), BLOCK_LEN_SHORT, true };
 
         ApplyWindowSeg(&left);
-        CopyFlat(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, NFLAT_LS);
+        CopyFlat(p_out_mdct+BLOCK_LEN_LONG, p_in_data, NFLAT_LS);
         ApplyWindowSeg(&right);
         ZeroFlat(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
         MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
@@ -233,22 +238,48 @@ void FilterBank(faacEncStruct* hEncoder,
     }
 
     case SHORT_LONG_WINDOW: {
-        WindowSeg left  = { p_out_mdct+NFLAT_LS, overlapBuf+NFLAT_LS,
+        WindowSeg left  = { p_out_mdct+NFLAT_LS, p_prev_data+NFLAT_LS,
                              SelectWindow(hEncoder, coderInfo->prev_window_shape, false), BLOCK_LEN_SHORT, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG,
+        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, p_in_data,
                              SelectWindow(hEncoder, coderInfo->window_shape, true), BLOCK_LEN_LONG, true };
 
         ZeroFlat(p_out_mdct, NFLAT_LS);
         ApplyWindowSeg(&left);
-        CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, overlapBuf+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
+        CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, p_prev_data+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
         ApplyWindowSeg(&right);
         MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
 
     case ONLY_SHORT_WINDOW: {
-        float *src = overlapBuf + NFLAT_LS;
+        /* In concatenation coordinates, sub-block k reads
+           [NFLAT_LS + k*BLOCK_LEN_SHORT, +2*BLOCK_LEN_SHORT), so the eight
+           together span [NFLAT_LS, NFLAT_LS + SHORT_SPAN) = [448, 1600) --
+           the only case that crosses the 1024 boundary.
+
+           Staged coordinates drop the leading NFLAT_LS, so overlapBuf[0] is
+           concatenation index NFLAT_LS and the layout is:
+
+             [0, nprev)            p_prev_data[NFLAT_LS ..]      576 samples
+             [nprev, SHORT_SPAN)   p_in_data[0 ..]               576 samples
+             [SHORT_SPAN, +N/2)    MDCT scratch                  128 floats
+
+           src therefore indexes from overlapBuf directly, and MDCT's scratch
+           moves past the staged span rather than sitting at the buffer's base,
+           which now holds samples still being read. */
+        enum { SHORT_SPAN = (MAX_SHORT_WINDOWS - 1) * BLOCK_LEN_SHORT + 2 * BLOCK_LEN_SHORT };
+        /* MDCT uses N/2 floats of scratch (xr then xi, N4 each), so
+           BLOCK_LEN_SHORT for its N = 2*BLOCK_LEN_SHORT transform.
+           sharedWorkBuffLong is sized 2*BLOCK_LEN_LONG in FilterBankInit. */
+        _Static_assert(SHORT_SPAN + BLOCK_LEN_SHORT <= 2 * BLOCK_LEN_LONG,
+                       "short-window staging plus MDCT scratch overflows sharedWorkBuffLong");
+        const int nprev = BLOCK_LEN_LONG - NFLAT_LS;
+        float *work = overlapBuf + SHORT_SPAN;
+        float *src = overlapBuf;
         float *dst = p_out_mdct;
+
+        memcpy(overlapBuf, p_prev_data + NFLAT_LS, nprev*sizeof(float));
+        memcpy(overlapBuf + nprev, p_in_data, (SHORT_SPAN - nprev)*sizeof(float));
 
         leftWin  = SelectWindow(hEncoder, coderInfo->prev_window_shape, false);
         rightWin = SelectWindow(hEncoder, coderInfo->window_shape, false);
@@ -259,7 +290,7 @@ void FilterBank(faacEncStruct* hEncoder,
 
             ApplyWindowSeg(&left);
             ApplyWindowSeg(&right);
-            MDCT(&hEncoder->fft_tables, dst, 2*BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
+            MDCT(&hEncoder->fft_tables, dst, 2*BLOCK_LEN_SHORT, work);
 
             dst += BLOCK_LEN_SHORT;
             src += BLOCK_LEN_SHORT;
