@@ -32,6 +32,9 @@ typedef float psyfloat;
    lookahead window NEXT. (Energy windows are 2 frames wide, which is why a single
    "next" window consumes the two-frames-ahead sample slot in the input FIFO.) */
 #define SUBBLOCKS_PER_FRAME 8
+/* Where sub-block 0's energy segment starts in the 2048-sample analysis
+ * window: centred, so the frame's own samples sit in the middle of it. */
+#define PSY_SEG_BASE ((BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2)
 #define ENG_WIN_PREV (0 * SUBBLOCKS_PER_FRAME)
 #define ENG_WIN_CUR  (1 * SUBBLOCKS_PER_FRAME)
 #define ENG_WIN_NEXT (2 * SUBBLOCKS_PER_FRAME)
@@ -159,17 +162,29 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   memmove(psydata->eng, psydata->eng + SUBBLOCKS_PER_FRAME,
           2 * SUBBLOCKS_PER_FRAME * sizeof(psyfloat));
 
-  /* Assembly of the newest 2048-sample window for energy analysis */
-  memcpy(transBuff, p_lookahead1, BLOCK_LEN_LONG * sizeof(float));
-  memcpy(transBuff + BLOCK_LEN_LONG, p_lookahead2, BLOCK_LEN_LONG * sizeof(float));
+  int n = 2 * psyInfo->sizeS;
+  /* Only the middle of the 2048-sample window is ever read: sub-block win
+   * covers [win*128 + PSY_SEG_BASE - 1, win*128 + PSY_SEG_BASE + n), so the
+   * live span is [447, 1600) -- 1153 of 2048 samples. Assembling the whole
+   * thing copied 44% more than the loop below touches, and the copy costs
+   * more than the loop it feeds. Both halves are still contiguous, so this
+   * stays two memcpy of a shorter total. */
+  int lo = PSY_SEG_BASE - 1;
+  int n1 = BLOCK_LEN_LONG - lo;
+  int n2 = (SUBBLOCKS_PER_FRAME - 1) * BLOCK_LEN_SHORT + PSY_SEG_BASE + n - BLOCK_LEN_LONG;
+
+  memcpy(transBuff, p_lookahead1 + lo, n1 * sizeof(float));
+  memcpy(transBuff + n1, p_lookahead2, n2 * sizeof(float));
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
-    /* seg[-1] is in bounds (seg starts >= 448 samples in), so the first
-     * difference carries across the sub-block boundary instead of resetting. */
-    float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
+    /* transBuff[0] is the old index lo, so the old seg base shifts down by it.
+     * seg[-1] is still in bounds -- that is what the extra leading sample is
+     * for -- so the first difference carries across the sub-block boundary
+     * instead of resetting. */
+    float *seg = transBuff + (win * BLOCK_LEN_SHORT) + 1;
     float e = 0.0f;
-    int l, n = 2 * psyInfo->sizeS;
+    int l;
 
     for (l = 0; l < n; l++)
     {
