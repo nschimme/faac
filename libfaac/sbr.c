@@ -416,20 +416,29 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         p0 += 2; p1 += 2;
     }
     fft64(sbr->fftTables, xr, xi);
-    /* fft64's output is bit-reversed; gather natural bins k/kr through
-     * reordertbl instead of running a full 64-bin bit-reversal pass, since
-     * only this [kx, k2) subrange (plus mirrors) is ever consumed. */
-    const unsigned short * restrict reorder = sbr->fftTables->reordertbl[LOGM_SHORT];
+    /* fft64 leaves its output bit-reversed. Permuting back costs a pass over
+     * 64 bins; gathering through reordertbl in the loop below instead avoids
+     * the pass but makes every read indexed, which gcc compiles to 768 more
+     * bytes across this function and its callers. The pass is the smaller of
+     * the two, and this is not a hot enough path to buy that back. */
+    {
+        const unsigned short * restrict r = sbr->fftTables->reordertbl[LOGM_SHORT];
+        for (int i = 0; i < SBR_QMF_BANDS_64; i++) {
+            int j = r[i];
+            if (j > i) {
+                float t;
+                t = xr[i]; xr[i] = xr[j]; xr[j] = t;
+                t = xi[i]; xi[i] = xi[j]; xi[j] = t;
+            }
+        }
+    }
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
-        int rk = reorder[k], rkr = reorder[kr];
-        float xrk = xr[rk], xrkr = xr[rkr];
-        float xik = xi[rk], xikr = xi[rkr];
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (xrk + xrkr);
-        float Ai = 0.5f * (xikr - xik);
-        float Br = -0.5f * (xik + xikr);
-        float Bi = 0.5f * (xrkr - xrk);
+        float Ar = 0.5f * (xr[k] + xr[kr]);
+        float Ai = 0.5f * (xi[kr] - xi[k]);
+        float Br = -0.5f * (xi[k] + xi[kr]);
+        float Bi = 0.5f * (xr[kr] - xr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
