@@ -306,14 +306,19 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
         xi[i] = foldedIm * cosT[i] - foldedRe * sinT[i];
     }
 
-    fft( fft_tables, xr, xi, logm);
+    /* The unfold below already loads every bin exactly once, so it reads past
+       the bit-reversal instead of paying for a separate pass to undo it. */
+    const unsigned short * restrict reorder = fft(fft_tables, xr, xi, logm);
+
+    if (!reorder) return;
 
     /* Unfold N/4 complex FFT outputs into N real coefficients, one write
        per output quarter. */
     for (i = 0; i < N4; i++) {
         int n2 = 2*i;
-        float unfoldRe = 2.0f * (xr[i] * cosT[i] + xi[i] * sinT[i]);
-        float unfoldIm = 2.0f * (xi[i] * cosT[i] - xr[i] * sinT[i]);
+        int b = reorder[i];
+        float unfoldRe = 2.0f * (xr[b] * cosT[i] + xi[b] * sinT[i]);
+        float unfoldIm = 2.0f * (xi[b] * cosT[i] - xr[b] * sinT[i]);
 
         data[n2]             = -unfoldRe;
         data[N2 - 1 - n2]    =  unfoldIm;

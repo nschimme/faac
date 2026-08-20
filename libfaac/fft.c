@@ -260,30 +260,29 @@ static void radix4_dif_proc(
     }
 }
 
-static void bit_reverse(
-    float * restrict xr,
-    float * restrict xi,
-    int logm,
-    const unsigned short * restrict r)
-{
-    int i;
-    int size = 1 << logm;
+/* Radix-4 DIF, leaving the output in bit-reversed order. Returns the table
+   that maps natural bin i to where it actually landed -- owned by fft_tables,
+   built lazily here on first use of a size, freed by fft_terminate.
 
-    for (i = 0; i < size; i++)
-    {
-        int j = (int)r[i];
-        if (j > i)
-        {
-            float tr = xr[i]; xr[i] = xr[j]; xr[j] = tr;
-            float ti = xi[i]; xi[i] = xi[j]; xi[j] = ti;
-        }
-    }
-}
+   NULL means either an out-of-range logm or a failed allocation, and leaves
+   xr/xi untransformed. Both stay soft failures rather than assertions because
+   that is what this returned before it returned anything: callers have no
+   recovery either way, and an encoder that drops a frame beats one that
+   aborts.
 
-void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
+   There is deliberately no natural-order variant. Undoing the permutation
+   used to be a separate pass over the whole array -- a compare and two swaps
+   per element -- whose only job was to move bins to where the caller would
+   read them once. Both callers already loop over the output, so each reads
+   natural bin i as [reorder[i]] and folds the permutation into a load it was
+   doing anyway. SBR gains twice over, since it consumes only a subrange of
+   the 64 bins but had to permute all of them.
+
+   Size-dependent tables are built here on first use of a given logm. */
+const unsigned short *fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
 {
-    if (logm > FFT_MAXLOGM) return;
-    if (logm < 1) return;
+    if (logm > FFT_MAXLOGM) return NULL;
+    if (logm < 1) return NULL;
 
     check_tables_radix4(fft_tables, logm);
 
@@ -292,7 +291,7 @@ void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
         int size = 1 << logm;
         int i;
         fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-        if (!fft_tables->reordertbl[logm]) return;
+        if (!fft_tables->reordertbl[logm]) return NULL;
 
         for (i = 0; i < size; i++)
         {
@@ -309,6 +308,6 @@ void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
     }
 
     radix4_dif_proc(xr, xi, logm, fft_tables->costbl[logm], fft_tables->negsintbl[logm]);
-    bit_reverse(xr, xi, logm, fft_tables->reordertbl[logm]);
+    return fft_tables->reordertbl[logm];
 }
 

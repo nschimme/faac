@@ -37,6 +37,16 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-void fft			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
+/* Leaves output in bit-reversed order: natural bin i is at [reorder[i]], where
+   reorder is the returned table.
+
+   The table is owned by fft_tables, not the caller: it is allocated lazily on
+   first use of a given logm and released by fft_terminate. Callers borrow it
+   and must not free it or hold it past that.
+
+   Returns NULL either for a logm outside [1, FFT_MAXLOGM] or if the table
+   could not be allocated. Callers cannot tell the two apart, and in both cases
+   xr/xi are left untransformed. */
+const unsigned short *fft	( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
 
 #endif

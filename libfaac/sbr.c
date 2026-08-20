@@ -400,14 +400,21 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
         p0 += 2; p1 += 2;
     }
-    fft(sbr->fftTables, xr, xi, 6);
+    /* Only [kx,k2) of the 64 bins is ever consumed, and each is read once, so
+       reading past the bit-reversal costs two table lookups per used bin
+       against a permutation pass over all 64. */
+    const unsigned short * restrict reorder = fft(sbr->fftTables, xr, xi, 6);
+
+    if (!reorder) return;
+
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
+        int bk = reorder[k], bkr = reorder[kr];
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (xr[k] + xr[kr]);
-        float Ai = 0.5f * (xi[kr] - xi[k]);
-        float Br = -0.5f * (xi[k] + xi[kr]);
-        float Bi = 0.5f * (xr[kr] - xr[k]);
+        float Ar = 0.5f * (xr[bk] + xr[bkr]);
+        float Ai = 0.5f * (xi[bkr] - xi[bk]);
+        float Br = -0.5f * (xi[bk] + xi[bkr]);
+        float Bi = 0.5f * (xr[bkr] - xr[bk]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
