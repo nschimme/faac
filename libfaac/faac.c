@@ -22,9 +22,7 @@
  * ASC. The opaque faac_encoder* is the core's faacEncStruct*.
  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <stdlib.h>
 #include <string.h>
