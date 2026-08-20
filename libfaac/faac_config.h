@@ -14,7 +14,11 @@
 #endif
 
 #ifndef MAX_CHANNELS
+#if defined(ARDUINO) || defined(ESP32) || defined(ESP8266) || defined(__ARM_ARCH)
 #define MAX_CHANNELS 2
+#else
+#define MAX_CHANNELS 6
+#endif
 #endif
 
 #endif /* FAAC_CONFIG_H */
