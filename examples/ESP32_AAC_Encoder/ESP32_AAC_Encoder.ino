@@ -45,7 +45,7 @@ void setup() {
 
     Serial.printf("Encoder opened successfully!\n");
     Serial.printf("Frame samples: %u, Max output bytes: %u\n",
-                  enc_info.frame_samples, enc_info.max_output_bytes);
+                  (unsigned int)enc_info.frame_samples, (unsigned int)enc_info.max_output_bytes);
 
     // Allocate PCM input buffer and output buffer
     uint32_t samples_per_frame = enc_info.frame_samples * params.num_channels;
@@ -71,14 +71,14 @@ void setup() {
     uint32_t bytes_written = 0;
     status = faac_encoder_encode(encoder, pcm_buf, samples_per_frame, out_buf, enc_info.max_output_bytes, &bytes_written);
     if (status == FAAC_OK) {
-        Serial.printf("Encoded 1 frame: %u bytes written\n", bytes_written);
+        Serial.printf("Encoded 1 frame: %u bytes written\n", (unsigned int)bytes_written);
     } else {
         Serial.printf("faac_encoder_encode failed: %s\n", faac_strerror(status));
     }
 
     // Flush encoder
     status = faac_encoder_encode(encoder, NULL, 0, out_buf, enc_info.max_output_bytes, &bytes_written);
-    Serial.printf("Flushed encoder: %u bytes written\n", bytes_written);
+    Serial.printf("Flushed encoder: %u bytes written\n", (unsigned int)bytes_written);
 
     free(pcm_buf);
     free(out_buf);
