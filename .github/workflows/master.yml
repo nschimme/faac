@@ -99,7 +99,7 @@ jobs:
         with:
           arch: x64
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Build (MSYS2)
         if: matrix.config.shell == 'msys2 {0}'
@@ -120,11 +120,30 @@ jobs:
           meson install -C build
 
       - name: Upload artifacts (Windows)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         if: runner.os == 'Windows'
         with:
           name: faac-${{ github.sha }}-${{ matrix.config.name }}
           path: temp/*
+
+  arduino-esp32:
+    name: ESP32 Arduino Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile ESP32 sketch using arduino-cli
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: "esp32:esp32:esp32"
+          platforms: |
+            - name: "esp32:esp32"
+              source-url: "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
+          sketch-paths: |
+            - examples/ESP32_AAC_Encoder
+          libraries: |
+            - source-path: ./
 
   cppcheck:
     name: Cppcheck
@@ -136,7 +155,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install cppcheck
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
 
       - name: Run cppcheck
         shell: bash
