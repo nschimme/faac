@@ -50,6 +50,16 @@
 #define PEAK_BACKOFF_FLOOR     0.10f
 #define PEAK_MAX_RETRIES       12
 
+/* Separate, looser backoff ceiling for CBR: PEAK_BACKOFF_CEILING's forced cut
+ * is tuned for --cap-rate's rare outliers and overcorrects when the cap fires
+ * on nearly every frame, as CBR does. --cap-rate's own constant is untouched. */
+#define CBR_PEAK_BACKOFF_CEILING 0.90f
+
+/* Pre-cap AGC target undershoots the frame budget so most frames clear
+ * peakBits without a retry -- padding a shortfall is nearly free, retrying
+ * is not. Tuned for CPU parity with ABR/VBR, not competing CBR quality. */
+#define CBR_PRECAP_SPLAY 0.65f
+
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
   "FAAC - Freeware Advanced Audio Coder (http://faac.sourceforge.net/)\n"
@@ -171,6 +181,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
+    hEncoder->config.useCbr = config->useCbr;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -332,7 +343,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.maxBitRate = config->maxBitRate;
 
-    /* Peak-limiter retry scratch: only encoders that set maxBitRate pay for it. */
+    /* Auto-derive the peak limiter's cap at the CBR target unless the caller
+     * already set an explicit max_bit_rate/--cap-rate (which always wins).
+     * max_bit_rate is whole-stream bits/sec, already time-normalized, so no
+     * frame-duration scaling belongs here -- bitRate is per-channel bps. */
+    if (!hEncoder->config.maxBitRate && hEncoder->config.useCbr && hEncoder->config.bitRate) {
+        hEncoder->config.maxBitRate = hEncoder->config.bitRate * hEncoder->numChannels;
+    }
+
+    /* Peak-limiter retry scratch: only encoders that set maxBitRate pay for
+     * it (CBR's auto-derivation above already folds into maxBitRate). */
     if (hEncoder->config.maxBitRate) {
         unsigned int ch;
         for (ch = 0; ch < hEncoder->numChannels; ch++) {
@@ -396,6 +416,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
     hEncoder->config.useTns = 0;
+    hEncoder->config.useCbr = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -779,6 +800,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
         peakBits = (unsigned long long)hEncoder->config.maxBitRate
             * FRAME_LEN / hEncoder->sampleRate;
 
+        if (hEncoder->config.useCbr) {
+            /* BuildFrame's padding rounds up to a whole byte, so a
+             * successfully-padded frame can land above the raw peakBits
+             * target. Byte-ceiling peakBits too, or it retries for nothing. */
+            peakBits = ((peakBits + 7) / 8) * 8;
+        }
+
         for (channel = 0; channel < numChannels; channel++) {
             memcpy(hEncoder->peakSnap[channel], coderInfo[channel].book,
                    MAX_SCFAC_BANDS * sizeof(int));
@@ -833,8 +861,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * scaling by the bit ratio undershoots the budget and converges in a
          * pass or two. */
         float scale = (float)peakBits / (float)((unsigned long long)frameBytes * 8);
-        if (scale > PEAK_BACKOFF_CEILING) scale = PEAK_BACKOFF_CEILING;
-        if (scale < PEAK_BACKOFF_FLOOR)   scale = PEAK_BACKOFF_FLOOR;
+        /* --cap-rate's rare-outlier corrections stay gentle (PEAK_BACKOFF_CEILING);
+         * CBR's hard cap fires on most frames, where that same gentleness
+         * defeats the ratio-based scale's own fast convergence. */
+        float backoffCeiling = hEncoder->config.useCbr ? CBR_PEAK_BACKOFF_CEILING : PEAK_BACKOFF_CEILING;
+        if (scale > backoffCeiling)    scale = backoffCeiling;
+        if (scale < PEAK_BACKOFF_FLOOR) scale = PEAK_BACKOFF_FLOOR;
         hEncoder->aacquantCfg.quality *= scale;
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
@@ -858,7 +890,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        int totalBits = frameBytes * 8;
+        if (hEncoder->config.useCbr) {
+            desbits = (int)(desbits * CBR_PRECAP_SPLAY);
+        }
+        int totalBits = hEncoder->config.useCbr ? (int)hEncoder->unpaddedBits : (frameBytes * 8);
         int sbrBits = 0;
         float fix;
 

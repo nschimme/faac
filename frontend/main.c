@@ -115,6 +115,9 @@ static help_t help_qual[] = {
     {"-b <bitrate>\tSet average bitrate to x kbps. (ABR)\n",
     "\t\tSet average bitrate (ABR) to approximately <bitrate> kbps.\n"
     "\t\tmax. ~500 (stereo)\n"},
+    {"--cbr\t\tUse Constant Bitrate (CBR) encoding mode.\n",
+    "\t\tForce constant bitrate (CBR) encoding instead of default ABR.\n"
+    "\t\tRequires -b <bitrate>.\n"},
     {"-c <freq>\tSet the bandwidth in Hz.\n",
     "\t\tThe actual frequency is adjusted to maximize upper spectral band\n"
     "\t\tusage.\n"},
@@ -409,6 +412,7 @@ int main(int argc, char *argv[])
     int jointmode = -1;
     int pnslevel = -1;
     static int useTns = 0;
+    static int useCbr = 0;
     enum container_format container = NO_CONTAINER;
     enum faac_stream_format stream = FAAC_STREAM_ADTS;
     int cutOff = -1;
@@ -537,6 +541,7 @@ int main(int argc, char *argv[])
             {"overwrite", 0, &overwrite, 1},
             {"creation-time", 1, 0, CREATION_TIME_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
+            {"cbr", 0, &useCbr, 1},
             {0, 0, 0, 0}
         };
         int c = -1;
@@ -933,6 +938,7 @@ int main(int argc, char *argv[])
                                             : params.joint_mode;
     params.use_lfe       = (infile->channels >= 6);
     params.use_tns       = useTns ? true : false;
+    params.use_cbr       = useCbr ? true : false;
     params.short_control = (enum faac_shortctl_mode)shortctl;
     if (pnslevel >= 0)
         params.pns_level = pnslevel;
@@ -1041,8 +1047,13 @@ int main(int argc, char *argv[])
     if (bitRate)
     {
         fprintf(stderr, "Initial quantization quality: %ld\n", quantqual);
-        fprintf(stderr, "Average bitrate: %d kbps/channel\n",
-                (bitRate + 500) / 1000);
+        if (params.use_cbr) {
+            fprintf(stderr, "Constant bitrate: %d kbps/channel\n",
+                    (bitRate + 500) / 1000);
+        } else {
+            fprintf(stderr, "Average bitrate: %d kbps/channel\n",
+                    (bitRate + 500) / 1000);
+        }
     }
     else
         fprintf(stderr, "Quantization quality: %ld\n", quantqual);
