@@ -274,10 +274,6 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             sum_log_rms += logf(rms_fl);
         }
 
-        /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0
-         * means the band is noise-like, which PNS (quantize.c) is about to
-         * replace anyway -- skip the LPC work; it only pays off on
-         * tonal/peaky bands. */
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
             return 0;
 

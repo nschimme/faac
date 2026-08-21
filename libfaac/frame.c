@@ -753,14 +753,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
-            }
             int dir = (PsyGetTransientSubblock(&hEncoder->psyInfo[channel]) >= 4) ? 1 : 0;
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
