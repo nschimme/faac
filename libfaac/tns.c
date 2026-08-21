@@ -280,20 +280,11 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         floorrms = maxrms * 0.01f;
         if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
 
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
-
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
-            for (i = s0; i < s1; i++)
-                wspec[i - i_start] = (float)spec[i] * wgt;
-        }
+        for (i = 0; i < length; i++)
+            wspec[i] = band[i];
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+    calc_autocorr_f(TNS_LPC_ORDER, length, band, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
     if (gain < TNS_GAIN_LIMIT)
         return 0;
