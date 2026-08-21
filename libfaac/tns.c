@@ -48,6 +48,7 @@ static const struct {
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
     int lag, i;
+    const int step = 4;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
@@ -55,7 +56,7 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
         const float * p2 = work + lag;
         int n = length - lag;
 
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i += step)
             acc += p1[i] * p2[i];
         r[lag] = acc;
     }

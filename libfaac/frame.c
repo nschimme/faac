@@ -755,7 +755,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (!hEncoder->isLfeChannel[channel] && useTns) {
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
-            if (attack > 0.0f && attack < 0.15f) {
+            /* Admission gate: TNS shapes noise along the temporal envelope. */
+            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
