@@ -277,7 +277,7 @@ static int WriteAACFillBits(BitStream *bs, int numBits, bool writeFlag)
     return left;
 }
 
-static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs, bool write)
+static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs, bool write, bool do_cbr_padding)
 {
     int bits = 0;
     if (hEncoder->config.outputFormat == 1) bits += WriteADTSHeader(hEncoder, bs, write);
@@ -289,6 +289,25 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
     bits += SbrContextGetBits(hEncoder->sbrContext, write ? bs : NULL,
                                (int)hEncoder->numChannels, (int)hEncoder->config.aacObjectType, write);
+
+    if (do_cbr_padding) {
+        int currentTotalBits = bits + LEN_SE_ID;
+        int alignPad = (8 - (currentTotalBits & 7)) & 7;
+        currentTotalBits += alignPad;
+        hEncoder->unpaddedBits = currentTotalBits; /* consumed by frame.c's rate controller */
+
+        if (hEncoder->config.bitRate > 0) {
+            /* sampleRate is already the halved core rate for HE-AAC, so
+             * FRAME_LEN (not faacFrameSamples()) gives the right duration --
+             * using faacFrameSamples() here double-counts the halving. */
+            int targetBits = (int)((double)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+
+            if (currentTotalBits < targetBits) {
+                int fillBitsNeeded = targetBits - currentTotalBits;
+                bits += (fillBitsNeeded - WriteAACFillBits(bs, fillBitsNeeded, write));
+            }
+        }
+    }
 
     if (write) PutBit(bs, ID_END, LEN_SE_ID);
     bits += LEN_SE_ID;
@@ -315,10 +334,12 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
 
 int WriteBitstream(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
 {
+    bool useCbr = hEncoder->config.useCbr;
+
     /* Zero so the header's own length field is written as zero, then patched. */
     hEncoder->usedBytes = 0;
     bs->currentBit = 0;
-    int bits = BuildFrame(hEncoder, coder, elems, nElems, bs, true);
+    int bits = BuildFrame(hEncoder, coder, elems, nElems, bs, true, useCbr);
     if (bits < 0) return -1;
 
     /* Safe to bounds-check after writing: PutBit refuses to write past

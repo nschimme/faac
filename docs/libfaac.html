@@ -25,6 +25,7 @@ Contents
   <li><a href="#api-errors">Error handling</a>
   <li><a href="#api-funcref">Function reference</a>
   <li><a href="#api-peak">Capping the peak frame size</a>
+  <li><a href="#api-cbr">Constant bitrate</a>
  </menu>
  <li><a href="#porting">Porting from the legacy faacEnc* API</a>
 </menu>
@@ -149,10 +150,30 @@ It is a ceiling, not a second average: frames that already fit are untouched, so
 the stream stays ABR rather than becoming CBR, and a frame re-quantized to meet
 the cap does not drag down the frames after it. Enforcement is best-effort
 &mdash; a frame cannot shrink below the cost of its own side info and
-scalefactors, so a small enough cap is still exceeded on a few percent of frames
-(measured on transient-heavy stereo, the cap holds everywhere at and above
-roughly 64 kbit/s and starts to slip around 48). Callers that must guarantee the
-packet fits should check <i>bytes_written</i> and drop the frame themselves.
+scalefactors, so a small enough cap is still exceeded on some frames, more
+often as the cap tightens (measured on transient-heavy stereo: well under 1%
+of frames at 64 kbit/s, rising to roughly 4% at 56 and 16% at 48). Callers
+that must guarantee the packet fits should check <i>bytes_written</i> and
+drop the frame themselves.
+
+<a name="api-cbr">
+<h5>Constant bitrate</h5>
+Setting <i>faac_params.use_cbr</i> forces a fixed frame size instead of a
+fixed average, for a transport that expects one &mdash; a fixed-rate
+circuit, or a jitter buffer sized for one frame. Requires <i>bit_rate</i>;
+<i>faac_encoder_open()</i> ignores it otherwise.
+<br><br>
+Costs roughly 1.0-1.4x the CPU of ABR/VBR: a minority of frames need a re-quantize retry
+to hit an exact size instead of an average. Use plain <i>bit_rate</i> unless
+fixed frame size is specifically what you need &mdash; <i>max_bit_rate</i>
+alone already bounds the rare oversized frame for less. It still applies on
+top of CBR to raise the ceiling above <i>bit_rate</i> for burst headroom;
+left unset, CBR uses <i>bit_rate</i> itself as the ceiling. Best-effort like
+<i>max_bit_rate</i> above: a frame cannot shrink below the cost of its own
+side info, so an unreachable target still overshoots on a handful of frames.
+In practice this is rarer than with plain <i>max_bit_rate</i>, since CBR's
+target already undershoots the cap before the retry loop even engages,
+leaving fewer frames needing a large cut.
 
 <a name="porting">
 <h4>Porting from the legacy faacEnc* API</h4>

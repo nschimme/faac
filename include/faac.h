@@ -161,7 +161,8 @@ typedef struct faac_params {
 
     bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
     bool                    use_tns;       /* temporal noise shaping                   */
-    uint8_t                 reserved[2];   /* explicit pad; must remain 0              */
+    bool                    use_cbr;       /* constant bitrate mode                    */
+    uint8_t                 reserved[1];   /* explicit pad; must remain 0              */
 
     uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quant_quality */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate             */

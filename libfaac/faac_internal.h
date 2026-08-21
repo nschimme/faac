@@ -54,6 +54,7 @@ typedef struct faacEncConfiguration
     unsigned int jointmode;
     unsigned int useLfe;
     unsigned int useTns;
+    unsigned int useCbr;
     unsigned long bitRate;           /* per channel */
     unsigned int bandWidth;
     unsigned long quantqual;

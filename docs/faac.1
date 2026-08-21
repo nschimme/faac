@@ -94,6 +94,28 @@ stereo input file with 16 bit and 44.1 kHz sample rate
 Set average bitrate (ABR) to approximately <bitrate> kbps.
 max. ~500 (stereo)
 .TP
+.BR \-\-cbr
+Use constant bitrate (CBR) instead of ABR, for a transport that expects a
+fixed frame size rather than a fixed average \(em a fixed-rate circuit, or a
+jitter buffer sized for one frame. Requires
+.BR -b .
+Costs roughly 1.0\-1.4x the CPU of ABR/VBR, since a minority of frames need a re-quantize
+retry to hit an exact size instead of an average: use plain
+.B -b
+unless fixed frame size, not just fixed average rate, is what you actually
+need. Best-effort like
+.BR \-\-cap\-rate :
+a frame cannot shrink below the cost of its own side info, so an
+unreachable target still overshoots on a handful of frames. In practice
+this is rarer than with plain
+.BR \-\-cap\-rate ,
+since CBR's target already undershoots the cap before the retry loop
+even engages, leaving fewer frames needing a large cut.
+.B --cap-rate
+still works alongside it to raise the ceiling above
+.B -b
+for burst headroom.
+.TP
 .BR \-\-cap\-rate\ <\fIbitrate\fP>
 Cap any single frame at <bitrate> kbps, for packet-oriented transports that drop
 an oversized frame rather than splitting it. Must be at least the

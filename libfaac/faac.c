@@ -116,6 +116,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.joint_mode    = FAAC_JOINT_MIXED;
     tmp.use_lfe       = false;
     tmp.use_tns       = false;
+    tmp.use_cbr       = false;
     tmp.bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
     tmp.bandwidth     = 0;              /* derive from bit_rate */
     tmp.quant_quality = 0;              /* derive from bit_rate */
@@ -202,7 +203,7 @@ static faac_status validate_params(const faac_params *p)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
     /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0] || p->reserved[1])
+    if (p->reserved[0])
         return FAAC_ERR_INVALID_ARGUMENT;
     return FAAC_OK;
 }
@@ -241,6 +242,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->jointmode     = (unsigned int)p->joint_mode;
     cfg->useLfe        = p->use_lfe ? 1 : 0;
     cfg->useTns        = p->use_tns ? 1 : 0;
+    cfg->useCbr        = p->use_cbr ? 1 : 0;
     cfg->bitRate       = p->bit_rate;
     cfg->bandWidth     = p->bandwidth;
     cfg->quantqual     = p->quant_quality;

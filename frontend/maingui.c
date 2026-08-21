@@ -30,6 +30,10 @@ static char inputFilename[_MAX_PATH], outputFilename[_MAX_PATH];
 
 static BOOL Encoding = FALSE;
 
+/* Rate Mode combobox item data: what the single numeric field next to it
+ * means, and how it maps onto faac_params. */
+enum RateMode { RATEMODE_VBR, RATEMODE_ABR, RATEMODE_CBR };
+
 static BOOL SelectFileName(HWND hParent, char *filename, BOOL forReading)
 {
     OPENFILENAME ofn;
@@ -158,12 +162,23 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         params.use_lfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED;
         params.output_format = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED
                              ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS;
-        params.mpeg_version = (enum faac_mpeg_version)
-            SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
 
         GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
-	params.quant_quality = atoi(szTemp);
-	params.bit_rate = 0;  /* quality-driven; no bitrate control in this dialog */
+        {
+            HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+            LRESULT sel  = SendMessage(hRM, CB_GETCURSEL, 0, 0);
+            LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
+
+            if (mode == RATEMODE_VBR) {
+                params.quant_quality = atoi(szTemp);
+                params.bit_rate = 0;  /* faac_params_init() defaults to 64kbps ABR */
+            } else {
+                /* Field holds total kbps, like the CLI's -b; bit_rate is
+                 * per-channel bps. */
+                params.bit_rate = atoi(szTemp) * 1000 / numChannels;
+                params.use_cbr  = (mode == RATEMODE_CBR);
+            }
+        }
 	if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
 	{
             GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
@@ -181,8 +196,10 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
             inputSamples   = (unsigned long)info.frame_samples * numChannels;
             maxOutputBytes = info.max_output_bytes;
 
-	    sprintf(szTemp, "%u", info.quant_quality);
-	    SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
+	    if (params.bit_rate == 0) {
+	        sprintf(szTemp, "%u", info.quant_quality);
+	        SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
+	    }
 
 	    sprintf(szTemp, "%u", info.bandwidth);
 	    SetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp);
@@ -318,9 +335,17 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         inputFilename[0] = 0x00;
 
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"MPEG4");
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"MPEG2");
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_SETCURSEL, 0, 0);
+        {
+            HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+            LRESULT idx;
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"VBR (Quality)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_VBR);
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"ABR (Bitrate)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_ABR);
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"CBR (Bitrate)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_CBR);
+            SendMessage(hRM, CB_SETCURSEL, 0, 0);
+        }
 
         {
             HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
@@ -411,17 +436,18 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	  }
 	  break;
 
-        case MAKEWPARAM(IDC_OBJECTTYPE, CBN_SELCHANGE):
+        case MAKEWPARAM(IDC_RATEMODE, CBN_SELCHANGE):
         {
-            HWND hOT  = GetDlgItem(hWnd, IDC_OBJECTTYPE);
-            HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
-            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
-            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1) {
-                SendMessage(hMPG, CB_SETCURSEL, 0, 0);
-                EnableWindow(hMPG, FALSE);
+            HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+            LRESULT sel  = SendMessage(hRM, CB_GETCURSEL, 0, 0);
+            LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
+
+            if (mode == RATEMODE_VBR) {
+                SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
+                SetDlgItemText(hWnd, IDC_QUALITY, "100");
             } else {
-                EnableWindow(hMPG, TRUE);
+                SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Bitrate\n(kbps)");
+                SetDlgItemText(hWnd, IDC_QUALITY, "128");
             }
             break;
         }

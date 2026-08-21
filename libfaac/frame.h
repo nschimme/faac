@@ -53,6 +53,7 @@ typedef struct faacEncStruct {
     unsigned int sampleRateIdx;
 
     unsigned int usedBytes;
+    unsigned int unpaddedBits;
 
     /* frame number */
     unsigned int frameNum;
