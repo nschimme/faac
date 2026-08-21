@@ -140,6 +140,31 @@ float PsyGetAttack(PsyInfo * psyInfo)
   return total > 0.0f ? strength : 0.0f;
 }
 
+int PsyGetTransientSubblock(PsyInfo * psyInfo)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  float max_s = 0.0f;
+  int max_win = 0, win;
+
+  if (!psydata)
+    return 0;
+
+  for (win = 1; win < SUBBLOCKS_PER_FRAME; win++)
+  {
+    float e = (float)psydata->eng[ENG_WIN_PREV + win];
+    float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
+    float lo = (e < p) ? e : p;
+    float s = fabsf(e - p) / lo;
+
+    if (s > max_s) {
+      max_s = s;
+      max_win = win;
+    }
+  }
+
+  return max_win;
+}
+
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;

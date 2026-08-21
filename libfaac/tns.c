@@ -226,7 +226,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, int direction)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -319,11 +319,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
     filter->order = order;
 
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
-     * reversal, so both directions give the same LPC fit and prediction gain.
-     * Picking the right one needs the time-domain transient position, which
-     * this function never sees. */
-    filter->direction = 0;
+    filter->direction = direction ? 1 : 0;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
@@ -363,7 +359,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 }
 
 void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+               float* spec, int direction)
 {
     int b_start, b_stop;
 
@@ -380,7 +376,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->windowData.tnsFilter[0], direction))
         return;
 
     /* Declared from b_start to the top of the spectrum rather than to b_stop,
