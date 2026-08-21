@@ -753,6 +753,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->isLfeChannel[channel] && useTns) {
+            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+
+            if (attack > 0.0f && attack < 0.15f) {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+                continue;
+            }
             int dir = (PsyGetTransientSubblock(&hEncoder->psyInfo[channel]) >= 4) ? 1 : 0;
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
