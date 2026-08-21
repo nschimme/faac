@@ -401,7 +401,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -573,7 +573,7 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * Scaled to PsyGetAttack's statistic (largest relative energy jump between
  * adjacent sub-blocks). Not portable to a different sub-block count/size --
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.5f
+#define TNS_ATTACK_MIN 0.1f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
