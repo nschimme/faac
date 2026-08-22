@@ -51,8 +51,8 @@ void init_encode_options(encode_options_t *opts)
     opts->use_tns = false;
     opts->use_lfe = -1;
     opts->pns_level = -1;
-    opts->quant_quality = DEFAULT_QUANT_QUALITY;
-    opts->bit_rate = 0;
+    opts->quant_quality = 0;
+    opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
