@@ -31,6 +31,7 @@ typedef struct {
     const char *composer_sort;
     const char *year;
     const char *comment;
+    const char *encoder;
     int genre_id;
     uint32_t track;
     uint32_t ntracks;

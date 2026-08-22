@@ -130,12 +130,6 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         faac_encoder_asc(hEncoder, &asc_data, &asc_size);
         mp4_set_decoder_config((unsigned char *)asc_data, asc_size);
     }
-    if (libinfo.version)
-    {
-        snprintf(version_string, sizeof(version_string), "FAAC %s", libinfo.version);
-        mp4_set_encoder(version_string);
-    }
-
     uint32_t creation_time = 0;
     if (opts->creation_time_str)
     {
@@ -199,7 +193,14 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         mp4_set_cover(opts->art_data, (int)opts->art_size);
     }
 
-    const mp4_metadata_t *metadata = &opts->metadata;
+    mp4_metadata_t metadata = opts->metadata;
+
+    if (libinfo.version)
+    {
+        snprintf(version_string, sizeof(version_string), "FAAC %s", libinfo.version);
+        metadata.encoder = version_string;
+    }
+
 #define SETTAG(id, x) \
     do { \
         if (x) { \
@@ -212,22 +213,24 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         } \
     } while (0)
 
-    SETTAG(MP4TAG_ARTIST, metadata->artist);
-    SETTAG(MP4TAG_ARTISTSORT, metadata->artist_sort);
-    SETTAG(MP4TAG_COMPOSER, metadata->composer);
-    SETTAG(MP4TAG_COMPOSERSORT, metadata->composer_sort);
-    SETTAG(MP4TAG_TITLE, metadata->title);
-    SETTAG(MP4TAG_ALBUM, metadata->album);
-    SETTAG(MP4TAG_ALBUMARTIST, metadata->album_artist);
-    SETTAG(MP4TAG_ALBUMARTISTSORT, metadata->album_artist_sort);
-    SETTAG(MP4TAG_ALBUMSORT, metadata->album_sort);
-    SETTAG(MP4TAG_YEAR, metadata->year);
-    SETTAG(MP4TAG_COMMENT, metadata->comment);
+    SETTAG(MP4TAG_ARTIST, metadata.artist);
+    SETTAG(MP4TAG_ARTISTSORT, metadata.artist_sort);
+    SETTAG(MP4TAG_COMPOSER, metadata.composer);
+    SETTAG(MP4TAG_COMPOSERSORT, metadata.composer_sort);
+    SETTAG(MP4TAG_TITLE, metadata.title);
+    SETTAG(MP4TAG_ALBUM, metadata.album);
+    SETTAG(MP4TAG_ALBUMARTIST, metadata.album_artist);
+    SETTAG(MP4TAG_ALBUMARTISTSORT, metadata.album_artist_sort);
+    SETTAG(MP4TAG_ALBUMSORT, metadata.album_sort);
+    SETTAG(MP4TAG_YEAR, metadata.year);
+    SETTAG(MP4TAG_COMMENT, metadata.comment);
 #undef SETTAG
-    if (metadata->track) mp4_set_track(metadata->track, metadata->ntracks);
-    if (metadata->disc) mp4_set_disc(metadata->disc, metadata->ndiscs);
-    if (metadata->compilation) mp4_set_compilation(metadata->compilation);
-    if (metadata->genre_id) mp4_set_genre(metadata->genre_id);
+
+    if (metadata.encoder) mp4_set_encoder(metadata.encoder);
+    if (metadata.track) mp4_set_track(metadata.track, metadata.ntracks);
+    if (metadata.disc) mp4_set_disc(metadata.disc, metadata.ndiscs);
+    if (metadata.compilation) mp4_set_compilation(metadata.compilation);
+    if (metadata.genre_id) mp4_set_genre(metadata.genre_id);
 
     if (mp4_finish() != 0)
     {
