@@ -335,6 +335,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     free(utf8_input);
     free(utf8_output);
+    free_encode_options(&opts);
 
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
     SendMessage(hWnd, WM_SETTEXT, 0, (LPARAM)"FAAC GUI");

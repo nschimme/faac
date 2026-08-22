@@ -456,12 +456,6 @@ int main(int argc, char *argv[])
     const char *dieMessage = NULL;
     int ret = 0;
 
-    /* utf8_ensure()'d --tag values: mp4_add_custom_tag() stores the pointer
-       as-is (no copy), so these have to outlive the encode and be freed
-       here rather than right after conversion. */
-    char **custom_tag_allocs = NULL;
-    int custom_tag_alloc_count = 0;
-    int custom_tag_alloc_cap = 0;
 
 #ifndef _WIN32
     signal(SIGINT, signal_handler);
@@ -729,23 +723,7 @@ int main(int argc, char *argv[])
                 }
                 if (!dieMessage)
                 {
-                    char *utf8_tagval = utf8_ensure(tagval);
-                    if (utf8_tagval)
-                    {
-                        if (custom_tag_alloc_count >= custom_tag_alloc_cap)
-                        {
-                            int new_cap = custom_tag_alloc_cap ? custom_tag_alloc_cap * 2 : 4;
-                            char **tmp = realloc(custom_tag_allocs, (size_t)new_cap * sizeof(char *));
-                            if (tmp)
-                            {
-                                custom_tag_allocs = tmp;
-                                custom_tag_alloc_cap = new_cap;
-                            }
-                        }
-                        if (custom_tag_alloc_count < custom_tag_alloc_cap)
-                            custom_tag_allocs[custom_tag_alloc_count++] = utf8_tagval;
-                    }
-                    if (mp4_add_custom_tag(tagname, utf8_tagval ? utf8_tagval : tagval))
+                    if (!add_custom_tag_to_options(&opts, tagname, tagval))
                         dieMessage = "Couldn't add tag (out of memory).\n";
                 }
                 has_custom_tags = true;
@@ -854,7 +832,7 @@ int main(int argc, char *argv[])
                         opts.metadata.comment || opts.metadata.genre_id ||
                         opts.metadata.track || opts.metadata.disc ||
                         opts.metadata.compilation || opts.art_data ||
-                        has_custom_tags;
+                        opts.custom_tag_count > 0 || has_custom_tags;
 
     if (!opts.container_mp4 && has_metadata)
     {
@@ -879,10 +857,7 @@ int main(int argc, char *argv[])
 
 cleanup:
     if (aacFileName) free(aacFileName);
-    if (opts.art_data) free((void *)opts.art_data);
-    for (int i = 0; i < custom_tag_alloc_count; i++)
-        free(custom_tag_allocs[i]);
-    free(custom_tag_allocs);
+    free_encode_options(&opts);
 
 #ifdef _WIN32
     if (allocated_argv)

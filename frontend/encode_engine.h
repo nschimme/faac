@@ -28,6 +28,11 @@ extern "C" {
 #endif
 
 typedef struct {
+    char *name;
+    char *value;
+} custom_tag_t;
+
+typedef struct {
     const char *input_filename;
     const char *output_filename;
 
@@ -64,8 +69,15 @@ typedef struct {
     const uint8_t *art_data;
     uint64_t art_size;
 
+    custom_tag_t *custom_tags;
+    int custom_tag_count;
+    int custom_tag_cap;
+
     int verbose;
 } encode_options_t;
+
+bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
+void free_encode_options(encode_options_t *opts);
 
 /* Canonical defaults, shared by both the CLI and GUI frontends. */
 #define DEFAULT_QUANT_QUALITY 100
