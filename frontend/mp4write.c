@@ -123,7 +123,7 @@ static struct {
 
     struct {
         const uint8_t *data;
-        int size;
+        uint32_t size;
     } cover;
 
     struct {
@@ -358,7 +358,7 @@ void mp4_set_disc(uint32_t num, uint32_t total) {
     g_mp4.ndiscs = total;
 }
 
-void mp4_set_cover(const uint8_t *data, int size) {
+void mp4_set_cover(const uint8_t *data, uint32_t size) {
     g_mp4.cover.data = data;
     g_mp4.cover.size = size;
 }
@@ -460,7 +460,7 @@ static void put_tag_index(const char *name, uint16_t num, uint16_t total) {
     end_atom(box);
 }
 
-static void put_tag_image(const uint8_t *data, int size) {
+static void put_tag_image(const uint8_t *data, uint32_t size) {
     long box      = start_atom("covr");
     long data_box = start_atom("data");
     put_u32(ITUNES_DATA_IMAGE);
@@ -471,6 +471,7 @@ static void put_tag_image(const uint8_t *data, int size) {
 }
 
 static void put_tag_ext(const char *mean, const char *name, const char *val) {
+    if (!mean || !name || !val) return;
     long box      = start_atom("----");
     long mean_box = start_atom("mean");
     put_u32(0);

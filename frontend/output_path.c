@@ -28,20 +28,35 @@
 #include <strings.h>
 #endif
 
+static const char *find_extension(const char *filename)
+{
+    if (!filename)
+        return NULL;
+
+    const char *last_slash = strrchr(filename, '/');
+    const char *last_bslash = strrchr(filename, '\\');
+    if (last_bslash && (!last_slash || last_bslash > last_slash))
+        last_slash = last_bslash;
+
+    const char *start = last_slash ? last_slash + 1 : filename;
+    return strrchr(start, '.');
+}
+
 char *get_output_filename(const char *input_filename, int container_mp4)
 {
     if (!input_filename)
         return NULL;
 
     const char *ext = container_mp4 ? ".m4a" : ".aac";
-    const char *dot = strrchr(input_filename, '.');
+    size_t ext_len = strlen(ext);
+    const char *dot = find_extension(input_filename);
     size_t len = dot ? (size_t)(dot - input_filename) : strlen(input_filename);
 
-    char *aac_file_name = malloc(len + 5);
+    char *aac_file_name = malloc(len + ext_len + 1);
     if (aac_file_name)
     {
         memcpy(aac_file_name, input_filename, len);
-        memcpy(aac_file_name + len, ext, 5);
+        memcpy(aac_file_name + len, ext, ext_len + 1);
     }
     return aac_file_name;
 }
@@ -51,7 +66,7 @@ int is_mp4_filename(const char *filename)
     if (!filename)
         return 0;
 
-    const char *ext = strrchr(filename, '.');
+    const char *ext = find_extension(filename);
     if (ext)
     {
         if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") || !strcasecmp(ext, ".m4b"))

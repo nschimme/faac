@@ -158,7 +158,7 @@ static void AwakeDialogControls(HWND hWnd)
 
     SetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename);
 
-    wsprintf(szTemp, "%uHz %uch", sampleRate, numChannels);
+    snprintf(szTemp, sizeof(szTemp), "%uHz %uch", sampleRate, numChannels);
     SetDlgItemText(hWnd, IDC_INPUTPARAMS, szTemp);
 
     EnableWindow(GetDlgItem(hWnd, IDOK), TRUE);

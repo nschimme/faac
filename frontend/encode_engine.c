@@ -266,7 +266,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         if (x) { \
             char *utf8_val = utf8_ensure(x); \
             mp4_set_tag(id, utf8_val); \
-            if (utf8_val && num_allocated < MP4TAG_COUNT) \
+            if (utf8_val && num_allocated < (int)(sizeof(allocated_tags) / sizeof(allocated_tags[0]))) \
                 allocated_tags[num_allocated++] = utf8_val; \
             else if (utf8_val) \
                 free(utf8_val); \
@@ -694,11 +694,13 @@ int run_encoding_session_ext(const encode_options_t *opts,
         finalize_mp4(hEncoder, opts);
         if (summary_cb)
         {
+            uint32_t max_kbps = (mp4_max_bitrate() + 500) / 1000;
+            uint32_t avg_kbps = (mp4_avg_bitrate() + 500) / 1000;
             encode_summary_t summary = {
                 .frame_count = mp4_frame_count(),
                 .sample_count = mp4_sample_count(),
-                .max_bitrate = mp4_max_bitrate(),
-                .avg_bitrate = mp4_avg_bitrate(),
+                .max_bitrate = max_kbps,
+                .avg_bitrate = avg_kbps,
                 .max_frame_size = mp4_max_frame_size(),
                 .is_mp4 = true
             };

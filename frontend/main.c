@@ -741,31 +741,39 @@ int main(int argc, char *argv[])
                 if (f)
                 {
                     fseek(f, 0, SEEK_END);
-                    opts.art_size = ftell(f);
+                    long sz = ftell(f);
                     fseek(f, 0, SEEK_SET);
                     clearerr(f);
 
-                    opts.art_data = malloc(opts.art_size);
-                    if (opts.art_data)
+                    if (sz <= 0 || sz > 32 * 1024 * 1024)
                     {
-                        if (fread((void *)opts.art_data, 1, opts.art_size, f) != opts.art_size)
-                        {
-                            dieMessage = "Error reading cover art file!\n";
-                            free((void *)opts.art_data);
-                            opts.art_data = NULL;
-                            opts.art_size = 0;
-                        }
-                        else if (opts.art_size < 12 || !check_image_header((const char *)opts.art_data))
-                        {
-                            dieMessage = "Unsupported cover image file format!\n";
-                            free((void *)opts.art_data);
-                            opts.art_data = NULL;
-                            opts.art_size = 0;
-                        }
+                        dieMessage = "Invalid cover art file size!\n";
                     }
                     else
                     {
-                        dieMessage = "Out of memory reading cover art file!\n";
+                        opts.art_size = (uint64_t)sz;
+                        opts.art_data = malloc((size_t)opts.art_size);
+                        if (opts.art_data)
+                        {
+                            if (fread((void *)opts.art_data, 1, (size_t)opts.art_size, f) != (size_t)opts.art_size)
+                            {
+                                dieMessage = "Error reading cover art file!\n";
+                                free((void *)opts.art_data);
+                                opts.art_data = NULL;
+                                opts.art_size = 0;
+                            }
+                            else if (opts.art_size < 12 || !check_image_header((const char *)opts.art_data))
+                            {
+                                dieMessage = "Unsupported cover image file format!\n";
+                                free((void *)opts.art_data);
+                                opts.art_data = NULL;
+                                opts.art_size = 0;
+                            }
+                        }
+                        else
+                        {
+                            dieMessage = "Out of memory reading cover art file!\n";
+                        }
                     }
                     fclose(f);
                 }
