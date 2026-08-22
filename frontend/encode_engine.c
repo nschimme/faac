@@ -692,11 +692,13 @@ int run_encoding_session_ext(const encode_options_t *opts,
         finalize_mp4(hEncoder, opts);
         if (summary_cb)
         {
+            uint32_t max_kbps = (mp4_max_bitrate() + 500) / 1000;
+            uint32_t avg_kbps = (mp4_avg_bitrate() + 500) / 1000;
             encode_summary_t summary = {
                 .frame_count = mp4_frame_count(),
                 .sample_count = mp4_sample_count(),
-                .max_bitrate = mp4_max_bitrate(),
-                .avg_bitrate = mp4_avg_bitrate(),
+                .max_bitrate = max_kbps,
+                .avg_bitrate = avg_kbps,
                 .max_frame_size = mp4_max_frame_size(),
                 .is_mp4 = true
             };
