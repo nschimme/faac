@@ -330,6 +330,103 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 #endif
 }
 
+static void CliLogCallback(int level, const char *message, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (opts && opts->verbose >= level)
+    {
+        fprintf(stderr, "%s", message);
+    }
+}
+
+static void CliSessionStartCallback(const encode_session_info_t *info, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (!opts || opts->verbose < 1)
+        return;
+
+    if (info->bit_rate)
+    {
+        fprintf(stderr, "Initial quantization quality: %lu\n", info->quant_quality);
+        fprintf(stderr, "Average bitrate: %d kbps/channel\n", (info->bit_rate + 500) / 1000);
+    }
+    else
+    {
+        fprintf(stderr, "Quantization quality: %lu\n", info->quant_quality);
+    }
+    fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
+    if (info->pns_level > 0)
+        fprintf(stderr, "PNS level: %d\n", info->pns_level);
+
+    fprintf(stderr, "Object type: %s",
+            (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
+    fprintf(stderr, " (MPEG-%d)", (info->mpeg_version == FAAC_MPEG4) ? 4 : 2);
+    if (info->use_tns)
+        fprintf(stderr, " + TNS");
+
+    switch (info->joint_mode)
+    {
+    case FAAC_JOINT_MS:
+        fprintf(stderr, " + M/S");
+        break;
+    case FAAC_JOINT_IS:
+        fprintf(stderr, " + IS");
+        break;
+    case FAAC_JOINT_MIXED:
+        fprintf(stderr, " + Mixed");
+        break;
+    default:
+        break;
+    }
+    if (info->pns_level > 0)
+        fprintf(stderr, " + PNS");
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "Container format: ");
+    if (info->container_mp4)
+    {
+        fprintf(stderr, "MPEG-4 File Format (MP4)\n");
+    }
+    else
+    {
+        switch (info->stream_format)
+        {
+        case FAAC_STREAM_RAW:
+            fprintf(stderr, "Headerless AAC (RAW)\n");
+            break;
+        case FAAC_STREAM_ADTS:
+            fprintf(stderr, "Transport Stream (ADTS)\n");
+            break;
+        default:
+            break;
+        }
+    }
+
+    fprintf(stderr, "Encoding %s to %s\n", info->input_filename, info->output_filename);
+    if (info->total_input_samples != 0)
+    {
+        fprintf(stderr, "         frame         | bitrate | elapsed/estim | play/CPU | ETA\n");
+    }
+    else
+    {
+        fprintf(stderr, "  frame  | elapsed | play/CPU\n");
+    }
+}
+
+static void CliMp4SummaryCallback(const encode_mp4_summary_t *summary, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (opts && opts->verbose >= 2)
+    {
+        fprintf(stderr, "\n");
+        fprintf(stderr, "%u frames\n", summary->frame_count);
+        fprintf(stderr, "%u output samples\n", summary->sample_count);
+        fprintf(stderr, "max bitrate: %u\n", summary->max_bitrate);
+        fprintf(stderr, "avg bitrate: %u\n", summary->avg_bitrate);
+        fprintf(stderr, "max frame size: %u\n", summary->max_frame_size);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     encode_options_t opts;
@@ -362,6 +459,10 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "Wrong libfaac version!\n");
         return 1;
+    }
+    else if (libinfo.version)
+    {
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
     }
 
 #ifdef _WIN32
@@ -476,7 +577,9 @@ int main(int argc, char *argv[])
         case OPT_COMPILATION: opts.metadata.compilation = 1; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
         case 'L':
-            fprintf(stderr, "%s\n", license);
+            if (libinfo.copyright)
+                fprintf(stderr, "%s", libinfo.copyright);
+            fprintf(stderr, "%s", license);
             ret = 0;
             goto cleanup;
         case 'X':
@@ -745,16 +848,17 @@ int main(int argc, char *argv[])
 
     opts.output_filename = aacFileName;
 
-    if (opts.verbose)
-    {
-        fprintf(stderr, "Encoding %s to %s\n", opts.input_filename, opts.output_filename);
-        fprintf(stderr, "         frame         | bitrate | elapsed/estim | "
-                "play/CPU | ETA\n");
-    }
+    encode_callbacks_t cbs = {
+        .progress_cb = CliProgressCallback,
+        .session_start_cb = CliSessionStartCallback,
+        .mp4_summary_cb = CliMp4SummaryCallback,
+        .log_cb = CliLogCallback,
+        .user_data = &opts
+    };
 
-    ret = run_encoding_session(&opts, CliProgressCallback, NULL);
-    if (opts.verbose)
-        fprintf(stderr, "\nDone.\n");
+    ret = run_encoding_session_ext(&opts, &cbs);
+    if (opts.verbose && !(opts.container_mp4 && opts.verbose >= 2))
+        fprintf(stderr, "\n");
 
 cleanup:
     if (aacFileName) free(aacFileName);
