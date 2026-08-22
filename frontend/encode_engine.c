@@ -264,7 +264,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         if (x) { \
             char *utf8_val = utf8_ensure(x); \
             mp4_set_tag(id, utf8_val); \
-            if (utf8_val && num_allocated < MP4TAG_COUNT) \
+            if (utf8_val && num_allocated < (int)(sizeof(allocated_tags) / sizeof(allocated_tags[0]))) \
                 allocated_tags[num_allocated++] = utf8_val; \
             else if (utf8_val) \
                 free(utf8_val); \
