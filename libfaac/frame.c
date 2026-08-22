@@ -573,7 +573,7 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * Scaled to PsyGetAttack's statistic (largest relative energy jump between
  * adjacent sub-blocks). Not portable to a different sub-block count/size --
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.60f
+#define TNS_ATTACK_MIN 0.05f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -766,7 +766,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
-            int dir = (PsyGetTransientSubblock(&hEncoder->psyInfo[channel]) >= 4) ? 1 : 0;
+            int dir = 0;
+            if (coderInfo[channel].block_type == LONG_SHORT_WINDOW)
+                dir = 1;
+            else if (coderInfo[channel].block_type == SHORT_LONG_WINDOW)
+                dir = 0;
+            else
+                dir = (PsyGetTransientSubblock(&hEncoder->psyInfo[channel]) >= 4) ? 1 : 0;
+
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
