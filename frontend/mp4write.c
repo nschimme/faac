@@ -26,6 +26,7 @@
 #endif
 
 #include "mp4write.h"
+#include "charset.h"
 
 #if defined(__has_builtin)
 #if __has_builtin(__builtin_bswap32) && __has_builtin(__builtin_bswap16)
@@ -254,11 +255,17 @@ static void put_descriptor(uint8_t tag, uint32_t size) {
     mem_write(buf, 5);
 }
 
-/* Only resets per-output-file write state (frame table, mdat bookkeeping,
-   bitrate accumulators). Tag/format config set by the caller, which may
-   happen before or after mp4_open() depending on the option, is left
-   untouched. */
+/* Resets per-output-file write state: frame table, mdat bookkeeping, bitrate
+   accumulators, the open output handle, and the in-memory atom buffer. Tag
+   config (named metadata, custom tags via mp4_add_custom_tag()) is set by
+   the caller and may happen before *or* after mp4_open() depending on the
+   frontend, so it must survive this reset -- only mp4_close() clears it,
+   once the caller is actually done with this muxer session. */
 static void reset_write_state(void) {
+    if (g_mp4.fout) {
+        fclose(g_mp4.fout);
+        g_mp4.fout = NULL;
+    }
     free(g_mp4.frame.data);
     g_mp4.frame.data = NULL;
     g_mp4.frame.ents = 0;
@@ -269,15 +276,21 @@ static void reset_write_state(void) {
     g_mp4.mdatofs = 0;
     g_mp4.mdatsize = 0;
     memset(&g_mp4.bitrate, 0, sizeof(g_mp4.bitrate));
+    free(g_membuf);
+    g_membuf = NULL;
 }
 
 int mp4_open(const char *path, int overwrite) {
-    mp4_close(); /* in case of a retry after a failed previous mp4_open() */
-    reset_write_state();
+    reset_write_state(); /* in case of a retry after a failed previous mp4_open() */
     g_mem_error = 0;
 
+#ifdef _WIN32
+    if (!overwrite && win32_access_utf8(path, 0) == 0) return 1;
+    g_mp4.fout = win32_fopen_utf8(path, "wb");
+#else
     if (!overwrite && access(path, 0) == 0) return 1;
     g_mp4.fout = fopen(path, "wb");
+#endif
     if (!g_mp4.fout) return 1;
     setvbuf(g_mp4.fout, NULL, _IOFBF, MP4_IO_BUFSIZE);
 
@@ -672,18 +685,21 @@ int mp4_finish(void) {
     int ok = !g_mem_error && fwrite(g_membuf, 1, g_mempos, g_mp4.fout) == g_mempos;
     free(g_membuf);
     g_membuf = NULL;
+
     return ok ? 0 : 1;
 }
 
+/* Custom tags (mp4_add_custom_tag()) are freed here, not in
+   reset_write_state(), so mp4_open() doesn't wipe them if a caller sets
+   them before the first open. A future multi-file/batch session reusing
+   this muxer across encodes would need to re-add custom tags after each
+   mp4_close() -- they don't survive it. */
 int mp4_close(void) {
-    if (g_mp4.fout) {
-        fclose(g_mp4.fout);
-        g_mp4.fout = NULL;
-    }
-    free(g_mp4.frame.data);
-    g_mp4.frame.data = NULL;
-    free(g_membuf);
-    g_membuf = NULL;
+    reset_write_state();
+    free(g_mp4.custom);
+    g_mp4.custom = NULL;
+    g_mp4.customcnt = 0;
+    g_mp4.customcap = 0;
     return 0;
 }
 
@@ -692,3 +708,19 @@ uint32_t mp4_sample_count(void) { return g_mp4.samples; }
 uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
 uint32_t mp4_max_frame_size(void) { return g_mp4.buffersize; }
+
+int check_image_header(const char *buf)
+{
+    if (!buf)
+        return 0;
+
+    if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
+        return 1;               /* PNG */
+    else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
+             !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
+        return 1;               /* JPEG */
+    else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
+        return 1;               /* GIF */
+
+    return 0;
+}

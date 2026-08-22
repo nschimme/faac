@@ -46,6 +46,10 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map);
 size_t wav_read_int24(pcmfile_t *sndf, int32_t *buf, size_t num, int *map);
 int wav_close(pcmfile_t *file);
 
+/* Create channel remapping array for multi-channel input, consumed by
+   wav_read_float32()/wav_read_int24()'s internal chan_remap(). */
+int *mk_chan_map(int channels, int center, int lf);
+
 #ifdef __cplusplus
 }
 #endif

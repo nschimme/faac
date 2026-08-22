@@ -18,6 +18,28 @@
 
 #include <stdint.h>
 
+/* Metadata structure for MP4 tags */
+typedef struct {
+    const char *artist;
+    const char *artist_sort;
+    const char *title;
+    const char *album;
+    const char *album_sort;
+    const char *album_artist;
+    const char *album_artist_sort;
+    const char *composer;
+    const char *composer_sort;
+    const char *year;
+    const char *comment;
+    const char *encoder;
+    int genre_id;
+    uint32_t track;
+    uint32_t ntracks;
+    uint32_t disc;
+    uint32_t ndiscs;
+    int compilation;
+} mp4_metadata_t;
+
 typedef enum {
     MP4TAG_ARTIST,
     MP4TAG_ARTISTSORT,
@@ -54,5 +76,9 @@ uint32_t mp4_sample_count(void);
 uint32_t mp4_max_bitrate(void);
 uint32_t mp4_avg_bitrate(void);
 uint32_t mp4_max_frame_size(void);
+
+/* Check image header magic bytes (PNG, JPEG, GIF), used to validate
+   --cover-art data before it's embedded as an MP4 covr atom. */
+int check_image_header(const char *buf);
 
 #endif
