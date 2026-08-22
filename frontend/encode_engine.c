@@ -116,6 +116,10 @@ static inline bool write_output_bytes(FILE *outfile, const unsigned char *buf, s
 
 static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
 {
+    char version_string[64] = { 0 };
+    char *allocated_tags[MP4TAG_COUNT] = { 0 };
+    int num_allocated = 0;
+
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
 
@@ -126,17 +130,10 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         faac_encoder_asc(hEncoder, &asc_data, &asc_size);
         mp4_set_decoder_config((unsigned char *)asc_data, asc_size);
     }
-
-    char *version_string = NULL;
     if (libinfo.version)
     {
-        size_t ver_len = strlen(libinfo.version) + 6;
-        version_string = malloc(ver_len);
-        if (version_string)
-        {
-            snprintf(version_string, ver_len, "FAAC %s", libinfo.version);
-            mp4_set_encoder(version_string);
-        }
+        snprintf(version_string, sizeof(version_string), "FAAC %s", libinfo.version);
+        mp4_set_encoder(version_string);
     }
 
     uint32_t creation_time = 0;
@@ -202,9 +199,6 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         mp4_set_cover(opts->art_data, (int)opts->art_size);
     }
 
-    char *allocated_tags[MP4TAG_COUNT] = { 0 };
-    int num_allocated = 0;
-
     const mp4_metadata_t *metadata = &opts->metadata;
 #define SETTAG(id, x) \
     do { \
@@ -240,8 +234,6 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         if (opts->verbose)
             fprintf(stderr, "mp4_finish() failed: output file may be incomplete\n");
     }
-
-    free(version_string);
 
     for (int i = 0; i < num_allocated; i++)
     {
