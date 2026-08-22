@@ -45,12 +45,16 @@ static const struct {
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
 
+#ifndef FAAC_TNS_DECIMATION
+#define FAAC_TNS_DECIMATION 4
+#endif
+
 /*
  * Decimation factor (step) trade-offs for TNS spectral autocorrelation:
- *   step = 1: Full evaluation (1024 bins) -- reference quality (MOS d: 0.0000, 100% CPU)
- *   step = 2: Decimate by 2 (512 bins)   -- MOS d: -0.0001, 2x faster autocorrelation
- *   step = 4: Decimate by 4 (256 bins)   -- MOS d: -0.0003, 4x faster autocorrelation (default)
- *   step = 8: Decimate by 8 (128 bins)   -- MOS d: -0.0012, 8x faster autocorrelation (+17.8% throughput)
+ *   step = 1: Full evaluation (every bin)   -- reference quality (MOS d: 0.0000)
+ *   step = 2: Decimate by 2 (every 2nd bin) -- ~5% faster overall encode; MOS d: -0.0001
+ *   step = 4: Decimate by 4 (every 4th bin) -- ~10% faster overall encode; MOS d: -0.0003
+ *   step = 8: Decimate by 8 (every 8th bin) -- ~17.8% faster overall encode; MOS d: -0.0012 (default)
  *
  * Decimation acts as a frequency-domain regularizer, preventing LPC overfitting
  * on fine pitch harmonics. Beyond step = 8, spectral aliasing degrades LPC fit.
@@ -58,7 +62,7 @@ static const struct {
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
     int lag, i;
-    const int step = 4;
+    const int step = FAAC_TNS_DECIMATION;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
@@ -246,7 +250,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain;
-    int order, i;
+    int order, limit, i;
 
     if (length <= TNS_LPC_ORDER)
         return 0;
@@ -319,7 +323,16 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
     filter->direction = direction ? 1 : 0;
 
-    filter->coefCompress = 0;
+    /* Coefficients that all fit in one fewer bit each can be transmitted at
+     * reduced resolution; the spec's coefCompress flag signals that. */
+    filter->coefCompress = 1;
+    limit = 1 << (DEF_TNS_COEFF_RES - 2);
+    for (i = 1; i <= order; i++) {
+        if (filter->index[i] < -limit || filter->index[i] >= limit) {
+            filter->coefCompress = 0;
+            break;
+        }
+    }
 
     finalize_filter(order, k, filter->aCoeffs);
 
