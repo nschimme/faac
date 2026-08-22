@@ -155,17 +155,6 @@ static void AwakeDialogControls(HWND hWnd)
     wsprintf(szTemp, "%uHz %uch", sampleRate, numChannels);
     SetDlgItemText(hWnd, IDC_INPUTPARAMS, szTemp);
 
-    if (numChannels >= 6)
-    {
-        EnableWindow(GetDlgItem(hWnd, IDC_USELFE), TRUE);
-        CheckDlgButton(hWnd, IDC_USELFE, TRUE);
-    }
-    else
-    {
-        EnableWindow(GetDlgItem(hWnd, IDC_USELFE), FALSE);
-        CheckDlgButton(hWnd, IDC_USELFE, FALSE);
-    }
-
     EnableWindow(GetDlgItem(hWnd, IDOK), TRUE);
 }
 
@@ -232,11 +221,15 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         opts.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
     }
 
+    {
+        HWND hSC = GetDlgItem(hWnd, IDC_SHORTCTL);
+        LRESULT sel = SendMessage(hSC, CB_GETCURSEL, 0, 0);
+        LRESULT data = (sel != CB_ERR) ? SendMessage(hSC, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+        opts.shortctl = (data != CB_ERR) ? (enum faac_shortctl_mode)data : FAAC_SHORTCTL_NORMAL;
+    }
+
     opts.use_tns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED;
-    opts.use_lfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
-    opts.stream_format = opts.container_mp4 ? FAAC_STREAM_RAW
-                         : (IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED
-                            ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS);
+    opts.stream_format = opts.container_mp4 ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS;
 
     char szTemp[256];
     GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
@@ -248,6 +241,9 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
         parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts);
     }
+
+    GetDlgItemText(hWnd, IDC_PNS, szTemp, sizeof(szTemp));
+    opts.pns_level = (szTemp[0] != '\0') ? atoi(szTemp) : -1;
 
     if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
     {
@@ -364,10 +360,21 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Mixed");
         SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_SETCURSEL, 3, 0);
 
-        CheckDlgButton(hWnd, IDC_USELFE, FALSE);
-        CheckDlgButton(hWnd, IDC_USERAW, FALSE);
+        {
+            HWND hSC = GetDlgItem(hWnd, IDC_SHORTCTL);
+            LRESULT idx;
+            idx = SendMessage(hSC, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"Normal");
+            SendMessage(hSC, CB_SETITEMDATA, idx, (LPARAM)FAAC_SHORTCTL_NORMAL);
+            idx = SendMessage(hSC, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"No Short");
+            SendMessage(hSC, CB_SETITEMDATA, idx, (LPARAM)FAAC_SHORTCTL_NOSHORT);
+            idx = SendMessage(hSC, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"No Long");
+            SendMessage(hSC, CB_SETITEMDATA, idx, (LPARAM)FAAC_SHORTCTL_NOLONG);
+            SendMessage(hSC, CB_SETCURSEL, 0, 0);
+        }
+
         CheckDlgButton(hWnd, IDC_USETNS, FALSE);
         ApplyRateModeUI(hWnd, RATEMODE_VBR);
+        SetDlgItemText(hWnd, IDC_PNS, "4"); /* library default, libfaac/faac.c */
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 
         DragAcceptFiles(hWnd, TRUE);

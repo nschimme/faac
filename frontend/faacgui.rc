@@ -87,8 +87,8 @@ BEGIN
     CONTROL         "Progress1",IDC_PROGRESS,"msctls_progress32",WS_BORDER,7,
                     145,250,10
     GROUPBOX        "Output Format",IDC_STATIC,93,62,164,77
-    CONTROL         "Use RAW output",IDC_USERAW,"Button",BS_AUTOCHECKBOX |
-                    BS_LEFTTEXT | WS_TABSTOP,14,93,71,10
+    LTEXT           "PNS (0-10)",IDC_STATIC,14,95,44,8
+    EDITTEXT        IDC_PNS,60,93,20,12,ES_AUTOHSCROLL
     CONTROL         "Use TNS",IDC_USETNS,"Button",BS_AUTOCHECKBOX |
                     BS_LEFTTEXT | WS_TABSTOP,14,82,71,10
     COMBOBOX        IDC_RATEMODE,183,82,67,63,CBS_DROPDOWNLIST |
@@ -97,8 +97,9 @@ BEGIN
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "Rate Mode",IDC_STATIC,183,73,56,8
     LTEXT           "AAC Object Type",IDC_STATIC,183,100,56,8
-    CONTROL         "Use LFE channel",IDC_USELFE,"Button",BS_AUTOCHECKBOX |
-                    BS_LEFTTEXT | WS_DISABLED | WS_TABSTOP,14,104,71,10
+    LTEXT           "Blocks",IDC_STATIC,14,106,26,8
+    COMBOBOX        IDC_SHORTCTL,42,104,43,50,CBS_DROPDOWNLIST |
+                    WS_VSCROLL | WS_TABSTOP
 END
 
 
