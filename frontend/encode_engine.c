@@ -116,8 +116,7 @@ static inline bool write_output_bytes(FILE *outfile, const unsigned char *buf, s
 
 static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
 {
-    char version_string[64] = { 0 };
-    char *allocated_tags[MP4TAG_COUNT] = { 0 };
+    char *allocated_tags[MP4TAG_COUNT + 1] = { 0 };
     int num_allocated = 0;
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
@@ -197,8 +196,14 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
 
     if (libinfo.version)
     {
-        snprintf(version_string, sizeof(version_string), "FAAC %s", libinfo.version);
-        metadata.encoder = version_string;
+        size_t ver_len = strlen(libinfo.version) + 6;
+        char *version_string = malloc(ver_len);
+        if (version_string)
+        {
+            snprintf(version_string, ver_len, "FAAC %s", libinfo.version);
+            metadata.encoder = version_string;
+            allocated_tags[num_allocated++] = version_string;
+        }
     }
 
 #define SETTAG(id, x) \
