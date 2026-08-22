@@ -27,6 +27,7 @@
 #endif
 
 #include "input.h"
+#include "charset.h"
 
 #define SWAP32(x) (((x & 0xff) << 24) | ((x & 0xff00) << 8) \
 	| ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24))
@@ -171,10 +172,18 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
     wave_f = stdin;
     dostdin = 1;
   }
-  else if (!(wave_f = fopen(name, "rb")))
+  else
   {
-    perror(name);
-    return NULL;
+#ifdef _WIN32
+    wave_f = win32_fopen_utf8(name, "rb");
+#else
+    wave_f = fopen(name, "rb");
+#endif
+    if (!wave_f)
+    {
+      perror(name);
+      return NULL;
+    }
   }
 
   if (!rawinput) // header input
@@ -286,23 +295,77 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
 }
 
 
+int *mk_chan_map(int channels, int center, int lf)
+{
+  if (!center && !lf)
+    return NULL;
+
+  if (channels < 3)
+    return NULL;
+
+  if (lf > 0)
+    lf--;
+  else
+    lf = channels - 1;      /* default AAC position */
+
+  if (center > 0)
+    center--;
+  else
+    center = 0;             /* default AAC position */
+
+  int *map = malloc((size_t)channels * sizeof(int));
+  if (!map)
+    return NULL;
+  memset(map, 0, (size_t)channels * sizeof(int));
+
+  int outpos = 0;
+  if ((center >= 0) && (center < channels))
+    map[outpos++] = center;
+
+  int inpos = 0;
+  for (; outpos < (channels - 1) && inpos < channels; inpos++)
+  {
+    if (inpos == center || inpos == lf)
+      continue;
+
+    map[outpos++] = inpos;
+  }
+  if (outpos < channels)
+  {
+    if ((lf >= 0) && (lf < channels))
+      map[outpos] = lf;
+    else if (inpos < channels)
+      map[outpos] = inpos;
+  }
+
+  return map;
+}
+
 static void chan_remap(int32_t *buf, int channels, int blocks, int *map)
 {
-  int i;
-  int32_t *tmp = (int32_t*)malloc(channels * sizeof(int32_t));
+  if (channels < 1)
+    return;
 
-  if (!tmp) return;
+  int32_t tmp_stack[64];
+  int32_t *tmp = tmp_stack;
 
-  for (i = 0; i < blocks; i++)
+  if (channels > 64)
   {
-    int chn;
+    tmp = (int32_t *)malloc((size_t)channels * sizeof(int32_t));
+    if (!tmp)
+      return;
+  }
 
-    memcpy(tmp, buf + i * channels, sizeof(int32_t) * channels);
+  for (int i = 0; i < blocks; i++)
+  {
+    memcpy(tmp, buf + i * channels, (size_t)channels * sizeof(int32_t));
 
-    for (chn = 0; chn < channels; chn++)
+    for (int chn = 0; chn < channels; chn++)
       buf[i * channels + chn] = tmp[map[chn]];
   }
-  free(tmp);
+
+  if (channels > 64)
+    free(tmp);
 }
 
 size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
