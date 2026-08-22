@@ -591,6 +591,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int useTns = hEncoder->config.useTns;
+    const char *env_tns = getenv("FAAC_TNS");
+    if (env_tns) useTns = atoi(env_tns) ? 1 : 0;
     unsigned int jointmode = hEncoder->config.jointmode;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;

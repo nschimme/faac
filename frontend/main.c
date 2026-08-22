@@ -428,6 +428,8 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = FAAC_SHORTCTL_NORMAL;
+    const char *env_sc = getenv("FAAC_SHORTCTL");
+    if (env_sc) shortctl = atoi(env_sc);
 
     FILE *outfile = NULL;
 

@@ -299,9 +299,13 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             wspec[i] = band[i];
     }
 
+    float gain_limit = TNS_GAIN_LIMIT;
+    const char *env_gain = getenv("FAAC_TNS_GAIN");
+    if (env_gain) gain_limit = (float)atof(env_gain);
+
     calc_autocorr_f(TNS_LPC_ORDER, length, band, r);
     gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
+    if (gain < gain_limit)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the
@@ -352,7 +356,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         }
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
-        if (orig_e < TNS_MEASURED_GAIN * filt_e)
+        if (orig_e < gain_limit * filt_e)
             return 0;
     }
 
