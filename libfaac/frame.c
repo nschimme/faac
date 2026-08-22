@@ -33,7 +33,8 @@
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
 #define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
 #define HE_MAX_BITRATE_PER_CH 40000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-#define HE_VBR_QUANTQUAL_MAX  60     /* quality ≤60 ≈ ≤100 kbps; HE saves bits */
+/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
+#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
