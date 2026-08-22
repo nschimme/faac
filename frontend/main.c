@@ -1,8 +1,7 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2001 Menno Bakker
- * Copyright (C) 2002-2017 Krzysztof Nikiel
- * Copyright (C) 2004 Dan Villiom P. Christiansen
+ * Copyright (C) 2002-2026 FAAC Team
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,35 +14,23 @@
  * Lesser General Public License for more details.
  */
 
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #ifdef _WIN32
 #include <windows.h>
-#include <fcntl.h>
 #else
 #include <signal.h>
 #endif
 
-/* the BSD derivatives don't define __unix__ */
 #if defined(__APPLE__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__bsdi__)
 #define __unix__
 #endif
 
-#ifdef __unix__
-#include <sys/resource.h>
-#include <unistd.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
 #include <string.h>
-#include <time.h>
-#include <sys/stat.h>
-#include <errno.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
@@ -52,19 +39,15 @@
 # include "getopt.c"
 #endif
 
-#include "mp4write.h"
+#include <faac.h>
+#include "output_path.h"
+#include "charset.h"
+#include "encode_engine.h"
 
 #ifdef _WIN32
 # undef stderr
 # define stderr stdout
 #endif
-
-#include "input.h"
-
-#include <faac.h>
-
-#define FALSE 0
-#define TRUE 1
 
 enum flags
 {
@@ -94,7 +77,12 @@ enum flags
     OPT_JOINT,
     OPT_PNS,
     OBJTYPE_FLAG,
-    CAP_RATE_FLAG
+    CAP_RATE_FLAG,
+    OPT_TNS_ENABLE,
+    OPT_TNS_DISABLE,
+    OPT_OVERWRITE,
+    OPT_COMPILATION,
+    OPT_IGNORE_LENGTH
 };
 
 typedef struct {
@@ -245,24 +233,9 @@ char *license =
     "Lesser General Public License for more details.\n"
     "\n";
 
-#ifndef min
-#define min(a,b) ( (a) < (b) ? (a) : (b) )
-#endif
-
-/* globals */
-char *progName;
 #ifndef _WIN32
 volatile int running = 1;
-#endif
-
-enum container_format
-{
-    NO_CONTAINER,
-    MP4_CONTAINER,
-};
-
-#ifndef _WIN32
-void signal_handler(int signal)
+static void signal_handler(int signal)
 {
     (void)signal;
     running = 0;
@@ -328,169 +301,106 @@ static void help(int mode)
     }
 }
 
-static int check_image_header(const char *buf)
+
+static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 {
-    if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
-        return 1;               /* PNG */
-    else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
-             !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
-        return 1;               /* JPEG */
-    else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
-        return 1;               /* GIF */
-    else
-        return 0;
-}
-
-static int *mkChanMap(int channels, int center, int lf)
-{
-    int *map;
-    int inpos;
-    int outpos;
-
-    if (!center && !lf)
-        return NULL;
-
-    if (channels < 3)
-        return NULL;
-
-    if (lf > 0)
-        lf--;
-    else
-        lf = channels - 1;      // default AAC position
-
-    if (center > 0)
-        center--;
-    else
-        center = 0;             // default AAC position
-
-    map = malloc(channels * sizeof(map[0]));
-    if (!map) return NULL;
-    memset(map, 0, channels * sizeof(map[0]));
-
-    outpos = 0;
-    if ((center >= 0) && (center < channels))
-        map[outpos++] = center;
-
-    inpos = 0;
-    for (; outpos < (channels - 1) && inpos < channels; inpos++)
+    (void)user_data;
+    if (info->total_frames > 0)
     {
-        if (inpos == center)
-            continue;
-        if (inpos == lf)
-            continue;
-
-        map[outpos++] = inpos;
+        int percent = (int)(info->current_frame * 100 / info->total_frames);
+        double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
+        double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
+        fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
+                info->current_frame, info->total_frames, percent,
+                bitrate_kbps,
+                info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
+                info->speed_factor, info->eta_sec);
     }
-    if (outpos < channels)
+    else
     {
-        if ((lf >= 0) && (lf < channels))
-            map[outpos] = lf;
-        else if (inpos < channels)
-            map[outpos] = inpos;
+        fprintf(stderr, "\r %7u | %7.1f | %7.2fx ",
+                info->current_frame, info->time_elapsed_sec, info->speed_factor);
     }
-
-    return map;
+    fflush(stderr);
+#ifndef _WIN32
+    return running != 0;
+#else
+    return true;
+#endif
 }
-
-#define fprintf if(verbose)fprintf
 
 int main(int argc, char *argv[])
 {
-    int frames, currentFrame;
-    faac_encoder *hEncoder = NULL;
-    pcmfile_t *infile = NULL;
+    encode_options_t opts;
+    init_encode_options(&opts);
 
-    unsigned long samplesInput, maxBytesOutput, totalBytesWritten = 0;
 
-    faac_params params;
-    faac_status fstatus;
-    enum faac_mpeg_version mpegVersion = FAAC_MPEG4;
-    enum faac_object_type objectType = FAAC_OBJ_AUTO;
-    int jointmode = -1;
-    int pnslevel = -1;
-    static int useTns = 0;
-    enum container_format container = NO_CONTAINER;
-    enum faac_stream_format stream = FAAC_STREAM_ADTS;
-    int cutOff = -1;
-    int bitRate = 0;
-    unsigned long quantqual = 0;
-    unsigned int capRate = 0;
-    int chanC = 3;
-    int chanLF = 4;
-
-    char *audioFileName = NULL;
     char *aacFileName = NULL;
-    char *aacFileExt = NULL;
-    int aacFileNameGiven = 0;
-
-    float *pcmbuf;
-    int *chanmap = NULL;
-
-    unsigned char *bitbuf;
-    int samplesRead = 0;
+    bool aacFileNameGiven = false;
+    bool has_custom_tags = false;
     const char *dieMessage = NULL;
-
-    int rawChans = 0;           // disabled by default
-    int rawBits = 16;
-    int rawRate = 44100;
-    int rawEndian = 1;
-
-    int shortctl = FAAC_SHORTCTL_NORMAL;
-
-    FILE *outfile = NULL;
-
-    unsigned int ntracks = 0, trackno = 0;
-    unsigned int ndiscs = 0, discno = 0;
-    static int compilation = 0;
-    const char *artist = NULL, *artistsort = NULL, *title = NULL,
-        *album = NULL, *albumartist = NULL,
-        *albumartistsort = NULL, *albumsort = NULL,
-        *year = NULL, *comment = NULL, *composer = NULL,
-        *composersort = NULL, *tagname = 0, *tagval = 0,
-        *creation_time_str = NULL;
-    int genre = 0;
-    uint8_t *artData = NULL;
-    uint64_t artSize = 0;
-    uint64_t encoded_samples = 0;
-    unsigned int frameSize;
-    uint64_t input_samples = 0;
-    const char *faac_id_string;
-    const char *faac_copyright_string;
-    static int ignorelen = 0;
-    int verbose = 1;
-    static int overwrite = 0;
+    int ret = 0;
 
 #ifndef _WIN32
-    // install signal handler
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 #endif
 
-    // get faac version
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
-    faac_get_library_info(&libinfo);
-    faac_id_string = libinfo.version;
-    faac_copyright_string = libinfo.copyright;
-    if (!strcmp(faac_id_string, PACKAGE_VERSION))
+    if (faac_get_library_info(&libinfo) != FAAC_OK)
     {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
-                faac_id_string);
-    }
-    else
-    {
-        fprintf(stderr, __FILE__ "(%d): wrong libfaac version "
-                "(expected %s, found %s)\n", __LINE__,
-                PACKAGE_VERSION, faac_id_string);
+        fprintf(stderr, "Wrong libfaac version!\n");
         return 1;
     }
 
-    /* begin process command line */
-    progName = argv[0];
+#ifdef _WIN32
+    int wargc = 0;
+    wchar_t **wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    char **allocated_argv = NULL;
+    if (wargv && wargc > 0)
+    {
+        allocated_argv = calloc((size_t)wargc, sizeof(char *));
+        if (allocated_argv)
+        {
+            bool conv_ok = true;
+            for (int i = 0; i < wargc; i++)
+            {
+                char *utf8_arg = win32_utf16_to_utf8(wargv[i]);
+                if (!utf8_arg)
+                {
+                    conv_ok = false;
+                    break;
+                }
+                allocated_argv[i] = utf8_arg;
+            }
+
+            if (conv_ok)
+            {
+                argc = wargc;
+                argv = allocated_argv;
+            }
+            else
+            {
+                for (int i = 0; i < wargc; i++)
+                {
+                    if (allocated_argv[i])
+                        free(allocated_argv[i]);
+                }
+                free(allocated_argv);
+                allocated_argv = NULL;
+            }
+        }
+        LocalFree(wargv);
+    }
+#endif
+
     if (argc < 2)
     {
         help('?');
-        return 1;
+        ret = 1;
+        goto cleanup;
     }
+
     while (1)
     {
         static struct option long_options[] = {
@@ -509,8 +419,8 @@ int main(int argc, char *argv[])
             {"pcmsamplebits", 1, 0, 'B'},
             {"pcmchannels", 1, 0, 'C'},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
-            {"tns", 0, &useTns, 1},
-            {"no-tns", 0, &useTns, 0},
+            {"tns", 0, 0, OPT_TNS_ENABLE},
+            {"no-tns", 0, 0, OPT_TNS_DISABLE},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
             {"license", 0, 0, 'L'},
@@ -530,267 +440,215 @@ int main(int argc, char *argv[])
             {"comment", 1, 0, COMMENT_FLAG},
             {"composer", 1, 0, WRITER_FLAG},
             {"composersort", 1, 0, WRITER_SORT_FLAG},
-            {"compilation", 0, &compilation, 1},
+            {"compilation", 0, 0, OPT_COMPILATION},
             {"pcmswapbytes", 0, 0, 'X'},
-            {"ignorelength", 0, &ignorelen, 1},
+            {"ignorelength", 0, 0, OPT_IGNORE_LENGTH},
             {"tag", 1, 0, TAG_FLAG},
-            {"overwrite", 0, &overwrite, 1},
+            {"overwrite", 0, 0, OPT_OVERWRITE},
             {"creation-time", 1, 0, CREATION_TIME_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {0, 0, 0, 0}
         };
-        int c = -1;
-        int option_index = 0;
 
-        c = getopt_long(argc, argv, "Hhb:m:o:rnc:q:PR:B:C:I:Xwv:",
-                        long_options, &option_index);
+        int option_index = 0;
+        int c = getopt_long(argc, argv, "Hhb:m:o:rnc:q:PR:B:C:I:Xwv:L",
+                            long_options, &option_index);
 
         if (c == -1)
             break;
 
-        if (!c)
-            continue;
-
         switch (c)
         {
+        case OPT_TNS_ENABLE: opts.use_tns = true; break;
+        case OPT_TNS_DISABLE: opts.use_tns = false; break;
+        case OPT_OVERWRITE: opts.overwrite = 1; break;
+        case OPT_COMPILATION: opts.metadata.compilation = 1; break;
+        case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
+        case 'L':
+            fprintf(stderr, "%s\n", license);
+            ret = 0;
+            goto cleanup;
+        case 'X':
+            opts.raw_endian = 0;
+            break;
         case 'o':
-            {
-                int l = strlen(optarg);
-                aacFileName = malloc(l + 1);
-                if (!aacFileName)
-                {
-                    fprintf(stderr, "out of memory\n");
-                    return 1;
-                }
-                memcpy(aacFileName, optarg, l);
-                aacFileName[l] = '\0';
-                aacFileNameGiven = 1;
-            }
+            aacFileName = strdup(optarg);
+            aacFileNameGiven = true;
             break;
         case 'r':
-            {
-                stream = FAAC_STREAM_RAW;
-                break;
-            }
+            opts.stream_format = FAAC_STREAM_RAW;
+            break;
         case 'c':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    cutOff = i;
-                }
-                break;
-            }
+            opts.bandwidth = atoi(optarg);
+            break;
         case 'b':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    bitRate = 1000 * i;
-                }
-                break;
-            }
+            parse_quality_or_bitrate(optarg, true, &opts);
+            break;
         case 'q':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    if (i > 0)
-                        quantqual = i;
-                }
-                break;
-            }
+            parse_quality_or_bitrate(optarg, false, &opts);
+            break;
         case 'I':
-            sscanf(optarg, "%d,%d", &chanC, &chanLF);
+            sscanf(optarg, "%d,%d", &opts.center_channel, &opts.lfe_channel);
             break;
         case 'P':
-            rawChans = 2;       // enable raw input
+            opts.raw_pcm_input = true;
             break;
         case 'R':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    rawRate = i;
-                    rawChans = (rawChans > 0) ? rawChans : 2;
-                }
-                break;
-            }
+            opts.raw_rate = atoi(optarg);
+            opts.raw_pcm_input = true;
+            break;
         case 'B':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    if (i > 32)
-                        i = 32;
-                    if (i < 8)
-                        i = 8;
-                    rawBits = i;
-                    rawChans = (rawChans > 0) ? rawChans : 2;
-                }
-                break;
-            }
+            opts.raw_bits = atoi(optarg);
+            opts.raw_pcm_input = true;
+            break;
         case 'C':
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                    rawChans = i;
-                break;
-            }
+            opts.raw_channels = atoi(optarg);
+            opts.raw_pcm_input = true;
+            break;
         case 'w':
-            container = MP4_CONTAINER;
+            opts.container_mp4 = true;
             break;
         case ARTIST_FLAG:
-            artist = optarg;
+            opts.metadata.artist = optarg;
             break;
         case ARTIST_SORT_FLAG:
-            artistsort = optarg;
+            opts.metadata.artist_sort = optarg;
             break;
         case WRITER_FLAG:
-            composer = optarg;
+            opts.metadata.composer = optarg;
             break;
         case WRITER_SORT_FLAG:
-            composersort = optarg;
+            opts.metadata.composer_sort = optarg;
             break;
         case TITLE_FLAG:
-            title = optarg;
+            opts.metadata.title = optarg;
             break;
         case ALBUM_FLAG:
-            album = optarg;
+            opts.metadata.album = optarg;
             break;
         case ALBUM_ARTIST_FLAG:
-            albumartist = optarg;
+            opts.metadata.album_artist = optarg;
             break;
         case ALBUM_ARTIST_SORT_FLAG:
-            albumartistsort = optarg;
+            opts.metadata.album_artist_sort = optarg;
             break;
         case ALBUM_SORT_FLAG:
-            albumsort = optarg;
+            opts.metadata.album_sort = optarg;
             break;
         case TRACK_FLAG:
-            if (sscanf(optarg, "%u/%u", &trackno, &ntracks) < 1)
+            if (sscanf(optarg, "%u/%u", &opts.metadata.track, &opts.metadata.ntracks) < 1)
                 dieMessage = "Wrong track number.\n";
             break;
         case DISC_FLAG:
-            if (sscanf(optarg, "%u/%u", &discno, &ndiscs) < 1)
+            if (sscanf(optarg, "%u/%u", &opts.metadata.disc, &opts.metadata.ndiscs) < 1)
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
-            genre = atoi(optarg);
-            if ((genre < 0) || (genre > 255))
+            opts.metadata.genre_id = atoi(optarg);
+            if (opts.metadata.genre_id < 0 || opts.metadata.genre_id > 255)
                 dieMessage = "Genre number out of range.\n";
-            genre++;
+            opts.metadata.genre_id++;
             break;
         case YEAR_FLAG:
-            year = optarg;
+            opts.metadata.year = optarg;
             break;
         case COMMENT_FLAG:
-            comment = optarg;
+            opts.metadata.comment = optarg;
+            break;
+        case MPEGVERS_FLAG:
+            switch (atoi(optarg))
+            {
+            case 2: opts.mpeg_version = FAAC_MPEG2; break;
+            case 4: opts.mpeg_version = FAAC_MPEG4; break;
+            default: dieMessage = "Unrecognised MPEG version!\n"; break;
+            }
+            break;
+        case OBJTYPE_FLAG:
+            if (!strcmp(optarg, "lc"))
+                opts.object_type = FAAC_OBJ_LOW;
+            else if (!strcmp(optarg, "he-aac-v1"))
+                opts.object_type = FAAC_OBJ_HE_AAC_V1;
+            else if (!strcmp(optarg, "auto"))
+                opts.object_type = FAAC_OBJ_AUTO;
+            else
+                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
+            break;
+        case SHORTCTL_FLAG:
+            opts.shortctl = (enum faac_shortctl_mode)atoi(optarg);
+            break;
+        case OPT_JOINT:
+            opts.joint_mode = (enum faac_joint_mode)atoi(optarg);
+            break;
+        case OPT_PNS:
+            opts.pns_level = atoi(optarg);
             break;
         case TAG_FLAG:
-            tagname = optarg;
-            if (!(tagval = strchr(optarg, ',')))
-                dieMessage = "Missing tag value.\n";
-            else
-                *(char *)tagval++ = 0;
-            if (!dieMessage && mp4_add_custom_tag(tagname, tagval))
-                dieMessage = "Couldn't add tag (out of memory).\n";
-            break;
-        case CREATION_TIME_FLAG:
-            creation_time_str = optarg;
+            {
+                char *tagname = optarg;
+                char *tagval = strchr(optarg, ',');
+                if (!tagval)
+                {
+                    dieMessage = "Missing tag value.\n";
+                }
+                else
+                {
+                    *tagval++ = '\0';
+                    if (*tagval == '\0')
+                        dieMessage = "Tag value cannot be empty.\n";
+                }
+                if (!dieMessage && mp4_add_custom_tag(tagname, tagval))
+                    dieMessage = "Couldn't add tag (out of memory).\n";
+                has_custom_tags = true;
+            }
             break;
         case COVER_ART_FLAG:
             {
-                FILE *artFile = fopen(optarg, "rb");
-
-                if (artFile)
+                FILE *f = fopen(optarg, "rb");
+                if (f)
                 {
-                    uint64_t r;
+                    fseek(f, 0, SEEK_END);
+                    opts.art_size = ftell(f);
+                    fseek(f, 0, SEEK_SET);
+                    clearerr(f);
 
-                    fseek(artFile, 0, SEEK_END);
-                    artSize = ftell(artFile);
-
-                    artData = malloc(artSize);
-                    if (!artData)
+                    opts.art_data = malloc(opts.art_size);
+                    if (opts.art_data)
                     {
-                        fprintf(stderr, "out of memory\n");
-                        fclose(artFile);
-                        return 1;
+                        if (fread((void *)opts.art_data, 1, opts.art_size, f) != opts.art_size)
+                        {
+                            dieMessage = "Error reading cover art file!\n";
+                            free((void *)opts.art_data);
+                            opts.art_data = NULL;
+                            opts.art_size = 0;
+                        }
+                        else if (opts.art_size < 12 || !check_image_header((const char *)opts.art_data))
+                        {
+                            dieMessage = "Unsupported cover image file format!\n";
+                            free((void *)opts.art_data);
+                            opts.art_data = NULL;
+                            opts.art_size = 0;
+                        }
                     }
-
-                    fseek(artFile, 0, SEEK_SET);
-                    clearerr(artFile);
-
-                    r = fread(artData, artSize, 1, artFile);
-
-                    if (r != 1)
+                    else
                     {
-                        dieMessage = "Error reading cover art file!\n";
-                        free(artData);
-                        artData = NULL;
+                        dieMessage = "Out of memory reading cover art file!\n";
                     }
-                    else if (artSize < 12
-                             || !check_image_header((const char *) artData))
-                    {
-                        /* the above expression checks the image signature */
-                        dieMessage = "Unsupported cover image file format!\n";
-                        free(artData);
-                        artData = NULL;
-                    }
-
-                    fclose(artFile);
+                    fclose(f);
                 }
                 else
                 {
                     dieMessage = "Error opening cover art file!\n";
                 }
-
-                break;
-            }
-        case SHORTCTL_FLAG:
-            shortctl = atoi(optarg);
-            break;
-        case MPEGVERS_FLAG:
-            switch (atoi(optarg))
-            {
-            case 2:
-                mpegVersion = FAAC_MPEG2;
-                break;
-            case 4:
-                mpegVersion = FAAC_MPEG4;
-                break;
-            default:
-                dieMessage = "Unrecognised MPEG version!\n";
             }
             break;
-        case OBJTYPE_FLAG:
-            if (!strcmp(optarg, "lc"))
-                objectType = FAAC_OBJ_LOW;
-            else if (!strcmp(optarg, "he-aac-v1"))
-                objectType = FAAC_OBJ_HE_AAC_V1;
-            else if (!strcmp(optarg, "auto"))
-                objectType = FAAC_OBJ_AUTO;
-            else
-                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
+        case CREATION_TIME_FLAG:
+            opts.creation_time_str = optarg;
             break;
         case CAP_RATE_FLAG:
-            {
-                unsigned int i;
-                if (sscanf(optarg, "%u", &i) > 0)
-                {
-                    capRate = i;
-                }
-                break;
-            }
-        case 'L':
-            fprintf(stderr, "%s", faac_copyright_string);
-            dieMessage = license;
-            break;
-        case 'X':
-            rawEndian = 0;
+            opts.max_bit_rate = atoi(optarg) * 1000;
             break;
         case 'v':
-            verbose = atoi(optarg);
+            opts.verbose = atoi(optarg);
             break;
         case HELP_QUAL:
         case HELP_IO:
@@ -799,585 +657,87 @@ int main(int argc, char *argv[])
         case 'H':
         case 'h':
             help(c);
-            return 1;
-            break;
-        case OPT_JOINT:
-            jointmode = atoi(optarg);
-            break;
-        case OPT_PNS:
-            pnslevel = atoi(optarg);
-            break;
+            ret = 1;
+            goto cleanup;
         case '?':
         default:
             help('?');
-            return 1;
-            break;
+            ret = 1;
+            goto cleanup;
         }
     }
 
-    /* check that we have at least one non-option arguments */
-    if (!dieMessage && (argc - optind) > 1 && aacFileNameGiven)
-        dieMessage =
-            "Cannot encode several input files to one output file.\n";
-
-    if (argc - optind < 1 || dieMessage)
+    if (optind < argc)
     {
-        fprintf(stderr, dieMessage, progName, progName, progName, progName);
-        return 1;
+        opts.input_filename = argv[optind];
+    }
+    else
+    {
+        dieMessage = "No input file specified.\n";
     }
 
-    while (argc - optind > 0)
+    if (dieMessage)
     {
-        /* get the input file name */
-        audioFileName = argv[optind++];
+        fprintf(stderr, "%s", dieMessage);
+        ret = 1;
+        goto cleanup;
     }
 
-    /* generate the output file name, if necessary */
     if (!aacFileNameGiven)
     {
-        char *t = strrchr(audioFileName, '.');
-        int l = t ? strlen(audioFileName) - strlen(t) : strlen(audioFileName);
-
-        aacFileExt = container == MP4_CONTAINER ? ".m4a" : ".aac";
-
-        aacFileName = malloc(l + 1 + 4);
-        if (!aacFileName)
-        {
-            fprintf(stderr, "out of memory\n");
-            return 1;
-        }
-        memcpy(aacFileName, audioFileName, l);
-        memcpy(aacFileName + l, aacFileExt, 4);
-        aacFileName[l + 4] = '\0';
+        aacFileName = get_output_filename(opts.input_filename, opts.container_mp4);
     }
-    else
+    else if (is_mp4_filename(aacFileName))
     {
-        aacFileExt = strrchr(aacFileName, '.');
-
-        if (aacFileExt
-            && (!strcmp(".m4a", aacFileExt) || !strcmp(".m4b", aacFileExt)
-                || !strcmp(".mp4", aacFileExt)))
-            container = MP4_CONTAINER;
+        opts.container_mp4 = true;
     }
 
-    /* open the audio input file */
-    if (rawChans > 0)           // use raw input
-    {
-        infile = wav_open_read(audioFileName, 1);
-        if (infile)
-        {
-            infile->bigendian = rawEndian;
-            infile->channels = rawChans;
-            infile->samplebytes = rawBits / 8;
-            infile->samplerate = rawRate;
-            infile->samples /= (infile->channels * infile->samplebytes);
-        }
-    }
-    else                        // header input
-        infile = wav_open_read(audioFileName, 0);
+    bool has_metadata = opts.metadata.artist || opts.metadata.artist_sort ||
+                        opts.metadata.title || opts.metadata.album ||
+                        opts.metadata.album_sort || opts.metadata.album_artist ||
+                        opts.metadata.album_artist_sort || opts.metadata.composer ||
+                        opts.metadata.composer_sort || opts.metadata.year ||
+                        opts.metadata.comment || opts.metadata.genre_id ||
+                        opts.metadata.track || opts.metadata.disc ||
+                        opts.metadata.compilation || opts.art_data ||
+                        has_custom_tags;
 
-    if (infile == NULL)
-    {
-        fprintf(stderr, "Couldn't open input file %s\n", audioFileName);
-        return 1;
-    }
-
-    if (container != MP4_CONTAINER && (ntracks || trackno || artist ||
-                                       artistsort || title ||
-                                       album || albumartist ||
-                                       albumartistsort ||
-                                       albumsort || year || artData ||
-                                       genre || comment || discno || ndiscs ||
-                                       composer || composersort ||
-                                       compilation))
+    if (!opts.container_mp4 && has_metadata)
     {
         fprintf(stderr, "Metadata requires MP4 output!\n");
-        return 1;
+        ret = 1;
+        goto cleanup;
     }
 
-    if (container == MP4_CONTAINER)
+    opts.output_filename = aacFileName;
+
+    if (opts.verbose)
     {
-        mpegVersion = FAAC_MPEG4;
-        stream = FAAC_STREAM_RAW;
-    }
-
-    if (cutOff <= 0)
-    {
-        if (cutOff < 0)         // default
-            cutOff = 0;
-        else                    // disabled
-            cutOff = infile->samplerate / 2;
-    }
-    if (cutOff > (infile->samplerate / 2))
-        cutOff = infile->samplerate / 2;
-
-    if (shortctl == FAAC_SHORTCTL_NOSHORT) {
-        fprintf(stderr, "disabling short blocks\n");
-    } else if (shortctl == FAAC_SHORTCTL_NOLONG) {
-        fprintf(stderr, "disabling long blocks\n");
-    }
-
-    if (pnslevel > 0 && mpegVersion == FAAC_MPEG2)
-    {
-        fprintf(stderr, "PNS not allowed in MPEG-2 mode, disabling PNS\n");
-        pnslevel = 0;
-    }
-
-    /* put the options into the parameter struct and open the encoder */
-    faac_params_init(&params, sizeof(params));
-    params.sample_rate   = infile->samplerate;
-    params.num_channels  = infile->channels;
-    params.mpeg_version  = mpegVersion;
-    params.object_type   = objectType;
-    params.joint_mode    = (jointmode >= 0) ? (enum faac_joint_mode)jointmode
-                                            : params.joint_mode;
-    params.use_lfe       = (infile->channels >= 6);
-    params.use_tns       = useTns ? true : false;
-    params.short_control = (enum faac_shortctl_mode)shortctl;
-    if (pnslevel >= 0)
-        params.pns_level = pnslevel;
-    if (quantqual > 0)
-    {
-        params.quant_quality = quantqual;
-        params.bit_rate = 0;
-    }
-    if (bitRate)
-        params.bit_rate = bitRate / infile->channels;
-    /* max_bit_rate is already whole-stream, unlike bit_rate above. */
-    if (capRate)
-        params.max_bit_rate = capRate * 1000;
-    params.bandwidth     = cutOff;
-    params.output_format = stream;
-    params.input_format  = FAAC_INPUT_FLOAT;
-
-    /* Reject too many channels with a specific message, rather than the generic
-     * "invalid argument" that faac_encoder_open would otherwise return. */
-    {
-        faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
-        faac_get_library_info(&libinfo);
-        if ((unsigned)infile->channels > libinfo.max_channels)
-        {
-            fprintf(stderr, "Input file %s has %u channels, but this build of "
-                    "libfaac supports at most %u.\n",
-                    audioFileName, (unsigned)infile->channels, libinfo.max_channels);
-            wav_close(infile);
-            return 1;
-        }
-    }
-
-    fstatus = faac_encoder_open(&params, &hEncoder);
-    if (fstatus != FAAC_OK)
-    {
-        fprintf(stderr, "Couldn't open encoder instance for input file %s: %s\n",
-                audioFileName, faac_strerror(fstatus));
-        wav_close(infile);
-        return 1;
-    }
-
-    /* buffer sizes and resolved settings come from the now-configured encoder */
-    faac_encoder_info info;
-    info.struct_size = sizeof(info);
-    faac_encoder_get_info(hEncoder, &info);
-    samplesInput   = (unsigned long)info.frame_samples * infile->channels;
-    maxBytesOutput = info.max_output_bytes;
-    frameSize = samplesInput / infile->channels;
-    pcmbuf = (float *) malloc(samplesInput * sizeof(float));
-    bitbuf = (unsigned char *) malloc(maxBytesOutput * sizeof(unsigned char));
-    if (!pcmbuf || !bitbuf)
-    {
-        fprintf(stderr, "out of memory\n");
-        return 1;
-    }
-    chanmap = mkChanMap(infile->channels, chanC, chanLF);
-    if (chanmap)
-    {
-        fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
-                chanC, chanLF);
-    }
-
-    /* AUTO may have resolved to LC or HE-AAC; read back the decision. */
-    objectType = info.object_type;
-
-    /* initialize MP4 creation */
-    if (container == MP4_CONTAINER)
-    {
-        if (!strcmp(aacFileName, "-"))
-        {
-            fprintf(stderr, "cannot encode MP4 to stdout\n");
-            return 1;
-        }
-
-        if (mp4_open(aacFileName, overwrite))
-        {
-            fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
-            return 1;
-        }
-
-        mp4_set_format(infile->samplerate, infile->channels, infile->samplebytes * 8);
-    }
-    else
-    {
-        /* open the aac output file */
-        if (!strcmp(aacFileName, "-"))
-        {
-            outfile = stdout;
-        }
-        else
-        {
-            outfile = fopen(aacFileName, "wb");
-        }
-        if (!outfile)
-        {
-            fprintf(stderr, "Couldn't create output file %s\n", aacFileName);
-            return 1;
-        }
-    }
-
-    /* report the effective settings the encoder resolved */
-    cutOff = info.bandwidth;
-    quantqual = info.quant_quality;
-    bitRate = info.bit_rate;
-    int resolvedPns = info.pns_level;
-    if (bitRate)
-    {
-        fprintf(stderr, "Initial quantization quality: %ld\n", quantqual);
-        fprintf(stderr, "Average bitrate: %d kbps/channel\n",
-                (bitRate + 500) / 1000);
-    }
-    else
-        fprintf(stderr, "Quantization quality: %ld\n", quantqual);
-    fprintf(stderr, "Bandwidth: %d Hz\n", cutOff);
-    if (resolvedPns > 0)
-        fprintf(stderr, "PNS level: %d\n", resolvedPns);
-    fprintf(stderr, "Object type: %s",
-            (objectType == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
-    fprintf(stderr, " (MPEG-%d)", (mpegVersion == FAAC_MPEG4) ? 4 : 2);
-    if (params.use_tns)
-        fprintf(stderr, " + TNS");
-
-    switch(params.joint_mode) {
-    case FAAC_JOINT_MS:
-        fprintf(stderr, " + M/S");
-        break;
-    case FAAC_JOINT_IS:
-        fprintf(stderr, " + IS");
-        break;
-    case FAAC_JOINT_MIXED:
-        fprintf(stderr, " + Mixed");
-        break;
-    default:
-        break;
-    }
-    if (resolvedPns > 0)
-        fprintf(stderr, " + PNS");
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, "Container format: ");
-    switch (container)
-    {
-    case NO_CONTAINER:
-        switch (stream)
-        {
-        case FAAC_STREAM_RAW:
-            fprintf(stderr, "Headerless AAC (RAW)\n");
-            break;
-        case FAAC_STREAM_ADTS:
-            fprintf(stderr, "Transport Stream (ADTS)\n");
-            break;
-        default:
-            break;
-        }
-        break;
-    case MP4_CONTAINER:
-        fprintf(stderr, "MPEG-4 File Format (MP4)\n");
-        break;
-    }
-
-    int showcnt = 0;
-#ifdef _WIN32
-    long begin = GetTickCount();
-#endif
-    if (infile->samples)
-        frames = ((infile->samples + frameSize - 1) / frameSize) + 1;
-    else
-        frames = 0;
-    currentFrame = 0;
-
-    fprintf(stderr, "Encoding %s to %s\n", audioFileName, aacFileName);
-    if (frames != 0)
-    {
+        fprintf(stderr, "Encoding %s to %s\n", opts.input_filename, opts.output_filename);
         fprintf(stderr, "         frame         | bitrate | elapsed/estim | "
                 "play/CPU | ETA\n");
     }
-    else
-    {
-        fprintf(stderr, "  frame  | elapsed | play/CPU\n");
-    }
 
-    /* encoding loop */
+    ret = run_encoding_session(&opts, CliProgressCallback, NULL);
+    if (opts.verbose)
+        fprintf(stderr, "\nDone.\n");
+
+cleanup:
+    if (aacFileName) free(aacFileName);
+    if (opts.art_data) free((void *)opts.art_data);
+
 #ifdef _WIN32
-    for (;;)
-#else
-    while (running)
-#endif
+    if (allocated_argv)
     {
-        int bytesWritten;
-
-        if (!ignorelen)
+        for (int i = 0; i < argc; i++)
         {
-            if (input_samples < (uint64_t)infile->samples || infile->samples == 0)
-                samplesRead =
-                    wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
-            else
-                samplesRead = 0;
-
-            if (input_samples + (samplesRead / infile->channels) >
-                (uint64_t)infile->samples && infile->samples != 0)
-                samplesRead =
-                    (infile->samples - input_samples) * infile->channels;
+            if (allocated_argv[i])
+                free(allocated_argv[i]);
         }
-        else
-            samplesRead =
-                wav_read_float32(infile, pcmbuf, samplesInput, chanmap);
-
-        input_samples += samplesRead / infile->channels;
-
-        /* call the actual encoding routine */
-        {
-            uint32_t nbytes = 0;
-            fstatus = faac_encoder_encode(hEncoder, pcmbuf, (uint32_t)samplesRead,
-                                          bitbuf, (uint32_t)maxBytesOutput, &nbytes);
-            bytesWritten = (fstatus == FAAC_OK) ? (int)nbytes : -1;
-        }
-
-        if (bytesWritten)
-        {
-            currentFrame++;
-            showcnt--;
-            totalBytesWritten += bytesWritten;
-        }
-
-        if ((showcnt <= 0) || !bytesWritten)
-        {
-            double timeused;
-#ifdef __unix__
-            struct rusage usage;
-#endif
-#ifdef _WIN32
-            char percent[MAX_PATH + 20];
-            timeused = (GetTickCount() - begin) * 1e-3;
-#else
-#ifdef __unix__
-            if (getrusage(RUSAGE_SELF, &usage) == 0)
-            {
-                timeused = (double) usage.ru_utime.tv_sec +
-                    (double) usage.ru_utime.tv_usec * 1e-6;
-            }
-            else
-                timeused = 0;
-#else
-            timeused = (double) clock() * (1.0 / CLOCKS_PER_SEC);
-#endif
-#endif
-            if (currentFrame && (timeused > 0.1))
-            {
-                showcnt += 50;
-
-                if (frames != 0)
-                {
-                    fprintf(stderr,
-                            "\r%7d/%-7d (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
-                            currentFrame, frames, currentFrame * 100 / frames,
-                            ((double) totalBytesWritten * 8.0 / 1000.0) /
-                            ((double) infile->samples / infile->samplerate *
-                             currentFrame / frames), timeused,
-                            timeused * frames / currentFrame,
-                            ((double)frameSize * currentFrame / infile->samplerate) /
-                            timeused,
-                            timeused * (frames -
-                                        currentFrame) / currentFrame);
-                }
-                else
-                {
-                    fprintf(stderr,
-                            "\r %7d | %7.1f | %7.2fx ",
-                            currentFrame,
-                            timeused,
-                            ((double)frameSize * currentFrame / infile->samplerate) /
-                            timeused);
-                }
-
-                fflush(stderr);
-#ifdef _WIN32
-                if (frames != 0)
-                {
-                    snprintf(percent, sizeof(percent), "%.2f%% encoding %s",
-                            100.0 * currentFrame / frames, audioFileName);
-                    SetConsoleTitle(percent);
-                }
-#endif
-            }
-        }
-
-        /* all done, bail out */
-        if (!samplesRead && !bytesWritten)
-            break;
-
-        if (bytesWritten < 0)
-        {
-            fprintf(stderr, "faac_encoder_encode() failed: %s\n",
-                    faac_strerror(fstatus));
-            break;
-        }
-
-        if (bytesWritten > 0)
-        {
-            uint64_t frame_samples = input_samples - encoded_samples;
-            if (frame_samples > frameSize)
-                frame_samples = frameSize;
-
-            if (container == MP4_CONTAINER) {
-                if (mp4_write_frame(bitbuf, (uint32_t)bytesWritten, (uint32_t)frame_samples))
-                {
-                    fprintf(stderr, "mp4_write_frame() failed\n");
-                    break;
-                }
-            } else
-                fwrite(bitbuf, 1, bytesWritten, outfile);
-
-            encoded_samples += frame_samples;
-        }
+        free(allocated_argv);
     }
-    fprintf(stderr, "\n");
+#endif
 
-    if (container == MP4_CONTAINER)
-    {
-        char *version_string = malloc(strlen(faac_id_string) + 6);
-        if (!version_string)
-        {
-            fprintf(stderr, "out of memory\n");
-            return 1;
-        }
-        const uint8_t *ascData = NULL;
-        uint32_t ascSize = 0;
 
-        faac_encoder_asc(hEncoder, &ascData, &ascSize);
-        mp4_set_decoder_config((unsigned char *)ascData, ascSize);
-        snprintf(version_string, strlen(faac_id_string) + 6, "FAAC %s", faac_id_string);
-
-        mp4_set_encoder(version_string);
-
-#define SETTAG(id, x) if(x) mp4_set_tag(id, x)
-        SETTAG(MP4TAG_ARTIST, artist);
-        SETTAG(MP4TAG_ARTISTSORT, artistsort);
-        SETTAG(MP4TAG_COMPOSER, composer);
-        SETTAG(MP4TAG_COMPOSERSORT, composersort);
-        SETTAG(MP4TAG_TITLE, title);
-        SETTAG(MP4TAG_ALBUM, album);
-        SETTAG(MP4TAG_ALBUMARTIST, albumartist);
-        SETTAG(MP4TAG_ALBUMARTISTSORT, albumartistsort);
-        SETTAG(MP4TAG_ALBUMSORT, albumsort);
-        SETTAG(MP4TAG_YEAR, year);
-        SETTAG(MP4TAG_COMMENT, comment);
-#undef SETTAG
-        if (trackno) mp4_set_track(trackno, ntracks);
-        if (discno) mp4_set_disc(discno, ndiscs);
-        if (compilation) mp4_set_compilation(compilation);
-        if (genre) mp4_set_genre(genre);
-        if (artData && artSize)
-            mp4_set_cover(artData, (int)artSize);
-
-        {
-            uint32_t final_creation_time = 0;
-            if (creation_time_str)
-            {
-                if (!strcmp(creation_time_str, "auto"))
-                {
-                    if (strcmp(audioFileName, "-") == 0)
-                    {
-                        fprintf(stderr, "cannot use --creation-time auto with stdin, defaulting to 0\n");
-                    }
-                    else
-                    {
-                        struct stat st;
-                        if (stat(audioFileName, &st) == 0)
-                        {
-                            final_creation_time = (uint32_t)st.st_mtime;
-                        }
-                        else
-                        {
-                            fprintf(stderr, "couldn't stat() input file %s, defaulting to 0\n", audioFileName);
-                        }
-                    }
-                }
-                else if (!strcmp(creation_time_str, "now"))
-                {
-                    final_creation_time = (uint32_t)time(NULL);
-                }
-                else
-                {
-                    char *endptr;
-                    errno = 0;
-                    final_creation_time = (uint32_t)strtoul(creation_time_str, &endptr, 10);
-                    if (errno != 0 || *endptr != '\0')
-                    {
-                        fprintf(stderr, "invalid creation time %s, defaulting to 0\n", creation_time_str);
-                        final_creation_time = 0;
-                    }
-                }
-            }
-            else
-            {
-                const char *sde = getenv("SOURCE_DATE_EPOCH");
-                if (sde)
-                {
-                    char *endptr;
-                    errno = 0;
-                    final_creation_time = (uint32_t)strtoul(sde, &endptr, 10);
-                    if (errno != 0 || *endptr != '\0')
-                    {
-                        fprintf(stderr, "invalid SOURCE_DATE_EPOCH %s, ignoring\n", sde);
-                        final_creation_time = 0;
-                    }
-                }
-            }
-            mp4_set_creation_time(final_creation_time);
-        }
-
-        if (mp4_finish())
-            fprintf(stderr, "mp4_finish() failed: output file may be incomplete\n");
-        mp4_close();
-
-        free(version_string);
-
-        if (verbose >= 2)
-        {
-            fprintf(stderr, "%u frames\n", mp4_frame_count());
-            fprintf(stderr, "%u output samples\n", mp4_sample_count());
-            fprintf(stderr, "max bitrate: %u\n", mp4_max_bitrate());
-            fprintf(stderr, "avg bitrate: %u\n", mp4_avg_bitrate());
-            fprintf(stderr, "max frame size: %u\n", mp4_max_frame_size());
-        }
-    }
-    else
-    {
-        fclose(outfile);
-    }
-
-    faac_encoder_close(&hEncoder);
-
-    wav_close(infile);
-
-    if (artData)
-        free(artData);
-    if (pcmbuf)
-        free(pcmbuf);
-    if (bitbuf)
-        free(bitbuf);
-    if (aacFileNameGiven)
-        free(aacFileName);
-    if (chanmap)
-        free(chanmap);
-
-    return 0;
+    return ret;
 }

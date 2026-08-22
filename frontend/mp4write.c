@@ -672,6 +672,7 @@ int mp4_finish(void) {
     int ok = !g_mem_error && fwrite(g_membuf, 1, g_mempos, g_mp4.fout) == g_mempos;
     free(g_membuf);
     g_membuf = NULL;
+
     return ok ? 0 : 1;
 }
 
@@ -682,6 +683,10 @@ int mp4_close(void) {
     }
     free(g_mp4.frame.data);
     g_mp4.frame.data = NULL;
+    free(g_mp4.custom);
+    g_mp4.custom = NULL;
+    g_mp4.customcnt = 0;
+    g_mp4.customcap = 0;
     free(g_membuf);
     g_membuf = NULL;
     return 0;
@@ -692,3 +697,19 @@ uint32_t mp4_sample_count(void) { return g_mp4.samples; }
 uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
 uint32_t mp4_max_frame_size(void) { return g_mp4.buffersize; }
+
+int check_image_header(const char *buf)
+{
+    if (!buf)
+        return 0;
+
+    if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
+        return 1;               /* PNG */
+    else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
+             !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
+        return 1;               /* JPEG */
+    else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
+        return 1;               /* GIF */
+
+    return 0;
+}

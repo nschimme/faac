@@ -16,13 +16,13 @@
 #define IDC_QUALITY                     1010
 #define IDC_USERAW                      1011
 #define IDC_USETNS                      1012
-#define IDC_USELFE2                     1013
 #define IDC_USELFE                      1013
 #define IDC_BWCTL                       1014
 
 #define IDC_COMPILEDATE                 1018
-#define IDC_MPEGVERSION                 1020
 #define IDC_OBJECTTYPE                  1021
+#define IDC_QUALITYLABEL                1022
+#define IDC_RATEMODE                    1023
 
 // Next default values for new objects
 // 
@@ -30,7 +30,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1022
+#define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

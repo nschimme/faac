@@ -1,6 +1,7 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2001 Menno Bakker
+ * Copyright (C) 2002-2026 FAAC Team
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,62 +18,73 @@
 #include <commdlg.h>
 #include <commctrl.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include "input.h"
-
 #include <faac.h>
 #include "resource.h"
+#include "output_path.h"
+#include "encode_engine.h"
 
+#define WM_USER_PROGRESS (WM_USER + 101)
 
 static HINSTANCE hInstance;
 
-static char inputFilename[_MAX_PATH], outputFilename[_MAX_PATH];
+static char inputFilename[_MAX_PATH];
+static char outputFilename[_MAX_PATH];
 
 static BOOL Encoding = FALSE;
+
+enum RateMode {
+    RATEMODE_VBR = 0,
+    RATEMODE_ABR = 1
+};
+
+static progress_info_t g_gui_progress;
+static DWORD g_last_progress_post = 0;
+static CRITICAL_SECTION g_cs_progress;
 
 static BOOL SelectFileName(HWND hParent, char *filename, BOOL forReading)
 {
     OPENFILENAME ofn;
 
+    memset(&ofn, 0, sizeof(OPENFILENAME));
     ofn.lStructSize = sizeof(OPENFILENAME);
     ofn.hwndOwner = hParent;
     ofn.hInstance = hInstance;
     ofn.nFilterIndex = 0;
     ofn.lpstrFileTitle = NULL;
-    ofn.nMaxFileTitle = 31;
-    filename [0] = 0x00;
+    ofn.nMaxFileTitle = 0;
+    filename[0] = '\0';
     ofn.lpstrFile = (LPSTR)filename;
     ofn.nMaxFile = _MAX_PATH;
-    ofn.lpstrInitialDir = NULL;
-    ofn.lpstrCustomFilter = NULL;
-    ofn.nMaxCustFilter = 0;
-    ofn.nFileOffset = 0;
-    ofn.nFileExtension = 0;
-    ofn.lCustData = 0;
-    ofn.lpfnHook = NULL;
-    ofn.lpTemplateName = NULL;
 
     if (forReading)
     {
-        char filters[] = { "Wave Files (*.wav)\0*.wav\0" \
-            "AIFF Files (*.aif;*.aiff;*.aifc)\0*.aif;*.aiff;*.aifc\0" \
-            "AU Files (*.au)\0*.au\0" \
-            "All Files (*.*)\0*.*\0\0" };
+        static const char filters[] =
+            "Wave Files (*.wav)\0*.wav\0"
+            "AIFF Files (*.aif;*.aiff;*.aifc)\0*.aif;*.aiff;*.aifc\0"
+            "AU Files (*.au)\0*.au\0"
+            "All Files (*.*)\0*.*\0\0";
 
         ofn.lpstrFilter = filters;
         ofn.lpstrDefExt = "wav";
-
         ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
         ofn.lpstrTitle = "Select Source File";
 
-        return GetOpenFileName (&ofn);
-    } else {
-        char filters [] = { "AAC Files (*.aac)\0*.aac\0" \
-            "All Files (*.*)\0*.*\0\0" };
+        return GetOpenFileName(&ofn);
+    }
+    else
+    {
+        static const char filters[] =
+            "MPEG-4 Audio (*.m4a)\0*.m4a\0"
+            "AAC Files (*.aac)\0*.aac\0"
+            "All Files (*.*)\0*.*\0\0";
 
         ofn.lpstrFilter = filters;
-        ofn.lpstrDefExt = "aac";
-
+        ofn.lpstrDefExt = "m4a";
         ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
         ofn.lpstrTitle = "Select Output File";
 
@@ -80,247 +92,239 @@ static BOOL SelectFileName(HWND hParent, char *filename, BOOL forReading)
     }
 }
 
+/* Sets the quality/bitrate label + edit box for the given rate mode, shared
+   by WM_INITDIALOG's initial state and the IDC_RATEMODE CBN_SELCHANGE
+   handler so the two don't drift out of sync. */
+static void ApplyRateModeUI(HWND hWnd, int mode)
+{
+    char text[16];
+
+    if (mode == RATEMODE_VBR)
+    {
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
+        snprintf(text, sizeof(text), "%d", DEFAULT_QUANT_QUALITY);
+    }
+    else
+    {
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Bitrate\n(kbps)");
+        snprintf(text, sizeof(text), "%d", DEFAULT_ABR_KBPS);
+    }
+    SetDlgItemText(hWnd, IDC_QUALITY, text);
+}
+
 static void AwakeDialogControls(HWND hWnd)
 {
     char szTemp[64];
     pcmfile_t *infile = NULL;
-    unsigned int sampleRate, numChannels;
-    char *pExt;
 
     if ((infile = wav_open_read(inputFilename, 0)) == NULL)
         return;
 
-    /* determine input file parameters */
-    sampleRate = infile->samplerate;
-    numChannels = infile->channels;
+    unsigned int sampleRate = infile->samplerate;
+    unsigned int numChannels = infile->channels;
 
     wav_close(infile);
 
-    SetDlgItemText (hWnd, IDC_INPUTFILENAME, inputFilename);
+    SetDlgItemText(hWnd, IDC_INPUTFILENAME, inputFilename);
 
-    strncpy(outputFilename, inputFilename, sizeof(outputFilename) - 5);
-    outputFilename[sizeof(outputFilename) - 5] = '\0';
-
-    pExt = strrchr(outputFilename, '.');
-
-    if (pExt == NULL) lstrcat(outputFilename, ".aac");
-    else lstrcpy(pExt, ".aac");
+    char *derived = get_output_filename(inputFilename, 1 /* GUI always defaults to MP4 */);
+    if (derived)
+    {
+        strncpy(outputFilename, derived, sizeof(outputFilename) - 1);
+        outputFilename[sizeof(outputFilename) - 1] = '\0';
+        free(derived);
+    }
 
     EnableWindow(GetDlgItem(hWnd, IDC_OUTPUTFILENAME), TRUE);
     EnableWindow(GetDlgItem(hWnd, IDC_SELECT_OUTPUTFILE), TRUE);
 
     SetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename);
 
-    wsprintf(szTemp, "%iHz %ich", sampleRate, numChannels);
+    wsprintf(szTemp, "%uHz %uch", sampleRate, numChannels);
     SetDlgItemText(hWnd, IDC_INPUTPARAMS, szTemp);
+
+    if (numChannels >= 6)
+    {
+        EnableWindow(GetDlgItem(hWnd, IDC_USELFE), TRUE);
+        CheckDlgButton(hWnd, IDC_USELFE, TRUE);
+    }
+    else
+    {
+        EnableWindow(GetDlgItem(hWnd, IDC_USELFE), FALSE);
+        CheckDlgButton(hWnd, IDC_USELFE, FALSE);
+    }
 
     EnableWindow(GetDlgItem(hWnd, IDOK), TRUE);
 }
 
+static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+
+    if (!Encoding)
+        return false;
+
+    DWORD now = GetTickCount();
+
+    EnterCriticalSection(&g_cs_progress);
+    /* Throttle updates to ~20 Hz (50ms interval) or final frame to avoid message queue spamming */
+    bool should_post = (info->current_input_samples == info->total_input_samples) ||
+                       (g_last_progress_post == 0) ||
+                       ((now - g_last_progress_post) >= 50);
+    if (should_post)
+    {
+        g_last_progress_post = now;
+        g_gui_progress = *info;
+    }
+    LeaveCriticalSection(&g_cs_progress);
+
+    if (should_post)
+    {
+        PostMessage(hWnd, WM_USER_PROGRESS, 0, 0);
+    }
+
+    return true;
+}
+
 static DWORD WINAPI EncodeFile(LPVOID pParam)
 {
-    HWND hWnd = (HWND) pParam;
-    pcmfile_t *infile = NULL;
+    HWND hWnd = (HWND)pParam;
+
+    EnterCriticalSection(&g_cs_progress);
+    g_last_progress_post = 0;
+    LeaveCriticalSection(&g_cs_progress);
 
     GetDlgItemText(hWnd, IDC_INPUTFILENAME, inputFilename, sizeof(inputFilename));
     GetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename, sizeof(outputFilename));
 
-    /* open the input file */
-    if ((infile = wav_open_read(inputFilename, 0)) != NULL)
+    encode_options_t opts;
+    init_encode_options(&opts);
+
+    opts.input_filename = inputFilename;
+    opts.output_filename = outputFilename;
+    opts.container_mp4 = is_mp4_filename(outputFilename) != 0;
+    opts.overwrite = 1;
+
     {
-        /* determine input file parameters */
-        unsigned int sampleRate = infile->samplerate;
-        unsigned int numChannels = infile->channels;
-
-        unsigned long inputSamples;
-        unsigned long maxOutputBytes;
-
-        /* set up parameters and open the encoder */
-        faac_params params;
-        faac_encoder *hEncoder = NULL;
-	char szTemp[256];
-
-        faac_params_init(&params, sizeof(params));
-        params.sample_rate  = sampleRate;
-        params.num_channels = numChannels;
-        params.input_format = FAAC_INPUT_32BIT;   /* wav_read_int24 -> 24-in-32 int */
-        {
-            HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
-            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
-            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            params.object_type = (data != CB_ERR) ? (enum faac_object_type)data : FAAC_OBJ_AUTO;
-        }
-        {
-            LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
-            params.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
-        }
-        params.use_tns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED;
-        params.use_lfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED;
-        params.output_format = IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED
-                             ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS;
-        params.mpeg_version = (enum faac_mpeg_version)
-            SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_GETCURSEL, 0, 0);
-
-        GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
-	params.quant_quality = atoi(szTemp);
-	params.bit_rate = 0;  /* quality-driven; no bitrate control in this dialog */
-	if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
-	{
-            GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
-            params.bandwidth = atoi(szTemp);
-	}
-
-        if (faac_encoder_open(&params, &hEncoder) == FAAC_OK)
-        {
-            HANDLE hOutfile;
-
-            faac_encoder_info info;
-            info.struct_size = sizeof(info);
-            faac_encoder_get_info(hEncoder, &info);
-
-            inputSamples   = (unsigned long)info.frame_samples * numChannels;
-            maxOutputBytes = info.max_output_bytes;
-
-	    sprintf(szTemp, "%u", info.quant_quality);
-	    SetDlgItemText(hWnd, IDC_QUALITY, szTemp);
-
-	    sprintf(szTemp, "%u", info.bandwidth);
-	    SetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp);
-
-            /* open the output file */
-            hOutfile = CreateFile(outputFilename, GENERIC_WRITE, 0, NULL,
-                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-            if (hOutfile != INVALID_HANDLE_VALUE)
-            {
-                UINT startTime = GetTickCount(), lastUpdated = 50;
-                DWORD totalBytesRead = 0;
-
-                unsigned int bytesInput = 0;
-                DWORD numberOfBytesWritten = 0;
-                int *pcmbuf;
-                unsigned char *bitbuf;
-                char HeaderText[50];
-                char Percentage[5];
-
-                pcmbuf = (int*)LocalAlloc(0, inputSamples*sizeof(int));
-                bitbuf = (unsigned char*)LocalAlloc(0, maxOutputBytes*sizeof(unsigned char));
-
-                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
-                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
-
-                for ( ;; )
-                {
-                    int bytesWritten;
-                    UINT timeElapsed, timeEncoded;
-
-                    bytesInput = wav_read_int24(infile, pcmbuf, inputSamples, NULL) * sizeof(int);
-
-                    SendDlgItemMessage (hWnd, IDC_PROGRESS, PBM_SETPOS, (unsigned long)((float)totalBytesRead * 1024.0f / (infile->samples*sizeof(int)*numChannels)), 0);
-
-                    /* Percentage for Dialog Output */
-                    _itoa((int)((float)totalBytesRead * 100.0f / (infile->samples*sizeof(int)*numChannels)),Percentage,10);
-                    lstrcpy(HeaderText,"FAAC GUI: ");
-                    lstrcat(HeaderText,Percentage);
-                    lstrcat(HeaderText,"%");
-                    SendMessage(hWnd,WM_SETTEXT,0,(LPARAM)HeaderText);
-
-                    totalBytesRead += bytesInput;
-
-                    timeElapsed = (GetTickCount () - startTime) / 10;
-                    timeEncoded = 100.0 * totalBytesRead / (sampleRate * numChannels * sizeof (int));
-
-                    if (timeElapsed > (lastUpdated + 20))
-                    {
-                        float factor;
-			unsigned timeLeft;
-
-                        lastUpdated = timeElapsed;
-
-                        factor = (float) timeEncoded / (float) (timeElapsed ? timeElapsed : 1);
-			timeLeft = 10.0 * infile->samples / sampleRate / factor - 0.1 * timeElapsed;
-
-			sprintf(szTemp, "Playing time: %2.2i:%04.1f\tEncoding time: %2.2i:%04.1f\n"
-				"Play/enc factor: %.2f\tEstimated time left: %2.2i:%04.1f",
-				timeEncoded / 6000, 0.01 * (timeEncoded % 6000),
-				timeElapsed / 6000, 0.01 * (timeElapsed % 6000),
-				factor,
-				timeLeft / 600, 0.1 * (timeLeft % 600)
-			       );
-
-                        SetDlgItemText(hWnd, IDC_TIME, szTemp);
-                    }
-
-                    /* call the actual encoding routine */
-                    {
-                        uint32_t nbytes = 0;
-                        faac_status st = faac_encoder_encode(hEncoder,
-                            pcmbuf,
-                            (uint32_t)(bytesInput/sizeof(int)),
-                            bitbuf,
-                            (uint32_t)maxOutputBytes,
-                            &nbytes);
-                        bytesWritten = (st == FAAC_OK) ? (int)nbytes : -1;
-                    }
-
-                    /* Stop Pressed */
-                    if ( !Encoding )
-                        break;
-
-                    /* all done, bail out */
-                    if (!bytesInput && !bytesWritten)
-                        break;
-
-                    if (bytesWritten < 0)
-                    {
-                        MessageBox (hWnd, "faac_encoder_encode failed!", "Error", MB_OK | MB_ICONSTOP);
-                        break;
-                    }
-
-                    WriteFile(hOutfile, bitbuf, bytesWritten, &numberOfBytesWritten, NULL);
-
-                    }
-
-                CloseHandle(hOutfile);
-                if (pcmbuf) LocalFree(pcmbuf);
-                if (bitbuf) LocalFree(bitbuf);
-            }
-
-            faac_encoder_close(&hEncoder);
-        }
-
-        wav_close(infile);
-        MessageBeep(1);
-
-        SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
-    } else {
-        MessageBox(hWnd, "Couldn't open input file!", "Error", MB_OK | MB_ICONSTOP);
+        HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
+        LRESULT sel = SendMessage(hOT, CB_GETCURSEL, 0, 0);
+        LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+        opts.object_type = (data != CB_ERR) ? (enum faac_object_type)data : FAAC_OBJ_AUTO;
     }
 
-    SendMessage(hWnd,WM_SETTEXT,0,(LPARAM)"FAAC GUI");
+    {
+        LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
+        opts.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
+    }
+
+    opts.use_tns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED;
+    opts.use_lfe = IsDlgButtonChecked(hWnd, IDC_USELFE) == BST_CHECKED ? 1 : 0;
+    opts.stream_format = opts.container_mp4 ? FAAC_STREAM_RAW
+                         : (IsDlgButtonChecked(hWnd, IDC_USERAW) == BST_CHECKED
+                            ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS);
+
+    char szTemp[256];
+    GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
+
+    {
+        HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+        LRESULT sel = SendMessage(hRM, CB_GETCURSEL, 0, 0);
+        LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
+
+        parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts);
+    }
+
+    if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
+    {
+        GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
+        opts.bandwidth = atoi(szTemp);
+    }
+
+    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
+    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+
+    int status = run_encoding_session(&opts, GuiProgressCallback, hWnd);
+    if (status == ENCODE_ERROR)
+    {
+        MessageBox(hWnd, "Encoding failed!", "Error", MB_OK | MB_ICONSTOP);
+    }
+    else if (status == ENCODE_SUCCESS)
+    {
+        MessageBeep(MB_OK);
+    }
+
+    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+    SendMessage(hWnd, WM_SETTEXT, 0, (LPARAM)"FAAC GUI");
     Encoding = FALSE;
     SetDlgItemText(hWnd, IDOK, "Encode");
     return 0;
 }
 
-static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    (void)lParam;
     switch (msg)
     {
+    case WM_USER_PROGRESS:
+        {
+            progress_info_t info;
+            EnterCriticalSection(&g_cs_progress);
+            info = g_gui_progress;
+            LeaveCriticalSection(&g_cs_progress);
+
+            if (info.total_input_samples > 0)
+            {
+                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS,
+                    (WPARAM)(info.current_input_samples * 1024 / info.total_input_samples), 0);
+
+                char HeaderText[64];
+                int percent = (int)(info.current_input_samples * 100 / info.total_input_samples);
+                snprintf(HeaderText, sizeof(HeaderText), "FAAC GUI: %d%%", percent);
+                SetWindowText(hWnd, HeaderText);
+            }
+
+            char szTemp[256];
+            double playingTime = (double)info.current_input_samples / (double)(info.sample_rate ? info.sample_rate : 1);
+            snprintf(szTemp, sizeof(szTemp),
+                "Playing time: %02d:%04.1f\tEncoding time: %02d:%04.1f\n"
+                "Play/enc factor: %.2f\tEstimated time left: %02d:%04.1f",
+                (int)playingTime / 60, (float)((int)(playingTime * 10.0) % 600) / 10.0f,
+                (int)(info.time_elapsed_sec / 60.0), (float)((int)(info.time_elapsed_sec * 10.0) % 600) / 10.0f,
+                (float)info.speed_factor,
+                (int)info.eta_sec / 60, (float)((int)(info.eta_sec * 10.0) % 600) / 10.0f);
+
+            SetDlgItemText(hWnd, IDC_TIME, szTemp);
+            return TRUE;
+        }
+
     case WM_INITDIALOG:
-      {
-	faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
-	char txt[100];
-	faac_get_library_info(&libinfo);
-	sprintf(txt, "libfaac version %s", libinfo.version ? libinfo.version : "?");
-	SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
-      }
+        {
+            faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
+            if (faac_get_library_info(&libinfo) == FAAC_OK)
+            {
+                char txt[128];
+                snprintf(txt, sizeof(txt), "libfaac version %s", libinfo.version ? libinfo.version : "?");
+                SetDlgItemText(hWnd, IDC_COMPILEDATE, txt);
+            }
+            else
+            {
+                MessageBox(hWnd, "Wrong libfaac version!", "FAAC", MB_OK | MB_ICONERROR);
+                PostMessage(hWnd, WM_CLOSE, 0, 0);
+            }
+        }
 
-        inputFilename[0] = 0x00;
+        inputFilename[0] = '\0';
+        outputFilename[0] = '\0';
 
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"MPEG4");
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"MPEG2");
-        SendMessage(GetDlgItem(hWnd, IDC_MPEGVERSION), CB_SETCURSEL, 0, 0);
+        {
+            HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+            LRESULT idx;
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"VBR (Quality)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_VBR);
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"ABR (Bitrate)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_ABR);
+            SendMessage(hRM, CB_SETCURSEL, 0, 0);
+        }
 
         {
             HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
@@ -343,30 +347,27 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         CheckDlgButton(hWnd, IDC_USELFE, FALSE);
         CheckDlgButton(hWnd, IDC_USERAW, FALSE);
         CheckDlgButton(hWnd, IDC_USETNS, FALSE);
-        SetDlgItemText(hWnd, IDC_QUALITY, "100");
+        ApplyRateModeUI(hWnd, RATEMODE_VBR);
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 
         DragAcceptFiles(hWnd, TRUE);
         return TRUE;
 
     case WM_DROPFILES:
-
-        if (DragQueryFile((HDROP) wParam, 0, (LPSTR) inputFilename, _MAX_PATH - 1))
+        if (DragQueryFile((HDROP)wParam, 0, (LPSTR)inputFilename, _MAX_PATH - 1))
             AwakeDialogControls(hWnd);
 
-        DragFinish((HDROP) wParam);
+        DragFinish((HDROP)wParam);
         return FALSE;
 
     case WM_COMMAND:
-
-        switch (wParam)
+        switch (LOWORD(wParam))
         {
         case IDOK:
-
-            if ( !Encoding )
+            if (!Encoding)
             {
                 DWORD retval;
-                CreateThread(NULL,0,EncodeFile,hWnd,0,&retval);
+                CreateThread(NULL, 0, EncodeFile, hWnd, 0, &retval);
                 Encoding = TRUE;
                 SetDlgItemText(hWnd, IDOK, "Stop");
             }
@@ -378,64 +379,59 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             return TRUE;
 
         case IDCANCEL:
-
             EndDialog(hWnd, TRUE);
             return TRUE;
 
         case IDC_SELECT_INPUTFILE:
-
             if (SelectFileName(hWnd, inputFilename, TRUE))
                 AwakeDialogControls(hWnd);
-
             break;
 
         case IDC_SELECT_OUTPUTFILE:
-
             if (SelectFileName(hWnd, outputFilename, FALSE))
             {
                 SetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename);
             }
+            break;
 
+        case IDC_BWCTL:
+            switch (IsDlgButtonChecked(hWnd, IDC_BWCTL))
+            {
+            case BST_CHECKED:
+                EnableWindow(GetDlgItem(hWnd, IDC_BANDWIDTH), TRUE);
+                break;
+            case BST_UNCHECKED:
+                EnableWindow(GetDlgItem(hWnd, IDC_BANDWIDTH), FALSE);
+                break;
+            }
             break;
-	case IDC_BWCTL:
-	  switch (IsDlgButtonChecked(hWnd, IDC_BWCTL))
-	  {
-	  case BST_CHECKED:
-	    EnableWindow(GetDlgItem(hWnd, IDC_BANDWIDTH), TRUE);
-	    //SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
-            break;
-	  case BST_UNCHECKED:
-	    EnableWindow(GetDlgItem(hWnd, IDC_BANDWIDTH), FALSE);
-	    //SetDlgItemText(hWnd, IDC_BANDWIDTH, "");
-            break;
-	  }
-	  break;
 
-        case MAKEWPARAM(IDC_OBJECTTYPE, CBN_SELCHANGE):
-        {
-            HWND hOT  = GetDlgItem(hWnd, IDC_OBJECTTYPE);
-            HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
-            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
-            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1) {
-                SendMessage(hMPG, CB_SETCURSEL, 0, 0);
-                EnableWindow(hMPG, FALSE);
-            } else {
-                EnableWindow(hMPG, TRUE);
+        case IDC_RATEMODE:
+            if (HIWORD(wParam) == CBN_SELCHANGE)
+            {
+                HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
+                LRESULT sel = SendMessage(hRM, CB_GETCURSEL, 0, 0);
+                LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
+
+                ApplyRateModeUI(hWnd, (int)mode);
             }
             break;
         }
-        }
-
         break;
     }
 
     return FALSE;
 }
 
-int WINAPI WinMain (HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    hInstance = hInst;
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+    (void)nCmdShow;
 
-    return DialogBox(hInstance, MAKEINTRESOURCE (IDD_MAINDIALOG), NULL, (DLGPROC) DialogProc);
+    hInstance = hInst;
+    InitializeCriticalSection(&g_cs_progress);
+    int res = (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAINDIALOG), NULL, DialogProc);
+    DeleteCriticalSection(&g_cs_progress);
+    return res;
 }
