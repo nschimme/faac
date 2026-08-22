@@ -32,8 +32,8 @@ static const struct {
 };
 
 #define TNS_LPC_ORDER 8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
-#define TNS_GAIN_LIMIT 1.15f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN 1.15f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+#define TNS_GAIN_LIMIT 1.80f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
+#define TNS_MEASURED_GAIN 1.80f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
