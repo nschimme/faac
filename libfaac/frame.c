@@ -573,7 +573,7 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * Scaled to PsyGetAttack's statistic (largest relative energy jump between
  * adjacent sub-blocks). Not portable to a different sub-block count/size --
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.05f
+#define TNS_ATTACK_MIN 0.60f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
