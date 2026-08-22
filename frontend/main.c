@@ -467,8 +467,12 @@ int main(int argc, char *argv[])
     faac_copyright_string = libinfo.copyright;
     if (!strcmp(faac_id_string, PACKAGE_VERSION))
     {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n",
                 faac_id_string);
+#ifdef FAAC_TUNING
+        fprintf(stderr, "FAAC_TUNING build\n");
+#endif
+        fprintf(stderr, "\n");
     }
     else
     {

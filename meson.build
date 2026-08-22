@@ -36,6 +36,10 @@ config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HA
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 config_h.set('FAAC_TNS_DECIMATION', get_option('tns-decimation'))
 
+if get_option('tuning')
+    config_h.set('FAAC_TUNING', 1)
+endif
+
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
 c_args = []

@@ -3,6 +3,11 @@ option('frontend',
     type: 'boolean',
     value: true)
 
+option('tuning',
+    description: 'Enable tuning environment variables and diagnostics',
+    type: 'boolean',
+    value: false)
+
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.

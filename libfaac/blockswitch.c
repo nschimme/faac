@@ -270,6 +270,13 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
      If there is 1 channel that wants a short block,
      use a short block on all channels.
    */
+  const char *env_fl = getenv("FAAC_FORCE_LONG");
+  if (env_fl && atoi(env_fl))
+  {
+    for (channel = 0; channel < numChannels; channel++)
+      psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+  }
+
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
