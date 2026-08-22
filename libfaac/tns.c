@@ -236,7 +236,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain;
-    int order, limit, i;
+    int order, i;
 
     if (length <= TNS_LPC_ORDER)
         return 0;
@@ -309,16 +309,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
     filter->direction = direction ? 1 : 0;
 
-    /* Coefficients that all fit in one fewer bit each can be transmitted at
-     * reduced resolution; the spec's coefCompress flag signals that. */
-    filter->coefCompress = 1;
-    limit = 1 << (DEF_TNS_COEFF_RES - 2);
-    for (i = 1; i <= order; i++) {
-        if (filter->index[i] < -limit || filter->index[i] >= limit) {
-            filter->coefCompress = 0;
-            break;
-        }
-    }
+    filter->coefCompress = 0;
 
     finalize_filter(order, k, filter->aCoeffs);
 
