@@ -127,15 +127,15 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         mp4_set_decoder_config((unsigned char *)asc_data, asc_size);
     }
 
+    char *version_string = NULL;
     if (libinfo.version)
     {
         size_t ver_len = strlen(libinfo.version) + 6;
-        char *version_string = malloc(ver_len);
+        version_string = malloc(ver_len);
         if (version_string)
         {
             snprintf(version_string, ver_len, "FAAC %s", libinfo.version);
             mp4_set_encoder(version_string);
-            free(version_string);
         }
     }
 
@@ -240,6 +240,8 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         if (opts->verbose)
             fprintf(stderr, "mp4_finish() failed: output file may be incomplete\n");
     }
+
+    free(version_string);
 
     for (int i = 0; i < num_allocated; i++)
     {
