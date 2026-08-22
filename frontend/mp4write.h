@@ -65,7 +65,7 @@ void mp4_set_genre(int genre);
 void mp4_set_compilation(int flag);
 void mp4_set_track(uint32_t num, uint32_t total);
 void mp4_set_disc(uint32_t num, uint32_t total);
-void mp4_set_cover(const uint8_t *data, int size);
+void mp4_set_cover(const uint8_t *data, uint32_t size);
 int mp4_add_custom_tag(const char *name, const char *value);
 int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples);
 int mp4_finish(void);
