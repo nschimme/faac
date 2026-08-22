@@ -18,6 +18,7 @@
 #define CHARSET_H
 
 #include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,14 @@ char *utf8_ensure(const char *str);
 #include <windows.h>
 /* Convert UTF-16 wchar_t string to heap-allocated UTF-8 string */
 char *win32_utf16_to_utf8(const wchar_t *wstr);
+
+/* fopen() on a UTF-8 path: converts to UTF-16 and calls _wfopen(), since the
+   narrow CRT's fopen() interprets its argument in the current ANSI code
+   page, not UTF-8. */
+FILE *win32_fopen_utf8(const char *utf8_path, const char *mode);
+
+/* access() on a UTF-8 path, same rationale as win32_fopen_utf8(). */
+int win32_access_utf8(const char *utf8_path, int amode);
 #endif
 
 #ifdef __cplusplus

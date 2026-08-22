@@ -14,10 +14,22 @@
  * Lesser General Public License for more details.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
+#ifdef _WIN32
+#include <io.h>
+#elif defined(HAVE_ICONV)
+#include <langinfo.h>
+#include <iconv.h>
+#include <strings.h>
+#endif
 
 #include "charset.h"
 
@@ -92,36 +104,143 @@ char *win32_utf16_to_utf8(const wchar_t *wstr)
     return str;
 }
 
+/* Attempts to repair str, assumed to be in the current Windows ANSI code
+   page, into UTF-8. Returns NULL if it can't. */
+static char *repair_to_utf8(const char *str)
+{
+    int wn = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
+    if (wn <= 0)
+        return NULL;
+
+    wchar_t *ws = malloc((size_t)wn * sizeof(wchar_t));
+    if (!ws)
+        return NULL;
+
+    MultiByteToWideChar(CP_ACP, 0, str, -1, ws, wn);
+    char *utf8 = win32_utf16_to_utf8(ws);
+    free(ws);
+    return utf8;
+}
+
+static wchar_t *utf8_to_win32_utf16(const char *utf8_str)
+{
+    if (!utf8_str)
+        return NULL;
+
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, NULL, 0);
+    if (wlen <= 0)
+        return NULL;
+
+    wchar_t *wstr = malloc((size_t)wlen * sizeof(wchar_t));
+    if (wstr)
+        MultiByteToWideChar(CP_UTF8, 0, utf8_str, -1, wstr, wlen);
+
+    return wstr;
+}
+
+FILE *win32_fopen_utf8(const char *utf8_path, const char *mode)
+{
+    if (!utf8_path || !mode)
+        return NULL;
+
+    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    if (!wpath)
+        return NULL;
+
+    wchar_t *wmode = utf8_to_win32_utf16(mode);
+    if (!wmode)
+    {
+        free(wpath);
+        return NULL;
+    }
+
+    FILE *f = _wfopen(wpath, wmode);
+    free(wpath);
+    free(wmode);
+    return f;
+}
+
+int win32_access_utf8(const char *utf8_path, int amode)
+{
+    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    if (!wpath)
+        return -1;
+
+    int ret = _waccess(wpath, amode);
+    free(wpath);
+    return ret;
+}
+#else /* POSIX */
+#ifdef HAVE_ICONV
+/* Mirrors the Windows path (assume the current code page, convert to UTF-8)
+   using POSIX's equivalent: the locale's codeset name plus iconv(). Returns
+   NULL if it can't repair str. Requires setlocale(LC_CTYPE, "") to have
+   been called at startup -- otherwise nl_langinfo() reports the "C"
+   locale's codeset (ASCII) regardless of the environment. */
+static char *repair_to_utf8(const char *str)
+{
+    const char *codeset = nl_langinfo(CODESET);
+    if (!codeset || !strcasecmp(codeset, "UTF-8") || !strcasecmp(codeset, "UTF8"))
+        return NULL; /* locale already claims UTF-8 (or is unknown): this is
+                        corrupt input, not a different encoding */
+
+    iconv_t cd = iconv_open("UTF-8", codeset);
+    if (cd == (iconv_t)-1)
+        return NULL;
+
+    size_t inbytes = strlen(str);
+    size_t outcap = inbytes * 4 + 16; /* worst-case UTF-8 expansion + headroom */
+    char *outbuf = malloc(outcap);
+    if (!outbuf)
+    {
+        iconv_close(cd);
+        return NULL;
+    }
+
+    char *inp = (char *)str;
+    char *outp = outbuf;
+    size_t inleft = inbytes;
+    size_t outleft = outcap - 1; /* leave room for the NUL below */
+
+    size_t rc = iconv(cd, &inp, &inleft, &outp, &outleft);
+    /* Flush to the initial shift state: a no-op for simple codesets like
+       ISO-8859-*, but stateful ones (e.g. ISO-2022-JP) need a trailing
+       escape sequence emitted here, or the converted tag is truncated. */
+    if (rc != (size_t)-1 && inleft == 0)
+        iconv(cd, NULL, NULL, &outp, &outleft);
+    iconv_close(cd);
+
+    if (rc == (size_t)-1 || inleft != 0)
+    {
+        free(outbuf);
+        return NULL;
+    }
+
+    *outp = '\0';
+    return outbuf;
+}
+#else
+/* No iconv available on this platform: can't attempt repair. */
+static char *repair_to_utf8(const char *str)
+{
+    (void)str;
+    return NULL;
+}
+#endif
+#endif
+
 char *utf8_ensure(const char *str)
 {
     if (!str)
         return NULL;
 
     if (utf8_is_valid(str))
-    {
-        return strdup(str);
-    }
-
-    int wn = MultiByteToWideChar(CP_ACP, 0, str, -1, NULL, 0);
-    if (wn <= 0)
         return strdup(str);
 
-    wchar_t *ws = malloc((size_t)wn * sizeof(wchar_t));
-    if (!ws)
-        return strdup(str);
+    char *fixed = repair_to_utf8(str);
+    if (fixed)
+        return fixed;
 
-    MultiByteToWideChar(CP_ACP, 0, str, -1, ws, wn);
-    char *utf8 = win32_utf16_to_utf8(ws);
-    free(ws);
-
-    return utf8 ? utf8 : strdup(str);
-}
-#else
-char *utf8_ensure(const char *str)
-{
-    if (!str)
-        return NULL;
-
+    fprintf(stderr, "warning: tag value is not valid UTF-8, writing as-is\n");
     return strdup(str);
 }
-#endif

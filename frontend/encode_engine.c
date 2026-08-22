@@ -395,7 +395,11 @@ int run_encoding_session(const encode_options_t *opts,
         }
         else
         {
+#ifdef _WIN32
+            outfile = win32_fopen_utf8(opts->output_filename, "wb");
+#else
             outfile = fopen(opts->output_filename, "wb");
+#endif
             if (!outfile)
             {
                 if (opts->verbose)

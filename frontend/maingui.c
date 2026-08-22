@@ -26,14 +26,20 @@
 #include <faac.h>
 #include "resource.h"
 #include "output_path.h"
+#include "charset.h"
 #include "encode_engine.h"
 
 #define WM_USER_PROGRESS (WM_USER + 101)
 
 static HINSTANCE hInstance;
 
-static char inputFilename[_MAX_PATH];
-static char outputFilename[_MAX_PATH];
+/* Wide-char at the Win32 edge (dialog controls, file dialogs, drag-drop);
+   converted to UTF-8 via win32_utf16_to_utf8() right before crossing into
+   the UTF-8-only libfrontend layer (encode_options_t, wav_open_read(),
+   get_output_filename()). Filenames outside the current ANSI code page
+   can't round-trip through the narrow Win32 APIs, hence wide at the edge. */
+static WCHAR inputFilename[_MAX_PATH];
+static WCHAR outputFilename[_MAX_PATH];
 
 static BOOL Encoding = FALSE;
 
@@ -46,49 +52,49 @@ static progress_info_t g_gui_progress;
 static DWORD g_last_progress_post = 0;
 static CRITICAL_SECTION g_cs_progress;
 
-static BOOL SelectFileName(HWND hParent, char *filename, BOOL forReading)
+static BOOL SelectFileName(HWND hParent, WCHAR *filename, BOOL forReading)
 {
-    OPENFILENAME ofn;
+    OPENFILENAMEW ofn;
 
-    memset(&ofn, 0, sizeof(OPENFILENAME));
-    ofn.lStructSize = sizeof(OPENFILENAME);
+    memset(&ofn, 0, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = hParent;
     ofn.hInstance = hInstance;
     ofn.nFilterIndex = 0;
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
-    filename[0] = '\0';
-    ofn.lpstrFile = (LPSTR)filename;
+    filename[0] = L'\0';
+    ofn.lpstrFile = filename;
     ofn.nMaxFile = _MAX_PATH;
 
     if (forReading)
     {
-        static const char filters[] =
-            "Wave Files (*.wav)\0*.wav\0"
-            "AIFF Files (*.aif;*.aiff;*.aifc)\0*.aif;*.aiff;*.aifc\0"
-            "AU Files (*.au)\0*.au\0"
-            "All Files (*.*)\0*.*\0\0";
+        static const WCHAR filters[] =
+            L"Wave Files (*.wav)\0*.wav\0"
+            L"AIFF Files (*.aif;*.aiff;*.aifc)\0*.aif;*.aiff;*.aifc\0"
+            L"AU Files (*.au)\0*.au\0"
+            L"All Files (*.*)\0*.*\0\0";
 
         ofn.lpstrFilter = filters;
-        ofn.lpstrDefExt = "wav";
+        ofn.lpstrDefExt = L"wav";
         ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-        ofn.lpstrTitle = "Select Source File";
+        ofn.lpstrTitle = L"Select Source File";
 
-        return GetOpenFileName(&ofn);
+        return GetOpenFileNameW(&ofn);
     }
     else
     {
-        static const char filters[] =
-            "MPEG-4 Audio (*.m4a)\0*.m4a\0"
-            "AAC Files (*.aac)\0*.aac\0"
-            "All Files (*.*)\0*.*\0\0";
+        static const WCHAR filters[] =
+            L"MPEG-4 Audio (*.m4a)\0*.m4a\0"
+            L"AAC Files (*.aac)\0*.aac\0"
+            L"All Files (*.*)\0*.*\0\0";
 
         ofn.lpstrFilter = filters;
-        ofn.lpstrDefExt = "m4a";
+        ofn.lpstrDefExt = L"m4a";
         ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY;
-        ofn.lpstrTitle = "Select Output File";
+        ofn.lpstrTitle = L"Select Output File";
 
-        return GetSaveFileName(&ofn);
+        return GetSaveFileNameW(&ofn);
     }
 }
 
@@ -116,29 +122,35 @@ static void AwakeDialogControls(HWND hWnd)
 {
     char szTemp[64];
     pcmfile_t *infile = NULL;
+    char *utf8_input = win32_utf16_to_utf8(inputFilename);
 
-    if ((infile = wav_open_read(inputFilename, 0)) == NULL)
+    if (!utf8_input || (infile = wav_open_read(utf8_input, 0)) == NULL)
+    {
+        free(utf8_input);
         return;
+    }
 
     unsigned int sampleRate = infile->samplerate;
     unsigned int numChannels = infile->channels;
 
     wav_close(infile);
 
-    SetDlgItemText(hWnd, IDC_INPUTFILENAME, inputFilename);
+    SetDlgItemTextW(hWnd, IDC_INPUTFILENAME, inputFilename);
 
-    char *derived = get_output_filename(inputFilename, 1 /* GUI always defaults to MP4 */);
-    if (derived)
+    char *utf8_output = get_output_filename(utf8_input, 1 /* GUI always defaults to MP4 */);
+    free(utf8_input);
+    if (utf8_output)
     {
-        strncpy(outputFilename, derived, sizeof(outputFilename) - 1);
-        outputFilename[sizeof(outputFilename) - 1] = '\0';
-        free(derived);
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8_output, -1, NULL, 0);
+        if (wlen > 0 && wlen <= _MAX_PATH)
+            MultiByteToWideChar(CP_UTF8, 0, utf8_output, -1, outputFilename, wlen);
+        free(utf8_output);
     }
 
     EnableWindow(GetDlgItem(hWnd, IDC_OUTPUTFILENAME), TRUE);
     EnableWindow(GetDlgItem(hWnd, IDC_SELECT_OUTPUTFILE), TRUE);
 
-    SetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename);
+    SetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename);
 
     wsprintf(szTemp, "%uHz %uch", sampleRate, numChannels);
     SetDlgItemText(hWnd, IDC_INPUTPARAMS, szTemp);
@@ -194,15 +206,18 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     g_last_progress_post = 0;
     LeaveCriticalSection(&g_cs_progress);
 
-    GetDlgItemText(hWnd, IDC_INPUTFILENAME, inputFilename, sizeof(inputFilename));
-    GetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename, sizeof(outputFilename));
+    GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, inputFilename, _MAX_PATH);
+    GetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename, _MAX_PATH);
+
+    char *utf8_input = win32_utf16_to_utf8(inputFilename);
+    char *utf8_output = win32_utf16_to_utf8(outputFilename);
 
     encode_options_t opts;
     init_encode_options(&opts);
 
-    opts.input_filename = inputFilename;
-    opts.output_filename = outputFilename;
-    opts.container_mp4 = is_mp4_filename(outputFilename) != 0;
+    opts.input_filename = utf8_input;
+    opts.output_filename = utf8_output;
+    opts.container_mp4 = utf8_output && is_mp4_filename(utf8_output);
     opts.overwrite = 1;
 
     {
@@ -243,7 +258,9 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 
-    int status = run_encoding_session(&opts, GuiProgressCallback, hWnd);
+    int status = (utf8_input && utf8_output)
+        ? run_encoding_session(&opts, GuiProgressCallback, hWnd)
+        : ENCODE_ERROR;
     if (status == ENCODE_ERROR)
     {
         MessageBox(hWnd, "Encoding failed!", "Error", MB_OK | MB_ICONSTOP);
@@ -252,6 +269,9 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     {
         MessageBeep(MB_OK);
     }
+
+    free(utf8_input);
+    free(utf8_output);
 
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
     SendMessage(hWnd, WM_SETTEXT, 0, (LPARAM)"FAAC GUI");
@@ -313,8 +333,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             }
         }
 
-        inputFilename[0] = '\0';
-        outputFilename[0] = '\0';
+        inputFilename[0] = L'\0';
+        outputFilename[0] = L'\0';
 
         {
             HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
@@ -354,7 +374,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         return TRUE;
 
     case WM_DROPFILES:
-        if (DragQueryFile((HDROP)wParam, 0, (LPSTR)inputFilename, _MAX_PATH - 1))
+        if (DragQueryFileW((HDROP)wParam, 0, inputFilename, _MAX_PATH - 1))
             AwakeDialogControls(hWnd);
 
         DragFinish((HDROP)wParam);
@@ -390,7 +410,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDC_SELECT_OUTPUTFILE:
             if (SelectFileName(hWnd, outputFilename, FALSE))
             {
-                SetDlgItemText(hWnd, IDC_OUTPUTFILENAME, outputFilename);
+                SetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename);
             }
             break;
 
