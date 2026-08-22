@@ -117,16 +117,21 @@ typedef struct {
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
     uint32_t max_frame_size;
-} encode_mp4_summary_t;
+    bool is_mp4;
+} encode_summary_t;
+
+typedef encode_summary_t encode_mp4_summary_t;
 
 typedef void (*session_start_callback_t)(const encode_session_info_t *info, void *user_data);
-typedef void (*mp4_summary_callback_t)(const encode_mp4_summary_t *summary, void *user_data);
+typedef void (*summary_callback_t)(const encode_summary_t *summary, void *user_data);
+typedef summary_callback_t mp4_summary_callback_t;
 typedef void (*log_message_callback_t)(int level, const char *message, void *user_data);
 
 typedef struct {
     progress_callback_t progress_cb;
     session_start_callback_t session_start_cb;
-    mp4_summary_callback_t mp4_summary_cb;
+    summary_callback_t summary_cb;
+    mp4_summary_callback_t mp4_summary_cb; /* alias for backward compatibility */
     log_message_callback_t log_cb;
     void *user_data;
 } encode_callbacks_t;

@@ -305,7 +305,16 @@ static void help(int mode)
 
 static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 {
-    (void)user_data;
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (opts && opts->verbose == 0)
+    {
+#ifndef _WIN32
+        return running != 0;
+#else
+        return true;
+#endif
+    }
+
     if (info->total_frames > 0)
     {
         int percent = (int)(info->current_frame * 100 / info->total_frames);
@@ -413,17 +422,25 @@ static void CliSessionStartCallback(const encode_session_info_t *info, void *use
     }
 }
 
-static void CliMp4SummaryCallback(const encode_mp4_summary_t *summary, void *user_data)
+static void CliSummaryCallback(const encode_summary_t *summary, void *user_data)
 {
     encode_options_t *opts = (encode_options_t *)user_data;
-    if (opts && opts->verbose >= 2)
+    if (!opts || opts->verbose < 2)
+        return;
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "%u frames\n", summary->frame_count);
+    fprintf(stderr, "%u output samples\n", summary->sample_count);
+    if (summary->is_mp4)
     {
-        fprintf(stderr, "\n");
-        fprintf(stderr, "%u frames\n", summary->frame_count);
-        fprintf(stderr, "%u output samples\n", summary->sample_count);
         fprintf(stderr, "max bitrate: %u\n", summary->max_bitrate);
         fprintf(stderr, "avg bitrate: %u\n", summary->avg_bitrate);
         fprintf(stderr, "max frame size: %u\n", summary->max_frame_size);
+    }
+    else
+    {
+        fprintf(stderr, "avg bitrate: %u kbps\n", summary->avg_bitrate);
+        fprintf(stderr, "max frame size: %u bytes\n", summary->max_frame_size);
     }
 }
 
@@ -851,13 +868,13 @@ int main(int argc, char *argv[])
     encode_callbacks_t cbs = {
         .progress_cb = CliProgressCallback,
         .session_start_cb = CliSessionStartCallback,
-        .mp4_summary_cb = CliMp4SummaryCallback,
+        .summary_cb = CliSummaryCallback,
         .log_cb = CliLogCallback,
         .user_data = &opts
     };
 
     ret = run_encoding_session_ext(&opts, &cbs);
-    if (opts.verbose && !(opts.container_mp4 && opts.verbose >= 2))
+    if (opts.verbose && opts.verbose < 2)
         fprintf(stderr, "\n");
 
 cleanup:

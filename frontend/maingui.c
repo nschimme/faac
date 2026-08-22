@@ -32,6 +32,7 @@
 #define WM_USER_PROGRESS   (WM_USER + 101)
 #define WM_USER_SESS_START (WM_USER + 102)
 #define WM_USER_LOG        (WM_USER + 103)
+#define WM_USER_SUMMARY    (WM_USER + 104)
 
 static HINSTANCE hInstance;
 
@@ -52,6 +53,7 @@ enum RateMode {
 
 static progress_info_t g_gui_progress;
 static encode_session_info_t g_gui_sess_info;
+static encode_summary_t g_gui_summary;
 static char g_gui_log_msg[256];
 static DWORD g_last_progress_post = 0;
 static CRITICAL_SECTION g_cs_progress;
@@ -218,6 +220,19 @@ static void GuiLogCallback(int level, const char *message, void *user_data)
     PostMessage(hWnd, WM_USER_LOG, 0, 0);
 }
 
+static void GuiSummaryCallback(const encode_summary_t *summary, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    if (!summary)
+        return;
+
+    EnterCriticalSection(&g_cs_progress);
+    g_gui_summary = *summary;
+    LeaveCriticalSection(&g_cs_progress);
+
+    PostMessage(hWnd, WM_USER_SUMMARY, 0, 0);
+}
+
 static DWORD WINAPI EncodeFile(LPVOID pParam)
 {
     HWND hWnd = (HWND)pParam;
@@ -288,6 +303,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     encode_callbacks_t cbs = {
         .progress_cb = GuiProgressCallback,
         .session_start_cb = GuiSessionStartCallback,
+        .summary_cb = GuiSummaryCallback,
         .log_cb = GuiLogCallback,
         .user_data = hWnd
     };
@@ -393,6 +409,21 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                     msg[len - 1] = '\0';
                 SetDlgItemText(hWnd, IDC_TIME, msg);
             }
+            return TRUE;
+        }
+
+    case WM_USER_SUMMARY:
+        {
+            encode_summary_t sum;
+            EnterCriticalSection(&g_cs_progress);
+            sum = g_gui_summary;
+            LeaveCriticalSection(&g_cs_progress);
+
+            char szSummary[256];
+            snprintf(szSummary, sizeof(szSummary),
+                     "Encoded %u frames (%u samples) | Avg bitrate: %u kbps | Max frame size: %u bytes",
+                     sum.frame_count, sum.sample_count, sum.avg_bitrate, sum.max_frame_size);
+            SetDlgItemText(hWnd, IDC_TIME, szSummary);
             return TRUE;
         }
 

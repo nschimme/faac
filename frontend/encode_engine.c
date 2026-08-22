@@ -49,7 +49,7 @@ void init_encode_options(encode_options_t *opts)
     opts->use_tns = false;
     opts->use_lfe = -1;
     opts->pns_level = -1;
-    opts->quant_quality = 0;
+    opts->quant_quality = DEFAULT_QUANT_QUALITY;
     opts->bit_rate = 0;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
@@ -268,7 +268,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     progress_callback_t progress_cb = callbacks ? callbacks->progress_cb : NULL;
     session_start_callback_t session_start_cb = callbacks ? callbacks->session_start_cb : NULL;
-    mp4_summary_callback_t mp4_summary_cb = callbacks ? callbacks->mp4_summary_cb : NULL;
+    summary_callback_t summary_cb = callbacks ? (callbacks->summary_cb ? callbacks->summary_cb : callbacks->mp4_summary_cb) : NULL;
     log_message_callback_t log_cb = callbacks ? callbacks->log_cb : NULL;
     void *user_data = callbacks ? callbacks->user_data : NULL;
 
@@ -501,6 +501,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint64_t total_bytes_written = 0;
     uint64_t current_input_samples = 0;
     uint64_t encoded_samples = 0;
+    uint32_t max_frame_bytes = 0;
     int samples_read = 0;
 
     double start_time = get_wall_time_sec();
@@ -546,6 +547,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
         {
             current_frame++;
             total_bytes_written += bytes_written;
+            if ((uint32_t)bytes_written > max_frame_bytes)
+                max_frame_bytes = (uint32_t)bytes_written;
         }
 
         if (!samples_read && !bytes_written)
@@ -625,6 +628,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         if (bytes_written > 0)
         {
+            if ((uint32_t)bytes_written > max_frame_bytes)
+                max_frame_bytes = (uint32_t)bytes_written;
+
             if (opts->container_mp4)
             {
                 if (mp4_write_frame(bitbuf, (uint32_t)bytes_written, info.frame_samples) != 0)
@@ -653,17 +659,32 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->container_mp4 && mp4_is_open)
     {
         finalize_mp4(hEncoder, opts);
-        if (mp4_summary_cb)
+        if (summary_cb)
         {
-            encode_mp4_summary_t summary = {
+            encode_summary_t summary = {
                 .frame_count = mp4_frame_count(),
                 .sample_count = mp4_sample_count(),
                 .max_bitrate = mp4_max_bitrate(),
                 .avg_bitrate = mp4_avg_bitrate(),
-                .max_frame_size = mp4_max_frame_size()
+                .max_frame_size = mp4_max_frame_size(),
+                .is_mp4 = true
             };
-            mp4_summary_cb(&summary, user_data);
+            summary_cb(&summary, user_data);
         }
+    }
+    else if (summary_cb)
+    {
+        double total_sec = (double)current_input_samples / (double)(sample_rate ? sample_rate : 1);
+        uint32_t avg_bitrate = (total_sec > 0.0) ? (uint32_t)(((double)total_bytes_written * 8.0 / 1000.0) / total_sec) : 0;
+        encode_summary_t summary = {
+            .frame_count = current_frame,
+            .sample_count = (uint32_t)current_input_samples,
+            .max_bitrate = 0,
+            .avg_bitrate = avg_bitrate,
+            .max_frame_size = max_frame_bytes,
+            .is_mp4 = false
+        };
+        summary_cb(&summary, user_data);
     }
 
 cleanup:
