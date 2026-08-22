@@ -59,6 +59,59 @@ void init_encode_options(encode_options_t *opts)
     opts->verbose = 1;
 }
 
+bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value)
+{
+    if (!opts || !name || !value)
+        return false;
+
+    if (opts->custom_tag_count >= opts->custom_tag_cap)
+    {
+        int new_cap = opts->custom_tag_cap ? opts->custom_tag_cap * 2 : 4;
+        custom_tag_t *tmp = realloc(opts->custom_tags, (size_t)new_cap * sizeof(custom_tag_t));
+        if (!tmp)
+            return false;
+        opts->custom_tags = tmp;
+        opts->custom_tag_cap = new_cap;
+    }
+
+    char *dup_name = strdup(name);
+    char *dup_val = utf8_ensure(value);
+    if (!dup_name || !dup_val)
+    {
+        free(dup_name);
+        free(dup_val);
+        return false;
+    }
+
+    opts->custom_tags[opts->custom_tag_count].name = dup_name;
+    opts->custom_tags[opts->custom_tag_count].value = dup_val;
+    opts->custom_tag_count++;
+    return true;
+}
+
+void free_encode_options(encode_options_t *opts)
+{
+    if (!opts)
+        return;
+
+    if (opts->art_data)
+    {
+        free((void *)opts->art_data);
+        opts->art_data = NULL;
+        opts->art_size = 0;
+    }
+
+    for (int i = 0; i < opts->custom_tag_count; i++)
+    {
+        free(opts->custom_tags[i].name);
+        free(opts->custom_tags[i].value);
+    }
+    free(opts->custom_tags);
+    opts->custom_tags = NULL;
+    opts->custom_tag_count = 0;
+    opts->custom_tag_cap = 0;
+}
+
 void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
                                encode_options_t *opts)
 {
@@ -237,6 +290,12 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
     if (metadata.compilation) mp4_set_compilation(metadata.compilation);
     if (metadata.genre_id) mp4_set_genre(metadata.genre_id);
 
+    for (int i = 0; i < opts->custom_tag_count; i++)
+    {
+        if (opts->custom_tags[i].name && opts->custom_tags[i].value)
+            mp4_add_custom_tag(opts->custom_tags[i].name, opts->custom_tags[i].value);
+    }
+
     if (mp4_finish() != 0)
     {
         if (opts->verbose)
@@ -253,8 +312,24 @@ int run_encoding_session(const encode_options_t *opts,
                           progress_callback_t progress_cb,
                           void *user_data)
 {
+    encode_callbacks_t cbs;
+    memset(&cbs, 0, sizeof(cbs));
+    cbs.progress_cb = progress_cb;
+    cbs.user_data = user_data;
+    return run_encoding_session_ext(opts, &cbs);
+}
+
+int run_encoding_session_ext(const encode_options_t *opts,
+                              const encode_callbacks_t *callbacks)
+{
     if (!opts || !opts->input_filename)
         return 1;
+
+    progress_callback_t progress_cb = callbacks ? callbacks->progress_cb : NULL;
+    session_start_callback_t session_start_cb = callbacks ? callbacks->session_start_cb : NULL;
+    summary_callback_t summary_cb = callbacks ? (callbacks->summary_cb ? callbacks->summary_cb : callbacks->mp4_summary_cb) : NULL;
+    log_message_callback_t log_cb = callbacks ? callbacks->log_cb : NULL;
+    void *user_data = callbacks ? callbacks->user_data : NULL;
 
     pcmfile_t *infile = NULL;
     faac_encoder *hEncoder = NULL;
@@ -286,8 +361,12 @@ int run_encoding_session(const encode_options_t *opts,
 
     if (!infile)
     {
-        if (opts->verbose)
-            fprintf(stderr, "Couldn't open input file %s\n", opts->input_filename);
+        if (log_cb)
+        {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Couldn't open input file %s\n", opts->input_filename);
+            log_cb(1, msg, user_data);
+        }
         return 1;
     }
 
@@ -298,10 +377,12 @@ int run_encoding_session(const encode_options_t *opts,
     faac_get_library_info(&libinfo);
     if (num_channels > libinfo.max_channels)
     {
-        if (opts->verbose)
+        if (log_cb)
         {
-            fprintf(stderr, "Input file %s has %u channels, but this build supports at most %u.\n",
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Input file %s has %u channels, but this build supports at most %u.\n",
                     opts->input_filename, num_channels, libinfo.max_channels);
+            log_cb(1, msg, user_data);
         }
         ret = 1;
         goto cleanup;
@@ -334,14 +415,29 @@ int run_encoding_session(const encode_options_t *opts,
     if (opts->max_bit_rate > 0)
         params.max_bit_rate = opts->max_bit_rate;
 
+    if (log_cb)
+    {
+        if (opts->shortctl == FAAC_SHORTCTL_NOSHORT)
+            log_cb(1, "disabling short blocks\n", user_data);
+        else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
+            log_cb(1, "disabling long blocks\n", user_data);
+
+        if (opts->pns_level > 0 && opts->mpeg_version == FAAC_MPEG2)
+            log_cb(1, "PNS not allowed in MPEG-2 mode, disabling PNS\n", user_data);
+    }
+
     params.bandwidth = opts->bandwidth;
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
     params.input_format = FAAC_INPUT_FLOAT;
 
     if (faac_encoder_open(&params, &hEncoder) != FAAC_OK)
     {
-        if (opts->verbose)
-            fprintf(stderr, "Couldn't open encoder instance for %s\n", opts->input_filename);
+        if (log_cb)
+        {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Couldn't open encoder instance for %s\n", opts->input_filename);
+            log_cb(1, msg, user_data);
+        }
         ret = 1;
         goto cleanup;
     }
@@ -358,28 +454,39 @@ int run_encoding_session(const encode_options_t *opts,
 
     if (!pcmbuf || !bitbuf)
     {
-        if (opts->verbose)
-            fprintf(stderr, "Out of memory!\n");
+        if (log_cb)
+            log_cb(1, "Out of memory!\n", user_data);
         ret = 1;
         goto cleanup;
     }
 
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
+    if (chanmap && log_cb)
+    {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Remapping input channels: Center=%d, LFE=%d\n",
+                opts->center_channel, opts->lfe_channel);
+        log_cb(1, msg, user_data);
+    }
 
     if (opts->container_mp4)
     {
         if (opts->output_filename && !strcmp(opts->output_filename, "-"))
         {
-            if (opts->verbose)
-                fprintf(stderr, "Cannot encode MP4 to stdout\n");
+            if (log_cb)
+                log_cb(1, "Cannot encode MP4 to stdout\n", user_data);
             ret = 1;
             goto cleanup;
         }
 
         if (mp4_open(opts->output_filename, opts->overwrite) != 0)
         {
-            if (opts->verbose)
-                fprintf(stderr, "Couldn't create MP4 output file %s\n", opts->output_filename);
+            if (log_cb)
+            {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "Couldn't create MP4 output file %s\n", opts->output_filename);
+                log_cb(1, msg, user_data);
+            }
             ret = 1;
             goto cleanup;
         }
@@ -404,8 +511,12 @@ int run_encoding_session(const encode_options_t *opts,
 #endif
             if (!outfile)
             {
-                if (opts->verbose)
-                    fprintf(stderr, "Couldn't create output file %s\n", opts->output_filename);
+                if (log_cb)
+                {
+                    char msg[256];
+                    snprintf(msg, sizeof(msg), "Couldn't create output file %s\n", opts->output_filename);
+                    log_cb(1, msg, user_data);
+                }
                 ret = 1;
                 goto cleanup;
             }
@@ -416,46 +527,84 @@ int run_encoding_session(const encode_options_t *opts,
     uint32_t total_frames = (total_input_samples > 0 && frame_size > 0) ?
         (uint32_t)(((total_input_samples + frame_size - 1) / frame_size) + 1) : 0;
 
+    if (session_start_cb)
+    {
+        encode_session_info_t sess_info = {
+            .input_filename = opts->input_filename,
+            .output_filename = opts->output_filename,
+            .sample_rate = sample_rate,
+            .num_channels = num_channels,
+            .total_input_samples = total_input_samples,
+            .frame_size = frame_size,
+
+            .container_mp4 = opts->container_mp4,
+            .stream_format = opts->stream_format,
+            .mpeg_version = opts->mpeg_version,
+            .object_type = info.object_type,
+            .joint_mode = params.joint_mode,
+            .use_tns = params.use_tns,
+            .pns_level = info.pns_level,
+            .bandwidth = info.bandwidth,
+            .quant_quality = info.quant_quality,
+            .bit_rate = info.bit_rate,
+
+            .remapping_channels = (chanmap != NULL),
+            .center_channel = opts->center_channel,
+            .lfe_channel = opts->lfe_channel,
+            .shortctl = opts->shortctl
+        };
+        session_start_cb(&sess_info, user_data);
+    }
+
     uint32_t current_frame = 0;
     uint64_t total_bytes_written = 0;
     uint64_t current_input_samples = 0;
     uint64_t encoded_samples = 0;
+    uint32_t max_frame_bytes = 0;
     int samples_read = 0;
 
     double start_time = get_wall_time_sec();
+
+    bool input_eof = false;
 
     for (;;)
     {
         int bytes_written = 0;
 
-        if (!opts->ignore_wav_length)
+        if (!input_eof)
         {
-            if (current_input_samples < total_input_samples || total_input_samples == 0)
+            if (!opts->ignore_wav_length)
             {
-                samples_read = wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
+                if (current_input_samples < total_input_samples || total_input_samples == 0)
+                {
+                    samples_read = wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
+                }
+                else
+                {
+                    samples_read = 0;
+                }
+
+                if (total_input_samples > 0 &&
+                    current_input_samples + (samples_read / num_channels) > total_input_samples)
+                {
+                    samples_read = (int)((total_input_samples - current_input_samples) * num_channels);
+                }
             }
             else
             {
-                samples_read = 0;
+                samples_read = wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
             }
 
-            if (total_input_samples > 0 &&
-                current_input_samples + (samples_read / num_channels) > total_input_samples)
-            {
-                samples_read = (int)((total_input_samples - current_input_samples) * num_channels);
-            }
+            if (samples_read == 0)
+                input_eof = true;
+            else
+                current_input_samples += (samples_read / num_channels);
         }
-        else
-        {
-            samples_read = wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
-        }
-
-        current_input_samples += (samples_read / num_channels);
 
         uint32_t nbytes = 0;
         faac_status st = faac_encoder_encode(hEncoder,
-                                             pcmbuf,
-                                             (uint32_t)samples_read,
+                                             input_eof ? NULL : pcmbuf,
+                                             input_eof ? 0 : (uint32_t)samples_read,
                                              bitbuf,
                                              (uint32_t)max_output_bytes,
                                              &nbytes);
@@ -465,15 +614,21 @@ int run_encoding_session(const encode_options_t *opts,
         {
             current_frame++;
             total_bytes_written += bytes_written;
+            if ((uint32_t)bytes_written > max_frame_bytes)
+                max_frame_bytes = (uint32_t)bytes_written;
         }
 
-        if (!samples_read && !bytes_written)
+        if (input_eof && bytes_written <= 0)
             break;
 
         if (bytes_written < 0)
         {
-            if (opts->verbose)
-                fprintf(stderr, "faac_encoder_encode() failed: %s\n", faac_strerror(st));
+            if (log_cb)
+            {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "faac_encoder_encode() failed: %s\n", faac_strerror(st));
+                log_cb(1, msg, user_data);
+            }
             ret = 1;
             goto cleanup;
         }
@@ -481,15 +636,15 @@ int run_encoding_session(const encode_options_t *opts,
         if (bytes_written > 0)
         {
             uint64_t frame_samples = current_input_samples - encoded_samples;
-            if (frame_samples > frame_size)
+            if (frame_samples > frame_size || input_eof)
                 frame_samples = frame_size;
 
             if (opts->container_mp4)
             {
                 if (mp4_write_frame(bitbuf, (uint32_t)bytes_written, (uint32_t)frame_samples) != 0)
                 {
-                    if (opts->verbose)
-                        fprintf(stderr, "mp4_write_frame() failed\n");
+                    if (log_cb)
+                        log_cb(1, "mp4_write_frame() failed\n", user_data);
                     ret = 1;
                     goto cleanup;
                 }
@@ -498,8 +653,8 @@ int run_encoding_session(const encode_options_t *opts,
             {
                 if (!write_output_bytes(outfile, bitbuf, (size_t)bytes_written))
                 {
-                    if (opts->verbose)
-                        fprintf(stderr, "Output write failed\n");
+                    if (log_cb)
+                        log_cb(1, "Output write failed\n", user_data);
                     ret = 1;
                     goto cleanup;
                 }
@@ -532,42 +687,35 @@ int run_encoding_session(const encode_options_t *opts,
         }
     }
 
-    /* Flush remaining buffered frames */
-    do {
-        uint32_t nbytes = 0;
-        faac_status st = faac_encoder_encode(hEncoder, NULL, 0, bitbuf, (uint32_t)max_output_bytes, &nbytes);
-        int bytes_written = (st == FAAC_OK) ? (int)nbytes : -1;
-
-        if (bytes_written > 0)
-        {
-            if (opts->container_mp4)
-            {
-                if (mp4_write_frame(bitbuf, (uint32_t)bytes_written, info.frame_samples) != 0)
-                {
-                    ret = 1;
-                    goto cleanup;
-                }
-            }
-            else
-            {
-                if (!write_output_bytes(outfile, bitbuf, (size_t)bytes_written))
-                {
-                    if (opts->verbose)
-                        fprintf(stderr, "Output write failed during flush\n");
-                    ret = 1;
-                    goto cleanup;
-                }
-            }
-        }
-        else
-        {
-            break;
-        }
-    } while (1);
-
     if (opts->container_mp4 && mp4_is_open)
     {
         finalize_mp4(hEncoder, opts);
+        if (summary_cb)
+        {
+            encode_summary_t summary = {
+                .frame_count = mp4_frame_count(),
+                .sample_count = mp4_sample_count(),
+                .max_bitrate = mp4_max_bitrate(),
+                .avg_bitrate = mp4_avg_bitrate(),
+                .max_frame_size = mp4_max_frame_size(),
+                .is_mp4 = true
+            };
+            summary_cb(&summary, user_data);
+        }
+    }
+    else if (summary_cb)
+    {
+        double total_sec = (double)current_input_samples / (double)(sample_rate ? sample_rate : 1);
+        uint32_t avg_bitrate = (total_sec > 0.0) ? (uint32_t)(((double)total_bytes_written * 8.0 / 1000.0) / total_sec) : 0;
+        encode_summary_t summary = {
+            .frame_count = current_frame,
+            .sample_count = (uint32_t)current_input_samples,
+            .max_bitrate = 0,
+            .avg_bitrate = avg_bitrate,
+            .max_frame_size = max_frame_bytes,
+            .is_mp4 = false
+        };
+        summary_cb(&summary, user_data);
     }
 
 cleanup:

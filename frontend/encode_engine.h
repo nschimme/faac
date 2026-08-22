@@ -28,6 +28,11 @@ extern "C" {
 #endif
 
 typedef struct {
+    char *name;
+    char *value;
+} custom_tag_t;
+
+typedef struct {
     const char *input_filename;
     const char *output_filename;
 
@@ -64,8 +69,15 @@ typedef struct {
     const uint8_t *art_data;
     uint64_t art_size;
 
+    custom_tag_t *custom_tags;
+    int custom_tag_count;
+    int custom_tag_cap;
+
     int verbose;
 } encode_options_t;
+
+bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
+void free_encode_options(encode_options_t *opts);
 
 /* Canonical defaults, shared by both the CLI and GUI frontends. */
 #define DEFAULT_QUANT_QUALITY 100
@@ -86,9 +98,62 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
 #define ENCODE_ERROR     1
 #define ENCODE_CANCELLED 2
 
+typedef struct {
+    const char *input_filename;
+    const char *output_filename;
+    unsigned int sample_rate;
+    unsigned int num_channels;
+    uint64_t total_input_samples;
+    unsigned int frame_size;
+
+    bool container_mp4;
+    enum faac_stream_format stream_format;
+    enum faac_mpeg_version mpeg_version;
+    enum faac_object_type object_type;
+    enum faac_joint_mode joint_mode;
+    bool use_tns;
+    int pns_level;
+    unsigned int bandwidth;
+    unsigned long quant_quality;
+    int bit_rate; /* bps per channel */
+
+    bool remapping_channels;
+    int center_channel;
+    int lfe_channel;
+    enum faac_shortctl_mode shortctl;
+} encode_session_info_t;
+
+typedef struct {
+    uint32_t frame_count;
+    uint32_t sample_count;
+    uint32_t max_bitrate;
+    uint32_t avg_bitrate;
+    uint32_t max_frame_size;
+    bool is_mp4;
+} encode_summary_t;
+
+typedef encode_summary_t encode_mp4_summary_t;
+
+typedef void (*session_start_callback_t)(const encode_session_info_t *info, void *user_data);
+typedef void (*summary_callback_t)(const encode_summary_t *summary, void *user_data);
+typedef summary_callback_t mp4_summary_callback_t;
+typedef void (*log_message_callback_t)(int level, const char *message, void *user_data);
+
+typedef struct {
+    progress_callback_t progress_cb;
+    session_start_callback_t session_start_cb;
+    summary_callback_t summary_cb;
+    mp4_summary_callback_t mp4_summary_cb; /* alias for backward compatibility */
+    log_message_callback_t log_cb;
+    void *user_data;
+} encode_callbacks_t;
+
 int run_encoding_session(const encode_options_t *opts,
                           progress_callback_t progress_cb,
                           void *user_data);
+
+int run_encoding_session_ext(const encode_options_t *opts,
+                              const encode_callbacks_t *callbacks);
 
 #ifdef __cplusplus
 }

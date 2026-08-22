@@ -305,7 +305,16 @@ static void help(int mode)
 
 static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 {
-    (void)user_data;
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (opts && opts->verbose == 0)
+    {
+#ifndef _WIN32
+        return running != 0;
+#else
+        return true;
+#endif
+    }
+
     if (info->total_frames > 0)
     {
         int percent = (int)(info->current_frame * 100 / info->total_frames);
@@ -330,6 +339,111 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 #endif
 }
 
+static void CliLogCallback(int level, const char *message, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (opts && opts->verbose >= level)
+    {
+        fprintf(stderr, "%s", message);
+    }
+}
+
+static void CliSessionStartCallback(const encode_session_info_t *info, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (!opts || opts->verbose < 1)
+        return;
+
+    if (info->bit_rate)
+    {
+        fprintf(stderr, "Initial quantization quality: %lu\n", info->quant_quality);
+        fprintf(stderr, "Average bitrate: %d kbps/channel\n", (info->bit_rate + 500) / 1000);
+    }
+    else
+    {
+        fprintf(stderr, "Quantization quality: %lu\n", info->quant_quality);
+    }
+    fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
+    if (info->pns_level > 0)
+        fprintf(stderr, "PNS level: %d\n", info->pns_level);
+
+    fprintf(stderr, "Object type: %s",
+            (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
+    fprintf(stderr, " (MPEG-%d)", (info->mpeg_version == FAAC_MPEG4) ? 4 : 2);
+    if (info->use_tns)
+        fprintf(stderr, " + TNS");
+
+    switch (info->joint_mode)
+    {
+    case FAAC_JOINT_MS:
+        fprintf(stderr, " + M/S");
+        break;
+    case FAAC_JOINT_IS:
+        fprintf(stderr, " + IS");
+        break;
+    case FAAC_JOINT_MIXED:
+        fprintf(stderr, " + Mixed");
+        break;
+    default:
+        break;
+    }
+    if (info->pns_level > 0)
+        fprintf(stderr, " + PNS");
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "Container format: ");
+    if (info->container_mp4)
+    {
+        fprintf(stderr, "MPEG-4 File Format (MP4)\n");
+    }
+    else
+    {
+        switch (info->stream_format)
+        {
+        case FAAC_STREAM_RAW:
+            fprintf(stderr, "Headerless AAC (RAW)\n");
+            break;
+        case FAAC_STREAM_ADTS:
+            fprintf(stderr, "Transport Stream (ADTS)\n");
+            break;
+        default:
+            break;
+        }
+    }
+
+    fprintf(stderr, "Encoding %s to %s\n", info->input_filename, info->output_filename);
+    if (info->total_input_samples != 0)
+    {
+        fprintf(stderr, "         frame         | bitrate | elapsed/estim | play/CPU | ETA\n");
+    }
+    else
+    {
+        fprintf(stderr, "  frame  | elapsed | play/CPU\n");
+    }
+}
+
+static void CliSummaryCallback(const encode_summary_t *summary, void *user_data)
+{
+    encode_options_t *opts = (encode_options_t *)user_data;
+    if (!opts || opts->verbose < 2)
+        return;
+
+    fprintf(stderr, "\n");
+    fprintf(stderr, "%u frames\n", summary->frame_count);
+    fprintf(stderr, "%u output samples\n", summary->sample_count);
+    if (summary->is_mp4)
+    {
+        fprintf(stderr, "max bitrate: %u\n", summary->max_bitrate);
+        fprintf(stderr, "avg bitrate: %u\n", summary->avg_bitrate);
+        fprintf(stderr, "max frame size: %u\n", summary->max_frame_size);
+    }
+    else
+    {
+        fprintf(stderr, "avg bitrate: %u kbps\n", summary->avg_bitrate);
+        fprintf(stderr, "max frame size: %u bytes\n", summary->max_frame_size);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     encode_options_t opts;
@@ -342,12 +456,6 @@ int main(int argc, char *argv[])
     const char *dieMessage = NULL;
     int ret = 0;
 
-    /* utf8_ensure()'d --tag values: mp4_add_custom_tag() stores the pointer
-       as-is (no copy), so these have to outlive the encode and be freed
-       here rather than right after conversion. */
-    char **custom_tag_allocs = NULL;
-    int custom_tag_alloc_count = 0;
-    int custom_tag_alloc_cap = 0;
 
 #ifndef _WIN32
     signal(SIGINT, signal_handler);
@@ -362,6 +470,10 @@ int main(int argc, char *argv[])
     {
         fprintf(stderr, "Wrong libfaac version!\n");
         return 1;
+    }
+    else if (libinfo.version)
+    {
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
     }
 
 #ifdef _WIN32
@@ -476,7 +588,9 @@ int main(int argc, char *argv[])
         case OPT_COMPILATION: opts.metadata.compilation = 1; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
         case 'L':
-            fprintf(stderr, "%s\n", license);
+            if (libinfo.copyright)
+                fprintf(stderr, "%s", libinfo.copyright);
+            fprintf(stderr, "%s", license);
             ret = 0;
             goto cleanup;
         case 'X':
@@ -609,23 +723,7 @@ int main(int argc, char *argv[])
                 }
                 if (!dieMessage)
                 {
-                    char *utf8_tagval = utf8_ensure(tagval);
-                    if (utf8_tagval)
-                    {
-                        if (custom_tag_alloc_count >= custom_tag_alloc_cap)
-                        {
-                            int new_cap = custom_tag_alloc_cap ? custom_tag_alloc_cap * 2 : 4;
-                            char **tmp = realloc(custom_tag_allocs, (size_t)new_cap * sizeof(char *));
-                            if (tmp)
-                            {
-                                custom_tag_allocs = tmp;
-                                custom_tag_alloc_cap = new_cap;
-                            }
-                        }
-                        if (custom_tag_alloc_count < custom_tag_alloc_cap)
-                            custom_tag_allocs[custom_tag_alloc_count++] = utf8_tagval;
-                    }
-                    if (mp4_add_custom_tag(tagname, utf8_tagval ? utf8_tagval : tagval))
+                    if (!add_custom_tag_to_options(&opts, tagname, tagval))
                         dieMessage = "Couldn't add tag (out of memory).\n";
                 }
                 has_custom_tags = true;
@@ -734,7 +832,7 @@ int main(int argc, char *argv[])
                         opts.metadata.comment || opts.metadata.genre_id ||
                         opts.metadata.track || opts.metadata.disc ||
                         opts.metadata.compilation || opts.art_data ||
-                        has_custom_tags;
+                        opts.custom_tag_count > 0 || has_custom_tags;
 
     if (!opts.container_mp4 && has_metadata)
     {
@@ -745,23 +843,21 @@ int main(int argc, char *argv[])
 
     opts.output_filename = aacFileName;
 
-    if (opts.verbose)
-    {
-        fprintf(stderr, "Encoding %s to %s\n", opts.input_filename, opts.output_filename);
-        fprintf(stderr, "         frame         | bitrate | elapsed/estim | "
-                "play/CPU | ETA\n");
-    }
+    encode_callbacks_t cbs = {
+        .progress_cb = CliProgressCallback,
+        .session_start_cb = CliSessionStartCallback,
+        .summary_cb = CliSummaryCallback,
+        .log_cb = CliLogCallback,
+        .user_data = &opts
+    };
 
-    ret = run_encoding_session(&opts, CliProgressCallback, NULL);
-    if (opts.verbose)
-        fprintf(stderr, "\nDone.\n");
+    ret = run_encoding_session_ext(&opts, &cbs);
+    if (opts.verbose && opts.verbose < 2)
+        fprintf(stderr, "\n");
 
 cleanup:
     if (aacFileName) free(aacFileName);
-    if (opts.art_data) free((void *)opts.art_data);
-    for (int i = 0; i < custom_tag_alloc_count; i++)
-        free(custom_tag_allocs[i]);
-    free(custom_tag_allocs);
+    free_encode_options(&opts);
 
 #ifdef _WIN32
     if (allocated_argv)

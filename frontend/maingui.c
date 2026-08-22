@@ -29,7 +29,10 @@
 #include "charset.h"
 #include "encode_engine.h"
 
-#define WM_USER_PROGRESS (WM_USER + 101)
+#define WM_USER_PROGRESS   (WM_USER + 101)
+#define WM_USER_SESS_START (WM_USER + 102)
+#define WM_USER_LOG        (WM_USER + 103)
+#define WM_USER_SUMMARY    (WM_USER + 104)
 
 static HINSTANCE hInstance;
 
@@ -49,6 +52,9 @@ enum RateMode {
 };
 
 static progress_info_t g_gui_progress;
+static encode_session_info_t g_gui_sess_info;
+static encode_summary_t g_gui_summary;
+static char g_gui_log_msg[256];
 static DWORD g_last_progress_post = 0;
 static CRITICAL_SECTION g_cs_progress;
 
@@ -187,6 +193,46 @@ static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
     return true;
 }
 
+static void GuiSessionStartCallback(const encode_session_info_t *info, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    if (!info)
+        return;
+
+    EnterCriticalSection(&g_cs_progress);
+    g_gui_sess_info = *info;
+    LeaveCriticalSection(&g_cs_progress);
+
+    PostMessage(hWnd, WM_USER_SESS_START, 0, 0);
+}
+
+static void GuiLogCallback(int level, const char *message, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    (void)level;
+    if (!message)
+        return;
+
+    EnterCriticalSection(&g_cs_progress);
+    snprintf(g_gui_log_msg, sizeof(g_gui_log_msg), "%s", message);
+    LeaveCriticalSection(&g_cs_progress);
+
+    PostMessage(hWnd, WM_USER_LOG, 0, 0);
+}
+
+static void GuiSummaryCallback(const encode_summary_t *summary, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    if (!summary)
+        return;
+
+    EnterCriticalSection(&g_cs_progress);
+    g_gui_summary = *summary;
+    LeaveCriticalSection(&g_cs_progress);
+
+    PostMessage(hWnd, WM_USER_SUMMARY, 0, 0);
+}
+
 static DWORD WINAPI EncodeFile(LPVOID pParam)
 {
     HWND hWnd = (HWND)pParam;
@@ -254,12 +300,33 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 
+    encode_callbacks_t cbs = {
+        .progress_cb = GuiProgressCallback,
+        .session_start_cb = GuiSessionStartCallback,
+        .summary_cb = GuiSummaryCallback,
+        .log_cb = GuiLogCallback,
+        .user_data = hWnd
+    };
+
+    EnterCriticalSection(&g_cs_progress);
+    g_gui_log_msg[0] = '\0';
+    LeaveCriticalSection(&g_cs_progress);
+
     int status = (utf8_input && utf8_output)
-        ? run_encoding_session(&opts, GuiProgressCallback, hWnd)
+        ? run_encoding_session_ext(&opts, &cbs)
         : ENCODE_ERROR;
+
     if (status == ENCODE_ERROR)
     {
-        MessageBox(hWnd, "Encoding failed!", "Error", MB_OK | MB_ICONSTOP);
+        char err[300] = "Encoding failed!";
+        EnterCriticalSection(&g_cs_progress);
+        if (g_gui_log_msg[0] != '\0')
+        {
+            snprintf(err, sizeof(err), "Encoding failed:\n%s", g_gui_log_msg);
+        }
+        LeaveCriticalSection(&g_cs_progress);
+
+        MessageBox(hWnd, err, "Error", MB_OK | MB_ICONSTOP);
     }
     else if (status == ENCODE_SUCCESS)
     {
@@ -268,6 +335,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     free(utf8_input);
     free(utf8_output);
+    free_encode_options(&opts);
 
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
     SendMessage(hWnd, WM_SETTEXT, 0, (LPARAM)"FAAC GUI");
@@ -310,6 +378,53 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 (int)info.eta_sec / 60, (float)((int)(info.eta_sec * 10.0) % 600) / 10.0f);
 
             SetDlgItemText(hWnd, IDC_TIME, szTemp);
+            return TRUE;
+        }
+
+    case WM_USER_SESS_START:
+        {
+            encode_session_info_t info;
+            EnterCriticalSection(&g_cs_progress);
+            info = g_gui_sess_info;
+            LeaveCriticalSection(&g_cs_progress);
+
+            char szParams[128];
+            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
+            snprintf(szParams, sizeof(szParams), "%uHz %uch | %s | Cutoff: %uHz",
+                     info.sample_rate, info.num_channels, aot, info.bandwidth);
+            SetDlgItemText(hWnd, IDC_INPUTPARAMS, szParams);
+            return TRUE;
+        }
+
+    case WM_USER_LOG:
+        {
+            char msg[256];
+            EnterCriticalSection(&g_cs_progress);
+            snprintf(msg, sizeof(msg), "%s", g_gui_log_msg);
+            LeaveCriticalSection(&g_cs_progress);
+
+            if (msg[0] != '\0')
+            {
+                size_t len = strlen(msg);
+                if (len > 0 && msg[len - 1] == '\n')
+                    msg[len - 1] = '\0';
+                SetDlgItemText(hWnd, IDC_TIME, msg);
+            }
+            return TRUE;
+        }
+
+    case WM_USER_SUMMARY:
+        {
+            encode_summary_t sum;
+            EnterCriticalSection(&g_cs_progress);
+            sum = g_gui_summary;
+            LeaveCriticalSection(&g_cs_progress);
+
+            char szSummary[256];
+            snprintf(szSummary, sizeof(szSummary),
+                     "Encoded %u frames (%u samples) | Avg bitrate: %u kbps | Max frame size: %u bytes",
+                     sum.frame_count, sum.sample_count, sum.avg_bitrate, sum.max_frame_size);
+            SetDlgItemText(hWnd, IDC_TIME, szSummary);
             return TRUE;
         }
 
