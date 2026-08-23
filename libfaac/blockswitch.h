@@ -30,6 +30,10 @@ typedef struct {
 	int size;
 	int sizeS;
 
+	/* Relative sub-block energy jump that counts as a transient. Set from the
+	   sample rate in PsyInit; see PSY_TD_THRESH_48K. */
+	float td_thresh;
+
 	int block_type;
 
         void *data;
