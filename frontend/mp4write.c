@@ -85,7 +85,7 @@ static struct {
     uint64_t samples;
     uint32_t channels;
     uint32_t bits;
-    uint32_t buffersize;
+    uint16_t buffersize;
 
     struct {
         uint32_t max;
@@ -413,8 +413,8 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
         g_mp4.frame.bufsize = new_cap;
     }
     g_mp4.frame.data[g_mp4.frame.ents++] = size;
-    if (g_mp4.buffersize < size)
-        g_mp4.buffersize = size;
+    if (g_mp4.buffersize < (uint16_t)size)
+        g_mp4.buffersize = (uint16_t)size;
     return 0;
 }
 
@@ -715,7 +715,7 @@ uint32_t mp4_frame_count(void) { return g_mp4.frame.ents; }
 uint64_t mp4_sample_count(void) { return g_mp4.samples; }
 uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
-uint32_t mp4_max_frame_size(void) { return g_mp4.buffersize; }
+uint16_t mp4_max_frame_size(void) { return g_mp4.buffersize; }
 
 int check_image_header(const char *buf)
 {
