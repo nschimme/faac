@@ -288,6 +288,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
 #undef SETTAG
 
     if (metadata.encoder) mp4_set_encoder(metadata.encoder);
+    if (metadata.language) mp4_set_language(metadata.language);
     if (metadata.track) mp4_set_track(metadata.track, metadata.ntracks);
     if (metadata.disc) mp4_set_disc(metadata.disc, metadata.ndiscs);
     if (metadata.compilation) mp4_set_compilation(metadata.compilation);

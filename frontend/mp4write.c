@@ -113,6 +113,7 @@ static struct {
 
     uint32_t creation_time;
     const char *encoder;
+    const char *language;
     const char *tags[MP4TAG_COUNT];
     bool compilation;
     uint16_t trackno;
@@ -268,6 +269,20 @@ static uint32_t get_mp4_time(void) {
     return g_mp4.creation_time;
 }
 
+static uint16_t pack_language(const char *lang) {
+    if (!lang || strlen(lang) < 3)
+        lang = "und";
+
+    uint8_t c1 = (uint8_t)(lang[0] >= 'A' && lang[0] <= 'Z' ? lang[0] + 32 : lang[0]);
+    uint8_t c2 = (uint8_t)(lang[1] >= 'A' && lang[1] <= 'Z' ? lang[1] + 32 : lang[1]);
+    uint8_t c3 = (uint8_t)(lang[2] >= 'A' && lang[2] <= 'Z' ? lang[2] + 32 : lang[2]);
+
+    if (c1 < 'a' || c1 > 'z' || c2 < 'a' || c2 > 'z' || c3 < 'a' || c3 > 'z')
+        return 0x55C4; /* "und" */
+
+    return (uint16_t)(((c1 - 0x60) << 10) | ((c2 - 0x60) << 5) | (c3 - 0x60));
+}
+
 /* MPEG-4 descriptor sizes are a base-128 varint with a continuation bit,
    but always emitted here as the full 4-byte form (continuation bit set
    on all but the last byte) since some parsers assume that fixed width
@@ -376,6 +391,8 @@ void mp4_set_tag(mp4_tag_id_t id, const char *value) {
 }
 
 void mp4_set_genre(uint16_t genre) { g_mp4.genre = genre; }
+
+void mp4_set_language(const char *lang) { g_mp4.language = lang; }
 
 void mp4_set_compilation(bool flag) { g_mp4.compilation = flag; }
 
@@ -595,11 +612,12 @@ int mp4_finish(void) {
     put_u32(0); put_u32(0);
     end_atom(tkhd);
 
+    uint16_t packed_lang = pack_language(g_mp4.language);
     long mdia = start_atom("mdia");
     long mdhd = start_atom("mdhd");
     put_u32(0); put_u32(now); put_u32(now);
     put_u32(g_mp4.samplerate); put_u32(duration);
-    put_u16(0); put_u16(0);
+    put_u16(packed_lang); put_u16(0);
     end_atom(mdhd);
 
     long hdlr = start_atom("hdlr");

@@ -33,6 +33,7 @@ typedef struct {
     const char *year;
     const char *comment;
     const char *encoder;
+    const char *language;
     uint16_t genre_id;
     uint16_t track;
     uint16_t ntracks;
@@ -63,6 +64,7 @@ void mp4_set_decoder_config(const uint8_t *asc, unsigned long size);
 void mp4_set_encoder(const char *value);
 void mp4_set_tag(mp4_tag_id_t id, const char *value);
 void mp4_set_genre(uint16_t genre);
+void mp4_set_language(const char *lang);
 void mp4_set_compilation(bool flag);
 void mp4_set_track(uint16_t num, uint16_t total);
 void mp4_set_disc(uint16_t num, uint16_t total);

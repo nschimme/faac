@@ -86,7 +86,8 @@ enum flags
     OPT_TNS_DISABLE,
     OPT_OVERWRITE,
     OPT_COMPILATION,
-    OPT_IGNORE_LENGTH
+    OPT_IGNORE_LENGTH,
+    LANG_FLAG
 };
 
 typedef struct {
@@ -178,6 +179,7 @@ static help_t help_mp4[] = {
     {"--cover-art <filename>\tRead cover art from file X\n",
     "\t\tSupported image formats are GIF, JPEG, and PNG.\n"},
     {"--comment <string>\tSet comment\n", NULL},
+    {"--lang <code3>\tSet ISO 639-2/T 3-letter language code (e.g. eng, ger)\n", NULL},
     {"--creation-time <value>\tSet creation/modification time (auto, now, or timestamp)\n", NULL},
     {NULL, NULL}
 };
@@ -568,6 +570,8 @@ int main(int argc, char *argv[])
             {"tag", 1, 0, TAG_FLAG},
             {"overwrite", 0, 0, OPT_OVERWRITE},
             {"creation-time", 1, 0, CREATION_TIME_FLAG},
+            {"lang", 1, 0, LANG_FLAG},
+            {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {0, 0, 0, 0}
         };
@@ -786,6 +790,9 @@ int main(int argc, char *argv[])
         case CREATION_TIME_FLAG:
             opts.creation_time_str = optarg;
             break;
+        case LANG_FLAG:
+            opts.metadata.language = optarg;
+            break;
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;
             break;
@@ -841,8 +848,8 @@ int main(int argc, char *argv[])
                         opts.metadata.composer_sort || opts.metadata.year ||
                         opts.metadata.comment || opts.metadata.genre_id ||
                         opts.metadata.track || opts.metadata.disc ||
-                        opts.metadata.compilation || opts.art_data ||
-                        opts.custom_tag_count > 0 || has_custom_tags;
+                        opts.metadata.compilation || opts.metadata.language ||
+                        opts.art_data || opts.custom_tag_count > 0 || has_custom_tags;
 
     if (!opts.container_mp4 && has_metadata)
     {
