@@ -52,28 +52,32 @@
  * image (coherence error 0.15 against v1's 0.25 at 16 kbps) and being able to
  * reach 12 kbps at all, where v1 floors near 17. */
 #define HE_V2_MIN_SAMPLE_RATE 44100
-/* There is deliberately no v2-specific upper bound: v2 runs to
- * HE_MAX_BITRATE_PER_CH, the same ceiling as v1.
+/* Upper bound of the HE-AAC v2 window, per channel: 40000, i.e. 80 kbps stereo.
  *
- * The two axes disagree above 24 kbps, and this picks MOS. Parametric stereo
- * synthesises the image from the transmitted parameters, so its coherence error
- * is flat with bitrate while v1's keeps improving -- v1 codes two real channels
- * and simply gets better as bits arrive. Measured on 14 clips at 48 kHz stereo,
- * v1 and v2 from one build, ViSQOL on the mono downmix (valid here: both emit
- * identical bandwidth, so the metric's bandwidth bias cancels) alongside phase 3
- * coherence error:
+ * The two axes disagree above 24 kbps, and this picks MOS -- but only while MOS
+ * is actually being won. Parametric stereo synthesises the image from the
+ * transmitted parameters, so its coherence error is flat with bitrate while v1's
+ * keeps improving; v1 codes two real channels and gets better as bits arrive.
+ * The stereo cost therefore grows with rate, and past some point it buys nothing.
+ * Measured on 14 clips at 48 kHz stereo, v1 and v2 from one build, ViSQOL on the
+ * mono downmix (valid here: both emit identical bandwidth, so the metric's
+ * bandwidth bias cancels) alongside phase 3 coherence error:
  *
- *   stereo kbps      12     16     24     32     40     48     56
- *   dMOS vs v1    +.058  +.104  +.052  +.023  +.008  +.032  +.051
- *   clips won     11/14  13/14  12/14  11/14  11/14  12/14  12/14
- *   coherence  v2  .151   .153   .154   .154   .154   .155   .155
- *              v1  .291   .250   .161   .139   .130   .126   .124
+ *   stereo kbps      24     32     48     56     64     80     96
+ *   dMOS vs v1    +.052  +.023  +.014  +.034  +.044  +.036  +.002
+ *   clips won     12/14  11/14  12/14  12/14  12/14  12/14  10/14
+ *   coherence  v2  .154   .154   .154   .154   .154   .154   .154
+ *              v1  .161   .139   .127   .125   .123   .122   .121
  *
- * v2 is the truer image up to 24 kbps and the better MOS almost everywhere, so
- * on the chosen axis nothing marks a ceiling short of the HE window's own. Above
- * 24 kbps expect the benchmark's stereo-fidelity phase to regress, by about 0.03
- * at the top. That is an accepted trade, not an oversight; a both-axes rule would
- * put the ceiling at 24 kbps instead.
+ * 96 kbps is where it stops paying: the MOS lead falls to +0.002 and four of
+ * fourteen clips go the other way, while the coherence gap is at its widest
+ * (.154 against .121). Everything below still earns its keep, so the bound sits
+ * between 80 and 96 kbps stereo rather than at HE_MAX_BITRATE_PER_CH, which is
+ * 48000/ch and would run v2 all the way to 96 kbps.
+ *
+ * Below the bound the benchmark's stereo-fidelity phase still regresses; that is
+ * the accepted trade, not an oversight. A both-axes rule would put the ceiling at
+ * 24 kbps instead.
  *
  * Why the floor is flat, since it bounds what any tuning here can achieve: three
  * things were raised and measured. Two envelopes (time resolution) was negative
@@ -90,19 +94,8 @@
  * no payload, no decorrelator. That ceiling is +0.130 MOS at 16 kbps, +0.068 at
  * 24 and +0.046 at 48, and v2 already collects 81%, 79% and 59% of it. The core
  * codes JOINT_MIXED, so the second channel was never costing a full channel. */
-/* Floor of the HE-AAC window. Below it AAC-LC is not merely worse, it stops
- * honouring the requested rate at all: at 48 kHz stereo LC bottoms out near
- * 26 kbps, so a 12 kbps request returns 26.2 (+114%) while HE-AAC v2 returns
- * 12.5. Measured over 12 clips, MOS alongside the delivered rate:
- *
- *   stereo kbps   12     16     20     24
- *   LC          1.723  1.722  1.727  1.831   delivered 26.2 26.3 27.0 30.0
- *   HE-AAC v2   3.866  3.935  3.965  3.982   delivered 12.5 16.5 20.9 25.1
- *
- * The old 12000 excluded stereo below 24 kbps, which is where HE-AAC is most
- * worth having and what it was designed for. The MOS column overstates the gap
- * -- ViSQOL rewards SBR's wide band heavily -- but the delivered-rate column
- * does not depend on any quality metric. */
+#define HE_V2_MAX_BITRATE_PER_CH 40000
+
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -307,13 +300,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
         /* Within the HE-AAC window, prefer v2 for stereo at 44.1 kHz and above,
-         * for the whole window rather than a sub-range of it: v2 leads v1 on
-         * MOS at every rate measured and takes most clips at each, and MOS is
-         * the axis this choice is made on. See HE_V2_MIN_SAMPLE_RATE for the
+         * up to HE_V2_MAX_BITRATE_PER_CH: v2 leads v1 on MOS across that range
+         * and takes most clips at every rate in it, and MOS is the axis this
+         * choice is made on. It does not run to the window's own ceiling,
+         * because HE_MAX_BITRATE_PER_CH is 48000/ch and the MOS lead is gone by
+         * the 96 kbps stereo that implies. See HE_V2_MAX_BITRATE_PER_CH for the
          * numbers and for the stereo-image cost that comes with them.
-         *
-         * v2 also honours the requested rate where v1 cannot: asked for 12 kbps
-         * stereo, v2 delivers 12.5 against v1's 17.5.
          *
          * Gated on what the follow-up validation will accept -- stereo input at
          * HE_V2_MIN_SAMPLE_RATE or better -- so AUTO cannot resolve to a
@@ -321,7 +313,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         if (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE)
             hEncoder->config.aacObjectType =
                 (hEncoder->inputChannels == 2 &&
-                 hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE) ? HE_V2 : HE_V1;
+                 hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE &&
+                 rate_per_ch <= HE_V2_MAX_BITRATE_PER_CH) ? HE_V2 : HE_V1;
         else
             hEncoder->config.aacObjectType = LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
