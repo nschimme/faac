@@ -25,6 +25,8 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #elif defined(HAVE_ICONV)
 #include <langinfo.h>
 #include <iconv.h>
