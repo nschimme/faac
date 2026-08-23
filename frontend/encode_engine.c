@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -374,6 +375,19 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     unsigned int sample_rate = infile->samplerate;
     unsigned int num_channels = infile->channels;
+
+    if (opts->container_mp4 && !opts->ignore_wav_length && infile->samples > 0 && (uint64_t)infile->samples > 0xFFFFFFFFULL)
+    {
+        if (log_cb)
+        {
+            char msg[256];
+            snprintf(msg, sizeof(msg), "Input sample count (%" PRIu64 ") exceeds standard 32-bit MP4 container duration limit.\n",
+                     (uint64_t)infile->samples);
+            log_cb(1, msg, user_data);
+        }
+        ret = 1;
+        goto cleanup;
+    }
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
