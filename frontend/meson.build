@@ -6,16 +6,14 @@ libfrontend = static_library('frontend',
     dependencies: [libiconv]
 )
 
-faac_deps = []
-if target_machine.system() == 'windows'
-    faac_deps += cc.find_library('shell32')
-endif
+# Only Windows ships shell32; elsewhere this is not-found, which is a no-op.
+libshell32 = cc.find_library('shell32', required: false)
 
 faac = executable('faac',
     ['main.c'],
     include_directories: ['..', '../include'],
     link_with: [libfaac, libfrontend],
-    dependencies: faac_deps,
+    dependencies: [libshell32],
     install: true
 )
 
