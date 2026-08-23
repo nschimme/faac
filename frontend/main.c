@@ -473,10 +473,6 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Wrong libfaac version!\n");
         return 1;
     }
-    else if (libinfo.version)
-    {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
-    }
 
 #ifdef _WIN32
     int wargc = 0;
@@ -849,6 +845,11 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Metadata requires MP4 output!\n");
         ret = 1;
         goto cleanup;
+    }
+
+    if (opts.verbose > 0 && libinfo.version)
+    {
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
     }
 
     opts.output_filename = aacFileName;
