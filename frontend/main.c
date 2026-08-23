@@ -324,20 +324,10 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 
     /* Cancellation (running != 0) is checked below on every call regardless
        of this throttle: the caller invokes progress_cb every frame, but
-       redrawing the status line that often just spams the terminal.
-       current_input_samples stays pinned at total_input_samples across every
-       post-EOF flush frame, so the "final frame" override below must fire
-       once on that transition, not on every frame after it. */
-    static double s_last_print_sec = -1.0;
-    static bool s_reached_end = false;
-    bool at_end = info->total_input_samples > 0 && info->current_input_samples >= info->total_input_samples;
-    bool is_last = at_end && !s_reached_end;
-    if (at_end)
-        s_reached_end = true;
-    if (is_last || s_last_print_sec < 0.0 || (info->time_elapsed_sec - s_last_print_sec) >= 0.1)
+       redrawing the status line that often just spams the terminal. */
+    static progress_throttle_t s_throttle = { .last_fired_sec = -1.0 };
+    if (progress_throttle_tick(&s_throttle, info, 0.1))
     {
-        s_last_print_sec = info->time_elapsed_sec;
-
         if (info->total_frames > 0)
         {
             int percent = (int)(info->current_frame * 100 / info->total_frames);

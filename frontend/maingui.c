@@ -65,8 +65,7 @@ static progress_info_t g_gui_progress;
 static encode_session_info_t g_gui_sess_info;
 static encode_summary_t g_gui_summary;
 static char g_gui_log_msg[256];
-static DWORD g_last_progress_post = 0;
-static bool g_gui_reached_end = false;
+static progress_throttle_t g_gui_throttle;
 static CRITICAL_SECTION g_cs_progress;
 
 static BOOL SelectFileName(HWND hParent, WCHAR *filename, BOOL forReading)
@@ -190,25 +189,12 @@ static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
     if (!Encoding)
         return false;
 
-    DWORD now = GetTickCount();
-
     EnterCriticalSection(&g_cs_progress);
-    /* Throttle updates to ~20 Hz (50ms interval), plus the single frame where
-       input is exhausted, to avoid message queue spamming. current_input_samples
-       stays pinned at total_input_samples across every post-EOF flush frame, so
-       this must fire once on that transition, not on every frame after it. */
-    bool at_end = info->total_input_samples > 0 &&
-                  info->current_input_samples >= info->total_input_samples;
-    bool should_post = (at_end && !g_gui_reached_end) ||
-                       (g_last_progress_post == 0) ||
-                       ((now - g_last_progress_post) >= GUI_PROGRESS_THROTTLE_MS);
-    if (at_end)
-        g_gui_reached_end = true;
+    /* Throttle updates to ~20 Hz (50ms) to avoid message queue spamming. */
+    bool should_post = progress_throttle_tick(&g_gui_throttle, info,
+                                               GUI_PROGRESS_THROTTLE_MS / 1000.0);
     if (should_post)
-    {
-        g_last_progress_post = now;
         g_gui_progress = *info;
-    }
     LeaveCriticalSection(&g_cs_progress);
 
     if (should_post)
@@ -268,8 +254,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     HWND hWnd = param->hWnd;
 
     EnterCriticalSection(&g_cs_progress);
-    g_last_progress_post = 0;
-    g_gui_reached_end = false;
+    progress_throttle_reset(&g_gui_throttle);
     LeaveCriticalSection(&g_cs_progress);
 
     char *utf8_input = win32_utf16_to_utf8(param->inputFilename);

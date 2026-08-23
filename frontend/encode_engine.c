@@ -186,6 +186,24 @@ static void finalize_log(log_message_callback_t log_cb, void *user_data,
         fputs(msg, stderr);
 }
 
+/* Unlike finalize_log(), silent (not stderr) when log_cb is NULL: matches
+   the pre-existing behavior of every one of these call sites, which only
+   ever printed through a caller-supplied log_cb. run_encoding_session()
+   (the callback-less public wrapper) relies on that silence. */
+static void log_msgf(log_message_callback_t log_cb, void *user_data,
+                      int level, const char *fmt, ...)
+{
+    if (!log_cb)
+        return;
+
+    char msg[256];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, ap);
+    va_end(ap);
+    log_cb(level, msg, user_data);
+}
+
 static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
                           log_message_callback_t log_cb, void *user_data)
 {
@@ -372,6 +390,15 @@ int run_encoding_session_ext(const encode_options_t *opts,
     int ret = 0;
     bool mp4_is_open = false;
 
+/* Relies on the ret/log_cb/user_data locals above; scoped to this function
+   with the #undef at its end. */
+#define FAIL(...) \
+    do { \
+        log_msgf(log_cb, user_data, 1, __VA_ARGS__); \
+        ret = 1; \
+        goto cleanup; \
+    } while (0)
+
     if (opts->raw_pcm_input)
     {
         infile = wav_open_read(opts->input_filename, 1);
@@ -390,15 +417,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     if (!infile)
-    {
-        if (log_cb)
-        {
-            char msg[256];
-            snprintf(msg, sizeof(msg), "Couldn't open input file %s\n", opts->input_filename);
-            log_cb(1, msg, user_data);
-        }
-        return 1;
-    }
+        FAIL("Couldn't open input file %s\n", opts->input_filename);
 
     uint32_t sample_rate = infile->samplerate;
     uint16_t num_channels = (uint16_t)infile->channels;
@@ -406,17 +425,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
     if (num_channels > libinfo.max_channels)
-    {
-        if (log_cb)
-        {
-            char msg[256];
-            snprintf(msg, sizeof(msg), "Input file %s has %u channels, but this build supports at most %u.\n",
-                    opts->input_filename, num_channels, libinfo.max_channels);
-            log_cb(1, msg, user_data);
-        }
-        ret = 1;
-        goto cleanup;
-    }
+        FAIL("Input file %s has %u channels, but this build supports at most %u.\n",
+             opts->input_filename, num_channels, libinfo.max_channels);
 
     faac_params params;
     faac_params_init(&params, sizeof(params));
@@ -461,16 +471,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.input_format = FAAC_INPUT_FLOAT;
 
     if (faac_encoder_open(&params, &hEncoder) != FAAC_OK)
-    {
-        if (log_cb)
-        {
-            char msg[256];
-            snprintf(msg, sizeof(msg), "Couldn't open encoder instance for %s\n", opts->input_filename);
-            log_cb(1, msg, user_data);
-        }
-        ret = 1;
-        goto cleanup;
-    }
+        FAIL("Couldn't open encoder instance for %s\n", opts->input_filename);
 
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);
@@ -483,12 +484,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     bitbuf = malloc(max_output_bytes * sizeof(unsigned char));
 
     if (!pcmbuf || !bitbuf)
-    {
-        if (log_cb)
-            log_cb(1, "Out of memory!\n", user_data);
-        ret = 1;
-        goto cleanup;
-    }
+        FAIL("Out of memory!\n");
 
     chanmap = mk_chan_map(num_channels, opts->center_channel, opts->lfe_channel);
     if (chanmap && log_cb)
@@ -502,24 +498,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->container_mp4)
     {
         if (opts->output_filename && !strcmp(opts->output_filename, "-"))
-        {
-            if (log_cb)
-                log_cb(1, "Cannot encode MP4 to stdout\n", user_data);
-            ret = 1;
-            goto cleanup;
-        }
+            FAIL("Cannot encode MP4 to stdout\n");
 
         if (mp4_open(opts->output_filename, opts->overwrite) != 0)
-        {
-            if (log_cb)
-            {
-                char msg[256];
-                snprintf(msg, sizeof(msg), "Couldn't create MP4 output file %s\n", opts->output_filename);
-                log_cb(1, msg, user_data);
-            }
-            ret = 1;
-            goto cleanup;
-        }
+            FAIL("Couldn't create MP4 output file %s\n", opts->output_filename);
         mp4_is_open = true;
         mp4_set_format(sample_rate, num_channels, infile->samplebytes * 8);
     }
@@ -540,16 +522,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             outfile = fopen(opts->output_filename, "wb");
 #endif
             if (!outfile)
-            {
-                if (log_cb)
-                {
-                    char msg[256];
-                    snprintf(msg, sizeof(msg), "Couldn't create output file %s\n", opts->output_filename);
-                    log_cb(1, msg, user_data);
-                }
-                ret = 1;
-                goto cleanup;
-            }
+                FAIL("Couldn't create output file %s\n", opts->output_filename);
         }
     }
 
@@ -653,16 +626,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             break;
 
         if (bytes_written < 0)
-        {
-            if (log_cb)
-            {
-                char msg[256];
-                snprintf(msg, sizeof(msg), "faac_encoder_encode() failed: %s\n", faac_strerror(st));
-                log_cb(1, msg, user_data);
-            }
-            ret = 1;
-            goto cleanup;
-        }
+            FAIL("faac_encoder_encode() failed: %s\n", faac_strerror(st));
 
         if (bytes_written > 0)
         {
@@ -673,22 +637,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
             if (opts->container_mp4)
             {
                 if (mp4_write_frame(bitbuf, (uint32_t)bytes_written, (uint32_t)frame_samples) != 0)
-                {
-                    if (log_cb)
-                        log_cb(1, "mp4_write_frame() failed\n", user_data);
-                    ret = 1;
-                    goto cleanup;
-                }
+                    FAIL("mp4_write_frame() failed\n");
             }
             else
             {
                 if (!write_output_bytes(outfile, bitbuf, (size_t)bytes_written))
-                {
-                    if (log_cb)
-                        log_cb(1, "Output write failed\n", user_data);
-                    ret = 1;
-                    goto cleanup;
-                }
+                    FAIL("Output write failed\n");
             }
 
             encoded_samples += frame_samples;
@@ -775,5 +729,6 @@ cleanup:
     if (infile)
         wav_close(infile);
 
+#undef FAIL
     return ret;
 }
