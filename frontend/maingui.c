@@ -39,6 +39,7 @@
 #define GUI_PROGRESS_THROTTLE_MS 33
 
 static HINSTANCE hInstance;
+static HWND hwndTip;
 
 /* Wide-char at the Win32 edge (dialog controls, file dialogs, drag-drop);
    converted to UTF-8 via win32_utf16_to_utf8() right before crossing into
@@ -112,6 +113,16 @@ static BOOL SelectFileName(HWND hParent, WCHAR *filename, BOOL forReading)
 
         return GetSaveFileNameW(&ofn);
     }
+}
+
+static void AddTip(HWND hDlg, int ctrlId, const char *text)
+{
+    TOOLINFO ti = { .cbSize = sizeof(ti) };
+    ti.uFlags = TTF_SUBCLASS | TTF_IDISHWND;
+    ti.hwnd = hDlg;
+    ti.uId = (UINT_PTR)GetDlgItem(hDlg, ctrlId);
+    ti.lpszText = (LPSTR)text;
+    SendMessage(hwndTip, TTM_ADDTOOL, 0, (LPARAM)&ti);
 }
 
 static LRESULT gui_get_combo_data(HWND hWnd, int control_id, LRESULT default_val)
@@ -510,6 +521,37 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         SetDlgItemText(hWnd, IDC_PNS, "4"); /* library default, libfaac/faac.c */
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 
+        hwndTip = CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL,
+            WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+            hWnd, NULL, hInstance, NULL);
+        if (hwndTip)
+        {
+            SetWindowPos(hwndTip, HWND_TOPMOST, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+
+            AddTip(hWnd, IDC_QUALITY,
+                "Percent (VBR) or kbps/channel (ABR), depending on Rate Mode.");
+            AddTip(hWnd, IDC_BWCTL,
+                "Cap the encoded bandwidth to a specific frequency instead of\n"
+                "letting the encoder choose it automatically.");
+            AddTip(hWnd, IDC_BANDWIDTH, "Cutoff frequency in Hz.");
+            AddTip(hWnd, IDC_RATEMODE,
+                "VBR (Quality) targets a quality level; ABR (Bitrate) targets\n"
+                "an average bitrate.");
+            AddTip(hWnd, IDC_OBJECTTYPE,
+                "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
+                "override that choice.");
+            AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
+            AddTip(hWnd, IDC_PNS, "Perceptual Noise Substitution level, 0-10; 0 disables it.");
+            AddTip(hWnd, IDC_SHORTCTL,
+                "Normal switches block length automatically; No Short/No Long\n"
+                "force one block type throughout the encode.");
+            AddTip(hWnd, IDC_JOINTMODE,
+                "None: independent channels. M/S and IS: fixed stereo coding.\n"
+                "Mixed: chooses dynamically per band (default).");
+        }
+
         DragAcceptFiles(hWnd, TRUE);
         return TRUE;
 
@@ -602,6 +644,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInstance, LPSTR lpCmdLine, in
     (void)nCmdShow;
 
     hInstance = hInst;
+    INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_BAR_CLASSES | ICC_WIN95_CLASSES };
+    InitCommonControlsEx(&icc);
     InitializeCriticalSection(&g_cs_progress);
     int res = (int)DialogBox(hInstance, MAKEINTRESOURCE(IDD_MAINDIALOG), NULL, DialogProc);
     DeleteCriticalSection(&g_cs_progress);
