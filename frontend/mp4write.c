@@ -695,9 +695,15 @@ int mp4_finish(void) {
     }
     end_atom(stsz);
 
-    long stco = start_atom("stco");
-    put_u32(0); put_u32(1); put_u32(g_mp4.mdatofs);
-    end_atom(stco);
+    if ((uint64_t)g_mp4.mdatofs + g_mp4.mdatsize <= 0xFFFFFFFFULL) {
+        long stco = start_atom("stco");
+        put_u32(0); put_u32(1); put_u32(g_mp4.mdatofs);
+        end_atom(stco);
+    } else {
+        long co64 = start_atom("co64");
+        put_u32(0); put_u32(1); put_u64((uint64_t)g_mp4.mdatofs);
+        end_atom(co64);
+    }
 
     end_atom(stbl);
     end_atom(minf);
