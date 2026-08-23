@@ -641,7 +641,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (bytes_written > 0)
         {
             uint64_t frame_samples = current_input_samples - encoded_samples;
-            if (frame_samples > frame_size || input_eof)
+            if (frame_samples > frame_size)
                 frame_samples = frame_size;
 
             if (opts->container_mp4)

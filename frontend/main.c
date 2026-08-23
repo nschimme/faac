@@ -616,7 +616,14 @@ int main(int argc, char *argv[])
             opts.raw_pcm_input = true;
             break;
         case 'B':
-            opts.raw_bits = (uint8_t)atoi(optarg);
+            {
+                int bits = atoi(optarg);
+                if (bits > 32)
+                    bits = 32;
+                if (bits < 8)
+                    bits = 8;
+                opts.raw_bits = (uint8_t)bits;
+            }
             opts.raw_pcm_input = true;
             break;
         case 'C':
@@ -829,6 +836,11 @@ int main(int argc, char *argv[])
     else if (is_mp4_filename(aacFileName))
     {
         opts.container_mp4 = true;
+    }
+
+    if (opts.container_mp4)
+    {
+        opts.mpeg_version = FAAC_MPEG4;
     }
 
     bool has_metadata = opts.metadata.artist || opts.metadata.artist_sort ||
