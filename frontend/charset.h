@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,10 @@ FILE *win32_fopen_utf8(const char *utf8_path, const char *mode);
 
 /* access() on a UTF-8 path, same rationale as win32_fopen_utf8(). */
 int win32_access_utf8(const char *utf8_path, int amode);
+
+/* mtime of a UTF-8 path, same rationale as win32_fopen_utf8(). Returns 0 and
+   sets *mtime on success, -1 on failure (path not found, etc). */
+int win32_mtime_utf8(const char *utf8_path, time_t *mtime);
 #endif
 
 #ifdef __cplusplus

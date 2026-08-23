@@ -559,12 +559,12 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             return TRUE;
 
         case IDC_SELECT_INPUTFILE:
-            if (SelectFileName(hWnd, inputFilename, TRUE))
+            if (!Encoding && SelectFileName(hWnd, inputFilename, TRUE))
                 AwakeDialogControls(hWnd);
             break;
 
         case IDC_SELECT_OUTPUTFILE:
-            if (SelectFileName(hWnd, outputFilename, FALSE))
+            if (!Encoding && SelectFileName(hWnd, outputFilename, FALSE))
             {
                 SetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename);
             }

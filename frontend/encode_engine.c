@@ -24,6 +24,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -170,7 +171,23 @@ static inline bool write_output_bytes(FILE *outfile, const unsigned char *buf, s
     return outfile && (fwrite(buf, 1, size, outfile) == size);
 }
 
-static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
+static void finalize_log(log_message_callback_t log_cb, void *user_data,
+                          int level, const char *fmt, ...)
+{
+    char msg[512];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, ap);
+    va_end(ap);
+
+    if (log_cb)
+        log_cb(level, msg, user_data);
+    else
+        fputs(msg, stderr);
+}
+
+static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
+                          log_message_callback_t log_cb, void *user_data)
 {
     char *allocated_tags[MP4TAG_COUNT + 1] = { 0 };
     int num_allocated = 0;
@@ -192,19 +209,26 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
         {
             if (opts->input_filename && strcmp(opts->input_filename, "-") != 0)
             {
+                time_t mtime;
+#ifdef _WIN32
+                bool ok = win32_mtime_utf8(opts->input_filename, &mtime) == 0;
+#else
                 struct stat st;
-                if (stat(opts->input_filename, &st) == 0)
+                bool ok = stat(opts->input_filename, &st) == 0;
+                mtime = st.st_mtime;
+#endif
+                if (ok)
                 {
-                    creation_time = (uint32_t)st.st_mtime;
+                    creation_time = (uint32_t)mtime;
                 }
                 else if (opts->verbose)
                 {
-                    fprintf(stderr, "couldn't stat() input file %s, defaulting to 0\n", opts->input_filename);
+                    finalize_log(log_cb, user_data, 0, "couldn't stat() input file %s, defaulting to 0\n", opts->input_filename);
                 }
             }
             else if (opts->verbose)
             {
-                fprintf(stderr, "cannot use --creation-time auto with stdin, defaulting to 0\n");
+                finalize_log(log_cb, user_data, 0, "cannot use --creation-time auto with stdin, defaulting to 0\n");
             }
         }
         else if (!strcmp(opts->creation_time_str, "now"))
@@ -219,7 +243,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
             if (errno != 0 || *endptr != '\0')
             {
                 if (opts->verbose)
-                    fprintf(stderr, "invalid creation time %s, defaulting to 0\n", opts->creation_time_str);
+                    finalize_log(log_cb, user_data, 0, "invalid creation time %s, defaulting to 0\n", opts->creation_time_str);
                 creation_time = 0;
             }
         }
@@ -236,7 +260,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
             if (errno != 0 || *endptr != '\0')
             {
                 if (opts->verbose)
-                    fprintf(stderr, "invalid SOURCE_DATE_EPOCH %s, ignoring\n", sde);
+                    finalize_log(log_cb, user_data, 0, "invalid SOURCE_DATE_EPOCH %s, ignoring\n", sde);
                 creation_time = 0;
             }
         }
@@ -302,8 +326,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
 
     if (mp4_finish() != 0)
     {
-        if (opts->verbose)
-            fprintf(stderr, "mp4_finish() failed: output file may be incomplete\n");
+        finalize_log(log_cb, user_data, 1, "mp4_finish() failed: output file may be incomplete\n");
     }
 
     for (int i = 0; i < num_allocated; i++)
@@ -668,7 +691,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             encoded_samples += frame_samples;
         }
 
-        if (progress_cb && (current_frame % 32 == 0 || (total_input_samples > 0 && current_input_samples >= total_input_samples)))
+        if (progress_cb)
         {
             double time_used = get_wall_time_sec() - start_time;
             progress_info_t prog = {
@@ -694,7 +717,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->container_mp4 && mp4_is_open)
     {
-        finalize_mp4(hEncoder, opts);
+        finalize_mp4(hEncoder, opts, log_cb, user_data);
         if (summary_cb)
         {
             uint32_t max_kbps = (mp4_max_bitrate() + 500) / 1000;

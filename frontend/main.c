@@ -322,23 +322,33 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 #endif
     }
 
-    if (info->total_frames > 0)
+    /* Cancellation (running != 0) is checked below on every call regardless
+       of this throttle: the caller invokes progress_cb every frame, but
+       redrawing the status line that often just spams the terminal. */
+    static double s_last_print_sec = -1.0;
+    bool is_last = info->total_input_samples > 0 && info->current_input_samples >= info->total_input_samples;
+    if (is_last || s_last_print_sec < 0.0 || (info->time_elapsed_sec - s_last_print_sec) >= 0.1)
     {
-        int percent = (int)(info->current_frame * 100 / info->total_frames);
-        double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
-        double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
-        fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
-                info->current_frame, info->total_frames, percent,
-                bitrate_kbps,
-                info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
-                info->speed_factor, info->eta_sec);
+        s_last_print_sec = info->time_elapsed_sec;
+
+        if (info->total_frames > 0)
+        {
+            int percent = (int)(info->current_frame * 100 / info->total_frames);
+            double played_sec = (double)info->current_input_samples / (double)(info->sample_rate ? info->sample_rate : 1);
+            double bitrate_kbps = played_sec > 0.0 ? ((double)info->total_bytes_written * 8.0 / 1000.0) / played_sec : 0.0;
+            fprintf(stderr, "\r%7u/%-7u (%3d%%) |  %5.1f  | %6.1f/%-6.1f | %7.2fx | %.1f ",
+                    info->current_frame, info->total_frames, percent,
+                    bitrate_kbps,
+                    info->time_elapsed_sec, info->time_elapsed_sec + info->eta_sec,
+                    info->speed_factor, info->eta_sec);
+        }
+        else
+        {
+            fprintf(stderr, "\r %7u | %7.1f | %7.2fx ",
+                    info->current_frame, info->time_elapsed_sec, info->speed_factor);
+        }
+        fflush(stderr);
     }
-    else
-    {
-        fprintf(stderr, "\r %7u | %7.1f | %7.2fx ",
-                info->current_frame, info->time_elapsed_sec, info->speed_factor);
-    }
-    fflush(stderr);
 #ifndef _WIN32
     return running != 0;
 #else
@@ -816,6 +826,8 @@ int main(int argc, char *argv[])
     if (optind < argc)
     {
         opts.input_filename = argv[optind];
+        if ((argc - optind) > 1 && aacFileNameGiven)
+            dieMessage = "Cannot encode several input files to one output file.\n";
     }
     else
     {

@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -167,6 +168,20 @@ int win32_access_utf8(const char *utf8_path, int amode)
 
     int ret = _waccess(wpath, amode);
     free(wpath);
+    return ret;
+}
+
+int win32_mtime_utf8(const char *utf8_path, time_t *mtime)
+{
+    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    if (!wpath)
+        return -1;
+
+    struct _stat64 st;
+    int ret = _wstat64(wpath, &st);
+    free(wpath);
+    if (ret == 0)
+        *mtime = (time_t)st.st_mtime;
     return ret;
 }
 #else /* POSIX */
