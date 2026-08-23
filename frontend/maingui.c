@@ -191,8 +191,9 @@ static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
 
     EnterCriticalSection(&g_cs_progress);
     /* Throttle updates to ~20 Hz (50ms) to avoid message queue spamming. */
-    bool should_post = progress_throttle_tick(&g_gui_throttle, info,
-                                               GUI_PROGRESS_THROTTLE_MS / 1000.0);
+    bool should_post = info->is_final ||
+                        progress_throttle_tick(&g_gui_throttle, info,
+                                                GUI_PROGRESS_THROTTLE_MS / 1000.0);
     if (should_post)
         g_gui_progress = *info;
     LeaveCriticalSection(&g_cs_progress);

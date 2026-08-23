@@ -672,6 +672,27 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
     }
 
+    /* The in-loop progress_cb above can't know which call is last until
+       after it returns, so it can't set is_final itself. */
+    if (progress_cb)
+    {
+        double time_used = get_wall_time_sec() - start_time;
+        progress_info_t prog = {
+            .current_input_samples = current_input_samples,
+            .total_input_samples = total_input_samples,
+            .sample_rate = sample_rate,
+            .num_channels = num_channels,
+            .current_frame = current_frame,
+            .total_frames = total_frames,
+            .total_bytes_written = total_bytes_written,
+            .time_elapsed_sec = time_used,
+            .speed_factor = calc_speed(current_input_samples, sample_rate, time_used),
+            .eta_sec = 0.0,
+            .is_final = true
+        };
+        progress_cb(&prog, user_data);
+    }
+
     if (opts->container_mp4 && mp4_is_open)
     {
         if (!finalize_mp4(hEncoder, opts, log_cb, user_data))

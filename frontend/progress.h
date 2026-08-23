@@ -34,6 +34,7 @@ typedef struct {
     double time_elapsed_sec;
     double speed_factor;
     double eta_sec;
+    bool is_final; /* last call of the session; render unthrottled */
 } progress_info_t;
 
 /* Callback function type for reporting progress updates.
