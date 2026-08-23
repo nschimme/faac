@@ -200,6 +200,31 @@ static inline void put_u16(uint16_t val) {
     }
 }
 
+static inline void put_u64(uint64_t val) {
+#ifndef WORDS_BIGENDIAN
+#if defined(MP4_HAVE_BSWAP_BUILTINS)
+    val = __builtin_bswap64(val);
+#elif defined(_MSC_VER)
+    val = _byteswap_uint64(val);
+#else
+    val = ((val >> 56) & 0x00000000000000FFULL) |
+          ((val >> 40) & 0x000000000000FF00ULL) |
+          ((val >> 24) & 0x0000000000FF0000ULL) |
+          ((val >> 8)  & 0x00000000FF000000ULL) |
+          ((val << 8)  & 0x000000FF00000000ULL) |
+          ((val << 24) & 0x0000FF0000000000ULL) |
+          ((val << 40) & 0x00FF000000000000ULL) |
+          ((val << 56) & 0xFF00000000000000ULL);
+#endif
+#endif
+    if (g_membuf && g_mempos + 8 <= g_memcap) {
+        memcpy(g_membuf + g_mempos, &val, 8);
+        g_mempos += 8;
+    } else {
+        mem_write(&val, 8);
+    }
+}
+
 static inline void put_u8(uint8_t val) { mem_write(&val, 1); }
 
 static inline void put_data(const void *data, size_t size) { mem_write(data, size); }
@@ -317,6 +342,10 @@ int mp4_open(const char *path, bool overwrite) {
     fwrite(g_membuf, 1, g_mempos, g_mp4.fout);
     free(g_membuf);
     g_membuf = NULL;
+
+    /* Emit 8-byte 'wide' atom placeholder between ftyp and mdat */
+    put_u32(8);
+    put_data("wide", 4);
 
     /* mdat's size isn't known until every frame has been written, so its
        header goes out now as a placeholder and gets patched in mp4_finish().
@@ -513,10 +542,19 @@ int mp4_finish(void) {
     g_mem_error = 0;
 
     /* now that all frames are written, go back and fill in the mdat
-       size placeholder left by mp4_open() */
+       header placeholder left by mp4_open() */
     long pos = ftell(g_mp4.fout);
-    fseek(g_mp4.fout, g_mp4.mdatofs - 8, SEEK_SET);
-    put_u32(g_mp4.mdatsize + 8);
+    if (g_mp4.mdatsize + 8 <= 0xFFFFFFFFULL) {
+        /* Standard 32-bit mdat size header */
+        fseek(g_mp4.fout, g_mp4.mdatofs - 8, SEEK_SET);
+        put_u32((uint32_t)(g_mp4.mdatsize + 8));
+    } else {
+        /* 64-bit extended mdat header, overwriting the preceding 8-byte 'wide' box */
+        fseek(g_mp4.fout, g_mp4.mdatofs - 16, SEEK_SET);
+        put_u32(1);
+        put_data("mdat", 4);
+        put_u64(g_mp4.mdatsize + 16);
+    }
     fseek(g_mp4.fout, pos, SEEK_SET);
     if (g_mem_error) return 1;
 
