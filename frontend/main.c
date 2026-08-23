@@ -326,7 +326,7 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
        of this throttle: the caller invokes progress_cb every frame, but
        redrawing the status line that often just spams the terminal. */
     static progress_throttle_t s_throttle = { .last_fired_sec = -1.0 };
-    if (info->is_final || progress_throttle_tick(&s_throttle, info, 0.1))
+    if (info->is_final || progress_throttle_tick(&s_throttle, info, 0.033))
     {
         if (info->total_frames > 0)
         {

@@ -36,7 +36,7 @@
 #define WM_USER_SUMMARY    (WM_USER + 104)
 
 #define GUI_PROGRESS_RANGE       1024
-#define GUI_PROGRESS_THROTTLE_MS 50
+#define GUI_PROGRESS_THROTTLE_MS 33
 
 static HINSTANCE hInstance;
 
