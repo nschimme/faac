@@ -40,42 +40,20 @@ typedef struct {
    Return false from callback to signal user-cancelled encoding. */
 typedef bool (*progress_callback_t)(const progress_info_t *info, void *user_data);
 
-/* Shared rate-limiting for progress_callback_t implementations: the caller
-   (encode_engine.c) invokes progress_cb every frame so cancellation is
-   checked promptly, but redrawing a status line or posting a UI message
-   that often is wasted work. progress_throttle_tick() answers "should I
-   actually update now?" at an interval, plus exactly once on the frame
-   where current_input_samples reaches total_input_samples -- that value
-   stays pinned across every post-EOF flush frame, so this must be an edge
-   trigger (rising edge only) rather than a level check, or every flush
-   frame after the first would fire again. */
+/* Shared rate-limiting for progress_callback_t implementations: encode_engine.c
+   calls progress_cb every frame so cancellation is checked promptly, but a
+   redraw that often is wasted work. Must fire on the end-of-input frame by
+   rising edge, not by level: current_input_samples stays pinned at the
+   total across every post-EOF flush frame, so a level check would re-fire
+   on each of those instead of once. */
 typedef struct {
     double last_fired_sec;
     bool reached_end;
 } progress_throttle_t;
 
-static inline void progress_throttle_reset(progress_throttle_t *t)
-{
-    t->last_fired_sec = -1.0;
-    t->reached_end = false;
-}
-
-static inline bool progress_throttle_tick(progress_throttle_t *t,
-                                           const progress_info_t *info,
-                                           double interval_sec)
-{
-    bool at_end = info->total_input_samples > 0 &&
-                  info->current_input_samples >= info->total_input_samples;
-    bool fire_edge = at_end && !t->reached_end;
-    if (at_end)
-        t->reached_end = true;
-
-    bool fire = fire_edge || t->last_fired_sec < 0.0 ||
-                (info->time_elapsed_sec - t->last_fired_sec) >= interval_sec;
-    if (fire)
-        t->last_fired_sec = info->time_elapsed_sec;
-    return fire;
-}
+void progress_throttle_reset(progress_throttle_t *t);
+bool progress_throttle_tick(progress_throttle_t *t, const progress_info_t *info,
+                             double interval_sec);
 
 #ifdef __cplusplus
 }

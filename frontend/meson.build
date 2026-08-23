@@ -1,5 +1,5 @@
 libfrontend = static_library('frontend',
-    ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c',
+    ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
      'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h'],
     include_directories: ['..', '../include'],
     link_with: libfaac,
