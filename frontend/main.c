@@ -333,56 +333,6 @@ static void help(int mode)
 }
 
 
-static int *mkChanMap(int channels, int center, int lf)
-{
-    int *map;
-    int inpos;
-    int outpos;
-
-    if (!center && !lf)
-        return NULL;
-
-    if (channels < 3)
-        return NULL;
-
-    if (lf > 0)
-        lf--;
-    else
-        lf = channels - 1;      // default AAC position
-
-    if (center > 0)
-        center--;
-    else
-        center = 0;             // default AAC position
-
-    map = malloc(channels * sizeof(map[0]));
-    if (!map) return NULL;
-    memset(map, 0, channels * sizeof(map[0]));
-
-    outpos = 0;
-    if ((center >= 0) && (center < channels))
-        map[outpos++] = center;
-
-    inpos = 0;
-    for (; outpos < (channels - 1) && inpos < channels; inpos++)
-    {
-        if (inpos == center)
-            continue;
-        if (inpos == lf)
-            continue;
-
-        map[outpos++] = inpos;
-    }
-    if (outpos < channels)
-    {
-        if ((lf >= 0) && (lf < channels))
-            map[outpos] = lf;
-        else if (inpos < channels)
-            map[outpos] = inpos;
-    }
-
-    return map;
-}
 
 #define fprintf if(verbose)fprintf
 
@@ -412,7 +362,6 @@ int main(int argc, char *argv[])
 
     char *audioFileName = NULL;
     char *aacFileName = NULL;
-    char *aacFileExt = NULL;
     int aacFileNameGiven = 0;
 
     float *pcmbuf;
@@ -973,7 +922,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "out of memory\n");
         return 1;
     }
-    chanmap = mkChanMap(infile->channels, chanC, chanLF);
+    chanmap = mk_chan_map(infile->channels, chanC, chanLF);
     if (chanmap)
     {
         fprintf(stderr, "Remapping input channels: Center=%d, LFE=%d\n",
