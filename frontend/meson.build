@@ -18,7 +18,8 @@ faac = executable('faac',
 
 if target_machine.system() == 'windows'
     windows = import('windows')
-    resource_src = windows.compile_resources('faacgui.rc', 'icon.rc')
+    resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
+        depend_files: 'faacgui.exe.manifest')
     libcomctl32 = cc.find_library('comctl32', required: true)
     faacgui = executable('faacgui',
         ['maingui.c', 'resource.h'] + resource_src,

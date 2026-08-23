@@ -522,7 +522,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 
         hwndTip = CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL,
-            WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX,
+            WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX | TTS_BALLOON,
             CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
             hWnd, NULL, hInstance, NULL);
         if (hwndTip)
