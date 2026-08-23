@@ -45,8 +45,10 @@ enum { AUTO = 0, LOW = 2, HE_V1 = 5, HE_V2 = 29 };
  * bitstream writer, Huffman tables -- drops out of the library. Embedded targets
  * that only need LC and HE-AAC v1 pay nothing for it. */
 #if defined(FAAC_PARAMETRIC_STEREO) && !FAAC_PARAMETRIC_STEREO
+# define FAAC_HAVE_PARAMETRIC_STEREO 0
 # define IsHEV2(aacObjectType)  ((void)(aacObjectType), 0)
 #else
+# define FAAC_HAVE_PARAMETRIC_STEREO 1
 # define IsHEV2(aacObjectType)  ((aacObjectType) == HE_V2)
 #endif
 
