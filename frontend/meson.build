@@ -6,8 +6,8 @@ libfrontend = static_library('frontend',
     dependencies: [libiconv]
 )
 
-# Only Windows ships shell32; elsewhere this is not-found, which is a no-op.
-libshell32 = cc.find_library('shell32', required: false)
+# Required on Windows (main.c's CommandLineToArgvW); a no-op elsewhere.
+libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
 faac = executable('faac',
     ['main.c'],
