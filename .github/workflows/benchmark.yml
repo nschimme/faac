@@ -94,6 +94,7 @@ jobs:
           fp=$( { probe cpu "lscpu | grep -E '^(Model name|Vendor ID|CPU family|Model|Stepping|Flags|CPU\(s\)):' \
                              || grep -E '^(model name|flags)' /proc/cpuinfo | head -2"; \
                   uname -m; nproc; \
+                  probe os "lsb_release -ds || (grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2- | tr -d '\"') || uname -sr"; \
                   probe cc "${CC:-cc} --version | head -1"; \
                   probe triple "${CC:-cc} -dumpmachine"; \
                   probe meson "meson --version"; } \

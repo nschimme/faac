@@ -23,6 +23,12 @@ config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
 
 libm = cc.find_library('m', required: false)
+# glibc/musl ship iconv() in libc itself (this returns not-found there, which
+# is fine -- linking an empty dependency is a no-op); other libc's (macOS,
+# some BSDs) need it linked explicitly.
+libiconv = cc.find_library('iconv', required: false)
+config_h.set('HAVE_ICONV', cc.has_header('iconv.h') and
+    cc.has_function('iconv_open', dependencies: [libiconv]))
 
 cpu_family = target_machine.cpu_family()
 
