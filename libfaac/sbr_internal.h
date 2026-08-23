@@ -38,6 +38,11 @@ typedef struct SbrFrameData {
     int frameClass;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
+    /* Envelope frequency resolution for every envelope in this frame: 1 selects
+     * the high-resolution band table, 0 the half-as-many low-resolution one.
+     * Per frame rather than per stream because a transient frame codes three
+     * envelopes and would otherwise triple the envelope payload. */
+    int freqRes;
     struct {
         int envData  [SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
         int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
@@ -58,6 +63,10 @@ struct SBRInfo {
     int dk;                /* master frequency table step (1 or 2 QMF bands) */
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
+    /* Low-resolution envelope band table: every other high-resolution edge, as
+     * the decoder derives it. Half the bands, so half the coded envelope. */
+    int numBandsLow;
+    int bandEdgesLow[SBR_MAX_BANDS + 1];
     int numNoiseBands;
 
     /* --- bitstream header fields --- */
@@ -108,6 +117,18 @@ struct SBRContext {
     SbrFrameData frameFIFO[SBR_FRAME_FIFO];
     int          frameHead;
 };
+
+/* The envelope band table this frame codes over. The quantizer and the writer
+ * must agree on it, and the decoder picks the same one from bs_freq_res. */
+static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
+{
+    return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
+}
+
+static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
+{
+    return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
+}
 
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables);
 /* Recompute the bitrate-dependent band config without reallocating; lets

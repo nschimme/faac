@@ -64,9 +64,31 @@ extern "C" {
 struct BitStream;
 
 #define SBR_QMF_BANDS_64     64
-#define SBR_QMF_OVL_LEN_64   576
+/* Group delay of the half-band decimator in resample.c, in full-rate samples.
+   The FIR is symmetric and RESAMPLE_FILTER_LEN (63) taps long, so its centre
+   sits at tap 31 and core output sample i carries full-rate time 2*i - 31. */
+#define SBR_RESAMPLE_DELAY   31
+/* QMF history, one whole slot more than the 576 the 640-tap prototype strictly
+   needs. Keeping it a multiple of the slot size holds the per-frame frame copy
+   on a 64-float boundary; the odd sample offset lives in the read pointer below,
+   where it is free -- the QMF reads are backwards stride-2 gathers, not
+   contiguous loads. */
+#define SBR_QMF_OVL_LEN_64   640
+/* Slot s reads from here, so its window ends SBR_RESAMPLE_DELAY samples before
+   the slot boundary. Without the shift the analysis sits on the undecimated time
+   base while the core sits on the decimator's, and every envelope describes
+   audio 0.7 ms (at 44.1 kHz) later than the core placed in that slot. */
+#define SBR_QMF_READ_OFFSET  (SBR_QMF_BANDS_64 - SBR_RESAMPLE_DELAY)
+/* Group delay of the 640-tap QMF analysis prototype, in QMF slots: 640/2 = 320
+ * samples = 5 slots. Pass 1 finds the attack in the time domain, pass 2 measures
+ * energy through the QMF, so a border derived from a pass-1 slot index has to be
+ * pushed forward by this much or it lands ahead of the energy it is meant to
+ * bracket -- leaving the transient envelope sitting on pre-attack silence. */
+#define SBR_QMF_DELAY_SLOTS  5
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
+/* Pre-attack, attack, post-attack. The spec allows 5, but each slot costs an
+ * envData row in every delay-ring entry, so bound it at what the grid emits. */
+#define SBR_MAX_ENVELOPES     3
 #define SBR_MAX_NOISE_ENVELOPES 2
 #define SBR_MAX_NOISE_BANDS   5
 #define SBR_HEADER_PERIOD    30
@@ -86,8 +108,14 @@ struct BitStream;
 #define SBR_EXT_TYPE_SBR     0xd
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
-/* Transient detection threshold (peak-to-mean power ratio). */
+/* Transient detection threshold: how far a QMF slot's power must rise above the
+ * running average of the slots before it to count as an attack. 4.0 = 6 dB. */
 #define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
+/* Weight of the newest slot in that running average: a ~2-slot (~2.9 ms at
+ * 44.1 kHz) memory. Long enough to average over a slot of ringing, short enough
+ * that the signal immediately before an attack does not dilute the rise the
+ * detector is looking for. */
+#define SBR_ATTACK_EMA_ALPHA            (0.125f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
