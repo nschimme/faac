@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "output_path.h"
+#include "output.h"
 
 #ifdef _WIN32
 #define strcasecmp _stricmp

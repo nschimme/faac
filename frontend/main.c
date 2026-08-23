@@ -53,7 +53,7 @@
 #endif
 
 #include "mp4write.h"
-#include "output_path.h"
+#include "output.h"
 
 #ifdef _WIN32
 # undef stderr

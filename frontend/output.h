@@ -16,8 +16,8 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef OUTPUT_PATH_H
-#define OUTPUT_PATH_H
+#ifndef OUTPUT_H
+#define OUTPUT_H
 
 #include <stdbool.h>
 
@@ -35,4 +35,4 @@ bool is_mp4_filename(const char *filename);
 }
 #endif
 
-#endif /* OUTPUT_PATH_H */
+#endif /* OUTPUT_H */
