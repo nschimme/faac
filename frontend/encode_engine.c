@@ -186,10 +186,10 @@ static void finalize_log(log_message_callback_t log_cb, void *user_data,
         fputs(msg, stderr);
 }
 
-/* Unlike finalize_log(), silent (not stderr) when log_cb is NULL: matches
-   the pre-existing behavior of every one of these call sites, which only
-   ever printed through a caller-supplied log_cb. run_encoding_session()
-   (the callback-less public wrapper) relies on that silence. */
+/* Unlike finalize_log(), silent (not stderr) when log_cb is NULL: these
+   call sites should only ever log through a caller-supplied callback, and
+   run_encoding_session()'s callback-less public wrapper relies on that
+   silence. */
 static void log_msgf(log_message_callback_t log_cb, void *user_data,
                       int level, const char *fmt, ...)
 {

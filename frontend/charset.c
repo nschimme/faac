@@ -33,21 +33,10 @@
 
 #include "charset.h"
 
-/*
- * Note: This function performs a lightweight structural check of UTF-8.
- * It only verifies continuation-byte patterns and that the string is
- * properly NUL-terminated.
- *
- * Limitations:
- *  - Overlong encodings are not rejected.
- *  - Surrogate code points (U+D800–U+DFFF) are not rejected.
- *  - Code points above U+10FFFF are not rejected.
- *
- * As a result, this should be treated as a plausibility check for
- * UTF-8 input rather than a fully compliant and security-hardened
- * UTF-8 validator. Callers that need strict UTF-8 validation should
- * perform additional checks at a higher layer.
- */
+/* Structural check only (continuation-byte pattern, NUL-termination): does
+   not reject overlong encodings, surrogates, or code points past U+10FFFF.
+   A plausibility check, not a strict validator -- good enough to decide
+   "does this need repair_to_utf8()", not for security-sensitive callers. */
 static bool utf8_is_valid(const char *str)
 {
     if (!str)

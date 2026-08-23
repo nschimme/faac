@@ -770,9 +770,7 @@ int mp4_finish(void) {
 
 /* Custom tags (mp4_add_custom_tag()) are freed here, not in
    reset_write_state(), so mp4_open() doesn't wipe them if a caller sets
-   them before the first open. A future multi-file/batch session reusing
-   this muxer across encodes would need to re-add custom tags after each
-   mp4_close() -- they don't survive it. */
+   them before the first open. They don't survive mp4_close(). */
 int mp4_close(void) {
     reset_write_state();
     free(g_mp4.custom);
