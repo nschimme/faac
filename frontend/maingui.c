@@ -111,6 +111,14 @@ static BOOL SelectFileName(HWND hParent, WCHAR *filename, BOOL forReading)
     }
 }
 
+static LRESULT gui_get_combo_data(HWND hWnd, int control_id, LRESULT default_val)
+{
+    HWND hCtrl = GetDlgItem(hWnd, control_id);
+    LRESULT sel = SendMessage(hCtrl, CB_GETCURSEL, 0, 0);
+    LRESULT data = (sel != CB_ERR) ? SendMessage(hCtrl, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
+    return (data != CB_ERR) ? data : default_val;
+}
+
 /* Sets the quality/bitrate label + edit box for the given rate mode, shared
    by WM_INITDIALOG's initial state and the IDC_RATEMODE CBN_SELCHANGE
    handler so the two don't drift out of sync. */
@@ -264,24 +272,14 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     opts.container_mp4 = utf8_output && is_mp4_filename(utf8_output);
     opts.overwrite = true;
 
-    {
-        HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);
-        LRESULT sel = SendMessage(hOT, CB_GETCURSEL, 0, 0);
-        LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-        opts.object_type = (data != CB_ERR) ? (enum faac_object_type)data : FAAC_OBJ_AUTO;
-    }
+    opts.object_type = (enum faac_object_type)gui_get_combo_data(hWnd, IDC_OBJECTTYPE, FAAC_OBJ_AUTO);
 
     {
         LRESULT mode = SendMessage(GetDlgItem(hWnd, IDC_JOINTMODE), CB_GETCURSEL, 0, 0);
         opts.joint_mode = (mode == CB_ERR) ? FAAC_JOINT_MIXED : (enum faac_joint_mode)mode;
     }
 
-    {
-        HWND hSC = GetDlgItem(hWnd, IDC_SHORTCTL);
-        LRESULT sel = SendMessage(hSC, CB_GETCURSEL, 0, 0);
-        LRESULT data = (sel != CB_ERR) ? SendMessage(hSC, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-        opts.shortctl = (data != CB_ERR) ? (enum faac_shortctl_mode)data : FAAC_SHORTCTL_NORMAL;
-    }
+    opts.shortctl = (enum faac_shortctl_mode)gui_get_combo_data(hWnd, IDC_SHORTCTL, FAAC_SHORTCTL_NORMAL);
 
     opts.use_tns = IsDlgButtonChecked(hWnd, IDC_USETNS) == BST_CHECKED;
     opts.stream_format = opts.container_mp4 ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS;
@@ -290,10 +288,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     GetDlgItemText(hWnd, IDC_QUALITY, szTemp, sizeof(szTemp));
 
     {
-        HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
-        LRESULT sel = SendMessage(hRM, CB_GETCURSEL, 0, 0);
-        LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
-
+        LRESULT mode = gui_get_combo_data(hWnd, IDC_RATEMODE, RATEMODE_VBR);
         parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts);
     }
 
@@ -587,10 +582,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDC_RATEMODE:
             if (HIWORD(wParam) == CBN_SELCHANGE)
             {
-                HWND hRM = GetDlgItem(hWnd, IDC_RATEMODE);
-                LRESULT sel = SendMessage(hRM, CB_GETCURSEL, 0, 0);
-                LRESULT mode = (sel != CB_ERR) ? SendMessage(hRM, CB_GETITEMDATA, (WPARAM)sel, 0) : RATEMODE_VBR;
-
+                LRESULT mode = gui_get_combo_data(hWnd, IDC_RATEMODE, RATEMODE_VBR);
                 ApplyRateModeUI(hWnd, (int)mode);
             }
             break;

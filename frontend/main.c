@@ -372,49 +372,37 @@ static void CliSessionStartCallback(const encode_session_info_t *info, void *use
     if (info->pns_level > 0)
         fprintf(stderr, "PNS level: %d\n", info->pns_level);
 
-    fprintf(stderr, "Object type: %s",
-            (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity");
-    fprintf(stderr, " (MPEG-%d)", (info->mpeg_version == FAAC_MPEG4) ? 4 : 2);
-    if (info->use_tns)
-        fprintf(stderr, " + TNS");
-
+    const char *jm_str = "";
     switch (info->joint_mode)
     {
-    case FAAC_JOINT_MS:
-        fprintf(stderr, " + M/S");
-        break;
-    case FAAC_JOINT_IS:
-        fprintf(stderr, " + IS");
-        break;
-    case FAAC_JOINT_MIXED:
-        fprintf(stderr, " + Mixed");
-        break;
-    default:
-        break;
+    case FAAC_JOINT_MS: jm_str = " + M/S"; break;
+    case FAAC_JOINT_IS: jm_str = " + IS"; break;
+    case FAAC_JOINT_MIXED: jm_str = " + Mixed"; break;
+    default: break;
     }
-    if (info->pns_level > 0)
-        fprintf(stderr, " + PNS");
-    fprintf(stderr, "\n");
 
-    fprintf(stderr, "Container format: ");
+    fprintf(stderr, "Object type: %s (MPEG-%d)%s%s%s\n",
+            (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity",
+            (info->mpeg_version == FAAC_MPEG4) ? 4 : 2,
+            info->use_tns ? " + TNS" : "",
+            jm_str,
+            (info->pns_level > 0) ? " + PNS" : "");
+
+    const char *fmt_str = "Unknown";
     if (info->container_mp4)
     {
-        fprintf(stderr, "MPEG-4 File Format (MP4)\n");
+        fmt_str = "MPEG-4 File Format (MP4)";
     }
     else
     {
         switch (info->stream_format)
         {
-        case FAAC_STREAM_RAW:
-            fprintf(stderr, "Headerless AAC (RAW)\n");
-            break;
-        case FAAC_STREAM_ADTS:
-            fprintf(stderr, "Transport Stream (ADTS)\n");
-            break;
-        default:
-            break;
+        case FAAC_STREAM_RAW: fmt_str = "Headerless AAC (RAW)"; break;
+        case FAAC_STREAM_ADTS: fmt_str = "Transport Stream (ADTS)"; break;
+        default: break;
         }
     }
+    fprintf(stderr, "Container format: %s\n", fmt_str);
 
     fprintf(stderr, "Encoding %s to %s\n", info->input_filename, info->output_filename);
     if (info->total_input_samples != 0)

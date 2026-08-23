@@ -464,58 +464,52 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
     return 0;
 }
 
-static void put_tag(const char *name, const char *data) {
-    if (!data) return;
+static void put_itunes_data_box(const char *name, uint32_t type_code, const void *data, size_t len) {
+    if (!name || !data) return;
     long box      = start_atom(name);
     long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_TEXT);
+    put_u32(type_code);
     put_u32(0);
-    put_data(data, strlen(data));
+    put_data(data, len);
     end_atom(data_box);
     end_atom(box);
+}
+
+static void put_tag(const char *name, const char *data) {
+    if (data)
+        put_itunes_data_box(name, ITUNES_DATA_TEXT, data, strlen(data));
 }
 
 static void put_tag_u8(const char *name, uint8_t val) {
-    long box      = start_atom(name);
-    long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_UINT8);
-    put_u32(0);
-    put_u8(val);
-    end_atom(data_box);
-    end_atom(box);
+    put_itunes_data_box(name, ITUNES_DATA_UINT8, &val, 1);
 }
 
 static void put_tag_genre(uint16_t genre) {
-    long box      = start_atom("gnre");
-    long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_BINARY);
-    put_u32(0);
-    put_u16(genre);
-    end_atom(data_box);
-    end_atom(box);
+#ifndef WORDS_BIGENDIAN
+    uint16_t val = BSWAP16(genre);
+#else
+    uint16_t val = genre;
+#endif
+    put_itunes_data_box("gnre", ITUNES_DATA_BINARY, &val, 2);
 }
 
 static void put_tag_index(const char *name, uint16_t num, uint16_t total) {
-    long box      = start_atom(name);
-    long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_BINARY);
-    put_u32(0);
-    put_u16(0);
-    put_u16(num);
-    put_u16(total);
-    put_u16(0);
-    end_atom(data_box);
-    end_atom(box);
+    uint16_t buf[4] = {
+        0,
+#ifndef WORDS_BIGENDIAN
+        BSWAP16(num),
+        BSWAP16(total),
+#else
+        num,
+        total,
+#endif
+        0
+    };
+    put_itunes_data_box(name, ITUNES_DATA_BINARY, buf, sizeof(buf));
 }
 
 static void put_tag_image(const uint8_t *data, uint32_t size) {
-    long box      = start_atom("covr");
-    long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_IMAGE);
-    put_u32(0);
-    put_data(data, size);
-    end_atom(data_box);
-    end_atom(box);
+    put_itunes_data_box("covr", ITUNES_DATA_IMAGE, data, size);
 }
 
 static void put_tag_ext(const char *mean, const char *name, const char *val) {
@@ -529,11 +523,7 @@ static void put_tag_ext(const char *mean, const char *name, const char *val) {
     put_u32(0);
     put_data(name, strlen(name));
     end_atom(name_box);
-    long data_box = start_atom("data");
-    put_u32(ITUNES_DATA_TEXT);
-    put_u32(0);
-    put_data(val, strlen(val));
-    end_atom(data_box);
+    put_itunes_data_box("data", ITUNES_DATA_TEXT, val, strlen(val));
     end_atom(box);
 }
 
@@ -793,12 +783,4 @@ bool check_image_header(const char *buf)
         return true;               /* GIF */
 
     return false;
-}
-
-void mp4_simulate_large_payload(uint64_t extra_bytes) {
-    if (g_mp4.fout) {
-        fseeko(g_mp4.fout, (off_t)extra_bytes, SEEK_CUR);
-        fputc(0, g_mp4.fout);
-        g_mp4.mdatsize += extra_bytes + 1;
-    }
 }

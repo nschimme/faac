@@ -409,17 +409,21 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
           break;
       case 2:
           {
-              int16_t *in = (int16_t*)bufi;
-              int swap = sndf->swap;
-              if (swap)
+              const int16_t *in = (const int16_t *)bufi;
+              if (sndf->swap)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)SWAP16(in[i]);
+                  {
+                      int16_t val = (int16_t)SWAP16(in[i]);
+                      buf[i] = (float)val;
+                  }
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
+                  {
                       buf[i] = (float)in[i];
+                  }
               }
           }
           break;
