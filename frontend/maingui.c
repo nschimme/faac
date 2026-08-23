@@ -301,7 +301,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     if (szTemp[0] != '\0')
     {
         int pns = atoi(szTemp);
-        opts.pns_level = (pns < 0) ? 0 : ((pns > 10) ? 10 : pns);
+        opts.pns_level = (pns < 0) ? 0 : ((pns > 10) ? 10 : (int8_t)pns);
     }
     else
     {

@@ -40,13 +40,13 @@ typedef struct {
 
     bool container_mp4;
     bool raw_pcm_input;
-    uint32_t raw_channels;
-    uint32_t raw_bits;
+    uint16_t raw_channels;
+    uint8_t raw_bits;
     uint32_t raw_rate;
     bool raw_endian;
 
-    uint32_t center_channel;
-    uint32_t lfe_channel;
+    uint16_t center_channel;
+    uint16_t lfe_channel;
 
     enum faac_mpeg_version mpeg_version;
     enum faac_object_type object_type;
@@ -55,10 +55,10 @@ typedef struct {
     enum faac_shortctl_mode shortctl;
 
     bool use_tns;
-    int use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
-    int pns_level; /* -1 to leave default */
+    int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
+    int8_t pns_level; /* -1 to leave default */
 
-    uint32_t quant_quality;
+    uint16_t quant_quality;
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */
     uint32_t max_bit_rate; /* bps whole stream cap */
     uint32_t bandwidth; /* cutoff frequency in Hz */
@@ -72,10 +72,10 @@ typedef struct {
     uint64_t art_size;
 
     custom_tag_t *custom_tags;
-    uint32_t custom_tag_count;
-    uint32_t custom_tag_cap;
+    uint16_t custom_tag_count;
+    uint16_t custom_tag_cap;
 
-    uint32_t verbose;
+    uint8_t verbose;
 } encode_options_t;
 
 bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
@@ -104,9 +104,9 @@ typedef struct {
     const char *input_filename;
     const char *output_filename;
     uint32_t sample_rate;
-    uint32_t num_channels;
+    uint16_t num_channels;
     uint64_t total_input_samples;
-    uint32_t frame_size;
+    uint16_t frame_size;
 
     bool container_mp4;
     enum faac_stream_format stream_format;
@@ -114,14 +114,14 @@ typedef struct {
     enum faac_object_type object_type;
     enum faac_joint_mode joint_mode;
     bool use_tns;
-    int pns_level;
+    int8_t pns_level;
     uint32_t bandwidth;
-    unsigned long quant_quality;
+    uint16_t quant_quality;
     uint32_t bit_rate; /* bps per channel */
 
     bool remapping_channels;
-    uint32_t center_channel;
-    uint32_t lfe_channel;
+    uint16_t center_channel;
+    uint16_t lfe_channel;
     enum faac_shortctl_mode shortctl;
 } encode_session_info_t;
 
@@ -130,7 +130,7 @@ typedef struct {
     uint64_t sample_count;
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
-    uint32_t max_frame_size;
+    uint16_t max_frame_size;
     bool is_mp4;
 } encode_summary_t;
 

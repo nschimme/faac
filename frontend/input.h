@@ -33,8 +33,8 @@ extern "C"
 typedef struct
 {
   FILE *f;
-  uint32_t channels;
-  uint32_t samplebytes;
+  uint16_t channels;
+  uint8_t samplebytes;
   uint32_t samplerate;
   int64_t samples;
   bool bigendian;
@@ -49,7 +49,7 @@ int wav_close(pcmfile_t *file);
 
 /* Create channel remapping array for multi-channel input, consumed by
    wav_read_float32()/wav_read_int24()'s internal chan_remap(). */
-int *mk_chan_map(uint32_t channels, uint32_t center, uint32_t lf);
+int *mk_chan_map(uint16_t channels, uint16_t center, uint16_t lf);
 
 #ifdef __cplusplus
 }

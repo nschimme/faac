@@ -69,7 +69,7 @@ bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const c
 
     if (opts->custom_tag_count >= opts->custom_tag_cap)
     {
-        uint32_t new_cap = opts->custom_tag_cap ? opts->custom_tag_cap * 2 : 4;
+        uint16_t new_cap = opts->custom_tag_cap ? (uint16_t)(opts->custom_tag_cap * 2) : 4;
         custom_tag_t *tmp = realloc(opts->custom_tags, (size_t)new_cap * sizeof(custom_tag_t));
         if (!tmp)
             return false;
@@ -127,7 +127,7 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
     }
     else
     {
-        opts->quant_quality = (val > 0) ? (uint32_t)val : DEFAULT_QUANT_QUALITY;
+        opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
         opts->bit_rate = 0;
     }
 }
@@ -373,8 +373,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
         return 1;
     }
 
-    unsigned int sample_rate = infile->samplerate;
-    unsigned int num_channels = infile->channels;
+    uint32_t sample_rate = infile->samplerate;
+    uint16_t num_channels = (uint16_t)infile->channels;
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
@@ -450,7 +450,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
-    unsigned int frame_size = samples_per_frame / num_channels;
+    uint16_t frame_size = (uint16_t)(samples_per_frame / num_channels);
 
     pcmbuf = malloc(samples_per_frame * sizeof(float));
     bitbuf = malloc(max_output_bytes * sizeof(unsigned char));
@@ -564,7 +564,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint64_t total_bytes_written = 0;
     uint64_t current_input_samples = 0;
     uint64_t encoded_samples = 0;
-    uint32_t max_frame_bytes = 0;
+    uint16_t max_frame_bytes = 0;
     int samples_read = 0;
 
     double start_time = get_wall_time_sec();
@@ -618,8 +618,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
         {
             current_frame++;
             total_bytes_written += bytes_written;
-            if ((uint32_t)bytes_written > max_frame_bytes)
-                max_frame_bytes = (uint32_t)bytes_written;
+            if ((uint16_t)bytes_written > max_frame_bytes)
+                max_frame_bytes = (uint16_t)bytes_written;
         }
 
         if (input_eof && bytes_written <= 0)

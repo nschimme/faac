@@ -115,10 +115,10 @@ static struct {
     const char *encoder;
     const char *tags[MP4TAG_COUNT];
     bool compilation;
-    uint32_t trackno;
-    uint32_t ntracks;
-    uint32_t discno;
-    uint32_t ndiscs;
+    uint16_t trackno;
+    uint16_t ntracks;
+    uint16_t discno;
+    uint16_t ndiscs;
     uint16_t genre;
 
     struct {
@@ -379,12 +379,12 @@ void mp4_set_genre(uint16_t genre) { g_mp4.genre = genre; }
 
 void mp4_set_compilation(bool flag) { g_mp4.compilation = flag; }
 
-void mp4_set_track(uint32_t num, uint32_t total) {
+void mp4_set_track(uint16_t num, uint16_t total) {
     g_mp4.trackno = num;
     g_mp4.ntracks = total;
 }
 
-void mp4_set_disc(uint32_t num, uint32_t total) {
+void mp4_set_disc(uint16_t num, uint16_t total) {
     g_mp4.discno = num;
     g_mp4.ndiscs = total;
 }

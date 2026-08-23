@@ -34,10 +34,10 @@ typedef struct {
     const char *comment;
     const char *encoder;
     uint16_t genre_id;
-    uint32_t track;
-    uint32_t ntracks;
-    uint32_t disc;
-    uint32_t ndiscs;
+    uint16_t track;
+    uint16_t ntracks;
+    uint16_t disc;
+    uint16_t ndiscs;
     bool compilation;
 } mp4_metadata_t;
 
@@ -64,8 +64,8 @@ void mp4_set_encoder(const char *value);
 void mp4_set_tag(mp4_tag_id_t id, const char *value);
 void mp4_set_genre(uint16_t genre);
 void mp4_set_compilation(bool flag);
-void mp4_set_track(uint32_t num, uint32_t total);
-void mp4_set_disc(uint32_t num, uint32_t total);
+void mp4_set_track(uint16_t num, uint16_t total);
+void mp4_set_disc(uint16_t num, uint16_t total);
 void mp4_set_cover(const uint8_t *data, uint32_t size);
 int mp4_add_custom_tag(const char *name, const char *value);
 int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples);

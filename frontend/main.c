@@ -359,12 +359,12 @@ static void CliSessionStartCallback(const encode_session_info_t *info, void *use
 
     if (info->bit_rate)
     {
-        fprintf(stderr, "Initial quantization quality: %lu\n", info->quant_quality);
-        fprintf(stderr, "Average bitrate: %d kbps/channel\n", (info->bit_rate + 500) / 1000);
+        fprintf(stderr, "Initial quantization quality: %u\n", info->quant_quality);
+        fprintf(stderr, "Average bitrate: %u kbps/channel\n", (info->bit_rate + 500) / 1000);
     }
     else
     {
-        fprintf(stderr, "Quantization quality: %lu\n", info->quant_quality);
+        fprintf(stderr, "Quantization quality: %u\n", info->quant_quality);
     }
     fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
     if (info->pns_level > 0)
@@ -612,7 +612,7 @@ int main(int argc, char *argv[])
             parse_quality_or_bitrate(optarg, false, &opts);
             break;
         case 'I':
-            sscanf(optarg, "%u,%u", &opts.center_channel, &opts.lfe_channel);
+            sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel);
             break;
         case 'P':
             opts.raw_pcm_input = true;
@@ -622,11 +622,11 @@ int main(int argc, char *argv[])
             opts.raw_pcm_input = true;
             break;
         case 'B':
-            opts.raw_bits = atoi(optarg);
+            opts.raw_bits = (uint8_t)atoi(optarg);
             opts.raw_pcm_input = true;
             break;
         case 'C':
-            opts.raw_channels = atoi(optarg);
+            opts.raw_channels = (uint16_t)atoi(optarg);
             opts.raw_pcm_input = true;
             break;
         case 'w':
@@ -660,11 +660,11 @@ int main(int argc, char *argv[])
             opts.metadata.album_sort = optarg;
             break;
         case TRACK_FLAG:
-            if (sscanf(optarg, "%u/%u", &opts.metadata.track, &opts.metadata.ntracks) < 1)
+            if (sscanf(optarg, "%hu/%hu", &opts.metadata.track, &opts.metadata.ntracks) < 1)
                 dieMessage = "Wrong track number.\n";
             break;
         case DISC_FLAG:
-            if (sscanf(optarg, "%u/%u", &opts.metadata.disc, &opts.metadata.ndiscs) < 1)
+            if (sscanf(optarg, "%hu/%hu", &opts.metadata.disc, &opts.metadata.ndiscs) < 1)
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
@@ -707,7 +707,7 @@ int main(int argc, char *argv[])
             opts.joint_mode = (enum faac_joint_mode)atoi(optarg);
             break;
         case OPT_PNS:
-            opts.pns_level = atoi(optarg);
+            opts.pns_level = (int8_t)atoi(optarg);
             break;
         case TAG_FLAG:
             {
@@ -790,7 +790,7 @@ int main(int argc, char *argv[])
             opts.max_bit_rate = atoi(optarg) * 1000;
             break;
         case 'v':
-            opts.verbose = atoi(optarg);
+            opts.verbose = (uint8_t)atoi(optarg);
             break;
         case HELP_QUAL:
         case HELP_IO:

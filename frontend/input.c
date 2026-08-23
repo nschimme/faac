@@ -274,7 +274,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   {
     sndf->bigendian = false;
     sndf->channels = UINT16(wave.Format.nChannels);
-    sndf->samplebytes = UINT16(wave.Format.wBitsPerSample) / 8;
+    sndf->samplebytes = (uint8_t)(UINT16(wave.Format.wBitsPerSample) / 8);
     sndf->samplerate = UINT32(wave.Format.nSamplesPerSec);
 
     /* channel/sample-width bounds guard against a corrupt header (e.g. a
@@ -300,7 +300,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
 }
 
 
-int *mk_chan_map(uint32_t channels, uint32_t center, uint32_t lf)
+int *mk_chan_map(uint16_t channels, uint16_t center, uint16_t lf)
 {
   if (!center && !lf)
     return NULL;
@@ -308,19 +308,19 @@ int *mk_chan_map(uint32_t channels, uint32_t center, uint32_t lf)
   if (channels < 3)
     return NULL;
 
-  uint32_t lf_pos = (lf > 0) ? (lf - 1) : (channels - 1);       /* default AAC position */
-  uint32_t center_pos = (center > 0) ? (center - 1) : 0;        /* default AAC position */
+  uint16_t lf_pos = (lf > 0) ? (lf - 1) : (uint16_t)(channels - 1);       /* default AAC position */
+  uint16_t center_pos = (center > 0) ? (center - 1) : 0;                 /* default AAC position */
 
   int *map = malloc((size_t)channels * sizeof(int));
   if (!map)
     return NULL;
   memset(map, 0, (size_t)channels * sizeof(int));
 
-  uint32_t outpos = 0;
+  uint16_t outpos = 0;
   if (center_pos < channels)
     map[outpos++] = (int)center_pos;
 
-  uint32_t inpos = 0;
+  uint16_t inpos = 0;
   for (; outpos < (channels - 1) && inpos < channels; inpos++)
   {
     if (inpos == center_pos || inpos == lf_pos)
