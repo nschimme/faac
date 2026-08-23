@@ -127,7 +127,7 @@ typedef struct {
 
 typedef struct {
     uint32_t frame_count;
-    uint32_t sample_count;
+    uint64_t sample_count;
     uint32_t max_bitrate;
     uint32_t avg_bitrate;
     uint32_t max_frame_size;

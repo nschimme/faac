@@ -82,16 +82,16 @@ enum {
 
 static struct {
     uint32_t samplerate;
-    uint32_t samples;
+    uint64_t samples;
     uint32_t channels;
     uint32_t bits;
-    uint16_t buffersize;
+    uint32_t buffersize;
 
     struct {
         uint32_t max;
         uint32_t avg;
-        uint32_t size;
-        uint32_t samples;
+        uint64_t size;
+        uint64_t samples;
     } bitrate;
 
     uint32_t framesamples;
@@ -109,7 +109,7 @@ static struct {
 
     FILE *fout;
     uint32_t mdatofs;
-    uint32_t mdatsize;
+    uint64_t mdatsize;
 
     uint32_t creation_time;
     const char *encoder;
@@ -150,10 +150,12 @@ static int g_mem_error = 0;
 static inline void mem_write(const void *data, size_t size) {
     if (g_membuf) {
         if (g_mempos + size > g_memcap) {
+            size_t max_cap = ((size_t)1 << 30);
             size_t new_cap = g_memcap ? g_memcap * 2 : 1024;
-            /* cap growth so a bogus/huge write request can't spin the
-               doubling loop forever or overflow new_cap */
-            while (g_mempos + size > new_cap && new_cap < (1UL << 31)) new_cap *= 2;
+            while (g_mempos + size > new_cap && new_cap < max_cap) {
+                if (new_cap > max_cap / 2) { new_cap = max_cap; break; }
+                new_cap *= 2;
+            }
             if (g_mempos + size > new_cap) { g_mem_error = 1; return; }
             void *tmp = realloc(g_membuf, new_cap);
             if (!tmp) {
@@ -404,15 +406,15 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
         uint32_t new_cap = g_mp4.frame.bufsize ? g_mp4.frame.bufsize * 2 : 1024;
         /* bound the frame table so an unreasonably long encode can't grow
            this without limit or overflow new_cap * sizeof(uint32_t) */
-        if (new_cap > (1UL << 30)) return -1;
-        uint32_t *tmp = (uint32_t *)realloc(g_mp4.frame.data, new_cap * sizeof(uint32_t));
+        if (new_cap > (1U << 28)) return -1;
+        uint32_t *tmp = (uint32_t *)realloc(g_mp4.frame.data, (size_t)new_cap * sizeof(uint32_t));
         if (!tmp) return -1;
         g_mp4.frame.data = tmp;
         g_mp4.frame.bufsize = new_cap;
     }
     g_mp4.frame.data[g_mp4.frame.ents++] = size;
-    if (g_mp4.buffersize < (uint16_t)size)
-        g_mp4.buffersize = (uint16_t)size;
+    if (g_mp4.buffersize < size)
+        g_mp4.buffersize = size;
     return 0;
 }
 
@@ -532,8 +534,9 @@ int mp4_finish(void) {
     long moov = start_atom("moov");
     long mvhd = start_atom("mvhd");
     uint32_t now = get_mp4_time();
+    uint32_t duration = (g_mp4.samples > 0xFFFFFFFFULL) ? 0xFFFFFFFFU : (uint32_t)g_mp4.samples;
     put_u32(0); put_u32(now); put_u32(now);
-    put_u32(g_mp4.samplerate); put_u32(g_mp4.samples);
+    put_u32(g_mp4.samplerate); put_u32(duration);
     put_u32(MP4_FP1616_ONE); put_u16(MP4_FP0808_ONE); put_u16(0); put_u32(0); put_u32(0);
     put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
     put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
@@ -545,7 +548,7 @@ int mp4_finish(void) {
     long trak = start_atom("trak");
     long tkhd = start_atom("tkhd");
     put_u32(1); put_u32(now); put_u32(now); put_u32(MP4_TRACK_ID); put_u32(0);
-    put_u32(g_mp4.samples); put_u32(0); put_u32(0);
+    put_u32(duration); put_u32(0); put_u32(0);
     put_u16(0); put_u16(0); put_u16(MP4_FP0808_ONE); put_u16(0);
     put_u32(MP4_FP1616_ONE); put_u32(0); put_u32(0);
     put_u32(0); put_u32(MP4_FP1616_ONE); put_u32(0);
@@ -556,7 +559,7 @@ int mp4_finish(void) {
     long mdia = start_atom("mdia");
     long mdhd = start_atom("mdhd");
     put_u32(0); put_u32(now); put_u32(now);
-    put_u32(g_mp4.samplerate); put_u32(g_mp4.samples);
+    put_u32(g_mp4.samplerate); put_u32(duration);
     put_u16(0); put_u16(0);
     end_atom(mdhd);
 
@@ -626,8 +629,12 @@ int mp4_finish(void) {
            the hottest loop in mp4_finish() */
         size_t stsz_size = (size_t)g_mp4.frame.ents * 4;
         if (g_mempos + stsz_size > g_memcap) {
+            size_t max_cap = ((size_t)1 << 30);
             size_t new_cap = g_memcap ? g_memcap * 2 : 1024;
-            while (g_mempos + stsz_size > new_cap && new_cap < (1UL << 31)) new_cap *= 2;
+            while (g_mempos + stsz_size > new_cap && new_cap < max_cap) {
+                if (new_cap > max_cap / 2) { new_cap = max_cap; break; }
+                new_cap *= 2;
+            }
             void *tmp = (g_mempos + stsz_size > new_cap) ? NULL : realloc(g_membuf, new_cap);
             if (!tmp) {
                 free(g_membuf);
@@ -705,7 +712,7 @@ int mp4_close(void) {
 }
 
 uint32_t mp4_frame_count(void) { return g_mp4.frame.ents; }
-uint32_t mp4_sample_count(void) { return g_mp4.samples; }
+uint64_t mp4_sample_count(void) { return g_mp4.samples; }
 uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
 uint32_t mp4_max_frame_size(void) { return g_mp4.buffersize; }

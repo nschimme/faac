@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "input.h"
 #include <faac.h>
@@ -45,6 +46,12 @@ static WCHAR inputFilename[_MAX_PATH];
 static WCHAR outputFilename[_MAX_PATH];
 
 static BOOL Encoding = FALSE;
+
+typedef struct {
+    HWND hWnd;
+    WCHAR inputFilename[_MAX_PATH];
+    WCHAR outputFilename[_MAX_PATH];
+} encode_thread_param_t;
 
 enum RateMode {
     RATEMODE_VBR = 0,
@@ -235,17 +242,19 @@ static void GuiSummaryCallback(const encode_summary_t *summary, void *user_data)
 
 static DWORD WINAPI EncodeFile(LPVOID pParam)
 {
-    HWND hWnd = (HWND)pParam;
+    encode_thread_param_t *param = (encode_thread_param_t *)pParam;
+    if (!param)
+        return 1;
+
+    HWND hWnd = param->hWnd;
 
     EnterCriticalSection(&g_cs_progress);
     g_last_progress_post = 0;
     LeaveCriticalSection(&g_cs_progress);
 
-    GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, inputFilename, _MAX_PATH);
-    GetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, outputFilename, _MAX_PATH);
-
-    char *utf8_input = win32_utf16_to_utf8(inputFilename);
-    char *utf8_output = win32_utf16_to_utf8(outputFilename);
+    char *utf8_input = win32_utf16_to_utf8(param->inputFilename);
+    char *utf8_output = win32_utf16_to_utf8(param->outputFilename);
+    free(param);
 
     encode_options_t opts;
     init_encode_options(&opts);
@@ -289,12 +298,21 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     }
 
     GetDlgItemText(hWnd, IDC_PNS, szTemp, sizeof(szTemp));
-    opts.pns_level = (szTemp[0] != '\0') ? atoi(szTemp) : -1;
+    if (szTemp[0] != '\0')
+    {
+        int pns = atoi(szTemp);
+        opts.pns_level = (pns < 0) ? 0 : ((pns > 10) ? 10 : pns);
+    }
+    else
+    {
+        opts.pns_level = -1;
+    }
 
     if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
     {
         GetDlgItemText(hWnd, IDC_BANDWIDTH, szTemp, sizeof(szTemp));
-        opts.bandwidth = atoi(szTemp);
+        int bw = atoi(szTemp);
+        opts.bandwidth = (bw > 0) ? (uint32_t)bw : 0;
     }
 
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
@@ -358,11 +376,14 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
             if (info.total_input_samples > 0)
             {
-                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS,
-                    (WPARAM)(info.current_input_samples * 1024 / info.total_input_samples), 0);
+                double ratio = (double)info.current_input_samples / (double)info.total_input_samples;
+                if (ratio > 1.0) ratio = 1.0;
+                if (ratio < 0.0) ratio = 0.0;
+
+                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, (WPARAM)(ratio * 1024.0), 0);
 
                 char HeaderText[64];
-                int percent = (int)(info.current_input_samples * 100 / info.total_input_samples);
+                int percent = (int)(ratio * 100.0);
                 snprintf(HeaderText, sizeof(HeaderText), "FAAC GUI: %d%%", percent);
                 SetWindowText(hWnd, HeaderText);
             }
@@ -422,7 +443,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
             char szSummary[256];
             snprintf(szSummary, sizeof(szSummary),
-                     "Encoded %u frames (%u samples) | Avg bitrate: %u kbps | Max frame size: %u bytes",
+                     "Encoded %u frames (%" PRIu64 " samples) | Avg bitrate: %u kbps | Max frame size: %u bytes",
                      sum.frame_count, sum.sample_count, sum.avg_bitrate, sum.max_frame_size);
             SetDlgItemText(hWnd, IDC_TIME, szSummary);
             return TRUE;
@@ -496,7 +517,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         return TRUE;
 
     case WM_DROPFILES:
-        if (DragQueryFileW((HDROP)wParam, 0, inputFilename, _MAX_PATH - 1))
+        if (!Encoding && DragQueryFileW((HDROP)wParam, 0, inputFilename, _MAX_PATH - 1))
             AwakeDialogControls(hWnd);
 
         DragFinish((HDROP)wParam);
@@ -508,10 +529,25 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDOK:
             if (!Encoding)
             {
-                DWORD retval;
-                CreateThread(NULL, 0, EncodeFile, hWnd, 0, &retval);
-                Encoding = TRUE;
-                SetDlgItemText(hWnd, IDOK, "Stop");
+                encode_thread_param_t *param = (encode_thread_param_t *)malloc(sizeof(encode_thread_param_t));
+                if (param)
+                {
+                    param->hWnd = hWnd;
+                    GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, param->inputFilename, _MAX_PATH);
+                    GetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, param->outputFilename, _MAX_PATH);
+                    DWORD retval;
+                    HANDLE hThread = CreateThread(NULL, 0, EncodeFile, param, 0, &retval);
+                    if (hThread)
+                    {
+                        CloseHandle(hThread);
+                        Encoding = TRUE;
+                        SetDlgItemText(hWnd, IDOK, "Stop");
+                    }
+                    else
+                    {
+                        free(param);
+                    }
+                }
             }
             else
             {

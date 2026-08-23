@@ -525,9 +525,10 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
     }
 
-    uint64_t total_input_samples = (uint64_t)infile->samples;
-    uint32_t total_frames = (total_input_samples > 0 && frame_size > 0) ?
-        (uint32_t)(((total_input_samples + frame_size - 1) / frame_size) + 1) : 0;
+    uint64_t total_input_samples = (infile->samples > 0) ? (uint64_t)infile->samples : 0;
+    uint64_t tf_calc = (total_input_samples > 0 && frame_size > 0) ?
+        (((total_input_samples + frame_size - 1) / frame_size) + 1) : 0;
+    uint32_t total_frames = (tf_calc > UINT32_MAX) ? UINT32_MAX : (uint32_t)tf_calc;
 
     if (session_start_cb)
     {
@@ -713,7 +714,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         uint32_t avg_bitrate = (total_sec > 0.0) ? (uint32_t)(((double)total_bytes_written * 8.0 / 1000.0) / total_sec) : 0;
         encode_summary_t summary = {
             .frame_count = current_frame,
-            .sample_count = (uint32_t)current_input_samples,
+            .sample_count = current_input_samples,
             .max_bitrate = 0,
             .avg_bitrate = avg_bitrate,
             .max_frame_size = max_frame_bytes,

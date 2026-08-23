@@ -260,8 +260,13 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
       sndf->samples = 0;
     else
     {
-      fseek(sndf->f, 0 , SEEK_END);
-      sndf->samples = ftell(sndf->f);
+#ifdef _WIN32
+      _fseeki64(sndf->f, 0, SEEK_END);
+      sndf->samples = _ftelli64(sndf->f);
+#else
+      fseeko(sndf->f, 0, SEEK_END);
+      sndf->samples = (int64_t)ftello(sndf->f);
+#endif
       rewind(sndf->f);
     }
   }
@@ -282,7 +287,7 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
       return NULL;
     }
 
-    sndf->samples = riffsub.len / (sndf->samplebytes * sndf->channels);
+    sndf->samples = (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels);
   }
 
 #ifdef WORDS_BIGENDIAN

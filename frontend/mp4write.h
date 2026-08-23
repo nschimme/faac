@@ -72,7 +72,7 @@ int mp4_finish(void);
 int mp4_close(void);
 
 uint32_t mp4_frame_count(void);
-uint32_t mp4_sample_count(void);
+uint64_t mp4_sample_count(void);
 uint32_t mp4_max_bitrate(void);
 uint32_t mp4_avg_bitrate(void);
 uint32_t mp4_max_frame_size(void);

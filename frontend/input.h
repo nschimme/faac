@@ -35,7 +35,7 @@ typedef struct
   int channels;
   int samplebytes;
   int samplerate;
-  int samples;
+  int64_t samples;
   int bigendian;
   int swap;
   int isfloat;

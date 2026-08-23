@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef HAVE_GETOPT_H
 # include <getopt.h>
@@ -432,7 +433,7 @@ static void CliSummaryCallback(const encode_summary_t *summary, void *user_data)
 
     fprintf(stderr, "\n");
     fprintf(stderr, "%u frames\n", summary->frame_count);
-    fprintf(stderr, "%u output samples\n", summary->sample_count);
+    fprintf(stderr, "%" PRIu64 " output samples\n", summary->sample_count);
     if (summary->is_mp4)
     {
         fprintf(stderr, "max bitrate: %u\n", summary->max_bitrate);
