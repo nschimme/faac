@@ -84,4 +84,6 @@ uint16_t mp4_max_frame_size(void);
    --cover-art data before it's embedded as an MP4 covr atom. */
 bool check_image_header(const char *buf);
 
+void mp4_simulate_large_payload(uint64_t extra_bytes);
+
 #endif

@@ -561,8 +561,7 @@ int mp4_finish(void) {
     /* now that all frames are written, go back and fill in the mdat
        header placeholder left by mp4_open() */
     long pos = ftell(g_mp4.fout);
-    bool force_64bit = (getenv("FAAC_TEST_FORCE_64BIT") != NULL);
-    if (!force_64bit && g_mp4.mdatsize + 8 <= 0xFFFFFFFFULL) {
+    if (g_mp4.mdatsize + 8 <= 0xFFFFFFFFULL) {
         /* Standard 32-bit mdat size header */
         fseek(g_mp4.fout, g_mp4.mdatofs - 8, SEEK_SET);
         put_u32((uint32_t)(g_mp4.mdatsize + 8));
@@ -714,7 +713,7 @@ int mp4_finish(void) {
     }
     end_atom(stsz);
 
-    if (!force_64bit && (uint64_t)g_mp4.mdatofs + g_mp4.mdatsize <= 0xFFFFFFFFULL) {
+    if ((uint64_t)g_mp4.mdatofs + g_mp4.mdatsize <= 0xFFFFFFFFULL) {
         long stco = start_atom("stco");
         put_u32(0); put_u32(1); put_u32(g_mp4.mdatofs);
         end_atom(stco);
@@ -794,4 +793,12 @@ bool check_image_header(const char *buf)
         return true;               /* GIF */
 
     return false;
+}
+
+void mp4_simulate_large_payload(uint64_t extra_bytes) {
+    if (g_mp4.fout) {
+        fseeko(g_mp4.fout, (off_t)extra_bytes, SEEK_CUR);
+        fputc(0, g_mp4.fout);
+        g_mp4.mdatsize += extra_bytes + 1;
+    }
 }
