@@ -308,10 +308,17 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
          *
          * Gated on what the follow-up validation will accept -- stereo input at
          * HE_V2_MIN_SAMPLE_RATE or better -- so AUTO cannot resolve to a
-         * configuration that then fails to open. Below that, v1. */
+         * configuration that then fails to open. Below that, v1.
+         *
+         * FAAC_HAVE_PARAMETRIC_STEREO is part of that gate and not decoration.
+         * With the feature compiled out, IsHEAAC(HE_V2) is false, so choosing it
+         * here would skip the HE-AAC setup entirely: the core would emit plain
+         * LC while the ASC still announced AOT 29, and the result does not
+         * decode. Folding to a compile-time 0 sends those builds to v1. */
         if (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE)
             hEncoder->config.aacObjectType =
-                (hEncoder->inputChannels == 2 &&
+                (FAAC_HAVE_PARAMETRIC_STEREO &&
+                 hEncoder->inputChannels == 2 &&
                  hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE &&
                  rate_per_ch <= HE_V2_MAX_BITRATE_PER_CH) ? HE_V2 : HE_V1;
         else
