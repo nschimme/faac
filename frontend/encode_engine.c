@@ -186,7 +186,7 @@ static void finalize_log(log_message_callback_t log_cb, void *user_data,
         fputs(msg, stderr);
 }
 
-static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
+static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
                           log_message_callback_t log_cb, void *user_data)
 {
     char *allocated_tags[MP4TAG_COUNT + 1] = { 0 };
@@ -324,7 +324,8 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
             mp4_add_custom_tag(opts->custom_tags[i].name, opts->custom_tags[i].value);
     }
 
-    if (mp4_finish() != 0)
+    bool ok = mp4_finish() == 0;
+    if (!ok)
     {
         finalize_log(log_cb, user_data, 1, "mp4_finish() failed: output file may be incomplete\n");
     }
@@ -333,6 +334,8 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts,
     {
         free(allocated_tags[i]);
     }
+
+    return ok;
 }
 
 int run_encoding_session(const encode_options_t *opts,
@@ -717,7 +720,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     if (opts->container_mp4 && mp4_is_open)
     {
-        finalize_mp4(hEncoder, opts, log_cb, user_data);
+        if (!finalize_mp4(hEncoder, opts, log_cb, user_data))
+        {
+            ret = 1;
+            goto cleanup;
+        }
         if (summary_cb)
         {
             uint32_t max_kbps = (mp4_max_bitrate() + 500) / 1000;
