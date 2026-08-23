@@ -32,6 +32,9 @@ char *utf8_ensure(const char *str);
 /* Convert UTF-16 wchar_t string to heap-allocated UTF-8 string */
 char *win32_utf16_to_utf8(const wchar_t *wstr);
 
+/* Convert UTF-8 string to heap-allocated UTF-16 wchar_t string */
+wchar_t *win32_utf8_to_utf16(const char *utf8_str);
+
 /* fopen() on a UTF-8 path: converts to UTF-16 and calls _wfopen(), since the
    narrow CRT's fopen() interprets its argument in the current ANSI code
    page, not UTF-8. */

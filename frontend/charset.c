@@ -122,7 +122,7 @@ static char *repair_to_utf8(const char *str)
     return utf8;
 }
 
-static wchar_t *utf8_to_win32_utf16(const char *utf8_str)
+wchar_t *win32_utf8_to_utf16(const char *utf8_str)
 {
     if (!utf8_str)
         return NULL;
@@ -143,11 +143,11 @@ FILE *win32_fopen_utf8(const char *utf8_path, const char *mode)
     if (!utf8_path || !mode)
         return NULL;
 
-    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
     if (!wpath)
         return NULL;
 
-    wchar_t *wmode = utf8_to_win32_utf16(mode);
+    wchar_t *wmode = win32_utf8_to_utf16(mode);
     if (!wmode)
     {
         free(wpath);
@@ -162,7 +162,7 @@ FILE *win32_fopen_utf8(const char *utf8_path, const char *mode)
 
 int win32_access_utf8(const char *utf8_path, int amode)
 {
-    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
     if (!wpath)
         return -1;
 
@@ -173,7 +173,7 @@ int win32_access_utf8(const char *utf8_path, int amode)
 
 int win32_mtime_utf8(const char *utf8_path, time_t *mtime)
 {
-    wchar_t *wpath = utf8_to_win32_utf16(utf8_path);
+    wchar_t *wpath = win32_utf8_to_utf16(utf8_path);
     if (!wpath)
         return -1;
 

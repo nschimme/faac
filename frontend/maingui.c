@@ -336,7 +336,9 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         }
         LeaveCriticalSection(&g_cs_progress);
 
-        MessageBox(hWnd, err, "Error", MB_OK | MB_ICONSTOP);
+        wchar_t *werr = win32_utf8_to_utf16(err);
+        MessageBoxW(hWnd, werr ? werr : L"Encoding failed!", L"Error", MB_OK | MB_ICONSTOP);
+        free(werr);
     }
     else if (status == ENCODE_SUCCESS)
     {
@@ -421,7 +423,9 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 size_t len = strlen(msg);
                 if (len > 0 && msg[len - 1] == '\n')
                     msg[len - 1] = '\0';
-                SetDlgItemText(hWnd, IDC_TIME, msg);
+                wchar_t *wmsg = win32_utf8_to_utf16(msg);
+                SetDlgItemTextW(hWnd, IDC_TIME, wmsg ? wmsg : L"");
+                free(wmsg);
             }
             return TRUE;
         }
