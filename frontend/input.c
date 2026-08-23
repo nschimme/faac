@@ -33,6 +33,9 @@
 	| ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24))
 #define SWAP16(x) (((x & 0xff) << 8) | ((x & 0xff00) >> 8))
 
+#define PCM_16BIT_FLOAT_SCALE 32768.0f
+#define PCM_32BIT_FLOAT_SCALE 65536.0f
+
 #ifdef WORDS_BIGENDIAN
 # define UINT32(x) SWAP32(x)
 # define UINT16(x) SWAP16(x)
@@ -389,7 +392,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
       if (sndf->samplebytes == 4)
       {
           for (size_t i = 0; i < cnt; i++)
-              buf[i] *= 32768.0f;
+              buf[i] *= PCM_16BIT_FLOAT_SCALE;
       }
       else
       {
@@ -457,12 +460,12 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               if (swap)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)SWAP32(in[i]) / 65536.0f;
+                      buf[i] = (float)SWAP32(in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)in[i] / 65536.0f;
+                      buf[i] = (float)in[i] / PCM_32BIT_FLOAT_SCALE;
               }
           }
           break;

@@ -53,6 +53,8 @@
 # define stderr stdout
 #endif
 
+#define MAX_COVER_ART_SIZE ((size_t)32 * 1024 * 1024)
+
 enum flags
 {
     SHORTCTL_FLAG = 300,
@@ -737,7 +739,7 @@ int main(int argc, char *argv[])
                     fseek(f, 0, SEEK_SET);
                     clearerr(f);
 
-                    if (sz <= 0 || sz > 32 * 1024 * 1024)
+                    if (sz <= 0 || (size_t)sz > MAX_COVER_ART_SIZE)
                     {
                         dieMessage = "Invalid cover art file size!\n";
                     }

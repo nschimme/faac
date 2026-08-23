@@ -78,6 +78,9 @@ enum {
     MP4_URL_SELF_CONTAINED = 1, /* dref 'url ' flags bit: media data lives in this file, no external ref */
 
     MP4_IO_BUFSIZE = 65536, /* stdio buffer for the mdat write path, see mp4_open() */
+
+    ISO639_CHAR_OFFSET = 0x60,  /* Offset between ASCII character and 5-bit ISO 639-2 char code */
+    ISO639_UND_PACKED  = 0x55C4, /* 15-bit packed representation of undefined language "und" */
 };
 
 static struct {
@@ -278,9 +281,11 @@ static uint16_t pack_language(const char *lang) {
     uint8_t c3 = (uint8_t)(lang[2] >= 'A' && lang[2] <= 'Z' ? lang[2] + 32 : lang[2]);
 
     if (c1 < 'a' || c1 > 'z' || c2 < 'a' || c2 > 'z' || c3 < 'a' || c3 > 'z')
-        return 0x55C4; /* "und" */
+        return ISO639_UND_PACKED;
 
-    return (uint16_t)(((c1 - 0x60) << 10) | ((c2 - 0x60) << 5) | (c3 - 0x60));
+    return (uint16_t)(((c1 - ISO639_CHAR_OFFSET) << 10) |
+                      ((c2 - ISO639_CHAR_OFFSET) << 5) |
+                      (c3 - ISO639_CHAR_OFFSET));
 }
 
 /* MPEG-4 descriptor sizes are a base-128 varint with a continuation bit,

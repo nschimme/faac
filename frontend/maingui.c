@@ -35,6 +35,9 @@
 #define WM_USER_LOG        (WM_USER + 103)
 #define WM_USER_SUMMARY    (WM_USER + 104)
 
+#define GUI_PROGRESS_RANGE       1024
+#define GUI_PROGRESS_THROTTLE_MS 50
+
 static HINSTANCE hInstance;
 
 /* Wide-char at the Win32 edge (dialog controls, file dialogs, drag-drop);
@@ -192,7 +195,7 @@ static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
     /* Throttle updates to ~20 Hz (50ms interval) or final frame to avoid message queue spamming */
     bool should_post = (info->current_input_samples == info->total_input_samples) ||
                        (g_last_progress_post == 0) ||
-                       ((now - g_last_progress_post) >= 50);
+                       ((now - g_last_progress_post) >= GUI_PROGRESS_THROTTLE_MS);
     if (should_post)
     {
         g_last_progress_post = now;
@@ -310,7 +313,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         opts.bandwidth = (bw > 0) ? (uint32_t)bw : 0;
     }
 
-    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, 1024));
+    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, GUI_PROGRESS_RANGE));
     SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
 
     encode_callbacks_t cbs = {
@@ -375,7 +378,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (ratio > 1.0) ratio = 1.0;
                 if (ratio < 0.0) ratio = 0.0;
 
-                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, (WPARAM)(ratio * 1024.0), 0);
+                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, (WPARAM)(ratio * (double)GUI_PROGRESS_RANGE), 0);
 
                 char HeaderText[64];
                 int percent = (int)(ratio * 100.0);
