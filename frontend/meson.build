@@ -6,7 +6,6 @@ libfrontend = static_library('frontend',
     dependencies: [libiconv]
 )
 
-# Required on Windows (main.c's CommandLineToArgvW); a no-op elsewhere.
 libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
 
 faac = executable('faac',
