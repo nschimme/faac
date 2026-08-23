@@ -26,8 +26,8 @@ extern "C" {
 typedef struct {
     uint64_t current_input_samples;
     uint64_t total_input_samples;
-    unsigned int sample_rate;
-    unsigned int num_channels;
+    uint32_t sample_rate;
+    uint32_t num_channels;
     uint32_t current_frame;
     uint32_t total_frames;
     uint64_t total_bytes_written;

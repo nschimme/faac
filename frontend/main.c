@@ -345,7 +345,7 @@ static bool CliProgressCallback(const progress_info_t *info, void *user_data)
 static void CliLogCallback(int level, const char *message, void *user_data)
 {
     encode_options_t *opts = (encode_options_t *)user_data;
-    if (opts && opts->verbose >= level)
+    if (opts && (int)opts->verbose >= level)
     {
         fprintf(stderr, "%s", message);
     }
@@ -583,8 +583,8 @@ int main(int argc, char *argv[])
         {
         case OPT_TNS_ENABLE: opts.use_tns = true; break;
         case OPT_TNS_DISABLE: opts.use_tns = false; break;
-        case OPT_OVERWRITE: opts.overwrite = 1; break;
-        case OPT_COMPILATION: opts.metadata.compilation = 1; break;
+        case OPT_OVERWRITE: opts.overwrite = true; break;
+        case OPT_COMPILATION: opts.metadata.compilation = true; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;
         case 'L':
             if (libinfo.copyright)
@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
             ret = 0;
             goto cleanup;
         case 'X':
-            opts.raw_endian = 0;
+            opts.raw_endian = false;
             break;
         case 'o':
             aacFileName = strdup(optarg);
@@ -612,7 +612,7 @@ int main(int argc, char *argv[])
             parse_quality_or_bitrate(optarg, false, &opts);
             break;
         case 'I':
-            sscanf(optarg, "%d,%d", &opts.center_channel, &opts.lfe_channel);
+            sscanf(optarg, "%u,%u", &opts.center_channel, &opts.lfe_channel);
             break;
         case 'P':
             opts.raw_pcm_input = true;
@@ -668,10 +668,13 @@ int main(int argc, char *argv[])
                 dieMessage = "Wrong disc number.\n";
             break;
         case GENRE_FLAG:
-            opts.metadata.genre_id = atoi(optarg);
-            if (opts.metadata.genre_id < 0 || opts.metadata.genre_id > 255)
-                dieMessage = "Genre number out of range.\n";
-            opts.metadata.genre_id++;
+            {
+                int g = atoi(optarg);
+                if (g < 0 || g > 255)
+                    dieMessage = "Genre number out of range.\n";
+                else
+                    opts.metadata.genre_id = (uint16_t)(g + 1);
+            }
             break;
         case YEAR_FLAG:
             opts.metadata.year = optarg;

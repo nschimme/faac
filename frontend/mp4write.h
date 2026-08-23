@@ -17,6 +17,7 @@
 #define MP4WRITE_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Metadata structure for MP4 tags */
 typedef struct {
@@ -32,12 +33,12 @@ typedef struct {
     const char *year;
     const char *comment;
     const char *encoder;
-    int genre_id;
+    uint16_t genre_id;
     uint32_t track;
     uint32_t ntracks;
     uint32_t disc;
     uint32_t ndiscs;
-    int compilation;
+    bool compilation;
 } mp4_metadata_t;
 
 typedef enum {
@@ -55,14 +56,14 @@ typedef enum {
     MP4TAG_COUNT
 } mp4_tag_id_t;
 
-int mp4_open(const char *path, int overwrite);
+int mp4_open(const char *path, bool overwrite);
 void mp4_set_creation_time(uint32_t t);
 void mp4_set_format(uint32_t samplerate, uint32_t channels, uint32_t bits);
 void mp4_set_decoder_config(const uint8_t *asc, unsigned long size);
 void mp4_set_encoder(const char *value);
 void mp4_set_tag(mp4_tag_id_t id, const char *value);
-void mp4_set_genre(int genre);
-void mp4_set_compilation(int flag);
+void mp4_set_genre(uint16_t genre);
+void mp4_set_compilation(bool flag);
 void mp4_set_track(uint32_t num, uint32_t total);
 void mp4_set_disc(uint32_t num, uint32_t total);
 void mp4_set_cover(const uint8_t *data, uint32_t size);
@@ -79,6 +80,6 @@ uint16_t mp4_max_frame_size(void);
 
 /* Check image header magic bytes (PNG, JPEG, GIF), used to validate
    --cover-art data before it's embedded as an MP4 covr atom. */
-int check_image_header(const char *buf);
+bool check_image_header(const char *buf);
 
 #endif

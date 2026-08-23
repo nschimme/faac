@@ -42,7 +42,7 @@ static const char *find_extension(const char *filename)
     return strrchr(start, '.');
 }
 
-char *get_output_filename(const char *input_filename, int container_mp4)
+char *get_output_filename(const char *input_filename, bool container_mp4)
 {
     if (!input_filename)
         return NULL;
@@ -61,16 +61,16 @@ char *get_output_filename(const char *input_filename, int container_mp4)
     return aac_file_name;
 }
 
-int is_mp4_filename(const char *filename)
+bool is_mp4_filename(const char *filename)
 {
     if (!filename)
-        return 0;
+        return false;
 
     const char *ext = find_extension(filename);
     if (ext)
     {
         if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") || !strcasecmp(ext, ".m4b"))
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 }

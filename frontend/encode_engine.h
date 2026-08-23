@@ -40,13 +40,13 @@ typedef struct {
 
     bool container_mp4;
     bool raw_pcm_input;
-    int raw_channels;
-    int raw_bits;
-    int raw_rate;
-    int raw_endian;
+    uint32_t raw_channels;
+    uint32_t raw_bits;
+    uint32_t raw_rate;
+    bool raw_endian;
 
-    int center_channel;
-    int lfe_channel;
+    uint32_t center_channel;
+    uint32_t lfe_channel;
 
     enum faac_mpeg_version mpeg_version;
     enum faac_object_type object_type;
@@ -64,7 +64,7 @@ typedef struct {
     uint32_t bandwidth; /* cutoff frequency in Hz */
 
     bool ignore_wav_length;
-    int overwrite;
+    bool overwrite;
 
     mp4_metadata_t metadata;
     const char *creation_time_str;
@@ -72,10 +72,10 @@ typedef struct {
     uint64_t art_size;
 
     custom_tag_t *custom_tags;
-    int custom_tag_count;
-    int custom_tag_cap;
+    uint32_t custom_tag_count;
+    uint32_t custom_tag_cap;
 
-    int verbose;
+    uint32_t verbose;
 } encode_options_t;
 
 bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const char *value);
@@ -103,10 +103,10 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
 typedef struct {
     const char *input_filename;
     const char *output_filename;
-    unsigned int sample_rate;
-    unsigned int num_channels;
+    uint32_t sample_rate;
+    uint32_t num_channels;
     uint64_t total_input_samples;
-    unsigned int frame_size;
+    uint32_t frame_size;
 
     bool container_mp4;
     enum faac_stream_format stream_format;
@@ -115,13 +115,13 @@ typedef struct {
     enum faac_joint_mode joint_mode;
     bool use_tns;
     int pns_level;
-    unsigned int bandwidth;
+    uint32_t bandwidth;
     unsigned long quant_quality;
-    int bit_rate; /* bps per channel */
+    uint32_t bit_rate; /* bps per channel */
 
     bool remapping_channels;
-    int center_channel;
-    int lfe_channel;
+    uint32_t center_channel;
+    uint32_t lfe_channel;
     enum faac_shortctl_mode shortctl;
 } encode_session_info_t;
 

@@ -114,12 +114,12 @@ static struct {
     uint32_t creation_time;
     const char *encoder;
     const char *tags[MP4TAG_COUNT];
-    uint8_t compilation;
+    bool compilation;
     uint32_t trackno;
     uint32_t ntracks;
     uint32_t discno;
     uint32_t ndiscs;
-    int genre;
+    uint16_t genre;
 
     struct {
         const uint8_t *data;
@@ -130,8 +130,8 @@ static struct {
         const char *name;
         const char *value;
     } *custom;
-    int customcnt;
-    int customcap;
+    uint32_t customcnt;
+    uint32_t customcap;
 } g_mp4 = { 0 };
 
 /* Atom trees assembled all at once (ftyp/free in mp4_open, moov in
@@ -282,7 +282,7 @@ static void reset_write_state(void) {
     g_membuf = NULL;
 }
 
-int mp4_open(const char *path, int overwrite) {
+int mp4_open(const char *path, bool overwrite) {
     reset_write_state(); /* in case of a retry after a failed previous mp4_open() */
     g_mem_error = 0;
 
@@ -346,9 +346,9 @@ void mp4_set_tag(mp4_tag_id_t id, const char *value) {
         g_mp4.tags[id] = value;
 }
 
-void mp4_set_genre(int genre) { g_mp4.genre = genre; }
+void mp4_set_genre(uint16_t genre) { g_mp4.genre = genre; }
 
-void mp4_set_compilation(int flag) { g_mp4.compilation = (uint8_t)flag; }
+void mp4_set_compilation(bool flag) { g_mp4.compilation = flag; }
 
 void mp4_set_track(uint32_t num, uint32_t total) {
     g_mp4.trackno = num;
@@ -367,8 +367,8 @@ void mp4_set_cover(const uint8_t *data, uint32_t size) {
 
 int mp4_add_custom_tag(const char *name, const char *value) {
     if (g_mp4.customcnt >= g_mp4.customcap) {
-        int new_cap = g_mp4.customcap ? g_mp4.customcap * 2 : 8;
-        void *tmp = realloc(g_mp4.custom, new_cap * sizeof(*g_mp4.custom));
+        uint32_t new_cap = g_mp4.customcap ? g_mp4.customcap * 2 : 8;
+        void *tmp = realloc(g_mp4.custom, (size_t)new_cap * sizeof(*g_mp4.custom));
         if (!tmp) return -1;
         g_mp4.custom = tmp;
         g_mp4.customcap = new_cap;
@@ -678,12 +678,12 @@ int mp4_finish(void) {
     put_tag("\xa9" "too", g_mp4.encoder);
     for (int i = 0; i < MP4TAG_COUNT; i++)
         put_tag(tag_atom_names[i], g_mp4.tags[i]);
-    if (g_mp4.genre) put_tag_genre((uint16_t)g_mp4.genre);
-    if (g_mp4.compilation) put_tag_u8("cpil", g_mp4.compilation);
+    if (g_mp4.genre) put_tag_genre(g_mp4.genre);
+    if (g_mp4.compilation) put_tag_u8("cpil", 1);
     if (g_mp4.trackno) put_tag_index("trkn", (uint16_t)g_mp4.trackno, (uint16_t)g_mp4.ntracks);
     if (g_mp4.discno) put_tag_index("disk", (uint16_t)g_mp4.discno, (uint16_t)g_mp4.ndiscs);
     if (g_mp4.cover.data) put_tag_image(g_mp4.cover.data, g_mp4.cover.size);
-    for (int i = 0; i < g_mp4.customcnt; i++)
+    for (uint32_t i = 0; i < g_mp4.customcnt; i++)
         put_tag_ext("faac", g_mp4.custom[i].name, g_mp4.custom[i].value);
     end_atom(ilst);
     end_atom(meta);
@@ -717,18 +717,18 @@ uint32_t mp4_max_bitrate(void) { return g_mp4.bitrate.max; }
 uint32_t mp4_avg_bitrate(void) { return g_mp4.bitrate.avg; }
 uint16_t mp4_max_frame_size(void) { return g_mp4.buffersize; }
 
-int check_image_header(const char *buf)
+bool check_image_header(const char *buf)
 {
     if (!buf)
-        return 0;
+        return false;
 
     if (!strncmp(buf, "\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8))
-        return 1;               /* PNG */
+        return true;               /* PNG */
     else if (!strncmp(buf, "\xFF\xD8\xFF\xE0", 4) ||
              !strncmp(buf, "\xFF\xD8\xFF\xE1", 4))
-        return 1;               /* JPEG */
+        return true;               /* JPEG */
     else if (!strncmp(buf, "GIF87a", 6) || !strncmp(buf, "GIF89a", 6))
-        return 1;               /* GIF */
+        return true;               /* GIF */
 
-    return 0;
+    return false;
 }

@@ -19,15 +19,17 @@
 #ifndef OUTPUT_PATH_H
 #define OUTPUT_PATH_H
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Generate default output filename based on input filename and container type */
-char *get_output_filename(const char *input_filename, int container_mp4);
+char *get_output_filename(const char *input_filename, bool container_mp4);
 
 /* Check if filename extension suggests MP4 container format */
-int is_mp4_filename(const char *filename);
+bool is_mp4_filename(const char *filename);
 
 #ifdef __cplusplus
 }

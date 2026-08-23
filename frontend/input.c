@@ -150,7 +150,7 @@ static int seekchunk(FILE *f, riffsub_t *riffsub, char *name)
  return 0;
 }
 
-pcmfile_t *wav_open_read(const char *name, int rawinput)
+pcmfile_t *wav_open_read(const char *name, bool rawinput)
 {
   FILE *wave_f;
   riff_t riff;
@@ -249,13 +249,13 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
   sndf->f = wave_f;
 
   if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_FLOAT) {
-    sndf->isfloat = 1;
+    sndf->isfloat = true;
   } else {
     sndf->isfloat = (wave.SubFormat[0] == WAVE_FORMAT_FLOAT);
   }
   if (rawinput)
   {
-    sndf->bigendian = 1;
+    sndf->bigendian = true;
     if (dostdin)
       sndf->samples = 0;
     else
@@ -272,7 +272,7 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
   }
   else
   {
-    sndf->bigendian = 0;
+    sndf->bigendian = false;
     sndf->channels = UINT16(wave.Format.nChannels);
     sndf->samplebytes = UINT16(wave.Format.wBitsPerSample) / 8;
     sndf->samplerate = UINT32(wave.Format.nSamplesPerSec);
@@ -300,7 +300,7 @@ pcmfile_t *wav_open_read(const char *name, int rawinput)
 }
 
 
-int *mk_chan_map(int channels, int center, int lf)
+int *mk_chan_map(uint32_t channels, uint32_t center, uint32_t lf)
 {
   if (!center && !lf)
     return NULL;
@@ -308,39 +308,32 @@ int *mk_chan_map(int channels, int center, int lf)
   if (channels < 3)
     return NULL;
 
-  if (lf > 0)
-    lf--;
-  else
-    lf = channels - 1;      /* default AAC position */
-
-  if (center > 0)
-    center--;
-  else
-    center = 0;             /* default AAC position */
+  uint32_t lf_pos = (lf > 0) ? (lf - 1) : (channels - 1);       /* default AAC position */
+  uint32_t center_pos = (center > 0) ? (center - 1) : 0;        /* default AAC position */
 
   int *map = malloc((size_t)channels * sizeof(int));
   if (!map)
     return NULL;
   memset(map, 0, (size_t)channels * sizeof(int));
 
-  int outpos = 0;
-  if ((center >= 0) && (center < channels))
-    map[outpos++] = center;
+  uint32_t outpos = 0;
+  if (center_pos < channels)
+    map[outpos++] = (int)center_pos;
 
-  int inpos = 0;
+  uint32_t inpos = 0;
   for (; outpos < (channels - 1) && inpos < channels; inpos++)
   {
-    if (inpos == center || inpos == lf)
+    if (inpos == center_pos || inpos == lf_pos)
       continue;
 
-    map[outpos++] = inpos;
+    map[outpos++] = (int)inpos;
   }
   if (outpos < channels)
   {
-    if ((lf >= 0) && (lf < channels))
-      map[outpos] = lf;
+    if (lf_pos < channels)
+      map[outpos] = (int)lf_pos;
     else if (inpos < channels)
-      map[outpos] = inpos;
+      map[outpos] = (int)inpos;
   }
 
   return map;

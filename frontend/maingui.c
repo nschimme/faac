@@ -262,7 +262,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     opts.input_filename = utf8_input;
     opts.output_filename = utf8_output;
     opts.container_mp4 = utf8_output && is_mp4_filename(utf8_output);
-    opts.overwrite = 1;
+    opts.overwrite = true;
 
     {
         HWND hOT = GetDlgItem(hWnd, IDC_OBJECTTYPE);

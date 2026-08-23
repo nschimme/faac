@@ -58,7 +58,7 @@ void init_encode_options(encode_options_t *opts)
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
     opts->raw_rate = 44100;
-    opts->raw_endian = 1;
+    opts->raw_endian = true;
     opts->verbose = 1;
 }
 
@@ -69,7 +69,7 @@ bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const c
 
     if (opts->custom_tag_count >= opts->custom_tag_cap)
     {
-        int new_cap = opts->custom_tag_cap ? opts->custom_tag_cap * 2 : 4;
+        uint32_t new_cap = opts->custom_tag_cap ? opts->custom_tag_cap * 2 : 4;
         custom_tag_t *tmp = realloc(opts->custom_tags, (size_t)new_cap * sizeof(custom_tag_t));
         if (!tmp)
             return false;
@@ -104,7 +104,7 @@ void free_encode_options(encode_options_t *opts)
         opts->art_size = 0;
     }
 
-    for (int i = 0; i < opts->custom_tag_count; i++)
+    for (uint32_t i = 0; i < opts->custom_tag_count; i++)
     {
         free(opts->custom_tags[i].name);
         free(opts->custom_tags[i].value);
@@ -293,7 +293,7 @@ static void finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts)
     if (metadata.compilation) mp4_set_compilation(metadata.compilation);
     if (metadata.genre_id) mp4_set_genre(metadata.genre_id);
 
-    for (int i = 0; i < opts->custom_tag_count; i++)
+    for (uint32_t i = 0; i < opts->custom_tag_count; i++)
     {
         if (opts->custom_tags[i].name && opts->custom_tags[i].value)
             mp4_add_custom_tag(opts->custom_tags[i].name, opts->custom_tags[i].value);
@@ -480,7 +480,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (chanmap && log_cb)
     {
         char msg[256];
-        snprintf(msg, sizeof(msg), "Remapping input channels: Center=%d, LFE=%d\n",
+        snprintf(msg, sizeof(msg), "Remapping input channels: Center=%u, LFE=%u\n",
                 opts->center_channel, opts->lfe_channel);
         log_cb(1, msg, user_data);
     }
