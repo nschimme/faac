@@ -33,12 +33,11 @@ onmessage = async (e) => {
             channels,
             bitrate || 0,
             quality || 0,
-            objectType || 2, // LOW
+            objectType !== undefined ? objectType : 0, // AUTO
             useTns ? 1 : 0,
             pnsLevel || 0,
             jointMode !== undefined ? jointMode : 3, // JOINT_MIXED
-            cutoff || 0,
-            1 // use_mp4
+            cutoff || 0
         );
 
         const pcmViews = pcmData.map(buf => new Float32Array(buf));
