@@ -350,7 +350,7 @@ static BOOL WINAPI DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         CheckDlgButton(hWnd, IDC_USELFE, FALSE);
         CheckDlgButton(hWnd, IDC_USERAW, FALSE);
-        CheckDlgButton(hWnd, IDC_USETNS, FALSE);
+        CheckDlgButton(hWnd, IDC_USETNS, TRUE);
         SetDlgItemText(hWnd, IDC_QUALITY, "100");
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 

@@ -401,7 +401,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -573,7 +573,7 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * Scaled to PsyGetAttack's statistic (largest relative energy jump between
  * adjacent sub-blocks). Not portable to a different sub-block count/size --
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.5f
+#define TNS_ATTACK_MIN 0.60f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -591,6 +591,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int useTns = hEncoder->config.useTns;
+    const char *env_tns = getenv("FAAC_TNS");
+    if (env_tns) useTns = atoi(env_tns) ? 1 : 0;
     unsigned int jointmode = hEncoder->config.jointmode;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
@@ -755,17 +757,29 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (!hEncoder->isLfeChannel[channel] && useTns) {
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
+            float attack_min = TNS_ATTACK_MIN;
+            const char *env_atk = getenv("FAAC_TNS_ATTACK");
+            if (env_atk) attack_min = (float)atof(env_atk);
+
+            /* Admission gate: TNS shapes noise along the temporal envelope. */
+            if (attack > 0.0f && attack < attack_min) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
+            int dir = 0;
+            if (coderInfo[channel].block_type == LONG_SHORT_WINDOW)
+                dir = 1;
+            else if (coderInfo[channel].block_type == SHORT_LONG_WINDOW)
+                dir = 0;
+            else
+                dir = (PsyGetTransientSubblock(&hEncoder->psyInfo[channel]) >= 4) ? 1 : 0;
+
             TnsEncode(&(coderInfo[channel].tnsInfo),
                       coderInfo[channel].sfbn,
                       coderInfo[channel].block_type,
                       coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+                      hEncoder->freqBuff[channel],
+                      dir);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }

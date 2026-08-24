@@ -401,7 +401,7 @@ int main(int argc, char *argv[])
     enum faac_object_type objectType = FAAC_OBJ_AUTO;
     int jointmode = -1;
     int pnslevel = -1;
-    static int useTns = 0;
+    static int useTns = 1;
     enum container_format container = NO_CONTAINER;
     enum faac_stream_format stream = FAAC_STREAM_ADTS;
     int cutOff = -1;
@@ -428,6 +428,8 @@ int main(int argc, char *argv[])
     int rawEndian = 1;
 
     int shortctl = FAAC_SHORTCTL_NORMAL;
+    const char *env_sc = getenv("FAAC_SHORTCTL");
+    if (env_sc) shortctl = atoi(env_sc);
 
     FILE *outfile = NULL;
 
@@ -465,8 +467,12 @@ int main(int argc, char *argv[])
     faac_copyright_string = libinfo.copyright;
     if (!strcmp(faac_id_string, PACKAGE_VERSION))
     {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n",
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n",
                 faac_id_string);
+#ifdef FAAC_TUNING
+        fprintf(stderr, "FAAC_TUNING build\n");
+#endif
+        fprintf(stderr, "\n");
     }
     else
     {

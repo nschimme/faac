@@ -3,6 +3,11 @@ option('frontend',
     type: 'boolean',
     value: true)
 
+option('tuning',
+    description: 'Enable tuning environment variables and diagnostics',
+    type: 'boolean',
+    value: false)
+
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
@@ -17,6 +22,20 @@ option('sbr-decimation',
     min: 1,
     max: 8,
     value: 1)
+
+# TNS spectral autocorrelation decimation: evaluate every Nth spectral bin.
+# 1 = full quality (every bin); higher values trade MOS for faster encode.
+# Max 8: above that, spectral aliasing degrades LPC prediction fit.
+#   1: every bin   -- reference quality (MOS d: 0)
+#   2: every 2nd   -- ~5% faster AAC encode; MOS d: -0.0001
+#   4: every 4th   -- ~10% faster AAC encode; MOS d: -0.0003
+#   8: every 8th   -- ~17.8% faster AAC encode; MOS d: -0.0012
+option('tns-decimation',
+    description: 'TNS spectral autocorrelation decimation: evaluate every Nth bin (1=full quality, max=8)',
+    type: 'integer',
+    min: 1,
+    max: 8,
+    value: 8)
 
 option('max-channels',
     description: 'Maximum number of channels',

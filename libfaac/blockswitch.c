@@ -140,6 +140,31 @@ float PsyGetAttack(PsyInfo * psyInfo)
   return total > 0.0f ? strength : 0.0f;
 }
 
+int PsyGetTransientSubblock(PsyInfo * psyInfo)
+{
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  float max_s = 0.0f;
+  int max_win = 0, win;
+
+  if (!psydata)
+    return 0;
+
+  for (win = 1; win < SUBBLOCKS_PER_FRAME; win++)
+  {
+    float e = (float)psydata->eng[ENG_WIN_PREV + win];
+    float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
+    float lo = (e < p) ? e : p;
+    float s = fabsf(e - p) / lo;
+
+    if (s > max_s) {
+      max_s = s;
+      max_win = win;
+    }
+  }
+
+  return max_win;
+}
+
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
@@ -245,6 +270,13 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
      If there is 1 channel that wants a short block,
      use a short block on all channels.
    */
+  const char *env_fl = getenv("FAAC_FORCE_LONG");
+  if (env_fl && atoi(env_fl))
+  {
+    for (channel = 0; channel < numChannels; channel++)
+      psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+  }
+
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
