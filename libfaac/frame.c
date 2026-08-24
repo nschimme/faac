@@ -591,6 +591,15 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
 #define TNS_ATTACK_MIN 0.5f
 
+/* Shared by the SCE and CPE cases below: no envelope available (HE-AAC skips
+ * PsyBufferUpdate) means no basis to reject on, so admit and let the LPC
+ * gates decide. */
+static int TnsAttackAdmits(PsyInfo *psyInfo)
+{
+    float attack = PsyGetAttack(psyInfo);
+    return !(attack > 0.0f && attack < TNS_ATTACK_MIN);
+}
+
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
                           unsigned int samplesInput,
@@ -787,15 +796,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (elem->type == ID_CPE) {
             int chL = elem->channels[0], chR = elem->channels[1];
-            float attackL = PsyGetAttack(&hEncoder->psyInfo[chL]);
-            float attackR = PsyGetAttack(&hEncoder->psyInfo[chR]);
 
             /* Admit if EITHER channel shows enough envelope discontinuity --
                a transient in one channel is still worth shaping in both,
                since the shared filter costs nothing extra on the other. */
             if (useTns &&
-                ((attackL <= 0.0f || attackL >= TNS_ATTACK_MIN) ||
-                 (attackR <= 0.0f || attackR >= TNS_ATTACK_MIN))) {
+                (TnsAttackAdmits(&hEncoder->psyInfo[chL]) ||
+                 TnsAttackAdmits(&hEncoder->psyInfo[chR]))) {
                 TnsEncodeCPE(&(coderInfo[chL].tnsInfo), &(coderInfo[chR].tnsInfo),
                              coderInfo[chL].sfbn,
                              coderInfo[chL].block_type,
@@ -808,21 +815,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
         } else if (elem->type == ID_SCE) {
             int channel = elem->channels[0];
 
-            if (useTns) {
-                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-
-                /* No envelope available (HE-AAC skips PsyBufferUpdate) means
-                   no basis to reject on, so admit and let the LPC gates
-                   decide. */
-                if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                } else {
-                    TnsEncode(&(coderInfo[channel].tnsInfo),
-                              coderInfo[channel].sfbn,
-                              coderInfo[channel].block_type,
-                              coderInfo[channel].sfb_offset,
-                              hEncoder->freqBuff[channel]);
-                }
+            if (useTns && TnsAttackAdmits(&hEncoder->psyInfo[channel])) {
+                TnsEncode(&(coderInfo[channel].tnsInfo),
+                          coderInfo[channel].sfbn,
+                          coderInfo[channel].block_type,
+                          coderInfo[channel].sfb_offset,
+                          hEncoder->freqBuff[channel]);
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
             }
