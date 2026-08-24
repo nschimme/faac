@@ -35,7 +35,7 @@ onmessage = async (e) => {
             quality || 0,
             objectType !== undefined ? objectType : 0, // AUTO
             useTns ? 1 : 0,
-            pnsLevel || 0,
+            pnsLevel !== undefined ? pnsLevel : 4, // Default PNS level = 4
             jointMode !== undefined ? jointMode : 3, // JOINT_MIXED
             cutoff || 0
         );
