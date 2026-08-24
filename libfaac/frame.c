@@ -790,13 +790,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering. Element-at-a-time (not
-     * channel-at-a-time): a CPE's two channels must share one TNS filter,
-     * since TNS runs here before AACstereo's M/S/IS mixing and only an
-     * identical per-channel filter commutes with that mix (see the
-     * TnsEncodeElement comment in tns.c). SCE (nch=1) and CPE (nch=2) share
-     * this one code path -- nch=1 is just the CPE case's "admit if either
-     * channel wants it" with a single channel. */
+    /* Perform TNS analysis and filtering. Element-at-a-time (not purely
+     * channel-at-a-time) so a CPE's two channels can share the admission
+     * check below, but each channel is fit and filtered independently
+     * inside TnsEncodeElement (see tns.c) -- TNS runs before AACstereo's
+     * M/S/IS mixing, but that's fine since each channel's tns_data is
+     * transmitted separately and decoders invert M/S before inverting TNS
+     * per channel. SCE (nch=1) and CPE (nch=2) share this one code path --
+     * nch=1 is just the CPE case's "admit if either channel wants it" with
+     * a single channel. */
     for (int e = 0; e < hEncoder->numElements; e++) {
         AACElement *elem = &hEncoder->elements[e];
         TnsInfo *tnsInfos[2];
