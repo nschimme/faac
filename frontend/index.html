@@ -24,33 +24,35 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 2rem;
+            padding: 1rem;
+            box-sizing: border-box;
         }
         .container {
             background: var(--card);
-            padding: 2.5rem;
+            padding: 2rem 1.5rem;
             border-radius: 1.5rem;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             width: 100%;
             max-width: 640px;
             text-align: center;
+            box-sizing: border-box;
         }
-        h1 { margin-bottom: 2rem; font-size: 2rem; font-weight: 800; color: #0f172a; }
+        h1 { margin-bottom: 1.5rem; font-size: 1.75rem; font-weight: 800; color: #0f172a; }
 
         .drop-zone {
             border: 2px dashed var(--border);
             border-radius: 1rem;
-            padding: 3rem 1.5rem;
+            padding: 2rem 1rem;
             background: #f1f5f9;
             cursor: pointer;
             transition: all 0.2s ease;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color: var(--primary);
             background: #eff6ff;
         }
-        .drop-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .drop-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
         .drop-text { font-weight: 600; color: var(--text); }
         .drop-subtext { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
 
@@ -61,10 +63,11 @@
             color: #0369a1;
             border-radius: 0.5rem;
             font-weight: 500;
+            word-break: break-word;
         }
 
         .controls {
-            margin: 1.5rem 0;
+            margin: 1.25rem 0;
             text-align: left;
         }
 
@@ -73,7 +76,7 @@
             background: #f1f5f9;
             padding: 0.25rem;
             border-radius: 0.5rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
         }
         .tab {
             flex: 1;
@@ -143,7 +146,7 @@
         .btn:disabled { background: var(--border); cursor: not-allowed; }
 
         .progress-container {
-            margin-top: 1.5rem;
+            margin-top: 1.25rem;
             display: none;
         }
         .progress-bar {
@@ -165,7 +168,7 @@
             margin-top: 2rem;
             text-align: left;
             border-top: 1px solid var(--border);
-            padding-top: 1.5rem;
+            padding-top: 1.25rem;
         }
         .history h2 { font-size: 1.125rem; margin-bottom: 1rem; }
         .history-list { list-style: none; padding: 0; margin: 0; }
@@ -176,21 +179,34 @@
             background: #f8fafc;
             border: 1px solid var(--border);
             border-radius: 0.5rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
             gap: 0.5rem;
         }
         .history-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             font-weight: 600;
             font-size: 0.875rem;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        .history-badge {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-family: monospace;
+            font-weight: 600;
         }
         .history-controls {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            width: 100%;
         }
-        audio { height: 32px; flex: 1; }
+        audio { height: 32px; flex: 1; min-width: 0; }
         .history-btn {
             background: none;
             border: none;
@@ -218,6 +234,14 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 0.5rem; }
+            .container { padding: 1.25rem 1rem; border-radius: 1rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .drop-zone { padding: 1.5rem 1rem; }
+            h1 { font-size: 1.5rem; margin-bottom: 1rem; }
         }
 
         .switch-container {
@@ -359,7 +383,7 @@
         </div>
 
         <div class="history">
-            <h2>Encoding History 📜</h2>
+            <h2>Encoding History 📜 (ABX Comparison)</h2>
             <ul id="historyList" class="history-list"></ul>
         </div>
     </div>
@@ -512,6 +536,7 @@
                     channels,
                     quality,
                     bitrate,
+                    mode: activeMode,
                     objectType: parseInt(document.getElementById('objectType').value),
                     useTns: document.getElementById('useTns').checked,
                     pnsLevel: parseInt(document.getElementById('pnsLevel').value),
@@ -530,7 +555,7 @@
         };
 
         worker.onmessage = (e) => {
-            const { type, data, progress, speedFactor, elapsedSec, etaSec } = e.data;
+            const { type, data, progress, speedFactor, elapsedSec, etaSec, settingsStr } = e.data;
             if (type === 'progress') {
                 progressFill.style.width = `${progress}%`;
                 const speedStr = speedFactor ? `${speedFactor.toFixed(1)}x realtime` : '';
@@ -538,7 +563,8 @@
                 const details = [speedStr, etaStr].filter(Boolean).join(' | ');
                 status.textContent = `Encoding: ${Math.round(progress)}% ⌛ ${details ? '(' + details + ')' : ''}`;
             } else if (type === 'done') {
-                addHistoryItem(selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a", data);
+                const filename = selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a";
+                addHistoryItem(filename, data, settingsStr);
                 status.textContent = 'Done! ✅';
                 encodeBtn.disabled = false;
                 progressFill.style.width = '0%';
@@ -548,16 +574,18 @@
             }
         };
 
-        function addHistoryItem(filename, data) {
+        function addHistoryItem(filename, data, settingsStr) {
             const blob = new Blob([data], { type: 'audio/mp4' });
             const url = URL.createObjectURL(blob);
+            const sizeMB = (data.byteLength / 1024 / 1024).toFixed(2);
 
             const li = document.createElement('li');
             li.className = 'history-item';
 
             li.innerHTML = `
                 <div class="history-header">
-                    <span>${filename}</span>
+                    <span>${filename} (${sizeMB} MB)</span>
+                    <span class="history-badge">${settingsStr || 'AAC'}</span>
                 </div>
                 <div class="history-controls">
                     <audio controls src="${url}"></audio>

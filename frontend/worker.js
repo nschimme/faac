@@ -61,7 +61,8 @@ onmessage = async (e) => {
         cutoff,
         title,
         artist,
-        album
+        album,
+        mode
     } = e.data;
 
     if (!Module) await initModule();
@@ -132,7 +133,14 @@ onmessage = async (e) => {
 
         const outData = Module.FS.readFile('output.bin');
         const result = new Uint8Array(outData);
-        postMessage({ type: 'done', data: result }, [result.buffer]);
+
+        // Format ABX settings summary
+        const modeLabel = mode === 'VBR' ? `VBR Q:${quality}` : `ABR ${bitrate}kbps`;
+        const aotMap = { 0: 'Auto', 2: 'LC', 5: 'HE-v1' };
+        const aotLabel = aotMap[objectType] || 'Auto';
+        const settingsStr = `${modeLabel} | ${aotLabel} | TNS:${useTns ? 'On' : 'Off'} | PNS:${pnsLevel}`;
+
+        postMessage({ type: 'done', data: result, settingsStr }, [result.buffer]);
 
         Module.FS.unlink('output.bin');
 
