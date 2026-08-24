@@ -45,8 +45,19 @@ static const struct {
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
 
+/* Strided sampling trades autocorrelation precision for speed: at TNS's
+ * default-on frame rate, this is a real cost on every long-window frame,
+ * not just the promoted borderline ones. step=4 was the best measured
+ * balance of throughput recovered vs. MOS retained on this codebase's own
+ * gates (CPE joint fit, promotion) -- see project-tns-post-recovery-levers
+ * memory, not carried over from any prior PR's numbers. */
+#ifndef FAAC_TNS_DECIMATION
+#define FAAC_TNS_DECIMATION 4
+#endif
+
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
+    const int step = FAAC_TNS_DECIMATION;
     int lag, i;
 
     for (lag = 0; lag <= order; lag++) {
@@ -55,7 +66,7 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
         const float * p2 = work + lag;
         int n = length - lag;
 
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i += step)
             acc += p1[i] * p2[i];
         r[lag] = acc;
     }
