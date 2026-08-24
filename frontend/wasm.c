@@ -26,8 +26,7 @@
 
 typedef struct {
     faac_encoder *hEncoder;
-    uint32_t max_output_bytes;
-    uint32_t frame_samples;
+    faac_encoder_info info;
     uint8_t *bitbuf;
     float *interleaved_buf;
     uint32_t interleaved_cap;
@@ -49,6 +48,21 @@ static void wasm_set_error(const char *fmt, ...) {
 EMSCRIPTEN_KEEPALIVE
 const char *faac_wasm_get_last_error(void) {
     return g_last_error;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t faac_wasm_get_object_type(faac_wasm_t *ctx) {
+    return ctx ? (int32_t)ctx->info.object_type : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t faac_wasm_get_bandwidth(faac_wasm_t *ctx) {
+    return ctx ? (int32_t)ctx->info.bandwidth : 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t faac_wasm_get_bitrate(faac_wasm_t *ctx) {
+    return ctx ? (int32_t)ctx->info.bit_rate : 0;
 }
 
 static bool wasm_configure_params(faac_params *params, int32_t samplerate, int32_t channels,
@@ -112,12 +126,10 @@ faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrat
         return NULL;
     }
 
-    faac_encoder_info info = { .struct_size = sizeof(info) };
-    faac_encoder_get_info(ctx->hEncoder, &info);
+    ctx->info.struct_size = sizeof(ctx->info);
+    faac_encoder_get_info(ctx->hEncoder, &ctx->info);
 
-    ctx->max_output_bytes = info.max_output_bytes;
-    ctx->frame_samples = info.frame_samples;
-    ctx->bitbuf = malloc(info.max_output_bytes);
+    ctx->bitbuf = malloc(ctx->info.max_output_bytes);
     if (!ctx->bitbuf) {
         wasm_set_error("Out of memory allocating bitstream buffer");
         faac_encoder_close(&ctx->hEncoder);
@@ -179,7 +191,7 @@ int32_t faac_wasm_encode(faac_wasm_t *ctx, float *planar_ptrs[], int32_t num_fra
 
     uint32_t bytes_written = 0;
     faac_status st = faac_encoder_encode(ctx->hEncoder, ctx->interleaved_buf, total_samples,
-                                         ctx->bitbuf, ctx->max_output_bytes, &bytes_written);
+                                         ctx->bitbuf, ctx->info.max_output_bytes, &bytes_written);
     ctx->last_status = st;
 
     if (st != FAAC_OK) {
@@ -189,7 +201,7 @@ int32_t faac_wasm_encode(faac_wasm_t *ctx, float *planar_ptrs[], int32_t num_fra
 
     if (bytes_written > 0) {
         uint32_t frame_samples = (uint32_t)num_frames;
-        if (frame_samples > ctx->frame_samples) frame_samples = ctx->frame_samples;
+        if (frame_samples > ctx->info.frame_samples) frame_samples = ctx->info.frame_samples;
         if (mp4_write_frame(ctx->bitbuf, bytes_written, frame_samples) != 0) {
             wasm_set_error("mp4_write_frame failed");
             return -1;
@@ -203,21 +215,18 @@ static void wasm_flush_and_finalize(faac_wasm_t *ctx) {
     faac_status st;
     uint32_t bytes_written = 0;
     do {
-        st = faac_encoder_encode(ctx->hEncoder, NULL, 0, ctx->bitbuf, ctx->max_output_bytes, &bytes_written);
+        st = faac_encoder_encode(ctx->hEncoder, NULL, 0, ctx->bitbuf, ctx->info.max_output_bytes, &bytes_written);
         if (st == FAAC_OK && bytes_written > 0) {
-            mp4_write_frame(ctx->bitbuf, bytes_written, ctx->frame_samples);
+            mp4_write_frame(ctx->bitbuf, bytes_written, ctx->info.frame_samples);
         }
     } while (st == FAAC_OK && bytes_written > 0);
 
-    faac_encoder_info info = { .struct_size = sizeof(info) };
-    if (faac_encoder_get_info(ctx->hEncoder, &info) == FAAC_OK) {
-        uint32_t priming = info.encoder_delay;
-        uint64_t total_output_samples = mp4_sample_count();
-        uint64_t padding = 0;
-        if (total_output_samples > (uint64_t)priming + ctx->total_samples)
-            padding = total_output_samples - (uint64_t)priming - ctx->total_samples;
-        mp4_set_gapless(priming, (uint32_t)padding, ctx->total_samples);
-    }
+    uint32_t priming = ctx->info.encoder_delay;
+    uint64_t total_output_samples = mp4_sample_count();
+    uint64_t padding = 0;
+    if (total_output_samples > (uint64_t)priming + ctx->total_samples)
+        padding = total_output_samples - (uint64_t)priming - ctx->total_samples;
+    mp4_set_gapless(priming, (uint32_t)padding, ctx->total_samples);
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);

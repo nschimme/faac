@@ -102,6 +102,11 @@ onmessage = async (e) => {
             return;
         }
 
+        // Query resolved encoder properties from C libfaac instance
+        const resolvedAot = Module._faac_wasm_get_object_type(ctx);
+        const resolvedBw = Module._faac_wasm_get_bandwidth(ctx);
+        const resolvedBitrate = Module._faac_wasm_get_bitrate(ctx);
+
         const blockSize = 1024;
         const { channelPtrs, ptrsArrayPtr } = allocateChannelBuffers(channels, blockSize);
         const startTime = performance.now();
@@ -134,11 +139,15 @@ onmessage = async (e) => {
         const outData = Module.FS.readFile('output.bin');
         const result = new Uint8Array(outData);
 
-        // Format ABX settings summary
-        const modeLabel = mode === 'VBR' ? `VBR Q:${quality}` : `ABR ${bitrate}kbps`;
-        const aotMap = { 0: 'Auto', 2: 'LC', 5: 'HE-v1' };
-        const aotLabel = aotMap[objectType] || 'Auto';
-        const settingsStr = `${modeLabel} | ${aotLabel} | TNS:${useTns ? 'On' : 'Off'} | PNS:${pnsLevel}`;
+        // Format concise, complete encode settings summary using resolved AOT and Bandwidth
+        const rateLabel = mode === 'VBR' ? `VBR q${quality}` : `ABR ${bitrate || Math.round((resolvedBitrate * channels)/1000)}k`;
+        const aotMap = { 2: 'LC', 5: 'HE-v1' };
+        const jointMap = { 0: 'Stereo', 1: 'M/S', 2: 'IS', 3: 'Mixed' };
+        const aotLabel = aotMap[resolvedAot] || (objectType === 0 ? 'Auto' : 'LC');
+        const jointLabel = jointMap[jointMode] || 'Mixed';
+        const cutoffLabel = resolvedBw > 0 ? `${(resolvedBw/1000).toFixed(1)}kHz` : 'Cutoff: Auto';
+
+        const settingsStr = `${rateLabel} • ${aotLabel} • ${jointLabel} • TNS:${useTns ? 'On' : 'Off'} • PNS:${pnsLevel} • ${cutoffLabel}`;
 
         postMessage({ type: 'done', data: result, settingsStr }, [result.buffer]);
 
