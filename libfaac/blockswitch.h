@@ -32,6 +32,13 @@ typedef struct {
 
 	int block_type;
 
+	/* Strongest relative sub-block energy jump PsyCheckShort found this
+	   frame (see PSY_TD_THRESH). BlockSwitch compares it against a second,
+	   higher threshold to decide whether a transient that crossed
+	   PSY_TD_THRESH is still safe to keep in a long window with TNS
+	   covering it -- see PSY_TD_HARD in blockswitch.c. */
+	float td_strength;
+
         void *data;
 } PsyInfo;
 
