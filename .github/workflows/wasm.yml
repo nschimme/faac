@@ -27,7 +27,7 @@ jobs:
 
       - name: Build FAAC WASM via Meson
         run: |
-          meson setup build-wasm --default-library=static --cross-file frontend/emscripten.cross -Dfloating-point=single -Dfrontend=true
+          meson setup build-wasm --default-library=static --cross-file frontend/emscripten.cross -Dfrontend=true
           ninja -C build-wasm
 
       - name: Prepare Artifacts

@@ -12,5 +12,5 @@ cpu = 'wasm32'
 endian = 'little'
 
 [built-in options]
-c_args = ['-msimd128', '-O3', '-DPACKAGE_VERSION="1.31"', '-DMAX_CHANNELS=64', '-sTEXTDECODER=1']
+c_args = ['-msimd128', '-O3', '-DMAX_CHANNELS=64', '-sTEXTDECODER=1']
 c_link_args = ['-msimd128', '-O3', '-sEXPORTED_FUNCTIONS=["_malloc","_free","_faac_wasm_init","_faac_wasm_encode","_faac_wasm_close"]', '-sEXPORTED_RUNTIME_METHODS=["FS","ccall","cwrap","HEAPF32"]', '-sMODULARIZE=1', '-sEXPORT_NAME="faacModule"', '-sALLOW_MEMORY_GROWTH=1', '-sFORCE_FILESYSTEM=1']
