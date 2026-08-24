@@ -273,12 +273,21 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
        * applies on the core-psy path above (HE-AAC's SBR-driven override
        * doesn't compute td_strength). */
       float td_hard = PSY_TD_THRESH;
-      const char *env_hard = getenv("FAAC_TD_THRESH");
 
-      if (env_hard) {
-          float e = (float)atof(env_hard);
-          if (e >= PSY_TD_THRESH)
-              td_hard = e;
+      /* FAAC_TD_THRESH is a process-wide debug knob, not per-encoder state,
+       * so it's safe (and much cheaper than a getenv+atof every frame) to
+       * parse it once per process and cache the result. 0.0f means "unset or
+       * invalid" -- never a legal override, since valid values are always
+       * >= PSY_TD_THRESH. */
+      static float env_td_hard = -1.0f;
+      if (env_td_hard < 0.0f) {
+          const char *env_hard = getenv("FAAC_TD_THRESH");
+          float e = env_hard ? (float)atof(env_hard) : 0.0f;
+          env_td_hard = (e >= PSY_TD_THRESH) ? e : 0.0f;
+      }
+
+      if (env_td_hard > 0.0f) {
+          td_hard = env_td_hard;
       } else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR) {
           td_hard = PSY_TD_HARD;
       }

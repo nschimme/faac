@@ -271,6 +271,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         float *spec = specs[ch];
         float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
+        float bandrms[NSFB_LONG];
         int nbands = b_stop - b_start;
         int b;
 
@@ -281,6 +282,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
             rms = sqrtf(e / (float)(s1 - s0));
+            bandrms[b] = rms; /* reused below instead of recomputing */
             if (rms > maxrms) maxrms = rms;
 
             /* rms_fl keeps logf() away from 0 for silent bands; folded into
@@ -305,12 +307,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
+            float wgt = 1.0f / (bandrms[b] > floorrms ? bandrms[b] : floorrms);
 
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
             for (i = s0; i < s1; i++)
                 wspec[ch][i - i_start] = (float)spec[i] * wgt;
         }
