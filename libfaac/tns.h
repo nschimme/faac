@@ -37,6 +37,14 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands,
                enum WINDOW_TYPE blockType, int* sfbOffsetTable,
                float* spec);
 
+/* Analyse a channel pair element (CPE) jointly and, if it pays off, whiten
+ * both `specL` and `specR` in place with the SAME filter. Must be used for
+ * CPEs instead of two TnsEncode calls: TNS runs before AACstereo's M/S/IS
+ * mixing, and only one shared filter commutes with that mix (see tns.c). */
+void TnsEncodeCPE(TnsInfo* tnsInfoL, TnsInfo* tnsInfoR, int numBands,
+                  enum WINDOW_TYPE blockType, int* sfbOffsetTable,
+                  float* specL, float* specR);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

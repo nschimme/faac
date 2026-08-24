@@ -765,24 +765,57 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+    /* Perform TNS analysis and filtering. Element-at-a-time (not
+     * channel-at-a-time): a CPE's two channels must share one TNS filter,
+     * since TNS runs here before AACstereo's M/S/IS mixing and only an
+     * identical per-channel filter commutes with that mix (see the
+     * TnsEncodeCPE comment in tns.c). */
+    for (int e = 0; e < hEncoder->numElements; e++) {
+        AACElement *elem = &hEncoder->elements[e];
 
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
+        if (elem->type == ID_CPE) {
+            int chL = elem->channels[0], chR = elem->channels[1];
+            float attackL = PsyGetAttack(&hEncoder->psyInfo[chL]);
+            float attackR = PsyGetAttack(&hEncoder->psyInfo[chR]);
+
+            /* Admit if EITHER channel shows enough envelope discontinuity --
+               a transient in one channel is still worth shaping in both,
+               since the shared filter costs nothing extra on the other. */
+            if (useTns &&
+                ((attackL <= 0.0f || attackL >= TNS_ATTACK_MIN) ||
+                 (attackR <= 0.0f || attackR >= TNS_ATTACK_MIN))) {
+                TnsEncodeCPE(&(coderInfo[chL].tnsInfo), &(coderInfo[chR].tnsInfo),
+                             coderInfo[chL].sfbn,
+                             coderInfo[chL].block_type,
+                             coderInfo[chL].sfb_offset,
+                             hEncoder->freqBuff[chL], hEncoder->freqBuff[chR]);
+            } else {
+                coderInfo[chL].tnsInfo.tnsDataPresent = 0;
+                coderInfo[chR].tnsInfo.tnsDataPresent = 0;
             }
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+        } else if (elem->type == ID_SCE) {
+            int channel = elem->channels[0];
+
+            if (useTns) {
+                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+
+                /* No envelope available (HE-AAC skips PsyBufferUpdate) means
+                   no basis to reject on, so admit and let the LPC gates
+                   decide. */
+                if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
+                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+                } else {
+                    TnsEncode(&(coderInfo[channel].tnsInfo),
+                              coderInfo[channel].sfbn,
+                              coderInfo[channel].block_type,
+                              coderInfo[channel].sfb_offset,
+                              hEncoder->freqBuff[channel]);
+                }
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
+        } else if (elem->type == ID_LFE) {
+            coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0; /* TNS not used for LFE */
         }
     }
 
