@@ -9,6 +9,8 @@
         :root {
             --primary: #2563eb;
             --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
@@ -152,6 +154,13 @@
         }
         .btn:hover { background: var(--primary-hover); }
         .btn:disabled { background: var(--border); cursor: not-allowed; }
+
+        .btn-stop {
+            background: var(--danger) !important;
+        }
+        .btn-stop:hover {
+            background: var(--danger-hover) !important;
+        }
 
         .progress-container {
             margin-top: 1.25rem;
@@ -437,7 +446,16 @@
 
         let selectedFile = null;
         let activeMode = 'VBR';
-        let worker = new Worker('worker.js');
+        let isEncoding = false;
+        let worker = null;
+
+        function createWorker() {
+            if (worker) worker.terminate();
+            worker = new Worker('worker.js');
+            worker.onmessage = handleWorkerMessage;
+        }
+
+        createWorker();
 
         // Tab Switching Logic
         tabs.forEach(tab => {
@@ -520,10 +538,31 @@
             }
         }
 
+        function resetEncodeButton() {
+            isEncoding = false;
+            encodeBtn.textContent = 'Encode Audio';
+            encodeBtn.classList.remove('btn-stop');
+            encodeBtn.disabled = !selectedFile;
+        }
+
+        function stopEncoding() {
+            createWorker();
+            status.textContent = 'Encoding stopped 🛑';
+            progressFill.style.width = '0%';
+            resetEncodeButton();
+        }
+
         encodeBtn.onclick = async () => {
+            if (isEncoding) {
+                stopEncoding();
+                return;
+            }
+
             if (!selectedFile) return;
 
-            encodeBtn.disabled = true;
+            isEncoding = true;
+            encodeBtn.textContent = 'Stop Encoding 🛑';
+            encodeBtn.classList.add('btn-stop');
             progressContainer.style.display = 'block';
             status.textContent = 'Decoding audio... 📡';
 
@@ -531,6 +570,8 @@
                 const arrayBuffer = await selectedFile.arrayBuffer();
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+                if (!isEncoding) return;
 
                 status.textContent = 'Encoding to M4A... 🔨';
 
@@ -568,11 +609,11 @@
                 audioCtx.close();
             } catch (err) {
                 status.textContent = 'Error: ' + err.message;
-                encodeBtn.disabled = false;
+                resetEncodeButton();
             }
         };
 
-        worker.onmessage = (e) => {
+        function handleWorkerMessage(e) {
             const { type, data, progress, speedFactor, elapsedSec, etaSec, settingsStr } = e.data;
             if (type === 'progress') {
                 progressFill.style.width = `${progress}%`;
@@ -584,13 +625,13 @@
                 const filename = selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a";
                 addHistoryItem(filename, data, settingsStr);
                 status.textContent = 'Done! ✅';
-                encodeBtn.disabled = false;
                 progressFill.style.width = '0%';
+                resetEncodeButton();
             } else if (type === 'error') {
                 status.textContent = 'Error: ' + data;
-                encodeBtn.disabled = false;
+                resetEncodeButton();
             }
-        };
+        }
 
         function addHistoryItem(filename, data, settingsStr) {
             const blob = new Blob([data], { type: 'audio/mp4' });
