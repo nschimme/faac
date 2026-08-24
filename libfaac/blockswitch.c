@@ -46,11 +46,43 @@ psydata_t;
  * broadband energy would otherwise mask HF attacks and false-trigger short
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
- * transient. */
-#define PSY_TD_THRESH (0.5f)
+ * transient.
+ *
+ * 0.5 fires far too readily at 48 kHz -- 54.9% of frames go short on the SQAM
+ * set, and most of them do not need to. 0.7 measured +0.0199/+0.0151/+0.0129
+ * ViSQOL MOS at 64k/96k/128k (n=49, 32/28/26 wins against 10/9/6 losses) while
+ * spending no more bits.
+ *
+ * The mean keeps climbing above 0.7 -- 0.8 is +0.0215/+0.0223, 2.0 is +0.036 --
+ * but so does the worst case, and the worst case is what the gate tests. Raising
+ * the threshold withholds short blocks, and a few clips genuinely need them:
+ * Waiting.16b48k goes -0.039 / -0.069 / -0.107 / -0.22 at 0.6 / 0.7 / 0.8 / 2.0.
+ * 0.7 is where the corpus mean is still within 8% of its 64k plateau but no clip
+ * has yet fallen past -0.10. Chasing the mean past here trades 25 clips' worth
+ * of small gains for one clip's audible loss. */
+#define PSY_TD_THRESH_48K (0.7f)
+
+/* Floor for the scaled threshold. Sub-blocks are a fixed 128 samples, so their
+ * duration -- and with it how far a transient's energy jump is smeared before
+ * we measure it -- depends on the sample rate: 2.7 ms at 48 kHz but 8 ms at
+ * 16 kHz, which is why the 48 kHz value is scaled rather than applied flat.
+ *
+ * Scaling has to stop somewhere, and at 16 kHz the threshold is worth nothing
+ * in either direction (0.267 and 0.35 both land within +-0.005 of 0.5) while
+ * 0.8 costs -0.012 on 16k_mono_40k, 4 wins against 12 losses. So every rate at
+ * or below 34.3 kHz -- 16, 24 and 32 kHz -- sits on this floor and matches
+ * legacy behavior exactly. 44.1 kHz interpolates to 0.643 and is not measured. */
+#define PSY_TD_THRESH_MIN (0.5f)
+
+static float PsyTdThresh(float sampleRate)
+{
+    float t = PSY_TD_THRESH_48K * (sampleRate / 48000.0f);
+
+    return (t < PSY_TD_THRESH_MIN) ? PSY_TD_THRESH_MIN : t;
+}
 
 /* Hard ceiling for the joint short-block/TNS decision in BlockSwitch: a
- * transient with strength in (PSY_TD_THRESH, PSY_TD_HARD] stays in a long
+ * transient with strength in (td_thresh, PSY_TD_HARD] stays in a long
  * window (with TNS covering the pre-echo, when TNS is active and its own
  * gates agree) instead of forcing a short block. Measured by zimtohrli sweep
  * over 0.7/1.0/1.5/2.0/4.0 at 20/40/64 kbps: +0.031 MOS at 20k (95% CI
@@ -75,6 +107,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
   float strength = 0.0f;
+  float thresh = psyInfo->td_thresh;
 
   /* Search for transients across the current frame and its immediate temporal context.
      The search range is [curr-2, curr+9]. Track the strongest relative energy
@@ -97,7 +130,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   }
 
   psyInfo->td_strength = strength;
-  psyInfo->block_type = (strength > PSY_TD_THRESH) ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
+  psyInfo->block_type = (strength > thresh) ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 }
 
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -105,6 +138,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
 {
   unsigned int channel;
   int size;
+  float thresh;
 
   gpsyInfo->sampleRate = (float) sampleRate;
 
@@ -117,10 +151,12 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   }
 
   size = BLOCK_LEN_LONG;
+  thresh = PsyTdThresh(gpsyInfo->sampleRate);
   for (channel = 0; channel < numChannels; channel++)
   {
     psyInfo[channel].size = size;
     psyInfo[channel].td_strength = 0.0f;
+    psyInfo[channel].td_thresh = thresh;
   }
 
   size = BLOCK_LEN_SHORT;
@@ -267,33 +303,34 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   else
   {
       /* Joint short-block/TNS decision: a borderline transient (strength in
-       * (PSY_TD_THRESH, td_hard]) stays in a long window instead of forcing
+       * (td_thresh, td_hard]) stays in a long window instead of forcing
        * a short one, trusting long-window masking -- and TNS, when it's
        * active and its own gates agree -- to absorb the pre-echo. Only
        * applies on the core-psy path above (HE-AAC's SBR-driven override
        * doesn't compute td_strength). */
-      float td_hard = PSY_TD_THRESH;
 
       /* FAAC_TD_THRESH is a process-wide debug knob, not per-encoder state,
        * so it's safe (and much cheaper than a getenv+atof every frame) to
        * parse it once per process and cache the result. 0.0f means "unset or
        * invalid" -- never a legal override, since valid values are always
-       * >= PSY_TD_THRESH. */
+       * >= the lowest possible base threshold. */
       static float env_td_hard = -1.0f;
       if (env_td_hard < 0.0f) {
           const char *env_hard = getenv("FAAC_TD_THRESH");
           float e = env_hard ? (float)atof(env_hard) : 0.0f;
-          env_td_hard = (e >= PSY_TD_THRESH) ? e : 0.0f;
-      }
-
-      if (env_td_hard > 0.0f) {
-          td_hard = env_td_hard;
-      } else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR) {
-          td_hard = PSY_TD_HARD;
+          env_td_hard = (e >= PSY_TD_THRESH_MIN) ? e : 0.0f;
       }
 
       for (channel = 0; channel < numChannels; channel++)
       {
+          float td_hard = psyInfo[channel].td_thresh;
+
+          if (env_td_hard > 0.0f) {
+              td_hard = env_td_hard;
+          } else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR) {
+              td_hard = PSY_TD_HARD;
+          }
+
           if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW
               && psyInfo[channel].td_strength <= td_hard)
               psyInfo[channel].block_type = ONLY_LONG_WINDOW;
