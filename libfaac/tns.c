@@ -258,6 +258,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float wspec[2][BLOCK_LEN_LONG];
     float r[TNS_MAX_ORDER + 1] = {0}, rch[TNS_MAX_ORDER + 1];
     float k[TNS_MAX_ORDER + 1] = {0};
+    float bandrms[2][NSFB_LONG], floorrms[2];
     float gain, energy;
     int order, limit, i, ch, flat = 1;
 
@@ -280,9 +281,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
      * whiten across the whole range, not just the peak. */
     for (ch = 0; ch < nch; ch++) {
         float *spec = specs[ch];
-        float maxrms = 0.0f, floorrms;
+        float maxrms = 0.0f;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
-        float bandrms[NSFB_LONG];
         int nbands = b_stop - b_start;
         int b;
 
@@ -293,7 +293,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
             rms = sqrtf(e / (float)(s1 - s0));
-            bandrms[b] = rms; /* reused below instead of recomputing */
+            bandrms[ch][b] = rms; /* kept for un-normalizing the filtered signal back later */
             if (rms > maxrms) maxrms = rms;
 
             /* rms_fl keeps logf() away from 0 for silent bands; folded into
@@ -313,12 +313,12 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) <= TNS_PNS_SFM_SKIP)
             flat = 0;
 
-        floorrms = maxrms * 0.01f;
-        if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
+        floorrms[ch] = maxrms * 0.01f;
+        if (floorrms[ch] < TNS_MIN_ENERGY) floorrms[ch] = TNS_MIN_ENERGY;
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float wgt = 1.0f / (bandrms[b] > floorrms ? bandrms[b] : floorrms);
+            float wgt = 1.0f / (bandrms[ch][b] > floorrms[ch] ? bandrms[ch][b] : floorrms[ch]);
 
             for (i = s0; i < s1; i++)
                 wspec[ch][i - i_start] = (float)spec[i] * wgt;
@@ -379,18 +379,23 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
      * quantization can erode it enough that the filter actually being
      * transmitted no longer pays for itself. Re-check on a trial run of the
      * real (quantized) filter, summed over all channels, before committing
-     * to writing it out. */
+     * to writing it out. Filter wspec itself (the same normalized signal r
+     * and gain were fit on) rather than the raw spectrum: applying the
+     * filter to a differently-scaled signal than it was fit to would whiten
+     * discontinuities the fit never saw, defeating the point of the filter,
+     * and this re-check would be measuring a different filter response than
+     * what gets committed below. */
     {
-        float trial[BLOCK_LEN_LONG];
         float orig_e = 0.0f, filt_e = 0.0f;
 
-        for (ch = 0; ch < nch; ch++) {
-            memcpy(trial, wspec[ch], length * sizeof(float));
-            filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
-            for (i = 0; i < length; i++) {
+        for (ch = 0; ch < nch; ch++)
+            for (i = 0; i < length; i++)
                 orig_e += wspec[ch][i] * wspec[ch][i];
-                filt_e += trial[i] * trial[i];
-            }
+
+        for (ch = 0; ch < nch; ch++) {
+            filter_spec(length, order, filter->direction, filter->aCoeffs, wspec[ch]);
+            for (i = 0; i < length; i++)
+                filt_e += wspec[ch][i] * wspec[ch][i];
         }
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
@@ -398,8 +403,20 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             return 0;
     }
 
-    for (ch = 0; ch < nch; ch++)
-        filter_spec(length, order, filter->direction, filter->aCoeffs, specs[ch] + i_start);
+    /* wspec now holds the filtered, normalized signal; scale each band back
+     * up by the same per-band RMS the forward normalization divided out
+     * before writing into the real spectrum for quantization. */
+    for (ch = 0; ch < nch; ch++) {
+        int b;
+
+        for (b = b_start; b < b_stop; b++) {
+            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+            float scale = bandrms[ch][b] > floorrms[ch] ? bandrms[ch][b] : floorrms[ch];
+
+            for (i = s0; i < s1; i++)
+                specs[ch][i] = wspec[ch][i - i_start] * scale;
+        }
+    }
     return 1;
 }
 
