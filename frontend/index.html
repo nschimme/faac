@@ -509,22 +509,181 @@
         dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
         fileInput.onchange = (e) => handleFiles(e.target.files);
 
+        function decodeId3String(view, offset, length) {
+            if (length <= 1) return '';
+            const encoding = view.getUint8(offset);
+            const bytes = new Uint8Array(view.buffer, offset + 1, length - 1);
+            try {
+                if (encoding === 0) return new TextDecoder('iso-8859-1').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 1) return new TextDecoder('utf-16').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 2) return new TextDecoder('utf-16be').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 3) return new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+            } catch (e) {}
+            return new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+        }
+
+        function parseId3(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 10) return tags;
+            const view = new DataView(arrayBuffer);
+            if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) return tags;
+
+            const version = view.getUint8(3);
+            const flags = view.getUint8(5);
+            const size = (view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9);
+            let offset = 10;
+
+            if ((flags & 0x40) !== 0 && version >= 3) {
+                const extSize = version === 3 ? view.getUint32(offset) + 4 : ((view.getUint8(offset) << 21) | (view.getUint8(offset+1) << 14) | (view.getUint8(offset+2) << 7) | view.getUint8(offset+3));
+                offset += extSize;
+            }
+
+            const maxOffset = Math.min(arrayBuffer.byteLength, 10 + size);
+            while (offset + 10 < maxOffset) {
+                let id = '';
+                for (let i = 0; i < 4; i++) {
+                    const charCode = view.getUint8(offset + i);
+                    if (charCode === 0) break;
+                    id += String.fromCharCode(charCode);
+                }
+                if (id.length < 4) break;
+
+                let frameSize;
+                if (version === 4) {
+                    frameSize = (view.getUint8(offset + 4) << 21) | (view.getUint8(offset + 5) << 14) | (view.getUint8(offset + 6) << 7) | view.getUint8(offset + 7);
+                } else {
+                    frameSize = view.getUint32(offset + 4);
+                }
+
+                if (frameSize <= 0 || offset + 10 + frameSize > maxOffset) break;
+
+                const val = decodeId3String(view, offset + 10, frameSize);
+                if (id === 'TIT2') tags.title = val;
+                else if (id === 'TPE1') tags.artist = val;
+                else if (id === 'TALB') tags.album = val;
+
+                offset += 10 + frameSize;
+            }
+            return tags;
+        }
+
+        function parseWavInfo(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 12) return tags;
+            const view = new DataView(arrayBuffer);
+            const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+            const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
+            if (riff !== 'RIFF' || wave !== 'WAVE') return tags;
+
+            let offset = 12;
+            while (offset + 8 < arrayBuffer.byteLength) {
+                const chunkId = String.fromCharCode(view.getUint8(offset), view.getUint8(offset+1), view.getUint8(offset+2), view.getUint8(offset+3));
+                const chunkSize = view.getUint32(offset + 4, true);
+
+                if (chunkId === 'LIST' && chunkSize >= 4) {
+                    const listType = String.fromCharCode(view.getUint8(offset+8), view.getUint8(offset+9), view.getUint8(offset+10), view.getUint8(offset+11));
+                    if (listType === 'INFO') {
+                        let subOffset = offset + 12;
+                        const endSub = Math.min(arrayBuffer.byteLength, offset + 8 + chunkSize);
+                        while (subOffset + 8 < endSub) {
+                            const subId = String.fromCharCode(view.getUint8(subOffset), view.getUint8(subOffset+1), view.getUint8(subOffset+2), view.getUint8(subOffset+3));
+                            const subSize = view.getUint32(subOffset + 4, true);
+                            if (subOffset + 8 + subSize > endSub) break;
+
+                            const bytes = new Uint8Array(arrayBuffer, subOffset + 8, subSize);
+                            let str = new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+
+                            if (subId === 'INAM') tags.title = str;
+                            else if (subId === 'IART') tags.artist = str;
+                            else if (subId === 'IPRD') tags.album = str;
+
+                            subOffset += 8 + subSize + (subSize % 2);
+                        }
+                    }
+                }
+                offset += 8 + chunkSize + (chunkSize % 2);
+            }
+            return tags;
+        }
+
+        function parseFlacVorbisComment(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 8) return tags;
+            const view = new DataView(arrayBuffer);
+            const flac = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+            if (flac !== 'fLaC') return tags;
+
+            let offset = 4;
+            let isLast = false;
+            while (offset + 4 < arrayBuffer.byteLength && !isLast) {
+                const header = view.getUint8(offset);
+                isLast = (header & 0x80) !== 0;
+                const blockType = header & 0x7F;
+                const length = (view.getUint8(offset + 1) << 16) | (view.getUint8(offset + 2) << 8) | view.getUint8(offset + 3);
+
+                if (blockType === 4 && offset + 4 + length <= arrayBuffer.byteLength) {
+                    let vcOffset = offset + 4;
+                    const vendorLen = view.getUint32(vcOffset, true);
+                    vcOffset += 4 + vendorLen;
+                    if (vcOffset + 4 <= arrayBuffer.byteLength) {
+                        const listLen = view.getUint32(vcOffset, true);
+                        vcOffset += 4;
+                        for (let i = 0; i < listLen; i++) {
+                            if (vcOffset + 4 > arrayBuffer.byteLength) break;
+                            const commentLen = view.getUint32(vcOffset, true);
+                            vcOffset += 4;
+                            if (vcOffset + commentLen > arrayBuffer.byteLength) break;
+                            const bytes = new Uint8Array(arrayBuffer, vcOffset, commentLen);
+                            const comment = new TextDecoder('utf-8').decode(bytes);
+                            const eqIdx = comment.indexOf('=');
+                            if (eqIdx !== -1) {
+                                const key = comment.substring(0, eqIdx).toUpperCase();
+                                const val = comment.substring(eqIdx + 1).trim();
+                                if (key === 'TITLE') tags.title = val;
+                                else if (key === 'ARTIST') tags.artist = val;
+                                else if (key === 'ALBUM') tags.album = val;
+                            }
+                            vcOffset += commentLen;
+                        }
+                    }
+                }
+                offset += 4 + length;
+            }
+            return tags;
+        }
+
+        function extractAudioMetadata(arrayBuffer) {
+            const id3 = parseId3(arrayBuffer);
+            const wav = parseWavInfo(arrayBuffer);
+            const flac = parseFlacVorbisComment(arrayBuffer);
+            return {
+                title: id3.title || wav.title || flac.title || '',
+                artist: id3.artist || wav.artist || flac.artist || '',
+                album: id3.album || wav.album || flac.album || ''
+            };
+        }
+
         async function handleFiles(files) {
             selectedFile = files[0];
             if (selectedFile) {
                 encodeBtn.disabled = false;
                 fileInfo.classList.remove('hidden');
 
-                // Derive title from filename
-                const defaultTitle = selectedFile.name.replace(/\.[^/.]+$/, "");
-                if (!tagTitleInput.value) tagTitleInput.value = defaultTitle;
-
                 status.textContent = 'Analyzing audio... 📡';
 
                 try {
                     const arrayBuffer = await selectedFile.arrayBuffer();
+
+                    // Extract embedded tags from audio file
+                    const tags = extractAudioMetadata(arrayBuffer);
+                    const defaultTitle = selectedFile.name.replace(/\.[^/.]+$/, "");
+
+                    tagTitleInput.value = tags.title || defaultTitle;
+                    if (tags.artist) tagArtistInput.value = tags.artist;
+                    if (tags.album) tagAlbumInput.value = tags.album;
+
                     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
 
                     const durSec = audioBuffer.duration;
                     const durStr = `${Math.floor(durSec / 60)}:${Math.floor(durSec % 60).toString().padStart(2, '0')}`;
