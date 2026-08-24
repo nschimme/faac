@@ -24,35 +24,42 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 1rem;
+            padding: 1.5rem;
             box-sizing: border-box;
         }
         .container {
             background: var(--card);
-            padding: 2rem 1.5rem;
+            padding: 2.5rem;
             border-radius: 1.5rem;
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             width: 100%;
-            max-width: 640px;
-            text-align: center;
+            max-width: 960px;
             box-sizing: border-box;
         }
-        h1 { margin-bottom: 1.5rem; font-size: 1.75rem; font-weight: 800; color: #0f172a; }
+        h1 { margin-top: 0; margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800; color: #0f172a; text-align: center; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
 
         .drop-zone {
             border: 2px dashed var(--border);
             border-radius: 1rem;
-            padding: 2rem 1rem;
+            padding: 2.5rem 1.5rem;
             background: #f1f5f9;
             cursor: pointer;
             transition: all 0.2s ease;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
+            text-align: center;
         }
         .drop-zone:hover, .drop-zone.dragover {
             border-color: var(--primary);
             background: #eff6ff;
         }
-        .drop-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+        .drop-icon { font-size: 3rem; margin-bottom: 0.75rem; }
         .drop-text { font-weight: 600; color: var(--text); }
         .drop-subtext { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
 
@@ -64,10 +71,10 @@
             border-radius: 0.5rem;
             font-weight: 500;
             word-break: break-word;
+            font-size: 0.875rem;
         }
 
         .controls {
-            margin: 1.25rem 0;
             text-align: left;
         }
 
@@ -134,13 +141,14 @@
             background: var(--primary);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.875rem 1.5rem;
             border-radius: 0.75rem;
             font-weight: 600;
             font-size: 1rem;
             cursor: pointer;
             width: 100%;
             transition: background 0.2s ease;
+            margin-top: 0.5rem;
         }
         .btn:hover { background: var(--primary-hover); }
         .btn:disabled { background: var(--border); cursor: not-allowed; }
@@ -148,6 +156,7 @@
         .progress-container {
             margin-top: 1.25rem;
             display: none;
+            text-align: left;
         }
         .progress-bar {
             height: 0.5rem;
@@ -168,14 +177,15 @@
             margin-top: 2rem;
             text-align: left;
             border-top: 1px solid var(--border);
-            padding-top: 1.25rem;
+            padding-top: 1.5rem;
+            grid-column: 1 / -1;
         }
         .history h2 { font-size: 1.125rem; margin-bottom: 1rem; }
         .history-list { list-style: none; padding: 0; margin: 0; }
         .history-item {
             display: flex;
             flex-direction: column;
-            padding: 0.75rem;
+            padding: 0.75rem 1rem;
             background: #f8fafc;
             border: 1px solid var(--border);
             border-radius: 0.5rem;
@@ -189,7 +199,7 @@
             font-weight: 600;
             font-size: 0.875rem;
             flex-wrap: wrap;
-            gap: 0.25rem;
+            gap: 0.5rem;
         }
         .history-badge {
             background: #e2e8f0;
@@ -236,9 +246,10 @@
             gap: 1rem;
         }
 
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             body { padding: 0.5rem; }
-            .container { padding: 1.25rem 1rem; border-radius: 1rem; }
+            .container { padding: 1.5rem 1rem; border-radius: 1rem; }
+            .main-layout { grid-template-columns: 1fr; gap: 1rem; }
             .grid-2 { grid-template-columns: 1fr; }
             .drop-zone { padding: 1.5rem 1rem; }
             h1 { font-size: 1.5rem; margin-bottom: 1rem; }
@@ -282,109 +293,116 @@
     <div class="container">
         <h1>FAAC Online 🎵</h1>
 
-        <div class="drop-zone" id="dropZone">
-            <div class="drop-icon">📁</div>
-            <div class="drop-text">Drag & drop your audio file here</div>
-            <div class="drop-subtext">Supports WAV, MP3, FLAC, OGG, M4A & more</div>
-            <input type="file" id="fileInput" accept="audio/*" class="hidden">
-        </div>
+        <div class="main-layout">
+            <!-- Left Column: Source Audio & Trigger -->
+            <div>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-icon">📁</div>
+                    <div class="drop-text">Drag & drop your audio file here</div>
+                    <div class="drop-subtext">Supports WAV, MP3, FLAC, OGG, M4A & more</div>
+                    <input type="file" id="fileInput" accept="audio/*" class="hidden">
+                </div>
 
-        <div id="fileInfo" class="file-info hidden"></div>
+                <div id="fileInfo" class="file-info hidden"></div>
 
-        <div class="controls">
-            <div class="tabs">
-                <div class="tab active" data-mode="VBR">VBR (Quality)</div>
-                <div class="tab" data-mode="ABR">ABR (Average Bitrate)</div>
+                <button class="btn" id="encodeBtn" disabled>Encode Audio</button>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div id="status">Ready</div>
+                </div>
             </div>
 
-            <!-- VBR Controls -->
-            <div id="vbrControl" class="control-group">
-                <label>Quantization Quality <span class="val-display" id="qValDisplay">100</span></label>
-                <input type="range" id="quality" min="10" max="500" value="100">
-                <div id="vbrHint" class="drop-subtext" style="margin-top: 0.5rem;">Recommended for general use (High Quality)</div>
-            </div>
+            <!-- Right Column: Encoder Configuration -->
+            <div class="controls">
+                <div class="tabs">
+                    <div class="tab active" data-mode="VBR">VBR (Quality)</div>
+                    <div class="tab" data-mode="ABR">ABR (Average Bitrate)</div>
+                </div>
 
-            <!-- ABR Controls -->
-            <div id="abrControl" class="control-group hidden">
-                <label>Target Bitrate <span class="val-display" id="abrValDisplay">128 kbps</span></label>
-                <input type="range" id="abrBitrate" min="32" max="320" value="128" step="16">
-            </div>
+                <!-- VBR Controls -->
+                <div id="vbrControl" class="control-group">
+                    <label>Quantization Quality <span class="val-display" id="qValDisplay">100</span></label>
+                    <input type="range" id="quality" min="10" max="500" value="100">
+                    <div id="vbrHint" class="drop-subtext" style="margin-top: 0.5rem;">Recommended for general use (High Quality)</div>
+                </div>
 
-            <button class="toggle-btn" id="advancedToggle">
-                ⚙️ Advanced Options
-            </button>
+                <!-- ABR Controls -->
+                <div id="abrControl" class="control-group hidden">
+                    <label>Target Bitrate <span class="val-display" id="abrValDisplay">128 kbps</span></label>
+                    <input type="range" id="abrBitrate" min="32" max="320" value="128" step="16">
+                </div>
 
-            <div id="advancedPanel" class="hidden">
-                <div class="grid-2">
-                    <div class="control-group">
-                        <label for="objectType">Object Type</label>
-                        <select id="objectType">
-                            <option value="0" selected>Auto</option>
-                            <option value="2">AAC-LC (Low Complexity)</option>
-                            <option value="5">HE-AAC v1 (SBR)</option>
-                        </select>
+                <button class="toggle-btn" id="advancedToggle">
+                    ⚙️ Advanced Options
+                </button>
+
+                <div id="advancedPanel" class="hidden">
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label for="objectType">Object Type</label>
+                            <select id="objectType">
+                                <option value="0" selected>Auto</option>
+                                <option value="2">AAC-LC (Low Complexity)</option>
+                                <option value="5">HE-AAC v1 (SBR)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="jointMode">Stereo Mode</label>
+                            <select id="jointMode">
+                                <option value="3" selected>Mixed (Auto)</option>
+                                <option value="1">Mid/Side</option>
+                                <option value="2">Intensity</option>
+                                <option value="0">None (Stereo)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="switch-container">
+                        <label>Temporal Noise Shaping (TNS)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="useTns" checked>
+                            <span class="slider"></span>
+                        </label>
                     </div>
 
                     <div class="control-group">
-                        <label for="jointMode">Stereo Mode</label>
-                        <select id="jointMode">
-                            <option value="3" selected>Mixed (Auto)</option>
-                            <option value="1">Mid/Side</option>
-                            <option value="2">Intensity</option>
-                            <option value="0">None (Stereo)</option>
-                        </select>
+                        <label>PNS Level <span class="val-display" id="pnsValDisplay">4</span></label>
+                        <input type="range" id="pnsLevel" min="0" max="10" value="4">
                     </div>
-                </div>
 
-                <div class="switch-container">
-                    <label>Temporal Noise Shaping (TNS)</label>
-                    <label class="switch">
-                        <input type="checkbox" id="useTns" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <div class="control-group">
-                    <label>PNS Level <span class="val-display" id="pnsValDisplay">4</span></label>
-                    <input type="range" id="pnsLevel" min="0" max="10" value="4">
-                </div>
-
-                <div class="control-group">
-                    <label>Bandwidth Cutoff (Hz) <span class="val-display" id="cutoffValDisplay">Auto</span></label>
-                    <input type="range" id="cutoff" min="0" max="24000" value="0" step="500">
-                </div>
-
-                <!-- MP4 Metadata Tags -->
-                <div class="control-group">
-                    <label for="tagTitle">Title</label>
-                    <input type="text" id="tagTitle" placeholder="Track Title">
-                </div>
-
-                <div class="grid-2">
                     <div class="control-group">
-                        <label for="tagArtist">Artist</label>
-                        <input type="text" id="tagArtist" placeholder="Artist Name">
+                        <label>Bandwidth Cutoff (Hz) <span class="val-display" id="cutoffValDisplay">Auto</span></label>
+                        <input type="range" id="cutoff" min="0" max="24000" value="0" step="500">
                     </div>
+
+                    <!-- MP4 Metadata Tags -->
                     <div class="control-group">
-                        <label for="tagAlbum">Album</label>
-                        <input type="text" id="tagAlbum" placeholder="Album Name">
+                        <label for="tagTitle">Title</label>
+                        <input type="text" id="tagTitle" placeholder="Track Title">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label for="tagArtist">Artist</label>
+                            <input type="text" id="tagArtist" placeholder="Artist Name">
+                        </div>
+                        <div class="control-group">
+                            <label for="tagAlbum">Album</label>
+                            <input type="text" id="tagAlbum" placeholder="Album Name">
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <button class="btn" id="encodeBtn" disabled>Encode Audio</button>
-
-        <div class="progress-container" id="progressContainer">
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
+            <!-- Full Width ABX Comparison History -->
+            <div class="history">
+                <h2>Encoding History 📜 (ABX Comparison)</h2>
+                <ul id="historyList" class="history-list"></ul>
             </div>
-            <div id="status">Ready</div>
-        </div>
-
-        <div class="history">
-            <h2>Encoding History 📜 (ABX Comparison)</h2>
-            <ul id="historyList" class="history-list"></ul>
         </div>
     </div>
 
