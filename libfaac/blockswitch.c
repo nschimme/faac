@@ -100,12 +100,19 @@ static float PsyTdThresh(float sampleRate)
  * isolating promotion from TNS entirely (an experimental gate that skips
  * TNS on promoted frames while leaving them long produced a ~0 zimtohrli
  * delta on every test clip -- TNS's own filtering wasn't the regression,
- * the long-vs-short choice itself was) then sweeping the ceiling directly
- * on the losing/winning 48kHz stereo clips from PR #389's CI run at
- * 128/192 kbps per channel: summed across 6 clips, 1.5 net-beat both 2.0
- * and full removal (0.7) at both bitrates -- full removal overcorrects and
- * costs the clips that *do* want promotion. See
- * project-tns-post-recovery-levers memory for the raw numbers. */
+ * the long-vs-short choice itself was).
+ *
+ * PSY_TD_HARD_HIGH itself was never validated: an earlier 1.5 value, meant
+ * to taper the ceiling down rather than disable it above
+ * PSY_TD_HARD_HIGH_BPS, was picked from a 6-clip local subset and looked
+ * like a net win there, but PR #389's full CI corpus at 48kHz stereo
+ * 128-256kbps (per-channel >= HIGH_BPS) told the opposite story: every
+ * scenario there straddled zero MOS (18/23 losses at 128k), cost -7 to
+ * -7.8% throughput and the single worst regression (-0.13) in the whole
+ * report -- all from routing more frames into the long-window path with no
+ * compensating quality. So above HIGH_BPS this returns 0 (disabled, see
+ * call site) instead of a ceiling: promotion is only trusted in the range
+ * it was actually measured to win, <= HIGH_BPS. */
 #define PSY_TD_HARD_HIGH (1.5f)
 /* faac's -b is PER-CHANNEL after frontend/encode_engine.c divides the CLI's
  * (total) argument by channel count -- "128kbps stereo" is 64000 bps/ch,
@@ -115,16 +122,17 @@ static float PsyTdThresh(float sampleRate)
 #define PSY_TD_HARD_HIGH_BPS 64000
 
 /* Linear taper between the validated low-bitrate ceiling and the
- * high-bitrate one measured above; bitratePerCh==0 (VBR/quality mode) has
- * no bitrate signal to scale on, so it gets the conservative (lower,
- * less-aggressive) ceiling rather than assuming it's in the low-bitrate
- * regime. */
+ * high-bitrate one, up to HIGH_BPS; disabled (0.0f, see call site) above
+ * it, since promotion has no validated win past that point.
+ * bitratePerCh==0 (VBR/quality mode) has no bitrate signal to scale on, so
+ * it gets the same disabled/conservative default as the high-bitrate case
+ * rather than assuming it's in the low-bitrate regime. */
 static float PsyTdHard(unsigned long bitratePerCh)
 {
     float t;
 
     if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
-        return PSY_TD_HARD_HIGH;
+        return 0.0f;
     if (bitratePerCh <= PSY_TD_HARD_LOW_BPS)
         return PSY_TD_HARD_LOW;
 
