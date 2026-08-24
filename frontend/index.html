@@ -109,6 +109,15 @@
             accent-color: var(--primary);
         }
 
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+            font-weight: 500;
+        }
+
         select {
             width: 100%;
             padding: 0.5rem;
@@ -320,6 +329,23 @@
                     <label>Bandwidth Cutoff (Hz) <span class="val-display" id="cutoffValDisplay">Auto</span></label>
                     <input type="range" id="cutoff" min="0" max="24000" value="0" step="500">
                 </div>
+
+                <!-- MP4 Metadata Tags -->
+                <div class="control-group">
+                    <label for="tagTitle">Title</label>
+                    <input type="text" id="tagTitle" placeholder="Track Title">
+                </div>
+
+                <div class="grid-2">
+                    <div class="control-group">
+                        <label for="tagArtist">Artist</label>
+                        <input type="text" id="tagArtist" placeholder="Artist Name">
+                    </div>
+                    <div class="control-group">
+                        <label for="tagAlbum">Album</label>
+                        <input type="text" id="tagAlbum" placeholder="Album Name">
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -361,6 +387,11 @@
         const pnsValDisplay = document.getElementById('pnsValDisplay');
         const cutoffInput = document.getElementById('cutoff');
         const cutoffValDisplay = document.getElementById('cutoffValDisplay');
+
+        // Metadata inputs
+        const tagTitleInput = document.getElementById('tagTitle');
+        const tagArtistInput = document.getElementById('tagArtist');
+        const tagAlbumInput = document.getElementById('tagAlbum');
 
         let selectedFile = null;
         let activeMode = 'VBR';
@@ -418,13 +449,32 @@
         dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
         fileInput.onchange = (e) => handleFiles(e.target.files);
 
-        function handleFiles(files) {
+        async function handleFiles(files) {
             selectedFile = files[0];
             if (selectedFile) {
                 encodeBtn.disabled = false;
                 fileInfo.classList.remove('hidden');
-                fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
-                status.textContent = 'Ready to encode';
+
+                // Derive title from filename
+                const defaultTitle = selectedFile.name.replace(/\.[^/.]+$/, "");
+                if (!tagTitleInput.value) tagTitleInput.value = defaultTitle;
+
+                status.textContent = 'Analyzing audio... 📡';
+
+                try {
+                    const arrayBuffer = await selectedFile.arrayBuffer();
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+                    const durSec = audioBuffer.duration;
+                    const durStr = `${Math.floor(durSec / 60)}:${Math.floor(durSec % 60).toString().padStart(2, '0')}`;
+                    fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB) | ${audioBuffer.sampleRate} Hz, ${audioBuffer.numberOfChannels} ch, ${durStr}`;
+                    status.textContent = 'Ready to encode';
+                    audioCtx.close();
+                } catch (e) {
+                    fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                    status.textContent = 'Ready to encode';
+                }
             }
         }
 
@@ -466,7 +516,10 @@
                     useTns: document.getElementById('useTns').checked,
                     pnsLevel: parseInt(document.getElementById('pnsLevel').value),
                     jointMode: parseInt(document.getElementById('jointMode').value),
-                    cutoff: parseInt(document.getElementById('cutoff').value)
+                    cutoff: parseInt(document.getElementById('cutoff').value),
+                    title: tagTitleInput.value.trim(),
+                    artist: tagArtistInput.value.trim(),
+                    album: tagAlbumInput.value.trim()
                 }, pcmData);
 
                 audioCtx.close();
@@ -477,10 +530,13 @@
         };
 
         worker.onmessage = (e) => {
-            const { type, data, progress } = e.data;
+            const { type, data, progress, speedFactor, elapsedSec, etaSec } = e.data;
             if (type === 'progress') {
                 progressFill.style.width = `${progress}%`;
-                status.textContent = `Encoding: ${Math.round(progress)}% ⌛`;
+                const speedStr = speedFactor ? `${speedFactor.toFixed(1)}x realtime` : '';
+                const etaStr = etaSec ? `ETA: ${Math.ceil(etaSec)}s` : '';
+                const details = [speedStr, etaStr].filter(Boolean).join(' | ');
+                status.textContent = `Encoding: ${Math.round(progress)}% ⌛ ${details ? '(' + details + ')' : ''}`;
             } else if (type === 'done') {
                 addHistoryItem(selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a", data);
                 status.textContent = 'Done! ✅';

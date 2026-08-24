@@ -28,20 +28,38 @@ typedef struct {
     uint32_t max_output_bytes;
     uint32_t frame_samples;
     uint8_t *bitbuf;
+    float *interleaved_buf;
+    uint32_t interleaved_cap;
     uint32_t samplerate;
     uint32_t channels;
+    uint64_t total_samples;
+    faac_status last_status;
 } faac_wasm_t;
+
+static char g_last_error[256] = "";
+
+EMSCRIPTEN_KEEPALIVE
+const char *faac_wasm_get_last_error(void) {
+    return g_last_error;
+}
 
 EMSCRIPTEN_KEEPALIVE
 faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrate, int32_t quality,
                             int32_t object_type, int32_t use_tns, int32_t pns_level, int32_t joint_mode,
-                            int32_t cutoff) {
+                            int32_t cutoff, double total_samples_double,
+                            const char *title, const char *artist, const char *album) {
+    g_last_error[0] = '\0';
     faac_wasm_t *ctx = malloc(sizeof(faac_wasm_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        snprintf(g_last_error, sizeof(g_last_error), "Out of memory allocating context");
+        return NULL;
+    }
     memset(ctx, 0, sizeof(faac_wasm_t));
 
     faac_params params;
-    if (faac_params_init(&params, sizeof(params)) != FAAC_OK) {
+    faac_status st = faac_params_init(&params, sizeof(params));
+    if (st != FAAC_OK) {
+        snprintf(g_last_error, sizeof(g_last_error), "faac_params_init failed: %s", faac_strerror(st));
         free(ctx);
         return NULL;
     }
@@ -68,7 +86,9 @@ faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrat
     params.output_format = FAAC_STREAM_RAW;
     params.input_format = FAAC_INPUT_FLOAT;
 
-    if (faac_encoder_open(&params, &ctx->hEncoder) != FAAC_OK) {
+    st = faac_encoder_open(&params, &ctx->hEncoder);
+    if (st != FAAC_OK) {
+        snprintf(g_last_error, sizeof(g_last_error), "faac_encoder_open failed: %s", faac_strerror(st));
         free(ctx);
         return NULL;
     }
@@ -80,6 +100,7 @@ faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrat
     ctx->frame_samples = info.frame_samples;
     ctx->bitbuf = malloc(info.max_output_bytes);
     if (!ctx->bitbuf) {
+        snprintf(g_last_error, sizeof(g_last_error), "Out of memory allocating bitstream buffer");
         faac_encoder_close(&ctx->hEncoder);
         free(ctx);
         return NULL;
@@ -87,8 +108,10 @@ faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrat
 
     ctx->samplerate = (uint32_t)samplerate;
     ctx->channels = (uint32_t)channels;
+    ctx->total_samples = (uint64_t)total_samples_double;
 
     if (mp4_open("output.bin", true) != 0) {
+        snprintf(g_last_error, sizeof(g_last_error), "mp4_open failed to create output file");
         faac_encoder_close(&ctx->hEncoder);
         free(ctx->bitbuf);
         free(ctx);
@@ -101,31 +124,73 @@ faac_wasm_t *faac_wasm_init(int32_t samplerate, int32_t channels, int32_t bitrat
         mp4_set_decoder_config(asc, asc_len);
     }
 
+    if (title && title[0] != '\0') mp4_set_tag(MP4TAG_TITLE, title);
+    if (artist && artist[0] != '\0') mp4_set_tag(MP4TAG_ARTIST, artist);
+    if (album && album[0] != '\0') mp4_set_tag(MP4TAG_ALBUM, album);
+
     return ctx;
 }
 
 EMSCRIPTEN_KEEPALIVE
-int32_t faac_wasm_encode(faac_wasm_t *ctx, float *pcm_data, int32_t samples_read) {
-    if (!ctx) return -1;
-
-    uint32_t bytes_written = 0;
-    faac_status st = faac_encoder_encode(ctx->hEncoder, pcm_data, (uint32_t)samples_read,
-                                         ctx->bitbuf, ctx->max_output_bytes, &bytes_written);
-
-    if (st == FAAC_OK && bytes_written > 0) {
-        uint32_t frame_samples = (uint32_t)samples_read / ctx->channels;
-        if (frame_samples > ctx->frame_samples) frame_samples = ctx->frame_samples;
-        mp4_write_frame(ctx->bitbuf, bytes_written, frame_samples);
+int32_t faac_wasm_encode(faac_wasm_t *ctx, float *pcm_interleaved, int32_t samples_read) {
+    if (!ctx) {
+        snprintf(g_last_error, sizeof(g_last_error), "Invalid WASM encoder context");
+        return -1;
     }
 
-    return (st == FAAC_OK) ? (int32_t)bytes_written : -1;
+    uint32_t bytes_written = 0;
+    faac_status st = faac_encoder_encode(ctx->hEncoder, pcm_interleaved, (uint32_t)samples_read,
+                                         ctx->bitbuf, ctx->max_output_bytes, &bytes_written);
+    ctx->last_status = st;
+
+    if (st != FAAC_OK) {
+        snprintf(g_last_error, sizeof(g_last_error), "faac_encoder_encode failed: %s", faac_strerror(st));
+        return -1;
+    }
+
+    if (bytes_written > 0) {
+        uint32_t frame_samples = (uint32_t)samples_read / ctx->channels;
+        if (frame_samples > ctx->frame_samples) frame_samples = ctx->frame_samples;
+        if (mp4_write_frame(ctx->bitbuf, bytes_written, frame_samples) != 0) {
+            snprintf(g_last_error, sizeof(g_last_error), "mp4_write_frame failed");
+            return -1;
+        }
+    }
+
+    return (int32_t)bytes_written;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int32_t faac_wasm_encode_planar(faac_wasm_t *ctx, float *planar_ptrs[], int32_t num_frames) {
+    if (!ctx || !planar_ptrs || num_frames <= 0) return -1;
+
+    uint32_t total_samples = (uint32_t)num_frames * ctx->channels;
+    if (total_samples > ctx->interleaved_cap) {
+        float *tmp = realloc(ctx->interleaved_buf, total_samples * sizeof(float));
+        if (!tmp) {
+            snprintf(g_last_error, sizeof(g_last_error), "Out of memory allocating planar interleave buffer");
+            return -1;
+        }
+        ctx->interleaved_buf = tmp;
+        ctx->interleaved_cap = total_samples;
+    }
+
+    /* Interleave planar channel vectors directly in C for SIMD/auto-vectorization */
+    uint32_t chs = ctx->channels;
+    for (int32_t i = 0; i < num_frames; i++) {
+        for (uint32_t c = 0; c < chs; c++) {
+            ctx->interleaved_buf[i * chs + c] = planar_ptrs[c][i];
+        }
+    }
+
+    return faac_wasm_encode(ctx, ctx->interleaved_buf, (int32_t)total_samples);
 }
 
 EMSCRIPTEN_KEEPALIVE
 void faac_wasm_close(faac_wasm_t *ctx) {
     if (!ctx) return;
 
-    // Flush encoder
+    // Flush remaining frames from encoder
     faac_status st;
     uint32_t bytes_written = 0;
     do {
@@ -134,6 +199,16 @@ void faac_wasm_close(faac_wasm_t *ctx) {
             mp4_write_frame(ctx->bitbuf, bytes_written, ctx->frame_samples);
         }
     } while (st == FAAC_OK && bytes_written > 0);
+
+    faac_encoder_info info = { .struct_size = sizeof(info) };
+    if (faac_encoder_get_info(ctx->hEncoder, &info) == FAAC_OK) {
+        uint32_t priming = info.encoder_delay;
+        uint64_t total_output_samples = mp4_sample_count();
+        uint64_t padding = 0;
+        if (total_output_samples > (uint64_t)priming + ctx->total_samples)
+            padding = total_output_samples - (uint64_t)priming - ctx->total_samples;
+        mp4_set_gapless(priming, (uint32_t)padding, ctx->total_samples);
+    }
 
     faac_library_info libinfo = { .struct_size = sizeof(libinfo) };
     faac_get_library_info(&libinfo);
@@ -146,6 +221,7 @@ void faac_wasm_close(faac_wasm_t *ctx) {
     mp4_close();
 
     faac_encoder_close(&ctx->hEncoder);
+    if (ctx->interleaved_buf) free(ctx->interleaved_buf);
     free(ctx->bitbuf);
     free(ctx);
 }
