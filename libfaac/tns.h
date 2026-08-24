@@ -32,18 +32,14 @@ extern "C" {
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one channel and, if it pays off, whiten `spec` in place. */
-void TnsEncode(TnsInfo* tnsInfo, int numBands,
-               enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec);
-
-/* Analyse a channel pair element (CPE) jointly and, if it pays off, whiten
- * both `specL` and `specR` in place with the SAME filter. Must be used for
- * CPEs instead of two TnsEncode calls: TNS runs before AACstereo's M/S/IS
- * mixing, and only one shared filter commutes with that mix (see tns.c). */
-void TnsEncodeCPE(TnsInfo* tnsInfoL, TnsInfo* tnsInfoR, int numBands,
-                  enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-                  float* specL, float* specR);
+/* Analyse one element -- an SCE (nch=1) or a CPE (nch=2) -- jointly across
+ * its nch channels and, if it pays off, whiten all of them in place with the
+ * SAME filter. A CPE MUST go through here as a single nch=2 call, never two
+ * separate nch=1 calls: TNS runs before AACstereo's M/S/IS mixing, and only
+ * one shared filter commutes with that mix (see tns.c). */
+void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
+                      int numBands, enum WINDOW_TYPE blockType,
+                      int* sfbOffsetTable);
 
 #ifdef __cplusplus
 }

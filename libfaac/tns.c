@@ -392,12 +392,14 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-/* Shared by TnsEncode and TnsEncodeCPE: bounds the fit to the sample rate's
- * TNS band range and, if a filter was found, stamps every tnsInfo (nch of
- * them, all sharing this same band range/blockType/sfbOffsetTable per the
- * frame-wide block-type decision in BlockSwitch) with identical filter data. */
-static int tns_encode_range(TnsInfo **tnsInfos, float **specs, int nch,
-                            int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
+/* Analyse one element -- nch of them, sharing this same band range/
+ * blockType/sfbOffsetTable per the frame-wide block-type decision in
+ * BlockSwitch (nch==1 for an SCE, 2 for a CPE's two channels; see the CPE
+ * comment above tns_fit_range for why a CPE must go through here as one
+ * call, not two) -- and, if a filter was found, stamp every tnsInfo with
+ * identical filter data. */
+void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
+                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
 {
     int b_start, b_stop, ch;
 
@@ -408,16 +410,16 @@ static int tns_encode_range(TnsInfo **tnsInfos, float **specs, int nch,
 
     /* Short windows already have the temporal resolution to not need TNS. */
     if (blockType == ONLY_SHORT_WINDOW)
-        return 0;
+        return;
 
     b_start = min(tnsInfos[0]->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfos[0]->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start)
-        return 0;
+        return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs, nch,
                        &tnsInfos[0]->windowData.tnsFilter[0]))
-        return 0;
+        return;
 
     for (ch = 0; ch < nch; ch++) {
         if (ch > 0)
@@ -429,21 +431,4 @@ static int tns_encode_range(TnsInfo **tnsInfos, float **specs, int nch,
         tnsInfos[ch]->windowData.coefResolution = DEF_TNS_COEFF_RES;
         tnsInfos[ch]->tnsDataPresent = 1;
     }
-    return 1;
-}
-
-void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
-{
-    tns_encode_range(&tnsInfo, &spec, 1, numBands, blockType, sfbOffsetTable);
-}
-
-void TnsEncodeCPE(TnsInfo* tnsInfoL, TnsInfo* tnsInfoR, int numBands,
-                  enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-                  float* specL, float* specR)
-{
-    TnsInfo *tnsInfos[2] = {tnsInfoL, tnsInfoR};
-    float *specs[2] = {specL, specR};
-
-    tns_encode_range(tnsInfos, specs, 2, numBands, blockType, sfbOffsetTable);
 }

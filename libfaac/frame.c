@@ -778,42 +778,44 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * channel-at-a-time): a CPE's two channels must share one TNS filter,
      * since TNS runs here before AACstereo's M/S/IS mixing and only an
      * identical per-channel filter commutes with that mix (see the
-     * TnsEncodeCPE comment in tns.c). */
+     * TnsEncodeElement comment in tns.c). SCE (nch=1) and CPE (nch=2) share
+     * this one code path -- nch=1 is just the CPE case's "admit if either
+     * channel wants it" with a single channel. */
     for (int e = 0; e < hEncoder->numElements; e++) {
         AACElement *elem = &hEncoder->elements[e];
+        TnsInfo *tnsInfos[2];
+        float *specs[2];
+        int nch, admit = 0;
 
-        if (elem->type == ID_CPE) {
-            int chL = elem->channels[0], chR = elem->channels[1];
+        if (elem->type == ID_SCE)
+            nch = 1;
+        else if (elem->type == ID_CPE)
+            nch = 2;
+        else {
+            if (elem->type == ID_LFE)
+                coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0; /* TNS not used for LFE */
+            continue;
+        }
 
-            /* Admit if EITHER channel shows enough envelope discontinuity --
-               a transient in one channel is still worth shaping in both,
-               since the shared filter costs nothing extra on the other. */
-            if (useTns &&
-                (TnsAttackAdmits(&hEncoder->psyInfo[chL]) ||
-                 TnsAttackAdmits(&hEncoder->psyInfo[chR]))) {
-                TnsEncodeCPE(&(coderInfo[chL].tnsInfo), &(coderInfo[chR].tnsInfo),
-                             coderInfo[chL].sfbn,
-                             coderInfo[chL].block_type,
-                             coderInfo[chL].sfb_offset,
-                             hEncoder->freqBuff[chL], hEncoder->freqBuff[chR]);
-            } else {
-                coderInfo[chL].tnsInfo.tnsDataPresent = 0;
-                coderInfo[chR].tnsInfo.tnsDataPresent = 0;
-            }
-        } else if (elem->type == ID_SCE) {
-            int channel = elem->channels[0];
+        for (int c = 0; c < nch; c++) {
+            int channel = elem->channels[c];
 
-            if (useTns && TnsAttackAdmits(&hEncoder->psyInfo[channel])) {
-                TnsEncode(&(coderInfo[channel].tnsInfo),
-                          coderInfo[channel].sfbn,
-                          coderInfo[channel].block_type,
-                          coderInfo[channel].sfb_offset,
-                          hEncoder->freqBuff[channel]);
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
-        } else if (elem->type == ID_LFE) {
-            coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0; /* TNS not used for LFE */
+            tnsInfos[c] = &coderInfo[channel].tnsInfo;
+            specs[c] = hEncoder->freqBuff[channel];
+            if (TnsAttackAdmits(&hEncoder->psyInfo[channel]))
+                admit = 1;
+        }
+
+        if (useTns && admit) {
+            int channel0 = elem->channels[0];
+
+            TnsEncodeElement(tnsInfos, specs, nch,
+                             coderInfo[channel0].sfbn,
+                             coderInfo[channel0].block_type,
+                             coderInfo[channel0].sfb_offset);
+        } else {
+            for (int c = 0; c < nch; c++)
+                tnsInfos[c]->tnsDataPresent = 0;
         }
     }
 
