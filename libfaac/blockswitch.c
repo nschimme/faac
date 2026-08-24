@@ -164,19 +164,21 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     psyInfo[channel].sizeS = size;
 }
 
-/* Strongest relative energy jump across the sub-blocks of the window the MDCT
-   is about to transform. ENG_WIN_PREV is exactly that window -- (FIFO_PAST,
-   FIFO_CURR) -- because PsyBufferUpdate has already shifted by the time TNS
-   runs.
+/* Peak-over-mean sub-block energy across the sub-blocks of the window the
+   MDCT is about to transform. ENG_WIN_PREV is exactly that window --
+   (FIFO_PAST, FIFO_CURR) -- because PsyBufferUpdate has already shifted by
+   the time TNS runs.
 
    Exposed so TNS can gate on the temporal envelope already sitting in
-   psydata instead of recomputing it. Returns 0 if PsyBufferUpdate hasn't
-   populated the energy windows for this channel yet -- callers must treat
-   that as "no basis to judge", not "flat". */
-float PsyGetAttack(PsyInfo * psyInfo)
+   psydata instead of recomputing it: a frame with no sub-block energy spike
+   has no attack for TNS's noise buildup to hide behind, so the LPC work
+   isn't worth its bit cost -- see TnsAttackAdmits in frame.c. Returns 0 if
+   PsyBufferUpdate hasn't populated the energy windows for this channel yet
+   -- callers must treat that as "no basis to judge", not "flat". */
+float PsyGetPeakGate(PsyInfo * psyInfo)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float strength = 0.0f, total = 0.0f;
+  float peak = 0.0f, total = 0.0f;
   int win;
 
   if (!psydata)
@@ -187,17 +189,13 @@ float PsyGetAttack(PsyInfo * psyInfo)
     float e = (float)psydata->eng[ENG_WIN_PREV + win];
 
     total += e;
-    if (win)
-    {
-      float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
-      float lo = (e < p) ? e : p;
-      float s = fabsf(e - p) / lo;      /* IEEE divide covers silence */
-
-      if (s > strength) strength = s;
-    }
+    if (e > peak) peak = e;
   }
 
-  return total > 0.0f ? strength : 0.0f;
+  if (total <= 0.0f)
+    return 0.0f;
+
+  return peak / (total / (float)SUBBLOCKS_PER_FRAME);
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
