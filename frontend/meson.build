@@ -13,9 +13,9 @@ libfrontend = static_library('frontend',
 
 if target_machine.system() == 'emscripten'
     faac_wasm = executable('faac-wasm',
-        ['wasm.c', 'mp4write.c', 'mp4write.h'],
+        ['wasm.c'],
         include_directories: ['..', '../include'],
-        link_with: libfaac,
+        link_with: [libfaac, libfrontend],
         name_suffix: 'js',
         install: true
     )
