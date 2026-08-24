@@ -585,18 +585,22 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * have run. Screening on the envelope first skips that work for frames headed
  * for rejection anyway.
  *
- * Scaled to PsyGetAttack's statistic (largest relative energy jump between
- * adjacent sub-blocks). Not portable to a different sub-block count/size --
- * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.5f
+ * Peak-over-mean sub-block energy (PsyGetPeakGate), not the largest
+ * adjacent-pair jump (PsyGetAttack): measured better locally via zimtohrli
+ * (positive at every bitrate tested, significant at 48k/128k, no clip
+ * regressed) -- catches a sustained loud sub-block with no single sharp
+ * step, which the jump statistic misses. Not portable to a different
+ * sub-block count/size -- the same transient reads as a smaller peak/mean
+ * ratio with fewer, longer sub-blocks. */
+#define TNS_TD_PEAK_GATE 2.0f
 
 /* Shared by the SCE and CPE cases below: no envelope available (HE-AAC skips
  * PsyBufferUpdate) means no basis to reject on, so admit and let the LPC
  * gates decide. */
 static int TnsAttackAdmits(PsyInfo *psyInfo)
 {
-    float attack = PsyGetAttack(psyInfo);
-    return !(attack > 0.0f && attack < TNS_ATTACK_MIN);
+    float peak_gate = PsyGetPeakGate(psyInfo);
+    return !(peak_gate > 0.0f && peak_gate < TNS_TD_PEAK_GATE);
 }
 
 int faacEncEncode(faacEncHandle hpEncoder,
