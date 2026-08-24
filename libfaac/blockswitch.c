@@ -87,8 +87,51 @@ static float PsyTdThresh(float sampleRate)
  * gates agree) instead of forcing a short block. Measured by zimtohrli sweep
  * over 0.7/1.0/1.5/2.0/4.0 at 20/40/64 kbps: +0.031 MOS at 20k (95% CI
  * excludes 0), neutral above, speech +0.09 at 16k; ~15% of short frames
- * become long. See FAAC_TD_THRESH below to re-sweep locally. */
-#define PSY_TD_HARD (2.0f)
+ * become long. Validated only in this <=64kbps/ch range -- see
+ * PSY_TD_HARD_HIGH_BPS below for why it does not hold at higher bitrates.
+ * See FAAC_TD_THRESH below to re-sweep locally. */
+#define PSY_TD_HARD_LOW (2.0f)
+
+/* At low bitrates, keeping a borderline transient long (accepting some
+ * pre-echo smear) wins because short-block overhead is expensive relative
+ * to the bit budget. At high bitrates that overhead is cheap, so a real
+ * transient's pre-echo cost can outweigh the long window's efficiency gain
+ * -- the trade PSY_TD_HARD_LOW encodes can flip sign. Traced 2026-08-24 by
+ * isolating promotion from TNS entirely (an experimental gate that skips
+ * TNS on promoted frames while leaving them long produced a ~0 zimtohrli
+ * delta on every test clip -- TNS's own filtering wasn't the regression,
+ * the long-vs-short choice itself was) then sweeping the ceiling directly
+ * on the losing/winning 48kHz stereo clips from PR #389's CI run at
+ * 128/192 kbps per channel: summed across 6 clips, 1.5 net-beat both 2.0
+ * and full removal (0.7) at both bitrates -- full removal overcorrects and
+ * costs the clips that *do* want promotion. See
+ * project-tns-post-recovery-levers memory for the raw numbers. */
+#define PSY_TD_HARD_HIGH (1.5f)
+/* faac's -b is PER-CHANNEL after frontend/encode_engine.c divides the CLI's
+ * (total) argument by channel count -- "128kbps stereo" is 64000 bps/ch,
+ * not 128000. The 64k/96k measurements above are hEncoder->config.bitRate
+ * values, already in these units. */
+#define PSY_TD_HARD_LOW_BPS  24000
+#define PSY_TD_HARD_HIGH_BPS 64000
+
+/* Linear taper between the validated low-bitrate ceiling and the
+ * high-bitrate one measured above; bitratePerCh==0 (VBR/quality mode) has
+ * no bitrate signal to scale on, so it gets the conservative (lower,
+ * less-aggressive) ceiling rather than assuming it's in the low-bitrate
+ * regime. */
+static float PsyTdHard(unsigned long bitratePerCh)
+{
+    float t;
+
+    if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
+        return PSY_TD_HARD_HIGH;
+    if (bitratePerCh <= PSY_TD_HARD_LOW_BPS)
+        return PSY_TD_HARD_LOW;
+
+    t = (float)(bitratePerCh - PSY_TD_HARD_LOW_BPS) /
+        (float)(PSY_TD_HARD_HIGH_BPS - PSY_TD_HARD_LOW_BPS);
+    return PSY_TD_HARD_LOW + t * (PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW);
+}
 
 /* Promotion trades pre-echo for smearing quantization noise across the long
  * window, and that smear is audible in *milliseconds* while the window is
@@ -326,7 +369,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
           if (env_td_hard > 0.0f) {
               td_hard = env_td_hard;
           } else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR) {
-              td_hard = PSY_TD_HARD;
+              td_hard = PsyTdHard(hEncoder->config.bitRate);
           }
 
           if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW
