@@ -30,10 +30,11 @@
 #include "charset.h"
 #include "encode_engine.h"
 
-#define WM_USER_PROGRESS   (WM_USER + 101)
-#define WM_USER_SESS_START (WM_USER + 102)
-#define WM_USER_LOG        (WM_USER + 103)
-#define WM_USER_SUMMARY    (WM_USER + 104)
+#define WM_USER_PROGRESS    (WM_USER + 101)
+#define WM_USER_SESS_START  (WM_USER + 102)
+#define WM_USER_LOG         (WM_USER + 103)
+#define WM_USER_SUMMARY     (WM_USER + 104)
+#define WM_USER_ENCODE_DONE (WM_USER + 105)
 
 #define GUI_PROGRESS_RANGE       1024
 #define GUI_PROGRESS_THROTTLE_MS 33
@@ -67,7 +68,27 @@ static encode_session_info_t g_gui_sess_info;
 static encode_summary_t g_gui_summary;
 static char g_gui_log_msg[256];
 static progress_throttle_t g_gui_throttle;
+static bool g_gui_progress_posted = false;
 static CRITICAL_SECTION g_cs_progress;
+
+static void SetProgressBarPos(HWND hDlg, int control_id, int pos, int max_pos)
+{
+    HWND hProgress = GetDlgItem(hDlg, control_id);
+    if (!hProgress) return;
+
+    if (pos < max_pos)
+    {
+        SendMessage(hProgress, PBM_SETPOS, (WPARAM)(pos + 1), 0);
+        SendMessage(hProgress, PBM_SETPOS, (WPARAM)pos, 0);
+    }
+    else
+    {
+        SendMessage(hProgress, PBM_SETRANGE32, 0, (LPARAM)(max_pos + 1));
+        SendMessage(hProgress, PBM_SETPOS, (WPARAM)(max_pos + 1), 0);
+        SendMessage(hProgress, PBM_SETPOS, (WPARAM)max_pos, 0);
+        SendMessage(hProgress, PBM_SETRANGE32, 0, (LPARAM)max_pos);
+    }
+}
 
 static BOOL SelectFileName(HWND hParent, WCHAR *filename, BOOL forReading)
 {
@@ -201,15 +222,23 @@ static bool GuiProgressCallback(const progress_info_t *info, void *user_data)
         return false;
 
     EnterCriticalSection(&g_cs_progress);
-    /* Throttle updates to ~20 Hz (50ms) to avoid message queue spamming. */
-    bool should_post = info->is_final ||
-                        progress_throttle_tick(&g_gui_throttle, info,
-                                                GUI_PROGRESS_THROTTLE_MS / 1000.0);
-    if (should_post)
+    /* Throttle updates to ~30 Hz (33ms) to avoid message queue spamming. */
+    bool should_update = info->is_final ||
+                         progress_throttle_tick(&g_gui_throttle, info,
+                                                 GUI_PROGRESS_THROTTLE_MS / 1000.0);
+    bool do_post = false;
+    if (should_update)
+    {
         g_gui_progress = *info;
+        if (!g_gui_progress_posted || info->is_final)
+        {
+            g_gui_progress_posted = true;
+            do_post = true;
+        }
+    }
     LeaveCriticalSection(&g_cs_progress);
 
-    if (should_post)
+    if (do_post)
     {
         PostMessage(hWnd, WM_USER_PROGRESS, 0, 0);
     }
@@ -319,9 +348,6 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         opts.bandwidth = (bw > 0) ? (uint32_t)bw : 0;
     }
 
-    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, GUI_PROGRESS_RANGE));
-    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
-
     encode_callbacks_t cbs = {
         .progress_cb = GuiProgressCallback,
         .session_start_cb = GuiSessionStartCallback,
@@ -338,33 +364,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         ? run_encoding_session_ext(&opts, &cbs)
         : ENCODE_ERROR;
 
-    if (status == ENCODE_ERROR)
-    {
-        char err[300] = "Encoding failed!";
-        EnterCriticalSection(&g_cs_progress);
-        if (g_gui_log_msg[0] != '\0')
-        {
-            snprintf(err, sizeof(err), "Encoding failed:\n%s", g_gui_log_msg);
-        }
-        LeaveCriticalSection(&g_cs_progress);
-
-        wchar_t *werr = win32_utf8_to_utf16(err);
-        MessageBoxW(hWnd, werr ? werr : L"Encoding failed!", L"Error", MB_OK | MB_ICONSTOP);
-        free(werr);
-    }
-    else if (status == ENCODE_SUCCESS)
-    {
-        MessageBeep(MB_OK);
-    }
-
     free(utf8_input);
     free(utf8_output);
     free_encode_options(&opts);
 
-    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
-    SendMessage(hWnd, WM_SETTEXT, 0, (LPARAM)"FAAC GUI");
-    Encoding = FALSE;
-    SetDlgItemText(hWnd, IDOK, "Encode");
+    PostMessage(hWnd, WM_USER_ENCODE_DONE, (WPARAM)status, 0);
     return 0;
 }
 
@@ -378,6 +382,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             progress_info_t info;
             EnterCriticalSection(&g_cs_progress);
             info = g_gui_progress;
+            g_gui_progress_posted = false;
             LeaveCriticalSection(&g_cs_progress);
 
             if (info.total_input_samples > 0)
@@ -386,7 +391,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (ratio > 1.0) ratio = 1.0;
                 if (ratio < 0.0) ratio = 0.0;
 
-                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, (WPARAM)(ratio * (double)GUI_PROGRESS_RANGE), 0);
+                int pos = (int)(ratio * (double)GUI_PROGRESS_RANGE);
+                SetProgressBarPos(hWnd, IDC_PROGRESS, pos, GUI_PROGRESS_RANGE);
 
                 char HeaderText[64];
                 int percent = (int)(ratio * 100.0);
@@ -454,6 +460,52 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                      "Encoded %u frames (%" PRIu64 " samples) | Avg bitrate: %u kbps | Max frame size: %u bytes",
                      sum.frame_count, sum.sample_count, sum.avg_bitrate, sum.max_frame_size);
             SetDlgItemText(hWnd, IDC_TIME, szSummary);
+            return TRUE;
+        }
+
+    case WM_USER_ENCODE_DONE:
+        {
+            int status = (int)wParam;
+
+            if (status == ENCODE_ERROR)
+            {
+                char err[300] = "Encoding failed!";
+                EnterCriticalSection(&g_cs_progress);
+                if (g_gui_log_msg[0] != '\0')
+                {
+                    snprintf(err, sizeof(err), "Encoding failed:\n%s", g_gui_log_msg);
+                }
+                LeaveCriticalSection(&g_cs_progress);
+
+                wchar_t *werr = win32_utf8_to_utf16(err);
+                if (werr)
+                {
+                    SetDlgItemTextW(hWnd, IDC_TIME, werr);
+                    MessageBoxW(hWnd, werr, L"Error", MB_OK | MB_ICONSTOP);
+                    free(werr);
+                }
+                else
+                {
+                    SetDlgItemText(hWnd, IDC_TIME, err);
+                    MessageBox(hWnd, err, "Error", MB_OK | MB_ICONSTOP);
+                }
+                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+            }
+            else if (status == ENCODE_SUCCESS)
+            {
+                SetProgressBarPos(hWnd, IDC_PROGRESS, GUI_PROGRESS_RANGE, GUI_PROGRESS_RANGE);
+                SetWindowText(hWnd, "FAAC GUI: 100%");
+                MessageBeep(MB_OK);
+            }
+            else /* ENCODE_CANCELLED */
+            {
+                SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+                SetWindowText(hWnd, "FAAC GUI");
+            }
+
+            Encoding = FALSE;
+            EnableWindow(GetDlgItem(hWnd, IDOK), TRUE);
+            SetDlgItemText(hWnd, IDOK, "Encode");
             return TRUE;
         }
 
@@ -575,24 +627,33 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                     param->hWnd = hWnd;
                     GetDlgItemTextW(hWnd, IDC_INPUTFILENAME, param->inputFilename, _MAX_PATH);
                     GetDlgItemTextW(hWnd, IDC_OUTPUTFILENAME, param->outputFilename, _MAX_PATH);
+
+                    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETRANGE, 0, MAKELPARAM(0, GUI_PROGRESS_RANGE));
+                    SendDlgItemMessage(hWnd, IDC_PROGRESS, PBM_SETPOS, 0, 0);
+
+                    Encoding = TRUE;
+                    SetDlgItemText(hWnd, IDOK, "Stop");
+
                     DWORD retval;
                     HANDLE hThread = CreateThread(NULL, 0, EncodeFile, param, 0, &retval);
                     if (hThread)
                     {
                         CloseHandle(hThread);
-                        Encoding = TRUE;
-                        SetDlgItemText(hWnd, IDOK, "Stop");
                     }
                     else
                     {
+                        Encoding = FALSE;
+                        SetDlgItemText(hWnd, IDOK, "Encode");
                         free(param);
                     }
                 }
             }
             else
             {
+                /* User clicked Stop: signal worker thread to cancel, then disable button until thread finishes */
                 Encoding = FALSE;
-                SetDlgItemText(hWnd, IDOK, "Encode");
+                EnableWindow(GetDlgItem(hWnd, IDOK), FALSE);
+                SetDlgItemText(hWnd, IDOK, "Stopping...");
             }
             return TRUE;
 
