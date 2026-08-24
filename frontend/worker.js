@@ -11,6 +11,42 @@ const initModule = () => {
     });
 };
 
+const allocateWasmString = (str) => {
+    if (!str) return 0;
+    const len = Module.lengthBytesUTF8(str) + 1;
+    const ptr = Module._malloc(len);
+    Module.stringToUTF8(str, ptr, len);
+    return ptr;
+};
+
+const allocateChannelBuffers = (channels, blockSize) => {
+    const channelPtrs = new Uint32Array(channels);
+    const ptrsArrayPtr = Module._malloc(channels * 4);
+    for (let c = 0; c < channels; c++) {
+        channelPtrs[c] = Module._malloc(blockSize * 4);
+    }
+    return { channelPtrs, ptrsArrayPtr };
+};
+
+const freeChannelBuffers = (channelPtrs, ptrsArrayPtr) => {
+    for (let c = 0; c < channelPtrs.length; c++) {
+        Module._free(channelPtrs[c]);
+    }
+    Module._free(ptrsArrayPtr);
+};
+
+const calculateProgress = (currentSample, totalSamples, sampleRate, startTime) => {
+    const elapsedSec = (performance.now() - startTime) / 1000;
+    const speedFactor = elapsedSec > 0 ? (currentSample / sampleRate) / elapsedSec : 0;
+    const etaSec = currentSample > 0 && elapsedSec > 0 ? (elapsedSec * (totalSamples - currentSample)) / currentSample : 0;
+    return {
+        progress: (currentSample / totalSamples) * 100,
+        speedFactor,
+        elapsedSec,
+        etaSec
+    };
+};
+
 onmessage = async (e) => {
     const {
         pcmData,
@@ -34,18 +70,9 @@ onmessage = async (e) => {
         const pcmViews = pcmData.map(buf => new Float32Array(buf));
         const totalSamples = pcmViews[0].length;
 
-        // Allocate title/artist/album strings on WASM heap
-        const allocateString = (str) => {
-            if (!str) return 0;
-            const len = Module.lengthBytesUTF8(str) + 1;
-            const ptr = Module._malloc(len);
-            Module.stringToUTF8(str, ptr, len);
-            return ptr;
-        };
-
-        const titlePtr = allocateString(title);
-        const artistPtr = allocateString(artist);
-        const albumPtr = allocateString(album);
+        const titlePtr = allocateWasmString(title);
+        const artistPtr = allocateWasmString(artist);
+        const albumPtr = allocateWasmString(album);
 
         const ctx = Module._faac_wasm_init(
             sampleRate,
@@ -75,14 +102,7 @@ onmessage = async (e) => {
         }
 
         const blockSize = 1024;
-        const channelPtrs = new Uint32Array(channels);
-        const ptrsArrayPtr = Module._malloc(channels * 4);
-
-        // Allocate per-channel PCM WASM buffers
-        for (let c = 0; c < channels; c++) {
-            channelPtrs[c] = Module._malloc(blockSize * 4);
-        }
-
+        const { channelPtrs, ptrsArrayPtr } = allocateChannelBuffers(channels, blockSize);
         const startTime = performance.now();
 
         for (let i = 0; i < totalSamples; i += blockSize) {
@@ -94,7 +114,7 @@ onmessage = async (e) => {
             }
 
             Module.HEAP32.set(channelPtrs, ptrsArrayPtr / 4);
-            const status = Module._faac_wasm_encode_planar(ctx, ptrsArrayPtr, actualBlockSize);
+            const status = Module._faac_wasm_encode(ctx, ptrsArrayPtr, actualBlockSize);
 
             if (status < 0) {
                 const errPtr = Module._faac_wasm_get_last_error();
@@ -103,25 +123,11 @@ onmessage = async (e) => {
                 break;
             }
 
-            const elapsedSec = (performance.now() - startTime) / 1000;
-            const currentSample = i + actualBlockSize;
-            const speedFactor = elapsedSec > 0 ? (currentSample / sampleRate) / elapsedSec : 0;
-            const etaSec = currentSample > 0 && elapsedSec > 0 ? (elapsedSec * (totalSamples - currentSample)) / currentSample : 0;
-
-            postMessage({
-                type: 'progress',
-                progress: (currentSample / totalSamples) * 100,
-                speedFactor,
-                elapsedSec,
-                etaSec
-            });
+            const progInfo = calculateProgress(i + actualBlockSize, totalSamples, sampleRate, startTime);
+            postMessage({ type: 'progress', ...progInfo });
         }
 
-        for (let c = 0; c < channels; c++) {
-            Module._free(channelPtrs[c]);
-        }
-        Module._free(ptrsArrayPtr);
-
+        freeChannelBuffers(channelPtrs, ptrsArrayPtr);
         Module._faac_wasm_close(ctx);
 
         const outData = Module.FS.readFile('output.bin');
