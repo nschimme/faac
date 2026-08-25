@@ -442,3 +442,87 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     }
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
+
+static void window_cpe_band_energy(const CoderInfo * __restrict cl, const float * __restrict wl,
+                                    const float * __restrict wr, int from_sfb, int to_sfb,
+                                    float * __restrict e_out)
+{
+    int sfb;
+    for (sfb = from_sfb; sfb < to_sfb; sfb++)
+    {
+        float e = 0.0f;
+        int k;
+        int start = cl->sfb_offset[sfb];
+        int end = cl->sfb_offset[sfb + 1];
+        for (k = start; k < end; k++)
+            e += wl[k] * wl[k] + wr[k] * wr[k];
+        e_out[sfb] = e;
+    }
+}
+
+void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuantCfg *cfg)
+{
+    if (cl->block_type != ONLY_SHORT_WINDOW || cr->block_type != ONLY_SHORT_WINDOW)
+    {
+        cl->groups.n = cr->groups.n = 1;
+        cl->groups.len[0] = cr->groups.len[0] = 1;
+        return;
+    }
+
+    int maxsfb = cfg->max_cbs;
+    int cutoff = cfg->max_l / 8;
+    int active_bands = maxsfb - GROUP_MIN_SFB;
+    int onset_quorum = (active_bands * 3) >> 2;
+
+    float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
+    int win, group_start = 0;
+
+    cl->groups.n = cr->groups.n = 0;
+
+    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    {
+        float *wl = xrl + win * BLOCK_LEN_SHORT;
+        float *wr = xrr + win * BLOCK_LEN_SHORT;
+        int k, sfb;
+
+        for (k = cutoff; k < cl->sfb_offset[maxsfb]; k++)
+        {
+            wl[k] = 0.0f;
+            wr[k] = 0.0f;
+        }
+
+        window_cpe_band_energy(cl, wl, wr, GROUP_MIN_SFB, maxsfb, band_e);
+
+        if (win == group_start)
+        {
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
+            continue;
+        }
+
+        int onset_votes = 0;
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+        {
+            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
+            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
+            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
+        }
+
+        if (onset_votes > onset_quorum)
+        {
+            int g_len = win - group_start;
+            cl->groups.len[cl->groups.n] = g_len;
+            cr->groups.len[cr->groups.n] = g_len;
+            cl->groups.n++;
+            cr->groups.n++;
+            group_start = win;
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
+        }
+    }
+    int last_g_len = MAX_SHORT_WINDOWS - group_start;
+    cl->groups.len[cl->groups.n] = last_g_len;
+    cr->groups.len[cr->groups.n] = last_g_len;
+    cl->groups.n++;
+    cr->groups.n++;
+}
