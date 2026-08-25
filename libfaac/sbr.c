@@ -454,16 +454,20 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 
-        /* Calculate Spectral Flatness Measure (SFM) across QMF subbands to determine invfMode and noise level. */
+        /* Pre-calculate subband energies and log-energies for fast SFM calculation. */
+        float qmf_Ek[SBR_QMF_BANDS_64];
+        float qmf_logEk[SBR_QMF_BANDS_64];
         float sum_e = 0.0f;
         float sum_log_e = 0.0f;
-        int num_qmf = 0;
         int k_lo_all = sbr->kx, k_hi_all = sbr->k2;
+        int num_qmf = k_hi_all - k_lo_all;
         for (int k = k_lo_all; k < k_hi_all; k++) {
             float Ek = bandHalfE[0][k] + bandHalfE[1][k];
+            qmf_Ek[k] = Ek;
+            float logEk = fast_log2(Ek + 1e-10f) * 0.69314718f; /* fast log approximation */
+            qmf_logEk[k] = logEk;
             sum_e += Ek;
-            sum_log_e += logf(Ek + 1e-10f);
-            num_qmf++;
+            sum_log_e += logEk;
         }
         if (num_qmf > 0 && sum_e > 1e-9f) {
             float am = sum_e / (float)num_qmf;
@@ -521,12 +525,19 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
                 int k_lo = sbr->kx + (sbr->k2 - sbr->kx) * nb / sbr->numNoiseBands;
                 int k_hi = sbr->kx + (sbr->k2 - sbr->kx) * (nb + 1) / sbr->numNoiseBands;
                 float sum_nb = 0.0f, sum_log_nb = 0.0f;
-                int num_nb = 0;
-                for (int k = k_lo; k < k_hi; k++) {
-                    float Ek = (n_env == 1) ? (bandHalfE[0][k] + bandHalfE[1][k]) : bandHalfE[ne % n_env][k];
-                    sum_nb += Ek;
-                    sum_log_nb += logf(Ek + 1e-10f);
-                    num_nb++;
+                int num_nb = k_hi - k_lo;
+                if (n_env == 1) {
+                    for (int k = k_lo; k < k_hi; k++) {
+                        sum_nb += qmf_Ek[k];
+                        sum_log_nb += qmf_logEk[k];
+                    }
+                } else {
+                    int env_idx = ne % n_env;
+                    for (int k = k_lo; k < k_hi; k++) {
+                        float Ek = bandHalfE[env_idx][k];
+                        sum_nb += Ek;
+                        sum_log_nb += fast_log2(Ek + 1e-10f) * 0.69314718f;
+                    }
                 }
                 int band_noise_level = noise_level;
                 if (num_nb > 0 && sum_nb > 1e-9f) {
