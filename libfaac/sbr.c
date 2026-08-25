@@ -454,6 +454,36 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 
+        /* Calculate Spectral Flatness Measure (SFM) across QMF subbands to determine invfMode and noise level. */
+        float sum_e = 0.0f;
+        float sum_log_e = 0.0f;
+        int num_qmf = 0;
+        int k_lo_all = sbr->kx, k_hi_all = sbr->k2;
+        for (int k = k_lo_all; k < k_hi_all; k++) {
+            float Ek = bandHalfE[0][k] + bandHalfE[1][k];
+            sum_e += Ek;
+            sum_log_e += logf(Ek + 1e-10f);
+            num_qmf++;
+        }
+        if (num_qmf > 0 && sum_e > 1e-9f) {
+            float am = sum_e / (float)num_qmf;
+            float gm = expf(sum_log_e / (float)num_qmf);
+            float sfm = gm / am;
+            if (sfm < 0.15f) {
+                fd->ch[ch].invfMode = 0; /* LOW */
+                noise_level = 2;
+            } else if (sfm < 0.35f) {
+                fd->ch[ch].invfMode = 1; /* MID */
+                noise_level = 3;
+            } else if (sfm < 0.60f) {
+                fd->ch[ch].invfMode = 2; /* HIGH */
+                noise_level = 4;
+            } else {
+                fd->ch[ch].invfMode = 3; /* OFF */
+                noise_level = 5;
+            }
+        }
+
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
@@ -488,11 +518,27 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
         for (int ne = 0; ne < n_q; ne++) {
             int prevNoise = -1;
             for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+                int k_lo = sbr->kx + (sbr->k2 - sbr->kx) * nb / sbr->numNoiseBands;
+                int k_hi = sbr->kx + (sbr->k2 - sbr->kx) * (nb + 1) / sbr->numNoiseBands;
+                float sum_nb = 0.0f, sum_log_nb = 0.0f;
+                int num_nb = 0;
+                for (int k = k_lo; k < k_hi; k++) {
+                    float Ek = (n_env == 1) ? (bandHalfE[0][k] + bandHalfE[1][k]) : bandHalfE[ne % n_env][k];
+                    sum_nb += Ek;
+                    sum_log_nb += logf(Ek + 1e-10f);
+                    num_nb++;
+                }
+                int band_noise_level = noise_level;
+                if (num_nb > 0 && sum_nb > 1e-9f) {
+                    float sfm_nb = expf(sum_log_nb / (float)num_nb) / (sum_nb / (float)num_nb);
+                    band_noise_level = clamp_int(lrintf(2.0f + 4.0f * sfm_nb), 0, 30);
+                }
+
                 if (prevNoise < 0) {
-                    fd->ch[ch].noiseData[ne][nb] = noise_level;
-                    prevNoise = noise_level;
+                    fd->ch[ch].noiseData[ne][nb] = band_noise_level;
+                    prevNoise = band_noise_level;
                 } else {
-                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
+                    int delta = clamp_int(band_noise_level - prevNoise, -15, 15);
                     fd->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
                 }
             }
