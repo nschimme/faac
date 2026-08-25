@@ -959,25 +959,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->bitReservoir < 0)
             hEncoder->bitReservoir = 0;
 
-        /* Determine effective feedback target including a proportional reservoir
-         * offset to gently steer long-term average bitrate to target without overshoot. */
-        int resOffset = (hEncoder->bitReservoirCap > 0) ?
-            (hEncoder->bitReservoir - hEncoder->bitReservoirCap / 2) / 16 : 0;
-        int targetBits = desbits + resOffset;
-        if (targetBits <= sbrBits) targetBits = sbrBits + 8;
+        float frameRatio = 1.0f;
+        if (totalBits > sbrBits && desbits > sbrBits)
+            frameRatio = (float)(desbits - sbrBits) / (float)(totalBits - sbrBits);
 
-        int effectiveBits = totalBits;
-        if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
-            int excess = totalBits - desbits;
-            int prevRes = hEncoder->bitReservoir + excess;
-            int absorbed = (excess < prevRes) ? excess : prevRes;
-            effectiveBits = totalBits - absorbed;
+        float resRatio = 1.0f;
+        if (hEncoder->bitReservoirCap > 0)
+        {
+            float fill = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
+            resRatio = 0.85f + 0.30f * fill;
         }
 
-        if (effectiveBits > sbrBits)
-            fix = (float)(targetBits - sbrBits) / (float)(effectiveBits - sbrBits);
-        else
-            fix = 1.0f;
+        if (isTransient && hEncoder->bitReservoir > 0 && frameRatio < 1.0f) {
+            frameRatio = 0.5f * frameRatio + 0.5f;
+        }
+
+        fix = frameRatio * resRatio;
 
         if (fix < (1.0f - RC_DEADBAND_THRESHOLD)) {
             fix += RC_DEADBAND_THRESHOLD;
