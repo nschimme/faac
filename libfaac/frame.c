@@ -967,10 +967,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
             int excess = totalBits - desbits;
             int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
             effectiveBits = totalBits - absorbed;
-        } else if (totalBits < desbits && hEncoder->bitReservoir < hEncoder->bitReservoirCap) {
-            /* When refilling the reservoir, target slightly lower bits (95% nominal) */
-            int target = (int)(desbits * 0.95f);
-            if (effectiveBits > target) effectiveBits = target;
         }
 
         if (effectiveBits > sbrBits)
