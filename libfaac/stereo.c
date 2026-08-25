@@ -204,7 +204,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             float em = 0.25f * es, side = 0.25f * ed;
             /* In low-frequency scale factor bands (sfb < 8, < ~400 Hz), M/S coding on out-of-phase
              * dominant side energy causes phase cancellation. Guard low bands unless mid energy is sufficient. */
-            int ms_allowed = (sfb >= 4 || em * 1.5f >= side);
+            int ms_allowed = (sfb >= 6 || em * 1.50f >= side);
             if (ms_allowed && min(el, er) * thrmid >= max(em, side)) {
                 if (em * thrmid * 2.0f >= etot) {
                     ms = 1;
