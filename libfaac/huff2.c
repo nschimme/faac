@@ -227,70 +227,24 @@ static void huffcode_write(int *qs, int len, int bnum, CoderInfo *coder)
     coder->datacnt = datacnt;
 }
 
-/* Sizing function for single book without writing bitstream entries */
-static int huffcode_size_single(const int *qs, int len, int bnum)
+/* Sizing function for HCB_ESC without writing bitstream entries */
+static int huffcode_size_esc(const int *qs, int len)
 {
-    hcode16_t *book = hmap[bnum];
+    hcode16_t *book = hmap[HCB_ESC];
     int bits = 0;
-    int i;
-
-    switch (bnum) {
-    case HCB_1:
-    case HCB_2:
-        for (i = 0; i < len; i += 4) {
-            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            bits += book[idx].len;
+    for (int i = 0; i < len; i += 2) {
+        int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
+        int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
+        int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
+        int idx = DIM_ESC * v0 + v1;
+        int sign = is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
+        bits += book[idx].len + sign;
+        if (x0 >= LAV_ESC) {
+            bits += escape(x0, NULL);
         }
-        break;
-    case HCB_3:
-    case HCB_4:
-        for (i = 0; i < len; i += 4) {
-            int idx = DIM_M4*DIM_M4*DIM_M4 * abs(qs[i]) + DIM_M4*DIM_M4 * abs(qs[i+1]) + DIM_M4 * abs(qs[i+2]) + abs(qs[i+3]);
-            int sign = is_nonzero(qs[i]) + is_nonzero(qs[i+1]) + is_nonzero(qs[i+2]) + is_nonzero(qs[i+3]);
-            bits += book[idx].len + sign;
+        if (x1 >= LAV_ESC) {
+            bits += escape(x1, NULL);
         }
-        break;
-    case HCB_5:
-    case HCB_6:
-        for (i = 0; i < len; i += 2) {
-            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            bits += book[idx].len;
-        }
-        break;
-    case HCB_7:
-    case HCB_8:
-        for (i = 0; i < len; i += 2) {
-            int idx = DIM_M2_7 * abs(qs[i]) + abs(qs[i+1]);
-            int sign = is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
-            bits += book[idx].len + sign;
-        }
-        break;
-    case HCB_9:
-    case HCB_10:
-        for (i = 0; i < len; i += 2) {
-            int idx = DIM_M2_12 * abs(qs[i]) + abs(qs[i+1]);
-            int sign = is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
-            bits += book[idx].len + sign;
-        }
-        break;
-    case HCB_ESC:
-        for (i = 0; i < len; i += 2) {
-            int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
-            int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
-            int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
-            int idx = DIM_ESC * v0 + v1;
-            int sign = is_nonzero(qs[i]) + is_nonzero(qs[i+1]);
-            bits += book[idx].len + sign;
-            if (x0 >= LAV_ESC) {
-                bits += escape(x0, NULL);
-            }
-            if (x1 >= LAV_ESC) {
-                bits += escape(x1, NULL);
-            }
-        }
-        break;
-    default:
-        break;
     }
     return bits;
 }
@@ -334,56 +288,19 @@ int huffbook(CoderInfo *coder, int *qs, int len)
             coder->bit_cost[band][pair_base] = len1;
             coder->bit_cost[band][pair_base + 1] = len2;
             bookmin = (len2 < len1) ? pair_base + 1 : pair_base;
-        } else {
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
-            bookmin = HCB_ESC;
-        }
 
-        /* Evaluate higher LAV codebooks as alternative valid assignments */
-        if (maxq <= LAV_1) {
-            int len3, len4, len5, len6, len7, len8, len9, len10;
-            huffcode_size_pair(qs, len, HCB_3, &len3, &len4);
-            coder->bit_cost[band][HCB_3] = len3;
-            coder->bit_cost[band][HCB_4] = len4;
-            huffcode_size_pair(qs, len, HCB_5, &len5, &len6);
-            coder->bit_cost[band][HCB_5] = len5;
-            coder->bit_cost[band][HCB_6] = len6;
-            huffcode_size_pair(qs, len, HCB_7, &len7, &len8);
-            coder->bit_cost[band][HCB_7] = len7;
-            coder->bit_cost[band][HCB_8] = len8;
-            huffcode_size_pair(qs, len, HCB_9, &len9, &len10);
-            coder->bit_cost[band][HCB_9] = len9;
-            coder->bit_cost[band][HCB_10] = len10;
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
-        } else if (maxq <= LAV_2) {
-            int len5, len6, len7, len8, len9, len10;
-            huffcode_size_pair(qs, len, HCB_5, &len5, &len6);
-            coder->bit_cost[band][HCB_5] = len5;
-            coder->bit_cost[band][HCB_6] = len6;
-            huffcode_size_pair(qs, len, HCB_7, &len7, &len8);
-            coder->bit_cost[band][HCB_7] = len7;
-            coder->bit_cost[band][HCB_8] = len8;
-            huffcode_size_pair(qs, len, HCB_9, &len9, &len10);
-            coder->bit_cost[band][HCB_9] = len9;
-            coder->bit_cost[band][HCB_10] = len10;
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
-        } else if (maxq <= LAV_4) {
-            int len7, len8, len9, len10;
-            huffcode_size_pair(qs, len, HCB_7, &len7, &len8);
-            coder->bit_cost[band][HCB_7] = len7;
-            coder->bit_cost[band][HCB_8] = len8;
-            huffcode_size_pair(qs, len, HCB_9, &len9, &len10);
-            coder->bit_cost[band][HCB_9] = len9;
-            coder->bit_cost[band][HCB_10] = len10;
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
-        } else if (maxq <= LAV_7) {
-            int len9, len10;
-            huffcode_size_pair(qs, len, HCB_9, &len9, &len10);
-            coder->bit_cost[band][HCB_9] = len9;
-            coder->bit_cost[band][HCB_10] = len10;
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
-        } else if (maxq <= LAV_12) {
-            coder->bit_cost[band][HCB_ESC] = huffcode_size_single(qs, len, HCB_ESC);
+            if (pair_base <= HCB_7) {
+                int next_base = pair_base + 2;
+                int len_a, len_b;
+                huffcode_size_pair(qs, len, next_base, &len_a, &len_b);
+                coder->bit_cost[band][next_base] = len_a;
+                coder->bit_cost[band][next_base + 1] = len_b;
+            } else if (pair_base == HCB_9) {
+                coder->bit_cost[band][HCB_ESC] = huffcode_size_esc(qs, len);
+            }
+        } else {
+            coder->bit_cost[band][HCB_ESC] = huffcode_size_esc(qs, len);
+            bookmin = HCB_ESC;
         }
     }
 
@@ -397,15 +314,14 @@ void huffcode_write_band(CoderInfo *coder, int *qs, int len, int bnum)
 }
 
 /* Optimization of sectioning using Viterbi Dynamic Programming trellis search */
-void optimize_section_codebooks(CoderInfo *coder, int gnum)
+void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
 {
-    (void)gnum;
-    int sfbn = coder->sfbn;
+    if (num_bands <= 0) return;
+
     int max_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
     int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
     int section_header_cost = 4 + run_bits; /* 4-bit book index + 3/5-bit run length */
 
-    int start_band = coder->bandcnt - sfbn;
     int sb;
 
     /* DP matrices: dp[sb][cb] = min bits up to band sb ending in cb, run[sb][cb] = run length of cb */
@@ -424,7 +340,7 @@ void optimize_section_codebooks(CoderInfo *coder, int gnum)
         }
     }
 
-    for (sb = 1; sb < sfbn; sb++) {
+    for (sb = 1; sb < num_bands; sb++) {
         int band_idx = start_band + sb;
 
         for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
@@ -437,7 +353,7 @@ void optimize_section_codebooks(CoderInfo *coder, int gnum)
             /* Option 1: Continue same codebook cb from sb-1 */
             if (dp[sb - 1][cb] < DP_INF) {
                 int prev_run = run[sb - 1][cb];
-                int extra_hdr = (prev_run % max_run == 0) ? run_bits : 0;
+                int extra_hdr = (prev_run % max_run == 0) ? section_header_cost : 0;
                 int cost = dp[sb - 1][cb] + extra_hdr + coder->bit_cost[band_idx][cb];
                 dp[sb][cb] = cost;
                 run[sb][cb] = prev_run + 1;
@@ -459,12 +375,12 @@ void optimize_section_codebooks(CoderInfo *coder, int gnum)
         }
     }
 
-    /* Find best ending codebook at sfbn - 1 */
+    /* Find best ending codebook at num_bands - 1 */
     int best_cb = -1;
     int min_total_bits = DP_INF;
     for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
-        if (dp[sfbn - 1][cb] < min_total_bits) {
-            min_total_bits = dp[sfbn - 1][cb];
+        if (dp[num_bands - 1][cb] < min_total_bits) {
+            min_total_bits = dp[num_bands - 1][cb];
             best_cb = cb;
         }
     }
@@ -473,13 +389,13 @@ void optimize_section_codebooks(CoderInfo *coder, int gnum)
         /* Traceback and update coder->book[] */
         int curr_cb = best_cb;
         int opt_books[NSFB_LONG];
-        for (int sb_idx = sfbn - 1; sb_idx >= 0; sb_idx--) {
+        for (int sb_idx = num_bands - 1; sb_idx >= 0; sb_idx--) {
             opt_books[sb_idx] = curr_cb;
             curr_cb = back_cb[sb_idx][curr_cb];
         }
 
         /* Update coder->book[] */
-        for (sb = 0; sb < sfbn; sb++) {
+        for (sb = 0; sb < num_bands; sb++) {
             int band_idx = start_band + sb;
             coder->book[band_idx] = opt_books[sb];
         }

@@ -242,7 +242,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int b = ci->book[band];
             ci->bit_cost[band][b] = 0;
             for (int cb = 0; cb < 16; cb++) {
-                if (cb != b) ci->bit_cost[band][cb] = 100000000;
+                if (cb != b) ci->bit_cost[band][cb] = DP_INF;
             }
             ci->bandcnt++;
             continue;
@@ -257,7 +257,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             ci->book[band] = HCB_ZERO;
             ci->bit_cost[band][HCB_ZERO] = 0;
-            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = 100000000;
+            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = DP_INF;
             ci->bandcnt++;
             continue;
         }
@@ -269,7 +269,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             ci->book[band] = HCB_PNS;
             ci->bit_cost[band][HCB_PNS] = 0;
             for (int cb = 0; cb < 16; cb++) {
-                if (cb != HCB_PNS) ci->bit_cost[band][cb] = 100000000;
+                if (cb != HCB_PNS) ci->bit_cost[band][cb] = DP_INF;
             }
             ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
             ci->bandcnt++;
@@ -284,7 +284,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             ci->book[band] = HCB_ZERO;
             ci->bit_cost[band][HCB_ZERO] = 0;
-            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = 100000000;
+            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = DP_INF;
             ci->sf[ci->bandcnt++] += sf_rel;
         }
         else
@@ -304,10 +304,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         }
     }
 
-    optimize_section_codebooks(ci, gnum);
+    int num_bands = ci->bandcnt - start_band;
+    optimize_section_codebooks(ci, start_band, num_bands);
 
     ci->datacnt = start_datacnt;
-    for (sb = 0; sb < ci->sfbn; sb++)
+    for (sb = 0; sb < num_bands; sb++)
     {
         int band = start_band + sb;
         int bnum = ci->book[band];
