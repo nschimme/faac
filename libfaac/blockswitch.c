@@ -102,17 +102,21 @@ static float PsyTdThresh(float sampleRate)
  * delta on every test clip -- TNS's own filtering wasn't the regression,
  * the long-vs-short choice itself was).
  *
- * PSY_TD_HARD_HIGH itself was never validated: an earlier 1.5 value, meant
- * to taper the ceiling down rather than disable it above
- * PSY_TD_HARD_HIGH_BPS, was picked from a 6-clip local subset and looked
- * like a net win there, but PR #389's full CI corpus at 48kHz stereo
- * 128-256kbps (per-channel >= HIGH_BPS) told the opposite story: every
- * scenario there straddled zero MOS (18/23 losses at 128k), cost -7 to
- * -7.8% throughput and the single worst regression (-0.13) in the whole
- * report -- all from routing more frames into the long-window path with no
- * compensating quality. So above HIGH_BPS this returns 0 (disabled, see
- * call site) instead of a ceiling: promotion is only trusted in the range
- * it was actually measured to win, <= HIGH_BPS. */
+ * PSY_TD_HARD_HIGH's original 1.5 value looked like a net win on a 6-clip
+ * local subset, but PR #389's first full CI corpus at 48kHz stereo
+ * 128-256kbps (per-channel >= HIGH_BPS) told the opposite story (18/23
+ * losses at 128k) -- so this was disabled above HIGH_BPS for a time.
+ * That NO-GO turned out to be an artifact: faac-benchmark's zimtohrli
+ * scorer was downmixing stereo to mono before scoring (fixed 2026-08-25,
+ * commit 080b9c8), which can hide or invert a real per-channel effect.
+ * Re-measured on the corrected per-channel scorer (full 44-clip corpus,
+ * throwaway CI run), the taper is significant net-positive in 3 of 4
+ * high-bitrate buckets (160k/192k/256k; 128k trends positive, CI does not
+ * exclude zero) at a real cost of ~9% throughput -- the same taper this
+ * comment used to warn away from. One real regression remains
+ * (take_your_finger_frin_my_head.16b48k.wav, -0.12 @128k); everything else
+ * nets positive. See project-tns-post-recovery-levers memory for the full
+ * re-measurement. */
 #define PSY_TD_HARD_HIGH (1.5f)
 /* faac's -b is PER-CHANNEL after frontend/encode_engine.c divides the CLI's
  * (total) argument by channel count -- "128kbps stereo" is 64000 bps/ch,
@@ -122,17 +126,18 @@ static float PsyTdThresh(float sampleRate)
 #define PSY_TD_HARD_HIGH_BPS 64000
 
 /* Linear taper between the validated low-bitrate ceiling and the
- * high-bitrate one, up to HIGH_BPS; disabled (0.0f, see call site) above
- * it, since promotion has no validated win past that point.
+ * high-bitrate one, up to HIGH_BPS; clamped to PSY_TD_HARD_HIGH (not
+ * disabled) above it, now that the high-bitrate taper is itself a
+ * confirmed net win (see PSY_TD_HARD_HIGH above).
  * bitratePerCh==0 (VBR/quality mode) has no bitrate signal to scale on, so
- * it gets the same disabled/conservative default as the high-bitrate case
- * rather than assuming it's in the low-bitrate regime. */
+ * it gets the same conservative-but-active HIGH value as the high-bitrate
+ * case rather than assuming it's in the low-bitrate regime. */
 static float PsyTdHard(unsigned long bitratePerCh)
 {
     float t;
 
     if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
-        return 0.0f;
+        return PSY_TD_HARD_HIGH;
     if (bitratePerCh <= PSY_TD_HARD_LOW_BPS)
         return PSY_TD_HARD_LOW;
 
