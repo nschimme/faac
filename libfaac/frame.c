@@ -959,22 +959,24 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->bitReservoir < 0)
             hEncoder->bitReservoir = 0;
 
-        float frameRatio = 1.0f;
-        if (totalBits > sbrBits && desbits > sbrBits)
-            frameRatio = (float)(desbits - sbrBits) / (float)(totalBits - sbrBits);
+        int offset = 0;
+        if (hEncoder->bitReservoirCap > 0) {
+            float fillFactor = ((float)hEncoder->bitReservoir - (float)hEncoder->bitReservoirCap / 2.0f) / ((float)hEncoder->bitReservoirCap / 2.0f);
+            offset = (int)(desbits * 0.05f * fillFactor);
+        }
+        int targetBits = desbits + offset;
 
-        float resRatio = 1.0f;
-        if (hEncoder->bitReservoirCap > 0)
-        {
-            float fill = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
-            resRatio = 0.85f + 0.30f * fill;
+        int effectiveBits = totalBits;
+        if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
+            int excess = totalBits - desbits;
+            int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
+            effectiveBits = totalBits - absorbed;
         }
 
-        if (isTransient && hEncoder->bitReservoir > 0 && frameRatio < 1.0f) {
-            frameRatio = 0.5f * frameRatio + 0.5f;
-        }
-
-        fix = frameRatio * resRatio;
+        if (effectiveBits > sbrBits)
+            fix = (float)(targetBits - sbrBits) / (float)(effectiveBits - sbrBits);
+        else
+            fix = 1.0f;
 
         if (fix < (1.0f - RC_DEADBAND_THRESHOLD)) {
             fix += RC_DEADBAND_THRESHOLD;
