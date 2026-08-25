@@ -87,7 +87,7 @@ struct BitStream;
 #define SBR_EXT_TYPE_SBR_CRC 0xe
 
 /* Transient detection threshold (peak-to-mean power ratio). */
-#define SBR_TRANSIENT_THRESH_DEFAULT    (1.5f)
+#define SBR_TRANSIENT_THRESH_DEFAULT    (4.0f)
 /* div-by-zero guard for the peak/mean ratio in silence frames (~-150 dBFS^2). */
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */

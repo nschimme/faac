@@ -202,7 +202,10 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             /* M/S fires when min(L,R) * thrmid ≥ dominant component: the weaker channel
              * contributes enough to justify the transform overhead. 0.25 accounts for halving. */
             float em = 0.25f * es, side = 0.25f * ed;
-            if (min(el, er) * thrmid >= max(em, side)) {
+            /* In low-frequency scale factor bands (< 1 kHz, sfb < 12), M/S coding on out-of-phase
+             * dominant side energy causes phase cancellation. Require mid to dominate in low bands. */
+            int ms_allowed = (sfb >= 12 || em >= side);
+            if (ms_allowed && min(el, er) * thrmid >= max(em, side)) {
                 if (em * thrmid * 2.0f >= etot) {
                     ms = 1;
                     apply_ms(sl0, sr0, start, len, wstart, wend, 1);
