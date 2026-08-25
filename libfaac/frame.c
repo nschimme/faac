@@ -368,6 +368,22 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
+    /* Initialize adaptive bit reservoir */
+    if (hEncoder->config.bitRate)
+    {
+        int desbits = (int)((unsigned long long)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int maxReservoirBits = (int)(AAC_MAX_BITS_PER_CH * hEncoder->numChannels) - desbits;
+        if (maxReservoirBits < 0) maxReservoirBits = 0;
+        int twoNominal = 2 * desbits;
+        hEncoder->bitReservoirCap = (maxReservoirBits < twoNominal) ? maxReservoirBits : twoNominal;
+        hEncoder->bitReservoir = hEncoder->bitReservoirCap / 2;
+    }
+    else
+    {
+        hEncoder->bitReservoir = 0;
+        hEncoder->bitReservoirCap = 0;
+    }
+
     return 1;
 }
 
@@ -908,7 +924,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * the rate controller below never runs to claw the quality back. */
     hEncoder->aacquantCfg.quality = baseQuality;
 
-    /* Adjust quality to get correct average bitrate */
+    /* Adjust quality to get correct average bitrate with adaptive bit reservoir */
     if (hEncoder->config.bitRate)
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
@@ -921,8 +937,35 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
+        int isTransient = 0;
+        for (channel = 0; channel < numChannels; channel++) {
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+                isTransient = 1;
+                break;
+            }
+            if (!hEncoder->isLfeChannel[channel]) {
+                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+                if (attack >= 0.5f) {
+                    isTransient = 1;
+                    break;
+                }
+            }
+        }
+
+        int targetBits = desbits;
+        if (isTransient) {
+            int draw = hEncoder->bitReservoir;
+            if (draw > desbits) draw = desbits;
+            targetBits = desbits + draw;
+        } else if (hEncoder->bitReservoir < hEncoder->bitReservoirCap) {
+            targetBits = (int)(desbits * 0.90f);
+        }
+
+        if (targetBits <= sbrBits)
+            targetBits = sbrBits + 8;
+
         if (totalBits > sbrBits)
-            fix = (float)(desbits - sbrBits) / (float)(totalBits - sbrBits);
+            fix = (float)(targetBits - sbrBits) / (float)(totalBits - sbrBits);
         else
             fix = 1.0f;
 
@@ -943,6 +986,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
+
+        /* Update bit reservoir state based on actual frame bits used vs nominal desbits */
+        hEncoder->bitReservoir += (desbits - totalBits);
+        if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
+            hEncoder->bitReservoir = hEncoder->bitReservoirCap;
+        if (hEncoder->bitReservoir < 0)
+            hEncoder->bitReservoir = 0;
     }
 
     return frameBytes;
