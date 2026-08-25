@@ -9,20 +9,20 @@ option('frontend',
 # Only affects HE-AAC; LC encodes are identical regardless of this setting.
 #
 # HE-AAC v1:
-#   1: every slot  -- reference quality (MOS d: 0.000)   HE-v1 encode speed: +0%
-#   2: every 2nd   -- ~19% faster HE-v1 encode; MOS d: -0.013
-#   4: every 4th   -- ~30% faster HE-v1 encode; MOS d: -0.008
-#   8: every 8th   -- ~31% faster HE-v1 encode; MOS d: -0.003
+#   1: every slot  -- MOS d: +0.000  HE-v1 encode speed: +0%
+#   2: every 2nd   -- MOS d: -0.013  HE-v1 encode speed: +19%
+#   4: every 4th   -- MOS d: -0.008  HE-v1 encode speed: +30%
+#   8: every 8th   -- MOS d: -0.003  HE-v1 encode speed: +31%
 #
 # HE-AAC v2 (parametric stereo) pays a second, separate cost here that HE-AAC v1
 # does not: its IID/ICC parameters are estimated from the same decimated slots,
 # so decimating raises the estimator's variance and blurs the stereo image.
 # Measured as inter-channel coherence error; HE-AAC v1 is flat across the same sweep,
 # so the coherence error column is PS-specific:
-#   1: coherence err 0.0969 (reference)   HE-v2 encode speed: +0%    MOS d: 0.000
-#   2: coherence err 0.0950 (-2.0%)       HE-v2 encode speed: +20%   MOS d: -0.012
-#   4: coherence err 0.1012 (+4.4%)       HE-v2 encode speed: +34%   MOS d: -0.009
-#   8: coherence err 0.1125 (+16.1%)      HE-v2 encode speed: +39%   MOS d: -0.003
+#   1: every slot  -- MOS d: +0.000  HE-v2 encode speed: +0%    coherence err: 0.0969 (reference)
+#   2: every 2nd   -- MOS d: -0.012  HE-v2 encode speed: +20%   coherence err: 0.0950 (-2.0%)
+#   4: every 4th   -- MOS d: -0.009  HE-v2 encode speed: +34%   coherence err: 0.1012 (+4.4%)
+#   8: every 8th   -- MOS d: -0.003  HE-v2 encode speed: +39%   coherence err: 0.1125 (+16.1%)
 # N=2 is close to free for PS; N=8 costs a sixth of the image accuracy PS exists
 # to provide. Prefer <=4 when encoding HE-AAC v2.
 option('sbr-decimation',
