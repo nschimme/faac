@@ -818,8 +818,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             TnsEncodeElement(tnsInfos, specs, nch,
                              coderInfo[channel0].sfbn,
                              coderInfo[channel0].block_type,
-                             coderInfo[channel0].sfb_offset,
-                             hEncoder->aacquantCfg.pnslevel);
+                             coderInfo[channel0].sfb_offset);
         } else {
             for (int c = 0; c < nch; c++)
                 tnsInfos[c]->tnsDataPresent = 0;

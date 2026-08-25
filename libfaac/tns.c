@@ -388,55 +388,6 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-/* PNS (quantize.c's assign_band_codebooks) decides per band, AFTER
- * quantization has already run, whether that band's spectrum gets replaced
- * by synthetic noise -- its predicate needs the bit-search-derived quality
- * and the full avg/peak masking-target model, none of which exist yet at
- * TNS time (TNS runs on the raw spectrum before BlocQuant). Approximate it
- * here with a per-band spectral flatness measure (geomean/arithmean of
- * in-band line energies) on the untouched raw spectrum: PNS only ever
- * targets noise-like bands (SFM near 1.0) -- a tonal/peaky band (low SFM)
- * is exactly the case where quantize.c's peak-energy term keeps its target
- * above pns_threshold and PNS does NOT fire. This is the same "flat means
- * noise, TNS doesn't pay off there" intuition as TNS_PNS_SFM_SKIP above,
- * applied per band instead of averaged over the whole candidate range. Not
- * exact: it can predict PNS on a band the real decision keeps (costing a
- * few bands of filter coverage for nothing) or miss one PNS fires on later
- * (spending coverage on synthetic noise, same as today) -- it is a
- * conservative, causal stand-in, not the real predicate. */
-#define TNS_PNS_BAND_SFM_SKIP 0.85f
-
-static int band_pns_likely(int s0, int s1, const float *spec)
-{
-    float sumlin = 0.0f, sumlog = 0.0f;
-    int n = s1 - s0, i;
-
-    for (i = s0; i < s1; i++) {
-        float e = spec[i] * spec[i];
-        if (e < TNS_MIN_ENERGY) e = TNS_MIN_ENERGY;
-        sumlin += e;
-        sumlog += logf(e);
-    }
-    return (expf(sumlog / (float)n) / (sumlin / (float)n)) > TNS_PNS_BAND_SFM_SKIP;
-}
-
-/* Scans [b_start, b_stop) upward for the first band predicted PNS-eligible
- * and returns its index (the cap TNS's filtered range must stop below), or
- * b_stop if none is predicted -- the common case, and the no-op path: the
- * caller then fits over the full [b_start, b_stop) exactly as before this
- * change. Only meaningful when pnslevel > 0: with pnslevel == 0,
- * pns_threshold in quantize.c is 0 and PNS never fires (target[sb] is never
- * negative), so probing would only invent false caps. */
-static int tns_pns_cap(int b_start, int b_stop, int *sfbOffsetTable, const float *spec)
-{
-    int b;
-    for (b = b_start; b < b_stop; b++) {
-        if (band_pns_likely(sfbOffsetTable[b], sfbOffsetTable[b + 1], spec))
-            return b;
-    }
-    return b_stop;
-}
-
 /* Analyse one element -- nch of them, sharing this same band range/
  * blockType/sfbOffsetTable per the frame-wide block-type decision in
  * BlockSwitch (nch==1 for an SCE, 2 for a CPE's two channels) -- and fit
@@ -445,8 +396,7 @@ static int tns_pns_cap(int b_start, int b_stop, int *sfbOffsetTable, const float
  * while the other doesn't (tnsDataPresent differs), since each is filtered
  * (or left unfiltered) independently before AACstereo's M/S/IS mixing runs. */
 void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
-                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable,
-                       int pnslevel)
+                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
 {
     int b_start, b_stop, ch;
 
@@ -466,45 +416,15 @@ void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
 
     for (ch = 0; ch < nch; ch++) {
         TnsInfo *info = tnsInfos[ch];
-        TnsFilterData fit;
-        int cap = b_stop;
 
-        if (pnslevel > 0)
-            cap = tns_pns_cap(b_start, b_stop, sfbOffsetTable, specs[ch]);
-
-        /* cap == b_start (first band already predicted PNS) falls straight
-         * through tns_fit_range's own "not enough lines" gate (length <=
-         * TNS_LPC_ORDER) below, so no separate too-little-room check is
-         * needed here. */
-        if (!tns_fit_range(b_start, cap, sfbOffsetTable, specs[ch], &fit))
+        if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
+                           &info->windowData.tnsFilter[0]))
             continue;
 
-        if (cap < b_stop) {
-            /* Retreat applies: the bitstream's TNS regions are top-anchored
-             * -- the decoder walks each filter's region down from the top
-             * of the spectrum (faad2 tns_decode_frame: bottom starts at
-             * num_swb, each filter's top = previous filter's bottom) -- so
-             * the real filter can't simply "end" below cap; a null filter
-             * has to occupy the retreated-from region above it first.
-             * order == 0 carries no direction/compress/coefficient fields
-             * (see channels.c's WriteICS: `if (flt->order > 0)`) and the
-             * decoder skips it harmlessly (`if (!tns_order) continue;`). */
-            memset(&info->windowData.tnsFilter[0], 0, sizeof(TnsFilterData));
-            info->windowData.tnsFilter[0].length = info->tnsNumSwbLong - cap;
-
-            info->windowData.tnsFilter[1] = fit;
-            info->windowData.tnsFilter[1].length = cap - b_start;
-
-            info->windowData.numFilters = 2;
-        } else {
-            /* No-op path: identical to pre-retreat behaviour, declared from
-             * b_start to the top of the spectrum rather than to b_stop,
-             * over-declaring the region. */
-            info->windowData.tnsFilter[0] = fit;
-            info->windowData.tnsFilter[0].length = info->tnsNumSwbLong - b_start;
-            info->windowData.numFilters = 1;
-        }
-
+        /* Declared from b_start to the top of the spectrum rather than to
+         * b_stop, over-declaring the region. */
+        info->windowData.tnsFilter[0].length = info->tnsNumSwbLong - b_start;
+        info->windowData.numFilters = 1;
         info->windowData.coefResolution = DEF_TNS_COEFF_RES;
         info->tnsDataPresent = 1;
     }
