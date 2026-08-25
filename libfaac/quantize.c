@@ -230,6 +230,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
+    int start_band = ci->bandcnt;
+    int start_datacnt = ci->datacnt;
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
@@ -237,6 +239,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (ci->book[band] != HCB_NONE)
         {
+            int b = ci->book[band];
+            ci->bit_cost[band][b] = 0;
+            for (int cb = 0; cb < 16; cb++) {
+                if (cb != b) ci->bit_cost[band][cb] = 100000000;
+            }
             ci->bandcnt++;
             continue;
         }
@@ -249,6 +256,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
             ci->book[band] = HCB_ZERO;
+            ci->bit_cost[band][HCB_ZERO] = 0;
+            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = 100000000;
             ci->bandcnt++;
             continue;
         }
@@ -258,6 +267,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
+            ci->bit_cost[band][HCB_PNS] = 0;
+            for (int cb = 0; cb < 16; cb++) {
+                if (cb != HCB_PNS) ci->bit_cost[band][cb] = 100000000;
+            }
             ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
             ci->bandcnt++;
             continue;
@@ -270,6 +283,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         if (sf_rel < SF_MIN)
         {
             ci->book[band] = HCB_ZERO;
+            ci->bit_cost[band][HCB_ZERO] = 0;
+            for (int cb = 1; cb < 16; cb++) ci->bit_cost[band][cb] = 100000000;
+            ci->sf[ci->bandcnt++] += sf_rel;
         }
         else
         {
@@ -282,9 +298,25 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
             huffbook(ci, xi, gsize * width);
             *p_last_abs = sf_abs;
-        }
+            ci->sf[ci->bandcnt++] += sf_rel;
 
-        ci->sf[ci->bandcnt++] += sf_rel;
+            memcpy(ci->qs_store + band * FRAME_LEN, xi, gsize * width * sizeof(int));
+        }
+    }
+
+    optimize_section_codebooks(ci, gnum);
+
+    ci->datacnt = start_datacnt;
+    for (sb = 0; sb < ci->sfbn; sb++)
+    {
+        int band = start_band + sb;
+        int bnum = ci->book[band];
+        if (bnum != HCB_ZERO && bnum != HCB_PNS && bnum != HCB_INTENSITY && bnum != HCB_INTENSITY2 && bnum != HCB_NONE)
+        {
+            int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
+            int width = hi - lo;
+            huffcode_write_band(ci, ci->qs_store + band * FRAME_LEN, gsize * width, bnum);
+        }
     }
 }
 

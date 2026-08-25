@@ -95,6 +95,8 @@ static inline int clamp_sf_diff(int diff)
 struct CoderInfo;
 
 int huffbook(struct CoderInfo *coder, int *qs, int len);
+void huffcode_write_band(struct CoderInfo *coder, int *qs, int len, int bnum);
+void optimize_section_codebooks(struct CoderInfo *coder, int gnum);
 int writebooks(struct CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(struct CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

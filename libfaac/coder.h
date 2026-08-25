@@ -79,6 +79,9 @@ typedef struct CoderInfo {
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
+    int maxq[MAX_SCFAC_BANDS];
+    int bit_cost[MAX_SCFAC_BANDS][16];
+    int qs_store[MAX_SCFAC_BANDS * FRAME_LEN];
     int bandcnt;
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
