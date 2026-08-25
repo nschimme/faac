@@ -60,6 +60,13 @@ static char *libCopyright =
   " Copyright (C) 2005-2026, Fabian Greffrath\n"
   " Copyright (C) 2026, Nils Schimmelmann\n";
 
+/* Derive effective whole-stream bitrate in bps. In VBR mode (bitRate == 0),
+ * quantqual converts to nominal bitrate via totalBitrate = quantqual * 1280. */
+static inline unsigned long GetEffectiveStreamBitrate(unsigned long bitRate, unsigned long quantqual, unsigned int numChannels)
+{
+    return bitRate ? (bitRate * numChannels) : (quantqual * 1280);
+}
+
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     const unsigned int nyquist = sampleRate / 2;
@@ -308,7 +315,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
-        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, hEncoder->config.bitRate * hEncoder->numChannels, &hEncoder->fft_tables);
+        unsigned long sbr_bitrate = GetEffectiveStreamBitrate(hEncoder->config.bitRate, hEncoder->config.quantqual, hEncoder->numChannels);
+        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);
