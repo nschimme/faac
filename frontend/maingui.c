@@ -422,7 +422,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             LeaveCriticalSection(&g_cs_progress);
 
             char szParams[128];
-            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
+            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V2) ? "HE-AAC v2" :
+                              (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
             snprintf(szParams, sizeof(szParams), "%uHz %uch | %s | Cutoff: %uHz",
                      info.sample_rate, info.num_channels, aot, info.bandwidth);
             SetDlgItemText(hWnd, IDC_INPUTPARAMS, szParams);
@@ -692,20 +693,6 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             {
                 LRESULT mode = GetComboData(hWnd, IDC_RATEMODE, RATEMODE_VBR);
                 ApplyRateModeUI(hWnd, (int)mode);
-            }
-            break;
-
-        case MAKEWPARAM(IDC_OBJECTTYPE, CBN_SELCHANGE):
-        {
-            HWND hOT  = GetDlgItem(hWnd, IDC_OBJECTTYPE);
-            HWND hMPG = GetDlgItem(hWnd, IDC_MPEGVERSION);
-            LRESULT sel  = SendMessage(hOT, CB_GETCURSEL, 0, 0);
-            LRESULT data = (sel != CB_ERR) ? SendMessage(hOT, CB_GETITEMDATA, (WPARAM)sel, 0) : CB_ERR;
-            if (data == (LRESULT)FAAC_OBJ_HE_AAC_V1 || data == (LRESULT)FAAC_OBJ_HE_AAC_V2) {
-                SendMessage(hMPG, CB_SETCURSEL, 0, 0);
-                EnableWindow(hMPG, FALSE);
-            } else {
-                EnableWindow(hMPG, TRUE);
             }
             break;
         }
