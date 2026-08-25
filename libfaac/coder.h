@@ -47,6 +47,15 @@ enum WINDOW_TYPE {
  * channels.c, since this header can't include channels.h without a cycle. */
 #define TNS_MAX_FILTERS 4
 
+/* Short-window (eight-short) scalefactor-window grouping: which of the 8
+ * windows share scalefactors. Shared by quantize.c (BlocGroup builds it),
+ * channels.c (writes it and reads it back to iterate groups) and tns.c
+ * (fits one pooled TNS filter per group). */
+typedef struct {
+    int n;
+    int len[MAX_SHORT_WINDOWS];
+} WindowGroups;
+
 typedef struct {
     int order;                           /* Filter order */
     int direction;                       /* Filtering direction */
@@ -67,7 +76,11 @@ typedef struct {
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
+    int tnsMinBandNumberShort;
+    int tnsMaxBandsShort;
+    int tnsNumSwbShort;     /* full swb count for the sample rate (decoder's num_swb), short windows */
+    TnsWindowData windowData;   /* long-window filter: one window per frame */
+    TnsWindowData shortWindowData[MAX_SHORT_WINDOWS]; /* short-window filters: one per window, pooled-fit per scalefactor group */
 } TnsInfo;
 
 typedef struct CoderInfo {
@@ -83,10 +96,7 @@ typedef struct CoderInfo {
     int sfbn;
     int sfb_offset[NSFB_LONG + 1];
 
-    struct {
-        int n;
-        int len[MAX_SHORT_WINDOWS];
-    } groups;
+    WindowGroups groups;
 
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
