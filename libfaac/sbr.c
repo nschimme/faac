@@ -473,14 +473,14 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
             float am = sum_e / (float)num_qmf;
             float gm = expf(sum_log_e / (float)num_qmf);
             float sfm = gm / am;
-            if (sfm < 0.20f) {
-                fd->ch[ch].invfMode = 2; /* MID inverse filtering for tonal signals */
-                noise_level = 6;
-            } else if (sfm < 0.50f) {
+            if (sfm < 0.25f) {
+                fd->ch[ch].invfMode = 2; /* MID */
+                noise_level = 5;
+            } else if (sfm < 0.55f) {
                 fd->ch[ch].invfMode = 1; /* LOW */
                 noise_level = 4;
             } else {
-                fd->ch[ch].invfMode = 0; /* OFF for noise-like signals */
+                fd->ch[ch].invfMode = 0; /* OFF */
                 noise_level = 3;
             }
         }
