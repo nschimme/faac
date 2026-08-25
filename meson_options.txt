@@ -13,6 +13,8 @@ option('frontend',
 #   2: every 2nd   -- MOS d: +0.016  HE-v1 encode speed: +19%
 #   4: every 4th   -- MOS d: +0.036  HE-v1 encode speed: +30%
 #   8: every 8th   -- MOS d: +0.086  HE-v1 encode speed: +31%
+# For HE-AAC v1, higher decimation smooths SBR envelope gain contours without spatial
+# parameters, making N=4 or N=8 an attractive speed/quality trade-off.
 #
 # HE-AAC v2 (parametric stereo) pays a second, separate cost here that HE-AAC v1
 # does not: its IID/ICC parameters are estimated from the same decimated slots,
@@ -23,8 +25,8 @@ option('frontend',
 #   2: every 2nd   -- MOS d: -0.000  HE-v2 encode speed: +20%   coherence err: 0.0953 (-1.7%)
 #   4: every 4th   -- MOS d: -0.004  HE-v2 encode speed: +34%   coherence err: 0.1016 (+4.8%)
 #   8: every 8th   -- MOS d: -0.016  HE-v2 encode speed: +39%   coherence err: 0.1132 (+16.7%)
-# N=2 is close to free for PS; N=8 costs a sixth of the image accuracy PS exists
-# to provide. Prefer <=4 when encoding HE-AAC v2.
+# For HE-AAC v2, N=2 or N=4 provides ~20–34% faster encode with minimal quality loss;
+# N=8 costs a sixth of the stereo image accuracy PS exists to provide. Prefer <=4 when encoding HE-AAC v2.
 option('sbr-decimation',
     description: 'SBR spectral analysis density: analyse every Nth slot (1=full quality, max=8)',
     type: 'integer',
