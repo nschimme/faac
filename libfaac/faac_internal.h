@@ -23,6 +23,10 @@
 #ifndef FAAC_INTERNAL_H
 #define FAAC_INTERNAL_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdint.h>
 
 #define FAAC_CFG_VERSION 106
@@ -33,7 +37,24 @@ enum { MPEG4 = 0, MPEG2 = 1 };
 /* AAC object types this build implements, numbered per the MPEG-4 AOT
  * registry (mirrors the public FAAC_OBJ_* enum in <faac.h>). AUTO defers the
  * choice between LOW and HE_V1 to faacEncApplyConfig. */
-enum { AUTO = 0, LOW = 2, HE_V1 = 5 };
+enum { AUTO = 0, LOW = 2, HE_V1 = 5, HE_V2 = 29 };
+
+/* Whether this build carries HE-AAC v2 (parametric stereo) at all. The
+ * `parametric-stereo` build option folds this to a compile-time 0, after which
+ * every PS branch is provably dead and the whole feature -- analysis, estimator,
+ * bitstream writer, Huffman tables -- drops out of the library. Embedded targets
+ * that only need LC and HE-AAC v1 pay nothing for it. */
+#if defined(FAAC_PARAMETRIC_STEREO) && !FAAC_PARAMETRIC_STEREO
+# define FAAC_HAVE_PARAMETRIC_STEREO 0
+# define IsHEV2(aacObjectType)  ((void)(aacObjectType), 0)
+#else
+# define FAAC_HAVE_PARAMETRIC_STEREO 1
+# define IsHEV2(aacObjectType)  ((aacObjectType) == HE_V2)
+#endif
+
+static inline int IsHEAAC(int aacObjectType) {
+    return (aacObjectType == HE_V1 || IsHEV2(aacObjectType));
+}
 
 /* PCM input sample format. Named distinctly from the public faac_input_format
  * enumerators (<faac.h>) so the facade can include both headers; faac.c
