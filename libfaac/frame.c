@@ -959,12 +959,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->bitReservoir < 0)
             hEncoder->bitReservoir = 0;
 
-        int targetBits = desbits;
-        if (hEncoder->bitReservoirCap > 0) {
-            float fillFactor = ((float)hEncoder->bitReservoir - (float)hEncoder->bitReservoirCap / 2.0f) / ((float)hEncoder->bitReservoirCap / 2.0f);
-            targetBits = (int)(desbits * (1.0f + 0.02f * fillFactor));
-        }
-
         int effectiveBits = totalBits;
         if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
             int excess = totalBits - desbits;
@@ -973,7 +967,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
 
         if (effectiveBits > sbrBits)
-            fix = (float)(targetBits - sbrBits) / (float)(effectiveBits - sbrBits);
+            fix = (float)(desbits - sbrBits) / (float)(effectiveBits - sbrBits);
         else
             fix = 1.0f;
 
