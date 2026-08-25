@@ -791,7 +791,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         AACElement *elem = &hEncoder->elements[e];
         TnsInfo *tnsInfos[2];
         float *specs[2];
-        WindowGroups *groups[2];
         int nch, admit = 0;
 
         if (elem->type == ID_SCE)
@@ -809,7 +808,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             tnsInfos[c] = &coderInfo[channel].tnsInfo;
             specs[c] = hEncoder->freqBuff[channel];
-            groups[c] = &coderInfo[channel].groups;
             if (TnsAttackAdmits(&hEncoder->psyInfo[channel]))
                 admit = 1;
         }
@@ -820,8 +818,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             TnsEncodeElement(tnsInfos, specs, nch,
                              coderInfo[channel0].sfbn,
                              coderInfo[channel0].block_type,
-                             coderInfo[channel0].sfb_offset,
-                             groups);
+                             coderInfo[channel0].sfb_offset);
         } else {
             for (int c = 0; c < nch; c++)
                 tnsInfos[c]->tnsDataPresent = 0;

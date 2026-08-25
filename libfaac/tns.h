@@ -16,17 +16,8 @@
 /*
  * Temporal Noise Shaping (TNS): a predictive filter along the frequency axis
  * that reshapes quantization noise in time so it hides behind transients
- * instead of leaking out as pre-echo.
- *
- * Long windows get one filter per frame, fit directly on that channel's
- * spectrum. Short (eight-short) windows get one filter per scalefactor
- * window GROUP: the group's windows are pooled (concatenated, after the
- * same per-band RMS normalization idea as the long path) into a single
- * signal that one low-order filter is fit against, then that one filter is
- * applied to -- and transmitted for -- each window in the group. This
- * keeps the filter cheap (low order, one fit per group instead of per
- * window) and avoids a filter that only really fits one window's transient
- * while distorting its group-mates.
+ * instead of leaking out as pre-echo. Long-window only here; short windows
+ * already have the temporal resolution to not need it.
  */
 
 #ifndef TNS_H
@@ -46,16 +37,10 @@ void TnsInit(faacEncStruct* hEncoder);
  * two channels may end up with different filters (or one filtered, one
  * not): each channel's tns_data is transmitted separately, and decoders
  * invert M/S before inverting TNS per channel, so independent per-channel
- * filters are spec-compliant (see tns.c).
- *
- * groups is only consulted for blockType == ONLY_SHORT_WINDOW: groups[c] is
- * channel c's scalefactor-window grouping (from BlocGroup, quantize.c),
- * which can legitimately differ between a CPE's two channels since each
- * channel groups on its own spectrum. Ignored (may be NULL) for long
- * blocks. */
+ * filters are spec-compliant (see tns.c). */
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, WindowGroups** groups);
+                      int* sfbOffsetTable);
 
 #ifdef __cplusplus
 }

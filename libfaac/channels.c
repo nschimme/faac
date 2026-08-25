@@ -135,79 +135,38 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
     if (writeFlag) PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
     bits += LEN_TNS_PRES;
 
-    /* tns_data() per ISO/IEC 14496-3: one n_filt/filter-set per window, at
-     * the long- or short-window field widths depending on block type. Long
-     * windows have exactly one window per frame (win->windowData below);
-     * short windows have MAX_SHORT_WINDOWS, each written independently even
-     * though tns.c's pooled-group fit gives every window in a group the
-     * same filter contents (see tns.c) -- the bitstream has no concept of
-     * "shared across windows", so each is transmitted in full. */
+    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
+     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
+     * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
-        if (coder->block_type == ONLY_SHORT_WINDOW) {
-            for (int w = 0; w < MAX_SHORT_WINDOWS; w++) {
-                TnsWindowData *win = &tns->shortWindowData[w];
+        TnsWindowData *win = &tns->windowData;
 
-                if (writeFlag) PutBit(bs, win->numFilters, LEN_TNS_NFILTS);
-                bits += LEN_TNS_NFILTS;
+        if (writeFlag) PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
+        bits += LEN_TNS_NFILTL;
 
-                if (win->numFilters > 0) {
-                    if (writeFlag) PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
-                    bits += LEN_TNS_COEFF_RES;
+        if (win->numFilters > 0) {
+            if (writeFlag) PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+            bits += LEN_TNS_COEFF_RES;
 
-                    for (int f = 0; f < win->numFilters; f++) {
-                        TnsFilterData *flt = &win->tnsFilter[f];
-                        if (writeFlag) {
-                            PutBit(bs, flt->length, LEN_TNS_LENGTHS);
-                            PutBit(bs, flt->order, LEN_TNS_ORDERS);
-                        }
-                        bits += LEN_TNS_LENGTHS + LEN_TNS_ORDERS;
-
-                        if (flt->order > 0) {
-                            if (writeFlag) {
-                                PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                                PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
-                            }
-                            bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
-
-                            int res = win->coefResolution - flt->coefCompress;
-                            for (int i = 1; i <= flt->order; i++) {
-                                if (writeFlag) PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
-                                bits += res;
-                            }
-                        }
-                    }
+            for (int f = 0; f < win->numFilters; f++) {
+                TnsFilterData *flt = &win->tnsFilter[f];
+                if (writeFlag) {
+                    PutBit(bs, flt->length, LEN_TNS_LENGTHL);
+                    PutBit(bs, flt->order, LEN_TNS_ORDERL);
                 }
-            }
-        } else {
-            TnsWindowData *win = &tns->windowData;
+                bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
 
-            if (writeFlag) PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
-            bits += LEN_TNS_NFILTL;
-
-            if (win->numFilters > 0) {
-                if (writeFlag) PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
-                bits += LEN_TNS_COEFF_RES;
-
-                for (int f = 0; f < win->numFilters; f++) {
-                    TnsFilterData *flt = &win->tnsFilter[f];
+                if (flt->order > 0) {
                     if (writeFlag) {
-                        PutBit(bs, flt->length, LEN_TNS_LENGTHL);
-                        PutBit(bs, flt->order, LEN_TNS_ORDERL);
+                        PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
+                        PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
                     }
-                    bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
+                    bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
 
-                    if (flt->order > 0) {
-                        if (writeFlag) {
-                            PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                            PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
-                        }
-                        bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
-
-                        int res = win->coefResolution - flt->coefCompress;
-                        for (int i = 1; i <= flt->order; i++) {
-                            if (writeFlag) PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
-                            bits += res;
-                        }
+                    int res = win->coefResolution - flt->coefCompress;
+                    for (int i = 1; i <= flt->order; i++) {
+                        if (writeFlag) PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
+                        bits += res;
                     }
                 }
             }

@@ -35,26 +35,6 @@ static const struct {
 #define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
 #define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
-/* Short-window (eight-short) pooled-group filter: much lower order than the
- * long path (128 spectral lines per window vs 1024 leaves little room for
- * an 8-tap filter to generalize across a whole group) and a much stricter
- * acceptance bar, since a bad short filter is applied to -- and can hurt --
- * every window in its group at once, and short-window pre-echo is already
- * largely handled by the block switch itself. Independently tunable from
- * the long path's constants above rather than reusing them. */
-#define TNS_SHORT_LPC_ORDER       5
-#define TNS_SHORT_GAIN_LIMIT      3.2f
-#define TNS_SHORT_MEASURED_GAIN   3.2f
-
-/* ISO/IEC 13818-7/14496-3's TNS tool table for 128-sample (short) windows,
- * indexed by sampleRateIdx -- the short-window sibling of tns_sfb_range's
- * max column above. There's no separate short min-band column in the spec
- * table the way there is for long; band 0 is used as the short start band
- * (see TnsInit), which keeps this table to one row of maxima. */
-static const unsigned char tns_max_bands_short[12] = {
-    9, 9, 10, 14, 14, 14, 14, 14, 14, 14, 14, 14
-};
-
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
  * below as the floor for RMS-normalization and the LPC residual check,
@@ -250,13 +230,6 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
-
-        info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
-        info->tnsMaxBandsShort = min((int)tns_max_bands_short[fs], info->tnsNumSwbShort);
-        info->tnsMinBandNumberShort = 0; /* simplest choice: the long path's
-            b_start is a spec table lookup with no short-window sibling, and
-            short's already-narrow, already-low-band-count range doesn't
-            leave much room to trim a low end from anyway. */
     }
 }
 
@@ -415,157 +388,6 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-/* Fits and applies one pooled TNS filter to a group of groupLen consecutive
- * short windows (starting at win0) of a single channel's spectrum, over
- * scalefactor bands [b_start, b_stop). freqBuff is window-major -- window w
- * occupies spec[w*BLOCK_LEN_SHORT .. w*BLOCK_LEN_SHORT+BLOCK_LEN_SHORT), and
- * sfbOffsetTable indexes within one window's 128 lines the same way for
- * every window (see BlocGroup, quantize.c) -- so each window's band range
- * lives at the same offsets, just shifted by w*BLOCK_LEN_SHORT.
- *
- * Concept follows the well-known pooled-group approach used by other AAC
- * encoders (one filter fit on the group's concatenated, RMS-normalized
- * spectra, applied per window) -- see tns.h -- but this is an independent
- * implementation against faac's own data structures and gates, not a port.
- *
- * On acceptance, fills windowData.tnsFilter[0] identically for every window
- * in the group and whitens each window's spectrum in place; returns 1. On
- * rejection, leaves both untouched and returns 0. */
-static int tns_fit_pooled(int b_start, int b_stop, int *sfbOffsetTable,
-                          float *spec, int win0, int groupLen, TnsInfo *info)
-{
-    int i_start = sfbOffsetTable[b_start];
-    int clen = sfbOffsetTable[b_stop] - i_start;
-    float pooled[BLOCK_LEN_LONG]; /* groupLen*clen <= MAX_SHORT_WINDOWS*BLOCK_LEN_SHORT == BLOCK_LEN_LONG */
-    float bandrms[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    float floorrms[MAX_SHORT_WINDOWS];
-    float r[TNS_MAX_ORDER + 1] = {0};
-    float k[TNS_MAX_ORDER + 1] = {0};
-    TnsFilterData filter = {0};
-    int order, limit, i, b, w;
-    float worst_gain;
-
-    if (clen <= TNS_SHORT_LPC_ORDER)
-        return 0;
-
-    /* Per-window, per-band RMS-normalize (same idea as the long path's
-     * tns_fit_range) before concatenating into one pooled signal -- so the
-     * fit whitens across the whole group's bands and windows evenly,
-     * instead of chasing whichever window/band happens to be loudest. */
-    for (w = 0; w < groupLen; w++) {
-        float *win = spec + (win0 + w) * BLOCK_LEN_SHORT;
-        float maxrms = 0.0f;
-
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms;
-
-            for (i = s0; i < s1; i++)
-                e += win[i] * win[i];
-            rms = sqrtf(e / (float)(s1 - s0));
-            bandrms[w][b] = rms;
-            if (rms > maxrms) maxrms = rms;
-        }
-        floorrms[w] = maxrms * 0.01f;
-        if (floorrms[w] < TNS_MIN_ENERGY) floorrms[w] = TNS_MIN_ENERGY;
-
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float wgt = 1.0f / (bandrms[w][b] > floorrms[w] ? bandrms[w][b] : floorrms[w]);
-
-            for (i = s0; i < s1; i++)
-                pooled[w * clen + (i - i_start)] = win[i] * wgt;
-        }
-    }
-
-    calc_autocorr_f(TNS_SHORT_LPC_ORDER, clen * groupLen, pooled, r);
-    if (r[0] < TNS_MIN_ENERGY)
-        return 0;
-    {
-        float gain = compute_lpc(TNS_SHORT_LPC_ORDER, r, k);
-        if (gain < TNS_SHORT_GAIN_LIMIT || !isfinite(gain))
-            return 0;
-    }
-
-    quantize_coeffs(TNS_SHORT_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter.index);
-
-    order = TNS_SHORT_LPC_ORDER;
-    while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
-        order--;
-    if (order == 0)
-        return 0;
-    filter.order = order;
-    filter.direction = 0; /* same reasoning as the long path: calc_autocorr_f
-                              is direction-invariant and there's no per-window
-                              transient-position signal available here. */
-
-    filter.coefCompress = 1;
-    limit = 1 << (DEF_TNS_COEFF_RES - 2);
-    for (i = 1; i <= order; i++) {
-        if (filter.index[i] < -limit || filter.index[i] >= limit) {
-            filter.coefCompress = 0;
-            break;
-        }
-    }
-
-    finalize_filter(order, k, filter.aCoeffs);
-
-    /* Strict, per-window re-check: every window in the group must clear the
-     * measured bar on its own snippet (filtered independently -- a window's
-     * predictor taps never reach across into a neighboring window), and the
-     * WORST window governs acceptance. One bad-fitting window in the group
-     * is enough to reject the whole group's filter, since accepting would
-     * apply it there too. */
-    worst_gain = INFINITY;
-    for (w = 0; w < groupLen; w++) {
-        float snippet[BLOCK_LEN_SHORT];
-        float orig_e = 0.0f, filt_e = 0.0f;
-        float g;
-
-        memcpy(snippet, pooled + w * clen, clen * sizeof(float));
-        for (i = 0; i < clen; i++)
-            orig_e += snippet[i] * snippet[i];
-
-        filter_spec(clen, order, filter.direction, filter.aCoeffs, snippet);
-        for (i = 0; i < clen; i++)
-            filt_e += snippet[i] * snippet[i];
-        if (filt_e < TNS_MIN_ENERGY)
-            filt_e = TNS_MIN_ENERGY;
-
-        g = orig_e / filt_e;
-        if (g < worst_gain) worst_gain = g;
-    }
-    if (worst_gain < TNS_SHORT_MEASURED_GAIN)
-        return 0;
-
-    /* Accepted: write the identical filter into every window's TNS side
-     * info and whiten each window's spectrum in place. Declared from
-     * b_start to the top of the short spectrum (over-declaring the region),
-     * same convention the long path uses. */
-    for (w = 0; w < groupLen; w++) {
-        float *win = spec + (win0 + w) * BLOCK_LEN_SHORT;
-        float snippet[BLOCK_LEN_SHORT];
-        TnsWindowData *wd = &info->shortWindowData[win0 + w];
-
-        memcpy(snippet, pooled + w * clen, clen * sizeof(float));
-        filter_spec(clen, order, filter.direction, filter.aCoeffs, snippet);
-
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float scale = bandrms[w][b] > floorrms[w] ? bandrms[w][b] : floorrms[w];
-
-            for (i = s0; i < s1; i++)
-                win[i] = snippet[i - i_start] * scale;
-        }
-
-        wd->numFilters = 1;
-        wd->coefResolution = DEF_TNS_COEFF_RES;
-        wd->tnsFilter[0] = filter;
-        wd->tnsFilter[0].length = info->tnsNumSwbShort - b_start;
-    }
-    return 1;
-}
-
 /* Analyse one element -- nch of them, sharing this same band range/
  * blockType/sfbOffsetTable per the frame-wide block-type decision in
  * BlockSwitch (nch==1 for an SCE, 2 for a CPE's two channels) -- and fit
@@ -574,43 +396,18 @@ static int tns_fit_pooled(int b_start, int b_stop, int *sfbOffsetTable,
  * while the other doesn't (tnsDataPresent differs), since each is filtered
  * (or left unfiltered) independently before AACstereo's M/S/IS mixing runs. */
 void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
-                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable,
-                       WindowGroups **groups)
+                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
 {
     int b_start, b_stop, ch;
 
     for (ch = 0; ch < nch; ch++) {
         tnsInfos[ch]->tnsDataPresent = 0;
         tnsInfos[ch]->windowData.numFilters = 0;
-        if (blockType == ONLY_SHORT_WINDOW) {
-            int w;
-            for (w = 0; w < MAX_SHORT_WINDOWS; w++)
-                tnsInfos[ch]->shortWindowData[w].numFilters = 0;
-        }
     }
 
-    if (blockType == ONLY_SHORT_WINDOW) {
-        b_start = min(tnsInfos[0]->tnsMinBandNumberShort, numBands);
-        b_stop = min(tnsInfos[0]->tnsMaxBandsShort, numBands);
-        if (b_stop <= b_start)
-            return;
-
-        for (ch = 0; ch < nch; ch++) {
-            TnsInfo *info = tnsInfos[ch];
-            WindowGroups *g = groups[ch];
-            int win0 = 0, gi;
-
-            for (gi = 0; gi < g->n; gi++) {
-                int groupLen = g->len[gi];
-
-                if (tns_fit_pooled(b_start, b_stop, sfbOffsetTable, specs[ch],
-                                   win0, groupLen, info))
-                    info->tnsDataPresent = 1;
-                win0 += groupLen;
-            }
-        }
+    /* Short windows already have the temporal resolution to not need TNS. */
+    if (blockType == ONLY_SHORT_WINDOW)
         return;
-    }
 
     b_start = min(tnsInfos[0]->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfos[0]->tnsMaxBandsLong, numBands);
