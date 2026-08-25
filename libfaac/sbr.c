@@ -473,18 +473,26 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
             float am = sum_e / (float)num_qmf;
             float gm = expf(sum_log_e / (float)num_qmf);
             float sfm = gm / am;
-            if (sfm < 0.12f) {
-                fd->ch[ch].invfMode = 3; /* HIGH filtering for strongly tonal signals */
-                noise_level = 8;        /* minimal noise injection */
-            } else if (sfm < 0.30f) {
+
+            /* Compute high-frequency spectral energy ratio (spectral tilt) */
+            float low_e = 0.0f, high_e = 0.0f;
+            int mid_k = k_lo_all + num_qmf / 2;
+            for (int k = k_lo_all; k < mid_k; k++) low_e += qmf_Ek[k];
+            for (int k = mid_k; k < k_hi_all; k++) high_e += qmf_Ek[k];
+            float tilt = (low_e > 1e-9f) ? (high_e / low_e) : 1.0f;
+
+            if (sfm < 0.15f || (sfm < 0.25f && tilt < 0.5f)) {
+                fd->ch[ch].invfMode = 3; /* HIGH filtering for strongly tonal / low-tilt signals */
+                noise_level = 8;
+            } else if (sfm < 0.35f) {
                 fd->ch[ch].invfMode = 2; /* MID */
                 noise_level = 6;
-            } else if (sfm < 0.60f) {
+            } else if (sfm < 0.65f) {
                 fd->ch[ch].invfMode = 1; /* LOW */
                 noise_level = 4;
             } else {
                 fd->ch[ch].invfMode = 0; /* OFF for noise-like signals */
-                noise_level = 2;        /* higher noise floor injection */
+                noise_level = 2;
             }
         }
 
