@@ -959,18 +959,23 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->bitReservoir < 0)
             hEncoder->bitReservoir = 0;
 
-        /* Determine effective feedback bit count: if totalBits > desbits,
-         * absorb up to the available reservoir balance so transient surges
-         * do not artificially choke feedback quality for subsequent frames. */
+        /* Determine effective feedback target including a proportional reservoir
+         * offset to gently steer long-term average bitrate to target without overshoot. */
+        int resOffset = (hEncoder->bitReservoirCap > 0) ?
+            (hEncoder->bitReservoir - hEncoder->bitReservoirCap / 2) / 16 : 0;
+        int targetBits = desbits + resOffset;
+        if (targetBits <= sbrBits) targetBits = sbrBits + 8;
+
         int effectiveBits = totalBits;
         if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
             int excess = totalBits - desbits;
-            int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
+            int prevRes = hEncoder->bitReservoir + excess;
+            int absorbed = (excess < prevRes) ? excess : prevRes;
             effectiveBits = totalBits - absorbed;
         }
 
         if (effectiveBits > sbrBits)
-            fix = (float)(desbits - sbrBits) / (float)(effectiveBits - sbrBits);
+            fix = (float)(targetBits - sbrBits) / (float)(effectiveBits - sbrBits);
         else
             fix = 1.0f;
 
