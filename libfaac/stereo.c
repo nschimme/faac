@@ -14,7 +14,6 @@
  */
 
 #define _USE_MATH_DEFINES
-#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include "stereo.h"
@@ -130,7 +129,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                float * restrict sl0, float * restrict sr0,
                                int * restrict sfcnt, int wstart, int wend,
                                float thrmid, float inv_isthr, float thrside_sq,
-                               int is_start_sfb, int mode, int ms_suppress_sfb)
+                               int is_start_sfb, int mode)
 {
     int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
@@ -196,23 +195,16 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         /* Mid/Side Stereo and Muting checks */
         int ms = 0;
         if (mode == JOINT_MS || mode == JOINT_MIXED) {
-            /* When TNS has fired on this element, bands at and above the lowest
-             * TNS-covered band across the two channels stay in the L/R domain:
-             * decoders invert M/S before inverting TNS per channel, so quantization
-             * noise born in mid/side would arrive in the wrong domain for TNS to
-             * shape it. Bands below the TNS range keep the normal M/S decision. */
-            if (sfb < ms_suppress_sfb) {
-                /* M/S fires when min(L,R) * thrmid ≥ dominant component: the weaker channel
-                 * contributes enough to justify the transform overhead. 0.25 accounts for halving. */
-                float em = 0.25f * es, side = 0.25f * ed;
-                if (min(el, er) * thrmid >= max(em, side)) {
-                    if (em * thrmid * 2.0f >= etot) {
-                        ms = 1;
-                        apply_ms(sl0, sr0, start, len, wstart, wend, 1);
-                    } else if (side * thrmid * 2.0f >= etot) {
-                        ms = 1;
-                        apply_ms(sl0, sr0, start, len, wstart, wend, 0);
-                    }
+            /* M/S fires when min(L,R) * thrmid ≥ dominant component: the weaker channel
+             * contributes enough to justify the transform overhead. 0.25 accounts for halving. */
+            float em = 0.25f * es, side = 0.25f * ed;
+            if (min(el, er) * thrmid >= max(em, side)) {
+                if (em * thrmid * 2.0f >= etot) {
+                    ms = 1;
+                    apply_ms(sl0, sr0, start, len, wstart, wend, 1);
+                } else if (side * thrmid * 2.0f >= etot) {
+                    ms = 1;
+                    apply_ms(sl0, sr0, start, len, wstart, wend, 0);
                 }
             }
             if (ms) {
@@ -306,29 +298,11 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             }
         }
 
-        /* If TNS fired on either channel of this CPE, keep bands at and above the
-         * lowest TNS-covered band in the L/R domain (see process_cpe) so TNS's
-         * per-channel temporal shaping isn't undone by a decoder-side M/S inverse.
-         * The covered range is derived from what was actually transmitted (filter
-         * length is top-anchored at tnsNumSwbLong), not re-derived independently. */
-        int ms_suppress_sfb = INT_MAX;
-        {
-            TnsInfo *tl = &coder[lch].tnsInfo, *tr = &coder[rch].tnsInfo;
-            if (tl->tnsDataPresent && tl->windowData.numFilters > 0) {
-                int band = tl->tnsNumSwbLong - tl->windowData.tnsFilter[0].length;
-                if (band < ms_suppress_sfb) ms_suppress_sfb = band;
-            }
-            if (tr->tnsDataPresent && tr->windowData.numFilters > 0) {
-                int band = tr->tnsNumSwbLong - tr->windowData.tnsFilter[0].length;
-                if (band < ms_suppress_sfb) ms_suppress_sfb = band;
-            }
-        }
-
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
-                                  is_start_sfb, mode, ms_suppress_sfb);
+                                  is_start_sfb, mode);
             start = end;
         }
         if (mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
