@@ -447,15 +447,20 @@ static void window_cpe_band_energy(const CoderInfo * __restrict cl, const float 
                                     const float * __restrict wr, int from_sfb, int to_sfb,
                                     float * __restrict e_out)
 {
+    const int * __restrict sfb_off = cl->sfb_offset;
     int sfb;
     for (sfb = from_sfb; sfb < to_sfb; sfb++)
     {
         float e = 0.0f;
         int k;
-        int start = cl->sfb_offset[sfb];
-        int end = cl->sfb_offset[sfb + 1];
+        int start = sfb_off[sfb];
+        int end = sfb_off[sfb + 1];
         for (k = start; k < end; k++)
-            e += wl[k] * wl[k] + wr[k] * wr[k];
+        {
+            float l = wl[k];
+            float r = wr[k];
+            e += l * l + r * r;
+        }
         e_out[sfb] = e;
     }
 }
