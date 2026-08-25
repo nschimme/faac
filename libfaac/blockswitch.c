@@ -172,11 +172,6 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
           case ID_CPE:
               PsyCheckShort(&psyInfo[elem->channels[0]]);
               PsyCheckShort(&psyInfo[elem->channels[1]]);
-              if (psyInfo[elem->channels[0]].block_type == ONLY_SHORT_WINDOW ||
-                  psyInfo[elem->channels[1]].block_type == ONLY_SHORT_WINDOW) {
-                  psyInfo[elem->channels[0]].block_type = ONLY_SHORT_WINDOW;
-                  psyInfo[elem->channels[1]].block_type = ONLY_SHORT_WINDOW;
-              }
               break;
           case ID_LFE:
               psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
