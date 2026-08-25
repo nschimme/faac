@@ -110,9 +110,19 @@ static float PsyTdThresh(float sampleRate)
  * scenario there straddled zero MOS (18/23 losses at 128k), cost -7 to
  * -7.8% throughput and the single worst regression (-0.13) in the whole
  * report -- all from routing more frames into the long-window path with no
- * compensating quality. So above HIGH_BPS this returns 0 (disabled, see
- * call site) instead of a ceiling: promotion is only trusted in the range
- * it was actually measured to win, <= HIGH_BPS. */
+ * compensating quality. Disabled above HIGH_BPS on `tns-blockswitch-
+ * promotion` (see the real definition of this function there): promotion
+ * is only trusted in the range it was actually measured to win, <=
+ * HIGH_BPS.
+ *
+ * THROWAWAY BRANCH NOTE: this copy of PsyTdHard clamps to HIGH instead of
+ * disabling above HIGH_BPS, deliberately re-engaging promotion at
+ * 128-256kbps/ch so CI's full corpus can re-measure it under the
+ * per-channel zimtohrli scorer (faac-benchmark 080b9c8) that fixed the
+ * mono-downmix bug the original 18/23-losses number above was measured
+ * through. Not a proposed fix, not for merging -- see
+ * project-tns-post-recovery-levers.md for the local 10-clip re-check this
+ * is meant to corroborate/refute at full-corpus scale. */
 #define PSY_TD_HARD_HIGH (1.5f)
 /* faac's -b is PER-CHANNEL after frontend/encode_engine.c divides the CLI's
  * (total) argument by channel count -- "128kbps stereo" is 64000 bps/ch,
@@ -131,10 +141,12 @@ static float PsyTdHard(unsigned long bitratePerCh)
 {
     float t;
 
-    if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
+    if (bitratePerCh == 0)
         return 0.0f;
     if (bitratePerCh <= PSY_TD_HARD_LOW_BPS)
         return PSY_TD_HARD_LOW;
+    if (bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
+        return PSY_TD_HARD_HIGH;
 
     t = (float)(bitratePerCh - PSY_TD_HARD_LOW_BPS) /
         (float)(PSY_TD_HARD_HIGH_BPS - PSY_TD_HARD_LOW_BPS);
