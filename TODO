@@ -1,31 +1,35 @@
-# Ranked by size (S/M/L) then expected payoff within each tier.
+# Ranked by expected perceptual impact balanced by implementation difficulty.
 # Context: psychoacoustic-model levers (TNS, bmask/SFM-tonality, PNS threshold
 # scaling) are exhausted -- exhaustively tested and NO-GO/noise per project
 # memory. Remaining upside is in coding efficiency (bit allocation, codebook
 # selection) and rate targeting, without touching footprint or throughput
-# (FAAC has 3-5x speed headroom over every competitor on the leaderboard).
+# (FAAC has 3-5x speed headroom over competitors on the leaderboard).
 
-## Small (isolated bug/tuning, contained blast radius)
-- investigate 16k_mono_40k bitrate-targeting outlier (22.9% error vs aac-enc's
-  2.0%, worse than even Apple's 16.6%) -- looks like a low-samplerate/
-  high-relative-bitrate mistargeting bug, isolated from the stereo quality gap
+## 1. High Impact / Medium Difficulty
+- Dynamic Programming Rate-Distortion Codebook & Section Optimization (R-D cost J = D + lambda*R trellis search across scale factor bands)
+  [leaderboard: biggest MOS gap is 48k_stereo_24-56k (3.28-3.39 vs 3.5-4.4) despite FAAC having excellent stereo fidelity;
+  this is the top candidate to close the coding efficiency gap]
+- Adaptive Bit Reservoir & Dynamic Frame Rate Control
+  [buffer bits across frames to allow up to 200% frame allocation during percussive/transient attacks]
+
+## 2. High Impact / High Difficulty
+- High-Efficiency SBR Envelope Grid Density & Tonality Estimation
+  [adaptive transient envelope splitting and spectral flatness measure indexing for low-bitrate HE-AAC (24k-40k)]
+- Integrated Parametric Stereo (PS) for Low-Bitrate HE-AAC v2 (24 kbps stereo downmixing)
+
+## 3. Medium-High Impact / Medium-High Difficulty
+- Joint Channel Pair Window Grouping & Transient Synchronization
+  [synchronize block switching across CPE channel pairs to maximize joint stereo scale factor bands]
+
+## 4. Medium Impact / Low-to-Medium Difficulty
+- Perceptual Noise Substitution (PNS) Energy Estimator & Threshold Calibration
+  [calibrate noise band energy scaling to avoid unnatural noise modulation]
+- Per-Band Temporal Noise Shaping (TNS) Filter Order & Energy Selection
+  [screen spectral envelope variance before autocorrelation to avoid prediction filter overhead on tonal signals]
+- Perceptual Band Weighting & Psychoacoustic Masking Threshold Tuning
+  [refine spreading function matrix and tonality masking offsets in 1-4 kHz bands]
+
+## 5. Small (Isolated bug/tuning, contained blast radius)
+- investigate 16k_mono_40k bitrate-targeting outlier (22.9% error) -- low-samplerate / high-relative-bitrate mistargeting bug
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
 - HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
-
-## Medium (contained algorithmic change, one subsystem)
-- Add adaptive bit reservoir control
-- HE-AAC v1: SBR noise floor / invf mode from within-band tonality
-- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
-
-## Large (cross-cutting, higher risk, higher potential payoff)
-- optimize codebook list (section_data) via joint/DP optimization
-  [leaderboard: biggest MOS gap vs Apple/aac-enc is 48k_stereo_24-56k (3.28-3.39
-  vs 3.5-4.4) despite FAAC having the BEST stereo fidelity in class there
-  (0.91-0.98) and competitive bitrate-error -- so it's a coding-efficiency gap,
-  not stereo-image or rate-targeting; this is the top candidate to close it
-  since psychoacoustic levers are exhausted]
-- optimize CPE windows grouping jointly across channel pairs
-  [same 24-56k stereo gap as above; joint window-shape decisions across L/R
-  could recover quality the current independent-channel grouping leaves on
-  the table -- higher risk since it touches block-switching logic that TNS
-  co-tuning already depends on]
