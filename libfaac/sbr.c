@@ -470,17 +470,17 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
             float gm = expf(sum_log_e / (float)num_qmf);
             float sfm = gm / am;
             if (sfm < 0.15f) {
-                fd->ch[ch].invfMode = 0; /* LOW */
-                noise_level = 2;
+                fd->ch[ch].invfMode = 3; /* HIGH inverse filtering for tonal signals */
+                noise_level = 8;        /* Low noise floor injection for tonal signals */
             } else if (sfm < 0.35f) {
-                fd->ch[ch].invfMode = 1; /* MID */
-                noise_level = 3;
+                fd->ch[ch].invfMode = 2; /* MID */
+                noise_level = 6;
             } else if (sfm < 0.60f) {
-                fd->ch[ch].invfMode = 2; /* HIGH */
+                fd->ch[ch].invfMode = 1; /* LOW */
                 noise_level = 4;
             } else {
-                fd->ch[ch].invfMode = 3; /* OFF */
-                noise_level = 5;
+                fd->ch[ch].invfMode = 0; /* OFF for noise-like signals */
+                noise_level = 2;        /* High noise floor injection for noise-like signals */
             }
         }
 
@@ -531,7 +531,9 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
                 int band_noise_level = noise_level;
                 if (num_nb > 0 && sum_nb > 1e-9f) {
                     float sfm_nb = expf(sum_log_nb / (float)num_nb) / (sum_nb / (float)num_nb);
-                    band_noise_level = clamp_int(lrintf(2.0f + 4.0f * sfm_nb), 0, 30);
+                    /* Higher SFM (noise-like) -> lower noise level index (higher noise energy);
+                       Lower SFM (tonal) -> higher noise level index (lower noise energy). */
+                    band_noise_level = clamp_int(lrintf(8.0f - 6.0f * sfm_nb), 0, 30);
                 }
 
                 if (prevNoise < 0) {

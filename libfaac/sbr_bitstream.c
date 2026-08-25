@@ -74,6 +74,21 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
         WB(fd->bsPointer, sbr_ceil_log2[num_env]);
         for (int i = 0; i < num_env; i++)    /* bs_freq_res[1..num_env] */
             WB(sbr->bs_freq_res, 1);
+    } else if (fd->frameClass == SBR_FRAME_CLASS_FIXVAR) {
+        /* FIXVAR: fixed leading border (t_env[0] = 0), variable trailing border.
+         * t_env[num_env] = SBR_NUM_TIME_SLOTS - bs_var_bord_1. Relative borders
+         * step backwards: t_env[num_env - 1 - i] = t_env[num_env - i] - (2*bs_rel + 2). */
+        int num_env = fd->numEnvelopes;
+        WB(SBR_FRAME_CLASS_FIXVAR, 2);
+        WB(SBR_NUM_TIME_SLOTS - fd->tEnv[num_env], 2); /* bs_var_bord_1 */
+        WB(num_env - 1, 2);                              /* bs_num_rel_1   */
+        for (int i = 0; i < num_env - 1; i++) {
+            int idx = num_env - i;
+            WB((fd->tEnv[idx] - fd->tEnv[idx - 1] - 2) / 2, 2); /* bs_rel_bord_1 */
+        }
+        WB(fd->bsPointer, sbr_ceil_log2[num_env]);
+        for (int i = 0; i < num_env; i++)    /* bs_freq_res[1..num_env] */
+            WB(sbr->bs_freq_res, 1);
     } else {
         /* FIXFIX: equal-spaced borders, one bs_freq_res for all envelopes. */
         WB(SBR_FRAME_CLASS_FIXFIX, 2);
