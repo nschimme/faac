@@ -952,20 +952,29 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
         }
 
-        int targetBits = desbits;
-        if (isTransient) {
-            int draw = hEncoder->bitReservoir;
-            if (draw > desbits) draw = desbits;
-            targetBits = desbits + draw;
-        } else if (hEncoder->bitReservoir < hEncoder->bitReservoirCap) {
-            targetBits = (int)(desbits * 0.90f);
+        /* Update bit reservoir balance based on current frame bit usage */
+        hEncoder->bitReservoir += (desbits - totalBits);
+        if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
+            hEncoder->bitReservoir = hEncoder->bitReservoirCap;
+        if (hEncoder->bitReservoir < 0)
+            hEncoder->bitReservoir = 0;
+
+        /* Determine effective feedback bit count: if totalBits > desbits,
+         * absorb up to the available reservoir balance so transient surges
+         * do not artificially choke feedback quality for subsequent frames. */
+        int effectiveBits = totalBits;
+        if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
+            int excess = totalBits - desbits;
+            int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
+            effectiveBits = totalBits - absorbed;
+        } else if (totalBits < desbits && hEncoder->bitReservoir < hEncoder->bitReservoirCap) {
+            /* When refilling the reservoir, target slightly lower bits (95% nominal) */
+            int target = (int)(desbits * 0.95f);
+            if (effectiveBits > target) effectiveBits = target;
         }
 
-        if (targetBits <= sbrBits)
-            targetBits = sbrBits + 8;
-
-        if (totalBits > sbrBits)
-            fix = (float)(targetBits - sbrBits) / (float)(totalBits - sbrBits);
+        if (effectiveBits > sbrBits)
+            fix = (float)(desbits - sbrBits) / (float)(effectiveBits - sbrBits);
         else
             fix = 1.0f;
 
@@ -986,13 +995,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
-
-        /* Update bit reservoir state based on actual frame bits used vs nominal desbits */
-        hEncoder->bitReservoir += (desbits - totalBits);
-        if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
-            hEncoder->bitReservoir = hEncoder->bitReservoirCap;
-        if (hEncoder->bitReservoir < 0)
-            hEncoder->bitReservoir = 0;
     }
 
     return frameBytes;
