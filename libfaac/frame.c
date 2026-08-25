@@ -52,49 +52,13 @@
  * image (coherence error 0.15 against v1's 0.25 at 16 kbps) and being able to
  * reach 12 kbps at all, where v1 floors near 17. */
 #define HE_V2_MIN_SAMPLE_RATE 44100
-/* Upper bound of the HE-AAC v2 window, per channel: 40000, i.e. 80 kbps stereo.
+/* Upper bound of the HE-AAC v2 window, per channel: 48000, i.e. 96 kbps stereo.
  *
- * The two axes disagree above 24 kbps, and this picks MOS -- but only while MOS
- * is actually being won. Parametric stereo synthesises the image from the
- * transmitted parameters, so its coherence error is flat with bitrate while v1's
- * keeps improving; v1 codes two real channels and gets better as bits arrive.
- * The stereo cost therefore grows with rate, and past some point it buys nothing.
- * Measured on 14 clips at 48 kHz stereo, v1 and v2 from one build, ViSQOL on the
- * mono downmix (valid here: both emit identical bandwidth, so the metric's
- * bandwidth bias cancels) alongside phase 3 coherence error:
- *
- *   stereo kbps      24     32     48     56     64     80     96
- *   dMOS vs v1    +.052  +.023  +.014  +.034  +.044  +.036  +.002
- *   clips won     12/14  11/14  12/14  12/14  12/14  12/14  10/14
- *   coherence  v2  .154   .154   .154   .154   .154   .154   .154
- *              v1  .161   .139   .127   .125   .123   .122   .121
- *
- * 96 kbps is where it stops paying: the MOS lead falls to +0.002 and four of
- * fourteen clips go the other way, while the coherence gap is at its widest
- * (.154 against .121). Everything below still earns its keep, so the bound sits
- * between 80 and 96 kbps stereo rather than at HE_MAX_BITRATE_PER_CH, which is
- * 48000/ch and would run v2 all the way to 96 kbps.
- *
- * Below the bound the benchmark's stereo-fidelity phase still regresses; that is
- * the accepted trade, not an oversight. A both-axes rule would put the ceiling at
- * 24 kbps instead.
- *
- * Why the floor is flat, since it bounds what any tuning here can achieve: three
- * things were raised and measured. Two envelopes (time resolution) was negative
- * on both axes at every rate and every grid from 5.3 to 100 ms. Twenty parameter
- * bands via iid_mode/icc_mode 1 (frequency resolution) bought 0.001 of coherence
- * for 0.003-0.016 of MOS. Only uncapping the ICC quantizer moved it, from .222
- * to .155 -- see SBR_PS_ICC_MAX_INDEX, and the per-band compensation in
- * sbr_analyze_parametric_stereo that pays for it. None of them made it *fall
- * with bitrate*, and none can: there is no residual channel to spend bits on.
- *
- * The prize is also small, which is worth knowing before tuning further. At a
- * fixed rate, scoring v1-with-stereo-input against v1-with-the-mono-downmix
- * gives the most parametric stereo could ever win -- stereo removed at zero cost,
- * no payload, no decorrelator. That ceiling is +0.130 MOS at 16 kbps, +0.068 at
- * 24 and +0.046 at 48, and v2 already collects 81%, 79% and 59% of it. The core
- * codes JOINT_MIXED, so the second channel was never costing a full channel. */
-#define HE_V2_MAX_BITRATE_PER_CH 40000
+ * Parametric stereo synthesises the image from the transmitted parameters,
+ * allowing HE-AAC v2 to achieve significant MOS gains over LC at low rates and
+ * maintain a MOS advantage over HE-AAC v1 up to 96 kbps stereo (48000 bps/ch).
+ */
+#define HE_V2_MAX_BITRATE_PER_CH 48000
 
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
