@@ -142,7 +142,8 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 {
     int sampleRate = sbr->sampleRate;
-    unsigned long rate_per_ch = bitRate / sbr->numChannels;
+    int coded_channels = SbrIsHEV2(sbr) ? 1 : sbr->numChannels;
+    unsigned long rate_per_ch = bitRate / coded_channels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
      * Higher-order parametric reconstruction below 10 kHz is audible and
@@ -285,12 +286,17 @@ float SbrContextGetDownmixGain(SBRContext *sCtx)
 void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables, int aacObjectType)
 {
     if (!sCtx) return;
-    if (!sCtx->sbrInfo)
-        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
-    else
-        SbrUpdate(sCtx->sbrInfo, bitrate);
     if (sCtx->sbrInfo)
         sCtx->sbrInfo->is_he_v2 = (IsHEV2(aacObjectType));
+    if (!sCtx->sbrInfo) {
+        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
+        if (sCtx->sbrInfo) {
+            sCtx->sbrInfo->is_he_v2 = (IsHEV2(aacObjectType));
+            SbrUpdate(sCtx->sbrInfo, bitrate);
+        }
+    } else {
+        SbrUpdate(sCtx->sbrInfo, bitrate);
+    }
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
