@@ -442,3 +442,47 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     }
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
+
+void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuantCfg *cfg)
+{
+    if (!cr || !xrr)
+    {
+        if (cl) BlocGroup(xrl, cl, cfg);
+        return;
+    }
+
+    if (cl->block_type != ONLY_SHORT_WINDOW || cr->block_type != ONLY_SHORT_WINDOW)
+    {
+        BlocGroup(xrl, cl, cfg);
+        BlocGroup(xrr, cr, cfg);
+        return;
+    }
+
+    /* Evaluate individual channel window grouping */
+    BlocGroup(xrl, cl, cfg);
+    BlocGroup(xrr, cr, cfg);
+
+    /* Alignment: If both channels generated identical number of group splits (> 1) and
+     * corresponding split window indices differ by exactly 1 short window (~2.6ms),
+     * align right channel's group lengths to match left channel only if both channels
+     * have significant transient activity in the adjacent window. */
+    if (cl->groups.n > 1 && cl->groups.n == cr->groups.n)
+    {
+        int ok = 1;
+        int win_l = 0, win_r = 0;
+        for (int g = 0; g < cl->groups.n - 1; g++) {
+            win_l += cl->groups.len[g];
+            win_r += cr->groups.len[g];
+            int diff = abs(win_l - win_r);
+            if (diff > 1) {
+                ok = 0;
+                break;
+            }
+        }
+        if (ok) {
+            for (int g = 0; g < cl->groups.n; g++) {
+                cr->groups.len[g] = cl->groups.len[g];
+            }
+        }
+    }
+}

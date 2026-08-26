@@ -131,7 +131,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                float thrmid, float inv_isthr, float thrside_sq,
                                int is_start_sfb, int mode)
 {
-    int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
+    int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 3 : 8, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
 
     if (mode == JOINT_IS) {
