@@ -265,7 +265,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (!config->quantqual)
         {
-            config->quantqual = (float)(config->bitRate * hEncoder->numChannels) / 640.0f;
+            config->quantqual = (float)config->bitRate * hEncoder->numChannels / 1280;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
@@ -979,8 +979,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
             fix = 1.0f;
         }
 
+        /* Apply adaptive damping: accelerate rate control recovery when reservoir is depleted or full */
+        float damping = RC_DAMPING_FACTOR;
+        if (hEncoder->bitReservoirCap > 0) {
+            float fillRatio = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
+            if (fillRatio < 0.25f || fillRatio > 0.75f)
+                damping = 0.85f;
+        }
+
         /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
+        fix = (fix - 1.0f) * damping + 1.0f;
 
         hEncoder->aacquantCfg.quality *= fix;
 
