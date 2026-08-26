@@ -41,7 +41,7 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
+#define RC_DAMPING_FACTOR      0.8f   /* Control loop damping */
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -987,9 +987,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             if (hEncoder->iError < -hEncoder->bitReservoirCap * 2)
                 hEncoder->iError = -hEncoder->bitReservoirCap * 2;
 
-            /* Proportional-Integral gain adjustment: Kp = 0.25, Ki = 0.02 */
-            float pCorrection = 0.25f * ((float)error / (float)hEncoder->bitReservoirCap);
-            float iCorrection = 0.02f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
+            /* Proportional-Integral gain adjustment: Kp = 0.15, Ki = 0.01 */
+            float pCorrection = 0.15f * ((float)error / (float)hEncoder->bitReservoirCap);
+            float iCorrection = 0.01f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
 
             /* Adjust quality scale multiplier using Proportional-Integral feedback */
             fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
