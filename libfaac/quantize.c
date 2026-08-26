@@ -392,6 +392,61 @@ static void window_single_band_energy(const CoderInfo * __restrict cl, const flo
     }
 }
 
+void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+{
+    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
+    {
+        coderInfo->groups.n = 1;
+        coderInfo->groups.len[0] = 1;
+        return;
+    }
+
+    int maxsfb = cfg->max_cbs;
+    int cutoff = cfg->max_l / 8;
+    int active_bands = maxsfb - GROUP_MIN_SFB;
+    int onset_quorum = (active_bands * 3) >> 2;
+
+    float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
+    int win, group_start = 0;
+
+    coderInfo->groups.n = 0;
+
+    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    {
+        float *w = xr + win * BLOCK_LEN_SHORT;
+        int k, sfb;
+
+        for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
+            w[k] = 0.0f;
+
+        window_single_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
+
+        if (win == group_start)
+        {
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
+            continue;
+        }
+
+        int onset_votes = 0;
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+        {
+            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
+            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
+            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
+        }
+
+        if (onset_votes > onset_quorum)
+        {
+            coderInfo->groups.len[coderInfo->groups.n++] = win - group_start;
+            group_start = win;
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
+        }
+    }
+    coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+}
+
 void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuantCfg *cfg)
 {
     if (cl->block_type != ONLY_SHORT_WINDOW)
@@ -460,9 +515,19 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
             }
         }
 
-        int max_onset = (onset_votes_l > onset_votes_r) ? onset_votes_l : onset_votes_r;
+        /* Joint short-window group split decision:
+         * Trigger a joint group boundary split when both channels detect an onset,
+         * OR when either channel detects a strong onset (> active_bands / 2).
+         * For single-channel, trigger when onset_votes_l > onset_quorum. */
+        int split_l = (onset_votes_l > onset_quorum);
+        int split_r = (wr != NULL) && (onset_votes_r > onset_quorum);
 
-        if (max_onset > onset_quorum)
+        int joint_onset = (wr != NULL) ? ((split_l && split_r) ||
+                                           onset_votes_l > (active_bands >> 1) ||
+                                           onset_votes_r > (active_bands >> 1))
+                                       : split_l;
+
+        if (joint_onset)
         {
             int g_len = win - group_start;
             cl->groups.len[cl->groups.n++] = g_len;
@@ -478,9 +543,4 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
     int last_g_len = MAX_SHORT_WINDOWS - group_start;
     cl->groups.len[cl->groups.n++] = last_g_len;
     if (cr) cr->groups.len[cr->groups.n++] = last_g_len;
-}
-
-void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
-{
-    BlocGroupCPE(xr, NULL, coderInfo, NULL, cfg);
 }

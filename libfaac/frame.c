@@ -770,20 +770,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (elem->type == ID_CPE) {
             int lch = elem->channels[0];
             int rch = elem->channels[1];
-            if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW && coderInfo[rch].block_type == ONLY_SHORT_WINDOW) {
-                BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
-                             &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
-            } else {
-                if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW)
-                    BlocGroup(hEncoder->freqBuff[lch], &coderInfo[lch], &hEncoder->aacquantCfg);
-                if (coderInfo[rch].block_type == ONLY_SHORT_WINDOW)
-                    BlocGroup(hEncoder->freqBuff[rch], &coderInfo[rch], &hEncoder->aacquantCfg);
-            }
+            BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
+                         &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
         } else {
             int ch = elem->channels[0];
-            if (coderInfo[ch].block_type == ONLY_SHORT_WINDOW) {
-                BlocGroup(hEncoder->freqBuff[ch], &coderInfo[ch], &hEncoder->aacquantCfg);
-            }
+            BlocGroup(hEncoder->freqBuff[ch], &coderInfo[ch], &hEncoder->aacquantCfg);
         }
     }
 
