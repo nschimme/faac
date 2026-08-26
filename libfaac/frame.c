@@ -41,7 +41,7 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DAMPING_FACTOR      0.8f   /* Control loop damping */
+#define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -370,7 +370,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Initialize adaptive bit reservoir & Proportional-Integral (PI) controller state */
     if (hEncoder->config.bitRate)
     {
-        int desbits = (int)((unsigned long long)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
+        int desbits = (int)(hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate);
         int maxReservoirBits = (int)(AAC_MAX_BITS_PER_CH * hEncoder->numChannels) - desbits;
         if (maxReservoirBits < 0) maxReservoirBits = 0;
         int twoNominal = 2 * desbits;
@@ -954,8 +954,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (diff < 0) {
             int excess = -diff;
-            if (isTransient || hEncoder->bitReservoir > 0) {
-                int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
+            /* Capped transient absorption: draw up to 100% extra desbits (200% max frame budget) */
+            int maxDraw = (excess < desbits) ? excess : desbits;
+            if (isTransient && hEncoder->bitReservoir > 0) {
+                int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
             } else {
@@ -963,9 +965,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
             }
         } else {
-            hEncoder->bitReservoir += diff;
-            if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
-                hEncoder->bitReservoir = hEncoder->bitReservoirCap;
+            /* Simple frames replenish the reservoir; adjust effectiveBits so rate feedback stays neutral */
+            int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
+            int deposited = (diff < space) ? diff : space;
+            hEncoder->bitReservoir += deposited;
+            effectiveBits = totalBits + deposited;
         }
 
         if (effectiveBits > sbrBits)
