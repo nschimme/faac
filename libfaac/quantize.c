@@ -462,6 +462,7 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
     int cutoff = cfg->max_l / 8;
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
+    int high_quorum  = (active_bands * 4) / 5;
 
     float band_el[NSFB_SHORT], run_min_l[NSFB_SHORT], run_max_l[NSFB_SHORT];
     float band_er[NSFB_SHORT], run_min_r[NSFB_SHORT], run_max_r[NSFB_SHORT];
@@ -496,25 +497,27 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
             continue;
         }
 
-        int onset_votes_l = 0, onset_votes_r = 0;
+        int vl = 0, vr = 0;
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
             if (band_el[sfb] < run_min_l[sfb]) run_min_l[sfb] = band_el[sfb];
             if (band_el[sfb] > run_max_l[sfb]) run_max_l[sfb] = band_el[sfb];
-            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) onset_votes_l++;
+            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) vl++;
 
             if (band_er[sfb] < run_min_r[sfb]) run_min_r[sfb] = band_er[sfb];
             if (band_er[sfb] > run_max_r[sfb]) run_max_r[sfb] = band_er[sfb];
-            if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) onset_votes_r++;
+            if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) vr++;
         }
 
-        int split_l = (win > group_start) && (onset_votes_l > onset_quorum);
-        int split_r = (win > group_start) && (onset_votes_r > onset_quorum);
+        int split_l = (win > group_start) && (vl > onset_quorum);
+        int split_r = (win > group_start) && (vr > onset_quorum);
 
-        /* Joint short-window group split decision:
-         * When both channels are short windows in a CPE element, synchronize group boundary
-         * splits across both channels so groups.n and groups.len match 100%, enabling common_window M/S. */
-        int joint_onset = split_l || split_r;
+        /* Synchronize group boundary splits when both channels detect an onset,
+         * OR when either channel detects a strong high-confidence transient onset.
+         * This achieves identical groups.n and groups.len for common_window M/S joint stereo coding. */
+        int joint_onset = (split_l && split_r) ||
+                           (split_l && vl > high_quorum) ||
+                           (split_r && vr > high_quorum);
 
         if (joint_onset)
         {
