@@ -462,10 +462,9 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
     int cutoff = cfg->max_l / 8;
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
-    int high_quorum  = (active_bands * 4) / 5;
 
-    float band_el[NSFB_SHORT], run_min_l[NSFB_SHORT], run_max_l[NSFB_SHORT];
-    float band_er[NSFB_SHORT], run_min_r[NSFB_SHORT], run_max_r[NSFB_SHORT];
+    float band_el[NSFB_SHORT], band_er[NSFB_SHORT], band_c[NSFB_SHORT];
+    float run_min_c[NSFB_SHORT], run_max_c[NSFB_SHORT];
 
     int win, group_start = 0;
 
@@ -487,39 +486,27 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
         window_band_energy(cl, wl, GROUP_MIN_SFB, maxsfb, band_el);
         window_band_energy(cr, wr, GROUP_MIN_SFB, maxsfb, band_er);
 
-        if (win == 0)
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            band_c[sfb] = band_el[sfb] + band_er[sfb];
+
+        if (win == group_start)
         {
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
             {
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
+                run_min_c[sfb] = run_max_c[sfb] = band_c[sfb];
             }
             continue;
         }
 
-        int vl = 0, vr = 0;
+        int vc = 0;
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
-            if (band_el[sfb] < run_min_l[sfb]) run_min_l[sfb] = band_el[sfb];
-            if (band_el[sfb] > run_max_l[sfb]) run_max_l[sfb] = band_el[sfb];
-            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) vl++;
-
-            if (band_er[sfb] < run_min_r[sfb]) run_min_r[sfb] = band_er[sfb];
-            if (band_er[sfb] > run_max_r[sfb]) run_max_r[sfb] = band_er[sfb];
-            if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) vr++;
+            if (band_c[sfb] < run_min_c[sfb]) run_min_c[sfb] = band_c[sfb];
+            if (band_c[sfb] > run_max_c[sfb]) run_max_c[sfb] = band_c[sfb];
+            if (run_max_c[sfb] > GROUP_ONSET_RATIO * run_min_c[sfb]) vc++;
         }
 
-        int split_l = (win > group_start) && (vl > onset_quorum);
-        int split_r = (win > group_start) && (vr > onset_quorum);
-
-        /* Synchronize group boundary splits when both channels detect an onset,
-         * OR when either channel detects a strong high-confidence transient onset.
-         * This achieves identical groups.n and groups.len for common_window M/S joint stereo coding. */
-        int joint_onset = (split_l && split_r) ||
-                           (split_l && vl > high_quorum) ||
-                           (split_r && vr > high_quorum);
-
-        if (joint_onset)
+        if (vc > onset_quorum)
         {
             int g_len = win - group_start;
             cl->groups.len[cl->groups.n++] = g_len;
@@ -527,8 +514,7 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
             group_start = win;
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
             {
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
+                run_min_c[sfb] = run_max_c[sfb] = band_c[sfb];
             }
         }
     }

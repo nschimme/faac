@@ -77,6 +77,55 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   }
 }
 
+static void PsyCheckShortCPE(PsyInfo * psyInfo0, PsyInfo * psyInfo1)
+{
+  enum {PREVS = 2, NEXTS = 2};
+  psydata_t *psydata0 = (psydata_t *)psyInfo0->data;
+  psydata_t *psydata1 = (psydata_t *)psyInfo1->data;
+  int win;
+  float lasteng0 = (float)psydata0->eng[ENG_WIN_CUR - PREVS];
+  float lasteng1 = (float)psydata1->eng[ENG_WIN_CUR - PREVS];
+  float lastcomb = lasteng0 + lasteng1;
+
+  psyInfo0->block_type = ONLY_LONG_WINDOW;
+  psyInfo1->block_type = ONLY_LONG_WINDOW;
+
+  int transient_found = 0;
+
+  for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
+  {
+      float eng0 = (float)psydata0->eng[ENG_WIN_CUR - PREVS + win];
+      float eng1 = (float)psydata1->eng[ENG_WIN_CUR - PREVS + win];
+      float comb = eng0 + eng1;
+
+      float toteng0 = (eng0 < lasteng0) ? eng0 : lasteng0;
+      float volchg0 = fabsf(eng0 - lasteng0);
+
+      float toteng1 = (eng1 < lasteng1) ? eng1 : lasteng1;
+      float volchg1 = fabsf(eng1 - lasteng1);
+
+      float totcomb = (comb < lastcomb) ? comb : lastcomb;
+      float volchgcomb = fabsf(comb - lastcomb);
+
+      if ((toteng0 > 0.0f && volchg0 / toteng0 > PSY_TD_THRESH) ||
+          (toteng1 > 0.0f && volchg1 / toteng1 > PSY_TD_THRESH) ||
+          (totcomb > 0.0f && volchgcomb / totcomb > PSY_TD_THRESH))
+      {
+          transient_found = 1;
+          break;
+      }
+      lasteng0 = eng0;
+      lasteng1 = eng1;
+      lastcomb = comb;
+  }
+
+  if (transient_found)
+  {
+      psyInfo0->block_type = ONLY_SHORT_WINDOW;
+      psyInfo1->block_type = ONLY_SHORT_WINDOW;
+  }
+}
+
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
 		    unsigned int sampleRate)
 {
@@ -170,8 +219,7 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
               PsyCheckShort(&psyInfo[elem->channels[0]]);
               break;
           case ID_CPE:
-              PsyCheckShort(&psyInfo[elem->channels[0]]);
-              PsyCheckShort(&psyInfo[elem->channels[1]]);
+              PsyCheckShortCPE(&psyInfo[elem->channels[0]], &psyInfo[elem->channels[1]]);
               break;
           case ID_LFE:
               psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
