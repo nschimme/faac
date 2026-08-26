@@ -374,8 +374,9 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-static void window_single_band_energy(const CoderInfo * __restrict cl, const float * __restrict w,
-                                       int from_sfb, int to_sfb, float * __restrict e_out)
+static void window_cpe_band_energy(const CoderInfo * __restrict cl, const float * __restrict wl,
+                                    const float * __restrict wr, int from_sfb, int to_sfb,
+                                    float * __restrict e_out)
 {
     const int * __restrict sfb_off = cl->sfb_offset;
     int sfb;
@@ -384,9 +385,11 @@ static void window_single_band_energy(const CoderInfo * __restrict cl, const flo
         float e = 0.0f;
         int k, start = sfb_off[sfb], end = sfb_off[sfb + 1];
         for (k = start; k < end; k++)
+            e += wl[k] * wl[k];
+        if (wr)
         {
-            float val = w[k];
-            e += val * val;
+            for (k = start; k < end; k++)
+                e += wr[k] * wr[k];
         }
         e_out[sfb] = e;
     }
@@ -398,15 +401,18 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
     {
         cl->groups.n = 1;
         cl->groups.len[0] = 1;
-        if (cr) { cr->groups.n = 1; cr->groups.len[0] = 1; }
+        if (cr) {
+            cr->groups.n = 1;
+            cr->groups.len[0] = 1;
+        }
         return;
     }
     if (cr && cr->block_type != ONLY_SHORT_WINDOW)
     {
         cr->groups.n = 1;
         cr->groups.len[0] = 1;
-        xrr = NULL;
         cr = NULL;
+        xrr = NULL;
     }
 
     int maxsfb = cfg->max_cbs;
@@ -414,12 +420,10 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
 
-    float band_el[NSFB_SHORT], run_min_l[NSFB_SHORT], run_max_l[NSFB_SHORT];
-    float band_er[NSFB_SHORT], run_min_r[NSFB_SHORT], run_max_r[NSFB_SHORT];
+    float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
     int win, group_start = 0;
 
     cl->groups.n = 0;
-    if (cr) cr->groups.n = 0;
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
@@ -433,49 +437,37 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
             if (wr) wr[k] = 0.0f;
         }
 
-        window_single_band_energy(cl, wl, GROUP_MIN_SFB, maxsfb, band_el);
-        if (wr && cr) window_single_band_energy(cr, wr, GROUP_MIN_SFB, maxsfb, band_er);
+        window_cpe_band_energy(cl, wl, wr, GROUP_MIN_SFB, maxsfb, band_e);
 
         if (win == group_start)
         {
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            {
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-                if (wr) run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
-            }
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
             continue;
         }
 
-        int onset_votes_l = 0, onset_votes_r = 0;
+        int onset_votes = 0;
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
-            if (band_el[sfb] < run_min_l[sfb]) run_min_l[sfb] = band_el[sfb];
-            if (band_el[sfb] > run_max_l[sfb]) run_max_l[sfb] = band_el[sfb];
-            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) onset_votes_l++;
-
-            if (wr) {
-                if (band_er[sfb] < run_min_r[sfb]) run_min_r[sfb] = band_er[sfb];
-                if (band_er[sfb] > run_max_r[sfb]) run_max_r[sfb] = band_er[sfb];
-                if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) onset_votes_r++;
-            }
+            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
+            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
+            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
         }
 
-        if (onset_votes_l > onset_quorum || onset_votes_r > onset_quorum)
+        if (onset_votes > onset_quorum)
         {
-            int g_len = win - group_start;
-            cl->groups.len[cl->groups.n++] = g_len;
-            if (cr) cr->groups.len[cr->groups.n++] = g_len;
+            cl->groups.len[cl->groups.n++] = win - group_start;
             group_start = win;
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            {
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-                if (wr) run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
-            }
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
         }
     }
-    int last_g_len = MAX_SHORT_WINDOWS - group_start;
-    cl->groups.len[cl->groups.n++] = last_g_len;
-    if (cr) cr->groups.len[cr->groups.n++] = last_g_len;
+    cl->groups.len[cl->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+
+    if (cr)
+    {
+        cr->groups = cl->groups;
+    }
 }
 
 void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)

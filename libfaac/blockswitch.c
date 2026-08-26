@@ -77,7 +77,6 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   }
 }
 
-
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
 		    unsigned int sampleRate)
 {
