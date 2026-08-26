@@ -41,6 +41,7 @@
 #endif
 
 /* Rate control tuning constants */
+#define RC_DEADBAND_THRESHOLD  0.05f  /* +/- 5% deadband */
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
@@ -925,7 +926,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * the rate controller below never runs to claw the quality back. */
     hEncoder->aacquantCfg.quality = baseQuality;
 
-    /* Adjust quality to get correct average bitrate with adaptive bit reservoir */
+    /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
@@ -965,11 +966,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
             }
         } else {
-            /* Simple frames replenish the reservoir; adjust effectiveBits so rate feedback stays neutral */
+            /* Simple frames replenish the reservoir */
             int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
             int deposited = (diff < space) ? diff : space;
             hEncoder->bitReservoir += deposited;
-            effectiveBits = totalBits + deposited;
         }
 
         if (effectiveBits > sbrBits)
@@ -992,9 +992,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             if (hEncoder->iError < -hEncoder->bitReservoirCap * 2)
                 hEncoder->iError = -hEncoder->bitReservoirCap * 2;
 
-            /* Proportional-Integral gain adjustment: Kp = 0.20, Ki = 0.015 */
-            float pCorrection = 0.20f * ((float)error / (float)hEncoder->bitReservoirCap);
-            float iCorrection = 0.015f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
+            /* Proportional-Integral gain adjustment: Kp = 0.18, Ki = 0.012 */
+            float pCorrection = 0.18f * ((float)error / (float)hEncoder->bitReservoirCap);
+            float iCorrection = 0.012f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
 
             /* Adjust quality scale multiplier using Proportional-Integral feedback */
             fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
