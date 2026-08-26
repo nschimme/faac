@@ -253,12 +253,21 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
 
-        /* PNS is fine inside TNS-covered bands -- the decoder's inverse
-         * TNS filter shapes the substituted noise too. */
-        if (target[sb] < pns_threshold)
+        /* Perceptual Noise Substitution (PNS):
+         * Substitute band with noise if:
+         * 1) PNS level is enabled (>0)
+         * 2) Band is in higher frequency scale factor bands (sb >= 8, >4 kHz) to avoid mono/stereo phase distortion
+         * 3) Spectral peak-to-average energy ratio (tonality factor T) is low (flat/noise-like)
+         * 4) Target energy is below the PNS threshold */
+        float peak_sq = bandpeak[sb] * bandpeak[sb];
+        float tonality = (avg_per_window > 0.0f) ? (peak_sq * (float)width / avg_per_window) : 10.0f;
+        float max_tonality = 2.0f + 0.3f * (float)pnslevel;
+
+        if (pnslevel > 0 && sb >= 8 && tonality < max_tonality && target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
-            ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
+            /* Correct per-sample noise energy scaling (divide avg_per_window by width) */
+            ci->sf[band] += lrintf(log10f(avg_per_window / (float)width) * SF_STEP_ENRG);
             ci->bandcnt++;
             continue;
         }
