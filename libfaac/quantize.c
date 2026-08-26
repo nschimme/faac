@@ -255,9 +255,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         /* Perceptual Noise Substitution (PNS):
          * Substitute band with noise if:
-         * 1) Target energy is below the PNS threshold
-         * 2) Energy is positive (avg_per_window > 0.0f)
-         * 3) Spectral peak line energy share is below peak_share_limit to protect strong tonal peaks. */
+         * 1) Target energy is below PNS threshold
+         * 2) Peak energy share (peak_sq / avg_per_window) is below peak_share_limit to protect
+         *    sharp tonal harmonic spikes from noise substitution. Peak limit scales smoothly with pnslevel. */
         const float peak_amp = bandpeak[sb];
         const float peak_sq = peak_amp * peak_amp;
         const float peak_share_limit = 0.70f + 0.03f * (float)pnslevel;
