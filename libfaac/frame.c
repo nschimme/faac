@@ -938,6 +938,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
+        /* Detect transient attack or short window blocks across channels */
         int isTransient = 0;
         for (channel = 0; channel < numChannels; channel++) {
             if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
@@ -953,7 +954,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (diff < 0) {
             int excess = -diff;
-            if (isTransient) {
+            if (isTransient || hEncoder->bitReservoir > 0) {
                 int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
@@ -987,9 +988,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             if (hEncoder->iError < -hEncoder->bitReservoirCap * 2)
                 hEncoder->iError = -hEncoder->bitReservoirCap * 2;
 
-            /* Proportional-Integral gain adjustment: Kp = 0.15, Ki = 0.01 */
-            float pCorrection = 0.15f * ((float)error / (float)hEncoder->bitReservoirCap);
-            float iCorrection = 0.01f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
+            /* Proportional-Integral gain adjustment: Kp = 0.20, Ki = 0.015 */
+            float pCorrection = 0.20f * ((float)error / (float)hEncoder->bitReservoirCap);
+            float iCorrection = 0.015f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
 
             /* Adjust quality scale multiplier using Proportional-Integral feedback */
             fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
