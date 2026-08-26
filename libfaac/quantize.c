@@ -224,7 +224,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target, const float * __restrict bandenrg,
-                                   const float * __restrict bpeak_array, int gnum, int pnslevel,
+                                   const float * __restrict bandpeak, int gnum, int pnslevel,
                                    int * __restrict p_last_abs)
 {
     int gsize = ci->groups.len[gnum];
@@ -254,16 +254,15 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         }
 
         /* Perceptual Noise Substitution (PNS):
-         * Substitute band with noise if target energy is below PNS threshold
-         * and line peak-to-average energy ratio (tonality T) is low (noise-like).
-         * Note: peak-to-average ratio of spectral noise scales logarithmically with band width W. */
-        float peak_amp = bpeak_array[sb];
-        float peak_sq = peak_amp * peak_amp;
-        float tonality = (avg_per_window > 0.0f) ? (peak_sq * (float)width / avg_per_window) : 10.0f;
-        /* Peak-to-average ratio of spectral noise scales with log10(width) (log2 = log10 * 3.321928f) */
-        float max_tonality = (2.0f + 1.660964f * log10f((float)width)) * (1.0f + 0.05f * (float)pnslevel);
+         * Substitute band with noise if:
+         * 1) Target energy is below the PNS threshold
+         * 2) Energy is positive (avg_per_window > 0.0f)
+         * 3) Spectral peak line energy share is below peak_share_limit to protect strong tonal peaks. */
+        const float peak_amp = bandpeak[sb];
+        const float peak_sq = peak_amp * peak_amp;
+        const float peak_share_limit = 0.70f + 0.03f * (float)pnslevel;
 
-        if (target[sb] < pns_threshold && tonality < max_tonality)
+        if (target[sb] < pns_threshold && avg_per_window > 0.0f && peak_sq < peak_share_limit * avg_per_window)
         {
             ci->book[band] = HCB_PNS;
             ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
@@ -282,7 +281,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         else
         {
             int sf_abs;
-            float gain = resolve_band_gain(sfac, sf_bias, bpeak_array[sb], *p_last_abs, &sf_rel, &sf_abs);
+            float gain = resolve_band_gain(sfac, sf_bias, bandpeak[sb], *p_last_abs, &sf_rel, &sf_abs);
             int xi[FRAME_LEN];
             int win;
 
