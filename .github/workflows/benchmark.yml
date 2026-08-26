@@ -213,7 +213,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build python3-numpy
+          sudo apt-get install -y meson ninja-build python3-numpy python3-scipy
 
       - name: Checkout Candidate
         uses: actions/checkout@v4
