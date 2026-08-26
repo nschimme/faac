@@ -255,14 +255,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         /* Perceptual Noise Substitution (PNS):
          * Substitute band with noise if:
-         * 1) Target energy is below the PNS threshold
-         * 2) Spectral peak-to-average line energy ratio (tonality factor T) is low (noise-like)
-         *    to protect strong tonal harmonics from noise substitution. */
+         * 1) Target perceptual energy is below threshold
+         * 2) The band does not contain a strong tonal peak (peak line energy < 85% of total band energy). */
         float peak_sq = bandpeak[sb] * bandpeak[sb];
-        float tonality = (avg_per_window > 0.0f) ? (peak_sq * (float)width / avg_per_window) : 10.0f;
-        float max_tonality = 2.5f + 0.3f * (float)pnslevel;
-
-        if (target[sb] < pns_threshold && tonality < max_tonality)
+        if (target[sb] < pns_threshold && avg_per_window > 0.0f && peak_sq < 0.85f * avg_per_window)
         {
             ci->book[band] = HCB_PNS;
             ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
