@@ -113,9 +113,10 @@ typedef struct faacEncStruct {
      * [0] and sf[] at [MAX_SCFAC_BANDS]. */
     int *peakSnap[MAX_CHANNELS];
 
-    /* Adaptive bit reservoir state */
+    /* Adaptive bit reservoir state & Proportional-Integral (PI) rate controller */
     int bitReservoir;       /* current bit reservoir level in bits */
     int bitReservoirCap;    /* max bit reservoir capacity in bits */
+    int iError;             /* accumulated integral bit error for Proportional-Integral control */
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

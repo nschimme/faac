@@ -367,7 +367,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
-    /* Initialize adaptive bit reservoir */
+    /* Initialize adaptive bit reservoir & Proportional-Integral (PI) controller state */
     if (hEncoder->config.bitRate)
     {
         int desbits = (int)((unsigned long long)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
@@ -376,11 +376,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         int twoNominal = 2 * desbits;
         hEncoder->bitReservoirCap = (maxReservoirBits < twoNominal) ? maxReservoirBits : twoNominal;
         hEncoder->bitReservoir = hEncoder->bitReservoirCap / 2;
+        hEncoder->iError = 0;
     }
     else
     {
         hEncoder->bitReservoir = 0;
         hEncoder->bitReservoirCap = 0;
+        hEncoder->iError = 0;
     }
 
     return 1;
@@ -970,16 +972,31 @@ int faacEncEncode(faacEncHandle hpEncoder,
         else
             fix = 1.0f;
 
-        /* Apply adaptive damping: accelerate rate control recovery when reservoir is depleted or full */
-        float damping = RC_DAMPING_FACTOR;
+        /* Proportional-Integral (PI) rate controller error adjustment on bit reservoir level */
         if (hEncoder->bitReservoirCap > 0) {
-            float fillRatio = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
-            if (fillRatio < 0.25f || fillRatio > 0.75f)
-                damping = 0.85f;
-        }
+            /* Target reservoir level is 50% capacity */
+            int targetLevel = hEncoder->bitReservoirCap / 2;
+            int error = targetLevel - hEncoder->bitReservoir; /* Positive error means reservoir is low */
 
-        /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0f) * damping + 1.0f;
+            /* Leaky integration to prevent integral windup across long passages */
+            hEncoder->iError = (int)(0.90f * (float)hEncoder->iError) + error;
+
+            /* Anti-windup clamping for Proportional-Integral controller */
+            if (hEncoder->iError > hEncoder->bitReservoirCap * 2)
+                hEncoder->iError = hEncoder->bitReservoirCap * 2;
+            if (hEncoder->iError < -hEncoder->bitReservoirCap * 2)
+                hEncoder->iError = -hEncoder->bitReservoirCap * 2;
+
+            /* Proportional-Integral gain adjustment: Kp = 0.25, Ki = 0.02 */
+            float pCorrection = 0.25f * ((float)error / (float)hEncoder->bitReservoirCap);
+            float iCorrection = 0.02f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
+
+            /* Adjust quality scale multiplier using Proportional-Integral feedback */
+            fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
+            fix *= (1.0f - pCorrection - iCorrection);
+        } else {
+            fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
+        }
 
         hEncoder->aacquantCfg.quality *= fix;
 
