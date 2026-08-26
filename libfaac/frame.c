@@ -973,7 +973,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->bitReservoirCap > 0 && hEncoder->bitReservoir > hEncoder->bitReservoirCap / 2) {
             float surplusRatio = (float)(hEncoder->bitReservoir - hEncoder->bitReservoirCap / 2) / (float)(hEncoder->bitReservoirCap / 2);
-            fix *= (1.0f + 0.05f * surplusRatio);
+            fix *= (1.0f + 0.08f * surplusRatio);
         }
 
         if (fix < (1.0f - RC_DEADBAND_THRESHOLD)) {
