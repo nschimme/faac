@@ -265,7 +265,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (!config->quantqual)
         {
-            config->quantqual = (float)(config->bitRate * hEncoder->numChannels) / 640.0f;
+            config->quantqual = (float)(config->bitRate * hEncoder->numChannels) / 1280.0f;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
