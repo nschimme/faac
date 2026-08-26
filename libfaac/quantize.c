@@ -458,31 +458,78 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
         return;
     }
 
-    /* Evaluate individual channel window grouping */
-    BlocGroup(xrl, cl, cfg);
-    BlocGroup(xrr, cr, cfg);
+    int maxsfb = cfg->max_cbs;
+    int cutoff = cfg->max_l / 8;
+    int active_bands = maxsfb - GROUP_MIN_SFB;
+    int onset_quorum = (active_bands * 3) >> 2;
 
-    /* Alignment: If both channels generated identical number of group splits (> 1) and
-     * corresponding split window indices differ by exactly 1 short window (~2.6ms),
-     * align right channel's group lengths to match left channel only if both channels
-     * have significant transient activity in the adjacent window. */
-    if (cl->groups.n > 1 && cl->groups.n == cr->groups.n)
+    float band_el[NSFB_SHORT], run_min_l[NSFB_SHORT], run_max_l[NSFB_SHORT];
+    float band_er[NSFB_SHORT], run_min_r[NSFB_SHORT], run_max_r[NSFB_SHORT];
+
+    int win, group_start = 0;
+
+    cl->groups.n = 0;
+    cr->groups.n = 0;
+
+    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        int ok = 1;
-        int win_l = 0, win_r = 0;
-        for (int g = 0; g < cl->groups.n - 1; g++) {
-            win_l += cl->groups.len[g];
-            win_r += cr->groups.len[g];
-            int diff = abs(win_l - win_r);
-            if (diff > 1) {
-                ok = 0;
-                break;
-            }
+        float *wl = xrl + win * BLOCK_LEN_SHORT;
+        float *wr = xrr + win * BLOCK_LEN_SHORT;
+        int k, sfb;
+
+        for (k = cutoff; k < cl->sfb_offset[maxsfb]; k++)
+        {
+            wl[k] = 0.0f;
+            wr[k] = 0.0f;
         }
-        if (ok) {
-            for (int g = 0; g < cl->groups.n; g++) {
-                cr->groups.len[g] = cl->groups.len[g];
+
+        window_band_energy(cl, wl, GROUP_MIN_SFB, maxsfb, band_el);
+        window_band_energy(cr, wr, GROUP_MIN_SFB, maxsfb, band_er);
+
+        if (win == 0)
+        {
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
+                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
+            }
+            continue;
+        }
+
+        int onset_votes_l = 0, onset_votes_r = 0;
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+        {
+            if (band_el[sfb] < run_min_l[sfb]) run_min_l[sfb] = band_el[sfb];
+            if (band_el[sfb] > run_max_l[sfb]) run_max_l[sfb] = band_el[sfb];
+            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) onset_votes_l++;
+
+            if (band_er[sfb] < run_min_r[sfb]) run_min_r[sfb] = band_er[sfb];
+            if (band_er[sfb] > run_max_r[sfb]) run_max_r[sfb] = band_er[sfb];
+            if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) onset_votes_r++;
+        }
+
+        int split_l = (win > group_start) && (onset_votes_l > onset_quorum);
+        int split_r = (win > group_start) && (onset_votes_r > onset_quorum);
+
+        /* Joint short-window group split decision:
+         * When both channels are short windows in a CPE element, synchronize group boundary
+         * splits across both channels so groups.n and groups.len match 100%, enabling common_window M/S. */
+        int joint_onset = split_l || split_r;
+
+        if (joint_onset)
+        {
+            int g_len = win - group_start;
+            cl->groups.len[cl->groups.n++] = g_len;
+            cr->groups.len[cr->groups.n++] = g_len;
+            group_start = win;
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
+                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
             }
         }
     }
+    int last_g_len = MAX_SHORT_WINDOWS - group_start;
+    cl->groups.len[cl->groups.n++] = last_g_len;
+    cr->groups.len[cr->groups.n++] = last_g_len;
 }
