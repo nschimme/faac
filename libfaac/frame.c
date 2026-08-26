@@ -371,7 +371,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Initialize adaptive bit reservoir state */
     if (hEncoder->config.bitRate)
     {
-        int desbits = (int)(hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate);
+        int desbits = (int)(hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
         int maxReservoirBits = (int)(6144 * hEncoder->numChannels) - desbits;
         if (maxReservoirBits < 0) maxReservoirBits = 0;
         int twoNominal = 2 * desbits;
@@ -964,11 +964,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
             }
         } else {
-            /* Simple frames replenish the reservoir; feed 20% surplus into rate feedback */
+            /* Simple frames replenish the reservoir; feed 1/4 (25%) surplus into rate feedback */
             int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
             int deposited = (diff < space) ? diff : space;
             hEncoder->bitReservoir += deposited;
-            effectiveBits = totalBits + (deposited / 5);
+            effectiveBits = totalBits + (deposited / 4);
         }
 
         if (effectiveBits > sbrBits)
