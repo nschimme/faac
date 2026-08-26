@@ -434,7 +434,7 @@ void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuant
         }
 
         window_single_band_energy(cl, wl, GROUP_MIN_SFB, maxsfb, band_el);
-        if (wr) window_single_band_energy(cl, wr, GROUP_MIN_SFB, maxsfb, band_er);
+        if (wr && cr) window_single_band_energy(cr, wr, GROUP_MIN_SFB, maxsfb, band_er);
 
         if (win == group_start)
         {
