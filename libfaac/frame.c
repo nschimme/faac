@@ -939,31 +939,31 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         int isTransient = 0;
         for (channel = 0; channel < numChannels; channel++) {
-            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
+                (!hEncoder->isLfeChannel[channel] && PsyGetAttack(&hEncoder->psyInfo[channel]) >= 0.5f)) {
                 isTransient = 1;
                 break;
             }
-            if (!hEncoder->isLfeChannel[channel]) {
-                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-                if (attack >= 0.5f) {
-                    isTransient = 1;
-                    break;
-                }
-            }
         }
 
-        /* Update bit reservoir balance based on current frame bit usage */
-        hEncoder->bitReservoir += (desbits - totalBits);
-        if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
-            hEncoder->bitReservoir = hEncoder->bitReservoirCap;
-        if (hEncoder->bitReservoir < 0)
-            hEncoder->bitReservoir = 0;
-
+        /* Update adaptive bit reservoir balance and compute effective frame bits for rate control */
         int effectiveBits = totalBits;
-        if (totalBits > desbits && (isTransient || hEncoder->bitReservoir > 0)) {
-            int excess = totalBits - desbits;
-            int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
-            effectiveBits = totalBits - absorbed;
+        int diff = desbits - totalBits;
+
+        if (diff < 0) {
+            int excess = -diff;
+            if (isTransient || hEncoder->bitReservoir > 0) {
+                int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
+                effectiveBits = totalBits - absorbed;
+                hEncoder->bitReservoir -= absorbed;
+            } else {
+                hEncoder->bitReservoir += diff;
+                if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
+            }
+        } else {
+            hEncoder->bitReservoir += diff;
+            if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
+                hEncoder->bitReservoir = hEncoder->bitReservoirCap;
         }
 
         if (effectiveBits > sbrBits)
