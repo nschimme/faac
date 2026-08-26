@@ -374,20 +374,16 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-static void window_single_band_energy(const CoderInfo * __restrict cl, const float * __restrict w,
-                                       int from_sfb, int to_sfb, float * __restrict e_out)
+static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
+                                int from_sfb, int to_sfb, float * __restrict e_out)
 {
-    const int * __restrict sfb_off = cl->sfb_offset;
     int sfb;
     for (sfb = from_sfb; sfb < to_sfb; sfb++)
     {
         float e = 0.0f;
-        int k, start = sfb_off[sfb], end = sfb_off[sfb + 1];
-        for (k = start; k < end; k++)
-        {
-            float val = w[k];
-            e += val * val;
-        }
+        int k;
+        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
+            e += w[k] * w[k];
         e_out[sfb] = e;
     }
 }
@@ -419,7 +415,7 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
         for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
             w[k] = 0.0f;
 
-        window_single_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
+        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
 
         if (win == group_start)
         {
@@ -445,138 +441,4 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
         }
     }
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
-}
-
-void BlocGroupCPE(float *xrl, float *xrr, CoderInfo *cl, CoderInfo *cr, AACQuantCfg *cfg)
-{
-    if (!cr || !xrr)
-    {
-        if (cl) BlocGroup(xrl, cl, cfg);
-        return;
-    }
-
-    if (cl->block_type != ONLY_SHORT_WINDOW || cr->block_type != ONLY_SHORT_WINDOW)
-    {
-        BlocGroup(xrl, cl, cfg);
-        BlocGroup(xrr, cr, cfg);
-        return;
-    }
-
-    int maxsfb = cfg->max_cbs;
-    int cutoff = cfg->max_l / 8;
-    int active_bands = maxsfb - GROUP_MIN_SFB;
-    int onset_quorum = (active_bands * 3) >> 2;
-
-    float band_el[NSFB_SHORT], run_min_l[NSFB_SHORT], run_max_l[NSFB_SHORT];
-    float band_er[NSFB_SHORT], run_min_r[NSFB_SHORT], run_max_r[NSFB_SHORT];
-
-    int win_splits_l[MAX_SHORT_WINDOWS] = {0}, votes_l[MAX_SHORT_WINDOWS] = {0};
-    int win_splits_r[MAX_SHORT_WINDOWS] = {0}, votes_r[MAX_SHORT_WINDOWS] = {0};
-    int n_splits_l = 0, n_splits_r = 0;
-
-    int win, group_start_l = 0, group_start_r = 0;
-
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
-    {
-        float *wl = xrl + win * BLOCK_LEN_SHORT;
-        float *wr = xrr + win * BLOCK_LEN_SHORT;
-        int k, sfb;
-
-        for (k = cutoff; k < cl->sfb_offset[maxsfb]; k++)
-        {
-            wl[k] = 0.0f;
-            wr[k] = 0.0f;
-        }
-
-        window_single_band_energy(cl, wl, GROUP_MIN_SFB, maxsfb, band_el);
-        window_single_band_energy(cr, wr, GROUP_MIN_SFB, maxsfb, band_er);
-
-        if (win == 0)
-        {
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            {
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
-            }
-            continue;
-        }
-
-        int vl = 0, vr = 0;
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-        {
-            if (band_el[sfb] < run_min_l[sfb]) run_min_l[sfb] = band_el[sfb];
-            if (band_el[sfb] > run_max_l[sfb]) run_max_l[sfb] = band_el[sfb];
-            if (run_max_l[sfb] > GROUP_ONSET_RATIO * run_min_l[sfb]) vl++;
-
-            if (band_er[sfb] < run_min_r[sfb]) run_min_r[sfb] = band_er[sfb];
-            if (band_er[sfb] > run_max_r[sfb]) run_max_r[sfb] = band_er[sfb];
-            if (run_max_r[sfb] > GROUP_ONSET_RATIO * run_min_r[sfb]) vr++;
-        }
-
-        if (vl > onset_quorum && win > group_start_l)
-        {
-            win_splits_l[n_splits_l] = win;
-            votes_l[n_splits_l] = vl;
-            n_splits_l++;
-            group_start_l = win;
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min_l[sfb] = run_max_l[sfb] = band_el[sfb];
-        }
-        if (vr > onset_quorum && win > group_start_r)
-        {
-            win_splits_r[n_splits_r] = win;
-            votes_r[n_splits_r] = vr;
-            n_splits_r++;
-            group_start_r = win;
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min_r[sfb] = run_max_r[sfb] = band_er[sfb];
-        }
-    }
-
-    /* Alignment: If both channels have the same number of group splits and split points
-     * are within 2 short windows (~5ms), align split points to enable common_window M/S joint stereo
-     * WITHOUT adding extra group splits or scalefactor bit overhead to either channel. */
-    if (n_splits_l > 0 && n_splits_l == n_splits_r)
-    {
-        int can_align = 1;
-        int i;
-        for (i = 0; i < n_splits_l; i++)
-        {
-            int diff = win_splits_l[i] - win_splits_r[i];
-            if (diff < -2 || diff > 2)
-            {
-                can_align = 0;
-                break;
-            }
-        }
-        if (can_align)
-        {
-            for (i = 0; i < n_splits_l; i++)
-            {
-                int target_win = (votes_l[i] >= votes_r[i]) ? win_splits_l[i] : win_splits_r[i];
-                win_splits_l[i] = win_splits_r[i] = target_win;
-            }
-        }
-    }
-
-    /* Build groups for Left */
-    cl->groups.n = 0;
-    group_start_l = 0;
-    int i;
-    for (i = 0; i < n_splits_l; i++)
-    {
-        cl->groups.len[cl->groups.n++] = win_splits_l[i] - group_start_l;
-        group_start_l = win_splits_l[i];
-    }
-    cl->groups.len[cl->groups.n++] = MAX_SHORT_WINDOWS - group_start_l;
-
-    /* Build groups for Right */
-    cr->groups.n = 0;
-    group_start_r = 0;
-    for (i = 0; i < n_splits_r; i++)
-    {
-        cr->groups.len[cr->groups.n++] = win_splits_r[i] - group_start_r;
-        group_start_r = win_splits_r[i];
-    }
-    cr->groups.len[cr->groups.n++] = MAX_SHORT_WINDOWS - group_start_r;
 }

@@ -750,6 +750,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
+            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -762,19 +763,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_long[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-        }
-    }
-
-    for (int e = 0; e < hEncoder->numElements; e++) {
-        AACElement *elem = &hEncoder->elements[e];
-        if (elem->type == ID_CPE) {
-            int lch = elem->channels[0];
-            int rch = elem->channels[1];
-            BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
-                         &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
-        } else {
-            int ch = elem->channels[0];
-            BlocGroup(hEncoder->freqBuff[ch], &coderInfo[ch], &hEncoder->aacquantCfg);
         }
     }
 
