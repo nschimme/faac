@@ -68,30 +68,21 @@ static inline void apply_mute(float * restrict s0, int start, int len, int wstar
     }
 }
 
-/* When one component (mid or side) dominates, collapse both channels to that
- * component and zero the other — it costs no bits and the signal loss is masked.
- * Factor of 0.5 keeps the coded amplitude on the same scale as L/R. */
+/* Standard AAC Mid/Side stereo transform: Mid = 0.5*(Left + Right), Side = 0.5*(Left - Right).
+ * Preserves both spectral components so quantization and decoding reconstruct full spatial detail. */
 static inline void apply_ms(float * restrict sl0, float * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
     int win, i;
-    if (in_phase) {
-        for (win = wstart; win < wend; win++) {
-            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++) {
-                sl[i] = 0.5f * (sl[i] + sr[i]);
-                sr[i] = 0.0f;
-            }
-        }
-    } else {
-        for (win = wstart; win < wend; win++) {
-            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++) {
-                sr[i] = 0.5f * (sl[i] - sr[i]);
-                sl[i] = 0.0f;
-            }
+    (void)in_phase;
+    for (win = wstart; win < wend; win++) {
+        float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+        float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+        for (i = 0; i < len; i++) {
+            float l = sl[i];
+            float r = sr[i];
+            sl[i] = 0.5f * (l + r);
+            sr[i] = 0.5f * (l - r);
         }
     }
 }
