@@ -41,7 +41,6 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05f  /* +/- 5% deadband */
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
@@ -952,7 +951,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (diff < 0) {
             int excess = -diff;
-            if (isTransient || hEncoder->bitReservoir > 0) {
+            if (isTransient) {
                 int absorbed = (excess < hEncoder->bitReservoir) ? excess : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
@@ -970,14 +969,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
             fix = (float)(desbits - sbrBits) / (float)(effectiveBits - sbrBits);
         else
             fix = 1.0f;
-
-        if (fix < (1.0f - RC_DEADBAND_THRESHOLD)) {
-            fix += RC_DEADBAND_THRESHOLD;
-        } else if (fix > (1.0f + RC_DEADBAND_THRESHOLD)) {
-            fix -= RC_DEADBAND_THRESHOLD;
-        } else {
-            fix = 1.0f;
-        }
 
         /* Apply adaptive damping: accelerate rate control recovery when reservoir is depleted or full */
         float damping = RC_DAMPING_FACTOR;
