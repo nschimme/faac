@@ -368,22 +368,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
-    /* Initialize adaptive bit reservoir & Proportional-Integral (PI) controller state */
+    /* Initialize adaptive bit reservoir state */
     if (hEncoder->config.bitRate)
     {
         int desbits = (int)(hEncoder->numChannels * (hEncoder->config.bitRate * FRAME_LEN) / hEncoder->sampleRate);
-        int maxReservoirBits = (int)(AAC_MAX_BITS_PER_CH * hEncoder->numChannels) - desbits;
+        int maxReservoirBits = (int)(6144 * hEncoder->numChannels) - desbits;
         if (maxReservoirBits < 0) maxReservoirBits = 0;
         int twoNominal = 2 * desbits;
         hEncoder->bitReservoirCap = (maxReservoirBits < twoNominal) ? maxReservoirBits : twoNominal;
         hEncoder->bitReservoir = hEncoder->bitReservoirCap / 2;
-        hEncoder->iError = 0;
     }
     else
     {
         hEncoder->bitReservoir = 0;
         hEncoder->bitReservoirCap = 0;
-        hEncoder->iError = 0;
     }
 
     return 1;
@@ -955,21 +953,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (diff < 0) {
             int excess = -diff;
-            /* Capped transient absorption: draw up to 100% extra desbits (200% max frame budget) */
+            /* Transient absorption: draw up to 100% extra desbits (200% max frame budget) */
             int maxDraw = (excess < desbits) ? excess : desbits;
             if (isTransient && hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
-                effectiveBits = totalBits - absorbed;
+                effectiveBits = totalBits - (absorbed * 3 / 4);
                 hEncoder->bitReservoir -= absorbed;
             } else {
                 hEncoder->bitReservoir += diff;
                 if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
             }
         } else {
-            /* Simple frames replenish the reservoir */
+            /* Simple frames replenish the reservoir; feed 20% surplus into rate feedback */
             int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
             int deposited = (diff < space) ? diff : space;
             hEncoder->bitReservoir += deposited;
+            effectiveBits = totalBits + (deposited / 5);
         }
 
         if (effectiveBits > sbrBits)
@@ -977,31 +976,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         else
             fix = 1.0f;
 
-        /* Proportional-Integral (PI) rate controller error adjustment on bit reservoir level */
-        if (hEncoder->bitReservoirCap > 0) {
-            /* Target reservoir level is 50% capacity */
-            int targetLevel = hEncoder->bitReservoirCap / 2;
-            int error = targetLevel - hEncoder->bitReservoir; /* Positive error means reservoir is low */
-
-            /* Leaky integration to prevent integral windup across long passages */
-            hEncoder->iError = (int)(0.90f * (float)hEncoder->iError) + error;
-
-            /* Anti-windup clamping for Proportional-Integral controller */
-            if (hEncoder->iError > hEncoder->bitReservoirCap * 2)
-                hEncoder->iError = hEncoder->bitReservoirCap * 2;
-            if (hEncoder->iError < -hEncoder->bitReservoirCap * 2)
-                hEncoder->iError = -hEncoder->bitReservoirCap * 2;
-
-            /* Proportional-Integral gain adjustment: Kp = 0.18, Ki = 0.012 */
-            float pCorrection = 0.18f * ((float)error / (float)hEncoder->bitReservoirCap);
-            float iCorrection = 0.012f * ((float)hEncoder->iError / (float)hEncoder->bitReservoirCap);
-
-            /* Adjust quality scale multiplier using Proportional-Integral feedback */
-            fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
-            fix *= (1.0f - pCorrection - iCorrection);
-        } else {
-            fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
-        }
+        /* Apply damping to the quality adjustment */
+        fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
 
         hEncoder->aacquantCfg.quality *= fix;
 
