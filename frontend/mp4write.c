@@ -652,6 +652,22 @@ int mp4_finish(void) {
     put_u32(0); put_u32(0);
     end_atom(tkhd);
 
+    if (g_mp4.gapless.present && g_mp4.gapless.priming > 0) {
+        long edts = start_atom("edts");
+        long elst = start_atom("elst");
+        uint32_t elst_flags = use64_time ? (1U << 24) : 0;
+        put_u32(elst_flags);
+        put_u32(1); /* entry_count = 1 */
+        /* segment_duration: edit duration in movie timescale units */
+        put_time(g_mp4.gapless.original_samples, use64_time);
+        /* media_time: media start time in track timescale units (priming samples delay) */
+        put_time(g_mp4.gapless.priming, use64_time);
+        /* media_rate_integer (16-bit 1 = 0x0001) + media_rate_fraction (16-bit 0) */
+        put_u16(1); put_u16(0);
+        end_atom(elst);
+        end_atom(edts);
+    }
+
     uint16_t packed_lang = pack_language(g_mp4.language);
     long mdia = start_atom("mdia");
     long mdhd = start_atom("mdhd");
