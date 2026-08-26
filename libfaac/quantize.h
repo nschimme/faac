@@ -33,7 +33,7 @@ typedef struct
 
 enum {
     DEFQUAL = 100,
-    MAXQUAL = 5000,
+    MAXQUAL = 10000,
     MAXQUALADTS = MAXQUAL,
     MINQUAL = 10,
 };
