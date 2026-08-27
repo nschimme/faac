@@ -640,6 +640,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                                 free(utf8_out);
                                 return TRUE;
                             }
+                            _wremove(targetOutput);
                         }
                         free(utf8_out);
                     }
