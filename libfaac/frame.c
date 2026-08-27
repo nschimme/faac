@@ -626,25 +626,32 @@ int faacEncEncode(faacEncHandle hpEncoder,
             return -1;
     }
 
+    /* A 0-byte return is ambiguous during end-of-stream flushing. While flushing,
+     * absorb no-output pipeline priming ticks internally until an encoded frame
+     * is produced or core lookahead delay is fully drained. */
     do {
         int realPerCh;
         if (hEncoder->inputFifoFill >= frameSamplesPerCh)
-            realPerCh = (int)frameSamplesPerCh;
+            realPerCh = (int)frameSamplesPerCh;           /* full frame ready */
         else if (flushing && hEncoder->inputFifoFill > 0)
-            realPerCh = (int)hEncoder->inputFifoFill;
+            realPerCh = (int)hEncoder->inputFifoFill;     /* final partial frame */
         else if (flushing)
-            realPerCh = 0;
+            realPerCh = 0;                                /* drain core lookahead */
         else
-            return 0;
+            return 0;                                     /* accumulating */
 
         hEncoder->frameNum++;
 
+        /* FIFO-empty flush frames push silence to drain algorithmic core delay;
+         * partial tail frames carry real samples and count toward audio duration. */
         if (realPerCh == 0)
             hEncoder->flushFrame++;
 
         if (hEncoder->flushFrame > (LOOKAHEAD_DEPTH + 1))
             return 0;
 
+        /* HE-AAC SBR payloads run SBR_FRAME_FIFO-1 frames behind core MDCT access units;
+         * continue ticking SBR analysis during flush to prevent stale envelope re-emission. */
         float *heHalfRate[MAX_CHANNELS] = {0};
         if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
             doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
@@ -673,6 +680,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                     memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
             }
 
+            /* LFE channel window sequences are forced to ONLY_LONG_WINDOW; skip transient
+             * sub-block energy analysis to save transform cycles. */
             if (!hEncoder->isLfeChannel[channel])
             {
                 if (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext))
@@ -684,6 +693,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
         }
 
+        /* Drop consumed frame from input FIFO front */
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
 
