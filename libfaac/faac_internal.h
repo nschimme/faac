@@ -74,7 +74,6 @@ faacEncHandle faacEncOpen(unsigned long sampleRate, unsigned int numChannels,
                           unsigned long *inputSamples, unsigned long *maxOutputBytes);
 int  faacEncEncode(faacEncHandle hEncoder, int32_t *inputBuffer, unsigned int samplesInput,
                    unsigned char *outputBuffer, unsigned int bufferSize);
-int  faacEncFlush(faacEncHandle hEncoder, unsigned char *outputBuffer, unsigned int bufferSize);
 int  faacEncClose(faacEncHandle hEncoder);
 
 #endif /* FAAC_INTERNAL_H */

@@ -307,26 +307,18 @@ FAACAPI faac_status faac_encoder_asc(faac_encoder *enc,
                                      const uint8_t **buf, uint32_t *len);
 
 /*
- * Encode active stream samples. `in` points to `in_samples` interleaved PCM samples
- * (total across all channels, i.e. samples-per-channel * num_channels), formatted per
- * input_format; `in_samples` must be > 0. The library buffers internally and emits at
- * most one frame per call, writing up to out_cap bytes to `out` and the byte count
- * to *bytes_written (which may be 0 while priming or accumulating).
- * To drain remaining buffered audio at end-of-stream, use faac_encoder_flush().
+ * Encode. `in` points to `in_samples` interleaved PCM samples (total across all
+ * channels, i.e. samples-per-channel * num_channels), formatted per
+ * input_format; it may be any count from 0 to frame_samples*num_channels. The
+ * library buffers internally and emits at most one frame per call, writing up
+ * to out_cap bytes to `out` and the byte count to *bytes_written (which may be
+ * 0 while priming, accumulating, or flushing). Pass in_samples == 0 to flush at
+ * end of stream; keep calling until *bytes_written is 0.
  */
 FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
                                         const void *in, uint32_t in_samples,
                                         uint8_t *out, uint32_t out_cap,
                                         uint32_t *bytes_written);
-
-/*
- * Flush and drain remaining buffered audio at end-of-stream.
- * Call repeatedly until *bytes_written is 0. Each call advances internal lookahead
- * and writes at most one access unit (up to out_cap bytes) to `out`.
- */
-FAACAPI faac_status faac_encoder_flush(faac_encoder *enc,
-                                       uint8_t *out, uint32_t out_cap,
-                                       uint32_t *bytes_written);
 
 /* Human-readable, static description of a status code. Never returns NULL. */
 FAACAPI const char *faac_strerror(faac_status status);

@@ -9,5 +9,4 @@ faac_encoder_close               @4
 faac_encoder_get_info            @5
 faac_encoder_asc                 @6
 faac_encoder_encode              @7
-faac_encoder_flush               @8
-faac_strerror                    @9
+faac_strerror                    @8

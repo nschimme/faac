@@ -364,9 +364,11 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
     faacEncStruct *h;
     int rc;
 
-    if (!enc || !in || !out || !bytes_written || in_samples == 0)
+    if (!enc || !out || !bytes_written)
         return FAAC_ERR_INVALID_ARGUMENT;
     *bytes_written = 0;
+    if (in_samples && !in)
+        return FAAC_ERR_INVALID_ARGUMENT;
     h = unwrap(enc);
 
     if (out_cap < (uint32_t)ADTS_FRAMESIZE)
@@ -382,29 +384,6 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
     /* A too-small output buffer was already rejected above, so a negative
      * return here is an unexpected core fault, not a buffer-size problem --
      * don't disguise it as one or the caller will grow the buffer and retry. */
-    if (rc < 0)
-        return FAAC_ERR_INTERNAL;
-
-    *bytes_written = (uint32_t)rc;
-    return FAAC_OK;
-}
-
-FAACAPI faac_status faac_encoder_flush(faac_encoder *enc,
-                                       uint8_t *out, uint32_t out_cap,
-                                       uint32_t *bytes_written)
-{
-    faacEncStruct *h;
-    int rc;
-
-    if (!enc || !out || !bytes_written)
-        return FAAC_ERR_INVALID_ARGUMENT;
-    *bytes_written = 0;
-    h = unwrap(enc);
-
-    if (out_cap < (uint32_t)ADTS_FRAMESIZE)
-        return FAAC_ERR_OUTPUT_TOO_SMALL;
-
-    rc = faacEncFlush((faacEncHandle)h, out, out_cap);
     if (rc < 0)
         return FAAC_ERR_INTERNAL;
 
