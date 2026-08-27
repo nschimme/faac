@@ -23,7 +23,9 @@
 
 /* Intensity stereo applies only at and above this frequency; below it the ear
  * localizes from waveform detail, so panning the band would be audible. */
-#define IS_START_FREQ_HZ 5500
+#define IS_START_FREQ_HZ        5500
+#define IS_START_FREQ_HZ_LOW    4000
+#define IS_LOW_BITRATE_CEILING  32000
 /* Upper bound on the crossover, as a fraction of the sample rate (0.35*Fs =
  * 0.7*Nyquist), so the band stays well inside the coded spectrum. */
 #define IS_FREQ_CAP_NUM  7
@@ -290,10 +292,6 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
-        /* At low per-channel bitrates (<=48 kbps/ch), disable M/S joint stereo coding
-         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise.
-         * (Note: Intensity Stereo remains enabled for HE-AAC, as benchmark sweeps prove disabling
-         * IS in the HE core causes severe bit starvation and MOS drops). */
         int cur_mode = mode;
         if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate <= MS_SHORT_BITRATE_CEILING) {
             if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
@@ -305,7 +303,8 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {
             int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
-            int ifreq = IS_START_FREQ_HZ, cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
+            int ifreq = (bitRate <= IS_LOW_BITRATE_CEILING) ? IS_START_FREQ_HZ_LOW : IS_START_FREQ_HZ;
+            int cap   = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
             if (ifreq > cap) ifreq = cap;
             int target_offset = (ifreq * mlen + sampleRate - 1) / sampleRate;
             for (int sfb = 0; sfb < coder[lch].sfbn; sfb++) {
