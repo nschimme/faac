@@ -105,6 +105,16 @@ static struct {
         uint32_t bufsize;
     } frame;
 
+    /* stts run-length table: (sample_count, sample_delta) pairs. Frames
+       don't all share one duration -- a short trailing/flush-drain frame
+       is common -- so this can't be collapsed to a single entry the way
+       frame.data (byte sizes, for stsz) is. */
+    struct {
+        struct { uint32_t count; uint32_t delta; } *data;
+        uint32_t ents;
+        uint32_t bufsize;
+    } durs;
+
     struct {
         const uint8_t *data;
         unsigned long size;
@@ -342,6 +352,10 @@ static void reset_write_state(void) {
     g_mp4.frame.data = NULL;
     g_mp4.frame.ents = 0;
     g_mp4.frame.bufsize = 0;
+    free(g_mp4.durs.data);
+    g_mp4.durs.data = NULL;
+    g_mp4.durs.ents = 0;
+    g_mp4.durs.bufsize = 0;
     g_mp4.framesamples = 0;
     g_mp4.samples = 0;
     g_mp4.buffersize = 0;
@@ -499,6 +513,21 @@ int mp4_write_frame(const uint8_t *data, uint32_t size, uint32_t samples) {
     g_mp4.frame.data[g_mp4.frame.ents++] = size;
     if (g_mp4.buffersize < (uint16_t)size)
         g_mp4.buffersize = (uint16_t)size;
+
+    if (g_mp4.durs.ents > 0 && g_mp4.durs.data[g_mp4.durs.ents - 1].delta == samples) {
+        g_mp4.durs.data[g_mp4.durs.ents - 1].count++;
+    } else {
+        if (g_mp4.durs.ents >= g_mp4.durs.bufsize) {
+            uint32_t new_cap = g_mp4.durs.bufsize ? g_mp4.durs.bufsize * 2 : 16;
+            void *tmp = realloc(g_mp4.durs.data, (size_t)new_cap * sizeof(*g_mp4.durs.data));
+            if (!tmp) return -1;
+            g_mp4.durs.data = tmp;
+            g_mp4.durs.bufsize = new_cap;
+        }
+        g_mp4.durs.data[g_mp4.durs.ents].count = 1;
+        g_mp4.durs.data[g_mp4.durs.ents].delta = samples;
+        g_mp4.durs.ents++;
+    }
     return 0;
 }
 
@@ -713,8 +742,11 @@ int mp4_finish(void) {
     end_atom(stsd);
 
     long stts = start_atom("stts");
-    put_u32(0); put_u32(1);
-    put_u32(g_mp4.frame.ents); put_u32(g_mp4.framesamples);
+    put_u32(0); put_u32(g_mp4.durs.ents);
+    for (uint32_t i = 0; i < g_mp4.durs.ents; i++) {
+        put_u32(g_mp4.durs.data[i].count);
+        put_u32(g_mp4.durs.data[i].delta);
+    }
     end_atom(stts);
 
     long stsc = start_atom("stsc");
