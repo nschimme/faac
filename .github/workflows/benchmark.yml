@@ -108,6 +108,10 @@ jobs:
           meson setup build_base --buildtype=release
           ninja -C build_base
 
+      - name: Prepare Benchmark Overwrite Option
+        run: |
+          find /home/runner/work/_actions/ -name "phase1_encode.py" -exec sed -i 's/\[faac_bin_path,/\[faac_bin_path, "--overwrite",/g' {} + 2>/dev/null || true
+
       - name: Run Benchmark (Baseline)
         if: steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true'
         uses: nschimme/faac-benchmark@master
@@ -214,7 +218,7 @@ jobs:
             d=${pair%%:*}; tag=${pair##*:}
             python3 bench/phase1_encode.py \
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
-              lc results/lc_$tag.json --skip-mos --build-dir $d/build
+              lc results/lc_$tag.json --skip-mos --build-dir $d/build --extra-args --overwrite
           done
           python3 bench/compare_results.py results --gates footprint
 
