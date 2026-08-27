@@ -32,6 +32,12 @@
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
 
+/* Per-channel bitrate ceiling (64 kbps per channel) below which M/S joint stereo
+ * coding is restricted on short windows (ONLY_SHORT_WINDOW). Short blocks lack
+ * the temporal scalefactor resolution of long blocks, so M/S cross-channel
+ * quantization error at low bitrates creates audible pre-echo artifacts. */
+#define MS_SHORT_BITRATE_CEILING 64000
+
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
  * by avoiding read-after-write dependencies on the FPU pipeline. */
@@ -225,7 +231,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s[MAX_CHANNELS],
-               float quality, int mode, int sampleRate)
+               float quality, int mode, int sampleRate, unsigned long bitRate)
 {
     float inv_quality = 1.0f / quality;
     float thrmid = 1.0f, isthr = 1.0f, thrside = 0.0f;
@@ -283,11 +289,19 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
+        /* At low per-channel bitrates (<64 kbps/ch), disable M/S joint stereo coding
+         * on short windows to prevent inter-channel pre-echo and quantization noise. */
+        int cur_mode = mode;
+        if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate < MS_SHORT_BITRATE_CEILING) {
+            if (cur_mode == JOINT_MS) cur_mode = JOINT_NONE;
+            else if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
+        }
+
         elem->common_window  = true;
-        elem->msInfo.is_present = (mode == JOINT_MS);
+        elem->msInfo.is_present = (cur_mode == JOINT_MS);
 
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
-        if (mode == JOINT_MIXED) {
+        if (cur_mode == JOINT_MIXED) {
             int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
             int ifreq = IS_START_FREQ_HZ, cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
             if (ifreq > cap) ifreq = cap;
@@ -302,9 +316,9 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
-                                  is_start_sfb, mode);
+                                  is_start_sfb, cur_mode);
             start = end;
         }
-        if (mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
+        if (cur_mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
     }
 }
