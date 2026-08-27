@@ -110,7 +110,7 @@ jobs:
 
       - name: Prepare Benchmark Overwrite Option
         run: |
-          find /home/runner/work/_actions/ -name "phase1_encode.py" -exec sed -i 's/\[faac_bin_path,/\[faac_bin_path, "--overwrite",/g' {} + 2>/dev/null || true
+          python3 -c "import glob; [open(f, 'w').write(open(f).read().replace('cmd = [faac_bin_path,', 'cmd = [faac_bin_path, \"--overwrite\",').replace('subprocess.run([faac_bin_path,', 'subprocess.run([faac_bin_path, \"--overwrite\",')) for f in glob.glob('/home/runner/work/_actions/**/phase1_encode.py', recursive=True)]" 2>/dev/null || true
 
       - name: Run Benchmark (Baseline)
         if: steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true'
@@ -214,11 +214,12 @@ jobs:
         if: steps.baseline-sha.outputs.sha != ''
         run: |
           mkdir -p results
+          python3 -c "import glob; [open(f, 'w').write(open(f).read().replace('cmd = [faac_bin_path,', 'cmd = [faac_bin_path, \"--overwrite\",').replace('subprocess.run([faac_bin_path,', 'subprocess.run([faac_bin_path, \"--overwrite\",')) for f in glob.glob('bench/**/phase1_encode.py', recursive=True)]" 2>/dev/null || true
           for pair in "baseline:base" "candidate:cand"; do
             d=${pair%%:*}; tag=${pair##*:}
             python3 bench/phase1_encode.py \
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
-              lc results/lc_$tag.json --skip-mos --build-dir $d/build --extra-args --overwrite
+              lc results/lc_$tag.json --skip-mos --build-dir $d/build
           done
           python3 bench/compare_results.py results --gates footprint
 
