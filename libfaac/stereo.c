@@ -32,11 +32,12 @@
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
 
-/* Per-channel bitrate ceiling (64 kbps per channel) below which M/S joint stereo
- * coding is restricted on short windows (ONLY_SHORT_WINDOW). Short blocks lack
- * the temporal scalefactor resolution of long blocks, so M/S cross-channel
- * quantization error at low bitrates creates audible pre-echo artifacts. */
-#define MS_SHORT_BITRATE_CEILING 64000
+/* Per-channel bitrate ceiling (48 kbps per channel, or 96 kbps stereo) at or below
+ * which M/S joint stereo coding is restricted on short windows (ONLY_SHORT_WINDOW).
+ * Short blocks lack the temporal scalefactor resolution of long blocks, so M/S
+ * cross-channel quantization error at low bitrates creates audible pre-echo.
+ * Aligns with HE_MAX_BITRATE_PER_CH as FAAC's low-bitrate ceiling. */
+#define MS_SHORT_BITRATE_CEILING 48000
 
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
@@ -289,10 +290,10 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
-        /* At low per-channel bitrates (<64 kbps/ch), disable M/S joint stereo coding
+        /* At low per-channel bitrates (<=48 kbps/ch), disable M/S joint stereo coding
          * on short windows to prevent inter-channel pre-echo and quantization noise. */
         int cur_mode = mode;
-        if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate < MS_SHORT_BITRATE_CEILING) {
+        if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate <= MS_SHORT_BITRATE_CEILING) {
             if (cur_mode == JOINT_MS) cur_mode = JOINT_NONE;
             else if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
         }
