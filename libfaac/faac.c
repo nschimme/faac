@@ -404,7 +404,7 @@ FAACAPI faac_status faac_encoder_flush(faac_encoder *enc,
     if (out_cap < (uint32_t)ADTS_FRAMESIZE)
         return FAAC_ERR_OUTPUT_TOO_SMALL;
 
-    rc = faacEncEncode((faacEncHandle)h, NULL, 0, out, out_cap);
+    rc = faacEncFlush((faacEncHandle)h, out, out_cap);
     if (rc < 0)
         return FAAC_ERR_INTERNAL;
 
