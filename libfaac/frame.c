@@ -714,7 +714,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             break;
     } while (flushing);
 
-    if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH)
+    if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
         return 0;
 
     /* Psychoacoustics */
