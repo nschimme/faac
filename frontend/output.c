@@ -93,7 +93,10 @@ bool is_mp4_filename(const char *filename)
     const char *ext = find_extension(filename);
     if (ext)
     {
-        if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") || !strcasecmp(ext, ".m4b"))
+        if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") ||
+            !strcasecmp(ext, ".m4b") || !strcasecmp(ext, ".m4r") ||
+            !strcasecmp(ext, ".m4v") || !strcasecmp(ext, ".3gp") ||
+            !strcasecmp(ext, ".3g2") || !strcasecmp(ext, ".mov"))
             return true;
     }
     return false;
