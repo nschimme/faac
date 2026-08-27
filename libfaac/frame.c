@@ -626,10 +626,17 @@ int faacEncEncode(faacEncHandle hpEncoder,
             return -1;
     }
 
-    /* A 0-byte return is ambiguous during end-of-stream flushing. While flushing,
-     * absorb no-output pipeline priming ticks internally until an encoded frame
-     * is produced or core lookahead delay is fully drained. */
-    do {
+    /* A 0-byte result is ambiguous to the caller: the public contract (see
+     * faac_encoder_encode()) says "keep calling with in_samples == 0 until
+     * bytes_written is 0" to flush, but the pipeline can also legitimately
+     * report 0 while still filling its look-ahead. A caller who stops on the
+     * first 0 -- as the documented loop tells them to -- must never see that
+     * ambiguity while flushing: once flushing, absorb every no-output tick
+     * ourselves and keep ticking the pipeline until it either genuinely
+     * drains (returns 0 for real) or has advanced enough to emit a frame.
+     * A non-flushing call still returns after a single tick, unchanged. */
+    for (;;)
+    {
         int realPerCh;          /* real (non-padded) input samples/ch in this frame */
         if (hEncoder->inputFifoFill >= frameSamplesPerCh)
             realPerCh = (int)frameSamplesPerCh;           /* full frame ready */
@@ -665,10 +672,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Update current sample buffers */
         for (channel = 0; channel < numChannels; channel++)
         {
-            float *tmp = hEncoder->audioFIFO[channel][FIFO_PAST];
-            hEncoder->audioFIFO[channel][FIFO_PAST]   = hEncoder->audioFIFO[channel][FIFO_CURR];
-            hEncoder->audioFIFO[channel][FIFO_CURR]   = hEncoder->audioFIFO[channel][FIFO_AHEAD1];
-            hEncoder->audioFIFO[channel][FIFO_AHEAD1]  = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
+            float *tmp;
+            tmp = hEncoder->audioFIFO[channel][FIFO_PAST];
+            hEncoder->audioFIFO[channel][FIFO_PAST]  = hEncoder->audioFIFO[channel][FIFO_CURR];
+            hEncoder->audioFIFO[channel][FIFO_CURR]  = hEncoder->audioFIFO[channel][FIFO_AHEAD1];
+            hEncoder->audioFIFO[channel][FIFO_AHEAD1] = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
             hEncoder->audioFIFO[channel][FIFO_AHEAD2] = tmp;
 
             if (realPerCh == 0)
@@ -710,12 +718,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
 
-        if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
+        if (hEncoder->frameNum > LOOKAHEAD_DEPTH)  /* buffers full, ready to emit */
             break;
-    } while (flushing);
 
-    if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
-        return 0;
+        if (!flushing)      /* still filling up the buffers; caller must feed more */
+            return 0;
+        /* flushing: this tick produced nothing the caller can observe as
+         * distinct from "done" -- keep ticking internally instead of
+         * returning 0, since the caller has nothing left to feed us. */
+    }
+
 
     /* Psychoacoustics */
     /* Shared detector replacement on HE: skip half-rate PsyCalculate. */
