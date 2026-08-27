@@ -649,15 +649,20 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
             {
+                /* core feeds on the SBR-downsampled signal, not the raw input */
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
             }
             else
             {
+                /* LC: take one full frame from the FIFO front (already float) */
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel], FRAME_LEN * sizeof(float));
             }
 
+            /* LFE's block_type is always forced to ONLY_LONG_WINDOW in PsyCalculate,
+             * so the transient analysis below would be discarded -- skip it. */
             if (!hEncoder->isLfeChannel[channel])
             {
+                /* Shared detector replacement on HE: skip half-rate PsyBufferUpdate. */
                 if (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext))
                 {
                     PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
@@ -667,6 +672,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
         }
 
+        /* Drop the consumed frame from the FIFO front */
         consumeInputFifo(hEncoder, frameSamplesPerCh);
 
         if (hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
