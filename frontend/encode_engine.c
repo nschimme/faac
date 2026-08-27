@@ -635,12 +635,15 @@ int run_encoding_session_ext(const encode_options_t *opts,
         }
 
         uint32_t nbytes = 0;
-        faac_status st = faac_encoder_encode(hEncoder,
-                                             input_eof ? NULL : pcmbuf,
-                                             input_eof ? 0 : (uint32_t)samples_read,
-                                             bitbuf,
-                                             (uint32_t)max_output_bytes,
-                                             &nbytes);
+        faac_status st;
+        if (input_eof)
+        {
+            st = faac_encoder_flush(hEncoder, bitbuf, (uint32_t)max_output_bytes, &nbytes);
+        }
+        else
+        {
+            st = faac_encoder_encode(hEncoder, pcmbuf, (uint32_t)samples_read, bitbuf, (uint32_t)max_output_bytes, &nbytes);
+        }
         bytes_written = (st == FAAC_OK) ? (int)nbytes : -1;
 
         if (bytes_written > 0)
