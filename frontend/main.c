@@ -847,15 +847,8 @@ int main(int argc, char *argv[])
     }
     else if (!stream_flag_given)
     {
-        if (is_adts_filename(aacFileName) || !strcmp(aacFileName, "-"))
-        {
-            opts.container_mp4 = false;
-            opts.stream_format = FAAC_STREAM_ADTS;
-        }
-        else
-        {
-            opts.container_mp4 = true;
-        }
+        opts.container_mp4 = detect_container_mp4(aacFileName);
+        opts.stream_format = opts.container_mp4 ? FAAC_STREAM_RAW : FAAC_STREAM_ADTS;
     }
 
     if (opts.container_mp4)

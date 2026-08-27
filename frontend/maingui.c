@@ -307,7 +307,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     opts.input_filename = utf8_input;
     opts.output_filename = utf8_output;
-    opts.container_mp4 = utf8_output && is_mp4_filename(utf8_output);
+    opts.container_mp4 = utf8_output && detect_container_mp4(utf8_output);
     opts.overwrite = true;
 
     opts.object_type = (enum faac_object_type)GetComboData(hWnd, IDC_OBJECTTYPE, FAAC_OBJ_AUTO);

@@ -74,6 +74,17 @@ bool is_adts_filename(const char *filename)
     return false;
 }
 
+bool detect_container_mp4(const char *filename)
+{
+    if (!filename)
+        return true;
+
+    if (!strcmp(filename, "-") || is_adts_filename(filename))
+        return false;
+
+    return true;
+}
+
 bool is_mp4_filename(const char *filename)
 {
     if (!filename)
