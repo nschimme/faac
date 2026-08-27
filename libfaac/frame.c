@@ -649,9 +649,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (realPerCh == 0)
             hEncoder->flushFrame++;
 
-        /* After LOOKAHEAD_DEPTH + 1 flush frames all samples have been encoded,
-           return 0 bytes written */
-        if (hEncoder->flushFrame > (LOOKAHEAD_DEPTH + 1))
+        /* SBR's coded-payload ring (frameFIFO) trails the core FIFO by one
+         * extra tick, so HE-AAC needs one more flush tick than LC to drain. */
+        unsigned int flushBudget = (hEncoder->config.aacObjectType == HE_V1) ?
+            SBR_FRAME_FIFO : (LOOKAHEAD_DEPTH + 1);
+        if (hEncoder->flushFrame > flushBudget)
             return 0;
 
         /* HE-AAC: run SBR + downsample first; the core then encodes heHalfRate.
