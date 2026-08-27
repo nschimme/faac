@@ -516,17 +516,20 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
     return 0;
 }
 
-/* Drop n samples/channel from the front of the FIFO, shifting the leftover down. */
+/* Drop n samples/channel from the front of the FIFO, shifting the leftover down.
+ * Bypasses memmove if the FIFO becomes empty. */
 static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
 {
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int channel, rem;
 
-    if (n > hEncoder->inputFifoFill) n = hEncoder->inputFifoFill;
+    if (n >= hEncoder->inputFifoFill) {
+        hEncoder->inputFifoFill = 0;
+        return;
+    }
     rem = hEncoder->inputFifoFill - n;
-    if (rem)
-        for (channel = 0; channel < numChannels; channel++)
-            memmove(hEncoder->inputFifo[channel], hEncoder->inputFifo[channel] + n, rem * sizeof(float));
+    for (channel = 0; channel < numChannels; channel++)
+        memmove(hEncoder->inputFifo[channel], hEncoder->inputFifo[channel] + n, rem * sizeof(float));
     hEncoder->inputFifoFill = rem;
 }
 
@@ -622,11 +625,21 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     if (samplesInput > 0)
     {
-        if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
-            return -1;
+        /* Direct fast-path for exact LC frame chunks when input FIFO is empty:
+         * avoids unnecessary FIFO staging and memmove calls. Restrict to AAC-LC,
+         * since HE-AAC (SBR) requires inputFifo in doHEAACFrame. */
+        bool directPass = (hEncoder->inputFifoFill == 0 &&
+                           samplesInput == frameSamplesPerCh * numChannels &&
+                           hEncoder->config.aacObjectType != HE_V1);
 
-        if (hEncoder->inputFifoFill < frameSamplesPerCh)
-            return 0;                                 /* accumulating */
+        if (!directPass)
+        {
+            if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
+                return -1;
+
+            if (hEncoder->inputFifoFill < frameSamplesPerCh)
+                return 0;                             /* accumulating */
+        }
 
         realPerCh = (int)frameSamplesPerCh;
 
@@ -652,6 +665,47 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 /* core feeds on the SBR-downsampled signal, not the raw input */
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
             }
+            else if (directPass)
+            {
+                /* LC direct pass: convert/copy directly into audioFIFO[FIFO_AHEAD2] */
+                float *dst = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
+                unsigned int ch_idx = hEncoder->config.channel_map[channel];
+                unsigned int i;
+                switch (hEncoder->config.inputFormat) {
+                    case INPUT_16BIT: {
+                        const short *src = (const short *)inputBuffer + ch_idx;
+                        for (i = 0; i < FRAME_LEN; i++) { dst[i] = (float)*src; src += numChannels; }
+                        break;
+                    }
+                    case INPUT_24BIT: {
+                        const float scale = 1.0f / 256.0f;
+                        const uint8_t *src_base = (const uint8_t *)inputBuffer;
+                        for (i = 0; i < FRAME_LEN; i++) {
+                            const uint8_t *src = src_base + (i * numChannels + ch_idx) * 3;
+#if defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN
+                            int32_t s = ((int32_t)src[0] << 16) | ((int32_t)src[1] << 8) | (int32_t)src[2];
+#else
+                            int32_t s = (int32_t)src[0] | ((int32_t)src[1] << 8) | ((int32_t)src[2] << 16);
+#endif
+                            if (s & 0x800000) s |= (int32_t)0xff000000;
+                            dst[i] = scale * (float)s;
+                        }
+                        break;
+                    }
+                    case INPUT_32BIT: {
+                        const float scale = 1.0f / 256.0f;
+                        const int32_t *src = (const int32_t *)inputBuffer + ch_idx;
+                        for (i = 0; i < FRAME_LEN; i++) { dst[i] = scale * (float)*src; src += numChannels; }
+                        break;
+                    }
+                    case INPUT_FLOAT: {
+                        const float *src = (const float *)inputBuffer + ch_idx;
+                        for (i = 0; i < FRAME_LEN; i++) { dst[i] = *src; src += numChannels; }
+                        break;
+                    }
+                    default: break;
+                }
+            }
             else
             {
                 /* LC: take one full frame from the FIFO front (already float) */
@@ -673,7 +727,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
 
         /* Drop the consumed frame from the FIFO front */
-        consumeInputFifo(hEncoder, frameSamplesPerCh);
+        if (!directPass)
+            consumeInputFifo(hEncoder, frameSamplesPerCh);
 
         if (hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
             return 0;
