@@ -60,6 +60,20 @@ char *get_output_filename(const char *input_filename, bool container_mp4)
     return aac_file_name;
 }
 
+bool is_adts_filename(const char *filename)
+{
+    if (!filename)
+        return false;
+
+    const char *ext = find_extension(filename);
+    if (ext)
+    {
+        if (!strcasecmp(ext, ".aac") || !strcasecmp(ext, ".adts"))
+            return true;
+    }
+    return false;
+}
+
 bool is_mp4_filename(const char *filename)
 {
     if (!filename)

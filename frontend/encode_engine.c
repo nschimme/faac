@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #else
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 
 #include "encode_engine.h"
@@ -45,6 +46,8 @@ void init_encode_options(encode_options_t *opts)
         return;
 
     memset(opts, 0, sizeof(*opts));
+    opts->container_mp4 = true;
+    opts->stream_format = FAAC_STREAM_ADTS;
     opts->mpeg_version = FAAC_MPEG4;
     opts->object_type = FAAC_OBJ_AUTO;
     opts->joint_mode = FAAC_JOINT_MIXED;
@@ -570,8 +573,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
         else
         {
 #ifdef _WIN32
+            if (!opts->overwrite && win32_access_utf8(opts->output_filename, 0) == 0)
+                FAIL("Output file %s already exists\n", opts->output_filename);
             outfile = win32_fopen_utf8(opts->output_filename, "wb");
 #else
+            if (!opts->overwrite && access(opts->output_filename, 0) == 0)
+                FAIL("Output file %s already exists\n", opts->output_filename);
             outfile = fopen(opts->output_filename, "wb");
 #endif
             if (!outfile)
