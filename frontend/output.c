@@ -74,17 +74,6 @@ bool is_adts_filename(const char *filename)
     return false;
 }
 
-bool detect_container_mp4(const char *filename)
-{
-    if (!filename)
-        return true;
-
-    if (!strcmp(filename, "-") || is_adts_filename(filename))
-        return false;
-
-    return true;
-}
-
 bool is_mp4_filename(const char *filename)
 {
     if (!filename)
@@ -93,13 +82,24 @@ bool is_mp4_filename(const char *filename)
     const char *ext = find_extension(filename);
     if (ext)
     {
-        if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") ||
-            !strcasecmp(ext, ".m4b") || !strcasecmp(ext, ".m4r") ||
-            !strcasecmp(ext, ".m4v") || !strcasecmp(ext, ".3gp") ||
-            !strcasecmp(ext, ".3g2") || !strcasecmp(ext, ".mov"))
+        if (!strcasecmp(ext, ".m4a") || !strcasecmp(ext, ".mp4") || !strcasecmp(ext, ".m4b"))
             return true;
     }
     return false;
+}
+
+bool detect_container_mp4(const char *filename)
+{
+    if (!filename)
+        return true;
+
+    if (!strcmp(filename, "-") || is_adts_filename(filename))
+        return false;
+
+    if (is_mp4_filename(filename))
+        return true;
+
+    return true;
 }
 
 bool check_image_header(const char *buf)
