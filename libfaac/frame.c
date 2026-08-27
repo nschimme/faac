@@ -618,22 +618,36 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * buffered we just return 0 without touching any per-frame state, so the
      * encoder behaves identically regardless of the caller's chunk size. */
     unsigned int frameSamplesPerCh = faacFrameSamples(hEncoder);
+    int flushing = (samplesInput == 0 || inputBuffer == NULL);
 
-    if (LIKELY(inputBuffer != NULL && samplesInput > 0))
+    if (samplesInput > 0 && inputBuffer != NULL)
     {
-        /* --- ACTIVE SAMPLE ENCODING PATH --- */
         if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
             return -1;
+    }
 
-        if (hEncoder->inputFifoFill < frameSamplesPerCh)
-            return 0;                                 /* accumulating */
+    do {
+        int realPerCh;
+        if (hEncoder->inputFifoFill >= frameSamplesPerCh)
+            realPerCh = (int)frameSamplesPerCh;
+        else if (flushing && hEncoder->inputFifoFill > 0)
+            realPerCh = (int)hEncoder->inputFifoFill;
+        else if (flushing)
+            realPerCh = 0;
+        else
+            return 0;
 
-        /* Full frame ready */
         hEncoder->frameNum++;
+
+        if (realPerCh == 0)
+            hEncoder->flushFrame++;
+
+        if (hEncoder->flushFrame > (LOOKAHEAD_DEPTH + 1))
+            return 0;
 
         float *heHalfRate[MAX_CHANNELS] = {0};
         if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
-            doHEAACFrame(hEncoder, frameSamplesPerCh, heHalfRate);
+            doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
 
         for (channel = 0; channel < numChannels; channel++)
         {
@@ -643,13 +657,20 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->audioFIFO[channel][FIFO_AHEAD1]  = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
             hEncoder->audioFIFO[channel][FIFO_AHEAD2] = tmp;
 
-            if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
+            if (realPerCh == 0)
+            {
+                memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(float));
+            }
+            else if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
             {
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
             }
             else
             {
-                memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel], FRAME_LEN * sizeof(float));
+                unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
+                memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel], spc * sizeof(float));
+                if (spc < FRAME_LEN)
+                    memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
             }
 
             if (!hEncoder->isLfeChannel[channel])
@@ -663,77 +684,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
         }
 
-        consumeInputFifo(hEncoder, frameSamplesPerCh);
+        if (realPerCh > 0)
+            consumeInputFifo(hEncoder, frameSamplesPerCh);
 
-        if (hEncoder->frameNum <= LOOKAHEAD_DEPTH)
-            return 0;
-    }
-    else
-    {
-        /* --- END-OF-STREAM FLUSHING PATH --- */
-        while (1)
-        {
-            int realPerCh;
-            if (hEncoder->inputFifoFill >= frameSamplesPerCh)
-                realPerCh = (int)frameSamplesPerCh;
-            else if (hEncoder->inputFifoFill > 0)
-                realPerCh = (int)hEncoder->inputFifoFill;
-            else
-                realPerCh = 0;
+        if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
+            break;
+    } while (flushing);
 
-            hEncoder->frameNum++;
-            if (realPerCh == 0)
-                hEncoder->flushFrame++;
-
-            if (hEncoder->flushFrame > (LOOKAHEAD_DEPTH + 1))
-                return 0;
-
-            float *heHalfRate[MAX_CHANNELS] = {0};
-            if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
-                doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
-
-            for (channel = 0; channel < numChannels; channel++)
-            {
-                float *tmp = hEncoder->audioFIFO[channel][FIFO_PAST];
-                hEncoder->audioFIFO[channel][FIFO_PAST]   = hEncoder->audioFIFO[channel][FIFO_CURR];
-                hEncoder->audioFIFO[channel][FIFO_CURR]   = hEncoder->audioFIFO[channel][FIFO_AHEAD1];
-                hEncoder->audioFIFO[channel][FIFO_AHEAD1]  = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
-                hEncoder->audioFIFO[channel][FIFO_AHEAD2] = tmp;
-
-                if (realPerCh == 0)
-                {
-                    memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(float));
-                }
-                else if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
-                {
-                    memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
-                }
-                else
-                {
-                    unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
-                    memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel], spc * sizeof(float));
-                    if (spc < FRAME_LEN)
-                        memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
-                }
-
-                if (!hEncoder->isLfeChannel[channel])
-                {
-                    if (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext))
-                    {
-                        PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
-                            hEncoder->audioFIFO[channel][FIFO_AHEAD1],
-                            hEncoder->audioFIFO[channel][FIFO_AHEAD2]);
-                    }
-                }
-            }
-
-            if (realPerCh > 0)
-                consumeInputFifo(hEncoder, frameSamplesPerCh);
-
-            if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
-                break;
-        }
-    }
+    if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH)
+        return 0;
 
     /* Psychoacoustics */
     /* Shared detector replacement on HE: skip half-rate PsyCalculate. */
