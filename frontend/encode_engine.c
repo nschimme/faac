@@ -620,6 +620,11 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint16_t max_frame_bytes = 0;
     int samples_read = 0;
 
+    /* HE-AAC buffers encoder_delay samples of real audio ahead of the
+       core coder; encode(NULL, 0, ...) alone won't flush it. Feed that
+       much silence first, then fall back to the NULL-flush. */
+    uint64_t priming_pad_remaining = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? info.encoder_delay : 0;
+
     double start_time = get_wall_time_sec();
 
     bool input_eof = false;
@@ -652,10 +657,21 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 samples_read = (int)wav_read_float32(infile, pcmbuf, samples_per_frame, chanmap);
             }
 
-            if (samples_read == 0)
+            if (samples_read == 0 && priming_pad_remaining > 0)
+            {
+                uint64_t pad_frames = priming_pad_remaining < frame_size ? priming_pad_remaining : frame_size;
+                memset(pcmbuf, 0, pad_frames * num_channels * sizeof(float));
+                samples_read = (int)(pad_frames * num_channels);
+                priming_pad_remaining -= pad_frames;
+            }
+            else if (samples_read == 0)
+            {
                 input_eof = true;
+            }
             else
+            {
                 current_input_samples += (samples_read / num_channels);
+            }
         }
 
         uint32_t nbytes = 0;
@@ -683,7 +699,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         if (bytes_written > 0)
         {
-            uint64_t frame_samples = current_input_samples - encoded_samples;
+            uint64_t frame_samples = current_input_samples > encoded_samples ?
+                current_input_samples - encoded_samples : 0;
             if (frame_samples > frame_size)
                 frame_samples = frame_size;
 
