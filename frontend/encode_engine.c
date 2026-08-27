@@ -683,14 +683,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
         if (bytes_written > 0)
         {
-            uint64_t frame_samples = current_input_samples > encoded_samples ?
-                current_input_samples - encoded_samples : 0;
-            if (frame_samples > frame_size)
-                frame_samples = frame_size;
-
             if (opts->container_mp4)
             {
-                uint32_t frame_dur = rc_advance(&rc, encoded_samples + frame_samples);
+                uint32_t frame_dur = rc_advance(&rc, (uint64_t)current_frame * frame_size);
                 if (mp4_write_frame(bitbuf, (uint32_t)bytes_written, frame_dur) != 0)
                     FAIL("mp4_write_frame() failed\n");
             }
@@ -700,7 +695,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
                     FAIL("Output write failed\n");
             }
 
-            encoded_samples += frame_samples;
+            encoded_samples += frame_size;
         }
 
         if (progress_cb)
