@@ -291,16 +291,19 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         if (!ok) continue;
 
         /* At low per-channel bitrates (<=48 kbps/ch), disable M/S joint stereo coding
-         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise. */
+         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise.
+         * (Note: Intensity Stereo remains enabled for HE-AAC, as benchmark sweeps prove disabling
+         * IS in the HE core causes severe bit starvation and MOS drops). */
+        int cur_mode = mode;
         if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate <= MS_SHORT_BITRATE_CEILING) {
-            if (mode == JOINT_MIXED) mode = JOINT_IS;
+            if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
         }
 
         elem->common_window  = true;
-        elem->msInfo.is_present = (mode == JOINT_MS);
+        elem->msInfo.is_present = (cur_mode == JOINT_MS);
 
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
-        if (mode == JOINT_MIXED) {
+        if (cur_mode == JOINT_MIXED) {
             int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
             int ifreq = IS_START_FREQ_HZ, cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
             if (ifreq > cap) ifreq = cap;
@@ -316,9 +319,9 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             int end = start + coder[lch].groups.len[g];
             msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
-                                  is_start_sfb, mode);
+                                  is_start_sfb, cur_mode);
             start = end;
         }
-        if (mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
+        if (cur_mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
     }
 }
