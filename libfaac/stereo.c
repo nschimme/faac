@@ -291,11 +291,10 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         if (!ok) continue;
 
         /* At low per-channel bitrates (<=48 kbps/ch), disable M/S joint stereo coding
-         * on short windows to prevent inter-channel pre-echo and quantization noise. */
+         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise. */
         int cur_mode = mode;
         if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate <= MS_SHORT_BITRATE_CEILING) {
-            if (cur_mode == JOINT_MS) cur_mode = JOINT_NONE;
-            else if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
+            if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
         }
 
         elem->common_window  = true;
@@ -306,8 +305,9 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
             int ifreq = IS_START_FREQ_HZ, cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
             if (ifreq > cap) ifreq = cap;
+            int target_offset = (ifreq * mlen + sampleRate - 1) / sampleRate;
             for (int sfb = 0; sfb < coder[lch].sfbn; sfb++) {
-                if ((coder[lch].sfb_offset[sfb] * sampleRate) / mlen >= ifreq) {
+                if (coder[lch].sfb_offset[sfb] >= target_offset) {
                     is_start_sfb = sfb; break;
                 }
             }

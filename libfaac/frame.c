@@ -265,7 +265,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (!config->quantqual)
         {
-            config->quantqual = bitrate_to_quantqual(config->bitRate, hEncoder->numChannels);
+            config->quantqual = BitRateToQuantQual(config->bitRate, hEncoder->numChannels);
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
@@ -308,7 +308,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
-        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : quantqual_to_bitrate(hEncoder->config.quantqual);
+        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : QuantQualToBitRate(hEncoder->config.quantqual);
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -813,7 +813,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     unsigned long effectiveBitRate = hEncoder->config.bitRate;
     if (effectiveBitRate == 0) {
-        effectiveBitRate = quantqual_to_bitrate(hEncoder->config.quantqual) / hEncoder->numChannels;
+        effectiveBitRate = QuantQualToBitRate(hEncoder->config.quantqual) / hEncoder->numChannels;
     }
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,

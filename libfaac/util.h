@@ -58,12 +58,12 @@ static inline int clamp_int(int x, int lo, int hi)
 /* Quantization quality to bitrate scaling factor (1280 bps per quality point) */
 #define VBR_QUAL_BITRATE_SCALE 1280
 
-static inline unsigned long quantqual_to_bitrate(float quantqual)
+static inline unsigned long QuantQualToBitRate(float quantqual)
 {
     return (unsigned long)(quantqual * (float)VBR_QUAL_BITRATE_SCALE);
 }
 
-static inline float bitrate_to_quantqual(unsigned long bitRate, unsigned int numChannels)
+static inline float BitRateToQuantQual(unsigned long bitRate, unsigned int numChannels)
 {
     return (float)bitRate * (float)numChannels / (float)VBR_QUAL_BITRATE_SCALE;
 }
