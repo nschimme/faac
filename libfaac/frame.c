@@ -619,7 +619,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * encoder behaves identically regardless of the caller's chunk size. */
     unsigned int frameSamplesPerCh = faacFrameSamples(hEncoder);
 
-    if (__builtin_expect(inputBuffer != NULL && samplesInput > 0, 1))
+    if (LIKELY(inputBuffer != NULL && samplesInput > 0))
     {
         /* --- ACTIVE SAMPLE ENCODING PATH --- */
         if (appendInputFifo(hEncoder, inputBuffer, samplesInput) < 0)
