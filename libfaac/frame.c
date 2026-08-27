@@ -630,7 +630,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * absorb no-output pipeline priming ticks internally until an encoded frame
      * is produced or core lookahead delay is fully drained. */
     do {
-        int realPerCh;
+        int realPerCh;          /* real (non-padded) input samples/ch in this frame */
         if (hEncoder->inputFifoFill >= frameSamplesPerCh)
             realPerCh = (int)frameSamplesPerCh;           /* full frame ready */
         else if (flushing && hEncoder->inputFifoFill > 0)
