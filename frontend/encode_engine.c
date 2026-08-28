@@ -623,7 +623,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
     uint32_t current_frame = 0;
     uint64_t total_bytes_written = 0;
     uint64_t current_input_samples = 0;
-    uint64_t encoded_samples = 0;
     uint16_t max_frame_bytes = 0;
     int samples_read = 0;
 
@@ -701,8 +700,6 @@ int run_encoding_session_ext(const encode_options_t *opts,
                 if (!write_output_bytes(outfile, bitbuf, (size_t)bytes_written))
                     FAIL("Output write failed\n");
             }
-
-            encoded_samples += frame_size;
         }
 
         if (progress_cb)
