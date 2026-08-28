@@ -96,29 +96,36 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
                                  int gnum, BandEnergy * __restrict out)
 {
     int gsize = ci->groups.len[gnum];
-    int sfb;
+    int sfbn = ci->sfbn;
+    const int * restrict sfb_offset = ci->sfb_offset;
 
-    for (sfb = 0; sfb < ci->sfbn; sfb++)
+    for (int sfb = 0; sfb < sfbn; sfb++)
     {
-        int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
-        int band_len = hi - lo;
-        float sum = 0.0f, peak = 0.0f;
-        int w;
+        out[sfb].sum = 0.0f;
+        out[sfb].peak_amp = 0.0f;
+    }
 
-        for (w = 0; w < gsize; w++)
+    for (int w = 0; w < gsize; w++)
+    {
+        const float * restrict line = xr0 + w * BLOCK_LEN_SHORT;
+        for (int sfb = 0; sfb < sfbn; sfb++)
         {
-            const float *line = xr0 + w * BLOCK_LEN_SHORT + lo;
-            int k;
-            for (k = 0; k < band_len; k++)
+            int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+            float sum = out[sfb].sum;
+            float peak = out[sfb].peak_amp;
+            for (int k = lo; k < hi; k++)
             {
                 float e = line[k] * line[k];
                 sum += e;
                 if (e > peak) peak = e;
             }
+            out[sfb].sum = sum;
+            out[sfb].peak_amp = peak;
         }
-        out[sfb].sum = sum;
-        out[sfb].peak_amp = sqrtf(peak);
     }
+
+    for (int sfb = 0; sfb < sfbn; sfb++)
+        out[sfb].peak_amp = sqrtf(out[sfb].peak_amp);
 }
 
 static float loudness(float energy_ratio)
