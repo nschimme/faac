@@ -101,6 +101,7 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
+        int band_len = hi - lo;
         float sum = 0.0f, peak = 0.0f;
         int w;
 
@@ -108,7 +109,7 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
         {
             const float *line = xr0 + w * BLOCK_LEN_SHORT + lo;
             int k;
-            for (k = 0; k < hi - lo; k++)
+            for (k = 0; k < band_len; k++)
             {
                 float e = line[k] * line[k];
                 sum += e;
