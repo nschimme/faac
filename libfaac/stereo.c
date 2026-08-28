@@ -21,11 +21,14 @@
 #include "util.h"
 #include "faac_internal.h"
 
-/* Intensity stereo applies only at and above this frequency; below it the ear
- * localizes from waveform detail, so panning the band would be audible. */
-#define IS_START_FREQ_HZ        5500
-#define IS_START_FREQ_HZ_LOW    4000
-#define IS_LOW_BITRATE_CEILING  32000
+/* Intensity stereo crossover frequency is derived proportionally from the coded
+ * core bandwidth (0.35 * bandWidth, clamped between 3500 Hz and 7000 Hz). At narrow
+ * bandwidths (low bitrates / HE core), IS starts lower (3500-4000 Hz) to save core
+ * bits for low-frequency phase detail. At wide bandwidths (high bitrates), IS
+ * starts higher (5500-7000 Hz) to preserve high-frequency M/S detail. */
+#define IS_BW_RATIO              0.35f
+#define IS_START_FREQ_MIN        3500
+#define IS_START_FREQ_MAX        7000
 /* Upper bound on the crossover, as a fraction of the sample rate (0.35*Fs =
  * 0.7*Nyquist), so the band stays well inside the coded spectrum. */
 #define IS_FREQ_CAP_NUM  7
@@ -234,7 +237,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s[MAX_CHANNELS],
-               float quality, int mode, int sampleRate, unsigned long bitRate)
+               float quality, int mode, int sampleRate, unsigned long bitRate, unsigned int bandWidth)
 {
     float inv_quality = 1.0f / quality;
     float thrmid = 1.0f, isthr = 1.0f, thrside = 0.0f;
@@ -303,7 +306,10 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {
             int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
-            int ifreq = (bitRate <= IS_LOW_BITRATE_CEILING) ? IS_START_FREQ_HZ_LOW : IS_START_FREQ_HZ;
+            int ifreq = (int)((float)bandWidth * IS_BW_RATIO);
+            if (ifreq < IS_START_FREQ_MIN) ifreq = IS_START_FREQ_MIN;
+            if (ifreq > IS_START_FREQ_MAX) ifreq = IS_START_FREQ_MAX;
+
             int cap   = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
             if (ifreq > cap) ifreq = cap;
             int target_offset = (ifreq * mlen + sampleRate - 1) / sampleRate;

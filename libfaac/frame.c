@@ -818,7 +818,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
-              effectiveBitRate);
+              effectiveBitRate, hEncoder->config.bandWidth);
 
     /* AACstereo has already consumed freqBuff in place and BlocQuant
      * accumulates into sf[] while reading book[], so a retry can re-run
