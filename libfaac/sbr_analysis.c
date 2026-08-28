@@ -23,10 +23,64 @@
 #include "config.h"
 #endif
 
+/* HE-AAC v2 stereo band analysis: per-band left/right energy plus the real part
+ * of the inter-channel cross product, which is what PS derives IID and ICC from.
+ *
+ * Split out of SbrAnalyze, and noinline, on purpose. Inline it and this branch
+ * is a second vectorized loop nest inside a hot function that every LC and
+ * HE-v1 encode runs, so those paths pay its register pressure and code size
+ * (+1054 bytes in SbrAnalyze.constprop.0, and ~3% throughput) to reach an if
+ * that is false for them. Out of line, the cost falls only on HE-v2. */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#endif
+static void SbrAnalyzeStereoBands(SignalAnalysis *sa, float *fullPtrs[], int numSamples,
+                                  struct SBRInfo *sbr, int num_slots, int split, int kx, int kEnd)
+{
+    memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
+    memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
+    memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+    memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
+
+    float * restrict workspaceL = sa->qmfWork[0];
+    float * restrict workspaceR = sa->qmfWork[1];
+
+    memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
+
+    memcpy(workspaceR, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    memcpy(workspaceR + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
+
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+        {
+            float xrL[64], xiL[64];
+            float xrR[64], xiR[64];
+            SbrQmfAnalysisComplex(sbr, workspaceL + slot * SBR_QMF_BANDS_64, xrL, xiL, kx, kEnd);
+            SbrQmfAnalysisComplex(sbr, workspaceR + slot * SBR_QMF_BANDS_64, xrR, xiR, kx, kEnd);
+
+            int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+
+            float * restrict bEL = sa->ch[0].bandHalfE[h];
+            float * restrict bER = sa->ch[1].bandHalfE[h];
+            float * restrict bCross = sa->bandCrossE[h];
+            float * restrict bCrossI = sa->bandCrossIm[h];
+
+            for (int k = kx; k < kEnd; k++) {
+                bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
+                bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
+                bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
+                bCrossI[k] += xrR[k] * xiL[k] - xrL[k] * xiR[k];
+            }
+        }
+    }
+}
+
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
  * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
- * here (not split out) to stay under GCC's LTO auto-inline threshold. */
+ * only being reached through the cold dispatcher. */
 #if defined(__GNUC__)
 __attribute__((hot))
 #endif
@@ -34,7 +88,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
-    float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
     sa->valid = 1;
     sa->numSlots = num_slots;
@@ -70,7 +123,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         }
         sa->ch[ch].lastVal = val_in;
 
-        sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
+        sa->ch[ch].transientStrength = smax * (float)sampled / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
 
         /* Evaluate relative energy jumps to inform block switching. */
@@ -142,26 +195,37 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * and never read, so skip their post-FFT extraction and accumulation. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    for (int ch = 0; ch < nch; ch++) {
-        memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
+    if (sbr && SbrIsHEV2(sbr)) {
+        kx = 0;
+        kEnd = 64;
+    }
 
-        if (sbr) {
-            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-            memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
+    if (nch == 2 && sbr && SbrIsHEV2(sbr)) {
+        SbrAnalyzeStereoBands(sa, fullPtrs, numSamples, sbr, num_slots, split, kx, kEnd);
+    } else {
+        for (int ch = 0; ch < nch; ch++) {
+            memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+            if (sbr) {
+                float * restrict workspace = sa->qmfWork[0];
+
+                memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+                memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
+
+                for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+                    if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                {
-                    float slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+                    {
+                        float slotEnergy[SBR_QMF_BANDS_64];
+                        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
-                    int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+                        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
 
-                    float * restrict bE = sa->ch[ch].bandHalfE[h];
-                    for (int k = kx; k < kEnd; k++)
-                        bE[k] += slotEnergy[k];
+                        float * restrict bE = sa->ch[ch].bandHalfE[h];
+                        for (int k = kx; k < kEnd; k++)
+                            bE[k] += slotEnergy[k];
+                    }
                 }
             }
         }

@@ -19,6 +19,17 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "faac_internal.h"
+
+/* Read side of SBRInfo.is_he_v2. Goes through a macro so the
+ * `parametric-stereo=false` build folds every PS branch to a compile-time
+ * constant 0 and the feature drops out; see IsHEV2 in faac_internal.h. The
+ * write side keeps assigning the field, which then just stays 0. */
+#if defined(FAAC_PARAMETRIC_STEREO) && !FAAC_PARAMETRIC_STEREO
+# define SbrIsHEV2(sbr)  ((void)(sbr), 0)
+#else
+# define SbrIsHEV2(sbr)  ((sbr)->is_he_v2)
+#endif
 
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
@@ -43,6 +54,14 @@ typedef struct SbrFrameData {
         int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
         int invfMode;
     } ch[SBR_MAX_CODED_CHANNELS];
+
+    /* HE-AAC v2 parametric stereo, riding the same delay as the envelopes above.
+     * PS rescales the very band energies those envelopes describe, so shipping
+     * it undelayed would put the stereo image 3 frames ahead of the spectrum it
+     * acts on -- the same skew, on the other axis. */
+    int iid[SBR_PS_BANDS];   /* IID indices, -7..+7 */
+    int icc[SBR_PS_BANDS];   /* ICC indices, 0..7 */
+    int enable_icc;          /* transmit ICC for this frame? */
 } SbrFrameData;
 
 struct SBRInfo {
@@ -75,6 +94,13 @@ struct SBRInfo {
      * SbrWrite is called multiple times per frame (BuildFrame's count and
      * write passes, plus frame.c's rate-control bit-accounting call). */
     int sendHeaderThisFrame;
+
+    /* --- HE-AAC v2 parametric stereo state that is NOT per-frame payload --- */
+    int is_he_v2;            /* constant for the stream */
+    /* Smoothed energy-preserving downmix gain. Deliberately undelayed: it is
+     * applied to the core samples at analysis time, so it travels with the audio
+     * through the core's own pipeline rather than with the coded payload. */
+    float downmixGain;
 
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
@@ -115,6 +141,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
