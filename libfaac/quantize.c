@@ -122,29 +122,36 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
                                  int gnum, BandEnergy * __restrict out)
 {
     int gsize = ci->groups.len[gnum];
-    int sfb;
+    int sfbn = ci->sfbn;
+    const int * restrict sfb_offset = ci->sfb_offset;
 
-    for (sfb = 0; sfb < ci->sfbn; sfb++)
+    for (int sfb = 0; sfb < sfbn; sfb++)
     {
-        int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
-        int len = hi - lo;
-        float sum = 0.0f, peak = 0.0f;
-        int w;
+        out[sfb].sum = 0.0f;
+        out[sfb].peak_amp = 0.0f;
+    }
 
-        for (w = 0; w < gsize; w++)
+    for (int w = 0; w < gsize; w++)
+    {
+        const float * restrict line = xr0 + w * BLOCK_LEN_SHORT;
+        for (int sfb = 0; sfb < sfbn; sfb++)
         {
-            const float * __restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
-            int k;
-            for (k = 0; k < len; k++)
+            int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+            float sum = out[sfb].sum;
+            float peak = out[sfb].peak_amp;
+            for (int k = lo; k < hi; k++)
             {
                 float e = line[k] * line[k];
                 sum += e;
                 if (e > peak) peak = e;
             }
+            out[sfb].sum = sum;
+            out[sfb].peak_amp = peak;
         }
-        out[sfb].sum = sum;
-        out[sfb].peak_amp = sqrtf(peak);
     }
+
+    for (int sfb = 0; sfb < sfbn; sfb++)
+        out[sfb].peak_amp = sqrtf(out[sfb].peak_amp);
 }
 
 static float loudness(float energy_ratio)
@@ -409,71 +416,118 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
-                                int from_sfb, int to_sfb, float * __restrict e_out)
+static void group_windows_from_energies(CoderInfo *ci,
+                                        float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT],
+                                        int maxsfb)
 {
-    int sfb;
-    for (sfb = from_sfb; sfb < to_sfb; sfb++)
+    int active_bands = maxsfb - GROUP_MIN_SFB;
+    int onset_quorum = (active_bands * 3) >> 2;
+    float run_min[NSFB_SHORT], run_max[NSFB_SHORT];
+    int group_start = 0;
+
+    ci->groups.n = 0;
+
+    for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        float e = 0.0f;
-        int k;
-        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
-            e += w[k] * w[k];
-        e_out[sfb] = e;
+        const float * restrict band_e = band_e_win[win];
+        int onset_votes = 0;
+
+        if (win == group_start)
+        {
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
+        }
+        else
+        {
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                run_min[sfb] = fminf(run_min[sfb], band_e[sfb]);
+                run_max[sfb] = fmaxf(run_max[sfb], band_e[sfb]);
+                if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb])
+                    onset_votes++;
+            }
+
+            if (onset_votes > onset_quorum)
+            {
+                ci->groups.len[ci->groups.n++] = win - group_start;
+                group_start = win;
+                for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                    run_min[sfb] = run_max[sfb] = band_e[sfb];
+            }
+        }
     }
+    ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
 
-void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+/* Synchronize short-block grouping across CPE pairs using combined L+R energy to enable common_window joint stereo. */
+void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
-    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
+    if (coderInfo_l->block_type != ONLY_SHORT_WINDOW)
     {
-        coderInfo->groups.n = 1;
-        coderInfo->groups.len[0] = 1;
+        coderInfo_l->groups.n = 1;
+        coderInfo_l->groups.len[0] = 1;
+        if (coderInfo_r) coderInfo_r->groups = coderInfo_l->groups;
         return;
     }
 
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
-    int active_bands = maxsfb - GROUP_MIN_SFB;
-    int onset_quorum = (active_bands * 3) >> 2;
+    int clear_len = coderInfo_l->sfb_offset[maxsfb] - cutoff;
+    int do_clear = (clear_len > 0);
 
-    float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
-    int win, group_start = 0;
+    float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
+    const int * restrict sfb_offset = coderInfo_l->sfb_offset;
 
-    coderInfo->groups.n = 0;
-
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    if (xr_r)
     {
-        float *w = xr + win * BLOCK_LEN_SHORT;
-        int k, sfb;
-
-        for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
-            w[k] = 0.0f;
-
-        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
-
-        if (win == group_start)
+        for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
         {
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = band_e[sfb];
-            continue;
-        }
+            float * restrict wl = xr_l + win * BLOCK_LEN_SHORT;
+            float * restrict wr = xr_r + win * BLOCK_LEN_SHORT;
 
-        int onset_votes = 0;
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-        {
-            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
-            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
-            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
-        }
+            if (do_clear)
+            {
+                memset(wl + cutoff, 0, (size_t)clear_len * sizeof(float));
+                memset(wr + cutoff, 0, (size_t)clear_len * sizeof(float));
+            }
 
-        if (onset_votes > onset_quorum)
-        {
-            coderInfo->groups.len[coderInfo->groups.n++] = win - group_start;
-            group_start = win;
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = band_e[sfb];
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+                float e = 0.0f;
+                for (int k = lo; k < hi; k++)
+                    e += wl[k] * wl[k] + wr[k] * wr[k];
+                band_e_win[win][sfb] = e;
+            }
         }
     }
-    coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+    else
+    {
+        for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
+        {
+            float * restrict wl = xr_l + win * BLOCK_LEN_SHORT;
+
+            if (do_clear)
+                memset(wl + cutoff, 0, (size_t)clear_len * sizeof(float));
+
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+                float e = 0.0f;
+                for (int k = lo; k < hi; k++)
+                    e += wl[k] * wl[k];
+                band_e_win[win][sfb] = e;
+            }
+        }
+    }
+
+    group_windows_from_energies(coderInfo_l, band_e_win, maxsfb);
+
+    if (coderInfo_r)
+        coderInfo_r->groups = coderInfo_l->groups;
+}
+
+void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+{
+    BlocGroupCPE(xr, NULL, coderInfo, NULL, cfg);
 }
