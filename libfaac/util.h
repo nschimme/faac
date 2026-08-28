@@ -57,9 +57,6 @@ static inline int clamp_int(int x, int lo, int hi)
 
 #include <math.h>
 
-/* Quantization quality to bitrate scaling factor (1280 bps per quality point) */
-#define VBR_QUAL_BITRATE_SCALE 1280
-
 /* VBR non-linear target bitrate curve parameters */
 #define VBR_TARGET_BITRATE_MIN  16000.0f  /* 16 kbps stream target at q = 10 */
 #define VBR_TARGET_BITRATE_MAX 192000.0f  /* 192 kbps stream target at q = 100 */
@@ -77,16 +74,6 @@ static inline unsigned long VbrQualityToTargetBitRate(float quantqual)
     float norm_q = (q - 10.0f) / 90.0f;
     float ratio = VBR_TARGET_BITRATE_MAX / VBR_TARGET_BITRATE_MIN;
     return (unsigned long)(VBR_TARGET_BITRATE_MIN * powf(ratio, norm_q));
-}
-
-static inline unsigned long QuantQualToBitRate(float quantqual)
-{
-    return (unsigned long)(quantqual * (float)VBR_QUAL_BITRATE_SCALE);
-}
-
-static inline float BitRateToQuantQual(unsigned long bitRate, unsigned int numChannels)
-{
-    return (float)bitRate * (float)numChannels / (float)VBR_QUAL_BITRATE_SCALE;
 }
 
 int GetSRIndex(unsigned int sampleRate);
