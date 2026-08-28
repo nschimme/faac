@@ -274,6 +274,19 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
     float inv_isthr = 1.0f / (isthr * isthr);
     float thrside_sq = thrside * thrside;
 
+    /* Precompute Intensity Stereo crossover target offsets for long and short blocks.
+     * Crossover frequency scales proportionally with coded bandwidth (0.35 * bandWidth,
+     * bounded between 3500 Hz and 7000 Hz) and is invariant across CPE elements. */
+    int ifreq = (int)((float)bandWidth * IS_BW_RATIO);
+    if (ifreq < IS_START_FREQ_MIN) ifreq = IS_START_FREQ_MIN;
+    if (ifreq > IS_START_FREQ_MAX) ifreq = IS_START_FREQ_MAX;
+
+    int cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
+    if (ifreq > cap) ifreq = cap;
+
+    int target_offset_long  = (ifreq * (2 * BLOCK_LEN_LONG)  + sampleRate - 1) / sampleRate;
+    int target_offset_short = (ifreq * (2 * BLOCK_LEN_SHORT) + sampleRate - 1) / sampleRate;
+
     for (int e = 0; e < numElements; e++) {
         AACElement *elem = &elements[e];
         if (elem->type != ID_CPE) continue;
@@ -309,14 +322,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
 
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {
-            int mlen  = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? 2*BLOCK_LEN_SHORT : 2*BLOCK_LEN_LONG;
-            int ifreq = (int)((float)bandWidth * IS_BW_RATIO);
-            if (ifreq < IS_START_FREQ_MIN) ifreq = IS_START_FREQ_MIN;
-            if (ifreq > IS_START_FREQ_MAX) ifreq = IS_START_FREQ_MAX;
-
-            int cap   = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
-            if (ifreq > cap) ifreq = cap;
-            int target_offset = (ifreq * mlen + sampleRate - 1) / sampleRate;
+            int target_offset = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? target_offset_short : target_offset_long;
             for (int sfb = 0; sfb < coder[lch].sfbn; sfb++) {
                 if (coder[lch].sfb_offset[sfb] >= target_offset) {
                     is_start_sfb = sfb; break;
