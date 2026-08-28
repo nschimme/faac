@@ -51,32 +51,43 @@ static inline void calculate_energies(const float * restrict sl0, const float * 
                                int start, int len, int wstart, int wend,
                                float * restrict el_out, float * restrict er_out, float * restrict elr_out)
 {
-    float el = 0, er = 0, elr = 0;
+    float el0 = 0.0f, el1 = 0.0f;
+    float er0 = 0.0f, er1 = 0.0f;
+    float elr0 = 0.0f, elr1 = 0.0f;
     int win, i;
 
     for (win = wstart; win < wend; win++) {
-        const float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-        const float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-        for (i = 0; i < len; i++) {
-            float l = sl[i];
-            float r = sr[i];
-            el  += l * l;
-            er  += r * r;
-            elr += l * r;
+        int offset = (win << 7) + start;
+        const float * restrict sl = sl0 + offset;
+        const float * restrict sr = sr0 + offset;
+        i = 0;
+        for (; i < len - 1; i += 2) {
+            float l0 = sl[i],   r0 = sr[i];
+            float l1 = sl[i+1], r1 = sr[i+1];
+            el0  += l0 * l0;  el1  += l1 * l1;
+            er0  += r0 * r0;  er1  += r1 * r1;
+            elr0 += l0 * r0;  elr1 += l1 * r1;
+        }
+        if (i < len) {
+            float l = sl[i], r = sr[i];
+            el0  += l * l;
+            er0  += r * r;
+            elr0 += l * r;
         }
     }
-    *el_out = el;
-    *er_out = er;
-    *elr_out = elr;
+    *el_out  = el0  + el1;
+    *er_out  = er0  + er1;
+    *elr_out = elr0 + elr1;
 }
 
 /* Fast memory-clearing utility for suppressed channels. */
 static inline void apply_mute(float * restrict s0, int start, int len, int wstart, int wend)
 {
     int win;
+    size_t bytes = (size_t)len * sizeof(float);
     for (win = wstart; win < wend; win++) {
-        float * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
-        memset(s, 0, len * sizeof(float));
+        float * restrict s = s0 + (win << 7) + start;
+        memset(s, 0, bytes);
     }
 }
 
@@ -87,23 +98,25 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
     int win, i;
+    size_t bytes = (size_t)len * sizeof(float);
+
     if (in_phase) {
         for (win = wstart; win < wend; win++) {
-            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++) {
+            int offset = (win << 7) + start;
+            float * restrict sl = sl0 + offset;
+            float * restrict sr = sr0 + offset;
+            for (i = 0; i < len; i++)
                 sl[i] = 0.5f * (sl[i] + sr[i]);
-                sr[i] = 0.0f;
-            }
+            memset(sr, 0, bytes);
         }
     } else {
         for (win = wstart; win < wend; win++) {
-            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++) {
+            int offset = (win << 7) + start;
+            float * restrict sl = sl0 + offset;
+            float * restrict sr = sr0 + offset;
+            for (i = 0; i < len; i++)
                 sr[i] = 0.5f * (sl[i] - sr[i]);
-                sl[i] = 0.0f;
-            }
+            memset(sl, 0, bytes);
         }
     }
 }
