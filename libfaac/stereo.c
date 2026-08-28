@@ -21,25 +21,16 @@
 #include "util.h"
 #include "faac_internal.h"
 
-/* Intensity stereo crossover frequency scales with coded core bandwidth.
- * At narrow bandwidths (low bitrates / HE core), starting IS lower (3.5-4.0 kHz)
- * conserves core bits for critical low-frequency phase detail. At wider bandwidths,
- * starting IS higher (5.5-7.0 kHz) preserves full M/S spatial detail. */
+/* IS crossover scales with core bandwidth (0.35*bw, 3.5-7kHz) to save low-band phase bits at low rates. */
 #define IS_BW_RATIO              0.35f
 #define IS_START_FREQ_MIN        3500
 #define IS_START_FREQ_MAX        7000
-/* Upper bound on the crossover, as a fraction of the sample rate (0.35*Fs =
- * 0.7*Nyquist), keeping intensity coding safely within the active core spectrum. */
 #define IS_FREQ_CAP_NUM  7
 #define IS_FREQ_CAP_DEN  20
-/* Pan limit (in SF_STEP_ENRG steps) beyond which inter-channel level difference
- * makes the quieter channel inaudible, allowing it to be dropped to HCB_ZERO. */
+/* Pan limit beyond which the quieter channel is dropped to HCB_ZERO. */
 #define IS_PAN_LIMIT     30
 
-/* Bandwidth threshold (16 kHz, corresponding to <= 48 kbps/ch or <= 96 kbps stereo)
- * at or below which short-window M/S coding is restricted. Short MDCT windows have
- * 8x coarser spectral resolution; under tight bit budgets (<= 3 bits/MDCT line),
- * M/S cross-channel quantization noise unmasks as audible pre-echo. */
+/* Core BW ceiling (16kHz / <=48kbps/ch) below which short-block M/S is disabled to prevent pre-echo. */
 #define MS_SHORT_BW_CEILING      16000
 
 /* Accumulate channel energies and cross-correlation for a scale factor band. */
