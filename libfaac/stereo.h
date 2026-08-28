@@ -30,7 +30,6 @@ void AACstereo(CoderInfo *coder,
                float quality,
                int mode,
                int sampleRate,
-               unsigned long bitRate,
                unsigned int bandWidth);
 
 #endif

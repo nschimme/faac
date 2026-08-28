@@ -37,12 +37,12 @@
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
 
-/* Per-channel bitrate ceiling (48 kbps per channel, or 96 kbps stereo) at or below
- * which M/S joint stereo coding is restricted on short windows (ONLY_SHORT_WINDOW).
- * Short blocks lack the temporal scalefactor resolution of long blocks, so M/S
- * cross-channel quantization error at low bitrates creates audible pre-echo.
- * Aligns with HE_MAX_BITRATE_PER_CH as FAAC's low-bitrate ceiling. */
-#define MS_SHORT_BITRATE_CEILING 48000
+/* Coded core bandwidth ceiling (16,000 Hz, corresponding to <= 48 kbps/channel
+ * or <= 96 kbps stereo) at or below which M/S joint stereo coding is restricted on
+ * short windows (ONLY_SHORT_WINDOW). Short blocks have 8x coarser temporal
+ * resolution, so when bits-per-MDCT-coefficient is <= 3.0, M/S cross-channel
+ * quantization error creates audible pre-echo artifacts. */
+#define MS_SHORT_BW_CEILING      16000
 
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
@@ -237,7 +237,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s[MAX_CHANNELS],
-               float quality, int mode, int sampleRate, unsigned long bitRate, unsigned int bandWidth)
+               float quality, int mode, int sampleRate, unsigned int bandWidth)
 {
     float inv_quality = 1.0f / quality;
     float thrmid = 1.0f, isthr = 1.0f, thrside = 0.0f;
@@ -295,8 +295,12 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
+        /* When core bandwidth <= 16 kHz (<=48 kbps/ch), disable M/S joint stereo coding
+         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise.
+         * (Note: Intensity Stereo remains enabled for HE-AAC, as benchmark sweeps prove disabling
+         * IS in the HE core causes severe bit starvation and MOS drops). */
         int cur_mode = mode;
-        if (coder[lch].block_type == ONLY_SHORT_WINDOW && bitRate <= MS_SHORT_BITRATE_CEILING) {
+        if (coder[lch].block_type == ONLY_SHORT_WINDOW && bandWidth <= MS_SHORT_BW_CEILING) {
             if (cur_mode == JOINT_MIXED) cur_mode = JOINT_IS;
         }
 
