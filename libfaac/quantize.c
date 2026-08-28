@@ -458,13 +458,6 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
-    if (coderInfo_l->block_type != ONLY_SHORT_WINDOW || coderInfo_r->block_type != ONLY_SHORT_WINDOW)
-    {
-        BlocGroup(xr_l, coderInfo_l, cfg);
-        BlocGroup(xr_r, coderInfo_r, cfg);
-        return;
-    }
-
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
     float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
@@ -491,8 +484,5 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
 
     group_windows_from_energies(coderInfo_l, band_e_win, maxsfb);
 
-    coderInfo_r->groups.n = coderInfo_l->groups.n;
-    for (int g = 0; g < coderInfo_l->groups.n; g++) {
-        coderInfo_r->groups.len[g] = coderInfo_l->groups.len[g];
-    }
+    coderInfo_r->groups = coderInfo_l->groups;
 }
