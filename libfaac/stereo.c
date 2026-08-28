@@ -21,34 +21,26 @@
 #include "util.h"
 #include "faac_internal.h"
 
-/* Intensity stereo crossover frequency is derived proportionally from the coded
- * core bandwidth (0.35 * bandWidth, clamped between 3500 Hz and 7000 Hz). At narrow
- * bandwidths (low bitrates / HE core), IS starts lower (3500-4000 Hz) to save core
- * bits for low-frequency phase detail. At wide bandwidths (high bitrates), IS
- * starts higher (5500-7000 Hz) to preserve high-frequency M/S detail. */
+/* Intensity stereo crossover frequency scales with coded core bandwidth.
+ * At narrow bandwidths (low bitrates / HE core), starting IS lower (3.5-4.0 kHz)
+ * conserves core bits for critical low-frequency phase detail. At wider bandwidths,
+ * starting IS higher (5.5-7.0 kHz) preserves full M/S spatial detail. */
 #define IS_BW_RATIO              0.35f
 #define IS_START_FREQ_MIN        3500
 #define IS_START_FREQ_MAX        7000
 /* Upper bound on the crossover, as a fraction of the sample rate (0.35*Fs =
- * 0.7*Nyquist), so the band stays well inside the coded spectrum. */
+ * 0.7*Nyquist), keeping intensity coding safely within the active core spectrum. */
 #define IS_FREQ_CAP_NUM  7
 #define IS_FREQ_CAP_DEN  20
-/* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
- * and is dropped to HCB_ZERO rather than intensity-coded. */
+/* Pan limit (in SF_STEP_ENRG steps) beyond which inter-channel level difference
+ * makes the quieter channel inaudible, allowing it to be dropped to HCB_ZERO. */
 #define IS_PAN_LIMIT     30
 
-/* Coded core bandwidth ceiling (16,000 Hz, corresponding to <= 48 kbps/channel
- * or <= 96 kbps stereo) at or below which M/S joint stereo coding is restricted on
- * short windows (ONLY_SHORT_WINDOW). Short blocks have 8x coarser temporal
- * resolution, so when bits-per-MDCT-coefficient is <= 3.0, M/S cross-channel
- * quantization error creates audible pre-echo artifacts. */
+/* Bandwidth threshold (16 kHz, corresponding to <= 48 kbps/ch or <= 96 kbps stereo)
+ * at or below which short-window M/S coding is restricted. Short MDCT windows have
+ * 8x coarser spectral resolution; under tight bit budgets (<= 3 bits/MDCT line),
+ * M/S cross-channel quantization noise unmasks as audible pre-echo. */
 #define MS_SHORT_BW_CEILING      16000
-
-/* Calculate spectral buffer offset for subblock window 'win' (128 samples per short window: win << 7) */
-static inline int short_block_window_offset(int win, int start)
-{
-    return (win << 7) + start;
-}
 
 /* Accumulate channel energies and cross-correlation for a scale factor band. */
 static inline void calculate_energies(const float * restrict sl0, const float * restrict sr0,
@@ -59,9 +51,8 @@ static inline void calculate_energies(const float * restrict sl0, const float * 
     int win, i;
 
     for (win = wstart; win < wend; win++) {
-        int offset = short_block_window_offset(win, start);
-        const float * restrict sl = sl0 + offset;
-        const float * restrict sr = sr0 + offset;
+        const float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+        const float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
         for (i = 0; i < len; i++) {
             float l = sl[i];
             float r = sr[i];
@@ -81,7 +72,7 @@ static inline void apply_mute(float * restrict s0, int start, int len, int wstar
     int win;
     size_t bytes = (size_t)len * sizeof(float);
     for (win = wstart; win < wend; win++) {
-        float * restrict s = s0 + short_block_window_offset(win, start);
+        float * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
         memset(s, 0, bytes);
     }
 }
@@ -97,18 +88,16 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
 
     if (in_phase) {
         for (win = wstart; win < wend; win++) {
-            int offset = short_block_window_offset(win, start);
-            float * restrict sl = sl0 + offset;
-            float * restrict sr = sr0 + offset;
+            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++)
                 sl[i] = 0.5f * (sl[i] + sr[i]);
             memset(sr, 0, bytes);
         }
     } else {
         for (win = wstart; win < wend; win++) {
-            int offset = short_block_window_offset(win, start);
-            float * restrict sl = sl0 + offset;
-            float * restrict sr = sr0 + offset;
+            float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+            float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++)
                 sr[i] = 0.5f * (sl[i] - sr[i]);
             memset(sl, 0, bytes);

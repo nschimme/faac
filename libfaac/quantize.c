@@ -432,6 +432,11 @@ static void group_windows_from_energies(CoderInfo *ci,
     ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
 
+/* Synchronize short-window subblock grouping across stereo Channel Pair Elements (CPE).
+ * ISO/IEC 14496-3 requires identical window group counts and lengths across channels
+ * to enable common_window bitstream flags and joint stereo coding (M/S or IS).
+ * Combined channel energy onsets ensure transient attacks trigger identical group
+ * boundaries on both channels without sacrificing temporal masking alignment. */
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
     if (coderInfo_l->block_type != ONLY_SHORT_WINDOW)
