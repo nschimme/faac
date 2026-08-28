@@ -33,8 +33,6 @@
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
 #define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-/* quantqual == totalBitrate/VBR_QUAL_BITRATE_SCALE (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
-#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / VBR_QUAL_BITRATE_SCALE)
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -214,11 +212,26 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
     }
 
-    /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
-     * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
-     * narrow-band core + SBR reconstruction collapses. */
+    /* Set default quantizer quality if unassigned and clamp to valid bounds */
+    if (!config->quantqual && !config->bitRate)
+        config->quantqual = DEFQUAL;
+
+    if (config->quantqual > 0) {
+        if (config->quantqual > (unsigned long)maxqual)
+            config->quantqual = maxqual;
+        if (config->quantqual < MINQUAL)
+            config->quantqual = MINQUAL;
+    }
+
+    /* Resolve AUTO to LC or HE-AAC based on effective bitrate per channel. */
     if (hEncoder->config.aacObjectType == AUTO) {
         unsigned long rate_per_ch = config->bitRate;
+        if (rate_per_ch == 0) {
+            /* In VBR mode, derive effective per-channel target bitrate from the non-linear curve */
+            unsigned long vbr_target = VbrQualityToTargetBitRate((float)config->quantqual);
+            rate_per_ch = vbr_target / hEncoder->numChannels;
+        }
+
         int rate_ok;
         if (rate_per_ch > 0) {
             /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
@@ -232,7 +245,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             }
             rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
         } else {
-            rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
+            rate_ok = 0;
         }
         hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
@@ -259,42 +272,27 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
 
-    if (config->bitRate && !config->bandWidth)
-    {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+    /* Determine effective whole-stream target bitrate for VBR/ABR modes */
+    unsigned long effective_bitrate = config->bitRate ?
+        (config->bitRate * hEncoder->numChannels) :
+        VbrQualityToTargetBitRate((float)config->quantqual);
 
-        if (!config->quantqual)
-        {
-            config->quantqual = BitRateToQuantQual(config->bitRate, hEncoder->numChannels);
-            if (config->quantqual > DEFQUAL)
-                config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
-        }
-    }
-
-    if (!config->quantqual)
-        config->quantqual = DEFQUAL;
-
+    hEncoder->config.quantqual = config->quantqual;
     hEncoder->config.bitRate = config->bitRate;
 
+    /* Derive bandwidth cutoff from effective per-channel bitrate if not explicit */
     if (!config->bandWidth)
     {
-        config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
+        config->bandWidth = CalcBandwidth(effective_bitrate / hEncoder->numChannels, hEncoder->sampleRate);
     }
 
     hEncoder->config.bandWidth = config->bandWidth;
 
-    // check bandwidth
+    /* Check bandwidth boundaries */
     if (hEncoder->config.bandWidth < 100)
-		hEncoder->config.bandWidth = 100;
+        hEncoder->config.bandWidth = 100;
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
-		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
-
-    if (config->quantqual > (unsigned long)maxqual)
-        config->quantqual = maxqual;
-    if (config->quantqual < MINQUAL)
-        config->quantqual = MINQUAL;
-
-    hEncoder->config.quantqual = config->quantqual;
+        hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
     if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
@@ -303,13 +301,25 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
-    /* set quantization quality */
-    hEncoder->aacquantCfg.quality = config->quantqual;
 
+    /* Set internal quantizer quality used by BlocQuant and masking target derivations */
+    if (config->bitRate)
+    {
+        /* ABR mode: initial quality derived from target bitrate per channel */
+        hEncoder->aacquantCfg.quality = (float)config->bitRate * (float)hEncoder->numChannels / 1280.0f;
+        if (hEncoder->aacquantCfg.quality > DEFQUAL)
+            hEncoder->aacquantCfg.quality = (hEncoder->aacquantCfg.quality - DEFQUAL) * 3.0f + DEFQUAL;
+    }
+    else
+    {
+        /* VBR mode: direct continuous quality scale from user quantqual */
+        hEncoder->aacquantCfg.quality = (float)config->quantqual;
+    }
+
+    /* Configure SBR using the effective whole-stream target bitrate */
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
-        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : QuantQualToBitRate(hEncoder->config.quantqual);
-        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
+        SbrContextUpdateConfig(sCtx, hEncoder->numChannels, effective_bitrate, &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);

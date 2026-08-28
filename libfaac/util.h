@@ -55,8 +55,29 @@ static inline int clamp_int(int x, int lo, int hi)
 #define FreeMemory(block) free(block)
 #define SetMemory(block, value, size) memset(block, value, size)
 
+#include <math.h>
+
 /* Quantization quality to bitrate scaling factor (1280 bps per quality point) */
 #define VBR_QUAL_BITRATE_SCALE 1280
+
+/* VBR non-linear target bitrate curve parameters */
+#define VBR_TARGET_BITRATE_MIN  16000.0f  /* 16 kbps stream target at q = 10 */
+#define VBR_TARGET_BITRATE_MAX 192000.0f  /* 192 kbps stream target at q = 100 */
+
+/**
+ * Maps user VBR quality parameter q (10 - 100) to continuous stream target bitrate (bps).
+ * Formula: B_target(q) = B_min * (B_max / B_min) ^ ((q - 10) / 90)
+ */
+static inline unsigned long VbrQualityToTargetBitRate(float quantqual)
+{
+    float q = quantqual;
+    if (q < 10.0f) q = 10.0f;
+    if (q > 100.0f) q = 100.0f;
+
+    float norm_q = (q - 10.0f) / 90.0f;
+    float ratio = VBR_TARGET_BITRATE_MAX / VBR_TARGET_BITRATE_MIN;
+    return (unsigned long)(VBR_TARGET_BITRATE_MIN * powf(ratio, norm_q));
+}
 
 static inline unsigned long QuantQualToBitRate(float quantqual)
 {
