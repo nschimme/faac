@@ -110,14 +110,19 @@ void free_encode_options(encode_options_t *opts);
 
 void init_encode_options(encode_options_t *opts);
 
-/* Parse a quality-or-bitrate text field (as typed into the CLI's -q/-b or
-   the GUI's rate edit box) into opts->quant_quality/opts->bit_rate,
-   falling back to DEFAULT_QUANT_QUALITY/DEFAULT_ABR_KBPS on invalid/empty
-   input rather than silently producing 0. is_bitrate_mode selects which
-   field is being set and whether the value is in kbps (bitrate) or a raw
-   quality percentage. */
+/* Translate a target bitrate (in kbps) to FAAC's internal quantqual */
+float TargetKbpsToQuantQual(unsigned int target_kbps);
+
+/* Translate a user-friendly quality score (0 to 100 scale) to FAAC's internal quantqual */
+float UserQualityToQuantQual(unsigned int user_q);
+
+/* Parse a quality-or-bitrate text field into opts->quant_quality/opts->bit_rate.
+   Supports presets ("voice", "standard", "extreme", "audiophile"), clean 0-100 quality,
+   or legacy raw quantqual values. */
 void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
                                encode_options_t *opts);
+
+bool parse_preset_alias(const char *preset_name, encode_options_t *opts);
 
 #define ENCODE_SUCCESS   0
 #define ENCODE_ERROR     1

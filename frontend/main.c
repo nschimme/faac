@@ -84,6 +84,7 @@ enum flags
     OPT_PNS,
     OBJTYPE_FLAG,
     CAP_RATE_FLAG,
+    OPT_PRESET,
     OPT_TNS_ENABLE,
     OPT_TNS_DISABLE,
     OPT_OVERWRITE,
@@ -104,9 +105,12 @@ static help_t help_qual[] = {
     {"-q <quality>\tSet encoding quality.\n",
     "\t\tSet default variable bitrate (VBR) quantizer quality in percent.\n"
     "\t\tmax. 5000, min. 10.\n"
-    "\t\tdefault: 100, averages at approx. 120 kbps VBR for a normal\n"
+    "\t\tdefault: 100, averages at approx. 128 kbps VBR for a normal\n"
     "\t\tstereo input file with 16 bit and 44.1 kHz sample rate\n"
     },
+    {"--preset <name>\tUse quality preset alias.\n",
+    "\t\tPresets: voice (~32 kbps), standard (~128 kbps),\n"
+    "\t\textreme (~192 kbps), audiophile (~256 kbps)\n"},
     {"-b <bitrate>\tSet average bitrate to x kbps. (ABR)\n",
     "\t\tSet average bitrate (ABR) to approximately <bitrate> kbps.\n"
     "\t\tmax. ~500 (stereo)\n"},
@@ -568,6 +572,7 @@ int main(int argc, char *argv[])
             {"lang", 1, 0, LANG_FLAG},
             {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
+            {"preset", 1, 0, OPT_PRESET},
             {0, 0, 0, 0}
         };
 
@@ -609,6 +614,10 @@ int main(int argc, char *argv[])
             break;
         case 'q':
             parse_quality_or_bitrate(optarg, false, &opts);
+            break;
+        case OPT_PRESET:
+            if (!parse_preset_alias(optarg, &opts))
+                dieMessage = "Unrecognised preset alias (use voice, standard, extreme, or audiophile)!\n";
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)

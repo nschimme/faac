@@ -116,10 +116,73 @@ void free_encode_options(encode_options_t *opts)
     opts->custom_tag_cap = 0;
 }
 
+#include <math.h>
+
+float TargetKbpsToQuantQual(unsigned int target_kbps)
+{
+    float bps = (float)target_kbps * 1000.0f;
+    if (bps <= 10000.0f)
+        return 10.0f;
+
+    if (bps <= 128000.0f) {
+        /* Exact mathematical inverse of VbrQualityToTargetBitRate:
+         * bps = 10000.0f * powf(12.8f, (q - 10.0f) / 90.0f)
+         * (q - 10.0f) / 90.0f = logf(bps / 10000.0f) / logf(12.8f)
+         * q = 10.0f + 90.0f * logf(bps / 10000.0f) / logf(12.8f)
+         */
+        float q = 10.0f + 90.0f * (logf(bps / 10000.0f) / logf(12.8f));
+        return (q < 10.0f) ? 10.0f : ((q > 100.0f) ? 100.0f : q);
+    } else {
+        /* Inverse for q > 100: bps = q * 1280.0f -> q = bps / 1280.0f */
+        return bps / 1280.0f;
+    }
+}
+
+float UserQualityToQuantQual(unsigned int user_q)
+{
+    if (user_q > 100)
+        user_q = 100;
+
+    /* Maps user 0-100 scale to target bitrates 10 kbps -> 256 kbps */
+    unsigned int target_kbps = 10 + (unsigned int)(user_q * (256 - 10) / 100);
+    return TargetKbpsToQuantQual(target_kbps);
+}
+
+bool parse_preset_alias(const char *preset_name, encode_options_t *opts)
+{
+    if (!preset_name || !opts)
+        return false;
+
+    if (!strcmp(preset_name, "voice")) {
+        opts->quant_quality = (uint16_t)TargetKbpsToQuantQual(32); /* q ~51 -> 32 kbps */
+        opts->bit_rate = 0;
+        return true;
+    } else if (!strcmp(preset_name, "standard")) {
+        opts->quant_quality = (uint16_t)TargetKbpsToQuantQual(128); /* q 100 -> 128 kbps */
+        opts->bit_rate = 0;
+        return true;
+    } else if (!strcmp(preset_name, "extreme")) {
+        opts->quant_quality = (uint16_t)TargetKbpsToQuantQual(192); /* q 150 -> 192 kbps */
+        opts->bit_rate = 0;
+        return true;
+    } else if (!strcmp(preset_name, "audiophile")) {
+        opts->quant_quality = (uint16_t)TargetKbpsToQuantQual(256); /* q 200 -> 256 kbps */
+        opts->bit_rate = 0;
+        return true;
+    }
+    return false;
+}
+
 void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
                                encode_options_t *opts)
 {
-    int val = text ? atoi(text) : 0;
+    if (!text || !opts)
+        return;
+
+    if (parse_preset_alias(text, opts))
+        return;
+
+    int val = atoi(text);
 
     if (is_bitrate_mode)
     {
