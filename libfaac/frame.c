@@ -811,14 +811,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++)
         ResetCoderSections(&coderInfo[channel]);
 
-    unsigned long effectiveBitRate = hEncoder->config.bitRate;
-    if (effectiveBitRate == 0) {
-        effectiveBitRate = QuantQualToBitRate(hEncoder->config.quantqual) / hEncoder->numChannels;
-    }
-
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
-              effectiveBitRate, hEncoder->config.bandWidth);
+              hEncoder->config.bandWidth);
 
     /* AACstereo has already consumed freqBuff in place and BlocQuant
      * accumulates into sf[] while reading book[], so a retry can re-run
