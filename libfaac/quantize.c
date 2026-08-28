@@ -389,40 +389,44 @@ static void window_band_energy(const CoderInfo * __restrict ci, const float * __
     }
 }
 
-static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT],
-                                         int maxsfb)
+static void group_windows_from_energies(CoderInfo *ci,
+                                        float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT],
+                                        int maxsfb)
 {
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
     float run_min[NSFB_SHORT], run_max[NSFB_SHORT];
-    int win, group_start = 0, sfb;
+    int group_start = 0;
 
     ci->groups.n = 0;
 
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        const float *band_e = band_e_win[win];
+        const float * restrict band_e = band_e_win[win];
         int onset_votes = 0;
 
-        if (win != group_start)
+        if (win == group_start)
         {
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            {
-                if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
-                if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
-                if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
-            }
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = band_e[sfb];
         }
-
-        if (win == group_start || onset_votes > onset_quorum)
+        else
         {
-            if (win != group_start)
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                run_min[sfb] = fminf(run_min[sfb], band_e[sfb]);
+                run_max[sfb] = fmaxf(run_max[sfb], band_e[sfb]);
+                if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb])
+                    onset_votes++;
+            }
+
+            if (onset_votes > onset_quorum)
             {
                 ci->groups.len[ci->groups.n++] = win - group_start;
                 group_start = win;
+                for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                    run_min[sfb] = run_max[sfb] = band_e[sfb];
             }
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = band_e[sfb];
         }
     }
     ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
@@ -441,32 +445,30 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
     int clear_len = coderInfo_l->sfb_offset[maxsfb] - cutoff;
+    int do_clear = (clear_len > 0);
 
     float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    float *xrs[2] = {xr_l, xr_r};
-    CoderInfo *cis[2] = {coderInfo_l, coderInfo_r};
-    int num_ch = xr_r ? 2 : 1;
 
     for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        for (int ch = 0; ch < num_ch; ch++)
+        float *w_l = xr_l + win * BLOCK_LEN_SHORT;
+
+        if (do_clear)
+            memset(w_l + cutoff, 0, (size_t)clear_len * sizeof(float));
+
+        window_band_energy(coderInfo_l, w_l, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
+
+        if (xr_r)
         {
-            float *w = xrs[ch] + win * BLOCK_LEN_SHORT;
+            float *w_r = xr_r + win * BLOCK_LEN_SHORT;
+            if (do_clear)
+                memset(w_r + cutoff, 0, (size_t)clear_len * sizeof(float));
 
-            if (clear_len > 0)
-                memset(w + cutoff, 0, (size_t)clear_len * sizeof(float));
+            float band_er[NSFB_SHORT];
+            window_band_energy(coderInfo_r, w_r, GROUP_MIN_SFB, maxsfb, band_er);
 
-            if (ch == 0)
-            {
-                window_band_energy(cis[ch], w, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
-            }
-            else
-            {
-                float band_er[NSFB_SHORT];
-                window_band_energy(cis[ch], w, GROUP_MIN_SFB, maxsfb, band_er);
-                for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                    band_e_win[win][sfb] += band_er[sfb];
-            }
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                band_e_win[win][sfb] += band_er[sfb];
         }
     }
 
