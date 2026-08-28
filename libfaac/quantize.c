@@ -381,21 +381,11 @@ static void window_band_energy(const CoderInfo * __restrict ci, const float * __
     int sfb;
     for (sfb = from_sfb; sfb < to_sfb; sfb++)
     {
-        int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
-        float e0 = 0.0f, e1 = 0.0f;
-        int k = lo;
-        for (; k < hi - 1; k += 2)
-        {
-            float v0 = w[k], v1 = w[k + 1];
-            e0 += v0 * v0;
-            e1 += v1 * v1;
-        }
-        if (k < hi)
-        {
-            float v = w[k];
-            e0 += v * v;
-        }
-        e_out[sfb] = e0 + e1;
+        float e = 0.0f;
+        int k;
+        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
+            e += w[k] * w[k];
+        e_out[sfb] = e;
     }
 }
 

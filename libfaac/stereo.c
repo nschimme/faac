@@ -44,40 +44,35 @@
  * quantization error creates audible pre-echo artifacts. */
 #define MS_SHORT_BW_CEILING      16000
 
-/* Accumulate channel energies and cross-correlation for a scale factor band.
- * Using three independent accumulators maximizes instruction-level parallelism
- * by avoiding read-after-write dependencies on the FPU pipeline. */
+/* Calculate spectral buffer offset for subblock window 'win' (128 samples per short window: win << 7) */
+static inline int short_block_window_offset(int win, int start)
+{
+    return (win << 7) + start;
+}
+
+/* Accumulate channel energies and cross-correlation for a scale factor band. */
 static inline void calculate_energies(const float * restrict sl0, const float * restrict sr0,
                                int start, int len, int wstart, int wend,
                                float * restrict el_out, float * restrict er_out, float * restrict elr_out)
 {
-    float el0 = 0.0f, el1 = 0.0f;
-    float er0 = 0.0f, er1 = 0.0f;
-    float elr0 = 0.0f, elr1 = 0.0f;
+    float el = 0.0f, er = 0.0f, elr = 0.0f;
     int win, i;
 
     for (win = wstart; win < wend; win++) {
-        int offset = (win << 7) + start;
+        int offset = short_block_window_offset(win, start);
         const float * restrict sl = sl0 + offset;
         const float * restrict sr = sr0 + offset;
-        i = 0;
-        for (; i < len - 1; i += 2) {
-            float l0 = sl[i],   r0 = sr[i];
-            float l1 = sl[i+1], r1 = sr[i+1];
-            el0  += l0 * l0;  el1  += l1 * l1;
-            er0  += r0 * r0;  er1  += r1 * r1;
-            elr0 += l0 * r0;  elr1 += l1 * r1;
-        }
-        if (i < len) {
-            float l = sl[i], r = sr[i];
-            el0  += l * l;
-            er0  += r * r;
-            elr0 += l * r;
+        for (i = 0; i < len; i++) {
+            float l = sl[i];
+            float r = sr[i];
+            el  += l * l;
+            er  += r * r;
+            elr += l * r;
         }
     }
-    *el_out  = el0  + el1;
-    *er_out  = er0  + er1;
-    *elr_out = elr0 + elr1;
+    *el_out  = el;
+    *er_out  = er;
+    *elr_out = elr;
 }
 
 /* Fast memory-clearing utility for suppressed channels. */
@@ -86,7 +81,7 @@ static inline void apply_mute(float * restrict s0, int start, int len, int wstar
     int win;
     size_t bytes = (size_t)len * sizeof(float);
     for (win = wstart; win < wend; win++) {
-        float * restrict s = s0 + (win << 7) + start;
+        float * restrict s = s0 + short_block_window_offset(win, start);
         memset(s, 0, bytes);
     }
 }
@@ -102,7 +97,7 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
 
     if (in_phase) {
         for (win = wstart; win < wend; win++) {
-            int offset = (win << 7) + start;
+            int offset = short_block_window_offset(win, start);
             float * restrict sl = sl0 + offset;
             float * restrict sr = sr0 + offset;
             for (i = 0; i < len; i++)
@@ -111,7 +106,7 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
         }
     } else {
         for (win = wstart; win < wend; win++) {
-            int offset = (win << 7) + start;
+            int offset = short_block_window_offset(win, start);
             float * restrict sl = sl0 + offset;
             float * restrict sr = sr0 + offset;
             for (i = 0; i < len; i++)
