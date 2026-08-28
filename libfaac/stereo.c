@@ -262,9 +262,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
     float inv_isthr = 1.0f / (isthr * isthr);
     float thrside_sq = thrside * thrside;
 
-    /* Precompute Intensity Stereo crossover target offsets for long and short blocks.
-     * Crossover frequency scales proportionally with coded bandwidth (0.35 * bandWidth,
-     * bounded between 3500 Hz and 7000 Hz) and is invariant across CPE elements. */
+    /* IS crossover frequency scales with coded bandwidth (0.35 * bandWidth, 3500-7000 Hz). */
     int cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
     int max_freq = min(IS_START_FREQ_MAX, cap);
     int ifreq = (max_freq < IS_START_FREQ_MIN) ? max_freq : clamp_int((int)((float)bandWidth * IS_BW_RATIO), IS_START_FREQ_MIN, max_freq);
@@ -293,10 +291,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
-        /* When core bandwidth <= 16 kHz (<=48 kbps/ch), disable M/S joint stereo coding
-         * on short windows in JOINT_MIXED mode to prevent inter-channel pre-echo and quantization noise.
-         * (Note: Intensity Stereo remains enabled for HE-AAC, as benchmark sweeps prove disabling
-         * IS in the HE core causes severe bit starvation and MOS drops). */
+        /* Restrict M/S joint stereo on short windows when bandwidth <= 16 kHz to prevent pre-echo. */
         int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && bandWidth <= MS_SHORT_BW_CEILING && mode == JOINT_MIXED) ? JOINT_IS : mode;
 
         elem->common_window  = true;
