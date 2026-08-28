@@ -21,19 +21,21 @@
 #include "util.h"
 #include "faac_internal.h"
 
-/* IS crossover scales with core bandwidth (0.35*bw, 3.5-7kHz) to save low-band phase bits at low rates. */
+/* Intensity stereo crossover scales with core bandwidth (3.5-7 kHz) to save low-band phase bits at low rates. */
 #define IS_BW_RATIO              0.35f
 #define IS_START_FREQ_MIN        3500
 #define IS_START_FREQ_MAX        7000
+/* Upper bound on crossover (0.35*Fs) so IS stays well inside coded spectrum. */
 #define IS_FREQ_CAP_NUM  7
 #define IS_FREQ_CAP_DEN  20
-/* Pan limit beyond which the quieter channel is dropped to HCB_ZERO. */
+/* Pan limit in SF_STEP_ENRG steps beyond which quieter channel is dropped to HCB_ZERO. */
 #define IS_PAN_LIMIT     30
 
-/* Core BW ceiling (16kHz / <=48kbps/ch) below which short-block M/S is disabled to prevent pre-echo. */
+/* Core bandwidth ceiling (16 kHz / <=48 kbps/ch) below which short-block M/S is disabled to prevent pre-echo. */
 #define MS_SHORT_BW_CEILING      16000
 
-/* Accumulate channel energies and cross-correlation for a scale factor band. */
+/* Accumulate channel energies and cross-correlation for a scale factor band.
+ * Independent accumulators maximize instruction-level parallelism on FPU. */
 static inline void calculate_energies(const float * restrict sl0, const float * restrict sr0,
                                int start, int len, int wstart, int wend,
                                float * restrict el_out, float * restrict er_out, float * restrict elr_out)
