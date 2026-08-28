@@ -375,20 +375,6 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
-                                int from_sfb, int to_sfb, float * __restrict e_out)
-{
-    int sfb;
-    for (sfb = from_sfb; sfb < to_sfb; sfb++)
-    {
-        float e = 0.0f;
-        int k;
-        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
-            e += w[k] * w[k];
-        e_out[sfb] = e;
-    }
-}
-
 static void group_windows_from_energies(CoderInfo *ci,
                                         float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT],
                                         int maxsfb)
@@ -449,27 +435,48 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
     int do_clear = (clear_len > 0);
 
     float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
+    const int * restrict sfb_offset = coderInfo_l->sfb_offset;
 
-    for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
+    if (xr_r)
     {
-        float *w_l = xr_l + win * BLOCK_LEN_SHORT;
-
-        if (do_clear)
-            memset(w_l + cutoff, 0, (size_t)clear_len * sizeof(float));
-
-        window_band_energy(coderInfo_l, w_l, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
-
-        if (xr_r)
+        for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
         {
-            float *w_r = xr_r + win * BLOCK_LEN_SHORT;
-            if (do_clear)
-                memset(w_r + cutoff, 0, (size_t)clear_len * sizeof(float));
+            float * restrict wl = xr_l + win * BLOCK_LEN_SHORT;
+            float * restrict wr = xr_r + win * BLOCK_LEN_SHORT;
 
-            float band_er[NSFB_SHORT];
-            window_band_energy(coderInfo_r, w_r, GROUP_MIN_SFB, maxsfb, band_er);
+            if (do_clear)
+            {
+                memset(wl + cutoff, 0, (size_t)clear_len * sizeof(float));
+                memset(wr + cutoff, 0, (size_t)clear_len * sizeof(float));
+            }
 
             for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                band_e_win[win][sfb] += band_er[sfb];
+            {
+                int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+                float e = 0.0f;
+                for (int k = lo; k < hi; k++)
+                    e += wl[k] * wl[k] + wr[k] * wr[k];
+                band_e_win[win][sfb] = e;
+            }
+        }
+    }
+    else
+    {
+        for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
+        {
+            float * restrict wl = xr_l + win * BLOCK_LEN_SHORT;
+
+            if (do_clear)
+                memset(wl + cutoff, 0, (size_t)clear_len * sizeof(float));
+
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            {
+                int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+                float e = 0.0f;
+                for (int k = lo; k < hi; k++)
+                    e += wl[k] * wl[k];
+                band_e_win[win][sfb] = e;
+            }
         }
     }
 
