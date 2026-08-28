@@ -389,34 +389,19 @@ static void window_band_energy(const CoderInfo * __restrict ci, const float * __
     }
 }
 
-void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT],
+                                         int maxsfb)
 {
-    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
-    {
-        coderInfo->groups.n = 1;
-        coderInfo->groups.len[0] = 1;
-        return;
-    }
-
-    int maxsfb = cfg->max_cbs;
-    int cutoff = cfg->max_l / 8;
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
+    float run_min[NSFB_SHORT], run_max[NSFB_SHORT];
+    int win, group_start = 0, sfb;
 
-    float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
-    int win, group_start = 0;
-
-    coderInfo->groups.n = 0;
+    ci->groups.n = 0;
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        float *w = xr + win * BLOCK_LEN_SHORT;
-        int k, sfb;
-
-        for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
-            w[k] = 0.0f;
-
-        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
+        const float *band_e = band_e_win[win];
 
         if (win == group_start)
         {
@@ -435,13 +420,40 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 
         if (onset_votes > onset_quorum)
         {
-            coderInfo->groups.len[coderInfo->groups.n++] = win - group_start;
+            ci->groups.len[ci->groups.n++] = win - group_start;
             group_start = win;
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
                 run_min[sfb] = run_max[sfb] = band_e[sfb];
         }
     }
-    coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+    ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+}
+
+void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+{
+    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
+    {
+        coderInfo->groups.n = 1;
+        coderInfo->groups.len[0] = 1;
+        return;
+    }
+
+    int maxsfb = cfg->max_cbs;
+    int cutoff = cfg->max_l / 8;
+    float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
+    int win;
+
+    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    {
+        float *w = xr + win * BLOCK_LEN_SHORT;
+        int clear_len = coderInfo->sfb_offset[maxsfb] - cutoff;
+        if (clear_len > 0)
+            memset(w + cutoff, 0, (size_t)clear_len * sizeof(float));
+
+        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
+    }
+
+    group_windows_from_energies(coderInfo, band_e_win, maxsfb);
 }
 
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
@@ -455,20 +467,14 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
 
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
-    int active_bands = maxsfb - GROUP_MIN_SFB;
-    int onset_quorum = (active_bands * 3) >> 2;
-
-    float band_el[NSFB_SHORT], band_er[NSFB_SHORT], band_e[NSFB_SHORT];
-    float run_min[NSFB_SHORT], run_max[NSFB_SHORT];
-    int win, group_start = 0;
-
-    coderInfo_l->groups.n = 0;
+    float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
+    float band_el[NSFB_SHORT], band_er[NSFB_SHORT];
+    int win, sfb;
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
         float *wl = xr_l + win * BLOCK_LEN_SHORT;
         float *wr = xr_r + win * BLOCK_LEN_SHORT;
-        int sfb;
 
         int clear_len = coderInfo_l->sfb_offset[maxsfb] - cutoff;
         if (clear_len > 0) {
@@ -480,34 +486,10 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
         window_band_energy(coderInfo_r, wr, GROUP_MIN_SFB, maxsfb, band_er);
 
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            band_e[sfb] = band_el[sfb] + band_er[sfb];
-
-        if (win == group_start)
-        {
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = band_e[sfb];
-            continue;
-        }
-
-        int onset_votes = 0;
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-        {
-            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
-            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
-            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
-        }
-
-        if (onset_votes > onset_quorum)
-        {
-            int glen = win - group_start;
-            coderInfo_l->groups.len[coderInfo_l->groups.n++] = glen;
-            group_start = win;
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = band_e[sfb];
-        }
+            band_e_win[win][sfb] = band_el[sfb] + band_er[sfb];
     }
-    int glen = MAX_SHORT_WINDOWS - group_start;
-    coderInfo_l->groups.len[coderInfo_l->groups.n++] = glen;
+
+    group_windows_from_energies(coderInfo_l, band_e_win, maxsfb);
 
     coderInfo_r->groups.n = coderInfo_l->groups.n;
     for (int g = 0; g < coderInfo_l->groups.n; g++) {
