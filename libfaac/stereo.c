@@ -267,7 +267,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
      * bounded between 3500 Hz and 7000 Hz) and is invariant across CPE elements. */
     int cap = (sampleRate * IS_FREQ_CAP_NUM) / IS_FREQ_CAP_DEN;
     int max_freq = min(IS_START_FREQ_MAX, cap);
-    int ifreq = clamp_int((int)((float)bandWidth * IS_BW_RATIO), IS_START_FREQ_MIN, max_freq);
+    int ifreq = (max_freq < IS_START_FREQ_MIN) ? max_freq : clamp_int((int)((float)bandWidth * IS_BW_RATIO), IS_START_FREQ_MIN, max_freq);
 
     int target_offset_long  = (ifreq * (2 * BLOCK_LEN_LONG)  + sampleRate - 1) / sampleRate;
     int target_offset_short = (ifreq * (2 * BLOCK_LEN_SHORT) + sampleRate - 1) / sampleRate;
