@@ -45,6 +45,8 @@ void init_encode_options(encode_options_t *opts)
         return;
 
     memset(opts, 0, sizeof(*opts));
+    opts->container_mp4 = true;
+    opts->stream_format = FAAC_STREAM_RAW;
     opts->mpeg_version = FAAC_MPEG4;
     opts->object_type = FAAC_OBJ_AUTO;
     opts->joint_mode = FAAC_JOINT_MIXED;
