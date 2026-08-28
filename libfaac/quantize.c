@@ -429,35 +429,16 @@ static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHOR
     ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
 
-void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
-    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
+    if (coderInfo_l->block_type != ONLY_SHORT_WINDOW)
     {
-        coderInfo->groups.n = 1;
-        coderInfo->groups.len[0] = 1;
+        coderInfo_l->groups.n = 1;
+        coderInfo_l->groups.len[0] = 1;
+        if (coderInfo_r) coderInfo_r->groups = coderInfo_l->groups;
         return;
     }
 
-    int maxsfb = cfg->max_cbs;
-    int cutoff = cfg->max_l / 8;
-    float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    int win;
-
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
-    {
-        float *w = xr + win * BLOCK_LEN_SHORT;
-        int clear_len = coderInfo->sfb_offset[maxsfb] - cutoff;
-        if (clear_len > 0)
-            memset(w + cutoff, 0, (size_t)clear_len * sizeof(float));
-
-        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
-    }
-
-    group_windows_from_energies(coderInfo, band_e_win, maxsfb);
-}
-
-void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
-{
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
     float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
@@ -467,22 +448,35 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
         float *wl = xr_l + win * BLOCK_LEN_SHORT;
-        float *wr = xr_r + win * BLOCK_LEN_SHORT;
-
         int clear_len = coderInfo_l->sfb_offset[maxsfb] - cutoff;
-        if (clear_len > 0) {
+        if (clear_len > 0)
             memset(wl + cutoff, 0, (size_t)clear_len * sizeof(float));
-            memset(wr + cutoff, 0, (size_t)clear_len * sizeof(float));
-        }
 
         window_band_energy(coderInfo_l, wl, GROUP_MIN_SFB, maxsfb, band_el);
-        window_band_energy(coderInfo_r, wr, GROUP_MIN_SFB, maxsfb, band_er);
 
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            band_e_win[win][sfb] = band_el[sfb] + band_er[sfb];
+        if (xr_r)
+        {
+            float *wr = xr_r + win * BLOCK_LEN_SHORT;
+            if (clear_len > 0)
+                memset(wr + cutoff, 0, (size_t)clear_len * sizeof(float));
+            window_band_energy(coderInfo_r, wr, GROUP_MIN_SFB, maxsfb, band_er);
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                band_e_win[win][sfb] = band_el[sfb] + band_er[sfb];
+        }
+        else
+        {
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                band_e_win[win][sfb] = band_el[sfb];
+        }
     }
 
     group_windows_from_energies(coderInfo_l, band_e_win, maxsfb);
 
-    coderInfo_r->groups = coderInfo_l->groups;
+    if (coderInfo_r)
+        coderInfo_r->groups = coderInfo_l->groups;
+}
+
+void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+{
+    BlocGroupCPE(xr, NULL, coderInfo, NULL, cfg);
 }
