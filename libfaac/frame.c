@@ -779,21 +779,20 @@ int faacEncEncode(faacEncHandle hpEncoder,
     for (int e = 0; e < hEncoder->numElements; e++) {
         AACElement *elem = &hEncoder->elements[e];
         if (elem->type == ID_CPE) {
-            int lch = elem->channels[0];
-            int rch = elem->channels[1];
+            int lch = elem->channels[0], rch = elem->channels[1];
             if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW && coderInfo[rch].block_type == ONLY_SHORT_WINDOW) {
                 BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
                              &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
-            } else {
-                if (coderInfo[lch].block_type == ONLY_SHORT_WINDOW)
-                    BlocGroup(hEncoder->freqBuff[lch], &coderInfo[lch], &hEncoder->aacquantCfg);
-                if (coderInfo[rch].block_type == ONLY_SHORT_WINDOW)
-                    BlocGroup(hEncoder->freqBuff[rch], &coderInfo[rch], &hEncoder->aacquantCfg);
+                continue;
             }
-        } else {
-            int ch = elem->channels[0];
-            if (coderInfo[ch].block_type == ONLY_SHORT_WINDOW)
-                BlocGroup(hEncoder->freqBuff[ch], &coderInfo[ch], &hEncoder->aacquantCfg);
+        }
+        int ch = elem->channels[0];
+        if (coderInfo[ch].block_type == ONLY_SHORT_WINDOW)
+            BlocGroup(hEncoder->freqBuff[ch], &coderInfo[ch], &hEncoder->aacquantCfg);
+        if (elem->type == ID_CPE) {
+            int rch = elem->channels[1];
+            if (coderInfo[rch].block_type == ONLY_SHORT_WINDOW)
+                BlocGroup(hEncoder->freqBuff[rch], &coderInfo[rch], &hEncoder->aacquantCfg);
         }
     }
 
