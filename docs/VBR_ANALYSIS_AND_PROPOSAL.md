@@ -63,15 +63,18 @@ During `faacEncEncode()`:
 ## Step 3: Decoupling Strategy Proposal
 
 ### 1. User VBR Quality Scale & Continuous Target Bitrate Curve
-Maintain user-facing quality range `q` in `[10, 100]` matching `MINQUAL` to `DEFQUAL`. Map `q` to an effective target whole-stream bitrate $B_{\text{target}}(q)$ via a non-linear curve:
+To support low-bitrate HE-AAC down to 10 kbps while preserving linear behavior for audiophiles using high quality values ($q > 100$), $B_{\text{target}}(q)$ uses a piecewise formulation:
 
-$$B_{\text{target}}(q) = B_{\text{min}} \cdot \left( \frac{B_{\text{max}}}{B_{\text{min}}} \right)^{\frac{q - 10}{90}}$$
+For $q \le 100$:
+$$B_{\text{target}}(q) = 10000 \cdot (12.8)^{\frac{q - 10}{90}}$$
+
+For $q > 100$:
+$$B_{\text{target}}(q) = q \cdot 1280$$
 
 Where:
-- $B_{\text{min}} = 16000$ bps (16 kbps stereo) at $q = 10$.
-- $B_{\text{mid}} = 64000$ bps (64 kbps stereo) at $q = 50$.
-- $B_{\text{crossover}} = 96000$ bps (96 kbps stereo) at $q = 75$.
-- $B_{\text{max}} = 192000$ bps (192 kbps stereo) at $q = 100$.
+- $B(10) = 10000$ bps (10 kbps stream target at $q = 10$).
+- $B(100) = 128000$ bps (128 kbps stream target at $q = 100$).
+- $q > 100$: linear fallback targeting 256 kbps, 320 kbps, etc.
 
 ### 2. AUTO Profile Crossover Trigger
 Decouple `AUTO` profile switching from hardcoded `q <= 75`. Instead, derive effective per-channel bitrate:
@@ -91,3 +94,44 @@ In `faacEncApplyConfig()`:
 
 ### 4. Backwards Compatibility
 All external callers passing `faac_params` or `faacEncConfiguration` will retain full C ABI/API compatibility. All non-linear mapping and parameter translation will take place internally inside `libfaac/frame.c`.
+
+---
+
+## Step 4: Empirical VBR Calibration Results
+
+Following the decoupling implementation in `libfaac`, running `calibrate_vbr_q.py` across the full benchmark matrix yields the following scenario-specific VBR quality (`vbr_q`) mappings:
+
+| Scenario | Target (kbps) | Chosen `q` | Actual (kbps) | Error % | Profile |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| `16k_mono_16k` | 16 | 164 | 16.0 | -0.1% | LC |
+| `16k_mono_40k` | 40 | 856 | 40.0 | -0.0% | LC |
+| `48k_stereo_24k` | 24 | 16 | 23.9 | -0.5% | HE-AAC |
+| `48k_stereo_32k` | 32 | 36 | 32.1 | +0.2% | HE-AAC |
+| `48k_stereo_40k` | 40 | 89 | 39.4 | -1.6% | HE-AAC |
+| `48k_stereo_48k` | 48 | 89 | 39.4 | -18.0% | HE-AAC |
+| `48k_stereo_56k` | 56 | 90 | 64.6 | +15.3% | LC |
+| `48k_stereo_64k` | 64 | 90 | 64.6 | +0.9% | LC |
+| `48k_stereo_96k` | 96 | 143 | 95.8 | -0.2% | LC |
+| `48k_stereo_128k` | 128 | 220 | 128.0 | -0.2% | LC |
+| `48k_stereo_160k` | 160 | 311 | 160.0 | -0.0% | LC |
+| `48k_stereo_192k` | 192 | 389 | 192.1 | +0.0% | LC |
+| `48k_stereo_256k` | 256 | 720 | 256.0 | -0.0% | LC |
+
+```python
+# Calibrated vbr_q values for faac-benchmark config.py:
+vbr_q = {
+    "16k_mono_16k": 164,
+    "16k_mono_40k": 856,
+    "48k_stereo_24k": 16,
+    "48k_stereo_32k": 36,
+    "48k_stereo_40k": 89,
+    "48k_stereo_48k": 89,
+    "48k_stereo_56k": 90,
+    "48k_stereo_64k": 90,
+    "48k_stereo_96k": 143,
+    "48k_stereo_128k": 220,
+    "48k_stereo_160k": 311,
+    "48k_stereo_192k": 389,
+    "48k_stereo_256k": 720,
+}
+```

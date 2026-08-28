@@ -57,23 +57,21 @@ static inline int clamp_int(int x, int lo, int hi)
 
 #include <math.h>
 
-/* VBR non-linear target bitrate curve parameters */
-#define VBR_TARGET_BITRATE_MIN  16000.0f  /* 16 kbps stream target at q = 10 */
-#define VBR_TARGET_BITRATE_MAX 192000.0f  /* 192 kbps stream target at q = 100 */
-
 /**
- * Maps user VBR quality parameter q (10 - 100) to continuous stream target bitrate (bps).
- * Formula: B_target(q) = B_min * (B_max / B_min) ^ ((q - 10) / 90)
+ * Maps user VBR quality parameter q (>= 10) to continuous stream target bitrate (bps).
+ * Piecewise function:
+ * - q <= 100: Exponential curve mapping q=10 (10 kbps) to q=100 (128 kbps).
+ * - q > 100: Legacy linear scaling (1280.0f bps per quality point) for audiophile settings.
  */
 static inline unsigned long VbrQualityToTargetBitRate(float quantqual)
 {
     float q = quantqual;
     if (q < 10.0f) q = 10.0f;
-    if (q > 100.0f) q = 100.0f;
 
-    float norm_q = (q - 10.0f) / 90.0f;
-    float ratio = VBR_TARGET_BITRATE_MAX / VBR_TARGET_BITRATE_MIN;
-    return (unsigned long)(VBR_TARGET_BITRATE_MIN * powf(ratio, norm_q));
+    if (q <= 100.0f) {
+        return (unsigned long)(10000.0f * powf(12.8f, (q - 10.0f) / 90.0f));
+    }
+    return (unsigned long)(q * 1280.0f);
 }
 
 int GetSRIndex(unsigned int sampleRate);
