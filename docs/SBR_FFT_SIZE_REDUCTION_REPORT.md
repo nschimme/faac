@@ -4,7 +4,9 @@
 
 The `sbr-fft-radix4-dedup` branch introduced a loop-fused Radix-4 DIF FFT engine and dedicated 64-point unrolled `fft64()` routine for SBR QMF analysis. While this delivers substantial speedups (up to **+34.0%** throughput on HE-AAC scenarios), it added **+1,752 bytes** (+2.19%) to `libfaac.so` binary size when GCC cloned `MDCT_run` across constant block sizes.
 
-By explicitly annotating `MDCT_run` with GCC's non-cloning attribute (`__attribute__((noinline, noclone))`), we prevent interprocedural constant propagation from duplicating the transform body across block sizes. This eliminates 100% of the candidate footprint bloat, resulting in a net **-140 byte reduction** in `.text` + `.rodata` size compared to `master`, while retaining **100% of the SBR QMF throughput gain** (+27.5% to +34.0% speedup) and maintaining **100% bit-identical perceptual MOS quality** across all 52 benchmark scenarios.
+By annotating `MDCT_run` with GCC's non-cloning attribute (`MDCT_ONE_BODY` / `__attribute__((noinline, noclone))`), we prevent interprocedural constant propagation from duplicating the transform body across block sizes. This eliminates 100% of the candidate footprint bloat, resulting in a net **-140 byte reduction** in `.text` + `.rodata` size compared to `master`, while retaining **100% of the SBR QMF throughput gain** (+27.5% to +34.0% speedup) and maintaining **100% bit-identical perceptual MOS quality** across all 52 benchmark scenarios.
+
+`FilterBankInit()` and `FilterBankEnd()` remain clean standard C functions without compiler attributes, keeping startup code standard and portable.
 
 ---
 
@@ -62,7 +64,7 @@ Benchmark signal encoding times over standard test signals:
 
 1. **Non-Cloning Attribute (`MDCT_ONE_BODY`)**:
    - GCC's interprocedural constant propagation (IPA-CP) automatically cloned `MDCT_run` whenever it saw constant block size parameters (`logm=6` vs `logm=9`) at call sites, adding ~1.8 KB of duplicate code.
-   - Annotating `MDCT_run` with `__attribute__((noinline, noclone))` forces GCC to emit exactly one unified function body for both long and short blocks.
+   - Annotating `MDCT_run` with `MDCT_ONE_BODY` (`__attribute__((noinline, noclone))`) forces GCC to emit exactly one unified function body for both long and short blocks.
 2. **Dynamic Table Precomputation**:
    - All twiddle factor tables, bit-reversal lookup arrays, and MDCT pre/post-twiddle factors are dynamically precomputed on the heap during `fft_initialize()`, keeping static `.rodata` overhead at zero bytes.
 
