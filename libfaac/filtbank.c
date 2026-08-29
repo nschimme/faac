@@ -208,9 +208,6 @@ static inline void fused_pretwiddle_stage0(
     }
 }
 
-#if defined(__GNUC__)
-__attribute__((cold, noinline))
-#endif
 void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -241,9 +238,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
-#if defined(__GNUC__)
-__attribute__((cold, noinline))
-#endif
 void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
