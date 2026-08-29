@@ -447,7 +447,11 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, (bool)hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
-	fft_initialize( &hEncoder->fft_tables );
+	if (!fft_initialize( &hEncoder->fft_tables ))
+	{
+		faacEncClose(hEncoder);
+		return NULL;
+	}
 
 	PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
         hEncoder->sampleRate);
