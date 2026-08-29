@@ -208,13 +208,7 @@ static inline void fused_pretwiddle_stage0(
     }
 }
 
-#if defined(__GNUC__) || defined(__clang__)
-#define COLD_FUNC __attribute__((optimize("Os"), cold))
-#else
-#define COLD_FUNC
-#endif
-
-COLD_FUNC void FilterBankInit(faacEncStruct* hEncoder)
+void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
     WindowPair longPair, shortPair;
@@ -244,7 +238,7 @@ COLD_FUNC void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
-COLD_FUNC void FilterBankEnd(faacEncStruct* hEncoder)
+void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
 

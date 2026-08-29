@@ -20,17 +20,11 @@
 #include "fft.h"
 #include "util.h"
 
-#if defined(__GNUC__) || defined(__clang__)
-#define COLD_FUNC __attribute__((optimize("Os"), cold))
-#else
-#define COLD_FUNC
-#endif
-
 /* Radix-4 twiddle factor tables are pre-calculated once in double precision
  * to eliminate cumulative recurrence errors, then stored as single-precision
  * floats to optimize cache-line utilization in wide-vector registers.
  */
-static COLD_FUNC int build_tables_radix4(FFT_Tables *fft_tables, int logm)
+static int build_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
     {
@@ -61,7 +55,7 @@ static COLD_FUNC int build_tables_radix4(FFT_Tables *fft_tables, int logm)
  * back to natural order. This transforms the O(N) random-access swapping pass
  * into an structured lookup, saving memory cycles in the hot path.
  */
-static COLD_FUNC int build_reorder_table(FFT_Tables *fft_tables, int logm)
+static int build_reorder_table(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->reordertbl[logm] == NULL)
     {
@@ -86,7 +80,7 @@ static COLD_FUNC int build_reorder_table(FFT_Tables *fft_tables, int logm)
     return 1;
 }
 
-COLD_FUNC int fft_initialize(FFT_Tables *fft_tables)
+int fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
     fft_tables->costbl = AllocMemory((FFT_MAXLOGM + 1) * sizeof(fft_tables->costbl[0]));
@@ -164,7 +158,7 @@ COLD_FUNC int fft_initialize(FFT_Tables *fft_tables)
     return 1;
 }
 
-COLD_FUNC void fft_terminate(FFT_Tables *fft_tables)
+void fft_terminate(FFT_Tables *fft_tables)
 {
     int i;
 
