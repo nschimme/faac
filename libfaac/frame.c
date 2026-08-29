@@ -1002,6 +1002,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Apply damping to the quality adjustment */
         fix = (fix - 1.0f) * damping + 1.0f;
 
+        /* Slew-rate limiting on quality adjustment (clamp fix to [0.80, 1.20])
+         * prevents outsized single-frame quality spikes on transient onset/offset. */
+        if (fix < 0.80f) fix = 0.80f;
+        if (fix > 1.20f) fix = 1.20f;
+
         hEncoder->aacquantCfg.quality *= fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
