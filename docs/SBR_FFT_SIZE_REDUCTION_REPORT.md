@@ -4,7 +4,7 @@
 
 The `sbr-fft-radix4-dedup` branch introduced a loop-fused Radix-4 DIF FFT engine and dedicated 64-point unrolled `fft64()` routine for SBR QMF analysis. While this delivers substantial speedups (up to **+36.5%** throughput on HE-AAC scenarios), it added **+1,752 bytes** (+2.19%) to `libfaac.so` binary size (+1,216 B `.text`, +620 B `.rodata` alignment/padding).
 
-By systematically analyzing and applying targeted size-reduction levers—specifically cold-path optimization attributes (`__attribute__((optimize("Os"), cold))`) on initialization and teardown functions—we reduced the binary footprint overhead by **88.6%** (saving **1,552 bytes**). The final optimized candidate increases `libfaac.so` by only **+200 bytes** (+0.25% vs `master`), while retaining **100% of the SBR QMF throughput gain** (+32.1% to +34.1% speedup) and maintaining **100% bit-identical perceptual MOS quality** across all 52 benchmark scenarios.
+By systematically analyzing and applying targeted size-reduction levers—specifically cold-path optimization attributes (`COLD_FUNC` defined as `__attribute__((optimize("Os"), cold))` for GCC/Clang with standard fallback) on initialization and teardown functions—we reduced the binary footprint overhead by **88.6%** (saving **1,552 bytes**). The final optimized candidate increases `libfaac.so` by only **+200 bytes** (+0.25% vs `master`), while retaining **100% of the SBR QMF throughput gain** (+32.1% to +34.1% speedup) and maintaining **100% bit-identical perceptual MOS quality** across all 52 benchmark scenarios.
 
 ---
 
@@ -73,7 +73,7 @@ Benchmark signal encoding times over standard test signals:
 ### Lever 2: Cold Path Instruction Size Reduction (.text)
 - **Goal:** Isolate startup, teardown, and initialization functions to prioritize code size (`Os`) over speed, while keeping the heavily unrolled `fft64()` routine optimized for speed (`-O3`).
 - **Implementation:**
-  - Applied `__attribute__((optimize("Os"), cold))` to cold initialization and teardown paths:
+  - Applied portably guarded cold-path attributes (`COLD_FUNC`) to initialization and teardown paths:
     - `FilterBankInit()` & `FilterBankEnd()` in `libfaac/filtbank.c`
     - `fft_initialize()`, `fft_terminate()`, `build_tables_radix4()`, and `build_reorder_table()` in `libfaac/fft.c`
 - **Results:**

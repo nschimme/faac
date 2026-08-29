@@ -20,16 +20,16 @@
 #include "fft.h"
 #include "util.h"
 
-/* Radix-4 twiddle factor tables are pre-calculated once in double precision
- * to eliminate cumulative recurrence errors, then stored as single-precision
- * floats to optimize cache-line utilization in wide-vector registers.
- */
 #if defined(__GNUC__) || defined(__clang__)
 #define COLD_FUNC __attribute__((optimize("Os"), cold))
 #else
 #define COLD_FUNC
 #endif
 
+/* Radix-4 twiddle factor tables are pre-calculated once in double precision
+ * to eliminate cumulative recurrence errors, then stored as single-precision
+ * floats to optimize cache-line utilization in wide-vector registers.
+ */
 static COLD_FUNC int build_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
