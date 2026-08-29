@@ -119,8 +119,10 @@ float PsyGetAttack(PsyInfo * psyInfo)
   float strength = 0.0f, total = 0.0f;
   int win;
 
-  if (!psydata)
+  if (!psydata) {
+    psyInfo->attack = 0.0f;
     return 0.0f;
+  }
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
@@ -137,7 +139,8 @@ float PsyGetAttack(PsyInfo * psyInfo)
     }
   }
 
-  return total > 0.0f ? strength : 0.0f;
+  psyInfo->attack = (total > 0.0f) ? strength : 0.0f;
+  return psyInfo->attack;
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
@@ -172,9 +175,9 @@ static void PsyCalcPE(PsyInfo * psyInfo)
     float e = (float)psydata->eng[ENG_WIN_CUR + win];
     float norm_e = e * 1.0e-9f;
     if (norm_e > 0.001f)
-      pe += log2f(1.0f + norm_e);
+      pe += log1pf(norm_e);
   }
-  psyInfo->pe = pe * 10.0f; /* Calibrated PE in [0, 650] range per channel */
+  psyInfo->pe = pe * 14.4269504f; /* 10.0f * log2(e) = 14.4269504f */
 }
 
 /* Do psychoacoustical analysis */
@@ -185,6 +188,7 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
   if (elements == NULL) {
       for (unsigned int channel = 0; channel < numChannels; channel++) {
           PsyCheckShort(&psyInfo[channel]);
+          PsyGetAttack(&psyInfo[channel]);
           PsyCalcPE(&psyInfo[channel]);
       }
       return;
@@ -196,17 +200,21 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
       switch (elem->type) {
           case ID_SCE:
               PsyCheckShort(&psyInfo[elem->channels[0]]);
+              PsyGetAttack(&psyInfo[elem->channels[0]]);
               PsyCalcPE(&psyInfo[elem->channels[0]]);
               break;
           case ID_CPE:
               PsyCheckShort(&psyInfo[elem->channels[0]]);
               PsyCheckShort(&psyInfo[elem->channels[1]]);
+              PsyGetAttack(&psyInfo[elem->channels[0]]);
+              PsyGetAttack(&psyInfo[elem->channels[1]]);
               PsyCalcPE(&psyInfo[elem->channels[0]]);
               PsyCalcPE(&psyInfo[elem->channels[1]]);
               break;
           case ID_LFE:
               psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
               psyInfo[elem->channels[0]].pe = 0.0f;
+              psyInfo[elem->channels[0]].attack = 0.0f;
               break;
           default:
               break;

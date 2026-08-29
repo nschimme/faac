@@ -32,6 +32,7 @@ typedef struct {
 
 	int block_type;
 	float pe;                   /* Normalized Perceptual Entropy estimate for current frame */
+	float attack;               /* Temporal attack strength estimate for current frame */
 
         void *data;
 } PsyInfo;

@@ -784,7 +784,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
         if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+            float attack = hEncoder->psyInfo[channel].attack;
 
             /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
                basis to reject on, so admit and let the LPC gates decide. */
@@ -941,7 +941,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         float totalPE = 0.0f;
         for (channel = 0; channel < numChannels; channel++) {
             if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
-                (!hEncoder->isLfeChannel[channel] && PsyGetAttack(&hEncoder->psyInfo[channel]) >= 0.5f)) {
+                (!hEncoder->isLfeChannel[channel] && hEncoder->psyInfo[channel].attack >= 0.5f)) {
                 isTransient = 1;
             }
             totalPE += hEncoder->psyInfo[channel].pe;
