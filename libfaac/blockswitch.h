@@ -31,6 +31,7 @@ typedef struct {
 	int sizeS;
 
 	int block_type;
+	float pe;                   /* Normalized Perceptual Entropy estimate for current frame */
 
         void *data;
 } PsyInfo;

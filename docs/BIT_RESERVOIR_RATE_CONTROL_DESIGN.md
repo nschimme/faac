@@ -1,7 +1,7 @@
-# FAAC Adaptive Bit Reservoir & Rate Control Architecture
+# FAAC Adaptive Bit Reservoir & PE-Driven Rate Control Architecture
 
 ## Executive Summary
-This design document describes the architecture, control mechanics, and parameter levers for FAAC's **Adaptive Bit Reservoir and Dynamic Rate Control System**.
+This design document describes the architecture, control mechanics, and parameter levers for FAAC's **Adaptive Bit Reservoir and Perceptual Entropy (PE) Driven Rate Control System**.
 
 The primary objective is to resolve perceptual quality (Zimtohrli MOS) deficits on complex, polyphonic, and transient-heavy audio content by maintaining an inter-frame bit buffer, while eliminating rate-control hunting, quality modulation, and bitrate bias.
 
@@ -27,16 +27,33 @@ In VBR mode (`bitRate == 0`), `bitReservoir` and `bitReservoirCap` are set to `0
 
 ---
 
-## 2. Dynamic Bit Allocation & Reservoir Mechanics
+## 2. Perceptual Entropy (PE) & Transient Detection
 
-### 2.1 Complex / Over-Budget Frame Draw
-When a complex or transient frame exceeds nominal bit budget ($\text{diff} = \text{desbits} - \text{totalBits} < 0$), it draws surplus bits from `bitReservoir` capped at up to 100% extra nominal bits (200% maximum frame budget):
+### 2.1 Calibrated Perceptual Entropy Estimation (`libfaac/blockswitch.c`)
+In `PsyCalculate()`, `PsyCalcPE()` estimates per-frame psychoacoustic information bit requirements across sub-blocks:
+$$\text{norm\_e} = e_w \cdot 1.0\times 10^{-9}$$
+$$\text{PE}_{\text{channel}} = 10 \cdot \sum_{w=0}^{7} \log_2\left(1.0 + \text{norm\_e}_w\right)$$
+
+This normalizes sub-block energies to calibrated bounds ($\approx [0, 650]$ bits per channel).
+
+### 2.2 Transient & High-PE Classification (`libfaac/frame.c`)
+A frame is classified as high-complexity / transient if:
+1. `coderInfo[ch].block_type == ONLY_SHORT_WINDOW` on any channel, or
+2. `PsyGetAttack(&psyInfo[ch]) >= 0.5f` (temporal energy jump) on any non-LFE channel, or
+3. Stream $\text{PE}_{\text{total}} > 300.0f \cdot \text{numChannels}$ (upper 25% complexity quartile).
+
+---
+
+## 3. Dynamic Bit Allocation & Reservoir Mechanics
+
+### 3.1 Complex / High-PE Frame Reservoir Draw
+When a complex, high-PE, or transient frame exceeds nominal bit budget ($\text{diff} = \text{desbits} - \text{totalBits} < 0$), it draws surplus bits from `bitReservoir` up to a maximum draw ceiling of 100% extra nominal bits (200% total frame budget):
 $$\text{maxDraw} = \min(-\text{diff}, \text{desbits})$$
 $$\text{absorbed} = \min(\text{maxDraw}, \text{bitReservoir})$$
 $$\text{effectiveBits} = \text{totalBits} - \text{absorbed}$$
 $$\text{bitReservoir} \leftarrow \text{bitReservoir} - \text{absorbed}$$
 
-### 2.2 Simple Frame Replenishment
+### 3.2 Simple Frame Replenishment
 When a simple frame operates below nominal budget ($\text{diff} > 0$), unspent bits replenish `bitReservoir`:
 $$\text{space} = \text{bitReservoirCap} - \text{bitReservoir}$$
 $$\text{deposited} = \min(\text{diff}, \text{space})$$
@@ -45,7 +62,7 @@ $$\text{effectiveBits} = \text{totalBits}$$
 
 ---
 
-## 3. Reservoir-State Adaptive Damping Control Loop
+## 4. Reservoir-State Adaptive Damping Control Loop
 
 To prevent quality scale factor hunting and eliminate bitrate undershoot/overshoot bias, feedback loop damping dynamically adapts based on reservoir fill ratio:
 $$\text{fillRatio} = \frac{\text{bitReservoir}}{\text{bitReservoirCap}}$$
@@ -60,11 +77,12 @@ $$\text{aacquantCfg.quality} \leftarrow \text{aacquantCfg.quality} \cdot \text{f
 
 ---
 
-## 4. Parameter Levers & Tuning Summary
+## 5. Parameter Levers & Tuning Summary
 
 | Lever Parameter | Description | Optimal Value |
 | :--- | :--- | :--- |
 | `bitReservoirCap` | Maximum reservoir capacity | $\min(6144 \cdot \text{ch} - \text{desbits}, 2 \cdot \text{desbits})$ |
 | `maxDraw` | Maximum burst draw ceiling per frame | $1.0 \cdot \text{desbits}$ (200% total frame budget) |
+| `PE_THRESH_PER_CH` | Per-channel PE complexity threshold | $300.0f$ |
 | `RC_DAMPING_FACTOR` | Nominal control loop damping | $0.60f$ |
 | `DAMPING_ACCEL` | Accelerated recovery damping | $0.85f$ |

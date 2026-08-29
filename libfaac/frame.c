@@ -937,15 +937,27 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
+        /* Compute total stream Perceptual Entropy (PE) and transient status across channels */
+        int isTransient = 0;
+        float totalPE = 0.0f;
+        for (channel = 0; channel < numChannels; channel++) {
+            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
+                (!hEncoder->isLfeChannel[channel] && PsyGetAttack(&hEncoder->psyInfo[channel]) >= 0.5f)) {
+                isTransient = 1;
+            }
+            totalPE += hEncoder->psyInfo[channel].pe;
+        }
+
         /* Update adaptive bit reservoir balance and compute effective frame bits for rate control */
         int effectiveBits = totalBits;
         int diff = desbits - totalBits;
 
         if (diff < 0) {
             int excess = -diff;
-            /* Capped reservoir draw: allow up to 100% extra desbits (200% max frame budget) */
+            /* Capped reservoir draw: allow up to 100% extra desbits (200% max frame budget) on transients or high-PE frames */
             int maxDraw = (excess < desbits) ? excess : desbits;
-            if (hEncoder->bitReservoir > 0) {
+            /* High-PE threshold: 300.0f per channel (upper complexity quartile) */
+            if ((isTransient || totalPE > (300.0f * numChannels)) && hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
