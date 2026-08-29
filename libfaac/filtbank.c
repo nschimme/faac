@@ -208,9 +208,6 @@ static inline void fused_pretwiddle_stage0(
     }
 }
 
-#if defined(__GNUC__)
-__attribute__((cold, noinline))
-#endif
 void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -241,9 +238,6 @@ void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
-#if defined(__GNUC__)
-__attribute__((cold, noinline))
-#endif
 void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -383,25 +377,24 @@ void FilterBank(faacEncStruct* hEncoder,
     }
 }
 
-/* noclone is what actually holds the size down: with only noinline, gcc still
- * clones this per constant logm and the duplicated transform costs 4.5 KB of
- * .text -- more than the whole rest of this PR. clang does not clone, and
- * rejects the attribute, so it is gcc-only. */
-#if defined(__GNUC__) && !defined(__clang__)
+#if defined(__GNUC__)
 #define MDCT_ONE_BODY __attribute__((noinline, noclone))
-#elif defined(__GNUC__) || defined(__clang__)
-#define MDCT_ONE_BODY __attribute__((noinline))
 #elif defined(_MSC_VER)
 #define MDCT_ONE_BODY __declspec(noinline)
 #else
 #define MDCT_ONE_BODY
 #endif
 
-/* Loop-fused, bit-reversal-free MDCT engine.
- * Normative Reference: ISO/IEC 14496-3 Section 4.6.4.
- * Fuses time-domain folding and pre-twiddling directly with Stage 0 DIF FFT
- * to keep data in L1 cache, and merges post-twiddle unfolding with
- * bit-reversed lookups to eliminate physical permutation passes.
+/* Optimized, loop-fused, and bit-reversal-free MDCT engine.
+ * Normative Reference: ISO/IEC 14496-3 Section 4.6.4 (MDCT & Filterbank).
+ * Fuses pre-twiddle folding directly with Stage 0 DIF FFT, and merges
+ * the post-twiddle unfolding with on-the-fly bit-reversed lookups.
+ * Table check and initialization are perform during FilterBankInit.
+ *
+ * logm stays a runtime argument here. Specializing it folded the stage
+ * bounds but duplicated the body per size, and the fold is not where the
+ * time goes -- fft64() keeps its constant-folded path, which is the one
+ * that runs per QMF analysis.
  */
 static MDCT_ONE_BODY void MDCT_run(
     FFT_Tables *fft_tables,
