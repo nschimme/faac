@@ -266,7 +266,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         if (!config->quantqual)
         {
-            config->quantqual = (float)config->bitRate * hEncoder->numChannels / 1280;
+            /* Scale initial quality seed by sample-rate frame duration factor (44100 / sampleRate)
+             * so low sampling rates (e.g. 16 kHz) start at appropriate quality scale factors for
+             * fast rate-control convergence on short audio clips. */
+            float rateFactor = 44100.0f / (float)hEncoder->sampleRate;
+            config->quantqual = (float)config->bitRate * hEncoder->numChannels * rateFactor / 1280.0f;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
