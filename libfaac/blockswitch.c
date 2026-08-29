@@ -155,6 +155,8 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 }
 
 /* Do psychoacoustical analysis */
+/* Fast energy-based Perceptual Entropy approximation: sum subblock high-pass energies
+   pre-computed in PsyBufferUpdate(), scaling by 1.0e-8f to match PE complexity threshold. */
 static void PsyCalcPE(PsyInfo * psyInfo)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
@@ -167,12 +169,9 @@ static void PsyCalcPE(PsyInfo * psyInfo)
   }
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
-  {
-    float norm_e = (float)psydata->eng[ENG_WIN_CUR + win] * 1.0e-9f;
-    if (norm_e > 0.001f)
-      pe += log1pf(norm_e);
-  }
-  psyInfo->pe = pe * 14.4269504f;
+    pe += (float)psydata->eng[ENG_WIN_CUR + win];
+
+  psyInfo->pe = pe * 1.0e-8f;
 }
 
 static void PsyAnalyzeChannel(PsyInfo * psyInfo)
