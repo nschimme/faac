@@ -997,7 +997,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             /* Additive reservoir proportional correction to eliminate long-term drift */
             float resErr = fillRatio - 0.5f;
-            fix += 0.12f * resErr;
+            fix += 0.08f * resErr;
         }
 
         /* Apply damping to the quality adjustment */
