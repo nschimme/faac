@@ -157,8 +157,9 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
 			)
 {
   if (elements == NULL) {
-      for (unsigned int channel = 0; channel < numChannels; channel++)
+      for (unsigned int channel = 0; channel < numChannels; channel++) {
           PsyCheckShort(&psyInfo[channel]);
+      }
       return;
   }
 

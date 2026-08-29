@@ -937,38 +937,28 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
-        /* Detect transient attack or short window blocks across channels */
-        int isTransient = 0;
-        for (channel = 0; channel < numChannels; channel++) {
-            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
-                (!hEncoder->isLfeChannel[channel] && PsyGetAttack(&hEncoder->psyInfo[channel]) >= 0.5f)) {
-                isTransient = 1;
-                break;
-            }
-        }
-
         /* Update adaptive bit reservoir balance and compute effective frame bits for rate control */
         int effectiveBits = totalBits;
         int diff = desbits - totalBits;
 
         if (diff < 0) {
             int excess = -diff;
-            /* Transient absorption: draw up to 100% extra desbits (200% max frame budget) */
+            /* Capped reservoir draw: allow up to 100% extra desbits (200% max frame budget) */
             int maxDraw = (excess < desbits) ? excess : desbits;
-            if (isTransient && hEncoder->bitReservoir > 0) {
+            if (hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
-                effectiveBits = totalBits - (absorbed * 3 / 4);
+                effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
             } else {
                 hEncoder->bitReservoir += diff;
                 if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
             }
         } else {
-            /* Simple frames replenish the reservoir; feed 1/4 (25%) surplus into rate feedback */
+            /* Simple frames replenish the reservoir without penalizing feedback rate control */
             int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
             int deposited = (diff < space) ? diff : space;
             hEncoder->bitReservoir += deposited;
-            effectiveBits = totalBits + (deposited / 4);
+            effectiveBits = totalBits;
         }
 
         if (effectiveBits > sbrBits)
@@ -976,8 +966,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
         else
             fix = 1.0f;
 
+        /* Apply adaptive damping: accelerate rate control recovery when reservoir is depleted or full */
+        float damping = RC_DAMPING_FACTOR;
+        if (hEncoder->bitReservoirCap > 0) {
+            float fillRatio = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
+            if (fillRatio < 0.25f || fillRatio > 0.75f)
+                damping = 0.85f;
+        }
+
         /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0f) * RC_DAMPING_FACTOR + 1.0f;
+        fix = (fix - 1.0f) * damping + 1.0f;
 
         hEncoder->aacquantCfg.quality *= fix;
 
