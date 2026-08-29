@@ -101,31 +101,23 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
 
     for (int sfb = 0; sfb < sfbn; sfb++)
     {
-        out[sfb].sum = 0.0f;
-        out[sfb].peak_amp = 0.0f;
-    }
+        int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+        int len = hi - lo;
+        float sum = 0.0f, peak = 0.0f;
 
-    for (int w = 0; w < gsize; w++)
-    {
-        const float * restrict line = xr0 + w * BLOCK_LEN_SHORT;
-        for (int sfb = 0; sfb < sfbn; sfb++)
+        for (int w = 0; w < gsize; w++)
         {
-            int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
-            float sum = out[sfb].sum;
-            float peak = out[sfb].peak_amp;
-            for (int k = lo; k < hi; k++)
+            const float * restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
+            for (int k = 0; k < len; k++)
             {
                 float e = line[k] * line[k];
                 sum += e;
                 if (e > peak) peak = e;
             }
-            out[sfb].sum = sum;
-            out[sfb].peak_amp = peak;
         }
+        out[sfb].sum = sum;
+        out[sfb].peak_amp = sqrtf(peak);
     }
-
-    for (int sfb = 0; sfb < sfbn; sfb++)
-        out[sfb].peak_amp = sqrtf(out[sfb].peak_amp);
 }
 
 static float loudness(float energy_ratio)
@@ -407,8 +399,8 @@ static void group_windows_from_energies(CoderInfo *ci,
         {
             for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
             {
-                run_min[sfb] = fminf(run_min[sfb], band_e[sfb]);
-                run_max[sfb] = fmaxf(run_max[sfb], band_e[sfb]);
+                if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
+                if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
                 if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb])
                     onset_votes++;
             }
