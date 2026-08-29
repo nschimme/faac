@@ -208,6 +208,9 @@ static inline void fused_pretwiddle_stage0(
     }
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -238,6 +241,9 @@ void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -377,21 +383,33 @@ void FilterBank(faacEncStruct* hEncoder,
     }
 }
 
+/* noclone is what actually holds the size down: with only noinline, gcc still
+ * clones this per constant logm and the duplicated transform costs 4.5 KB of
+ * .text -- more than the whole rest of this PR. clang does not clone, and
+ * rejects the attribute, so it is gcc-only. */
+#if defined(__GNUC__) && !defined(__clang__)
+#define MDCT_ONE_BODY __attribute__((noinline, noclone))
+#elif defined(__GNUC__) || defined(__clang__)
+#define MDCT_ONE_BODY __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define MDCT_ONE_BODY __declspec(noinline)
+#else
+#define MDCT_ONE_BODY
+#endif
+
 /* Loop-fused, bit-reversal-free MDCT engine.
  * Normative Reference: ISO/IEC 14496-3 Section 4.6.4.
  * Fuses time-domain folding and pre-twiddling directly with Stage 0 DIF FFT
  * to keep data in L1 cache, and merges post-twiddle unfolding with
  * bit-reversed lookups to eliminate physical permutation passes.
- * Deriving logm from N inside MDCT_run prevents compiler body-cloning across
- * block sizes in standard C11.
  */
-static void MDCT_run(
+static MDCT_ONE_BODY void MDCT_run(
     FFT_Tables *fft_tables,
     float * restrict data,
     int N,
-    float * restrict work)
+    float * restrict work,
+    int logm)
 {
-    const int logm = (N == 2 * BLOCK_LEN_LONG) ? LOGM_LONG : LOGM_SHORT;
     const int N2 = N >> 1;
     const int N4 = N >> 2;
 
@@ -441,5 +459,6 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
     assert(work != NULL);
     assert(N == 2 * BLOCK_LEN_SHORT || N == 2 * BLOCK_LEN_LONG);
 
-    MDCT_run(fft_tables, data, N, work);
+    MDCT_run(fft_tables, data, N, work,
+             (N == 2 * BLOCK_LEN_SHORT) ? LOGM_SHORT : LOGM_LONG);
 }
