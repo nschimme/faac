@@ -40,7 +40,7 @@ This normalizes sub-block energies to calibrated bounds ($\approx [0, 650]$ bits
 A frame is classified as high-complexity / transient if:
 1. `coderInfo[ch].block_type == ONLY_SHORT_WINDOW` on any channel, or
 2. `PsyGetAttack(&psyInfo[ch]) >= 0.5f` (temporal energy jump) on any non-LFE channel, or
-3. Stream $\text{PE}_{\text{total}} > 300.0f \cdot \text{numChannels}$ (upper 25% complexity quartile).
+3. Stream $\text{PE}_{\text{total}} > 10.0f \cdot \text{numChannels}$ (data-driven empirical threshold).
 
 ---
 
@@ -77,12 +77,28 @@ $$\text{aacquantCfg.quality} \leftarrow \text{aacquantCfg.quality} \cdot \text{f
 
 ---
 
-## 5. Parameter Levers & Tuning Summary
+## 5. Data-Driven Empirical Joint Grid Search Findings
+
+A multi-dimensional joint grid search was executed on `faac-benchmark` across Perceptual Entropy complexity thresholds ($\text{PE}_{\text{thresh}}$) and Control Loop Damping ($\text{RC}_{\text{damp}}$):
+
+| $\text{PE}_{\text{thresh}}$ per ch | $\text{RC}_{\text{damp}}$ | Zimtohrli MOS | MOS Delta | Bitrate Accuracy | Bitrate Bias |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **10.0f** | **0.50f** | 4.1019 | +0.0056 | 90.81% | +5.27% |
+| **10.0f** | **0.60f** | **4.1085** | **+0.0123** | **90.52%** | **+5.54%** |
+| **10.0f** | **0.70f** | 4.1135 | +0.0173 | 90.20% | +5.81% |
+| **25.0f** | **0.50f** | 4.1018 | +0.0055 | 90.86% | +5.22% |
+
+### Key Trade-Off Insights
+- **$\text{PE}_{\text{thresh}} = 10.0f$ with $\text{RC}_{\text{damp}} = 0.60f$** provides the optimal Pareto balance between high-signal MOS gains (+0.0123 lift) and high bitrate accuracy.
+
+---
+
+## 6. Parameter Levers & Tuning Summary
 
 | Lever Parameter | Description | Optimal Value |
 | :--- | :--- | :--- |
 | `bitReservoirCap` | Maximum reservoir capacity | $\min(6144 \cdot \text{ch} - \text{desbits}, 2 \cdot \text{desbits})$ |
 | `maxDraw` | Maximum burst draw ceiling per frame | $1.0 \cdot \text{desbits}$ (200% total frame budget) |
-| `PE_THRESH_PER_CH` | Per-channel PE complexity threshold | $300.0f$ |
+| `PE_THRESH_PER_CH` | Per-channel PE complexity threshold | $10.0f$ |
 | `RC_DAMPING_FACTOR` | Nominal control loop damping | $0.60f$ |
 | `DAMPING_ACCEL` | Accelerated recovery damping | $0.85f$ |

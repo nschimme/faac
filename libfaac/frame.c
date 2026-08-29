@@ -41,8 +41,7 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05f  /* +/- 5% deadband */
-#define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
+#define RC_DAMPING_FACTOR      0.60f
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -956,8 +955,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
             int excess = -diff;
             /* Capped reservoir draw: allow up to 100% extra desbits (200% max frame budget) on transients or high-PE frames */
             int maxDraw = (excess < desbits) ? excess : desbits;
-            /* High-PE threshold: 300.0f per channel (upper complexity quartile) */
-            if ((isTransient || totalPE > (300.0f * numChannels)) && hEncoder->bitReservoir > 0) {
+            /* Data-driven PE complexity threshold: 10.0f per channel */
+            if ((isTransient || totalPE > (10.0f * numChannels)) && hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
