@@ -86,8 +86,10 @@ The following empirical benchmark matrix evaluates Master Baseline, Ported Basel
 | **Master Baseline** | 4.1084 | +3.32% | 8.27% | 91.73% | 0 B |
 | **Ported Baseline (`df6ecd7`)** | 4.1091 | +2.83% | 7.36% | 92.64% | +208 B |
 | **Candidate (Additive $K_p = 0.05$)** | **4.1004** | **+1.60%** | **6.49%** | **93.51%** | **+224 B** |
+| **Candidate (PE-Only Draw, $K_p = 0.05$)** | **4.1012** | **-1.39%** | **4.92%** | **95.08%** | **+208 B** |
 
 ### Key Trade-Off Insights & Selection Rationale
 - **Additive Proportional Feedback ($K_p = 0.05$)** provides the optimal balance of bitrate accuracy and perceptual quality:
   - **Bitrate Accuracy**: Reduces mean absolute bitrate error across the full 539-clip corpus from 8.27% down to **6.49%** (achieving 93.51% bitrate accuracy).
   - **MOS & Footprint**: Preserves high MOS quality (4.1004) with minimal binary text growth (+224 bytes, +1.26%) and zero performance degradation.
+  - **Transient Protection**: Retaining explicit `isTransient` protection guarantees proper bit allocation for low-bitrate HE-AAC mono audio clips where SBR analysis bypasses core `PsyBufferUpdate`.
