@@ -385,7 +385,6 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
 
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
-    int clear_len = coderInfo->sfb_offset[maxsfb] - cutoff;
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
 
@@ -399,8 +398,9 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     {
         float * restrict w = xr + win * BLOCK_LEN_SHORT;
 
-        if (clear_len > 0)
-            memset(w + cutoff, 0, (size_t)clear_len * sizeof(float));
+        int stop = sfb_offset[maxsfb];
+        for (int k = cutoff; k < stop; k++)
+            w[k] = 0.0f;
 
         for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
