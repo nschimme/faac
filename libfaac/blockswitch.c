@@ -155,11 +155,6 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 }
 
 /* Do psychoacoustical analysis */
-/* Compute normalized Perceptual Entropy (PE) from subblock energy profiles.
-   In FAAC, PCM samples are float in [-32768, 32767] (32-bit int * 1/256), so subblock
-   energy sums across 256 samples range up to N * 32768^2 ~= 2.7e11.
-   Scaling by 1.0e-9f maps full-scale energy to ~270. Taking log2(1 + norm_e) * 10
-   normalizes per-subblock PE, yielding calibrated frame PE in [0, 650] range per channel. */
 static void PsyCalcPE(PsyInfo * psyInfo)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
@@ -173,12 +168,18 @@ static void PsyCalcPE(PsyInfo * psyInfo)
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
-    float e = (float)psydata->eng[ENG_WIN_CUR + win];
-    float norm_e = e * 1.0e-9f;
+    float norm_e = (float)psydata->eng[ENG_WIN_CUR + win] * 1.0e-9f;
     if (norm_e > 0.001f)
       pe += log1pf(norm_e);
   }
-  psyInfo->pe = pe * 14.4269504f; /* 10.0f * log2(e) = 14.4269504f */
+  psyInfo->pe = pe * 14.4269504f;
+}
+
+static void PsyAnalyzeChannel(PsyInfo * psyInfo)
+{
+  PsyCheckShort(psyInfo);
+  PsyGetAttack(psyInfo);
+  PsyCalcPE(psyInfo);
 }
 
 /* Do psychoacoustical analysis */
@@ -187,11 +188,8 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
 			)
 {
   if (elements == NULL) {
-      for (unsigned int channel = 0; channel < numChannels; channel++) {
-          PsyCheckShort(&psyInfo[channel]);
-          PsyGetAttack(&psyInfo[channel]);
-          PsyCalcPE(&psyInfo[channel]);
-      }
+      for (unsigned int channel = 0; channel < numChannels; channel++)
+          PsyAnalyzeChannel(&psyInfo[channel]);
       return;
   }
 
@@ -200,17 +198,11 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
       AACElement *elem = &elements[e];
       switch (elem->type) {
           case ID_SCE:
-              PsyCheckShort(&psyInfo[elem->channels[0]]);
-              PsyGetAttack(&psyInfo[elem->channels[0]]);
-              PsyCalcPE(&psyInfo[elem->channels[0]]);
+              PsyAnalyzeChannel(&psyInfo[elem->channels[0]]);
               break;
           case ID_CPE:
-              PsyCheckShort(&psyInfo[elem->channels[0]]);
-              PsyCheckShort(&psyInfo[elem->channels[1]]);
-              PsyGetAttack(&psyInfo[elem->channels[0]]);
-              PsyGetAttack(&psyInfo[elem->channels[1]]);
-              PsyCalcPE(&psyInfo[elem->channels[0]]);
-              PsyCalcPE(&psyInfo[elem->channels[1]]);
+              PsyAnalyzeChannel(&psyInfo[elem->channels[0]]);
+              PsyAnalyzeChannel(&psyInfo[elem->channels[1]]);
               break;
           case ID_LFE:
               psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;

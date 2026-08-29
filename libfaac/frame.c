@@ -994,11 +994,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             if (fillRatio < 0.25f || fillRatio > 0.75f)
                 damping = 0.85f;
 
-            /* Experiment C: Deadband & PI Integral Feedback */
+            /* Additive reservoir proportional correction to eliminate long-term drift */
             float resErr = fillRatio - 0.5f;
-            if (fabsf(resErr) > 0.05f) {
-                fix += 0.12f * (resErr > 0.0f ? resErr - 0.05f : resErr + 0.05f);
-            }
+            fix += 0.05f * resErr;
         }
 
         /* Apply damping to the quality adjustment */
