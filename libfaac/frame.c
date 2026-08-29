@@ -945,14 +945,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
-        /* Compute total stream Perceptual Entropy (PE) and transient status across channels */
-        int isTransient = 0;
+        /* Compute total stream Perceptual Entropy (PE) across channels */
         float totalPE = 0.0f;
         for (channel = 0; channel < numChannels; channel++) {
-            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW ||
-                (!hEncoder->isLfeChannel[channel] && hEncoder->psyInfo[channel].attack >= 0.5f)) {
-                isTransient = 1;
-            }
             totalPE += hEncoder->psyInfo[channel].pe;
         }
 
@@ -965,9 +960,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             /* Adaptive burst draw ceiling: 0.5 * desbits for low bitrates (<=48k stereo / <=24k mono), 1.0 * desbits for high bitrates */
             int drawLimit = (hEncoder->config.bitRate <= 24000) ? (desbits / 2) : desbits;
             int maxDraw = (excess < drawLimit) ? excess : drawLimit;
-            /* Short windows and high-attack frames inherently produce high Perceptual Entropy (totalPE).
-             * Requiring totalPE qualification prevents low-entropy short blocks from over-drawing and inflating bitrate. */
-            if ((isTransient || totalPE > (10.0f * numChannels)) && hEncoder->bitReservoir > 0) {
+            /* Data-driven PE complexity threshold: 10.0f per channel naturally captures high-entropy transients.
+             * Bypassing low-entropy frames prevents quality scale-factor inflation and overshoot. */
+            if (totalPE > (10.0f * numChannels) && hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;

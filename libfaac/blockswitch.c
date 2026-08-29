@@ -119,10 +119,8 @@ float PsyGetAttack(PsyInfo * psyInfo)
   float strength = 0.0f, total = 0.0f;
   int win;
 
-  if (!psydata) {
-    psyInfo->attack = 0.0f;
+  if (!psydata)
     return 0.0f;
-  }
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
@@ -139,8 +137,7 @@ float PsyGetAttack(PsyInfo * psyInfo)
     }
   }
 
-  psyInfo->attack = (total > 0.0f) ? strength : 0.0f;
-  return psyInfo->attack;
+  return total > 0.0f ? strength : 0.0f;
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
@@ -177,7 +174,6 @@ static void PsyCalcPE(PsyInfo * psyInfo)
 static void PsyAnalyzeChannel(PsyInfo * psyInfo)
 {
   PsyCheckShort(psyInfo);
-  PsyGetAttack(psyInfo);
   PsyCalcPE(psyInfo);
 }
 
@@ -206,7 +202,6 @@ void PsyCalculate(AACElement * elements, int numElements, PsyInfo * psyInfo,
           case ID_LFE:
               psyInfo[elem->channels[0]].block_type = ONLY_LONG_WINDOW;
               psyInfo[elem->channels[0]].pe = 0.0f;
-              psyInfo[elem->channels[0]].attack = 0.0f;
               break;
           default:
               break;

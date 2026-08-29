@@ -31,7 +31,6 @@ typedef struct {
 	int sizeS;
 
 	int block_type;
-	float attack;
 	float pe;
 
         void *data;
