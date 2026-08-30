@@ -682,8 +682,7 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
     float sum = totL + totR;
     float g = sqrtf(2.0f * sum / (sum + 2.0f * totLR + SBR_ENERGY_FLOOR));
     g = clamp_float(g, 1.0f, SBR_PS_MAX_DOWNMIX_GAIN);
-    float alpha = (sa->numEnvelopes > 1 || fabsf(g - sbr->downmixGain) > 0.3f) ? 0.75f : SBR_PS_GAIN_SMOOTH;
-    sbr->downmixGain += alpha * (g - sbr->downmixGain);
+    sbr->downmixGain += SBR_PS_GAIN_SMOOTH * (g - sbr->downmixGain);
 
     /* The envelope quantizer is about to read channel 0's band energies as "the
      * core's signal". Until now that was the *left* channel, which is only right
