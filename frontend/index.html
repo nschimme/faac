@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAAC Online - Advanced Audio Coder</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1.5rem;
+            box-sizing: border-box;
+        }
+        .container {
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 960px;
+            box-sizing: border-box;
+        }
+        h1 { margin-top: 0; margin-bottom: 1.5rem; font-size: 2rem; font-weight: 800; color: #0f172a; text-align: center; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 1rem;
+            padding: 2.5rem 1.5rem;
+            background: #f1f5f9;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+        .drop-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+        .drop-text { font-weight: 600; color: var(--text); }
+        .drop-subtext { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        .file-info {
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #e0f2fe;
+            color: #0369a1;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            word-break: break-word;
+            font-size: 0.875rem;
+        }
+
+        .controls {
+            text-align: left;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 0.25rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .tab {
+            flex: 1;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: 0.375rem;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .control-group {
+            margin-bottom: 1.25rem;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        .val-display { color: var(--primary); }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+            font-weight: 500;
+        }
+
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: white;
+            font-weight: 500;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.875rem 1.5rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s ease;
+            margin-top: 0.5rem;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn:disabled { background: var(--border); cursor: not-allowed; }
+
+        .btn-stop {
+            background: var(--danger) !important;
+        }
+        .btn-stop:hover {
+            background: var(--danger-hover) !important;
+        }
+
+        .progress-container {
+            margin-top: 1.25rem;
+            display: none;
+            text-align: left;
+        }
+        .progress-bar {
+            height: 0.5rem;
+            background: var(--border);
+            border-radius: 0.25rem;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        #status { font-size: 0.875rem; color: var(--text-muted); font-weight: 500; }
+
+        .history {
+            margin-top: 2rem;
+            text-align: left;
+            border-top: 1px solid var(--border);
+            padding-top: 1.5rem;
+            grid-column: 1 / -1;
+        }
+        .history h2 { font-size: 1.125rem; margin-bottom: 1rem; }
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem 1rem;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            gap: 0.5rem;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .history-badge {
+            background: #e2e8f0;
+            color: #1e293b;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-weight: 600;
+        }
+        .history-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        audio { height: 32px; flex: 1; min-width: 0; }
+        .history-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .hidden { display: none !important; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            .container { padding: 1.5rem 1rem; border-radius: 1rem; }
+            .main-layout { grid-template-columns: 1fr; gap: 1rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .drop-zone { padding: 1.5rem 1rem; }
+            h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .2s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FAAC Online 🎵</h1>
+
+        <div class="main-layout">
+            <!-- Left Column: Source Audio & Trigger -->
+            <div>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-icon">📁</div>
+                    <div class="drop-text">Drag & drop your audio file here</div>
+                    <div class="drop-subtext">Supports WAV, MP3, FLAC, OGG, M4A & more</div>
+                    <input type="file" id="fileInput" accept="audio/*" class="hidden">
+                </div>
+
+                <div id="fileInfo" class="file-info hidden"></div>
+
+                <button class="btn" id="encodeBtn" disabled>Encode Audio</button>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div id="status">Ready</div>
+                </div>
+            </div>
+
+            <!-- Right Column: Encoder Configuration -->
+            <div class="controls">
+                <div class="tabs">
+                    <div class="tab active" data-mode="VBR">VBR (Quality)</div>
+                    <div class="tab" data-mode="ABR">ABR (Average Bitrate)</div>
+                </div>
+
+                <!-- VBR Controls -->
+                <div id="vbrControl" class="control-group">
+                    <label>Quantization Quality <span class="val-display" id="qValDisplay">100</span></label>
+                    <input type="range" id="quality" min="10" max="500" value="100">
+                    <div id="vbrHint" class="drop-subtext" style="margin-top: 0.5rem;">Recommended for general use (High Quality)</div>
+                </div>
+
+                <!-- ABR Controls -->
+                <div id="abrControl" class="control-group hidden">
+                    <label>Target Bitrate <span class="val-display" id="abrValDisplay">128 kbps</span></label>
+                    <input type="range" id="abrBitrate" min="32" max="320" value="128" step="16">
+                </div>
+
+                <button class="toggle-btn" id="advancedToggle">
+                    ⚙️ Advanced Options
+                </button>
+
+                <div id="advancedPanel" class="hidden">
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label for="objectType">Object Type</label>
+                            <select id="objectType">
+                                <option value="0" selected>Auto</option>
+                                <option value="2">AAC-LC (Low Complexity)</option>
+                                <option value="5">HE-AAC v1 (SBR)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label for="jointMode">Stereo Mode</label>
+                            <select id="jointMode">
+                                <option value="3" selected>Mixed (Auto)</option>
+                                <option value="1">Mid/Side</option>
+                                <option value="2">Intensity</option>
+                                <option value="0">None (Stereo)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="switch-container">
+                        <label>Temporal Noise Shaping (TNS)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="useTns" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="control-group">
+                        <label>PNS Level <span class="val-display" id="pnsValDisplay">4</span></label>
+                        <input type="range" id="pnsLevel" min="0" max="10" value="4">
+                    </div>
+
+                    <div class="control-group">
+                        <label>Bandwidth Cutoff (Hz) <span class="val-display" id="cutoffValDisplay">Auto</span></label>
+                        <input type="range" id="cutoff" min="0" max="24000" value="0" step="500">
+                    </div>
+
+                    <!-- MP4 Metadata Tags -->
+                    <div class="control-group">
+                        <label for="tagTitle">Title</label>
+                        <input type="text" id="tagTitle" placeholder="Track Title">
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label for="tagArtist">Artist</label>
+                            <input type="text" id="tagArtist" placeholder="Artist Name">
+                        </div>
+                        <div class="control-group">
+                            <label for="tagAlbum">Album</label>
+                            <input type="text" id="tagAlbum" placeholder="Album Name">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Width Encodes History -->
+            <div class="history">
+                <h2>Encodes 📜</h2>
+                <ul id="historyList" class="history-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const encodeBtn = document.getElementById('encodeBtn');
+        const progressFill = document.getElementById('progressFill');
+        const progressContainer = document.getElementById('progressContainer');
+        const status = document.getElementById('status');
+        const historyList = document.getElementById('historyList');
+        const advancedToggle = document.getElementById('advancedToggle');
+        const advancedPanel = document.getElementById('advancedPanel');
+
+        // Inputs
+        const tabs = document.querySelectorAll('.tab');
+        const qualityInput = document.getElementById('quality');
+        const abrInput = document.getElementById('abrBitrate');
+        const qValDisplay = document.getElementById('qValDisplay');
+        const abrValDisplay = document.getElementById('abrValDisplay');
+        const vbrHint = document.getElementById('vbrHint');
+        const pnsInput = document.getElementById('pnsLevel');
+        const pnsValDisplay = document.getElementById('pnsValDisplay');
+        const cutoffInput = document.getElementById('cutoff');
+        const cutoffValDisplay = document.getElementById('cutoffValDisplay');
+
+        // Metadata inputs
+        const tagTitleInput = document.getElementById('tagTitle');
+        const tagArtistInput = document.getElementById('tagArtist');
+        const tagAlbumInput = document.getElementById('tagAlbum');
+
+        let selectedFile = null;
+        let activeMode = 'VBR';
+        let isEncoding = false;
+        let worker = null;
+
+        function createWorker() {
+            if (worker) worker.terminate();
+            worker = new Worker('worker.js');
+            worker.onmessage = handleWorkerMessage;
+        }
+
+        createWorker();
+
+        // Tab Switching Logic
+        tabs.forEach(tab => {
+            tab.onclick = () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                activeMode = tab.dataset.mode;
+
+                document.getElementById('vbrControl').classList.add('hidden');
+                document.getElementById('abrControl').classList.add('hidden');
+
+                if (activeMode === 'VBR') document.getElementById('vbrControl').classList.remove('hidden');
+                else if (activeMode === 'ABR') document.getElementById('abrControl').classList.remove('hidden');
+            };
+        });
+
+        // Value Updates
+        qualityInput.oninput = () => {
+            const val = qualityInput.value;
+            qValDisplay.textContent = val;
+            if (val < 50) vbrHint.textContent = "Low Quality (Smallest size)";
+            else if (val < 150) vbrHint.textContent = "Recommended for general use (High Quality)";
+            else if (val < 250) vbrHint.textContent = "Very High Quality (Archival)";
+            else vbrHint.textContent = "Lossless-like Quality (Maximum size)";
+        };
+
+        abrInput.oninput = () => abrValDisplay.textContent = abrInput.value + " kbps";
+        pnsInput.oninput = () => pnsValDisplay.textContent = pnsInput.value;
+        cutoffInput.oninput = () => cutoffValDisplay.textContent = cutoffInput.value == 0 ? "Auto" : cutoffInput.value + " Hz";
+
+        advancedToggle.onclick = () => advancedPanel.classList.toggle('hidden');
+
+        // File Selection
+        dropZone.onclick = () => fileInput.click();
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        function decodeId3String(view, offset, length) {
+            if (length <= 1) return '';
+            const encoding = view.getUint8(offset);
+            const bytes = new Uint8Array(view.buffer, offset + 1, length - 1);
+            try {
+                if (encoding === 0) return new TextDecoder('iso-8859-1').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 1) return new TextDecoder('utf-16').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 2) return new TextDecoder('utf-16be').decode(bytes).replace(/\0+$/, '').trim();
+                if (encoding === 3) return new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+            } catch (e) {}
+            return new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+        }
+
+        function parseId3(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 10) return tags;
+            const view = new DataView(arrayBuffer);
+            if (view.getUint8(0) !== 0x49 || view.getUint8(1) !== 0x44 || view.getUint8(2) !== 0x33) return tags;
+
+            const version = view.getUint8(3);
+            const flags = view.getUint8(5);
+            const size = (view.getUint8(6) << 21) | (view.getUint8(7) << 14) | (view.getUint8(8) << 7) | view.getUint8(9);
+            let offset = 10;
+
+            if ((flags & 0x40) !== 0 && version >= 3) {
+                const extSize = version === 3 ? view.getUint32(offset) + 4 : ((view.getUint8(offset) << 21) | (view.getUint8(offset+1) << 14) | (view.getUint8(offset+2) << 7) | view.getUint8(offset+3));
+                offset += extSize;
+            }
+
+            const maxOffset = Math.min(arrayBuffer.byteLength, 10 + size);
+            while (offset + 10 < maxOffset) {
+                let id = '';
+                for (let i = 0; i < 4; i++) {
+                    const charCode = view.getUint8(offset + i);
+                    if (charCode === 0) break;
+                    id += String.fromCharCode(charCode);
+                }
+                if (id.length < 4) break;
+
+                let frameSize;
+                if (version === 4) {
+                    frameSize = (view.getUint8(offset + 4) << 21) | (view.getUint8(offset + 5) << 14) | (view.getUint8(offset + 6) << 7) | view.getUint8(offset + 7);
+                } else {
+                    frameSize = view.getUint32(offset + 4);
+                }
+
+                if (frameSize <= 0 || offset + 10 + frameSize > maxOffset) break;
+
+                const val = decodeId3String(view, offset + 10, frameSize);
+                if (id === 'TIT2') tags.title = val;
+                else if (id === 'TPE1') tags.artist = val;
+                else if (id === 'TALB') tags.album = val;
+
+                offset += 10 + frameSize;
+            }
+            return tags;
+        }
+
+        function parseWavInfo(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 12) return tags;
+            const view = new DataView(arrayBuffer);
+            const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+            const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
+            if (riff !== 'RIFF' || wave !== 'WAVE') return tags;
+
+            let offset = 12;
+            while (offset + 8 < arrayBuffer.byteLength) {
+                const chunkId = String.fromCharCode(view.getUint8(offset), view.getUint8(offset+1), view.getUint8(offset+2), view.getUint8(offset+3));
+                const chunkSize = view.getUint32(offset + 4, true);
+
+                if (chunkId === 'LIST' && chunkSize >= 4) {
+                    const listType = String.fromCharCode(view.getUint8(offset+8), view.getUint8(offset+9), view.getUint8(offset+10), view.getUint8(offset+11));
+                    if (listType === 'INFO') {
+                        let subOffset = offset + 12;
+                        const endSub = Math.min(arrayBuffer.byteLength, offset + 8 + chunkSize);
+                        while (subOffset + 8 < endSub) {
+                            const subId = String.fromCharCode(view.getUint8(subOffset), view.getUint8(subOffset+1), view.getUint8(subOffset+2), view.getUint8(subOffset+3));
+                            const subSize = view.getUint32(subOffset + 4, true);
+                            if (subOffset + 8 + subSize > endSub) break;
+
+                            const bytes = new Uint8Array(arrayBuffer, subOffset + 8, subSize);
+                            let str = new TextDecoder('utf-8').decode(bytes).replace(/\0+$/, '').trim();
+
+                            if (subId === 'INAM') tags.title = str;
+                            else if (subId === 'IART') tags.artist = str;
+                            else if (subId === 'IPRD') tags.album = str;
+
+                            subOffset += 8 + subSize + (subSize % 2);
+                        }
+                    }
+                }
+                offset += 8 + chunkSize + (chunkSize % 2);
+            }
+            return tags;
+        }
+
+        function parseFlacVorbisComment(arrayBuffer) {
+            const tags = {};
+            if (arrayBuffer.byteLength < 8) return tags;
+            const view = new DataView(arrayBuffer);
+            const flac = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+            if (flac !== 'fLaC') return tags;
+
+            let offset = 4;
+            let isLast = false;
+            while (offset + 4 < arrayBuffer.byteLength && !isLast) {
+                const header = view.getUint8(offset);
+                isLast = (header & 0x80) !== 0;
+                const blockType = header & 0x7F;
+                const length = (view.getUint8(offset + 1) << 16) | (view.getUint8(offset + 2) << 8) | view.getUint8(offset + 3);
+
+                if (blockType === 4 && offset + 4 + length <= arrayBuffer.byteLength) {
+                    let vcOffset = offset + 4;
+                    const vendorLen = view.getUint32(vcOffset, true);
+                    vcOffset += 4 + vendorLen;
+                    if (vcOffset + 4 <= arrayBuffer.byteLength) {
+                        const listLen = view.getUint32(vcOffset, true);
+                        vcOffset += 4;
+                        for (let i = 0; i < listLen; i++) {
+                            if (vcOffset + 4 > arrayBuffer.byteLength) break;
+                            const commentLen = view.getUint32(vcOffset, true);
+                            vcOffset += 4;
+                            if (vcOffset + commentLen > arrayBuffer.byteLength) break;
+                            const bytes = new Uint8Array(arrayBuffer, vcOffset, commentLen);
+                            const comment = new TextDecoder('utf-8').decode(bytes);
+                            const eqIdx = comment.indexOf('=');
+                            if (eqIdx !== -1) {
+                                const key = comment.substring(0, eqIdx).toUpperCase();
+                                const val = comment.substring(eqIdx + 1).trim();
+                                if (key === 'TITLE') tags.title = val;
+                                else if (key === 'ARTIST') tags.artist = val;
+                                else if (key === 'ALBUM') tags.album = val;
+                            }
+                            vcOffset += commentLen;
+                        }
+                    }
+                }
+                offset += 4 + length;
+            }
+            return tags;
+        }
+
+        function extractAudioMetadata(arrayBuffer) {
+            const id3 = parseId3(arrayBuffer);
+            const wav = parseWavInfo(arrayBuffer);
+            const flac = parseFlacVorbisComment(arrayBuffer);
+            return {
+                title: id3.title || wav.title || flac.title || '',
+                artist: id3.artist || wav.artist || flac.artist || '',
+                album: id3.album || wav.album || flac.album || ''
+            };
+        }
+
+        async function handleFiles(files) {
+            selectedFile = files[0];
+            if (selectedFile) {
+                encodeBtn.disabled = false;
+                fileInfo.classList.remove('hidden');
+
+                status.textContent = 'Analyzing audio... 📡';
+
+                try {
+                    const arrayBuffer = await selectedFile.arrayBuffer();
+
+                    // Extract embedded tags from audio file
+                    const tags = extractAudioMetadata(arrayBuffer);
+                    const defaultTitle = selectedFile.name.replace(/\.[^/.]+$/, "");
+
+                    tagTitleInput.value = tags.title || defaultTitle;
+                    if (tags.artist) tagArtistInput.value = tags.artist;
+                    if (tags.album) tagAlbumInput.value = tags.album;
+
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
+
+                    const durSec = audioBuffer.duration;
+                    const durStr = `${Math.floor(durSec / 60)}:${Math.floor(durSec % 60).toString().padStart(2, '0')}`;
+                    fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB) | ${audioBuffer.sampleRate} Hz, ${audioBuffer.numberOfChannels} ch, ${durStr}`;
+                    status.textContent = 'Ready to encode';
+                    audioCtx.close();
+                } catch (e) {
+                    fileInfo.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+                    status.textContent = 'Ready to encode';
+                }
+            }
+        }
+
+        function resetEncodeButton() {
+            isEncoding = false;
+            encodeBtn.textContent = 'Encode Audio';
+            encodeBtn.classList.remove('btn-stop');
+            encodeBtn.disabled = !selectedFile;
+        }
+
+        function stopEncoding() {
+            createWorker();
+            status.textContent = 'Encoding stopped 🛑';
+            progressFill.style.width = '0%';
+            resetEncodeButton();
+        }
+
+        encodeBtn.onclick = async () => {
+            if (isEncoding) {
+                stopEncoding();
+                return;
+            }
+
+            if (!selectedFile) return;
+
+            isEncoding = true;
+            encodeBtn.textContent = 'Stop Encoding 🛑';
+            encodeBtn.classList.add('btn-stop');
+            progressContainer.style.display = 'block';
+            status.textContent = 'Decoding audio... 📡';
+
+            try {
+                const arrayBuffer = await selectedFile.arrayBuffer();
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+                if (!isEncoding) return;
+
+                status.textContent = 'Encoding to M4A... 🔨';
+
+                const channels = audioBuffer.numberOfChannels;
+                const sampleRate = audioBuffer.sampleRate;
+                const pcmData = [];
+                for (let i = 0; i < channels; i++) {
+                    pcmData.push(audioBuffer.getChannelData(i).slice().buffer);
+                }
+
+                // Prepare parameters
+                let quality = 0;
+                let bitrate = 0;
+
+                if (activeMode === 'VBR') quality = parseInt(qualityInput.value);
+                else if (activeMode === 'ABR') bitrate = parseInt(abrInput.value);
+
+                worker.postMessage({
+                    pcmData,
+                    sampleRate,
+                    channels,
+                    quality,
+                    bitrate,
+                    mode: activeMode,
+                    objectType: parseInt(document.getElementById('objectType').value),
+                    useTns: document.getElementById('useTns').checked,
+                    pnsLevel: parseInt(document.getElementById('pnsLevel').value),
+                    jointMode: parseInt(document.getElementById('jointMode').value),
+                    cutoff: parseInt(document.getElementById('cutoff').value),
+                    title: tagTitleInput.value.trim(),
+                    artist: tagArtistInput.value.trim(),
+                    album: tagAlbumInput.value.trim()
+                }, pcmData);
+
+                audioCtx.close();
+            } catch (err) {
+                status.textContent = 'Error: ' + err.message;
+                resetEncodeButton();
+            }
+        };
+
+        function handleWorkerMessage(e) {
+            const { type, data, progress, speedFactor, elapsedSec, etaSec, settingsStr } = e.data;
+            if (type === 'progress') {
+                progressFill.style.width = `${progress}%`;
+                const speedStr = speedFactor ? `${speedFactor.toFixed(1)}x realtime` : '';
+                const etaStr = etaSec ? `ETA: ${Math.ceil(etaSec)}s` : '';
+                const details = [speedStr, etaStr].filter(Boolean).join(' | ');
+                status.textContent = `Encoding: ${Math.round(progress)}% ⌛ ${details ? '(' + details + ')' : ''}`;
+            } else if (type === 'done') {
+                const filename = selectedFile.name.replace(/\.[^/.]+$/, "") + ".m4a";
+                addHistoryItem(filename, data, settingsStr);
+                status.textContent = 'Done! ✅';
+                progressFill.style.width = '0%';
+                resetEncodeButton();
+            } else if (type === 'error') {
+                status.textContent = 'Error: ' + data;
+                resetEncodeButton();
+            }
+        }
+
+        function addHistoryItem(filename, data, settingsStr) {
+            const blob = new Blob([data], { type: 'audio/mp4' });
+            const url = URL.createObjectURL(blob);
+            const sizeMB = (data.byteLength / 1024 / 1024).toFixed(2);
+
+            const li = document.createElement('li');
+            li.className = 'history-item';
+
+            li.innerHTML = `
+                <div class="history-header">
+                    <span>${filename} (${sizeMB} MB)</span>
+                    <span class="history-badge">${settingsStr || 'AAC'}</span>
+                </div>
+                <div class="history-controls">
+                    <audio controls src="${url}"></audio>
+                    <button class="history-btn" title="Download">💾</button>
+                    <button class="history-btn" title="Delete">🗑️</button>
+                </div>
+            `;
+
+            const [dlBtn, delBtn] = li.querySelectorAll('.history-btn');
+
+            dlBtn.onclick = () => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+            };
+
+            delBtn.onclick = () => {
+                URL.revokeObjectURL(url);
+                li.remove();
+            };
+
+            historyList.prepend(li);
+        }
+    </script>
+</body>
+</html>

@@ -11,27 +11,37 @@ libfrontend = static_library('frontend',
     dependencies: [libiconv]
 )
 
-libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
-
-faac = executable('faac',
-    ['main.c'],
-    include_directories: ['..', '../include'],
-    link_with: [libfaac, libfrontend],
-    dependencies: [libshell32],
-    install: true
-)
-
-if target_machine.system() == 'windows'
-    windows = import('windows')
-    resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
-        depend_files: 'faacgui.exe.manifest')
-    libcomctl32 = cc.find_library('comctl32', required: true)
-    faacgui = executable('faacgui',
-        ['maingui.c', 'resource.h'] + resource_src,
+if target_machine.system() == 'emscripten'
+    faac_wasm = executable('faac-wasm',
+        ['wasm.c'],
         include_directories: ['..', '../include'],
         link_with: [libfaac, libfrontend],
-        dependencies: [libcomctl32],
-        win_subsystem: 'windows',
+        name_suffix: 'js',
         install: true
     )
+else
+    libshell32 = cc.find_library('shell32', required: target_machine.system() == 'windows')
+
+    faac = executable('faac',
+        ['main.c'],
+        include_directories: ['..', '../include'],
+        link_with: [libfaac, libfrontend],
+        dependencies: [libshell32],
+        install: true
+    )
+
+    if target_machine.system() == 'windows'
+        windows = import('windows')
+        resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
+            depend_files: 'faacgui.exe.manifest')
+        libcomctl32 = cc.find_library('comctl32', required: true)
+        faacgui = executable('faacgui',
+            ['maingui.c', 'resource.h'] + resource_src,
+            include_directories: ['..', '../include'],
+            link_with: [libfaac, libfrontend],
+            dependencies: [libcomctl32],
+            win_subsystem: 'windows',
+            install: true
+        )
+    endif
 endif
