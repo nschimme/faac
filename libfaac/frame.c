@@ -213,6 +213,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * when a later call toggles between LC and HE-AAC). */
     SbrContextRestoreRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     hEncoder->numChannels = hEncoder->inputChannels;
+    hEncoder->numChannels = hEncoder->inputChannels;
 
     switch( hEncoder->config.inputFormat )
     {
