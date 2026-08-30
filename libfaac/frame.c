@@ -1008,7 +1008,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             /* Additive reservoir proportional correction to eliminate long-term drift */
             float resErr = fillRatio - 0.5f;
-            fix += 0.08f * resErr;
+            /* Adaptive gain adjustment for HE-AAC to compensate for fixed SBR payload bit offset */
+            float kp = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->config.bitRate <= 32000) ? 0.12f : 0.08f;
+            fix += kp * resErr;
         }
 
         /* Apply damping to the quality adjustment */
