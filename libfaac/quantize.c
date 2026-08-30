@@ -46,10 +46,15 @@ static QuantizeFunc qfunc = quantize_scalar;
 static float sfstep;
 static float max_quant_limit;
 
+#define GAIN_LUT_SIZE 512
+#define GAIN_LUT_BIAS 256
+static float gain_lut[GAIN_LUT_SIZE];
+
 #define SF_CHAIN_UNSET INT_MIN
 
 void QuantizeInit(void)
 {
+    int i;
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
@@ -59,20 +64,32 @@ void QuantizeInit(void)
         qfunc = quantize_scalar;
 
     sfstep = SF_STEP_AMPL;
+    /* Pre-calculate lookup table for 10^(sfac / sfstep) = 2^(sfac / 4) */
+    for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
+        gain_lut[i + GAIN_LUT_BIAS] = powf(10.0f, (float)i / sfstep);
+
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
 }
 
+static inline float sfac_to_gain(int sfac)
+{
+    unsigned int idx = (unsigned int)(sfac + GAIN_LUT_BIAS);
+    if (idx < GAIN_LUT_SIZE)
+        return gain_lut[idx];
+    return powf(10.0f, (float)sfac / sfstep);
+}
+
 /* sfac and gain are coupled; clamping one forces a recompute of the other. */
 static float gain_with_overflow_clamp(int *sfac, float band_peak)
 {
-    float gain = powf(10, *sfac / sfstep);
+    float gain = sfac_to_gain(*sfac);
     if (band_peak > 0.0f && gain * band_peak > max_quant_limit)
     {
         gain = max_quant_limit / band_peak;
         *sfac = (int)floorf(log10f(gain) * sfstep);
-        gain = powf(10, *sfac / sfstep);
+        gain = sfac_to_gain(*sfac);
     }
     return gain;
 }
@@ -101,14 +118,15 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
+        int len = hi - lo;
         float sum = 0.0f, peak = 0.0f;
         int w;
 
         for (w = 0; w < gsize; w++)
         {
-            const float *line = xr0 + w * BLOCK_LEN_SHORT + lo;
+            const float * __restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
             int k;
-            for (k = 0; k < hi - lo; k++)
+            for (k = 0; k < len; k++)
             {
                 float e = line[k] * line[k];
                 sum += e;
