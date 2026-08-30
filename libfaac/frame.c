@@ -285,7 +285,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                 (FAAC_HAVE_PARAMETRIC_STEREO &&
                  hEncoder->inputChannels == 2 &&
                  hEncoder->sampleRate >= HE_V2_MIN_SAMPLE_RATE &&
-                 rate_per_ch <= 8000) ? HE_V2 : HE_V1;
+                 rate_per_ch <= HE_V2_MAX_BITRATE_PER_CH) ? HE_V2 : HE_V1;
         else
             hEncoder->config.aacObjectType = LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
