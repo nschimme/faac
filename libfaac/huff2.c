@@ -226,15 +226,9 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
 }
 
 /* Pick the codebook that minimizes the bit cost for a given band. */
-int huffbook(CoderInfo *coder, int *qs, int len)
+int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
 {
-    int i, maxq = 0;
     int bookmin = HCB_ZERO;
-
-    for (i = 0; i < len; i++) {
-        int q = abs(qs[i]);
-        if (maxq < q) maxq = q;
-    }
 
     if (maxq > 0) {
         /* Each spectral book covers values up to its LAV; select the range-pair

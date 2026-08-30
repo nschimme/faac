@@ -22,24 +22,26 @@
 #include "huff2.h"
 #include "cpu_compute.h"
 
-typedef void (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
+typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 
 #if defined(HAVE_SSE2)
-extern void quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
+extern int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 #endif
 
-static void quantize_scalar(const float * __restrict xr, int * __restrict xi, int n, float sfacfix)
+static int quantize_scalar(const float * __restrict xr, int * __restrict xi, int n, float sfacfix)
 {
     const float magic = MAGIC_NUMBER;
-    int i;
+    int i, maxq = 0;
     for (i = 0; i < n; i++)
     {
         float val = xr[i];
         float tmp = fabsf(val) * sfacfix;
         tmp = sqrtf(tmp * sqrtf(tmp));
         int q = (int)(tmp + magic);
+        if (q > maxq) maxq = q;
         xi[i] = (val < 0) ? -q : q;
     }
+    return maxq;
 }
 
 static QuantizeFunc qfunc = quantize_scalar;
@@ -49,6 +51,7 @@ static float max_quant_limit;
 #define GAIN_LUT_SIZE 512
 #define GAIN_LUT_BIAS 256
 static float gain_lut[GAIN_LUT_SIZE];
+static float half_log10_width_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -67,6 +70,9 @@ void QuantizeInit(void)
     /* Pre-calculate lookup table for 10^(sfac / sfstep) = 2^(sfac / 4) */
     for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
         gain_lut[i + GAIN_LUT_BIAS] = powf(10.0f, (float)i / sfstep);
+
+    for (i = 1; i < 128; i++)
+        half_log10_width_lut[i] = 0.5f * log10f((float)i);
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -271,17 +277,20 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
 
+        float log10_avg = log10f(avg_per_window);
+
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
          * TNS filter shapes the substituted noise too. */
         if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
-            ci->sf[band] += lrintf(log10f(avg_per_window) * SF_STEP_ENRG);
+            ci->sf[band] += lrintf(log10_avg * SF_STEP_ENRG);
             ci->bandcnt++;
             continue;
         }
 
-        int sfac = lrintf(log10f(target[sb] / rms) * sfstep);
+        float half_log10_w = (width < 128) ? half_log10_width_lut[width] : 0.5f * log10f((float)width);
+        int sfac = lrintf((log10f(target[sb]) - 0.5f * log10_avg + half_log10_w) * sfstep);
         int sf_rel = SF_OFFSET - sfac;
         int sf_bias = ci->sf[band];
 
@@ -294,11 +303,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int sf_abs;
             float gain = resolve_band_gain(sfac, sf_bias, bandpeak[sb], *p_last_abs, &sf_rel, &sf_abs);
             int xi[FRAME_LEN];
-            int win;
+            int win, maxq = 0;
 
             for (win = 0; win < gsize; win++)
-                qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
-            huffbook(ci, xi, gsize * width);
+            {
+                int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                if (qm > maxq) maxq = qm;
+            }
+            huffbook(ci, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
         }
 
