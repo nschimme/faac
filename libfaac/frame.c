@@ -42,7 +42,6 @@
 #endif
 
 /* Rate control tuning constants */
-#define RC_DEADBAND_THRESHOLD  0.05f  /* +/- 5% deadband */
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
