@@ -51,7 +51,7 @@ static float max_quant_limit;
 #define GAIN_LUT_SIZE 512
 #define GAIN_LUT_BIAS 256
 static float gain_lut[GAIN_LUT_SIZE];
-static float half_log10_width_lut[128];
+static float log10_width_sf_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -71,8 +71,9 @@ void QuantizeInit(void)
     for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
         gain_lut[i + GAIN_LUT_BIAS] = powf(10.0f, (float)i / sfstep);
 
+    /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
     for (i = 1; i < 128; i++)
-        half_log10_width_lut[i] = 0.5f * log10f((float)i);
+        log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -277,20 +278,20 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
 
-        float log10_avg = log10f(avg_per_window);
+        float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
          * TNS filter shapes the substituted noise too. */
         if (target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
-            ci->sf[band] += lrintf(log10_avg * SF_STEP_ENRG);
+            ci->sf[band] += lrintf(sf_enrg_avg);
             ci->bandcnt++;
             continue;
         }
 
-        float half_log10_w = (width < 128) ? half_log10_width_lut[width] : 0.5f * log10f((float)width);
-        int sfac = lrintf((log10f(target[sb]) - 0.5f * log10_avg + half_log10_w) * sfstep);
+        float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
+        int sfac = lrintf(log10f(target[sb]) * sfstep - sf_enrg_avg + log10_w_sf);
         int sf_rel = SF_OFFSET - sfac;
         int sf_bias = ci->sf[band];
 
