@@ -208,6 +208,9 @@ static inline void fused_pretwiddle_stage0(
     }
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 void FilterBankInit(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -238,6 +241,9 @@ void FilterBankInit(faacEncStruct* hEncoder)
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 void FilterBankEnd(faacEncStruct* hEncoder)
 {
     unsigned int channel;
@@ -385,6 +391,9 @@ void FilterBank(faacEncStruct* hEncoder,
  * Deriving logm from N inside MDCT_run prevents compiler body-cloning across
  * block sizes in standard C11.
  */
+#if defined(__GNUC__)
+__attribute__((noinline, noclone))
+#endif
 static void MDCT_run(
     FFT_Tables *fft_tables,
     float * restrict data,

@@ -24,6 +24,9 @@
  * to eliminate cumulative recurrence errors, then stored as single-precision
  * floats to optimize cache-line utilization in wide-vector registers.
  */
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 static int build_tables_radix4(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->costbl[logm] == NULL)
@@ -55,6 +58,9 @@ static int build_tables_radix4(FFT_Tables *fft_tables, int logm)
  * back to natural order. This transforms the O(N) random-access swapping pass
  * into an structured lookup, saving memory cycles in the hot path.
  */
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 static int build_reorder_table(FFT_Tables *fft_tables, int logm)
 {
     if (fft_tables->reordertbl[logm] == NULL)
@@ -80,6 +86,9 @@ static int build_reorder_table(FFT_Tables *fft_tables, int logm)
     return 1;
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 int fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
@@ -158,6 +167,9 @@ int fft_initialize(FFT_Tables *fft_tables)
     return 1;
 }
 
+#if defined(__GNUC__)
+__attribute__((cold, noinline))
+#endif
 void fft_terminate(FFT_Tables *fft_tables)
 {
     int i;
@@ -198,7 +210,6 @@ void fft_terminate(FFT_Tables *fft_tables)
  * bit-reversed order at the end, avoiding a digit-reversal permutation.
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
-
 static inline void radix4_dif_stage(
     float * restrict xr,
     float * restrict xi,
