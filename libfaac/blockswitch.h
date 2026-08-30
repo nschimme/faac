@@ -26,7 +26,9 @@ extern "C" {
 
 struct faacEncStruct;
 
-/* Scaling factor to normalize high-pass subblock energies relative to full-scale PCM power (32768^2) */
+/* Scaling factor to normalize subblock high-pass energy sums e_w = sum(d[n]^2) relative to full-scale PCM power.
+ * With PCM float range [-32768, 32767] and 256-sample subblocks, peak subblock energy e_max = 256 * 65536^2 = 1.1e12.
+ * Scaling by 1.0e-8f normalizes subblock energies so stream PE (totalPE) maps cleanly to the 10.0f/ch complexity threshold. */
 #define PE_ENERGY_SCALE (1.0e-8f)
 
 typedef struct {
