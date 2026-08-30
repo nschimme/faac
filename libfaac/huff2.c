@@ -50,11 +50,6 @@ static hcode16_t * const hmap[12] = {
     book06, book07, book08, book09, book10, book11
 };
 
-/* Bitwise branchless non-zero check: returns 1 if x != 0, else 0. */
-static inline int is_nonzero(int x)
-{
-    return (int)(((unsigned int)x | (unsigned int)-x) >> 31);
-}
 
 /* Unified Huffman encoder operation for bit sizing and codeword generation */
 static int huffcode_op(const int *qs, int len, int bnum, CoderInfo *coder)
@@ -80,7 +75,9 @@ static int huffcode_op(const int *qs, int len, int bnum, CoderInfo *coder)
     case HCB_3:
     case HCB_4:
         for (i = 0; i < len; i += 4) {
-            int idx = DIM_M4*DIM_M4*DIM_M4 * abs(qs[i]) + DIM_M4*DIM_M4 * abs(qs[i+1]) + DIM_M4 * abs(qs[i+2]) + abs(qs[i+3]);
+            int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
+            int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
+            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int blen = book[idx].len;
             int data = book[idx].data;
             for (j = 0; j < 4; j++) {

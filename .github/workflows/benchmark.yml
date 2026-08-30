@@ -216,9 +216,7 @@ jobs:
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
               lc results/lc_$tag.json --skip-mos --build-dir $d/build
           done
-          # Only the footprint gate can fail here: this job measures nothing
-          # else, and a gate that was never measured must not vote.
-          python3 bench/compare_results.py results --gates footprint --footprint-allow 4600
+          python3 bench/compare_results.py results --gates footprint
 
   report:
     name: Consolidated Report
