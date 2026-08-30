@@ -26,6 +26,9 @@ extern "C" {
 
 struct faacEncStruct;
 
+/* Scaling factor to normalize high-pass subblock energies relative to full-scale PCM power (32768^2) */
+#define PE_ENERGY_SCALE (1.0e-8f)
+
 typedef struct {
 	int size;
 	int sizeS;
