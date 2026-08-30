@@ -91,10 +91,14 @@ static inline int clamp_sf_diff(int diff)
     return diff;
 }
 
+#define DP_INF 100000000
+
 /* Forward declaration for CoderInfo */
 struct CoderInfo;
 
-int huffbook(struct CoderInfo *coder, const int *qs, int len, int maxq);
+int huffbook(struct CoderInfo *coder, int *qs, int len, int maxq);
+void huffcode_write_band(struct CoderInfo *coder, int *qs, int len, int bnum);
+void optimize_section_codebooks(struct CoderInfo *coder, int start_band, int num_bands);
 int writebooks(struct CoderInfo *coder, BitStream *stream, int writeFlag);
 int writesf(struct CoderInfo *coder, BitStream *bitStream, int writeFlag);
 

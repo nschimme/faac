@@ -51,85 +51,25 @@ static hcode16_t * const hmap[12] = {
 };
 
 
-/* Both books of a pair share the index expression and the sign-bit count; only
- * the table differs. One walk, two lookups.
- *
- * ISO 14496-3 multidimensional Huffman section tuple indexing. Constant dimensions
- * (DIM_S4, DIM_M4, DIM_S2, DIM_M2_7, DIM_M2_12) allow constant folding into shift-adds.
- *
- * bnum is always a pair base -- huffbook takes HCB_ESC without sizing it -- so
- * there is deliberately no escape case. */
-static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
+/* Unified Huffman encoder operation for bit sizing and codeword generation */
+static int huffcode_op(const int *qs, int len, int bnum, CoderInfo *coder)
 {
-    const hcode16_t *booka = hmap[bnum];
-    const hcode16_t *bookb = hmap[bnum + 1];
-    int a = 0, b = 0;
-    int i;
-
-    switch (bnum) {
-    case HCB_1:
-        for (i = 0; i < len; i += 4) {
-            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            a += booka[idx].len;
-            b += bookb[idx].len;
-        }
-        break;
-    case HCB_3:
-        for (i = 0; i < len; i += 4) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
-            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
-            int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
-        }
-        break;
-    case HCB_5:
-        for (i = 0; i < len; i += 2) {
-            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            a += booka[idx].len;
-            b += bookb[idx].len;
-        }
-        break;
-    case HCB_7:
-        for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_7 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
-        }
-        break;
-    case HCB_9:
-        for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_12 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
-        }
-        break;
-    default:
-        break;
-    }
-
-    *bits_a = a;
-    *bits_b = b;
-}
-
-/* Bitstream mutation function, called once per finalized frame. */
-static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
-{
-    const hcode16_t *book = hmap[bnum];
-    int i;
-    int datacnt = coder->datacnt;
+    hcode16_t *book = hmap[bnum];
+    int datacnt = coder ? coder->datacnt : 0;
+    int total_bits = 0;
+    int i, j;
 
     switch (bnum) {
     case HCB_1:
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            coder->s[datacnt].data = book[idx].data;
-            coder->s[datacnt++].len = book[idx].len;
+            int blen = book[idx].len;
+            total_bits += blen;
+            if (coder) {
+                coder->s[datacnt].data = book[idx].data;
+                coder->s[datacnt++].len = blen;
+            }
         }
         break;
     case HCB_3:
@@ -140,48 +80,53 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int blen = book[idx].len;
             int data = book[idx].data;
-            if (q0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            if (q2) { blen++; data = (data << 1) | (q2 < 0); }
-            if (q3) { blen++; data = (data << 1) | (q3 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            for (j = 0; j < 4; j++) {
+                if (qs[i+j]) {
+                    blen++;
+                    data = (data << 1) | (qs[i+j] < 0);
+                }
+            }
+            total_bits += blen;
+            if (coder) {
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
         }
         break;
     case HCB_5:
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            coder->s[datacnt].data = book[idx].data;
-            coder->s[datacnt++].len = book[idx].len;
+            int blen = book[idx].len;
+            total_bits += blen;
+            if (coder) {
+                coder->s[datacnt].data = book[idx].data;
+                coder->s[datacnt++].len = blen;
+            }
         }
         break;
     case HCB_7:
     case HCB_8:
-        for (i = 0; i < len; i += 2) {
-            int q0 = qs[i], q1 = qs[i+1];
-            int a0 = abs(q0), a1 = abs(q1);
-            int idx = DIM_M2_7 * a0 + a1;
-            int blen = book[idx].len;
-            int data = book[idx].data;
-            if (q0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
-        }
-        break;
     case HCB_9:
     case HCB_10:
-        for (i = 0; i < len; i += 2) {
-            int q0 = qs[i], q1 = qs[i+1];
-            int a0 = abs(q0), a1 = abs(q1);
-            int idx = DIM_M2_12 * a0 + a1;
-            int blen = book[idx].len;
-            int data = book[idx].data;
-            if (q0) { blen++; data = (data << 1) | (q0 < 0); }
-            if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+        {
+            int dim = (bnum <= HCB_8) ? DIM_M2_7 : DIM_M2_12;
+            for (i = 0; i < len; i += 2) {
+                int idx = dim * abs(qs[i]) + abs(qs[i+1]);
+                int blen = book[idx].len;
+                int data = book[idx].data;
+                for (j = 0; j < 2; j++) {
+                    if (qs[i+j]) {
+                        blen++;
+                        data = (data << 1) | (qs[i+j] < 0);
+                    }
+                }
+                total_bits += blen;
+                if (coder) {
+                    coder->s[datacnt].data = data;
+                    coder->s[datacnt++].len = blen;
+                }
+            }
         }
         break;
     case HCB_ESC:
@@ -200,19 +145,28 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
                 blen++;
                 data = (data << 1) | (qs[i+1] < 0);
             }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            total_bits += blen;
+            if (coder) {
+                coder->s[datacnt].data = data;
+                coder->s[datacnt++].len = blen;
+            }
             if (x0 >= LAV_ESC) {
                 int esc_code = 0;
-                int esc_len = escape(x0, &esc_code);
-                coder->s[datacnt].data = esc_code;
-                coder->s[datacnt++].len = esc_len;
+                int esc_len = escape(x0, coder ? &esc_code : NULL);
+                total_bits += esc_len;
+                if (coder) {
+                    coder->s[datacnt].data = esc_code;
+                    coder->s[datacnt++].len = esc_len;
+                }
             }
             if (x1 >= LAV_ESC) {
                 int esc_code = 0;
-                int esc_len = escape(x1, &esc_code);
-                coder->s[datacnt].data = esc_code;
-                coder->s[datacnt++].len = esc_len;
+                int esc_len = escape(x1, coder ? &esc_code : NULL);
+                total_bits += esc_len;
+                if (coder) {
+                    coder->s[datacnt].data = esc_code;
+                    coder->s[datacnt++].len = esc_len;
+                }
             }
         }
         break;
@@ -220,19 +174,34 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     }
 
-    coder->datacnt = datacnt;
+    if (coder) coder->datacnt = datacnt;
+    return total_bits;
 }
 
+static inline void huffcode_size_pair(const int *qs, int len, int bnum, int *bits_a, int *bits_b)
+{
+    *bits_a = huffcode_op(qs, len, bnum, NULL);
+    *bits_b = huffcode_op(qs, len, bnum + 1, NULL);
+}
+
+#define NUM_SECTION_BOOKS 16
+
 /* Pick the codebook that minimizes the bit cost for a given band. */
-int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
+int huffbook(CoderInfo *coder, int *qs, int len, int maxq)
 {
     int bookmin = HCB_ZERO;
+    int band = coder->bandcnt;
 
-    if (maxq > 0) {
-        /* Each spectral book covers values up to its LAV; select the range-pair
-         * whose lower book just fits maxq, then pick the partner if it costs fewer
-         * bits — both books in a pair cover the same amplitude range but use
-         * different codeword assignments optimized for different spectral shapes. */
+    coder->maxq[band] = maxq;
+
+    for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
+        coder->bit_cost[band][cb] = DP_INF;
+    }
+
+    if (maxq == 0) {
+        coder->bit_cost[band][HCB_ZERO] = 0;
+        bookmin = HCB_ZERO;
+    } else {
         int pair_base;
         if (maxq <= LAV_1) pair_base = HCB_1;
         else if (maxq <= LAV_2) pair_base = HCB_3;
@@ -244,18 +213,121 @@ int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
         if (pair_base != HCB_ESC) {
             int len1, len2;
             huffcode_size_pair(qs, len, pair_base, &len1, &len2);
+            coder->bit_cost[band][pair_base] = len1;
+            coder->bit_cost[band][pair_base + 1] = len2;
             bookmin = (len2 < len1) ? pair_base + 1 : pair_base;
+
+            if (pair_base <= HCB_7) {
+                int next_base = pair_base + 2;
+                int len_a, len_b;
+                huffcode_size_pair(qs, len, next_base, &len_a, &len_b);
+                coder->bit_cost[band][next_base] = len_a;
+                coder->bit_cost[band][next_base + 1] = len_b;
+            } else if (pair_base == HCB_9) {
+                coder->bit_cost[band][HCB_ESC] = huffcode_op(qs, len, HCB_ESC, NULL);
+            }
         } else {
+            coder->bit_cost[band][HCB_ESC] = huffcode_op(qs, len, HCB_ESC, NULL);
             bookmin = HCB_ESC;
         }
-        huffcode_write(qs, len, bookmin, coder);
     }
 
-    /* Record the chosen book at the current band slot, but do NOT advance
-       bandcnt: the caller (BlocQuant in quantize.c) owns that increment after
-       it has also stored the band's scalefactor. */
     coder->book[coder->bandcnt] = bookmin;
     return 0;
+}
+
+void huffcode_write_band(CoderInfo *coder, int *qs, int len, int bnum)
+{
+    huffcode_op(qs, len, bnum, coder);
+}
+
+/* Optimization of sectioning using Viterbi Dynamic Programming trellis search */
+void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
+{
+    if (num_bands <= 0) return;
+
+    int max_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
+    int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
+    int section_header_cost = 4 + run_bits; /* 4-bit book index + 3/5-bit run length */
+
+    int sb;
+
+    /* DP matrices: dp[sb][cb] = min bits up to band sb ending in cb */
+    int dp[NSFB_LONG][NUM_SECTION_BOOKS];
+    int8_t run[NSFB_LONG][NUM_SECTION_BOOKS];
+    int8_t back_cb[NSFB_LONG][NUM_SECTION_BOOKS];
+
+    for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
+        int band_idx = start_band + 0;
+        if (coder->bit_cost[band_idx][cb] < DP_INF) {
+            dp[0][cb] = section_header_cost + coder->bit_cost[band_idx][cb];
+            run[0][cb] = 1;
+            back_cb[0][cb] = cb;
+        } else {
+            dp[0][cb] = DP_INF;
+        }
+    }
+
+    for (sb = 1; sb < num_bands; sb++) {
+        int band_idx = start_band + sb;
+
+        for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
+            dp[sb][cb] = DP_INF;
+            run[sb][cb] = 0;
+            back_cb[sb][cb] = -1;
+
+            if (coder->bit_cost[band_idx][cb] >= DP_INF) continue;
+
+            /* Option 1: Continue same codebook cb from sb-1 */
+            if (dp[sb - 1][cb] < DP_INF) {
+                int prev_run = run[sb - 1][cb];
+                int extra_hdr = (prev_run % max_run == 0) ? section_header_cost : 0;
+                int cost = dp[sb - 1][cb] + extra_hdr + coder->bit_cost[band_idx][cb];
+                dp[sb][cb] = cost;
+                run[sb][cb] = prev_run + 1;
+                back_cb[sb][cb] = cb;
+            }
+
+            /* Option 2: Switch codebook from any prev_cb at sb-1 */
+            for (int prev_cb = 0; prev_cb < NUM_SECTION_BOOKS; prev_cb++) {
+                if (prev_cb == cb) continue;
+                if (dp[sb - 1][prev_cb] < DP_INF) {
+                    int cost = dp[sb - 1][prev_cb] + section_header_cost + coder->bit_cost[band_idx][cb];
+                    if (cost < dp[sb][cb]) {
+                        dp[sb][cb] = cost;
+                        run[sb][cb] = 1;
+                        back_cb[sb][cb] = prev_cb;
+                    }
+                }
+            }
+        }
+    }
+
+    /* Find best ending codebook at num_bands - 1 */
+    int best_cb = -1;
+    int min_total_bits = DP_INF;
+    for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
+        if (dp[num_bands - 1][cb] < min_total_bits) {
+            min_total_bits = dp[num_bands - 1][cb];
+            best_cb = cb;
+        }
+    }
+
+    if (best_cb != -1) {
+        /* Traceback and update coder->book[] */
+        int curr_cb = best_cb;
+        int opt_books[NSFB_LONG];
+        for (int sb_idx = num_bands - 1; sb_idx >= 0; sb_idx--) {
+            opt_books[sb_idx] = curr_cb;
+            curr_cb = back_cb[sb_idx][curr_cb];
+        }
+
+        /* Update coder->book[] */
+        for (sb = 0; sb < num_bands; sb++) {
+            int band_idx = start_band + sb;
+            coder->book[band_idx] = opt_books[sb];
+        }
+    }
 }
 
 /* Encode the section data (codebook indices and run lengths). */

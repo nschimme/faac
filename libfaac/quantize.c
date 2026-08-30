@@ -249,6 +249,15 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+static inline void set_fixed_book(CoderInfo *ci, int band, int b)
+{
+    ci->book[band] = b;
+    for (int cb = 0; cb < 16; cb++) {
+        ci->bit_cost[band][cb] = (cb == b) ? 0 : DP_INF;
+    }
+    ci->bandcnt++;
+}
+
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target, const float * __restrict bandenrg,
                                    const float * __restrict bandpeak, int gnum, int pnslevel,
@@ -257,6 +266,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
+    int start_band = ci->bandcnt;
+    int start_datacnt = ci->datacnt;
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
@@ -264,7 +275,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (ci->book[band] != HCB_NONE)
         {
-            ci->bandcnt++;
+            set_fixed_book(ci, band, ci->book[band]);
             continue;
         }
 
@@ -275,8 +286,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
-            ci->book[band] = HCB_ZERO;
-            ci->bandcnt++;
+            set_fixed_book(ci, band, HCB_ZERO);
             continue;
         }
 
@@ -288,9 +298,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * TNS filter shapes the substituted noise too. */
         if (target[sb] < pns_threshold)
         {
-            ci->book[band] = HCB_PNS;
             ci->sf[band] += lrintf(sf_enrg_avg);
-            ci->bandcnt++;
+            set_fixed_book(ci, band, HCB_PNS);
             continue;
         }
 
@@ -301,7 +310,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (sf_rel < SF_MIN)
         {
-            ci->book[band] = HCB_ZERO;
+            set_fixed_book(ci, band, HCB_ZERO);
+            ci->sf[band] += sf_rel;
         }
         else
         {
@@ -317,9 +327,26 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             }
             huffbook(ci, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
-        }
+            ci->sf[ci->bandcnt++] += sf_rel;
 
-        ci->sf[ci->bandcnt++] += sf_rel;
+            memcpy(ci->qs_store + band * FRAME_LEN, xi, gsize * width * sizeof(int));
+        }
+    }
+
+    int num_bands = ci->bandcnt - start_band;
+    optimize_section_codebooks(ci, start_band, num_bands);
+
+    ci->datacnt = start_datacnt;
+    for (sb = 0; sb < num_bands; sb++)
+    {
+        int band = start_band + sb;
+        int bnum = ci->book[band];
+        if (bnum != HCB_ZERO && bnum != HCB_PNS && bnum != HCB_INTENSITY && bnum != HCB_INTENSITY2 && bnum != HCB_NONE)
+        {
+            int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
+            int width = hi - lo;
+            huffcode_write_band(ci, ci->qs_store + band * FRAME_LEN, gsize * width, bnum);
+        }
     }
 }
 
