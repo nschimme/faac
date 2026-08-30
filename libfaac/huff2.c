@@ -187,20 +187,13 @@ static inline void huffcode_size_pair(const int *qs, int len, int bnum, int *bit
     *bits_b = huffcode_op(qs, len, bnum + 1, NULL);
 }
 
-#define DP_INF 100000000
 #define NUM_SECTION_BOOKS 16
 
 /* Pick the codebook that minimizes the bit cost for a given band. */
-int huffbook(CoderInfo *coder, int *qs, int len)
+int huffbook(CoderInfo *coder, int *qs, int len, int maxq)
 {
-    int i, maxq = 0;
     int bookmin = HCB_ZERO;
     int band = coder->bandcnt;
-
-    for (i = 0; i < len; i++) {
-        int q = abs(qs[i]);
-        if (maxq < q) maxq = q;
-    }
 
     coder->maxq[band] = maxq;
 
