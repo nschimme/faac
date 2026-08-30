@@ -403,7 +403,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -586,10 +586,23 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * have run. Screening on the envelope first skips that work for frames headed
  * for rejection anyway.
  *
- * Scaled to PsyGetAttack's statistic (largest relative energy jump between
- * adjacent sub-blocks). Not portable to a different sub-block count/size --
- * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.5f
+ * Peak-over-mean sub-block energy (PsyGetPeakGate), not the largest
+ * adjacent-pair jump (PsyGetAttack): measured better locally via zimtohrli
+ * (positive at every bitrate tested, significant at 48k/128k, no clip
+ * regressed) -- catches a sustained loud sub-block with no single sharp
+ * step, which the jump statistic misses. Not portable to a different
+ * sub-block count/size -- the same transient reads as a smaller peak/mean
+ * ratio with fewer, longer sub-blocks. */
+#define TNS_TD_PEAK_GATE 2.0f
+
+/* Shared by the SCE and CPE cases below: no envelope available (HE-AAC skips
+ * PsyBufferUpdate) means no basis to reject on, so admit and let the LPC
+ * gates decide. */
+static int TnsAttackAdmits(PsyInfo *psyInfo)
+{
+    float peak_gate = PsyGetPeakGate(psyInfo);
+    return !(peak_gate > 0.0f && peak_gate < TNS_TD_PEAK_GATE);
+}
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -777,24 +790,50 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+    /* Perform TNS analysis and filtering. Element-at-a-time (not purely
+     * channel-at-a-time) so a CPE's two channels can share the admission
+     * check below, but each channel is fit and filtered independently
+     * inside TnsEncodeElement (see tns.c) -- TNS runs before AACstereo's
+     * M/S/IS mixing, but that's fine since each channel's tns_data is
+     * transmitted separately and decoders invert M/S before inverting TNS
+     * per channel. SCE (nch=1) and CPE (nch=2) share this one code path --
+     * nch=1 is just the CPE case's "admit if either channel wants it" with
+     * a single channel. */
+    for (int e = 0; e < hEncoder->numElements; e++) {
+        AACElement *elem = &hEncoder->elements[e];
+        TnsInfo *tnsInfos[2];
+        float *specs[2];
+        int nch, admit = 0;
 
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
-            }
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+        if (elem->type == ID_SCE)
+            nch = 1;
+        else if (elem->type == ID_CPE)
+            nch = 2;
+        else {
+            if (elem->type == ID_LFE)
+                coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0; /* TNS not used for LFE */
+            continue;
+        }
+
+        for (int c = 0; c < nch; c++) {
+            int channel = elem->channels[c];
+
+            tnsInfos[c] = &coderInfo[channel].tnsInfo;
+            specs[c] = hEncoder->freqBuff[channel];
+            if (TnsAttackAdmits(&hEncoder->psyInfo[channel]))
+                admit = 1;
+        }
+
+        if (useTns && admit) {
+            int channel0 = elem->channels[0];
+
+            TnsEncodeElement(tnsInfos, specs, nch,
+                             coderInfo[channel0].sfbn,
+                             coderInfo[channel0].block_type,
+                             coderInfo[channel0].sfb_offset);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            for (int c = 0; c < nch; c++)
+                tnsInfos[c]->tnsDataPresent = 0;
         }
     }
 
