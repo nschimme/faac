@@ -225,7 +225,17 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
    * uses the FIFO. */
-  if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsAnalysisValid(hEncoder->sbrContext))
+  /* IsHEAAC, not == HE_V1: HE-AAC v2 runs the same SBR analysis and needs the
+   * same shared decision.
+   *
+   * Testing for v1 alone did not fall back to the psychoacoustic switcher --
+   * it fell back to nothing. faacEncEncode skips both PsyBufferUpdate and
+   * PsyCalculate for every HE object type, so with the override gated to v1 the
+   * v2 core never had block_type written at all. It kept the value the zeroed
+   * encoder struct left, ONLY_LONG_WINDOW, for the whole stream: no block
+   * switching, and pre-echo on every transient. That is what made parametric
+   * stereo look like it cost quality. */
+  if (IsHEAAC(hEncoder->config.aacObjectType) && SbrContextIsAnalysisValid(hEncoder->sbrContext))
   {
       for (channel = 0; channel < numChannels; channel++)
       {
