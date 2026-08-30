@@ -422,7 +422,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             LeaveCriticalSection(&g_cs_progress);
 
             char szParams[128];
-            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
+            const char *aot = (info.object_type == FAAC_OBJ_HE_AAC_V2) ? "HE-AAC v2" :
+                              (info.object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity";
             snprintf(szParams, sizeof(szParams), "%uHz %uch | %s | Cutoff: %uHz",
                      info.sample_rate, info.num_channels, aot, info.bandwidth);
             SetDlgItemText(hWnd, IDC_INPUTPARAMS, szParams);
@@ -547,6 +548,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_LOW);
             idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v1");
             SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V1);
+            idx = SendMessage(hOT, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"HE-AAC v2");
+            SendMessage(hOT, CB_SETITEMDATA, idx, (LPARAM)FAAC_OBJ_HE_AAC_V2);
             SendMessage(hOT, CB_SETCURSEL, 0, 0);
         }
 

@@ -115,6 +115,9 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
     sbr->sbrPresent = 1;
     sbr->numChannels = channels;
     sbr->sampleRate = sampleRate;
+    /* Unity until the first HE-AAC v2 frame measures the downmix; the zero the
+     * memset leaves would otherwise silence the first core frame. */
+    sbr->downmixGain = 1.0f;
 
     /* Pre-calculate twiddle factors for the FFT-based QMF analysis.
      * These coefficients rotate the subband indices into the odd-frequency
@@ -139,7 +142,8 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 {
     int sampleRate = sbr->sampleRate;
-    unsigned long rate_per_ch = bitRate / sbr->numChannels;
+    int coded_channels = SbrIsHEV2(sbr) ? 1 : sbr->numChannels;
+    unsigned long rate_per_ch = bitRate / coded_channels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
      * Higher-order parametric reconstruction below 10 kHz is audible and
@@ -221,26 +225,43 @@ void SbrContextEnd(SBRContext *sbrCtx)
     FreeMemory(sbrCtx);
 }
 
-int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize)
+int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned char** ppBuffer, unsigned long* pSize, int aacObjectType)
 {
-    /* Explicit-hierarchy ASC: AAC-LC core wrapped with an SBR extension
-     * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
-     * Fs/2 (dual-rate SBR); the extension declares the full output rate. */
-    *pSize = 5;
-    *ppBuffer = (unsigned char *)malloc(5);
+    /* Backward-compatible explicit ASC: the core is always signalled as plain
+     * AAC-LC, and SBR (and for HE-AAC v2, PS) ride along in sync extensions a
+     * plain-LC decoder skips. The core rate is Fs/2 (dual-rate SBR); the
+     * extension declares the full output rate.
+     *
+     * Object type 29 must NOT appear as the core type here. The 5-bit type is
+     * read as the *core* codec, and AOT 29 selects the hierarchical form, in
+     * which the very next field is the extension rate -- so a decoder reading it
+     * would consume the 0x2b7 sync as a rate index and desync.
+     *
+     * 49 bits for HE-AAC v2, 37 for v1; 7 bytes covers the larger. The reported
+     * size is taken from where the writer actually stopped, so it stays right if
+     * the field list changes. */
+    const unsigned long cap = 7;
+    *ppBuffer = (unsigned char *)malloc(cap);
     if (*ppBuffer == NULL) return -3;
-    memset(*ppBuffer, 0, 5);
-    BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
-    PutBit(pBitStream, LOW,                         5);  /* core object type */
+    memset(*ppBuffer, 0, cap);
+    BitStream *pBitStream = OpenBitStream(cap, *ppBuffer);
+    PutBit(pBitStream, LOW,                         5);  /* core object type = 2 */
     PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
-    PutBit(pBitStream, channels,                     4);
+    PutBit(pBitStream, channels,                    4);  /* core channels (1 for HE-AAC v2) */
     PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
     PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
     PutBit(pBitStream, 0, 1);                            /* extensionFlag */
     PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
     PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
     PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
-    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
+    PutBit(pBitStream, sbrCtx->fullSampleRateIdx,   4);  /* SBR output rate (2*core) */
+    if (IsHEV2(aacObjectType)) {
+        /* psPresentFlag is gated behind its own 11-bit sync, not appended bare
+         * to the SBR extension (ISO 14496-3 1.6.2.1). */
+        PutBit(pBitStream, 0x548,                  11);  /* syncExtensionType (PS) */
+        PutBit(pBitStream, 1,                       1);  /* psPresentFlag */
+    }
+    *pSize = (pBitStream->currentBit + 7) / 8;
     CloseBitStream(pBitStream);
     return 0;
 }
@@ -254,13 +275,28 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables)
+/* Gain the HE-AAC v2 caller must apply to its 0.5*(L+R) downmix so the mono core
+ * carries the energy the PS decoder will assume it does. Valid after SbrEncode
+ * has run for the frame being downmixed. */
+float SbrContextGetDownmixGain(SBRContext *sCtx)
+{
+    return (sCtx && sCtx->sbrInfo) ? sCtx->sbrInfo->downmixGain : 1.0f;
+}
+
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables, int aacObjectType)
 {
     if (!sCtx) return;
-    if (!sCtx->sbrInfo)
+    if (sCtx->sbrInfo)
+        sCtx->sbrInfo->is_he_v2 = (IsHEV2(aacObjectType));
+    if (!sCtx->sbrInfo) {
         sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
-    else
+        if (sCtx->sbrInfo) {
+            sCtx->sbrInfo->is_he_v2 = (IsHEV2(aacObjectType));
+            SbrUpdate(sCtx->sbrInfo, bitrate);
+        }
+    } else {
         SbrUpdate(sCtx->sbrInfo, bitrate);
+    }
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
@@ -390,10 +426,14 @@ static inline float fast_log2(float x)
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
  * a standard 128-point implementation. Phase info is discarded as the
  * SBR bitstream only transmits envelope magnitudes. */
+/* noinline is deliberate. Both the HE-v1 energy path and the HE-v2 stereo path
+ * call this, and letting LTO inline it into each gave the FFT two call contexts,
+ * which it answered by cloning the entire transform (fft.part.0.constprop.0,
+ * +1442 bytes) -- for a body far too large to earn anything back from inlining. */
 #if defined(__GNUC__)
-__attribute__((hot))
+__attribute__((hot, noinline))
 #endif
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2)
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
@@ -427,10 +467,20 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
         float wi = sbr->oddSin[k];
-        float Sr = Ar + wr * Br - wi * Bi;
-        float Si = Ai + wr * Bi + wi * Br;
-        energy[k] = Sr * Sr + Si * Si;
+        xr_out[k] = Ar + wr * Br - wi * Bi;
+        xi_out[k] = Ai + wr * Bi + wi * Br;
     }
+}
+
+#if defined(__GNUC__)
+__attribute__((hot))
+#endif
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+{
+    float xr_out[64], xi_out[64];
+    SbrQmfAnalysisComplex(sbr, ovl_pos, xr_out, xi_out, kx, k2);
+    for (int k = kx; k < k2; k++)
+        energy[k] = xr_out[k] * xr_out[k] + xi_out[k] * xi_out[k];
 }
 
 
@@ -500,9 +550,178 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
     }
 }
 
+/* PS parameter band -> QMF band [start, end). ISO/IEC 14496-3 Table 8.34 maps
+ * each hybrid channel to one of 20 parameter bands (the map FFmpeg ships as
+ * ff_k_to_i_20); the 10-band modes pair adjacent 20-band parameters, which
+ * collapses that map to the ranges below. Note how uneven it is -- band 9 alone
+ * covers QMF 23..63, i.e. everything above ~8.6 kHz at 48 kHz output.
+ *
+ * PS bands 0 and 1 are hybrid sub-bands *inside* QMF band 0. We run no hybrid
+ * filterbank, so they cannot be told apart here; both take QMF band 0 and the
+ * frequency-delta coder spends a single bit on the repeat. */
+static const unsigned char ps_band_qmf[SBR_PS_BANDS][2] = {
+    { 0,  1}, { 0,  1}, { 1,  2}, { 2,  3}, { 3,  5},
+    { 5,  7}, { 7,  9}, { 9, 14}, {14, 23}, {23, 64}
+};
+
+/* IID levels the decoder dequantizes to, in dB, for index -7..+7 (ISO/IEC
+ * 14496-3 Table 8.24, the "default" resolution selected by iid_mode 0). The
+ * spacing is deliberately non-uniform -- 2 dB near centre, 7 dB at the edges --
+ * so a uniform ladder would mis-pan every band it did not land exactly on.
+ * Stored as the midpoints between neighbouring levels, which is all the
+ * nearest-level search needs. */
+static const float ps_iid_thresh_db[SBR_PS_IID_LEVELS - 1] = {
+    -21.5f, -16.0f, -12.0f, -8.5f, -5.5f, -3.0f, -1.0f,
+      1.0f,   3.0f,   5.5f,  8.5f, 12.0f, 16.0f, 21.5f
+};
+
+/* What each ICC index actually *achieves*, not the nominal value it stands for.
+ *
+ * The spec's dequantization points (Table 8.26) are
+ *   { 1.0, 0.937, 0.84118, 0.60092, 0.36764, 0.0, -0.589, -1.0 }
+ * but those describe a per-band target, and what survives to the decoder's
+ * output is consistently more correlated than that -- the decorrelator is an
+ * allpass network of finite length and its effect is diluted by the bands PS
+ * groups together. Measured end to end through ffmpeg, forcing one index across
+ * all bands and reading back broadband coherence:
+ *
+ *     index      0      1      2      3      4      5      6      7
+ *     nominal  1.000  0.937  0.841  0.601  0.368  0.000 -0.589 -1.000
+ *     achieved 0.973  0.930  0.863  0.687  0.502  0.173 -0.441 -0.970
+ *
+ * Quantizing a measured source coherence against the nominal column therefore
+ * lands systematically too coherent -- the image collapses toward mono, by
+ * +0.108 on average across the corpus, which was essentially the whole of our
+ * stereo error. Choosing the index whose *achieved* value is nearest the source
+ * removes that bias. What we transmit is unchanged and still means exactly what
+ * the spec says; this only changes which index we pick. */
+static const float ps_icc_quant[SBR_PS_ICC_LEVELS] = {
+    0.973f, 0.930f, 0.863f, 0.687f, 0.502f, 0.173f, -0.441f, -0.970f
+};
+
+/* Estimate this frame's parametric stereo parameters into its delay-line slot,
+ * update the downmix gain, and rewrite channel 0's band energies to describe the
+ * mono signal the core will actually encode -- which is what the envelope
+ * quantizer reads next.
+ *
+ * Everything comes out of the per-band energies SbrAnalyze already accumulated:
+ * E_L, E_R and the cross term Re{L conj(R)}. No extra analysis pass. */
+static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *sa, SbrFrameData *fd)
+{
+    int n_env = sa->numEnvelopes;
+    float totL = 0.0f, totR = 0.0f, totLR = 0.0f;
+
+    for (int b = 0; b < SBR_PS_BANDS; b++) {
+        float eL = 0.0f, eR = 0.0f, eLR = 0.0f, eLRi = 0.0f;
+
+        for (int h = 0; h < n_env; h++) {
+            for (int k = ps_band_qmf[b][0]; k < ps_band_qmf[b][1]; k++) {
+                eL  += sa->ch[0].bandHalfE[h][k];
+                eR  += sa->ch[1].bandHalfE[h][k];
+                eLR += sa->bandCrossE[h][k];
+                eLRi += sa->bandCrossIm[h][k];
+            }
+        }
+
+        /* IID: pick the level nearest in dB. 10*log10(eL/eR) == 10/log2(10) *
+         * log2(eL/eR), and fast_log2 is already here for the envelope coder. */
+        float iid_db = 3.01029996f * fast_log2((eL + SBR_ENERGY_FLOOR) / (eR + SBR_ENERGY_FLOOR));
+        int lvl = 0;
+        while (lvl < SBR_PS_IID_LEVELS - 1 && iid_db >= ps_iid_thresh_db[lvl])
+            lvl++;
+        fd->iid[b] = lvl - (SBR_PS_IID_LEVELS / 2);
+
+        /* ICC: normalized cross-correlation, nearest quantized value. Low
+         * bands use the signed real part, where in- versus out-of-phase is
+         * audible as such; above that, the magnitude, which cannot go negative.
+         * See SBR_PS_ICC_SIGNED_BANDS. */
+        float xnum = (b < SBR_PS_ICC_SIGNED_BANDS)
+                     ? eLR : sqrtf(eLR * eLR + eLRi * eLRi);
+        float icc = xnum / (sqrtf(eL * eR) + SBR_ENERGY_FLOOR);
+        icc = clamp_float(icc, -1.0f, 1.0f);
+        int best_icc = 0;
+        float best_err = 2.0f;
+        for (int i = 0; i <= SBR_PS_ICC_MAX_INDEX; i++) {
+            float err = fabsf(icc - ps_icc_quant[i]);
+            if (err < best_err) {
+                best_err = err;
+                best_icc = i;
+            }
+        }
+        fd->icc[b] = best_icc;
+
+        /* Band 0 duplicates band 1's QMF range, so summing every band would
+         * double-count QMF band 0. */
+        if (b != 0) {
+            totL  += eL;
+            totR  += eR;
+            totLR += eLR;
+        }
+    }
+
+    /* Signal ICC only when some band is actually decorrelated. Index 0 is
+     * ICC = 1.0 (fully coherent), for which the decoder's default is identical
+     * and the payload bits would be wasted. */
+    fd->enable_icc = 0;
+    for (int b = 0; b < SBR_PS_BANDS; b++) {
+        if (fd->icc[b] > 0) {
+            fd->enable_icc = 1;
+            break;
+        }
+    }
+
+    /* Energy-preserving downmix gain. The decoder's PS gains satisfy
+     * c_l^2 + c_r^2 = 2, so it reconstructs 2*E_M and implicitly assumes the
+     * mono it was handed carries E_M = (E_L + E_R)/2. A plain 0.5*(L+R) instead
+     * carries (E_L + E_R + 2*E_LR)/4, which collapses toward silence as the
+     * channels decorrelate. g restores the level.
+     *
+     * E_LR <= (E_L + E_R)/2 by Cauchy-Schwarz, so g >= 1 always; the ceiling
+     * caps how much near-antiphase material may be boosted, and the one-pole
+     * keeps the gain from pumping frame to frame. */
+    float sum = totL + totR;
+    float g = sqrtf(2.0f * sum / (sum + 2.0f * totLR + SBR_ENERGY_FLOOR));
+    g = clamp_float(g, 1.0f, SBR_PS_MAX_DOWNMIX_GAIN);
+    sbr->downmixGain += SBR_PS_GAIN_SMOOTH * (g - sbr->downmixGain);
+
+    /* The envelope quantizer is about to read channel 0's band energies as "the
+     * core's signal". Until now that was the *left* channel, which is only right
+     * when L == R. Replace it with the true per-band energy of g * 0.5 * (L + R).
+     *
+     * Above the crossover the right answer is a different one, and better. The
+     * decoder does not hear the core there at all: SBR regenerates those bands
+     * and scales them to the level we transmit, and PS then splits that level
+     * between L and R with c_l^2 + c_r^2 = 2 -- it hands back twice what it was
+     * given. Transmitting (E_L + E_R)/2 therefore lands the reconstruction on
+     * the band's true stereo energy no matter what the downmix lost there.
+     *
+     * That is per-band downmix compensation, which otherwise needs the downmix
+     * moved into the QMF domain and a synthesis filterbank to get back out. For
+     * the SBR range it costs one comparison, because the envelope *is* a
+     * per-band gain we already transmit. Below the crossover the level is
+     * whatever the core coded and no envelope can change it, so there the
+     * downmix energy remains the honest description.
+     *
+     * Worth 0.02 of MOS at every rate measured, and slightly better coherence
+     * with it -- which is the whole of what uncapping the ICC quantizer cost.
+     * See SBR_PS_ICC_MAX_INDEX. */
+    float gg = 0.25f * sbr->downmixGain * sbr->downmixGain;
+    for (int h = 0; h < n_env; h++) {
+        float * restrict eM = sa->ch[0].bandHalfE[h];
+        const float * restrict eR2 = sa->ch[1].bandHalfE[h];
+        const float * restrict eX = sa->bandCrossE[h];
+        for (int k = 0; k < SBR_QMF_BANDS_64; k++)
+            eM[k] = (k >= sbr->kx) ? 0.5f * (eM[k] + eR2[k])
+                                   : gg * (eM[k] + eR2[k] + 2.0f * eX[k]);
+    }
+}
+
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
+    /* HE-AAC v2 analyses two input channels but codes one: the core sees a
+     * downmix, so exactly one set of envelopes is quantized. */
+    int coded_nch = SbrIsHEV2(sbr) ? 1 : nch;
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
@@ -512,7 +731,13 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
-    sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, fd);
+
+    /* PS runs before the envelope quantizer: it derives the downmix gain, and
+     * the envelopes must describe the gained downmix the core actually codes. */
+    if (SbrIsHEV2(sbr) && nch == 2)
+        sbr_analyze_parametric_stereo(sbr, sa, fd);
+
+    sbr_quantize_envelopes(sbr, coded_nch, sa->sampled, sa, fd);
 }
 
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.

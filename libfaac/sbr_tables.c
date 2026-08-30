@@ -376,3 +376,68 @@ const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS] = {
     /*  +30 */ { 0x000ffffeu, 20 },
     /*  +31 */ { 0x000fffffu, 20 },
 };
+
+/* --- HE-AAC v2 parametric stereo (ISO/IEC 14496-3 Tables 8.29-8.32) ---
+ * Delta-coded IID and ICC, in frequency (df) and time (dt) variants. Indexed by
+ * delta + offset; the spec gives code *lengths*, and the codes below are the
+ * canonical assignment over them (verified against FFmpeg's aacpsdata.c). The
+ * dt tables run to 20 bits, which is why SBRHuffEntry carries a 24-bit code.
+ *
+ * Note these are NOT canonical in symbol order -- iid_df assigns its five
+ * 17-bit codes to symbols in the order 3, 0, 1, 2, 26 -- so they cannot be
+ * regenerated at init from stored lengths alone. The codes are the table. */
+#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
+
+const SBRHuffEntry ps_huff_iid_df[29] = {
+    /* -14 */ { 0x01fffbu, 17 },
+    /* -13 */ { 0x01fffcu, 17 },
+    /* -12 */ { 0x01fffdu, 17 },
+    /* -11 */ { 0x01fffau, 17 },
+    /* -10 */ { 0x00fffcu, 16 },
+    /*  -9 */ { 0x007ffcu, 15 },
+    /*  -8 */ { 0x001ffdu, 13 },
+    /*  -7 */ { 0x0003feu, 10 },
+    /*  -6 */ { 0x0001feu,  9 },
+    /*  -5 */ { 0x00007eu,  7 },
+    /*  -4 */ { 0x00003cu,  6 },
+    /*  -3 */ { 0x00001du,  5 },
+    /*  -2 */ { 0x00000du,  4 },
+    /*  -1 */ { 0x000005u,  3 },
+    /*  +0 */ { 0x000000u,  1 },
+    /*  +1 */ { 0x000004u,  3 },
+    /*  +2 */ { 0x00000cu,  4 },
+    /*  +3 */ { 0x00001cu,  5 },
+    /*  +4 */ { 0x00003du,  6 },
+    /*  +5 */ { 0x00003eu,  6 },
+    /*  +6 */ { 0x0000feu,  8 },
+    /*  +7 */ { 0x0007feu, 11 },
+    /*  +8 */ { 0x001ffcu, 13 },
+    /*  +9 */ { 0x003ffcu, 14 },
+    /* +10 */ { 0x003ffdu, 14 },
+    /* +11 */ { 0x007ffdu, 15 },
+    /* +12 */ { 0x01fffeu, 17 },
+    /* +13 */ { 0x03fffeu, 18 },
+    /* +14 */ { 0x03ffffu, 18 },
+};
+
+
+const SBRHuffEntry ps_huff_icc_df[15] = {
+    /*  -7 */ { 0x003fffu, 14 },
+    /*  -6 */ { 0x003ffeu, 14 },
+    /*  -5 */ { 0x000ffeu, 12 },
+    /*  -4 */ { 0x0003feu, 10 },
+    /*  -3 */ { 0x00007eu,  7 },
+    /*  -2 */ { 0x00001eu,  5 },
+    /*  -1 */ { 0x000006u,  3 },
+    /*  +0 */ { 0x000000u,  1 },
+    /*  +1 */ { 0x000002u,  2 },
+    /*  +2 */ { 0x00000eu,  4 },
+    /*  +3 */ { 0x00003eu,  6 },
+    /*  +4 */ { 0x0000feu,  8 },
+    /*  +5 */ { 0x0001feu,  9 },
+    /*  +6 */ { 0x0007feu, 11 },
+    /*  +7 */ { 0x001ffeu, 13 },
+};
+
+
+#endif /* FAAC_PARAMETRIC_STEREO */
