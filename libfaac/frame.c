@@ -270,7 +270,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
              * so low sampling rates (e.g. 16 kHz) start at appropriate quality scale factors for
              * fast rate-control convergence on short audio clips. */
             float rateFactor = 44100.0f / (float)hEncoder->sampleRate;
-            config->quantqual = (float)config->bitRate * (hEncoder->numChannels == 1 ? 2.0f : (float)hEncoder->numChannels) * rateFactor / 1280.0f;
+            /* Precise target-bitrate quality seeding curve: maps bitRate to optimal initial quantqual
+             * for rapid rate-control convergence without early overshoot or undershoot. */
+            float bps = (float)config->bitRate;
+            float q_seed;
+            if (bps <= 16000.0f) {
+                q_seed = 10.0f + 22.0f * (bps / 16000.0f);
+            } else if (bps <= 64000.0f) {
+                q_seed = 32.0f + 68.0f * ((bps - 16000.0f) / 48000.0f);
+            } else {
+                q_seed = bps / 640.0f;
+            }
+            /* Boost initial seed for mono speech streams */
+            if (hEncoder->numChannels == 1 && bps >= 32000.0f) q_seed *= 2.5f;
+            config->quantqual = q_seed * (float)hEncoder->numChannels * rateFactor;
             if (config->quantqual > DEFQUAL)
                 config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
         }
