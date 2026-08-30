@@ -50,10 +50,18 @@ static hcode16_t * const hmap[12] = {
     book06, book07, book08, book09, book10, book11
 };
 
-/* Bitwise branchless non-zero check: returns 1 if x != 0, else 0. */
-static inline int is_nonzero(int x)
+/* ISO/IEC 14496-3 Positional Tuple Indexing Helpers:
+ * DIM_M2_7  = 8:  (a0 * 8)  + a1 = (a0 << 3) + a1
+ * DIM_M2_12 = 13: (a0 * 13) + a1 = (a0 << 3) + (a0 << 2) + a0 + a1
+ */
+static inline int huff_idx_m2_7(int a0, int a1)
 {
-    return (int)(((unsigned int)x | (unsigned int)-x) >> 31);
+    return (a0 << 3) + a1;
+}
+
+static inline int huff_idx_m2_12(int a0, int a1)
+{
+    return (a0 << 3) + (a0 << 2) + a0 + a1;
 }
 
 /* Both books of a pair share the index expression and the sign-bit count; only
@@ -71,7 +79,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     switch (bnum) {
     case HCB_1:
         for (i = 0; i < len; i += 4) {
-            int idx = 40 + 27 * qs[i] + 9 * qs[i+1] + 3 * qs[i+2] + qs[i+3];
+            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
@@ -79,7 +87,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_3:
         for (i = 0; i < len; i += 4) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
-            int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
@@ -87,7 +95,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
         break;
     case HCB_5:
         for (i = 0; i < len; i += 2) {
-            int idx = 40 + 9 * qs[i] + qs[i+1];
+            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
@@ -95,7 +103,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_7:
         for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = (a0 << 3) + a1;
+            int idx = huff_idx_m2_7(a0, a1);
             int sign = (a0 != 0) + (a1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
@@ -104,7 +112,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_9:
         for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = 13 * a0 + a1;
+            int idx = huff_idx_m2_12(a0, a1);
             int sign = (a0 != 0) + (a1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
@@ -129,7 +137,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_1:
     case HCB_2:
         for (i = 0; i < len; i += 4) {
-            int idx = 40 + 27 * qs[i] + 9 * qs[i+1] + 3 * qs[i+2] + qs[i+3];
+            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
             coder->s[datacnt].data = book[idx].data;
             coder->s[datacnt++].len = book[idx].len;
         }
@@ -139,7 +147,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         for (i = 0; i < len; i += 4) {
             int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
             int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
-            int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int blen = book[idx].len;
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
@@ -153,7 +161,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_5:
     case HCB_6:
         for (i = 0; i < len; i += 2) {
-            int idx = 40 + 9 * qs[i] + qs[i+1];
+            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
             coder->s[datacnt].data = book[idx].data;
             coder->s[datacnt++].len = book[idx].len;
         }
@@ -163,7 +171,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
-            int idx = (a0 << 3) + a1;
+            int idx = huff_idx_m2_7(a0, a1);
             int blen = book[idx].len;
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
@@ -177,7 +185,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
-            int idx = 13 * a0 + a1;
+            int idx = huff_idx_m2_12(a0, a1);
             int blen = book[idx].len;
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
