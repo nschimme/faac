@@ -976,9 +976,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             /* Adaptive burst draw ceiling: 0.5 * desbits for low bitrates (<=48k stereo / <=24k mono), 1.0 * desbits for high bitrates */
             int drawLimit = (hEncoder->config.bitRate <= 24000) ? (desbits / 2) : desbits;
             int maxDraw = (excess < drawLimit) ? excess : drawLimit;
-            /* Data-driven PE complexity threshold: 10.0f per channel naturally captures high-entropy transients.
+            /* Data-driven PE complexity threshold: PE_THRESH_PER_CH per channel naturally captures high-entropy transients.
              * Bypassing low-entropy frames prevents quality scale-factor inflation and overshoot. */
-            if (totalPE > (10.0f * numChannels) && hEncoder->bitReservoir > 0) {
+            if (totalPE > (PE_THRESH_PER_CH * (float)numChannels) && hEncoder->bitReservoir > 0) {
                 int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
                 effectiveBits = totalBits - absorbed;
                 hEncoder->bitReservoir -= absorbed;
