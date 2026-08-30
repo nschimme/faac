@@ -157,17 +157,11 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
 static void PsyCalcPE(PsyInfo * psyInfo)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float pe = 0.0f;
-  int win;
-
-  if (!psydata) {
-    psyInfo->pe = 0.0f;
-    return;
-  }
-
-  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
-    pe += (float)psydata->eng[ENG_WIN_CUR + win];
-
+  if (!psydata) { psyInfo->pe = 0.0f; return; }
+  float pe = (float)psydata->eng[ENG_WIN_CUR + 0] + (float)psydata->eng[ENG_WIN_CUR + 1] +
+             (float)psydata->eng[ENG_WIN_CUR + 2] + (float)psydata->eng[ENG_WIN_CUR + 3] +
+             (float)psydata->eng[ENG_WIN_CUR + 4] + (float)psydata->eng[ENG_WIN_CUR + 5] +
+             (float)psydata->eng[ENG_WIN_CUR + 6] + (float)psydata->eng[ENG_WIN_CUR + 7];
   psyInfo->pe = pe * 1.0e-8f;
 }
 
