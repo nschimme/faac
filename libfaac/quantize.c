@@ -50,6 +50,8 @@ static float max_quant_limit;
 
 #define GAIN_LUT_SIZE 512
 #define GAIN_LUT_BIAS 256
+/* ISO 14496-3 §8.3.4 scalefactors use quarter-dB steps (1 unit = 2^(1/4) in amplitude).
+ * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
 
@@ -278,6 +280,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             continue;
         }
 
+        /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
+         * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
         float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse

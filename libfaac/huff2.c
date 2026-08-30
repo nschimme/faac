@@ -54,6 +54,9 @@ static hcode16_t * const hmap[12] = {
 /* Both books of a pair share the index expression and the sign-bit count; only
  * the table differs. One walk, two lookups.
  *
+ * ISO 14496-3 multidimensional Huffman section tuple indexing. Constant dimensions
+ * (DIM_S4, DIM_M4, DIM_S2, DIM_M2_7, DIM_M2_12) allow constant folding into shift-adds.
+ *
  * bnum is always a pair base -- huffbook takes HCB_ESC without sizing it -- so
  * there is deliberately no escape case. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
