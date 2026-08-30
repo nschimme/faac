@@ -454,6 +454,41 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 
+        /* Pre-calculate subband energies and log-energies for fast SFM calculation. */
+        float qmf_Ek[SBR_QMF_BANDS_64];
+        float qmf_logEk[SBR_QMF_BANDS_64];
+        float sum_e = 0.0f;
+        float sum_log_e = 0.0f;
+        int k_lo_all = sbr->kx, k_hi_all = sbr->k2;
+        int num_qmf = k_hi_all - k_lo_all;
+        for (int k = k_lo_all; k < k_hi_all; k++) {
+            float Ek = bandHalfE[0][k] + bandHalfE[1][k];
+            qmf_Ek[k] = Ek;
+            float logEk = fast_log2(Ek + 1e-10f) * 0.69314718f; /* fast log approximation */
+            qmf_logEk[k] = logEk;
+            sum_e += Ek;
+            sum_log_e += logEk;
+        }
+        if (num_qmf > 0 && sum_e > 1e-9f) {
+            float am = sum_e / (float)num_qmf;
+            float gm = expf(sum_log_e / (float)num_qmf);
+            float sfm = gm / am;
+
+            if (sfm < 0.15f) {
+                fd->ch[ch].invfMode = 3; /* HIGH filtering for strongly tonal signals */
+                noise_level = 10;
+            } else if (sfm < 0.35f) {
+                fd->ch[ch].invfMode = 2; /* MID */
+                noise_level = 7;
+            } else if (sfm < 0.65f) {
+                fd->ch[ch].invfMode = 1; /* LOW */
+                noise_level = 5;
+            } else {
+                fd->ch[ch].invfMode = 0; /* OFF for noise-like signals */
+                noise_level = 3;
+            }
+        }
+
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
@@ -488,11 +523,36 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
         for (int ne = 0; ne < n_q; ne++) {
             int prevNoise = -1;
             for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-                if (prevNoise < 0) {
-                    fd->ch[ch].noiseData[ne][nb] = noise_level;
-                    prevNoise = noise_level;
+                int k_lo = sbr->kx + (sbr->k2 - sbr->kx) * nb / sbr->numNoiseBands;
+                int k_hi = sbr->kx + (sbr->k2 - sbr->kx) * (nb + 1) / sbr->numNoiseBands;
+                float sum_nb = 0.0f, sum_log_nb = 0.0f;
+                int num_nb = k_hi - k_lo;
+                if (n_env == 1) {
+                    for (int k = k_lo; k < k_hi; k++) {
+                        sum_nb += qmf_Ek[k];
+                        sum_log_nb += qmf_logEk[k];
+                    }
                 } else {
-                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
+                    int env_idx = ne % n_env;
+                    for (int k = k_lo; k < k_hi; k++) {
+                        float Ek = bandHalfE[env_idx][k];
+                        sum_nb += Ek;
+                        sum_log_nb += fast_log2(Ek + 1e-10f) * 0.69314718f;
+                    }
+                }
+                int band_noise_level = noise_level;
+                if (num_nb > 0 && sum_nb > 1e-9f) {
+                    float sfm_nb = expf(sum_log_nb / (float)num_nb) / (sum_nb / (float)num_nb);
+                    /* Higher SFM (noise-like) -> lower noise level index (higher noise energy);
+                       Lower SFM (tonal) -> higher noise level index (lower noise energy). */
+                    band_noise_level = clamp_int(lrintf(10.0f - 8.0f * sfm_nb), 0, 30);
+                }
+
+                if (prevNoise < 0) {
+                    fd->ch[ch].noiseData[ne][nb] = band_noise_level;
+                    prevNoise = band_noise_level;
+                } else {
+                    int delta = clamp_int(band_noise_level - prevNoise, -15, 15);
                     fd->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
                 }
             }
