@@ -50,19 +50,6 @@ static hcode16_t * const hmap[12] = {
     book06, book07, book08, book09, book10, book11
 };
 
-/* ISO/IEC 14496-3 Positional Tuple Indexing Helpers:
- * DIM_M2_7  = 8:  (a0 * 8)  + a1 = (a0 << 3) + a1
- * DIM_M2_12 = 13: (a0 * 13) + a1 = (a0 << 3) + (a0 << 2) + a0 + a1
- */
-static inline int huff_idx_m2_7(int a0, int a1)
-{
-    return (a0 << 3) + a1;
-}
-
-static inline int huff_idx_m2_12(int a0, int a1)
-{
-    return (a0 << 3) + (a0 << 2) + a0 + a1;
-}
 
 /* Both books of a pair share the index expression and the sign-bit count; only
  * the table differs. One walk, two lookups.
@@ -103,7 +90,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_7:
         for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = huff_idx_m2_7(a0, a1);
+            int idx = DIM_M2_7 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
@@ -112,7 +99,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_9:
         for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = huff_idx_m2_12(a0, a1);
+            int idx = DIM_M2_12 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
@@ -171,7 +158,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
-            int idx = huff_idx_m2_7(a0, a1);
+            int idx = DIM_M2_7 * a0 + a1;
             int blen = book[idx].len;
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
@@ -185,7 +172,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
-            int idx = huff_idx_m2_12(a0, a1);
+            int idx = DIM_M2_12 * a0 + a1;
             int blen = book[idx].len;
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
