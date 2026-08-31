@@ -465,45 +465,21 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        int k, sfb;
+        int k, sfb, c;
 
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
             band_e[sfb] = 0.0f;
 
-        if (nch == 2)
+        for (c = 0; c < nch; c++)
         {
-            float *wl = xrs[0] + win * BLOCK_LEN_SHORT;
-            float *wr = xrs[1] + win * BLOCK_LEN_SHORT;
+            float *w = xrs[c] + win * BLOCK_LEN_SHORT;
 
-            for (k = cutoff; k < ci[0]->sfb_offset[maxsfb]; k++)
-            {
-                wl[k] = 0.0f;
-                wr[k] = 0.0f;
-            }
-
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            {
-                int start_k = ci[0]->sfb_offset[sfb];
-                if (start_k >= cutoff) break;
-
-                int end_k = ci[0]->sfb_offset[sfb + 1];
-                if (end_k > cutoff) end_k = cutoff;
-
-                float e = 0.0f;
-                for (k = start_k; k < end_k; k++)
-                    e += wl[k] * wl[k] + wr[k] * wr[k];
-
-                band_e[sfb] = e;
-            }
-        }
-        else
-        {
-            float *w = xrs[0] + win * BLOCK_LEN_SHORT;
-
-            for (k = cutoff; k < ci[0]->sfb_offset[maxsfb]; k++)
+            /* Inline stopband zeroing */
+            for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
                 w[k] = 0.0f;
 
-            window_band_energy(ci[0], w, GROUP_MIN_SFB, maxsfb, cutoff, band_e);
+            /* Let the compiler inline this single call site */
+            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, cutoff, band_e);
         }
 
         if (win == group_start)
