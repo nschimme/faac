@@ -432,10 +432,13 @@ static void window_band_energy(const CoderInfo * __restrict ci, const float * __
         int end_k = sfb_offset[sfb + 1];
         if (end_k > cutoff) end_k = cutoff;
 
+        int len = end_k - start_k;
+        const float * __restrict line = w + start_k;
         float e = 0.0f;
         int k;
-        for (k = start_k; k < end_k; k++)
-            e += w[k] * w[k];
+
+        for (k = 0; k < len; k++)
+            e += line[k] * line[k];
 
         e_out[sfb] += e;
     }
@@ -475,9 +478,10 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
         for (c = 0; c < nch; c++)
         {
             float *w = xrs[c] + win * BLOCK_LEN_SHORT;
+            int stop = ci[c]->sfb_offset[maxsfb];
 
             /* Inline stopband zeroing */
-            for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
+            for (k = cutoff; k < stop; k++)
                 w[k] = 0.0f;
 
             /* Let the compiler inline this single call site */
