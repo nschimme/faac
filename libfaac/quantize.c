@@ -481,8 +481,11 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
             int stop = ci[c]->sfb_offset[maxsfb];
 
             /* Inline stopband zeroing */
-            for (k = cutoff; k < stop; k++)
-                w[k] = 0.0f;
+            if (stop > cutoff)
+            {
+                for (k = cutoff; k < stop; k++)
+                    w[k] = 0.0f;
+            }
 
             /* Let the compiler inline this single call site */
             window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, cutoff, band_e);
@@ -498,8 +501,9 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
         int onset_votes = 0;
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
-            if (band_e[sfb] < run_min[sfb]) run_min[sfb] = band_e[sfb];
-            if (band_e[sfb] > run_max[sfb]) run_max[sfb] = band_e[sfb];
+            float e = band_e[sfb];
+            if (e < run_min[sfb]) run_min[sfb] = e;
+            if (e > run_max[sfb]) run_max[sfb] = e;
             if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
         }
 
