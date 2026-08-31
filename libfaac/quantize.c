@@ -419,15 +419,23 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 
 /* Accumulates, so a CPE can sum both channels into one energy vector. */
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
-                                int from_sfb, int to_sfb, float * __restrict e_out)
+                                int from_sfb, int to_sfb, int cutoff, float * __restrict e_out)
 {
     int sfb;
     for (sfb = from_sfb; sfb < to_sfb; sfb++)
     {
+        /* Stop entirely if this band and all subsequent bands are in the zeroed cutoff region */
+        if (ci->sfb_offset[sfb] >= cutoff) break;
+
         float e = 0.0f;
         int k;
-        for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
+        /* Clamp the upper bound so we don't multiply 0.0f * 0.0f in the boundary band */
+        int end_k = ci->sfb_offset[sfb + 1];
+        if (end_k > cutoff) end_k = cutoff;
+
+        for (k = ci->sfb_offset[sfb]; k < end_k; k++)
             e += w[k] * w[k];
+
         e_out[sfb] += e;
     }
 }
@@ -458,19 +466,22 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        int k, sfb, c;
+        int sfb, c;
 
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-            band_e[sfb] = 0.0f;
+        /* Shrinks footprint and runs faster than the scalar loop */
+        memset(&band_e[GROUP_MIN_SFB], 0, (maxsfb - GROUP_MIN_SFB) * sizeof(float));
 
         for (c = 0; c < nch; c++)
         {
             float *w = xrs[c] + win * BLOCK_LEN_SHORT;
 
-            for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
-                w[k] = 0.0f;
+            /* Zero the stopband memory directly */
+            int zero_len = ci[c]->sfb_offset[maxsfb] - cutoff;
+            if (zero_len > 0)
+                memset(&w[cutoff], 0, zero_len * sizeof(float));
 
-            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
+            /* Pass cutoff to bypass the dead math */
+            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, cutoff, band_e);
         }
 
         if (win == group_start)
