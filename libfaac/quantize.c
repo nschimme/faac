@@ -421,27 +421,19 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
                                 int from_sfb, int to_sfb, int cutoff, float * __restrict e_out)
 {
-    int sfb, k;
-
-    /* Pre-calculate the stopping band to remove branch checks from the hot loop */
-    for (sfb = from_sfb; sfb < to_sfb; sfb++) {
-        if (ci->sfb_offset[sfb] >= cutoff) {
-            to_sfb = sfb;
-            break;
-        }
-    }
-
-    for (sfb = from_sfb; sfb < to_sfb; sfb++) {
+    int sfb;
+    for (sfb = from_sfb; sfb < to_sfb; sfb++)
+    {
         int start_k = ci->sfb_offset[sfb];
-        int end_k = ci->sfb_offset[sfb + 1];
+        if (start_k >= cutoff) break;
 
-        /* This condition will now only potentially trigger on the very last valid sfb */
+        int end_k = ci->sfb_offset[sfb + 1];
         if (end_k > cutoff) end_k = cutoff;
 
         float e = 0.0f;
-        for (k = start_k; k < end_k; k++) {
+        int k;
+        for (k = start_k; k < end_k; k++)
             e += w[k] * w[k];
-        }
 
         e_out[sfb] += e;
     }
