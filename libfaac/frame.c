@@ -870,7 +870,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 offset += hEncoder->srInfo->cb_width_short[sb];
             }
             coderInfo[channel].sfb_offset[sb] = offset;
-            BlocGroup(hEncoder->freqBuff[channel], coderInfo + channel, &hEncoder->aacquantCfg);
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
 
@@ -884,6 +883,38 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
             coderInfo[channel].sfb_offset[sb] = offset;
         }
+    }
+
+    /* Short-window grouping. A CPE whose channels are both short is grouped
+       once from their summed band energies, so the pair shares one grouping;
+       every other short channel is grouped on its own. Funnelled through a
+       single call site so the layout stays one inlined copy. */
+    for (int e = 0; e < hEncoder->numElements; e++)
+    {
+        AACElement *el = &hEncoder->elements[e];
+        int l = el->channels[0];
+        int r = (el->type == ID_CPE) ? el->channels[1] : -1;
+        CoderInfo *a = NULL, *b = NULL;
+        float *xa = NULL, *xb = NULL;
+
+        if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
+        {
+            a = &coderInfo[l];
+            xa = hEncoder->freqBuff[l];
+            if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            {
+                b = &coderInfo[r];
+                xb = hEncoder->freqBuff[r];
+            }
+        }
+        else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+        {
+            a = &coderInfo[r];
+            xa = hEncoder->freqBuff[r];
+        }
+
+        if (a)
+            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
     }
 
     /* Perform TNS analysis and filtering */

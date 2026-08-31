@@ -417,6 +417,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
+/* Accumulates, so a CPE can sum both channels into one energy vector. */
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
                                 int from_sfb, int to_sfb, float * __restrict e_out)
 {
@@ -427,18 +428,20 @@ static void window_band_energy(const CoderInfo * __restrict ci, const float * __
         int k;
         for (k = ci->sfb_offset[sfb]; k < ci->sfb_offset[sfb + 1]; k++)
             e += w[k] * w[k];
-        e_out[sfb] = e;
+        e_out[sfb] += e;
     }
 }
 
-void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
+/* Splits the 8 short windows into groups at detected onsets. A CPE passes both
+   channels (ci_r != NULL): their band energies are summed so one grouping is
+   derived for the pair and copied to the right channel, which is what the
+   bitstream requires anyway. Callers gate on ONLY_SHORT_WINDOW; long blocks get
+   their single group set in faacEncEncode. */
+void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AACQuantCfg *cfg)
 {
-    if (coderInfo->block_type != ONLY_SHORT_WINDOW)
-    {
-        coderInfo->groups.n = 1;
-        coderInfo->groups.len[0] = 1;
-        return;
-    }
+    CoderInfo *ci[2];
+    float *xrs[2];
+    int nch = ci_r ? 2 : 1;
 
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
@@ -448,17 +451,27 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
     float band_e[NSFB_SHORT], run_min[NSFB_SHORT], run_max[NSFB_SHORT];
     int win, group_start = 0;
 
+    ci[0] = coderInfo; ci[1] = ci_r;
+    xrs[0] = xr;       xrs[1] = xr_r;
+
     coderInfo->groups.n = 0;
 
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        float *w = xr + win * BLOCK_LEN_SHORT;
-        int k, sfb;
+        int k, sfb, c;
 
-        for (k = cutoff; k < coderInfo->sfb_offset[maxsfb]; k++)
-            w[k] = 0.0f;
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            band_e[sfb] = 0.0f;
 
-        window_band_energy(coderInfo, w, GROUP_MIN_SFB, maxsfb, band_e);
+        for (c = 0; c < nch; c++)
+        {
+            float *w = xrs[c] + win * BLOCK_LEN_SHORT;
+
+            for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
+                w[k] = 0.0f;
+
+            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
+        }
 
         if (win == group_start)
         {
@@ -484,4 +497,7 @@ void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *cfg)
         }
     }
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+
+    if (ci_r)
+        ci_r->groups = coderInfo->groups;
 }
