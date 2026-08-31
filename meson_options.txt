@@ -24,3 +24,11 @@ option('max-channels',
     min: 1,
     max: 8,
     value: 8)
+
+# End-of-encode diagnostics banner (Qavg, transient/tool-usage %, rate-control
+# health, etc), printed to stderr on faacEncClose(). Fully guarded by
+# #ifdef FAAC_STATS: zero overhead, zero footprint impact when off (default).
+option('stats',
+    description: 'Enable optional end-of-encode statistics banner',
+    type: 'boolean',
+    value: false)

@@ -587,8 +587,13 @@ int run_encoding_session_ext(const encode_options_t *opts,
     }
 
     uint64_t total_input_samples = (infile->samples > 0) ? (uint64_t)infile->samples : 0;
+    /* Ceiling-divide (input samples + encoder's algorithmic delay) by frame_size:
+     * the encoder must drain that many priming samples too before emitting its
+     * last frame. A flat "+1" only happens to work for LC, whose delay is
+     * exactly one frame_size; HE-AAC's delay is closer to 1.5 frames, so a flat
+     * fudge undercounts it and current_frame can end up exceeding this estimate. */
     uint64_t tf_calc = (total_input_samples > 0 && frame_size > 0) ?
-        (((total_input_samples + frame_size - 1) / frame_size) + 1) : 0;
+        ((total_input_samples + info.encoder_delay + frame_size - 1) / frame_size) : 0;
     uint32_t total_frames = (tf_calc > UINT32_MAX) ? UINT32_MAX : (uint32_t)tf_calc;
 
     if (session_start_cb)

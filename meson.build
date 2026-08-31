@@ -42,6 +42,16 @@ if cc.get_argument_syntax() == 'msvc'
     c_args += ['-DWIN32', '-DNDEBUG', '-D_WINDOWS', '-D_USRDLL', '-DLIBFAAC_DLL_EXPORTS']
 endif
 
+# Passed as a direct compiler define (not routed through config.h) so that
+# stats.h -- included by encoder source files purely to see FAAC_STATS --
+# never needs to pull in config.h itself. That matters: several libfaac .c
+# files (quantize.c among them) don't otherwise include config.h at all, and
+# accidentally giving them visibility into unrelated config.h macros (e.g.
+# HAVE_SSE2) can silently change their compiled behavior.
+if get_option('stats')
+    c_args += ['-DFAAC_STATS']
+endif
+
 configure_file(
     output: 'config.h',
     configuration: config_h
