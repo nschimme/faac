@@ -16,6 +16,13 @@
 #ifndef CPU_COMPUTE_H
 #define CPU_COMPUTE_H
 
+/* HAVE_SSE2 is a build-configuration macro: every translation unit that
+   dispatches on it must see config.h first, or the SIMD path silently
+   compiles out and the scalar fallback is linked instead. */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
 # define SSE2_ARCH
 #endif
