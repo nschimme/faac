@@ -228,9 +228,8 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, int channels, int aacObje
     if (aacObjectType == HE_V1 && sCtx) {
         if (sCtx->sbrInfo) {
             int id_aac = (channels > 1) ? ID_CPE : ID_SCE;
-            /* One step past the newest slot is the oldest: the payload whose
-             * audio this access unit's core carries. See SBR_FRAME_FIFO. */
-            const SbrFrameData *fd = &sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
+            /* Frame N core AAC audio is synchronized with Frame N SBR payload. */
+            const SbrFrameData *fd = &sCtx->frameFIFO[(sCtx->frameHead + 2) % SBR_FRAME_FIFO];
             return SbrWrite(sCtx->sbrInfo, fd, bs, id_aac, writeFlag);
         }
     }
