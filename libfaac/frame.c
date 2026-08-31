@@ -894,7 +894,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         int l_short = (coderInfo[lch].block_type == ONLY_SHORT_WINDOW);
         int r_short = is_cpe && (coderInfo[rch].block_type == ONLY_SHORT_WINDOW);
 
-        if (l_short && r_short && jointmode != JOINT_NONE) {
+        if (l_short && r_short) {
             BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
                          &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
         } else {

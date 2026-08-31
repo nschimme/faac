@@ -474,10 +474,12 @@ static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHOR
     ci->groups.len[ci->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 }
 
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__) && !defined(__clang__)
 __attribute__((noinline, noclone))
 #elif defined(_MSC_VER)
 __declspec(noinline)
+#elif defined(__clang__)
+__attribute__((noinline))
 #endif
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
