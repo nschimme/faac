@@ -421,13 +421,15 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 static void window_band_energy(const CoderInfo * __restrict ci, const float * __restrict w,
                                 int from_sfb, int to_sfb, int cutoff, float * __restrict e_out)
 {
+    const int * __restrict sfb_offset = ci->sfb_offset;
     int sfb;
+
     for (sfb = from_sfb; sfb < to_sfb; sfb++)
     {
-        int start_k = ci->sfb_offset[sfb];
+        int start_k = sfb_offset[sfb];
         if (start_k >= cutoff) break;
 
-        int end_k = ci->sfb_offset[sfb + 1];
+        int end_k = sfb_offset[sfb + 1];
         if (end_k > cutoff) end_k = cutoff;
 
         float e = 0.0f;
