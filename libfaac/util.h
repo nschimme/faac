@@ -59,6 +59,7 @@ int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);
 unsigned int MinBitrate(void);
 int CountLeadingZeros(unsigned int x);
+unsigned long VbrQualityToTargetBitRate(float quantqual);
 
 #ifdef __cplusplus
 }

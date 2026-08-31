@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 
+#include <math.h>
 #include "util.h"
 #include "coder.h"  // FRAME_LEN
 
@@ -73,3 +74,13 @@ int CountLeadingZeros(unsigned int x)
 #endif
 }
 
+unsigned long VbrQualityToTargetBitRate(float quantqual)
+{
+    if (quantqual <= 10.0f) {
+        return 10000;
+    } else if (quantqual <= 100.0f) {
+        return (unsigned long)(10000.0f * powf(12.8f, (quantqual - 10.0f) / 90.0f));
+    } else {
+        return (unsigned long)(quantqual * 1280.0f);
+    }
+}

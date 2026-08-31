@@ -33,8 +33,6 @@
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
 #define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
-#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -214,26 +212,27 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
     }
 
+    if (!config->quantqual)
+        config->quantqual = DEFQUAL;
+
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
     if (hEncoder->config.aacObjectType == AUTO) {
-        unsigned long rate_per_ch = config->bitRate;
+        unsigned long rate_per_ch = config->bitRate ? config->bitRate :
+            (VbrQualityToTargetBitRate(config->quantqual) / hEncoder->numChannels);
         int rate_ok;
-        if (rate_per_ch > 0) {
-            /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
-             * ceiling ramps down toward 20000 bps/ch at the HE_MIN_SAMPLE_RATE floor. */
-            unsigned int max_he_rate = 0;
-            if (hEncoder->sampleRate >= 44100) {
-                max_he_rate = HE_MAX_BITRATE_PER_CH;
-            } else if (hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-                max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
-                              (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
-            }
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
-        } else {
-            rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
+        /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
+         * ceiling ramps down toward 20000 bps/ch at the HE_MIN_SAMPLE_RATE floor. */
+        unsigned int max_he_rate = 0;
+        if (hEncoder->sampleRate >= 44100) {
+            max_he_rate = HE_MAX_BITRATE_PER_CH;
+        } else if (hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
+            max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
+                          (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
         }
+        rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+
         hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
@@ -271,9 +270,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         }
     }
 
-    if (!config->quantqual)
-        config->quantqual = DEFQUAL;
-
     hEncoder->config.bitRate = config->bitRate;
 
     if (!config->bandWidth)
@@ -308,7 +304,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
-        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
+        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : VbrQualityToTargetBitRate((float)hEncoder->config.quantqual);
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
