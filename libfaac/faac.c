@@ -281,13 +281,14 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **enc)
     return FAAC_OK;
 }
 
-/* LC: one frame of 50% MDCT overlap (1024 samples). HE-AAC: dual-rate core
- * combined delay of 2048 samples (2 * 1024), matching FDK-AAC. */
+/* LC: one frame of 50% MDCT overlap (1024 samples). HE-AAC: 3 full-rate frames
+ * (3 * 1024 = 3072 samples) corresponding to the 3-frame SBR/resample lookahead
+ * pipeline depth. */
 static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
     switch (h->config.aacObjectType) {
         case LOW:   return FRAME_LEN;
-        case HE_V1: return 2 * FRAME_LEN;
+        case HE_V1: return 3 * FRAME_LEN;
     }
     assert(0 && "faacEncoderDelay: unhandled aacObjectType");
     return FRAME_LEN;
