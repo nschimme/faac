@@ -594,6 +594,12 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | SBR Grid = %5.1f%% Var | Attack = %.1fx avg, %.1fx max\n",
                     tr, g_faacStats.transientFrames, g_faacStats.totalFrames, sbr_tr, att_avg, att_max);
         }
+        else if (g_faacStats.cpeShortFrames > 0)
+        {
+            double cpe_grp = 100.0 * g_faacStats.cpeCommonGroupFrames / g_faacStats.cpeShortFrames;
+            fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | CPE Short Groups = %5.1f%% (%u/%u) | Attack = %.1fx avg, %.1fx max\n",
+                    tr, g_faacStats.transientFrames, g_faacStats.totalFrames, cpe_grp, g_faacStats.cpeCommonGroupFrames, g_faacStats.cpeShortFrames, att_avg, att_max);
+        }
         else
         {
             fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | Attack = %.1fx avg, %.1fx max\n",

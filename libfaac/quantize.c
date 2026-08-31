@@ -508,5 +508,11 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 
     if (ci_r)
+    {
         ci_r->groups = coderInfo->groups;
+#ifdef FAAC_STATS
+        g_faacStats.cpeShortFrames++;
+        g_faacStats.cpeCommonGroupFrames++;
+#endif
+    }
 }
