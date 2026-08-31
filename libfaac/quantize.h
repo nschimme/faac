@@ -42,6 +42,7 @@ void ResetCoderSections(CoderInfo *coderInfo);
 int BlocQuant(CoderInfo *coderInfo, float *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
 void BlocGroup(float *xr, CoderInfo *coderInfo, AACQuantCfg *aacquantCfg);
+void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *aacquantCfg);
 void QuantizeInit(void);
 
 #endif
