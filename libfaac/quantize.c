@@ -441,6 +441,8 @@ static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHOR
 {
     float run_min[NSFB_SHORT], run_max[NSFB_SHORT];
     int group_start = 0;
+
+    int onset_quorum = ((maxsfb - GROUP_MIN_SFB) * 3) >> 2;
     ci->groups.n = 0;
 
     for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
@@ -458,7 +460,7 @@ static void group_windows_from_energies(CoderInfo *ci, float band_e_win[MAX_SHOR
             }
         }
 
-        if (win == group_start || onset_votes > (((maxsfb - GROUP_MIN_SFB) * 3) >> 2))
+        if (win == group_start || onset_votes > onset_quorum)
         {
             if (win != group_start)
             {
@@ -479,43 +481,33 @@ __declspec(noinline)
 #endif
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg)
 {
-    if (coderInfo_l->block_type != ONLY_SHORT_WINDOW)
-    {
-        coderInfo_l->groups.n = 1;
-        coderInfo_l->groups.len[0] = 1;
-        if (coderInfo_r) coderInfo_r->groups = coderInfo_l->groups;
-        return;
-    }
-
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
     int clear_len = coderInfo_l->sfb_offset[maxsfb] - cutoff;
 
+    size_t clear_bytes = (clear_len > 0) ? (size_t)clear_len * sizeof(float) : 0;
+
     float band_e_win[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    float *xrs[2] = {xr_l, xr_r};
-    CoderInfo *cis[2] = {coderInfo_l, coderInfo_r};
-    int num_ch = xr_r ? 2 : 1;
 
     for (int win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        for (int ch = 0; ch < num_ch; ch++)
+        float *w_l = xr_l + win * BLOCK_LEN_SHORT;
+        if (clear_bytes)
+            memset(w_l + cutoff, 0, clear_bytes);
+
+        window_band_energy(coderInfo_l, w_l, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
+
+        if (xr_r)
         {
-            float *w = xrs[ch] + win * BLOCK_LEN_SHORT;
+            float *w_r = xr_r + win * BLOCK_LEN_SHORT;
+            if (clear_bytes)
+                memset(w_r + cutoff, 0, clear_bytes);
 
-            if (clear_len > 0)
-                memset(w + cutoff, 0, (size_t)clear_len * sizeof(float));
+            float band_er[NSFB_SHORT];
+            window_band_energy(coderInfo_r, w_r, GROUP_MIN_SFB, maxsfb, band_er);
 
-            if (ch == 0)
-            {
-                window_band_energy(cis[ch], w, GROUP_MIN_SFB, maxsfb, band_e_win[win]);
-            }
-            else
-            {
-                float band_er[NSFB_SHORT];
-                window_band_energy(cis[ch], w, GROUP_MIN_SFB, maxsfb, band_er);
-                for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                    band_e_win[win][sfb] += band_er[sfb];
-            }
+            for (int sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                band_e_win[win][sfb] += band_er[sfb];
         }
     }
 
