@@ -41,9 +41,9 @@ enum {
 void ResetCoderSections(CoderInfo *coderInfo);
 int BlocQuant(CoderInfo *coderInfo, float *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg);
-#define BlocGroup(xr, coderInfo, cfg) \
-    BlocGroupCPE(xr, NULL, coderInfo, NULL, cfg)
+struct faacEncStruct;
 
+void BlocGroup(struct faacEncStruct *hEncoder, CoderInfo *coderInfo);
 void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *coderInfo_r, AACQuantCfg *cfg);
 void QuantizeInit(void);
 

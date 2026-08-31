@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "frame.h"
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -517,4 +518,33 @@ void BlocGroupCPE(float *xr_l, float *xr_r, CoderInfo *coderInfo_l, CoderInfo *c
 
     if (coderInfo_r)
         coderInfo_r->groups = coderInfo_l->groups;
+}
+
+void BlocGroup(faacEncStruct *hEncoder, CoderInfo *coderInfo)
+{
+    AACQuantCfg *cfg = &hEncoder->aacquantCfg;
+
+    for (int e = 0; e < hEncoder->numElements; e++)
+    {
+        AACElement *elem = &hEncoder->elements[e];
+        int lch = elem->channels[0];
+        int is_cpe = (elem->type == ID_CPE);
+        int rch = is_cpe ? elem->channels[1] : -1;
+
+        int l_short = (coderInfo[lch].block_type == ONLY_SHORT_WINDOW);
+        int r_short = is_cpe && (coderInfo[rch].block_type == ONLY_SHORT_WINDOW);
+
+        if (l_short && r_short)
+        {
+            BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
+                         &coderInfo[lch], &coderInfo[rch], cfg);
+        }
+        else
+        {
+            if (l_short)
+                BlocGroupCPE(hEncoder->freqBuff[lch], NULL, &coderInfo[lch], NULL, cfg);
+            if (r_short)
+                BlocGroupCPE(hEncoder->freqBuff[rch], NULL, &coderInfo[rch], NULL, cfg);
+        }
+    }
 }

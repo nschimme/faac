@@ -885,25 +885,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    for (int e = 0; e < hEncoder->numElements; e++) {
-        AACElement *elem = &hEncoder->elements[e];
-        int lch = elem->channels[0];
-        int is_cpe = (elem->type == ID_CPE);
-        int rch = is_cpe ? elem->channels[1] : -1;
-
-        int l_short = (coderInfo[lch].block_type == ONLY_SHORT_WINDOW);
-        int r_short = is_cpe && (coderInfo[rch].block_type == ONLY_SHORT_WINDOW);
-
-        if (l_short && r_short) {
-            BlocGroupCPE(hEncoder->freqBuff[lch], hEncoder->freqBuff[rch],
-                         &coderInfo[lch], &coderInfo[rch], &hEncoder->aacquantCfg);
-        } else {
-            if (l_short)
-                BlocGroup(hEncoder->freqBuff[lch], &coderInfo[lch], &hEncoder->aacquantCfg);
-            if (r_short)
-                BlocGroup(hEncoder->freqBuff[rch], &coderInfo[rch], &hEncoder->aacquantCfg);
-        }
-    }
+    BlocGroup(hEncoder, coderInfo);
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
