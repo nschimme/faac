@@ -214,10 +214,19 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
     }
 
+    /* In VBR there is no bitrate to seed a quality from, so resolve the
+     * quantqual default here: the AUTO decision below reads it, and the
+     * general default further down would land too late. ABR must not be
+     * touched -- its seeding curve is guarded on quantqual still being 0. */
+    if (!config->bitRate && !config->quantqual)
+        config->quantqual = DEFQUAL;
+
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
     if (hEncoder->config.aacObjectType == AUTO) {
+        /* config->bitRate is per channel, as is the HE ceiling it is
+         * compared against. */
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
@@ -288,6 +297,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         }
     }
 
+    /* Still 0 only when the caller supplied both a bitrate and an explicit
+     * bandwidth, which skips the seeding curve above. */
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
