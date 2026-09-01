@@ -562,28 +562,27 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r,
             window_band_energy(sfb_offset, xr + win * BLOCK_LEN_SHORT,
                                maxsfb, stop, cutoff, el);
 
-        if (win == group_start)
+        if (win != group_start)
         {
             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = el[sfb] + er[sfb];
-            continue;
-        }
+            {
+                float v = el[sfb] + er[sfb];
+                if (v < run_min[sfb]) run_min[sfb] = v;
+                if (v > run_max[sfb]) run_max[sfb] = v;
+                if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
+            }
 
-        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-        {
-            float v = el[sfb] + er[sfb];
-            if (v < run_min[sfb]) run_min[sfb] = v;
-            if (v > run_max[sfb]) run_max[sfb] = v;
-            if (run_max[sfb] > GROUP_ONSET_RATIO * run_min[sfb]) onset_votes++;
-        }
+            if (onset_votes <= onset_quorum)
+                continue;
 
-        if (onset_votes > onset_quorum)
-        {
             coderInfo->groups.len[coderInfo->groups.n++] = win - group_start;
             group_start = win;
-            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-                run_min[sfb] = run_max[sfb] = el[sfb] + er[sfb];
         }
+
+        /* Start of a group, whether the first window or a detected onset: the
+           running envelope restarts from this window's energies. */
+        for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+            run_min[sfb] = run_max[sfb] = el[sfb] + er[sfb];
     }
     coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
 
