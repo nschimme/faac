@@ -325,12 +325,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int width = hi - lo;
         float avg_per_window = be[sb].sum / (float)gsize;
         float rms = sqrtf(avg_per_window / width);
-        float sf_enrg_avg = (avg_per_window > 0.0f) ? log10f(avg_per_window) * SF_STEP_ENRG : 0.0f;
+        float safe_avg = (avg_per_window > 1e-10f) ? avg_per_window : 1e-10f;
+        float sf_enrg_avg = log10f(safe_avg) * SF_STEP_ENRG;
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
             /* Band-Wise Psychoacoustic Noise Filling for zeroed high-frequency bands */
-            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f)
+            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f && avg_per_window > 1e-6f)
             {
                 ci->book[band] = HCB_PNS;
 #ifdef FAAC_STATS
@@ -382,10 +383,13 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 }
                 huffbook(ci, xi, gsize * width, maxq);
                 *p_last_abs = sf_abs;
+                ci->sf[band] = sf_abs;
+                ci->bandcnt++;
             }
             else
             {
                 ci->book[band] = HCB_ZERO;
+                ci->bandcnt++;
             }
         }
         else
@@ -427,7 +431,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             }
 
             float t_sfb_total = target[sb] * be[sb].sum;
-            if (t_sfb_total > 0.0f && d_sfb > 1.2f * t_sfb_total)
+            if (sb < (ci->sfbn * 3 / 4) && t_sfb_total > 0.0f && d_sfb > 1.5f * t_sfb_total)
             {
                 sfac += 1;
                 gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
@@ -441,9 +445,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
             huffbook(ci, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
+            ci->sf[band] = sf_abs;
+            ci->bandcnt++;
         }
-
-        ci->sf[ci->bandcnt++] += sf_rel;
     }
 }
 
