@@ -31,9 +31,9 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
-#define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
-#define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+#define TNS_LPC_ORDER_DEFAULT 8    /* default filter order */
+#define TNS_GAIN_LIMIT        1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
+#define TNS_MEASURED_GAIN     1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
@@ -232,7 +232,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * TNS per channel with that channel's own filter -- so independent
  * per-channel filters are spec-compliant and need no shared fit. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, int max_order, float gain_limit)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -242,8 +242,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float bandrms[NSFB_LONG], floorrms;
     float gain, energy, maxrms, sum_rms, sum_log_rms;
     int order, limit, i, b, nbands = b_stop - b_start;
+    int target_order = (max_order > 0 && max_order <= TNS_MAX_ORDER) ? max_order : TNS_LPC_ORDER_DEFAULT;
 
-    if (length <= TNS_LPC_ORDER)
+    if (length <= target_order)
         return 0;
 
     energy = 0.0f;
@@ -297,9 +298,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             wspec[i - i_start] = (float)spec[i] * wgt;
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
+    calc_autocorr_f(target_order, length, wspec, r);
+    gain = compute_lpc(target_order, r, k);
+    if (gain < (gain_limit > 1.0f ? gain_limit : TNS_GAIN_LIMIT))
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
      * so a high gain can't mean an unstable filter; isfinite() catches the
@@ -307,11 +308,11 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (!isfinite(gain))
         return 0;
 
-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(target_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = target_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
@@ -384,8 +385,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
  * and fine for the channels of a CPE to disagree: one may get a filter
  * while the other doesn't (tnsDataPresent differs), since each is filtered
  * (or left unfiltered) independently before AACstereo's M/S/IS mixing runs. */
-void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
-                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
+void TnsEncodeElementExt(TnsInfo **tnsInfos, float **specs, int nch,
+                          int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable,
+                          int max_order, float gain_limit)
 {
     int b_start, b_stop, ch;
 
@@ -407,7 +409,7 @@ void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
         TnsInfo *info = tnsInfos[ch];
 
         if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
-                           &info->windowData.tnsFilter[0]))
+                           &info->windowData.tnsFilter[0], max_order, gain_limit))
             continue;
 
 #ifdef FAAC_STATS
@@ -421,4 +423,11 @@ void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
         info->windowData.coefResolution = DEF_TNS_COEFF_RES;
         info->tnsDataPresent = 1;
     }
+}
+
+void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
+                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
+{
+    TnsEncodeElementExt(tnsInfos, specs, nch, numBands, blockType, sfbOffsetTable,
+                        TNS_LPC_ORDER_DEFAULT, TNS_GAIN_LIMIT);
 }

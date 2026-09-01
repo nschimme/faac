@@ -29,6 +29,7 @@
 #include "tns.h"
 #include "stereo.h"
 #include "sbr.h"
+#include "blockswitch.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -695,12 +696,10 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * have run. Screening on the envelope first skips that work for frames headed
  * for rejection anyway.
  *
- * Gated on peak-over-mean sub-block energy (PsyGetPeakGate). Peak/mean >= 2.0
- * (positive at every bitrate tested, significant at 48k/128k, no clip
- * regressed) -- catches a sustained loud sub-block with no single sharp
- * step, which the jump statistic misses. Not portable to a different
- * sub-block count/size -- the same transient reads as a smaller peak/mean
- * ratio with fewer, longer sub-blocks. */
+ * Gated on peak-over-mean sub-block energy (PsyGetPeakGate) or high frame PE
+ * (Perceptual Entropy). Peak/mean >= 2.0 or PE >= 10.0 per channel -- catches
+ * both sharp energy spikes and high-entropy tonal/complex frames that benefit
+ * from spectral whitening. */
 #define TNS_TD_PEAK_GATE 2.0f
 
 /* Shared by the SCE and CPE cases below: no envelope available (HE-AAC skips
@@ -709,6 +708,8 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
 static int TnsAttackAdmits(PsyInfo *psyInfo)
 {
     float peak_gate = PsyGetPeakGate(psyInfo);
+    if (psyInfo->pe >= PE_THRESH_PER_CH)
+        return 1;
     return !(peak_gate > 0.0f && peak_gate < TNS_TD_PEAK_GATE);
 }
 
@@ -1001,11 +1002,29 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (useTns && admit) {
             int channel0 = elem->channels[0];
+            int max_order = 8;
+            float gain_limit = 1.4f;
 
-            TnsEncodeElement(tnsInfos, specs, nch,
-                             coderInfo[channel0].sfbn,
-                             coderInfo[channel0].block_type,
-                             coderInfo[channel0].sfb_offset);
+            /* Bitrate-adaptive LPC order and gain threshold selection:
+             * Low bitrates (<=24k/ch): limit order to 6 and raise gain bar to 1.5f to save side info bits.
+             * Mid bitrates (24k-64k/ch): order 8, gain limit 1.4f.
+             * High bitrates (>64k/ch): order up to 12 for finer spectral whitening. */
+            unsigned long ratePerCh = hEncoder->config.bitRate;
+            if (ratePerCh > 0) {
+                if (ratePerCh <= 24000) {
+                    max_order = 6;
+                    gain_limit = 1.5f;
+                } else if (ratePerCh >= 64000) {
+                    max_order = 12;
+                    gain_limit = 1.35f;
+                }
+            }
+
+            TnsEncodeElementExt(tnsInfos, specs, nch,
+                                coderInfo[channel0].sfbn,
+                                coderInfo[channel0].block_type,
+                                coderInfo[channel0].sfb_offset,
+                                max_order, gain_limit);
         } else {
             for (int c = 0; c < nch; c++)
                 tnsInfos[c]->tnsDataPresent = 0;
