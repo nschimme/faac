@@ -164,21 +164,13 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             }
             bandL[sfb] = l; bandR[sfb] = r; bandLR[sfb] = lr;
         }
-    } else {
-        /* Long blocks only in practice: a short CPE reaches here only when both
-           channels are short, which is exactly when BlocGroup filled the cache.
-           Kept general rather than specialised to one window, so a future
-           change to the block-type rules cannot silently read window 0 alone. */
-        for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
-            int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-            calculate_energies(sl0, sr0, start, len, wstart, wend,
-                               &bandL[sfb], &bandR[sfb], &bandLR[sfb]);
-        }
     }
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        float el = bandL[sfb], er = bandR[sfb], elr = bandLR[sfb];
+        float el, er, elr;
+        if (energy) { el = bandL[sfb]; er = bandR[sfb]; elr = bandLR[sfb]; }
+        else calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
 
         float es   = el + er + 2.0f*elr;
         float ed   = el + er - 2.0f*elr;
