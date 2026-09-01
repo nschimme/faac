@@ -56,6 +56,7 @@ static float max_quant_limit;
  * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
+static float q_pow_4_3_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -79,9 +80,19 @@ void QuantizeInit(void)
     for (i = 1; i < 128; i++)
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
 
+    for (i = 0; i < 128; i++)
+        q_pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
+
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
+}
+
+static inline float dequant_q(int q)
+{
+    int aq = abs(q);
+    float val = (aq < 128) ? q_pow_4_3_lut[aq] : powf((float)aq, 4.0f / 3.0f);
+    return (q < 0) ? -val : val;
 }
 
 static inline float sfac_to_gain(int sfac)
@@ -247,15 +258,28 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     if (last_abs != SF_CHAIN_UNSET)
     {
         int wanted = sf_abs - last_abs;
-        int allowed = clamp_sf_diff(wanted);
-        if (allowed != wanted)
+        if (abs(wanted) <= 1)
         {
-            sf_abs = last_abs + allowed;
+            /* Scalefactor Differential Delta Pruning: collapse small deltas to 0 to save bitstream bits */
+            sf_abs = last_abs;
             sf_rel = sf_abs - sf_bias;
             sfac = SF_OFFSET - sf_rel;
             gain = gain_with_overflow_clamp(&sfac, band_peak);
             sf_rel = SF_OFFSET - sfac;
             sf_abs = sf_bias + sf_rel;
+        }
+        else
+        {
+            int allowed = clamp_sf_diff(wanted);
+            if (allowed != wanted)
+            {
+                sf_abs = last_abs + allowed;
+                sf_rel = sf_abs - sf_bias;
+                sfac = SF_OFFSET - sf_rel;
+                gain = gain_with_overflow_clamp(&sfac, band_peak);
+                sf_rel = SF_OFFSET - sfac;
+                sf_abs = sf_bias + sf_rel;
+            }
         }
     }
 
@@ -301,17 +325,25 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         int width = hi - lo;
         float avg_per_window = be[sb].sum / (float)gsize;
         float rms = sqrtf(avg_per_window / width);
+        float sf_enrg_avg = (avg_per_window > 0.0f) ? log10f(avg_per_window) * SF_STEP_ENRG : 0.0f;
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
+            /* Band-Wise Psychoacoustic Noise Filling for zeroed high-frequency bands */
+            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f)
+            {
+                ci->book[band] = HCB_PNS;
+#ifdef FAAC_STATS
+                g_faacStats.pnsBands++;
+#endif
+                ci->sf[band] += lrintf(sf_enrg_avg);
+                ci->bandcnt++;
+                continue;
+            }
             ci->book[band] = HCB_ZERO;
             ci->bandcnt++;
             continue;
         }
-
-        /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
-         * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
-        float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
          * TNS filter shapes the substituted noise too. */
@@ -333,7 +365,28 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (sf_rel < SF_MIN)
         {
-            ci->book[band] = HCB_ZERO;
+            /* Non-Zero Spectral Hole Protection: Floor sf_rel at SF_MIN if in mid-spectrum with active target */
+            if (target[sb] > 0.05f && sb > 0 && sb < ci->sfbn - 1)
+            {
+                sfac = SF_OFFSET - SF_MIN;
+                sf_rel = SF_MIN;
+                int sf_abs;
+                float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
+                int xi[FRAME_LEN];
+                int win, maxq = 0;
+
+                for (win = 0; win < gsize; win++)
+                {
+                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                    if (qm > maxq) maxq = qm;
+                }
+                huffbook(ci, xi, gsize * width, maxq);
+                *p_last_abs = sf_abs;
+            }
+            else
+            {
+                ci->book[band] = HCB_ZERO;
+            }
         }
         else
         {
@@ -347,6 +400,45 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
+
+            /* Single-Pass SMR Distortion Feedback */
+            float d_sfb = 0.0f;
+            float inv_gain = (gain > 0.0f) ? (1.0f / gain) : 0.0f;
+            for (win = 0; win < gsize; win++)
+            {
+                const float *xr_ptr = xr0 + win * BLOCK_LEN_SHORT + lo;
+                const int *xi_ptr = xi + win * width;
+                int k;
+                for (k = 0; k < width; k++)
+                {
+                    int q = xi_ptr[k];
+                    float x_orig = xr_ptr[k];
+                    if (q != 0)
+                    {
+                        float x_hat = dequant_q(q) * inv_gain;
+                        float diff = x_orig - x_hat;
+                        d_sfb += diff * diff;
+                    }
+                    else
+                    {
+                        d_sfb += x_orig * x_orig;
+                    }
+                }
+            }
+
+            float t_sfb_total = target[sb] * be[sb].sum;
+            if (t_sfb_total > 0.0f && d_sfb > 1.2f * t_sfb_total)
+            {
+                sfac += 1;
+                gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
+                maxq = 0;
+                for (win = 0; win < gsize; win++)
+                {
+                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                    if (qm > maxq) maxq = qm;
+                }
+            }
+
             huffbook(ci, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
         }
