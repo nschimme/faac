@@ -1020,11 +1020,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
             }
 
-            TnsEncodeElementExt(tnsInfos, specs, nch,
-                                coderInfo[channel0].sfbn,
-                                coderInfo[channel0].block_type,
-                                coderInfo[channel0].sfb_offset,
-                                max_order, gain_limit);
+            TnsEncodeElement(tnsInfos, specs, nch,
+                             coderInfo[channel0].sfbn,
+                             coderInfo[channel0].block_type,
+                             coderInfo[channel0].sfb_offset,
+                             max_order, gain_limit);
         } else {
             for (int c = 0; c < nch; c++)
                 tnsInfos[c]->tnsDataPresent = 0;

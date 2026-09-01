@@ -224,13 +224,7 @@ void TnsInit(faacEncStruct* hEncoder)
 
 /* Fits one TNS filter over scalefactor bands [b_start, b_stop) for a single
  * channel's spectrum and -- if it earns its place -- whitens it in place and
- * fills *filter. Returns 1 when a filter was written, 0 otherwise.
- *
- * Called once per channel: TNS runs here before AACstereo's M/S/IS mixing,
- * but each channel's tns_data is transmitted separately (WriteICS is called
- * once per channel in channels.c) and decoders undo M/S first, then invert
- * TNS per channel with that channel's own filter -- so independent
- * per-channel filters are spec-compliant and need no shared fit. */
+ * fills *filter. Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
                          float *spec, TnsFilterData *filter, int max_order, float gain_limit)
 {
@@ -240,46 +234,33 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
     float bandrms[NSFB_LONG], floorrms;
-    float gain, energy, maxrms, sum_rms, sum_log_rms;
+    float gain, maxrms = 0.0f, sum_rms = 0.0f, sum_log_rms = 0.0f;
     int order, limit, i, b, nbands = b_stop - b_start;
     int target_order = (max_order > 0 && max_order <= TNS_MAX_ORDER) ? max_order : TNS_LPC_ORDER_DEFAULT;
 
     if (length <= target_order)
         return 0;
 
-    energy = 0.0f;
-    {
-        float *band = spec + i_start;
-        for (i = 0; i < length; i++)
-            energy += band[i] * band[i];
-    }
-    if (energy < TNS_MIN_ENERGY)
-        return 0;
-
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
-     * band has the most energy and ignore quieter ones -- but pre-echo is
-     * audible in quiet bands too, so the filter needs to whiten across the
-     * whole range, not just the peak. */
-    maxrms = 0.0f;
-    sum_rms = 0.0f;
-    sum_log_rms = 0.0f;
+     * band has the most energy and ignore quieter ones. */
     for (b = b_start; b < b_stop; b++) {
         int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
         float e = 0.0f, rms, rms_fl;
 
         for (i = s0; i < s1; i++)
-            e += (float)(spec[i] * spec[i]);
+            e += spec[i] * spec[i];
         rms = sqrtf(e / (float)(s1 - s0));
         bandrms[b] = rms; /* kept for un-normalizing the filtered signal back later */
         if (rms > maxrms) maxrms = rms;
 
-        /* rms_fl keeps logf() away from 0 for silent bands; folded into
-         * the same loop as maxrms rather than a second pass. */
         rms_fl = rms > TNS_MIN_ENERGY ? rms : TNS_MIN_ENERGY;
         sum_rms += rms_fl;
         sum_log_rms += logf(rms_fl);
     }
+
+    if (maxrms < TNS_MIN_ENERGY)
+        return 0;
 
     /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0 means
      * the band is noise-like, which PNS (quantize.c) is about to replace
@@ -385,9 +366,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
  * and fine for the channels of a CPE to disagree: one may get a filter
  * while the other doesn't (tnsDataPresent differs), since each is filtered
  * (or left unfiltered) independently before AACstereo's M/S/IS mixing runs. */
-void TnsEncodeElementExt(TnsInfo **tnsInfos, float **specs, int nch,
-                          int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable,
-                          int max_order, float gain_limit)
+void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
+                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable,
+                       int max_order, float gain_limit)
 {
     int b_start, b_stop, ch;
 
@@ -423,11 +404,4 @@ void TnsEncodeElementExt(TnsInfo **tnsInfos, float **specs, int nch,
         info->windowData.coefResolution = DEF_TNS_COEFF_RES;
         info->tnsDataPresent = 1;
     }
-}
-
-void TnsEncodeElement(TnsInfo **tnsInfos, float **specs, int nch,
-                       int numBands, enum WINDOW_TYPE blockType, int *sfbOffsetTable)
-{
-    TnsEncodeElementExt(tnsInfos, specs, nch, numBands, blockType, sfbOffsetTable,
-                        TNS_LPC_ORDER_DEFAULT, TNS_GAIN_LIMIT);
 }

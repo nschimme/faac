@@ -73,18 +73,6 @@ static float PsyTdThresh(float sampleRate)
     return t;
 }
 
-/* Harder threshold for promoting candidate short blocks back into long ones.
- * Transient candidates with strength in (td_thresh, td_hard] stay in long
- * windows because long-window masking + TNS can absorb the pre-echo without
- * paying the ~30% bit-overhead penalty of short blocks.
- *
- * Below PSY_TD_HARD_LOW_BPS (16kbps/ch, low-bitrate / HE-AAC regime), bit
- * starvation dominates pre-echo: short blocks cost bits we don't have, so
- * td_hard is high (promotion aggressive).
- * Above PSY_TD_HARD_HIGH_BPS (64kbps/ch, high-bitrate regime), bits are
- * plentiful and short blocks are cheap, so td_hard tapers down to
- * PSY_TD_HARD_HIGH -- keeping short blocks for real transients while still
- * promoting borderline ones when TNS is available. */
 #define PSY_TD_HARD_LOW      (2.5f)
 #define PSY_TD_HARD_HIGH     (1.5f)
 #define PSY_TD_HARD_LOW_BPS  (16000)

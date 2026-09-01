@@ -40,11 +40,7 @@ void TnsInit(faacEncStruct* hEncoder);
  * filters are spec-compliant (see tns.c). */
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable);
-
-void TnsEncodeElementExt(TnsInfo** tnsInfos, float** specs, int nch,
-                         int numBands, enum WINDOW_TYPE blockType,
-                         int* sfbOffsetTable, int max_order, float gain_limit);
+                      int* sfbOffsetTable, int max_order, float gain_limit);
 
 #ifdef __cplusplus
 }
