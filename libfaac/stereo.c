@@ -49,12 +49,18 @@ static inline void calculate_energies(const float * restrict sl0, const float * 
     for (win = wstart; win < wend; win++) {
         const float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
         const float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-        for (i = 0; i < len; i++) {
-            float l = sl[i];
-            float r = sr[i];
-            el  += l * l;
-            er  += r * r;
-            elr += l * r;
+        /* Four lines at a time: every scale-factor band width in srInfo[] is a
+           multiple of four, so there is no remainder for the compiler to emit
+           a second, scalar copy of the reduction for. */
+        for (i = 0; i < len; i += 4) {
+            float l0 = sl[i],     r0 = sr[i];
+            float l1 = sl[i + 1], r1 = sr[i + 1];
+            float l2 = sl[i + 2], r2 = sr[i + 2];
+            float l3 = sl[i + 3], r3 = sr[i + 3];
+
+            el  += l0 * l0; el  += l1 * l1; el  += l2 * l2; el  += l3 * l3;
+            er  += r0 * r0; er  += r1 * r1; er  += r2 * r2; er  += r3 * r3;
+            elr += l0 * r0; elr += l1 * r1; elr += l2 * r2; elr += l3 * r3;
         }
     }
     *el_out = el;
