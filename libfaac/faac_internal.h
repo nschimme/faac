@@ -76,4 +76,14 @@ int  faacEncEncode(faacEncHandle hEncoder, int32_t *inputBuffer, unsigned int sa
                    unsigned char *outputBuffer, unsigned int bufferSize);
 int  faacEncClose(faacEncHandle hEncoder);
 
+/* Number of steps on the user-facing VBR quality scale. Mirrors
+ * FAAC_VBR_QUALITY_MAX - FAAC_VBR_QUALITY_MIN in <faac.h>; faac.c
+ * _Static_asserts the two agree, the same way it does for the input formats. */
+#define VBR_QUALITY_STEPS 10
+
+/* Maps a 0..VBR_QUALITY_STEPS step onto the quantqual it denotes for this
+ * configuration; see the comment on the ladder in frame.c. */
+unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
+                                    unsigned int quality);
+
 #endif /* FAAC_INTERNAL_H */

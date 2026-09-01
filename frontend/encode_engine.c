@@ -57,6 +57,7 @@ void init_encode_options(encode_options_t *opts)
     opts->use_lfe = -1;
     opts->pns_level = -1;
     opts->quant_quality = 0;
+    opts->vbr_quality = UINT16_MAX;
     opts->bit_rate_total = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
@@ -119,21 +120,44 @@ void free_encode_options(encode_options_t *opts)
     opts->custom_tag_cap = 0;
 }
 
-void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
-                               encode_options_t *opts)
+bool parse_rate_input(const char *text, rate_input_mode_t mode,
+                      encode_options_t *opts)
 {
-    int val = text ? atoi(text) : 0;
+    bool empty = (text == NULL || *text == '\0');
+    char *end = NULL;
+    long val = empty ? -1 : strtol(text, &end, 10);
 
-    if (is_bitrate_mode)
+    if (!empty && (end == text || *end != '\0'))
+        return false;
+
+    /* Every mode leaves the other two currencies cleared, so the library sees
+       exactly one request. */
+    opts->vbr_quality = UINT16_MAX;
+    opts->quant_quality = 0;
+    opts->bit_rate_total = 0;
+
+    switch (mode)
     {
-        opts->bit_rate_total = (val > 0) ? (uint32_t)(val * 1000) : DEFAULT_ABR_KBPS * 1000;
-        opts->quant_quality = 0;
+    case RATE_INPUT_VBR_QUALITY:
+        if (empty) val = DEFAULT_VBR_QUALITY;
+        if (val < (long)FAAC_VBR_QUALITY_MIN || val > (long)FAAC_VBR_QUALITY_MAX)
+            return false;
+        opts->vbr_quality = (uint16_t)val;
+        break;
+    case RATE_INPUT_BITRATE:
+        if (empty) val = DEFAULT_ABR_KBPS;
+        if (val <= 0 || val > (long)(FAAC_MAX_BIT_RATE / 1000))
+            return false;
+        opts->bit_rate_total = (uint32_t)(val * 1000);
+        break;
+    case RATE_INPUT_QUANTQUAL:
+        if (empty) val = DEFAULT_QUANT_QUALITY;
+        if (val <= 0 || val > 65535)
+            return false;
+        opts->quant_quality = (uint16_t)val;
+        break;
     }
-    else
-    {
-        opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
-        opts->bit_rate_total = 0;
-    }
+    return true;
 }
 
 static double calc_speed(uint64_t current_sample, unsigned int sample_rate, double time_used)
@@ -493,7 +517,15 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->pns_level >= 0)
         params.pns_level = opts->pns_level;
 
-    if (opts->quant_quality > 0 && opts->bit_rate_total == 0)
+    if (opts->vbr_quality != UINT16_MAX)
+    {
+        /* The library maps the scale onto its quantizer range; doing it here
+           would duplicate the quality<->rate map. */
+        params.vbr_quality = (int32_t)opts->vbr_quality;
+        params.quant_quality = 0;
+        params.bit_rate_per_ch = 0;
+    }
+    else if (opts->quant_quality > 0 && opts->bit_rate_total == 0)
     {
         params.quant_quality = opts->quant_quality;
         params.bit_rate_per_ch = 0;

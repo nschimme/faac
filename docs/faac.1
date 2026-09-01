@@ -62,7 +62,10 @@ Force the AAC object type:
 .B he-aac-v1
 (High-Efficiency AAC v1, i.e. AAC-LC plus Spectral Band Replication), or
 .B auto
-(default), which selects LC or HE-AAC v1 from the bitrate and sample rate.
+(default), which picks whichever suits the operating point. The choice is made
+from the bandwidth the AAC-LC core would actually code at that rate: well short
+of Nyquist, SBR has real work to do and HE-AAC v1 wins; close to it, SBR only
+adds artefacts to a band LC already codes properly.
 HE-AAC v1 targets low bitrates; its core is coded at half the input sample
 rate and reconstructed to full rate by SBR in the decoder.
 .TP
@@ -84,14 +87,53 @@ Perceptual Noise Substitution level, 0 to 10;
 disables PNS.
 .TP
 .BR -q\ <\fIquality\fP>
-Set encoding quality. Set default variable bitrate (VBR) quality level in percent.
-max. 5000, min. 10.
-default: 100, averages at approx. 120 kbps VBR for a normal
-stereo input file with 16 bit and 44.1 kHz sample rate
+Set the VBR quality level, 0 to 10, higher is better. Default 5.
+.IP
+Constant-quality encoding: the quality is held and the bitrate varies with the
+material, so a dense track costs more than a sparse one at the same setting.
+Use this when you care how it sounds; use
+.B -b
+when you care how big it is.
+.IP
+Steps are spaced evenly in bitrate between the lowest and highest rates the
+format allows, so the rate a given step produces shifts with sample rate and
+channel count. Typical whole-stream rates for 48 kHz stereo:
+.IP
+.nf
+\-q 0  ~27 kbps    \-q 4  ~100 kbps   \-q 8  ~372 kbps
+\-q 1  ~37 kbps    \-q 5  ~152 kbps   \-q 9  ~445 kbps
+\-q 2  ~52 kbps    \-q 6  ~218 kbps   \-q 10 ~512 kbps
+\-q 3  ~76 kbps    \-q 7  ~300 kbps
+.fi
+.IP
+These are typical values measured over a mixed corpus, not targets: a dense
+track costs more than a sparse one at the same setting. The steps span the
+encoder's full quantizer range, so the highest few sit past transparency for
+most material.
+.IP
+NOTE: in releases before 2.1,
+.B -q
+took a raw quantizer value from 10 to 5000. That control is now
+.BR --quantqual .
+A value outside 0-10 is rejected rather than reinterpreted.
+.TP
+.BR --quantqual\ <\fIn\fP>
+Set the raw quantizer quality, 10 to 5000 (expert).
+.IP
+The encoder's internal quantizer scale. Most of that range sits past
+transparency and its useful part is unevenly spaced, so prefer
+.B -q
+unless you specifically want this control. This is what
+.B -q
+meant before release 2.1.
 .TP
 .BR -b\ <\fIbitrate\fP>
 Set average bitrate (ABR) to approximately <bitrate> kbps.
-max. ~500 (stereo)
+.IP
+The value is a whole-stream rate, not per channel. Clamped to the range the
+format allows: 8 kbps per channel at the low end, and at the high end the
+ISO/IEC 14496-3 per-frame payload limit, which is 288 kbps per channel at
+48 kHz (576 kbps for stereo).
 .TP
 .BR \-\-cap\-rate\ <\fIbitrate\fP>
 Cap any single frame at <bitrate> kbps, for packet-oriented transports that drop

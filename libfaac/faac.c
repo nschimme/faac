@@ -71,6 +71,9 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
 
+_Static_assert(VBR_QUALITY_STEPS == FAAC_VBR_QUALITY_MAX - FAAC_VBR_QUALITY_MIN,
+               "internal VBR quality step count must match the public scale");
+
 FAACAPI faac_status faac_get_library_info(faac_library_info *out)
 {
     faac_library_info info;
@@ -118,6 +121,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.bit_rate_per_ch = 64000;          /* per channel; 0 would defer to quant_quality */
     tmp.bandwidth     = 0;              /* derive from bit_rate */
     tmp.quant_quality = 0;              /* derive from bit_rate */
+    tmp.vbr_quality   = FAAC_VBR_QUALITY_UNSET;
     tmp.max_bit_rate_total = 0;              /* no per-frame peak cap */
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
@@ -205,6 +209,9 @@ static faac_status validate_params(const faac_params *p)
             p->max_bit_rate_total < (uint64_t)p->bit_rate_per_ch * p->num_channels)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
+    if (p->vbr_quality != FAAC_VBR_QUALITY_UNSET &&
+        (p->vbr_quality < FAAC_VBR_QUALITY_MIN || p->vbr_quality > FAAC_VBR_QUALITY_MAX))
+        return FAAC_ERR_INVALID_ARGUMENT;
     /* reserved padding must be zero so future fields can claim it safely */
     if (p->reserved[0] || p->reserved[1])
         return FAAC_ERR_INVALID_ARGUMENT;
@@ -246,8 +253,13 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->useLfe        = p->use_lfe ? 1 : 0;
     cfg->useTns        = p->use_tns ? 1 : 0;
     cfg->bitRate       = p->bit_rate_per_ch;
+    /* vbr_quality supersedes quant_quality: it is the same currency, named
+     * on the scale users see rather than the quantizer's own. */
+    cfg->quantqual     = (p->vbr_quality != FAAC_VBR_QUALITY_UNSET)
+                       ? VbrQualityToQuantqual(p->sample_rate, p->num_channels,
+                                               (unsigned int)p->vbr_quality)
+                       : p->quant_quality;
     cfg->bandWidth     = p->bandwidth;
-    cfg->quantqual     = p->quant_quality;
     cfg->outputFormat  = (unsigned int)p->output_format;
     cfg->inputFormat   = (unsigned int)p->input_format;
     cfg->shortctl      = (int)p->short_control;

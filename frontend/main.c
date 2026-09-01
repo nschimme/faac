@@ -80,6 +80,7 @@ enum flags
     OPT_PNS,
     OBJTYPE_FLAG,
     CAP_RATE_FLAG,
+    OPT_QUANTQUAL,
     OPT_TNS_ENABLE,
     OPT_TNS_DISABLE,
     OPT_OVERWRITE,
@@ -97,11 +98,25 @@ const char *usage =
     "Usage: %s [options] infile\n\n";
 
 static help_t help_qual[] = {
-    {"-q <quality>\tSet encoding quality.\n",
-    "\t\tSet default variable bitrate (VBR) quantizer quality in percent.\n"
-    "\t\tmax. 5000, min. 10.\n"
-    "\t\tdefault: 100, averages at approx. 120 kbps VBR for a normal\n"
-    "\t\tstereo input file with 16 bit and 44.1 kHz sample rate\n"
+    {"-q <quality>\tSet VBR quality, 0-10 (higher is better).\n",
+    "\t\tConstant-quality (VBR) encoding: quality is held and the bitrate\n"
+    "\t\tvaries with the material. default: 5.\n"
+    "\t\tSteps are spaced evenly in bitrate across the encoder's range, so\n"
+    "\t\tone step means one quality at any sample rate or channel count.\n"
+    "\t\tTypical whole-stream rates for 48 kHz stereo:\n"
+    "\t\t  -q 0  ~27    -q 3  ~76    -q 6  ~218   -q 9  ~445\n"
+    "\t\t  -q 1  ~37    -q 4  ~100   -q 7  ~300   -q 10 ~512\n"
+    "\t\t  -q 2  ~52    -q 5  ~152   -q 8  ~372   (kbps)\n"
+    "\t\tThese are typical, not targets: a dense track costs more than a\n"
+    "\t\tsparse one at the same quality. Use -b to fix the bitrate instead.\n"
+    "\t\tNOTE: -q previously took a raw quantizer value (10-5000). That\n"
+    "\t\tcontrol is now --quantqual.\n"
+    },
+    {"--quantqual <n>\tSet the raw quantizer quality (expert).\n",
+    "\t\tThe encoder's internal quantizer scale, 10-5000. Most of that\n"
+    "\t\trange sits past transparency and its useful part is unevenly\n"
+    "\t\tspaced, so prefer -q unless you know you want this.\n"
+    "\t\tThis is what -q meant before this release.\n"
     },
     {"-b <bitrate>\tSet average bitrate to x kbps. (ABR)\n",
     "\t\tSet average bitrate (ABR) to approximately <bitrate> kbps.\n"
@@ -572,6 +587,7 @@ int main(int argc, char *argv[])
             {"lang", 1, 0, LANG_FLAG},
             {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
+            {"quantqual", 1, 0, OPT_QUANTQUAL},
             {0, 0, 0, 0}
         };
 
@@ -616,10 +632,18 @@ int main(int argc, char *argv[])
             opts.bandwidth = atoi(optarg);
             break;
         case 'b':
-            parse_quality_or_bitrate(optarg, true, &opts);
+            if (!parse_rate_input(optarg, RATE_INPUT_BITRATE, &opts))
+                dieMessage = "Bitrate out of range.\n";
             break;
         case 'q':
-            parse_quality_or_bitrate(optarg, false, &opts);
+            if (!parse_rate_input(optarg, RATE_INPUT_VBR_QUALITY, &opts))
+                dieMessage = "Quality must be 0-10 (higher is better).\n"
+                             "Note -q changed meaning in this release: it was a raw\n"
+                             "quantizer value (10-5000). Use --quantqual for that.\n";
+            break;
+        case OPT_QUANTQUAL:
+            if (!parse_rate_input(optarg, RATE_INPUT_QUANTQUAL, &opts))
+                dieMessage = "Quantizer quality out of range.\n";
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)

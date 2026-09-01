@@ -83,6 +83,7 @@ typedef struct {
 
     uint16_t quant_quality;
     uint32_t bit_rate_total; /* bps, whole stream (what -b names) */
+    uint16_t vbr_quality;    /* FAAC_VBR_QUALITY_MIN..MAX; UINT16_MAX = unset */
     uint32_t max_bit_rate_total; /* bps, whole stream cap */
     uint32_t bandwidth; /* cutoff frequency in Hz */
 
@@ -105,19 +106,32 @@ bool add_custom_tag_to_options(encode_options_t *opts, const char *name, const c
 void free_encode_options(encode_options_t *opts);
 
 /* Canonical defaults, shared by both the CLI and GUI frontends. */
+#define DEFAULT_VBR_QUALITY   FAAC_VBR_QUALITY_DEF
 #define DEFAULT_QUANT_QUALITY 100
 #define DEFAULT_ABR_KBPS      128
 
+/* Which currency the user supplied. A bool cannot express three modes, and
+   dispatching on it silently takes the wrong branch when a third is added --
+   the same failure the library's RateMode enum exists to prevent. Switch on
+   this with no default label so -Wswitch names every site to update. */
+typedef enum {
+    RATE_INPUT_VBR_QUALITY,  /* -q: the 0..10 constant-quality scale        */
+    RATE_INPUT_BITRATE,      /* -b: average bitrate, kbps for the stream    */
+    RATE_INPUT_QUANTQUAL     /* --quantqual: raw quantizer scale, expert    */
+} rate_input_mode_t;
+
 void init_encode_options(encode_options_t *opts);
 
-/* Parse a quality-or-bitrate text field (as typed into the CLI's -q/-b or
-   the GUI's rate edit box) into opts->quant_quality/opts->bit_rate_total,
-   falling back to DEFAULT_QUANT_QUALITY/DEFAULT_ABR_KBPS on invalid/empty
-   input rather than silently producing 0. is_bitrate_mode selects which
-   field is being set and whether the value is in kbps (bitrate) or a raw
-   quality percentage. */
-void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
-                               encode_options_t *opts);
+/* Parse the rate/quality text field (the CLI's -q/-b/--quantqual, or the GUI's
+   rate edit box) into the matching opts field, falling back to that mode's
+   default on empty or unparseable input rather than silently producing 0.
+
+   Returns false if the value is outside the mode's accepted range, leaving
+   opts untouched; the caller reports it. Out-of-range is refused rather than
+   clamped because -q changed meaning: a script passing the old raw quantqual
+   (-q 100, say) must be told, not silently reinterpreted as an 0..10 step. */
+bool parse_rate_input(const char *text, rate_input_mode_t mode,
+                      encode_options_t *opts);
 
 #define ENCODE_SUCCESS   0
 #define ENCODE_ERROR     1

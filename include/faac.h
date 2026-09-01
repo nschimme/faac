@@ -165,7 +165,12 @@ typedef struct faac_params {
 
     uint32_t                bit_rate_per_ch;   /* target bits/sec per channel; 0 = use quant_quality */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate             */
-    uint32_t                quant_quality; /* quantizer quality; 0 = derive from bit_rate        */
+    uint32_t                quant_quality; /* raw quantizer precision; 0 = derive from bit_rate  */
+
+    /* Constant-quality step, FAAC_VBR_QUALITY_MIN..MAX, or
+     * FAAC_VBR_QUALITY_UNSET. When set it supersedes quant_quality, and
+     * bit_rate_per_ch must be 0. faac_params_init() sets it to UNSET. */
+    int32_t                 vbr_quality;
 
     enum faac_stream_format output_format;
     enum faac_input_format  input_format;
@@ -254,6 +259,23 @@ typedef struct faac_library_info {
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out);
 
+/*
+ * VBR quality scale: the user-facing constant-quality dial, higher is better.
+ *
+ * Set faac_params.vbr_quality to a step in this range for constant-quality
+ * encoding. Steps are spaced geometrically across the encoder's quantizer
+ * range, so one step means one quality at every sample rate and channel count;
+ * what that quality costs in bitrate is left to depend on the material, which
+ * is what constant quality means.
+ *
+ * quant_quality remains the raw quantizer precision underneath. Most of its
+ * range sits past transparency and its useful part is unevenly spaced, so it
+ * is an expert control -- set vbr_quality unless you specifically want it.
+ */
+#define FAAC_VBR_QUALITY_MIN   0
+#define FAAC_VBR_QUALITY_MAX   10
+#define FAAC_VBR_QUALITY_DEF   5
+#define FAAC_VBR_QUALITY_UNSET (-1)
 /* Zero-initialize *p and fill in library defaults and struct_size. Pass
  * sizeof(*p) as caller_size; never writes past min(caller_size,
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's

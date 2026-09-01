@@ -213,6 +213,47 @@ static unsigned long VbrBitrateForQuality(unsigned long quantqual,
  * them: solving C_HE * (x*q)^k == C_LC * q^k gives x = MAP_HE_RATIO^(1/k). */
 #define MAP_HE_QSCALE  1.7476f   /* 1 / MAP_K, as an exponent on MAP_HE_RATIO */
 
+/* ---- The user-facing quality scale ---------------------------------------
+ *
+ * quantqual is a quantizer precision spanning MINQUAL..MAXQUAL, of which the
+ * top nine tenths sit past transparency and the useful part is unevenly
+ * spaced. It is the wrong thing to hand a user. A 0..VBR_QUALITY_STEPS dial
+ * is what they get instead.
+ *
+ * Space the steps geometrically across MINQUAL..MAXQUAL. Because the map is a
+ * power law, geometric in quantqual is also geometric in bitrate, with the
+ * ratio between rungs set by the exponent alone -- never by the coefficient,
+ * whose channel and sample-rate behaviour is the messy half of the fit. So the
+ * ladder is only as fragile as the stable half.
+ *
+ * Anchoring on the quantizer range rather than on the bitrate bounds the spec
+ * allows is deliberate. The format permits 8 kbit/s per channel, but a 48 kHz
+ * stereo encode cannot go below about 27 kbit/s whatever it is asked for, so a
+ * spec-anchored ladder aims its lowest steps at rates that do not exist and
+ * they collapse onto MINQUAL together. MINQUAL..MAXQUAL is by definition
+ * exactly what the encoder can deliver, so every step is distinct.
+ *
+ * It also gives the dial the right meaning: one step is one quality, the same
+ * at 16 kHz mono as at 48 kHz stereo. The bitrate that quality costs is then
+ * free to depend on the material, which is what constant-quality means. */
+unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
+                                    unsigned int quality)
+{
+    float q;
+
+    (void)sampleRate;   /* one step is one quality, whatever the format */
+    (void)nch;
+
+    if (quality > VBR_QUALITY_STEPS)
+        quality = VBR_QUALITY_STEPS;
+
+    q = (float)MINQUAL * powf((float)MAXQUAL / (float)MINQUAL,
+                              (float)quality / (float)VBR_QUALITY_STEPS);
+    if (q < (float)MINQUAL) q = (float)MINQUAL;
+    if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+    return (unsigned long)(q + 0.5f);
+}
+
 /* Which of the two currencies the caller gave us. Extend here if a third rate
  * mode is ever added, and dispatch on it with a switch carrying NO default
  * label, so -Wswitch lists every site that needs updating. */

@@ -59,9 +59,23 @@ typedef struct {
 } encode_thread_param_t;
 
 enum RateMode {
-    RATEMODE_VBR = 0,
-    RATEMODE_ABR = 1
+    RATEMODE_VBR      = 0,  /* -q: the 0..10 constant-quality scale */
+    RATEMODE_ABR      = 1,  /* -b: average bitrate                  */
+    RATEMODE_QUANTQUAL = 2  /* --quantqual: raw quantizer, expert   */
 };
+
+/* The combo carries the mode; the one edit box is relabelled per mode, so a
+   third entry needs no new dialog control and no faacgui.rc layout change. */
+static rate_input_mode_t RateInputFor(int mode)
+{
+    switch ((enum RateMode)mode)
+    {
+    case RATEMODE_ABR:       return RATE_INPUT_BITRATE;
+    case RATEMODE_QUANTQUAL: return RATE_INPUT_QUANTQUAL;
+    case RATEMODE_VBR:       break;
+    }
+    return RATE_INPUT_VBR_QUALITY;
+}
 
 static progress_info_t g_gui_progress;
 static encode_session_info_t g_gui_sess_info;
@@ -161,15 +175,20 @@ static void ApplyRateModeUI(HWND hWnd, int mode)
 {
     char text[16];
 
-    if (mode == RATEMODE_VBR)
+    switch ((enum RateMode)mode)
     {
-        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
-        snprintf(text, sizeof(text), "%d", DEFAULT_QUANT_QUALITY);
-    }
-    else
-    {
+    case RATEMODE_ABR:
         SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Bitrate\n(kbps)");
         snprintf(text, sizeof(text), "%d", DEFAULT_ABR_KBPS);
+        break;
+    case RATEMODE_QUANTQUAL:
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quantizer\nquality");
+        snprintf(text, sizeof(text), "%d", DEFAULT_QUANT_QUALITY);
+        break;
+    case RATEMODE_VBR:
+        SetDlgItemText(hWnd, IDC_QUALITYLABEL, "Quality\n(0-10)");
+        snprintf(text, sizeof(text), "%d", DEFAULT_VBR_QUALITY);
+        break;
     }
     SetDlgItemText(hWnd, IDC_QUALITY, text);
 }
@@ -327,7 +346,12 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     {
         LRESULT mode = GetComboData(hWnd, IDC_RATEMODE, RATEMODE_VBR);
-        parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts);
+        if (!parse_rate_input(szTemp, RateInputFor((int)mode), &opts))
+        {
+            MessageBox(hWnd, "That value is out of range for the selected rate mode.",
+                       "FAAC", MB_OK | MB_ICONWARNING);
+            return;
+        }
     }
 
     GetDlgItemText(hWnd, IDC_PNS, szTemp, sizeof(szTemp));
@@ -535,6 +559,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_VBR);
             idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"ABR (Bitrate)");
             SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_ABR);
+            idx = SendMessage(hRM, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)"VBR (Quantizer)");
+            SendMessage(hRM, CB_SETITEMDATA, idx, (LPARAM)RATEMODE_QUANTQUAL);
             SendMessage(hRM, CB_SETCURSEL, 0, 0);
         }
 
@@ -584,8 +610,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hwndTip, TTM_SETMAXTIPWIDTH, 0, 300); /* enables \n line breaks */
 
             AddTip(hWnd, IDC_QUALITY,
-                "Quantizer quality (VBR) or kbps for the whole stream (ABR),\n"
-                "depending on Rate Mode.");
+                "Quality 0-10 (VBR), kbps for the whole stream (ABR), or the raw\n"
+                "quantizer value (VBR Quantizer), depending on Rate Mode.");
             AddTip(hWnd, IDC_BWCTL,
                 "Cap the encoded bandwidth to a specific frequency instead of\n"
                 "letting the encoder choose it automatically.");
