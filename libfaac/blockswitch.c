@@ -178,54 +178,51 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
    isn't worth its bit cost -- see TnsAttackAdmits in frame.c. Returns 0 if
    PsyBufferUpdate hasn't populated the energy windows for this channel yet
    -- callers must treat that as "no basis to judge", not "flat". */
-float PsyGetPeakGate(PsyInfo * psyInfo)
+/* Single unified pass over ENG_WIN_PREV energy sub-blocks for PeakGate and Attack statistics. */
+static void PsyGetEnvelopeStats(PsyInfo * psyInfo, float *out_peak_gate, float *out_attack)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float peak = 0.0f, total = 0.0f;
+  float peak = 0.0f, total = 0.0f, strength = 0.0f;
   int win;
 
-  if (!psydata)
-    return 0.0f;
-
-  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
-  {
-    float e = (float)psydata->eng[ENG_WIN_PREV + win];
-
-    total += e;
-    if (e > peak) peak = e;
+  if (!psydata) {
+    if (out_peak_gate) *out_peak_gate = 0.0f;
+    if (out_attack) *out_attack = 0.0f;
+    return;
   }
 
-  if (total <= 0.0f)
-    return 0.0f;
-
-  return peak / (total / (float)SUBBLOCKS_PER_FRAME);
-}
-
-float PsyGetAttack(PsyInfo * psyInfo)
-{
-  psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float strength = 0.0f, total = 0.0f;
-  int win;
-
-  if (!psydata)
-    return 0.0f;
-
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
     float e = (float)psydata->eng[ENG_WIN_PREV + win];
-
     total += e;
-    if (win)
-    {
+    if (e > peak) peak = e;
+
+    if (win > 0) {
       float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
       float lo = (e < p) ? e : p;
-      float s = fabsf(e - p) / lo;      /* IEEE divide covers silence */
-
+      float s = fabsf(e - p) / lo;
       if (s > strength) strength = s;
     }
   }
 
-  return total > 0.0f ? strength : 0.0f;
+  if (out_peak_gate)
+    *out_peak_gate = (total > 0.0f) ? (peak / (total / (float)SUBBLOCKS_PER_FRAME)) : 0.0f;
+  if (out_attack)
+    *out_attack = (total > 0.0f) ? strength : 0.0f;
+}
+
+float PsyGetPeakGate(PsyInfo * psyInfo)
+{
+  float peak_gate;
+  PsyGetEnvelopeStats(psyInfo, &peak_gate, NULL);
+  return peak_gate;
+}
+
+float PsyGetAttack(PsyInfo * psyInfo)
+{
+  float attack;
+  PsyGetEnvelopeStats(psyInfo, NULL, &attack);
+  return attack;
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
