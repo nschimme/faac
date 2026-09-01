@@ -319,17 +319,6 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
-            /* Band-Wise Psychoacoustic Noise Filling for zeroed high-frequency bands */
-            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f && avg_per_window > 0.01f)
-            {
-                ci->book[band] = HCB_PNS;
-#ifdef FAAC_STATS
-                g_faacStats.pnsBands++;
-#endif
-                ci->sf[band] += lrintf(sf_enrg_avg);
-                ci->bandcnt++;
-                continue;
-            }
             ci->book[band] = HCB_ZERO;
             ci->bandcnt++;
             continue;
@@ -355,18 +344,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (sf_rel < SF_MIN)
         {
-            /* Non-Zero Spectral Hole Protection: Floor sf_rel at SF_MIN if in mid-spectrum with active target */
-            if (target[sb] > 0.05f && sb > 0 && sb < ci->sfbn - 1)
-            {
-                sfac = SF_OFFSET - SF_MIN;
-                sf_rel = SF_MIN;
-            }
-            else
-            {
-                ci->book[band] = HCB_ZERO;
-                ci->bandcnt++;
-                continue;
-            }
+            ci->book[band] = HCB_ZERO;
+            ci->bandcnt++;
+            continue;
         }
 
         int sf_abs;
