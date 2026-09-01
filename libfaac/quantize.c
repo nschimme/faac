@@ -386,7 +386,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         }
 
         float t_sfb_total = target[sb] * be[sb].sum;
-        if (be[sb].sum > 0.5f && t_sfb_total > 0.0f && d_sfb > 2.0f * t_sfb_total)
+        if (be[sb].sum > 0.3f && t_sfb_total > 0.0f && d_sfb > 1.4f * t_sfb_total)
         {
             sfac += 1;
             gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);

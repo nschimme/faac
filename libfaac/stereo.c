@@ -244,7 +244,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
 
     switch (mode) {
         case JOINT_MIXED:
-            thrmid = 0.05f * inv_quality;
+            thrmid = (0.09f * 0.85f) * inv_quality;
             if (thrmid > 0.25f) thrmid = 0.25f;
             thrmid += 1.0f;
             isthr = 0.18f * inv_quality + 1.0f;
