@@ -20,6 +20,7 @@
   header & payload bits for core LC spectral data).
   Levers to try:
   - Implement 3D/packed SBR noise Huffman table coding in `libfaac/sbr_bitstream.c` using standard ISO/IEC 14496-3 Table 4.63 instead of uncompressed differential bits.
+  - Optimize SBR delta-time (`bs_df_env = 1`) vs delta-frequency (`bs_df_env = 0`) bit decision per SBR envelope to minimize header/payload bit consumption.
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig support.
 
 ## Medium (contained algorithmic change, one subsystem)
@@ -30,20 +31,27 @@
   prevents over-quantization and spectral holes in high-frequency bands]
   Levers to try:
   - Inner/outer loop scalefactor iteration in `libfaac/quantize.c`: Evaluate distortion vs mask ratio (`dist / thr`) per SFB and iteratively increment/decrement `sf[band]` when distortion exceeds SMR threshold.
+  - Lagrangian rate-distortion optimization (`min lambda * R + D`): Dynamically balance bit allocation (`R`) against perceptual MDCT reconstruction error (`D`) across scalefactor bands within a frame.
   - Non-zero spectral hole protection: Prevent single isolated zeroed bands between active harmonic SFBs by capping maximum scalefactor delta (`diff <= 60`).
-  - Trellis-based scalar quantization per MDCT line to decide between rounding down (`q`) vs rounding up (`q + 1`) based on exact bit cost vs MDCT reconstruction error.
+  - Band-wise noise filling: Inject pseudo-random low-level spectral energy into zeroed high-frequency SFBs below the psychoacoustic masking threshold to eliminate high-frequency "birdies" and metallic spectral hole artifacts.
+  - Trellis-based scalar quantization per MDCT line: Decide between rounding down (`q`) vs rounding up (`q + 1`) based on exact bit cost vs MDCT reconstruction error.
+  - Scalefactor differential delta pruning: Restrict large scalefactor jumps (`sf[band] - sf[band-1]`) to minimize HCB_DELTA (book 12) bit consumption.
 - HE-AAC v1: SBR noise floor / invf mode derivation from within-band tonality
   [leaderboard: HE-v1 MOS lags by ~0.4-0.5 MOS at 40k-64k stereo. Inaccurate inverse
   filtering (invf) and noise floor estimation cause audible metallic SBR artifacts]
   Levers to try:
   - Derivation of `bs_invf_mode[ch][band]` in `libfaac/sbr.c` using spectral flatness measure (SFM) and pitch autocorrelation on QMF sub-band energy matrices (`sbr_envR`).
+  - Frequency-dependent inverse filtering: Apply stronger invf (`INVF_STRONG` / `INVF_MAX`) on low-frequency SBR QMF bands (where pitch harmonics dominate) and weaker invf (`INVF_OFF` / `INVF_LOW`) on high-frequency QMF bands (where unvoiced sibilance dominates).
   - Adapt SBR noise energy levels (`sbr_noiseR`) dynamically based on transient envelope count (`numEnvelopes`) to prevent noise over-injection during attack transients.
+  - Energy-preserving HF SBR envelope gain adjustment: Scale envelope energy factors (`sbr_envR`) to compensate for core LC crossover roll-off, preventing high-frequency brightness or dullness mismatches against the reference signal.
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
   [current SBR implementation shares envelope time borders across L/R channels;
   independent channel envelope borders prevent temporal smearing on asymmetric transients]
   Levers to try:
   - Refactor `SBRChannel` struct in `libfaac/sbr_internal.h` to hold per-channel `tEnv[]`, `numEnvelopes`, and `sbr_grid`.
   - Update `SbrGrid()` in `libfaac/sbr.c` to detect transients per-channel independently before coupling/decoupling grid borders based on inter-channel transient correlation.
+  - Adaptive SBR grid frame mode selection (`FIXFIX` vs `VARFIX` vs `FIXVAR` vs `VARVAR`): Dynamically select SBR frame types in `SbrGrid()` aligned with core MDCT transient locations detected by `BlockSwitch()`.
+  - Variable time-frequency resolution tuning: Dynamically switch between HIGH and LOW frequency resolution per SBR envelope based on spectral tilt and transient activity to optimize bit distribution between SBR envelope data and LC core data.
 
 ## Large (cross-cutting, higher risk, higher potential payoff)
 - Joint CPE block switching & window shape selection
