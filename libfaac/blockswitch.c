@@ -52,26 +52,19 @@ psydata_t;
 
 #define PSY_TD_HARD_LOW       1.35f
 #define PSY_TD_HARD_HIGH      1.80f
-#define PSY_TD_HARD_LOW_BPS   48000
-#define PSY_TD_HARD_HIGH_BPS  128000
-#define PSY_TD_HARD_MIN_SR    32000
 
 static inline float PsyTdThresh(float sampleRate)
 {
-    float t;
     if (sampleRate >= 48000.0f) return 0.5f;
     if (sampleRate <= 16000.0f) return 0.2f;
-    t = (sampleRate - 16000.0f) / 32000.0f;
-    return 0.2f + t * 0.3f;
+    return 0.2f + (sampleRate - 16000.0f) * (0.3f / 32000.0f);
 }
 
 static inline float PsyTdHard(unsigned long bitratePerCh)
 {
-    float t;
-    if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS) return PSY_TD_HARD_HIGH;
-    if (bitratePerCh <= PSY_TD_HARD_LOW_BPS) return PSY_TD_HARD_LOW;
-    t = (float)(bitratePerCh - PSY_TD_HARD_LOW_BPS) / (float)(PSY_TD_HARD_HIGH_BPS - PSY_TD_HARD_LOW_BPS);
-    return PSY_TD_HARD_LOW + t * (PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW);
+    if (bitratePerCh == 0 || bitratePerCh >= 128000) return PSY_TD_HARD_HIGH;
+    if (bitratePerCh <= 48000) return PSY_TD_HARD_LOW;
+    return PSY_TD_HARD_LOW + (float)(bitratePerCh - 48000) * ((PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW) / 80000.0f);
 }
 
 static void PsyCheckShort(PsyInfo * psyInfo)
@@ -299,20 +292,11 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   }
   else
   {
-      static float env_td_hard = -1.0f;
-      if (env_td_hard < 0.0f) {
-          const char *env_hard = getenv("FAAC_TD_THRESH");
-          float e = env_hard ? (float)atof(env_hard) : 0.0f;
-          env_td_hard = (e >= PSY_TD_THRESH_MIN) ? e : 0.0f;
-      }
-
       for (channel = 0; channel < numChannels; channel++)
       {
           float td_hard = psyInfo[channel].td_thresh;
 
-          if (env_td_hard > 0.0f) {
-              td_hard = env_td_hard;
-          } else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR) {
+          if (hEncoder->config.useTns && hEncoder->sampleRate >= 32000.0f) {
               td_hard = PsyTdHard(hEncoder->config.bitRate);
           }
 
