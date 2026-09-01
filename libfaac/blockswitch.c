@@ -67,14 +67,13 @@ static inline float PsyTdHard(unsigned long bitratePerCh)
     return PSY_TD_HARD_LOW + (float)(bitratePerCh - 48000) * ((PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW) / 80000.0f);
 }
 
-static void PsyCheckShort(PsyInfo * psyInfo)
+static inline void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS];
   float strength = 0.0f;
-  float thresh = psyInfo->td_thresh;
 
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
@@ -87,7 +86,7 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   }
 
   psyInfo->td_strength = strength;
-  psyInfo->block_type = (strength > thresh) ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
+  psyInfo->block_type = (strength > psyInfo->td_thresh) ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 }
 
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -130,18 +129,21 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
    psydata instead of recomputing it. Returns 0 if PsyBufferUpdate hasn't
    populated the energy windows for this channel yet -- callers must treat
    that as "no basis to judge", not "flat". */
-float PsyGetAttack(PsyInfo * psyInfo)
+static inline void PsyGetEnvelopeStats(PsyInfo * psyInfo, float *p_attack, float *p_peak_gate)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float strength = 0.0f, total = 0.0f;
+  float strength = 0.0f, peak = 0.0f, total = 0.0f;
   int win;
 
-  if (!psydata) return 0.0f;
+  *p_attack = 0.0f;
+  *p_peak_gate = 0.0f;
+  if (!psydata) return;
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
     float e = (float)psydata->eng[ENG_WIN_PREV + win];
     total += e;
+    if (e > peak) peak = e;
     if (win)
     {
       float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
@@ -151,26 +153,24 @@ float PsyGetAttack(PsyInfo * psyInfo)
     }
   }
 
-  return total > 0.0f ? strength : 0.0f;
+  if (total > 0.0f) {
+    *p_attack = strength;
+    *p_peak_gate = peak / (total / (float)SUBBLOCKS_PER_FRAME);
+  }
+}
+
+float PsyGetAttack(PsyInfo * psyInfo)
+{
+  float attack, peak_gate;
+  PsyGetEnvelopeStats(psyInfo, &attack, &peak_gate);
+  return attack;
 }
 
 float PsyGetPeakGate(PsyInfo * psyInfo)
 {
-  psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float peak = 0.0f, total = 0.0f;
-  int win;
-
-  if (!psydata) return 0.0f;
-
-  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
-  {
-    float e = (float)psydata->eng[ENG_WIN_PREV + win];
-    total += e;
-    if (e > peak) peak = e;
-  }
-
-  if (total <= 0.0f) return 0.0f;
-  return peak / (total / (float)SUBBLOCKS_PER_FRAME);
+  float attack, peak_gate;
+  PsyGetEnvelopeStats(psyInfo, &attack, &peak_gate);
+  return peak_gate;
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
