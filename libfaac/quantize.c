@@ -120,10 +120,13 @@ typedef struct
     float peak_amp; /* sqrt of the largest single-coefficient energy seen */
 } BandEnergy;
 
-static void measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
-                                 int gnum, int cutoff, BandEnergy * __restrict out)
+static float measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
+                                  int gnum, int cutoff, BandEnergy * __restrict out)
 {
     int gsize = ci->groups.len[gnum];
+    /* Accumulated here rather than in a second pass: the bands are visited in
+       the same order either way, so the sum is identical bit for bit. */
+    float group_total = 0.0f;
     int sfb;
 
     for (sfb = 0; sfb < ci->sfbn; sfb++)
@@ -139,7 +142,7 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
         {
             out[sfb].sum = 0.0f;
             out[sfb].peak_amp = 0.0f;
-            continue;
+            continue;   /* group_total += 0.0f is a no-op */
         }
 
         for (w = 0; w < gsize; w++)
@@ -173,7 +176,10 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
 
         out[sfb].sum = sum;
         out[sfb].peak_amp = sqrtf(peak);
+        group_total += sum;
     }
+
+    return group_total;
 }
 
 static float loudness(float energy_ratio)
@@ -188,16 +194,12 @@ static float treble_rolloff(int lo, int hi, float inv_block_len)
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    const BandEnergy * __restrict be,
-                                    float * __restrict target_out, float * __restrict avg_out)
+                                    const BandEnergy * __restrict be, float group_total,
+                                    float * __restrict target_out)
 {
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
-    float group_total = 0.0f;
     int sfb;
-
-    for (sfb = 0; sfb < ci->sfbn; sfb++)
-        group_total += be[sfb].sum;
 
     // whole group below the silence gate: force every band to a zero target
     if (group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len))
@@ -205,7 +207,6 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         for (sfb = 0; sfb < ci->sfbn; sfb++)
         {
             target_out[sfb] = 0.0f;
-            avg_out[sfb] = 0.0f;
         }
         return;
     }
@@ -239,7 +240,6 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         target *= treble_rolloff(lo, hi, inv_block_len);
 
         target_out[sfb] = target * quality;
-        avg_out[sfb] = be[sfb].sum;
     }
 }
 
@@ -286,7 +286,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 }
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
-                                   const float * __restrict target, const float * __restrict bandenrg,
+                                   const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
                                    int * __restrict p_last_abs)
 {
@@ -310,7 +310,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
         int width = hi - lo;
-        float avg_per_window = bandenrg[sb] / (float)gsize;
+        float avg_per_window = be[sb].sum / (float)gsize;
         float rms = sqrtf(avg_per_window / width);
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
@@ -391,7 +391,7 @@ static void assert_band_widths_align(const CoderInfo * __restrict ci)
 
 int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
 {
-    float target[MAX_SCFAC_BANDS], bandenrg[MAX_SCFAC_BANDS];
+    float target[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
     int i, lastsf = SF_CHAIN_UNSET;
     float *gxr = xr;
@@ -403,9 +403,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
-        measure_band_energy(coder, gxr, i, cutoff, be);
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
-        assign_band_codebooks(coder, gxr, target, bandenrg, be, i, aacquantCfg->pnslevel, &lastsf);
+        float group_total = measure_band_energy(coder, gxr, i, cutoff, be);
+
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 
