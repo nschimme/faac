@@ -1125,7 +1125,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (diff < 0) {
             int excess = -diff;
             /* Adaptive burst draw ceiling: 0.5 * desbits for low bitrates (<=48k stereo / <=24k mono), 1.0 * desbits for high bitrates */
-            int drawLimit = (hEncoder->config.bitRate <= 24000) ? (desbits / 2) : desbits;
+            int drawLimit = (hEncoder->config.bitRate <= 24000) ? (desbits / 2) : (desbits * 3 / 2);
             int maxDraw = (excess < drawLimit) ? excess : drawLimit;
             /* Data-driven PE complexity threshold: PE_THRESH_PER_CH per channel naturally captures high-entropy transients.
              * Bypassing low-entropy frames prevents quality scale-factor inflation and overshoot. */
