@@ -42,84 +42,54 @@ typedef struct
 }
 psydata_t;
 
-/* Relative energy jump threshold for transient detection at 48 kHz. Sub-block
- * energy is computed on the first difference d[n]=x[n]-x[n-1], which
- * de-weights bass (whose broadband energy would otherwise mask HF attacks
- * and false-trigger short blocks on stationary music); what's left tracks
- * the band where pre-echo is audible. A jump above this threshold marks a
- * short-block candidate. */
-#define PSY_TD_THRESH_48K (0.5f)
+/* The high-pass first difference (d[n]=x[n]-x[n-1]) de-weights bass, whose
+ * broadband energy would otherwise mask HF attacks and false-trigger short
+ * blocks on stationary music; what's left tracks the band where pre-echo is
+ * audible. A relative energy jump between sub-blocks past this threshold is a
+ * transient. */
+#define PSY_TD_THRESH_DEFAULT 0.5f
+#define PSY_TD_THRESH_MIN 0.2f
 
-/* Lowest allowed base threshold. Protects PsyTdThresh against returning 0
- * or negative values on pathologically low sample rates. */
-#define PSY_TD_THRESH_MIN (0.1f)
+#define PSY_TD_HARD_LOW       1.35f
+#define PSY_TD_HARD_HIGH      1.80f
+#define PSY_TD_HARD_LOW_BPS   48000
+#define PSY_TD_HARD_HIGH_BPS  128000
+#define PSY_TD_HARD_MIN_SR    32000
 
-/* PsyTdThresh scales the 48 kHz base threshold inversely with sample rate:
- * lower sample rates have fewer samples per sub-block (and per frame), so
- * the energy calculation averages over a shorter temporal window where noise
- * spikes look larger relative to steady-state signal. Without scaling, a
- * 16 kHz stream triggers short blocks on ordinary consonants that stay in
- * long blocks at 48 kHz. */
-static float PsyTdThresh(float sampleRate)
+static inline float PsyTdThresh(float sampleRate)
 {
     float t;
-
-    if (sampleRate <= 0.0f)
-        return PSY_TD_THRESH_48K;
-
-    t = PSY_TD_THRESH_48K * (48000.0f / sampleRate);
-    if (t < PSY_TD_THRESH_MIN)
-        t = PSY_TD_THRESH_MIN;
-    return t;
+    if (sampleRate >= 48000.0f) return 0.5f;
+    if (sampleRate <= 16000.0f) return 0.2f;
+    t = (sampleRate - 16000.0f) / 32000.0f;
+    return 0.2f + t * 0.3f;
 }
 
-#define PSY_TD_HARD_LOW      (2.5f)
-#define PSY_TD_HARD_HIGH     (1.5f)
-#define PSY_TD_HARD_LOW_BPS  (16000)
-#define PSY_TD_HARD_HIGH_BPS (64000)
-
-static float PsyTdHard(unsigned long bitratePerCh)
+static inline float PsyTdHard(unsigned long bitratePerCh)
 {
     float t;
-
-    if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS)
-        return PSY_TD_HARD_HIGH;
-    if (bitratePerCh <= PSY_TD_HARD_LOW_BPS)
-        return PSY_TD_HARD_LOW;
-
-    t = (float)(bitratePerCh - PSY_TD_HARD_LOW_BPS) /
-        (float)(PSY_TD_HARD_HIGH_BPS - PSY_TD_HARD_LOW_BPS);
+    if (bitratePerCh == 0 || bitratePerCh >= PSY_TD_HARD_HIGH_BPS) return PSY_TD_HARD_HIGH;
+    if (bitratePerCh <= PSY_TD_HARD_LOW_BPS) return PSY_TD_HARD_LOW;
+    t = (float)(bitratePerCh - PSY_TD_HARD_LOW_BPS) / (float)(PSY_TD_HARD_HIGH_BPS - PSY_TD_HARD_LOW_BPS);
     return PSY_TD_HARD_LOW + t * (PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW);
 }
-
-#define PSY_TD_HARD_MIN_SR 32000
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
   enum {PREVS = 2, NEXTS = 2};
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
-  float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
+  float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS];
   float strength = 0.0f;
   float thresh = psyInfo->td_thresh;
 
-  /* Search for transients across the current frame and its immediate temporal context.
-     The search range is [curr-2, curr+9]. Track the strongest relative energy
-     jump rather than stopping at the first crossing: BlockSwitch's joint
-     short-block/TNS decision needs the maximum to compare against a second,
-     higher threshold. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
       float eng = (float)psydata->eng[ENG_WIN_CUR - PREVS + win];
-
       float toteng = (eng < lasteng) ? eng : lasteng;
       float volchg = fabsf(eng - lasteng);
-
-      /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
       float s = volchg / toteng;
-
-      if (s > strength)
-          strength = s;
+      if (s > strength) strength = s;
       lasteng = eng;
   }
 
@@ -167,37 +137,20 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
    psydata instead of recomputing it. Returns 0 if PsyBufferUpdate hasn't
    populated the energy windows for this channel yet -- callers must treat
    that as "no basis to judge", not "flat". */
-/* Peak-over-mean sub-block energy across the sub-blocks of the window the
-   MDCT is about to transform. ENG_WIN_PREV is exactly that window --
-   (FIFO_PAST, FIFO_CURR) -- because PsyBufferUpdate has already shifted by
-   the time TNS runs.
-
-   Exposed so TNS can gate on the temporal envelope already sitting in
-   psydata instead of recomputing it: a frame with no sub-block energy spike
-   has no attack for TNS's noise buildup to hide behind, so the LPC work
-   isn't worth its bit cost -- see TnsAttackAdmits in frame.c. Returns 0 if
-   PsyBufferUpdate hasn't populated the energy windows for this channel yet
-   -- callers must treat that as "no basis to judge", not "flat". */
-/* Single unified pass over ENG_WIN_PREV energy sub-blocks for PeakGate and Attack statistics. */
-static void PsyGetEnvelopeStats(PsyInfo * psyInfo, float *out_peak_gate, float *out_attack)
+float PsyGetAttack(PsyInfo * psyInfo)
 {
   psydata_t *psydata = (psydata_t *)psyInfo->data;
-  float peak = 0.0f, total = 0.0f, strength = 0.0f;
+  float strength = 0.0f, total = 0.0f;
   int win;
 
-  if (!psydata) {
-    if (out_peak_gate) *out_peak_gate = 0.0f;
-    if (out_attack) *out_attack = 0.0f;
-    return;
-  }
+  if (!psydata) return 0.0f;
 
   for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
   {
     float e = (float)psydata->eng[ENG_WIN_PREV + win];
     total += e;
-    if (e > peak) peak = e;
-
-    if (win > 0) {
+    if (win)
+    {
       float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
       float lo = (e < p) ? e : p;
       float s = fabsf(e - p) / lo;
@@ -205,24 +158,26 @@ static void PsyGetEnvelopeStats(PsyInfo * psyInfo, float *out_peak_gate, float *
     }
   }
 
-  if (out_peak_gate)
-    *out_peak_gate = (total > 0.0f) ? (peak / (total / (float)SUBBLOCKS_PER_FRAME)) : 0.0f;
-  if (out_attack)
-    *out_attack = (total > 0.0f) ? strength : 0.0f;
+  return total > 0.0f ? strength : 0.0f;
 }
 
 float PsyGetPeakGate(PsyInfo * psyInfo)
 {
-  float peak_gate;
-  PsyGetEnvelopeStats(psyInfo, &peak_gate, NULL);
-  return peak_gate;
-}
+  psydata_t *psydata = (psydata_t *)psyInfo->data;
+  float peak = 0.0f, total = 0.0f;
+  int win;
 
-float PsyGetAttack(PsyInfo * psyInfo)
-{
-  float attack;
-  PsyGetEnvelopeStats(psyInfo, NULL, &attack);
-  return attack;
+  if (!psydata) return 0.0f;
+
+  for (win = 0; win < SUBBLOCKS_PER_FRAME; win++)
+  {
+    float e = (float)psydata->eng[ENG_WIN_PREV + win];
+    total += e;
+    if (e > peak) peak = e;
+  }
+
+  if (total <= 0.0f) return 0.0f;
+  return peak / (total / (float)SUBBLOCKS_PER_FRAME);
 }
 
 void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
@@ -335,11 +290,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   {
       for (channel = 0; channel < numChannels; channel++)
       {
-          /* Alignment: the core frame being coded now lags the freshest SBR
-           * analysis by LOOKAHEAD_DEPTH frames; FIFO index 0 holds that frame's
-           * decision (FIFO sized SBR_DETECT_FIFO so [0] is LOOKAHEAD_DEPTH back). */
           int wantShort = SbrContextGetWantShort(hEncoder->sbrContext, (int)channel, 0);
-
           if (wantShort)
               psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
           else
@@ -348,18 +299,6 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   }
   else
   {
-      /* Joint short-block/TNS decision: a borderline transient (strength in
-       * (td_thresh, td_hard]) stays in a long window instead of forcing
-       * a short one, trusting long-window masking -- and TNS, when it's
-       * active and its own gates agree -- to absorb the pre-echo. Only
-       * applies on the core-psy path above (HE-AAC's SBR-driven override
-       * doesn't compute td_strength). */
-
-      /* FAAC_TD_THRESH is a process-wide debug knob, not per-encoder state,
-       * so it's safe (and much cheaper than a getenv+atof every frame) to
-       * parse it once per process and cache the result. 0.0f means "unset or
-       * invalid" -- never a legal override, since valid values are always
-       * >= the lowest possible base threshold. */
       static float env_td_hard = -1.0f;
       if (env_td_hard < 0.0f) {
           const char *env_hard = getenv("FAAC_TD_THRESH");

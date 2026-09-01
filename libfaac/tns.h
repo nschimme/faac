@@ -32,15 +32,9 @@ extern "C" {
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
-/* Analyse one element -- an SCE (nch=1) or a CPE (nch=2) -- fitting and
- * applying an independent TNS filter to each of its nch channels. A CPE's
- * two channels may end up with different filters (or one filtered, one
- * not): each channel's tns_data is transmitted separately, and decoders
- * invert M/S before inverting TNS per channel, so independent per-channel
- * filters are spec-compliant (see tns.c). */
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, int max_order, float gain_limit);
+                      int* sfbOffsetTable, unsigned long bitRate);
 
 #ifdef __cplusplus
 }

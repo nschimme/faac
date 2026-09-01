@@ -29,7 +29,6 @@
 #include "tns.h"
 #include "stereo.h"
 #include "sbr.h"
-#include "blockswitch.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -440,7 +439,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -696,22 +695,10 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * have run. Screening on the envelope first skips that work for frames headed
  * for rejection anyway.
  *
- * Gated on peak-over-mean sub-block energy (PsyGetPeakGate) or high frame PE
- * (Perceptual Entropy). Peak/mean >= 2.0 or PE >= 10.0 per channel -- catches
- * both sharp energy spikes and high-entropy tonal/complex frames that benefit
- * from spectral whitening. */
-#define TNS_TD_PEAK_GATE 2.0f
-
-/* Shared by the SCE and CPE cases below: no envelope available (HE-AAC skips
- * PsyBufferUpdate) means no basis to reject on, so admit and let the LPC
- * gates decide. */
-static int TnsAttackAdmits(PsyInfo *psyInfo)
-{
-    float peak_gate = PsyGetPeakGate(psyInfo);
-    if (psyInfo->pe >= PE_THRESH_PER_CH)
-        return 1;
-    return !(peak_gate > 0.0f && peak_gate < TNS_TD_PEAK_GATE);
-}
+ * Scaled to PsyGetAttack's statistic (largest relative energy jump between
+ * adjacent sub-blocks). Not portable to a different sub-block count/size --
+ * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
+#define TNS_ATTACK_MIN 0.5f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -907,127 +894,103 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Funnelled through one call site so BlocGroup stays a single inlined copy. */
-    for (int e = 0; e < hEncoder->numElements; e++)
     {
-        AACElement *el = &hEncoder->elements[e];
-        int l = el->channels[0];
-        int r = (el->type == ID_CPE) ? el->channels[1] : -1;
-        CoderInfo *a = NULL, *b = NULL;
-        float *xa = NULL, *xb = NULL;
-
-        if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
+        int e;
+        for (e = 0; e < hEncoder->numElements; e++)
         {
-            a = &coderInfo[l];
-            xa = hEncoder->freqBuff[l];
-            if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            AACElement *el = &hEncoder->elements[e];
+            int l = el->channels[0];
+            int r = (el->type == ID_CPE) ? el->channels[1] : -1;
+            CoderInfo *a = NULL, *b = NULL;
+            float *xa = NULL, *xb = NULL;
+
+            if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
             {
-                b = &coderInfo[r];
-                xb = hEncoder->freqBuff[r];
+                a = &coderInfo[l];
+                xa = hEncoder->freqBuff[l];
+                if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+                {
+                    b = &coderInfo[r];
+                    xb = hEncoder->freqBuff[r];
+                }
             }
-        }
-        else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
-        {
-            a = &coderInfo[r];
-            xa = hEncoder->freqBuff[r];
-        }
+            else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            {
+                a = &coderInfo[r];
+                xa = hEncoder->freqBuff[r];
+            }
 
-        if (a)
-        {
-            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+            if (a)
+            {
+                BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
 #ifdef FAAC_STATS
-            /* Everything downstream scales with groups.n * sfbn, so this one
-             * number covers both the throughput and the bitrate axis. */
-            {
-                unsigned int nch = b ? 2 : 1;
-                g_faacStats.shortChannels += nch;
-                g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
-                if (a->groups.n > 1)
-                    g_faacStats.shortSplitChannels += nch;
-            }
+                /* Everything downstream scales with groups.n * sfbn, so this one
+                 * number covers both the throughput and the bitrate axis. */
+                {
+                    unsigned int nch = b ? 2 : 1;
+                    g_faacStats.shortChannels += nch;
+                    g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
+                    if (a->groups.n > 1)
+                        g_faacStats.shortSplitChannels += nch;
+                }
 #endif
+            }
         }
     }
 
+    /* Perform TNS analysis and filtering. Element-at-a-time for CPE shared admission. */
+    {
+        int e;
+        for (e = 0; e < hEncoder->numElements; e++) {
+            AACElement *elem = &hEncoder->elements[e];
+            TnsInfo *tnsInfos[2];
+            float *specs[2];
+            int c, nch, admit = 0;
+
+            if (elem->type == ID_SCE)
+                nch = 1;
+            else if (elem->type == ID_CPE)
+                nch = 2;
+            else {
+                if (elem->type == ID_LFE)
+                    coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0;
+                continue;
+            }
+
+            for (c = 0; c < nch; c++) {
+                int ch = elem->channels[c];
+                float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
+                tnsInfos[c] = &coderInfo[ch].tnsInfo;
+                specs[c] = hEncoder->freqBuff[ch];
+
 #ifdef FAAC_STATS
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-            if (attack > 0.0f && isfinite(attack)) {
-                g_faacStats.totalAttack += attack;
-                if (attack > g_faacStats.maxAttack) {
-                    g_faacStats.maxAttack = attack;
+                if (attack > 0.0f && isfinite(attack)) {
+                    g_faacStats.totalAttack += attack;
+                    if (attack > g_faacStats.maxAttack) {
+                        g_faacStats.maxAttack = attack;
+                    }
+                    g_faacStats.attackCount++;
                 }
-                g_faacStats.attackCount++;
-            }
-            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                g_faacStats.longBlocks++;
-            }
-        }
-    }
+                if (coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
+                    g_faacStats.longBlocks++;
+                }
 #endif
 
-    /* Perform TNS analysis and filtering. Element-at-a-time (not purely
-     * channel-at-a-time) so a CPE's two channels can share the admission
-     * check below, but each channel is fit and filtered independently
-     * inside TnsEncodeElement (see tns.c) -- TNS runs before AACstereo's
-     * M/S/IS mixing, but that's fine since each channel's tns_data is
-     * transmitted separately and decoders invert M/S before inverting TNS
-     * per channel. SCE (nch=1) and CPE (nch=2) share this one code path --
-     * nch=1 is just the CPE case's "admit if either channel wants it" with
-     * a single channel. */
-    for (int e = 0; e < hEncoder->numElements; e++) {
-        AACElement *elem = &hEncoder->elements[e];
-        TnsInfo *tnsInfos[2];
-        float *specs[2];
-        int nch, admit = 0;
-
-        if (elem->type == ID_SCE)
-            nch = 1;
-        else if (elem->type == ID_CPE)
-            nch = 2;
-        else {
-            if (elem->type == ID_LFE)
-                coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0; /* TNS not used for LFE */
-            continue;
-        }
-
-        for (int c = 0; c < nch; c++) {
-            int ch_idx = elem->channels[c];
-
-            tnsInfos[c] = &coderInfo[ch_idx].tnsInfo;
-            specs[c] = hEncoder->freqBuff[ch_idx];
-            if (TnsAttackAdmits(&hEncoder->psyInfo[ch_idx]))
-                admit = 1;
-        }
-
-        if (useTns && admit) {
-            int channel0 = elem->channels[0];
-            int max_order = 8;
-            float gain_limit = 1.4f;
-
-            /* Bitrate-adaptive LPC order and gain threshold selection:
-             * Low bitrates (<=24k/ch): limit order to 6 and raise gain bar to 1.5f to save side info bits.
-             * Mid bitrates (24k-64k/ch): order 8, gain limit 1.4f.
-             * High bitrates (>64k/ch): order up to 12 for finer spectral whitening. */
-            unsigned long ratePerCh = hEncoder->config.bitRate;
-            if (ratePerCh > 0) {
-                if (ratePerCh <= 24000) {
-                    max_order = 6;
-                    gain_limit = 1.5f;
-                } else if (ratePerCh >= 64000) {
-                    max_order = 12;
-                    gain_limit = 1.35f;
-                }
+                if (!(attack > 0.0f && attack < TNS_ATTACK_MIN))
+                    admit = 1;
             }
 
-            TnsEncodeElement(tnsInfos, specs, nch,
-                             coderInfo[channel0].sfbn,
-                             coderInfo[channel0].block_type,
-                             coderInfo[channel0].sfb_offset,
-                             max_order, gain_limit);
-        } else {
-            for (int c = 0; c < nch; c++)
-                tnsInfos[c]->tnsDataPresent = 0;
+            if (useTns && admit) {
+                int ch0 = elem->channels[0];
+                TnsEncodeElement(tnsInfos, specs, nch,
+                                 coderInfo[ch0].sfbn,
+                                 coderInfo[ch0].block_type,
+                                 coderInfo[ch0].sfb_offset,
+                                 hEncoder->config.bitRate);
+            } else {
+                for (c = 0; c < nch; c++)
+                    tnsInfos[c]->tnsDataPresent = 0;
+            }
         }
     }
 
