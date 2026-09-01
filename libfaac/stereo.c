@@ -302,8 +302,8 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
-        /* Force short windows to Intensity Stereo (JOINT_IS) in JOINT_MIXED mode to prevent short-window M/S pre-echo. */
-        int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && mode == JOINT_MIXED) ? JOINT_IS : mode;
+        /* Disable short-window M/S at <=16 kHz core bandwidth (<=48 kbps/ch) to prevent pre-echo. */
+        int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && bandWidth <= MS_SHORT_BW_CEILING && mode == JOINT_MIXED) ? JOINT_IS : mode;
 
         elem->common_window  = true;
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
