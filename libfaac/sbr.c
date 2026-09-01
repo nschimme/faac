@@ -302,46 +302,31 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, fl
     if (realPerCh == 0) {
         sbr_frame_silence(fd);
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-            memmove(&sCtx->transientStrengthFIFO[channel][0], &sCtx->transientStrengthFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(float));
-            sCtx->transientStrengthFIFO[channel][SBR_DETECT_FIFO - 1] = 0.0f;
-            memmove(&sCtx->wantShortFIFO[channel][0], &sCtx->wantShortFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
-            sCtx->wantShortFIFO[channel][SBR_DETECT_FIFO - 1] = 0;
+            sCtx->signalAnalysis.ch[channel].transientStrength = 0.0f;
+            sCtx->signalAnalysis.ch[channel].wantShort = 0;
             heHalfRate[channel] = rs->halfRate[channel];
         }
-        return;
+    } else {
+        for (channel = 0; channel < (unsigned int)numChannels; channel++) {
+            float *fullRate = rs->fullRate[channel];
+            fullPtrs[channel] = fullRate;
+            memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
+            if (realPerCh < 2 * FRAME_LEN)
+                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
+            heHalfRate[channel] = rs->halfRate[channel];
+        }
+
+        SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, 2 * FRAME_LEN, sCtx->sbrInfo);
+        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
+        Resample(rs, 2 * FRAME_LEN);
     }
 
-    for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-        float *fullRate = rs->fullRate[channel];
-        fullPtrs[channel] = fullRate;
-        memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
-        /* Final partial frame: silence-pad the unfilled full-rate tail to
-         * prevent the resampler from consuming stale data. */
-        if (realPerCh < 2 * FRAME_LEN)
-            memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
-        heHalfRate[channel] = rs->halfRate[channel];
-    }
-
-    /* Always the full padded frame, never [0, realPerCh): the grid unconditionally
-     * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
-     * would inflate its levels, and the QMF-overlap save below reads the last
-     * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
-    SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, 2 * FRAME_LEN, sCtx->sbrInfo);
-
-    /* Update the transient FIFO. Shift down by one and push
-     * the newest decision at SBR_DETECT_FIFO-1; index 0 stays aligned with the
-     * core frame being coded (LOOKAHEAD_DEPTH frames behind this analysis). */
     for (channel = 0; channel < (unsigned int)numChannels; channel++) {
         memmove(&sCtx->transientStrengthFIFO[channel][0], &sCtx->transientStrengthFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(float));
         sCtx->transientStrengthFIFO[channel][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[channel].transientStrength;
         memmove(&sCtx->wantShortFIFO[channel][0], &sCtx->wantShortFIFO[channel][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
         sCtx->wantShortFIFO[channel][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[channel].wantShort;
     }
-
-    SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
-
-    /* Dual-rate decimation: produces the halved-rate core signal. */
-    Resample(rs, 2 * FRAME_LEN);
 }
 
 void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
@@ -417,7 +402,6 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
-    const sbrfloat * restrict p1 = qmf_c + 1;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
         float a = p0[0]   * ovl_pos[639 - n0]
@@ -425,15 +409,15 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
                     + p0[256] * ovl_pos[383 - n0]
                     + p0[384] * ovl_pos[255 - n0]
                     + p0[512] * ovl_pos[127 - n0];
-        float b = p1[0]   * ovl_pos[638 - n0]
-                    + p1[128] * ovl_pos[510 - n0]
-                    + p1[256] * ovl_pos[382 - n0]
-                    + p1[384] * ovl_pos[254 - n0]
-                    + p1[512] * ovl_pos[126 - n0];
+        float b = p0[1]   * ovl_pos[638 - n0]
+                    + p0[129] * ovl_pos[510 - n0]
+                    + p0[257] * ovl_pos[382 - n0]
+                    + p0[385] * ovl_pos[254 - n0]
+                    + p0[513] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
         xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
-        p0 += 2; p1 += 2;
+        p0 += 2;
     }
     fft(sbr->fftTables, xr, xi, 6);
     for (int k = kx; k < k2; k++) {
@@ -490,13 +474,13 @@ static float sbr_band_flatness(const float * restrict E, int k_lo, int k_hi)
     for (int k = k_lo; k < k_hi; k++) {
         float e = E[k] + SBR_LOG_ENERGY_FLOOR;
         sum += e;
-        log2sum += fast_log2(e);
+        log2sum += log2f(e);
     }
     float arith = sum / (float)n;
     if (!(arith > 0.0f)) return 1.0f;
 
     /* geo/arith in the log domain, so the geometric mean never underflows. */
-    float flat = exp2f(log2sum / (float)n - fast_log2(arith));
+    float flat = powf(2.0f, log2sum / (float)n - log2f(arith));
     return (flat < 0.0f) ? 0.0f : (flat > 1.0f) ? 1.0f : flat;
 }
 

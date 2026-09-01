@@ -16,10 +16,6 @@
 #ifndef SBR_ANALYSIS_H
 #define SBR_ANALYSIS_H
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,10 +30,6 @@ extern "C" {
 
 #ifndef SBR_MAX_CODED_CHANNELS
 #define SBR_MAX_CODED_CHANNELS 2
-#endif
-
-#ifndef MAX_CHANNELS
-#define MAX_CHANNELS 64
 #endif
 
 struct SBRInfo;

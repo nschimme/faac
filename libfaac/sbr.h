@@ -59,10 +59,6 @@ extern "C" {
 
 struct BitStream;
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #define SBR_QMF_BANDS_64     64
 /* Group delay of the half-band decimator in resample.c, in full-rate samples.
    The FIR is symmetric and RESAMPLE_FILTER_LEN (63) taps long, so its centre
