@@ -32,7 +32,7 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+#define HE_MIN_BITRATE_PER_CH 8000   /* allow HE-AAC in AUTO mode down to 8 kbps/channel */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
