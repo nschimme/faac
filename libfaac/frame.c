@@ -42,13 +42,26 @@
  *
  * This replaces a hardcoded bitrate window (12000..48000 bps/ch) plus a
  * hand-fitted sample-rate ramp. Those went stale whenever either profile
- * improved, and said nothing about why the boundary sat where it did. The
- * fraction below reproduces the measured ceiling it replaces -- at 48 kHz, LC
- * codes 0.62 of Nyquist at 48000 bps/ch (HE) and 0.77 at 64000 (LC) -- but now
+ * improved, and said nothing about why the boundary sat where it did; this
  * tracks CalcBandwidth and Fs automatically. The ramp is subsumed: at lower Fs
  * the same rate covers a larger share of a smaller Nyquist, so HE disengages
- * earlier without a second rule. Integer ratio, so no float in the config path. */
-#define HE_XOVER_NUM  7
+ * earlier without a second rule. The lower bound is gone too -- the further
+ * below Nyquist LC lands, the more spectrum SBR is rescuing, so HE only wins
+ * harder (which is what the old floor's own comment said while the code did
+ * the opposite).
+ *
+ * 1/2 is tuned on ViSQOL over the 49-clip corpus. The ABR runs bracket it
+ * directly, since there the fraction is computed from a rate the caller
+ * actually gave: at 48 kHz stereo HE still wins at 0.406 and 0.458 of Nyquist
+ * (56 and 64 kbit/s -- forcing LC there costs 0.66 and 0.14 MOS) and has lost
+ * by 0.615 (96 kbit/s, where LC gains 0.13). So the boundary sits between
+ * them. Integer ratio, so no float in the config path.
+ *
+ * Do not re-tune this against VBR alone. VBR feeds the same rule an INFERRED
+ * rate, and while that estimate runs low the two modes disagree about where
+ * 0.5 falls -- tuning on VBR's numbers put the boundary at 2/5 and cost ABR
+ * 0.25 MOS bits-adjusted. Tune on ABR, which measures the real rate. */
+#define HE_XOVER_NUM  5
 #define HE_XOVER_DEN  10
 
 /* One rule serves both rate modes: a VBR quality is converted to the rate it
