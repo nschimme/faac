@@ -117,7 +117,11 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 typedef struct
 {
     float sum;      /* energy summed across group windows */
-    float peak_amp; /* sqrt of the largest single-coefficient energy seen */
+    float peak_energy; /* mean over the group's windows of each window's largest
+                          single-coefficient energy. Kept as energy, not
+                          amplitude: the masking model wants it squared, and the
+                          one consumer that wants an amplitude takes the square
+                          root itself, after the bands it discards. */
 } BandEnergy;
 
 static float measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
@@ -141,7 +145,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
         if (lo >= cutoff)
         {
             out[sfb].sum = 0.0f;
-            out[sfb].peak_amp = 0.0f;
+            out[sfb].peak_energy = 0.0f;
             continue;   /* group_total += 0.0f is a no-op */
         }
 
@@ -175,7 +179,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
         peak /= (float)gsize;
 
         out[sfb].sum = sum;
-        out[sfb].peak_amp = sqrtf(peak);
+        out[sfb].peak_energy = peak;
         group_total += sum;
     }
 
@@ -218,7 +222,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
         float avg = be[sfb].sum;
-        float peak = be[sfb].peak_amp * be[sfb].peak_amp;
+        float peak = be[sfb].peak_energy;
         float ref = (group_total * inv_block_len) * (hi - lo);
         /* avg and ref are both totals over the group's windows, so avg/ref does
            not depend on how many windows a group holds. peak is one window's
@@ -349,7 +353,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         else
         {
             int sf_abs;
-            float gain = resolve_band_gain(sfac, sf_bias, be[sb].peak_amp, *p_last_abs, &sf_rel, &sf_abs);
+            float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
             int xi[FRAME_LEN];
             int win, maxq = 0;
 
