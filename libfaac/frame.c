@@ -32,11 +32,28 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
-#define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-/* One ceiling serves both rate modes: a VBR quality is converted to the rate it
- * implies (VbrBitrateForQuality) and tested against the same number, so -q and
- * -b cannot disagree about which profile an operating point deserves. */
+
+/* When is HE-AAC the right profile? Exactly when the core would otherwise have
+ * to throw the top of the spectrum away -- that discarded octave is what SBR
+ * reconstructs. So ask what bandwidth LC would actually code here (CalcBandwidth,
+ * the tuned rate->bandwidth curve) and compare it against Nyquist: well short of
+ * it, SBR has real work to do and wins; close to it, SBR only adds artifacts to
+ * a band LC already codes properly.
+ *
+ * This replaces a hardcoded bitrate window (12000..48000 bps/ch) plus a
+ * hand-fitted sample-rate ramp. Those went stale whenever either profile
+ * improved, and said nothing about why the boundary sat where it did. The
+ * fraction below reproduces the measured ceiling it replaces -- at 48 kHz, LC
+ * codes 0.62 of Nyquist at 48000 bps/ch (HE) and 0.77 at 64000 (LC) -- but now
+ * tracks CalcBandwidth and Fs automatically. The ramp is subsumed: at lower Fs
+ * the same rate covers a larger share of a smaller Nyquist, so HE disengages
+ * earlier without a second rule. Integer ratio, so no float in the config path. */
+#define HE_XOVER_NUM  7
+#define HE_XOVER_DEN  10
+
+/* One rule serves both rate modes: a VBR quality is converted to the rate it
+ * implies (VbrBitrateForQuality) and run through the same test, so -q and -b
+ * cannot disagree about which profile an operating point deserves. */
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -194,7 +211,11 @@ static unsigned long VbrBitrateForQuality(unsigned long quantqual, unsigned int 
     } else {
         bps = q_seed * SEED_BPS_PER_Q;
     }
-    return (bps < 0.0f) ? 0 : (unsigned long)bps;
+    /* Never return 0: this is an inferred rate, and 0 is reserved downstream to
+     * mean "no rate given" (CalcBandwidth reads it as unlimited bandwidth).
+     * Below q_seed 10 the forward curve has simply run out of domain, and the
+     * honest reading there is "as low as this encoder goes", not "unset". */
+    return (bps < 1.0f) ? 1 : (unsigned long)bps;
 }
 
 /* Which of the two currencies the caller gave us. Extend here if a third rate
@@ -375,20 +396,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
     if (hEncoder->config.aacObjectType == AUTO) {
-        /* target.bitRatePerCh is per channel, as is the HE ceiling it is
-         * compared against. */
-        unsigned long rate_per_ch = target.bitRatePerCh;
-        int rate_ok;
-        /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
-         * ceiling ramps down toward 20000 bps/ch at the HE_MIN_SAMPLE_RATE floor. */
-        unsigned int max_he_rate = 0;
-        if (fullRate >= 44100) {
-            max_he_rate = HE_MAX_BITRATE_PER_CH;
-        } else if (fullRate >= HE_MIN_SAMPLE_RATE) {
-            max_he_rate = 20000 + (unsigned int)((fullRate - 32000) *
-                          (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
-        }
-        rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+        /* target.bitRatePerCh is per channel, as is the bandwidth curve it
+         * feeds. No lower bound: the further below Nyquist LC lands, the more
+         * of the spectrum SBR is rescuing, so HE only wins harder. */
+        unsigned int lc_bw = CalcBandwidth(target.bitRatePerCh, fullRate);
+        int rate_ok = ((unsigned long)lc_bw * HE_XOVER_DEN <
+                       (fullRate / 2) * HE_XOVER_NUM);
 
         hEncoder->config.aacObjectType = (rate_ok && fullRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
@@ -414,6 +427,27 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
+
+    /* Put -q on one scale across the profile switch.
+     *
+     * quantqual is a quantizer precision, not a quality: at the same value an
+     * HE-AAC core codes half the spectrum and lets SBR parameterise the rest,
+     * so it spends roughly half the bits LC would. Handing the user's -q
+     * straight to both profiles therefore makes the AUTO switch double the
+     * output rate for a single step of the dial -- a cliff the user sees as a
+     * bug, and a band of rates no -q value can reach.
+     *
+     * ABR never had this problem: its seeding curve runs after the core rate
+     * has been halved, so HE-AAC is already seeded a correspondingly higher
+     * quantqual. Do the same for VBR -- convert the requested quality to the
+     * rate it implies, then seed from that at the resolved core rate. For LC
+     * the core rate is the full rate and the two maps are inverses, so this is
+     * an identity; only HE-AAC is rescaled, which is exactly where the cliff
+     * was. */
+    if (target.mode == RATE_MODE_VBR && hEncoder->config.aacObjectType == HE_V1)
+        config->quantqual = SeedQualityForBitrate((float)target.bitRatePerCh,
+                                                  hEncoder->numChannels,
+                                                  hEncoder->sampleRate);
 
     if (config->bitRate && !config->bandWidth)
     {
