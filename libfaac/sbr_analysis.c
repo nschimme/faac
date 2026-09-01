@@ -18,6 +18,7 @@
 #include "sbr_internal.h"
 #include "util.h"
 #include <string.h>
+#include <math.h>
 
 /* Legal range for a transient's leading border in time-slots. ISO 14496-3 §4.6.18
  * requires bs_var_bord_0 in [0, 2], so the leading border is at slot 0, 2, or 4.
@@ -77,9 +78,7 @@ static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
  * drop their energy. */
 static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
 {
-    int e = numEnvelopes - 1;
-    while (e > 0 && slot < envStart[e]) e--;
-    return e;
+    return (numEnvelopes > 1 && slot >= envStart[1]) + (numEnvelopes > 2 && slot >= envStart[2]);
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
@@ -102,8 +101,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     /* Pass 1: Time-domain transient detection. Identifies the temporal position
      * and strength of transients across all channels. */
     for (int ch = 0; ch < nch; ch++) {
-        float slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
-
         /* Attack detection: score each slot against an exponential average of
          * the slots before it, carried across frame boundaries. A rise over the
          * recent past fires on a step onset -- where a frame-wide peak-to-mean
@@ -115,7 +112,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 
         sa->ch[ch].wantShort = 0;
         float val_in = sa->ch[ch].lastVal;
+        float last_hp_eng = 0.0f;
         const float * restrict p_in = fullPtrs[ch];
+
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
             float hp_stot = 0.0f;
@@ -126,7 +125,14 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
                 hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
                 val_in = v3; p_in += 4;
             }
-            if (slot < 128) slot_hp_eng[slot] = hp_stot;
+
+            if (slot > 0 && !sa->ch[ch].wantShort) {
+                float toteng = (hp_stot < last_hp_eng) ? hp_stot : last_hp_eng;
+                float volchg = fabsf(hp_stot - last_hp_eng);
+                if (volchg > 0.5f * toteng)
+                    sa->ch[ch].wantShort = 1;
+            }
+            last_hp_eng = hp_stot;
 
             /* Cold start (and the first frame after a reset): seed the average
              * from the signal rather than let a rise over zero fire. */
@@ -150,25 +156,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 
         sa->ch[ch].transientStrength = bestRise;
         sa->ch[ch].transientSlot = bestSlot;
-
-        /* Evaluate relative energy jumps to inform block switching. */
-        float last_hp_eng = 0.0f;
-        int have_last = 0;
-        for (int slot = 0; slot < num_slots; slot++) {
-            if (slot >= 128) break;
-            float hp_eng = slot_hp_eng[slot];
-            if (have_last) {
-                float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
-                float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
-                /* PSY_TD_THRESH = 0.5 */
-                if (volchg > (0.5f * toteng)) {
-                    sa->ch[ch].wantShort = 1;
-                    break;
-                }
-            }
-            last_hp_eng = hp_eng;
-            have_last = 1;
-        }
     }
 
     /* Choose the temporal grid based on the strongest transient. Synchronizes

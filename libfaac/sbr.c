@@ -48,33 +48,34 @@ static int compute_kx(int sampleRate, int bs_start_freq)
     return clamp_int(start_min + sbr_offset[row][bs_start_freq & 15], 1, 63);
 }
 
-static int cmp_int16(const void *a, const void *b) { return (int)(*(const short *)a) - (int)(*(const short *)b); }
-
 /* SBR stop frequency (k2). Bark-scale distribution maximizes bit efficiency. */
 static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
 {
-    if (bs_stop_freq == 14 || bs_stop_freq == 15) return 64;
+    if (bs_stop_freq >= 14) return clamp_int(64, kx + 1, 64);
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int stop_min = ((temp << 8) + (sampleRate >> 1)) / sampleRate;
-    int k2;
-    if (bs_stop_freq < 14) {
-        short stop_dk[13];
-        float prod = (float)stop_min;
-        int prev = stop_min;
-        float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
-        for (int i = 0; i < 12; i++) {
-            prod *= base;
-            int present = (int)lrintf(prod);
-            stop_dk[i] = (short)(present - prev);
-            prev = present;
-        }
-        stop_dk[12] = (short)(64 - prev);
-        qsort(stop_dk, 13, sizeof(short), cmp_int16);
-        k2 = stop_min;
-        for (int i = 0; i < bs_stop_freq; i++) k2 += stop_dk[i];
-    } else {
-        k2 = 64;
+    short stop_dk[13];
+    float prod = (float)stop_min;
+    int prev = stop_min;
+    float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
+    for (int i = 0; i < 12; i++) {
+        prod *= base;
+        int present = (int)lrintf(prod);
+        stop_dk[i] = (short)(present - prev);
+        prev = present;
     }
+    stop_dk[12] = (short)(64 - prev);
+    for (int i = 1; i < 13; i++) {
+        short key = stop_dk[i];
+        int j = i - 1;
+        while (j >= 0 && stop_dk[j] > key) {
+            stop_dk[j + 1] = stop_dk[j];
+            j--;
+        }
+        stop_dk[j + 1] = key;
+    }
+    int k2 = stop_min;
+    for (int i = 0; i < bs_stop_freq; i++) k2 += stop_dk[i];
 
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
     return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
@@ -99,27 +100,27 @@ static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2, dk = sbr->dk;
     int n_master = clamp_int(((k2 - kx + (dk & 2)) >> dk) << 1, 1, SBR_MAX_BANDS);
-    int f_master[SBR_MAX_BANDS + 1];
-    for (int k = 1; k <= n_master; k++) f_master[k] = dk;
+    int *edges = sbr->bandEdges;
+    for (int k = 1; k <= n_master; k++) edges[k] = dk;
     int k2diff = (k2 - kx) - n_master * dk;
     if (k2diff < 0) {
-        f_master[1]--;
-        if (k2diff < -1) f_master[2]--;
-    } else if (k2diff > 0) f_master[n_master]++;
-    f_master[0] = kx;
-    for (int k = 1; k <= n_master; k++) f_master[k] += f_master[k - 1];
+        edges[1]--;
+        if (k2diff < -1) edges[2]--;
+    } else if (k2diff > 0) edges[n_master]++;
+    edges[0] = kx;
+    for (int k = 1; k <= n_master; k++) edges[k] += edges[k - 1];
     sbr->numBands = n_master;
-    for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
 
     /* Low-resolution table, derived exactly as the decoder does (ISO 14496-3
      * §4.6.18.3.2.2): keep every other high-resolution edge, with the parity of
      * the high band count deciding which. bs_xover_band is 0, so the high table
      * is the master table itself. */
-    sbr->numBandsLow = (sbr->numBands + 1) >> 1;
-    int odd = sbr->numBands & 1;
-    sbr->bandEdgesLow[0] = sbr->bandEdges[0];
-    for (int b = 1; b <= sbr->numBandsLow; b++)
-        sbr->bandEdgesLow[b] = sbr->bandEdges[2 * b - odd];
+    int n_low = (n_master + 1) >> 1;
+    sbr->numBandsLow = n_low;
+    int odd = n_master & 1;
+    sbr->bandEdgesLow[0] = edges[0];
+    for (int b = 1; b <= n_low; b++)
+        sbr->bandEdgesLow[b] = edges[2 * b - odd];
 
     sbr->numNoiseBands = 1;
     return n_master;
