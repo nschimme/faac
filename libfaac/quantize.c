@@ -347,11 +347,25 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-            huffbook(ci, xi, gsize * width, maxq);
+            int prev_book = HCB_NONE;
+            int section_run = 0;
+
+            if (sb > 0)
+            {
+                int prev_band = ci->bandcnt - 1;
+                prev_book = ci->book[prev_band];
+                while (prev_band - section_run >= ci->bandcnt - sb &&
+                       ci->book[prev_band - section_run] == prev_book)
+                {
+                    section_run++;
+                }
+            }
+
+            huffbook_assign(ci, xi, gsize * width, maxq, prev_book, section_run);
             *p_last_abs = sf_abs;
         }
 
-        ci->sf[ci->bandcnt++] += sf_rel;
+        ci->sf[ci->bandcnt - 1] += sf_rel;
     }
 }
 

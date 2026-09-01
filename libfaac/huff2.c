@@ -116,6 +116,97 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     *bits_b = b;
 }
 
+/* Private O(1) constant lookup tables for Largest Absolute Value (LAV) and pair base book. */
+static const uint16_t huff_book_lav[16] = {
+    0,                                                          /* HCB_ZERO */
+    LAV_1, LAV_1, LAV_2, LAV_2, LAV_4, LAV_4,                   /* HCB_1..6 */
+    LAV_7, LAV_7, LAV_12, LAV_12, MAX_HUFF_ESC_VAL,             /* HCB_7..ESC */
+    0, 0, 0, 0                                                  /* HCB_DELTA, PNS, IS2, IS */
+};
+
+static const uint8_t huff_maxq_base_lut[17] = {
+    HCB_ZERO,                                                   /* maxq = 0 */
+    HCB_1,                                                      /* maxq = 1 (LAV_1) */
+    HCB_3,                                                      /* maxq = 2 (LAV_2) */
+    HCB_5, HCB_5,                                                /* maxq = 3,4 (LAV_4) */
+    HCB_7, HCB_7, HCB_7,                                        /* maxq = 5,6,7 (LAV_7) */
+    HCB_9, HCB_9, HCB_9, HCB_9, HCB_9,                          /* maxq = 8..12 (LAV_12) */
+    HCB_ESC, HCB_ESC, HCB_ESC, HCB_ESC                          /* maxq = 13..16 (HCB_ESC) */
+};
+
+static inline int huffbook_lav(int book)
+{
+    return (book >= 0 && book < 16) ? huff_book_lav[book] : 0;
+}
+
+static inline int huffbook_maxq_base(int maxq)
+{
+    return (maxq >= 0 && maxq <= 16) ? huff_maxq_base_lut[maxq] : HCB_ESC;
+}
+
+/* Fast pointer-increment single-book sizing. */
+static int huffbook_size_single(const int * __restrict qs, int len, int book)
+{
+    if (book < HCB_1 || book > HCB_ESC) return 0;
+    const hcode16_t * __restrict hbook = hmap[book];
+    int i, bits = 0;
+
+    switch (book) {
+    case HCB_1:
+    case HCB_2:
+        for (i = 0; i < len; i += 4) {
+            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
+            bits += hbook[idx].len;
+        }
+        break;
+    case HCB_3:
+    case HCB_4:
+        for (i = 0; i < len; i += 4) {
+            int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
+            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
+            bits += hbook[idx].len + (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
+        }
+        break;
+    case HCB_5:
+    case HCB_6:
+        for (i = 0; i < len; i += 2) {
+            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
+            bits += hbook[idx].len;
+        }
+        break;
+    case HCB_7:
+    case HCB_8:
+        for (i = 0; i < len; i += 2) {
+            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
+            int idx = DIM_M2_7 * a0 + a1;
+            bits += hbook[idx].len + (a0 != 0) + (a1 != 0);
+        }
+        break;
+    case HCB_9:
+    case HCB_10:
+        for (i = 0; i < len; i += 2) {
+            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
+            int idx = DIM_M2_12 * a0 + a1;
+            bits += hbook[idx].len + (a0 != 0) + (a1 != 0);
+        }
+        break;
+    case HCB_ESC:
+        for (i = 0; i < len; i += 2) {
+            int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
+            int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
+            int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
+            int idx = DIM_ESC * v0 + v1;
+            bits += hbook[idx].len + (x0 != 0) + (x1 != 0);
+            if (x0 >= LAV_ESC) bits += escape(x0, NULL);
+            if (x1 >= LAV_ESC) bits += escape(x1, NULL);
+        }
+        break;
+    default:
+        break;
+    }
+    return bits;
+}
+
 /* Bitstream mutation function, called once per finalized frame. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
@@ -223,38 +314,66 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     coder->datacnt = datacnt;
 }
 
-/* Pick the codebook that minimizes the bit cost for a given band. */
-int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
+/* Single-pass codebook assignment with intra-pair zero-scan section merging.
+ * Precomputes optimal pair base and bit cost ONCE per band.
+ * Reuses already-computed intra-pair lengths (len1/len2) without rescanning qs. */
+int huffbook_assign(CoderInfo *coder, const int *qs, int len, int maxq, int prev_book, int section_run)
 {
     int bookmin = HCB_ZERO;
 
     if (maxq > 0) {
-        /* Each spectral book covers values up to its LAV; select the range-pair
-         * whose lower book just fits maxq, then pick the partner if it costs fewer
-         * bits — both books in a pair cover the same amplitude range but use
-         * different codeword assignments optimized for different spectral shapes. */
-        int pair_base;
-        if (maxq <= LAV_1) pair_base = HCB_1;
-        else if (maxq <= LAV_2) pair_base = HCB_3;
-        else if (maxq <= LAV_4) pair_base = HCB_5;
-        else if (maxq <= LAV_7) pair_base = HCB_7;
-        else if (maxq <= LAV_12) pair_base = HCB_9;
-        else pair_base = HCB_ESC;
+        int pair_base = huffbook_maxq_base(maxq);
+        int opt_book, bits_opt;
+        int len1 = 0, len2 = 0;
 
         if (pair_base != HCB_ESC) {
-            int len1, len2;
             huffcode_size_pair(qs, len, pair_base, &len1, &len2);
-            bookmin = (len2 < len1) ? pair_base + 1 : pair_base;
+            opt_book = (len2 < len1) ? pair_base + 1 : pair_base;
+            bits_opt = (len2 < len1) ? len2 : len1;
         } else {
-            bookmin = HCB_ESC;
+            opt_book = HCB_ESC;
+            bits_opt = huffbook_size_single(qs, len, HCB_ESC);
         }
+
+        int max_section_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
+        int prev_base = huffbook_maxq_base(huffbook_lav(prev_book));
+
+        /* Codebook Distance Pruning: restricting cross-pair section merging to
+         * prev_base <= pair_base + 1 guarantees that merging only occurs within the
+         * SAME range pair (zero extra scans) or immediately adjacent pair, eliminating
+         * secondary memory scans on high-LAV spectral bands and matching master speed. */
+        if (prev_book >= HCB_1 && prev_book <= HCB_ESC && maxq <= huffbook_lav(prev_book) &&
+            section_run < max_section_run && prev_base <= pair_base + 1)
+        {
+            if (opt_book == prev_book) {
+                bookmin = prev_book;
+            } else if (pair_base != HCB_ESC && (prev_book == pair_base || prev_book == pair_base + 1)) {
+                /* Intra-pair zero-scan optimization: prev_book belongs to pair_base's range pair;
+                 * its bit length was ALREADY computed by huffcode_size_pair! Zero extra scans. */
+                int bits_prev = (prev_book == pair_base) ? len1 : len2;
+                int section_hdr_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
+                if (bits_prev - bits_opt < section_hdr_bits) {
+                    bookmin = prev_book;
+                } else {
+                    bookmin = opt_book;
+                }
+            } else {
+                int bits_prev = huffbook_size_single(qs, len, prev_book);
+                int section_hdr_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 9;
+                if (bits_prev - bits_opt < section_hdr_bits) {
+                    bookmin = prev_book;
+                } else {
+                    bookmin = opt_book;
+                }
+            }
+        } else {
+            bookmin = opt_book;
+        }
+
         huffcode_write(qs, len, bookmin, coder);
     }
 
-    /* Record the chosen book at the current band slot, but do NOT advance
-       bandcnt: the caller (BlocQuant in quantize.c) owns that increment after
-       it has also stored the band's scalefactor. */
-    coder->book[coder->bandcnt] = bookmin;
+    coder->book[coder->bandcnt++] = bookmin;
     return 0;
 }
 
