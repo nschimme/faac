@@ -127,31 +127,37 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
 
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
-        int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
-        int len;
+        int lo = ci->sfb_offset[sfb];
+        int len = ci->sfb_offset[sfb + 1] - lo;
+        float sum = 0.0f, peak = 0.0f;
+        int w;
 
         /* Short blocks carry a zeroed stopband above the coded cutoff; summing
-           and max-ing those lines yields exactly 0.0f either way. */
+           and max-ing those lines yields exactly 0.0f. A band straddling the
+           cutoff is scanned whole rather than clipped, for the same reason as
+           in BlocGroup's scan: the lines above it are zero, and every band
+           width in srInfo[] is a multiple of four, so the scan steps by four
+           with no remainder to code for. */
         if (lo >= cutoff)
         {
             out[sfb].sum = 0.0f;
             out[sfb].peak_amp = 0.0f;
             continue;
         }
-        if (hi > cutoff) hi = cutoff;
-        len = hi - lo;
-        float sum = 0.0f, peak = 0.0f;
-        int w;
 
         for (w = 0; w < gsize; w++)
         {
             const float * __restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
             int k;
-            for (k = 0; k < len; k++)
+            for (k = 0; k < len; k += 4)
             {
-                float e = line[k] * line[k];
-                sum += e;
-                if (e > peak) peak = e;
+                float a = line[k], b = line[k + 1], c = line[k + 2], d = line[k + 3];
+                float ea = a * a, eb = b * b, ec = c * c, ed = d * d;
+
+                sum += ea; if (ea > peak) peak = ea;
+                sum += eb; if (eb > peak) peak = eb;
+                sum += ec; if (ec > peak) peak = ec;
+                sum += ed; if (ed > peak) peak = ed;
             }
         }
         out[sfb].sum = sum;
@@ -425,9 +431,15 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-/* Bounds of one short band, clamped to the coded cutoff. Returns 0 once the
-   bands start past it: those coefficients were just zeroed, so their energy is
-   zero and BlocGroup already cleared the matrix. */
+/* Bounds of one short band. Returns 0 once the bands start past the coded
+   cutoff: those coefficients were just zeroed, so their energy is zero and
+   BlocGroup already cleared the matrix.
+
+   A band straddling the cutoff is NOT clipped to it -- its upper lines are
+   zeroed, and adding 0.0f*0.0f leaves a non-negative running sum unchanged.
+   Not clipping keeps every length a whole scale-factor band, and every band
+   width in srInfo[] is a multiple of four, which is what lets the scan loops
+   below step by four with no remainder. */
 static inline int band_bounds(const int * __restrict sfb_offset, int sfb, int cutoff,
                                int * __restrict start_k, int * __restrict len)
 {
@@ -435,12 +447,8 @@ static inline int band_bounds(const int * __restrict sfb_offset, int sfb, int cu
     if (lo >= cutoff)
         return 0;
 
-    int hi = sfb_offset[sfb + 1];
-    if (hi > cutoff)
-        hi = cutoff;
-
     *start_k = lo;
-    *len = hi - lo;
+    *len = sfb_offset[sfb + 1] - lo;
     return 1;
 }
 
@@ -470,8 +478,15 @@ static void window_band_energy(const int * __restrict sfb_offset, float * __rest
             break;
 
         const float * __restrict line = w + start_k;
-        for (k = 0; k < len; k++)
-            sum += line[k] * line[k];
+        for (k = 0; k < len; k += 4)
+        {
+            float a = line[k], b = line[k + 1], c = line[k + 2], d = line[k + 3];
+
+            sum += a * a;
+            sum += b * b;
+            sum += c * c;
+            sum += d * d;
+        }
 
         e[sfb] = sum;
     }
@@ -501,12 +516,16 @@ static void window_band_energy_cpe(const int * __restrict sfb_offset,
 
         const float * __restrict lineL = wl + start_k;
         const float * __restrict lineR = wr + start_k;
-        for (k = 0; k < len; k++)
+        for (k = 0; k < len; k += 4)
         {
-            float l = lineL[k], r = lineR[k];
-            sumL  += l * l;
-            sumR  += r * r;
-            sumLR += l * r;
+            float l0 = lineL[k],     r0 = lineR[k];
+            float l1 = lineL[k + 1], r1 = lineR[k + 1];
+            float l2 = lineL[k + 2], r2 = lineR[k + 2];
+            float l3 = lineL[k + 3], r3 = lineR[k + 3];
+
+            sumL  += l0 * l0; sumL  += l1 * l1; sumL  += l2 * l2; sumL  += l3 * l3;
+            sumR  += r0 * r0; sumR  += r1 * r1; sumR  += r2 * r2; sumR  += r3 * r3;
+            sumLR += l0 * r0; sumLR += l1 * r1; sumLR += l2 * r2; sumLR += l3 * r3;
         }
 
         eL[sfb] = sumL;
