@@ -120,7 +120,7 @@ typedef struct
 } BandEnergy;
 
 static void measure_band_energy(const CoderInfo * __restrict ci, const float * __restrict xr0,
-                                 int gnum, BandEnergy * __restrict out)
+                                 int gnum, int cutoff, BandEnergy * __restrict out)
 {
     int gsize = ci->groups.len[gnum];
     int sfb;
@@ -128,7 +128,18 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
         int lo = ci->sfb_offset[sfb], hi = ci->sfb_offset[sfb + 1];
-        int len = hi - lo;
+        int len;
+
+        /* Short blocks carry a zeroed stopband above the coded cutoff; summing
+           and max-ing those lines yields exactly 0.0f either way. */
+        if (lo >= cutoff)
+        {
+            out[sfb].sum = 0.0f;
+            out[sfb].peak_amp = 0.0f;
+            continue;
+        }
+        if (hi > cutoff) hi = cutoff;
+        len = hi - lo;
         float sum = 0.0f, peak = 0.0f;
         int w;
 
@@ -252,7 +263,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target, const float * __restrict bandenrg,
-                                   const float * __restrict bandpeak, int gnum, int pnslevel,
+                                   const BandEnergy * __restrict be, int gnum, int pnslevel,
                                    int * __restrict p_last_abs)
 {
     int gsize = ci->groups.len[gnum];
@@ -314,7 +325,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         else
         {
             int sf_abs;
-            float gain = resolve_band_gain(sfac, sf_bias, bandpeak[sb], *p_last_abs, &sf_rel, &sf_abs);
+            float gain = resolve_band_gain(sfac, sf_bias, be[sb].peak_amp, *p_last_abs, &sf_rel, &sf_abs);
             int xi[FRAME_LEN];
             int win, maxq = 0;
 
@@ -345,20 +356,17 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 {
     float target[MAX_SCFAC_BANDS], bandenrg[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
-    float bandpeak[MAX_SCFAC_BANDS];
     int i, lastsf = SF_CHAIN_UNSET;
     float *gxr = xr;
+    int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
+               ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
 
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
-        int sfb;
-
-        measure_band_energy(coder, gxr, i, be);
-        for (sfb = 0; sfb < coder->sfbn; sfb++)
-            bandpeak[sfb] = be[sfb].peak_amp;
+        measure_band_energy(coder, gxr, i, cutoff, be);
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, target, bandenrg);
-        assign_band_codebooks(coder, gxr, target, bandenrg, bandpeak, i, aacquantCfg->pnslevel, &lastsf);
+        assign_band_codebooks(coder, gxr, target, bandenrg, be, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 
