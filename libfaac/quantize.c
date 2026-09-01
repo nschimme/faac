@@ -239,6 +239,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
 
+        if (quality >= 1.0f)
+            target *= 1.10f;
         target_out[sfb] = target * quality;
     }
 }
@@ -258,28 +260,15 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     if (last_abs != SF_CHAIN_UNSET)
     {
         int wanted = sf_abs - last_abs;
-        if (abs(wanted) <= 1)
+        int allowed = clamp_sf_diff(wanted);
+        if (allowed != wanted)
         {
-            /* Scalefactor Differential Delta Pruning: collapse small deltas to 0 to save bitstream bits */
-            sf_abs = last_abs;
+            sf_abs = last_abs + allowed;
             sf_rel = sf_abs - sf_bias;
             sfac = SF_OFFSET - sf_rel;
             gain = gain_with_overflow_clamp(&sfac, band_peak);
             sf_rel = SF_OFFSET - sfac;
             sf_abs = sf_bias + sf_rel;
-        }
-        else
-        {
-            int allowed = clamp_sf_diff(wanted);
-            if (allowed != wanted)
-            {
-                sf_abs = last_abs + allowed;
-                sf_rel = sf_abs - sf_bias;
-                sfac = SF_OFFSET - sf_rel;
-                gain = gain_with_overflow_clamp(&sfac, band_peak);
-                sf_rel = SF_OFFSET - sfac;
-                sf_abs = sf_bias + sf_rel;
-            }
         }
     }
 
@@ -331,7 +320,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
             /* Band-Wise Psychoacoustic Noise Filling for zeroed high-frequency bands */
-            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f && avg_per_window > 1e-6f)
+            if (pnslevel > 0 && sb >= (ci->sfbn / 2) && target[sb] > 0.0f && avg_per_window > 0.01f)
             {
                 ci->book[band] = HCB_PNS;
 #ifdef FAAC_STATS
@@ -371,83 +360,68 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             {
                 sfac = SF_OFFSET - SF_MIN;
                 sf_rel = SF_MIN;
-                int sf_abs;
-                float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
-                int xi[FRAME_LEN];
-                int win, maxq = 0;
-
-                for (win = 0; win < gsize; win++)
-                {
-                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
-                    if (qm > maxq) maxq = qm;
-                }
-                huffbook(ci, xi, gsize * width, maxq);
-                *p_last_abs = sf_abs;
-                ci->sf[band] = sf_abs;
-                ci->bandcnt++;
             }
             else
             {
                 ci->book[band] = HCB_ZERO;
                 ci->bandcnt++;
+                continue;
             }
         }
-        else
-        {
-            int sf_abs;
-            float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
-            int xi[FRAME_LEN];
-            int win, maxq = 0;
 
+        int sf_abs;
+        float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
+        int xi[FRAME_LEN];
+        int win, maxq = 0;
+
+        for (win = 0; win < gsize; win++)
+        {
+            int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+            if (qm > maxq) maxq = qm;
+        }
+
+        /* Single-Pass SMR Distortion Feedback */
+        float d_sfb = 0.0f;
+        float inv_gain = (gain > 0.0f) ? (1.0f / gain) : 0.0f;
+        for (win = 0; win < gsize; win++)
+        {
+            const float *xr_ptr = xr0 + win * BLOCK_LEN_SHORT + lo;
+            const int *xi_ptr = xi + win * width;
+            int k;
+            for (k = 0; k < width; k++)
+            {
+                int q = xi_ptr[k];
+                float x_orig = xr_ptr[k];
+                if (q != 0)
+                {
+                    float x_hat = dequant_q(q) * inv_gain;
+                    float diff = x_orig - x_hat;
+                    d_sfb += diff * diff;
+                }
+                else
+                {
+                    d_sfb += x_orig * x_orig;
+                }
+            }
+        }
+
+        float t_sfb_total = target[sb] * be[sb].sum;
+        if (t_sfb_total > 0.0f && d_sfb > 1.2f * t_sfb_total)
+        {
+            sfac += 1;
+            gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
+            maxq = 0;
             for (win = 0; win < gsize; win++)
             {
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-
-            /* Single-Pass SMR Distortion Feedback */
-            float d_sfb = 0.0f;
-            float inv_gain = (gain > 0.0f) ? (1.0f / gain) : 0.0f;
-            for (win = 0; win < gsize; win++)
-            {
-                const float *xr_ptr = xr0 + win * BLOCK_LEN_SHORT + lo;
-                const int *xi_ptr = xi + win * width;
-                int k;
-                for (k = 0; k < width; k++)
-                {
-                    int q = xi_ptr[k];
-                    float x_orig = xr_ptr[k];
-                    if (q != 0)
-                    {
-                        float x_hat = dequant_q(q) * inv_gain;
-                        float diff = x_orig - x_hat;
-                        d_sfb += diff * diff;
-                    }
-                    else
-                    {
-                        d_sfb += x_orig * x_orig;
-                    }
-                }
-            }
-
-            float t_sfb_total = target[sb] * be[sb].sum;
-            if (sb < (ci->sfbn * 3 / 4) && t_sfb_total > 0.0f && d_sfb > 1.5f * t_sfb_total)
-            {
-                sfac += 1;
-                gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
-                maxq = 0;
-                for (win = 0; win < gsize; win++)
-                {
-                    int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
-                    if (qm > maxq) maxq = qm;
-                }
-            }
-
-            huffbook(ci, xi, gsize * width, maxq);
-            *p_last_abs = sf_abs;
-            ci->sf[band] = sf_abs;
-            ci->bandcnt++;
         }
+
+        huffbook(ci, xi, gsize * width, maxq);
+        *p_last_abs = sf_abs;
+        ci->sf[band] = sf_abs;
+        ci->bandcnt++;
     }
 }
 
