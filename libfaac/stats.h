@@ -25,8 +25,9 @@ extern "C" {
 typedef struct faacEncStats {
     unsigned int totalFrames;
     unsigned int transientFrames;
-    unsigned int cpeShortFrames;
-    unsigned int cpeCommonGroupFrames;
+    unsigned int shortChannels;
+    unsigned int shortSplitChannels;
+    unsigned long shortGroupSum;
     double totalQuality;
 
     unsigned long totalBands;

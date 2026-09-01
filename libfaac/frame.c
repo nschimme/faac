@@ -594,16 +594,18 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | SBR Grid = %5.1f%% Var | Attack = %.1fx avg, %.1fx max\n",
                     tr, g_faacStats.transientFrames, g_faacStats.totalFrames, sbr_tr, att_avg, att_max);
         }
-        else if (g_faacStats.cpeShortFrames > 0)
-        {
-            double cpe_grp = 100.0 * g_faacStats.cpeCommonGroupFrames / g_faacStats.cpeShortFrames;
-            fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | CPE Short Groups = %5.1f%% (%u/%u) | Attack = %.1fx avg, %.1fx max\n",
-                    tr, g_faacStats.transientFrames, g_faacStats.totalFrames, cpe_grp, g_faacStats.cpeCommonGroupFrames, g_faacStats.cpeShortFrames, att_avg, att_max);
-        }
         else
         {
             fprintf(stderr, " Transients & Grid   : Core Tr = %5.1f%% (%u/%u) | Attack = %.1fx avg, %.1fx max\n",
                     tr, g_faacStats.transientFrames, g_faacStats.totalFrames, att_avg, att_max);
+        }
+
+        if (g_faacStats.shortChannels > 0)
+        {
+            double grp_avg = (double)g_faacStats.shortGroupSum / g_faacStats.shortChannels;
+            double split = 100.0 * g_faacStats.shortSplitChannels / g_faacStats.shortChannels;
+            fprintf(stderr, " Short Grouping      : Groups  = %5.2f avg/ch | Split = %5.1f%% of %u short ch\n",
+                    grp_avg, split, g_faacStats.shortChannels);
         }
 
         double peak_retry_pct = 100.0 * g_faacStats.peakRetryFrames / g_faacStats.totalFrames;
@@ -923,12 +925,18 @@ int faacEncEncode(faacEncHandle hpEncoder,
             BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
 
 #ifdef FAAC_STATS
-        /* Engagement rate of the shared grouping: how many CPE frames with a
-           short channel actually had both channels short. */
-        if (a && r >= 0)
+        /* Window groups per short channel. Downstream cost -- the per-band
+           passes in BlocQuant, the scalefactor sets, the Huffman sections and
+           the ms_used mask -- all scale with groups.n * sfbn per channel, so
+           this is the number that explains both a throughput and a bitrate
+           delta from any change to the grouping decision. */
+        if (a)
         {
-            g_faacStats.cpeShortFrames++;
-            if (b) g_faacStats.cpeCommonGroupFrames++;
+            unsigned int nch = b ? 2 : 1;
+            g_faacStats.shortChannels += nch;
+            g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
+            if (a->groups.n > 1)
+                g_faacStats.shortSplitChannels += nch;
         }
 #endif
     }
