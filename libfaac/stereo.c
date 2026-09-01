@@ -132,6 +132,7 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
 static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
+                               const ShortBandEnergy * restrict en,
                                int * restrict sfcnt, int wstart, int wend,
                                float thrmid, float inv_isthr, float thrside_sq,
                                int is_start_sfb, int mode)
@@ -149,7 +150,19 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         float el, er, elr;
-        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
+
+        if (en) {
+            /* Already summed for this band while the grouping was decided. */
+            int win;
+            el = er = elr = 0.0f;
+            for (win = wstart; win < wend; win++) {
+                el  += en->ll[win][sfb];
+                er  += en->rr[win][sfb];
+                elr += en->lr[win][sfb];
+            }
+        } else {
+            calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
+        }
 
         float es   = el + er + 2.0f*elr;
         float ed   = el + er - 2.0f*elr;
@@ -236,6 +249,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s[MAX_CHANNELS],
+               const ShortBandEnergy *energy,
                float quality, int mode, int sampleRate, unsigned int bandWidth)
 {
     float inv_quality = 1.0f / quality;
@@ -308,6 +322,14 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         elem->common_window  = true;
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
 
+        /* The fused short-block scan already produced this element's per-band
+           L/R/cross energies; long blocks have no such pass and measure their
+           own. */
+        const ShortBandEnergy *en = NULL;
+        if (coder[lch].block_type == ONLY_SHORT_WINDOW && energy
+            && energy[e].valid && energy[e].stereo)
+            en = &energy[e];
+
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {
             int target_offset = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? target_offset_short : target_offset_long;
@@ -320,7 +342,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
 
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
-            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
+            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch], en,
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
                                   is_start_sfb, cur_mode);
             start = end;

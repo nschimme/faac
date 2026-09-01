@@ -921,8 +921,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
             xa = hEncoder->freqBuff[r];
         }
 
+        hEncoder->shortEnergy[e].valid = 0;
+        hEncoder->shortEnergy[e].stereo = 0;
+
         if (a)
-            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+            BlocGroup(a, xa, b, xb, &hEncoder->shortEnergy[e], &hEncoder->aacquantCfg);
 
 #ifdef FAAC_STATS
         /* Window groups per short channel. Downstream cost -- the per-band
@@ -989,6 +992,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
+              hEncoder->shortEnergy,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
               hEncoder->config.bandWidth);
 
