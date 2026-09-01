@@ -37,13 +37,19 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
     if (write) {
-        uint32_t val = (sbr->bs_amp_res & 1) << 20;
-        val |= (sbr->bs_start_freq & 15) << 16;
-        val |= (sbr->bs_stop_freq & 15) << 12;
-        val |= (sbr->bs_xover_band & 7) << 9;
-        val |= (1 << 6); /* bs_header_extra_1 = 1 */
-        val |= (sbr->bs_alter_scale & 1) << 2;
-        PutBit(bs, val, 21);
+        BitWriter bw;
+        BitWriterInit(&bw);
+        BitWriterPut(&bw, sbr->bs_amp_res,     1);
+        BitWriterPut(&bw, sbr->bs_start_freq,  4);
+        BitWriterPut(&bw, sbr->bs_stop_freq,   4);
+        BitWriterPut(&bw, sbr->bs_xover_band,  3);
+        BitWriterPut(&bw, 0,                   2); /* bs_reserved */
+        BitWriterPut(&bw, 1,                   1); /* bs_header_extra_1 = 1 */
+        BitWriterPut(&bw, 0,                   1); /* bs_header_extra_2 = 0 */
+        BitWriterPut(&bw, 0,                   2); /* bs_freq_scale = 0 */
+        BitWriterPut(&bw, sbr->bs_alter_scale, 1);
+        BitWriterPut(&bw, 0,                   2); /* bs_noise_bands = 0 */
+        BitWriterFlush(&bw, bs);
     }
     return 21;
 }

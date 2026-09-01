@@ -56,6 +56,36 @@ void InitBitStream(BitStream *bs, uint8_t *buffer, uint32_t size);
 int PutBit(BitStream *bs, uint32_t data, int numBits);
 int ByteAlign(BitStream *bs);
 
+/**
+ * @struct BitWriter
+ * @brief Accumulates small bitfields into a register for single-word PutBit writes.
+ */
+typedef struct BitWriter {
+    uint32_t val;
+    int bits;
+} BitWriter;
+
+static inline void BitWriterInit(BitWriter *bw)
+{
+    bw->val = 0;
+    bw->bits = 0;
+}
+
+static inline void BitWriterPut(BitWriter *bw, uint32_t value, int numBits)
+{
+    bw->val = (bw->val << numBits) | ((uint32_t)value & ((1U << numBits) - 1));
+    bw->bits += numBits;
+}
+
+static inline void BitWriterFlush(BitWriter *bw, BitStream *bs)
+{
+    if (bw->bits > 0) {
+        PutBit(bs, bw->val, bw->bits);
+        bw->val = 0;
+        bw->bits = 0;
+    }
+}
+
 /* Batches small field writes into a register and flushes whole bytes as
  * they fill, instead of touching the buffer on every write -- for hot
  * loops (e.g. spectral coefficients) where PutBit's per-call overhead
