@@ -56,6 +56,7 @@ static float max_quant_limit;
  * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
+static float q_pow_4_3_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -78,6 +79,9 @@ void QuantizeInit(void)
     /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
     for (i = 1; i < 128; i++)
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
+
+    for (i = 0; i < 128; i++)
+        q_pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -179,6 +183,18 @@ static float loudness(float energy_ratio)
     return powf(energy_ratio, LOUDNESS_EXPONENT);
 }
 
+// ISO 226 equal-loudness mid-band formant weighting (peaks sensitivity between 1 kHz and 4 kHz)
+static float equal_loudness_weight(int lo, int hi, float inv_block_len)
+{
+    float center_ratio = (float)(lo + hi) * 0.5f * inv_block_len;
+    if (center_ratio >= 0.04f && center_ratio <= 0.17f)
+    {
+        float delta = (center_ratio - 0.10f) / 0.07f;
+        return 0.85f + 0.15f * (delta * delta);
+    }
+    return 1.0f;
+}
+
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
 static float treble_rolloff(int lo, int hi, float inv_block_len)
 {
@@ -227,6 +243,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         if (ci->block_type == ONLY_SHORT_WINDOW)
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
+        target *= equal_loudness_weight(lo, hi, inv_block_len);
 
         target_out[sfb] = target * quality;
     }
@@ -314,8 +331,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
-         * TNS filter shapes the substituted noise too. */
-        if (target[sb] < pns_threshold)
+         * TNS filter shapes the substituted noise too. Protect tonal harmonic peaks
+         * (peak-to-average ratio >= 3.5f) from noise substitution. */
+        float tonality = (avg_per_window > 0.0f) ? (be[sb].peak_energy * (float)width / avg_per_window) : 1.0f;
+        if (target[sb] < pns_threshold && tonality < 3.5f)
         {
             ci->book[band] = HCB_PNS;
 #ifdef FAAC_STATS
@@ -347,6 +366,50 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
+
+            /* Single-pass SMR distortion feedback refinement */
+            if (be[sb].sum > 0.5f && target[sb] > 0.0f)
+            {
+                float d_sfb = 0.0f;
+                float inv_gain = 1.0f / gain;
+                int k, w;
+
+                for (w = 0; w < gsize; w++)
+                {
+                    const float *line = xr0 + w * BLOCK_LEN_SHORT + lo;
+                    const int *qline = xi + w * width;
+                    for (k = 0; k < width; k++)
+                    {
+                        int q = abs(qline[k]);
+                        if (q > 0)
+                        {
+                            float x_hat = ((q < 128) ? q_pow_4_3_lut[q] : powf((float)q, 4.0f/3.0f)) * inv_gain;
+                            if (qline[k] < 0) x_hat = -x_hat;
+                            float err = line[k] - x_hat;
+                            d_sfb += err * err;
+                        }
+                        else
+                        {
+                            d_sfb += line[k] * line[k];
+                        }
+                    }
+                }
+
+                float allowed_dist = target[sb] * be[sb].sum;
+                if (d_sfb > 2.0f * allowed_dist)
+                {
+                    sfac += 1;
+                    sf_rel = SF_OFFSET - sfac;
+                    gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
+                    maxq = 0;
+                    for (w = 0; w < gsize; w++)
+                    {
+                        int qm = qfunc(xr0 + w * BLOCK_LEN_SHORT + lo, xi + w * width, width, gain);
+                        if (qm > maxq) maxq = qm;
+                    }
+                }
+            }
+
             huffbook(ci, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
         }

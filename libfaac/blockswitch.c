@@ -242,6 +242,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
 {
   unsigned int channel;
   int desire[MAX_CHANNELS];
+  int e;
 
   /* Shared transient override for HE-AAC path.
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
@@ -273,7 +274,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
    * transient flags and combined Perceptual Entropy (PE_L + PE_R). */
   if (hEncoder && hEncoder->numElements > 0)
   {
-      for (int e = 0; e < hEncoder->numElements; e++)
+      for (e = 0; e < hEncoder->numElements; e++)
       {
           AACElement *elem = &hEncoder->elements[e];
           if (elem->type == ID_CPE)
