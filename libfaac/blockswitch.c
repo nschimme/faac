@@ -48,7 +48,7 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH (0.45f)
+#define PSY_TD_THRESH (0.5f)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -243,11 +243,6 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   unsigned int channel;
   int desire[MAX_CHANNELS];
 
-  for (channel = 0; channel < numChannels; channel++)
-  {
-      desire[channel] = ONLY_LONG_WINDOW;
-  }
-
   /* Shared transient override for HE-AAC path.
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
    * block-switch for frame N audio is emitted at a delay. Alignment logic
@@ -268,9 +263,14 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
       }
   }
 
+  for (channel = 0; channel < numChannels; channel++)
+  {
+      desire[channel] = psyInfo[channel].block_type;
+  }
+
   /* Process block switching decision per element.
    * For CPE elements, couple Left and Right channel decisions using both
-   * transient flags and combined Perceptual Entropy threshold evaluation. */
+   * transient flags and combined Perceptual Entropy (PE_L + PE_R). */
   if (hEncoder && hEncoder->numElements > 0)
   {
       for (int e = 0; e < hEncoder->numElements; e++)
@@ -280,31 +280,14 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
           {
               int l = elem->channels[0];
               int r = elem->channels[1];
-              unsigned long rate_per_ch = hEncoder->config.bitRate ? (hEncoder->config.bitRate / hEncoder->numChannels) : 0;
+              float pe_sum = psyInfo[l].pe + psyInfo[r].pe;
 
-              /* At low per-channel bitrates (<= 16k/ch), force CPE short coupling on strong
-               * transient attacks (PsyGetAttack >= 0.5f) to avoid draining the tight bit reservoir
-               * with short scalefactor overhead on subtle single-channel ripples.
-               * At mid/high bitrates (> 16k/ch), couple CPE short windows whenever either channel
-               * detects a transient onset. */
-              if (psyInfo[l].block_type == ONLY_SHORT_WINDOW && psyInfo[r].block_type == ONLY_SHORT_WINDOW)
+              if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
+                  psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
+                  (pe_sum >= (2.0f * PE_THRESH_PER_CH) && (PsyGetAttack(&psyInfo[l]) > 0.25f || PsyGetAttack(&psyInfo[r]) > 0.25f)))
               {
                   desire[l] = ONLY_SHORT_WINDOW;
                   desire[r] = ONLY_SHORT_WINDOW;
-              }
-              else if (psyInfo[l].block_type == ONLY_SHORT_WINDOW || psyInfo[r].block_type == ONLY_SHORT_WINDOW)
-              {
-                  if (rate_per_ch == 0 || rate_per_ch > 16000 ||
-                      PsyGetAttack(&psyInfo[l]) >= 0.5f || PsyGetAttack(&psyInfo[r]) >= 0.5f)
-                  {
-                      desire[l] = ONLY_SHORT_WINDOW;
-                      desire[r] = ONLY_SHORT_WINDOW;
-                  }
-                  else
-                  {
-                      desire[l] = psyInfo[l].block_type;
-                      desire[r] = psyInfo[r].block_type;
-                  }
               }
               else
               {
@@ -315,56 +298,15 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
           else if (elem->type == ID_SCE)
           {
               int ch = elem->channels[0];
-              desire[ch] = psyInfo[ch].block_type;
+              if (psyInfo[ch].block_type == ONLY_SHORT_WINDOW || psyInfo[ch].pe >= PE_THRESH_PER_CH)
+                  desire[ch] = ONLY_SHORT_WINDOW;
+              else
+                  desire[ch] = ONLY_LONG_WINDOW;
           }
           else if (elem->type == ID_LFE)
           {
               int ch = elem->channels[0];
               desire[ch] = ONLY_LONG_WINDOW;
-          }
-      }
-  }
-  else
-  {
-      for (channel = 0; channel < numChannels; channel++)
-      {
-          desire[channel] = psyInfo[channel].block_type;
-      }
-  }
-
-  /* Synchronized KBD vs. Sine window shape selection per element */
-  int win_shape[MAX_CHANNELS];
-  for (channel = 0; channel < numChannels; channel++)
-  {
-      win_shape[channel] = SINE_WINDOW;
-  }
-
-  if (hEncoder && hEncoder->numElements > 0)
-  {
-      for (int e = 0; e < hEncoder->numElements; e++)
-      {
-          AACElement *elem = &hEncoder->elements[e];
-          if (elem->type == ID_CPE)
-          {
-              int l = elem->channels[0];
-              int r = elem->channels[1];
-              unsigned long rate_per_ch = hEncoder->config.bitRate ? (hEncoder->config.bitRate / hEncoder->numChannels) : 0;
-
-              if ((rate_per_ch == 0 || rate_per_ch > 16000) &&
-                  (coderInfo[l].block_type != ONLY_LONG_WINDOW || coderInfo[r].block_type != ONLY_LONG_WINDOW))
-              {
-                  win_shape[l] = KBD_WINDOW;
-                  win_shape[r] = KBD_WINDOW;
-              }
-          }
-          else if (elem->type == ID_SCE)
-          {
-              int ch = elem->channels[0];
-              unsigned long rate_per_ch = hEncoder->config.bitRate ? (hEncoder->config.bitRate / hEncoder->numChannels) : 0;
-              if ((rate_per_ch == 0 || rate_per_ch > 16000) && coderInfo[ch].block_type != ONLY_LONG_WINDOW)
-              {
-                  win_shape[ch] = KBD_WINDOW;
-              }
           }
       }
   }
@@ -391,6 +333,6 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
     coderInfo[channel].desired_block_type = des;
 
     coderInfo[channel].prev_window_shape = coderInfo[channel].window_shape;
-    coderInfo[channel].window_shape = win_shape[channel];
+    coderInfo[channel].window_shape = SINE_WINDOW;
   }
 }
