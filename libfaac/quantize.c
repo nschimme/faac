@@ -14,6 +14,7 @@
  */
 
 #include <limits.h>
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -357,6 +358,19 @@ void ResetCoderSections(CoderInfo *coder)
     }
 }
 
+/* The band scans in this file and in stereo.c step four coefficients at a time
+   with no remainder, which is only sound because every scale-factor band width
+   in srInfo[] is a multiple of four. That is a property of the tables, not of
+   anything enforced by the type system, so check it here -- once per block,
+   against the table actually selected -- rather than trusting a comment. */
+static void assert_band_widths_align(const CoderInfo * __restrict ci)
+{
+    int sfb;
+
+    for (sfb = 0; sfb < ci->sfbn; sfb++)
+        assert((ci->sfb_offset[sfb + 1] - ci->sfb_offset[sfb]) % 4 == 0);
+}
+
 int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     float target[MAX_SCFAC_BANDS], bandenrg[MAX_SCFAC_BANDS];
@@ -365,6 +379,8 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     float *gxr = xr;
     int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
                ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
+
+    assert_band_widths_align(coder);
 
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
