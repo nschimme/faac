@@ -584,7 +584,8 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
             SendMessage(hwndTip, TTM_SETMAXTIPWIDTH, 0, 300); /* enables \n line breaks */
 
             AddTip(hWnd, IDC_QUALITY,
-                "Percent (VBR) or kbps/channel (ABR), depending on Rate Mode.");
+                "Quantizer quality (VBR) or kbps for the whole stream (ABR),\n"
+                "depending on Rate Mode.");
             AddTip(hWnd, IDC_BWCTL,
                 "Cap the encoded bandwidth to a specific frequency instead of\n"
                 "letting the encoder choose it automatically.");

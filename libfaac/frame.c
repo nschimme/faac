@@ -368,11 +368,24 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
+    /* Clamp to the spec range, against the full (pre-downsample) rate: for an
+     * already-resolved HE-AAC handle sampleRate is the halved core rate.
+     *
+     * config->bitRate and both bounds are PER CHANNEL, so they compare
+     * directly. This previously divided the ceiling by numChannels, which read
+     * a per-channel limit as a whole-stream one and silently capped stereo at
+     * half the spec maximum -- -b 400 and -b 576 both emitted 294 kbit/s. */
     fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-    if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-        config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
+    if (config->bitRate)
+    {
+        unsigned long maxPerCh = MaxBitratePerCh(fullRate);
+        unsigned long minPerCh = MinBitratePerCh();
+
+        if (config->bitRate > maxPerCh)
+            config->bitRate = maxPerCh;
+        else if (config->bitRate < minPerCh)
+            config->bitRate = minPerCh;
+    }
 
     /* In VBR there is no bitrate to seed a quality from, so resolve the
      * quantqual default here: the AUTO decision below reads it, and the

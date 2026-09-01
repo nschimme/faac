@@ -362,10 +362,10 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     if (!opts || opts->verbose < 1)
         return;
 
-    if (info->bit_rate)
+    if (info->bit_rate_per_ch)
     {
         fprintf(stderr, "Initial quantization quality: %u\n", info->quant_quality);
-        fprintf(stderr, "Average bitrate: %u kbps/channel\n", (info->bit_rate + 500) / 1000);
+        fprintf(stderr, "Average bitrate: %u kbps/channel\n", (info->bit_rate_per_ch + 500) / 1000);
     }
     else
     {
@@ -805,7 +805,7 @@ int main(int argc, char *argv[])
             opts.metadata.language = optarg;
             break;
         case CAP_RATE_FLAG:
-            opts.max_bit_rate = atoi(optarg) * 1000;
+            opts.max_bit_rate_total = atoi(optarg) * 1000;
             break;
         case 'v':
             opts.verbose = (uint8_t)atoi(optarg);

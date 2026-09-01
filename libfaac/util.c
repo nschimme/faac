@@ -38,15 +38,18 @@ int GetSRIndex(unsigned int sampleRate)
     return 11;
 }
 
-/* Returns the maximum bitrate for that sampling frequency */
-unsigned int MaxBitrate(unsigned long sampleRate)
+/* Highest bitrate PER CHANNEL the ISO/IEC 14496-3 per-frame payload allows at
+ * this sampling frequency. Per channel, like MinBitratePerCh -- the unit is in
+ * the name because callers previously disagreed about it. */
+unsigned int MaxBitratePerCh(unsigned long sampleRate)
 {
     /* ISO/IEC 14496-3 maximum frame payload: 6144 bits per channel */
     return AAC_MAX_BITS_PER_CH * sampleRate / FRAME_LEN;
 }
 
-/* Returns the minimum bitrate per channel for that sampling frequency */
-unsigned int MinBitrate(void)
+/* Lowest bitrate PER CHANNEL worth attempting; below this the encoder cannot
+ * honour the request anyway. */
+unsigned int MinBitratePerCh(void)
 {
     return 8000;
 }

@@ -57,7 +57,7 @@ void init_encode_options(encode_options_t *opts)
     opts->use_lfe = -1;
     opts->pns_level = -1;
     opts->quant_quality = 0;
-    opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
+    opts->bit_rate_total = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
@@ -126,13 +126,13 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
 
     if (is_bitrate_mode)
     {
-        opts->bit_rate = (val > 0) ? (uint32_t)(val * 1000) : DEFAULT_ABR_KBPS * 1000;
+        opts->bit_rate_total = (val > 0) ? (uint32_t)(val * 1000) : DEFAULT_ABR_KBPS * 1000;
         opts->quant_quality = 0;
     }
     else
     {
         opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
-        opts->bit_rate = 0;
+        opts->bit_rate_total = 0;
     }
 }
 
@@ -493,19 +493,20 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->pns_level >= 0)
         params.pns_level = opts->pns_level;
 
-    if (opts->quant_quality > 0 && opts->bit_rate == 0)
+    if (opts->quant_quality > 0 && opts->bit_rate_total == 0)
     {
         params.quant_quality = opts->quant_quality;
-        params.bit_rate = 0;
+        params.bit_rate_per_ch = 0;
     }
-    else if (opts->bit_rate > 0)
+    else if (opts->bit_rate_total > 0)
     {
-        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
+        /* -b names a whole-stream rate; the library field is per channel. */
+        params.bit_rate_per_ch = opts->bit_rate_total / (num_channels ? num_channels : 1);
         params.quant_quality = 0;
     }
 
-    if (opts->max_bit_rate > 0)
-        params.max_bit_rate = opts->max_bit_rate;
+    if (opts->max_bit_rate_total > 0)
+        params.max_bit_rate_total = opts->max_bit_rate_total;
 
     if (log_cb)
     {
@@ -610,7 +611,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .pns_level = (int8_t)info.pns_level,
             .bandwidth = info.bandwidth,
             .quant_quality = (uint16_t)info.quant_quality,
-            .bit_rate = info.bit_rate,
+            .bit_rate_per_ch = info.bit_rate_per_ch,
 
             .remapping_channels = (chanmap != NULL),
             .center_channel = opts->center_channel,

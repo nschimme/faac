@@ -82,8 +82,8 @@ typedef struct {
     int8_t pns_level; /* -1 to leave default */
 
     uint16_t quant_quality;
-    uint32_t bit_rate; /* total bitrate in bps (whole stream) */
-    uint32_t max_bit_rate; /* bps whole stream cap */
+    uint32_t bit_rate_total; /* bps, whole stream (what -b names) */
+    uint32_t max_bit_rate_total; /* bps, whole stream cap */
     uint32_t bandwidth; /* cutoff frequency in Hz */
 
     bool ignore_wav_length;
@@ -111,7 +111,7 @@ void free_encode_options(encode_options_t *opts);
 void init_encode_options(encode_options_t *opts);
 
 /* Parse a quality-or-bitrate text field (as typed into the CLI's -q/-b or
-   the GUI's rate edit box) into opts->quant_quality/opts->bit_rate,
+   the GUI's rate edit box) into opts->quant_quality/opts->bit_rate_total,
    falling back to DEFAULT_QUANT_QUALITY/DEFAULT_ABR_KBPS on invalid/empty
    input rather than silently producing 0. is_bitrate_mode selects which
    field is being set and whether the value is in kbps (bitrate) or a raw
@@ -140,7 +140,7 @@ typedef struct {
     int8_t pns_level;
     uint32_t bandwidth;
     uint16_t quant_quality;
-    uint32_t bit_rate; /* bps per channel */
+    uint32_t bit_rate_per_ch; /* bps per channel */
 
     bool remapping_channels;
     uint16_t center_channel;
