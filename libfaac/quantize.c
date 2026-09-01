@@ -145,6 +145,7 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
         for (w = 0; w < gsize; w++)
         {
             const float * __restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
+            float wpeak = 0.0f;
             int k;
             /* Four lines at a time: every scale-factor band width in srInfo[]
                is a multiple of four, so there is no remainder for the compiler
@@ -154,12 +155,22 @@ static void measure_band_energy(const CoderInfo * __restrict ci, const float * _
                 float a = line[k], b = line[k + 1], c = line[k + 2], d = line[k + 3];
                 float ea = a * a, eb = b * b, ec = c * c, ed = d * d;
 
-                sum += ea; if (ea > peak) peak = ea;
-                sum += eb; if (eb > peak) peak = eb;
-                sum += ec; if (ec > peak) peak = ec;
-                sum += ed; if (ed > peak) peak = ed;
+                sum += ea; if (ea > wpeak) wpeak = ea;
+                sum += eb; if (eb > wpeak) wpeak = eb;
+                sum += ec; if (ec > wpeak) wpeak = ec;
+                sum += ed; if (ed > wpeak) wpeak = ed;
             }
+
+            /* Mean of the per-window peaks, not the maximum across the group. A
+               maximum over more windows is systematically larger, so it would
+               make the tonal term depend on how many windows the grouping
+               decision merged rather than on the signal. A mean of per-window
+               peaks is a per-window quantity, comparable against a per-window
+               reference at any group size. */
+            peak += wpeak;
         }
+        peak /= (float)gsize;
+
         out[sfb].sum = sum;
         out[sfb].peak_amp = sqrtf(peak);
     }
@@ -208,14 +219,21 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         float avg = be[sfb].sum;
         float peak = be[sfb].peak_amp * be[sfb].peak_amp;
         float ref = (group_total * inv_block_len) * (hi - lo);
+        /* avg and ref are both totals over the group's windows, so avg/ref does
+           not depend on how many windows a group holds. peak is one window's
+           coefficient energy and does not scale with the group, so it needs the
+           same reference reduced to a single window -- otherwise the tonal term
+           decays as ~1/gsize and the target drifts with the grouping decision
+           rather than with the signal. */
+        float ref_win = ref / (float)gsize;
         float target;
 
         // floor before pow(): formula is monotonic, so this floors the output too
         if (avg < ref * AVG_ENERGY_FLOOR_FRAC) avg = ref * AVG_ENERGY_FLOOR_FRAC;
-        if (peak < ref * PEAK_ENERGY_FLOOR_FRAC) peak = ref * PEAK_ENERGY_FLOOR_FRAC;
+        if (peak < ref_win * PEAK_ENERGY_FLOOR_FRAC) peak = ref_win * PEAK_ENERGY_FLOOR_FRAC;
 
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
-               + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref);
+               + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
         if (ci->block_type == ONLY_SHORT_WINDOW)
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
