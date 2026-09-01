@@ -3,6 +3,11 @@
 # low footprint (77.7 KB ROM, vs 940 KB for FDK-AAC), and perceptual quality.
 # Levers are evaluated against speed (>500xRT constraint) and footprint (<82 KB CI gate).
 
+## Dedicated Design Plans for Implementation Agents
+- **LC Core R-D Quantization & Hole Filling**: See `docs/LC_CORE_RD_QUANTIZATION_PLAN.md`
+- **HE-AAC v1 SBR Parameterization**: See `docs/HE_AAC_SBR_PARAMETRIZATION_PLAN.md`
+- **Joint CPE Window Switching & Shape Selection**: See `docs/JOINT_CPE_WINDOW_SWITCHING_PLAN.md`
+
 ## Footprint & Speed Feasibility Matrix (Eliminated vs Retained Ideas)
 
 ### ELIMINATED / NO-GO (Violates Speed, Footprint, or Quality constraints)
@@ -25,7 +30,7 @@
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig support.
 
 ## Medium (contained algorithmic change, one subsystem)
-- LC Core: Fast SMR-guided scalefactor adjustment & non-zero spectral hole protection
+- LC Core: Fast SMR-guided scalefactor adjustment & non-zero spectral hole protection (spec: `docs/LC_CORE_RD_QUANTIZATION_PLAN.md`)
   [leaderboard: FAAC LC at 96k-256k achieves 4.52-4.94 MOS vs Apple's 4.71-4.98 and
   fdkaac's 4.67-4.95 despite identical stereo fidelity (0.97-0.99) and transient timing]
   - *Footprint*: +150 B (.text). *Speed*: <1.5% impact (bounded 1-pass distortion check).
@@ -34,14 +39,14 @@
     - **Non-zero spectral hole protection**: Prevent isolated zeroed bands between active harmonic SFBs by enforcing maximum scalefactor delta constraints (`diff <= 60`) or forcing minimum non-zero scalefactor quantization.
     - **Band-wise psychoacoustic noise filling**: Inject pseudo-random low-level spectral energy into zeroed high-frequency SFBs below the psychoacoustic masking threshold to eliminate high-frequency "birdies" and metallic spectral hole artifacts.
     - **Scalefactor differential delta pruning**: Restrict large scalefactor jumps (`sf[band] - sf[band-1]`) to minimize HCB_DELTA (book 12) bit consumption.
-- HE-AAC v1: Dynamic SBR inverse filtering (invf) and noise floor derivation from QMF spectral flatness
+- HE-AAC v1: Dynamic SBR inverse filtering (invf) and noise floor derivation from QMF spectral flatness (spec: `docs/HE_AAC_SBR_PARAMETRIZATION_PLAN.md`)
   [leaderboard: HE-v1 MOS lags by ~0.4-0.5 MOS at 40k-64k stereo. In `libfaac/sbr.c` (`sbr_quantize_envelopes`), `invfMode = 3` is hardcoded and `noiseData = 0` is static]
   - *Footprint*: +250 B (.text). *Speed*: <1.0% impact (computed directly over existing `sbr_envR` QMF matrix).
   - Levers to try:
     - **SFM-based invf mode selection**: Derive `bs_invf_mode[ch][band]` in `libfaac/sbr.c` using Spectral Flatness Measure (ratio of geometric mean to arithmetic mean of QMF energies). Apply `INVF_STRONG` on tonal/harmonic QMF bands and `INVF_OFF`/`INVF_LOW` on noise-like bands.
     - **Tonal-to-noise ratio SBR noise floor estimation**: Calculate dynamic `noiseData[ne][nb]` levels from QMF sub-band energy variance rather than using static zero-level defaults.
     - **Energy-preserving HF SBR envelope gain adjustment**: Scale envelope energy factors (`sbr_envR`) to compensate for core LC crossover roll-off, preventing high-frequency brightness or dullness mismatches against the reference signal.
-- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent channel envelope borders
+- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent channel envelope borders (spec: `docs/HE_AAC_SBR_PARAMETRIZATION_PLAN.md`)
   [current SBR implementation in `libfaac/sbr.c` (`sbr_adopt_envelope_grid`) shares envelope time borders (`tEnv`) across L/R channels; independent channel envelope borders prevent temporal smearing on asymmetric transients]
   - *Footprint*: +180 B (.text). *Speed*: <0.5% impact.
   - Levers to try:
@@ -49,7 +54,7 @@
     - Update `SbrGrid()` in `libfaac/sbr.c` to detect transients per-channel independently before coupling/decoupling grid borders based on inter-channel transient correlation.
 
 ## Large (cross-cutting, higher risk, higher potential payoff)
-- Joint CPE block switching & window shape selection
+- Joint CPE block switching & window shape selection (spec: `docs/JOINT_CPE_WINDOW_SWITCHING_PLAN.md`)
   [currently window shape/sequence selection operates per-channel prior to CPE grouping in `libfaac/blockswitch.c`; joint L/R window sequence optimization avoids window shape mismatches between M/S channels, which reduces pre-echo and improves coding efficiency across 24k-64k LC/HE stereo]
   - *Footprint*: +120 B (.text). *Speed*: <0.2% impact.
   - Levers to try:
