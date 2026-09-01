@@ -412,122 +412,105 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
     *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
 }
 
-/* The eight short windows are a compile-time constant, which invites the
-   compiler to unroll the window loops below eight times and vectorize each
-   copy -- several kilobytes of .text for a loop that is not hot enough to earn
-   it. Ask for one copy; the per-channel hoisting is where the win is. */
-#if defined(__clang__)
-# define FAAC_NO_UNROLL _Pragma("clang loop unroll(disable)")
-#elif defined(__GNUC__) && __GNUC__ >= 8
-# define FAAC_NO_UNROLL _Pragma("GCC unroll 1")
-#else
-# define FAAC_NO_UNROLL
-#endif
-
 // short-window grouping: keep spectrally-similar windows together so they
 // share scalefactors; a transient onset starts a fresh group instead
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-/* One channel's short-window band energies, and the stopband zeroing the
-   quantizer relies on. The channel is the outer loop on purpose: sfb_offset
-   and the stopband bound are loop-invariant across all eight windows, and
-   hoisting them is worth more than any tightening of the inner sum. */
-static void channel_band_energy(const CoderInfo * __restrict ci, float * __restrict xr,
-                                 int maxsfb, int cutoff,
-                                 float ll[MAX_SHORT_WINDOWS][NSFB_SHORT])
+/* One short window of one channel: band sums of squares, and the stopband
+   zeroing the quantizer relies on. Bands starting at or past the cutoff are
+   left alone -- their coefficients were just zeroed, so their energy is zero,
+   and BlocGroup cleared the matrix up front. */
+static void window_band_energy(const int * __restrict sfb_offset, float * __restrict w,
+                                int maxsfb, int stop, int cutoff, float * __restrict e)
 {
-    const int * __restrict sfb_offset = ci->sfb_offset;
-    const int stop = sfb_offset[maxsfb];
-    int win;
+    int k, sfb;
 
-    FAAC_NO_UNROLL
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    for (k = cutoff; k < stop; k++)
+        w[k] = 0.0f;
+
+    for (sfb = 0; sfb < maxsfb; sfb++)
     {
-        float * __restrict w = xr + win * BLOCK_LEN_SHORT;
-        float * __restrict e = ll[win];
-        int k, sfb;
+        int start_k = sfb_offset[sfb];
+        if (start_k >= cutoff) break;
 
-        for (k = cutoff; k < stop; k++)
-            w[k] = 0.0f;
+        int end_k = sfb_offset[sfb + 1];
+        if (end_k > cutoff) end_k = cutoff;
 
-        for (sfb = 0; sfb < maxsfb; sfb++)
-        {
-            int start_k = sfb_offset[sfb];
-            if (start_k >= cutoff) break;   /* rest was just zeroed */
+        const float * __restrict line = w + start_k;
+        int len = end_k - start_k;
+        float sum = 0.0f;
 
-            int end_k = sfb_offset[sfb + 1];
-            if (end_k > cutoff) end_k = cutoff;
+        for (k = 0; k < len; k++)
+            sum += line[k] * line[k];
 
-            const float * __restrict line = w + start_k;
-            int len = end_k - start_k;
-            float sum = 0.0f;
-
-            for (k = 0; k < len; k++)
-                sum += line[k] * line[k];
-
-            e[sfb] = sum;
-        }
+        e[sfb] = sum;
     }
 }
 
-/* Both channels of a CPE in one pass, carrying the L*R cross term along for
-   AACstereo. Reading the two spectra together costs one extra multiply-add per
-   coefficient and saves AACstereo a second full scan of both of them. */
-static void cpe_band_energy(const CoderInfo * __restrict ci,
-                             float * __restrict xl, float * __restrict xr,
-                             int maxsfb, int cutoff, ShortBandEnergy * __restrict en)
+/* Both channels of a CPE over one window, carrying the L*R cross term along
+   for AACstereo. Reading the two spectra together costs one extra multiply-add
+   per coefficient and saves AACstereo a second full scan of both of them. */
+static void window_band_energy_cpe(const int * __restrict sfb_offset,
+                                    float * __restrict wl, float * __restrict wr,
+                                    int maxsfb, int stop, int cutoff,
+                                    float * __restrict ell, float * __restrict err,
+                                    float * __restrict elr)
 {
-    const int * __restrict sfb_offset = ci->sfb_offset;
-    const int stop = sfb_offset[maxsfb];
-    int win;
+    int k, sfb;
 
-    FAAC_NO_UNROLL
-    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+    for (k = cutoff; k < stop; k++)
     {
-        float * __restrict wl = xl + win * BLOCK_LEN_SHORT;
-        float * __restrict wr = xr + win * BLOCK_LEN_SHORT;
-        int k, sfb;
+        wl[k] = 0.0f;
+        wr[k] = 0.0f;
+    }
 
-        for (k = cutoff; k < stop; k++)
+    for (sfb = 0; sfb < maxsfb; sfb++)
+    {
+        int start_k = sfb_offset[sfb];
+        if (start_k >= cutoff) break;
+
+        int end_k = sfb_offset[sfb + 1];
+        if (end_k > cutoff) end_k = cutoff;
+
+        const float * __restrict ll = wl + start_k;
+        const float * __restrict rl = wr + start_k;
+        int len = end_k - start_k;
+        float a = 0.0f, b = 0.0f, c = 0.0f;
+
+        for (k = 0; k < len; k++)
         {
-            wl[k] = 0.0f;
-            wr[k] = 0.0f;
+            float l = ll[k], r = rl[k];
+            a += l * l;
+            b += r * r;
+            c += l * r;
         }
 
-        for (sfb = 0; sfb < maxsfb; sfb++)
-        {
-            int start_k = sfb_offset[sfb];
-            if (start_k >= cutoff) break;   /* rest was just zeroed */
-
-            int end_k = sfb_offset[sfb + 1];
-            if (end_k > cutoff) end_k = cutoff;
-
-            const float * __restrict lline = wl + start_k;
-            const float * __restrict rline = wr + start_k;
-            int len = end_k - start_k;
-            float ll = 0.0f, rr = 0.0f, lr = 0.0f;
-
-            for (k = 0; k < len; k++)
-            {
-                float l = lline[k], r = rline[k];
-                ll += l * l;
-                rr += r * r;
-                lr += l * r;
-            }
-
-            en->ll[win][sfb] = ll;
-            en->rr[win][sfb] = rr;
-            en->lr[win][sfb] = lr;
-        }
+        ell[sfb] = a;
+        err[sfb] = b;
+        elr[sfb] = c;
     }
 }
 
+/* Splits the 8 short windows into groups at detected onsets, and leaves the
+   per-(window, band) energies behind for AACstereo. A CPE passes both channels
+   (ci_r != NULL): their energies are summed so one grouping is derived for the
+   pair and copied to the right channel, which is what common_window requires
+   anyway. Callers gate on ONLY_SHORT_WINDOW; long blocks get their single group
+   set in faacEncEncode.
+
+   Both channels of a short CPE share one sfb_offset table, so the scan reads it
+   from a local and the window loop keeps the onset decision inline: each window
+   feeds the running min/max that the next one tests against, and that carried
+   dependence is also what keeps the compiler from unrolling eight copies of the
+   vectorized band loop. */
 void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r,
                ShortBandEnergy *energy, AACQuantCfg *cfg)
 {
+    const int * __restrict sfb_offset = coderInfo->sfb_offset;
     int maxsfb = cfg->max_cbs;
     int cutoff = cfg->max_l / 8;
+    const int stop = sfb_offset[maxsfb];
     int active_bands = maxsfb - GROUP_MIN_SFB;
     int onset_quorum = (active_bands * 3) >> 2;
 
@@ -539,27 +522,30 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r,
        (now zeroed) coefficients would have produced anyway. */
     memset(energy, 0, sizeof(*energy));
     energy->valid = 1;
-
-    if (ci_r)
-    {
-        energy->stereo = 1;
-        cpe_band_energy(coderInfo, xr, xr_r, maxsfb, cutoff, energy);
-    }
-    else
-    {
-        channel_band_energy(coderInfo, xr, maxsfb, cutoff, energy->ll);
-    }
+    energy->stereo = (ci_r != NULL);
 
     coderInfo->groups.n = 0;
 
-    for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
-        run_min[sfb] = run_max[sfb] = energy->ll[0][sfb] + energy->rr[0][sfb];
-
-    for (win = 1; win < MAX_SHORT_WINDOWS; win++)
+    for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
-        const float * __restrict el = energy->ll[win];
-        const float * __restrict er = energy->rr[win];
+        float * __restrict el = energy->ll[win];
+        float * __restrict er = energy->rr[win];
         int onset_votes = 0;
+
+        if (ci_r)
+            window_band_energy_cpe(sfb_offset, xr + win * BLOCK_LEN_SHORT,
+                                   xr_r + win * BLOCK_LEN_SHORT, maxsfb, stop, cutoff,
+                                   el, er, energy->lr[win]);
+        else
+            window_band_energy(sfb_offset, xr + win * BLOCK_LEN_SHORT,
+                               maxsfb, stop, cutoff, el);
+
+        if (win == group_start)
+        {
+            for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+                run_min[sfb] = run_max[sfb] = el[sfb] + er[sfb];
+            continue;
+        }
 
         for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
         {
