@@ -86,23 +86,27 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
                             int start, int len, int wstart, int wend, int in_phase)
 {
     int win, i;
-    size_t bytes = (size_t)len * sizeof(float);
 
+    /* The discarded channel is zeroed inside the same loop that writes the kept
+       one, as apply_is does: the band is already in registers, and a separate
+       memset over it is one library call per band per window. */
     if (in_phase) {
         for (win = wstart; win < wend; win++) {
             float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
             float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++)
+            for (i = 0; i < len; i++) {
                 sl[i] = 0.5f * (sl[i] + sr[i]);
-            memset(sr, 0, bytes);
+                sr[i] = 0.0f;
+            }
         }
     } else {
         for (win = wstart; win < wend; win++) {
             float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
             float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-            for (i = 0; i < len; i++)
+            for (i = 0; i < len; i++) {
                 sr[i] = 0.5f * (sl[i] - sr[i]);
-            memset(sl, 0, bytes);
+                sl[i] = 0.0f;
+            }
         }
     }
 }
