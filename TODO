@@ -1,31 +1,60 @@
 # Ranked by size (S/M/L) then expected payoff within each tier.
-# Context: psychoacoustic-model levers (TNS, bmask/SFM-tonality, PNS threshold
-# scaling) are exhausted -- exhaustively tested and NO-GO/noise per project
-# memory. Remaining upside is in coding efficiency (bit allocation, codebook
-# selection) and rate targeting, without touching footprint or throughput
-# (FAAC has 3-5x speed headroom over every competitor on the leaderboard).
+# Context: Psychoacoustic model levers (TNS, bmask/SFM-tonality, PNS threshold
+# scaling) are exhausted. Codebook DP sectioning (PR #402) and Bit Reservoir control
+# are already addressed. Main quality MOS gaps vs Apple AAC & FDK-AAC are:
+# 1) LC Core (96k-256k & 56k LC): ~0.15-0.35 MOS gap despite FAAC having top-tier
+#    stereo & transient fidelity. Root cause: Scalefactor rate-distortion optimization
+#    and joint window-sequence selection.
+# 2) HE-v1 Profile (32k-96k HE): ~0.4-0.5 MOS gap (3.51-4.01 vs 3.71-4.49). Root cause:
+#    SBR envelope border sharing across channels, SBR noise floor/invf estimation,
+#    and SBR noise Huffman encoding.
 
 ## Small (isolated bug/tuning, contained blast radius)
-- investigate 16k_mono_40k bitrate-targeting outlier (22.9% error vs aac-enc's
-  2.0%, worse than even Apple's 16.6%) -- looks like a low-samplerate/
-  high-relative-bitrate mistargeting bug, isolated from the stereo quality gap
-- add PCE (Program Config Element) or 4-bit AudioSpecificConfig
-- HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
+- investigate 16k_mono_40k bitrate-targeting outlier (17.0% error vs aac-enc's
+  2.1%, worse than Apple's 14.2%) -- low-samplerate/high-relative-bitrate mistargeting
+  bug, isolated from stereo quality.
+  Levers to try:
+  - Audit `CalcBandwidth` sfb cutoff and `quantqual` exponential curve scaling for Fs <= 16 kHz.
+  - Check `bitReservoirCap` bounds under 16 kHz mono frame sizes (1024 / 512 samples) to prevent over-allocation.
+- HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise (saving SBR
+  header & payload bits for core LC spectral data).
+  Levers to try:
+  - Implement 3D/packed SBR noise Huffman table coding in `libfaac/sbr_bitstream.c` using standard ISO/IEC 14496-3 Table 4.63 instead of uncompressed differential bits.
+- add PCE (Program Config Element) or 4-bit AudioSpecificConfig support.
 
 ## Medium (contained algorithmic change, one subsystem)
-- Add adaptive bit reservoir control
-- HE-AAC v1: SBR noise floor / invf mode from within-band tonality
+- LC Core: Rate-distortion (R-D) scalefactor loop tuning & spectral hole filling
+  [leaderboard: FAAC LC at 96k-256k achieves 4.52-4.94 MOS vs Apple's 4.71-4.98 and
+  fdkaac's 4.67-4.95 despite identical stereo fidelity (0.97-0.99) and transient timing.
+  Iterative distortion-rate scalefactor adjustment (instead of single-pass quantization)
+  prevents over-quantization and spectral holes in high-frequency bands]
+  Levers to try:
+  - Inner/outer loop scalefactor iteration in `libfaac/quantize.c`: Evaluate distortion vs mask ratio (`dist / thr`) per SFB and iteratively increment/decrement `sf[band]` when distortion exceeds SMR threshold.
+  - Non-zero spectral hole protection: Prevent single isolated zeroed bands between active harmonic SFBs by capping maximum scalefactor delta (`diff <= 60`).
+  - Trellis-based scalar quantization per MDCT line to decide between rounding down (`q`) vs rounding up (`q + 1`) based on exact bit cost vs MDCT reconstruction error.
+- HE-AAC v1: SBR noise floor / invf mode derivation from within-band tonality
+  [leaderboard: HE-v1 MOS lags by ~0.4-0.5 MOS at 40k-64k stereo. Inaccurate inverse
+  filtering (invf) and noise floor estimation cause audible metallic SBR artifacts]
+  Levers to try:
+  - Derivation of `bs_invf_mode[ch][band]` in `libfaac/sbr.c` using spectral flatness measure (SFM) and pitch autocorrelation on QMF sub-band energy matrices (`sbr_envR`).
+  - Adapt SBR noise energy levels (`sbr_noiseR`) dynamically based on transient envelope count (`numEnvelopes`) to prevent noise over-injection during attack transients.
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
+  [current SBR implementation shares envelope time borders across L/R channels;
+  independent channel envelope borders prevent temporal smearing on asymmetric transients]
+  Levers to try:
+  - Refactor `SBRChannel` struct in `libfaac/sbr_internal.h` to hold per-channel `tEnv[]`, `numEnvelopes`, and `sbr_grid`.
+  - Update `SbrGrid()` in `libfaac/sbr.c` to detect transients per-channel independently before coupling/decoupling grid borders based on inter-channel transient correlation.
 
 ## Large (cross-cutting, higher risk, higher potential payoff)
-- optimize codebook list (section_data) via joint/DP optimization
-  [leaderboard: biggest MOS gap vs Apple/aac-enc is 48k_stereo_24-56k (3.28-3.39
-  vs 3.5-4.4) despite FAAC having the BEST stereo fidelity in class there
-  (0.91-0.98) and competitive bitrate-error -- so it's a coding-efficiency gap,
-  not stereo-image or rate-targeting; this is the top candidate to close it
-  since psychoacoustic levers are exhausted]
-- optimize CPE windows grouping jointly across channel pairs
-  [same 24-56k stereo gap as above; joint window-shape decisions across L/R
-  could recover quality the current independent-channel grouping leaves on
-  the table -- higher risk since it touches block-switching logic that TNS
-  co-tuning already depends on]
+- Joint CPE block switching & window shape selection
+  [currently window shape/sequence selection operates per-channel prior to CPE grouping;
+  joint L/R window sequence optimization avoids window shape mismatches between M/S
+  channels, which reduces pre-echo and improves coding efficiency across 24k-64k LC/HE stereo]
+  Levers to try:
+  - Evaluate joint perceptual entropy (`PE_L + PE_R` vs transient thresholds) in `libfaac/blockswitch.c` to force common `window_sequence` (e.g. `EIGHT_SHORT_SEQUENCE`) on CPE pairs whenever either channel contains a transient onset.
+  - Synchronize Kaiser-Bessel-Derived (KBD) vs Sine window shape decisions across L and R in CPE elements to optimize M/S coding gain.
+- HE-AAC v2 (Parametric Stereo) support for ultra-low bitrates (16k-24k stereo)
+  [fdkaac & Apple AAC achieve ~3.28 MOS at 24k stereo using HE-v2 PS, whereas FAAC relies on
+  HE-v1 stereo (3.25 MOS) or LC stereo (2.27 MOS)]
+  Levers to try:
+  - Implement lightweight Parametric Stereo (PS) bitstream syntax (`write_ps_data`) and inter-channel coherence (ICC) / inter-channel phase difference (IPD) estimation in `libfaac/sbr.c` when bitrate per channel <= 8 kbps (16k total stereo).
