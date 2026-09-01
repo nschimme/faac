@@ -32,22 +32,6 @@ extern "C" {
 #define MAX_SHORT_WINDOWS 8
 #define MAX_SCFAC_BANDS ((NSFB_SHORT+1)*MAX_SHORT_WINDOWS)
 
-/* Per-(window, band) sums of squares for one element's short blocks, plus the
-   L*R cross term for a CPE. The short spectrum used to be scanned twice --
-   once by BlocGroup to find onsets, once by AACstereo to decide M/S and I/S --
-   over the same coefficients. It is scanned once into this, and both read it.
-   Only valid between BlocGroup and BlocQuant: AACstereo's butterflies rewrite
-   the coefficients as they go, but each band is consumed before it is touched.
-   TNS never runs on short blocks, so nothing else moves in between. */
-typedef struct {
-    int cpe;     /* both channels were scanned: rr[] and lr[] are filled too.
-                    Clear for an SCE, whose ll[] is scratch that BlocGroup
-                    consumes itself and nothing outlives. */
-    float ll[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    float rr[MAX_SHORT_WINDOWS][NSFB_SHORT];
-    float lr[MAX_SHORT_WINDOWS][NSFB_SHORT];
-} ShortBandEnergy;
-
 enum WINDOW_TYPE {
     ONLY_LONG_WINDOW,
     LONG_SHORT_WINDOW,

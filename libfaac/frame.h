@@ -73,7 +73,6 @@ typedef struct faacEncStruct {
 
     /* Element-centric configuration */
     AACElement elements[MAX_CHANNELS];
-    ShortBandEnergy shortEnergy[MAX_CHANNELS];
     int numElements;
     bool isLfeChannel[MAX_CHANNELS]; /* per-channel LFE lookup, derived from elements[] whenever it changes */
 

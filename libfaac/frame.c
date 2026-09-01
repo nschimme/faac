@@ -911,37 +911,37 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Short-window grouping. A CPE whose channels are both short is grouped
-       once from their summed band energies, so the pair shares one grouping,
-       and the scan leaves its per-band energies in shortEnergy[e] for AACstereo
-       to reuse. Every other short channel is grouped on its own. */
+       once from their summed band energies, so the pair shares one grouping;
+       every other short channel is grouped on its own. Funnelled through a
+       single call site so the layout stays one inlined copy. */
     for (int e = 0; e < hEncoder->numElements; e++)
     {
         AACElement *el = &hEncoder->elements[e];
-        ShortBandEnergy *en = &hEncoder->shortEnergy[e];
         int l = el->channels[0];
         int r = (el->type == ID_CPE) ? el->channels[1] : -1;
-        int lshort = coderInfo[l].block_type == ONLY_SHORT_WINDOW;
-        int rshort = r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW;
+        CoderInfo *a = NULL, *b = NULL;
+        float *xa = NULL, *xb = NULL;
 
-        en->cpe = 0;
-
-        /* BlockSwitch gives every channel the same block type, so a CPE is
-           short on both sides or neither; the one-sided arm below is for
-           robustness, not a case that occurs today. */
-        if (lshort && rshort)
+        if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
         {
-            BlocGroup(&coderInfo[l], hEncoder->freqBuff[l],
-                      &coderInfo[r], hEncoder->freqBuff[r],
-                      en, &hEncoder->aacquantCfg);
-            statShortGroups(&coderInfo[l], 2);
+            a = &coderInfo[l];
+            xa = hEncoder->freqBuff[l];
+            if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            {
+                b = &coderInfo[r];
+                xb = hEncoder->freqBuff[r];
+            }
         }
-        else if (lshort || rshort)
+        else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
         {
-            int c = lshort ? l : r;
+            a = &coderInfo[r];
+            xa = hEncoder->freqBuff[r];
+        }
 
-            BlocGroup(&coderInfo[c], hEncoder->freqBuff[c], NULL, NULL,
-                      en, &hEncoder->aacquantCfg);
-            statShortGroups(&coderInfo[c], 1);
+        if (a)
+        {
+            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+            statShortGroups(a, b ? 2 : 1);
         }
     }
 
@@ -993,7 +993,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
-              hEncoder->shortEnergy,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
               hEncoder->config.bandWidth);
 

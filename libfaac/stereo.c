@@ -50,8 +50,8 @@ static inline void calculate_energies(const float * restrict sl0, const float * 
         const float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
         const float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
         /* Four lines at a time: every scale-factor band width in srInfo[] is a
-           multiple of four, so there is no remainder for the compiler to emit
-           a second, scalar copy of the reduction for. */
+           multiple of four, so there is no remainder for the compiler to emit a
+           second, scalar copy of the reduction for. */
         for (i = 0; i < len; i += 4) {
             float l0 = sl[i],     r0 = sr[i];
             float l1 = sl[i + 1], r1 = sr[i + 1];
@@ -138,7 +138,6 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
 static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
-                               const ShortBandEnergy * restrict energy,
                                int * restrict sfcnt, int wstart, int wend,
                                float thrmid, float inv_isthr, float thrside_sq,
                                int is_start_sfb, int mode)
@@ -153,30 +152,10 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             element->msInfo.ms_used[(*sfcnt)++] = 0;
     }
 
-    /* Gather every band's energies up front. `energy` is loop-invariant, so
-       branching on it per band would keep both acquisition paths live inside
-       the decision loop and stop the cached gather from vectorizing across
-       bands; only the gather is duplicated here, not the decision body, so it
-       costs a few hundred bytes and measured ~1% of encoder throughput. */
-    float bandL[NSFB_LONG], bandR[NSFB_LONG], bandLR[NSFB_LONG];
-    if (energy) {
-        for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
-            float l = 0.0f, r = 0.0f, lr = 0.0f;
-            int win;
-            for (win = wstart; win < wend; win++) {
-                l  += energy->ll[win][sfb];
-                r  += energy->rr[win][sfb];
-                lr += energy->lr[win][sfb];
-            }
-            bandL[sfb] = l; bandR[sfb] = r; bandLR[sfb] = lr;
-        }
-    }
-
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         float el, er, elr;
-        if (energy) { el = bandL[sfb]; er = bandR[sfb]; elr = bandLR[sfb]; }
-        else calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
+        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
 
         float es   = el + er + 2.0f*elr;
         float ed   = el + er - 2.0f*elr;
@@ -263,7 +242,6 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 }
 
 void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s[MAX_CHANNELS],
-               const ShortBandEnergy *energy,
                float quality, int mode, int sampleRate, unsigned int bandWidth)
 {
     float inv_quality = 1.0f / quality;
@@ -336,11 +314,6 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         elem->common_window  = true;
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
 
-        /* The fused short-block scan already produced this element's per-band
-           L/R/cross energies; long blocks have no such pass and measure their
-           own. */
-        const ShortBandEnergy *en = (energy && energy[e].cpe) ? &energy[e] : NULL;
-
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {
             int target_offset = (coder[lch].block_type == ONLY_SHORT_WINDOW) ? target_offset_short : target_offset_long;
@@ -353,7 +326,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
 
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];
-            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch], en,
+            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
                                   &sfcnt, start, end, thrmid, inv_isthr, thrside_sq,
                                   is_start_sfb, cur_mode);
             start = end;
