@@ -247,21 +247,26 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
      * (sync 0x2b7, type 5) carrying the full output rate. The core rate is
      * Fs/2 (dual-rate SBR); the extension declares the full output rate. */
     *pSize = 5;
-    *ppBuffer = (unsigned char *)malloc(5);
-    if (*ppBuffer == NULL) return -3;
-    memset(*ppBuffer, 0, 5);
-    BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
-    PutBit(pBitStream, LOW,                         5);  /* core object type */
-    PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
-    PutBit(pBitStream, channels,                     4);
-    PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
-    PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
-    PutBit(pBitStream, 0, 1);                            /* extensionFlag */
-    PutBit(pBitStream, 0x2b7,                      11);  /* syncExtensionType */
-    PutBit(pBitStream, HE_V1,                       5);  /* extObjectType = SBR */
-    PutBit(pBitStream, 1,                           1);  /* sbrPresentFlag */
-    PutBit(pBitStream, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
-    CloseBitStream(pBitStream);
+    unsigned char *buf = (unsigned char *)malloc(5);
+    if (!buf) return -3;
+    *ppBuffer = buf;
+
+    uint64_t v = 0;
+    v = (v << 5) | LOW;
+    v = (v << 4) | (coreSRIdx & 15);
+    v = (v << 4) | (channels & 15);
+    v = (v << 3) | 0;
+    v = (v << 11) | 0x2b7;
+    v = (v << 5) | HE_V1;
+    v = (v << 1) | 1;
+    v = (v << 4) | (sbrCtx->fullSampleRateIdx & 15);
+    v <<= 3; /* pad to 40 bits */
+
+    buf[0] = (unsigned char)(v >> 32);
+    buf[1] = (unsigned char)(v >> 24);
+    buf[2] = (unsigned char)(v >> 16);
+    buf[3] = (unsigned char)(v >> 8);
+    buf[4] = (unsigned char)(v);
     return 0;
 }
 
@@ -457,42 +462,6 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     fd->freqRes = (fd->numEnvelopes > 1) ? 0 : sbr->bs_freq_res;
 }
 
-/* Spectral flatness of [k_lo, k_hi): geometric over arithmetic mean of the QMF
- * band energies, in (0, 1]. Near 1 the energy is spread and the band is
- * noise-like; near 0 a few bins carry it and it is tonal.
- *
- * Across frequency rather than a prediction gain over time, because
- * SbrQmfAnalysis discards phase and only the magnitudes survive. At the QMF bin
- * width (Fs/128) that separates noise and cymbals from sustained tones, but not
- * harmonics spaced closer than a bin. */
-static float sbr_band_flatness(const float * restrict E, int k_lo, int k_hi)
-{
-    int n = k_hi - k_lo;
-    if (n < 2) return 1.0f;
-
-    float sum = 0.0f, log2sum = 0.0f;
-    for (int k = k_lo; k < k_hi; k++) {
-        float e = E[k] + SBR_LOG_ENERGY_FLOOR;
-        sum += e;
-        log2sum += log2f(e);
-    }
-    float arith = sum / (float)n;
-    if (!(arith > 0.0f)) return 1.0f;
-
-    /* geo/arith in the log domain, so the geometric mean never underflows. */
-    float flat = powf(2.0f, log2sum / (float)n - log2f(arith));
-    return (flat < 0.0f) ? 0.0f : (flat > 1.0f) ? 1.0f : flat;
-}
-
-/* bs_invf_mode picks the chirp factor {0, 0.75, 0.9, 0.98} that whitens the
- * transposed low band. Whitening is what a noise-like target wants; applying it
- * to a tonal target erases the harmonic structure the patch was carrying, which
- * is what running at 3 unconditionally did. */
-static int sbr_invf_mode(float flatness)
-{
-    return (flatness >= 0.75f) ? 3 : (flatness >= 0.5f) ? 2 : (flatness >= 0.25f) ? 1 : 0;
-}
-
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
@@ -541,26 +510,32 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
         int n_q = n_env > 1 ? 2 : 1;
         for (int ne = 0; ne < n_q; ne++) {
             int prevNoise = -1;
-            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+            for (int nb_idx = 0; nb_idx < sbr->numNoiseBands; nb_idx++) {
                 if (prevNoise < 0) {
-                    fd->ch[ch].noiseData[ne][nb] = SBR_NOISE_LEVEL_DEFAULT;
+                    fd->ch[ch].noiseData[ne][nb_idx] = SBR_NOISE_LEVEL_DEFAULT;
                     prevNoise = SBR_NOISE_LEVEL_DEFAULT;
                 } else {
                     int delta = clamp_int(SBR_NOISE_LEVEL_DEFAULT - prevNoise, -15, 15);
-                    fd->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
+                    fd->ch[ch].noiseData[ne][nb_idx] = delta; prevNoise += delta;
                 }
             }
         }
 
-        /* Inverse filtering does key off flatness: it decides how hard to whiten
-         * the transposed band, and a tonal target wants that structure kept. One
-         * decision per frame, since the decoder smooths the chirp factor across
-         * frames and finer detail would be filtered away regardless. */
-        float acc[SBR_QMF_BANDS_64];
-        for (int k = sbr->kx; k < sbr->k2; k++) acc[k] = 0.0f;
-        for (int e = 0; e < n_env; e++)
-            for (int k = sbr->kx; k < sbr->k2; k++) acc[k] += bandE[e][k];
-        fd->ch[ch].invfMode = sbr_invf_mode(sbr_band_flatness(acc, sbr->kx, sbr->k2));
+        /* Inverse filtering does key off spectral flatness: geometric over
+         * arithmetic mean of QMF band energies. Near 1 the energy is spread and
+         * the band is noise-like; near 0 a few bins carry it and it is tonal. */
+        float sum = 0.0f, log2sum = 0.0f;
+        int n_bands = sbr->k2 - sbr->kx;
+        for (int k = sbr->kx; k < sbr->k2; k++) {
+            float e = SBR_LOG_ENERGY_FLOOR;
+            for (int e_idx = 0; e_idx < n_env; e_idx++)
+                e += bandE[e_idx][k];
+            sum += e;
+            log2sum += fast_log2(e);
+        }
+        float arith = (n_bands > 0) ? sum / (float)n_bands : 0.0f;
+        float log2flat = (arith > 0.0f) ? (log2sum / (float)n_bands - fast_log2(arith)) : 0.0f;
+        fd->ch[ch].invfMode = (log2flat >= -0.415f) ? 3 : (log2flat >= -1.0f) ? 2 : (log2flat >= -2.0f) ? 1 : 0;
     }
 }
 
