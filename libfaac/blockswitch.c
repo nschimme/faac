@@ -284,7 +284,7 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
 
               if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
                   psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
-                  (pe_sum >= (2.0f * PE_THRESH_PER_CH) && (PsyGetAttack(&psyInfo[l]) > 0.25f || PsyGetAttack(&psyInfo[r]) > 0.25f)))
+                  pe_sum >= (2.0f * PE_THRESH_PER_CH))
               {
                   desire[l] = ONLY_SHORT_WINDOW;
                   desire[r] = ONLY_SHORT_WINDOW;
