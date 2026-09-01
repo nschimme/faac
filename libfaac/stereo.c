@@ -33,9 +33,6 @@
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
 
-/* Core bandwidth ceiling (16 kHz / <=48 kbps/ch) below which short-block M/S is disabled to prevent pre-echo. */
-#define MS_SHORT_BW_CEILING      16000
-
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
  * by avoiding read-after-write dependencies on the FPU pipeline. */
@@ -312,8 +309,11 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         }
         if (!ok) continue;
 
-        /* Disable short-window M/S at <=16 kHz core bandwidth (<=48 kbps/ch) to prevent pre-echo. */
-        int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && bandWidth <= MS_SHORT_BW_CEILING && mode == JOINT_MIXED) ? JOINT_IS : mode;
+        /* M/S on short windows spreads the side-channel quantization noise across
+         * the whole group, so a transient in one window is masked by the others
+         * and pre-echo becomes audible. Fall back to intensity stereo, which
+         * codes a per-band gain and leaves the temporal envelope intact. */
+        int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && mode == JOINT_MIXED) ? JOINT_IS : mode;
 
         elem->common_window  = true;
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
