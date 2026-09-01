@@ -50,19 +50,24 @@
  * harder (which is what the old floor's own comment said while the code did
  * the opposite).
  *
- * 1/2 is tuned on ViSQOL over the 49-clip corpus. The ABR runs bracket it
+ * 11/20 is tuned on ViSQOL over the 49-clip corpus. The ABR runs bracket it
  * directly, since there the fraction is computed from a rate the caller
  * actually gave: at 48 kHz stereo HE still wins at 0.406 and 0.458 of Nyquist
  * (56 and 64 kbit/s -- forcing LC there costs 0.66 and 0.14 MOS) and has lost
  * by 0.615 (96 kbit/s, where LC gains 0.13). So the boundary sits between
- * them. Integer ratio, so no float in the config path.
+ * them, and 11/20 sits near the middle rather than on an edge. That margin
+ * matters: the map feeding this still carries a few percent of error, and at
+ * 1/2 the 64 kbit/s case landed at fraction 0.511 in VBR against 0.458 in ABR
+ * -- the same operating point, either side of the threshold -- which flipped it
+ * to LC and cost 0.15 MOS. Pick the centre of a bracket, not its edge.
+ * Integer ratio, so no float in the config path.
  *
  * Do not re-tune this against VBR alone. VBR feeds the same rule an INFERRED
  * rate, and while that estimate runs low the two modes disagree about where
  * 0.5 falls -- tuning on VBR's numbers put the boundary at 2/5 and cost ABR
  * 0.25 MOS bits-adjusted. Tune on ABR, which measures the real rate. */
-#define HE_XOVER_NUM  5
-#define HE_XOVER_DEN  10
+#define HE_XOVER_NUM  11
+#define HE_XOVER_DEN  20
 
 /* One rule serves both rate modes: a VBR quality is converted to the rate it
  * implies (VbrBitrateForQuality) and run through the same test, so -q and -b
@@ -128,108 +133,85 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
 
 /* ---- The quality <-> rate map -------------------------------------------
  *
- * quantqual and bitRate are two views of ONE operating point, related by the
- * measured seeding curve below. That curve is the only calibrated map between
- * them in the tree; it predicts real output within ~1-11%. Anything else --
- * notably the old "quantqual == totalBitrate/1280" folklore -- is wrong by
- * 2x-4.2x. Forward and inverse share the constants so the two cannot drift.
+ * quantqual and bitRate are two views of ONE operating point. This is the
+ * calibrated map between them, refitted against MEASURED VBR output over the
+ * 49-clip corpus -- 11 (sample rate, channels, profile) cells, median across
+ * clips, sampled on raw quantqual with the HE rescaling bypassed so the fit
+ * could not feed on its own output.
+ *
+ *     total_kbps = C * q^k,   C = C0 * nch^0.818 * (fs/1000)^0.877
+ *
+ * k is stable across every cell (0.540..0.611, mean 0.5722) and C follows the
+ * expression above to within 3.2%. The predecessor -- a piecewise curve with a
+ * mono x2.5 boost, a x3 expansion above DEFQUAL and a band of quality values
+ * with no preimage at all -- was fitted as an ABR *seed*, a starting point for
+ * a feedback loop that corrects its own error. Used as a VBR predictor, where
+ * no loop exists, it was wrong by ~70%.
+ *
+ * HE-AAC's core runs at Fs/2, so at equal quantizer quality it codes half the
+ * spectrum for half the bits: C_HE = C_LC / 2. That is measured, not assumed --
+ * 2.06, 1.99, 1.96, 2.10, 2.10 across the five cells carrying both profiles.
+ *
+ * The form holds over the band the map is used in and saturates outside it
+ * (bitrate is bounded); callers clamp rather than extrapolate.
  */
-#define SEED_BPS_KNEE_LO   16000.0f  /* end of the telephony segment          */
-#define SEED_BPS_KNEE_HI   64000.0f  /* end of the mid segment                */
-#define SEED_Q_AT_ZERO     10.0f
-#define SEED_Q_SPAN_LO     22.0f     /* q rises 10 -> 32 across segment 1     */
-#define SEED_Q_KNEE_LO     32.0f
-#define SEED_Q_SPAN_MID    68.0f     /* q rises 32 -> 100 across segment 2    */
-#define SEED_BPS_PER_Q     640.0f    /* segment 3 is linear in bps            */
-#define SEED_MONO_BPS      32000.0f  /* mono speech boost engages here        */
-#define SEED_MONO_BOOST    2.5f
-#define SEED_EXPAND        3.0f      /* above DEFQUAL the seed is stretched   */
-#define SEED_REF_RATE      44100.0f
+#define MAP_K          0.5722f   /* rate exponent, shared across all cells  */
+#define MAP_C0         0.1328f   /* total kbps at nch=1, fs=1 kHz, q=1      */
+#define MAP_NCH_EXP    0.818f    /* channel scaling of C                    */
+#define MAP_FS_EXP     0.877f    /* sample-rate scaling of C                */
+#define MAP_HE_RATIO   2.0f      /* C_LC / C_HE: HE codes half the spectrum */
 
-/* Forward: the initial quantqual an ABR encode at bps per channel seeds.
- * Extracted verbatim from faacEncApplyConfig, intermediate truncation to
- * unsigned long included -- it is observable in the result. */
-static unsigned long SeedQualityForBitrate(float bps, unsigned int nch, unsigned long fs)
+/* C for one configuration, in total kbps. */
+static float MapCoefficient(unsigned int nch, unsigned long fs, int heaac)
 {
-    /* Scale by the frame-duration factor so low sampling rates start at a
-     * quality scale factor that converges as fast as 44.1 kHz does. */
-    float rateFactor = SEED_REF_RATE / (float)fs;
-    float q_seed;
-    unsigned long q;
-
-    if (bps <= SEED_BPS_KNEE_LO) {
-        q_seed = SEED_Q_AT_ZERO + SEED_Q_SPAN_LO * (bps / SEED_BPS_KNEE_LO);
-    } else if (bps <= SEED_BPS_KNEE_HI) {
-        q_seed = SEED_Q_KNEE_LO + SEED_Q_SPAN_MID *
-                 ((bps - SEED_BPS_KNEE_LO) / (SEED_BPS_KNEE_HI - SEED_BPS_KNEE_LO));
-    } else {
-        q_seed = bps / SEED_BPS_PER_Q;
-    }
-    /* Boost initial seed for mono speech streams */
-    if (nch == 1 && bps >= SEED_MONO_BPS) q_seed *= SEED_MONO_BOOST;
-
-    q = (unsigned long)(q_seed * (float)nch * rateFactor);
-    if (q > DEFQUAL)
-        q = (unsigned long)((float)(q - DEFQUAL) * SEED_EXPAND + DEFQUAL);
-    return q;
+    float C = MAP_C0 * powf((float)nch, MAP_NCH_EXP)
+                     * powf((float)fs * 0.001f, MAP_FS_EXP);
+    return heaac ? C / MAP_HE_RATIO : C;
 }
 
-/* q_seed at the point the mono boost engages, i.e. the forward map evaluated
- * at SEED_MONO_BPS. Constant-folded; derived so it cannot drift from the curve. */
-#define SEED_MONO_QSEED  (SEED_Q_KNEE_LO + SEED_Q_SPAN_MID * \
-                          ((SEED_MONO_BPS - SEED_BPS_KNEE_LO) / \
-                           (SEED_BPS_KNEE_HI - SEED_BPS_KNEE_LO)))
-
-/* Inverse: the per-channel rate a VBR quality implies. Undoes the forward map
- * stage by stage, in reverse; each segment is monotone, so this is well defined.
- *
- * Always evaluate this at the full, pre-downsample Fs. SbrContextResolveRate
- * halves hEncoder->sampleRate once HE-AAC is chosen, and this function feeds
- * that very choice, so reading the halved rate would make the decision depend
- * on itself. (The ABR forward seed above runs after that point and so sees the
- * halved rate for HE -- a long-standing quirk, left alone here so that ABR
- * output stays byte-identical.) */
-static unsigned long VbrBitrateForQuality(unsigned long quantqual, unsigned int nch,
-                                          unsigned long fs)
+/* Forward: the quantqual that lands near bps per channel. Used to seed ABR's
+ * rate-control loop, which then corrects whatever this gets wrong. */
+static unsigned long SeedQualityForBitrate(float bps, unsigned int nch,
+                                           unsigned long fs, int heaac)
 {
-    float q = (float)quantqual;
-    float q_seed;
-    float bps;
+    float total_kbps = bps * (float)nch * 0.001f;
+    float C = MapCoefficient(nch, fs, heaac);
+    float q;
 
-    /* Undo the above-DEFQUAL expansion. */
-    if (q > (float)DEFQUAL)
-        q = (q - (float)DEFQUAL) / SEED_EXPAND + (float)DEFQUAL;
+    if (total_kbps <= 0.0f || C <= 0.0f)
+        return DEFQUAL;
+    q = powf(total_kbps / C, 1.0f / MAP_K);
+    if (q < (float)MINQUAL) q = (float)MINQUAL;
+    if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+    return (unsigned long)q;
+}
 
-    /* Undo the channel-count and sample-rate scaling. */
-    q_seed = q * (float)fs / ((float)nch * SEED_REF_RATE);
+/* Inverse: the per-channel rate a VBR quality implies.
+ *
+ * Evaluate at the full, pre-downsample Fs and against the LC coefficient, so
+ * the answer is the operating point the request denotes rather than a property
+ * of a profile not yet chosen. SbrContextResolveRate halves
+ * hEncoder->sampleRate once HE-AAC is picked and this feeds that very choice,
+ * so reading the halved rate would make the decision depend on itself. HE is
+ * then rescaled to hit this same rate, which is what makes -q mean one thing
+ * across the profile switch. */
+static unsigned long VbrBitrateForQuality(unsigned long quantqual,
+                                          unsigned int nch, unsigned long fs)
+{
+    float C = MapCoefficient(nch, fs, 0);
+    float total_kbps = C * powf((float)quantqual, MAP_K);
+    float bps = total_kbps * 1000.0f / (float)nch;
 
-    /* Undo the mono boost. Because it multiplies q_seed by 2.5 only above
-     * SEED_MONO_BPS, the forward map jumps there (q_seed 54.7 -> 136.7) and
-     * quality values inside that jump have no preimage at all. Above the jump
-     * the boost was applied; below it, it was not; inside it, SEED_MONO_BPS is
-     * the only answer consistent with either branch. */
-    if (nch == 1)
-    {
-        if (q_seed >= SEED_MONO_QSEED * SEED_MONO_BOOST)
-            q_seed /= SEED_MONO_BOOST;
-        else if (q_seed > SEED_MONO_QSEED)
-            return (unsigned long)SEED_MONO_BPS;
-    }
-
-    if (q_seed <= SEED_Q_KNEE_LO) {
-        bps = (q_seed - SEED_Q_AT_ZERO) / SEED_Q_SPAN_LO * SEED_BPS_KNEE_LO;
-    } else if (q_seed <= SEED_Q_KNEE_LO + SEED_Q_SPAN_MID) {
-        bps = SEED_BPS_KNEE_LO + (q_seed - SEED_Q_KNEE_LO) / SEED_Q_SPAN_MID *
-              (SEED_BPS_KNEE_HI - SEED_BPS_KNEE_LO);
-    } else {
-        bps = q_seed * SEED_BPS_PER_Q;
-    }
     /* Never return 0: this is an inferred rate, and 0 is reserved downstream to
-     * mean "no rate given" (CalcBandwidth reads it as unlimited bandwidth).
-     * Below q_seed 10 the forward curve has simply run out of domain, and the
-     * honest reading there is "as low as this encoder goes", not "unset". */
+     * mean "no rate given" (CalcBandwidth reads it as unlimited bandwidth). */
     return (bps < 1.0f) ? 1 : (unsigned long)bps;
 }
+
+/* Rescaling factor applied to quantqual when HE-AAC is chosen, so that -q
+ * denotes the same quality -- and lands on the same rate -- in both profiles.
+ * Constant-folded from the two measured constants, so it cannot drift from
+ * them: solving C_HE * (x*q)^k == C_LC * q^k gives x = MAP_HE_RATIO^(1/k). */
+#define MAP_HE_QSCALE  1.7476f   /* 1 / MAP_K, as an exponent on MAP_HE_RATIO */
 
 /* Which of the two currencies the caller gave us. Extend here if a third rate
  * mode is ever added, and dispatch on it with a switch carrying NO default
@@ -446,21 +428,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * quantqual is a quantizer precision, not a quality: at the same value an
      * HE-AAC core codes half the spectrum and lets SBR parameterise the rest,
      * so it spends roughly half the bits LC would. Handing the user's -q
-     * straight to both profiles therefore makes the AUTO switch double the
+     * straight to both profiles therefore makes the AUTO switch jump the
      * output rate for a single step of the dial -- a cliff the user sees as a
      * bug, and a band of rates no -q value can reach.
      *
-     * ABR never had this problem: its seeding curve runs after the core rate
-     * has been halved, so HE-AAC is already seeded a correspondingly higher
-     * quantqual. Do the same for VBR -- convert the requested quality to the
-     * rate it implies, then seed from that at the resolved core rate. For LC
-     * the core rate is the full rate and the two maps are inverses, so this is
-     * an identity; only HE-AAC is rescaled, which is exactly where the cliff
-     * was. */
+     * Rescale by the measured C_LC/C_HE ratio so the two profiles land on the
+     * same rate for the same request. This is a plain multiply: the map is a
+     * power law, so the correction is one constant rather than a round trip
+     * through the curve. */
     if (target.mode == RATE_MODE_VBR && hEncoder->config.aacObjectType == HE_V1)
-        config->quantqual = SeedQualityForBitrate((float)target.bitRatePerCh,
-                                                  hEncoder->numChannels,
-                                                  hEncoder->sampleRate);
+    {
+        float q = (float)config->quantqual * powf(MAP_HE_RATIO, MAP_HE_QSCALE);
+        if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+        config->quantqual = (unsigned long)q;
+    }
 
     if (config->bitRate && !config->bandWidth)
     {
@@ -469,12 +450,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         if (!config->quantqual)
         {
             /* Seed the rate-control loop from the measured quality<->rate map,
-             * so it converges without early overshoot or undershoot. Note this
-             * runs after SbrContextResolveRate, so for HE-AAC the core rate is
-             * already halved. */
-            config->quantqual = SeedQualityForBitrate((float)config->bitRate,
-                                                      hEncoder->numChannels,
-                                                      hEncoder->sampleRate);
+             * so it converges without early overshoot or undershoot.
+             *
+             * Pass fullRate, not hEncoder->sampleRate: this runs after
+             * SbrContextResolveRate, which has already halved the latter for
+             * HE-AAC. The map's cells were characterised by INPUT sample rate,
+             * with the halving folded into the HE coefficient, so handing it
+             * the halved rate as well would count it twice. */
+            config->quantqual = SeedQualityForBitrate(
+                (float)config->bitRate, hEncoder->numChannels, fullRate,
+                hEncoder->config.aacObjectType == HE_V1);
         }
     }
 
