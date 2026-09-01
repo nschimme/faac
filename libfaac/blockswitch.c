@@ -19,6 +19,7 @@
 
 #include "blockswitch.h"
 #include "coder.h"
+#include "filtbank.h"
 #include "util.h"
 #include "faac_internal.h"
 #include "frame.h"
@@ -240,7 +241,12 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-  int desire = ONLY_LONG_WINDOW;
+  int desire[MAX_CHANNELS];
+
+  for (channel = 0; channel < numChannels; channel++)
+  {
+      desire[channel] = ONLY_LONG_WINDOW;
+  }
 
   /* Shared transient override for HE-AAC path.
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
@@ -262,35 +268,87 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
       }
   }
 
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
-  for (channel = 0; channel < numChannels; channel++)
+  /* Process block switching decision per element.
+   * For CPE elements, couple Left and Right channel decisions using both
+   * transient flags and combined Perceptual Entropy threshold evaluation. */
+  if (hEncoder && hEncoder->numElements > 0)
   {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
-      desire = ONLY_SHORT_WINDOW;
+      for (int e = 0; e < hEncoder->numElements; e++)
+      {
+          AACElement *elem = &hEncoder->elements[e];
+          if (elem->type == ID_CPE)
+          {
+              int l = elem->channels[0];
+              int r = elem->channels[1];
+
+              if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
+                  psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
+                  psyInfo[l].pe >= PE_THRESH_PER_CH ||
+                  psyInfo[r].pe >= PE_THRESH_PER_CH)
+              {
+                  desire[l] = ONLY_SHORT_WINDOW;
+                  desire[r] = ONLY_SHORT_WINDOW;
+              }
+              else
+              {
+                  desire[l] = ONLY_LONG_WINDOW;
+                  desire[r] = ONLY_LONG_WINDOW;
+              }
+          }
+          else if (elem->type == ID_SCE)
+          {
+              int ch = elem->channels[0];
+              if (psyInfo[ch].block_type == ONLY_SHORT_WINDOW || psyInfo[ch].pe >= PE_THRESH_PER_CH)
+                  desire[ch] = ONLY_SHORT_WINDOW;
+              else
+                  desire[ch] = ONLY_LONG_WINDOW;
+          }
+          else if (elem->type == ID_LFE)
+          {
+              int ch = elem->channels[0];
+              desire[ch] = ONLY_LONG_WINDOW;
+          }
+      }
+  }
+  else
+  {
+      for (channel = 0; channel < numChannels; channel++)
+      {
+          if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW || psyInfo[channel].pe >= PE_THRESH_PER_CH)
+              desire[channel] = ONLY_SHORT_WINDOW;
+      }
   }
 
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
+    int des = desire[channel];
 
-    if (desire == ONLY_SHORT_WINDOW
-	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
+    if (des == ONLY_SHORT_WINDOW || coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
     {
       if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
-	coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+        coderInfo[channel].block_type = LONG_SHORT_WINDOW;
       else
-	coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+        coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
     else
     {
       if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW)
-	coderInfo[channel].block_type = SHORT_LONG_WINDOW;
+        coderInfo[channel].block_type = SHORT_LONG_WINDOW;
       else
-	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
-    coderInfo[channel].desired_block_type = desire;
+    coderInfo[channel].desired_block_type = des;
+
+    /* Synchronized KBD vs. Sine window shape selection: KBD window for short/transient blocks
+     * to improve energy compaction and reduce pre-echo leakage. */
+    int win_shape = SINE_WINDOW;
+    if (coderInfo[channel].block_type != ONLY_LONG_WINDOW)
+    {
+        win_shape = KBD_WINDOW;
+    }
+
+    coderInfo[channel].prev_window_shape = coderInfo[channel].window_shape;
+    coderInfo[channel].window_shape = win_shape;
   }
 }
