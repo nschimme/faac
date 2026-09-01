@@ -921,6 +921,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (a)
             BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+
+#ifdef FAAC_STATS
+        /* Engagement rate of the shared grouping: how many CPE frames with a
+           short channel actually had both channels short. */
+        if (a && r >= 0)
+        {
+            g_faacStats.cpeShortFrames++;
+            if (b) g_faacStats.cpeCommonGroupFrames++;
+        }
+#endif
     }
 
     /* Perform TNS analysis and filtering */
