@@ -40,8 +40,9 @@ extern "C" {
    the coefficients as they go, but each band is consumed before it is touched.
    TNS never runs on short blocks, so nothing else moves in between. */
 typedef struct {
-    int valid;   /* filled this frame */
-    int stereo;  /* rr[] and lr[] are filled too */
+    int cpe;     /* both channels were scanned: rr[] and lr[] are filled too.
+                    Clear for an SCE, whose ll[] is scratch that BlocGroup
+                    consumes itself and nothing outlives. */
     float ll[MAX_SHORT_WINDOWS][NSFB_SHORT];
     float rr[MAX_SHORT_WINDOWS][NSFB_SHORT];
     float lr[MAX_SHORT_WINDOWS][NSFB_SHORT];

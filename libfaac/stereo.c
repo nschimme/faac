@@ -132,7 +132,7 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
 static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
-                               const ShortBandEnergy * restrict en,
+                               const ShortBandEnergy * restrict energy,
                                int * restrict sfcnt, int wstart, int wend,
                                float thrmid, float inv_isthr, float thrside_sq,
                                int is_start_sfb, int mode)
@@ -147,34 +147,38 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             element->msInfo.ms_used[(*sfcnt)++] = 0;
     }
 
-    /* Gather every band's energies up front. `en` is loop-invariant, so
+    /* Gather every band's energies up front. `energy` is loop-invariant, so
        branching on it per band would keep both acquisition paths live inside
        the decision loop and stop the cached gather from vectorizing across
        bands; only the gather is duplicated here, not the decision body, so it
        costs a few hundred bytes and measured ~1% of encoder throughput. */
-    float elv[NSFB_LONG], erv[NSFB_LONG], elrv[NSFB_LONG];
-    if (en) {
+    float bandL[NSFB_LONG], bandR[NSFB_LONG], bandLR[NSFB_LONG];
+    if (energy) {
         for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
+            float l = 0.0f, r = 0.0f, lr = 0.0f;
             int win;
-            float a = 0.0f, b = 0.0f, c = 0.0f;
             for (win = wstart; win < wend; win++) {
-                a += en->ll[win][sfb];
-                b += en->rr[win][sfb];
-                c += en->lr[win][sfb];
+                l  += energy->ll[win][sfb];
+                r  += energy->rr[win][sfb];
+                lr += energy->lr[win][sfb];
             }
-            elv[sfb] = a; erv[sfb] = b; elrv[sfb] = c;
+            bandL[sfb] = l; bandR[sfb] = r; bandLR[sfb] = lr;
         }
     } else {
+        /* Long blocks only in practice: a short CPE reaches here only when both
+           channels are short, which is exactly when BlocGroup filled the cache.
+           Kept general rather than specialised to one window, so a future
+           change to the block-type rules cannot silently read window 0 alone. */
         for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
             int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
             calculate_energies(sl0, sr0, start, len, wstart, wend,
-                               &elv[sfb], &erv[sfb], &elrv[sfb]);
+                               &bandL[sfb], &bandR[sfb], &bandLR[sfb]);
         }
     }
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        float el = elv[sfb], er = erv[sfb], elr = elrv[sfb];
+        float el = bandL[sfb], er = bandR[sfb], elr = bandLR[sfb];
 
         float es   = el + er + 2.0f*elr;
         float ed   = el + er - 2.0f*elr;
@@ -337,10 +341,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         /* The fused short-block scan already produced this element's per-band
            L/R/cross energies; long blocks have no such pass and measure their
            own. */
-        const ShortBandEnergy *en = NULL;
-        if (coder[lch].block_type == ONLY_SHORT_WINDOW && energy
-            && energy[e].valid && energy[e].stereo)
-            en = &energy[e];
+        const ShortBandEnergy *en = (energy && energy[e].cpe) ? &energy[e] : NULL;
 
         int start = 0, sfcnt = 0, is_start_sfb = coder[lch].sfbn, msused = 0;
         if (cur_mode == JOINT_MIXED) {

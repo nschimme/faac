@@ -417,30 +417,51 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg)
 #define GROUP_MIN_SFB     2    // bands below this are too coarse/DC-heavy to inform grouping
 #define GROUP_ONSET_RATIO 3.0f  // running max/min energy ratio that counts as a transient
 
-/* One short window of one channel: band sums of squares, and the stopband
-   zeroing the quantizer relies on. Bands starting at or past the cutoff are
-   left alone -- their coefficients were just zeroed, so their energy is zero,
-   and BlocGroup cleared the matrix up front. */
+/* Bounds of one short band, clamped to the coded cutoff. Returns 0 once the
+   bands start past it: those coefficients were just zeroed, so their energy is
+   zero and BlocGroup already cleared the matrix. */
+static inline int band_bounds(const int * __restrict sfb_offset, int sfb, int cutoff,
+                               int * __restrict start_k, int * __restrict len)
+{
+    int lo = sfb_offset[sfb];
+    if (lo >= cutoff)
+        return 0;
+
+    int hi = sfb_offset[sfb + 1];
+    if (hi > cutoff)
+        hi = cutoff;
+
+    *start_k = lo;
+    *len = hi - lo;
+    return 1;
+}
+
+/* The quantizer reads every band up to sfb_offset[maxsfb], but only lines below
+   the cutoff carry signal. */
+static inline void zero_stopband(float * __restrict w, int cutoff, int stop)
+{
+    int k;
+    for (k = cutoff; k < stop; k++)
+        w[k] = 0.0f;
+}
+
+/* One short window of one channel: per-band sums of squares. */
 static void window_band_energy(const int * __restrict sfb_offset, float * __restrict w,
                                 int maxsfb, int stop, int cutoff, float * __restrict e)
 {
-    int k, sfb;
+    int sfb;
 
-    for (k = cutoff; k < stop; k++)
-        w[k] = 0.0f;
+    zero_stopband(w, cutoff, stop);
 
     for (sfb = 0; sfb < maxsfb; sfb++)
     {
-        int start_k = sfb_offset[sfb];
-        if (start_k >= cutoff) break;
-
-        int end_k = sfb_offset[sfb + 1];
-        if (end_k > cutoff) end_k = cutoff;
-
-        const float * __restrict line = w + start_k;
-        int len = end_k - start_k;
+        int start_k, len, k;
         float sum = 0.0f;
 
+        if (!band_bounds(sfb_offset, sfb, cutoff, &start_k, &len))
+            break;
+
+        const float * __restrict line = w + start_k;
         for (k = 0; k < len; k++)
             sum += line[k] * line[k];
 
@@ -454,41 +475,35 @@ static void window_band_energy(const int * __restrict sfb_offset, float * __rest
 static void window_band_energy_cpe(const int * __restrict sfb_offset,
                                     float * __restrict wl, float * __restrict wr,
                                     int maxsfb, int stop, int cutoff,
-                                    float * __restrict ell, float * __restrict err,
-                                    float * __restrict elr)
+                                    float * __restrict eL, float * __restrict eR,
+                                    float * __restrict eLR)
 {
-    int k, sfb;
+    int sfb;
 
-    for (k = cutoff; k < stop; k++)
-    {
-        wl[k] = 0.0f;
-        wr[k] = 0.0f;
-    }
+    zero_stopband(wl, cutoff, stop);
+    zero_stopband(wr, cutoff, stop);
 
     for (sfb = 0; sfb < maxsfb; sfb++)
     {
-        int start_k = sfb_offset[sfb];
-        if (start_k >= cutoff) break;
+        int start_k, len, k;
+        float sumL = 0.0f, sumR = 0.0f, sumLR = 0.0f;
 
-        int end_k = sfb_offset[sfb + 1];
-        if (end_k > cutoff) end_k = cutoff;
+        if (!band_bounds(sfb_offset, sfb, cutoff, &start_k, &len))
+            break;
 
-        const float * __restrict ll = wl + start_k;
-        const float * __restrict rl = wr + start_k;
-        int len = end_k - start_k;
-        float a = 0.0f, b = 0.0f, c = 0.0f;
-
+        const float * __restrict lineL = wl + start_k;
+        const float * __restrict lineR = wr + start_k;
         for (k = 0; k < len; k++)
         {
-            float l = ll[k], r = rl[k];
-            a += l * l;
-            b += r * r;
-            c += l * r;
+            float l = lineL[k], r = lineR[k];
+            sumL  += l * l;
+            sumR  += r * r;
+            sumLR += l * r;
         }
 
-        ell[sfb] = a;
-        err[sfb] = b;
-        elr[sfb] = c;
+        eL[sfb] = sumL;
+        eR[sfb] = sumR;
+        eLR[sfb] = sumLR;
     }
 }
 
@@ -521,8 +536,7 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r,
        than per window: they read back as zero, which is what summing their
        (now zeroed) coefficients would have produced anyway. */
     memset(energy, 0, sizeof(*energy));
-    energy->valid = 1;
-    energy->stereo = (ci_r != NULL);
+    energy->cpe = (ci_r != NULL);
 
     coderInfo->groups.n = 0;
 

@@ -566,6 +566,23 @@ static void consumeInputFifo(faacEncStruct *hEncoder, unsigned int n)
     hEncoder->inputFifoFill = rem;
 }
 
+/* Window groups per short channel. Downstream cost -- the per-band passes in
+   BlocQuant, the scalefactor sets, the Huffman sections and the ms_used mask --
+   all scales with groups.n * sfbn per channel, so this is the number that
+   explains both a throughput and a bitrate delta from any change to the
+   grouping decision. */
+#ifdef FAAC_STATS
+static void statShortGroups(const CoderInfo *ci, unsigned int nch)
+{
+    g_faacStats.shortChannels += nch;
+    g_faacStats.shortGroupSum += (unsigned long)ci->groups.n * nch;
+    if (ci->groups.n > 1)
+        g_faacStats.shortSplitChannels += nch;
+}
+#else
+# define statShortGroups(ci, nch) ((void)0)
+#endif
+
 int faacEncClose(faacEncHandle hpEncoder)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
@@ -894,54 +911,38 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Short-window grouping. A CPE whose channels are both short is grouped
-       once from their summed band energies, so the pair shares one grouping;
-       every other short channel is grouped on its own. Funnelled through a
-       single call site so the layout stays one inlined copy. */
+       once from their summed band energies, so the pair shares one grouping,
+       and the scan leaves its per-band energies in shortEnergy[e] for AACstereo
+       to reuse. Every other short channel is grouped on its own. */
     for (int e = 0; e < hEncoder->numElements; e++)
     {
         AACElement *el = &hEncoder->elements[e];
+        ShortBandEnergy *en = &hEncoder->shortEnergy[e];
         int l = el->channels[0];
         int r = (el->type == ID_CPE) ? el->channels[1] : -1;
-        CoderInfo *a = NULL, *b = NULL;
-        float *xa = NULL, *xb = NULL;
+        int lshort = coderInfo[l].block_type == ONLY_SHORT_WINDOW;
+        int rshort = r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW;
 
-        if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
+        en->cpe = 0;
+
+        /* BlockSwitch gives every channel the same block type, so a CPE is
+           short on both sides or neither; the one-sided arm below is for
+           robustness, not a case that occurs today. */
+        if (lshort && rshort)
         {
-            a = &coderInfo[l];
-            xa = hEncoder->freqBuff[l];
-            if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
-            {
-                b = &coderInfo[r];
-                xb = hEncoder->freqBuff[r];
-            }
+            BlocGroup(&coderInfo[l], hEncoder->freqBuff[l],
+                      &coderInfo[r], hEncoder->freqBuff[r],
+                      en, &hEncoder->aacquantCfg);
+            statShortGroups(&coderInfo[l], 2);
         }
-        else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+        else if (lshort || rshort)
         {
-            a = &coderInfo[r];
-            xa = hEncoder->freqBuff[r];
+            int c = lshort ? l : r;
+
+            BlocGroup(&coderInfo[c], hEncoder->freqBuff[c], NULL, NULL,
+                      en, &hEncoder->aacquantCfg);
+            statShortGroups(&coderInfo[c], 1);
         }
-
-        hEncoder->shortEnergy[e].valid = 0;
-        hEncoder->shortEnergy[e].stereo = 0;
-
-        if (a)
-            BlocGroup(a, xa, b, xb, &hEncoder->shortEnergy[e], &hEncoder->aacquantCfg);
-
-#ifdef FAAC_STATS
-        /* Window groups per short channel. Downstream cost -- the per-band
-           passes in BlocQuant, the scalefactor sets, the Huffman sections and
-           the ms_used mask -- all scale with groups.n * sfbn per channel, so
-           this is the number that explains both a throughput and a bitrate
-           delta from any change to the grouping decision. */
-        if (a)
-        {
-            unsigned int nch = b ? 2 : 1;
-            g_faacStats.shortChannels += nch;
-            g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
-            if (a->groups.n > 1)
-                g_faacStats.shortSplitChannels += nch;
-        }
-#endif
     }
 
     /* Perform TNS analysis and filtering */
