@@ -55,10 +55,9 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
             }
             w = (w << sbr_ceil_log2[num_env]) | fd->bsPointer;
             n += sbr_ceil_log2[num_env];
-            for (int i = 0; i < num_env; i++) {
-                w = (w << 1) | sbr->bs_freq_res;
-                n += 1;
-            }
+            uint32_t fres_bits = sbr->bs_freq_res ? ((1U << num_env) - 1) : 0;
+            w = (w << num_env) | fres_bits;
+            n += num_env;
             PutBit(bs, w, n);
         }
     } else {
