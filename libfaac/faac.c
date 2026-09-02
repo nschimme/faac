@@ -56,7 +56,7 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
 /* Baseline layout as first shipped. Frozen by the append-only rule: new fields
- * go after max_bit_rate, so this offset never moves. Not sizeof(), which
+ * go after max_bit_rate_total, so this offset never moves. Not sizeof(), which
  * grows with every appended field and would reject older callers' binaries.
  * A literal would be wrong too: the layout depends on pointer width. */
 #define PARAMS_BASELINE_SIZE \
@@ -121,8 +121,8 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.use_lfe       = false;
     tmp.use_tns       = false;
     tmp.bit_rate_per_ch = 64000;          /* per channel; 0 would defer to quant_quality */
-    tmp.bandwidth     = 0;              /* derive from bit_rate */
-    tmp.quant_quality = 0;              /* derive from bit_rate */
+    tmp.bandwidth     = 0;              /* derive from bit_rate_per_ch */
+    tmp.quant_quality = 0;              /* derive from bit_rate_per_ch */
     tmp.vbr_quality   = FAAC_VBR_QUALITY_UNSET;
     tmp.max_bit_rate_total = 0;              /* no per-frame peak cap */
     tmp.output_format = FAAC_STREAM_ADTS;
@@ -198,7 +198,7 @@ static faac_status validate_params(const faac_params *p)
             if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* bit_rate is per channel, as are both bounds. Out-of-range is clamped
+    /* bit_rate_per_ch is per channel, as are both bounds. Out-of-range is clamped
      * rather than rejected: a caller naming a rate the spec cannot carry has
      * asked for the nearest thing that works, and failing to open an encoder
      * over it is a worse answer than encoding at the limit. The clamp itself
@@ -212,7 +212,7 @@ static faac_status validate_params(const faac_params *p)
             return FAAC_ERR_INVALID_ARGUMENT;
         /* A peak below the average is unsatisfiable by definition, and the two
          * controllers actively fight: rate control raises quality to reach
-         * bit_rate while the limiter cuts it to stay under the cap, so frames
+         * bit_rate_per_ch while the limiter cuts it to stay under the cap, so frames
          * end up larger the tighter the cap gets. Reject it rather than emit a
          * stream that quietly busts the ceiling it was asked to respect.
          * The field names carry the units, so the conversion is explicit. */

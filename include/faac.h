@@ -165,8 +165,8 @@ typedef struct faac_params {
     uint8_t                 reserved[2];   /* explicit pad; must remain 0              */
 
     uint32_t                bit_rate_per_ch;   /* target bits/sec per channel; 0 = use quant_quality */
-    uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate             */
-    uint32_t                quant_quality; /* raw quantizer precision; 0 = derive from bit_rate  */
+    uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate_per_ch      */
+    uint32_t                quant_quality; /* raw quantizer precision; 0 = from bit_rate_per_ch  */
 
     /* Constant-quality step, FAAC_VBR_QUALITY_MIN..MAX, or
      * FAAC_VBR_QUALITY_UNSET. When set it supersedes quant_quality, and
@@ -185,13 +185,14 @@ typedef struct faac_params {
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.
-     * Unlike bit_rate this is a WHOLE-STREAM rate, so it stays independent of
+     * As its name says, and unlike bit_rate_per_ch, this is a WHOLE-STREAM
+     * rate, so it stays independent of
      * num_channels and follows from the payload a packet can carry or standard
      * ISO/IEC 14496-3 limits (6144 bits/channel per frame):
      *
-     *     max_bit_rate = payload_bytes * 8 * sample_rate / 1024
+     *     max_bit_rate_total = payload_bytes * 8 * sample_rate / 1024
      *
-     * Must be >= bit_rate * num_channels (a peak below the average is
+     * Must be >= bit_rate_per_ch * num_channels (a peak below the average is
      * unsatisfiable) and <= FAAC_MAX_BIT_RATE; open() rejects anything else.
      * More headroom means fewer retries.
      *
@@ -203,7 +204,7 @@ typedef struct faac_params {
     uint32_t                max_bit_rate_total; /* whole-stream peak bits/sec; 0 = unlimited */
 } faac_params;
 
-/* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
+/* Upper bound on faac_params.max_bit_rate_total: far above any real stream rate, and
  * low enough that converting it to a per-frame bit budget cannot overflow. */
 #define FAAC_MAX_BIT_RATE ((uint32_t)100000000)
 
