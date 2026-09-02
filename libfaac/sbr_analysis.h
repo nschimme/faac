@@ -28,6 +28,8 @@ extern "C" {
 #define SBR_MAX_ENVELOPES 2
 #endif
 
+#include "coder.h"
+
 struct SBRInfo;
 
 typedef struct SignalAnalysisChannel {
