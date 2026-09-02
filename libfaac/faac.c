@@ -181,10 +181,12 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->pns_level < 0 || p->pns_level > 10)
         return FAAC_ERR_INVALID_ARGUMENT;
-    /* SBR codes one SCE or CPE per frame, so HE-AAC v1 covers mono and stereo
-     * only; asking for it over more channels would emit a stream whose SBR
-     * payload binds to the wrong element. AUTO resolves around this on its
-     * own -- this is for callers that named the profile. */
+    /* This encoder's SBR serves one SCE or CPE, so its HE-AAC v1 covers mono
+     * and stereo; asking for it over more channels would emit a stream whose
+     * SBR payload binds to the wrong element. Multichannel HE-AAC v1 is legal
+     * MPEG-4 -- one sbr_extension_data() per element -- just unimplemented
+     * here. AUTO resolves around this on its own; this is for callers that
+     * named the profile. */
     if (p->object_type == FAAC_OBJ_HE_AAC_V1
         && p->num_channels > (uint32_t)SBR_MAX_CODED_CHANNELS)
         return FAAC_ERR_UNSUPPORTED;

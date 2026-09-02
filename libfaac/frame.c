@@ -509,12 +509,17 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned int lc_bw = CalcBandwidth(target.bitRatePerCh, fullRate);
         int rate_ok = ((unsigned long)lc_bw * HE_XOVER_DEN <
                        (fullRate / 2) * HE_XOVER_NUM);
-        /* One SBR payload is emitted per frame and the decoder binds it to the
-         * element it follows, so SBR covers a single SCE or CPE -- see
-         * SBR_MAX_CODED_CHANNELS. Beyond two channels the remaining elements
-         * would get no SBR at all, and with an LFE present the payload lands
-         * against ID_LFE, which decoders reject outright ("cannot apply SBR to
-         * element type 3"). AUTO must not walk into that. */
+        /* This encoder emits one SBR payload per frame and the decoder binds
+         * it to the element it follows, so it can serve a single SCE or CPE --
+         * see SBR_MAX_CODED_CHANNELS. Beyond two channels the remaining
+         * elements would get no SBR at all, and with an LFE present the payload
+         * lands against ID_LFE, which decoders reject outright ("cannot apply
+         * SBR to element type 3"). AUTO must not walk into that.
+         *
+         * The format itself is not the constraint: MPEG-4 puts an
+         * sbr_extension_data() in a fill element after each SCE and CPE, so
+         * HE-AAC v1 5.1 is legal and commonplace. Lifting this means emitting
+         * one payload per element, skipping the LFE. */
         int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
 
         hEncoder->config.aacObjectType =

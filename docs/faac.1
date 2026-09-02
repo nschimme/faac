@@ -69,9 +69,12 @@ adds artefacts to a band LC already codes properly.
 HE-AAC v1 targets low bitrates; its core is coded at half the input sample
 rate and reconstructed to full rate by SBR in the decoder.
 .IP
-HE-AAC v1 supports mono and stereo only, and requires a sample rate of at least
-32 kHz. SBR codes a single channel-pair element, so it cannot cover more. AUTO
-picks AAC-LC outside those limits;
+This encoder's HE-AAC v1 is limited to mono and stereo, and to sample rates of
+32 kHz and above. Neither is a limit of the format: MPEG-4 carries SBR data in a
+fill element after each channel element, so multichannel HE-AAC v1 is legal, and
+the sample-rate floor is a quality judgement about the half-rate core rather
+than a rule. They are simply what this implementation covers. AUTO picks AAC-LC
+outside them;
 .B --object-type he-aac-v1
 outside them fails rather than producing a stream a decoder would reject.
 .TP

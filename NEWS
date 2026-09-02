@@ -64,21 +64,30 @@ v1 wins; close to it, SBR only adds artefacts to a band LC already codes
 properly. One dimensionless threshold replaces the whole window, and it tracks
 the encoder instead of a snapshot of it.
 
-HE-AAC v1 is mono and stereo only
----------------------------------
+HE-AAC v1 is limited to mono and stereo in this encoder
+-------------------------------------------------------
 
-SBR emits one payload per frame and the decoder binds it to the element it
-follows, so it covers a single SCE or CPE. Above two channels the remaining
+FAAC emits one SBR payload per frame, and the decoder binds it to the element it
+follows, so it can serve a single SCE or CPE. Above two channels the remaining
 elements got no SBR at all, and 5.1 was worse than that: the payload landed
 against the LFE element, which decoders reject outright ("cannot apply SBR to
 element type 3"). Encoding 5.1 through --object-type auto at a low enough rate
 produced a stream ffmpeg would not play.
 
+*** If you encoded multichannel with auto at low rates on an earlier release,
+those files are affected. *** Depending on the channel layout you got either an
+invalid stream or one in which only two channels had their top octave rebuilt.
+Re-encoding is the fix; there is nothing that can repair the existing files.
+
 AUTO no longer resolves to HE-AAC v1 above two channels, and asking for it
-explicitly there now fails to open rather than emitting a broken stream. If you
-were encoding multichannel with auto at low rates, you were getting either an
-invalid file or one where only two channels had their top octave; you now get
-AAC-LC, which is correct.
+explicitly there now fails to open rather than emitting a broken stream. You get
+AAC-LC instead, which is correct.
+
+This is an implementation limit, not a limit of the format. MPEG-4 carries
+sbr_extension_data() in a fill element after each channel element, so
+multichannel HE-AAC v1 is legal and widely used; FAAC just does not emit a
+payload per element yet. Doing so -- and correctly emitting none for the LFE,
+which the format does exclude from SBR -- is what would lift the restriction.
 
 -b bounds are enforced, and correctly
 -------------------------------------

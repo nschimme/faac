@@ -18,6 +18,13 @@
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
 
 ## Large (cross-cutting, higher risk, higher potential payoff)
+- multichannel SBR: emit one sbr_extension_data() per SCE/CPE instead of one
+  payload per frame, and none for the LFE (the format excludes it from SBR --
+  binding a payload to ID_LFE is what decoders reject). Until then HE-AAC v1 is
+  gated to <=2 channels in faacEncApplyConfig and validate_params. Multichannel
+  HE-AAC v1 is legal MPEG-4 and widely used, so this is a missing feature rather
+  than a format limit; it would need SbrEncode to carry per-element state
+  (SBR_MAX_CODED_CHANNELS is currently 2) and the payload cache to key on element
 - optimize codebook list (section_data) via joint/DP optimization
   [leaderboard: biggest MOS gap vs Apple/aac-enc is 48k_stereo_24-56k (3.28-3.39
   vs 3.5-4.4) despite FAAC having the BEST stereo fidelity in class there
