@@ -32,7 +32,11 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+/* No separate HE floor: the further below Nyquist the LC core lands, the more
+ * spectrum SBR is rescuing, so HE only wins harder as the rate falls -- which
+ * is what the old 12000 floor's own comment said while the code did the
+ * opposite and handed those rates to LC. The window now starts where the
+ * format does, MinBitrate(), which the clamp above enforces. */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
@@ -266,7 +270,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                 max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
                               (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
             }
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+            rate_ok = (rate_per_ch >= MinBitrate() && rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
