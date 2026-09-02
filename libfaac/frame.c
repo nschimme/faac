@@ -253,30 +253,47 @@ static unsigned long VbrBitrateForQuality(unsigned long quantqual,
  * whose channel and sample-rate behaviour is the messy half of the fit. So the
  * ladder is only as fragile as the stable half.
  *
- * Anchoring on the quantizer range rather than on the bitrate bounds the spec
- * allows is deliberate. The format permits 8 kbit/s per channel, but a 48 kHz
- * stereo encode cannot go below about 27 kbit/s whatever it is asked for, so a
- * spec-anchored ladder aims its lowest steps at rates that do not exist and
- * they collapse onto MINQUAL together. MINQUAL..MAXQUAL is by definition
- * exactly what the encoder can deliver, so every step is distinct.
+ * The top anchor is MAXQUAL, and the bottom is MINQUAL or the spec floor,
+ * whichever is higher. Anchoring on the quantizer range rather than on the
+ * bitrate bounds is what keeps the steps distinct: the format permits 8 kbit/s
+ * per channel, but a 48 kHz stereo encode cannot go below about 27 kbit/s
+ * whatever it is asked for, so a purely spec-anchored ladder aims its lowest
+ * steps at rates that do not exist and they collapse onto MINQUAL together.
  *
- * It also gives the dial the right meaning: one step is one quality, the same
- * at 16 kHz mono as at 48 kHz stereo. The bitrate that quality costs is then
+ * The floor is needed because the reverse also happens. At 8 kHz mono, 16 kHz
+ * mono and 48 kHz 5.1, MINQUAL itself sits BELOW 8 kbit/s per channel -- 3.0,
+ * 6.3 and 4.4 measured -- so anchoring on MINQUAL alone put the bottom of the
+ * dial outside what the format allows. ABR has clamped to MinBitratePerCh()
+ * all along; this is VBR obeying the same bound rather than a second opinion
+ * about it. Formats whose MINQUAL rate already clears the floor -- every
+ * stereo rate from 22.05 kHz up -- are unaffected, so the mainstream ladder
+ * does not move.
+ *
+ * Within those anchors one step is one quality, so the dial means the same
+ * thing at 16 kHz mono as at 48 kHz stereo. The bitrate that quality costs is
  * free to depend on the material, which is what constant-quality means. */
 unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
                                     unsigned int quality)
 {
-    float q;
-
-    (void)sampleRate;   /* one step is one quality, whatever the format */
-    (void)nch;
+    float qmin = (float)MINQUAL;
+    float qfloor, q;
 
     if (quality > VBR_QUALITY_STEPS)
         quality = VBR_QUALITY_STEPS;
 
-    q = (float)MINQUAL * powf((float)MAXQUAL / (float)MINQUAL,
-                              (float)quality / (float)VBR_QUALITY_STEPS);
-    if (q < (float)MINQUAL) q = (float)MINQUAL;
+    /* Lowest quality whose implied rate still clears the spec floor. Asked of
+     * the LC coefficient, matching VbrBitrateForQuality: the profile is not
+     * chosen yet, and this decides the rate that chooses it. */
+    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(),
+                                          nch, sampleRate, 0);
+    if (qfloor > qmin)
+        qmin = qfloor;
+    if (qmin > (float)MAXQUAL)
+        qmin = (float)MAXQUAL;
+
+    q = qmin * powf((float)MAXQUAL / qmin,
+                    (float)quality / (float)VBR_QUALITY_STEPS);
+    if (q < qmin) q = qmin;
     if (q > (float)MAXQUAL) q = (float)MAXQUAL;
     return (unsigned long)(q + 0.5f);
 }
