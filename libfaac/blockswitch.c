@@ -47,7 +47,7 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH (0.40f)
+#define PSY_TD_THRESH (0.18f)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
