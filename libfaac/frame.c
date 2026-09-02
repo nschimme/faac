@@ -311,21 +311,21 @@ typedef enum {
 typedef struct {
     RateMode      mode;
     unsigned long bitRatePerCh;  /* ABR: given. VBR: inferred from quality.  */
-    unsigned long fullRate;      /* pre-SBR-downsample Fs; input to the maps */
 } RateTarget;
 
 /* Resolve the mode and the per-channel rate, once, before anything reads them.
  * Quality is deliberately NOT resolved here: in ABR it is seeded further down
  * from the (possibly halved) core rate, which is not known until the object
- * type has been chosen -- using the rate this struct carries. */
+ * type has been chosen -- using the rate this struct carries.
+ *
+ * The sample rate is not a member: it reached here as fullRate and every reader
+ * already has it, so carrying a copy only invited the two to disagree. */
 static RateTarget ResolveRateTarget(const faacEncConfiguration *config,
-                                    unsigned int nch, unsigned long fullRate,
-                                    float C_lc)
+                                    unsigned int nch, float C_lc)
 {
     RateTarget target;
 
     target.mode = config->bitRate ? RATE_MODE_ABR : RATE_MODE_VBR;
-    target.fullRate = fullRate;
 
     switch (target.mode)
     {
@@ -498,7 +498,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * below reads target.bitRatePerCh instead of re-deriving the mode from a
      * zero test, so -q and -b reach the decisions below through identical
      * code at the same real operating point. */
-    target = ResolveRateTarget(config, hEncoder->numChannels, fullRate, C_lc);
+    target = ResolveRateTarget(config, hEncoder->numChannels, C_lc);
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
@@ -578,7 +578,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* The quality this rate implies, hoisted out of the nested condition
      * below: only meaningful in ABR, and the compiler emits it more compactly
      * here than at its use site. */
-    rawSeed = (target.mode == RATE_MODE_ABR && config->bitRate)
+    rawSeed = (target.mode == RATE_MODE_ABR)
               ? RawSeedQualityForBitrate((float)config->bitRate,
                                          hEncoder->numChannels, mapC)
               : 0.0f;
