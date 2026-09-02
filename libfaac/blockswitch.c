@@ -283,8 +283,12 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
               int r = elem->channels[1];
               if ((unsigned int)l < numChannels && (unsigned int)r < numChannels)
               {
+                  float attack_l = PsyGetAttack(&psyInfo[l]);
+                  float attack_r = PsyGetAttack(&psyInfo[r]);
+
                   if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
-                      psyInfo[r].block_type == ONLY_SHORT_WINDOW)
+                      psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
+                      attack_l >= 0.8f || attack_r >= 0.8f)
                   {
                       desire[l] = ONLY_SHORT_WINDOW;
                       desire[r] = ONLY_SHORT_WINDOW;
