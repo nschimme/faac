@@ -142,12 +142,10 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
     if(*ppBuffer != NULL){
         BitStream bs;
         InitBitStream(&bs, *ppBuffer, 2);
-        BitWriter bw;
-        BitWriterInit(&bw);
-        BitWriterPut(&bw, hEncoder->config.aacObjectType, 5);
-        BitWriterPut(&bw, hEncoder->sampleRateIdx,       4);
-        BitWriterPut(&bw, hEncoder->numChannels,          4);
-        BitWriterFlush(&bw, &bs, true);
+        PutBit(&bs, hEncoder->config.aacObjectType, 5);
+        PutBit(&bs, hEncoder->sampleRateIdx,       4);
+        PutBit(&bs, hEncoder->numChannels,          4);
+        PutBit(&bs, 0,                              3);
         return 0;
     } else {
         return -3;

@@ -243,21 +243,15 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     BitStream bs;
     InitBitStream(&bs, buf, 5);
 
-    BitWriter bw;
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, LOW, 5);
-    BitWriterPut(&bw, coreSRIdx & 15, 4);
-    BitWriterPut(&bw, channels & 15, 4);
-    BitWriterPut(&bw, 0, 3);
-    BitWriterPut(&bw, 0x2b7, 11);
-    BitWriterFlush(&bw, &bs, true);
-
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, HE_V1, 5);
-    BitWriterPut(&bw, 1, 1);
-    BitWriterPut(&bw, sbrCtx->fullSampleRateIdx & 15, 4);
-    BitWriterPut(&bw, 0, 3); /* pad to 40 bits */
-    BitWriterFlush(&bw, &bs, true);
+    PutBit(&bs, LOW, 5);
+    PutBit(&bs, coreSRIdx & 15, 4);
+    PutBit(&bs, channels & 15, 4);
+    PutBit(&bs, 0, 3);
+    PutBit(&bs, 0x2b7, 11);
+    PutBit(&bs, HE_V1, 5);
+    PutBit(&bs, 1, 1);
+    PutBit(&bs, sbrCtx->fullSampleRateIdx & 15, 4);
+    PutBit(&bs, 0, 3); /* pad to 40 bits */
 
     return 0;
 }

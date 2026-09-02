@@ -26,19 +26,19 @@
 static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
-    BitWriter bw;
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, sbr->bs_amp_res,     1);
-    BitWriterPut(&bw, sbr->bs_start_freq,  4);
-    BitWriterPut(&bw, sbr->bs_stop_freq,   4);
-    BitWriterPut(&bw, sbr->bs_xover_band,  3);
-    BitWriterPut(&bw, 0,                   2); /* bs_reserved */
-    BitWriterPut(&bw, 1,                   1); /* bs_header_extra_1 = 1 */
-    BitWriterPut(&bw, 0,                   1); /* bs_header_extra_2 = 0 */
-    BitWriterPut(&bw, 0,                   2); /* bs_freq_scale = 0 */
-    BitWriterPut(&bw, sbr->bs_alter_scale, 1);
-    BitWriterPut(&bw, 0,                   2); /* bs_noise_bands = 0 */
-    return BitWriterFlush(&bw, bs, write);
+    if (write) {
+        PutBit(bs, sbr->bs_amp_res,     1);
+        PutBit(bs, sbr->bs_start_freq,  4);
+        PutBit(bs, sbr->bs_stop_freq,   4);
+        PutBit(bs, sbr->bs_xover_band,  3);
+        PutBit(bs, 0,                   2); /* bs_reserved */
+        PutBit(bs, 1,                   1); /* bs_header_extra_1 = 1 */
+        PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 */
+        PutBit(bs, 0,                   2); /* bs_freq_scale = 0 */
+        PutBit(bs, sbr->bs_alter_scale, 1);
+        PutBit(bs, 0,                   2); /* bs_noise_bands = 0 */
+    }
+    return 21;
 }
 
 /* Width of the transient pointer field, indexed by number of envelopes. */
@@ -47,45 +47,63 @@ static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
 static int write_sbr_grid(const SbrFrameData *fd, BitStream *bs, bool write)
 {
     int num_env = fd->numEnvelopes;
-    BitWriter bw;
-    BitWriterInit(&bw);
+    int bits = 2;
 
-    BitWriterPut(&bw, fd->frameClass, 2);
+    if (write) PutBit(bs, fd->frameClass, 2);
     if (fd->frameClass == SBR_FRAME_CLASS_FIXFIX) {
-        BitWriterPut(&bw, num_env > 1 ? 1 : 0, 2);
-        BitWriterPut(&bw, fd->freqRes, 1);
+        if (write) {
+            PutBit(bs, num_env > 1 ? 1 : 0, 2);
+            PutBit(bs, fd->freqRes, 1);
+        }
+        bits += 3;
     } else {
         if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
-            BitWriterPut(&bw, fd->tEnv[0], 2);                  /* bs_var_bord_0 */
-            BitWriterPut(&bw, num_env - 1, 2);                  /* bs_num_rel_0   */
-            for (int i = 0; i < num_env - 1; i++)
-                BitWriterPut(&bw, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2); /* bs_rel_bord */
+            if (write) {
+                PutBit(bs, fd->tEnv[0], 2);                  /* bs_var_bord_0 */
+                PutBit(bs, num_env - 1, 2);                  /* bs_num_rel_0   */
+                for (int i = 0; i < num_env - 1; i++)
+                    PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2); /* bs_rel_bord */
+            }
+            bits += 4 + 2 * (num_env - 1);
         } else {
-            BitWriterPut(&bw, fd->tEnv[num_env] - SBR_NUM_TIME_SLOTS, 2);  /* bs_var_bord_1 */
-            BitWriterPut(&bw, num_env - 1, 2);                             /* bs_num_rel_1  */
-            for (int i = 0; i < num_env - 1; i++)
-                BitWriterPut(&bw, (fd->tEnv[num_env - i] - fd->tEnv[num_env - 1 - i] - 2) / 2, 2);
+            if (write) {
+                PutBit(bs, fd->tEnv[num_env] - SBR_NUM_TIME_SLOTS, 2);  /* bs_var_bord_1 */
+                PutBit(bs, num_env - 1, 2);                             /* bs_num_rel_1  */
+                for (int i = 0; i < num_env - 1; i++)
+                    PutBit(bs, (fd->tEnv[num_env - i] - fd->tEnv[num_env - 1 - i] - 2) / 2, 2);
+            }
+            bits += 4 + 2 * (num_env - 1);
         }
-        BitWriterPut(&bw, fd->bsPointer, sbr_ceil_log2[num_env]);
-        for (int i = 0; i < num_env; i++)
-            BitWriterPut(&bw, fd->freqRes, 1);
+        int ptr_len = sbr_ceil_log2[num_env];
+        if (write) {
+            PutBit(bs, fd->bsPointer, ptr_len);
+            for (int i = 0; i < num_env; i++)
+                PutBit(bs, fd->freqRes, 1);
+        }
+        bits += ptr_len + num_env;
     }
-    return BitWriterFlush(&bw, bs, write);
+    return bits;
 }
 
 static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
 {
-    BitWriter bw;
-    BitWriterInit(&bw);
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    BitWriterPut(&bw, 0, fd->numEnvelopes + n_q);
-    return BitWriterFlush(&bw, bs, write);
+    int len = fd->numEnvelopes + n_q;
+    if (write) PutBit(bs, 0, len);
+    return len;
 }
 
 static int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     if (write) PutBit(bs, fd->ch[ch].invfMode, 2);
     return 2;
+}
+
+static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
+{
+    int sym = clamp_int(delta + offset, 0, nsyms - 1);
+    if (write) PutBit(bs, table[sym].code, table[sym].len);
+    return table[sym].len;
 }
 
 static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
@@ -98,40 +116,25 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     int nb = sbr_env_bands(sbr, fd);
     int bits = 0;
 
-    BitWriter bw;
-    BitWriterInit(&bw);
-
     for (int e = 0; e < fd->numEnvelopes; e++) {
         const int *env_ch = fd->ch[ch].envData[e];
-        if (bw.bits + first_bits > 32) {
-            BitWriterFlush(&bw, bs, write);
-            BitWriterInit(&bw);
-        }
-        BitWriterPut(&bw, clamp_int(env_ch[0], 0, first_max), first_bits);
+        if (write) PutBit(bs, clamp_int(env_ch[0], 0, first_max), first_bits);
         bits += first_bits;
         for (int b = 1; b < nb; b++) {
-            int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
-            int len = table[sym].len;
-            if (bw.bits + len > 32) {
-                BitWriterFlush(&bw, bs, write);
-                BitWriterInit(&bw);
-            }
-            BitWriterPut(&bw, table[sym].code, len);
-            bits += len;
+            bits += put_huff(bs, write, table, nsyms, offset, env_ch[b]);
         }
     }
-    BitWriterFlush(&bw, bs, write);
     return bits;
 }
 
 static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    BitWriter bw;
-    BitWriterInit(&bw);
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    for (int ne = 0; ne < n_q; ne++)
-        BitWriterPut(&bw, clamp_int(fd->ch[ch].noiseData[ne][0], 0, 30), 5);
-    return BitWriterFlush(&bw, bs, write);
+    if (write) {
+        for (int ne = 0; ne < n_q; ne++)
+            PutBit(bs, clamp_int(fd->ch[ch].noiseData[ne][0], 0, 30), 5);
+    }
+    return n_q * 5;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, bool write)
@@ -163,10 +166,8 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
  * type, the 1-bit header flag, the optional header, and the channel data. */
 static int emit_sbr_payload(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int sendHeader, bool write)
 {
-    BitWriter bw;
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, (SBR_EXT_TYPE_SBR << 1) | (sendHeader & 1), 5);
-    int bits = BitWriterFlush(&bw, bs, write);
+    int bits = 5;
+    if (write) PutBit(bs, (SBR_EXT_TYPE_SBR << 1) | (sendHeader & 1), 5);
     if (sendHeader) bits += write_sbr_header(sbr, bs, write);
     bits += write_sbr_data(sbr, fd, bs, id_aac, write);
     return bits;
@@ -185,26 +186,17 @@ int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, in
 
     int totalBits;
     if (writeFlag) {
-        BitWriter bw;
-        BitWriterInit(&bw);
-        BitWriterPut(&bw, ID_FIL, 3);
+        PutBit(bs, ID_FIL, 3);
         if (fillBytes < 15) {
-            BitWriterPut(&bw, fillBytes, 4);
+            PutBit(bs, fillBytes, 4);
             totalBits = 7;
         } else {
-            BitWriterPut(&bw, 15, 4);
-            BitWriterPut(&bw, fillBytes - 14, 8);
+            PutBit(bs, 15, 4);
+            PutBit(bs, fillBytes - 14, 8);
             totalBits = 15;
         }
-        BitWriterFlush(&bw, bs, true);
-
         emit_sbr_payload(sbr, fd, bs, id_aac, sendHeader, true);
-
-        if (padBits > 0) {
-            BitWriterInit(&bw);
-            BitWriterPut(&bw, 0, padBits);
-            BitWriterFlush(&bw, bs, true);
-        }
+        if (padBits > 0) PutBit(bs, 0, padBits);
         sbr->headerSent = 1;
         sbr->frameCount++;
     } else {
