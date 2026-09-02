@@ -121,13 +121,6 @@ static float compute_lpc(int order, const float * r, float * k)
     return r[0] / err;
 }
 
-static const float tns_inv_quant_lut[16] = {
-    -0.99573416f, -0.96182567f, -0.89516330f, -0.79801720f,
-    -0.67369562f, -0.52643216f, -0.36124167f, -0.18374951f,
-     0.00000000f,  0.20791170f,  0.40673664f,  0.58778524f,
-     0.74314487f,  0.86602545f,  0.95105654f,  0.99452192f
-};
-
 /* Reflection coefficients live in (-1, 1); arcsine-warp them before
  * quantizing so equal code steps land closer to equal perceptual steps
  * near the +-1 ends, per the tns_data() coefficient law in the spec. */
@@ -148,12 +141,8 @@ static void quantize_coeffs(int order, int res, float * k, int * idx)
         else if (q < i_min) q = i_min;
         idx[i] = q;
 
-        if (res == DEF_TNS_COEFF_RES) {
-            k[i] = tns_inv_quant_lut[q + 8];
-        } else {
-            s = (q >= 0) ? s_p : s_n;
-            k[i] = sinf((float)q / s);
-        }
+        s = (q >= 0) ? s_p : s_n;
+        k[i] = sinf((float)q / s);
     }
 }
 
@@ -223,7 +212,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter, float *workBuff, int lpc_order)
+                         float *spec, TnsFilterData *filter, float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -235,7 +224,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float gain;
     int order, limit, i;
 
-    if (length <= lpc_order)
+    if (length <= TNS_LPC_ORDER)
         return 0;
 
     band = spec + i_start;
@@ -293,8 +282,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         }
     }
 
-    calc_autocorr_f(lpc_order, length, wspec, r);
-    gain = compute_lpc(lpc_order, r, k);
+    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+    gain = compute_lpc(TNS_LPC_ORDER, r, k);
     if (gain < TNS_GAIN_LIMIT)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
@@ -303,17 +292,19 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (!isfinite(gain))
         return 0;
 
-    quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = lpc_order;
+    order = TNS_LPC_ORDER;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
         return 0;
 
     filter->order = order;
+
+    filter->direction = 0;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
@@ -352,14 +343,13 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff, unsigned long bitRate)
+void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
     enum WINDOW_TYPE blockType = coderInfo->block_type;
     int *sfbOffsetTable = coderInfo->sfb_offset;
     int b_start, b_stop;
-    int lpc_order = TNS_LPC_ORDER;
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
@@ -368,18 +358,13 @@ void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff, unsigned long
     if (blockType == ONLY_SHORT_WINDOW)
         return;
 
-    if (bitRate > 0 && bitRate <= 24000)
-        lpc_order = 6;
-    else if (bitRate >= 64000)
-        lpc_order = 12;
-
     b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0], workBuff, lpc_order))
+                       &tnsInfo->windowData.tnsFilter[0], workBuff))
         return;
 
 #ifdef FAAC_STATS

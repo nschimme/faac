@@ -959,8 +959,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
             TnsEncode(&coderInfo[channel],
                       hEncoder->freqBuff[channel],
-                      hEncoder->gpsyInfo.sharedWorkBuffLong,
-                      hEncoder->config.bitRate);
+                      hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }
