@@ -121,6 +121,13 @@ static float compute_lpc(int order, const float * r, float * k)
     return r[0] / err;
 }
 
+static const float tns_inv_quant_lut[16] = {
+    -0.99573416f, -0.96182567f, -0.89516330f, -0.79801720f,
+    -0.67369562f, -0.52643216f, -0.36124167f, -0.18374951f,
+     0.00000000f,  0.20791170f,  0.40673664f,  0.58778524f,
+     0.74314487f,  0.86602545f,  0.95105654f,  0.99452192f
+};
+
 /* Reflection coefficients live in (-1, 1); arcsine-warp them before
  * quantizing so equal code steps land closer to equal perceptual steps
  * near the +-1 ends, per the tns_data() coefficient law in the spec. */
@@ -141,8 +148,12 @@ static void quantize_coeffs(int order, int res, float * k, int * idx)
         else if (q < i_min) q = i_min;
         idx[i] = q;
 
-        s = (q >= 0) ? s_p : s_n;
-        k[i] = sinf((float)q / s);
+        if (res == DEF_TNS_COEFF_RES) {
+            k[i] = tns_inv_quant_lut[q + 8];
+        } else {
+            s = (q >= 0) ? s_p : s_n;
+            k[i] = sinf((float)q / s);
+        }
     }
 }
 
