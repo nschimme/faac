@@ -229,14 +229,6 @@ static float RawSeedQualityForBitrate(float bps, unsigned int nch, float C)
     return QualityForRate(bps * (float)nch * 0.001f, C);
 }
 
-static unsigned long SeedQualityForBitrate(float bps, unsigned int nch, float C)
-{
-    float q = RawSeedQualityForBitrate(bps, nch, C);
-
-    if (q < (float)MINQUAL) q = (float)MINQUAL;
-    if (q > (float)MAXQUAL) q = (float)MAXQUAL;
-    return (unsigned long)q;
-}
 
 /* Inverse: the per-channel rate a VBR quality implies.
  *
@@ -270,54 +262,45 @@ static unsigned long VbrBitrateForQuality(unsigned long quantqual,
  * spaced. It is the wrong thing to hand a user. A 0..VBR_QUALITY_STEPS dial
  * is what they get instead.
  *
- * Space the steps geometrically across MINQUAL..MAXQUAL. Because the map is a
- * power law, geometric in quantqual is also geometric in bitrate, with the
- * ratio between rungs set by the exponent alone -- never by the coefficient,
- * whose channel and sample-rate behaviour is the messy half of the fit. So the
- * ladder is only as fragile as the stable half.
+ * The steps are geometric across MINQUAL..MAXQUAL. Because the map is a power
+ * law, geometric in quantqual is also geometric in bitrate, with the ratio
+ * between rungs set by the exponent alone -- never by the coefficient, whose
+ * channel and sample-rate behaviour is the messy half of the fit. So the
+ * ladder is only as fragile as the stable half, and one step is one quality
+ * whatever the sample rate and channel count. What that quality costs in bits
+ * is then free to depend on the material, which is what constant quality is.
  *
- * The top anchor is MAXQUAL, and the bottom is MINQUAL or the spec floor,
- * whichever is higher. Anchoring on the quantizer range rather than on the
- * bitrate bounds is what keeps the steps distinct: the format permits 8 kbit/s
- * per channel, but a 48 kHz stereo encode cannot go below about 27 kbit/s
- * whatever it is asked for, so a purely spec-anchored ladder aims its lowest
- * steps at rates that do not exist and they collapse onto MINQUAL together.
+ * Anchoring on the quantizer range rather than on the bitrate bounds is what
+ * keeps the steps distinct: the format permits 8 kbit/s per channel, but a
+ * 48 kHz stereo encode cannot go below about 27 kbit/s whatever it is asked
+ * for, so a spec-anchored ladder aims its lowest steps at rates that do not
+ * exist and they collapse together.
  *
- * The floor is needed because the reverse also happens. At 8 kHz mono, 16 kHz
- * mono and 48 kHz 5.1, MINQUAL itself sits BELOW 8 kbit/s per channel -- 3.0,
- * 6.3 and 4.4 measured -- so anchoring on MINQUAL alone put the bottom of the
- * dial outside what the format allows. ABR has clamped to MinBitratePerCh()
- * all along; this is VBR obeying the same bound rather than a second opinion
- * about it. Formats whose MINQUAL rate already clears the floor -- every
- * stereo rate from 22.05 kHz up -- are unaffected, so the mainstream ladder
- * does not move.
+ * Having no runtime inputs, the rungs are constants:
  *
- * Within those anchors one step is one quality, so the dial means the same
- * thing at 16 kHz mono as at 48 kHz stereo. The bitrate that quality costs is
- * free to depend on the material, which is what constant-quality means. */
-static unsigned long VbrQualityToQuantqual(unsigned int nch, float C_lc,
-                                           unsigned int quality)
-{
-    float qmin = (float)MINQUAL;
-    float qfloor, q;
+ *     ladder[n] = round(MINQUAL * (MAXQUAL / MINQUAL) ^ (n / STEPS))
+ *
+ * Tabulating them is worth roughly 500 bytes against evaluating that powf,
+ * which is most of what this feature costs the library. The ends are spelled
+ * as MINQUAL and MAXQUAL so they cannot drift from them; the middle follows
+ * from the formula above, and regenerating it is a one-line calculation if any
+ * of the three inputs move.
+ *
+ * The cost is at the bottom of the dial for formats whose MINQUAL already
+ * undershoots what they can deliver. At 8 and 16 kHz mono the lowest rungs
+ * crowd (3.0, 3.2, 3.6, 4.3 kbit/s per channel at 8 kHz), because MINQUAL sits
+ * below the floor there and no fixed table can know that. Rescaling the ladder
+ * onto a measured floor fixes it and costs the map -- see the history of this
+ * comment. Every stereo rate from 22.05 kHz up, and 48 kHz 5.1, resolve to
+ * this table either way. */
+static const unsigned short vbrLadder[VBR_QUALITY_STEPS + 1] =
+    { MINQUAL, 19, 35, 65, 120, 224, 416, 775, 1443, 2686, MAXQUAL };
 
+static unsigned long VbrQualityToQuantqual(unsigned int quality)
+{
     if (quality > VBR_QUALITY_STEPS)
         quality = VBR_QUALITY_STEPS;
-
-    /* Lowest quality whose implied rate still clears the floor. Asked of the LC
-     * coefficient, matching VbrBitrateForQuality: the profile is not chosen
-     * yet, and this decides the rate that chooses it. */
-    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(), nch, C_lc);
-    if (qfloor > qmin)
-        qmin = qfloor;
-    if (qmin > (float)MAXQUAL)
-        qmin = (float)MAXQUAL;
-
-    q = qmin * powf((float)MAXQUAL / qmin,
-                    (float)quality / (float)VBR_QUALITY_STEPS);
-    if (q < qmin) q = qmin;
-    if (q > (float)MAXQUAL) q = (float)MAXQUAL;
-    return (unsigned long)(q + 0.5f);
+    return vbrLadder[quality];
 }
 
 /* Which of the two currencies the caller gave us. Extend here if a third rate
@@ -509,8 +492,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * configuration. Resolved here rather than in the caller so the ladder can
      * share the coefficient above. */
     if (config->vbrQuality >= 0)
-        config->quantqual = VbrQualityToQuantqual(hEncoder->numChannels, C_lc,
-                                                  (unsigned int)config->vbrQuality);
+        config->quantqual = VbrQualityToQuantqual((unsigned int)config->vbrQuality);
 
     /* In VBR there is no bitrate to seed a quality from, so resolve the
      * quantqual default here: the AUTO decision below reads it, and the
