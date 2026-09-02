@@ -188,12 +188,30 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
 #define MAP_FS_EXP     0.877f    /* sample-rate scaling of C                */
 #define MAP_HE_RATIO   2.0f      /* C_LC / C_HE: HE codes half the spectrum */
 
-/* C for one configuration, in total kbps. */
+/* C for one configuration, in total kbps. It depends only on the configuration,
+ * so each caller works it out once and passes it to the two primitives below
+ * rather than having them re-derive it. That is not just tidier: C costs two
+ * powf() sequences, and re-deriving it inside every helper let the compiler
+ * duplicate those into every call site, which measured +1145 bytes in
+ * faacEncApplyConfig and +587 in VbrQualityToQuantqual on its own. */
 static float MapCoefficient(unsigned int nch, unsigned long fs, int heaac)
 {
     float C = MAP_C0 * powf((float)nch, MAP_NCH_EXP)
                      * powf((float)fs * 0.001f, MAP_FS_EXP);
     return heaac ? C / MAP_HE_RATIO : C;
+}
+
+/* The map and its inverse, given C. Unclamped: callers bound them as they need. */
+static float RateForQuality(float q, float C)
+{
+    return C * powf(q, MAP_K);
+}
+
+static float QualityForRate(float total_kbps, float C)
+{
+    if (total_kbps <= 0.0f || C <= 0.0f)
+        return (float)DEFQUAL;
+    return powf(total_kbps / C, 1.0f / MAP_K);
 }
 
 /* Forward: the quantqual that lands near bps per channel. Used to seed ABR's
@@ -205,22 +223,15 @@ static float MapCoefficient(unsigned int nch, unsigned long fs, int heaac)
  * numerical cliff on the way down -- only coarser quantization. */
 #define ABS_MINQUAL 1
 
-/* Unclamped: the map's own answer, which callers bound as they need. */
-static float RawSeedQualityForBitrate(float bps, unsigned int nch,
-                                      unsigned long fs, int heaac)
+/* Per-channel bps -> quality, for a coefficient the caller already has. */
+static float RawSeedQualityForBitrate(float bps, unsigned int nch, float C)
 {
-    float total_kbps = bps * (float)nch * 0.001f;
-    float C = MapCoefficient(nch, fs, heaac);
-
-    if (total_kbps <= 0.0f || C <= 0.0f)
-        return (float)DEFQUAL;
-    return powf(total_kbps / C, 1.0f / MAP_K);
+    return QualityForRate(bps * (float)nch * 0.001f, C);
 }
 
-static unsigned long SeedQualityForBitrate(float bps, unsigned int nch,
-                                           unsigned long fs, int heaac)
+static unsigned long SeedQualityForBitrate(float bps, unsigned int nch, float C)
 {
-    float q = RawSeedQualityForBitrate(bps, nch, fs, heaac);
+    float q = RawSeedQualityForBitrate(bps, nch, C);
 
     if (q < (float)MINQUAL) q = (float)MINQUAL;
     if (q > (float)MAXQUAL) q = (float)MAXQUAL;
@@ -237,11 +248,9 @@ static unsigned long SeedQualityForBitrate(float bps, unsigned int nch,
  * then rescaled to hit this same rate, which is what makes -q mean one thing
  * across the profile switch. */
 static unsigned long VbrBitrateForQuality(unsigned long quantqual,
-                                          unsigned int nch, unsigned long fs)
+                                          unsigned int nch, float C)
 {
-    float C = MapCoefficient(nch, fs, 0);
-    float total_kbps = C * powf((float)quantqual, MAP_K);
-    float bps = total_kbps * 1000.0f / (float)nch;
+    float bps = RateForQuality((float)quantqual, C) * 1000.0f / (float)nch;
 
     /* Never return 0: this is an inferred rate, and 0 is reserved downstream to
      * mean "no rate given" (CalcBandwidth reads it as unlimited bandwidth). */
@@ -298,8 +307,8 @@ unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
     /* Lowest quality whose implied rate still clears the spec floor. Asked of
      * the LC coefficient, matching VbrBitrateForQuality: the profile is not
      * chosen yet, and this decides the rate that chooses it. */
-    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(),
-                                          nch, sampleRate, 0);
+    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(), nch,
+                                          MapCoefficient(nch, sampleRate, 0));
     if (qfloor > qmin)
         qmin = qfloor;
     if (qmin > (float)MAXQUAL)
@@ -335,7 +344,8 @@ typedef struct {
  * from the (possibly halved) core rate, which is not known until the object
  * type has been chosen -- using the rate this struct carries. */
 static RateTarget ResolveRateTarget(const faacEncConfiguration *config,
-                                    unsigned int nch, unsigned long fullRate)
+                                    unsigned int nch, unsigned long fullRate,
+                                    float C_lc)
 {
     RateTarget target;
 
@@ -348,7 +358,7 @@ static RateTarget ResolveRateTarget(const faacEncConfiguration *config,
         target.bitRatePerCh = config->bitRate;
         break;
     case RATE_MODE_VBR:
-        target.bitRatePerCh = VbrBitrateForQuality(config->quantqual, nch, fullRate);
+        target.bitRatePerCh = VbrBitrateForQuality(config->quantqual, nch, C_lc);
         break;
     }
     return target;
@@ -429,6 +439,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
     unsigned long fullRate;
     RateTarget target;
+    float C_lc, mapC;
 
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
@@ -497,7 +508,14 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * below reads target.bitRatePerCh instead of re-deriving the mode from a
      * zero test, so -q and -b reach the decisions below through identical
      * code at the same real operating point. */
-    target = ResolveRateTarget(config, hEncoder->numChannels, fullRate);
+    /* One coefficient for the whole resolution. The LC value is what the VBR
+     * rate and the AUTO gate both reason about; the HE value is the same number
+     * halved, by construction (MAP_HE_RATIO), so the profile-specific
+     * coefficient below is a divide rather than a second MapCoefficient. That
+     * matters for size as well as clarity: C costs two powf sequences, and the
+     * compiler inlines and duplicates them at every site that derives one. */
+    C_lc = MapCoefficient(hEncoder->numChannels, fullRate, 0);
+    target = ResolveRateTarget(config, hEncoder->numChannels, fullRate, C_lc);
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
@@ -570,6 +588,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         config->quantqual = (unsigned long)q;
     }
 
+    /* Now that the profile is settled, the coefficient it implies. */
+    mapC = (hEncoder->config.aacObjectType == HE_V1)
+           ? C_lc / MAP_HE_RATIO : C_lc;
+
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
@@ -585,8 +607,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
              * with the halving folded into the HE coefficient, so handing it
              * the halved rate as well would count it twice. */
             config->quantqual = SeedQualityForBitrate(
-                (float)config->bitRate, hEncoder->numChannels, fullRate,
-                hEncoder->config.aacObjectType == HE_V1);
+                (float)config->bitRate, hEncoder->numChannels, mapC);
         }
     }
 
@@ -625,8 +646,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (target.mode == RATE_MODE_ABR && config->bitRate)
     {
         float raw = RawSeedQualityForBitrate(
-            (float)config->bitRate, hEncoder->numChannels, fullRate,
-            hEncoder->config.aacObjectType == HE_V1);
+            (float)config->bitRate, hEncoder->numChannels, mapC);
 
         if (raw < (float)MINQUAL)
         {
