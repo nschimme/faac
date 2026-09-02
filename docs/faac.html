@@ -60,7 +60,13 @@ Usage
 <li>
 <kbd>-b &lt;bitrate&gt;</kbd>
 	Set the average bitrate (ABR) in kbps. The value is a whole-stream rate,
-	not per channel.
+	not per channel, and is clamped at both ends rather than refused. The
+	ceiling is normative (ISO/IEC 14496-3 caps a frame at 6144 bits per
+	channel, so 576 kbps for 48 kHz stereo); the 8 kbps-per-channel floor is
+	this encoder's own judgement. If the delivered rate misses the request by
+	more than 15% &mdash; the content saturates before the budget is spent, or
+	the rate is below what a frame costs at this sample rate &mdash; faac says
+	so when the encode finishes.
 <li>
 <kbd>--cap-rate &lt;bitrate&gt;</kbd>
 	Cap any single frame at x kbps, for transports that cannot fragment one.
