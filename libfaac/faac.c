@@ -192,11 +192,10 @@ static faac_status validate_params(const faac_params *p)
             if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* bit_rate is per channel, and so are both bounds. The ceiling is the
-     * ISO/IEC 14496-3 per-frame limit; the floor is this encoder's own view of
-     * the lowest request worth attempting, and had no caller at all before. */
-    if (p->bit_rate && (p->bit_rate > MaxBitrate(p->sample_rate)
-                        || p->bit_rate < MinBitrate()))
+    /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
+     * ISO/IEC 14496-3 per-frame limit and therefore real, whereas the format
+     * sets no minimum and the encoder's own floor already ends the descent. */
+    if (p->bit_rate && (p->bit_rate > MaxBitrate(p->sample_rate)))
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->max_bit_rate) {
         /* Bounded because it is converted into a per-frame bit budget; an

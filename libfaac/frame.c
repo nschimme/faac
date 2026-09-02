@@ -32,11 +32,13 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-/* No separate HE floor: the further below Nyquist the LC core lands, the more
+/* No HE floor at all: the further below Nyquist the LC core lands, the more
  * spectrum SBR is rescuing, so HE only wins harder as the rate falls -- which
  * is what the old 12000 floor's own comment said while the code did the
- * opposite and handed those rates to LC. The window now starts where the
- * format does, MinBitrate(), which the clamp above enforces. */
+ * opposite and handed those rates to LC. Measured at 48 kHz stereo, HE beats
+ * LC by 0.77 MOS at -b 16 and 0.94 at -b 20 while spending 15-22% FEWER bits,
+ * and it is also what keeps the response monotone: LC cannot follow the
+ * request down there, so a floor here made -b 2 cost more than -b 16. */
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
@@ -238,20 +240,21 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     {
         unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
         unsigned int maxPerCh = MaxBitrate(fullRate);
-        unsigned int minPerCh = MinBitrate();
 
-        /* Both bounds are PER CHANNEL, and so is config->bitRate. The ceiling
+        /* MaxBitrate() is per channel, and so is config->bitRate. The ceiling
          * used to be divided by numChannels before the comparison, which made
          * it that factor too low: at 48 kHz stereo everything from -b 289
          * upward silently produced 287 kbps, so half the range the format
          * allows was unreachable and the request was dropped without a word.
          *
-         * The floor had no enforcement at all -- MinBitrate() had no callers --
-         * so -b 2 was accepted and quietly produced whatever came out. */
+         * There is deliberately no floor to match it. The ceiling is the
+         * format's -- ISO/IEC 14496-3 caps a frame at 6144 bits per channel --
+         * but nothing in the format sets a minimum, and the encoder's own floor
+         * already stops the descent where the configuration runs out: 17.6
+         * kbit/s per channel at 48 kHz stereo, 3.1 at 8 kHz mono. That floor
+         * scales with the configuration, which no constant does. */
         if (config->bitRate > maxPerCh)
             config->bitRate = maxPerCh;
-        else if (config->bitRate && config->bitRate < minPerCh)
-            config->bitRate = minPerCh;
     }
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
@@ -270,7 +273,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                 max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
                               (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
             }
-            rate_ok = (rate_per_ch >= MinBitrate() && rate_per_ch <= max_he_rate);
+            rate_ok = (rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
