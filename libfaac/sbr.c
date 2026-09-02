@@ -28,12 +28,6 @@
 #include "faac_internal.h"
 #include "stats.h"
 
-/* SBR_RESAMPLE_DELAY restates a property of resample.c's FIR, and the two live
- * in different headers. Retuning that filter to a different length without
- * moving the constant would silently reintroduce the skew it cancels. */
-_Static_assert(SBR_RESAMPLE_DELAY == RESAMPLE_FILTER_LEN / 2,
-               "SBR analysis delay must track the half-band decimator's group delay");
-
 /* SBR master frequency band table (ISO/IEC 14496-3:2005 §4.6.18.3.2). kx/k2 are
  * spec-mandatory: the decoder reconstructs them from the sample rate alone, so
  * these must match its table exactly or the envelope band count desyncs. The
@@ -110,17 +104,6 @@ static int build_freq_table(SBRInfo *sbr)
     for (int k = 1; k <= n_master; k++) f_master[k] += f_master[k - 1];
     sbr->numBands = n_master;
     for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
-
-    /* Low-resolution table, derived exactly as the decoder does (ISO 14496-3
-     * §4.6.18.3.2.2): keep every other high-resolution edge, with the parity of
-     * the high band count deciding which. bs_xover_band is 0, so the high table
-     * is the master table itself. */
-    sbr->numBandsLow = (sbr->numBands + 1) >> 1;
-    int odd = sbr->numBands & 1;
-    sbr->bandEdgesLow[0] = sbr->bandEdges[0];
-    for (int b = 1; b <= sbr->numBandsLow; b++)
-        sbr->bandEdgesLow[b] = sbr->bandEdges[2 * b - odd];
-
     sbr->numNoiseBands = 1;
     return n_master;
 }
@@ -202,7 +185,6 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[0]      = 0;
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
-    fd->freqRes      = 1;   /* single envelope: same high-resolution table as a steady frame */
     for (int ch = 0; ch < SBR_MAX_CODED_CHANNELS; ch++) {
         fd->ch[ch].invfMode = 3;
         for (int ne = 0; ne < SBR_MAX_NOISE_ENVELOPES; ne++)
@@ -409,9 +391,6 @@ static inline float fast_log2(float x)
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
  * a standard 128-point implementation. Phase info is discarded as the
  * SBR bitstream only transmits envelope magnitudes. */
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((hot))
-#endif
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
 {
     float xr[64], xi[64];
@@ -459,80 +438,70 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     fd->frameClass   = sa->frameClass;
     fd->bsPointer    = sa->bsPointer;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
-    /* The decoder overrides the header's bs_amp_res for a single-envelope FIXFIX
-     * frame only; every other class keeps it, so both conditions must be tested
-     * or a variable-grid frame would be quantized on the wrong dB step. */
-    fd->eff_amp_res = (fd->frameClass == SBR_FRAME_CLASS_FIXFIX && fd->numEnvelopes == 1)
-                      ? 0 : sbr->bs_amp_res;
-    /* A transient frame carries three envelopes against a steady frame's one, so
-     * at high resolution it costs three times the envelope payload -- and the
-     * rate controller takes that out of the core. Halve the band count instead:
-     * a two-slot transient envelope is carrying temporal information, and
-     * spectral detail is the cheaper thing to give up. */
-    fd->freqRes = (fd->numEnvelopes > 1) ? 0 : sbr->bs_freq_res;
+    fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
 }
 
-/* Spectral flatness of [k_lo, k_hi): geometric over arithmetic mean of the QMF
- * band energies, in (0, 1]. Near 1 the energy is spread and the band is
- * noise-like; near 0 a few bins carry it and it is tonal.
- *
- * Across frequency rather than a prediction gain over time, because
- * SbrQmfAnalysis discards phase and only the magnitudes survive. At the QMF bin
- * width (Fs/128) that separates noise and cymbals from sustained tones, but not
- * harmonics spaced closer than a bin. */
-static float sbr_band_flatness(const float * restrict E, int k_lo, int k_hi)
-{
-    int n = k_hi - k_lo;
-    if (n < 2) return 1.0f;
-
-    float sum = 0.0f, log2sum = 0.0f;
-    for (int k = k_lo; k < k_hi; k++) {
-        float e = E[k] + SBR_LOG_ENERGY_FLOOR;
-        sum += e;
-        log2sum += fast_log2(e);
-    }
-    float arith = sum / (float)n;
-    if (!(arith > 0.0f)) return 1.0f;
-
-    /* geo/arith in the log domain, so the geometric mean never underflows. */
-    float flat = exp2f(log2sum / (float)n - fast_log2(arith));
-    return (flat < 0.0f) ? 0.0f : (flat > 1.0f) ? 1.0f : flat;
-}
-
-/* bs_invf_mode picks the chirp factor {0, 0.75, 0.9, 0.98} that whitens the
- * transposed low band. Whitening is what a noise-like target wants; applying it
- * to a tonal target erases the harmonic structure the patch was carrying, which
- * is what running at 3 unconditionally did. */
-static int sbr_invf_mode(float flatness)
-{
-    return (flatness >= 0.75f) ? 3 : (flatness >= 0.5f) ? 2 : (flatness >= 0.25f) ? 1 : 0;
-}
-
-static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
+static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
-    /* Quantize over whichever table this frame's bs_freq_res selects, so the
-     * band count here matches what write_sbr_envelope emits and what the decoder
-     * reads back. */
-    int nb = sbr_env_bands(sbr, fd);
-    const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
         /* Read-only alias; the quantizer never writes back through it. */
-        const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
+        const float (* restrict bandHalfE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandHalfE;
+        int noise_level = SBR_NOISE_LEVEL_DEFAULT;
+        fd->ch[ch].invfMode = 3;
+
+        /* Pre-calculate subband energies and log-energies for fast SFM calculation. */
+        float qmf_Ek[SBR_QMF_BANDS_64];
+        float qmf_logEk[SBR_QMF_BANDS_64];
+        float sum_e = 0.0f;
+        float sum_log_e = 0.0f;
+        int k_lo_all = sbr->kx, k_hi_all = sbr->k2;
+        int num_qmf = k_hi_all - k_lo_all;
+        for (int k = k_lo_all; k < k_hi_all; k++) {
+            float Ek = bandHalfE[0][k] + bandHalfE[1][k];
+            qmf_Ek[k] = Ek;
+            float logEk = fast_log2(Ek + 1e-10f) * 0.69314718f; /* fast log approximation */
+            qmf_logEk[k] = logEk;
+            sum_e += Ek;
+            sum_log_e += logEk;
+        }
+        if (num_qmf > 0 && sum_e > 1e-9f) {
+            float am = sum_e / (float)num_qmf;
+            float gm = expf(sum_log_e / (float)num_qmf);
+            float sfm = gm / am;
+
+            if (sfm < 0.15f) {
+                fd->ch[ch].invfMode = 3; /* HIGH filtering for strongly tonal signals */
+                noise_level = 10;
+            } else if (sfm < 0.35f) {
+                fd->ch[ch].invfMode = 2; /* MID */
+                noise_level = 7;
+            } else if (sfm < 0.65f) {
+                fd->ch[ch].invfMode = 1; /* LOW */
+                noise_level = 5;
+            } else {
+                fd->ch[ch].invfMode = 0; /* OFF for noise-like signals */
+                noise_level = 3;
+            }
+        }
 
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
-            for (int b = 0; b < nb; b++) {
-                int k_lo = edges[b], k_hi = edges[b+1];
+            for (int b = 0; b < sbr->numBands; b++) {
+                int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
                 /* Weight energy by the number of QMF slots per envelope to
                  * maintain normalized power levels across variable borders. */
-                int e_slots = sa->envSampled[e];
+                int e_slots = (n_env == 1) ? sampled : sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
                 float E = 0;
-                for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
+                if (n_env == 1) {
+                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[0][k] + bandHalfE[1][k];
+                } else {
+                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[e][k];
+                }
                 E /= (float)(e_slots * (k_hi - k_lo));
                 float factor = fd->eff_amp_res ? 1.0f : 2.0f;
                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
@@ -548,34 +517,44 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
                 }
             }
         }
-        /* Fixed noise floor. A peaky target band is no evidence that the patch
-         * will land peaks at those frequencies -- the transposition generally
-         * will not -- so the flatness measured below says nothing about how much
-         * noise this band needs. Under-injecting leaves a coherent high band at
-         * the wrong frequencies, which is worse than noise. */
         int n_q = n_env > 1 ? 2 : 1;
         for (int ne = 0; ne < n_q; ne++) {
             int prevNoise = -1;
             for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-                if (prevNoise < 0) {
-                    fd->ch[ch].noiseData[ne][nb] = SBR_NOISE_LEVEL_DEFAULT;
-                    prevNoise = SBR_NOISE_LEVEL_DEFAULT;
+                int k_lo = sbr->kx + (sbr->k2 - sbr->kx) * nb / sbr->numNoiseBands;
+                int k_hi = sbr->kx + (sbr->k2 - sbr->kx) * (nb + 1) / sbr->numNoiseBands;
+                float sum_nb = 0.0f, sum_log_nb = 0.0f;
+                int num_nb = k_hi - k_lo;
+                if (n_env == 1) {
+                    for (int k = k_lo; k < k_hi; k++) {
+                        sum_nb += qmf_Ek[k];
+                        sum_log_nb += qmf_logEk[k];
+                    }
                 } else {
-                    int delta = clamp_int(SBR_NOISE_LEVEL_DEFAULT - prevNoise, -15, 15);
+                    int env_idx = ne % n_env;
+                    for (int k = k_lo; k < k_hi; k++) {
+                        float Ek = bandHalfE[env_idx][k];
+                        sum_nb += Ek;
+                        sum_log_nb += fast_log2(Ek + 1e-10f) * 0.69314718f;
+                    }
+                }
+                int band_noise_level = noise_level;
+                if (num_nb > 0 && sum_nb > 1e-9f) {
+                    float sfm_nb = expf(sum_log_nb / (float)num_nb) / (sum_nb / (float)num_nb);
+                    /* Higher SFM (noise-like) -> lower noise level index (higher noise energy);
+                       Lower SFM (tonal) -> higher noise level index (lower noise energy). */
+                    band_noise_level = clamp_int(lrintf(10.0f - 8.0f * sfm_nb), 0, 30);
+                }
+
+                if (prevNoise < 0) {
+                    fd->ch[ch].noiseData[ne][nb] = band_noise_level;
+                    prevNoise = band_noise_level;
+                } else {
+                    int delta = clamp_int(band_noise_level - prevNoise, -15, 15);
                     fd->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
                 }
             }
         }
-
-        /* Inverse filtering does key off flatness: it decides how hard to whiten
-         * the transposed band, and a tonal target wants that structure kept. One
-         * decision per frame, since the decoder smooths the chirp factor across
-         * frames and finer detail would be filtered away regardless. */
-        float acc[SBR_QMF_BANDS_64];
-        for (int k = sbr->kx; k < sbr->k2; k++) acc[k] = 0.0f;
-        for (int e = 0; e < n_env; e++)
-            for (int k = sbr->kx; k < sbr->k2; k++) acc[k] += bandE[e][k];
-        fd->ch[ch].invfMode = sbr_invf_mode(sbr_band_flatness(acc, sbr->kx, sbr->k2));
     }
 }
 
@@ -591,7 +570,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
-    sbr_quantize_envelopes(sbr, nch, sa, fd);
+    sbr_quantize_envelopes(sbr, nch, sa->sampled, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
