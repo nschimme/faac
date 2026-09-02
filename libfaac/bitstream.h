@@ -21,6 +21,7 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 
 /**
  * ADTS Constants (ISO/IEC 14496-3)
@@ -73,17 +74,22 @@ static inline void BitWriterInit(BitWriter *bw)
 
 static inline void BitWriterPut(BitWriter *bw, uint32_t value, int numBits)
 {
-    bw->val = (bw->val << numBits) | ((uint32_t)value & ((1U << numBits) - 1));
-    bw->bits += numBits;
+    if (numBits > 0) {
+        uint32_t mask = (numBits >= 32) ? 0xFFFFFFFFU : ((1U << numBits) - 1);
+        bw->val = (bw->val << numBits) | ((uint32_t)value & mask);
+        bw->bits += numBits;
+    }
 }
 
-static inline void BitWriterFlush(BitWriter *bw, BitStream *bs)
+static inline int BitWriterFlush(BitWriter *bw, BitStream *bs, bool write)
 {
-    if (bw->bits > 0) {
+    int ret = bw->bits;
+    if (write && bs && bw->bits > 0) {
         PutBit(bs, bw->val, bw->bits);
-        bw->val = 0;
-        bw->bits = 0;
     }
+    bw->val = 0;
+    bw->bits = 0;
+    return ret;
 }
 
 /* Batches small field writes into a register and flushes whole bytes as

@@ -235,25 +235,17 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool writeFlag)
 {
     if (writeFlag) {
-        BitWriter bw;
-        BitWriterInit(&bw);
-        BitWriterPut(&bw, 0xFFF,                        LEN_ADTS_SYNC);
-        BitWriterPut(&bw, hEncoder->config.mpegVersion,  LEN_ADTS_ID);
-        BitWriterPut(&bw, 0,                            LEN_ADTS_LAYER);
-        BitWriterPut(&bw, 1,                            LEN_ADTS_ABSENT);
-        BitWriterPut(&bw, LOW - 1,                      LEN_ADTS_PROFILE);
-        BitWriterPut(&bw, hEncoder->sampleRateIdx,      LEN_ADTS_FREQ);
-        BitWriterPut(&bw, 0,                            LEN_ADTS_PRIV);
-        BitWriterPut(&bw, hEncoder->numChannels,        LEN_ADTS_CH_CFG);
-        BitWriterPut(&bw, 0,                            LEN_ADTS_ORIG + LEN_ADTS_HOME);
-        BitWriterFlush(&bw, bs);
+        uint32_t h1 = 0xFFF00000u;
+        h1 |= ((uint32_t)hEncoder->config.mpegVersion & 1) << 19;
+        h1 |= (1u << 16); /* protection_absent = 1 */
+        h1 |= ((uint32_t)(LOW - 1) & 3) << 14;
+        h1 |= ((uint32_t)hEncoder->sampleRateIdx & 15) << 10;
+        h1 |= ((uint32_t)hEncoder->numChannels & 7) << 6;
+        PutBit(bs, h1 >> 4, 28);
 
-        BitWriterInit(&bw);
-        BitWriterPut(&bw, 0,                            LEN_ADTS_COPY_ID + LEN_ADTS_COPY_ST);
-        BitWriterPut(&bw, hEncoder->usedBytes,          LEN_ADTS_FRAME);
-        BitWriterPut(&bw, 0x7FF,                        LEN_ADTS_FULL);
-        BitWriterPut(&bw, 0,                            LEN_ADTS_BLOCKS);
-        BitWriterFlush(&bw, bs);
+        uint32_t h2 = ((uint32_t)hEncoder->usedBytes & 0x1FFF) << 13;
+        h2 |= (0x7FFu << 2);
+        PutBit(bs, h2, 28);
     }
     return 56;
 }
