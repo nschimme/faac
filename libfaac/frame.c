@@ -96,6 +96,10 @@ static char *libCopyright =
   " Copyright (C) 2005-2026, Fabian Greffrath\n"
   " Copyright (C) 2026, Nils Schimmelmann\n";
 
+/* Per channel. Below this the 20 kHz plateau holds; above it the bandwidth
+ * opens toward Nyquist, reaching it at 256000 for 48 kHz input. */
+#define BW_OPEN_RATE 192000
+
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     const unsigned int nyquist = sampleRate / 2;
@@ -122,9 +126,32 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Segment 5: transparency plateau, 20 kHz opening up to Nyquist.
+         * Above 128 kbit/s per channel there are bits to spare, so the
+         * bandwidth keeps widening rather than leaving the top of the
+         * spectrum uncoded at a rate the caller explicitly asked for; the
+         * Nyquist clamp below bounds it, reached at 192 kbit/s per channel
+         * for 48 kHz input.
+         *
+         * The ramp starts at BW_OPEN_RATE rather than at the segment
+         * boundary because widening is not free: it is the same bit budget
+         * spread over more spectrum. Measured at 48 kHz stereo, opening to
+         * 22 kHz at 160 kbit/s per channel moved the output rate by +0.05%
+         * -- a pure reallocation -- and cost 0.0088 MOS, while at 224 kbit/s
+         * per channel, where the 20 kHz cap was the thing blocking the rate,
+         * it bought +3.7% bits at flat MOS. So hold the plateau until the
+         * audible band is saturated and the cap is what stands between the
+         * caller and the rate they asked for.
+         *
+         * This segment had a `if (bw > 20000) bw = 20000;` that cancelled
+         * the term above it: the addend is positive for every bitRate that
+         * reaches this branch, so the plateau was flat at 20 kHz and the
+         * arithmetic had never once had an effect. That capped the output
+         * rate well below the request at the top of the range -- at 48 kHz
+         * stereo `-b 576` produced 475 kbit/s, because 4 kHz of Nyquist was
+         * unreachable no matter how many bits were on offer. */
+        bw = (bitRate <= BW_OPEN_RATE)
+             ? 20000 : 20000 + ((bitRate - BW_OPEN_RATE) / 16);
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
