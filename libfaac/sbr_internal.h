@@ -138,7 +138,7 @@ void SbrEnd(SBRInfo *sbr);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
-void SbrEncode(SBRInfo *sbr, int numChannels, struct SignalAnalysis *sa, SbrFrameData *fd);
+void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
 /* Emits the payload in *fd, which is a delayed slot, not the newest one. */
 int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac, int writeFlag);
 

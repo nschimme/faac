@@ -324,7 +324,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, int realPerCh, fl
         }
 
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, 2 * FRAME_LEN, sCtx->sbrInfo);
-        SbrEncode(sCtx->sbrInfo, numChannels, &sCtx->signalAnalysis, fd);
+        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         Resample(rs, 2 * FRAME_LEN);
     }
 
@@ -538,13 +538,16 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
     }
 }
 
-void SbrEncode(SBRInfo *sbr, int numChannels, struct SignalAnalysis *sa, SbrFrameData *fd)
+void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
     sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
+
+    for (int ch = 0; ch < nch; ch++)
+        memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
     sbr_quantize_envelopes(sbr, nch, sa, fd);
