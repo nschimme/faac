@@ -281,35 +281,44 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
           {
               int l = elem->channels[0];
               int r = elem->channels[1];
-              float pe_sum = psyInfo[l].pe + psyInfo[r].pe;
+              if ((unsigned int)l < numChannels && (unsigned int)r < numChannels)
+              {
+                  float pe_sum = psyInfo[l].pe + psyInfo[r].pe;
 
-              if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
-                  psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
-                  psyInfo[l].pe >= PE_THRESH_PER_CH ||
-                  psyInfo[r].pe >= PE_THRESH_PER_CH ||
-                  pe_sum >= (2.0f * PE_THRESH_PER_CH))
-              {
-                  desire[l] = ONLY_SHORT_WINDOW;
-                  desire[r] = ONLY_SHORT_WINDOW;
-              }
-              else
-              {
-                  desire[l] = ONLY_LONG_WINDOW;
-                  desire[r] = ONLY_LONG_WINDOW;
+                  if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
+                      psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
+                      psyInfo[l].pe >= PE_THRESH_PER_CH ||
+                      psyInfo[r].pe >= PE_THRESH_PER_CH ||
+                      pe_sum >= (2.0f * PE_THRESH_PER_CH))
+                  {
+                      desire[l] = ONLY_SHORT_WINDOW;
+                      desire[r] = ONLY_SHORT_WINDOW;
+                  }
+                  else
+                  {
+                      desire[l] = ONLY_LONG_WINDOW;
+                      desire[r] = ONLY_LONG_WINDOW;
+                  }
               }
           }
           else if (elem->type == ID_SCE)
           {
               int ch = elem->channels[0];
-              if (psyInfo[ch].block_type == ONLY_SHORT_WINDOW || psyInfo[ch].pe >= PE_THRESH_PER_CH)
-                  desire[ch] = ONLY_SHORT_WINDOW;
-              else
-                  desire[ch] = ONLY_LONG_WINDOW;
+              if ((unsigned int)ch < numChannels)
+              {
+                  if (psyInfo[ch].block_type == ONLY_SHORT_WINDOW || psyInfo[ch].pe >= PE_THRESH_PER_CH)
+                      desire[ch] = ONLY_SHORT_WINDOW;
+                  else
+                      desire[ch] = ONLY_LONG_WINDOW;
+              }
           }
           else if (elem->type == ID_LFE)
           {
               int ch = elem->channels[0];
-              desire[ch] = ONLY_LONG_WINDOW;
+              if ((unsigned int)ch < numChannels)
+              {
+                  desire[ch] = ONLY_LONG_WINDOW;
+              }
           }
       }
   }
