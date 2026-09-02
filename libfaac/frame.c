@@ -439,7 +439,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -937,7 +937,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
+        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
 #ifdef FAAC_STATS
@@ -948,22 +948,18 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
                 g_faacStats.attackCount++;
             }
-            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                g_faacStats.longBlocks++;
-            }
+            g_faacStats.longBlocks++;
 #endif
 
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
+            /* Screening on envelope skips LPC work for stationary long frames */
             if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+
+            TnsEncode(&coderInfo[channel],
+                      hEncoder->freqBuff[channel],
+                      hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
         }

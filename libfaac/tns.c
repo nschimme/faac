@@ -43,16 +43,16 @@ static const struct {
 /* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
  * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
-#define TNS_PNS_SFM_SKIP    0.85f
+#define TNS_PNS_SFM_SKIP    0.75f
 
-static void calc_autocorr_f(int order, int length, const float * work, float * r)
+static void calc_autocorr_f(int order, int length, const float * restrict work, float * restrict r)
 {
     int lag, i;
 
     for (lag = 0; lag <= order; lag++) {
         float acc = 0.0f;
-        const float * p1 = work;
-        const float * p2 = work + lag;
+        const float * restrict p1 = work;
+        const float * restrict p2 = work + lag;
         int n = length - lag;
 
         for (i = 0; i < n; i++)
@@ -68,7 +68,8 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
  * free to report here, since the recursion already has both numbers. */
 static float compute_lpc(int order, const float * r, float * k)
 {
-    float a[TNS_MAX_ORDER + 1];
+    float g0[TNS_MAX_ORDER + 1];
+    float g1[TNS_MAX_ORDER + 1];
     float err;
     int i, j;
 
@@ -78,37 +79,33 @@ static float compute_lpc(int order, const float * r, float * k)
         return 1.0f;
     }
 
+    for (j = 0; j <= order; j++) {
+        g0[j] = r[j];
+        g1[j] = r[j];
+    }
+
     err = r[0];
-    a[0] = 1.0f;
+
     for (i = 1; i <= order; i++) {
-        float lambda = r[i];
         float rc;
-        int half;
 
-        for (j = 1; j < i; j++)
-            lambda += a[j] * r[i - j];
-
-        if (err <= 0.0f) {
+        if (g0[0] <= 0.0f) {
             for (; i <= order; i++)
                 k[i] = 0.0f;
             break;
         }
 
-        rc = -lambda / err;
+        rc = -g1[1] / g0[0];
         if (rc > 0.999f) rc = 0.999f;
         else if (rc < -0.999f) rc = -0.999f;
         k[i] = rc;
 
-        half = (i + 1) / 2;
-        for (j = 1; j < half; j++) {
-            float t1 = a[j];
-            float t2 = a[i - j];
-            a[j] = t1 + rc * t2;
-            a[i - j] = t2 + rc * t1;
+        for (j = 0; j <= order - i; j++) {
+            float t0 = g0[j] + rc * g1[j + 1];
+            float t1 = g1[j + 1] + rc * g0[j];
+            g0[j] = t0;
+            g1[j] = t1;
         }
-        if (i % 2 == 0)
-            a[i / 2] += rc * a[i / 2];
-        a[i] = rc;
 
         err *= (1.0f - rc * rc);
         if (err <= 0.0f)
@@ -144,9 +141,6 @@ static void quantize_coeffs(int order, int res, float * k, int * idx)
         else if (q < i_min) q = i_min;
         idx[i] = q;
 
-        /* Re-derive k[] from the quantized index (not the original float)
-         * so finalize_filter below builds the same filter the decoder will,
-         * from the same lossy coefficients that actually get transmitted. */
         s = (q >= 0) ? s_p : s_n;
         k[i] = sinf((float)q / s);
     }
@@ -181,30 +175,22 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, float * spec)
+static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
-    float hist[BLOCK_LEN_LONG];
     int i, j;
+    int limit = order < length ? order : length;
 
-    memcpy(hist, spec, length * sizeof(float));
-    if (direction) {
-        for (i = length - 1; i >= 0; i--) {
-            float acc = hist[i];
-            int jmax = min(order, length - 1 - i);
-
-            for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i + j];
-            spec[i] = acc;
-        }
-    } else {
-        for (i = 0; i < length; i++) {
-            float acc = hist[i];
-            int jmax = min(order, i);
-
-            for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i - j];
-            spec[i] = acc;
-        }
+    for (i = 0; i < limit; i++) {
+        float acc = src[i];
+        for (j = 1; j <= i; j++)
+            acc += a[j] * src[i - j];
+        dst[i] = acc;
+    }
+    for (; i < length; i++) {
+        float acc = src[i];
+        for (j = 1; j <= order; j++)
+            acc += a[j] * src[i - j];
+        dst[i] = acc;
     }
 }
 
@@ -226,26 +212,22 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
-    float *band, energy;
-    float wspec[BLOCK_LEN_LONG];
+    float *band;
+    float *wspec = workBuff;
+    float *trial = workBuff + BLOCK_LEN_LONG;
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain;
     int order, limit, i;
 
-    if (length <= TNS_LPC_ORDER)
+    if (length <= TNS_LPC_ORDER || (b_stop - b_start) < 8)
         return 0;
 
     band = spec + i_start;
-    energy = 0.0f;
-    for (i = 0; i < length; i++)
-        energy += band[i] * band[i];
-    if (energy < TNS_MIN_ENERGY)
-        return 0;
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
@@ -255,7 +237,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     {
         float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
+        float total_energy = 0.0f;
         int nbands = b_stop - b_start;
+        float rms_band[MAX_SCFAC_BANDS];
         int b;
 
         for (b = b_start; b < b_stop; b++) {
@@ -264,7 +248,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
+            total_energy += e;
             rms = sqrtf(e / (float)(s1 - s0));
+            rms_band[b - b_start] = rms;
             if (rms > maxrms) maxrms = rms;
 
             /* rms_fl keeps logf() away from 0 for silent bands; folded into
@@ -273,6 +259,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             sum_rms += rms_fl;
             sum_log_rms += logf(rms_fl);
         }
+
+        if (total_energy < TNS_MIN_ENERGY)
+            return 0;
 
         /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0
          * means the band is noise-like, which PNS (quantize.c) is about to
@@ -286,12 +275,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
-
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
+            float rms = rms_band[b - b_start];
+            float wgt = 1.0f / (rms > floorrms ? rms : floorrms);
             for (i = s0; i < s1; i++)
                 wspec[i - i_start] = (float)spec[i] * wgt;
         }
@@ -319,10 +304,6 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
     filter->order = order;
 
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
-     * reversal, so both directions give the same LPC fit and prediction gain.
-     * Picking the right one needs the time-domain transient position, which
-     * this function never sees. */
     filter->direction = 0;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
@@ -343,28 +324,31 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
      * transmitted no longer pays for itself. Re-check on a trial run of the
      * real (quantized) filter before committing to writing it out. */
     {
-        float trial[BLOCK_LEN_LONG];
         float orig_e = 0.0f, filt_e = 0.0f;
 
-        memcpy(trial, wspec, length * sizeof(float));
-        filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
+        filter_spec(length, order, filter->aCoeffs, wspec, trial);
         for (i = 0; i < length; i++) {
             orig_e += wspec[i] * wspec[i];
             filt_e += trial[i] * trial[i];
         }
+
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < TNS_MEASURED_GAIN * filt_e)
             return 0;
     }
 
-    filter_spec(length, order, filter->direction, filter->aCoeffs, band);
+    filter_spec(length, order, filter->aCoeffs, band, trial);
+    memcpy(band, trial, length * sizeof(float));
     return 1;
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff)
 {
+    TnsInfo *tnsInfo = &coderInfo->tnsInfo;
+    int numBands = coderInfo->sfbn;
+    enum WINDOW_TYPE blockType = coderInfo->block_type;
+    int *sfbOffsetTable = coderInfo->sfb_offset;
     int b_start, b_stop;
 
     tnsInfo->tnsDataPresent = 0;
@@ -380,7 +364,7 @@ void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* 
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->windowData.tnsFilter[0], workBuff))
         return;
 
 #ifdef FAAC_STATS
