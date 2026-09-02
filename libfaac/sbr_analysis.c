@@ -47,19 +47,14 @@ static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
     sa->tEnv[3] = SBR_NUM_TIME_SLOTS;
 
     if (Tb <= 8) {
-        /* Decoder: t_env[i+1] = t_env[i] + 2*bs_rel_bord + 2, e_a = ptr - 1
-         * (so e_a = e_t + 1 requires ptr = e_t + 2). */
+        /* Decoder: t_env[i+1] = t_env[i] + 2*bs_rel_bord + 2, e_t = 1 */
         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
         sa->tEnv[1] = Tb;
         sa->tEnv[2] = Tb + 2;
         e_t = 1;
-        sa->bsPointer = e_t + 2;
+        sa->bsPointer = e_t + 1;
     } else {
-        /* Decoder: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2, walking back
-         * from the trailing border, and e_a = numEnvelopes + 1 - ptr. At the
-         * last legal border there is no room for a trailing envelope, so the
-         * transient becomes the final one instead.
-         * (so e_a = e_t + 1 requires ptr = numEnvelopes - e_t). */
+        /* Decoder: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2, walking back */
         sa->frameClass = SBR_FRAME_CLASS_FIXVAR;
         if (Tb <= SBR_BORDER_MAX - 2) {
             sa->tEnv[1] = Tb;
