@@ -403,9 +403,6 @@ static inline float fast_log2(float x)
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
  * a standard 128-point implementation. Phase info is discarded as the
  * SBR bitstream only transmits envelope magnitudes. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
 {
     float xr[64], xi[64];

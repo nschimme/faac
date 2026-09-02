@@ -83,12 +83,7 @@ static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slo
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
- * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
- * here (not split out) to stay under GCC's LTO auto-inline threshold. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
+ * and subband energy accumulation. */
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
