@@ -31,19 +31,29 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
-#define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
-#define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
-
-/* Below this, a band's spectral energy is indistinguishable from float
- * rounding noise, so there's nothing real for TNS to whiten. Also reused
- * below as the floor for RMS-normalization and the LPC residual check,
- * rather than inventing a separate near-zero constant for each. */
 #define TNS_MIN_ENERGY      1e-9f
-/* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
- * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
- * TNS's LPC work there; it only pays off on tonal/peaky bands. */
 #define TNS_PNS_SFM_SKIP    0.85f
+
+static inline int TnsMaxOrder(unsigned long bitRate)
+{
+    if (bitRate > 0 && bitRate <= 32000) return 6;
+    if (bitRate > 0 && bitRate <= 64000) return 8;
+    return 12;
+}
+
+static inline float TnsGainLimit(unsigned long bitRate, int bitReservoir, int bitReservoirCap)
+{
+    float base_gain = 1.35f;
+    if (bitRate > 0 && bitRate <= 32000) base_gain = 1.50f;
+    else if (bitRate > 0 && bitRate <= 64000) base_gain = 1.40f;
+
+    if (bitReservoirCap > 0) {
+        float fill_ratio = (float)bitReservoir / (float)bitReservoirCap;
+        if (fill_ratio < 0.25f) base_gain += 0.15f; /* Reservoir low: require higher prediction gain */
+        else if (fill_ratio > 0.75f) base_gain -= 0.10f; /* Reservoir full: accept lower prediction gain */
+    }
+    return base_gain;
+}
 
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
 {
@@ -68,8 +78,8 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
  * free to report here, since the recursion already has both numbers. */
 static float compute_lpc(int order, const float * r, float * k)
 {
-    float a[TNS_MAX_ORDER + 1];
-    float err;
+    float g0[TNS_MAX_ORDER + 1], g1[TNS_MAX_ORDER + 1];
+    float err = r[0];
     int i, j;
 
     if (r[0] <= 0.0f) {
@@ -78,47 +88,32 @@ static float compute_lpc(int order, const float * r, float * k)
         return 1.0f;
     }
 
-    err = r[0];
-    a[0] = 1.0f;
+    for (i = 0; i <= order; i++) {
+        g0[i] = r[i];
+        g1[i] = r[i];
+    }
+
     for (i = 1; i <= order; i++) {
-        float lambda = r[i];
         float rc;
-        int half;
-
-        for (j = 1; j < i; j++)
-            lambda += a[j] * r[i - j];
-
-        if (err <= 0.0f) {
-            for (; i <= order; i++)
-                k[i] = 0.0f;
+        if (g0[0] <= 0.0f) {
+            for (; i <= order; i++) k[i] = 0.0f;
             break;
         }
-
-        rc = -lambda / err;
+        rc = -g1[i] / g0[0];
         if (rc > 0.999f) rc = 0.999f;
         else if (rc < -0.999f) rc = -0.999f;
         k[i] = rc;
 
-        half = (i + 1) / 2;
-        for (j = 1; j < half; j++) {
-            float t1 = a[j];
-            float t2 = a[i - j];
-            a[j] = t1 + rc * t2;
-            a[i - j] = t2 + rc * t1;
-        }
-        if (i % 2 == 0)
-            a[i / 2] += rc * a[i / 2];
-        a[i] = rc;
-
         err *= (1.0f - rc * rc);
-        if (err <= 0.0f)
-            break;
+
+        for (j = 0; j <= order - i; j++) {
+            float t0 = g0[j] + rc * g1[j + i];
+            float t1 = g1[j + i] + rc * g0[j];
+            g0[j] = t0;
+            g1[j + i] = t1;
+        }
     }
 
-    /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
-     * means a degenerate input rather than a genuinely great filter. Report
-     * infinite gain so the caller's isfinite() check rejects it, instead of
-     * dividing by ~0. */
     if (err <= TNS_MIN_ENERGY)
         return INFINITY;
     return r[0] / err;
@@ -181,28 +176,26 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, float * spec)
+static void filter_spec(int length, int order, int direction, const float * a, float * spec, const float * src)
 {
-    float hist[BLOCK_LEN_LONG];
     int i, j;
 
-    memcpy(hist, spec, length * sizeof(float));
     if (direction) {
         for (i = length - 1; i >= 0; i--) {
-            float acc = hist[i];
+            float acc = src[i];
             int jmax = min(order, length - 1 - i);
 
             for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i + j];
+                acc += a[j] * src[i + j];
             spec[i] = acc;
         }
     } else {
         for (i = 0; i < length; i++) {
-            float acc = hist[i];
+            float acc = src[i];
             int jmax = min(order, i);
 
             for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i - j];
+                acc += a[j] * src[i - j];
             spec[i] = acc;
         }
     }
@@ -226,107 +219,77 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter)
+                         float *spec, TnsFilterData *filter, unsigned long bitRate,
+                         int bitReservoir, int bitReservoirCap,
+                         float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
-    float *band, energy;
-    float wspec[BLOCK_LEN_LONG];
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
-    float gain;
-    int order, limit, i;
+    float gain, energy;
+    int max_order = TnsMaxOrder(bitRate);
+    float gain_limit = TnsGainLimit(bitRate, bitReservoir, bitReservoirCap);
+    int order, limit, i, b;
 
-    if (length <= TNS_LPC_ORDER)
+    if (length <= max_order)
         return 0;
 
-    band = spec + i_start;
     energy = 0.0f;
     for (i = 0; i < length; i++)
-        energy += band[i] * band[i];
+        energy += spec[i_start + i] * spec[i_start + i];
     if (energy < TNS_MIN_ENERGY)
         return 0;
 
-    /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
-     * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
-     * band has the most energy and ignore quieter ones -- but pre-echo is
-     * audible in quiet bands too, so the filter needs to whiten across the
-     * whole range, not just the peak. */
+    /* Tonality & Spectral Flatness (SFM) Pre-Screening Gates:
+     * 1. Tonality / Peak-to-Average check across TNS bands: if the spectrum has
+     *    an extremely sharp tonal harmonic peak (e.g. glockenspiel resonances),
+     *    skip TNS whitening to preserve pure tonal harmonic quality.
+     * 2. Spectral Flatness (geomean/arithmean of per-band RMS) near 1.0 means
+     *    the spectrum is noise-like, which PNS will handle anyway -- skip LPC. */
     {
-        float maxrms = 0.0f, floorrms;
+        float max_e = 0.0f;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
         int nbands = b_stop - b_start;
-        int b;
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, rms_fl;
-
+            float band_e = 0.0f, rms;
             for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            if (rms > maxrms) maxrms = rms;
+                band_e += spec[i] * spec[i];
+            if (band_e > max_e) max_e = band_e;
 
-            /* rms_fl keeps logf() away from 0 for silent bands; folded into
-             * the same loop as maxrms rather than a second pass. */
-            rms_fl = rms > TNS_MIN_ENERGY ? rms : TNS_MIN_ENERGY;
-            sum_rms += rms_fl;
-            sum_log_rms += logf(rms_fl);
+            rms = sqrtf(band_e / (float)(s1 - s0));
+            if (rms < TNS_MIN_ENERGY) rms = TNS_MIN_ENERGY;
+            sum_rms += rms;
+            sum_log_rms += logf(rms);
         }
 
-        /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0
-         * means the band is noise-like, which PNS (quantize.c) is about to
-         * replace anyway -- skip the LPC work; it only pays off on
-         * tonal/peaky bands. */
-        if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
+        /* If the peak band holds > 80% of the total energy, it is a pure tonal chime */
+        if (max_e > 0.80f * energy)
             return 0;
 
-        floorrms = maxrms * 0.01f;
-        if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
-
-        for (b = b_start; b < b_stop; b++) {
-            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float e = 0.0f, rms, wgt;
-
-            for (i = s0; i < s1; i++)
-                e += (float)(spec[i] * spec[i]);
-            rms = sqrtf(e / (float)(s1 - s0));
-            wgt = 1.0f / (rms > floorrms ? rms : floorrms);
-            for (i = s0; i < s1; i++)
-                wspec[i - i_start] = (float)spec[i] * wgt;
-        }
+        /* If spectral flatness ratio > TNS_PNS_SFM_SKIP (0.85), spectrum is noise-like */
+        if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
+            return 0;
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
-    if (gain < TNS_GAIN_LIMIT)
-        return 0;
-    /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
-     * so a high gain can't mean an unstable filter; isfinite() catches the
-     * genuinely degenerate (near-zero-error) fits instead. */
-    if (!isfinite(gain))
+    calc_autocorr_f(max_order, length, spec + i_start, r);
+    gain = compute_lpc(max_order, r, k);
+    if (gain < gain_limit || !isfinite(gain))
         return 0;
 
-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(max_order, DEF_TNS_COEFF_RES, k, filter->index);
 
-    /* Drop trailing taps that quantized away to ~nothing: they cost bits
-     * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = max_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
         return 0;
 
     filter->order = order;
-
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
-     * reversal, so both directions give the same LPC fit and prediction gain.
-     * Picking the right one needs the time-domain transient position, which
-     * this function never sees. */
     filter->direction = 0;
 
-    /* Coefficients that all fit in one fewer bit each can be transmitted at
-     * reduced resolution; the spec's coefCompress flag signals that. */
     filter->coefCompress = 1;
     limit = 1 << (DEF_TNS_COEFF_RES - 2);
     for (i = 1; i <= order; i++) {
@@ -338,59 +301,88 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
     finalize_filter(order, k, filter->aCoeffs);
 
-    /* compute_lpc's gain estimate was on the un-quantized coefficients;
-     * quantization can erode it enough that the filter actually being
-     * transmitted no longer pays for itself. Re-check on a trial run of the
-     * real (quantized) filter before committing to writing it out. */
     {
-        float trial[BLOCK_LEN_LONG];
+        float *trial = workBuff;
         float orig_e = 0.0f, filt_e = 0.0f;
+        float *band = spec + i_start;
 
-        memcpy(trial, wspec, length * sizeof(float));
-        filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
+        filter_spec(length, order, filter->direction, filter->aCoeffs, trial, band);
+
         for (i = 0; i < length; i++) {
-            orig_e += wspec[i] * wspec[i];
+            orig_e += band[i] * band[i];
             filt_e += trial[i] * trial[i];
         }
+
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
-        if (orig_e < TNS_MEASURED_GAIN * filt_e)
+        if (orig_e < gain_limit * filt_e)
             return 0;
+
+        memcpy(band, trial, length * sizeof(float));
     }
 
-    filter_spec(length, order, filter->direction, filter->aCoeffs, band);
     return 1;
 }
 
-void TnsEncode(TnsInfo* tnsInfo, int numBands, enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec)
+void TnsEncodeElement(struct faacEncStruct *hEncoder, AACElement *elem,
+                      CoderInfo *coderInfo, int admit)
 {
-    int b_start, b_stop;
+    int ch, nch, ch0, numBands, b_start, b_stop;
+    TnsInfo *tnsInfos[2];
+    float *specs[2];
+    int *sfbOffsetTable;
+    enum WINDOW_TYPE blockType;
 
-    tnsInfo->tnsDataPresent = 0;
-    tnsInfo->windowData.numFilters = 0;
+    if (elem->type == ID_SCE) nch = 1;
+    else if (elem->type == ID_CPE) nch = 2;
+    else return;
 
-    /* Short windows already have the temporal resolution to not need TNS. */
-    if (blockType == ONLY_SHORT_WINDOW)
+    for (ch = 0; ch < nch; ch++) {
+        int channel = elem->channels[ch];
+        tnsInfos[ch] = &coderInfo[channel].tnsInfo;
+        specs[ch] = hEncoder->freqBuff[channel];
+        tnsInfos[ch]->tnsDataPresent = 0;
+        tnsInfos[ch]->windowData.numFilters = 0;
+    }
+
+    ch0 = elem->channels[0];
+    blockType = coderInfo[ch0].block_type;
+
+    /* Short windows (and non-admitted elements) skip TNS filtering completely */
+    if (blockType == ONLY_SHORT_WINDOW || !admit)
         return;
 
-    b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
-    b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
+    numBands = coderInfo[ch0].sfbn;
+    sfbOffsetTable = coderInfo[ch0].sfb_offset;
+
+    b_start = min(tnsInfos[0]->tnsMinBandNumberLong, numBands);
+    b_stop = min(tnsInfos[0]->tnsMaxBandsLong, numBands);
+
+    /* Clamp TNS upper band limit to actual coded spectral bandwidth (numBands / sfbn) */
+    if (b_stop > numBands)
+        b_stop = numBands;
+
     if (b_stop <= b_start)
         return;
 
-    if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
-        return;
+    for (ch = 0; ch < nch; ch++) {
+        TnsInfo *info = tnsInfos[ch];
+
+        if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
+                           &info->windowData.tnsFilter[0],
+                           hEncoder->config.bitRate,
+                           hEncoder->bitReservoir,
+                           hEncoder->bitReservoirCap,
+                           hEncoder->gpsyInfo.sharedWorkBuffLong))
+            continue;
 
 #ifdef FAAC_STATS
-    g_faacStats.longBlocksTNS++;
+        g_faacStats.longBlocksTNS++;
 #endif
 
-    /* Declared from b_start to the top of the spectrum rather than to b_stop,
-     * over-declaring the region. */
-    tnsInfo->windowData.tnsFilter[0].length = tnsInfo->tnsNumSwbLong - b_start;
-    tnsInfo->windowData.numFilters = 1;
-    tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
-    tnsInfo->tnsDataPresent = 1;
+        info->windowData.tnsFilter[0].length = info->tnsNumSwbLong - b_start;
+        info->windowData.numFilters = 1;
+        info->windowData.coefResolution = DEF_TNS_COEFF_RES;
+        info->tnsDataPresent = 1;
+    }
 }

@@ -439,7 +439,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 0;
+    hEncoder->config.useTns = 1;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -894,78 +894,89 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Funnelled through one call site so BlocGroup stays a single inlined copy. */
-    for (int e = 0; e < hEncoder->numElements; e++)
     {
-        AACElement *el = &hEncoder->elements[e];
-        int l = el->channels[0];
-        int r = (el->type == ID_CPE) ? el->channels[1] : -1;
-        CoderInfo *a = NULL, *b = NULL;
-        float *xa = NULL, *xb = NULL;
-
-        if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
+        int e;
+        for (e = 0; e < hEncoder->numElements; e++)
         {
-            a = &coderInfo[l];
-            xa = hEncoder->freqBuff[l];
-            if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            AACElement *el = &hEncoder->elements[e];
+            int l = el->channels[0];
+            int r = (el->type == ID_CPE) ? el->channels[1] : -1;
+            CoderInfo *a = NULL, *b = NULL;
+            float *xa = NULL, *xb = NULL;
+
+            if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
             {
-                b = &coderInfo[r];
-                xb = hEncoder->freqBuff[r];
+                a = &coderInfo[l];
+                xa = hEncoder->freqBuff[l];
+                if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+                {
+                    b = &coderInfo[r];
+                    xb = hEncoder->freqBuff[r];
+                }
             }
-        }
-        else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
-        {
-            a = &coderInfo[r];
-            xa = hEncoder->freqBuff[r];
-        }
+            else if (r >= 0 && coderInfo[r].block_type == ONLY_SHORT_WINDOW)
+            {
+                a = &coderInfo[r];
+                xa = hEncoder->freqBuff[r];
+            }
 
-        if (a)
-        {
-            BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
+            if (a)
+            {
+                BlocGroup(a, xa, b, xb, &hEncoder->aacquantCfg);
 #ifdef FAAC_STATS
-            /* Everything downstream scales with groups.n * sfbn, so this one
-             * number covers both the throughput and the bitrate axis. */
-            {
-                unsigned int nch = b ? 2 : 1;
-                g_faacStats.shortChannels += nch;
-                g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
-                if (a->groups.n > 1)
-                    g_faacStats.shortSplitChannels += nch;
-            }
+                /* Everything downstream scales with groups.n * sfbn, so this one
+                 * number covers both the throughput and the bitrate axis. */
+                {
+                    unsigned int nch = b ? 2 : 1;
+                    g_faacStats.shortChannels += nch;
+                    g_faacStats.shortGroupSum += (unsigned long)a->groups.n * nch;
+                    if (a->groups.n > 1)
+                        g_faacStats.shortSplitChannels += nch;
+                }
 #endif
+            }
         }
     }
 
-    /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+    /* Perform TNS analysis and filtering. Element-at-a-time for CPE shared admission. */
+    {
+        int e;
+        for (e = 0; e < hEncoder->numElements; e++) {
+            AACElement *elem = &hEncoder->elements[e];
+            int c, nch, admit = 0;
 
-#ifdef FAAC_STATS
-            if (attack > 0.0f && isfinite(attack)) {
-                g_faacStats.totalAttack += attack;
-                if (attack > g_faacStats.maxAttack) {
-                    g_faacStats.maxAttack = attack;
-                }
-                g_faacStats.attackCount++;
-            }
-            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                g_faacStats.longBlocks++;
-            }
-#endif
-
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            if (elem->type == ID_SCE)
+                nch = 1;
+            else if (elem->type == ID_CPE)
+                nch = 2;
+            else {
+                if (elem->type == ID_LFE)
+                    coderInfo[elem->channels[0]].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
-        } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+
+            for (c = 0; c < nch; c++) {
+                int ch = elem->channels[c];
+                float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
+
+#ifdef FAAC_STATS
+                if (attack > 0.0f && isfinite(attack)) {
+                    g_faacStats.totalAttack += attack;
+                    if (attack > g_faacStats.maxAttack) {
+                        g_faacStats.maxAttack = attack;
+                    }
+                    g_faacStats.attackCount++;
+                }
+                if (coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
+                    g_faacStats.longBlocks++;
+                }
+#endif
+
+                if (!(attack > 0.0f && attack < TNS_ATTACK_MIN))
+                    admit = 1;
+            }
+
+            TnsEncodeElement(hEncoder, elem, coderInfo, useTns && admit);
         }
     }
 

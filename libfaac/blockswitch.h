@@ -41,6 +41,9 @@ typedef struct {
 	int block_type;
 	float pe;
 
+	float td_strength;
+	float td_thresh;
+
         void *data;
 } PsyInfo;
 
@@ -55,6 +58,7 @@ void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
 		unsigned int numChannels, unsigned int sampleRate);
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
 float PsyGetAttack (PsyInfo *psyInfo);
+float PsyGetPeakGate (PsyInfo *psyInfo);
 void PsyCalculate (AACElement *elements, int numElements, PsyInfo *psyInfo,
 		unsigned int numChannels);
 void PsyBufferUpdate (GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
