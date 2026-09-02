@@ -948,17 +948,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
                 g_faacStats.attackCount++;
             }
-            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                g_faacStats.longBlocks++;
-            }
+            g_faacStats.longBlocks++;
 #endif
 
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
+            /* Screening on envelope skips LPC work for stationary long frames */
             if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
+
             TnsEncode(&coderInfo[channel],
                       hEncoder->freqBuff[channel],
                       hEncoder->gpsyInfo.sharedWorkBuffLong,

@@ -186,33 +186,22 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, const float * src, float * dst)
+static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
     int i, j;
+    int limit = order < length ? order : length;
 
-    if (direction) {
-        for (i = length - 1; i >= 0; i--) {
-            float acc = src[i];
-            int jmax = min(order, length - 1 - i);
-
-            for (j = 1; j <= jmax; j++)
-                acc += a[j] * src[i + j];
-            dst[i] = acc;
-        }
-    } else {
-        int limit = order < length ? order : length;
-        for (i = 0; i < limit; i++) {
-            float acc = src[i];
-            for (j = 1; j <= i; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
-        for (; i < length; i++) {
-            float acc = src[i];
-            for (j = 1; j <= order; j++)
-                acc += a[j] * src[i - j];
-            dst[i] = acc;
-        }
+    for (i = 0; i < limit; i++) {
+        float acc = src[i];
+        for (j = 1; j <= i; j++)
+            acc += a[j] * src[i - j];
+        dst[i] = acc;
+    }
+    for (; i < length; i++) {
+        float acc = src[i];
+        for (j = 1; j <= order; j++)
+            acc += a[j] * src[i - j];
+        dst[i] = acc;
     }
 }
 
@@ -344,25 +333,12 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
      * transmitted no longer pays for itself. Re-check on a trial run of the
      * real (quantized) filter before committing to writing it out. */
     {
-        float orig_e = 0.0f, filt_e0 = 0.0f, filt_e1 = 0.0f, filt_e;
+        float orig_e = 0.0f, filt_e = 0.0f;
 
-        filter_spec(length, order, 0, filter->aCoeffs, wspec, trial);
+        filter_spec(length, order, filter->aCoeffs, wspec, trial);
         for (i = 0; i < length; i++) {
             orig_e += wspec[i] * wspec[i];
-            filt_e0 += trial[i] * trial[i];
-        }
-
-        filter_spec(length, order, 1, filter->aCoeffs, wspec, trial);
-        for (i = 0; i < length; i++) {
-            filt_e1 += trial[i] * trial[i];
-        }
-
-        if (filt_e1 < filt_e0) {
-            filter->direction = 1;
-            filt_e = filt_e1;
-        } else {
-            filter->direction = 0;
-            filt_e = filt_e0;
+            filt_e += trial[i] * trial[i];
         }
 
         if (filt_e < TNS_MIN_ENERGY)
@@ -371,7 +347,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             return 0;
     }
 
-    filter_spec(length, order, filter->direction, filter->aCoeffs, band, trial);
+    filter_spec(length, order, filter->aCoeffs, band, trial);
     memcpy(band, trial, length * sizeof(float));
     return 1;
 }
