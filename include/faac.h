@@ -92,10 +92,11 @@ typedef enum faac_status {
 /*
  * AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry so
  * a single collision-free namespace covers current and future profiles.
- * FAAC_OBJ_AUTO lets the library pick AAC-LC or HE-AAC by bitrate.
+ * FAAC_OBJ_AUTO lets the library pick AAC-LC or HE-AAC from the bandwidth the
+ * AAC-LC core would code at the requested operating point.
  */
 enum faac_object_type {
-    FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
+    FAAC_OBJ_AUTO      = 0,          /* choose LC or HE-AAC from the core bandwidth  */
     FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
     FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
@@ -274,7 +275,7 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out);
  */
 #define FAAC_VBR_QUALITY_MIN   0
 #define FAAC_VBR_QUALITY_MAX   10
-#define FAAC_VBR_QUALITY_DEF   5
+#define FAAC_VBR_QUALITY_DEF   4
 #define FAAC_VBR_QUALITY_UNSET (-1)
 /* Zero-initialize *p and fill in library defaults and struct_size. Pass
  * sizeof(*p) as caller_size; never writes past min(caller_size,

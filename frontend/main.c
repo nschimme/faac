@@ -100,7 +100,10 @@ const char *usage =
 static help_t help_qual[] = {
     {"-q <quality>\tSet VBR quality, 0-10 (higher is better).\n",
     "\t\tConstant-quality (VBR) encoding: quality is held and the bitrate\n"
-    "\t\tvaries with the material. default: 5.\n"
+    "\t\tvaries with the material. A value is required; 4 is the default\n"
+    "\t\twhen VBR is selected without one, and is the step closest to what\n"
+    "\t\tthe old default quantizer setting produced. With no rate option at\n"
+    "\t\tall, faac encodes at ABR 128 kbps rather than VBR.\n"
     "\t\tSteps are spaced evenly in bitrate across the encoder's range, so\n"
     "\t\tone step means one quality at any sample rate or channel count.\n"
     "\t\tTypical whole-stream rates for 48 kHz stereo:\n"

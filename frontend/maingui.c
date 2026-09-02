@@ -617,11 +617,12 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 "letting the encoder choose it automatically.");
             AddTip(hWnd, IDC_BANDWIDTH, "Cutoff frequency in Hz.");
             AddTip(hWnd, IDC_RATEMODE,
-                "VBR (Quality) targets a quality level; ABR (Bitrate) targets\n"
-                "an average bitrate.");
+                "VBR (Quality) holds a quality level and lets the bitrate follow\n"
+                "the material; ABR (Bitrate) holds an average bitrate and lets\n"
+                "the quality follow it. VBR (Quantizer) is the raw expert knob.");
             AddTip(hWnd, IDC_OBJECTTYPE,
-                "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
-                "override that choice.");
+                "Auto picks LC or HE-AAC v1 from the bandwidth the LC core would\n"
+                "code at this operating point; force one to override that.");
             AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
             AddTip(hWnd, IDC_PNS, "Perceptual Noise Substitution level, 0-10; 0 disables it.");
             AddTip(hWnd, IDC_SHORTCTL,

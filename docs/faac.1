@@ -87,7 +87,12 @@ Perceptual Noise Substitution level, 0 to 10;
 disables PNS.
 .TP
 .BR -q\ <\fIquality\fP>
-Set the VBR quality level, 0 to 10, higher is better. Default 5.
+Set the VBR quality level, 0 to 10, higher is better. The value is required;
+4 is what the library and the GUI use when VBR is selected without one, and is
+the step nearest what the old default quantizer setting produced. Given no rate
+option at all,
+.B faac
+encodes at ABR 128 kbps rather than VBR.
 .IP
 Constant-quality encoding: the quality is held and the bitrate varies with the
 material, so a dense track costs more than a sparse one at the same setting.
@@ -111,7 +116,7 @@ track costs more than a sparse one at the same setting. The steps span the
 encoder's full quantizer range, so the highest few sit past transparency for
 most material.
 .IP
-NOTE: in releases before 2.1,
+NOTE: in earlier releases,
 .B -q
 took a raw quantizer value from 10 to 5000. That control is now
 .BR --quantqual .
@@ -125,7 +130,7 @@ transparency and its useful part is unevenly spaced, so prefer
 .B -q
 unless you specifically want this control. This is what
 .B -q
-meant before release 2.1.
+meant in earlier releases.
 .TP
 .BR -b\ <\fIbitrate\fP>
 Set average bitrate (ABR) to approximately <bitrate> kbps.
