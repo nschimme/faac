@@ -240,7 +240,6 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
 void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
-  int desire = ONLY_LONG_WINDOW;
 
   /* Shared transient override for HE-AAC path.
    * Core delay alignment: SbrAnalyze runs on frame N full-rate; core
@@ -262,35 +261,57 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
       }
   }
 
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
+  int desire[MAX_CHANNELS];
+  int e;
+
   for (channel = 0; channel < numChannels; channel++)
   {
-    if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
-      desire = ONLY_SHORT_WINDOW;
+      desire[channel] = psyInfo[channel].block_type;
+  }
+
+  /* Force lockstep block switching within CPE pairs where joint stereo relies on common_window=true.
+   * Single Channel Elements (ID_SCE) and LFE channels switch independently. */
+  if (hEncoder && hEncoder->numElements > 0)
+  {
+      for (e = 0; e < hEncoder->numElements; e++)
+      {
+          AACElement *elem = &hEncoder->elements[e];
+          if (elem->type == ID_CPE)
+          {
+              int l = elem->channels[0];
+              int r = elem->channels[1];
+              if ((unsigned int)l < numChannels && (unsigned int)r < numChannels)
+              {
+                  if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
+                      psyInfo[r].block_type == ONLY_SHORT_WINDOW)
+                  {
+                      desire[l] = ONLY_SHORT_WINDOW;
+                      desire[r] = ONLY_SHORT_WINDOW;
+                  }
+              }
+          }
+      }
   }
 
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
+    int des = desire[channel];
 
-    if (desire == ONLY_SHORT_WINDOW
-	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
+    if (des == ONLY_SHORT_WINDOW || coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
     {
       if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
-	coderInfo[channel].block_type = LONG_SHORT_WINDOW;
+        coderInfo[channel].block_type = LONG_SHORT_WINDOW;
       else
-	coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
+        coderInfo[channel].block_type = ONLY_SHORT_WINDOW;
     }
     else
     {
       if (lasttype == ONLY_SHORT_WINDOW || lasttype == LONG_SHORT_WINDOW)
-	coderInfo[channel].block_type = SHORT_LONG_WINDOW;
+        coderInfo[channel].block_type = SHORT_LONG_WINDOW;
       else
-	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+        coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
-    coderInfo[channel].desired_block_type = desire;
+    coderInfo[channel].desired_block_type = des;
   }
 }
