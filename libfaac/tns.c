@@ -71,8 +71,8 @@ static void calc_autocorr_f(int order, int length, const float * work, float * r
  * free to report here, since the recursion already has both numbers. */
 static float compute_lpc(int order, const float * r, float * k)
 {
-    float a[TNS_MAX_ORDER + 1];
-    float err;
+    float g0[TNS_MAX_ORDER + 1], g1[TNS_MAX_ORDER + 1];
+    float err = r[0];
     int i, j;
 
     if (r[0] <= 0.0f) {
@@ -81,47 +81,32 @@ static float compute_lpc(int order, const float * r, float * k)
         return 1.0f;
     }
 
-    err = r[0];
-    a[0] = 1.0f;
+    for (i = 0; i <= order; i++) {
+        g0[i] = r[i];
+        g1[i] = r[i];
+    }
+
     for (i = 1; i <= order; i++) {
-        float lambda = r[i];
         float rc;
-        int half;
-
-        for (j = 1; j < i; j++)
-            lambda += a[j] * r[i - j];
-
-        if (err <= 0.0f) {
-            for (; i <= order; i++)
-                k[i] = 0.0f;
+        if (g0[0] <= 0.0f) {
+            for (; i <= order; i++) k[i] = 0.0f;
             break;
         }
-
-        rc = -lambda / err;
+        rc = -g1[i] / g0[0];
         if (rc > 0.999f) rc = 0.999f;
         else if (rc < -0.999f) rc = -0.999f;
         k[i] = rc;
 
-        half = (i + 1) / 2;
-        for (j = 1; j < half; j++) {
-            float t1 = a[j];
-            float t2 = a[i - j];
-            a[j] = t1 + rc * t2;
-            a[i - j] = t2 + rc * t1;
-        }
-        if (i % 2 == 0)
-            a[i / 2] += rc * a[i / 2];
-        a[i] = rc;
-
         err *= (1.0f - rc * rc);
-        if (err <= 0.0f)
-            break;
+
+        for (j = 0; j <= order - i; j++) {
+            float t0 = g0[j] + rc * g1[j + i];
+            float t1 = g1[j + i] + rc * g0[j];
+            g0[j] = t0;
+            g1[j + i] = t1;
+        }
     }
 
-    /* err collapsing to ~0 means a (near-)perfect fit, which for real audio
-     * means a degenerate input rather than a genuinely great filter. Report
-     * infinite gain so the caller's isfinite() check rejects it, instead of
-     * dividing by ~0. */
     if (err <= TNS_MIN_ENERGY)
         return INFINITY;
     return r[0] / err;
