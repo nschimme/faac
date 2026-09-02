@@ -32,8 +32,15 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
-#define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
+/* No HE floor: the further below Nyquist the LC core lands, the more spectrum
+ * SBR is rescuing, so HE only wins harder as the rate falls. A floor here also
+ * broke monotonicity -- LC cannot follow the request down there, so -b 2 cost
+ * more than -b 16. */
+/* Crossover measured on the refitted LC curve: HE leads by 0.070 MOS at 24000
+ * per channel and trails by 0.011 at 28000, so the boundary sits between them.
+ * The wider LC bandwidth moved this down from 48000, where AUTO was handing
+ * 56k-96k stereo to HE at a loss of up to 0.176. */
+#define HE_MAX_BITRATE_PER_CH 26000
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
 
@@ -67,28 +74,25 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
 
     if (!bitRate) return nyquist;
 
-    if (bitRate <= 16000) {
-        /* Segment 1: Telephony (4kHz to 6kHz) */
-        bw = 4000 + (bitRate / 8);
+    /* Anchors land on long-block band edges, so CalcBW()'s snap is a no-op and
+     * these constants are the cutoff you actually get. Divisors are powers of
+     * two. HE-AAC never arrives here; SBR overwrites bandWidth downstream. */
+    if (bitRate <= 12000) {
+        /* Unmeasured below here; ramp rather than extend the plateau down.
+         * bitRate is unsigned, so guard the subtraction. */
+        bw = (bitRate > 8000) ? 9250 + ((bitRate - 8000) * 5 / 4) : 9250;
     }
     else if (bitRate <= 32000) {
-        /* Segment 2: Low-tier (6kHz to 11kHz)
-         */
-        bw = 6000 + ((bitRate - 16000) * 5 / 16);
+        /* Flat by measurement: the optimum does not move across this range. */
+        bw = 14250;
     }
-    else if (bitRate <= 64000) {
-        /* Segment 3: Mid-tier expansion (11kHz to 18.5kHz)
-         */
-        bw = 11000 + ((bitRate - 32000) * 15 / 64);
-    }
-    else if (bitRate <= 128000) {
-        /* Segment 4: High-fidelity catch-up (18.5kHz to 20kHz) */
-        bw = 18500 + ((bitRate - 64000) * 3 / 128);
+    else if (bitRate <= 48000) {
+        bw = 14250 + ((bitRate - 32000) * 9 / 32);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Widening past this loses at every reachable rate -- the band above
+         * holds ~0.006% of programme energy and sits at the edge of hearing. */
+        bw = 18750;
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -210,8 +214,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * HE-AAC handle sampleRate is the halved core rate. */
     {
         unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
+        unsigned int maxPerCh = MaxBitrate(fullRate);
+
+        /* Both sides are per channel. Dividing by numChannels made the ceiling
+         * that factor too low, so half the format's range was unreachable and
+         * the request was dropped silently. No floor to match: the format sets
+         * no minimum, and the encoder's own floor scales with the config where
+         * a constant cannot. */
+        if (config->bitRate > maxPerCh)
+            config->bitRate = maxPerCh;
     }
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
@@ -230,15 +241,23 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                 max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
                               (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
             }
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
+            rate_ok = (rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        /* One SBR payload per frame binds to the element it follows, so it can
+         * serve a single SCE or CPE. Past two channels the rest get no SBR, and
+         * with an LFE present the payload lands on ID_LFE, which decoders
+         * reject. Not a format limit -- MPEG-4 allows one payload per element. */
+        hEncoder->config.aacObjectType =
+            (rate_ok && hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS
+             && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core

@@ -45,11 +45,6 @@ unsigned int MaxBitrate(unsigned long sampleRate)
     return AAC_MAX_BITS_PER_CH * sampleRate / FRAME_LEN;
 }
 
-/* Returns the minimum bitrate per channel for that sampling frequency */
-unsigned int MinBitrate(void)
-{
-    return 8000;
-}
 
 /* Portable CLZ (returns 32 for x==0); lets escape() get a magnitude's bit-length
  * in O(1) instead of the old shift-until-fits loop. */
