@@ -241,23 +241,36 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (energy < TNS_MIN_ENERGY)
         return 0;
 
-    /* Tonality / Peak-to-Average check across TNS bands: if the spectrum has
-     * an extremely sharp tonal harmonic peak (e.g. glockenspiel resonances),
-     * skip TNS whitening to preserve pure tonal harmonic quality. */
+    /* Tonality & Spectral Flatness (SFM) Pre-Screening Gates:
+     * 1. Tonality / Peak-to-Average check across TNS bands: if the spectrum has
+     *    an extremely sharp tonal harmonic peak (e.g. glockenspiel resonances),
+     *    skip TNS whitening to preserve pure tonal harmonic quality.
+     * 2. Spectral Flatness (geomean/arithmean of per-band RMS) near 1.0 means
+     *    the spectrum is noise-like, which PNS will handle anyway -- skip LPC. */
     {
         float max_e = 0.0f;
+        float sum_rms = 0.0f, sum_log_rms = 0.0f;
         int nbands = b_stop - b_start;
 
         for (b = b_start; b < b_stop; b++) {
             int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-            float band_e = 0.0f;
+            float band_e = 0.0f, rms;
             for (i = s0; i < s1; i++)
                 band_e += spec[i] * spec[i];
             if (band_e > max_e) max_e = band_e;
+
+            rms = sqrtf(band_e / (float)(s1 - s0));
+            if (rms < TNS_MIN_ENERGY) rms = TNS_MIN_ENERGY;
+            sum_rms += rms;
+            sum_log_rms += logf(rms);
         }
 
         /* If the peak band holds > 80% of the total energy, it is a pure tonal chime */
         if (max_e > 0.80f * energy)
+            return 0;
+
+        /* If spectral flatness ratio > TNS_PNS_SFM_SKIP (0.85), spectrum is noise-like */
+        if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
             return 0;
     }
 
