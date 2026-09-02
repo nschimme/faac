@@ -366,7 +366,14 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
                 break;
             }
             MessageBox(hWnd, range, "FAAC", MB_OK | MB_ICONWARNING);
-            return;
+            /* Same teardown as the normal exit below: this thread owns the two
+               UTF-8 buffers and opts, and the dialog stays stuck showing an
+               encode in progress unless WM_USER_ENCODE_DONE is posted. */
+            free(utf8_input);
+            free(utf8_output);
+            free_encode_options(&opts);
+            PostMessage(hWnd, WM_USER_ENCODE_DONE, (WPARAM)ENCODE_ERROR, 0);
+            return 1;
         }
     }
 
