@@ -114,20 +114,23 @@ static int WriteICSInfo(BitStream *bs, CoderInfo *coder, bool writeFlag)
 
 static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool writeFlag)
 {
-    if (writeFlag) PutBit(bs, coder->global_gain, LEN_GLOB_GAIN);
-    int bits = LEN_GLOB_GAIN;
+    BitWriter bw;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, coder->global_gain, LEN_GLOB_GAIN);
+    int bits = LEN_GLOB_GAIN + (BitWriterFlush(&bw, bs, writeFlag) - LEN_GLOB_GAIN);
 
     if (!commonWindow) bits += WriteICSInfo(bs, coder, writeFlag);
 
     bits += writebooks(coder, bs, writeFlag);
     bits += writesf(coder, bs, writeFlag);
 
-    if (writeFlag) PutBit(bs, 0, LEN_PULSE_PRES);
-    bits += LEN_PULSE_PRES;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0, LEN_PULSE_PRES);
+    BitWriterPut(&bw, coder->tnsInfo.tnsDataPresent, LEN_TNS_PRES);
+    bits += LEN_PULSE_PRES + LEN_TNS_PRES;
+    BitWriterFlush(&bw, bs, writeFlag);
 
     TnsInfo *tns = &coder->tnsInfo;
-    if (writeFlag) PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
-    bits += LEN_TNS_PRES;
 
     /* TNS is long-only (see tns.c): tnsDataPresent is never set for
      * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
@@ -177,8 +180,10 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
         BitWriterFlush(&bw, bs, writeFlag);
     }
 
-    if (writeFlag) PutBit(bs, 0, LEN_GAIN_PRES);
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0, LEN_GAIN_PRES);
     bits += LEN_GAIN_PRES;
+    BitWriterFlush(&bw, bs, writeFlag);
 
     if (writeFlag) {
         BitAccumulator acc = {0};
@@ -222,12 +227,20 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
                 bits += WriteICSInfo(bs, &coder[elem->channels[0]], writeFlag);
 
                 if (writeFlag) {
-                    PutBit(bs, elem->msInfo.is_present, LEN_MASK_PRES);
+                    BitWriter bw2;
+                    BitWriterInit(&bw2);
+                    BitWriterPut(&bw2, elem->msInfo.is_present, LEN_MASK_PRES);
                     if (elem->msInfo.is_present == 1) {
                         int n = coder[elem->channels[0]].groups.n * coder[elem->channels[0]].sfbn;
-                        for (int i = 0; i < n; i++)
-                            PutBit(bs, elem->msInfo.ms_used[i], LEN_MASK);
+                        for (int i = 0; i < n; i++) {
+                            if (bw2.bits + LEN_MASK > 32) {
+                                BitWriterFlush(&bw2, bs, true);
+                                BitWriterInit(&bw2);
+                            }
+                            BitWriterPut(&bw2, elem->msInfo.ms_used[i], LEN_MASK);
+                        }
                     }
+                    BitWriterFlush(&bw2, bs, true);
                 }
                 bits += LEN_MASK_PRES;
                 if (elem->msInfo.is_present == 1)
@@ -274,18 +287,26 @@ static int WriteAACFillBits(BitStream *bs, int numBits, bool writeFlag)
 {
     int left = numBits;
     while (left >= (LEN_SE_ID + 4)) {
-        if (writeFlag) PutBit(bs, ID_FIL, LEN_SE_ID);
+        BitWriter bw;
+        BitWriterInit(&bw);
+        BitWriterPut(&bw, ID_FIL, LEN_SE_ID);
         left -= LEN_SE_ID;
         int bc = (left / 8 < 15) ? (left / 8) : 15;
-        if (writeFlag) PutBit(bs, bc, 4);
+        BitWriterPut(&bw, bc, 4);
         left -= 4;
         if (bc == 15) {
             int esc = (left / 8 - 14 < 255) ? (left / 8 - 14) : 255;
-            if (writeFlag) PutBit(bs, esc, 8);
+            BitWriterPut(&bw, esc, 8);
             left -= 8;
             bc = 14 + esc;
         }
-        if (writeFlag) for (int i = 0; i < bc; i++) PutBit(bs, 0, 8);
+        BitWriterFlush(&bw, bs, writeFlag);
+
+        for (int i = 0; i < bc; i++) {
+            BitWriterInit(&bw);
+            BitWriterPut(&bw, 0, 8);
+            BitWriterFlush(&bw, bs, writeFlag);
+        }
         left -= bc * 8;
     }
     return left;
