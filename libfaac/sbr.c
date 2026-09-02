@@ -54,20 +54,36 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
     if (bs_stop_freq >= 14) return clamp_int(64, kx + 1, 64);
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
     int stop_min = ((temp << 8) + (sampleRate >> 1)) / sampleRate;
-    int k2 = stop_min;
-    if (stop_min < 64) {
-        float prod = (float)stop_min;
-        int prev = stop_min;
-        float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
-        for (int i = 0; i < bs_stop_freq && i < 13; i++) {
-            prod *= base;
-            int present = (int)lrintf(prod);
-            k2 += (present - prev);
-            prev = present;
-        }
+    if (stop_min >= 64) return clamp_int(64, kx + 1, 64);
+
+    short stop_dk[13];
+    float prod = (float)stop_min;
+    int prev = stop_min;
+    float base = powf(64.0f / (float)stop_min, (float)(1.0f / 13.0f));
+    for (int i = 0; i < 12; i++) {
+        prod *= base;
+        int present = (int)lrintf(prod);
+        stop_dk[i] = (short)(present - prev);
+        prev = present;
     }
+    stop_dk[12] = (short)(64 - prev);
+
+    for (int i = 1; i < 13; i++) {
+        short key = stop_dk[i];
+        int j = i - 1;
+        while (j >= 0 && stop_dk[j] > key) {
+            stop_dk[j + 1] = stop_dk[j];
+            j--;
+        }
+        stop_dk[j + 1] = key;
+    }
+
+    int k2 = stop_min;
+    for (int i = 0; i < bs_stop_freq && i < 13; i++)
+        k2 += stop_dk[i];
+
     int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
-    return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
+    return clamp_int(k2, kx + 1, (kx + max_span > 64) ? 64 : (kx + max_span));
 }
 
 /* Smallest stop-frequency index reaching targetHz, or the largest useful one.
@@ -524,14 +540,12 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
 
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
+    (void)timeDomain; (void)numSamples;
     int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
     sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
-
-    for (int ch = 0; ch < nch; ch++)
-        memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
     sbr_quantize_envelopes(sbr, nch, sa, fd);
