@@ -216,13 +216,6 @@ static float QualityForRate(float total_kbps, float C)
 
 /* Forward: the quantqual that lands near bps per channel. Used to seed ABR's
  * rate-control loop, which then corrects whatever this gets wrong. */
-/* Absolute floor for the rate-control quality, well below MINQUAL. MINQUAL is
- * the lowest quality worth ASKING for; this is the lowest the loop may be
- * driven to in pursuit of a rate the caller named explicitly. quality enters
- * the quantizer as a linear scale on the masking target, so there is no
- * numerical cliff on the way down -- only coarser quantization. */
-#define ABS_MINQUAL 1
-
 /* Per-channel bps -> quality, for a coefficient the caller already has. */
 static float RawSeedQualityForBitrate(float bps, unsigned int nch, float C)
 {
@@ -582,9 +575,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     mapC = (hEncoder->config.aacObjectType == HE_V1)
            ? C_lc / MAP_HE_RATIO : C_lc;
 
-    /* The quality this rate implies. Wanted twice below -- to seed the
-     * rate-control loop, and to floor it -- and it is the same question about
-     * the same operating point both times, so ask it once. */
+    /* The quality this rate implies, hoisted out of the nested condition
+     * below: only meaningful in ABR, and the compiler emits it more compactly
+     * here than at its use site. */
     rawSeed = (target.mode == RATE_MODE_ABR && config->bitRate)
               ? RawSeedQualityForBitrate((float)config->bitRate,
                                          hEncoder->numChannels, mapC)
@@ -632,28 +625,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (hEncoder->config.bandWidth > (hEncoder->sampleRate / 2))
 		hEncoder->config.bandWidth = hEncoder->sampleRate / 2;
 
-    /* The rate-control floor. MINQUAL is a quantizer setting, not a rate, and
-     * the rate it yields moves about tenfold across the configuration space:
-     * at 48 kHz stereo it is ~27 kbit/s, at 96 kHz stereo ~40, at 8 kHz mono
-     * ~4. So a fixed floor means the loop can undershoot a low request at high
-     * sample rates and never reach it -- 96 kHz stereo asked for -b 16 settled
-     * at 31.5, half again over, and said nothing.
-     *
-     * When the caller has named a rate whose seed falls below MINQUAL, that
-     * request is what the floor should be, not a constant tuned elsewhere. The
-     * floor never rises above MINQUAL, so every rate that already converged
-     * keeps the bound it had. */
-    hEncoder->minQuality = MINQUAL;
-    if (rawSeed > 0.0f && rawSeed < (float)MINQUAL)
-    {
-        int floor_q = (int)rawSeed;
-        hEncoder->minQuality = (floor_q < ABS_MINQUAL) ? ABS_MINQUAL : floor_q;
-    }
-
     if (config->quantqual > (unsigned long)maxqual)
         config->quantqual = maxqual;
-    if (config->quantqual < (unsigned long)hEncoder->minQuality)
-        config->quantqual = (unsigned long)hEncoder->minQuality;
+    if (config->quantqual < MINQUAL)
+        config->quantqual = MINQUAL;
 
     hEncoder->config.quantqual = config->quantqual;
 
@@ -1409,7 +1384,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         frameBytes = CloseBitStream(bitStream);
 
         if (!peakBits || (unsigned long long)frameBytes * 8 <= peakBits
-            || hEncoder->aacquantCfg.quality <= hEncoder->minQuality)
+            || hEncoder->aacquantCfg.quality <= MINQUAL)
             break;
 
         /* Aim at the budget rather than stepping down by a fixed factor: rate
@@ -1422,8 +1397,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (scale > PEAK_BACKOFF_CEILING) scale = PEAK_BACKOFF_CEILING;
         if (scale < PEAK_BACKOFF_FLOOR)   scale = PEAK_BACKOFF_FLOOR;
         hEncoder->aacquantCfg.quality *= scale;
-        if (hEncoder->aacquantCfg.quality < hEncoder->minQuality)
-            hEncoder->aacquantCfg.quality = hEncoder->minQuality;
+        if (hEncoder->aacquantCfg.quality < MINQUAL)
+            hEncoder->aacquantCfg.quality = MINQUAL;
 
         for (channel = 0; channel < numChannels; channel++) {
             memcpy(coderInfo[channel].book, hEncoder->peakSnap[channel],
@@ -1533,8 +1508,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
-        if (hEncoder->aacquantCfg.quality < hEncoder->minQuality)
-            hEncoder->aacquantCfg.quality = hEncoder->minQuality;
+        if (hEncoder->aacquantCfg.quality < MINQUAL)
+            hEncoder->aacquantCfg.quality = MINQUAL;
     }
 
     return frameBytes;

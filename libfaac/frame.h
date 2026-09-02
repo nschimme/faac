@@ -75,7 +75,6 @@ typedef struct faacEncStruct {
     AACElement elements[MAX_CHANNELS];
     int numElements;
     bool isLfeChannel[MAX_CHANNELS]; /* per-channel LFE lookup, derived from elements[] whenever it changes */
-    int minQuality;                  /* rate-control quality floor; MINQUAL unless the request needs lower */
 
     /* Psychoacoustics data */
     PsyInfo psyInfo[MAX_CHANNELS];
