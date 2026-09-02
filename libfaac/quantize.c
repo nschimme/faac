@@ -108,7 +108,7 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 // masking target per scalefactor band: 0 marks a band inaudible
 #define SILENCE_RMS            0.4f     // per-sample RMS gate for silence
 #define AVG_ENERGY_WEIGHT      0.2f     // noise-like (average-energy) share of the target
-#define PEAK_ENERGY_WEIGHT     0.55f    // tonal (peak-energy) share of the remainder
+#define PEAK_ENERGY_WEIGHT     0.50f    // tonal (peak-energy) share of the remainder
 #define SHORT_BLOCK_TIGHTEN    0.45f    // short blocks get a tighter target per unit of energy
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
 #define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
