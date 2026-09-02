@@ -251,22 +251,25 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     if (!buf) return -3;
     *ppBuffer = buf;
 
-    uint64_t v = 0;
-    v = (v << 5) | LOW;
-    v = (v << 4) | (coreSRIdx & 15);
-    v = (v << 4) | (channels & 15);
-    v = (v << 3) | 0;
-    v = (v << 11) | 0x2b7;
-    v = (v << 5) | HE_V1;
-    v = (v << 1) | 1;
-    v = (v << 4) | (sbrCtx->fullSampleRateIdx & 15);
-    v <<= 3; /* pad to 40 bits */
+    BitStream bs;
+    InitBitStream(&bs, buf, 5);
 
-    buf[0] = (unsigned char)(v >> 32);
-    buf[1] = (unsigned char)(v >> 24);
-    buf[2] = (unsigned char)(v >> 16);
-    buf[3] = (unsigned char)(v >> 8);
-    buf[4] = (unsigned char)(v);
+    BitWriter bw;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, LOW, 5);
+    BitWriterPut(&bw, coreSRIdx & 15, 4);
+    BitWriterPut(&bw, channels & 15, 4);
+    BitWriterPut(&bw, 0, 3);
+    BitWriterPut(&bw, 0x2b7, 11);
+    BitWriterFlush(&bw, &bs, true);
+
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, HE_V1, 5);
+    BitWriterPut(&bw, 1, 1);
+    BitWriterPut(&bw, sbrCtx->fullSampleRateIdx & 15, 4);
+    BitWriterPut(&bw, 0, 3); /* pad to 40 bits */
+    BitWriterFlush(&bw, &bs, true);
+
     return 0;
 }
 
