@@ -222,7 +222,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float gain, energy;
     int max_order = TnsMaxOrder(bitRate);
     float gain_limit = TnsGainLimit(bitRate);
-    int order, limit, i;
+    int order, limit, i, b;
 
     if (length <= max_order)
         return 0;
@@ -232,6 +232,26 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         energy += spec[i_start + i] * spec[i_start + i];
     if (energy < TNS_MIN_ENERGY)
         return 0;
+
+    /* Tonality / Peak-to-Average check across TNS bands: if the spectrum has
+     * an extremely sharp tonal harmonic peak (e.g. glockenspiel resonances),
+     * skip TNS whitening to preserve pure tonal harmonic quality. */
+    {
+        float max_e = 0.0f;
+        int nbands = b_stop - b_start;
+
+        for (b = b_start; b < b_stop; b++) {
+            int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
+            float band_e = 0.0f;
+            for (i = s0; i < s1; i++)
+                band_e += spec[i] * spec[i];
+            if (band_e > max_e) max_e = band_e;
+        }
+
+        /* If the peak band holds > 80% of the total energy, it is a pure tonal chime */
+        if (max_e > 0.80f * energy)
+            return 0;
+    }
 
     calc_autocorr_f(max_order, length, spec + i_start, r);
     gain = compute_lpc(max_order, r, k);
