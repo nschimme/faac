@@ -232,15 +232,19 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     if (*ppBuffer == NULL) return -3;
     memset(*ppBuffer, 0, 5);
     BitStream *pBitStream = OpenBitStream(5, *ppBuffer);
-    uint32_t asc1 = ((uint32_t)LOW << 27) |
-                    ((uint32_t)coreSRIdx << 23) |
-                    ((uint32_t)channels << 19) |
-                    (0x2b7U << 5) |
-                    (uint32_t)HE_V1;
-    PutBit(pBitStream, asc1, 32);
-
-    uint32_t asc2 = (1U << 4) | (uint32_t)sbrCtx->fullSampleRateIdx;
-    PutBit(pBitStream, asc2, 5);
+    BitAccumulator acc = {0};
+    AccumBegin(&acc, pBitStream);
+    AccumPutBits(&acc, LOW,                         5);  /* core object type */
+    AccumPutBits(&acc, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
+    AccumPutBits(&acc, channels,                     4);
+    AccumPutBits(&acc, 0, 1);                            /* frameLengthFlag */
+    AccumPutBits(&acc, 0, 1);                            /* dependsOnCoreCoder */
+    AccumPutBits(&acc, 0, 1);                            /* extensionFlag */
+    AccumPutBits(&acc, 0x2b7,                      11);  /* syncExtensionType */
+    AccumPutBits(&acc, HE_V1,                       5);  /* extObjectType = SBR */
+    AccumPutBits(&acc, 1,                           1);  /* sbrPresentFlag */
+    AccumPutBits(&acc, sbrCtx->fullSampleRateIdx, 4);   /* SBR output rate (2*core) */
+    AccumEnd(&acc);
     CloseBitStream(pBitStream);
     return 0;
 }

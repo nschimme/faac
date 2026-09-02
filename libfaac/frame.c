@@ -148,10 +148,12 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
             *ppBuffer = NULL;
             return -3;
         }
-        uint32_t asc = ((uint32_t)hEncoder->config.aacObjectType << 8) |
-                       ((uint32_t)hEncoder->sampleRateIdx << 4) |
-                       (uint32_t)hEncoder->numChannels;
-        PutBit(pBitStream, asc, 13);
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, pBitStream);
+        AccumPutBits(&acc, hEncoder->config.aacObjectType, 5);
+        AccumPutBits(&acc, hEncoder->sampleRateIdx, 4);
+        AccumPutBits(&acc, hEncoder->numChannels, 4);
+        AccumEnd(&acc);
         CloseBitStream(pBitStream);
 
         return 0;

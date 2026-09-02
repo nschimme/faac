@@ -26,13 +26,21 @@
 static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     if (write) {
-        uint32_t w = ((uint32_t)sbr->bs_amp_res << 20) |
-                     ((uint32_t)sbr->bs_start_freq << 16) |
-                     ((uint32_t)sbr->bs_stop_freq << 12) |
-                     ((uint32_t)sbr->bs_xover_band << 9) |
-                     (1U << 6) |
-                     ((uint32_t)sbr->bs_alter_scale << 2);
-        PutBit(bs, w, 21);
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, bs);
+        /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
+        AccumPutBits(&acc, sbr->bs_amp_res,     1); /* bs_amp_res: 0=1.5dB, 1=3dB */
+        AccumPutBits(&acc, sbr->bs_start_freq,  4); /* bs_start_freq: crossover index */
+        AccumPutBits(&acc, sbr->bs_stop_freq,   4); /* bs_stop_freq: high-band ceil */
+        AccumPutBits(&acc, sbr->bs_xover_band,  3); /* bs_xover_band: low-res split (0=none) */
+        AccumPutBits(&acc, 0,                   2); /* bs_reserved */
+        AccumPutBits(&acc, 1,                   1); /* bs_header_extra_1 = 1 (alter_scale present) */
+        AccumPutBits(&acc, 0,                   1); /* bs_header_extra_2 = 0 (limiter fields absent) */
+        /* bs_header_extra_1 fields: */
+        AccumPutBits(&acc, 0,                   2); /* bs_freq_scale = 0 (linear master table) */
+        AccumPutBits(&acc, sbr->bs_alter_scale, 1); /* bs_alter_scale: 1=coarser at low bitrate */
+        AccumPutBits(&acc, 0,                   2); /* bs_noise_bands = 0 (→ 1 noise band) */
+        AccumEnd(&acc);
     }
     return 21;
 }
