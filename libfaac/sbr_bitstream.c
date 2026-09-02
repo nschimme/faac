@@ -95,23 +95,23 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     int offset = fd->eff_amp_res ? F_HUFF_ENV_3_0DB_OFFSET : F_HUFF_ENV_1_5DB_OFFSET;
     int first_bits = fd->eff_amp_res ? 6 : 7;
     int first_max = (1 << first_bits) - 1;
-    int bits = 0;
 
     if (write) {
+        uint32_t start_bit = bs->currentBit;
         BitAccumulator acc = {0};
         AccumBegin(&acc, bs);
         for (int e = 0; e < fd->numEnvelopes; e++) {
             const int *env_ch = fd->ch[ch].envData[e];
             AccumPutBits(&acc, clamp_int(env_ch[0], 0, first_max), first_bits);
-            bits += first_bits;
             for (int b = 1; b < sbr->numBands; b++) {
                 int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
                 AccumPutBits(&acc, table[sym].code, table[sym].len);
-                bits += table[sym].len;
             }
         }
         AccumEnd(&acc);
+        return (int)(bs->currentBit - start_bit);
     } else {
+        int bits = 0;
         for (int e = 0; e < fd->numEnvelopes; e++) {
             const int *env_ch = fd->ch[ch].envData[e];
             bits += first_bits;
@@ -120,16 +120,16 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
                 bits += table[sym].len;
             }
         }
+        return bits;
     }
-    return bits;
 }
 
 static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    int bits = 0;
 
     if (write) {
+        uint32_t start_bit = bs->currentBit;
         BitAccumulator acc = {0};
         AccumBegin(&acc, bs);
         for (int ne = 0; ne < n_q; ne++) {
@@ -137,16 +137,16 @@ static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream
                 int val = fd->ch[ch].noiseData[ne][nb];
                 if (nb == 0) {
                     AccumPutBits(&acc, clamp_int(val, 0, 30), 5);
-                    bits += 5;
                 } else {
                     int sym = clamp_int(val + F_HUFF_ENV_3_0DB_OFFSET, 0, F_HUFF_ENV_3_0DB_NSYMS - 1);
                     AccumPutBits(&acc, f_huff_env_3_0dB[sym].code, f_huff_env_3_0dB[sym].len);
-                    bits += f_huff_env_3_0dB[sym].len;
                 }
             }
         }
         AccumEnd(&acc);
+        return (int)(bs->currentBit - start_bit);
     } else {
+        int bits = 0;
         for (int ne = 0; ne < n_q; ne++) {
             for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
                 int val = fd->ch[ch].noiseData[ne][nb];
@@ -158,8 +158,8 @@ static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream
                 }
             }
         }
+        return bits;
     }
-    return bits;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, bool write)
