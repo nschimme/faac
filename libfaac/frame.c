@@ -495,12 +495,22 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned int lc_bw = CalcBandwidth(target.bitRatePerCh, fullRate);
         int rate_ok = ((unsigned long)lc_bw * HE_XOVER_DEN <
                        (fullRate / 2) * HE_XOVER_NUM);
+        /* One SBR payload is emitted per frame and the decoder binds it to the
+         * element it follows, so SBR covers a single SCE or CPE -- see
+         * SBR_MAX_CODED_CHANNELS. Beyond two channels the remaining elements
+         * would get no SBR at all, and with an LFE present the payload lands
+         * against ID_LFE, which decoders reject outright ("cannot apply SBR to
+         * element type 3"). AUTO must not walk into that. */
+        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
 
-        hEncoder->config.aacObjectType = (rate_ok && fullRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        hEncoder->config.aacObjectType =
+            (rate_ok && channels_ok && fullRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
