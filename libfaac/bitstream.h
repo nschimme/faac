@@ -73,14 +73,12 @@ static inline void BitWriterInit(BitWriter *bw)
     bw->bits = 0;
 }
 
-static inline void BitWriterPut(BitWriter *bw, uint32_t value, int numBits)
+static inline void BitWriterPut(BitWriter *bw, uint32_t val, int numBits)
 {
-    if (numBits > 0) {
     assert(bw->bits + numBits <= 32);
-        uint32_t mask = (numBits >= 32) ? 0xFFFFFFFFU : ((1U << numBits) - 1);
-        bw->val = (bw->val << numBits) | ((uint32_t)value & mask);
-        bw->bits += numBits;
-    }
+    uint32_t mask = (numBits == 32) ? 0xFFFFFFFFU : ((1U << numBits) - 1);
+    bw->val = (bw->val << numBits) | ((uint32_t)val & mask);
+    bw->bits += numBits;
 }
 
 static inline int BitWriterFlush(BitWriter *bw, BitStream *bs, bool write)

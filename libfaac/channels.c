@@ -117,7 +117,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
     BitWriter bw;
     BitWriterInit(&bw);
     BitWriterPut(&bw, coder->global_gain, LEN_GLOB_GAIN);
-    int bits = LEN_GLOB_GAIN + (BitWriterFlush(&bw, bs, writeFlag) - LEN_GLOB_GAIN);
+    int bits = BitWriterFlush(&bw, bs, writeFlag);
 
     if (!commonWindow) bits += WriteICSInfo(bs, coder, writeFlag);
 
