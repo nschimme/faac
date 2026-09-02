@@ -177,11 +177,9 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float toteng = (eng < lasteng) ? eng : lasteng;
       float volchg = fabsf(eng - lasteng);
 
-      /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      float s = volchg / toteng;
-
-      if (s > strength)
-          strength = s;
+      /* Relative energy jump indicates a transient. Multiplication bypasses per-iteration division. */
+      if (volchg > strength * toteng && toteng > 0.0f)
+          strength = volchg / toteng;
       lasteng = eng;
   }
 
@@ -240,8 +238,9 @@ static inline void PsyGetEnvelopeStats(PsyInfo * psyInfo, float *p_attack, float
     {
       float p = (float)psydata->eng[ENG_WIN_PREV + win - 1];
       float lo = (e < p) ? e : p;
-      float s = fabsf(e - p) / lo;
-      if (s > strength) strength = s;
+      float diff = fabsf(e - p);
+      if (diff > strength * lo && lo > 0.0f)
+          strength = diff / lo;
     }
   }
 
