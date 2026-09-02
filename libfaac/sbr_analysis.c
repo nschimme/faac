@@ -13,31 +13,37 @@
  * Lesser General Public License for more details.
  */
 
-#include "sbr.h"
 #include "sbr_analysis.h"
+#include "sbr.h"
 #include "sbr_internal.h"
 #include "util.h"
 #include <string.h>
-#include <math.h>
 
-/* Legal range for a transient's leading border in time-slots. ISO 14496-3 §4.6.18
- * requires bs_var_bord_0 in [0, 2], so the leading border is at slot 0, 2, or 4.
- * The attack slot Tb must fall inside [SBR_BORDER_MIN, SBR_BORDER_MAX]. */
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+/* Envelope borders are transmitted as even offsets from a frame edge, and an
+ * envelope may not be empty (the decoder rejects non-monotone borders), so an
+ * inner border lives on an even slot in [2, numTimeSlots - 2]. */
 #define SBR_BORDER_MIN 2
-#define SBR_BORDER_MAX 12
+#define SBR_BORDER_MAX (SBR_NUM_TIME_SLOTS - 2)
 
-/* Form a three-envelope transient grid bracketing time slot Tb (an even slot in
- * [SBR_BORDER_MIN, SBR_BORDER_MAX]).
+/* Build a grid that gives the transient its own two-slot envelope, plus the
+ * bs_pointer naming that envelope.
  *
- * If Tb is near the start of the frame (Tb <= 4) the grid uses VARFIX:
- *   tEnv = { Tb - 2, Tb, Tb + 2, 16 }, bsPointer = e_t + 1
- * so envelope e_t = 1 spans [Tb, Tb + 2) and bs_pointer names e_t as the attack.
+ * bs_pointer names the attack envelope, which the decoder's gain calculation
+ * keys off: it scales each envelope's patch by 1/(1 + q_mapped*delta) with
+ * delta zero on the envelopes e_a marks. Naming the transient therefore
+ * suppresses noise injection across the attack and gives it the full patch
+ * gain, rather than diluting it like any other envelope. It also moves the
+ * second noise-floor border onto the attack.
  *
- * If Tb is near the tail (Tb >= 6) the grid uses FIXVAR:
- *   tEnv = { 0, Tb - 2, Tb, Tb + 2 }, bsPointer = 4 - e_t
- * which the decoder rebuilds by walking backwards from the trailing border
- * (16 + bs_var_bord_1 = Tb + 2), placing envelope e_t at [Tb, Tb + 2) and naming
- * it via bs_pointer = numEnvelopes + 1 - e_t. */
+ * The frame class follows from how far into the frame the transient sits,
+ * because each class only reaches so far: VARFIX steps borders forward from the
+ * frame start (2..8 slots per step, so 8 is the furthest a first inner border
+ * can land), FIXVAR steps them backward from the trailing border. Each encodes
+ * bs_pointer in its own direction, hence the two expressions below. */
 static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
 {
     int e_t;    /* index of the envelope holding the transient */
@@ -47,14 +53,18 @@ static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
     sa->tEnv[3] = SBR_NUM_TIME_SLOTS;
 
     if (Tb <= 8) {
-        /* Decoder: t_env[i+1] = t_env[i] + 2*bs_rel_bord + 2, e_t = 1 */
+        /* Decoder: t_env[i+1] = t_env[i] + 2*bs_rel_bord + 2, e_a[1] = ptr - 1
+         * (and only when ptr > 1, which holds since e_t >= 1). */
         sa->frameClass = SBR_FRAME_CLASS_VARFIX;
         sa->tEnv[1] = Tb;
         sa->tEnv[2] = Tb + 2;
         e_t = 1;
         sa->bsPointer = e_t + 1;
     } else {
-        /* Decoder: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2, walking back */
+        /* Decoder: t_env[n-1-i] = t_env[n-i] - 2*bs_rel_bord - 2, walking back
+         * from the trailing border, and e_a[1] = numEnvelopes + 1 - ptr. At the
+         * last legal border there is no room for a trailing envelope, so the
+         * transient becomes the final one instead. */
         sa->frameClass = SBR_FRAME_CLASS_FIXVAR;
         if (Tb <= SBR_BORDER_MAX - 2) {
             sa->tEnv[1] = Tb;
@@ -74,11 +84,18 @@ static void sbr_grid_transient(SignalAnalysis *sa, int Tb)
  * drop their energy. */
 static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
 {
-    return (numEnvelopes > 1 && slot >= envStart[1]) + (numEnvelopes > 2 && slot >= envStart[2]);
+    int e = numEnvelopes - 1;
+    while (e > 0 && slot < envStart[e]) e--;
+    return e;
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
- * and subband energy accumulation. */
+ * and subband energy accumulation. hot keeps it vectorized under LTO despite
+ * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
+ * here (not split out) to stay under GCC's LTO auto-inline threshold. */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((hot))
+#endif
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
@@ -92,6 +109,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     /* Pass 1: Time-domain transient detection. Identifies the temporal position
      * and strength of transients across all channels. */
     for (int ch = 0; ch < nch; ch++) {
+        float slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
+
         /* Attack detection: score each slot against an exponential average of
          * the slots before it, carried across frame boundaries. A rise over the
          * recent past fires on a step onset -- where a frame-wide peak-to-mean
@@ -103,9 +122,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 
         sa->ch[ch].wantShort = 0;
         float val_in = sa->ch[ch].lastVal;
-        float last_hp_eng = 0.0f;
         const float * restrict p_in = fullPtrs[ch];
-
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
             float hp_stot = 0.0f;
@@ -116,14 +133,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
                 hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
                 val_in = v3; p_in += 4;
             }
-
-            if (slot > 0 && !sa->ch[ch].wantShort) {
-                float toteng = (hp_stot < last_hp_eng) ? hp_stot : last_hp_eng;
-                float volchg = fabsf(hp_stot - last_hp_eng);
-                if (volchg > 0.5f * toteng)
-                    sa->ch[ch].wantShort = 1;
-            }
-            last_hp_eng = hp_stot;
+            if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
             /* Cold start (and the first frame after a reset): seed the average
              * from the signal rather than let a rise over zero fire. */
@@ -147,6 +157,25 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
 
         sa->ch[ch].transientStrength = bestRise;
         sa->ch[ch].transientSlot = bestSlot;
+
+        /* Evaluate relative energy jumps to inform block switching. */
+        float last_hp_eng = 0.0f;
+        int have_last = 0;
+        for (int slot = 0; slot < num_slots; slot++) {
+            if (slot >= 128) break;
+            float hp_eng = slot_hp_eng[slot];
+            if (have_last) {
+                float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
+                float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
+                /* PSY_TD_THRESH = 0.5 */
+                if (volchg > (0.5f * toteng)) {
+                    sa->ch[ch].wantShort = 1;
+                    break;
+                }
+            }
+            last_hp_eng = hp_eng;
+            have_last = 1;
+        }
     }
 
     /* Choose the temporal grid based on the strongest transient. Synchronizes

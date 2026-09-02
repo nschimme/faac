@@ -217,8 +217,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
                     PutBit(bs, elem->msInfo.is_present, LEN_MASK_PRES);
                     if (elem->msInfo.is_present == 1) {
                         int n = coder[elem->channels[0]].groups.n * coder[elem->channels[0]].sfbn;
-                        for (int i = 0; i < n; i++)
-                            PutBit(bs, elem->msInfo.ms_used[i], LEN_MASK);
+                        for (int i = 0; i < n; i++) PutBit(bs, elem->msInfo.ms_used[i], LEN_MASK);
                     }
                 }
                 bits += LEN_MASK_PRES;
@@ -228,8 +227,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
             bits += WriteICS(bs, &coder[elem->channels[0]], elem->common_window, writeFlag);
             bits += WriteICS(bs, &coder[elem->channels[1]], elem->common_window, writeFlag);
             break;
-        default:
-            break;
+        default: break;
     }
     return bits;
 }
@@ -237,19 +235,23 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool writeFlag)
 {
     if (writeFlag) {
-        PutBit(bs, 0xFFF,                        LEN_ADTS_SYNC);
-        PutBit(bs, hEncoder->config.mpegVersion,  LEN_ADTS_ID);
-        PutBit(bs, 0,                            LEN_ADTS_LAYER);
-        PutBit(bs, 1,                            LEN_ADTS_ABSENT);
-        PutBit(bs, LOW - 1,                      LEN_ADTS_PROFILE);
-        PutBit(bs, hEncoder->sampleRateIdx,      LEN_ADTS_FREQ);
-        PutBit(bs, 0,                            LEN_ADTS_PRIV);
-        PutBit(bs, hEncoder->numChannels,        LEN_ADTS_CH_CFG);
-        PutBit(bs, 0,                            LEN_ADTS_ORIG + LEN_ADTS_HOME);
-        PutBit(bs, 0,                            LEN_ADTS_COPY_ID + LEN_ADTS_COPY_ST);
-        PutBit(bs, hEncoder->usedBytes,          LEN_ADTS_FRAME);
-        PutBit(bs, 0x7FF,                        LEN_ADTS_FULL);
-        PutBit(bs, 0,                            LEN_ADTS_BLOCKS);
+        PutBit(bs, 0xFFF, LEN_ADTS_SYNC);
+        PutBit(bs, hEncoder->config.mpegVersion, LEN_ADTS_ID);
+        PutBit(bs, 0, LEN_ADTS_LAYER);
+        PutBit(bs, 1, LEN_ADTS_ABSENT);
+        /* profile: always LC. HE-AAC's core is LC too; SBR is implicit via fill element. */
+        PutBit(bs, LOW - 1, LEN_ADTS_PROFILE);
+        PutBit(bs, hEncoder->sampleRateIdx, LEN_ADTS_FREQ);
+        PutBit(bs, 0, LEN_ADTS_PRIV);
+        PutBit(bs, hEncoder->numChannels, LEN_ADTS_CH_CFG);
+        PutBit(bs, 0, LEN_ADTS_ORIG);
+        PutBit(bs, 0, LEN_ADTS_HOME);
+
+        PutBit(bs, 0, LEN_ADTS_COPY_ID);
+        PutBit(bs, 0, LEN_ADTS_COPY_ST);
+        PutBit(bs, hEncoder->usedBytes, LEN_ADTS_FRAME);
+        PutBit(bs, 0x7FF, LEN_ADTS_FULL);
+        PutBit(bs, 0, LEN_ADTS_BLOCKS);
     }
     return 56;
 }

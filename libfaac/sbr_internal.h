@@ -35,7 +35,7 @@ typedef struct SBRChannel {
 typedef struct SbrFrameData {
     int numEnvelopes;
     int eff_amp_res;
-    SbrFrameClass frameClass;
+    int frameClass;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
     /* Envelope frequency resolution for every envelope in this frame: 1 selects

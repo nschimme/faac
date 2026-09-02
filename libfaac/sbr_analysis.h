@@ -16,6 +16,8 @@
 #ifndef SBR_ANALYSIS_H
 #define SBR_ANALYSIS_H
 
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,6 +32,10 @@ extern "C" {
 
 #ifndef SBR_MAX_CODED_CHANNELS
 #define SBR_MAX_CODED_CHANNELS 2
+#endif
+
+#ifndef MAX_CHANNELS
+#define MAX_CHANNELS 64
 #endif
 
 struct SBRInfo;
@@ -48,7 +54,7 @@ typedef struct SignalAnalysis {
     int sampled;
 
     /* Frame envelope grid configuration. Synchronized across all channels. */
-    SbrFrameClass frameClass;
+    int frameClass;
     int numEnvelopes;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;

@@ -21,8 +21,6 @@ extern "C" {
 #endif
 
 #include <stdint.h>
-#include <stdbool.h>
-#include <assert.h>
 
 /**
  * ADTS Constants (ISO/IEC 14496-3)
@@ -57,7 +55,6 @@ void InitBitStream(BitStream *bs, uint8_t *buffer, uint32_t size);
 
 int PutBit(BitStream *bs, uint32_t data, int numBits);
 int ByteAlign(BitStream *bs);
-
 
 /* Batches small field writes into a register and flushes whole bytes as
  * they fill, instead of touching the buffer on every write -- for hot
