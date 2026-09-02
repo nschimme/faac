@@ -31,7 +31,7 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
-#define TNS_LPC_ORDER       8     /* VBR fallback order, see tns_order_for_bitrate; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
+#define TNS_LPC_ORDER       8     /* fixed filter order; spec allows up to TNS_MAX_ORDER but higher orders rarely paid for themselves here */
 #define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
 #define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
 
@@ -197,29 +197,10 @@ static void filter_spec(int length, int order, const float * a, const float * sr
     }
 }
 
-/* Higher order buys more spectral pre-shaping (fewer quantizer iterations
- * downstream) but costs more bits to transmit; the trade favors a higher
- * order at low bitrates, where quantizer efficiency matters more than the
- * coefficients' own bit cost, and a lower order once bits are plentiful.
- * VBR (bitRatePerCh==0) has no fixed per-frame budget to tier against --
- * left at this branch's original flat order until VBR-specific calibration
- * is scoped separately, rather than guessing a bitrate tier for it here. */
-static int tns_order_for_bitrate(unsigned long bitRatePerCh)
-{
-    if (bitRatePerCh == 0)
-        return TNS_LPC_ORDER;
-    if (bitRatePerCh < 96000)
-        return 12;
-    if (bitRatePerCh < 128000)
-        return 8;
-    return 6;
-}
-
-void TnsInit(faacEncStruct* hEncoder, unsigned long bitRatePerCh)
+void TnsInit(faacEncStruct* hEncoder)
 {
     unsigned int ch;
     int fs = hEncoder->sampleRateIdx;
-    int order = tns_order_for_bitrate(bitRatePerCh);
 
     for (ch = 0; ch < hEncoder->numChannels; ch++) {
         TnsInfo *info = &hEncoder->coderInfo[ch].tnsInfo;
@@ -227,7 +208,6 @@ void TnsInit(faacEncStruct* hEncoder, unsigned long bitRatePerCh)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
-        info->tnsMaxOrderLong = order;
     }
 }
 
@@ -293,8 +273,7 @@ static int tns_normalize_range(int b_start, int b_stop, int i_start,
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter, float *workBuff,
-                         int maxOrder)
+                         float *spec, TnsFilterData *filter, float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -306,7 +285,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float gain;
     int order, limit, i;
 
-    if (length <= maxOrder || (b_stop - b_start) < 8)
+    if (length <= TNS_LPC_ORDER || (b_stop - b_start) < 8)
         return 0;
 
     band = spec + i_start;
@@ -314,8 +293,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (!tns_normalize_range(b_start, b_stop, i_start, sfbOffsetTable, spec, wspec))
         return 0;
 
-    calc_autocorr_f(maxOrder, length, wspec, r);
-    gain = compute_lpc(maxOrder, r, k);
+    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
+    gain = compute_lpc(TNS_LPC_ORDER, r, k);
     if (gain < TNS_GAIN_LIMIT)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
@@ -324,11 +303,11 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (!isfinite(gain))
         return 0;
 
-    quantize_coeffs(maxOrder, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = maxOrder;
+    order = TNS_LPC_ORDER;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
@@ -396,8 +375,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0], workBuff,
-                       tnsInfo->tnsMaxOrderLong))
+                       &tnsInfo->windowData.tnsFilter[0], workBuff))
         return;
 
 #ifdef FAAC_STATS
