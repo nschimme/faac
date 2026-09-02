@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -827,6 +828,28 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .is_mp4 = false
         };
         summary_cb(&summary, user_data);
+    }
+
+    /* An ABR request can go unmet for reasons no up-front check can see: the
+       content saturates the quantizer before the budget is spent, or the rate
+       sits under the per-frame overhead at this frame rate (a 96 kHz stream
+       runs twice as many frames per second as a 48 kHz one, so its floor is
+       correspondingly higher). Both leave the caller with a rate they did not
+       ask for, so measure the delivered average and say so once. Bounds
+       checks stay where they are; this catches what they cannot know. */
+    if (opts->bit_rate_total > 0 && current_input_samples > 0 && sample_rate)
+    {
+        double secs = (double)current_input_samples / (double)sample_rate;
+        double got  = ((double)total_bytes_written * 8.0 / 1000.0) / secs;
+        double want = (double)opts->bit_rate_total / 1000.0;
+
+        if (secs > 0.0 && want > 0.0 && fabs(got - want) > want * 0.15)
+            /* Leading newline: the progress line is still open at this point
+               and owns the cursor. */
+            log_msgf(log_cb, user_data, 0,
+                     "\ndelivered %.0f kbps against the %.0f kbps requested: the "
+                     "encoder cannot %s at this sample rate and channel count\n",
+                     got, want, (got > want) ? "go lower" : "spend more");
     }
 
 cleanup:
