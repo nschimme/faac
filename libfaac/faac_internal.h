@@ -57,6 +57,7 @@ typedef struct faacEncConfiguration
     unsigned long bitRate;           /* per channel */
     unsigned int bandWidth;
     unsigned long quantqual;
+    int vbrQuality;                  /* 0..VBR_QUALITY_STEPS; <0 = use quantqual */
     unsigned long maxBitRate;        /* per channel, hard per-frame ceiling; 0 = unlimited */
     unsigned int outputFormat;       /* 0 = raw, 1 = ADTS */
     unsigned int inputFormat;
@@ -80,10 +81,5 @@ int  faacEncClose(faacEncHandle hEncoder);
  * FAAC_VBR_QUALITY_MAX - FAAC_VBR_QUALITY_MIN in <faac.h>; faac.c
  * _Static_asserts the two agree, the same way it does for the input formats. */
 #define VBR_QUALITY_STEPS 10
-
-/* Maps a 0..VBR_QUALITY_STEPS step onto the quantqual it denotes for this
- * configuration; see the comment on the ladder in frame.c. */
-unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
-                                    unsigned int quality);
 
 #endif /* FAAC_INTERNAL_H */

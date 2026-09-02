@@ -295,8 +295,8 @@ static unsigned long VbrBitrateForQuality(unsigned long quantqual,
  * Within those anchors one step is one quality, so the dial means the same
  * thing at 16 kHz mono as at 48 kHz stereo. The bitrate that quality costs is
  * free to depend on the material, which is what constant-quality means. */
-unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
-                                    unsigned int quality)
+static unsigned long VbrQualityToQuantqual(unsigned int nch, float C_lc,
+                                           unsigned int quality)
 {
     float qmin = (float)MINQUAL;
     float qfloor, q;
@@ -304,11 +304,10 @@ unsigned long VbrQualityToQuantqual(unsigned long sampleRate, unsigned int nch,
     if (quality > VBR_QUALITY_STEPS)
         quality = VBR_QUALITY_STEPS;
 
-    /* Lowest quality whose implied rate still clears the spec floor. Asked of
-     * the LC coefficient, matching VbrBitrateForQuality: the profile is not
-     * chosen yet, and this decides the rate that chooses it. */
-    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(), nch,
-                                          MapCoefficient(nch, sampleRate, 0));
+    /* Lowest quality whose implied rate still clears the floor. Asked of the LC
+     * coefficient, matching VbrBitrateForQuality: the profile is not chosen
+     * yet, and this decides the rate that chooses it. */
+    qfloor = (float)SeedQualityForBitrate((float)MinBitratePerCh(), nch, C_lc);
     if (qfloor > qmin)
         qmin = qfloor;
     if (qmin > (float)MAXQUAL)
@@ -497,6 +496,22 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             config->bitRate = minPerCh;
     }
 
+    /* One coefficient for the whole resolution. The LC value is what the -q
+     * ladder, the inferred VBR rate and the AUTO gate all reason about; the HE
+     * value is the same number halved, by construction (MAP_HE_RATIO), so the
+     * profile-specific coefficient further down is a divide rather than a
+     * second MapCoefficient. That matters for size as well as clarity: C costs
+     * two powf sequences, and the compiler inlines and duplicates them at every
+     * site that derives one. */
+    C_lc = MapCoefficient(hEncoder->numChannels, fullRate, 0);
+
+    /* A -q step names a quantqual, and which one depends on this
+     * configuration. Resolved here rather than in the caller so the ladder can
+     * share the coefficient above. */
+    if (config->vbrQuality >= 0)
+        config->quantqual = VbrQualityToQuantqual(hEncoder->numChannels, C_lc,
+                                                  (unsigned int)config->vbrQuality);
+
     /* In VBR there is no bitrate to seed a quality from, so resolve the
      * quantqual default here: the AUTO decision below reads it, and the
      * general default further down would land too late. ABR must not be
@@ -508,13 +523,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * below reads target.bitRatePerCh instead of re-deriving the mode from a
      * zero test, so -q and -b reach the decisions below through identical
      * code at the same real operating point. */
-    /* One coefficient for the whole resolution. The LC value is what the VBR
-     * rate and the AUTO gate both reason about; the HE value is the same number
-     * halved, by construction (MAP_HE_RATIO), so the profile-specific
-     * coefficient below is a divide rather than a second MapCoefficient. That
-     * matters for size as well as clarity: C costs two powf sequences, and the
-     * compiler inlines and duplicates them at every site that derives one. */
-    C_lc = MapCoefficient(hEncoder->numChannels, fullRate, 0);
     target = ResolveRateTarget(config, hEncoder->numChannels, fullRate, C_lc);
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
@@ -795,6 +803,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
+    hEncoder->config.vbrQuality = -1;   /* no -q step; quantqual/bitRate decide */
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
 	/* default channel map is straight-through */

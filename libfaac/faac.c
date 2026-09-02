@@ -264,12 +264,13 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->useLfe        = p->use_lfe ? 1 : 0;
     cfg->useTns        = p->use_tns ? 1 : 0;
     cfg->bitRate       = p->bit_rate_per_ch;
-    /* vbr_quality supersedes quant_quality: it is the same currency, named
-     * on the scale users see rather than the quantizer's own. */
-    cfg->quantqual     = (p->vbr_quality != FAAC_VBR_QUALITY_UNSET)
-                       ? VbrQualityToQuantqual(p->sample_rate, p->num_channels,
-                                               (unsigned int)p->vbr_quality)
-                       : p->quant_quality;
+    /* vbr_quality supersedes quant_quality: it is the same currency, named on
+     * the scale users see rather than the quantizer's own. The translation
+     * happens in faacEncApplyConfig, which already derives the map coefficient
+     * the ladder needs; doing it here would derive a second one. */
+    cfg->vbrQuality    = (p->vbr_quality != FAAC_VBR_QUALITY_UNSET)
+                       ? (int)p->vbr_quality : -1;
+    cfg->quantqual     = p->quant_quality;
     cfg->bandWidth     = p->bandwidth;
     cfg->outputFormat  = (unsigned int)p->output_format;
     cfg->inputFormat   = (unsigned int)p->input_format;
