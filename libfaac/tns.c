@@ -41,11 +41,18 @@ static inline int TnsMaxOrder(unsigned long bitRate)
     return 12;
 }
 
-static inline float TnsGainLimit(unsigned long bitRate)
+static inline float TnsGainLimit(unsigned long bitRate, int bitReservoir, int bitReservoirCap)
 {
-    if (bitRate > 0 && bitRate <= 32000) return 1.50f;
-    if (bitRate > 0 && bitRate <= 64000) return 1.40f;
-    return 1.35f;
+    float base_gain = 1.35f;
+    if (bitRate > 0 && bitRate <= 32000) base_gain = 1.50f;
+    else if (bitRate > 0 && bitRate <= 64000) base_gain = 1.40f;
+
+    if (bitReservoirCap > 0) {
+        float fill_ratio = (float)bitReservoir / (float)bitReservoirCap;
+        if (fill_ratio < 0.25f) base_gain += 0.15f; /* Reservoir low: require higher prediction gain */
+        else if (fill_ratio > 0.75f) base_gain -= 0.10f; /* Reservoir full: accept lower prediction gain */
+    }
+    return base_gain;
 }
 
 static void calc_autocorr_f(int order, int length, const float * work, float * r)
@@ -213,6 +220,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
                          float *spec, TnsFilterData *filter, unsigned long bitRate,
+                         int bitReservoir, int bitReservoirCap,
                          float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
@@ -221,7 +229,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float k[TNS_MAX_ORDER + 1] = {0};
     float gain, energy;
     int max_order = TnsMaxOrder(bitRate);
-    float gain_limit = TnsGainLimit(bitRate);
+    float gain_limit = TnsGainLimit(bitRate, bitReservoir, bitReservoirCap);
     int order, limit, i, b;
 
     if (length <= max_order)
@@ -306,6 +314,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
                       int* sfbOffsetTable, unsigned long bitRate,
+                      int bitReservoir, int bitReservoirCap,
                       float* workBuff)
 {
     int b_start, b_stop, ch;
@@ -320,6 +329,11 @@ void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
 
     b_start = min(tnsInfos[0]->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfos[0]->tnsMaxBandsLong, numBands);
+
+    /* Clamp TNS upper band limit to actual coded spectral bandwidth (numBands / sfbn) */
+    if (b_stop > numBands)
+        b_stop = numBands;
+
     if (b_stop <= b_start)
         return;
 
@@ -327,7 +341,8 @@ void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
         TnsInfo *info = tnsInfos[ch];
 
         if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
-                           &info->windowData.tnsFilter[0], bitRate, workBuff))
+                           &info->windowData.tnsFilter[0], bitRate,
+                           bitReservoir, bitReservoirCap, workBuff))
             continue;
 
 #ifdef FAAC_STATS

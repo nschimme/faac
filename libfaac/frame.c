@@ -987,6 +987,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                                  coderInfo[ch0].block_type,
                                  coderInfo[ch0].sfb_offset,
                                  hEncoder->config.bitRate,
+                                 hEncoder->bitReservoir,
+                                 hEncoder->bitReservoirCap,
                                  hEncoder->gpsyInfo.sharedWorkBuffLong);
             } else {
                 for (c = 0; c < nch; c++)
