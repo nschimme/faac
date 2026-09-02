@@ -71,6 +71,19 @@
 #define RC_RESERVOIR_AIM       0.995f
 #define RC_RESERVOIR_AMORT     8
 
+/* The account's two sides are bounded for different reasons, so they are bounded
+ * differently. Credit models the decoder's input buffer and genuinely cannot
+ * exceed it. Debt is bookkeeping: nothing physical stops the stream owing bits,
+ * and discarding debt at a bound is the same forgiveness this arm was built to
+ * remove -- with a capacity of only two frames' budget, the clips that overspend
+ * hardest hit it and shed the excess. Bound debt in frames instead, wide enough
+ * that ordinary excursions are always repaid.
+ *
+ * LEND_SHARE then caps what any one frame may lean on, so a wide bound buys
+ * patience rather than a violent correction. */
+#define RC_DEBT_FRAMES         8
+#define RC_LEND_SHARE          0.25f
+
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
  * collapsing quality to MINQUAL in a single step. */
@@ -1175,17 +1188,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
            forgiven and debt was not. Clips that never drew landed within 0.5% of
            target; every clip that drew ran 2-8.5% hot in proportion to the draw. */
         int diff = (int)(desbits * RC_RESERVOIR_AIM) - totalBits;
+        int debtBound = RC_DEBT_FRAMES * desbits;
         hEncoder->bitReservoir += diff;
         if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
             hEncoder->bitReservoir = hEncoder->bitReservoirCap;
-        else if (hEncoder->bitReservoir < -hEncoder->bitReservoirCap)
-            hEncoder->bitReservoir = -hEncoder->bitReservoirCap;
+        else if (hEncoder->bitReservoir < -debtBound)
+            hEncoder->bitReservoir = -debtBound;
 
         /* What this frame may lean on, signed and amortized: a credit lets a
            complex frame overspend, a debt holds the next frames under budget
            until it is repaid. This is the smoothing the draw path was meant to
-           provide, with the repayment it was missing. */
+           provide, with the repayment it was missing. Cap the per-frame share so
+           a deep balance is worked off steadily rather than in one lurch. */
         int lend = hEncoder->bitReservoir / RC_RESERVOIR_AMORT;
+        int lendCap = (int)(desbits * RC_LEND_SHARE);
+        if (lend > lendCap) lend = lendCap;
+        else if (lend < -lendCap) lend = -lendCap;
 
         if (totalBits > sbrBits)
             fix = (float)(desbits + lend - sbrBits) / (float)(totalBits - sbrBits);
@@ -1204,7 +1222,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
            `fix` directly, so keeping both would correct the same bits twice. */
         float damping = RC_DAMPING_FACTOR;
         if (hEncoder->bitReservoirCap > 0) {
-            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
+            float span = (float)(hEncoder->bitReservoir >= 0 ? hEncoder->bitReservoirCap : debtBound);
+            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / span;
             if (fillRatio < 0.25f || fillRatio > 0.75f)
                 damping = 0.85f;
 
