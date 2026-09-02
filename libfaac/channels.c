@@ -235,16 +235,24 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool writeFlag)
 {
     if (writeFlag) {
-        uint32_t w1 = (0xFFFU << 16) |
-                      ((uint32_t)hEncoder->config.mpegVersion << 15) |
-                      (1U << 12) |
-                      ((uint32_t)(LOW - 1) << 10) |
-                      ((uint32_t)hEncoder->sampleRateIdx << 6) |
-                      ((uint32_t)hEncoder->numChannels << 2);
-        PutBit(bs, w1, 28);
-
-        uint32_t w2 = ((uint32_t)hEncoder->usedBytes << 13) | (0x7FFU << 2);
-        PutBit(bs, w2, 28);
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, bs);
+        AccumPutBits(&acc, 0xFFF,                        LEN_ADTS_SYNC);
+        AccumPutBits(&acc, hEncoder->config.mpegVersion,  LEN_ADTS_ID);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_LAYER);
+        AccumPutBits(&acc, 1,                            LEN_ADTS_ABSENT);
+        AccumPutBits(&acc, LOW - 1,                      LEN_ADTS_PROFILE);
+        AccumPutBits(&acc, hEncoder->sampleRateIdx,      LEN_ADTS_FREQ);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_PRIV);
+        AccumPutBits(&acc, hEncoder->numChannels,        LEN_ADTS_CH_CFG);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_ORIG);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_HOME);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_COPY_ID);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_COPY_ST);
+        AccumPutBits(&acc, hEncoder->usedBytes,          LEN_ADTS_FRAME);
+        AccumPutBits(&acc, 0x7FF,                        LEN_ADTS_FULL);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_BLOCKS);
+        AccumEnd(&acc);
     }
     return 56;
 }
