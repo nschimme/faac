@@ -34,7 +34,8 @@ void TnsInit(faacEncStruct* hEncoder);
 
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, unsigned long bitRate);
+                      int* sfbOffsetTable, unsigned long bitRate,
+                      float* workBuff);
 
 #ifdef __cplusplus
 }

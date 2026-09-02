@@ -986,7 +986,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                                  coderInfo[ch0].sfbn,
                                  coderInfo[ch0].block_type,
                                  coderInfo[ch0].sfb_offset,
-                                 hEncoder->config.bitRate);
+                                 hEncoder->config.bitRate,
+                                 hEncoder->gpsyInfo.sharedWorkBuffLong);
             } else {
                 for (c = 0; c < nch; c++)
                     tnsInfos[c]->tnsDataPresent = 0;

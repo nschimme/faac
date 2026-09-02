@@ -229,18 +229,17 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter, unsigned long bitRate)
+                         float *spec, TnsFilterData *filter, unsigned long bitRate,
+                         float *workBuff)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
-    float wspec[BLOCK_LEN_LONG];
-    float bandrms[NSFB_LONG];
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
-    float gain, energy, maxrms, floorrms, sum_rms, sum_log_rms;
+    float gain, energy;
     int max_order = TnsMaxOrder(bitRate);
     float gain_limit = TnsGainLimit(bitRate);
-    int order, limit, i, b, nbands = b_stop - b_start;
+    int order, limit, i;
 
     if (length <= max_order)
         return 0;
@@ -251,39 +250,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (energy < TNS_MIN_ENERGY)
         return 0;
 
-    maxrms = 0.0f;
-    sum_rms = 0.0f;
-    sum_log_rms = 0.0f;
-    for (b = b_start; b < b_stop; b++) {
-        int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-        float e = 0.0f, rms, rms_fl;
-
-        for (i = s0; i < s1; i++)
-            e += (float)(spec[i] * spec[i]);
-        rms = sqrtf(e / (float)(s1 - s0));
-        bandrms[b] = rms;
-        if (rms > maxrms) maxrms = rms;
-
-        rms_fl = rms > TNS_MIN_ENERGY ? rms : TNS_MIN_ENERGY;
-        sum_rms += rms_fl;
-        sum_log_rms += logf(rms_fl);
-    }
-
-    if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
-        return 0;
-
-    floorrms = maxrms * 0.01f;
-    if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
-
-    for (b = b_start; b < b_stop; b++) {
-        int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-        float wgt = 1.0f / (bandrms[b] > floorrms ? bandrms[b] : floorrms);
-
-        for (i = s0; i < s1; i++)
-            wspec[i - i_start] = (float)spec[i] * wgt;
-    }
-
-    calc_autocorr_f(max_order, length, wspec, r);
+    calc_autocorr_f(max_order, length, spec + i_start, r);
     gain = compute_lpc(max_order, r, k);
     if (gain < gain_limit || !isfinite(gain))
         return 0;
@@ -311,34 +278,36 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     finalize_filter(order, k, filter->aCoeffs);
 
     {
+        float *trial = workBuff ? workBuff : spec + i_start;
         float orig_e = 0.0f, filt_e = 0.0f;
+        float *band = spec + i_start;
 
-        for (i = 0; i < length; i++)
-            orig_e += wspec[i] * wspec[i];
+        if (workBuff)
+            memcpy(trial, band, length * sizeof(float));
 
-        filter_spec(length, order, filter->direction, filter->aCoeffs, wspec);
-        for (i = 0; i < length; i++)
-            filt_e += wspec[i] * wspec[i];
+        filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
+
+        for (i = 0; i < length; i++) {
+            orig_e += band[i] * band[i];
+            filt_e += trial[i] * trial[i];
+        }
 
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < gain_limit * filt_e)
             return 0;
+
+        if (workBuff)
+            memcpy(band, trial, length * sizeof(float));
     }
 
-    for (b = b_start; b < b_stop; b++) {
-        int s0 = sfbOffsetTable[b], s1 = sfbOffsetTable[b + 1];
-        float scale = bandrms[b] > floorrms ? bandrms[b] : floorrms;
-
-        for (i = s0; i < s1; i++)
-            spec[i] = wspec[i - i_start] * scale;
-    }
     return 1;
 }
 
 void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
                       int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, unsigned long bitRate)
+                      int* sfbOffsetTable, unsigned long bitRate,
+                      float* workBuff)
 {
     int b_start, b_stop, ch;
 
@@ -359,7 +328,7 @@ void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
         TnsInfo *info = tnsInfos[ch];
 
         if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
-                           &info->windowData.tnsFilter[0], bitRate))
+                           &info->windowData.tnsFilter[0], bitRate, workBuff))
             continue;
 
 #ifdef FAAC_STATS
