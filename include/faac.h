@@ -98,7 +98,7 @@ typedef enum faac_status {
 enum faac_object_type {
     FAAC_OBJ_AUTO      = 0,          /* choose LC or HE-AAC from the core bandwidth  */
     FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
-    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
+    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR; mono/stereo, Fs >= 32 kHz      */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
     /* AOT 23 (LD), 39 (ELD), 42 (xHE-AAC/USAC) are intentionally NOT reserved
      * here; each would need its own additive configuration surface. */

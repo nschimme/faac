@@ -64,6 +64,22 @@ v1 wins; close to it, SBR only adds artefacts to a band LC already codes
 properly. One dimensionless threshold replaces the whole window, and it tracks
 the encoder instead of a snapshot of it.
 
+HE-AAC v1 is mono and stereo only
+---------------------------------
+
+SBR emits one payload per frame and the decoder binds it to the element it
+follows, so it covers a single SCE or CPE. Above two channels the remaining
+elements got no SBR at all, and 5.1 was worse than that: the payload landed
+against the LFE element, which decoders reject outright ("cannot apply SBR to
+element type 3"). Encoding 5.1 through --object-type auto at a low enough rate
+produced a stream ffmpeg would not play.
+
+AUTO no longer resolves to HE-AAC v1 above two channels, and asking for it
+explicitly there now fails to open rather than emitting a broken stream. If you
+were encoding multichannel with auto at low rates, you were getting either an
+invalid file or one where only two channels had their top octave; you now get
+AAC-LC, which is correct.
+
 -b bounds are enforced, and correctly
 -------------------------------------
 
@@ -79,6 +95,12 @@ per-sample-rate maximum, and out-of-range requests clamp rather than fail: -b
 The underlying defect was that a bitrate carried either a per-channel or a
 whole-stream value with nothing in the name saying which. Every such quantity
 now states its unit.
+
+A request can also go unmet for reasons no up-front check can see: the content
+saturates the quantizer before the budget is spent, or the rate sits under what
+the per-frame overhead costs at that frame rate. The delivered average is now
+measured against the request and reported when it misses by more than 15%,
+rather than leaving you to notice from the file size.
 
 API changes
 -----------
