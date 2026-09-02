@@ -175,6 +175,15 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->pns_level < 0 || p->pns_level > 10)
         return FAAC_ERR_INVALID_ARGUMENT;
+    /* This encoder's SBR serves one SCE or CPE, so its HE-AAC v1 covers mono
+     * and stereo; asking for it over more channels would emit a stream whose
+     * SBR payload binds to the wrong element. Multichannel HE-AAC v1 is legal
+     * MPEG-4 -- one sbr_extension_data() per element -- just unimplemented
+     * here. AUTO resolves around this on its own; this is for callers that
+     * named the profile. */
+    if (p->object_type == FAAC_OBJ_HE_AAC_V1
+        && p->num_channels > (uint32_t)SBR_MAX_CODED_CHANNELS)
+        return FAAC_ERR_UNSUPPORTED;
     if (p->channel_map) {
         uint32_t i;
         if (p->channel_map_count < p->num_channels)
@@ -183,9 +192,10 @@ static faac_status validate_params(const faac_params *p)
             if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* bit_rate is per channel; reject a target above what a channel can carry
-     * under the ISO/IEC 14496-3 per-frame ceiling regardless of max_bit_rate. */
-    if (p->bit_rate && p->bit_rate > MaxBitrate(p->sample_rate))
+    /* bit_rate is per channel, as is the bound. Only a ceiling: it is the
+     * ISO/IEC 14496-3 per-frame limit and therefore real, whereas the format
+     * sets no minimum and the encoder's own floor already ends the descent. */
+    if (p->bit_rate && (p->bit_rate > MaxBitrate(p->sample_rate)))
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->max_bit_rate) {
         /* Bounded because it is converted into a per-frame bit budget; an
