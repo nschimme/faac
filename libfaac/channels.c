@@ -164,12 +164,12 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
 
                     int res = win->coefResolution - flt->coefCompress;
                     for (int i = 1; i <= flt->order; i++) {
-                        BitWriterPut(&bw, flt->index[i] & ((1 << res) - 1), res);
-                        bits += res;
-                        if (bw.bits >= 32 - res) {
+                        if (bw.bits + res > 32) {
                             BitWriterFlush(&bw, bs, writeFlag);
                             BitWriterInit(&bw);
                         }
+                        BitWriterPut(&bw, flt->index[i] & ((1 << res) - 1), res);
+                        bits += res;
                     }
                 }
             }
