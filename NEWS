@@ -97,9 +97,11 @@ another, so the top half of the format's range was silently unreachable: -b 400
 and -b 576 both emitted 294 kbps at 48 kHz stereo without a word. MinBitrate()
 had no callers at all, so -b 2 was accepted and quietly produced 16.9 kbps.
 
--b is now clamped to the range the format supports, 8 kbps/channel up to the
-per-sample-rate maximum, and out-of-range requests clamp rather than fail: -b
-580 yields the maximum instead of "Couldn't open encoder instance".
+-b is now clamped at both ends, and out-of-range requests clamp rather than
+fail: -b 580 yields the maximum instead of "Couldn't open encoder instance". The
+ceiling is the normative one, ISO/IEC 14496-3's 6144 bits per channel per frame;
+the 8 kbps/channel floor is FAAC's own judgement about the lowest request worth
+attempting, not a requirement of the format.
 
 The underlying defect was that a bitrate carried either a per-channel or a
 whole-stream value with nothing in the name saying which. Every such quantity

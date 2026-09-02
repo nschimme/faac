@@ -109,9 +109,9 @@ Use this when you care how it sounds; use
 .B -b
 when you care how big it is.
 .IP
-Steps are spaced evenly in bitrate between the lowest and highest rates the
-format allows, so the rate a given step produces shifts with sample rate and
-channel count. Typical whole-stream rates for 48 kHz stereo:
+Steps are spaced evenly in bitrate across the range the encoder can produce, so
+the rate a given step produces shifts with sample rate and channel count.
+Typical whole-stream rates for 48 kHz stereo:
 .IP
 .nf
 \-q 0  ~27 kbps    \-q 4  ~100 kbps   \-q 8  ~372 kbps
@@ -145,10 +145,11 @@ meant in earlier releases.
 .BR -b\ <\fIbitrate\fP>
 Set average bitrate (ABR) to approximately <bitrate> kbps.
 .IP
-The value is a whole-stream rate, not per channel. Clamped to the range the
-format allows: 8 kbps per channel at the low end, and at the high end the
-ISO/IEC 14496-3 per-frame payload limit, which is 288 kbps per channel at
-48 kHz (576 kbps for stereo).
+The value is a whole-stream rate, not per channel, and is clamped at both ends.
+The ceiling is normative: ISO/IEC 14496-3 caps a frame's payload at 6144 bits
+per channel, which is 288 kbps per channel at 48 kHz (576 kbps for stereo). The
+floor, 8 kbps per channel, is this encoder's own judgement of the lowest request
+worth attempting rather than anything the format requires.
 .TP
 .BR \-\-cap\-rate\ <\fIbitrate\fP>
 Cap any single frame at <bitrate> kbps, for packet-oriented transports that drop

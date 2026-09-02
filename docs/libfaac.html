@@ -139,8 +139,10 @@ other two inactive, so the default is ABR.
 <menu>
 <li><i>bit_rate_per_ch</i> &mdash; average bitrate (ABR). Per channel, as the
  name says: multiply by <i>num_channels</i> for the whole-stream rate. Clamped
- to the range the format supports, 8000 bps per channel up to a per-sample-rate
- maximum. Set it to 0 to select one of the quality targets instead.
+ at both ends: 8000 bps per channel up to a per-sample-rate maximum. The
+ ceiling is normative (ISO/IEC 14496-3 caps a frame at 6144 bits per channel);
+ the floor is this encoder's own judgement, not a rule of the format. Set it to
+ 0 to select one of the quality targets instead.
 <li><i>vbr_quality</i> &mdash; constant quality (VBR), 0 to 10, higher is
  better. The quality is held and the bitrate follows the material, so a dense
  track costs more than a sparse one at the same setting. Steps are spaced evenly

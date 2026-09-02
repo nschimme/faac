@@ -48,7 +48,13 @@ unsigned int MaxBitratePerCh(unsigned long sampleRate)
 }
 
 /* Lowest bitrate PER CHANNEL worth attempting; below this the encoder cannot
- * honour the request anyway. */
+ * honour the request anyway. This is a judgement of ours, not a bound the
+ * format sets -- unlike MaxBitratePerCh, which is ISO/IEC 14496-3's 6144 bits
+ * per channel per frame. It is also flat where the real floor is not: per-frame
+ * overhead scales with the frame rate, so 96 kHz cannot reach 8000 bps/ch
+ * (it bottoms out near 14600) while 8 kHz comfortably goes below it. Callers
+ * that need the true floor should measure the output -- encode_engine.c reports
+ * a delivered rate that misses the request. */
 unsigned int MinBitratePerCh(void)
 {
     return 8000;
