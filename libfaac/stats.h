@@ -63,6 +63,13 @@ typedef struct faacEncStats {
     unsigned int maxqualFrames;
     unsigned int overshootFrames;
     unsigned int minqualOvershootFrames;
+
+    /* Signed frame bit error (totalBits - desbits), split by sign, so the mean
+       miss on each side is separable from how often each side occurs. */
+    double sumOverBits;
+    double sumUnderBits;
+    double sumDesBits;
+    unsigned int underFrames;
 } faacEncStats;
 
 extern faacEncStats g_faacStats;
