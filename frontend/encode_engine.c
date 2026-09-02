@@ -152,7 +152,7 @@ bool parse_rate_input(const char *text, rate_input_mode_t mode,
         break;
     case RATE_INPUT_QUANTQUAL:
         if (empty) val = DEFAULT_QUANT_QUALITY;
-        if (val <= 0 || val > 65535)
+        if (val < (long)FAAC_QUANT_QUALITY_MIN || val > (long)FAAC_QUANT_QUALITY_MAX)
             return false;
         opts->quant_quality = (uint16_t)val;
         break;
@@ -560,6 +560,19 @@ int run_encoding_session_ext(const encode_options_t *opts,
 
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);
+
+    /* -b is clamped to the range the format supports, and that range depends
+       on the sample rate and channel count -- neither of which is known when
+       the option is parsed, so the check cannot live in parse_rate_input().
+       Report the clamp here rather than silently encoding at a rate the caller
+       did not ask for. */
+    if (params.bit_rate_per_ch && info.bit_rate_per_ch
+        && info.bit_rate_per_ch != params.bit_rate_per_ch)
+        log_msgf(log_cb, user_data, 0,
+                 "%u kbps is outside the range %u Hz %u-channel AAC supports; using %u kbps\n",
+                 (unsigned)(params.bit_rate_per_ch * num_channels / 1000),
+                 (unsigned)sample_rate, (unsigned)num_channels,
+                 (unsigned)(info.bit_rate_per_ch * num_channels / 1000));
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;

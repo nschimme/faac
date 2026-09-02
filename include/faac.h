@@ -277,6 +277,11 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out);
 #define FAAC_VBR_QUALITY_MAX   10
 #define FAAC_VBR_QUALITY_DEF   4
 #define FAAC_VBR_QUALITY_UNSET (-1)
+
+/* Bounds on quant_quality. A value outside these is clamped, not rejected, so
+ * a frontend that wants to tell the user instead needs to know them. */
+#define FAAC_QUANT_QUALITY_MIN 10
+#define FAAC_QUANT_QUALITY_MAX 5000
 /* Zero-initialize *p and fill in library defaults and struct_size. Pass
  * sizeof(*p) as caller_size; never writes past min(caller_size,
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's

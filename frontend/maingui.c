@@ -348,8 +348,24 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         LRESULT mode = GetComboData(hWnd, IDC_RATEMODE, RATEMODE_VBR);
         if (!parse_rate_input(szTemp, RateInputFor((int)mode), &opts))
         {
-            MessageBox(hWnd, "That value is out of range for the selected rate mode.",
-                       "FAAC", MB_OK | MB_ICONWARNING);
+            /* Name the range rather than just refusing -- the edit box is
+               shared across three modes, so "out of range" alone does not
+               tell the user which range they missed. */
+            const char *range = "Quality must be 0-10, higher is better.";
+            switch ((enum RateMode)mode)   /* no default: -Wswitch names new modes */
+            {
+            case RATEMODE_ABR:
+                range = "Bitrate must be a positive number of kbps for the whole "
+                        "stream.\nIt is clamped to what the input's sample rate and "
+                        "channel count support.";
+                break;
+            case RATEMODE_QUANTQUAL:
+                range = "Quantizer quality must be 10-5000.";
+                break;
+            case RATEMODE_VBR:
+                break;
+            }
+            MessageBox(hWnd, range, "FAAC", MB_OK | MB_ICONWARNING);
             return;
         }
     }

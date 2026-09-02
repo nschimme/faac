@@ -116,9 +116,10 @@ static help_t help_qual[] = {
     "\t\tcontrol is now --quantqual.\n"
     },
     {"--quantqual <n>\tSet the raw quantizer quality (expert).\n",
-    "\t\tThe encoder's internal quantizer scale, 10-5000. Most of that\n"
-    "\t\trange sits past transparency and its useful part is unevenly\n"
-    "\t\tspaced, so prefer -q unless you know you want this.\n"
+    "\t\tThe encoder's internal quantizer scale, 10-5000; a value outside\n"
+    "\t\tthat is rejected. Most of the range sits past transparency and its\n"
+    "\t\tuseful part is unevenly spaced, so prefer -q unless you know you\n"
+    "\t\twant this.\n"
     "\t\tThis is what -q meant before this release.\n"
     },
     {"-b <bitrate>\tSet average bitrate to x kbps. (ABR)\n",
@@ -636,7 +637,9 @@ int main(int argc, char *argv[])
             break;
         case 'b':
             if (!parse_rate_input(optarg, RATE_INPUT_BITRATE, &opts))
-                dieMessage = "Bitrate out of range.\n";
+                dieMessage = "Bitrate must be positive, in kbps for the whole stream.\n"
+                             "It is clamped to what the sample rate and channel count\n"
+                             "support, which is reported when it does not fit.\n";
             break;
         case 'q':
             if (!parse_rate_input(optarg, RATE_INPUT_VBR_QUALITY, &opts))
@@ -646,7 +649,7 @@ int main(int argc, char *argv[])
             break;
         case OPT_QUANTQUAL:
             if (!parse_rate_input(optarg, RATE_INPUT_QUANTQUAL, &opts))
-                dieMessage = "Quantizer quality out of range.\n";
+                dieMessage = "Quantizer quality must be 10-5000.\n";
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)

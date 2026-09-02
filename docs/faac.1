@@ -125,8 +125,9 @@ A value outside 0-10 is rejected rather than reinterpreted.
 .BR --quantqual\ <\fIn\fP>
 Set the raw quantizer quality, 10 to 5000 (expert).
 .IP
-The encoder's internal quantizer scale. Most of that range sits past
-transparency and its useful part is unevenly spaced, so prefer
+The encoder's internal quantizer scale; a value outside 10 to 5000 is
+rejected. Most of that range sits past transparency and its useful part is
+unevenly spaced, so prefer
 .B -q
 unless you specifically want this control. This is what
 .B -q

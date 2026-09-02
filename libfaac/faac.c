@@ -73,6 +73,8 @@ static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *
 
 _Static_assert(VBR_QUALITY_STEPS == FAAC_VBR_QUALITY_MAX - FAAC_VBR_QUALITY_MIN,
                "internal VBR quality step count must match the public scale");
+_Static_assert(FAAC_QUANT_QUALITY_MIN == MINQUAL && FAAC_QUANT_QUALITY_MAX == MAXQUAL,
+               "public quantizer bounds must match the quantizer's own");
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out)
 {
