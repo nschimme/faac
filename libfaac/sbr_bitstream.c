@@ -84,10 +84,8 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
 
 static int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    BitWriter bw;
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, fd->ch[ch].invfMode, 2);
-    return BitWriterFlush(&bw, bs, write);
+    if (write) PutBit(bs, fd->ch[ch].invfMode, 2);
+    return 2;
 }
 
 static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
@@ -143,10 +141,7 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     int lead_len = (id_aac == ID_CPE) ? 2 : 1;
     int bits = lead_len + flags_len;
 
-    BitWriter bw;
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, 0, lead_len);
-    BitWriterFlush(&bw, bs, write);
+    if (write) PutBit(bs, 0, lead_len);
 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_grid(fd, bs, write);
@@ -159,9 +154,7 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_noise(fd, bs, ch, write);
 
-    BitWriterInit(&bw);
-    BitWriterPut(&bw, 0, flags_len);
-    BitWriterFlush(&bw, bs, write);
+    if (write) PutBit(bs, 0, flags_len);
 
     return bits;
 }
