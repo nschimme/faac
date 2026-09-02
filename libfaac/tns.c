@@ -43,7 +43,7 @@ static const struct {
 /* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
  * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
  * TNS's LPC work there; it only pays off on tonal/peaky bands. */
-#define TNS_PNS_SFM_SKIP    0.85f
+#define TNS_PNS_SFM_SKIP    0.75f
 
 static void calc_autocorr_f(int order, int length, const float * restrict work, float * restrict r)
 {
@@ -224,7 +224,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float gain;
     int order, limit, i;
 
-    if (length <= TNS_LPC_ORDER)
+    if (length <= TNS_LPC_ORDER || (b_stop - b_start) < 8)
         return 0;
 
     band = spec + i_start;
