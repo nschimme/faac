@@ -642,6 +642,15 @@ int faacEncClose(faacEncHandle hpEncoder)
                         peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
             }
         }
+        if (g_faacStats.reservoirFrames > 0)
+        {
+            unsigned int rcf = g_faacStats.reservoirFrames;
+            fprintf(stderr, " Quality Clamp       : Overshoot = %5.1f%% (%u/%u) | at MINQUAL = %5.1f%% | overshoot AND floored = %5.1f%% | at MAXQUAL = %5.1f%%\n",
+                    100.0 * g_faacStats.overshootFrames / rcf, g_faacStats.overshootFrames, rcf,
+                    100.0 * g_faacStats.minqualFrames / rcf,
+                    100.0 * g_faacStats.minqualOvershootFrames / rcf,
+                    100.0 * g_faacStats.maxqualFrames / rcf);
+        }
         fprintf(stderr, "---------------------------\n");
     }
 #endif
@@ -1187,6 +1196,17 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
+
+#ifdef FAAC_STATS
+        {
+            int overshot = (totalBits > desbits);
+            int floored = (hEncoder->aacquantCfg.quality <= MINQUAL);
+            if (floored) g_faacStats.minqualFrames++;
+            if (hEncoder->aacquantCfg.quality >= maxqual) g_faacStats.maxqualFrames++;
+            if (overshot) g_faacStats.overshootFrames++;
+            if (overshot && floored) g_faacStats.minqualOvershootFrames++;
+        }
+#endif
     }
 
     return frameBytes;
