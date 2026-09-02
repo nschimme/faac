@@ -270,8 +270,8 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   }
 
   /* Process block switching decision per element.
-   * For CPE elements, couple Left and Right channel decisions using both
-   * transient flags and combined Perceptual Entropy (PE_L + PE_R). */
+   * For CPE elements, couple Left and Right channel decisions using transient
+   * flags and sub-block attack thresholds. */
   if (hEncoder && hEncoder->numElements > 0)
   {
       for (e = 0; e < hEncoder->numElements; e++)
