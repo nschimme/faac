@@ -283,13 +283,8 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
               int r = elem->channels[1];
               if ((unsigned int)l < numChannels && (unsigned int)r < numChannels)
               {
-                  float pe_sum = psyInfo[l].pe + psyInfo[r].pe;
-
                   if (psyInfo[l].block_type == ONLY_SHORT_WINDOW ||
-                      psyInfo[r].block_type == ONLY_SHORT_WINDOW ||
-                      psyInfo[l].pe >= PE_THRESH_PER_CH ||
-                      psyInfo[r].pe >= PE_THRESH_PER_CH ||
-                      pe_sum >= (2.0f * PE_THRESH_PER_CH))
+                      psyInfo[r].block_type == ONLY_SHORT_WINDOW)
                   {
                       desire[l] = ONLY_SHORT_WINDOW;
                       desire[r] = ONLY_SHORT_WINDOW;
