@@ -41,8 +41,14 @@
  * The wider LC bandwidth moved this down from 48000, where AUTO was handing
  * 56k-96k stereo to HE at a loss of up to 0.176. */
 #define HE_MAX_BITRATE_PER_CH 26000
-/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
-#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
+/* quantqual == totalBitrate/1280 (see faacEncApplyConfig). Deliberately NOT
+ * derived from HE_MAX_BITRATE_PER_CH: that boundary was measured in ABR, where
+ * both profiles are held to the same target and the comparison is quality at
+ * equal rate. VBR fixes quality instead, and an LC stream there codes to
+ * Nyquist, so the same quantqual costs ~58% more as LC than as HE. Handing
+ * these streams to LC buys a little MOS at that price. 75 is the value the
+ * derivation happened to produce before the ABR ceiling moved. */
+#define HE_VBR_QUANTQUAL_MAX  75
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
