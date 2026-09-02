@@ -121,6 +121,13 @@ static float compute_lpc(int order, const float * r, float * k)
     return r[0] / err;
 }
 
+static const float tns_inv_quant_lut[16] = {
+    -0.99573416f, -0.96182567f, -0.89516330f, -0.79801720f,
+    -0.67369562f, -0.52643216f, -0.36124167f, -0.18374951f,
+     0.00000000f,  0.20791170f,  0.40673664f,  0.58778524f,
+     0.74314487f,  0.86602545f,  0.95105654f,  0.99452192f
+};
+
 /* Reflection coefficients live in (-1, 1); arcsine-warp them before
  * quantizing so equal code steps land closer to equal perceptual steps
  * near the +-1 ends, per the tns_data() coefficient law in the spec. */
@@ -141,11 +148,12 @@ static void quantize_coeffs(int order, int res, float * k, int * idx)
         else if (q < i_min) q = i_min;
         idx[i] = q;
 
-        /* Re-derive k[] from the quantized index (not the original float)
-         * so finalize_filter below builds the same filter the decoder will,
-         * from the same lossy coefficients that actually get transmitted. */
-        s = (q >= 0) ? s_p : s_n;
-        k[i] = sinf((float)q / s);
+        if (res == DEF_TNS_COEFF_RES) {
+            k[i] = tns_inv_quant_lut[q + 8];
+        } else {
+            s = (q >= 0) ? s_p : s_n;
+            k[i] = sinf((float)q / s);
+        }
     }
 }
 
@@ -226,7 +234,7 @@ void TnsInit(faacEncStruct* hEncoder)
  * earns its place, whitens that range of `spec` in place and fills *filter.
  * Returns 1 when a filter was written, 0 otherwise. */
 static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
-                         float *spec, TnsFilterData *filter, float *workBuff)
+                         float *spec, TnsFilterData *filter, float *workBuff, int lpc_order)
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
@@ -238,7 +246,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     float gain;
     int order, limit, i;
 
-    if (length <= TNS_LPC_ORDER)
+    if (length <= lpc_order)
         return 0;
 
     band = spec + i_start;
@@ -296,8 +304,8 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         }
     }
 
-    calc_autocorr_f(TNS_LPC_ORDER, length, wspec, r);
-    gain = compute_lpc(TNS_LPC_ORDER, r, k);
+    calc_autocorr_f(lpc_order, length, wspec, r);
+    gain = compute_lpc(lpc_order, r, k);
     if (gain < TNS_GAIN_LIMIT)
         return 0;
     /* No upper bound: compute_lpc clamps reflection coefficients to +-0.999,
@@ -306,23 +314,17 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     if (!isfinite(gain))
         return 0;
 
-    quantize_coeffs(TNS_LPC_ORDER, DEF_TNS_COEFF_RES, k, filter->index);
+    quantize_coeffs(lpc_order, DEF_TNS_COEFF_RES, k, filter->index);
 
     /* Drop trailing taps that quantized away to ~nothing: they cost bits
      * without changing what the filter does. */
-    order = TNS_LPC_ORDER;
+    order = lpc_order;
     while (order > 0 && fabsf(k[order]) < (float)DEF_TNS_COEFF_THRESH)
         order--;
     if (order == 0)
         return 0;
 
     filter->order = order;
-
-    /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
-     * reversal, so both directions give the same LPC fit and prediction gain.
-     * Picking the right one needs the time-domain transient position, which
-     * this function never sees. */
-    filter->direction = 0;
 
     /* Coefficients that all fit in one fewer bit each can be transmitted at
      * reduced resolution; the spec's coefCompress flag signals that. */
@@ -342,13 +344,27 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
      * transmitted no longer pays for itself. Re-check on a trial run of the
      * real (quantized) filter before committing to writing it out. */
     {
-        float orig_e = 0.0f, filt_e = 0.0f;
+        float orig_e = 0.0f, filt_e0 = 0.0f, filt_e1 = 0.0f, filt_e;
 
-        filter_spec(length, order, filter->direction, filter->aCoeffs, wspec, trial);
+        filter_spec(length, order, 0, filter->aCoeffs, wspec, trial);
         for (i = 0; i < length; i++) {
             orig_e += wspec[i] * wspec[i];
-            filt_e += trial[i] * trial[i];
+            filt_e0 += trial[i] * trial[i];
         }
+
+        filter_spec(length, order, 1, filter->aCoeffs, wspec, trial);
+        for (i = 0; i < length; i++) {
+            filt_e1 += trial[i] * trial[i];
+        }
+
+        if (filt_e1 < filt_e0) {
+            filter->direction = 1;
+            filt_e = filt_e1;
+        } else {
+            filter->direction = 0;
+            filt_e = filt_e0;
+        }
+
         if (filt_e < TNS_MIN_ENERGY)
             filt_e = TNS_MIN_ENERGY;
         if (orig_e < TNS_MEASURED_GAIN * filt_e)
@@ -360,13 +376,14 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff)
+void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff, unsigned long bitRate)
 {
     TnsInfo *tnsInfo = &coderInfo->tnsInfo;
     int numBands = coderInfo->sfbn;
     enum WINDOW_TYPE blockType = coderInfo->block_type;
     int *sfbOffsetTable = coderInfo->sfb_offset;
     int b_start, b_stop;
+    int lpc_order = TNS_LPC_ORDER;
 
     tnsInfo->tnsDataPresent = 0;
     tnsInfo->windowData.numFilters = 0;
@@ -375,13 +392,18 @@ void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff)
     if (blockType == ONLY_SHORT_WINDOW)
         return;
 
+    if (bitRate > 0 && bitRate <= 24000)
+        lpc_order = 6;
+    else if (bitRate >= 64000)
+        lpc_order = 12;
+
     b_start = min(tnsInfo->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfo->tnsMaxBandsLong, numBands);
     if (b_stop <= b_start)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0], workBuff))
+                       &tnsInfo->windowData.tnsFilter[0], workBuff, lpc_order))
         return;
 
 #ifdef FAAC_STATS
