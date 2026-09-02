@@ -81,11 +81,11 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
 
 static int write_sbr_invf(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    BitWriter bw;
-    BitWriterInit(&bw);
-    for (int nb = 0; nb < sbr->numNoiseBands; nb++)
-        BitWriterPut(&bw, fd->ch[ch].invfMode, 2);
-    return BitWriterFlush(&bw, bs, write);
+    if (write) {
+        for (int nb = 0; nb < sbr->numNoiseBands; nb++)
+            PutBit(bs, fd->ch[ch].invfMode, 2);
+    }
+    return sbr->numNoiseBands * 2;
 }
 
 static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
@@ -97,27 +97,30 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     int first_max = (1 << first_bits) - 1;
     int bits = 0;
 
-    BitWriter bw;
-    BitWriterInit(&bw);
-
-    for (int e = 0; e < fd->numEnvelopes; e++) {
-        const int *env_ch = fd->ch[ch].envData[e];
-        if (bw.bits + first_bits > 32) {
-            BitWriterFlush(&bw, bs, write);
-        }
-        BitWriterPut(&bw, clamp_int(env_ch[0], 0, first_max), first_bits);
-        bits += first_bits;
-        for (int b = 1; b < sbr->numBands; b++) {
-            int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
-            int len = table[sym].len;
-            if (bw.bits + len > 32) {
-                BitWriterFlush(&bw, bs, write);
+    if (write) {
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, bs);
+        for (int e = 0; e < fd->numEnvelopes; e++) {
+            const int *env_ch = fd->ch[ch].envData[e];
+            AccumPutBits(&acc, clamp_int(env_ch[0], 0, first_max), first_bits);
+            bits += first_bits;
+            for (int b = 1; b < sbr->numBands; b++) {
+                int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
+                AccumPutBits(&acc, table[sym].code, table[sym].len);
+                bits += table[sym].len;
             }
-            BitWriterPut(&bw, table[sym].code, len);
-            bits += len;
+        }
+        AccumEnd(&acc);
+    } else {
+        for (int e = 0; e < fd->numEnvelopes; e++) {
+            const int *env_ch = fd->ch[ch].envData[e];
+            bits += first_bits;
+            for (int b = 1; b < sbr->numBands; b++) {
+                int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
+                bits += table[sym].len;
+            }
         }
     }
-    BitWriterFlush(&bw, bs, write);
     return bits;
 }
 
@@ -125,30 +128,37 @@ static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     int bits = 0;
-    BitWriter bw;
-    BitWriterInit(&bw);
 
-    for (int ne = 0; ne < n_q; ne++) {
-        for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            int val = fd->ch[ch].noiseData[ne][nb];
-            if (nb == 0) {
-                if (bw.bits + 5 > 32) {
-                    BitWriterFlush(&bw, bs, write);
+    if (write) {
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, bs);
+        for (int ne = 0; ne < n_q; ne++) {
+            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+                int val = fd->ch[ch].noiseData[ne][nb];
+                if (nb == 0) {
+                    AccumPutBits(&acc, clamp_int(val, 0, 30), 5);
+                    bits += 5;
+                } else {
+                    int sym = clamp_int(val + F_HUFF_ENV_3_0DB_OFFSET, 0, F_HUFF_ENV_3_0DB_NSYMS - 1);
+                    AccumPutBits(&acc, f_huff_env_3_0dB[sym].code, f_huff_env_3_0dB[sym].len);
+                    bits += f_huff_env_3_0dB[sym].len;
                 }
-                BitWriterPut(&bw, clamp_int(val, 0, 30), 5);
-                bits += 5;
-            } else {
-                int sym = clamp_int(val + F_HUFF_ENV_3_0DB_OFFSET, 0, F_HUFF_ENV_3_0DB_NSYMS - 1);
-                int len = f_huff_env_3_0dB[sym].len;
-                if (bw.bits + len > 32) {
-                    BitWriterFlush(&bw, bs, write);
+            }
+        }
+        AccumEnd(&acc);
+    } else {
+        for (int ne = 0; ne < n_q; ne++) {
+            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
+                int val = fd->ch[ch].noiseData[ne][nb];
+                if (nb == 0) {
+                    bits += 5;
+                } else {
+                    int sym = clamp_int(val + F_HUFF_ENV_3_0DB_OFFSET, 0, F_HUFF_ENV_3_0DB_NSYMS - 1);
+                    bits += f_huff_env_3_0dB[sym].len;
                 }
-                BitWriterPut(&bw, f_huff_env_3_0dB[sym].code, len);
-                bits += len;
             }
         }
     }
-    BitWriterFlush(&bw, bs, write);
     return bits;
 }
 
