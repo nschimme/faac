@@ -134,37 +134,47 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
      * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
         TnsWindowData *win = &tns->windowData;
-
-        if (writeFlag) PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
+        BitWriter bw;
+        BitWriterInit(&bw);
+        BitWriterPut(&bw, win->numFilters, LEN_TNS_NFILTL);
         bits += LEN_TNS_NFILTL;
 
         if (win->numFilters > 0) {
-            if (writeFlag) PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+            BitWriterPut(&bw, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
             bits += LEN_TNS_COEFF_RES;
 
             for (int f = 0; f < win->numFilters; f++) {
                 TnsFilterData *flt = &win->tnsFilter[f];
-                if (writeFlag) {
-                    PutBit(bs, flt->length, LEN_TNS_LENGTHL);
-                    PutBit(bs, flt->order, LEN_TNS_ORDERL);
+                if (bw.bits + LEN_TNS_LENGTHL + LEN_TNS_ORDERL > 32) {
+                    BitWriterFlush(&bw, bs, writeFlag);
+                    BitWriterInit(&bw);
                 }
+                BitWriterPut(&bw, flt->length, LEN_TNS_LENGTHL);
+                BitWriterPut(&bw, flt->order, LEN_TNS_ORDERL);
                 bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
 
                 if (flt->order > 0) {
-                    if (writeFlag) {
-                        PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                        PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
+                    if (bw.bits + LEN_TNS_DIRECTION + LEN_TNS_COMPRESS > 32) {
+                        BitWriterFlush(&bw, bs, writeFlag);
+                        BitWriterInit(&bw);
                     }
+                    BitWriterPut(&bw, flt->direction, LEN_TNS_DIRECTION);
+                    BitWriterPut(&bw, flt->coefCompress, LEN_TNS_COMPRESS);
                     bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
 
                     int res = win->coefResolution - flt->coefCompress;
                     for (int i = 1; i <= flt->order; i++) {
-                        if (writeFlag) PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
+                        BitWriterPut(&bw, flt->index[i] & ((1 << res) - 1), res);
                         bits += res;
+                        if (bw.bits >= 32 - res) {
+                            BitWriterFlush(&bw, bs, writeFlag);
+                            BitWriterInit(&bw);
+                        }
                     }
                 }
             }
         }
+        BitWriterFlush(&bw, bs, writeFlag);
     }
 
     if (writeFlag) PutBit(bs, 0, LEN_GAIN_PRES);
@@ -294,11 +304,15 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     bits += SbrContextGetBits(hEncoder->sbrContext, write ? bs : NULL,
                                (int)hEncoder->numChannels, (int)hEncoder->config.aacObjectType, write);
 
-    if (write) PutBit(bs, ID_END, LEN_SE_ID);
-    bits += LEN_SE_ID;
-    int pad = (8 - (bits & 7)) & 7;
-    if (write) for (int i = 0; i < pad; i++) PutBit(bs, 0, 1);
-    return bits + pad;
+    int pad = (8 - ((bits + LEN_SE_ID) & 7)) & 7;
+    if (write) {
+        BitWriter bw;
+        BitWriterInit(&bw);
+        BitWriterPut(&bw, ID_END, LEN_SE_ID);
+        if (pad > 0) BitWriterPut(&bw, 0, pad);
+        BitWriterFlush(&bw, bs, true);
+    }
+    return bits + LEN_SE_ID + pad;
 }
 
 /* ADTS carries a frame length that is only known once the frame is written.

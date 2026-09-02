@@ -23,16 +23,6 @@
 #include "util.h"
 #include "faac_internal.h"
 
-/* count-and-write helper: matches channels.c's WriteElement/WriteICS style --
- * every write_sbr_* function below takes a `write` flag, always returns the
- * bit count, and only touches `bs` (which may be NULL) when `write` is set. */
-static int put_huff(BitStream *bs, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
-{
-    int sym = clamp_int(delta + offset, 0, nsyms - 1);
-    if (write) PutBit(bs, table[sym].code, table[sym].len);
-    return table[sym].len;
-}
-
 static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
@@ -110,14 +100,29 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     int nb = sbr_env_bands(sbr, fd);
     int bits = 0;
 
+    BitWriter bw;
+    BitWriterInit(&bw);
+
     for (int e = 0; e < fd->numEnvelopes; e++) {
         const int *env_ch = fd->ch[ch].envData[e];
-        if (write) PutBit(bs, clamp_int(env_ch[0], 0, first_max), first_bits);
+        if (bw.bits + first_bits > 32) {
+            BitWriterFlush(&bw, bs, write);
+            BitWriterInit(&bw);
+        }
+        BitWriterPut(&bw, clamp_int(env_ch[0], 0, first_max), first_bits);
         bits += first_bits;
         for (int b = 1; b < nb; b++) {
-            bits += put_huff(bs, write, table, nsyms, offset, env_ch[b]);
+            int sym = clamp_int(env_ch[b] + offset, 0, nsyms - 1);
+            int len = table[sym].len;
+            if (bw.bits + len > 32) {
+                BitWriterFlush(&bw, bs, write);
+                BitWriterInit(&bw);
+            }
+            BitWriterPut(&bw, table[sym].code, len);
+            bits += len;
         }
     }
+    BitWriterFlush(&bw, bs, write);
     return bits;
 }
 
@@ -138,7 +143,10 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     int lead_len = (id_aac == ID_CPE) ? 2 : 1;
     int bits = lead_len + flags_len;
 
-    if (write) PutBit(bs, 0, lead_len);
+    BitWriter bw;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0, lead_len);
+    BitWriterFlush(&bw, bs, write);
 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_grid(fd, bs, write);
@@ -151,7 +159,9 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_noise(fd, bs, ch, write);
 
-    if (write) PutBit(bs, 0, flags_len);
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0, flags_len);
+    BitWriterFlush(&bw, bs, write);
 
     return bits;
 }
@@ -182,17 +192,26 @@ int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, in
 
     int totalBits;
     if (writeFlag) {
-        PutBit(bs, ID_FIL, 3);
+        BitWriter bw;
+        BitWriterInit(&bw);
+        BitWriterPut(&bw, ID_FIL, 3);
         if (fillBytes < 15) {
-            PutBit(bs, fillBytes, 4);
+            BitWriterPut(&bw, fillBytes, 4);
             totalBits = 7;
         } else {
-            PutBit(bs, 15, 4);
-            PutBit(bs, fillBytes - 14, 8);
+            BitWriterPut(&bw, 15, 4);
+            BitWriterPut(&bw, fillBytes - 14, 8);
             totalBits = 15;
         }
+        BitWriterFlush(&bw, bs, true);
+
         emit_sbr_payload(sbr, fd, bs, id_aac, sendHeader, true);
-        if (padBits > 0) PutBit(bs, 0, padBits);
+
+        if (padBits > 0) {
+            BitWriterInit(&bw);
+            BitWriterPut(&bw, 0, padBits);
+            BitWriterFlush(&bw, bs, true);
+        }
         sbr->headerSent = 1;
         sbr->frameCount++;
     } else {
