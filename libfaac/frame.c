@@ -60,6 +60,10 @@ static char *libCopyright =
   " Copyright (C) 2005-2026, Fabian Greffrath\n"
   " Copyright (C) 2026, Nils Schimmelmann\n";
 
+/* Per channel. Below this the 20 kHz plateau holds; above it the bandwidth
+ * opens toward Nyquist, reaching it at 256000 for 48 kHz input. */
+#define BW_OPEN_RATE 192000
+
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
     const unsigned int nyquist = sampleRate / 2;
@@ -86,9 +90,28 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Segment 5: transparency plateau, 20 kHz opening up to Nyquist.
+         *
+         * This segment had a `if (bw > 20000) bw = 20000;` that cancelled the
+         * term above it: the addend is positive for every bitRate that reaches
+         * this branch, so the plateau was flat at 20 kHz and the arithmetic had
+         * never once had an effect. With the -b ceiling also wrong by a factor
+         * of numChannels, nothing ever got high enough to notice; correcting
+         * that exposes this one, where 4 kHz of Nyquist stays uncoded no matter
+         * how many bits are on offer and the rate control has nowhere to spend
+         * them.
+         *
+         * The ramp starts at BW_OPEN_RATE rather than at the segment boundary
+         * because widening is not free: it is the same bit budget spread over
+         * more spectrum, and 20-24 kHz is inaudible to most listeners. Measured
+         * at 48 kHz stereo, opening to 22 kHz at 160 kbit/s per channel moved
+         * the output rate by +0.05% -- a pure reallocation -- and cost 0.0088
+         * MOS, while at 224 kbit/s per channel, where the 20 kHz cap was what
+         * stood between the caller and the rate they asked for, the same
+         * widening bought +3.7% bits at flat MOS. So hold the plateau until the
+         * audible band is saturated and the cap is the binding constraint. */
+        bw = (bitRate <= BW_OPEN_RATE)
+             ? 20000 : 20000 + ((bitRate - BW_OPEN_RATE) / 16);
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
@@ -210,8 +233,21 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * HE-AAC handle sampleRate is the halved core rate. */
     {
         unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
+        unsigned int maxPerCh = MaxBitrate(fullRate);
+        unsigned int minPerCh = MinBitrate();
+
+        /* Both bounds are PER CHANNEL, and so is config->bitRate. The ceiling
+         * used to be divided by numChannels before the comparison, which made
+         * it that factor too low: at 48 kHz stereo everything from -b 289
+         * upward silently produced 287 kbps, so half the range the format
+         * allows was unreachable and the request was dropped without a word.
+         *
+         * The floor had no enforcement at all -- MinBitrate() had no callers --
+         * so -b 2 was accepted and quietly produced whatever came out. */
+        if (config->bitRate > maxPerCh)
+            config->bitRate = maxPerCh;
+        else if (config->bitRate && config->bitRate < minPerCh)
+            config->bitRate = minPerCh;
     }
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
@@ -234,11 +270,26 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        /* This encoder emits one SBR payload per frame and the decoder binds it
+         * to the element it follows, so it can serve a single SCE or CPE -- see
+         * SBR_MAX_CODED_CHANNELS. Beyond two channels the remaining elements
+         * would get no SBR at all, and with an LFE present the payload lands
+         * against ID_LFE, which decoders reject outright ("cannot apply SBR to
+         * element type 3"). AUTO must not walk into that.
+         *
+         * The format is not the constraint: MPEG-4 puts an sbr_extension_data()
+         * in a fill element after each SCE and CPE, so HE-AAC v1 5.1 is legal
+         * and commonplace. Lifting this means emitting one payload per element,
+         * skipping the LFE. */
+        hEncoder->config.aacObjectType =
+            (rate_ok && hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS
+             && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
