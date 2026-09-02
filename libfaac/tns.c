@@ -324,21 +324,36 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     return 1;
 }
 
-void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
-                      int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, unsigned long bitRate,
-                      int bitReservoir, int bitReservoirCap,
-                      float* workBuff)
+void TnsEncodeElement(struct faacEncStruct *hEncoder, AACElement *elem,
+                      CoderInfo *coderInfo, int admit)
 {
-    int b_start, b_stop, ch;
+    int ch, nch, ch0, numBands, b_start, b_stop;
+    TnsInfo *tnsInfos[2];
+    float *specs[2];
+    int *sfbOffsetTable;
+    enum WINDOW_TYPE blockType;
+
+    if (elem->type == ID_SCE) nch = 1;
+    else if (elem->type == ID_CPE) nch = 2;
+    else return;
 
     for (ch = 0; ch < nch; ch++) {
+        int channel = elem->channels[ch];
+        tnsInfos[ch] = &coderInfo[channel].tnsInfo;
+        specs[ch] = hEncoder->freqBuff[channel];
         tnsInfos[ch]->tnsDataPresent = 0;
         tnsInfos[ch]->windowData.numFilters = 0;
     }
 
-    if (blockType == ONLY_SHORT_WINDOW)
+    ch0 = elem->channels[0];
+    blockType = coderInfo[ch0].block_type;
+
+    /* Short windows (and non-admitted elements) skip TNS filtering completely */
+    if (blockType == ONLY_SHORT_WINDOW || !admit)
         return;
+
+    numBands = coderInfo[ch0].sfbn;
+    sfbOffsetTable = coderInfo[ch0].sfb_offset;
 
     b_start = min(tnsInfos[0]->tnsMinBandNumberLong, numBands);
     b_stop = min(tnsInfos[0]->tnsMaxBandsLong, numBands);
@@ -354,8 +369,11 @@ void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
         TnsInfo *info = tnsInfos[ch];
 
         if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, specs[ch],
-                           &info->windowData.tnsFilter[0], bitRate,
-                           bitReservoir, bitReservoirCap, workBuff))
+                           &info->windowData.tnsFilter[0],
+                           hEncoder->config.bitRate,
+                           hEncoder->bitReservoir,
+                           hEncoder->bitReservoirCap,
+                           hEncoder->gpsyInfo.sharedWorkBuffLong))
             continue;
 
 #ifdef FAAC_STATS

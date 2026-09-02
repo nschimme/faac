@@ -943,8 +943,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         int e;
         for (e = 0; e < hEncoder->numElements; e++) {
             AACElement *elem = &hEncoder->elements[e];
-            TnsInfo *tnsInfos[2];
-            float *specs[2];
             int c, nch, admit = 0;
 
             if (elem->type == ID_SCE)
@@ -960,8 +958,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
             for (c = 0; c < nch; c++) {
                 int ch = elem->channels[c];
                 float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
-                tnsInfos[c] = &coderInfo[ch].tnsInfo;
-                specs[c] = hEncoder->freqBuff[ch];
 
 #ifdef FAAC_STATS
                 if (attack > 0.0f && isfinite(attack)) {
@@ -980,20 +976,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                     admit = 1;
             }
 
-            if (useTns && admit) {
-                int ch0 = elem->channels[0];
-                TnsEncodeElement(tnsInfos, specs, nch,
-                                 coderInfo[ch0].sfbn,
-                                 coderInfo[ch0].block_type,
-                                 coderInfo[ch0].sfb_offset,
-                                 hEncoder->config.bitRate,
-                                 hEncoder->bitReservoir,
-                                 hEncoder->bitReservoirCap,
-                                 hEncoder->gpsyInfo.sharedWorkBuffLong);
-            } else {
-                for (c = 0; c < nch; c++)
-                    tnsInfos[c]->tnsDataPresent = 0;
-            }
+            TnsEncodeElement(hEncoder, elem, coderInfo, useTns && admit);
         }
     }
 

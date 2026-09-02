@@ -32,11 +32,9 @@ extern "C" {
 /* Latch the per-channel band limits from the sample rate's TNS tool table. */
 void TnsInit(faacEncStruct* hEncoder);
 
-void TnsEncodeElement(TnsInfo** tnsInfos, float** specs, int nch,
-                      int numBands, enum WINDOW_TYPE blockType,
-                      int* sfbOffsetTable, unsigned long bitRate,
-                      int bitReservoir, int bitReservoirCap,
-                      float* workBuff);
+/* Analyze one element (SCE or CPE) and, if long-window and admitted, apply TNS filtering. */
+void TnsEncodeElement(struct faacEncStruct *hEncoder, AACElement *elem,
+                      CoderInfo *coderInfo, int admit);
 
 #ifdef __cplusplus
 }
