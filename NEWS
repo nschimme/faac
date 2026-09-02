@@ -109,9 +109,15 @@ now states its unit.
 
 A request can also go unmet for reasons no up-front check can see: the content
 saturates the quantizer before the budget is spent, or the rate sits under what
-the per-frame overhead costs at that frame rate. The delivered average is now
-measured against the request and reported when it misses by more than 15%,
-rather than leaving you to notice from the file size.
+the per-frame overhead costs at that frame rate (a 96 kHz stream runs twice the
+frames of a 48 kHz one, each with its own headers, so a very low -b there asks
+for less than the frames cost). The encoder does not chase such a request below
+its own quality floor -- that trades real quality for a target it would still
+miss. It reports instead, whenever the delivered average misses the request by
+more than 15%:
+
+  delivered 30 kbps against the 16 kbps requested: the encoder cannot go lower
+  at this sample rate and channel count
 
 API changes
 -----------
