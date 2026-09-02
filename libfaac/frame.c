@@ -257,7 +257,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     }
 
     /* Re-init TNS for new profile */
-    TnsInit(hEncoder);
+    TnsInit(hEncoder, config->bitRate);
 
     if (config->bitRate && !config->bandWidth)
     {
@@ -490,7 +490,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 
     FilterBankInit(hEncoder);
 
-    TnsInit(hEncoder);
+    TnsInit(hEncoder, hEncoder->config.bitRate);
 
     QuantizeInit();
 

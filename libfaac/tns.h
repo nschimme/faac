@@ -29,8 +29,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
-/* Latch the per-channel band limits from the sample rate's TNS tool table. */
-void TnsInit(faacEncStruct* hEncoder);
+/* Latch the per-channel band limits from the sample rate's TNS tool table,
+ * and the bitrate-tiered LPC order (bitRatePerCh==0 for VBR). */
+void TnsInit(faacEncStruct* hEncoder, unsigned long bitRatePerCh);
 
 /* Analyse one channel and, if it pays off, whiten `spec` in place. */
 void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff);
