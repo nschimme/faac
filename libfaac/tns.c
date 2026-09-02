@@ -192,11 +192,16 @@ static void filter_spec(int length, int order, int direction, const float * a, c
             dst[i] = acc;
         }
     } else {
-        for (i = 0; i < length; i++) {
+        int limit = order < length ? order : length;
+        for (i = 0; i < limit; i++) {
             float acc = src[i];
-            int jmax = min(order, i);
-
-            for (j = 1; j <= jmax; j++)
+            for (j = 1; j <= i; j++)
+                acc += a[j] * src[i - j];
+            dst[i] = acc;
+        }
+        for (; i < length; i++) {
+            float acc = src[i];
+            for (j = 1; j <= order; j++)
                 acc += a[j] * src[i - j];
             dst[i] = acc;
         }
@@ -225,7 +230,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 {
     int i_start = sfbOffsetTable[b_start];
     int length = sfbOffsetTable[b_stop] - i_start;
-    float *band, energy;
+    float *band;
     float *wspec = workBuff;
     float *trial = workBuff + BLOCK_LEN_LONG;
     float r[TNS_MAX_ORDER + 1] = {0};
@@ -237,11 +242,6 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         return 0;
 
     band = spec + i_start;
-    energy = 0.0f;
-    for (i = 0; i < length; i++)
-        energy += band[i] * band[i];
-    if (energy < TNS_MIN_ENERGY)
-        return 0;
 
     /* Per-band RMS-normalize before autocorrelation, floored at 1% of the
      * loudest band's RMS. Un-normalized, Levinson-Durbin would fit whatever
@@ -251,6 +251,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     {
         float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
+        float total_energy = 0.0f;
         int nbands = b_stop - b_start;
         float rms_band[MAX_SCFAC_BANDS];
         int b;
@@ -261,6 +262,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
 
             for (i = s0; i < s1; i++)
                 e += (float)(spec[i] * spec[i]);
+            total_energy += e;
             rms = sqrtf(e / (float)(s1 - s0));
             rms_band[b - b_start] = rms;
             if (rms > maxrms) maxrms = rms;
@@ -271,6 +273,9 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
             sum_rms += rms_fl;
             sum_log_rms += logf(rms_fl);
         }
+
+        if (total_energy < TNS_MIN_ENERGY)
+            return 0;
 
         /* Spectral flatness (geomean/arithmean of per-band RMS) near 1.0
          * means the band is noise-like, which PNS (quantize.c) is about to
