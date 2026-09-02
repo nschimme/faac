@@ -169,28 +169,26 @@ static void finalize_filter(int order, const float * k, float * a)
  * the prediction to run towards the transient (so quantization noise piles
  * up where it'll be masked), and the transient can sit at either edge of
  * the analysis window. */
-static void filter_spec(int length, int order, int direction, const float * a, float * spec)
+static void filter_spec(int length, int order, int direction, const float * a, float * spec, const float * src)
 {
-    float hist[BLOCK_LEN_LONG];
     int i, j;
 
-    memcpy(hist, spec, length * sizeof(float));
     if (direction) {
         for (i = length - 1; i >= 0; i--) {
-            float acc = hist[i];
+            float acc = src[i];
             int jmax = min(order, length - 1 - i);
 
             for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i + j];
+                acc += a[j] * src[i + j];
             spec[i] = acc;
         }
     } else {
         for (i = 0; i < length; i++) {
-            float acc = hist[i];
+            float acc = src[i];
             int jmax = min(order, i);
 
             for (j = 1; j <= jmax; j++)
-                acc += a[j] * hist[i - j];
+                acc += a[j] * src[i - j];
             spec[i] = acc;
         }
     }
@@ -263,14 +261,11 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
     finalize_filter(order, k, filter->aCoeffs);
 
     {
-        float *trial = workBuff ? workBuff : spec + i_start;
+        float *trial = workBuff;
         float orig_e = 0.0f, filt_e = 0.0f;
         float *band = spec + i_start;
 
-        if (workBuff)
-            memcpy(trial, band, length * sizeof(float));
-
-        filter_spec(length, order, filter->direction, filter->aCoeffs, trial);
+        filter_spec(length, order, filter->direction, filter->aCoeffs, trial, band);
 
         for (i = 0; i < length; i++) {
             orig_e += band[i] * band[i];
@@ -282,8 +277,7 @@ static int tns_fit_range(int b_start, int b_stop, int *sfbOffsetTable,
         if (orig_e < gain_limit * filt_e)
             return 0;
 
-        if (workBuff)
-            memcpy(band, trial, length * sizeof(float));
+        memcpy(band, trial, length * sizeof(float));
     }
 
     return 1;
