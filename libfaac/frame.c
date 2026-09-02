@@ -71,17 +71,17 @@
 #define RC_RESERVOIR_AIM       0.995f
 #define RC_RESERVOIR_AMORT     8
 
-/* The account's two sides are bounded for different reasons, so they are bounded
- * differently. Credit models the decoder's input buffer and genuinely cannot
- * exceed it. Debt is bookkeeping: nothing physical stops the stream owing bits,
- * and discarding debt at a bound is the same forgiveness this arm was built to
- * remove -- with a capacity of only two frames' budget, the clips that overspend
- * hardest hit it and shed the excess. Bound debt in frames instead, wide enough
- * that ordinary excursions are always repaid.
+/* How far the account may run in either direction, in frames of budget. The
+ * bound must be symmetric: capacity is only two frames, so bounding one side
+ * there and the other wider forgives whichever side is tighter, and the arm ends
+ * up biased toward the side it still remembers. Bounding credit at capacity while
+ * letting debt run to eight frames produced exactly that, mirrored -- a steady
+ * 3.4% undershoot in place of the overshoot it replaced. Both sides are
+ * bookkeeping, so both get the same room.
  *
  * LEND_SHARE then caps what any one frame may lean on, so a wide bound buys
  * patience rather than a violent correction. */
-#define RC_DEBT_FRAMES         8
+#define RC_ACCOUNT_FRAMES      8
 #define RC_LEND_SHARE          0.25f
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
@@ -1188,12 +1188,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
            forgiven and debt was not. Clips that never drew landed within 0.5% of
            target; every clip that drew ran 2-8.5% hot in proportion to the draw. */
         int diff = (int)(desbits * RC_RESERVOIR_AIM) - totalBits;
-        int debtBound = RC_DEBT_FRAMES * desbits;
+        int bound = RC_ACCOUNT_FRAMES * desbits;
         hEncoder->bitReservoir += diff;
-        if (hEncoder->bitReservoir > hEncoder->bitReservoirCap)
-            hEncoder->bitReservoir = hEncoder->bitReservoirCap;
-        else if (hEncoder->bitReservoir < -debtBound)
-            hEncoder->bitReservoir = -debtBound;
+        if (hEncoder->bitReservoir > bound)
+            hEncoder->bitReservoir = bound;
+        else if (hEncoder->bitReservoir < -bound)
+            hEncoder->bitReservoir = -bound;
 
         /* What this frame may lean on, signed and amortized: a credit lets a
            complex frame overspend, a debt holds the next frames under budget
@@ -1222,8 +1222,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
            `fix` directly, so keeping both would correct the same bits twice. */
         float damping = RC_DAMPING_FACTOR;
         if (hEncoder->bitReservoirCap > 0) {
-            float span = (float)(hEncoder->bitReservoir >= 0 ? hEncoder->bitReservoirCap : debtBound);
-            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / span;
+            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / (float)bound;
             if (fillRatio < 0.25f || fillRatio > 0.75f)
                 damping = 0.85f;
 
