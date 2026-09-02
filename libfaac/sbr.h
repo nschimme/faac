@@ -16,6 +16,14 @@
 #ifndef SBR_H
 #define SBR_H
 
+/* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). */
+typedef enum SbrFrameClass {
+    SBR_FRAME_CLASS_FIXFIX = 0,
+    SBR_FRAME_CLASS_FIXVAR = 1,
+    SBR_FRAME_CLASS_VARFIX = 2,
+    SBR_FRAME_CLASS_VARVAR = 3
+} SbrFrameClass;
+
 #include "coder.h"
 #include "fft.h"
 #include "sbr_analysis.h"
@@ -80,10 +88,6 @@ struct BitStream;
 #define SBR_MAX_NOISE_BANDS   1
 #define SBR_HEADER_PERIOD    30
 
-/* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). */
-#define SBR_FRAME_CLASS_FIXFIX  0
-#define SBR_FRAME_CLASS_FIXVAR  1
-#define SBR_FRAME_CLASS_VARFIX  2
 
 /* Envelope time-slot resolution the decoder uses for an AAC-LC core frame
  * (FFmpeg/FAAD2 pass numTimeSlots=16). All bs_rel_bord/t_env values written in

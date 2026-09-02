@@ -48,7 +48,7 @@ typedef struct SignalAnalysis {
     int sampled;
 
     /* Frame envelope grid configuration. Synchronized across all channels. */
-    int frameClass;
+    SbrFrameClass frameClass;
     int numEnvelopes;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
