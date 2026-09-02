@@ -32,10 +32,46 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
-#define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
-/* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
-#define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
+
+/* When is HE-AAC the right profile? Exactly when the core would otherwise have
+ * to throw the top of the spectrum away -- that discarded octave is what SBR
+ * reconstructs. So ask what bandwidth LC would actually code here (CalcBandwidth,
+ * the tuned rate->bandwidth curve) and compare it against Nyquist: well short of
+ * it, SBR has real work to do and wins; close to it, SBR only adds artifacts to
+ * a band LC already codes properly.
+ *
+ * This replaces a hardcoded bitrate window (12000..48000 bps/ch) plus a
+ * hand-fitted sample-rate ramp. Those went stale whenever either profile
+ * improved, and said nothing about why the boundary sat where it did; this
+ * tracks CalcBandwidth and Fs automatically. The ramp is subsumed: at lower Fs
+ * the same rate covers a larger share of a smaller Nyquist, so HE disengages
+ * earlier without a second rule. The lower bound is gone too -- the further
+ * below Nyquist LC lands, the more spectrum SBR is rescuing, so HE only wins
+ * harder (which is what the old floor's own comment said while the code did
+ * the opposite).
+ *
+ * 11/20 is tuned on ViSQOL over the 49-clip corpus. The ABR runs bracket it
+ * directly, since there the fraction is computed from a rate the caller
+ * actually gave: at 48 kHz stereo HE still wins at 0.406 and 0.458 of Nyquist
+ * (56 and 64 kbit/s -- forcing LC there costs 0.66 and 0.14 MOS) and has lost
+ * by 0.615 (96 kbit/s, where LC gains 0.13). So the boundary sits between
+ * them, and 11/20 sits near the middle rather than on an edge. That margin
+ * matters: the map feeding this still carries a few percent of error, and at
+ * 1/2 the 64 kbit/s case landed at fraction 0.511 in VBR against 0.458 in ABR
+ * -- the same operating point, either side of the threshold -- which flipped it
+ * to LC and cost 0.15 MOS. Pick the centre of a bracket, not its edge.
+ * Integer ratio, so no float in the config path.
+ *
+ * Do not re-tune this against VBR alone. VBR feeds the same rule an INFERRED
+ * rate, and while that estimate runs low the two modes disagree about where
+ * 0.5 falls -- tuning on VBR's numbers put the boundary at 2/5 and cost ABR
+ * 0.25 MOS bits-adjusted. Tune on ABR, which measures the real rate. */
+#define HE_XOVER_NUM  11
+#define HE_XOVER_DEN  20
+
+/* One rule serves both rate modes: a VBR quality is converted to the rate it
+ * implies (VbrBitrateForQuality) and run through the same test, so -q and -b
+ * cannot disagree about which profile an operating point deserves. */
 
 #if (defined WIN32 || defined _WIN32 || defined WIN64 || defined _WIN64) && !defined(PACKAGE_VERSION)
 #include "win32_ver.h"
@@ -59,6 +95,10 @@ static char *libCopyright =
   " Copyright (C) 2004, Dan Villiom P. Christiansen\n"
   " Copyright (C) 2005-2026, Fabian Greffrath\n"
   " Copyright (C) 2026, Nils Schimmelmann\n";
+
+/* Per channel. Below this the 20 kHz plateau holds; above it the bandwidth
+ * opens toward Nyquist, reaching it at 256000 for 48 kHz input. */
+#define BW_OPEN_RATE 192000
 
 static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRate)
 {
@@ -86,13 +126,217 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
         bw = 18500 + ((bitRate - 64000) * 3 / 128);
     }
     else {
-        /* Segment 5: Transparency plateau (20kHz+) */
-        bw = 20000 + ((bitRate - 128000) / 16);
-        if (bw > 20000) bw = 20000;
+        /* Segment 5: transparency plateau, 20 kHz opening up to Nyquist.
+         * Above 128 kbit/s per channel there are bits to spare, so the
+         * bandwidth keeps widening rather than leaving the top of the
+         * spectrum uncoded at a rate the caller explicitly asked for; the
+         * Nyquist clamp below bounds it, reached at 192 kbit/s per channel
+         * for 48 kHz input.
+         *
+         * The ramp starts at BW_OPEN_RATE rather than at the segment
+         * boundary because widening is not free: it is the same bit budget
+         * spread over more spectrum. Measured at 48 kHz stereo, opening to
+         * 22 kHz at 160 kbit/s per channel moved the output rate by +0.05%
+         * -- a pure reallocation -- and cost 0.0088 MOS, while at 224 kbit/s
+         * per channel, where the 20 kHz cap was the thing blocking the rate,
+         * it bought +3.7% bits at flat MOS. So hold the plateau until the
+         * audible band is saturated and the cap is what stands between the
+         * caller and the rate they asked for.
+         *
+         * This segment had a `if (bw > 20000) bw = 20000;` that cancelled
+         * the term above it: the addend is positive for every bitRate that
+         * reaches this branch, so the plateau was flat at 20 kHz and the
+         * arithmetic had never once had an effect. That capped the output
+         * rate well below the request at the top of the range -- at 48 kHz
+         * stereo `-b 576` produced 475 kbit/s, because 4 kHz of Nyquist was
+         * unreachable no matter how many bits were on offer. */
+        bw = (bitRate <= BW_OPEN_RATE)
+             ? 20000 : 20000 + ((bitRate - BW_OPEN_RATE) / 16);
     }
 
     /* Safety clamp to Shannon-Nyquist limit */
     return (bw > nyquist) ? nyquist : bw;
+}
+
+/* ---- The quality <-> rate map -------------------------------------------
+ *
+ * quantqual and bitRate are two views of ONE operating point. This is the
+ * calibrated map between them, refitted against MEASURED VBR output over the
+ * 49-clip corpus -- 11 (sample rate, channels, profile) cells, median across
+ * clips, sampled on raw quantqual with the HE rescaling bypassed so the fit
+ * could not feed on its own output.
+ *
+ *     total_kbps = C * q^k,   C = C0 * nch^0.818 * (fs/1000)^0.877
+ *
+ * k is stable across every cell (0.540..0.611, mean 0.5722) and C follows the
+ * expression above to within 3.2%. The predecessor -- a piecewise curve with a
+ * mono x2.5 boost, a x3 expansion above DEFQUAL and a band of quality values
+ * with no preimage at all -- was fitted as an ABR *seed*, a starting point for
+ * a feedback loop that corrects its own error. Used as a VBR predictor, where
+ * no loop exists, it was wrong by ~70%.
+ *
+ * HE-AAC's core runs at Fs/2, so at equal quantizer quality it codes half the
+ * spectrum for half the bits: C_HE = C_LC / 2. That is measured, not assumed --
+ * 2.06, 1.99, 1.96, 2.10, 2.10 across the five cells carrying both profiles.
+ *
+ * The form holds over the band the map is used in and saturates outside it
+ * (bitrate is bounded); callers clamp rather than extrapolate.
+ */
+#define MAP_K          0.5722f   /* rate exponent, shared across all cells  */
+#define MAP_C0         0.1328f   /* total kbps at nch=1, fs=1 kHz, q=1      */
+#define MAP_NCH_EXP    0.818f    /* channel scaling of C                    */
+#define MAP_FS_EXP     0.877f    /* sample-rate scaling of C                */
+#define MAP_HE_RATIO   2.0f      /* C_LC / C_HE: HE codes half the spectrum */
+
+/* C for one configuration, in total kbps. It depends only on the configuration,
+ * so each caller works it out once and passes it to the two primitives below
+ * rather than having them re-derive it. That is not just tidier: C costs two
+ * powf() sequences, and re-deriving it inside every helper let the compiler
+ * duplicate those into every call site, which measured +1145 bytes in
+ * faacEncApplyConfig and +587 in VbrQualityToQuantqual on its own. */
+static float MapCoefficient(unsigned int nch, unsigned long fs, int heaac)
+{
+    float C = MAP_C0 * powf((float)nch, MAP_NCH_EXP)
+                     * powf((float)fs * 0.001f, MAP_FS_EXP);
+    return heaac ? C / MAP_HE_RATIO : C;
+}
+
+/* The map and its inverse, given C. Unclamped: callers bound them as they need. */
+static float RateForQuality(float q, float C)
+{
+    return C * powf(q, MAP_K);
+}
+
+static float QualityForRate(float total_kbps, float C)
+{
+    if (total_kbps <= 0.0f || C <= 0.0f)
+        return (float)DEFQUAL;
+    return powf(total_kbps / C, 1.0f / MAP_K);
+}
+
+/* Forward: the quantqual that lands near bps per channel. Used to seed ABR's
+ * rate-control loop, which then corrects whatever this gets wrong. */
+/* Per-channel bps -> quality, for a coefficient the caller already has. */
+static float RawSeedQualityForBitrate(float bps, unsigned int nch, float C)
+{
+    return QualityForRate(bps * (float)nch * 0.001f, C);
+}
+
+
+/* Inverse: the per-channel rate a VBR quality implies.
+ *
+ * Evaluate at the full, pre-downsample Fs and against the LC coefficient, so
+ * the answer is the operating point the request denotes rather than a property
+ * of a profile not yet chosen. SbrContextResolveRate halves
+ * hEncoder->sampleRate once HE-AAC is picked and this feeds that very choice,
+ * so reading the halved rate would make the decision depend on itself. HE is
+ * then rescaled to hit this same rate, which is what makes -q mean one thing
+ * across the profile switch. */
+static unsigned long VbrBitrateForQuality(unsigned long quantqual,
+                                          unsigned int nch, float C)
+{
+    float bps = RateForQuality((float)quantqual, C) * 1000.0f / (float)nch;
+
+    /* Never return 0: this is an inferred rate, and 0 is reserved downstream to
+     * mean "no rate given" (CalcBandwidth reads it as unlimited bandwidth). */
+    return (bps < 1.0f) ? 1 : (unsigned long)bps;
+}
+
+/* Rescaling factor applied to quantqual when HE-AAC is chosen, so that -q
+ * denotes the same quality -- and lands on the same rate -- in both profiles.
+ * Constant-folded from the two measured constants, so it cannot drift from
+ * them: solving C_HE * (x*q)^k == C_LC * q^k gives x = MAP_HE_RATIO^(1/k). */
+#define MAP_HE_QSCALE  1.7476f   /* 1 / MAP_K, as an exponent on MAP_HE_RATIO */
+
+/* ---- The user-facing quality scale ---------------------------------------
+ *
+ * quantqual is a quantizer precision spanning MINQUAL..MAXQUAL, of which the
+ * top nine tenths sit past transparency and the useful part is unevenly
+ * spaced. It is the wrong thing to hand a user. A 0..VBR_QUALITY_STEPS dial
+ * is what they get instead.
+ *
+ * The steps are geometric across MINQUAL..MAXQUAL. Because the map is a power
+ * law, geometric in quantqual is also geometric in bitrate, with the ratio
+ * between rungs set by the exponent alone -- never by the coefficient, whose
+ * channel and sample-rate behaviour is the messy half of the fit. So the
+ * ladder is only as fragile as the stable half, and one step is one quality
+ * whatever the sample rate and channel count. What that quality costs in bits
+ * is then free to depend on the material, which is what constant quality is.
+ *
+ * Anchoring on the quantizer range rather than on the bitrate bounds is what
+ * keeps the steps distinct: the format permits 8 kbit/s per channel, but a
+ * 48 kHz stereo encode cannot go below about 27 kbit/s whatever it is asked
+ * for, so a spec-anchored ladder aims its lowest steps at rates that do not
+ * exist and they collapse together.
+ *
+ * Having no runtime inputs, the rungs are constants:
+ *
+ *     ladder[n] = round(MINQUAL * (MAXQUAL / MINQUAL) ^ (n / STEPS))
+ *
+ * Tabulating them is worth roughly 500 bytes against evaluating that powf,
+ * which is most of what this feature costs the library. The ends are spelled
+ * as MINQUAL and MAXQUAL so they cannot drift from them; the middle follows
+ * from the formula above, and regenerating it is a one-line calculation if any
+ * of the three inputs move.
+ *
+ * The cost is at the bottom of the dial for formats whose MINQUAL already
+ * undershoots what they can deliver. At 8 and 16 kHz mono the lowest rungs
+ * crowd (3.0, 3.2, 3.6, 4.3 kbit/s per channel at 8 kHz), because MINQUAL sits
+ * below the floor there and no fixed table can know that. Rescaling the ladder
+ * onto a measured floor fixes it and costs the map -- see the history of this
+ * comment. Every stereo rate from 22.05 kHz up, and 48 kHz 5.1, resolve to
+ * this table either way. */
+static const unsigned short vbrLadder[VBR_QUALITY_STEPS + 1] =
+    { MINQUAL, 19, 35, 65, 120, 224, 416, 775, 1443, 2686, MAXQUAL };
+
+static unsigned long VbrQualityToQuantqual(unsigned int quality)
+{
+    if (quality > VBR_QUALITY_STEPS)
+        quality = VBR_QUALITY_STEPS;
+    return vbrLadder[quality];
+}
+
+/* Which of the two currencies the caller gave us. Extend here if a third rate
+ * mode is ever added, and dispatch on it with a switch carrying NO default
+ * label, so -Wswitch lists every site that needs updating. */
+typedef enum {
+    RATE_MODE_ABR,   /* caller gave a bitrate; quality is seeded from it   */
+    RATE_MODE_VBR    /* caller gave a quality; the rate is inferred from it */
+} RateMode;
+
+/* The resolved operating point. Downstream code must never test a config field
+ * against zero to work out which mode it is in: "zero" also means "not
+ * defaulted yet", and that ambiguity is exactly what let the AUTO block read
+ * quantqual 57 lines before its default was applied. */
+typedef struct {
+    RateMode      mode;
+    unsigned long bitRatePerCh;  /* ABR: given. VBR: inferred from quality.  */
+} RateTarget;
+
+/* Resolve the mode and the per-channel rate, once, before anything reads them.
+ * Quality is deliberately NOT resolved here: in ABR it is seeded further down
+ * from the (possibly halved) core rate, which is not known until the object
+ * type has been chosen -- using the rate this struct carries.
+ *
+ * The sample rate is not a member: it reached here as fullRate and every reader
+ * already has it, so carrying a copy only invited the two to disagree. */
+static RateTarget ResolveRateTarget(const faacEncConfiguration *config,
+                                    unsigned int nch, float C_lc)
+{
+    RateTarget target;
+
+    target.mode = config->bitRate ? RATE_MODE_ABR : RATE_MODE_VBR;
+
+    switch (target.mode)
+    {
+    case RATE_MODE_ABR:
+        target.bitRatePerCh = config->bitRate;
+        break;
+    case RATE_MODE_VBR:
+        target.bitRatePerCh = VbrBitrateForQuality(config->quantqual, nch, C_lc);
+        break;
+    }
+    return target;
 }
 
 /* Element-to-channel mapping is fixed for the session once InitElements has
@@ -168,6 +412,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 {
     int i;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
+    unsigned long fullRate;
+    RateTarget target;
+    float C_lc, mapC, rawSeed;
 
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
@@ -206,39 +453,84 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
+    /* Clamp to the spec range, against the full (pre-downsample) rate: for an
+     * already-resolved HE-AAC handle sampleRate is the halved core rate.
+     *
+     * config->bitRate and both bounds are PER CHANNEL, so they compare
+     * directly. This previously divided the ceiling by numChannels, which read
+     * a per-channel limit as a whole-stream one and silently capped stereo at
+     * half the spec maximum -- -b 400 and -b 576 both emitted 294 kbit/s. */
+    fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
+    if (config->bitRate)
     {
-        unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
+        unsigned long maxPerCh = MaxBitratePerCh(fullRate);
+        unsigned long minPerCh = MinBitratePerCh();
+
+        if (config->bitRate > maxPerCh)
+            config->bitRate = maxPerCh;
+        else if (config->bitRate < minPerCh)
+            config->bitRate = minPerCh;
     }
+
+    /* One coefficient for the whole resolution. The LC value is what the -q
+     * ladder, the inferred VBR rate and the AUTO gate all reason about; the HE
+     * value is the same number halved, by construction (MAP_HE_RATIO), so the
+     * profile-specific coefficient further down is a divide rather than a
+     * second MapCoefficient. That matters for size as well as clarity: C costs
+     * two powf sequences, and the compiler inlines and duplicates them at every
+     * site that derives one. */
+    C_lc = MapCoefficient(hEncoder->numChannels, fullRate, 0);
+
+    /* A -q step names a quantqual, and which one depends on this
+     * configuration. Resolved here rather than in the caller so the ladder can
+     * share the coefficient above. */
+    if (config->vbrQuality >= 0)
+        config->quantqual = VbrQualityToQuantqual((unsigned int)config->vbrQuality);
+
+    /* In VBR there is no bitrate to seed a quality from, so resolve the
+     * quantqual default here: the AUTO decision below reads it, and the
+     * general default further down would land too late. ABR must not be
+     * touched -- its seeding curve is guarded on quantqual still being 0. */
+    if (!config->bitRate && !config->quantqual)
+        config->quantqual = DEFQUAL;
+
+    /* Resolve the mode and the per-channel rate once, up front. Everything
+     * below reads target.bitRatePerCh instead of re-deriving the mode from a
+     * zero test, so -q and -b reach the decisions below through identical
+     * code at the same real operating point. */
+    target = ResolveRateTarget(config, hEncoder->numChannels, C_lc);
 
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
     if (hEncoder->config.aacObjectType == AUTO) {
-        unsigned long rate_per_ch = config->bitRate;
-        int rate_ok;
-        if (rate_per_ch > 0) {
-            /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
-             * ceiling ramps down toward 20000 bps/ch at the HE_MIN_SAMPLE_RATE floor. */
-            unsigned int max_he_rate = 0;
-            if (hEncoder->sampleRate >= 44100) {
-                max_he_rate = HE_MAX_BITRATE_PER_CH;
-            } else if (hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-                max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
-                              (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
-            }
-            rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
-        } else {
-            rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
-        }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        /* target.bitRatePerCh is per channel, as is the bandwidth curve it
+         * feeds. No lower bound: the further below Nyquist LC lands, the more
+         * of the spectrum SBR is rescuing, so HE only wins harder. */
+        unsigned int lc_bw = CalcBandwidth(target.bitRatePerCh, fullRate);
+        int rate_ok = ((unsigned long)lc_bw * HE_XOVER_DEN <
+                       (fullRate / 2) * HE_XOVER_NUM);
+        /* This encoder emits one SBR payload per frame and the decoder binds
+         * it to the element it follows, so it can serve a single SCE or CPE --
+         * see SBR_MAX_CODED_CHANNELS. Beyond two channels the remaining
+         * elements would get no SBR at all, and with an LFE present the payload
+         * lands against ID_LFE, which decoders reject outright ("cannot apply
+         * SBR to element type 3"). AUTO must not walk into that.
+         *
+         * The format itself is not the constraint: MPEG-4 puts an
+         * sbr_extension_data() in a fill element after each SCE and CPE, so
+         * HE-AAC v1 5.1 is legal and commonplace. Lifting this means emitting
+         * one payload per element, skipping the LFE. */
+        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
+
+        hEncoder->config.aacObjectType =
+            (rate_ok && channels_ok && fullRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
@@ -259,35 +551,62 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
 
+    /* Put -q on one scale across the profile switch.
+     *
+     * quantqual is a quantizer precision, not a quality: at the same value an
+     * HE-AAC core codes half the spectrum and lets SBR parameterise the rest,
+     * so it spends roughly half the bits LC would. Handing the user's -q
+     * straight to both profiles therefore makes the AUTO switch jump the
+     * output rate for a single step of the dial -- a cliff the user sees as a
+     * bug, and a band of rates no -q value can reach.
+     *
+     * Rescale by the measured C_LC/C_HE ratio so the two profiles land on the
+     * same rate for the same request. This is a plain multiply: the map is a
+     * power law, so the correction is one constant rather than a round trip
+     * through the curve. */
+    if (target.mode == RATE_MODE_VBR && hEncoder->config.aacObjectType == HE_V1)
+    {
+        float q = (float)config->quantqual * powf(MAP_HE_RATIO, MAP_HE_QSCALE);
+        if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+        config->quantqual = (unsigned long)q;
+    }
+
+    /* Now that the profile is settled, the coefficient it implies. */
+    mapC = (hEncoder->config.aacObjectType == HE_V1)
+           ? C_lc / MAP_HE_RATIO : C_lc;
+
+    /* The quality this rate implies, hoisted out of the nested condition
+     * below: only meaningful in ABR, and the compiler emits it more compactly
+     * here than at its use site. */
+    rawSeed = (target.mode == RATE_MODE_ABR)
+              ? RawSeedQualityForBitrate((float)config->bitRate,
+                                         hEncoder->numChannels, mapC)
+              : 0.0f;
+
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
 
         if (!config->quantqual)
         {
-            /* Scale initial quality seed by sample-rate frame duration factor (44100 / sampleRate)
-             * so low sampling rates (e.g. 16 kHz) start at appropriate quality scale factors for
-             * fast rate-control convergence on short audio clips. */
-            float rateFactor = 44100.0f / (float)hEncoder->sampleRate;
-            /* Precise target-bitrate quality seeding curve: maps bitRate to optimal initial quantqual
-             * for rapid rate-control convergence without early overshoot or undershoot. */
-            float bps = (float)config->bitRate;
-            float q_seed;
-            if (bps <= 16000.0f) {
-                q_seed = 10.0f + 22.0f * (bps / 16000.0f);
-            } else if (bps <= 64000.0f) {
-                q_seed = 32.0f + 68.0f * ((bps - 16000.0f) / 48000.0f);
-            } else {
-                q_seed = bps / 640.0f;
-            }
-            /* Boost initial seed for mono speech streams */
-            if (hEncoder->numChannels == 1 && bps >= 32000.0f) q_seed *= 2.5f;
-            config->quantqual = q_seed * (float)hEncoder->numChannels * rateFactor;
-            if (config->quantqual > DEFQUAL)
-                config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
+            /* Seed the rate-control loop from the measured quality<->rate map,
+             * so it converges without early overshoot or undershoot.
+             *
+             * Pass fullRate, not hEncoder->sampleRate: this runs after
+             * SbrContextResolveRate, which has already halved the latter for
+             * HE-AAC. The map's cells were characterised by INPUT sample rate,
+             * with the halving folded into the HE coefficient, so handing it
+             * the halved rate as well would count it twice. */
+            float q = rawSeed;
+
+            if (q < (float)MINQUAL) q = (float)MINQUAL;
+            if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+            config->quantqual = (unsigned long)q;
         }
     }
 
+    /* Still 0 only when the caller supplied both a bitrate and an explicit
+     * bandwidth, which skips the seeding curve above. */
     if (!config->quantqual)
         config->quantqual = DEFQUAL;
 
@@ -325,7 +644,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (hEncoder->config.aacObjectType == HE_V1) {
         SBRContext *sCtx = hEncoder->sbrContext;
-        unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
+        /* One expression for both modes: in VBR target.bitRatePerCh carries the
+         * rate the requested quality implies, so SBR is configured from the same
+         * real operating point an equivalent -b would have given it. */
+        unsigned long sbr_bitrate = target.bitRatePerCh * hEncoder->numChannels;
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -443,6 +765,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
+    hEncoder->config.vbrQuality = -1;   /* no -q step; quantqual/bitRate decide */
     hEncoder->config.shortctl = SHORTCTL_NORMAL;
 
 	/* default channel map is straight-through */

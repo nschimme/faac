@@ -1,3 +1,161 @@
+VBR rework (unreleased)
+=======================
+
+-q is now a quality scale, not a raw quantizer value
+----------------------------------------------------
+
+-q used to expose libfaac's internal quantizer precision directly: range
+10-5000, of which most sits past transparency, unevenly spaced, and documented
+as a "percent" it never was. It is now a small readable scale, 0 to 10, higher
+is better. The raw knob is still reachable as --quantqual, which takes exactly
+the values -q used to take and produces byte-identical output.
+
+Where a default is needed -- the library, and the GUI when VBR is selected with
+the field left empty -- it is 4, the step closest to what the old default
+quantizer setting produced. Passing no rate option at all still means ABR at
+128 kbps, unchanged.
+
+*** -q 10 has flipped meaning. *** It is legal in both the old range and the
+new one: it used to be near the worst quality and is now the best. Every other
+old value (100, 150, 500, ...) falls outside 0-10 and is now rejected with an
+error naming --quantqual, so this is the one legacy invocation that will
+silently do something different. Check your scripts for it.
+
+Steps are spaced evenly in bitrate across the range the encoder can actually
+produce, so one step means one quality whatever the sample rate and channel
+count. Typical whole-stream rates for 48 kHz stereo:
+
+  -q 0  ~27    -q 3  ~76    -q 6  ~218   -q 9  ~445
+  -q 1  ~37    -q 4  ~100   -q 7  ~300   -q 10 ~512
+  -q 2  ~52    -q 5  ~152   -q 8  ~372   (kbps)
+
+These are typical values measured over a mixed corpus, not targets. Constant
+quality means the bitrate follows the material: a dense track costs more than a
+sparse one at the same setting. Use -b when the size is what matters.
+
+VBR reaches the bitrates it claims
+----------------------------------
+
+The quality<->rate map was fitted years ago as a starting seed for ABR's
+feedback loop, which corrects its own error. VBR has no loop, so it needed the
+map to be a real model and it was not one -- at 48 kHz stereo it was around 70%
+off. It has been refitted from measured output as a power law, total_kbps =
+C * q^k, with C derived from channel count and sample rate rather than a table
+of hand-fitted constants.
+
+One consequence was a band of bitrates no -q value could reach. Adjacent -q
+steps could step the output rate by ~110% across the AAC-LC/HE-AAC AUTO switch,
+because -q meant a different thing on each side of it. -q is now normalised
+across the switch and the largest step is 3-10%.
+
+Measured against the previous release over a 49-clip corpus, bitrate-adjusted:
+VBR +0.0399 MOS, ABR +0.0120 MOS.
+
+AUTO picks the profile by bandwidth, not by bitrate
+---------------------------------------------------
+
+--object-type auto compared the requested bitrate against a hardcoded window
+with a hand-fitted sample-rate ramp. Those numbers were measured before several
+rounds of improvement to both the LC and HE-AAC paths and had drifted.
+
+The choice is now made from the bandwidth the AAC-LC core would actually code at
+the operating point: well short of Nyquist, SBR has real work to do and HE-AAC
+v1 wins; close to it, SBR only adds artefacts to a band LC already codes
+properly. One dimensionless threshold replaces the whole window, and it tracks
+the encoder instead of a snapshot of it.
+
+HE-AAC v1 is limited to mono and stereo in this encoder
+-------------------------------------------------------
+
+FAAC emits one SBR payload per frame, and the decoder binds it to the element it
+follows, so it can serve a single SCE or CPE. Above two channels the remaining
+elements got no SBR at all, and 5.1 was worse than that: the payload landed
+against the LFE element, which decoders reject outright ("cannot apply SBR to
+element type 3"). Encoding 5.1 through --object-type auto at a low enough rate
+produced a stream ffmpeg would not play.
+
+*** If you encoded multichannel with auto at low rates on an earlier release,
+those files are affected. *** Depending on the channel layout you got either an
+invalid stream or one in which only two channels had their top octave rebuilt.
+Re-encoding is the fix; there is nothing that can repair the existing files.
+
+AUTO no longer resolves to HE-AAC v1 above two channels, and asking for it
+explicitly there now fails to open rather than emitting a broken stream. You get
+AAC-LC instead, which is correct.
+
+This is an implementation limit, not a limit of the format. MPEG-4 carries
+sbr_extension_data() in a fill element after each channel element, so
+multichannel HE-AAC v1 is legal and widely used; FAAC just does not emit a
+payload per element yet. Doing so -- and correctly emitting none for the LFE,
+which the format does exclude from SBR -- is what would lift the restriction.
+
+-b bounds are enforced, and correctly
+-------------------------------------
+
+MaxBitrate() was read as per-channel in one place and as a whole-stream rate in
+another, so the top half of the format's range was silently unreachable: -b 400
+and -b 576 both emitted 294 kbps at 48 kHz stereo without a word. MinBitrate()
+had no callers at all, so -b 2 was accepted and quietly produced 16.9 kbps.
+
+-b is now clamped at both ends, and out-of-range requests clamp rather than
+fail: -b 580 yields the maximum instead of "Couldn't open encoder instance". The
+ceiling is the normative one, ISO/IEC 14496-3's 6144 bits per channel per frame;
+the 8 kbps/channel floor is FAAC's own judgement about the lowest request worth
+attempting, not a requirement of the format.
+
+The underlying defect was that a bitrate carried either a per-channel or a
+whole-stream value with nothing in the name saying which. Every such quantity
+now states its unit.
+
+A request can also go unmet for reasons no up-front check can see: the content
+saturates the quantizer before the budget is spent, or the rate sits under what
+the per-frame overhead costs at that frame rate (a 96 kHz stream runs twice the
+frames of a 48 kHz one, each with its own headers, so a very low -b there asks
+for less than the frames cost). The encoder does not chase such a request below
+its own quality floor -- that trades real quality for a target it would still
+miss. It reports instead, whenever the delivered average misses the request by
+more than 15%:
+
+  delivered 30 kbps against the 16 kbps requested: the encoder cannot go lower
+  at this sample rate and channel count
+
+API changes
+-----------
+
+  faac_params.bit_rate       -> bit_rate_per_ch
+  faac_params.max_bit_rate   -> max_bit_rate_total
+
+These are renames only. The struct layout is unchanged, so this is a source
+break, not an ABI break -- a rebuild against the new header is all that is
+needed, and the compiler points at every site.
+
+  faac_params.vbr_quality    (new)
+
+The 0-10 scale, appended per the struct_size contract. FAAC_VBR_QUALITY_UNSET
+(the value faac_params_init writes) means "use quant_quality instead", so
+existing callers that set quant_quality keep their exact current behaviour.
+
+Compatibility
+-------------
+
+  Library default (faacEncOpen -> LOW) plus quant_quality   byte-identical
+  CLI --object-type lc -q N                                 byte-identical
+  CLI -b N (ABR, AUTO)                                      byte-identical
+  CLI -q N (VBR, AUTO)                                      changes
+
+Only the last row changes, and only because AUTO may now resolve to HE-AAC v1
+where it previously chose LC. --object-type lc reproduces the old behaviour
+exactly; there is no legacy VBR mode, which would have reinstated the dual code
+path this work removed.
+
+For ADTS output this is safe for old decoders: HE-AAC v1 declares profile=LC
+with sample_rate=24000 and signals SBR implicitly, so an LC-only decoder plays
+the core at the right duration and pitch, just band-limited. MP4 output uses
+explicit signalling (profile=HE-AAC), so a decoder that does not know HE-AAC
+will refuse it rather than degrade. That is the one surface with residual
+legacy risk.
+
+
 2017:
 
 FAAC thread on hydrogenaudio:
