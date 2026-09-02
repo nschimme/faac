@@ -21,6 +21,8 @@ extern "C" {
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
+#include <assert.h>
 
 /**
  * ADTS Constants (ISO/IEC 14496-3)

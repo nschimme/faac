@@ -235,23 +235,24 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFl
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool writeFlag)
 {
     if (writeFlag) {
-        PutBit(bs, 0xFFF, LEN_ADTS_SYNC);
-        PutBit(bs, hEncoder->config.mpegVersion, LEN_ADTS_ID);
-        PutBit(bs, 0, LEN_ADTS_LAYER);
-        PutBit(bs, 1, LEN_ADTS_ABSENT);
-        /* profile: always LC. HE-AAC's core is LC too; SBR is implicit via fill element. */
-        PutBit(bs, LOW - 1, LEN_ADTS_PROFILE);
-        PutBit(bs, hEncoder->sampleRateIdx, LEN_ADTS_FREQ);
-        PutBit(bs, 0, LEN_ADTS_PRIV);
-        PutBit(bs, hEncoder->numChannels, LEN_ADTS_CH_CFG);
-        PutBit(bs, 0, LEN_ADTS_ORIG);
-        PutBit(bs, 0, LEN_ADTS_HOME);
-
-        PutBit(bs, 0, LEN_ADTS_COPY_ID);
-        PutBit(bs, 0, LEN_ADTS_COPY_ST);
-        PutBit(bs, hEncoder->usedBytes, LEN_ADTS_FRAME);
-        PutBit(bs, 0x7FF, LEN_ADTS_FULL);
-        PutBit(bs, 0, LEN_ADTS_BLOCKS);
+        BitAccumulator acc = {0};
+        AccumBegin(&acc, bs);
+        AccumPutBits(&acc, 0xFFF,                        LEN_ADTS_SYNC);
+        AccumPutBits(&acc, hEncoder->config.mpegVersion,  LEN_ADTS_ID);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_LAYER);
+        AccumPutBits(&acc, 1,                            LEN_ADTS_ABSENT);
+        AccumPutBits(&acc, LOW - 1,                      LEN_ADTS_PROFILE);
+        AccumPutBits(&acc, hEncoder->sampleRateIdx,      LEN_ADTS_FREQ);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_PRIV);
+        AccumPutBits(&acc, hEncoder->numChannels,        LEN_ADTS_CH_CFG);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_ORIG);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_HOME);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_COPY_ID);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_COPY_ST);
+        AccumPutBits(&acc, hEncoder->usedBytes,          LEN_ADTS_FRAME);
+        AccumPutBits(&acc, 0x7FF,                        LEN_ADTS_FULL);
+        AccumPutBits(&acc, 0,                            LEN_ADTS_BLOCKS);
+        AccumEnd(&acc);
     }
     return 56;
 }
