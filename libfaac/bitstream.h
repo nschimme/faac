@@ -76,9 +76,8 @@ static inline void BitWriterInit(BitWriter *bw)
 static inline void BitWriterPut(BitWriter *bw, uint32_t val, int numBits)
 {
     assert(bw->bits + numBits <= 32);
-    uint32_t mask = (numBits == 32) ? 0xFFFFFFFFU : ((1U << numBits) - 1);
-    assert(val <= mask);
-    bw->val = (bw->val << numBits) | (val & mask);
+    assert(numBits == 32 || (val >> numBits) == 0);
+    bw->val = (bw->val << numBits) | val;
     bw->bits += numBits;
 }
 
