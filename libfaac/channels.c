@@ -84,38 +84,32 @@ int InitElements(AACElement * __restrict elements, int *numElements, int numChan
 
 static int WriteICSInfo(BitStream *bs, CoderInfo *coder, bool writeFlag)
 {
-    if (writeFlag) {
-        PutBit(bs, 0, LEN_ICS_RESERV);
-        PutBit(bs, coder->block_type, LEN_WIN_SEQ);
-        PutBit(bs, coder->window_shape, LEN_WIN_SH);
-    }
-    int bits = LEN_ICS_RESERV + LEN_WIN_SEQ + LEN_WIN_SH;
+    BitWriter bw;
+    BitWriterInit(&bw);
+
+    BitWriterPut(&bw, 0, LEN_ICS_RESERV);
+    BitWriterPut(&bw, coder->block_type, LEN_WIN_SEQ);
+    BitWriterPut(&bw, coder->window_shape, LEN_WIN_SH);
 
     if (coder->block_type == ONLY_SHORT_WINDOW) {
-        if (writeFlag) {
-            PutBit(bs, coder->sfbn, LEN_MAX_SFBS);
+        BitWriterPut(&bw, coder->sfbn, LEN_MAX_SFBS);
 
-            int grouping_bits = 0;
-            int tmp[MAX_SHORT_WINDOWS], index = 0;
-            for (int i = 0; i < coder->groups.n; i++)
-                for (int j = 0; j < coder->groups.len[i]; j++)
-                    tmp[index++] = i;
-            for (int i = 1; i < MAX_SHORT_WINDOWS; i++) {
-                grouping_bits <<= 1;
-                if (tmp[i] == tmp[i-1]) grouping_bits++;
-            }
-            PutBit(bs, grouping_bits, MAX_SHORT_WINDOWS - 1);
+        int grouping_bits = 0;
+        int tmp[MAX_SHORT_WINDOWS], index = 0;
+        for (int i = 0; i < coder->groups.n; i++)
+            for (int j = 0; j < coder->groups.len[i]; j++)
+                tmp[index++] = i;
+        for (int i = 1; i < MAX_SHORT_WINDOWS; i++) {
+            grouping_bits <<= 1;
+            if (tmp[i] == tmp[i-1]) grouping_bits++;
         }
-        bits += LEN_MAX_SFBS + (MAX_SHORT_WINDOWS - 1);
+        BitWriterPut(&bw, grouping_bits, MAX_SHORT_WINDOWS - 1);
     } else {
-        if (writeFlag) {
-            PutBit(bs, coder->sfbn, LEN_MAX_SFBL);
-            PutBit(bs, 0, LEN_PRED_PRES);
-        }
-        bits += LEN_MAX_SFBL + LEN_PRED_PRES;
+        BitWriterPut(&bw, coder->sfbn, LEN_MAX_SFBL);
+        BitWriterPut(&bw, 0, LEN_PRED_PRES);
     }
 
-    return bits;
+    return BitWriterFlush(&bw, bs, writeFlag);
 }
 
 static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool writeFlag)
@@ -195,59 +189,75 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow, bool wri
 
 int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, bool writeFlag)
 {
-    if (writeFlag) {
-        PutBit(bs, elem->type, LEN_SE_ID);
-        PutBit(bs, elem->tag, LEN_TAG);
-    }
+    BitWriter bw;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, elem->type, LEN_SE_ID);
+    BitWriterPut(&bw, elem->tag, LEN_TAG);
+
     int bits = LEN_SE_ID + LEN_TAG;
 
     switch (elem->type) {
         case ID_SCE:
         case ID_LFE:
+            BitWriterFlush(&bw, bs, writeFlag);
             bits += WriteICS(bs, &coder[elem->channels[0]], false, writeFlag);
             break;
 
         case ID_CPE:
-            if (writeFlag) PutBit(bs, elem->common_window, LEN_COM_WIN);
+            BitWriterPut(&bw, elem->common_window, LEN_COM_WIN);
             bits += LEN_COM_WIN;
 
             if (elem->common_window) {
+                BitWriterFlush(&bw, bs, writeFlag);
                 bits += WriteICSInfo(bs, &coder[elem->channels[0]], writeFlag);
+
                 if (writeFlag) {
                     PutBit(bs, elem->msInfo.is_present, LEN_MASK_PRES);
                     if (elem->msInfo.is_present == 1) {
                         int n = coder[elem->channels[0]].groups.n * coder[elem->channels[0]].sfbn;
-                        for (int i = 0; i < n; i++) PutBit(bs, elem->msInfo.ms_used[i], LEN_MASK);
+                        for (int i = 0; i < n; i++)
+                            PutBit(bs, elem->msInfo.ms_used[i], LEN_MASK);
                     }
                 }
                 bits += LEN_MASK_PRES;
                 if (elem->msInfo.is_present == 1)
                     bits += coder[elem->channels[0]].groups.n * coder[elem->channels[0]].sfbn * LEN_MASK;
+            } else {
+                BitWriterFlush(&bw, bs, writeFlag);
             }
             bits += WriteICS(bs, &coder[elem->channels[0]], elem->common_window, writeFlag);
             bits += WriteICS(bs, &coder[elem->channels[1]], elem->common_window, writeFlag);
             break;
-        default: break;
+        default:
+            BitWriterFlush(&bw, bs, writeFlag);
+            break;
     }
     return bits;
 }
 
 static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool writeFlag)
 {
-    if (writeFlag) {
-        uint32_t h1 = 0xFFF00000u;
-        h1 |= ((uint32_t)hEncoder->config.mpegVersion & 1) << 19;
-        h1 |= (1u << 16); /* protection_absent = 1 */
-        h1 |= ((uint32_t)(LOW - 1) & 3) << 14;
-        h1 |= ((uint32_t)hEncoder->sampleRateIdx & 15) << 10;
-        h1 |= ((uint32_t)hEncoder->numChannels & 7) << 6;
-        PutBit(bs, h1 >> 4, 28);
+    BitWriter bw;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0xFFF,                        LEN_ADTS_SYNC);
+    BitWriterPut(&bw, hEncoder->config.mpegVersion,  LEN_ADTS_ID);
+    BitWriterPut(&bw, 0,                            LEN_ADTS_LAYER);
+    BitWriterPut(&bw, 1,                            LEN_ADTS_ABSENT);
+    BitWriterPut(&bw, LOW - 1,                      LEN_ADTS_PROFILE);
+    BitWriterPut(&bw, hEncoder->sampleRateIdx,      LEN_ADTS_FREQ);
+    BitWriterPut(&bw, 0,                            LEN_ADTS_PRIV);
+    BitWriterPut(&bw, hEncoder->numChannels,        LEN_ADTS_CH_CFG);
+    BitWriterPut(&bw, 0,                            LEN_ADTS_ORIG + LEN_ADTS_HOME);
+    int b1 = BitWriterFlush(&bw, bs, writeFlag);
 
-        uint32_t h2 = ((uint32_t)hEncoder->usedBytes & 0x1FFF) << 13;
-        h2 |= (0x7FFu << 2);
-        PutBit(bs, h2, 28);
-    }
-    return 56;
+    BitWriterInit(&bw);
+    BitWriterPut(&bw, 0,                            LEN_ADTS_COPY_ID + LEN_ADTS_COPY_ST);
+    BitWriterPut(&bw, hEncoder->usedBytes,          LEN_ADTS_FRAME);
+    BitWriterPut(&bw, 0x7FF,                        LEN_ADTS_FULL);
+    BitWriterPut(&bw, 0,                            LEN_ADTS_BLOCKS);
+    int b2 = BitWriterFlush(&bw, bs, writeFlag);
+
+    return b1 + b2;
 }
 
 static int WriteAACFillBits(BitStream *bs, int numBits, bool writeFlag)

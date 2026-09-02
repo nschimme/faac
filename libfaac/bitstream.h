@@ -22,6 +22,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 /**
  * ADTS Constants (ISO/IEC 14496-3)
@@ -75,6 +76,7 @@ static inline void BitWriterInit(BitWriter *bw)
 static inline void BitWriterPut(BitWriter *bw, uint32_t value, int numBits)
 {
     if (numBits > 0) {
+    assert(bw->bits + numBits <= 32);
         uint32_t mask = (numBits >= 32) ? 0xFFFFFFFFU : ((1U << numBits) - 1);
         bw->val = (bw->val << numBits) | ((uint32_t)value & mask);
         bw->bits += numBits;
