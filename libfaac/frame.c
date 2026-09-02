@@ -438,7 +438,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
     unsigned long fullRate;
     RateTarget target;
-    float C_lc, mapC;
+    float C_lc, mapC, rawSeed;
 
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
@@ -600,6 +600,14 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     mapC = (hEncoder->config.aacObjectType == HE_V1)
            ? C_lc / MAP_HE_RATIO : C_lc;
 
+    /* The quality this rate implies. Wanted twice below -- to seed the
+     * rate-control loop, and to floor it -- and it is the same question about
+     * the same operating point both times, so ask it once. */
+    rawSeed = (target.mode == RATE_MODE_ABR && config->bitRate)
+              ? RawSeedQualityForBitrate((float)config->bitRate,
+                                         hEncoder->numChannels, mapC)
+              : 0.0f;
+
     if (config->bitRate && !config->bandWidth)
     {
         config->bandWidth = CalcBandwidth(config->bitRate, hEncoder->sampleRate);
@@ -614,8 +622,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
              * HE-AAC. The map's cells were characterised by INPUT sample rate,
              * with the halving folded into the HE coefficient, so handing it
              * the halved rate as well would count it twice. */
-            config->quantqual = SeedQualityForBitrate(
-                (float)config->bitRate, hEncoder->numChannels, mapC);
+            float q = rawSeed;
+
+            if (q < (float)MINQUAL) q = (float)MINQUAL;
+            if (q > (float)MAXQUAL) q = (float)MAXQUAL;
+            config->quantqual = (unsigned long)q;
         }
     }
 
@@ -651,16 +662,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
      * floor never rises above MINQUAL, so every rate that already converged
      * keeps the bound it had. */
     hEncoder->minQuality = MINQUAL;
-    if (target.mode == RATE_MODE_ABR && config->bitRate)
+    if (rawSeed > 0.0f && rawSeed < (float)MINQUAL)
     {
-        float raw = RawSeedQualityForBitrate(
-            (float)config->bitRate, hEncoder->numChannels, mapC);
-
-        if (raw < (float)MINQUAL)
-        {
-            int floor_q = (int)raw;
-            hEncoder->minQuality = (floor_q < ABS_MINQUAL) ? ABS_MINQUAL : floor_q;
-        }
+        int floor_q = (int)rawSeed;
+        hEncoder->minQuality = (floor_q < ABS_MINQUAL) ? ABS_MINQUAL : floor_q;
     }
 
     if (config->quantqual > (unsigned long)maxqual)
