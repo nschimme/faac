@@ -40,9 +40,22 @@ static const struct {
  * below as the floor for RMS-normalization and the LPC residual check,
  * rather than inventing a separate near-zero constant for each. */
 #define TNS_MIN_ENERGY      1e-9f
-/* SFM (geomean/arithmean of per-band RMS) near 1.0 means the band is
- * noise-like, which PNS (quantize.c) is about to replace anyway -- skip
- * TNS's LPC work there; it only pays off on tonal/peaky bands. */
+/* SFM (geomean/arithmean of per-band RMS) near 1.0 means the range is
+ * noise-like -- an AR predictor has near-zero gain on a flat/white
+ * spectrum by construction, so this range would fail the real
+ * TNS_GAIN_LIMIT check below anyway. Screening on SFM first skips
+ * autocorrelation+LPC (the expensive part) for ranges that would be
+ * rejected regardless, cheaper than computing the real gain to find out.
+ * NOT a coordination point with PNS (quantize.c's assign_band_codebooks):
+ * PNS fires on target[sb] < pns_threshold, a per-band psychoacoustic
+ * masking/audibility test, not spectral flatness -- a quiet tonal band can
+ * get PNS'd while a loud noisy one won't, so SFM is a poor proxy for "PNS
+ * will take this anyway" even setting aside that PNS decides per band and
+ * this is one decision over the whole [b_start, b_stop) range. The two
+ * tools are independently safe to combine (quantize.c: TNS's inverse
+ * filter at decode time shapes substituted PNS noise too), so nothing here
+ * depends on that framing being true -- it happens to work for an
+ * unrelated reason. */
 #define TNS_PNS_SFM_SKIP    0.75f
 
 static void calc_autocorr_f(int order, int length, const float * restrict work, float * restrict r)
@@ -217,9 +230,8 @@ void TnsInit(faacEncStruct* hEncoder)
  * quieter ones -- but pre-echo is audible in quiet bands too, so the filter
  * needs to whiten across the whole range, not just the peak.
  * Returns 0 (nothing written to wspec) when the range is silent or
- * noise-like (spectral flatness near 1.0, which PNS in quantize.c is about
- * to replace anyway -- skip the LPC work; it only pays off on tonal/peaky
- * bands), 1 otherwise. */
+ * noise-like (see TNS_PNS_SFM_SKIP -- a flat spectrum predicts poorly
+ * regardless of PNS), 1 otherwise. */
 static int tns_normalize_range(int b_start, int b_stop, int i_start,
                                int *sfbOffsetTable, const float *spec,
                                float *wspec)
