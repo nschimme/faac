@@ -253,7 +253,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
  * blocks. VBR (bitRatePerCh==0) uses the high-bitrate end -- quality mode
  * has bits enough that the low-bitrate case for wider promotion doesn't apply. */
 #define PSY_TD_HARD_LOW   2.0f  /* at or below PSY_TD_HARD_LOW_RATE kbps/ch */
-#define PSY_TD_HARD_HIGH  0.5f  /* at or above PSY_TD_HARD_HIGH_RATE kbps/ch, and VBR */
+#define PSY_TD_HARD_HIGH  0.6f  /* at or above PSY_TD_HARD_HIGH_RATE kbps/ch, and VBR */
 #define PSY_TD_HARD_LOW_RATE   24000
 #define PSY_TD_HARD_HIGH_RATE  64000
 /* Below this, a long window already spans enough time that TNS's temporal
