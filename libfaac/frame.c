@@ -627,6 +627,12 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " TNS Promotion       : %5.1f%% of short-flagged channels promoted to long (%u/%u)\n",
                     promo, g_faacStats.tdPromotedToLong, g_faacStats.tdShortCandidates);
         }
+        if (g_faacStats.tnsRangeCandidates > 0)
+        {
+            double skip_rate = 100.0 * g_faacStats.tnsRangeSfmSkipped / g_faacStats.tnsRangeCandidates;
+            fprintf(stderr, " TNS SFM Skip        : %5.1f%% of ranges skipped (%u/%u)\n",
+                    skip_rate, g_faacStats.tnsRangeSfmSkipped, g_faacStats.tnsRangeCandidates);
+        }
         if (g_faacStats.reservoirFrames > 0 || g_faacStats.peakRetryFrames > 0)
         {
             if (g_faacStats.reservoirFrames > 0 && g_faacStats.peakRetryFrames > 0)

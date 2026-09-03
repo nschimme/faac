@@ -261,11 +261,23 @@ static int tns_normalize_range(int b_start, int b_stop, int i_start,
         sum_log_rms += logf(rms_fl);
     }
 
-    if (total_energy < TNS_MIN_ENERGY)
-        return 0;
+#ifdef FAAC_STATS
+    g_faacStats.tnsRangeCandidates++;
+#endif
 
-    if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP)
+    if (total_energy < TNS_MIN_ENERGY) {
+#ifdef FAAC_STATS
+        g_faacStats.tnsRangeSilent++;
+#endif
         return 0;
+    }
+
+    if (expf(sum_log_rms / (float)nbands) / (sum_rms / (float)nbands) > TNS_PNS_SFM_SKIP) {
+#ifdef FAAC_STATS
+        g_faacStats.tnsRangeSfmSkipped++;
+#endif
+        return 0;
+    }
 
     floorrms = maxrms * 0.01f;
     if (floorrms < TNS_MIN_ENERGY) floorrms = TNS_MIN_ENERGY;
