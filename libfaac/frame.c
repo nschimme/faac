@@ -621,6 +621,12 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
+        if (g_faacStats.tdShortCandidates > 0)
+        {
+            double promo = 100.0 * g_faacStats.tdPromotedToLong / g_faacStats.tdShortCandidates;
+            fprintf(stderr, " TNS Promotion       : %5.1f%% of short-flagged channels promoted to long (%u/%u)\n",
+                    promo, g_faacStats.tdPromotedToLong, g_faacStats.tdShortCandidates);
+        }
         if (g_faacStats.reservoirFrames > 0 || g_faacStats.peakRetryFrames > 0)
         {
             if (g_faacStats.reservoirFrames > 0 && g_faacStats.peakRetryFrames > 0)

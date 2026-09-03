@@ -38,6 +38,12 @@ typedef struct faacEncStats {
     unsigned int longBlocks;
     unsigned int longBlocksTNS;
 
+    /* BlockSwitch's TNS promotion (PsyTdHard): how often a channel that
+     * PsyCheckShort flagged ONLY_SHORT_WINDOW got demoted back to
+     * ONLY_LONG_WINDOW to let TNS handle it instead. */
+    unsigned int tdShortCandidates;
+    unsigned int tdPromotedToLong;
+
     unsigned int sbrFrames;
     unsigned int sbrTransientFrames;
     unsigned long sbrInvfSum;
