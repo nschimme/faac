@@ -33,9 +33,7 @@ extern "C" {
 void TnsInit(faacEncStruct* hEncoder);
 
 /* Analyse one channel and, if it pays off, whiten `spec` in place. */
-void TnsEncode(TnsInfo* tnsInfo, int numBands,
-               enum WINDOW_TYPE blockType, int* sfbOffsetTable,
-               float* spec);
+void TnsEncode(CoderInfo *coderInfo, float *spec, float *workBuff);
 
 #ifdef __cplusplus
 }

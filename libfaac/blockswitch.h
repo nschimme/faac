@@ -41,6 +41,11 @@ typedef struct {
 	int block_type;
 	float pe;
 
+	/* Peak relative energy-jump strength found by PsyCheckShort, kept
+	 * regardless of whether it tripped ONLY_SHORT_WINDOW -- BlockSwitch's
+	 * TNS promotion check needs the magnitude, not just the verdict. */
+	float tdStrength;
+
         void *data;
 } PsyInfo;
 
