@@ -21,6 +21,7 @@
 #include "coder.h"
 #include "util.h"
 #include "faac_internal.h"
+#include "stats.h"
 #include "frame.h"
 
 typedef float psyfloat;
@@ -252,7 +253,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
  * blocks. VBR (bitRatePerCh==0) uses the high-bitrate end -- quality mode
  * has bits enough that the low-bitrate case for wider promotion doesn't apply. */
 #define PSY_TD_HARD_LOW   2.0f  /* at or below PSY_TD_HARD_LOW_RATE kbps/ch */
-#define PSY_TD_HARD_HIGH  1.5f  /* at or above PSY_TD_HARD_HIGH_RATE kbps/ch, and VBR */
+#define PSY_TD_HARD_HIGH  0.7f  /* at or above PSY_TD_HARD_HIGH_RATE kbps/ch, and VBR */
 #define PSY_TD_HARD_LOW_RATE   24000
 #define PSY_TD_HARD_HIGH_RATE  64000
 /* Below this, a long window already spans enough time that TNS's temporal
@@ -308,9 +309,19 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
 
       for (channel = 0; channel < numChannels; channel++)
       {
-          if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW &&
-              psyInfo[channel].tdStrength <= td_hard)
-              psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+          if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+          {
+#ifdef FAAC_STATS
+              g_faacStats.tdShortCandidates++;
+#endif
+              if (psyInfo[channel].tdStrength <= td_hard)
+              {
+                  psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+#ifdef FAAC_STATS
+                  g_faacStats.tdPromotedToLong++;
+#endif
+              }
+          }
       }
   }
 
