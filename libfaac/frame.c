@@ -75,6 +75,18 @@
  * offer -- so it was a constant that described the bound rather than limiting
  * anything, and it is gone. */
 #define RC_ACCOUNT_FRAMES      2
+/* Time constant of the SBR payload average, as a right shift: 1/16 per frame,
+   so ~16 frames (0.37 s at 48 kHz). Long enough to average out the payload's
+   frame-to-frame swing, short enough to follow a real change in content. */
+#define RC_SBR_EWMA_SHIFT      4
+/* Which SBR quantity the controller answers for. 1 = the running average
+   (control the core), 0 = this frame's payload (control the total, i.e. the
+   behaviour before this change). Compile-time so the losing horn costs nothing
+   once it is settled; -DRC_SBR_USE_MEAN=0 must reproduce the old stream
+   bit-for-bit, which is how the refactor is checked. */
+#ifndef RC_SBR_USE_MEAN
+#define RC_SBR_USE_MEAN        1
+#endif
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -431,6 +443,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         hEncoder->bitReservoirCap = 0;
         hEncoder->bitReservoir = 0;
     }
+    /* Negative means "no frame seen yet"; the first frame seeds the average
+       rather than dragging it up from zero over the whole time constant. */
+    hEncoder->sbrBitsAcc = -1;
 
     return 1;
 }
@@ -1157,11 +1172,42 @@ int faacEncEncode(faacEncHandle hpEncoder,
             / hEncoder->sampleRate;
         int totalBits = frameBytes * 8;
         int sbrBits = 0;
+        int sbrCharge;
         float fix;
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
+
+        /* The payload is not the fixed overhead that comment assumes: measured
+           at 48 kHz it runs 135-255 bits against a 2048-bit budget, swinging
+           ~+/-3% of the frame. Subtracting the frame's own `sbrBits` makes the
+           controller answer for a quantity it does not control -- a payload
+           spike lands in the ledger as core debt the core never incurred, and
+           `lend` then squeezes core quality to repay it. Holding the average
+           instead lets a spike pass through to the output rate.
+
+           Note the naive version of this cancels exactly and is not worth
+           retrying: taking `sbrBits` off both sides of `diff` leaves
+           `target - totalBits` unchanged. What breaks the cancellation is that
+           the two subtracted quantities differ -- the ledger and `fix` see the
+           average, while the frame really spent `sbrBits`.
+
+           `sbrCharge` is the single substitution that switches between the two:
+           the instantaneous payload (control the total: output tracks target,
+           core quality chases SBR noise) or its average (control the core:
+           steady core, SBR variance reaches the output rate). Both are
+           defensible, so both are measured. On LC `sbrBits` is 0 every frame
+           and the average is 0 with it, so this arm cannot move LC output. */
+        {
+            int prev = hEncoder->sbrBitsAcc;
+            hEncoder->sbrBitsAcc = (prev < 0)
+                ? (sbrBits << RC_SBR_EWMA_SHIFT)
+                : (prev + sbrBits - (prev >> RC_SBR_EWMA_SHIFT));
+        }
+        sbrCharge = RC_SBR_USE_MEAN
+            ? (hEncoder->sbrBitsAcc >> RC_SBR_EWMA_SHIFT)
+            : sbrBits;
 
         /* Settle the frame against the account. The balance is signed: positive
            means the stream has banked bits it may still spend, negative means it
@@ -1172,10 +1218,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
            forgiven and debt was not, so the bias tracked how much each clip drew.
 
            One setpoint serves the account and `fix` alike; they had drifted
-           apart, the account aiming under budget while `fix` aimed at it. */
-        int target = (int)(desbits * RC_RESERVOIR_AIM);
+           apart, the account aiming under budget while `fix` aimed at it. It is
+           a CORE setpoint: what is left of the frame's budget once SBR has been
+           charged for, matched against what the core actually spent. */
+        int coreTarget = (int)(desbits * RC_RESERVOIR_AIM) - sbrCharge;
         int bound = RC_ACCOUNT_FRAMES * desbits;
-        int diff = target - totalBits;
+        int coreBits = totalBits - sbrBits;
+        int diff = coreTarget - coreBits;
         hEncoder->bitReservoir += diff;
         if (hEncoder->bitReservoir > bound)
             hEncoder->bitReservoir = bound;
@@ -1189,8 +1238,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
            deep balance from being worked off in one lurch. */
         int lend = hEncoder->bitReservoir / RC_RESERVOIR_AMORT;
 
-        if (totalBits > sbrBits)
-            fix = (float)(target + lend - sbrBits) / (float)(totalBits - sbrBits);
+        if (coreBits > 0)
+            fix = (float)(coreTarget + lend) / (float)coreBits;
         else
             fix = 1.0f;
 

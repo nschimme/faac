@@ -113,6 +113,7 @@ typedef struct faacEncStruct {
     /* Adaptive bit reservoir state */
     int bitReservoir;       /* current bit reservoir level in bits */
     int bitReservoirCap;    /* max bit reservoir capacity in bits */
+    int sbrBitsAcc;         /* EWMA of the SBR payload, scaled by 1<<RC_SBR_EWMA_SHIFT */
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
