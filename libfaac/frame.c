@@ -54,27 +54,44 @@
  *
  * AMORT spreads the account balance over that many frames before offering it to
  * any one frame, so a full reservoir is not spent in a single burst and a debt
- * is not repaid by one collapsed frame. */
+ * is not repaid by one collapsed frame.
+ *
+ * AMORT is the strength of the loop's feedback into per-frame quality, and it
+ * is the dominant lever in this arm: every candidate for this code sits on one
+ * curve trading bitrate accuracy against coding efficiency, and this is what
+ * moves along it. Swept on BD-rate against master over the 48 kHz stereo ladder
+ * (mean of the HE and LC segments) at ACCOUNT_FRAMES=1:
+ *
+ *   AMORT      8      16      32      64     256
+ *   BD-rate  +0.243  -0.142  -0.420  -0.427  -0.597
+ *
+ * Monotone, because AMORT -> infinity is `lend` -> 0: the arm buys efficiency by
+ * switching off the term that makes it an account, and accuracy walks back to
+ * master's 5.33% as it does (4.14 -> 5.19 over that range). So the end of that
+ * ladder is not an optimum, it is a surrender, and the value here is chosen
+ * with FRAMES for the accuracy the arm exists to deliver. */
 #define RC_RESERVOIR_AIM       0.99f
-#define RC_RESERVOIR_AMORT     8
+#define RC_RESERVOIR_AMORT     32
 
 /* How far the account may run in either direction, in frames of budget, and
  * symmetrically: capacity is only two frames, so bounding one side there and the
  * other wider forgives whichever side is tighter and the arm ends up biased
  * toward the side it still remembers.
  *
- * The value is not free, and it is not large. `lend` below is balance/AMORT, so
- * past a couple of frames a wider bound buys memory rather than authority, and
- * that memory only delays the response. Measured over the corpus, mean absolute
- * bitrate error runs 3.28 / 3.07 / 3.57 / 3.81 percent at 1 / 2 / 3 / 4 frames.
- * An earlier eight was fitted against two scenarios the benchmark has since
- * retired as unreachable targets.
+ * The earlier value of 2 was fitted against mean absolute bitrate error, which
+ * reads 3.28 / 3.07 / 3.57 / 3.81 percent at 1 / 2 / 3 / 4 frames and picks 2.
+ * That is the wrong objective -- it cannot see coding efficiency at all, and it
+ * ranked this whole arm behind alternatives that spend more bits. Judged on
+ * BD-rate with AMORT=32, 4 is better on both segments and better on accuracy
+ * than the accuracy-fitted value ever was (3.55%/2.46% against master's
+ * 5.33%/4.64%). A still wider bound keeps buying efficiency and starts giving
+ * accuracy back, which is the same surrender AMORT makes above.
  *
  * A separate per-frame cap on `lend` used to sit alongside this. At two frames
  * it can never bind -- 2/AMORT is already the largest share the balance can
  * offer -- so it was a constant that described the bound rather than limiting
  * anything, and it is gone. */
-#define RC_ACCOUNT_FRAMES      2
+#define RC_ACCOUNT_FRAMES      4
 /* Time constant of the SBR payload average, as a right shift: 1/16 per frame,
    so ~16 frames (0.37 s at 48 kHz). Long enough to average out the payload's
    frame-to-frame swing, short enough to follow a real change in content. */
