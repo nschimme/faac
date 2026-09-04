@@ -49,10 +49,10 @@ typedef struct faacEncStats {
 
     unsigned int peakRetryFrames;
 
-    double totalReservoirRatio;
-    float minReservoirRatio;
-    float maxReservoirRatio;
-    unsigned int reservoirFrames;
+    double totalBalanceRatio;
+    float minBalanceRatio;
+    float maxBalanceRatio;
+    unsigned int balanceFrames;
 
     /* Rate-control quality clamp: is the loop's authority exhausted? A frame
        that overshoots its bit target while quality already sits on MINQUAL is

@@ -44,7 +44,21 @@
 /* Rate control tuning constants */
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
-/* The bit reservoir is an account, and these govern how the loop draws on it.
+/* The rate controller's bit account, and how the loop draws on it.
+ *
+ * This is NOT an AAC bit reservoir, and the old name said otherwise for long
+ * enough to mislead. An AAC reservoir is a bitstream property: frame sizes vary
+ * and the decoder's input buffer absorbs the variance, bounded by
+ * AAC_MAX_BITS_PER_CH and declared through the ADTS buffer_fullness field --
+ * which channels.c writes as the constant VBR sentinel 0x7FF, so this encoder
+ * declares none. Nothing here moves a bit between frames; every raw_data_block
+ * is self-contained whatever this balance says.
+ *
+ * What it actually is: a clamped integral of the per-frame bit error, whose
+ * balance perturbs a psychoacoustic masking-target multiplier. The account
+ * metaphor is accurate -- underspend banks, overspend owes, nothing is
+ * forgiven -- and `lend` is the share of the balance offered to a frame. The
+ * reservoir metaphor is not, because the actuator is quality, not bits.
  *
  * AIM is the fraction of the nominal frame budget the encoder actually banks
  * against, so steady state settles just below target. An average-bitrate mode
@@ -53,7 +67,7 @@
  * smaller than one step of the quantizer's own quality scale.
  *
  * AMORT spreads the account balance over that many frames before offering it to
- * any one frame, so a full reservoir is not spent in a single burst and a debt
+ * any one frame, so a large balance is not spent in a single burst and a debt
  * is not repaid by one collapsed frame.
  *
  * AMORT is the strength of the loop's feedback into per-frame quality, and it
@@ -70,8 +84,8 @@
  * master's 5.33% as it does (4.14 -> 5.19 over that range). So the end of that
  * ladder is not an optimum, it is a surrender, and the value here is chosen
  * with FRAMES for the accuracy the arm exists to deliver. */
-#define RC_RESERVOIR_AIM       0.99f
-#define RC_RESERVOIR_AMORT     32
+#define RC_BALANCE_AIM       0.99f
+#define RC_BALANCE_AMORT     32
 
 /* How far the account may run in either direction, in frames of budget, and
  * symmetrically: capacity is only two frames, so bounding one side there and the
@@ -91,7 +105,7 @@
  * it can never bind -- 2/AMORT is already the largest share the balance can
  * offer -- so it was a constant that described the bound rather than limiting
  * anything, and it is gone. */
-#define RC_ACCOUNT_FRAMES      4
+#define RC_BALANCE_FRAMES      4
 /* Time constant of the SBR payload average, as a right shift: 1/16 per frame,
    so ~16 frames (0.37 s at 48 kHz). Long enough to average out the payload's
    frame-to-frame swing, short enough to follow a real change in content. */
@@ -446,20 +460,14 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
     RefreshLfeMap(hEncoder);
 
-    /* Initialize adaptive bit reservoir for ABR mode */
-    if (hEncoder->config.bitRate > 0) {
-        int desbits = (int)((unsigned long long)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
-        int maxReservoirBits = (int)max(0, (int)(AAC_MAX_BITS_PER_CH * hEncoder->numChannels) - desbits);
-        hEncoder->bitReservoirCap = min(maxReservoirBits, 2 * desbits);
-        /* A signed account is square at zero. Opening half-full was right when
-           the balance ran [0, cap] and half meant neutral; under the account it
-           hands every stream a frame of credit it never earned, which `lend`
-           then spends. */
-        hEncoder->bitReservoir = 0;
-    } else {
-        hEncoder->bitReservoirCap = 0;
-        hEncoder->bitReservoir = 0;
-    }
+    /* A signed account is square at zero. The old code opened at half of a
+       decoder-buffer-derived capacity, which was right when the balance ran
+       [0, cap] and half meant neutral; under a signed account it hands every
+       stream a frame of credit it never earned, which `lend` then spends. That
+       capacity had no other consumer once the balance gained its own symmetric
+       bound, so it is gone rather than left to imply a limit it no longer
+       sets. */
+    hEncoder->bitBalance = 0;
     /* Negative means "no frame seen yet"; the first frame seeds the average
        rather than dragging it up from zero over the whole time constant. */
     hEncoder->sbrBitsAcc = -1;
@@ -478,7 +486,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 {
 #ifdef FAAC_STATS
     memset(&g_faacStats, 0, sizeof(faacEncStats));
-    g_faacStats.minReservoirRatio = 100.0f;
+    g_faacStats.minBalanceRatio = 100.0f;
 #endif
     unsigned int channel;
     faacEncStruct* hEncoder;
@@ -689,20 +697,20 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
-        if (g_faacStats.reservoirFrames > 0 || g_faacStats.peakRetryFrames > 0)
+        if (g_faacStats.balanceFrames > 0 || g_faacStats.peakRetryFrames > 0)
         {
-            if (g_faacStats.reservoirFrames > 0 && g_faacStats.peakRetryFrames > 0)
+            if (g_faacStats.balanceFrames > 0 && g_faacStats.peakRetryFrames > 0)
             {
-                double res_fill = g_faacStats.totalReservoirRatio / g_faacStats.reservoirFrames;
-                fprintf(stderr, " Rate Control & Cap  : Reservoir Fill = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Limit Retries = %5.1f%% (%u/%u)\n",
-                        res_fill, g_faacStats.minReservoirRatio, g_faacStats.maxReservoirRatio,
+                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
+                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Limit Retries = %5.1f%% (%u/%u)\n",
+                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio,
                         peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
             }
-            else if (g_faacStats.reservoirFrames > 0)
+            else if (g_faacStats.balanceFrames > 0)
             {
-                double res_fill = g_faacStats.totalReservoirRatio / g_faacStats.reservoirFrames;
-                fprintf(stderr, " Rate Control & Cap  : Reservoir Fill = %5.1f%% (min %5.1f%%, max %5.1f%%)\n",
-                        res_fill, g_faacStats.minReservoirRatio, g_faacStats.maxReservoirRatio);
+                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
+                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%)\n",
+                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio);
             }
             else
             {
@@ -710,9 +718,9 @@ int faacEncClose(faacEncHandle hpEncoder)
                         peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
             }
         }
-        if (g_faacStats.reservoirFrames > 0)
+        if (g_faacStats.balanceFrames > 0)
         {
-            unsigned int rcf = g_faacStats.reservoirFrames;
+            unsigned int rcf = g_faacStats.balanceFrames;
             fprintf(stderr, " Bit Error           : mean over = %7.1f bits (%u fr) | mean under = %7.1f bits (%u fr) | net = %+6.2f%% of target\n",
                     g_faacStats.overshootFrames ? g_faacStats.sumOverBits / g_faacStats.overshootFrames : 0.0,
                     g_faacStats.overshootFrames,
@@ -1238,22 +1246,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
            apart, the account aiming under budget while `fix` aimed at it. It is
            a CORE setpoint: what is left of the frame's budget once SBR has been
            charged for, matched against what the core actually spent. */
-        int coreTarget = (int)(desbits * RC_RESERVOIR_AIM) - sbrCharge;
-        int bound = RC_ACCOUNT_FRAMES * desbits;
+        int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
+        int bound = RC_BALANCE_FRAMES * desbits;
         int coreBits = totalBits - sbrBits;
         int diff = coreTarget - coreBits;
-        hEncoder->bitReservoir += diff;
-        if (hEncoder->bitReservoir > bound)
-            hEncoder->bitReservoir = bound;
-        else if (hEncoder->bitReservoir < -bound)
-            hEncoder->bitReservoir = -bound;
+        hEncoder->bitBalance += diff;
+        if (hEncoder->bitBalance > bound)
+            hEncoder->bitBalance = bound;
+        else if (hEncoder->bitBalance < -bound)
+            hEncoder->bitBalance = -bound;
 
         /* What this frame may lean on, signed and amortized: a credit lets a
            complex frame overspend, a debt holds the next frames under budget
            until it is repaid. This is the smoothing the draw path was meant to
            provide, with the repayment it was missing. Amortizing is what keeps a
            deep balance from being worked off in one lurch. */
-        int lend = hEncoder->bitReservoir / RC_RESERVOIR_AMORT;
+        int lend = hEncoder->bitBalance / RC_BALANCE_AMORT;
 
         if (coreBits > 0)
             fix = (float)(coreTarget + lend) / (float)coreBits;
@@ -1271,18 +1279,18 @@ int faacEncEncode(faacEncHandle hpEncoder,
            fill while running 8% hot -- and `lend` now carries the balance into
            `fix` directly, so keeping both would correct the same bits twice. */
         float damping = RC_DAMPING_FACTOR;
-        if (hEncoder->bitReservoirCap > 0) {
-            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / (float)bound;
+        {
+            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
             if (fillRatio < 0.25f || fillRatio > 0.75f)
                 damping = 0.85f;
 
 #ifdef FAAC_STATS
             {
                 float fillPct = fillRatio * 100.0f;
-                g_faacStats.totalReservoirRatio += fillPct;
-                if (fillPct < g_faacStats.minReservoirRatio) g_faacStats.minReservoirRatio = fillPct;
-                if (fillPct > g_faacStats.maxReservoirRatio) g_faacStats.maxReservoirRatio = fillPct;
-                g_faacStats.reservoirFrames++;
+                g_faacStats.totalBalanceRatio += fillPct;
+                if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
+                if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
+                g_faacStats.balanceFrames++;
             }
 #endif
         }
