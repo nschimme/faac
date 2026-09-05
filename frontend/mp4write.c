@@ -422,6 +422,12 @@ int mp4_open(const char *path, bool overwrite) {
     return g_mem_error ? 1 : 0;
 }
 
+static bool g_constant_rate;
+
+/* ISO/IEC 14496-1 signals a constant-rate stream as maxBitrate == avgBitrate;
+   the measured one-second peak sits within the reservoir's few percent of it. */
+void mp4_set_constant_rate(bool constant) { g_constant_rate = constant; }
+
 void mp4_set_format(uint32_t samplerate, uint32_t channels, uint32_t bits) {
     g_mp4.samplerate = samplerate;
     g_mp4.channels = channels;
@@ -645,7 +651,7 @@ int mp4_finish(void) {
     /* a file shorter than one second never crosses the sample-count
        threshold in mp4_write_frame, so bitrate.max would otherwise
        still be 0 here */
-    if (!g_mp4.bitrate.max) g_mp4.bitrate.max = g_mp4.bitrate.avg;
+    if (!g_mp4.bitrate.max || g_constant_rate) g_mp4.bitrate.max = g_mp4.bitrate.avg;
 
     g_mempos = 0;
     g_memcap = 65536 + (size_t)g_mp4.frame.ents * 4;

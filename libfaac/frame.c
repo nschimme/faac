@@ -385,6 +385,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
         config->bitRate = MaxBitrate(hEncoder->sampleRate);
 
+    /* AUTO is the legacy meaning of the two rate fields: a bitrate is ABR, none
+       is VBR. The new API rejects the contradictory combinations before this. */
+    if (config->rateControl == RATE_AUTO)
+        config->rateControl = config->bitRate ? RATE_ABR : RATE_VBR;
+    hEncoder->config.rateControl = config->rateControl;
+
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
 
@@ -1205,15 +1211,21 @@ int faacEncEncode(faacEncHandle hpEncoder,
             peakBits = userPeakBits;
     }
 
-    /* The bit reservoir. The decoder's input buffer holds AAC_MAX_BITS_PER_CH
-       per channel; it is refilled at the mean frame rate and drained one frame
-       at a time, so what this frame may spend is the mean plus whatever the
-       buffer holds. The standard limit above is that same cap with the buffer
-       full; --cap-rate and the ADTS frame length keep their own terms, and
-       min() lets whichever is tightest bind. VBR has no mean and declares
-       nothing. Enforcement is the retry loop below, which was already there
-       for the other caps -- a frame that fits costs nothing extra. */
-    if (hEncoder->config.bitRate)
+    /* The bit reservoir, CBR only. The decoder's input buffer holds
+       AAC_MAX_BITS_PER_CH per channel; it is refilled at the mean frame rate
+       and drained one frame at a time, so what this frame may spend is the
+       mean plus whatever the buffer holds. The standard limit above is that
+       same cap with the buffer full; --cap-rate and the ADTS frame length keep
+       their own terms, and min() lets whichever is tightest bind. Enforcement
+       is the retry loop below, which was already there for the other caps -- a
+       frame that fits costs nothing extra. ABR and VBR leave resMean at 0:
+       no cap term, no stuffing floor, buffer_fullness stays the VBR sentinel.
+       Measured over the full corpus, the reservoir costs ABR 0.5-0.7% BD-rate
+       on music (quiet passages stuffed) and caps the onsets speech spends 4x
+       the mean on; what it buys -- an exact rate, a conformant constant-rate
+       stream -- only a constant-rate channel or a matched-rate comparison
+       needs, so it is asked for rather than imposed. */
+    if (hEncoder->config.rateControl == RATE_CBR)
     {
         int mean = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
@@ -1245,8 +1257,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (hEncoder->resMinBits < 0)
             hEncoder->resMinBits = 0;
     }
-    else
-        hEncoder->resMinBits = 0;
 
     for (channel = 0; channel < numChannels; channel++) {
         memcpy(hEncoder->peakSnap[channel], coderInfo[channel].book,
@@ -1336,19 +1346,23 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
     {
-        int desbits = hEncoder->resMean;
+        int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
         /* The reservoir answers for every bit that went out; the controller
            answers only for the ones the coder chose to spend, or a stuffed
            frame reads as on budget and quality never rises to replace the
            stuffing with signal. */
         int sentBits = payloadBits;
         int totalBits = payloadBits - hEncoder->stuffedBits;
+        int reservoir = (hEncoder->resMean > 0);
         int sbrBits = 0;
         int sbrCharge;
         float fix;
 
         /* Settle the reservoir first; the header already declared this value
            through the same function. */
+        if (reservoir)
+        {
 #ifdef FAAC_STATS
         {
             int raw = hEncoder->resFill + hEncoder->resMean - sentBits;
@@ -1370,6 +1384,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
 #endif
         hEncoder->resFill = faacReservoirAfter(hEncoder, sentBits);
+        }
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
@@ -1440,23 +1455,26 @@ int faacEncEncode(faacEncHandle hpEncoder,
         {
             int aim = coreTarget + lend;
 #if RC_RESERVOIR_AIM
-            /* resFill is already the fill after this frame, so these are the
-               next frame's floor and cap, less what SBR will take of them. */
-            int coreFloor = hEncoder->resMean + hEncoder->resFill - hEncoder->resCap - sbrCharge;
-            int coreCap = hEncoder->resMean + hEncoder->resFill - sbrCharge;
-            if (RC_RESERVOIR_STUFF && aim < coreFloor)
+            if (reservoir)
             {
-                aim = coreFloor;
-                floored = 1;
+                /* resFill is already the fill after this frame, so these are
+                   the next frame's floor and cap, less what SBR will take. */
+                int coreFloor = hEncoder->resMean + hEncoder->resFill - hEncoder->resCap - sbrCharge;
+                int coreCap = hEncoder->resMean + hEncoder->resFill - sbrCharge;
+                if (RC_RESERVOIR_STUFF && aim < coreFloor)
+                {
+                    aim = coreFloor;
+                    floored = 1;
+                }
+                if (aim > coreCap)
+                    aim = coreCap;
+                /* This frame took more than half the reservoir's slack, so a
+                   frame its size will not fit the next cap. Correct down whole,
+                   now, rather than let the next frame bust and be cut in a
+                   retry: on speech that pre-emption is the difference between
+                   1.5% and 28% of frames retrying, at the same accuracy. */
+                capped = (coreBits > coreCap);
             }
-            if (aim > coreCap)
-                aim = coreCap;
-            /* This frame took more than half the reservoir's slack, so a frame
-               its size will not fit the next cap. Correct down whole, now,
-               rather than let the next frame bust and be cut in a retry: on
-               speech that pre-emption is the difference between 1.5% and 28%
-               of frames retrying, at the same accuracy. */
-            capped = (coreBits > coreCap);
 #endif
             if (coreBits > 0)
                 fix = (float)aim / (float)coreBits;

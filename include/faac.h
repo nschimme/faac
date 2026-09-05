@@ -131,6 +131,23 @@ enum faac_stream_format {
     FAAC_STREAM_MAX  = 0x7fffffff
 };
 
+/* How the encoder holds a rate. ABR is an average: frames are bounded only by
+ * the ISO/IEC 14496-3 ceiling of 6144 bits per channel, a transient may take
+ * several times the mean, and a stream of silence stays small. CBR is a
+ * constant-rate stream: a bit reservoir models the decoder's input buffer,
+ * every frame fits mean + fill, a frame that would leave the buffer to overflow
+ * is stuffed up to it, and the ADTS buffer_fullness field carries the fill (MP4
+ * declares bufferSizeDB and maxBitrate == avgBitrate). Choose CBR for a
+ * constant-rate channel or a matched-bitrate comparison; the stuffing is bytes
+ * for nothing on a file or a packet network. */
+enum faac_rate_control {
+    FAAC_RC_AUTO = 0,                /* bit_rate set: ABR; otherwise VBR        */
+    FAAC_RC_VBR,                     /* quant_quality drives; bit_rate must be 0 */
+    FAAC_RC_ABR,                     /* average bit_rate; requires bit_rate      */
+    FAAC_RC_CBR,                     /* bit reservoir, stuffed, declared; requires bit_rate */
+    FAAC_RC_MAX  = 0x7fffffff
+};
+
 /* Interpretation of the interleaved PCM handed to faac_encoder_encode(). */
 enum faac_input_format {
     FAAC_INPUT_NULL  = 0,            /* invalid / unset                          */
@@ -195,6 +212,8 @@ typedef struct faac_params {
      * above ~64 kbit/s; below that the floor starts to show (~48 kbit/s
      * overshoots on a few percent of frames). */
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
+
+    enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
@@ -228,6 +247,8 @@ typedef struct faac_encoder_info {
      * decoder must discard. Use verbatim for gapless tagging (e.g. iTunSMPB) --
      * not the same as frame_samples for HE-AAC. */
     uint32_t                encoder_delay;
+
+    enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
 } faac_encoder_info;
 
 /*
