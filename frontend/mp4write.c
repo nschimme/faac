@@ -73,7 +73,10 @@ enum {
     /* DecoderConfigDescriptor fixed fields (ISO/IEC 14496-1) */
     MP4_OBJECT_TYPE_AUDIO_ISO_14496_3 = 0x40,
     MP4_STREAM_TYPE_AUDIO             = 0x15, /* streamType=5 (audio) << 2 | upStream=0 | reserved=1 */
-    MP4_DECODER_BUFFER_SIZE           = 6144, /* bufferSizeDB, arbitrary but generous for one AAC frame */
+    /* bufferSizeDB: the decoder input buffer in bytes. AAC's is 6144 bits per
+       channel (ISO/IEC 14496-3 4.5.3.1), the bound the encoder's bit reservoir
+       and its frame cap both work to, so declare exactly that. */
+    MP4_DECODER_BUFFER_BYTES_PER_CH   = 6144 / 8,
 
     MP4_TRACK_ID      = 1, /* single-track file: 'trak' and 'tkhd' both hardcode this */
     MP4_NEXT_TRACK_ID = 2, /* mvhd's hint for the next trak ID a future edit would use */
@@ -748,9 +751,10 @@ int mp4_finish(void) {
     put_u16(0); put_u8(0);
     put_descriptor(4, 13 + MP4_DESC_HDR + g_mp4.asc.size);
     put_u8(MP4_OBJECT_TYPE_AUDIO_ISO_14496_3); put_u8(MP4_STREAM_TYPE_AUDIO);
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE >> 16));
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE >> 8));
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE & 0xff));
+    uint32_t bufferSizeDB = MP4_DECODER_BUFFER_BYTES_PER_CH * g_mp4.channels;
+    put_u8((uint8_t)(bufferSizeDB >> 16));
+    put_u8((uint8_t)(bufferSizeDB >> 8));
+    put_u8((uint8_t)(bufferSizeDB & 0xff));
     put_u32(g_mp4.bitrate.max); put_u32(g_mp4.bitrate.avg);
     put_descriptor(5, g_mp4.asc.size);
     put_data(g_mp4.asc.data, g_mp4.asc.size);

@@ -250,6 +250,8 @@ static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool w
         PutBit(bs, 0, LEN_ADTS_COPY_ID);
         PutBit(bs, 0, LEN_ADTS_COPY_ST);
         PutBit(bs, hEncoder->usedBytes, LEN_ADTS_FRAME);
+        /* buffer_fullness depends on this frame's length, so like the length
+           it is written as a placeholder here and patched by PatchADTSHeader. */
         PutBit(bs, 0x7FF, LEN_ADTS_FULL);
         PutBit(bs, 0, LEN_ADTS_BLOCKS);
     }
@@ -297,19 +299,27 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     return bits + pad;
 }
 
-/* ADTS carries a frame length that is only known once the frame is written.
- * Patching the 7 fixed-layout header bytes afterwards keeps BuildFrame to a
- * single pass. Must reproduce WriteADTSHeader byte for byte. */
+/* ADTS carries a frame length and a buffer fullness that are only known once
+ * the frame is written. Patching the 7 fixed-layout header bytes afterwards
+ * keeps BuildFrame to a single pass. Must reproduce WriteADTSHeader byte for
+ * byte apart from those two fields.
+ *
+ * buffer_fullness is the bit reservoir after this frame, in 32-bit words
+ * (ISO/IEC 13818-7 6.2.2). 0x7FF is the reserved value for a stream with no
+ * reservoir, which is what VBR is. */
 static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int frameBytes)
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {
+        int fullness = 0x7FF;
+        if (hEncoder->resMean)
+            fullness = faacReservoirAfter(hEncoder, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;
         bs->data[1] = 0xF0 | (hEncoder->config.mpegVersion << 3) | 1;
         bs->data[2] = ((LOW - 1) << 6) | (hEncoder->sampleRateIdx << 2) | (hEncoder->numChannels >> 2);
         bs->data[3] = ((hEncoder->numChannels & 3) << 6) | (frameBytes >> 11);
         bs->data[4] = (frameBytes >> 3) & 0xFF;
-        bs->data[5] = ((frameBytes & 7) << 5) | 0x1F;
-        bs->data[6] = 0xFC;
+        bs->data[5] = ((frameBytes & 7) << 5) | (fullness >> 6);
+        bs->data[6] = (fullness & 0x3F) << 2;
     }
 }
 

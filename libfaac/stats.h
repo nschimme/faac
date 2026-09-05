@@ -49,6 +49,16 @@ typedef struct faacEncStats {
 
     unsigned int peakRetryFrames;
 
+    /* Bit reservoir: fill before each frame as % of capacity, how often the
+       reservoir (not a per-frame cap) was what made the frame retry, and how
+       often a frame could not be made to fit even so. */
+    double totalResFill;
+    float minResFill;
+    float maxResFill;
+    unsigned int resFrames;
+    unsigned int resBoundRetryFrames;
+    unsigned int resUnderflowFrames;
+
     double totalBalanceRatio;
     float minBalanceRatio;
     float maxBalanceRatio;
