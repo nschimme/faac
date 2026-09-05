@@ -58,6 +58,9 @@ typedef struct faacEncStats {
     unsigned int resFrames;
     unsigned int resBoundRetryFrames;
     unsigned int resUnderflowFrames;
+    unsigned int resStuffFrames;
+    double resStuffBits;
+    double resTotalBits;
 
     double totalBalanceRatio;
     float minBalanceRatio;

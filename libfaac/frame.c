@@ -148,6 +148,28 @@
 #ifndef RC_RESERVOIR_START
 #define RC_RESERVOIR_START     0.5f
 #endif
+/* Whether a backoff forced by the reservoir outlives its frame. Sweep knob. */
+#ifndef RC_RESERVOIR_STICKY
+#define RC_RESERVOIR_STICKY    1
+#endif
+/* Anti-windup. A frame under budget raises quality; in a pause nothing can
+   spend the raise, so the integrator winds to MAXQUAL and the onset after the
+   pause is coded at fifty times the default masking target -- a frame four
+   times the mean that the reservoir then has to cut. Hold quality when the
+   previous raise did not buy bits: the plant is saturated, and integrating
+   against a saturated plant is the textbook mistake. */
+#ifndef RC_ANTI_WINDUP
+#define RC_ANTI_WINDUP         1
+#endif
+/* Whether a frame that would overflow the reservoir is stuffed up to the size
+   that does not. A reservoir bounds the buffer on both sides: a frame too big
+   stalls the decoder, a frame too small overflows it and the bits are lost to
+   the stream. Stuffing is what makes the average bitrate exact on content that
+   cannot spend -- pauses, silence -- and it is the difference between a
+   reservoir and a mere cap. */
+#ifndef RC_RESERVOIR_STUFF
+#define RC_RESERVOIR_STUFF     1
+#endif
 
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
@@ -500,6 +522,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->resMean = 0;
     hEncoder->resCap = 0;
     hEncoder->resFill = -1;
+    hEncoder->rcPrevBits = 0;
+    hEncoder->rcPrevQual = 0.0f;
+    hEncoder->resMinBits = 0;
 
     return 1;
 }
@@ -770,6 +795,10 @@ int faacEncClose(faacEncHandle hpEncoder)
                     100.0 * g_faacStats.resBoundRetryFrames / g_faacStats.resFrames,
                     g_faacStats.resBoundRetryFrames, g_faacStats.resFrames,
                     g_faacStats.resUnderflowFrames);
+            fprintf(stderr, " Reservoir Stuffing  : Frames = %5.1f%% (%u/%u) | Bits = %5.2f%% of stream\n",
+                    100.0 * g_faacStats.resStuffFrames / g_faacStats.resFrames,
+                    g_faacStats.resStuffFrames, g_faacStats.resFrames,
+                    g_faacStats.resTotalBits > 0 ? 100.0 * g_faacStats.resStuffBits / g_faacStats.resTotalBits : 0.0);
         }
         if (g_faacStats.balanceFrames > 0)
         {
@@ -1193,7 +1222,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
             peakBits = avail;
             resBound = 1;
         }
+        hEncoder->resMinBits = RC_RESERVOIR_STUFF
+            ? mean + hEncoder->resFill - hEncoder->resCap : 0;
+        if (hEncoder->resMinBits < 0)
+            hEncoder->resMinBits = 0;
     }
+    else
+        hEncoder->resMinBits = 0;
 
     for (channel = 0; channel < numChannels; channel++) {
         memcpy(hEncoder->peakSnap[channel], coderInfo[channel].book,
@@ -1271,7 +1306,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * bound, the next frame faces nearly the same one, so the backoff stays and
      * the controller below works from where the frame actually landed rather
      * than retrying its way back down every frame. */
-    if (!(resBound && attempt > 0))
+    if (!(RC_RESERVOIR_STICKY && resBound && attempt > 0))
         hEncoder->aacquantCfg.quality = baseQuality;
 
 #ifdef FAAC_STATS
@@ -1287,7 +1322,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->config.bitRate)
     {
         int desbits = hEncoder->resMean;
-        int totalBits = payloadBits;
+        /* The reservoir answers for every bit that went out; the controller
+           answers only for the ones the coder chose to spend, or a stuffed
+           frame reads as on budget and quality never rises to replace the
+           stuffing with signal. */
+        int sentBits = payloadBits;
+        int totalBits = payloadBits - hEncoder->stuffedBits;
         int sbrBits = 0;
         int sbrCharge;
         float fix;
@@ -1296,9 +1336,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
            through the same function. */
 #ifdef FAAC_STATS
         {
-            int raw = hEncoder->resFill + hEncoder->resMean - totalBits;
+            int raw = hEncoder->resFill + hEncoder->resMean - sentBits;
             if (raw < 0) g_faacStats.resUnderflowFrames++;
             g_faacStats.resFrames++;
+            g_faacStats.resTotalBits += sentBits;
+            if (hEncoder->resMinBits > 0 && hEncoder->stuffedBits > 0)
+            {
+                g_faacStats.resStuffFrames++;
+                g_faacStats.resStuffBits += hEncoder->stuffedBits;
+            }
             if (hEncoder->resCap > 0)
             {
                 float pct = 100.0f * (float)hEncoder->resFill / (float)hEncoder->resCap;
@@ -1308,7 +1354,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
         }
 #endif
-        hEncoder->resFill = faacReservoirAfter(hEncoder, totalBits);
+        hEncoder->resFill = faacReservoirAfter(hEncoder, sentBits);
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
@@ -1419,6 +1465,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Apply damping to the quality adjustment */
         fix = (fix - 1.0f) * damping + 1.0f;
+
+#if RC_ANTI_WINDUP
+        if (fix > 1.0f && baseQuality > hEncoder->rcPrevQual
+            && coreBits <= hEncoder->rcPrevBits + hEncoder->rcPrevBits / 50)
+            fix = 1.0f;
+#endif
+        hEncoder->rcPrevBits = coreBits;
+        hEncoder->rcPrevQual = baseQuality;
 
         /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
         if (fabsf(fix - 1.0f) > 0.005f) {

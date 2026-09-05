@@ -124,6 +124,16 @@ typedef struct faacEncStruct {
     int resMean;
     int resCap;
     int resFill;
+
+    /* What the previous frame cost and the quality it was coded at, so the
+       controller can tell a frame that is under budget because quality is too
+       low from one that is under budget because there is nothing to spend on. */
+    int rcPrevBits;
+    float rcPrevQual;
+    /* Fewest bits this frame may carry without the reservoir overflowing;
+       BuildFrame stuffs a fill element up to it. 0 when nothing is required. */
+    int resMinBits;
+    int stuffedBits;   /* what BuildFrame stuffed into the last frame */
 } faacEncStruct;
 
 /* Reservoir fill once a frame of payloadBits (raw_data_block, no ADTS header)

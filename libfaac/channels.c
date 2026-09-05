@@ -286,6 +286,20 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     for (int i = 0; i < nElems; i++) bits += WriteElement(bs, &elems[i], coder, write);
     int f = (bits < (8 - LEN_SE_ID)) ? (8 - LEN_SE_ID - bits) : 0;
     f += 6;
+
+    /* Stuff up to the reservoir's floor: what is still to come is the SBR
+       payload and the end marker, so the fill makes up the rest. */
+    hEncoder->stuffedBits = 0;
+    if (hEncoder->resMinBits > 0) {
+        int sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL,
+                                        (int)hEncoder->numChannels, (int)hEncoder->config.aacObjectType, 0);
+        int hdr = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE * 8 : 0;
+        int need = hEncoder->resMinBits - (bits - hdr + f + sbrBits + LEN_SE_ID);
+        if (need > 0) {
+            f += need;
+            hEncoder->stuffedBits = need;
+        }
+    }
     bits += (f - WriteAACFillBits(bs, f, write));
 
     /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
