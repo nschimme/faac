@@ -123,7 +123,6 @@ int faacEncGetVersion( char **faac_id_string,
 int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuffer,unsigned long* pSizeOfDecoderSpecificInfo)
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
-    BitStream* pBitStream = NULL;
 
     if((hEncoder == NULL) || (ppBuffer == NULL) || (pSizeOfDecoderSpecificInfo == NULL)) {
         return -1;
@@ -141,18 +140,11 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
     *ppBuffer = (unsigned char *)malloc(2);
 
     if(*ppBuffer != NULL){
-        memset(*ppBuffer,0,*pSizeOfDecoderSpecificInfo);
-        pBitStream = OpenBitStream((uint32_t)*pSizeOfDecoderSpecificInfo, *ppBuffer);
-        if (!pBitStream) {
-            free(*ppBuffer);
-            *ppBuffer = NULL;
-            return -3;
-        }
-        PutBit(pBitStream, hEncoder->config.aacObjectType, 5);
-        PutBit(pBitStream, hEncoder->sampleRateIdx, 4);
-        PutBit(pBitStream, hEncoder->numChannels, 4);
-        CloseBitStream(pBitStream);
-
+        BitStream bs;
+        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the 3 trailing pad bits need no write */
+        PutBit(&bs, hEncoder->config.aacObjectType, 5);
+        PutBit(&bs, hEncoder->sampleRateIdx,        4);
+        PutBit(&bs, hEncoder->numChannels,          4);
         return 0;
     } else {
         return -3;
