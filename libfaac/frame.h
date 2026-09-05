@@ -128,6 +128,7 @@ typedef struct faacEncStruct {
        BuildFrame stuffs a fill element up to it. 0 when nothing is required. */
     int resMinBits;
     int stuffedBits;   /* what BuildFrame stuffed into the last frame */
+    int rcPrevWant;    /* previous frame's uncut core bits, 0 if it was not stuffed */
 } faacEncStruct;
 
 /* Reservoir fill once a frame of payloadBits (raw_data_block, no ADTS header)
