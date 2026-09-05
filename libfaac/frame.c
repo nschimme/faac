@@ -333,14 +333,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
-    {
-        unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
-    }
-
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
@@ -382,6 +374,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
+
+    /* The per-frame ceiling is AAC_MAX_BITS_PER_CH per channel per frame, and
+     * a frame is FRAME_LEN samples at the CORE rate -- so this has to follow
+     * the HE-AAC rate resolution above, where the core drops to Fs/2 and the
+     * ceiling halves with it. MaxBitrate() is already per channel; the old
+     * clamp divided it by the channel count again and silently rewrote a
+     * stereo -b 320 to 288 at 48 kHz. */
+    if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
+        config->bitRate = MaxBitrate(hEncoder->sampleRate);
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
@@ -1229,8 +1230,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
             peakBits = avail;
             resBound = 1;
         }
+        /* The floor is at most the cap less what byte-granular fill and the
+           frame's byte alignment can add, so stuffing can never push a frame
+           over the cap when the two meet -- at the ceiling bitrate the
+           reservoir has no capacity and they meet on every frame. */
         hEncoder->resMinBits = RC_RESERVOIR_STUFF
             ? mean + hEncoder->resFill - hEncoder->resCap : 0;
+        if (hEncoder->resMinBits > (int)avail - 16)
+            hEncoder->resMinBits = (int)avail - 16;
         if (hEncoder->resMinBits < 0)
             hEncoder->resMinBits = 0;
     }
