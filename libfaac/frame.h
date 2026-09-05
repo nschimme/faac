@@ -110,9 +110,10 @@ typedef struct faacEncStruct {
      * [0] and sf[] at [MAX_SCFAC_BANDS]. */
     int *peakSnap[MAX_CHANNELS];
 
-    /* Adaptive bit reservoir state */
-    int bitReservoir;       /* current bit reservoir level in bits */
-    int bitReservoirCap;    /* max bit reservoir capacity in bits */
+    /* Rate-control bit account. NOT an AAC bit reservoir -- see the note on
+       RC_BALANCE_AIM in frame.c. */
+    int bitBalance;         /* signed: banked bits positive, owed bits negative */
+    int sbrBitsAcc;         /* EWMA of the SBR payload, scaled by 1<<RC_SBR_EWMA_SHIFT */
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
