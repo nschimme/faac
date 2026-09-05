@@ -44,6 +44,38 @@
 /* Rate control tuning constants */
 #define RC_DAMPING_FACTOR      0.6f   /* Control loop damping */
 
+/* The bit reservoir is an account, and these govern how the loop draws on it.
+ *
+ * AIM is the fraction of the nominal frame budget the encoder actually banks
+ * against, so steady state settles just below target. An average-bitrate mode
+ * that is unbiased on average still lands half its clips over budget; aiming a
+ * little low makes the average a ceiling instead of a midpoint. The margin is
+ * smaller than one step of the quantizer's own quality scale.
+ *
+ * AMORT spreads the account balance over that many frames before offering it to
+ * any one frame, so a full reservoir is not spent in a single burst and a debt
+ * is not repaid by one collapsed frame. */
+#define RC_RESERVOIR_AIM       0.99f
+#define RC_RESERVOIR_AMORT     8
+
+/* How far the account may run in either direction, in frames of budget, and
+ * symmetrically: capacity is only two frames, so bounding one side there and the
+ * other wider forgives whichever side is tighter and the arm ends up biased
+ * toward the side it still remembers.
+ *
+ * The value is not free, and it is not large. `lend` below is balance/AMORT, so
+ * past a couple of frames a wider bound buys memory rather than authority, and
+ * that memory only delays the response. Measured over the corpus, mean absolute
+ * bitrate error runs 3.28 / 3.07 / 3.57 / 3.81 percent at 1 / 2 / 3 / 4 frames.
+ * An earlier eight was fitted against two scenarios the benchmark has since
+ * retired as unreachable targets.
+ *
+ * A separate per-frame cap on `lend` used to sit alongside this. At two frames
+ * it can never bind -- 2/AMORT is already the largest share the balance can
+ * offer -- so it was a constant that described the bound rather than limiting
+ * anything, and it is gone. */
+#define RC_ACCOUNT_FRAMES      2
+
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
  * collapsing quality to MINQUAL in a single step. */
@@ -390,7 +422,11 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         int desbits = (int)((unsigned long long)hEncoder->numChannels * hEncoder->config.bitRate * FRAME_LEN / hEncoder->sampleRate);
         int maxReservoirBits = (int)max(0, (int)(AAC_MAX_BITS_PER_CH * hEncoder->numChannels) - desbits);
         hEncoder->bitReservoirCap = min(maxReservoirBits, 2 * desbits);
-        hEncoder->bitReservoir = hEncoder->bitReservoirCap / 2;
+        /* A signed account is square at zero. Opening half-full was right when
+           the balance ran [0, cap] and half meant neutral; under the account it
+           hands every stream a frame of credit it never earned, which `lend`
+           then spends. */
+        hEncoder->bitReservoir = 0;
     } else {
         hEncoder->bitReservoirCap = 0;
         hEncoder->bitReservoir = 0;
@@ -641,6 +677,21 @@ int faacEncClose(faacEncHandle hpEncoder)
                 fprintf(stderr, " Rate Control & Cap  : Peak Limit Retries = %5.1f%% (%u/%u)\n",
                         peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
             }
+        }
+        if (g_faacStats.reservoirFrames > 0)
+        {
+            unsigned int rcf = g_faacStats.reservoirFrames;
+            fprintf(stderr, " Bit Error           : mean over = %7.1f bits (%u fr) | mean under = %7.1f bits (%u fr) | net = %+6.2f%% of target\n",
+                    g_faacStats.overshootFrames ? g_faacStats.sumOverBits / g_faacStats.overshootFrames : 0.0,
+                    g_faacStats.overshootFrames,
+                    g_faacStats.underFrames ? g_faacStats.sumUnderBits / g_faacStats.underFrames : 0.0,
+                    g_faacStats.underFrames,
+                    g_faacStats.sumDesBits > 0 ? 100.0 * (g_faacStats.sumOverBits - g_faacStats.sumUnderBits) / g_faacStats.sumDesBits : 0.0);
+            fprintf(stderr, " Quality Clamp       : Overshoot = %5.1f%% (%u/%u) | at MINQUAL = %5.1f%% | overshoot AND floored = %5.1f%% | at MAXQUAL = %5.1f%%\n",
+                    100.0 * g_faacStats.overshootFrames / rcf, g_faacStats.overshootFrames, rcf,
+                    100.0 * g_faacStats.minqualFrames / rcf,
+                    100.0 * g_faacStats.minqualOvershootFrames / rcf,
+                    100.0 * g_faacStats.maxqualFrames / rcf);
         }
         fprintf(stderr, "---------------------------\n");
     }
@@ -1112,48 +1163,50 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * controller doesn't starve the core to pay for SBR. */
         sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
 
-        /* Compute total stream Perceptual Entropy (PE) across channels */
-        float totalPE = 0.0f;
-        for (channel = 0; channel < numChannels; channel++) {
-            totalPE += hEncoder->psyInfo[channel].pe;
-        }
+        /* Settle the frame against the account. The balance is signed: positive
+           means the stream has banked bits it may still spend, negative means it
+           has overspent and owes them back. Both directions are kept -- the
+           previous code hid a draw from `fix` (the bits reached the stream while
+           the loop was told the frame hit target), discarded deposits once the
+           account was full, and zeroed any debt it could not cover. Credit was
+           forgiven and debt was not, so the bias tracked how much each clip drew.
 
-        /* Update adaptive bit reservoir balance and compute effective frame bits for rate control */
-        int effectiveBits = totalBits;
-        int diff = desbits - totalBits;
+           One setpoint serves the account and `fix` alike; they had drifted
+           apart, the account aiming under budget while `fix` aimed at it. */
+        int target = (int)(desbits * RC_RESERVOIR_AIM);
+        int bound = RC_ACCOUNT_FRAMES * desbits;
+        int diff = target - totalBits;
+        hEncoder->bitReservoir += diff;
+        if (hEncoder->bitReservoir > bound)
+            hEncoder->bitReservoir = bound;
+        else if (hEncoder->bitReservoir < -bound)
+            hEncoder->bitReservoir = -bound;
 
-        if (diff < 0) {
-            int excess = -diff;
-            /* Adaptive burst draw ceiling: 0.5 * desbits for low bitrates (<=48k stereo / <=24k mono), 1.0 * desbits for high bitrates */
-            int drawLimit = (hEncoder->config.bitRate <= 24000) ? (desbits / 2) : desbits;
-            int maxDraw = (excess < drawLimit) ? excess : drawLimit;
-            /* Data-driven PE complexity threshold: PE_THRESH_PER_CH per channel naturally captures high-entropy transients.
-             * Bypassing low-entropy frames prevents quality scale-factor inflation and overshoot. */
-            if (totalPE > (PE_THRESH_PER_CH * (float)numChannels) && hEncoder->bitReservoir > 0) {
-                int absorbed = (maxDraw < hEncoder->bitReservoir) ? maxDraw : hEncoder->bitReservoir;
-                effectiveBits = totalBits - absorbed;
-                hEncoder->bitReservoir -= absorbed;
-            } else {
-                hEncoder->bitReservoir += diff;
-                if (hEncoder->bitReservoir < 0) hEncoder->bitReservoir = 0;
-            }
-        } else {
-            /* Simple frames replenish the reservoir without penalizing feedback rate control */
-            int space = hEncoder->bitReservoirCap - hEncoder->bitReservoir;
-            int deposited = (diff < space) ? diff : space;
-            hEncoder->bitReservoir += deposited;
-            effectiveBits = totalBits;
-        }
+        /* What this frame may lean on, signed and amortized: a credit lets a
+           complex frame overspend, a debt holds the next frames under budget
+           until it is repaid. This is the smoothing the draw path was meant to
+           provide, with the repayment it was missing. Amortizing is what keeps a
+           deep balance from being worked off in one lurch. */
+        int lend = hEncoder->bitReservoir / RC_RESERVOIR_AMORT;
 
-        if (effectiveBits > sbrBits)
-            fix = (float)(desbits - sbrBits) / (float)(effectiveBits - sbrBits);
+        if (totalBits > sbrBits)
+            fix = (float)(target + lend - sbrBits) / (float)(totalBits - sbrBits);
         else
             fix = 1.0f;
 
-        /* Apply adaptive damping: accelerate rate control recovery when reservoir is depleted or full */
+        /* Apply adaptive damping: accelerate rate control recovery when the
+           account is far from square in either direction. Balance runs
+           [-cap, +cap] and squares at zero, so report it as a 0-100% scale
+           centred on 50% to keep the stats comparable across the change.
+
+           The additive fill-ratio correction that used to sit here is gone: it
+           was the only thing repaying a draw, it was watching a quantity that
+           does not track the stream's bitrate error -- a clip could hold 42%
+           fill while running 8% hot -- and `lend` now carries the balance into
+           `fix` directly, so keeping both would correct the same bits twice. */
         float damping = RC_DAMPING_FACTOR;
         if (hEncoder->bitReservoirCap > 0) {
-            float fillRatio = (float)hEncoder->bitReservoir / (float)hEncoder->bitReservoirCap;
+            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitReservoir / (float)bound;
             if (fillRatio < 0.25f || fillRatio > 0.75f)
                 damping = 0.85f;
 
@@ -1166,12 +1219,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 g_faacStats.reservoirFrames++;
             }
 #endif
-
-            /* Additive reservoir proportional correction to eliminate long-term drift */
-            float resErr = fillRatio - 0.5f;
-            /* Adaptive gain adjustment for HE-AAC to compensate for fixed SBR payload bit offset */
-            float kp = (hEncoder->config.aacObjectType == HE_V1 && hEncoder->config.bitRate <= 32000) ? 0.12f : 0.08f;
-            fix += kp * resErr;
         }
 
         /* Apply damping to the quality adjustment */
@@ -1187,6 +1234,20 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = maxqual;
         if (hEncoder->aacquantCfg.quality < MINQUAL)
             hEncoder->aacquantCfg.quality = MINQUAL;
+
+#ifdef FAAC_STATS
+        {
+            int overshot = (totalBits > desbits);
+            g_faacStats.sumDesBits += desbits;
+            if (overshot) g_faacStats.sumOverBits += (totalBits - desbits);
+            else { g_faacStats.underFrames++; g_faacStats.sumUnderBits += (desbits - totalBits); }
+            int floored = (hEncoder->aacquantCfg.quality <= MINQUAL);
+            if (floored) g_faacStats.minqualFrames++;
+            if (hEncoder->aacquantCfg.quality >= maxqual) g_faacStats.maxqualFrames++;
+            if (overshot) g_faacStats.overshootFrames++;
+            if (overshot && floored) g_faacStats.minqualOvershootFrames++;
+        }
+#endif
     }
 
     return frameBytes;

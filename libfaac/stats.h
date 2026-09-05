@@ -53,6 +53,23 @@ typedef struct faacEncStats {
     float minReservoirRatio;
     float maxReservoirRatio;
     unsigned int reservoirFrames;
+
+    /* Rate-control quality clamp: is the loop's authority exhausted? A frame
+       that overshoots its bit target while quality already sits on MINQUAL is
+       floor-limited -- the controller has nothing left to give and no amount of
+       loop tuning can recover the bits. One that overshoots off the floor is
+       loop-limited, and the gain/damping are then fair game. */
+    unsigned int minqualFrames;
+    unsigned int maxqualFrames;
+    unsigned int overshootFrames;
+    unsigned int minqualOvershootFrames;
+
+    /* Signed frame bit error (totalBits - desbits), split by sign, so the mean
+       miss on each side is separable from how often each side occurs. */
+    double sumOverBits;
+    double sumUnderBits;
+    double sumDesBits;
+    unsigned int underFrames;
 } faacEncStats;
 
 extern faacEncStats g_faacStats;
