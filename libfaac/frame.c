@@ -93,14 +93,12 @@
 #endif
 #define RC_BALANCE_AMORT     32
 
-/* Which integrator `lend` reads. 1: the signed account above, bounded by
-   RC_BALANCE_FRAMES. 0: the bit reservoir itself, offset from its opening
-   fill, so the stream has one state and the standard sets the bound. The
-   account was tuned on BD-rate and is the default until the other measures
-   at least as well; the sweep is -DRC_ACCOUNT=0. */
-#ifndef RC_ACCOUNT
-#define RC_ACCOUNT           1
-#endif
+/* `lend` reads this account, not the reservoir. Driving it from the
+   reservoir's fill instead -- one integrator, the standard's bound -- was
+   measured over the full corpus and lost 0.33-0.38% BD-rate on the three LC
+   ladders against this: the account's bound is a few frames and the
+   reservoir's is fixed by the standard, and the two are not the same kind of
+   quantity. Two states, each with its own reason. */
 
 /* How far the account may run in either direction, in frames of budget, and
  * symmetrically: capacity is only two frames, so bounding one side there and the
@@ -148,10 +146,6 @@
 #ifndef RC_RESERVOIR_START
 #define RC_RESERVOIR_START     0.5f
 #endif
-/* Whether a backoff forced by the reservoir outlives its frame. Sweep knob. */
-#ifndef RC_RESERVOIR_STICKY
-#define RC_RESERVOIR_STICKY    0
-#endif
 /* Let the controller see the reservoir's window for the next frame before it
    codes it. If the frame will be stuffed up to a floor anyway, aim at the
    floor and the bits become signal instead of padding; if it will be capped,
@@ -167,15 +161,6 @@
    quiet passage that does respond keeps its rise. */
 #ifndef RC_STUFF_HOLD
 #define RC_STUFF_HOLD          1
-#endif
-/* Sweep knobs on the fix law's legacy pieces: the 0.5% deadband and the
-   damping that stiffens when the balance is far off centre. Both predate the
-   reservoir; each is kept only if the corpus says it earns its place. */
-#ifndef RC_DEADBAND
-#define RC_DEADBAND            1
-#endif
-#ifndef RC_ADAPT_DAMP
-#define RC_ADAPT_DAMP          1
 #endif
 /* Whether a frame that would overflow the reservoir is stuffed up to the size
    that does not. A reservoir bounds the buffer on both sides: a frame too big
@@ -1186,7 +1171,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Every cap below is on the raw_data_block; the ADTS header is transport. */
     int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
     int payloadBits = 0;
+#ifdef FAAC_STATS
     int resBound = 0;
+#endif
 
     /* ISO/IEC 14496-3 standard frame limit: 6144 bits per channel */
     peakBits = (unsigned long long)numChannels * AAC_MAX_BITS_PER_CH;
@@ -1229,15 +1216,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->resCap = (int)numChannels * AAC_MAX_BITS_PER_CH - mean;
         if (hEncoder->resCap < 0)
             hEncoder->resCap = 0;
-        hEncoder->resSet = (int)(hEncoder->resCap * RC_RESERVOIR_START);
         if (hEncoder->resFill < 0)
-            hEncoder->resFill = hEncoder->resSet;
+            hEncoder->resFill = (int)(hEncoder->resCap * RC_RESERVOIR_START);
 
         avail = (unsigned long long)(mean + hEncoder->resFill);
         if (avail < peakBits)
         {
             peakBits = avail;
+#ifdef FAAC_STATS
             resBound = 1;
+#endif
         }
         /* The floor is at most the cap less what byte-granular fill and the
            frame's byte alignment can add, so stuffing can never push a frame
@@ -1322,15 +1310,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* The peak caps are per frame, so their backoff must not outlive the
-     * frame: left sticky, one hard frame drags the rest of the stream down, and
-     * with bitRate == 0 the rate controller below never runs to claw the
-     * quality back. The reservoir is stream state: when it was the cap that
-     * bound, the next frame faces nearly the same one, so the backoff stays and
-     * the controller below works from where the frame actually landed rather
-     * than retrying its way back down every frame. */
-    if (!(RC_RESERVOIR_STICKY && resBound && attempt > 0))
-        hEncoder->aacquantCfg.quality = baseQuality;
+    /* The caps are per frame, so the backoff must not outlive the frame: left
+     * sticky, one hard frame drags the rest of the stream down -- measured at
+     * 2% BD-rate on every stereo ladder when the reservoir's backoff was kept
+     * -- and with bitRate == 0 the rate controller below never runs to claw
+     * the quality back. */
+    hEncoder->aacquantCfg.quality = baseQuality;
 
 #ifdef FAAC_STATS
     if (attempt > 0)
@@ -1428,8 +1413,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
         int coreBits = totalBits - sbrBits;
         int lend;
-        float fillRatio;
-#if RC_ACCOUNT
         int bound = RC_BALANCE_FRAMES * desbits;
         int diff = coreTarget - coreBits;
         hEncoder->bitBalance += diff;
@@ -1444,15 +1427,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
            provide, with the repayment it was missing. Amortizing is what keeps a
            deep balance from being worked off in one lurch. */
         lend = hEncoder->bitBalance / RC_BALANCE_AMORT;
-        fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
-#else
-        /* The reservoir is the account: above its opening fill the stream has
-           banked bits, below it the stream owes them, and the standard's buffer
-           is the bound on both. */
-        lend = (hEncoder->resFill - hEncoder->resSet) / RC_BALANCE_AMORT;
-        fillRatio = hEncoder->resCap > 0
-            ? (float)hEncoder->resFill / (float)hEncoder->resCap : 0.5f;
-#endif
 
         int floored = 0;
         int capped = 0;
@@ -1483,31 +1457,21 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 fix = 1.0f;
         }
 
-        /* Apply adaptive damping: accelerate rate control recovery when the
-           account is far from square in either direction. Balance runs
-           [-cap, +cap] and squares at zero, so report it as a 0-100% scale
-           centred on 50% to keep the stats comparable across the change.
-
-           The additive fill-ratio correction that used to sit here is gone: it
-           was the only thing repaying a draw, it was watching a quantity that
-           does not track the stream's bitrate error -- a clip could hold 42%
-           fill while running 8% hot -- and `lend` now carries the balance into
-           `fix` directly, so keeping both would correct the same bits twice. */
+        /* One damping. The stiffer damping this used to switch to when the
+           account was far off centre, and the 0.5% deadband below, were both
+           measured over the full corpus with the reservoir in place: neither
+           moved BD-rate, accuracy or instruction count outside noise, so
+           neither is here. */
         float damping = RC_DAMPING_FACTOR;
-        {
-            if (RC_ADAPT_DAMP && (fillRatio < 0.25f || fillRatio > 0.75f))
-                damping = 0.85f;
-
 #ifdef FAAC_STATS
-            {
-                float fillPct = fillRatio * 100.0f;
-                g_faacStats.totalBalanceRatio += fillPct;
-                if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
-                if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
-                g_faacStats.balanceFrames++;
-            }
-#endif
+        {
+            float fillPct = 50.0f + 50.0f * (float)hEncoder->bitBalance / (float)bound;
+            g_faacStats.totalBalanceRatio += fillPct;
+            if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
+            if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
+            g_faacStats.balanceFrames++;
         }
+#endif
 
         /* Apply damping to the quality adjustment. A frame that will be
            stuffed up to the floor anyway spends those bits whether or not
@@ -1532,12 +1496,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
         hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? coreBits : 0;
 
-        /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
-        if (!RC_DEADBAND || fabsf(fix - 1.0f) > 0.005f) {
-            if (!floored && !capped)
-                fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
-            hEncoder->aacquantCfg.quality *= fix;
-        }
+        if (!floored && !capped)
+            fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
+        hEncoder->aacquantCfg.quality *= fix;
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
