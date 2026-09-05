@@ -296,6 +296,9 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         int hdr = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE * 8 : 0;
         int need = hEncoder->resMinBits - (bits - hdr + f + sbrBits + LEN_SE_ID);
         if (need > 0) {
+            /* Fill elements come in whole bytes and the writer rounds down;
+               ask for a byte more so the frame never lands under the floor. */
+            need += 7;
             f += need;
             hEncoder->stuffedBits = need;
         }

@@ -152,14 +152,13 @@
 #ifndef RC_RESERVOIR_STICKY
 #define RC_RESERVOIR_STICKY    1
 #endif
-/* Anti-windup. A frame under budget raises quality; in a pause nothing can
-   spend the raise, so the integrator winds to MAXQUAL and the onset after the
-   pause is coded at fifty times the default masking target -- a frame four
-   times the mean that the reservoir then has to cut. Hold quality when the
-   previous raise did not buy bits: the plant is saturated, and integrating
-   against a saturated plant is the textbook mistake. */
-#ifndef RC_ANTI_WINDUP
-#define RC_ANTI_WINDUP         1
+/* Let the controller see the reservoir's window for the next frame before it
+   codes it. If the frame will be stuffed up to a floor anyway, aim at the
+   floor and the bits become signal instead of padding; if it will be capped,
+   aim under the cap and the frame fits without a retry. Stuffing on music was
+   1-3% of the stream with the controller blind to the floor. */
+#ifndef RC_RESERVOIR_AIM
+#define RC_RESERVOIR_AIM       1
 #endif
 /* Whether a frame that would overflow the reservoir is stuffed up to the size
    that does not. A reservoir bounds the buffer on both sides: a frame too big
@@ -522,8 +521,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->resMean = 0;
     hEncoder->resCap = 0;
     hEncoder->resFill = -1;
-    hEncoder->rcPrevBits = 0;
-    hEncoder->rcPrevQual = 0.0f;
     hEncoder->resMinBits = 0;
 
     return 1;
@@ -1432,10 +1429,27 @@ int faacEncEncode(faacEncHandle hpEncoder,
             ? (float)hEncoder->resFill / (float)hEncoder->resCap : 0.5f;
 #endif
 
-        if (coreBits > 0)
-            fix = (float)(coreTarget + lend) / (float)coreBits;
-        else
-            fix = 1.0f;
+        int floored = 0;
+        {
+            int aim = coreTarget + lend;
+#if RC_RESERVOIR_AIM
+            /* resFill is already the fill after this frame, so these are the
+               next frame's floor and cap, less what SBR will take of them. */
+            int coreFloor = hEncoder->resMean + hEncoder->resFill - hEncoder->resCap - sbrCharge;
+            int coreCap = hEncoder->resMean + hEncoder->resFill - sbrCharge;
+            if (RC_RESERVOIR_STUFF && aim < coreFloor)
+            {
+                aim = coreFloor;
+                floored = 1;
+            }
+            if (aim > coreCap)
+                aim = coreCap;
+#endif
+            if (coreBits > 0)
+                fix = (float)aim / (float)coreBits;
+            else
+                fix = 1.0f;
+        }
 
         /* Apply adaptive damping: accelerate rate control recovery when the
            account is far from square in either direction. Balance runs
@@ -1463,20 +1477,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
         }
 
-        /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0f) * damping + 1.0f;
-
-#if RC_ANTI_WINDUP
-        if (fix > 1.0f && baseQuality > hEncoder->rcPrevQual
-            && coreBits <= hEncoder->rcPrevBits + hEncoder->rcPrevBits / 50)
-            fix = 1.0f;
-#endif
-        hEncoder->rcPrevBits = coreBits;
-        hEncoder->rcPrevQual = baseQuality;
+        /* Apply damping to the quality adjustment. A frame that will be
+           stuffed up to the floor anyway spends those bits whether or not
+           they carry signal, so the rise toward the floor is taken undamped
+           and with a wider clamp: overshooting it costs nothing the frame
+           would not have paid, and the cap catches a real overshoot. */
+        if (floored)
+        {
+            if (fix > 1.5f) fix = 1.5f;
+        }
+        else
+            fix = (fix - 1.0f) * damping + 1.0f;
 
         /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
         if (fabsf(fix - 1.0f) > 0.005f) {
-            fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
+            if (!floored)
+                fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
             hEncoder->aacquantCfg.quality *= fix;
         }
 
