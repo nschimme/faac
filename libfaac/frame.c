@@ -168,6 +168,15 @@
 #ifndef RC_STUFF_HOLD
 #define RC_STUFF_HOLD          1
 #endif
+/* Sweep knobs for how the controller reacts to a frame the cap cut. LEARN_WANT:
+   judge the frame by what it asked for rather than what it got. CAP_WHOLE: take
+   the correction down undamped after a bust. */
+#ifndef RC_LEARN_WANT
+#define RC_LEARN_WANT          1
+#endif
+#ifndef RC_CAP_WHOLE
+#define RC_CAP_WHOLE           1
+#endif
 /* Whether a frame that would overflow the reservoir is stuffed up to the size
    that does not. A reservoir bounds the buffer on both sides: a frame too big
    stalls the decoder, a frame too small overflows it and the bits are lost to
@@ -1350,7 +1359,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
            busted the cap, and the next frame busts and retries again -- 2.5x
            the instructions of the uncapped encoder on speech. A retry and a
            stuffed frame are exclusive, so the stuffing offset is exact. */
-        int wantCore = wantBits - hEncoder->stuffedBits;
+        int wantCore = (RC_LEARN_WANT ? wantBits : payloadBits) - hEncoder->stuffedBits;
         int sbrBits = 0;
         int sbrCharge;
         float fix;
@@ -1474,7 +1483,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 aim = coreCap;
             /* The frame asked for more than the cap: the next one will too,
                so the correction down is taken whole. */
-            capped = (wantCore > coreCap);
+            capped = RC_CAP_WHOLE && (wantCore > coreCap);
 #endif
             if (wantCore > 0)
                 fix = (float)aim / (float)wantCore;
