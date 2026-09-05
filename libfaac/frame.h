@@ -124,6 +124,7 @@ typedef struct faacEncStruct {
     int resMean;
     int resCap;
     int resFill;
+    int resSet;        /* opening fill; the unified law's setpoint */
     /* Fewest bits this frame may carry without the reservoir overflowing;
        BuildFrame stuffs a fill element up to it. 0 when nothing is required. */
     int resMinBits;

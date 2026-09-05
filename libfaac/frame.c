@@ -168,6 +168,15 @@
 #ifndef RC_STUFF_HOLD
 #define RC_STUFF_HOLD          1
 #endif
+/* Sweep knobs on the fix law's legacy pieces: the 0.5% deadband and the
+   damping that stiffens when the balance is far off centre. Both predate the
+   reservoir; each is kept only if the corpus says it earns its place. */
+#ifndef RC_DEADBAND
+#define RC_DEADBAND            1
+#endif
+#ifndef RC_ADAPT_DAMP
+#define RC_ADAPT_DAMP          1
+#endif
 /* Whether a frame that would overflow the reservoir is stuffed up to the size
    that does not. A reservoir bounds the buffer on both sides: a frame too big
    stalls the decoder, a frame too small overflows it and the bits are lost to
@@ -1220,8 +1229,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->resCap = (int)numChannels * AAC_MAX_BITS_PER_CH - mean;
         if (hEncoder->resCap < 0)
             hEncoder->resCap = 0;
+        hEncoder->resSet = (int)(hEncoder->resCap * RC_RESERVOIR_START);
         if (hEncoder->resFill < 0)
-            hEncoder->resFill = (int)(hEncoder->resCap * RC_RESERVOIR_START);
+            hEncoder->resFill = hEncoder->resSet;
 
         avail = (unsigned long long)(mean + hEncoder->resFill);
         if (avail < peakBits)
@@ -1439,8 +1449,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* The reservoir is the account: above its opening fill the stream has
            banked bits, below it the stream owes them, and the standard's buffer
            is the bound on both. */
-        lend = (hEncoder->resFill - (int)(hEncoder->resCap * RC_RESERVOIR_START))
-             / RC_BALANCE_AMORT;
+        lend = (hEncoder->resFill - hEncoder->resSet) / RC_BALANCE_AMORT;
         fillRatio = hEncoder->resCap > 0
             ? (float)hEncoder->resFill / (float)hEncoder->resCap : 0.5f;
 #endif
@@ -1486,7 +1495,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
            `fix` directly, so keeping both would correct the same bits twice. */
         float damping = RC_DAMPING_FACTOR;
         {
-            if (fillRatio < 0.25f || fillRatio > 0.75f)
+            if (RC_ADAPT_DAMP && (fillRatio < 0.25f || fillRatio > 0.75f))
                 damping = 0.85f;
 
 #ifdef FAAC_STATS
@@ -1524,7 +1533,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? coreBits : 0;
 
         /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
-        if (fabsf(fix - 1.0f) > 0.005f) {
+        if (!RC_DEADBAND || fabsf(fix - 1.0f) > 0.005f) {
             if (!floored && !capped)
                 fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
             hEncoder->aacquantCfg.quality *= fix;
