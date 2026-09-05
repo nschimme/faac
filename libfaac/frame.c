@@ -168,15 +168,6 @@
 #ifndef RC_STUFF_HOLD
 #define RC_STUFF_HOLD          1
 #endif
-/* Sweep knobs for how the controller reacts to a frame the cap cut. LEARN_WANT:
-   judge the frame by what it asked for rather than what it got. CAP_WHOLE: take
-   the correction down undamped after a bust. */
-#ifndef RC_LEARN_WANT
-#define RC_LEARN_WANT          1
-#endif
-#ifndef RC_CAP_WHOLE
-#define RC_CAP_WHOLE           1
-#endif
 /* Whether a frame that would overflow the reservoir is stuffed up to the size
    that does not. A reservoir bounds the buffer on both sides: a frame too big
    stalls the decoder, a frame too small overflows it and the bits are lost to
@@ -1186,7 +1177,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* Every cap below is on the raw_data_block; the ADTS header is transport. */
     int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
     int payloadBits = 0;
-    int wantBits = 0;   /* what the frame cost at baseQuality, before any cap cut it */
     int resBound = 0;
 
     /* ISO/IEC 14496-3 standard frame limit: 6144 bits per channel */
@@ -1295,8 +1285,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
         /* Close the bitstream and return the number of bytes written */
         frameBytes = CloseBitStream(bitStream);
         payloadBits = (frameBytes - hdrBytes) * 8;
-        if (attempt == 0)
-            wantBits = payloadBits;
 
         if (!peakBits || (unsigned long long)payloadBits <= peakBits
             || hEncoder->aacquantCfg.quality <= MINQUAL)
@@ -1353,13 +1341,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
            stuffing with signal. */
         int sentBits = payloadBits;
         int totalBits = payloadBits - hEncoder->stuffedBits;
-        /* The quality correction reads what the frame asked for at
-           baseQuality, not what the cap let it have: judged on the cut frame,
-           the controller sees a frame on budget, keeps the quality that
-           busted the cap, and the next frame busts and retries again -- 2.5x
-           the instructions of the uncapped encoder on speech. A retry and a
-           stuffed frame are exclusive, so the stuffing offset is exact. */
-        int wantCore = (RC_LEARN_WANT ? wantBits : payloadBits) - hEncoder->stuffedBits;
         int sbrBits = 0;
         int sbrCharge;
         float fix;
@@ -1436,7 +1417,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
            charged for, matched against what the core actually spent. */
         int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
         int coreBits = totalBits - sbrBits;
-        wantCore -= sbrBits;
         int lend;
         float fillRatio;
 #if RC_ACCOUNT
@@ -1481,12 +1461,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
             }
             if (aim > coreCap)
                 aim = coreCap;
-            /* The frame asked for more than the cap: the next one will too,
-               so the correction down is taken whole. */
-            capped = RC_CAP_WHOLE && (wantCore > coreCap);
+            /* This frame took more than half the reservoir's slack, so a frame
+               its size will not fit the next cap. Correct down whole, now,
+               rather than let the next frame bust and be cut in a retry: on
+               speech that pre-emption is the difference between 1.5% and 28%
+               of frames retrying, at the same accuracy. */
+            capped = (coreBits > coreCap);
 #endif
-            if (wantCore > 0)
-                fix = (float)aim / (float)wantCore;
+            if (coreBits > 0)
+                fix = (float)aim / (float)coreBits;
             else
                 fix = 1.0f;
         }
@@ -1535,10 +1518,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
 #if RC_STUFF_HOLD
         if (fix > 1.0f && hEncoder->stuffedBits > 0 && hEncoder->rcPrevWant > 0
-            && wantCore <= hEncoder->rcPrevWant + hEncoder->rcPrevWant / 50)
+            && coreBits <= hEncoder->rcPrevWant + hEncoder->rcPrevWant / 50)
             fix = 1.0f;
 #endif
-        hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? wantCore : 0;
+        hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? coreBits : 0;
 
         /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
         if (fabsf(fix - 1.0f) > 0.005f) {
