@@ -250,8 +250,7 @@ static int WriteADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, bool w
         PutBit(bs, 0, LEN_ADTS_COPY_ID);
         PutBit(bs, 0, LEN_ADTS_COPY_ST);
         PutBit(bs, hEncoder->usedBytes, LEN_ADTS_FRAME);
-        /* buffer_fullness depends on this frame's length, so like the length
-           it is written as a placeholder here and patched by PatchADTSHeader. */
+        /* Placeholder like the length; PatchADTSHeader writes the real fill. */
         PutBit(bs, 0x7FF, LEN_ADTS_FULL);
         PutBit(bs, 0, LEN_ADTS_BLOCKS);
     }
@@ -287,8 +286,7 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     int f = (bits < (8 - LEN_SE_ID)) ? (8 - LEN_SE_ID - bits) : 0;
     f += 6;
 
-    /* Stuff up to the reservoir's floor: what is still to come is the SBR
-       payload and the end marker, so the fill makes up the rest. */
+    /* Stuff to the reservoir floor; only SBR and the end marker still follow. */
     hEncoder->stuffedBits = 0;
     if (hEncoder->resMinBits > 0) {
         int sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL,
@@ -296,8 +294,7 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
         int hdr = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE * 8 : 0;
         int need = hEncoder->resMinBits - (bits - hdr + f + sbrBits + LEN_SE_ID);
         if (need > 0) {
-            /* Fill elements come in whole bytes and the writer rounds down;
-               ask for a byte more so the frame never lands under the floor. */
+            /* Fill is byte-granular and rounds down; never land under the floor. */
             need += 7;
             f += need;
             hEncoder->stuffedBits = need;
@@ -316,14 +313,10 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
     return bits + pad;
 }
 
-/* ADTS carries a frame length and a buffer fullness that are only known once
- * the frame is written. Patching the 7 fixed-layout header bytes afterwards
- * keeps BuildFrame to a single pass. Must reproduce WriteADTSHeader byte for
- * byte apart from those two fields.
- *
- * buffer_fullness is the bit reservoir after this frame, in 32-bit words
- * (ISO/IEC 13818-7 6.2.2). 0x7FF is the reserved value for a stream with no
- * reservoir, which is what VBR is. */
+/* Frame length and buffer_fullness are known only once the frame is written;
+ * patching the 7 fixed-layout bytes keeps BuildFrame to one pass. Must match
+ * WriteADTSHeader apart from those two fields. buffer_fullness is the reservoir
+ * after this frame in 32-bit words (ISO/IEC 13818-7 6.2.2); 0x7FF = none. */
 static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int frameBytes)
 {
     if (hEncoder->config.outputFormat == 1 && bs->data) {

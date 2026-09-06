@@ -31,14 +31,9 @@ typedef struct
  * quantization error for a uniform distribution (ISO 14496-3 §8.3.5). */
 #define MAGIC_NUMBER 0.4054f
 
-/* Quality is a masking-target multiplier in percent of DEFQUAL. The floor is
- * how small a frame the rate controller can make: at 8 kbps/channel stereo LC
- * a floor of 10 pinned 82% of frames and still landed 62% over target
- * (25.98 kbps for -b 16 on a 32 kHz orchestral clip), because a tenth of the
- * masking target still codes more lines than 512 bits will hold. At 1 the same
- * encode lands at 16.07 kbps with 7% of frames on the floor. Nothing in the
- * quantizer assumes a floor: below the target a band goes HCB_ZERO, which is
- * exactly what such a budget asks for. */
+/* Quality scales the masking targets, in percent of DEFQUAL. MINQUAL bounds how
+ * small a frame rate control can make: at 10, 8 kbps/ch LC ran 62% over target;
+ * 1 reaches it. Below the target a band goes HCB_ZERO, so no floor is assumed. */
 enum {
     DEFQUAL = 100,
     MAXQUAL = 5000,

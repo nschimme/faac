@@ -6,7 +6,7 @@ FAAC is an open-source, dependency-free AAC encoder aimed at embedded and pipeli
 
 - MPEG-4 AAC-LC and HE-AAC v1 (SBR) profiles
 - Sample rates from 8 kHz to 96 kHz, supporting mono up to 5.1 multichannel
-- VBR, ABR and CBR rate control; CBR (`--cbr`) holds a real bit reservoir -- every frame inside the decoder's buffer, stuffed to it, fullness declared in ADTS and the buffer size in MP4
+- VBR, ABR and CBR rate control (`--cbr`: bit reservoir with declared buffer fullness)
 - Advanced encoding tools: Dynamic block-switching, PNS, and TNS
 - Flexible output options: Raw ADTS, ADIF bitstream
 

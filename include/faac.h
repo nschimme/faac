@@ -131,15 +131,12 @@ enum faac_stream_format {
     FAAC_STREAM_MAX  = 0x7fffffff
 };
 
-/* How the encoder holds a rate. ABR is an average: frames are bounded only by
- * the ISO/IEC 14496-3 ceiling of 6144 bits per channel, a transient may take
- * several times the mean, and a stream of silence stays small. CBR is a
- * constant-rate stream: a bit reservoir models the decoder's input buffer,
- * every frame fits mean + fill, a frame that would leave the buffer to overflow
- * is stuffed up to it, and the ADTS buffer_fullness field carries the fill (MP4
- * declares bufferSizeDB and maxBitrate == avgBitrate). Choose CBR for a
- * constant-rate channel or a matched-bitrate comparison; the stuffing is bytes
- * for nothing on a file or a packet network. */
+/* How a rate is held. ABR: an average; frames bounded only by the 6144 bits/ch
+ * ceiling, so transients may take several times the mean and silence stays
+ * small. CBR: a bit reservoir bounds every frame to the decoder buffer, stuffs
+ * frames that would overflow it, and declares the fill (ADTS buffer_fullness;
+ * MP4 bufferSizeDB with maxBitrate == avgBitrate). CBR is for constant-rate
+ * channels and matched-bitrate comparisons; elsewhere its stuffing is waste. */
 enum faac_rate_control {
     FAAC_RC_AUTO = 0,                /* bit_rate set: ABR; otherwise VBR        */
     FAAC_RC_VBR,                     /* quant_quality drives; bit_rate must be 0 */

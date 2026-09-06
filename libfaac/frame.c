@@ -32,13 +32,8 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-/* Floor of the HE-AAC range in AUTO mode. Compared LC against HE on the same
- * build, 49 clips, 32 kHz stereo at 8 kbps/channel: HE +0.90 MOS on 48 of 49
- * at 0.7% fewer bits; at 12 kbps/channel (48 kHz) +1.25 on 49 of 49. The old
- * floor of 12000 sent 8 kbps/channel to LC, and was fitted when LC at that
- * rate ran 62% over its target, so the MOS it won was bought with bits. 8000
- * is HE-AAC's design floor and the lowest rate the corpus covers; nothing
- * below it has been measured. */
+/* HE-AAC's design floor: at 8 kbps/ch HE beats LC by +0.9 MOS on 48/49 clips
+ * at equal bits; nothing below 8 kbps/ch has been measured. */
 #define HE_MIN_BITRATE_PER_CH 8000
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
@@ -53,23 +48,11 @@
 
 /* The rate controller's bit account, and how the loop draws on it.
  *
- * This is NOT the AAC bit reservoir, and the old name said otherwise for long
- * enough to mislead. The reservoir is a bitstream property: frame sizes vary
- * and the decoder's input buffer absorbs the variance, bounded by
- * AAC_MAX_BITS_PER_CH and declared through the ADTS buffer_fullness field.
- * That one lives in resFill below faacEncEncode's peak caps: it bounds each
- * frame to what the buffer can take and is what the header declares. Nothing
- * here moves a bit between frames; every raw_data_block is self-contained
- * whatever this balance says.
- *
- * What this is: a clamped integral of the per-frame bit error, whose balance
- * perturbs a psychoacoustic masking-target multiplier. The account metaphor is
- * accurate -- underspend banks, overspend owes, nothing is forgiven -- and
- * `lend` is the share of the balance offered to a frame. It is the soft law
- * that keeps the stream near its rate; the reservoir is the hard bound that
- * keeps it from ever running away, and the two are kept as separate state
- * because this one's bound and gain were tuned on BD-rate and the reservoir's
- * capacity is fixed by the standard.
+ * Not the AAC bit reservoir: that is resFill in faacEncEncode, a hard per-frame
+ * bound on the decoder buffer, CBR only. This is a clamped integral of the
+ * per-frame bit error that steers the masking-target multiplier -- the soft
+ * law in every mode. Underspend banks, overspend owes, nothing is forgiven, and
+ * `lend` is the share of the balance offered to a frame.
  *
  * AIM is the fraction of the nominal frame budget the encoder actually banks
  * against, so steady state settles just below target. An average-bitrate mode
@@ -100,12 +83,9 @@
 #endif
 #define RC_BALANCE_AMORT     32
 
-/* `lend` reads this account, not the reservoir. Driving it from the
-   reservoir's fill instead -- one integrator, the standard's bound -- was
-   measured over the full corpus and lost 0.33-0.38% BD-rate on the three LC
-   ladders against this: the account's bound is a few frames and the
-   reservoir's is fixed by the standard, and the two are not the same kind of
-   quantity. Two states, each with its own reason. */
+/* `lend` reads this account, not the reservoir fill: the account's bound is a
+   few frames of budget, the reservoir's is the standard's buffer, and steering
+   from the latter costs 0.3-0.4% BD-rate on LC music. */
 
 /* How far the account may run in either direction, in frames of budget, and
  * symmetrically: capacity is only two frames, so bounding one side there and the
@@ -146,35 +126,26 @@
 #define PEAK_BACKOFF_FLOOR     0.10f
 #define PEAK_MAX_RETRIES       12
 
-/* Where the bit reservoir opens, as a fraction of its capacity. Full lets the
-   first frames run to the standard limit but leaves the whole capacity as
-   bits the stream may end up over budget by; empty caps the first frame at the
-   mean. Half is the neutral opening. */
+/* Opening fill of the reservoir, as a fraction of capacity: full lets a stream
+   end that many bits over budget, empty caps the first frame at the mean. */
 #ifndef RC_RESERVOIR_START
 #define RC_RESERVOIR_START     0.5f
 #endif
-/* Let the controller see the reservoir's window for the next frame before it
-   codes it. If the frame will be stuffed up to a floor anyway, aim at the
-   floor and the bits become signal instead of padding; if it will be capped,
-   aim under the cap and the frame fits without a retry. Stuffing on music was
-   1-3% of the stream with the controller blind to the floor. */
+/* Aim the controller inside the next frame's [floor, cap]: a frame stuffed to
+   the floor spends those bits anyway, so they may as well be signal; a frame
+   aimed under the cap fits without a retry. */
 #ifndef RC_RESERVOIR_AIM
 #define RC_RESERVOIR_AIM       1
 #endif
-/* Hold quality across a run of stuffed frames that do not answer to it. In a
-   pause the floor is unreachable at any quality, and raising it anyway winds
-   the controller up so that the first frame after the pause busts the cap.
-   Only a second stuffed frame with no more bits than the first is held, so a
-   quiet passage that does respond keeps its rise. */
+/* Hold quality across stuffed frames that do not answer to it (a pause cannot
+   reach the floor at any quality); raising it winds the controller up and the
+   first frame after the pause busts the cap. */
 #ifndef RC_STUFF_HOLD
 #define RC_STUFF_HOLD          1
 #endif
-/* Whether a frame that would overflow the reservoir is stuffed up to the size
-   that does not. A reservoir bounds the buffer on both sides: a frame too big
-   stalls the decoder, a frame too small overflows it and the bits are lost to
-   the stream. Stuffing is what makes the average bitrate exact on content that
-   cannot spend -- pauses, silence -- and it is the difference between a
-   reservoir and a mere cap. */
+/* Stuff a frame that would overflow the buffer: the reservoir bounds both
+   sides, and without the floor content that cannot spend (pauses) leaves the
+   stream far under its rate. */
 #ifndef RC_RESERVOIR_STUFF
 #define RC_RESERVOIR_STUFF     1
 #endif
@@ -376,17 +347,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
 
-    /* The per-frame ceiling is AAC_MAX_BITS_PER_CH per channel per frame, and
-     * a frame is FRAME_LEN samples at the CORE rate -- so this has to follow
-     * the HE-AAC rate resolution above, where the core drops to Fs/2 and the
-     * ceiling halves with it. MaxBitrate() is already per channel; the old
-     * clamp divided it by the channel count again and silently rewrote a
-     * stereo -b 320 to 288 at 48 kHz. */
+    /* Per channel, at the core rate: HE-AAC's frame spans twice the output
+     * samples, so its ceiling is half. Must follow the rate resolution above. */
     if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
         config->bitRate = MaxBitrate(hEncoder->sampleRate);
 
-    /* AUTO is the legacy meaning of the two rate fields: a bitrate is ABR, none
-       is VBR. The new API rejects the contradictory combinations before this. */
+    /* AUTO keeps the legacy meaning of the two rate fields. */
     if (config->rateControl == RATE_AUTO)
         config->rateControl = config->bitRate ? RATE_ABR : RATE_VBR;
     hEncoder->config.rateControl = config->rateControl;
@@ -531,9 +497,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Negative means "no frame seen yet"; the first frame seeds the average
        rather than dragging it up from zero over the whole time constant. */
     hEncoder->sbrBitsAcc = -1;
-    /* The reservoir is sized per frame from the resolved rate and channel
-       count, so the first frame opens it; until then there is nothing to
-       declare. */
+    /* Sized on the first frame from the resolved rate; -1 = not yet opened. */
     hEncoder->resMean = 0;
     hEncoder->resCap = 0;
     hEncoder->resFill = -1;
@@ -549,11 +513,8 @@ faacEncStats g_faacStats;
 
 int faacReservoirAfter(const faacEncStruct *hEncoder, int payloadBits)
 {
-    /* A frame's share of the rate arrived, the frame left. Below zero the
-       decoder would have stalled; the frame cap exists so that does not happen,
-       and the clamp is for the frame that cannot be made small enough even at
-       MINQUAL. Above capacity a constant-rate channel would carry stuffing that
-       this encoder does not emit, so the declared fill saturates instead. */
+    /* Below zero the decoder stalls (only a frame that cannot shrink even at
+       MINQUAL gets here); above capacity the fill saturates. */
     int fill = hEncoder->resFill + hEncoder->resMean - payloadBits;
     if (fill < 0)
         fill = 0;
@@ -1194,20 +1155,13 @@ int faacEncEncode(faacEncHandle hpEncoder,
             peakBits = userPeakBits;
     }
 
-    /* The bit reservoir, CBR only. The decoder's input buffer holds
-       AAC_MAX_BITS_PER_CH per channel; it is refilled at the mean frame rate
-       and drained one frame at a time, so what this frame may spend is the
-       mean plus whatever the buffer holds. The standard limit above is that
-       same cap with the buffer full; --cap-rate and the ADTS frame length keep
-       their own terms, and min() lets whichever is tightest bind. Enforcement
-       is the retry loop below, which was already there for the other caps -- a
-       frame that fits costs nothing extra. ABR and VBR leave resMean at 0:
-       no cap term, no stuffing floor, buffer_fullness stays the VBR sentinel.
-       Measured over the full corpus, the reservoir costs ABR 0.5-0.7% BD-rate
-       on music (quiet passages stuffed) and caps the onsets speech spends 4x
-       the mean on; what it buys -- an exact rate, a conformant constant-rate
-       stream -- only a constant-rate channel or a matched-rate comparison
-       needs, so it is asked for rather than imposed. */
+    /* Bit reservoir, CBR only: the decoder buffer (AAC_MAX_BITS_PER_CH per
+       channel) refilled at the mean rate and drained a frame at a time, so a
+       frame may spend mean + fill. One more term in the min() of caps, enforced
+       by the same retry loop, so a frame that fits costs nothing. ABR/VBR leave
+       resMean 0: no cap, no floor, buffer_fullness stays 0x7FF -- the reservoir
+       costs music 0.5-0.7% BD-rate in stuffing and caps speech onsets, and only
+       a constant-rate channel gets anything for that. */
     if (hEncoder->config.rateControl == RATE_CBR)
     {
         int mean = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
@@ -1229,10 +1183,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
             resBound = 1;
 #endif
         }
-        /* The floor is at most the cap less what byte-granular fill and the
-           frame's byte alignment can add, so stuffing can never push a frame
-           over the cap when the two meet -- at the ceiling bitrate the
-           reservoir has no capacity and they meet on every frame. */
+        /* Keep the floor two bytes under the cap: fill is byte-granular, and
+           at the ceiling bitrate (zero capacity) floor and cap meet. */
         hEncoder->resMinBits = RC_RESERVOIR_STUFF
             ? mean + hEncoder->resFill - hEncoder->resCap : 0;
         if (hEncoder->resMinBits > (int)avail - 16)
@@ -1311,10 +1263,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* The caps are per frame, so the backoff must not outlive the frame: left
-     * sticky, one hard frame drags the rest of the stream down -- measured at
-     * 2% BD-rate on every stereo ladder when the reservoir's backoff was kept
-     * -- and with bitRate == 0 the rate controller below never runs to claw
-     * the quality back. */
+     * sticky, one hard frame drags the stream down (2% BD-rate), and with
+     * bitRate == 0 nothing below ever claws the quality back. */
     hEncoder->aacquantCfg.quality = baseQuality;
 
 #ifdef FAAC_STATS
@@ -1331,10 +1281,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        /* The reservoir answers for every bit that went out; the controller
-           answers only for the ones the coder chose to spend, or a stuffed
-           frame reads as on budget and quality never rises to replace the
-           stuffing with signal. */
+        /* The reservoir is charged every bit sent; the controller only the bits
+           the coder chose, or a stuffed frame reads as on budget and quality
+           never rises to replace the stuffing with signal. */
         int sentBits = payloadBits;
         int totalBits = payloadBits - hEncoder->stuffedBits;
         int reservoir = (hEncoder->resMean > 0);
@@ -1342,8 +1291,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         int sbrCharge;
         float fix;
 
-        /* Settle the reservoir first; the header already declared this value
-           through the same function. */
+        /* Same function the ADTS header used, so the two cannot disagree. */
         if (reservoir)
         {
 #ifdef FAAC_STATS
@@ -1434,8 +1382,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #if RC_RESERVOIR_AIM
             if (reservoir)
             {
-                /* resFill is already the fill after this frame, so these are
-                   the next frame's floor and cap, less what SBR will take. */
+                /* resFill is post-frame: the next frame's window, net of SBR. */
                 int coreFloor = hEncoder->resMean + hEncoder->resFill - hEncoder->resCap - sbrCharge;
                 int coreCap = hEncoder->resMean + hEncoder->resFill - sbrCharge;
                 if (RC_RESERVOIR_STUFF && aim < coreFloor)
@@ -1445,11 +1392,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
                 if (aim > coreCap)
                     aim = coreCap;
-                /* This frame took more than half the reservoir's slack, so a
-                   frame its size will not fit the next cap. Correct down whole,
-                   now, rather than let the next frame bust and be cut in a
-                   retry: on speech that pre-emption is the difference between
-                   1.5% and 28% of frames retrying, at the same accuracy. */
+                /* A frame this size will not fit the next cap: correct down
+                   whole now rather than bust and retry (28% of speech frames
+                   retried without this). */
                 capped = (coreBits > coreCap);
             }
 #endif
@@ -1459,12 +1404,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 fix = 1.0f;
         }
 
-        /* Adaptive damping: stiffer when the account is far off centre. This
-           and the 0.5% deadband below measured as noise under CBR and were
-           removed for a while; under ABR their removal cost 16 kHz mono speech
-           -0.017 MOS on one scenario while buying nothing, and with them the
-           ABR path is byte-identical to the controller before this branch
-           everywhere the target itself did not change. They stay. */
+        /* Stiffer damping when the account is far off centre. Removing this
+           and the deadband below costs 16 kHz speech MOS under ABR. */
         float damping = RC_DAMPING_FACTOR;
         float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
         if (fillRatio < 0.25f || fillRatio > 0.75f)
@@ -1479,11 +1420,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
 #endif
 
-        /* Apply damping to the quality adjustment. A frame that will be
-           stuffed up to the floor anyway spends those bits whether or not
-           they carry signal, so the rise toward the floor is taken undamped
-           and with a wider clamp: overshooting it costs nothing the frame
-           would not have paid, and the cap catches a real overshoot. */
+        /* A frame stuffed to the floor pays those bits anyway, so the rise to
+           it is undamped; the cap catches a real overshoot. */
         if (floored)
         {
             if (fix > 1.5f) fix = 1.5f;

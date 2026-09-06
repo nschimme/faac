@@ -115,25 +115,19 @@ typedef struct faacEncStruct {
     int bitBalance;         /* signed: banked bits positive, owed bits negative */
     int sbrBitsAcc;         /* EWMA of the SBR payload, scaled by 1<<RC_SBR_EWMA_SHIFT */
 
-    /* The bit reservoir proper: a model of the decoder's input buffer,
-       AAC_MAX_BITS_PER_CH per channel, refilled by resMean bits per frame and
-       drained one frame at a time. resFill is what it holds after the last
-       frame, in [0, resCap]; it caps the next frame in faacEncEncode and is
-       declared in the ADTS header. resMean == 0 is VBR: nothing is declared or
-       enforced. resFill < 0 means no frame has been seen yet. */
-    int resMean;
-    int resCap;
-    int resFill;
-    /* Fewest bits this frame may carry without the reservoir overflowing;
-       BuildFrame stuffs a fill element up to it. 0 when nothing is required. */
-    int resMinBits;
+    /* Bit reservoir (CBR): decoder buffer model, AAC_MAX_BITS_PER_CH per
+       channel. resMean == 0 outside CBR switches cap, floor and declaration
+       off together; resFill < 0 = not yet opened. */
+    int resMean;       /* bits arriving per frame */
+    int resCap;        /* capacity: 6144 * channels - resMean */
+    int resFill;       /* fill after the last frame, [0, resCap] */
+    int resMinBits;    /* floor BuildFrame stuffs this frame up to; 0 = none */
     int stuffedBits;   /* what BuildFrame stuffed into the last frame */
-    int rcPrevWant;    /* previous frame's uncut core bits, 0 if it was not stuffed */
+    int rcPrevWant;    /* previous frame's core bits if it was stuffed, else 0 */
 } faacEncStruct;
 
-/* Reservoir fill once a frame of payloadBits (raw_data_block, no ADTS header)
-   has gone out. Shared by the ADTS header and the rate controller so the two
-   cannot disagree. */
+/* Fill after a raw_data_block of payloadBits (no ADTS header). Used by both the
+   ADTS header and the rate controller so the two cannot disagree. */
 int faacReservoirAfter(const faacEncStruct *hEncoder, int payloadBits);
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

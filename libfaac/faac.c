@@ -191,8 +191,7 @@ static faac_status validate_params(const faac_params *p)
      * under the ISO/IEC 14496-3 per-frame ceiling regardless of max_bit_rate. */
     if (p->bit_rate && p->bit_rate > MaxBitrate(p->sample_rate))
         return FAAC_ERR_INVALID_ARGUMENT;
-    /* A rate mode without a rate, or a quality mode with one, is a
-     * contradiction the caller should hear about rather than have resolved. */
+    /* A rate mode without a rate, or a quality mode with one, is caller error. */
     switch (p->rate_control) {
     case FAAC_RC_AUTO: break;
     case FAAC_RC_VBR:  if (p->bit_rate)  return FAAC_ERR_INVALID_ARGUMENT; break;
