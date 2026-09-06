@@ -49,16 +49,14 @@ typedef struct faacEncStats {
 
     unsigned int peakRetryFrames;
 
-    /* Bit reservoir: fill before each frame as % of capacity, how often the
-       reservoir (not a per-frame cap) was what made the frame retry, and how
-       often a frame could not be made to fit even so. */
-    double totalResFill;
+    /* Bit reservoir (CBR): the lowest fill seen, how often the reservoir --
+       not a per-frame cap -- made a frame retry, how often a frame could not
+       be made to fit even so (the declared fullness is then false), and what
+       share of the stream is stuffing (the mode's cost in bits). */
     float minResFill;
-    float maxResFill;
     unsigned int resFrames;
     unsigned int resBoundRetryFrames;
     unsigned int resUnderflowFrames;
-    unsigned int resStuffFrames;
     double resStuffBits;
     double resTotalBits;
 
