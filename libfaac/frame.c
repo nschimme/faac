@@ -32,7 +32,9 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+/* HE-AAC's design floor: at 8 kbps/ch HE beats LC by +0.9 MOS on 48/49 clips
+ * at equal bits; nothing below 8 kbps/ch has been measured. */
+#define HE_MIN_BITRATE_PER_CH 8000
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
@@ -46,19 +48,11 @@
 
 /* The rate controller's bit account, and how the loop draws on it.
  *
- * This is NOT an AAC bit reservoir, and the old name said otherwise for long
- * enough to mislead. An AAC reservoir is a bitstream property: frame sizes vary
- * and the decoder's input buffer absorbs the variance, bounded by
- * AAC_MAX_BITS_PER_CH and declared through the ADTS buffer_fullness field --
- * which channels.c writes as the constant VBR sentinel 0x7FF, so this encoder
- * declares none. Nothing here moves a bit between frames; every raw_data_block
- * is self-contained whatever this balance says.
- *
- * What it actually is: a clamped integral of the per-frame bit error, whose
- * balance perturbs a psychoacoustic masking-target multiplier. The account
- * metaphor is accurate -- underspend banks, overspend owes, nothing is
- * forgiven -- and `lend` is the share of the balance offered to a frame. The
- * reservoir metaphor is not, because the actuator is quality, not bits.
+ * Not the AAC bit reservoir: that is resFill in faacEncEncode, a hard per-frame
+ * bound on the decoder buffer, CBR only. This is a clamped integral of the
+ * per-frame bit error that steers the masking-target multiplier -- the soft
+ * law in every mode. Underspend banks, overspend owes, nothing is forgiven, and
+ * `lend` is the share of the balance offered to a frame.
  *
  * AIM is the fraction of the nominal frame budget the encoder actually banks
  * against, so steady state settles just below target. An average-bitrate mode
@@ -84,8 +78,14 @@
  * master's 5.33% as it does (4.14 -> 5.19 over that range). So the end of that
  * ladder is not an optimum, it is a surrender, and the value here is chosen
  * with FRAMES for the accuracy the arm exists to deliver. */
+#ifndef RC_BALANCE_AIM
 #define RC_BALANCE_AIM       0.99f
+#endif
 #define RC_BALANCE_AMORT     32
+
+/* `lend` reads this account, not the reservoir fill: the account's bound is a
+   few frames of budget, the reservoir's is the standard's buffer, and steering
+   from the latter costs 0.3-0.4% BD-rate on LC music. */
 
 /* How far the account may run in either direction, in frames of budget, and
  * symmetrically: capacity is only two frames, so bounding one side there and the
@@ -125,6 +125,30 @@
 #define PEAK_BACKOFF_CEILING   0.85f
 #define PEAK_BACKOFF_FLOOR     0.10f
 #define PEAK_MAX_RETRIES       12
+
+/* Opening fill of the reservoir, as a fraction of capacity: full lets a stream
+   end that many bits over budget, empty caps the first frame at the mean. */
+#ifndef RC_RESERVOIR_START
+#define RC_RESERVOIR_START     0.5f
+#endif
+/* Aim the controller inside the next frame's [floor, cap]: a frame stuffed to
+   the floor spends those bits anyway, so they may as well be signal; a frame
+   aimed under the cap fits without a retry. */
+#ifndef RC_RESERVOIR_AIM
+#define RC_RESERVOIR_AIM       1
+#endif
+/* Hold quality across stuffed frames that do not answer to it (a pause cannot
+   reach the floor at any quality); raising it winds the controller up and the
+   first frame after the pause busts the cap. */
+#ifndef RC_STUFF_HOLD
+#define RC_STUFF_HOLD          1
+#endif
+/* Stuff a frame that would overflow the buffer: the reservoir bounds both
+   sides, and without the floor content that cannot spend (pauses) leaves the
+   stream far under its rate. */
+#ifndef RC_RESERVOIR_STUFF
+#define RC_RESERVOIR_STUFF     1
+#endif
 
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
@@ -281,14 +305,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
-    {
-        unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
-    }
-
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
@@ -330,6 +346,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
+
+    /* Per channel, at the core rate: HE-AAC's frame spans twice the output
+     * samples, so its ceiling is half. Must follow the rate resolution above. */
+    if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
+        config->bitRate = MaxBitrate(hEncoder->sampleRate);
+
+    /* AUTO keeps the legacy meaning of the two rate fields. */
+    if (config->rateControl == RATE_AUTO)
+        config->rateControl = config->bitRate ? RATE_ABR : RATE_VBR;
+    hEncoder->config.rateControl = config->rateControl;
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
@@ -471,6 +497,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Negative means "no frame seen yet"; the first frame seeds the average
        rather than dragging it up from zero over the whole time constant. */
     hEncoder->sbrBitsAcc = -1;
+    /* Sized on the first frame from the resolved rate; -1 = not yet opened. */
+    hEncoder->resMean = 0;
+    hEncoder->resCap = 0;
+    hEncoder->resFill = -1;
+    hEncoder->resMinBits = 0;
+    hEncoder->rcPrevWant = 0;
 
     return 1;
 }
@@ -478,6 +510,18 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 #ifdef FAAC_STATS
 faacEncStats g_faacStats;
 #endif
+
+int faacReservoirAfter(const faacEncStruct *hEncoder, int payloadBits)
+{
+    /* Below zero the decoder stalls (only a frame that cannot shrink even at
+       MINQUAL gets here); above capacity the fill saturates. */
+    int fill = hEncoder->resFill + hEncoder->resMean - payloadBits;
+    if (fill < 0)
+        fill = 0;
+    else if (fill > hEncoder->resCap)
+        fill = hEncoder->resCap;
+    return fill;
+}
 
 faacEncHandle faacEncOpen(unsigned long sampleRate,
                                   unsigned int numChannels,
@@ -487,6 +531,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 #ifdef FAAC_STATS
     memset(&g_faacStats, 0, sizeof(faacEncStats));
     g_faacStats.minBalanceRatio = 100.0f;
+    g_faacStats.minResFill = 100.0f;
 #endif
     unsigned int channel;
     faacEncStruct* hEncoder;
@@ -697,26 +742,21 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
-        if (g_faacStats.balanceFrames > 0 || g_faacStats.peakRetryFrames > 0)
+        if (g_faacStats.balanceFrames > 0)
         {
-            if (g_faacStats.balanceFrames > 0 && g_faacStats.peakRetryFrames > 0)
-            {
-                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
-                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Limit Retries = %5.1f%% (%u/%u)\n",
-                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio,
-                        peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
-            }
-            else if (g_faacStats.balanceFrames > 0)
-            {
-                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
-                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%)\n",
-                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio);
-            }
-            else
-            {
-                fprintf(stderr, " Rate Control & Cap  : Peak Limit Retries = %5.1f%% (%u/%u)\n",
-                        peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
-            }
+            fprintf(stderr, " Rate Control & Cap  : Bit Balance = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Retries = %5.1f%% (%u/%u)\n",
+                    g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames,
+                    g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio,
+                    peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
+        }
+        if (g_faacStats.resFrames > 0)
+        {
+            fprintf(stderr, " Bit Reservoir (CBR) : Fill min = %5.1f%% | Bound Retries = %5.1f%% (%u/%u) | Underflows = %u | Stuffing = %5.2f%% of stream\n",
+                    g_faacStats.minResFill,
+                    100.0 * g_faacStats.resBoundRetryFrames / g_faacStats.resFrames,
+                    g_faacStats.resBoundRetryFrames, g_faacStats.resFrames,
+                    g_faacStats.resUnderflowFrames,
+                    g_faacStats.resTotalBits > 0 ? 100.0 * g_faacStats.resStuffBits / g_faacStats.resTotalBits : 0.0);
         }
         if (g_faacStats.balanceFrames > 0)
         {
@@ -1085,6 +1125,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
     float baseQuality = hEncoder->aacquantCfg.quality;
     int sfbnSnap[MAX_CHANNELS];
     int attempt;
+    /* Every cap below is on the raw_data_block; the ADTS header is transport. */
+    int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
+    int payloadBits = 0;
+#ifdef FAAC_STATS
+    int resBound = 0;
+#endif
 
     /* ISO/IEC 14496-3 standard frame limit: 6144 bits per channel */
     peakBits = (unsigned long long)numChannels * AAC_MAX_BITS_PER_CH;
@@ -1093,7 +1139,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * container frame length limit (ADTS_MAX_FRAME_SIZE = 8191 bytes = 65528 bits). */
     if (hEncoder->config.outputFormat == 1)
     {
-        unsigned long long adtsPeakBits = (unsigned long long)ADTS_MAX_FRAME_SIZE * 8;
+        unsigned long long adtsPeakBits = (unsigned long long)(ADTS_MAX_FRAME_SIZE - ADTS_HEADER_SIZE) * 8;
         if (adtsPeakBits < peakBits)
             peakBits = adtsPeakBits;
     }
@@ -1107,6 +1153,44 @@ int faacEncEncode(faacEncHandle hpEncoder,
             * FRAME_LEN / hEncoder->sampleRate;
         if (userPeakBits < peakBits)
             peakBits = userPeakBits;
+    }
+
+    /* Bit reservoir, CBR only: the decoder buffer (AAC_MAX_BITS_PER_CH per
+       channel) refilled at the mean rate and drained a frame at a time, so a
+       frame may spend mean + fill. One more term in the min() of caps, enforced
+       by the same retry loop, so a frame that fits costs nothing. ABR/VBR leave
+       resMean 0: no cap, no floor, buffer_fullness stays 0x7FF -- the reservoir
+       costs music 0.5-0.7% BD-rate in stuffing and caps speech onsets, and only
+       a constant-rate channel gets anything for that. */
+    if (hEncoder->config.rateControl == RATE_CBR)
+    {
+        int mean = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
+            / hEncoder->sampleRate;
+        unsigned long long avail;
+
+        hEncoder->resMean = mean;
+        hEncoder->resCap = (int)numChannels * AAC_MAX_BITS_PER_CH - mean;
+        if (hEncoder->resCap < 0)
+            hEncoder->resCap = 0;
+        if (hEncoder->resFill < 0)
+            hEncoder->resFill = (int)(hEncoder->resCap * RC_RESERVOIR_START);
+
+        avail = (unsigned long long)(mean + hEncoder->resFill);
+        if (avail < peakBits)
+        {
+            peakBits = avail;
+#ifdef FAAC_STATS
+            resBound = 1;
+#endif
+        }
+        /* Keep the floor two bytes under the cap: fill is byte-granular, and
+           at the ceiling bitrate (zero capacity) floor and cap meet. */
+        hEncoder->resMinBits = RC_RESERVOIR_STUFF
+            ? mean + hEncoder->resFill - hEncoder->resCap : 0;
+        if (hEncoder->resMinBits > (int)avail - 16)
+            hEncoder->resMinBits = (int)avail - 16;
+        if (hEncoder->resMinBits < 0)
+            hEncoder->resMinBits = 0;
     }
 
     for (channel = 0; channel < numChannels; channel++) {
@@ -1150,8 +1234,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Close the bitstream and return the number of bytes written */
         frameBytes = CloseBitStream(bitStream);
+        payloadBits = (frameBytes - hdrBytes) * 8;
 
-        if (!peakBits || (unsigned long long)frameBytes * 8 <= peakBits
+        if (!peakBits || (unsigned long long)payloadBits <= peakBits
             || hEncoder->aacquantCfg.quality <= MINQUAL)
             break;
 
@@ -1161,7 +1246,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * sane retry budget. Frame bits grow sub-linearly with quality, so
          * scaling by the bit ratio undershoots the budget and converges in a
          * pass or two. */
-        float scale = (float)peakBits / (float)((unsigned long long)frameBytes * 8);
+        float scale = (float)peakBits / (float)payloadBits;
         if (scale > PEAK_BACKOFF_CEILING) scale = PEAK_BACKOFF_CEILING;
         if (scale < PEAK_BACKOFF_FLOOR)   scale = PEAK_BACKOFF_FLOOR;
         hEncoder->aacquantCfg.quality *= scale;
@@ -1177,15 +1262,16 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* The cap is per frame, so the backoff must not outlive it: left sticky,
-     * one hard frame drags the rest of the stream down, and with bitRate == 0
-     * the rate controller below never runs to claw the quality back. */
+    /* The caps are per frame, so the backoff must not outlive the frame: left
+     * sticky, one hard frame drags the stream down (2% BD-rate), and with
+     * bitRate == 0 nothing below ever claws the quality back. */
     hEncoder->aacquantCfg.quality = baseQuality;
 
 #ifdef FAAC_STATS
     if (attempt > 0)
     {
         g_faacStats.peakRetryFrames++;
+        if (resBound) g_faacStats.resBoundRetryFrames++;
     }
     g_faacStats.totalQuality += hEncoder->aacquantCfg.quality;
 #endif
@@ -1195,10 +1281,35 @@ int faacEncEncode(faacEncHandle hpEncoder,
     {
         int desbits = numChannels * (hEncoder->config.bitRate * FRAME_LEN)
             / hEncoder->sampleRate;
-        int totalBits = frameBytes * 8;
+        /* The reservoir is charged every bit sent; the controller only the bits
+           the coder chose, or a stuffed frame reads as on budget and quality
+           never rises to replace the stuffing with signal. */
+        int sentBits = payloadBits;
+        int totalBits = payloadBits - hEncoder->stuffedBits;
+        int reservoir = (hEncoder->resMean > 0);
         int sbrBits = 0;
         int sbrCharge;
         float fix;
+
+        /* Same function the ADTS header used, so the two cannot disagree. */
+        if (reservoir)
+        {
+#ifdef FAAC_STATS
+        {
+            if (hEncoder->resFill + hEncoder->resMean - sentBits < 0)
+                g_faacStats.resUnderflowFrames++;
+            g_faacStats.resFrames++;
+            g_faacStats.resTotalBits += sentBits;
+            g_faacStats.resStuffBits += hEncoder->stuffedBits;
+            if (hEncoder->resCap > 0)
+            {
+                float pct = 100.0f * (float)hEncoder->resFill / (float)hEncoder->resCap;
+                if (pct < g_faacStats.minResFill) g_faacStats.minResFill = pct;
+            }
+        }
+#endif
+        hEncoder->resFill = faacReservoirAfter(hEncoder, sentBits);
+        }
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
@@ -1247,8 +1358,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
            a CORE setpoint: what is left of the frame's budget once SBR has been
            charged for, matched against what the core actually spent. */
         int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
-        int bound = RC_BALANCE_FRAMES * desbits;
         int coreBits = totalBits - sbrBits;
+        int lend;
+        int bound = RC_BALANCE_FRAMES * desbits;
         int diff = coreTarget - coreBits;
         hEncoder->bitBalance += diff;
         if (hEncoder->bitBalance > bound)
@@ -1261,46 +1373,77 @@ int faacEncEncode(faacEncHandle hpEncoder,
            until it is repaid. This is the smoothing the draw path was meant to
            provide, with the repayment it was missing. Amortizing is what keeps a
            deep balance from being worked off in one lurch. */
-        int lend = hEncoder->bitBalance / RC_BALANCE_AMORT;
+        lend = hEncoder->bitBalance / RC_BALANCE_AMORT;
 
-        if (coreBits > 0)
-            fix = (float)(coreTarget + lend) / (float)coreBits;
-        else
-            fix = 1.0f;
-
-        /* Apply adaptive damping: accelerate rate control recovery when the
-           account is far from square in either direction. Balance runs
-           [-cap, +cap] and squares at zero, so report it as a 0-100% scale
-           centred on 50% to keep the stats comparable across the change.
-
-           The additive fill-ratio correction that used to sit here is gone: it
-           was the only thing repaying a draw, it was watching a quantity that
-           does not track the stream's bitrate error -- a clip could hold 42%
-           fill while running 8% hot -- and `lend` now carries the balance into
-           `fix` directly, so keeping both would correct the same bits twice. */
-        float damping = RC_DAMPING_FACTOR;
+        int floored = 0;
+        int capped = 0;
         {
-            float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
-            if (fillRatio < 0.25f || fillRatio > 0.75f)
-                damping = 0.85f;
-
-#ifdef FAAC_STATS
+            int aim = coreTarget + lend;
+#if RC_RESERVOIR_AIM
+            if (reservoir)
             {
-                float fillPct = fillRatio * 100.0f;
-                g_faacStats.totalBalanceRatio += fillPct;
-                if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
-                if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
-                g_faacStats.balanceFrames++;
+                /* resFill is post-frame: the next frame's window, net of SBR. */
+                int coreFloor = hEncoder->resMean + hEncoder->resFill - hEncoder->resCap - sbrCharge;
+                int coreCap = hEncoder->resMean + hEncoder->resFill - sbrCharge;
+                if (RC_RESERVOIR_STUFF && aim < coreFloor)
+                {
+                    aim = coreFloor;
+                    floored = 1;
+                }
+                if (aim > coreCap)
+                    aim = coreCap;
+                /* A frame this size will not fit the next cap: correct down
+                   whole now rather than bust and retry (28% of speech frames
+                   retried without this). */
+                capped = (coreBits > coreCap);
             }
 #endif
+            if (coreBits > 0)
+                fix = (float)aim / (float)coreBits;
+            else
+                fix = 1.0f;
         }
 
-        /* Apply damping to the quality adjustment */
-        fix = (fix - 1.0f) * damping + 1.0f;
+        /* Stiffer damping when the account is far off centre. Removing this
+           and the deadband below costs 16 kHz speech MOS under ABR. */
+        float damping = RC_DAMPING_FACTOR;
+        float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
+        if (fillRatio < 0.25f || fillRatio > 0.75f)
+            damping = 0.85f;
+#ifdef FAAC_STATS
+        {
+            float fillPct = fillRatio * 100.0f;
+            g_faacStats.totalBalanceRatio += fillPct;
+            if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
+            if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
+            g_faacStats.balanceFrames++;
+        }
+#endif
 
-        /* Skip small adjustments (< 0.5%) to reduce quality scale update math and keep quality steady */
+        /* A frame stuffed to the floor pays those bits anyway, so the rise to
+           it is undamped; the cap catches a real overshoot. */
+        if (floored)
+        {
+            if (fix > 1.5f) fix = 1.5f;
+        }
+        else if (capped)
+        {
+            if (fix < 0.5f) fix = 0.5f;
+        }
+        else
+            fix = (fix - 1.0f) * damping + 1.0f;
+
+#if RC_STUFF_HOLD
+        if (fix > 1.0f && hEncoder->stuffedBits > 0 && hEncoder->rcPrevWant > 0
+            && coreBits <= hEncoder->rcPrevWant + hEncoder->rcPrevWant / 50)
+            fix = 1.0f;
+#endif
+        hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? coreBits : 0;
+
+        /* Skip small adjustments (< 0.5%) to keep quality steady */
         if (fabsf(fix - 1.0f) > 0.005f) {
-            fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
+            if (!floored && !capped)
+                fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
             hEncoder->aacquantCfg.quality *= fix;
         }
 

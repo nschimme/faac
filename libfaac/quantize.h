@@ -31,11 +31,14 @@ typedef struct
  * quantization error for a uniform distribution (ISO 14496-3 §8.3.5). */
 #define MAGIC_NUMBER 0.4054f
 
+/* Quality scales the masking targets, in percent of DEFQUAL. MINQUAL bounds how
+ * small a frame rate control can make: at 10, 8 kbps/ch LC ran 62% over target;
+ * 1 reaches it. Below the target a band goes HCB_ZERO, so no floor is assumed. */
 enum {
     DEFQUAL = 100,
     MAXQUAL = 5000,
     MAXQUALADTS = MAXQUAL,
-    MINQUAL = 10,
+    MINQUAL = 1,
 };
 
 void ResetCoderSections(CoderInfo *coderInfo);

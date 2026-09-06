@@ -73,7 +73,9 @@ enum {
     /* DecoderConfigDescriptor fixed fields (ISO/IEC 14496-1) */
     MP4_OBJECT_TYPE_AUDIO_ISO_14496_3 = 0x40,
     MP4_STREAM_TYPE_AUDIO             = 0x15, /* streamType=5 (audio) << 2 | upStream=0 | reserved=1 */
-    MP4_DECODER_BUFFER_SIZE           = 6144, /* bufferSizeDB, arbitrary but generous for one AAC frame */
+    /* bufferSizeDB: AAC's decoder input buffer, 6144 bits per channel
+       (ISO/IEC 14496-3 4.5.3.1) -- the bound the encoder's reservoir works to. */
+    MP4_DECODER_BUFFER_BYTES_PER_CH   = 6144 / 8,
 
     MP4_TRACK_ID      = 1, /* single-track file: 'trak' and 'tkhd' both hardcode this */
     MP4_NEXT_TRACK_ID = 2, /* mvhd's hint for the next trak ID a future edit would use */
@@ -419,6 +421,11 @@ int mp4_open(const char *path, bool overwrite) {
     return g_mem_error ? 1 : 0;
 }
 
+static bool g_constant_rate;
+
+/* ISO/IEC 14496-1 spells a constant-rate stream as maxBitrate == avgBitrate. */
+void mp4_set_constant_rate(bool constant) { g_constant_rate = constant; }
+
 void mp4_set_format(uint32_t samplerate, uint32_t channels, uint32_t bits) {
     g_mp4.samplerate = samplerate;
     g_mp4.channels = channels;
@@ -642,7 +649,7 @@ int mp4_finish(void) {
     /* a file shorter than one second never crosses the sample-count
        threshold in mp4_write_frame, so bitrate.max would otherwise
        still be 0 here */
-    if (!g_mp4.bitrate.max) g_mp4.bitrate.max = g_mp4.bitrate.avg;
+    if (!g_mp4.bitrate.max || g_constant_rate) g_mp4.bitrate.max = g_mp4.bitrate.avg;
 
     g_mempos = 0;
     g_memcap = 65536 + (size_t)g_mp4.frame.ents * 4;
@@ -748,9 +755,10 @@ int mp4_finish(void) {
     put_u16(0); put_u8(0);
     put_descriptor(4, 13 + MP4_DESC_HDR + g_mp4.asc.size);
     put_u8(MP4_OBJECT_TYPE_AUDIO_ISO_14496_3); put_u8(MP4_STREAM_TYPE_AUDIO);
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE >> 16));
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE >> 8));
-    put_u8((uint8_t)(MP4_DECODER_BUFFER_SIZE & 0xff));
+    uint32_t bufferSizeDB = MP4_DECODER_BUFFER_BYTES_PER_CH * g_mp4.channels;
+    put_u8((uint8_t)(bufferSizeDB >> 16));
+    put_u8((uint8_t)(bufferSizeDB >> 8));
+    put_u8((uint8_t)(bufferSizeDB & 0xff));
     put_u32(g_mp4.bitrate.max); put_u32(g_mp4.bitrate.avg);
     put_descriptor(5, g_mp4.asc.size);
     put_data(g_mp4.asc.data, g_mp4.asc.size);

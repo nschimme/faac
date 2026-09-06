@@ -114,7 +114,21 @@ typedef struct faacEncStruct {
        RC_BALANCE_AIM in frame.c. */
     int bitBalance;         /* signed: banked bits positive, owed bits negative */
     int sbrBitsAcc;         /* EWMA of the SBR payload, scaled by 1<<RC_SBR_EWMA_SHIFT */
+
+    /* Bit reservoir (CBR): decoder buffer model, AAC_MAX_BITS_PER_CH per
+       channel. resMean == 0 outside CBR switches cap, floor and declaration
+       off together; resFill < 0 = not yet opened. */
+    int resMean;       /* bits arriving per frame */
+    int resCap;        /* capacity: 6144 * channels - resMean */
+    int resFill;       /* fill after the last frame, [0, resCap] */
+    int resMinBits;    /* floor BuildFrame stuffs this frame up to; 0 = none */
+    int stuffedBits;   /* what BuildFrame stuffed into the last frame */
+    int rcPrevWant;    /* previous frame's core bits if it was stuffed, else 0 */
 } faacEncStruct;
+
+/* Fill after a raw_data_block of payloadBits (no ADTS header). Used by both the
+   ADTS header and the rate controller so the two cannot disagree. */
+int faacReservoirAfter(const faacEncStruct *hEncoder, int payloadBits);
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,
