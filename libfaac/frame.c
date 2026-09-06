@@ -570,6 +570,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
 #ifdef FAAC_STATS
     memset(&g_faacStats, 0, sizeof(faacEncStats));
     g_faacStats.minBalanceRatio = 100.0f;
+    g_faacStats.minResFill = 100.0f;
 #endif
     unsigned int channel;
     faacEncStruct* hEncoder;
@@ -780,38 +781,20 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Tool Allocation     : M/S     = %5.1f%% | I/S = %5.1f%% | PNS = %5.1f%% | TNS = %5.1f%%\n",
                     ms, is, pns, tns);
         }
-        if (g_faacStats.balanceFrames > 0 || g_faacStats.peakRetryFrames > 0)
+        if (g_faacStats.balanceFrames > 0)
         {
-            if (g_faacStats.balanceFrames > 0 && g_faacStats.peakRetryFrames > 0)
-            {
-                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
-                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Limit Retries = %5.1f%% (%u/%u)\n",
-                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio,
-                        peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
-            }
-            else if (g_faacStats.balanceFrames > 0)
-            {
-                double res_fill = g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames;
-                fprintf(stderr, " Rate Control & Cap  : Bit Balance    = %5.1f%% (min %5.1f%%, max %5.1f%%)\n",
-                        res_fill, g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio);
-            }
-            else
-            {
-                fprintf(stderr, " Rate Control & Cap  : Peak Limit Retries = %5.1f%% (%u/%u)\n",
-                        peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
-            }
+            fprintf(stderr, " Rate Control & Cap  : Bit Balance = %5.1f%% (min %5.1f%%, max %5.1f%%) | Peak Retries = %5.1f%% (%u/%u)\n",
+                    g_faacStats.totalBalanceRatio / g_faacStats.balanceFrames,
+                    g_faacStats.minBalanceRatio, g_faacStats.maxBalanceRatio,
+                    peak_retry_pct, g_faacStats.peakRetryFrames, g_faacStats.totalFrames);
         }
         if (g_faacStats.resFrames > 0)
         {
-            fprintf(stderr, " Bit Reservoir       : Fill = %5.1f%% (min %5.1f%%, max %5.1f%%) | Bound Retries = %5.1f%% (%u/%u) | Underflows = %u\n",
-                    g_faacStats.totalResFill / g_faacStats.resFrames,
-                    g_faacStats.minResFill, g_faacStats.maxResFill,
+            fprintf(stderr, " Bit Reservoir (CBR) : Fill min = %5.1f%% | Bound Retries = %5.1f%% (%u/%u) | Underflows = %u | Stuffing = %5.2f%% of stream\n",
+                    g_faacStats.minResFill,
                     100.0 * g_faacStats.resBoundRetryFrames / g_faacStats.resFrames,
                     g_faacStats.resBoundRetryFrames, g_faacStats.resFrames,
-                    g_faacStats.resUnderflowFrames);
-            fprintf(stderr, " Reservoir Stuffing  : Frames = %5.1f%% (%u/%u) | Bits = %5.2f%% of stream\n",
-                    100.0 * g_faacStats.resStuffFrames / g_faacStats.resFrames,
-                    g_faacStats.resStuffFrames, g_faacStats.resFrames,
+                    g_faacStats.resUnderflowFrames,
                     g_faacStats.resTotalBits > 0 ? 100.0 * g_faacStats.resStuffBits / g_faacStats.resTotalBits : 0.0);
         }
         if (g_faacStats.balanceFrames > 0)
@@ -1365,21 +1348,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
         {
 #ifdef FAAC_STATS
         {
-            int raw = hEncoder->resFill + hEncoder->resMean - sentBits;
-            if (raw < 0) g_faacStats.resUnderflowFrames++;
+            if (hEncoder->resFill + hEncoder->resMean - sentBits < 0)
+                g_faacStats.resUnderflowFrames++;
             g_faacStats.resFrames++;
             g_faacStats.resTotalBits += sentBits;
-            if (hEncoder->resMinBits > 0 && hEncoder->stuffedBits > 0)
-            {
-                g_faacStats.resStuffFrames++;
-                g_faacStats.resStuffBits += hEncoder->stuffedBits;
-            }
+            g_faacStats.resStuffBits += hEncoder->stuffedBits;
             if (hEncoder->resCap > 0)
             {
                 float pct = 100.0f * (float)hEncoder->resFill / (float)hEncoder->resCap;
-                g_faacStats.totalResFill += pct;
                 if (pct < g_faacStats.minResFill) g_faacStats.minResFill = pct;
-                if (pct > g_faacStats.maxResFill) g_faacStats.maxResFill = pct;
             }
         }
 #endif
@@ -1482,15 +1459,19 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 fix = 1.0f;
         }
 
-        /* One damping. The stiffer damping this used to switch to when the
-           account was far off centre, and the 0.5% deadband below, were both
-           measured over the full corpus with the reservoir in place: neither
-           moved BD-rate, accuracy or instruction count outside noise, so
-           neither is here. */
+        /* Adaptive damping: stiffer when the account is far off centre. This
+           and the 0.5% deadband below measured as noise under CBR and were
+           removed for a while; under ABR their removal cost 16 kHz mono speech
+           -0.017 MOS on one scenario while buying nothing, and with them the
+           ABR path is byte-identical to the controller before this branch
+           everywhere the target itself did not change. They stay. */
         float damping = RC_DAMPING_FACTOR;
+        float fillRatio = 0.5f + 0.5f * (float)hEncoder->bitBalance / (float)bound;
+        if (fillRatio < 0.25f || fillRatio > 0.75f)
+            damping = 0.85f;
 #ifdef FAAC_STATS
         {
-            float fillPct = 50.0f + 50.0f * (float)hEncoder->bitBalance / (float)bound;
+            float fillPct = fillRatio * 100.0f;
             g_faacStats.totalBalanceRatio += fillPct;
             if (fillPct < g_faacStats.minBalanceRatio) g_faacStats.minBalanceRatio = fillPct;
             if (fillPct > g_faacStats.maxBalanceRatio) g_faacStats.maxBalanceRatio = fillPct;
@@ -1521,9 +1502,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
         hEncoder->rcPrevWant = (hEncoder->stuffedBits > 0) ? coreBits : 0;
 
-        if (!floored && !capped)
-            fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
-        hEncoder->aacquantCfg.quality *= fix;
+        /* Skip small adjustments (< 0.5%) to keep quality steady */
+        if (fabsf(fix - 1.0f) > 0.005f) {
+            if (!floored && !capped)
+                fix = (fix < 0.80f) ? 0.80f : ((fix > 1.20f) ? 1.20f : fix);
+            hEncoder->aacquantCfg.quality *= fix;
+        }
 
         if (hEncoder->aacquantCfg.quality > maxqual)
             hEncoder->aacquantCfg.quality = maxqual;
