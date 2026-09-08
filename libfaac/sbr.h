@@ -16,20 +16,19 @@
 #ifndef SBR_H
 #define SBR_H
 
+/* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). */
+typedef enum SbrFrameClass {
+    SBR_FRAME_CLASS_FIXFIX = 0,
+    SBR_FRAME_CLASS_FIXVAR = 1,
+    SBR_FRAME_CLASS_VARFIX = 2,
+    SBR_FRAME_CLASS_VARVAR = 3
+} SbrFrameClass;
+
 #include "coder.h"
 #include "fft.h"
 #include "sbr_analysis.h"
 
-/* Input sample FIFO slots, each one frame (FRAME_LEN samples) wide, relative to
-   the frame currently being coded (FIFO_CURR): one frame behind (FIFO_PAST,
-   reused as the MDCT overlap) and two frames ahead. The two ahead slots are
-   needed because the block-switch energy analysis works on 2-frame-wide windows
-   and keeps one window of lookahead, whose far edge reaches two frames ahead. */
 #define LOOKAHEAD_DEPTH 2
-#define FIFO_PAST       0
-#define FIFO_CURR       1
-#define FIFO_AHEAD1     2
-#define FIFO_AHEAD2     3
 
 /* Depth of the HE shared-detector decision FIFO. Sized so index 0 lines up with
    the core frame currently being coded: the core lags the freshest SBR analysis
@@ -64,18 +63,14 @@ struct BitStream;
 #define SBR_MAX_BANDS        64
 #define SBR_MAX_ENVELOPES     2
 #define SBR_MAX_NOISE_ENVELOPES 2
-#define SBR_MAX_NOISE_BANDS   5
+/* numNoiseBands is always 1 (build_freq_table); size to what's coded, not
+ * the spec's nominal ceiling. */
+#define SBR_MAX_NOISE_BANDS   1
 #define SBR_HEADER_PERIOD    30
 
-/* SBR frame classes (ISO 14496-3:2009 §4.6.18.3, Table 4.80). */
-#define SBR_FRAME_CLASS_FIXFIX  0
-#define SBR_FRAME_CLASS_FIXVAR  1
-#define SBR_FRAME_CLASS_VARFIX  2
-#define SBR_FRAME_CLASS_VARVAR  3
-
 /* Envelope time-slot resolution the decoder uses for an AAC-LC core frame
- * (FFmpeg/FAAD2 pass numTimeSlots=16). All bs_rel_bord/t_env values written in
- * a variable grid live in [0, SBR_NUM_TIME_SLOTS]. */
+ * (ISO 14496-3 §4.6.18.3: numTimeSlots = 16). All bs_rel_bord/t_env values
+ * written in a variable grid live in [0, SBR_NUM_TIME_SLOTS]. */
 #define SBR_NUM_TIME_SLOTS   16
 
 /* SBR extension types (ISO 14496-3 §4.6.18). */

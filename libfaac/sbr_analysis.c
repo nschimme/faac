@@ -13,19 +13,23 @@
  * Lesser General Public License for more details.
  */
 
-#include "sbr_analysis.h"
 #include "sbr.h"
+#include "sbr_analysis.h"
 #include "sbr_internal.h"
 #include "util.h"
 #include <string.h>
 
+/* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
+ * envelope 0 rather than dropping their energy. */
+static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
+{
+    int e = 0;
+    while (e + 1 < numEnvelopes && slot >= envStart[e + 1]) e++;
+    return e;
+}
+
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
- * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
- * here (not split out) to stay under GCC's LTO auto-inline threshold. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
+ * and subband energy accumulation. */
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
@@ -100,7 +104,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         }
     }
 
-    int split = num_slots;   /* default: single envelope spans the whole frame */
     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
@@ -111,7 +114,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->tEnv[1] = innerSbr;
         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
         sa->bsPointer = 0;
-        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
     } else {
         sa->numEnvelopes = 1;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
@@ -120,26 +122,31 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->bsPointer = 0;
     }
 
+    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
+    int envStart[SBR_MAX_ENVELOPES + 1];
+    for (int e = 0; e <= sa->numEnvelopes; e++)
+        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+
     /* Count slots per envelope for power normalization. */
-    sa->envSampled[0] = sa->envSampled[1] = 0;
+    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
     for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
         if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
-        sa->envSampled[h]++;
+        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
     }
-    if (sa->envSampled[0] < 1) sa->envSampled[0] = 1;
-    if (sa->numEnvelopes > 1 && sa->envSampled[1] < 1) sa->envSampled[1] = 1;
+    for (int e = 0; e < sa->numEnvelopes; e++)
+        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
-    /* Pass 2: Subband analysis. Accumulates energy across QMF bands within
-     * the selected temporal envelopes. */
-    /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
-     * and never read, so skip their post-FFT extraction and accumulation. */
+    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
+     * Only [kx, k2) feeds the quantizer, so skip bands below kx; only the SBR
+     * element's own channels are quantized, so a 5.1 core doesn't pay for
+     * four channels of QMF analysis whose result is dropped. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    for (int ch = 0; ch < nch; ch++) {
-        memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
+    int nch_coded = (nch < SBR_MAX_CODED_CHANNELS) ? nch : SBR_MAX_CODED_CHANNELS;
+    for (int ch = 0; ch < nch_coded; ch++) {
+        memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
         if (sbr) {
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
@@ -153,9 +160,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
                     float slotEnergy[SBR_QMF_BANDS_64];
                     SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
-                    int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
-                    float * restrict bE = sa->ch[ch].bandHalfE[h];
+                    float * restrict bE = sa->bandE[ch][e];
                     for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
                 }
