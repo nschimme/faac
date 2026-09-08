@@ -206,14 +206,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
-    {
-        unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
-    }
-
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
@@ -255,6 +247,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
+
+    /* MaxBitrate() is already per channel, and its frame is FRAME_LEN samples
+     * at the core rate -- so the clamp has to follow the HE-AAC resolution
+     * above, which halves that rate. */
+    if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
+        config->bitRate = MaxBitrate(hEncoder->sampleRate);
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
