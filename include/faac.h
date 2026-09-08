@@ -92,12 +92,13 @@ typedef enum faac_status {
 /*
  * AAC object type, numbered per the MPEG-4 Audio Object Type (AOT) registry so
  * a single collision-free namespace covers current and future profiles.
- * FAAC_OBJ_AUTO lets the library pick AAC-LC or HE-AAC by bitrate.
+ * FAAC_OBJ_AUTO lets the library pick AAC-LC or HE-AAC from the bandwidth the
+ * AAC-LC core would code at the requested operating point.
  */
 enum faac_object_type {
-    FAAC_OBJ_AUTO      = 0,          /* let the library choose LC or HE-AAC by bitrate */
+    FAAC_OBJ_AUTO      = 0,          /* choose LC or HE-AAC from the core bandwidth  */
     FAAC_OBJ_LOW       = 2,          /* AAC-LC                                       */
-    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR                                 */
+    FAAC_OBJ_HE_AAC_V1 = 5,          /* AAC-LC + SBR; this build: <=2ch, Fs >= 32 kHz */
     FAAC_OBJ_HE_AAC_V2 = 29,         /* AAC-LC + SBR + PS  (reserved, unimplemented) */
     /* AOT 23 (LD), 39 (ELD), 42 (xHE-AAC/USAC) are intentionally NOT reserved
      * here; each would need its own additive configuration surface. */
@@ -163,9 +164,14 @@ typedef struct faac_params {
     bool                    use_tns;       /* temporal noise shaping                   */
     uint8_t                 reserved[2];   /* explicit pad; must remain 0              */
 
-    uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quant_quality */
-    uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate             */
-    uint32_t                quant_quality; /* quantizer quality; 0 = derive from bit_rate        */
+    uint32_t                bit_rate_per_ch;   /* target bits/sec per channel; 0 = use quant_quality */
+    uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate_per_ch      */
+    uint32_t                quant_quality; /* raw quantizer precision; 0 = from bit_rate_per_ch  */
+
+    /* Constant-quality step, FAAC_VBR_QUALITY_MIN..MAX, or
+     * FAAC_VBR_QUALITY_UNSET. When set it supersedes quant_quality, and
+     * bit_rate_per_ch must be 0. faac_params_init() sets it to UNSET. */
+    int32_t                 vbr_quality;
 
     enum faac_stream_format output_format;
     enum faac_input_format  input_format;
@@ -179,13 +185,14 @@ typedef struct faac_params {
 
     /* Ceiling on any single frame, for packet-oriented transports that cannot
      * fragment one -- a frame that overruns the link MTU is dropped, not split.
-     * Unlike bit_rate this is a WHOLE-STREAM rate, so it stays independent of
+     * As its name says, and unlike bit_rate_per_ch, this is a WHOLE-STREAM
+     * rate, so it stays independent of
      * num_channels and follows from the payload a packet can carry or standard
      * ISO/IEC 14496-3 limits (6144 bits/channel per frame):
      *
-     *     max_bit_rate = payload_bytes * 8 * sample_rate / 1024
+     *     max_bit_rate_total = payload_bytes * 8 * sample_rate / 1024
      *
-     * Must be >= bit_rate * num_channels (a peak below the average is
+     * Must be >= bit_rate_per_ch * num_channels (a peak below the average is
      * unsatisfiable) and <= FAAC_MAX_BIT_RATE; open() rejects anything else.
      * More headroom means fewer retries.
      *
@@ -194,10 +201,10 @@ typedef struct faac_params {
      * Measured on transient-heavy stereo, the cap holds for every frame at and
      * above ~64 kbit/s; below that the floor starts to show (~48 kbit/s
      * overshoots on a few percent of frames). */
-    uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
+    uint32_t                max_bit_rate_total; /* whole-stream peak bits/sec; 0 = unlimited */
 } faac_params;
 
-/* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
+/* Upper bound on faac_params.max_bit_rate_total: far above any real stream rate, and
  * low enough that converting it to a per-frame bit budget cannot overflow. */
 #define FAAC_MAX_BIT_RATE ((uint32_t)100000000)
 
@@ -218,11 +225,11 @@ typedef struct faac_encoder_info {
     uint32_t                sample_rate;      /* nominal full output rate in Hz (HE: extended rate) */
     enum faac_object_type   object_type;      /* concrete type in effect (AUTO resolved)            */
 
-    uint32_t                bit_rate;         /* resolved bits/sec per channel (0 if quality-driven) */
+    uint32_t                bit_rate_per_ch;  /* resolved bits/sec per channel (0 if quality-driven) */
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */
     uint32_t                quant_quality;    /* resolved quantizer quality                          */
     int32_t                 pns_level;        /* resolved PNS level, 0..10                           */
-    uint32_t                max_bit_rate;     /* resolved peak cap, 0 if unlimited                   */
+    uint32_t                max_bit_rate_total; /* resolved peak cap, 0 if unlimited                 */
 
     /* Priming delay in samples/channel at the output rate: leading samples the
      * decoder must discard. Use verbatim for gapless tagging (e.g. iTunSMPB) --
@@ -254,6 +261,28 @@ typedef struct faac_library_info {
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out);
 
+/*
+ * VBR quality scale: the user-facing constant-quality dial, higher is better.
+ *
+ * Set faac_params.vbr_quality to a step in this range for constant-quality
+ * encoding. Steps are spaced geometrically across the encoder's quantizer
+ * range, so one step means one quality at every sample rate and channel count;
+ * what that quality costs in bitrate is left to depend on the material, which
+ * is what constant quality means.
+ *
+ * quant_quality remains the raw quantizer precision underneath. Most of its
+ * range sits past transparency and its useful part is unevenly spaced, so it
+ * is an expert control -- set vbr_quality unless you specifically want it.
+ */
+#define FAAC_VBR_QUALITY_MIN   0
+#define FAAC_VBR_QUALITY_MAX   10
+#define FAAC_VBR_QUALITY_DEF   4
+#define FAAC_VBR_QUALITY_UNSET (-1)
+
+/* Bounds on quant_quality. A value outside these is clamped, not rejected, so
+ * a frontend that wants to tell the user instead needs to know them. */
+#define FAAC_QUANT_QUALITY_MIN 10
+#define FAAC_QUANT_QUALITY_MAX 5000
 /* Zero-initialize *p and fill in library defaults and struct_size. Pass
  * sizeof(*p) as caller_size; never writes past min(caller_size,
  * sizeof(faac_params)), so a caller stays safe even if the loaded library's

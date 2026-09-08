@@ -56,11 +56,11 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
 /* Baseline layout as first shipped. Frozen by the append-only rule: new fields
- * go after max_bit_rate, so this offset never moves. Not sizeof(), which
+ * go after max_bit_rate_total, so this offset never moves. Not sizeof(), which
  * grows with every appended field and would reject older callers' binaries.
  * A literal would be wrong too: the layout depends on pointer width. */
 #define PARAMS_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_params, max_bit_rate) + sizeof(uint32_t)))
+    ((uint32_t)(offsetof(faac_params, max_bit_rate_total) + sizeof(uint32_t)))
 
 /* Same pattern as PARAMS_BASELINE_SIZE above. */
 #define LIBRARY_INFO_BASELINE_SIZE \
@@ -70,6 +70,11 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
+
+_Static_assert(VBR_QUALITY_STEPS == FAAC_VBR_QUALITY_MAX - FAAC_VBR_QUALITY_MIN,
+               "internal VBR quality step count must match the public scale");
+_Static_assert(FAAC_QUANT_QUALITY_MIN == MINQUAL && FAAC_QUANT_QUALITY_MAX == MAXQUAL,
+               "public quantizer bounds must match the quantizer's own");
 
 FAACAPI faac_status faac_get_library_info(faac_library_info *out)
 {
@@ -115,10 +120,11 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.joint_mode    = FAAC_JOINT_MIXED;
     tmp.use_lfe       = false;
     tmp.use_tns       = false;
-    tmp.bit_rate      = 64000;          /* per channel; 0 would defer to quant_quality */
-    tmp.bandwidth     = 0;              /* derive from bit_rate */
-    tmp.quant_quality = 0;              /* derive from bit_rate */
-    tmp.max_bit_rate  = 0;              /* no per-frame peak cap */
+    tmp.bit_rate_per_ch = 64000;          /* per channel; 0 would defer to quant_quality */
+    tmp.bandwidth     = 0;              /* derive from bit_rate_per_ch */
+    tmp.quant_quality = 0;              /* derive from bit_rate_per_ch */
+    tmp.vbr_quality   = FAAC_VBR_QUALITY_UNSET;
+    tmp.max_bit_rate_total = 0;              /* no per-frame peak cap */
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
@@ -175,6 +181,15 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->pns_level < 0 || p->pns_level > 10)
         return FAAC_ERR_INVALID_ARGUMENT;
+    /* This encoder's SBR serves one SCE or CPE, so its HE-AAC v1 covers mono
+     * and stereo; asking for it over more channels would emit a stream whose
+     * SBR payload binds to the wrong element. Multichannel HE-AAC v1 is legal
+     * MPEG-4 -- one sbr_extension_data() per element -- just unimplemented
+     * here. AUTO resolves around this on its own; this is for callers that
+     * named the profile. */
+    if (p->object_type == FAAC_OBJ_HE_AAC_V1
+        && p->num_channels > (uint32_t)SBR_MAX_CODED_CHANNELS)
+        return FAAC_ERR_UNSUPPORTED;
     if (p->channel_map) {
         uint32_t i;
         if (p->channel_map_count < p->num_channels)
@@ -183,25 +198,31 @@ static faac_status validate_params(const faac_params *p)
             if (p->channel_map[i] < 0 || (uint32_t)p->channel_map[i] >= p->num_channels)
                 return FAAC_ERR_INVALID_ARGUMENT;
     }
-    /* bit_rate is per channel; reject a target above what a channel can carry
-     * under the ISO/IEC 14496-3 per-frame ceiling regardless of max_bit_rate. */
-    if (p->bit_rate && p->bit_rate > MaxBitrate(p->sample_rate))
-        return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->max_bit_rate) {
+    /* bit_rate_per_ch is per channel, as are both bounds. Out-of-range is clamped
+     * rather than rejected: a caller naming a rate the spec cannot carry has
+     * asked for the nearest thing that works, and failing to open an encoder
+     * over it is a worse answer than encoding at the limit. The clamp itself
+     * happens in faacEncApplyConfig, which sees the resolved sample rate;
+     * validation here only rejects what no clamp could rescue. */
+    if (p->max_bit_rate_total) {
         /* Bounded because it is converted into a per-frame bit budget; an
          * absurd value is a caller error, not a request for an unlimited
          * frame. */
-        if (p->max_bit_rate > FAAC_MAX_BIT_RATE)
+        if (p->max_bit_rate_total > FAAC_MAX_BIT_RATE)
             return FAAC_ERR_INVALID_ARGUMENT;
         /* A peak below the average is unsatisfiable by definition, and the two
          * controllers actively fight: rate control raises quality to reach
-         * bit_rate while the limiter cuts it to stay under the cap, so frames
+         * bit_rate_per_ch while the limiter cuts it to stay under the cap, so frames
          * end up larger the tighter the cap gets. Reject it rather than emit a
          * stream that quietly busts the ceiling it was asked to respect.
-         * bit_rate is per channel and max_bit_rate is not, so scale to compare. */
-        if (p->bit_rate && p->max_bit_rate < (uint64_t)p->bit_rate * p->num_channels)
+         * The field names carry the units, so the conversion is explicit. */
+        if (p->bit_rate_per_ch &&
+            p->max_bit_rate_total < (uint64_t)p->bit_rate_per_ch * p->num_channels)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
+    if (p->vbr_quality != FAAC_VBR_QUALITY_UNSET &&
+        (p->vbr_quality < FAAC_VBR_QUALITY_MIN || p->vbr_quality > FAAC_VBR_QUALITY_MAX))
+        return FAAC_ERR_INVALID_ARGUMENT;
     /* reserved padding must be zero so future fields can claim it safely */
     if (p->reserved[0] || p->reserved[1])
         return FAAC_ERR_INVALID_ARGUMENT;
@@ -242,14 +263,20 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->jointmode     = (unsigned int)p->joint_mode;
     cfg->useLfe        = p->use_lfe ? 1 : 0;
     cfg->useTns        = p->use_tns ? 1 : 0;
-    cfg->bitRate       = p->bit_rate;
-    cfg->bandWidth     = p->bandwidth;
+    cfg->bitRate       = p->bit_rate_per_ch;
+    /* vbr_quality supersedes quant_quality: it is the same currency, named on
+     * the scale users see rather than the quantizer's own. The translation
+     * happens in faacEncApplyConfig, which already derives the map coefficient
+     * the ladder needs; doing it here would derive a second one. */
+    cfg->vbrQuality    = (p->vbr_quality != FAAC_VBR_QUALITY_UNSET)
+                       ? (int)p->vbr_quality : -1;
     cfg->quantqual     = p->quant_quality;
+    cfg->bandWidth     = p->bandwidth;
     cfg->outputFormat  = (unsigned int)p->output_format;
     cfg->inputFormat   = (unsigned int)p->input_format;
     cfg->shortctl      = (int)p->short_control;
     cfg->pnslevel      = p->pns_level;
-    cfg->maxBitRate    = p->max_bit_rate;
+    cfg->maxBitRate    = p->max_bit_rate_total;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)
@@ -311,11 +338,11 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
      * decoder reconstructs. */
     info.sample_rate      = (uint32_t)SbrContextGetFullRate(h->sbrContext, h->sampleRate);
     info.object_type      = (enum faac_object_type)h->config.aacObjectType;
-    info.bit_rate         = (uint32_t)h->config.bitRate;
+    info.bit_rate_per_ch  = (uint32_t)h->config.bitRate;
     info.bandwidth        = (uint32_t)h->config.bandWidth;
     info.quant_quality    = (uint32_t)h->config.quantqual;
     info.pns_level        = (int32_t)h->config.pnslevel;
-    info.max_bit_rate     = (uint32_t)h->config.maxBitRate;
+    info.max_bit_rate_total = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
 
     /* Write at most the caller's struct_size so a newer library cannot overrun

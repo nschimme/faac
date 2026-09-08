@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -57,7 +58,8 @@ void init_encode_options(encode_options_t *opts)
     opts->use_lfe = -1;
     opts->pns_level = -1;
     opts->quant_quality = 0;
-    opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
+    opts->vbr_quality = UINT16_MAX;
+    opts->bit_rate_total = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
     opts->lfe_channel = 4;
     opts->raw_bits = 16;
@@ -119,21 +121,44 @@ void free_encode_options(encode_options_t *opts)
     opts->custom_tag_cap = 0;
 }
 
-void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
-                               encode_options_t *opts)
+bool parse_rate_input(const char *text, rate_input_mode_t mode,
+                      encode_options_t *opts)
 {
-    int val = text ? atoi(text) : 0;
+    bool empty = (text == NULL || *text == '\0');
+    char *end = NULL;
+    long val = empty ? -1 : strtol(text, &end, 10);
 
-    if (is_bitrate_mode)
+    if (!empty && (end == text || *end != '\0'))
+        return false;
+
+    /* Every mode leaves the other two currencies cleared, so the library sees
+       exactly one request. */
+    opts->vbr_quality = UINT16_MAX;
+    opts->quant_quality = 0;
+    opts->bit_rate_total = 0;
+
+    switch (mode)
     {
-        opts->bit_rate = (val > 0) ? (uint32_t)(val * 1000) : DEFAULT_ABR_KBPS * 1000;
-        opts->quant_quality = 0;
+    case RATE_INPUT_VBR_QUALITY:
+        if (empty) val = DEFAULT_VBR_QUALITY;
+        if (val < (long)FAAC_VBR_QUALITY_MIN || val > (long)FAAC_VBR_QUALITY_MAX)
+            return false;
+        opts->vbr_quality = (uint16_t)val;
+        break;
+    case RATE_INPUT_BITRATE:
+        if (empty) val = DEFAULT_ABR_KBPS;
+        if (val <= 0 || val > (long)(FAAC_MAX_BIT_RATE / 1000))
+            return false;
+        opts->bit_rate_total = (uint32_t)(val * 1000);
+        break;
+    case RATE_INPUT_QUANTQUAL:
+        if (empty) val = DEFAULT_QUANT_QUALITY;
+        if (val < (long)FAAC_QUANT_QUALITY_MIN || val > (long)FAAC_QUANT_QUALITY_MAX)
+            return false;
+        opts->quant_quality = (uint16_t)val;
+        break;
     }
-    else
-    {
-        opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
-        opts->bit_rate = 0;
-    }
+    return true;
 }
 
 static double calc_speed(uint64_t current_sample, unsigned int sample_rate, double time_used)
@@ -493,19 +518,28 @@ int run_encoding_session_ext(const encode_options_t *opts,
     if (opts->pns_level >= 0)
         params.pns_level = opts->pns_level;
 
-    if (opts->quant_quality > 0 && opts->bit_rate == 0)
+    if (opts->vbr_quality != UINT16_MAX)
+    {
+        /* The library maps the scale onto its quantizer range; doing it here
+           would duplicate the quality<->rate map. */
+        params.vbr_quality = (int32_t)opts->vbr_quality;
+        params.quant_quality = 0;
+        params.bit_rate_per_ch = 0;
+    }
+    else if (opts->quant_quality > 0 && opts->bit_rate_total == 0)
     {
         params.quant_quality = opts->quant_quality;
-        params.bit_rate = 0;
+        params.bit_rate_per_ch = 0;
     }
-    else if (opts->bit_rate > 0)
+    else if (opts->bit_rate_total > 0)
     {
-        params.bit_rate = opts->bit_rate / (num_channels ? num_channels : 1);
+        /* -b names a whole-stream rate; the library field is per channel. */
+        params.bit_rate_per_ch = opts->bit_rate_total / (num_channels ? num_channels : 1);
         params.quant_quality = 0;
     }
 
-    if (opts->max_bit_rate > 0)
-        params.max_bit_rate = opts->max_bit_rate;
+    if (opts->max_bit_rate_total > 0)
+        params.max_bit_rate_total = opts->max_bit_rate_total;
 
     if (log_cb)
     {
@@ -522,11 +556,31 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
     params.input_format = FAAC_INPUT_FLOAT;
 
-    if (faac_encoder_open(&params, &hEncoder) != FAAC_OK)
-        FAIL("Couldn't open encoder instance for %s\n", opts->input_filename);
+    {
+        /* Report what the library actually objected to. "Couldn't open encoder
+           instance" alone leaves the user guessing which parameter was the
+           problem -- HE-AAC over more than two channels, say. */
+        faac_status st = faac_encoder_open(&params, &hEncoder);
+        if (st != FAAC_OK)
+            FAIL("Couldn't open encoder instance for %s: %s\n",
+                 opts->input_filename, faac_strerror(st));
+    }
 
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);
+
+    /* -b is clamped to the range the format supports, and that range depends
+       on the sample rate and channel count -- neither of which is known when
+       the option is parsed, so the check cannot live in parse_rate_input().
+       Report the clamp here rather than silently encoding at a rate the caller
+       did not ask for. */
+    if (params.bit_rate_per_ch && info.bit_rate_per_ch
+        && info.bit_rate_per_ch != params.bit_rate_per_ch)
+        log_msgf(log_cb, user_data, 0,
+                 "%u kbps is outside the range %u Hz %u-channel AAC supports; using %u kbps\n",
+                 (unsigned)(params.bit_rate_per_ch * num_channels / 1000),
+                 (unsigned)sample_rate, (unsigned)num_channels,
+                 (unsigned)(info.bit_rate_per_ch * num_channels / 1000));
 
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
@@ -610,7 +664,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .pns_level = (int8_t)info.pns_level,
             .bandwidth = info.bandwidth,
             .quant_quality = (uint16_t)info.quant_quality,
-            .bit_rate = info.bit_rate,
+            .bit_rate_per_ch = info.bit_rate_per_ch,
 
             .remapping_channels = (chanmap != NULL),
             .center_channel = opts->center_channel,
@@ -774,6 +828,28 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .is_mp4 = false
         };
         summary_cb(&summary, user_data);
+    }
+
+    /* An ABR request can go unmet for reasons no up-front check can see: the
+       content saturates the quantizer before the budget is spent, or the rate
+       sits under the per-frame overhead at this frame rate (a 96 kHz stream
+       runs twice as many frames per second as a 48 kHz one, so its floor is
+       correspondingly higher). Both leave the caller with a rate they did not
+       ask for, so measure the delivered average and say so once. Bounds
+       checks stay where they are; this catches what they cannot know. */
+    if (opts->bit_rate_total > 0 && current_input_samples > 0 && sample_rate)
+    {
+        double secs = (double)current_input_samples / (double)sample_rate;
+        double got  = ((double)total_bytes_written * 8.0 / 1000.0) / secs;
+        double want = (double)opts->bit_rate_total / 1000.0;
+
+        if (secs > 0.0 && want > 0.0 && fabs(got - want) > want * 0.15)
+            /* Leading newline: the progress line is still open at this point
+               and owns the cursor. */
+            log_msgf(log_cb, user_data, 0,
+                     "\ndelivered %.0f kbps against the %.0f kbps requested: the "
+                     "encoder cannot %s at this sample rate and channel count\n",
+                     got, want, (got > want) ? "go lower" : "spend more");
     }
 
 cleanup:

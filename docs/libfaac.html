@@ -24,6 +24,7 @@ Contents
   <li><a href="#api-callseq">Calling sequence</a>
   <li><a href="#api-errors">Error handling</a>
   <li><a href="#api-funcref">Function reference</a>
+  <li><a href="#api-rate">Choosing a rate target</a>
   <li><a href="#api-peak">Capping the peak frame size</a>
  </menu>
  <li><a href="#porting">Porting from the legacy faacEnc* API</a>
@@ -119,7 +120,9 @@ const char *faac_strerror(faac_status status);
 The <i>object_type</i> field of <i>faac_params</i> uses MPEG-4 Audio Object Type
 numbers: <i>FAAC_OBJ_LOW</i> (2) is AAC-LC and <i>FAAC_OBJ_HE_AAC_V1</i> (5) is
 HE-AAC v1 (AAC-LC core + SBR). <i>FAAC_OBJ_AUTO</i> (0) lets the library choose
-LC or HE-AAC from the bitrate. <i>FAAC_OBJ_HE_AAC_V2</i> (29) is defined but not
+LC or HE-AAC from the bandwidth the AAC-LC core would code at the requested
+operating point: well short of Nyquist, SBR has real work to do and HE-AAC v1
+wins; close to it, SBR only adds artefacts to a band LC already codes properly. <i>FAAC_OBJ_HE_AAC_V2</i> (29) is defined but not
 implemented; requesting it returns <i>FAAC_ERR_UNSUPPORTED</i>.
 <br><br>
 For an HE-AAC encoder the SBR core runs at half the input rate and codes a
@@ -128,21 +131,53 @@ For an HE-AAC encoder the SBR core runs at half the input rate and codes a
 output rate. Buffer sizing and rate reporting therefore stay correct without
 the caller knowing any SBR internals.
 
+<a name="api-rate">
+<h5>Choosing a rate target</h5>
+Three fields select what the encoder aims at, and exactly one of them applies.
+<i>faac_params_init()</i> sets <i>bit_rate_per_ch</i> to 64000 and leaves the
+other two inactive, so the default is ABR.
+<menu>
+<li><i>bit_rate_per_ch</i> &mdash; average bitrate (ABR). Per channel, as the
+ name says: multiply by <i>num_channels</i> for the whole-stream rate. Clamped
+ at both ends: 8000 bps per channel up to a per-sample-rate maximum. The
+ ceiling is normative (ISO/IEC 14496-3 caps a frame at 6144 bits per channel);
+ the floor is this encoder's own judgement, not a rule of the format. Set it to
+ 0 to select one of the quality targets instead.
+<li><i>vbr_quality</i> &mdash; constant quality (VBR), 0 to 10, higher is
+ better. The quality is held and the bitrate follows the material, so a dense
+ track costs more than a sparse one at the same setting. Steps are spaced evenly
+ in bitrate across the range the encoder can produce, so one step means one
+ quality whatever the sample rate and channel count. <i>faac_params_init()</i>
+ writes <i>FAAC_VBR_QUALITY_UNSET</i>, meaning "use <i>quant_quality</i>
+ instead"; <i>FAAC_VBR_QUALITY_DEF</i> (4) is the value to use when you want the
+ library's idea of a sensible quality.
+<li><i>quant_quality</i> &mdash; the raw quantizer precision, 10 to 5000. Most
+ of that range sits past transparency and its useful part is unevenly spaced, so
+ it is an expert control; prefer <i>vbr_quality</i> unless you specifically want
+ this one. It is what the legacy <i>quantqual</i> field meant, unchanged, so
+ existing callers that set it keep their exact behaviour.
+</menu>
+Set <i>vbr_quality</i> and the library resolves it through its quality-to-rate
+map, which is why the conversion is not exposed as a function: there is one map
+and it lives in the library.
+
 <a name="api-peak">
 <h5>Capping the peak frame size</h5>
 Packet-oriented transports often cannot fragment a frame: one that overruns the
-link MTU is dropped, not split. <i>bit_rate</i> cannot prevent that, being an
-average individual frames are free to exceed &mdash; a transient easily produces
-a frame several times the mean. <i>faac_params.max_bit_rate</i> puts a hard
+link MTU is dropped, not split. <i>bit_rate_per_ch</i> cannot prevent that,
+being an average individual frames are free to exceed &mdash; a transient easily
+produces a frame several times the mean. <i>faac_params.max_bit_rate_total</i>
+puts a hard
 ceiling on any single frame; 0, the default, means none beyond the encoder's
 own ISO/IEC 14496-3 peak ceiling of 6144 bits per channel per frame, enforced
 unconditionally to guarantee decoder compatibility across portable devices.
-Unlike <i>bit_rate</i> it is a whole-stream rate, so it stays independent of
-<i>num_channels</i> and follows directly from the payload one packet can carry:
+As its name says, and unlike <i>bit_rate_per_ch</i>, it is a whole-stream rate,
+so it stays independent of <i>num_channels</i> and follows directly from the
+payload one packet can carry:
 <pre>
-    max_bit_rate = payload_bytes * 8 * sample_rate / 1024
+    max_bit_rate_total = payload_bytes * 8 * sample_rate / 1024
 </pre>
-It must be at least <i>bit_rate</i> &times; <i>num_channels</i> &mdash; a peak
+It must be at least <i>bit_rate_per_ch</i> &times; <i>num_channels</i> &mdash; a peak
 below the average is unsatisfiable &mdash; and at most
 <i>FAAC_MAX_BIT_RATE</i>; <i>faac_encoder_open()</i> returns
 <i>FAAC_ERR_INVALID_ARGUMENT</i> otherwise. More headroom means fewer retries.
@@ -213,9 +248,17 @@ shim &mdash; callers must move to <i>faac_*</i>. The changes are mechanical:
  <li><i>useLfe</i> &rarr; <i>use_lfe</i>; <i>useTns</i> &rarr; <i>use_tns</i>
   (now <i>bool</i>).
  <li><i>shortctl</i> &rarr; <i>short_control</i> (<i>FAAC_SHORTCTL_*</i>).
- <li><i>bitRate</i> &rarr; <i>bit_rate</i>; <i>bandWidth</i> &rarr;
+ <li><i>bitRate</i> &rarr; <i>bit_rate_per_ch</i>; <i>bandWidth</i> &rarr;
   <i>bandwidth</i>; <i>quantqual</i> &rarr; <i>quant_quality</i>;
-  <i>pnslevel</i> &rarr; <i>pns_level</i> (same units and semantics).
+  <i>pnslevel</i> &rarr; <i>pns_level</i> (same units and semantics). The
+  bitrate fields carry their unit in the name because they do not share one:
+  <i>bit_rate_per_ch</i> is per channel and <i>max_bit_rate_total</i> is a
+  whole-stream rate. They were <i>bit_rate</i> and <i>max_bit_rate</i> in an
+  earlier release of this API, which said so only in a comment and cost several
+  factor-of-<i>num_channels</i> bugs. The layout is unchanged, so this is a
+  source change, not an ABI break.
+ <li><i>vbr_quality</i> is new and has no legacy counterpart; see
+  <a href="#api-rate">Choosing a rate target</a>.
  <li><i>outputFormat</i> &rarr; <i>output_format</i> (<i>FAAC_STREAM_*</i>);
   <i>inputFormat</i> &rarr; <i>input_format</i> (<i>FAAC_INPUT_*</i>).
  <li><i>channel_map[64]</i> &rarr; <i>channel_map</i> plus an explicit

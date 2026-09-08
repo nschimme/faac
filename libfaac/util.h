@@ -56,8 +56,8 @@ static inline int clamp_int(int x, int lo, int hi)
 #define SetMemory(block, value, size) memset(block, value, size)
 
 int GetSRIndex(unsigned int sampleRate);
-unsigned int MaxBitrate(unsigned long sampleRate);
-unsigned int MinBitrate(void);
+unsigned int MaxBitratePerCh(unsigned long sampleRate);
+unsigned int MinBitratePerCh(void);
 int CountLeadingZeros(unsigned int x);
 
 #ifdef __cplusplus
