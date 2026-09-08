@@ -522,8 +522,12 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.output_format = opts->container_mp4 ? FAAC_STREAM_RAW : opts->stream_format;
     params.input_format = FAAC_INPUT_FLOAT;
 
-    if (faac_encoder_open(&params, &hEncoder) != FAAC_OK)
-        FAIL("Couldn't open encoder instance for %s\n", opts->input_filename);
+    {
+        faac_status st = faac_encoder_open(&params, &hEncoder);
+        if (st != FAAC_OK)
+            FAIL("Couldn't open encoder instance for %s: %s\n",
+                 opts->input_filename, faac_strerror(st));
+    }
 
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);

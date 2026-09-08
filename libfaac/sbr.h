@@ -49,8 +49,9 @@
    window next, whereas envelopes must land on the coded frame itself. */
 #define SBR_FRAME_FIFO (LOOKAHEAD_DEPTH + 2)
 
-/* SBR codes exactly one element, an SCE or a CPE, so the payload never spans
-   more than two channels regardless of the core's channel count. */
+/* What THIS encoder's SBR covers, not a format limit: MPEG-4 carries
+   sbr_extension_data() in a fill element after each SCE and CPE, so HE-AAC v1
+   5.1 is legal. Lifting this means one payload per element, none for the LFE. */
 #define SBR_MAX_CODED_CHANNELS 2
 
 #ifdef __cplusplus

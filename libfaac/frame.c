@@ -226,11 +226,19 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        /* One SBR payload per frame, bound to the element it follows, so it
+         * serves a single SCE or CPE. Past two channels the rest get no SBR,
+         * and with an LFE present it lands on ID_LFE, which decoders reject. */
+        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
+
+        hEncoder->config.aacObjectType =
+            (rate_ok && channels_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
