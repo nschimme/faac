@@ -32,7 +32,10 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+/* HE only wins harder as the rate falls: the further below Nyquist the LC core
+ * lands, the more spectrum SBR is rescuing. 8000 is HE-AAC's design floor and
+ * the lowest rate measured. */
+#define HE_MIN_BITRATE_PER_CH 8000
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
@@ -1072,7 +1075,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Aim at the budget rather than stepping down by a fixed factor: rate
          * control can park quality anywhere up to MAXQUAL (5000), and a fixed
-         * halving needs ~9 passes to cross that to MINQUAL (10), more than any
+         * halving needs far more passes to cross that to MINQUAL than any
          * sane retry budget. Frame bits grow sub-linearly with quality, so
          * scaling by the bit ratio undershoots the budget and converges in a
          * pass or two. */
