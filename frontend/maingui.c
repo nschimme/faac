@@ -327,7 +327,16 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
 
     {
         LRESULT mode = GetComboData(hWnd, IDC_RATEMODE, RATEMODE_VBR);
-        parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts);
+        if (!parse_quality_or_bitrate(szTemp, mode == RATEMODE_ABR, &opts))
+        {
+            /* The edit box is shared between the two rate modes, so a bare
+               "out of range" wouldn't say which range was missed. -b has no
+               failure here (its range isn't known until the input is open),
+               so this can only be the quantizer quality. */
+            MessageBox(hWnd, "Quantizer quality must be 1-5000.",
+                       "FAAC", MB_OK | MB_ICONWARNING);
+            return;
+        }
     }
 
     GetDlgItemText(hWnd, IDC_PNS, szTemp, sizeof(szTemp));

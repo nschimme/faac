@@ -55,6 +55,11 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
             && (int)FAAC_INPUT_24BIT == INPUT_24BIT && (int)FAAC_INPUT_32BIT == INPUT_32BIT
             && (int)FAAC_INPUT_FLOAT == INPUT_FLOAT, "input format drift");
 
+/* The public quant_quality bounds are a frontend-facing copy of the
+ * quantizer's own; keep them from drifting apart. */
+_Static_assert(FAAC_QUANT_QUALITY_MIN == MINQUAL && FAAC_QUANT_QUALITY_MAX == MAXQUAL,
+               "public quantizer bounds must match the quantizer's own");
+
 /* Baseline layout as first shipped. Frozen by the append-only rule: new fields
  * go after max_bit_rate, so this offset never moves. Not sizeof(), which
  * grows with every appended field and would reject older callers' binaries.

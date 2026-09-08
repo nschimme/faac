@@ -99,7 +99,7 @@ const char *usage =
 static help_t help_qual[] = {
     {"-q <quality>\tSet encoding quality.\n",
     "\t\tSet default variable bitrate (VBR) quantizer quality in percent.\n"
-    "\t\tmax. 5000, min. 10.\n"
+    "\t\tmax. 5000, min. 1; a value outside that is rejected.\n"
     "\t\tdefault: 100, averages at approx. 120 kbps VBR for a normal\n"
     "\t\tstereo input file with 16 bit and 44.1 kHz sample rate\n"
     },
@@ -619,7 +619,8 @@ int main(int argc, char *argv[])
             parse_quality_or_bitrate(optarg, true, &opts);
             break;
         case 'q':
-            parse_quality_or_bitrate(optarg, false, &opts);
+            if (!parse_quality_or_bitrate(optarg, false, &opts))
+                dieMessage = "Quantizer quality must be 1-5000.\n";
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)
