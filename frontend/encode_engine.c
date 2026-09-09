@@ -21,6 +21,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <math.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -119,7 +120,7 @@ void free_encode_options(encode_options_t *opts)
     opts->custom_tag_cap = 0;
 }
 
-void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
+bool parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
                                encode_options_t *opts)
 {
     int val = text ? atoi(text) : 0;
@@ -128,12 +129,18 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
     {
         opts->bit_rate = (val > 0) ? (uint32_t)(val * 1000) : DEFAULT_ABR_KBPS * 1000;
         opts->quant_quality = 0;
+        return true;
     }
-    else
-    {
-        opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
-        opts->bit_rate = 0;
-    }
+
+    /* The library clamps a raw quantizer quality outside its own range
+       rather than rejecting it, which means a typo gets silently encoded
+       at a setting the caller didn't choose. Reject it here instead. */
+    if (val > 0 && (val < FAAC_QUANT_QUALITY_MIN || val > FAAC_QUANT_QUALITY_MAX))
+        return false;
+
+    opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
+    opts->bit_rate = 0;
+    return true;
 }
 
 static double calc_speed(uint64_t current_sample, unsigned int sample_rate, double time_used)
@@ -532,6 +539,16 @@ int run_encoding_session_ext(const encode_options_t *opts,
     faac_encoder_info info = { .struct_size = sizeof(info) };
     faac_encoder_get_info(hEncoder, &info);
 
+    /* The clamp itself happens inside the library, at open(); the range it
+       clamped to depends on sample rate and channel count, neither known
+       until now, so this is the first point that can report it. */
+    if (params.bit_rate && info.bit_rate && info.bit_rate != params.bit_rate)
+        log_msgf(log_cb, user_data, 0,
+                 "%u kbps is outside the range %u Hz %u-channel AAC supports; using %u kbps\n",
+                 (unsigned)(params.bit_rate * num_channels / 1000),
+                 (unsigned)sample_rate, (unsigned)num_channels,
+                 (unsigned)(info.bit_rate * num_channels / 1000));
+
     unsigned long samples_per_frame = (unsigned long)info.frame_samples * num_channels;
     unsigned long max_output_bytes = info.max_output_bytes;
     uint16_t frame_size = (uint16_t)(samples_per_frame / num_channels);
@@ -778,6 +795,26 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .is_mp4 = false
         };
         summary_cb(&summary, user_data);
+    }
+
+    /* The range check above catches a request the format cannot carry; it
+       can't catch content saturating the quantizer before the budget is
+       spent, or the rate sitting under this frame rate's per-frame overhead.
+       Measuring the delivered average catches both, and anything else, at
+       once. Silent for VBR (opts->bit_rate is 0) and for any ABR request
+       actually met. */
+    if (opts->bit_rate > 0 && current_input_samples > 0 && sample_rate)
+    {
+        double secs = (double)current_input_samples / (double)sample_rate;
+        double got  = ((double)total_bytes_written * 8.0 / 1000.0) / secs;
+        double want = (double)opts->bit_rate / 1000.0;
+
+        if (secs > 0.0 && want > 0.0 && fabs(got - want) > want * 0.15)
+            /* Leading newline: the progress line is still open here. */
+            log_msgf(log_cb, user_data, 0,
+                     "\ndelivered %.0f kbps against the %.0f kbps requested: the "
+                     "encoder cannot %s at this sample rate and channel count\n",
+                     got, want, (got > want) ? "go lower" : "spend more");
     }
 
 cleanup:

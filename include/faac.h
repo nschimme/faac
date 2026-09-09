@@ -201,6 +201,12 @@ typedef struct faac_params {
  * low enough that converting it to a per-frame bit budget cannot overflow. */
 #define FAAC_MAX_BIT_RATE ((uint32_t)100000000)
 
+/* Bounds on faac_params.quant_quality. A value outside these is clamped, not
+ * rejected, so a frontend that wants to tell the user instead needs to know
+ * them. */
+#define FAAC_QUANT_QUALITY_MIN 1
+#define FAAC_QUANT_QUALITY_MAX 5000
+
 /*
  * Resolved encoder properties, filled by faac_encoder_get_info(). All values are
  * final: the object type is resolved (FAAC_OBJ_AUTO becomes a concrete type),

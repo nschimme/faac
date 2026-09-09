@@ -115,8 +115,12 @@ void init_encode_options(encode_options_t *opts);
    falling back to DEFAULT_QUANT_QUALITY/DEFAULT_ABR_KBPS on invalid/empty
    input rather than silently producing 0. is_bitrate_mode selects which
    field is being set and whether the value is in kbps (bitrate) or a raw
-   quality percentage. */
-void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
+   quantizer quality.
+   Returns false if a nonempty -q value falls outside
+   FAAC_QUANT_QUALITY_MIN/MAX -- opts is left unchanged in that case. -b
+   has no such check here: its valid range depends on the sample rate and
+   channel count, not known until the input is open. */
+bool parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
                                encode_options_t *opts);
 
 #define ENCODE_SUCCESS   0
