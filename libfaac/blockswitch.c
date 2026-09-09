@@ -21,6 +21,7 @@
 #include "coder.h"
 #include "util.h"
 #include "faac_internal.h"
+#include "stats.h"
 #include "frame.h"
 
 typedef float psyfloat;
@@ -47,7 +48,7 @@ psydata_t;
  * blocks on stationary music; what's left tracks the band where pre-echo is
  * audible. A relative energy jump between sub-blocks past this threshold is a
  * transient. */
-#define PSY_TD_THRESH (0.5f)
+#define PSY_TD_THRESH (0.40f)
 
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
@@ -55,11 +56,13 @@ static void PsyCheckShort(PsyInfo * psyInfo)
   psydata_t *psydata = (psydata_t *)psyInfo->data;
   int win;
   float lasteng = (float)psydata->eng[ENG_WIN_CUR - PREVS]; /* start at PREVS before current */
-
-  psyInfo->block_type = ONLY_LONG_WINDOW;
+  float peak = 0.0f;
 
   /* Search for transients across the current frame and its immediate temporal context.
-     The search range is [curr-2, curr+9]. */
+     The search range is [curr-2, curr+9]. Scans the whole range rather than
+     stopping at the first crossing so BlockSwitch's TNS promotion check
+     below can compare against the true peak, not just whichever sub-block
+     happened to trip the threshold first. */
   for (win = 1; win < PREVS + SUBBLOCKS_PER_FRAME + NEXTS; win++)
   {
       float eng = (float)psydata->eng[ENG_WIN_CUR - PREVS + win];
@@ -67,14 +70,19 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float toteng = (eng < lasteng) ? eng : lasteng;
       float volchg = fabsf(eng - lasteng);
 
-      /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
+      /* Relative energy jump indicates a transient; volchg floor matches the
+       * original threshold check, screening out near-silent noise that would
+       * otherwise read as a huge ratio. */
+      if (toteng > 0.0f && volchg > 1e-6f)
       {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
+          float strength = volchg / toteng;
+          if (strength > peak) peak = strength;
       }
       lasteng = eng;
   }
+
+  psyInfo->tdStrength = peak;
+  psyInfo->block_type = (peak > PSY_TD_THRESH) ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
 }
 
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
@@ -237,6 +245,33 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
   }
 }
 
+/* Bitrate-tapered second threshold for TNS promotion: how much energy-jump
+ * strength a borderline transient can still carry and be trusted to long
+ * block + TNS instead of a strict short block. Wider at low bitrates, where
+ * short-block window overhead is expensive relative to the budget; tighter
+ * at high bitrates, where there are bits enough to just spend on short
+ * blocks. VBR (bitRatePerCh==0) uses the high-bitrate end -- quality mode
+ * has bits enough that the low-bitrate case for wider promotion doesn't apply. */
+#define PSY_TD_HARD_LOW   2.0f  /* at or below PSY_TD_HARD_LOW_RATE kbps/ch */
+#define PSY_TD_HARD_HIGH  0.6f  /* at or above PSY_TD_HARD_HIGH_RATE kbps/ch, and VBR */
+#define PSY_TD_HARD_LOW_RATE   24000
+#define PSY_TD_HARD_HIGH_RATE  64000
+/* Below this, a long window already spans enough time that TNS's temporal
+ * smear cost outweighs what promotion would save in short-block overhead. */
+#define PSY_TD_HARD_MIN_SR     32000
+
+static float PsyTdHard(unsigned long bitRatePerCh)
+{
+  if (bitRatePerCh == 0 || bitRatePerCh >= PSY_TD_HARD_HIGH_RATE)
+      return PSY_TD_HARD_HIGH;
+  if (bitRatePerCh <= PSY_TD_HARD_LOW_RATE)
+      return PSY_TD_HARD_LOW;
+
+  return PSY_TD_HARD_LOW + (PSY_TD_HARD_HIGH - PSY_TD_HARD_LOW) *
+         (float)(bitRatePerCh - PSY_TD_HARD_LOW_RATE) /
+         (float)(PSY_TD_HARD_HIGH_RATE - PSY_TD_HARD_LOW_RATE);
+}
+
 void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChannels)
 {
   unsigned int channel;
@@ -259,6 +294,34 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
               psyInfo[channel].block_type = ONLY_SHORT_WINDOW;
           else
               psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+      }
+  }
+  /* PsyCheckShort's decision is TNS-blind; a borderline transient (strength
+   * at or below the bitrate-tapered td_hard) is trusted to long block + TNS
+   * instead of paying short-block overhead. Skipped under the HE-AAC path
+   * above -- SBR's shared detector already made that call, and tdStrength
+   * wasn't computed against it. Skipped below PSY_TD_HARD_MIN_SR: at low
+   * sample rates a long window already spans a long enough time that
+   * TNS's temporal smear cost outweighs the short-block savings. */
+  else if (hEncoder->config.useTns && hEncoder->sampleRate >= PSY_TD_HARD_MIN_SR)
+  {
+      float td_hard = PsyTdHard(hEncoder->config.bitRate);
+
+      for (channel = 0; channel < numChannels; channel++)
+      {
+          if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+          {
+#ifdef FAAC_STATS
+              g_faacStats.tdShortCandidates++;
+#endif
+              if (psyInfo[channel].tdStrength <= td_hard)
+              {
+                  psyInfo[channel].block_type = ONLY_LONG_WINDOW;
+#ifdef FAAC_STATS
+                  g_faacStats.tdPromotedToLong++;
+#endif
+              }
+          }
       }
   }
 
