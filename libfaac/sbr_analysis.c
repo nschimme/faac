@@ -13,6 +13,7 @@
  * Lesser General Public License for more details.
  */
 
+#include "coder.h"
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "sbr_internal.h"
@@ -73,12 +74,28 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
 
-        /* Evaluate relative energy jumps to inform block switching. */
+        /* Evaluate relative energy jumps to inform block switching.
+         *
+         * PSY_TD_THRESH (0.5) is tuned to PsyCheckShort's sub-blocks: 2*
+         * BLOCK_LEN_SHORT samples at a BLOCK_LEN_SHORT hop, first-difference
+         * high-pass -- the same statistic computed here. A 64-sample QMF slot
+         * carries far more relative energy variance than a 256-sample
+         * sub-block, so testing the same bar per slot, with 31 chances to trip
+         * it, declared nearly every frame transient. Pool slots to the grid the
+         * threshold was tuned on before applying it. */
+        enum {
+            SLOTS_PER_SUBBLOCK = (2 * BLOCK_LEN_SHORT) / SBR_QMF_BANDS_64,
+            SUBBLOCK_HOP_SLOTS = BLOCK_LEN_SHORT / SBR_QMF_BANDS_64
+        };
         float last_hp_eng = 0.0f;
         int have_last = 0;
-        for (int slot = 0; slot < num_slots; slot++) {
-            if (slot >= 128) break;
-            float hp_eng = slot_hp_eng[slot];
+        int s0;
+
+        for (s0 = 0; s0 + SLOTS_PER_SUBBLOCK <= num_slots && s0 + SLOTS_PER_SUBBLOCK <= 128;
+             s0 += SUBBLOCK_HOP_SLOTS) {
+            float hp_eng = 0.0f;
+            for (int k = 0; k < SLOTS_PER_SUBBLOCK; k++)
+                hp_eng += slot_hp_eng[s0 + k];
             if (have_last) {
                 float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
                 float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
