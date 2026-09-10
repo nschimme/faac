@@ -20,12 +20,7 @@
 #include <string.h>
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
- * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher; SbrQmfAnalysis is inlined
- * here (not split out) to stay under GCC's LTO auto-inline threshold. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
+ * and subband energy accumulation. */
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
@@ -103,15 +98,27 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     int split = num_slots;   /* default: single envelope spans the whole frame */
     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
-        int rel = clamp_int((Ts - 2) / 2, 0, 3);
-        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
-        sa->numEnvelopes = 2;
-        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = innerSbr;
-        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
-        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+        if (Ts < 8) {
+            int rel = clamp_int((Ts - 2) / 2, 0, 3);
+            int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
+            sa->numEnvelopes = 2;
+            sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+            sa->tEnv[0] = 0;
+            sa->tEnv[1] = innerSbr;
+            sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+            sa->bsPointer = 0;
+            split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+        } else {
+            int rel = clamp_int((SBR_NUM_TIME_SLOTS - Ts - 2) / 2, 0, 3);
+            int innerSbr = SBR_NUM_TIME_SLOTS - (2 * rel + 2); /* {8,10,12,14} */
+            sa->numEnvelopes = 2;
+            sa->frameClass = SBR_FRAME_CLASS_FIXVAR;
+            sa->tEnv[0] = 0;
+            sa->tEnv[1] = innerSbr;
+            sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+            sa->bsPointer = 0;
+            split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
+        }
     } else {
         sa->numEnvelopes = 1;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;

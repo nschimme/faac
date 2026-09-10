@@ -16,6 +16,7 @@
 #ifndef SBR_H
 #define SBR_H
 
+
 #include "coder.h"
 #include "fft.h"
 #include "sbr_analysis.h"
