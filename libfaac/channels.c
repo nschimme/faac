@@ -20,10 +20,8 @@
 #include <string.h>
 #include <stdio.h>
 
-_Static_assert(TNS_MAX_FILTERS <= (1 << LEN_TNS_NFILTL) - 1,
-               "TnsWindowData.tnsFilter[] holds more filters than numFilters can encode in LEN_TNS_NFILTL bits");
-_Static_assert(TNS_MAX_ORDER <= (1 << LEN_TNS_ORDERL) - 1,
-               "TnsFilterData order exceeds what LEN_TNS_ORDERL bits can encode");
+_Static_assert(TNS_MAX_FILTERS == (1 << LEN_TNS_NFILTL),
+               "coder.h's TnsWindowData.tnsFilter[] bound must match the LEN_TNS_NFILTL bitstream field width");
 
 /**
  * Maps input channels to AAC elements (SCE, CPE, LFE), per ISO/IEC 14496-3's

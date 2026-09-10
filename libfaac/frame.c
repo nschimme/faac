@@ -371,9 +371,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
-              &hEncoder->aacquantCfg,
-              hEncoder->sfbOffsetShort,
-              hEncoder->sfbOffsetLong);
+              &hEncoder->aacquantCfg);
 
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
@@ -441,7 +439,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.jointmode = JOINT_MIXED;
     hEncoder->config.pnslevel = 4;
     hEncoder->config.useLfe = 1;
-    hEncoder->config.useTns = 1;
+    hEncoder->config.useTns = 0;
     hEncoder->config.bitRate = 64000;
     hEncoder->config.bandWidth = CalcBandwidth(hEncoder->config.bitRate, sampleRate);
     hEncoder->config.quantqual = 0;
@@ -609,6 +607,12 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Short Grouping      : Groups  = %5.2f avg/ch | Split = %5.1f%% of %u short ch\n",
                     grp_avg, split, g_faacStats.shortChannels);
         }
+        if (g_faacStats.tnsRangeCandidates > 0)
+        {
+            double skip_rate = 100.0 * g_faacStats.tnsRangeSfmSkipped / g_faacStats.tnsRangeCandidates;
+            fprintf(stderr, " TNS SFM Skip        : %5.1f%% of ranges skipped (%u/%u)\n",
+                    skip_rate, g_faacStats.tnsRangeSfmSkipped, g_faacStats.tnsRangeCandidates);
+        }
 
         double peak_retry_pct = 100.0 * g_faacStats.peakRetryFrames / g_faacStats.totalFrames;
 
@@ -711,7 +715,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
     unsigned int channel;
-    int frameBytes;
+    int sb, frameBytes;
+    unsigned int offset;
     BitStream *bitStream;
 
     CoderInfo *coderInfo = hEncoder->coderInfo;
@@ -872,13 +877,25 @@ int faacEncEncode(faacEncHandle hpEncoder,
     for (channel = 0; channel < numChannels; channel++) {
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
-            coderInfo[channel].sfb_offset = hEncoder->sfbOffsetShort;
+
+            offset = 0;
+            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+                coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_short[sb];
+            }
+            coderInfo[channel].sfb_offset[sb] = offset;
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
-            coderInfo[channel].sfb_offset = hEncoder->sfbOffsetLong;
 
             coderInfo[channel].groups.n = 1;
             coderInfo[channel].groups.len[0] = 1;
+
+            offset = 0;
+            for (sb = 0; sb < coderInfo[channel].sfbn; sb++) {
+                coderInfo[channel].sfb_offset[sb] = offset;
+                offset += hEncoder->srInfo->cb_width_long[sb];
+            }
+            coderInfo[channel].sfb_offset[sb] = offset;
         }
     }
 
@@ -947,7 +964,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 continue;
             }
 
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+            TnsEncode(&coderInfo[channel],
+                      hEncoder->freqBuff[channel],
+                      hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
             coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }

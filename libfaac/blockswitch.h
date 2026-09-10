@@ -48,7 +48,7 @@ typedef struct {
 	float sampleRate;
 
 	/* shared work buffers */
-	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, mdct) */
+	float *sharedWorkBuffLong;  /* Used for 2048-sample windows (filtbank, psy, tns, mdct) */
 } GlobalPsyInfo;
 
 void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,

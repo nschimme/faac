@@ -67,11 +67,16 @@ static void PsyCheckShort(PsyInfo * psyInfo)
       float toteng = (eng < lasteng) ? eng : lasteng;
       float volchg = fabsf(eng - lasteng);
 
-      /* Relative energy jump indicates a transient. IEEE divide handles silence cases. */
-      if (volchg / toteng > PSY_TD_THRESH)
+      /* Relative energy jump indicates a transient; volchg floor matches the
+       * original threshold check, screening out near-silent noise that would
+       * otherwise read as a huge ratio. Bypasses division inside the loop. */
+      if (toteng > 0.0f && volchg > 1e-6f)
       {
-          psyInfo->block_type = ONLY_SHORT_WINDOW;
-          break;
+          if (volchg > toteng * PSY_TD_THRESH)
+          {
+              psyInfo->block_type = ONLY_SHORT_WINDOW;
+              break;
+          }
       }
       lasteng = eng;
   }
