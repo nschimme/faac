@@ -607,6 +607,12 @@ int faacEncClose(faacEncHandle hpEncoder)
             fprintf(stderr, " Short Grouping      : Groups  = %5.2f avg/ch | Split = %5.1f%% of %u short ch\n",
                     grp_avg, split, g_faacStats.shortChannels);
         }
+        if (g_faacStats.tnsRangeCandidates > 0)
+        {
+            double skip_rate = 100.0 * g_faacStats.tnsRangeSfmSkipped / g_faacStats.tnsRangeCandidates;
+            fprintf(stderr, " TNS SFM Skip        : %5.1f%% of ranges skipped (%u/%u)\n",
+                    skip_rate, g_faacStats.tnsRangeSfmSkipped, g_faacStats.tnsRangeCandidates);
+        }
 
         double peak_retry_pct = 100.0 * g_faacStats.peakRetryFrames / g_faacStats.totalFrames;
 
@@ -937,7 +943,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns) {
+        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
 
 #ifdef FAAC_STATS
@@ -948,9 +954,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
                 g_faacStats.attackCount++;
             }
-            if (coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                g_faacStats.longBlocks++;
-            }
+            g_faacStats.longBlocks++;
 #endif
 
             /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
@@ -959,13 +963,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
                 continue;
             }
-            TnsEncode(&(coderInfo[channel].tnsInfo),
-                      coderInfo[channel].sfbn,
-                      coderInfo[channel].block_type,
-                      coderInfo[channel].sfb_offset,
-                      hEncoder->freqBuff[channel]);
+
+            TnsEncode(&coderInfo[channel],
+                      hEncoder->freqBuff[channel],
+                      hEncoder->gpsyInfo.sharedWorkBuffLong);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE */
+            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
         }
     }
 

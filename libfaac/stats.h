@@ -38,6 +38,12 @@ typedef struct faacEncStats {
     unsigned int longBlocks;
     unsigned int longBlocksTNS;
 
+    /* tns_normalize_range's early-outs, to check whether TNS_PNS_SFM_SKIP
+     * actually screens out a meaningful fraction of candidate ranges. */
+    unsigned int tnsRangeCandidates;
+    unsigned int tnsRangeSilent;
+    unsigned int tnsRangeSfmSkipped;
+
     unsigned int sbrFrames;
     unsigned int sbrTransientFrames;
     unsigned long sbrInvfSum;
