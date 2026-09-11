@@ -32,7 +32,10 @@
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
-#define HE_MIN_BITRATE_PER_CH 12000  /* below floor HE wins by an ever-widening margin */
+/* HE only wins harder as the rate falls: the further below Nyquist the LC core
+ * lands, the more spectrum SBR is rescuing. 8000 is HE-AAC's design floor and
+ * the lowest rate measured. */
+#define HE_MIN_BITRATE_PER_CH 8000
 #define HE_MAX_BITRATE_PER_CH 48000  /* above ceiling LC wins: SBR costs up to 1 MOS on transients */
 /* quantqual == totalBitrate/1280 (see faacEncApplyConfig); derived to stay in sync with HE_MAX_BITRATE_PER_CH. */
 #define HE_VBR_QUANTQUAL_MAX  (2 * HE_MAX_BITRATE_PER_CH / 1280)
@@ -206,14 +209,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     /* Check for correct bitrate */
     if (!hEncoder->sampleRate || !hEncoder->numChannels)
         return 0;
-    /* Clamp against the full (pre-downsample) rate: for an already-resolved
-     * HE-AAC handle sampleRate is the halved core rate. */
-    {
-        unsigned long fullRate = SbrContextGetFullRate(hEncoder->sbrContext, hEncoder->sampleRate);
-        if (config->bitRate > (MaxBitrate(fullRate) / hEncoder->numChannels))
-            config->bitRate = MaxBitrate(fullRate) / hEncoder->numChannels;
-    }
-
     /* Resolve AUTO to LC or HE-AAC. HE-AAC wins for low rates, but only
      * at Fs >= 32 kHz so the Fs/2 core stays >= 16 kHz; below that the
      * narrow-band core + SBR reconstruction collapses. */
@@ -234,11 +229,19 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        hEncoder->config.aacObjectType = (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+        /* One SBR payload per frame, bound to the element it follows, so it
+         * serves a single SCE or CPE. Past two channels the rest get no SBR,
+         * and with an LFE present it lands on ID_LFE, which decoders reject. */
+        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
+
+        hEncoder->config.aacObjectType =
+            (rate_ok && channels_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
-    if (hEncoder->config.aacObjectType == HE_V1 && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
+    if (hEncoder->config.aacObjectType == HE_V1
+        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
+            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
@@ -255,6 +258,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
+
+    /* MaxBitrate() is already per channel, and its frame is FRAME_LEN samples
+     * at the core rate -- so the clamp has to follow the HE-AAC resolution
+     * above, which halves that rate. */
+    if (config->bitRate > MaxBitrate(hEncoder->sampleRate))
+        config->bitRate = MaxBitrate(hEncoder->sampleRate);
 
     /* Re-init TNS for new profile */
     TnsInit(hEncoder);
@@ -1066,7 +1075,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Aim at the budget rather than stepping down by a fixed factor: rate
          * control can park quality anywhere up to MAXQUAL (5000), and a fixed
-         * halving needs ~9 passes to cross that to MINQUAL (10), more than any
+         * halving needs far more passes to cross that to MINQUAL than any
          * sane retry budget. Frame bits grow sub-linearly with quality, so
          * scaling by the bit ratio undershoots the budget and converges in a
          * pass or two. */
