@@ -131,6 +131,20 @@ enum faac_stream_format {
     FAAC_STREAM_MAX  = 0x7fffffff
 };
 
+/* How a rate is held. ABR: an average; frames bounded only by the 6144 bits/ch
+ * ceiling, so transients may take several times the mean and silence stays
+ * small. CBR: a bit reservoir bounds every frame to the decoder buffer, stuffs
+ * frames that would overflow it, and declares the fill (ADTS buffer_fullness;
+ * MP4 bufferSizeDB with maxBitrate == avgBitrate). CBR is for constant-rate
+ * channels and matched-bitrate comparisons; elsewhere its stuffing is waste. */
+enum faac_rate_control {
+    FAAC_RC_AUTO = 0,                /* bit_rate set: ABR; otherwise VBR        */
+    FAAC_RC_VBR,                     /* quant_quality drives; bit_rate must be 0 */
+    FAAC_RC_ABR,                     /* average bit_rate; requires bit_rate      */
+    FAAC_RC_CBR,                     /* bit reservoir, stuffed, declared; requires bit_rate */
+    FAAC_RC_MAX  = 0x7fffffff
+};
+
 /* Interpretation of the interleaved PCM handed to faac_encoder_encode(). */
 enum faac_input_format {
     FAAC_INPUT_NULL  = 0,            /* invalid / unset                          */
@@ -195,6 +209,8 @@ typedef struct faac_params {
      * above ~64 kbit/s; below that the floor starts to show (~48 kbit/s
      * overshoots on a few percent of frames). */
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
+
+    enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
@@ -228,6 +244,8 @@ typedef struct faac_encoder_info {
      * decoder must discard. Use verbatim for gapless tagging (e.g. iTunSMPB) --
      * not the same as frame_samples for HE-AAC. */
     uint32_t                encoder_delay;
+
+    enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
 } faac_encoder_info;
 
 /*
