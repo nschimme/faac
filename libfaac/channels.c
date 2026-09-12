@@ -278,14 +278,17 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
 {
     int bits = 0;
     if (hEncoder->config.outputFormat == 1) bits += WriteADTSHeader(hEncoder, bs, write);
-    for (int i = 0; i < nElems; i++) bits += WriteElement(bs, &elems[i], coder, write);
+    for (int i = 0; i < nElems; i++) {
+        bits += WriteElement(bs, &elems[i], coder, write);
+        /* ISO/IEC 14496-3: SBR extension payload (EXT_SBR_DATA) follows each non-LFE audio element */
+        if (elems[i].type != ID_LFE) {
+            bits += SbrContextGetElementBits(hEncoder->sbrContext, write ? bs : NULL,
+                                             &elems[i], (int)hEncoder->config.aacObjectType, write);
+        }
+    }
     int f = (bits < (8 - LEN_SE_ID)) ? (8 - LEN_SE_ID - bits) : 0;
     f += 6;
     bits += (f - WriteAACFillBits(bs, f, write));
-
-    /* HE-AAC: SBR payload rides in a fill element (EXT_SBR_DATA) */
-    bits += SbrContextGetBits(hEncoder->sbrContext, write ? bs : NULL,
-                               (int)hEncoder->numChannels, (int)hEncoder->config.aacObjectType, write);
 
     if (write) PutBit(bs, ID_END, LEN_SE_ID);
     bits += LEN_SE_ID;

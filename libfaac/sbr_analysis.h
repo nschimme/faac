@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #ifndef SBR_MAX_CODED_CHANNELS
-#define SBR_MAX_CODED_CHANNELS 2
+#define SBR_MAX_CODED_CHANNELS MAX_CHANNELS
 #endif
 
 struct SBRInfo;
