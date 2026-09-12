@@ -203,7 +203,7 @@ int SbrWriteElement(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
     return totalBits + payloadBits + padBits;
 }
 
-int SbrContextGetElementBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType, int writeFlag)
+int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType, int writeFlag)
 {
     if (aacObjectType == HE_V1 && sCtx && elem && elem->type != ID_LFE) {
         if (sCtx->sbrInfo) {
@@ -213,17 +213,4 @@ int SbrContextGetElementBits(SBRContext *sCtx, BitStream *bs, const AACElement *
         }
     }
     return 0;
-}
-
-int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elems, int numElements, int aacObjectType, int writeFlag)
-{
-    int totalBits = 0;
-    if (aacObjectType == HE_V1 && sCtx && elems) {
-        for (int i = 0; i < numElements; i++) {
-            if (elems[i].type != ID_LFE) {
-                totalBits += SbrContextGetElementBits(sCtx, bs, &elems[i], aacObjectType, writeFlag);
-            }
-        }
-    }
-    return totalBits;
 }

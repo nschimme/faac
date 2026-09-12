@@ -43,7 +43,7 @@ typedef struct SbrFrameData {
         int envData  [SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
         int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
         int invfMode;
-    } ch[SBR_MAX_CODED_CHANNELS];
+    } ch[MAX_CHANNELS];
 } SbrFrameData;
 
 struct SBRInfo {
@@ -80,7 +80,7 @@ struct SBRInfo {
     int sendHeaderThisFrame;
 
     /* --- per-channel state --- */
-    SBRChannel ch[SBR_MAX_CODED_CHANNELS]; /* one SCE or CPE, never all core channels */
+    SBRChannel ch[MAX_CHANNELS];
 
     /* QMF analysis twiddle factors. */
     float twidCos[SBR_QMF_BANDS_64];

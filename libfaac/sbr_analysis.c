@@ -142,8 +142,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    int nch_coded = (nch < SBR_MAX_CODED_CHANNELS) ? nch : SBR_MAX_CODED_CHANNELS;
-    for (int ch = 0; ch < nch_coded; ch++) {
+    for (int ch = 0; ch < nch; ch++) {
         memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
         if (sbr) {

@@ -195,7 +195,7 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
     fd->freqRes      = 1;
-    for (int ch = 0; ch < SBR_MAX_CODED_CHANNELS; ch++) {
+    for (int ch = 0; ch < MAX_CHANNELS; ch++) {
         fd->ch[ch].invfMode = 3;
         for (int ne = 0; ne < SBR_MAX_NOISE_ENVELOPES; ne++)
             fd->ch[ch].noiseData[ne][0] = SBR_NOISE_LEVEL_DEFAULT;
@@ -505,17 +505,15 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch,
 
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
-    int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
-
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
     sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
 
-    for (int ch = 0; ch < nch; ch++)
+    for (int ch = 0; ch < numChannels; ch++)
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
-    sbr_quantize_envelopes(sbr, nch, sa, fd);
+    sbr_quantize_envelopes(sbr, numChannels, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
