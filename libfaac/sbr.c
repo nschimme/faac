@@ -525,7 +525,6 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, i
         g_faacStats.sbrInvfCount++;
     }
 #endif
-    sbr->frameCount++;
 }
 
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
