@@ -139,13 +139,10 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
-     * Only [kx, k2) feeds the quantizer, so skip bands below kx; only the SBR
-     * element's own channels are quantized, so a 5.1 core doesn't pay for
-     * four channels of QMF analysis whose result is dropped. */
+     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    int nch_coded = (nch < SBR_MAX_CODED_CHANNELS) ? nch : SBR_MAX_CODED_CHANNELS;
-    for (int ch = 0; ch < nch_coded; ch++) {
+    for (int ch = 0; ch < nch; ch++) {
         memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
         if (sbr) {

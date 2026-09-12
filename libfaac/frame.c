@@ -221,19 +221,14 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        /* One SBR payload per frame, bound to the element it follows, so it
-         * serves a single SCE or CPE. Past two channels the rest get no SBR,
-         * and with an LFE present it lands on ID_LFE, which decoders reject. */
-        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
-
         hEncoder->config.aacObjectType =
-            (rate_ok && channels_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+            (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
     if (hEncoder->config.aacObjectType == HE_V1
         && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
-            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
+            || hEncoder->numChannels > MAX_CHANNELS))
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
@@ -1111,7 +1106,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
-        sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, (int)numChannels, (int)hEncoder->config.aacObjectType, 0);
+        sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, hEncoder->elements, hEncoder->numElements, (int)hEncoder->config.aacObjectType, 0);
 
         /* Compute total stream Perceptual Entropy (PE) across channels */
         float totalPE = 0.0f;
