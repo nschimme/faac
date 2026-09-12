@@ -1106,13 +1106,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         /* Exclude SBR's fixed overhead from the core budget so the rate
          * controller doesn't starve the core to pay for SBR. */
-        if (hEncoder->config.aacObjectType == HE_V1) {
-            for (int e = 0; e < hEncoder->numElements; e++) {
-                if (hEncoder->elements[e].type != ID_LFE) {
-                    sbrBits += SbrContextGetBits(hEncoder->sbrContext, NULL, &hEncoder->elements[e], (int)hEncoder->config.aacObjectType, 0);
-                }
-            }
-        }
+        sbrBits = SbrContextGetBits(hEncoder->sbrContext, NULL, hEncoder->elements, hEncoder->numElements, (int)hEncoder->config.aacObjectType, 0);
 
         /* Compute total stream Perceptual Entropy (PE) across channels */
         float totalPE = 0.0f;

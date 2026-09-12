@@ -121,7 +121,7 @@ int SbrContextGetWantShort(SBRContext *sCtx, int channel, int index);
 
 #include "channels.h"
 
-int SbrContextGetBits(SBRContext *sCtx, struct BitStream *bs, const AACElement *elem, int aacObjectType, int writeFlag);
+int SbrContextGetBits(SBRContext *sCtx, struct BitStream *bs, const AACElement *elems, int numElements, int aacObjectType, int writeFlag);
 
 #ifdef __cplusplus
 }
