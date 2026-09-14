@@ -32,6 +32,11 @@
 /* Pan, in SF_STEP_ENRG steps, beyond which the quieter channel is inaudible
  * and is dropped to HCB_ZERO rather than intensity-coded. */
 #define IS_PAN_LIMIT     30
+/* Below this quality (fraction of DEFQUAL) a starved long window takes
+ * intensity stereo like a short one: M/S then costs a mask plus a side
+ * channel's worth of scalefactors and sections for spectrum that quantizes
+ * to almost nothing. */
+#define IS_ONLY_QUALITY  0.5f
 
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
@@ -306,7 +311,8 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         /* Grouped short windows share one scalefactor set, so M/S spreads the
          * side channel's quantization noise across the group and ahead of the
          * attack. Intensity stereo's per-band gain leaves the envelope intact. */
-        int cur_mode = (coder[lch].block_type == ONLY_SHORT_WINDOW && mode == JOINT_MIXED) ? JOINT_IS : mode;
+        int is_only = coder[lch].block_type == ONLY_SHORT_WINDOW || quality < IS_ONLY_QUALITY;
+        int cur_mode = (is_only && mode == JOINT_MIXED) ? JOINT_IS : mode;
 
         elem->common_window  = true;
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
