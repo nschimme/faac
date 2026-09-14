@@ -54,6 +54,19 @@ psydata_t;
  * transient. */
 #define PSY_TD_THRESH (0.5f)
 
+/* Below this rate (bps per channel) every frame is coded short unless the
+ * spectrum is sparse. A starved long window spends most of its bits on
+ * per-band side info -- the PNS levels and intensity pans of ~40 bands are
+ * the spectral envelope and do not compress -- while a grouped short window
+ * codes the same span in ~15 bands. The resolution a long window buys is
+ * worth less than that, except for a few isolated partials, which the
+ * finer grid resolves and the coarse one smears. Gated on the configured
+ * rate, unlike IS_ONLY_QUALITY in stereo.c: the running quality reacts to
+ * the window choice, and gating the switch on it oscillates. LC only: the
+ * HE core's switching belongs to the SBR detector. */
+#define PSY_SHORT_ONLY_BITRATE 18000
+#define PSY_SHORT_ONLY_FILL    0.3f
+
 static int PsyIsAttack(float lasteng, float eng)
 {
   float toteng = (eng < lasteng) ? eng : lasteng;
@@ -231,6 +244,22 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
+      desire = ONLY_SHORT_WINDOW;
+  }
+  int short_only_bitrate = PSY_SHORT_ONLY_BITRATE;
+  float short_only_fill = PSY_SHORT_ONLY_FILL;
+  const char *env_br = getenv("FAAC_PSY_SHORT_ONLY_BITRATE");
+  if (env_br && *env_br) short_only_bitrate = atoi(env_br);
+  const char *env_fill = getenv("FAAC_PSY_SHORT_ONLY_FILL");
+  if (env_fill && *env_fill) short_only_fill = (float)atof(env_fill);
+
+  if (hEncoder->config.aacObjectType != HE_V1
+      && hEncoder->config.bitRate && (int)hEncoder->config.bitRate < short_only_bitrate)
+  {
+    float fill = 0.0f;
+    for (channel = 0; channel < numChannels; channel++)
+      if (coderInfo[channel].band_fill > fill) fill = coderInfo[channel].band_fill;
+    if (fill >= short_only_fill)
       desire = ONLY_SHORT_WINDOW;
   }
 

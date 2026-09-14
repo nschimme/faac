@@ -113,6 +113,10 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
 #define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
+/* Band fill averages over ~8 frames (170 ms at 48 kHz): per frame it crosses
+ * the block switch's threshold on sparse tonal material and the switch flaps,
+ * which costs more than either window choice. Chosen, not swept. */
+#define BAND_FILL_DECAY        0.125f
 
 typedef struct
 {
@@ -185,13 +189,16 @@ static float treble_rolloff(int lo, int hi, float inv_block_len)
     return 10.0f / (1.0f + (float)(lo + hi) * inv_block_len);
 }
 
+/* Also counts the bands within 30 dB of the group's energy into *filled: the
+ * next frame's block switch reads it as a sparseness measure. */
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
                                     const BandEnergy * __restrict be, float group_total,
-                                    float * __restrict target_out)
+                                    float * __restrict target_out, int * __restrict filled)
 {
     int gsize = ci->groups.len[gnum];
     int total_len = ci->sfb_offset[ci->sfbn];
     int sfb;
+    float fill_floor = group_total * 0.001f;
 
     // whole group below the silence gate: force every band to a zero target
     if (group_total < (SILENCE_RMS * SILENCE_RMS) * (float)(gsize * total_len))
@@ -212,6 +219,8 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         float avg = be[sfb].sum;
         float peak = be[sfb].peak_energy;
         float ref = (group_total * inv_block_len) * (hi - lo);
+
+        *filled += (avg > fill_floor);
         /* avg and ref are both group totals, so their ratio is independent of
          * group size. peak is a single window's energy, so it needs a
          * single-window reference; otherwise the tonal term decays as 1/gsize. */
@@ -387,15 +396,20 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     assert_band_widths_align(coder);
 
+    int filled = 0;
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
         float group_total = measure_band_energy(coder, gxr, i, cutoff, be);
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target, &filled);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
+    float fill_decay = BAND_FILL_DECAY;
+    const char *env_decay = getenv("FAAC_BAND_FILL_DECAY");
+    if (env_decay && *env_decay) fill_decay = (float)atof(env_decay);
+    coder->band_fill += ((float)filled / (float)(coder->groups.n * coder->sfbn) - coder->band_fill) * fill_decay;
 
     // global_gain must come from a regular band: it's an 8-bit bitstream field,
     // and intensity/PNS bands store stereo-position/noise-energy on a different

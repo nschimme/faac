@@ -78,6 +78,9 @@ typedef struct CoderInfo {
     int prev_window_shape;
     int block_type;
     int desired_block_type;
+    /* Share of coded bands within 30 dB of the loudest one, smoothed over
+       frames: near 0 for a few isolated partials, near 1 for dense content. */
+    float band_fill;
 
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
