@@ -37,10 +37,8 @@
  * channel's worth of scalefactors and sections for spectrum that quantizes
  * to almost nothing. Per frame on the running quality, which is safe here
  * because the stereo mode does not feed back into it the way the window
- * choice does (see PSY_SHORT_ONLY_BITRATE).
- * Swept with faac-benchmark (0.40 -> 1.00): 1.0f achieved highest MOS quality
- * (+0.0043 MOS gain over baseline 0.50f with 0 regressions). */
-#define IS_ONLY_QUALITY  1.0f
+ * choice does (see PSY_SHORT_ONLY_BITRATE). */
+#define IS_ONLY_QUALITY  0.5f
 
 /* Accumulate channel energies and cross-correlation for a scale factor band.
  * Using three independent accumulators maximizes instruction-level parallelism
