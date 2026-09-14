@@ -15,10 +15,6 @@
   ever called with write=true (ADTS length is patched afterwards), so the
   writeFlag plumbing through WriteElement/WriteICS/writebooks/writesf (~40
   `if (write)` branches in channels.c and huff2.c) never runs false
-- FAAC_STATS "Core Tr" counts coderInfo[0].block_type right after BlockSwitch,
-  before the final window decision; on LC it reports 60-98% where the
-  bitstream carries 1-3% short windows. Count the window_sequence actually
-  written instead
 
 ## Medium (contained algorithmic change, one subsystem)
 - Add adaptive bit reservoir control
@@ -26,15 +22,19 @@
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
 
 ## Large (cross-cutting, higher risk, higher potential payoff)
-- HE-AAC v1 core codes EIGHT_SHORT on ~99.6% of frames (every clip, every
-  rate, since #143; before #196 it alternated LONG_START/EIGHT_SHORT with no
-  ONLY_LONG at all). Cause: the SBR time-domain detector's wantShort tests
-  adjacent 64-sample (1.3 ms) high-pass slots against the core's 0.5 ratio,
-  which nearly any signal trips, and BlockSwitch on HE takes that verdict
-  verbatim. The core detector judges 8 sub-blocks of 256 full-rate samples.
-  Match the granularity (or reuse the core detector's sub-block energies) and
-  MOS-gate on the HE corpus; this is a prime suspect for the ~1.1 MOS HE gap
-  vs fdkaac and the "core-side 8-12 kHz" loss
+- long windows are side-info bound at low rates: at 24k stereo a long frame
+  is 88% side info (per channel: ~105 bits of sections, ~168 of scalefactor
+  deltas, ~20 of M/S mask, 42 of spectrum) against 62% for a grouped short
+  frame, so the rate loop halves quality whenever long windows appear and
+  forcing all-short (--shortctl 2) scores +0.26 MOS on the gate set at LOWER
+  bitrate (classical@24k +1.24). assign_band_codebooks has no rate term: a
+  band pays ~14 bits of side info even when it quantizes to a single +-1.
+  Fix = rate-aware long-window coding (zero bands whose side cost exceeds
+  their payoff, scalefactor smoothing, section-aware book choice); gate on
+  LC and HE. Until then the HE core is better off always-short (the
+  detector port on branch he-core-blockswitch is correct but loses -0.18
+  MOS for exactly this reason), and HE_MAX_BITRATE_PER_CH must not be
+  re-swept: fixing LC alone moves the crossover down
 - optimize codebook list (section_data) via joint/DP optimization
   [leaderboard: biggest MOS gap vs Apple/aac-enc is 48k_stereo_24-56k (3.28-3.39
   vs 3.5-4.4) despite FAAC having the BEST stereo fidelity in class there
