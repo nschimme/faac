@@ -1,44 +1,39 @@
 (unreleased)
 
-	[ Claude ]
-	* sbr: Fix transient envelope grid generation (adding FIXVAR grid
-	  support, bs_pointer attack naming, and shift correction for QMF
-	  decimator group delay) and tune inverse filtering mode by spectral
-	  flatness.
-	* tns: Disable short-block TNS filtering so TNS runs strictly on long
-	  windows.
+	[ enzo1982 ]
+	* build: Don't force LTO when explicitly disabled.
+	* build: Remove `__stdcall` calling convention for x86 Windows builds.
 
 	[ Nils Schimmelmann ]
-	* sbr: Add HE-AAC v1 multichannel layout support (up to 8 channels),
-	  HE-AAC v2 Parametric Stereo support with AUTO object type tuning,
-	  align SBR payload timing with core audio frames, fix VARFIX attack
-	  pointers, tune SBR SFM inverse filtering thresholds, and optimize
-	  payload emission.
-	* tns: Enable TNS by default with Levinson-Durbin autocorrelation LPC
-	  filtering, restrict TNS to long windows, add Spectral Flatness Measure
-	  (SFM) early-out gating for noise bands, and optimize runtime footprint.
-	* ratecontrol: Replace PE-gated bit reservoir with a signed bit account,
-	  enforce ISO 14496-3 per-channel bitrate validation (8 kbps/ch floor),
-	  lower HE-AAC minimum bitrate to 8 kbps/channel, and report delivered
-	  bitrate target misses.
-	* blockswitch / stereo: Implement per-CPE lockstep block switching, move
-	  transient detection to time domain, add Mixed Mode joint stereo with
-	  intensity coding for starved long windows, guard anti-phase stereo
-	  against mono cancellation, and add environment variable overrides.
-	* quantize / huffman: Implement single-pass section merging in Huffman
-	  quantizer, replace scalefactor gain powf calls with gain lookup table,
-	  track max quantized magnitude directly in SIMD/scalar loops, and tune
-	  LC core rate-distortion & tonal peak energy masking.
-	* fft / filtbank: Drop bit-reversal pass by indexing FFT output in-place,
-	  precompute MDCT twiddles, and unify MDCT body execution to reduce
-	  code size.
-	* bitstream: Streamline bitstream writing via direct bitfield packing and
-	  BitAccumulator while eliminating version string embedding.
-	* frontend / WASM: Port WebAssembly (WASM) frontend, add `--creation-time`
-	  MP4 timestamp option, and add optional end-of-encode diagnostics banner
-	  (`--stats`).
-	* tests / CI: Add standalone unit test suite and musl / uClibc CI build
-	  targets.
+	* api: Bump ABI version to 2 for safe `faac_params_init` caller sizing,
+	  enforce proper baseline size checks in info getters, and allow pipeline
+	  draining during flush on short streams.
+	* sbr: Align SBR payload timing with core audio frames, fix parameter
+	  resolution in VBR mode and transient normalization, stack-allocate
+	  `BitStream`, signal `psPresentFlag = 0` explicitly for mono HE-AAC,
+	  drain SBR tail on flush frames, write stream constants directly, expand
+	  HE-AAC v1 auto-resolution threshold, and widen reconstruction toward
+	  20 kHz.
+	* tns: Enable TNS by default, drop prediction-gain ceiling, screen frames
+	  before LPC analysis, and optimize runtime footprint.
+	* ratecontrol: Implement ABR rate controller with signed bit account,
+	  add CBR bit reservoir behind `--cbr`, refit ABR bandwidth curve,
+	  decouple HE-AAC VBR ceiling, and enforce ISO/IEC 14496-3 per-channel
+	  bitrate limits.
+	* blockswitch / stereo: Judge each sub-block attack once in time domain,
+	  rework short-window grouping, masking, and M/S policy, and restrict
+	  M/S / dynamic IS crossover at low bitrates.
+	* quantize / huffman: Optimize scale-factor and codebook processing
+	  in `huff2` and `quantize`.
+	* frontend: Default to MP4 output with automatic format detection,
+	  support 64-bit `mdat`/duration and track language, add UTF-8 and
+	  wide-character support across CLI/GUI, add native 24-bit packed PCM
+	  input handling, add iTunes gapless playback metadata (`iTunSMPB`),
+	  extract shared encoding engine, and resolve container timing/gapless
+	  bugs.
+	* build & diagnostics: Force-include `config.h` via build system, optimize
+	  memory footprint, simplify filterbank init, and add optional encoding
+	  diagnostics (`--stats`).
 
 2.1 (Aug 18, 2026)
 
