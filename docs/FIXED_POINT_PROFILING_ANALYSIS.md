@@ -33,8 +33,8 @@ Callgrind profiling of FAAC encoding sessions reveals the following breakdown of
 
 2. **MDCT & Filterbank (`libfaac/filtbank.c`)**
    - **Impact**: ~4.4% of CPU time in twiddle folding/unfolding, plus windowing.
-   - **Conversion Approach**: Pre/post-twiddle factor tables (`mdct_cos_fx`, `mdct_sin_fx`) in Q31 format, operating alongside integer FFT.
-   - **SOC Benefit**: Moderate to High. Eliminates FPU dependencies in transform domain conversion.
+   - **Conversion Approach**: Implemented Phase 2 Q31 fixed-point MDCT pre/post-twiddle modulation (`cos_fx`, `sin_fx`) and unfolding routines.
+   - **SOC Benefit**: High. Eliminates floating-point multiplication during transform domain folding/unfolding.
 
 ### B. Secondary Candidates (Phased Option)
 
@@ -43,10 +43,15 @@ Callgrind profiling of FAAC encoding sessions reveals the following breakdown of
    - **Conversion Approach**: Analysis of Q15/Q31 fixed-point energy accumulation (`x[i]^2`) and log/pow lookup tables (LUTs) for scale-factor bands.
    - **SOC Benefit**: High on software-emulated FPU target SOCs.
 
-2. **SBR Analysis & Synthesis (`libfaac/sbr_analysis.c`, `libfaac/sbr.c`)**
+2. **SBR Analysis & QMF Filterbank (`libfaac/sbr_analysis.c`, `libfaac/sbr.c`)**
    - **Impact**: Variable (~15-30% on HE-AAC profiles).
-   - **Conversion Approach**: 32-bit QMF filterbank analysis and energy grid calculation using fixed-point matrix multiplication.
-   - **SOC Benefit**: Essential for HE-AAC v1/v2 encoding on embedded SOCs.
+   - **Conversion Approach**: Implemented Q31 fixed-point integer energy accumulation and transient slot evaluation in `sbr_analysis.c`.
+   - **SOC Benefit**: Essential for HE-AAC v1/v2 encoding on embedded SOCs without hardware FPUs.
+
+3. **Time-Domain Resampler (`libfaac/resample.c`)**
+   - **Impact**: ~3-5% during HE-AAC decimation.
+   - **Conversion Approach**: Implemented Q15 fixed-point FIR decimation filtering (`hb_even_q15`, `hb_center_q15`).
+   - **SOC Benefit**: High efficiency; integer polyphase FIR filtering maps directly to single-cycle integer MAC units.
 
 ---
 

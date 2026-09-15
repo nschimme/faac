@@ -19,12 +19,25 @@
 #include "coder.h"
 #include "util.h"
 
+#ifdef FAAC_FIXED_POINT
+#include <stdint.h>
+#define FIX_Q15(x) ((int16_t)((x) * 32767.0f))
+static const int16_t hb_even_q15[RESAMPLE_FILTER_LEN / 2 + 1] = {
+    -78, 67, -95, 129, -173, 226, -292, 373,
+    -475, 605, -776, 1016, -1378, 2008, -3436, 10446,
+    10446, -3436, 2008, -1378, 1016, -776, 605, -475,
+    373, -292, 226, -173, 129, -95, 67, -78
+};
+static const int16_t hb_center_q15 = 16435; /* 0.5015570876767614 * 32768 */
+#endif
+
 /* Equiripple half-band FIR for 2:1 decimation.
  * Leverages the zero-valued odd-indexed taps and symmetric even-indexed taps
  * to reduce the computational load by ~75% compared to a general FIR.
  * The passband is flat within 0.05 dB up to the SBR crossover region,
  * ensuring the core signal remains transparent before SBR reconstruction. */
 #define HB_CENTER 0.5015570876767614f
+#ifndef FAAC_FIXED_POINT
 static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
     -2.39042884e-03f,  2.03978735e-03f, -2.88625768e-03f,  3.94878764e-03f,
     -5.26747336e-03f,  6.89408424e-03f, -8.89782634e-03f,  1.13774798e-02f,
@@ -35,6 +48,7 @@ static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
      1.13774798e-02f, -8.89782634e-03f,  6.89408424e-03f, -5.26747336e-03f,
      3.94878764e-03f, -2.88625768e-03f,  2.03978735e-03f, -2.39042884e-03f,
 };
+#endif
 
 Resampler *ResampleInit(int channels)
 {
@@ -73,6 +87,16 @@ int Resample(Resampler *r, int input_len)
         /* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
         for (i = 0; i < output_len; i++) {
             const float * __restrict c = combined + 2 * i;
+#ifdef FAAC_FIXED_POINT
+            /* Q15 fixed-point integer FIR accumulation for embedded SOCs */
+            int32_t acc = 0;
+            for (j = 0; j < 16; j++) {
+                int32_t sum_samples = (int32_t)(c[2 * j] + c[2 * (31 - j)]);
+                acc += ((int32_t)hb_even_q15[j] * sum_samples);
+            }
+            acc += ((int32_t)hb_center_q15 * (int32_t)combined[2 * i + HALF]);
+            *out++ = (float)(acc >> 15);
+#else
             float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
             for (j = 0; j < 16; j += 4) {
                 a0 += hb_even[j + 0] * (c[2 * (j + 0)] + c[2 * (31 - j - 0)]);
@@ -81,6 +105,7 @@ int Resample(Resampler *r, int input_len)
                 a3 += hb_even[j + 3] * (c[2 * (j + 3)] + c[2 * (31 - j - 3)]);
             }
             *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
+#endif
         }
 
         memcpy(hist, combined + input_len, H * sizeof(float));
