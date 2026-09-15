@@ -37,27 +37,20 @@ static uint32_t read_be32(const uint8_t *b)
     return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
 }
 
-bool mp4_read_track(FILE *f, MP4Track *track)
+static uint64_t read_be64(const uint8_t *b)
+{
+    return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) | ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) |
+           ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) | ((uint64_t)b[6] << 8) | (uint64_t)b[7];
+}
+
+bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
 {
     memset(track, 0, sizeof(*track));
     track->delay = 1024; /* Default priming delay */
 
-    fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (file_size < 32) return false;
-
-    uint8_t *buf = (uint8_t *)malloc(file_size + 1);
-    if (!buf) return false;
-    if (fread(buf, 1, file_size, f) != (size_t)file_size) {
-        free(buf);
-        return false;
-    }
-    buf[file_size] = '\0';
+    if (file_size < 32 || !buf) return false;
 
     if (memcmp(buf + 4, "ftyp", 4) != 0) {
-        free(buf);
         return false;
     }
 
@@ -72,7 +65,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
     STSCEntry *stsc_table = NULL;
     uint32_t num_stsc_entries = 0;
 
-    uint32_t *stco_table = NULL;
+    uint64_t *stco_table = NULL;
     uint32_t num_stco_chunks = 0;
 
     long mdat_offset = 0;
@@ -142,12 +135,21 @@ bool mp4_read_track(FILE *f, MP4Track *track)
             }
         }
 
+        /* Parse stco (32-bit chunk offsets) or co64 (64-bit chunk offsets) */
         if (memcmp(buf + i, "stco", 4) == 0 && i + 16 < file_size) {
             num_stco_chunks = read_be32(buf + i + 12);
             if (num_stco_chunks > 0 && num_stco_chunks < 1000000) {
-                stco_table = (uint32_t *)calloc(num_stco_chunks, sizeof(uint32_t));
+                stco_table = (uint64_t *)calloc(num_stco_chunks, sizeof(uint64_t));
                 for (uint32_t c = 0; c < num_stco_chunks && (i + 16 + c * 4) < file_size - 4; c++) {
                     stco_table[c] = read_be32(buf + i + 16 + c * 4);
+                }
+            }
+        } else if (memcmp(buf + i, "co64", 4) == 0 && i + 16 < file_size) {
+            num_stco_chunks = read_be32(buf + i + 12);
+            if (num_stco_chunks > 0 && num_stco_chunks < 1000000) {
+                stco_table = (uint64_t *)calloc(num_stco_chunks, sizeof(uint64_t));
+                for (uint32_t c = 0; c < num_stco_chunks && (i + 16 + c * 8) < file_size - 8; c++) {
+                    stco_table[c] = read_be64(buf + i + 16 + c * 8);
                 }
             }
         }
@@ -161,7 +163,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
             uint32_t sample_idx = 0;
             for (uint32_t chunk_idx = 0; chunk_idx < num_stco_chunks; chunk_idx++) {
                 uint32_t chunk_num = chunk_idx + 1;
-                uint32_t chunk_offset = stco_table[chunk_idx];
+                uint64_t chunk_offset = stco_table[chunk_idx];
 
                 uint32_t samples_in_chunk = stsc_table[0].samples_per_chunk;
                 for (uint32_t e = 0; e < num_stsc_entries; e++) {
@@ -175,7 +177,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
                 uint32_t sample_offset_in_chunk = 0;
                 for (uint32_t s = 0; s < samples_in_chunk && sample_idx < num_stsz_samples; s++) {
                     uint32_t size = (fixed_sample_size != 0) ? fixed_sample_size : (stsz_table ? stsz_table[sample_idx] : 0);
-                    track->samples[sample_idx].offset = chunk_offset + sample_offset_in_chunk;
+                    track->samples[sample_idx].offset = (uint32_t)(chunk_offset + sample_offset_in_chunk);
                     track->samples[sample_idx].size = size;
                     sample_offset_in_chunk += size;
                     sample_idx++;
@@ -196,7 +198,6 @@ bool mp4_read_track(FILE *f, MP4Track *track)
     if (stsz_table) free(stsz_table);
     if (stsc_table) free(stsc_table);
     if (stco_table) free(stco_table);
-    free(buf);
 
     return (track->asc_buf != NULL && track->num_samples > 0 && track->samples != NULL);
 }

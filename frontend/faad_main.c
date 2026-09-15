@@ -26,7 +26,7 @@ typedef struct {
     char encoder_tag[64];
 } MP4Track;
 
-extern bool mp4_read_track(FILE *f, MP4Track *track);
+extern bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track);
 extern void mp4_free_track(MP4Track *track);
 
 static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float)
@@ -102,11 +102,14 @@ int main(int argc, char **argv)
             if (strcmp(argv[i], "raw") == 0) raw_format = true;
         } else if ((strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bits") == 0) && i + 1 < argc) {
             i++;
-            if (strcmp(argv[i], "24") == 0) bit_depth = 24;
-            else if (strcmp(argv[i], "32f") == 0 || strcmp(argv[i], "32") == 0) {
+            if (strcmp(argv[i], "24") == 0) {
+                bit_depth = 24;
+            } else if (strcmp(argv[i], "32f") == 0 || strcmp(argv[i], "32") == 0) {
                 bit_depth = 32;
                 is_float = true;
-            } else bit_depth = 16;
+            } else {
+                bit_depth = 16;
+            }
         } else if ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--adts") == 0) && i + 1 < argc) {
             adts_outfile = argv[++i];
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--downmix") == 0) {
@@ -141,18 +144,13 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    MP4Track track;
-    memset(&track, 0, sizeof(track));
-    bool is_mp4 = mp4_read_track(fin, &track);
-
     fseek(fin, 0, SEEK_END);
     long file_len = ftell(fin);
     fseek(fin, 0, SEEK_SET);
 
-    uint8_t *inbuf = (uint8_t *)malloc(file_len);
+    uint8_t *inbuf = (uint8_t *)malloc(file_len > 0 ? file_len : 1);
     if (!inbuf) {
         fclose(fin);
-        if (is_mp4) mp4_free_track(&track);
         return 1;
     }
 
@@ -160,10 +158,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error reading input file\n");
         free(inbuf);
         fclose(fin);
-        if (is_mp4) mp4_free_track(&track);
         return 1;
     }
     fclose(fin);
+
+    MP4Track track;
+    memset(&track, 0, sizeof(track));
+    bool is_mp4 = mp4_read_track_buf(inbuf, file_len, &track);
 
     /* Direct ADTS extraction from MP4 container without decoding */
     if (adts_outfile && is_mp4) {
@@ -238,6 +239,7 @@ int main(int argc, char **argv)
     }
 
     uint8_t outbuf[65536];
+    uint8_t pcm24_buf[98304];
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
@@ -272,8 +274,10 @@ int main(int argc, char **argv)
                     obj_type = info.object_type;
                 }
 
-                uint32_t bytes_per_frame_sample = num_channels * (bit_depth / 8);
-                uint32_t frame_samples = bytes_written / bytes_per_frame_sample;
+                uint32_t dec_bytes_per_sample = is_float ? 4 : 2;
+                uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
+                uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
+
                 uint8_t *write_ptr = outbuf;
                 uint32_t samples_to_write = frame_samples;
 
@@ -282,16 +286,31 @@ int main(int argc, char **argv)
                         samples_to_skip -= samples_to_write;
                         samples_to_write = 0;
                     } else {
-                        write_ptr += samples_to_skip * bytes_per_frame_sample;
+                        write_ptr += samples_to_skip * dec_bytes_per_frame_sample;
                         samples_to_write -= samples_to_skip;
                         samples_to_skip = 0;
                     }
                 }
 
                 if (fout && samples_to_write > 0) {
-                    uint32_t bytes_to_write = samples_to_write * bytes_per_frame_sample;
-                    fwrite(write_ptr, 1, bytes_to_write, fout);
-                    total_pcm_bytes += bytes_to_write;
+                    if (bit_depth == 24 && !is_float) {
+                        /* Convert int16_t PCM from decoder to 24-bit PCM */
+                        const int16_t *src_pcm = (const int16_t *)write_ptr;
+                        uint32_t total_items = samples_to_write * num_channels;
+                        for (uint32_t k = 0; k < total_items; k++) {
+                            int32_t val24 = ((int32_t)src_pcm[k]) << 8;
+                            pcm24_buf[k * 3 + 0] = (uint8_t)(val24 & 0xFF);
+                            pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
+                            pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
+                        }
+                        uint32_t bytes_to_write = total_items * 3;
+                        fwrite(pcm24_buf, 1, bytes_to_write, fout);
+                        total_pcm_bytes += bytes_to_write;
+                    } else {
+                        uint32_t bytes_to_write = samples_to_write * dec_bytes_per_frame_sample;
+                        fwrite(write_ptr, 1, bytes_to_write, fout);
+                        total_pcm_bytes += bytes_to_write;
+                    }
                 }
                 frames_decoded++;
             }
@@ -322,8 +341,26 @@ int main(int argc, char **argv)
             }
 
             if (fout && bytes_written > 0) {
-                fwrite(outbuf, 1, bytes_written, fout);
-                total_pcm_bytes += bytes_written;
+                uint32_t dec_bytes_per_sample = is_float ? 4 : 2;
+                uint32_t dec_bytes_per_frame_sample = num_channels * dec_bytes_per_sample;
+                uint32_t frame_samples = bytes_written / dec_bytes_per_frame_sample;
+
+                if (bit_depth == 24 && !is_float) {
+                    const int16_t *src_pcm = (const int16_t *)outbuf;
+                    uint32_t total_items = frame_samples * num_channels;
+                    for (uint32_t k = 0; k < total_items; k++) {
+                        int32_t val24 = ((int32_t)src_pcm[k]) << 8;
+                        pcm24_buf[k * 3 + 0] = (uint8_t)(val24 & 0xFF);
+                        pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
+                        pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
+                    }
+                    uint32_t bytes_to_write = total_items * 3;
+                    fwrite(pcm24_buf, 1, bytes_to_write, fout);
+                    total_pcm_bytes += bytes_to_write;
+                } else {
+                    fwrite(outbuf, 1, bytes_written, fout);
+                    total_pcm_bytes += bytes_written;
+                }
             }
 
             frames_decoded++;
@@ -332,7 +369,13 @@ int main(int argc, char **argv)
     }
 
     if (is_mp4 && gapless && track.padding > 0 && total_pcm_bytes > track.padding * num_channels * (bit_depth / 8)) {
-        total_pcm_bytes -= track.padding * num_channels * (bit_depth / 8);
+        uint32_t padding_bytes = track.padding * num_channels * (bit_depth / 8);
+        total_pcm_bytes -= padding_bytes;
+        if (fout && fout != stdout) {
+            fseek(fout, 0, SEEK_SET);
+            write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
+            fflush(fout);
+        }
     }
 
     double duration_sec = (double)(frames_decoded * 1024) / (sample_rate ? sample_rate : 44100);
