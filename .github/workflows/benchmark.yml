@@ -28,7 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64]
-        rate_control: [abr, vbr]
+        rate_control: [abr, vbr, cbr]
 
     steps:
       - name: Install build dependencies
