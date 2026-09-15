@@ -43,8 +43,8 @@ FAADAPI faad_status faad_decoder_open(const faad_params *p,
             free(dec);
             return st;
         }
-        dec->num_channels = dec->asc.num_channels;
-        dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : dec->asc.sample_rate;
+        dec->num_channels = dec->asc.num_channels ? dec->asc.num_channels : 2;
+        dec->sample_rate = dec->asc.is_sbr ? dec->asc.sbr_sample_rate : (dec->asc.sample_rate ? dec->asc.sample_rate : 44100);
         dec->frame_samples = dec->asc.is_sbr ? 2048 : 1024;
     } else {
         dec->num_channels = 2;
@@ -94,8 +94,8 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
     if (dec->params.stream_format == FAAD_STREAM_ADTS) {
         faad_status st = adts_decode_header(&bs, &dec->asc, &frame_len);
         if (st != FAAD_OK) return st;
-        dec->num_channels = dec->asc.num_channels;
-        dec->sample_rate = dec->asc.sample_rate;
+        dec->num_channels = dec->asc.num_channels ? dec->asc.num_channels : 2;
+        dec->sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
     }
 
     /* Core Syntactic Element Parsing */
@@ -111,6 +111,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         dequantize_spectrum(&ics, dec->spec[0]);
         apply_pns(&ics, dec->spec[0], &dec->pns_seed);
         apply_tns(&ics, dec->spec[0]);
+        if (dec->num_channels == 0) dec->num_channels = 1;
     } else if (syntax_id == ID_CPE) {
         decode_cpe(&bs, dec, &cpe, 0);
         dequantize_spectrum(&cpe.ics[0], dec->spec[0]);
@@ -121,6 +122,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         apply_ms_stereo(&cpe, dec->spec[0], dec->spec[1]);
         apply_tns(&cpe.ics[0], dec->spec[0]);
         apply_tns(&cpe.ics[1], dec->spec[1]);
+        if (dec->num_channels == 0) dec->num_channels = 2;
     }
 
     /* Check for SBR Extension Payload in FIL elements */
