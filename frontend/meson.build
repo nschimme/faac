@@ -21,6 +21,16 @@ faac = executable('faac',
     install: true
 )
 
+if get_option('decoder')
+    faad = executable('faad',
+        ['faad_main.c', 'mp4read.c'],
+        include_directories: ['..', '../include'],
+        link_with: [libfaad],
+        dependencies: [libshell32],
+        install: true
+    )
+endif
+
 if target_machine.system() == 'windows'
     windows = import('windows')
     resource_src = windows.compile_resources('faacgui.rc', 'icon.rc',
