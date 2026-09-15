@@ -91,62 +91,15 @@ static float *drm_cos_long = NULL;  /* 480 * 960 */
 static float *drm_sin_short = NULL; /* 60 * 120 */
 static float *drm_cos_short = NULL; /* 60 * 120 */
 
-/* Dedicated 960 and 120 window tables for Sine and KBD window shapes */
+/* Dedicated 960 and 120 Sine window tables */
 static float *drm_sin_window_long = NULL;  /* 960 */
 static float *drm_sin_window_short = NULL; /* 120 */
-static float *drm_kbd_window_long = NULL;  /* 960 */
-static float *drm_kbd_window_short = NULL; /* 120 */
-
-static double DRM_BesselI0(double x)
-{
-    const double tolerance = DBL_EPSILON;
-    double halfX = x * 0.5;
-    double term = 1.0;
-    double series = 1.0;
-    int k = 1;
-
-    do {
-        double ratio = halfX / (double)k;
-        term *= ratio * ratio;
-        series += term;
-        k++;
-    } while (term > tolerance * series);
-
-    return series;
-}
 
 static void DRM_FillSineWindow(float *win, int halfLen)
 {
     int i;
     for (i = 0; i < halfLen; i++)
         win[i] = (float)sin((M_PI_DOUBLE / (2 * halfLen)) * (i + 0.5));
-}
-
-static void DRM_FillKbdWindow(float *win, int halfLen, double alpha)
-{
-    const double omega = alpha * M_PI_DOUBLE / (double)halfLen;
-    const double alpha2 = 4.0 * omega * omega;
-    const int quarterLen = halfLen / 2;
-    double shapeTerm[BLOCK_LEN_LONG_960 / 2 + 1];
-    double weightedTotal = 0.0;
-    double running = 0.0;
-    double scale;
-    int i;
-
-    for (i = 0; i <= quarterLen; i++) {
-        double symmetric = (double)i * (double)(halfLen - i) * alpha2;
-        int isInterior = (i > 0) && (i < quarterLen);
-
-        shapeTerm[i] = DRM_BesselI0(sqrt(symmetric));
-        weightedTotal += shapeTerm[i] * (isInterior ? 2 : 1);
-    }
-    scale = 1.0 / (weightedTotal + 1.0);
-
-    for (i = 0; i < halfLen; i++) {
-        int idx = (i <= quarterLen) ? i : (halfLen - i);
-        running += shapeTerm[idx];
-        win[i] = (float)sqrt(running * scale);
-    }
 }
 
 void DRM_Init(faacEncStruct *hEncoder)
@@ -161,11 +114,9 @@ void DRM_Init(faacEncStruct *hEncoder)
 
     drm_sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG_960 * sizeof(float));
     drm_sin_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT_120 * sizeof(float));
-    drm_kbd_window_long = (float*)AllocMemory(BLOCK_LEN_LONG_960 * sizeof(float));
-    drm_kbd_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT_120 * sizeof(float));
 
     if (!drm_sin_long || !drm_cos_long || !drm_sin_short || !drm_cos_short ||
-        !drm_sin_window_long || !drm_sin_window_short || !drm_kbd_window_long || !drm_kbd_window_short)
+        !drm_sin_window_long || !drm_sin_window_short)
         return;
 
     for (int n = 0; n < 480; n++) {
@@ -185,9 +136,7 @@ void DRM_Init(faacEncStruct *hEncoder)
     }
 
     DRM_FillSineWindow(drm_sin_window_long, BLOCK_LEN_LONG_960);
-    DRM_FillKbdWindow(drm_kbd_window_long, BLOCK_LEN_LONG_960, 4.0);
     DRM_FillSineWindow(drm_sin_window_short, BLOCK_LEN_SHORT_120);
-    DRM_FillKbdWindow(drm_kbd_window_short, BLOCK_LEN_SHORT_120, 6.0);
 }
 
 void DRM_End(faacEncStruct *hEncoder)
@@ -200,8 +149,6 @@ void DRM_End(faacEncStruct *hEncoder)
 
     if (drm_sin_window_long) { FreeMemory(drm_sin_window_long); drm_sin_window_long = NULL; }
     if (drm_sin_window_short) { FreeMemory(drm_sin_window_short); drm_sin_window_short = NULL; }
-    if (drm_kbd_window_long) { FreeMemory(drm_kbd_window_long); drm_kbd_window_long = NULL; }
-    if (drm_kbd_window_short) { FreeMemory(drm_kbd_window_short); drm_kbd_window_short = NULL; }
 }
 
 static void DRM_MDCT(const float *data, float *out, int N)
@@ -230,8 +177,7 @@ static void DRM_MDCT(const float *data, float *out, int N)
 
 static const float *SelectDRMWindow(int shape, bool isLong)
 {
-    if (shape == KBD_WINDOW)
-        return isLong ? drm_kbd_window_long : drm_kbd_window_short;
+    (void)shape;
     return isLong ? drm_sin_window_long : drm_sin_window_short;
 }
 
