@@ -262,6 +262,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
 
+#ifdef FAAC_DRM
+    if (hEncoder->config.useDrm) {
+        hEncoder->srInfo = DRM_GetSRInfo(hEncoder->sampleRateIdx);
+        if (hEncoder->sbrContext) hEncoder->sbrContext->useDrm = true;
+    }
+#endif
+
     /* MaxBitrate() is already per channel, and its frame is FRAME_LEN samples
      * at the core rate -- so the clamp has to follow the HE-AAC resolution
      * above, which halves that rate. */

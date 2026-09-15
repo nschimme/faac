@@ -116,6 +116,10 @@ typedef struct faacEncStruct {
     int *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
+
+#ifdef FAAC_DRM
+    DRMContext drmContext;
+#endif
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

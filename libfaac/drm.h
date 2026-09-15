@@ -32,6 +32,15 @@ struct faacEncStruct;
 
 #ifdef FAAC_DRM
 
+typedef struct DRMContext {
+    float *drm_sin_long;         /* 480 * 960 */
+    float *drm_cos_long;         /* 480 * 960 */
+    float *drm_sin_short;        /* 60 * 120 */
+    float *drm_cos_short;        /* 60 * 120 */
+    float *drm_sin_window_long;  /* 960 */
+    float *drm_sin_window_short; /* 120 */
+} DRMContext;
+
 void DRM_Init(struct faacEncStruct *hEncoder);
 void DRM_End(struct faacEncStruct *hEncoder);
 

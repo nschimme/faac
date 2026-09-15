@@ -26,8 +26,8 @@
 #include "filtbank.h"
 #include "util.h"
 
-/* DRM 960-sample scalefactor band tables for all 12 sampling rate indices */
-static SR_INFO srInfoDRM[12 + 1] = {
+/* Thread-safe constant DRM 960-sample scalefactor band tables */
+static const SR_INFO srInfoDRM[12 + 1] = {
     { 96000, 40, 12,
         { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8, 12, 12, 12, 12, 12, 16, 16, 24, 28, 36, 44, 64, 64, 64, 64, 64, 64, 64, 64, 64, 32 },
         { 4, 4, 4, 4, 4, 4, 8, 8, 8, 16, 28, 28 }
@@ -82,112 +82,99 @@ static SR_INFO srInfoDRM[12 + 1] = {
 SR_INFO *DRM_GetSRInfo(int sampleRateIdx)
 {
     if (sampleRateIdx < 0 || sampleRateIdx >= 12) return NULL;
-    return &srInfoDRM[sampleRateIdx];
+    return (SR_INFO *)&srInfoDRM[sampleRateIdx];
 }
-
-/* Precomputed trigonometric tables for DRM MDCT 960 and 120 */
-static float *drm_sin_long = NULL;  /* 480 * 960 */
-static float *drm_cos_long = NULL;  /* 480 * 960 */
-static float *drm_sin_short = NULL; /* 60 * 120 */
-static float *drm_cos_short = NULL; /* 60 * 120 */
-
-/* Dedicated 960 and 120 Sine window tables */
-static float *drm_sin_window_long = NULL;  /* 960 */
-static float *drm_sin_window_short = NULL; /* 120 */
 
 static void DRM_FillSineWindow(float *win, int halfLen)
 {
-    int i;
-    for (i = 0; i < halfLen; i++)
+    for (int i = 0; i < halfLen; i++)
         win[i] = (float)sin((M_PI_DOUBLE / (2 * halfLen)) * (i + 0.5));
 }
 
 void DRM_Init(faacEncStruct *hEncoder)
 {
-    (void)hEncoder;
-    if (drm_sin_long) return; /* already initialized */
+    if (!hEncoder) return;
+    DRMContext *ctx = &hEncoder->drmContext;
+    if (ctx->drm_sin_long) return; /* already initialized */
 
-    drm_sin_long = (float*)AllocMemory(480 * 960 * sizeof(float));
-    drm_cos_long = (float*)AllocMemory(480 * 960 * sizeof(float));
-    drm_sin_short = (float*)AllocMemory(60 * 120 * sizeof(float));
-    drm_cos_short = (float*)AllocMemory(60 * 120 * sizeof(float));
+    ctx->drm_sin_long = (float*)AllocMemory(480 * 960 * sizeof(float));
+    ctx->drm_cos_long = (float*)AllocMemory(480 * 960 * sizeof(float));
+    ctx->drm_sin_short = (float*)AllocMemory(60 * 120 * sizeof(float));
+    ctx->drm_cos_short = (float*)AllocMemory(60 * 120 * sizeof(float));
 
-    drm_sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG_960 * sizeof(float));
-    drm_sin_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT_120 * sizeof(float));
+    ctx->drm_sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG_960 * sizeof(float));
+    ctx->drm_sin_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT_120 * sizeof(float));
 
-    if (!drm_sin_long || !drm_cos_long || !drm_sin_short || !drm_cos_short ||
-        !drm_sin_window_long || !drm_sin_window_short)
+    if (!ctx->drm_sin_long || !ctx->drm_cos_long || !ctx->drm_sin_short || !ctx->drm_cos_short ||
+        !ctx->drm_sin_window_long || !ctx->drm_sin_window_short)
         return;
 
     for (int n = 0; n < 480; n++) {
         for (int k = 0; k < 960; k++) {
             double theta = (M_PI_DOUBLE / 960.0) * (n + 0.5) * (k + 0.5);
-            drm_sin_long[n * 960 + k] = (float)sin(theta);
-            drm_cos_long[n * 960 + k] = (float)cos(theta);
+            ctx->drm_sin_long[n * 960 + k] = (float)sin(theta);
+            ctx->drm_cos_long[n * 960 + k] = (float)cos(theta);
         }
     }
 
     for (int n = 0; n < 60; n++) {
         for (int k = 0; k < 120; k++) {
             double theta = (M_PI_DOUBLE / 120.0) * (n + 0.5) * (k + 0.5);
-            drm_sin_short[n * 120 + k] = (float)sin(theta);
-            drm_cos_short[n * 120 + k] = (float)cos(theta);
+            ctx->drm_sin_short[n * 120 + k] = (float)sin(theta);
+            ctx->drm_cos_short[n * 120 + k] = (float)cos(theta);
         }
     }
 
-    DRM_FillSineWindow(drm_sin_window_long, BLOCK_LEN_LONG_960);
-    DRM_FillSineWindow(drm_sin_window_short, BLOCK_LEN_SHORT_120);
+    DRM_FillSineWindow(ctx->drm_sin_window_long, BLOCK_LEN_LONG_960);
+    DRM_FillSineWindow(ctx->drm_sin_window_short, BLOCK_LEN_SHORT_120);
 }
 
 void DRM_End(faacEncStruct *hEncoder)
 {
-    (void)hEncoder;
-    if (drm_sin_long) { FreeMemory(drm_sin_long); drm_sin_long = NULL; }
-    if (drm_cos_long) { FreeMemory(drm_cos_long); drm_cos_long = NULL; }
-    if (drm_sin_short) { FreeMemory(drm_sin_short); drm_sin_short = NULL; }
-    if (drm_cos_short) { FreeMemory(drm_cos_short); drm_cos_short = NULL; }
+    if (!hEncoder) return;
+    DRMContext *ctx = &hEncoder->drmContext;
 
-    if (drm_sin_window_long) { FreeMemory(drm_sin_window_long); drm_sin_window_long = NULL; }
-    if (drm_sin_window_short) { FreeMemory(drm_sin_window_short); drm_sin_window_short = NULL; }
+    if (ctx->drm_sin_long) { FreeMemory(ctx->drm_sin_long); ctx->drm_sin_long = NULL; }
+    if (ctx->drm_cos_long) { FreeMemory(ctx->drm_cos_long); ctx->drm_cos_long = NULL; }
+    if (ctx->drm_sin_short) { FreeMemory(ctx->drm_sin_short); ctx->drm_sin_short = NULL; }
+    if (ctx->drm_cos_short) { FreeMemory(ctx->drm_cos_short); ctx->drm_cos_short = NULL; }
+
+    if (ctx->drm_sin_window_long) { FreeMemory(ctx->drm_sin_window_long); ctx->drm_sin_window_long = NULL; }
+    if (ctx->drm_sin_window_short) { FreeMemory(ctx->drm_sin_window_short); ctx->drm_sin_window_short = NULL; }
 }
 
-static void DRM_MDCT(const float *data, float *out, int N)
+static void DRM_MDCT(const DRMContext *ctx, const float *data, float *out, int N)
 {
     int N2 = N / 2;
     int N4 = N / 4;
-    const float *sin_tbl = (N == 1920) ? drm_sin_long : drm_sin_short;
-    const float *cos_tbl = (N == 1920) ? drm_cos_long : drm_cos_short;
+    const float *sin_tbl = (N == 1920) ? ctx->drm_sin_long : ctx->drm_sin_short;
+    const float *cos_tbl = (N == 1920) ? ctx->drm_cos_long : ctx->drm_cos_short;
 
     if (!sin_tbl || !cos_tbl) return;
+
+    float tmp[BLOCK_LEN_LONG_960];
 
     for (int k = 0; k < N2; k++) {
         float s1 = 0.0f, s2 = 0.0f;
         float sign = (k % 2 != 0) ? -1.0f : 1.0f;
-        int n;
 
-        for (n = 0; n < N4; n++) {
+        for (int n = 0; n < N4; n++) {
             float f1 = data[N4 - 1 - n] - data[N4 + n];
             float f2 = -data[3 * N4 - 1 - n] - data[3 * N4 + n];
             s1 += f1 * sin_tbl[n * N2 + k];
             s2 += f2 * cos_tbl[n * N2 + k];
         }
-        out[k] = sign * s1 + s2;
+        tmp[k] = sign * s1 + s2;
     }
-}
-
-static const float *SelectDRMWindow(int shape, bool isLong)
-{
-    (void)shape;
-    return isLong ? drm_sin_window_long : drm_sin_window_short;
+    memcpy(out, tmp, N2 * sizeof(float));
 }
 
 static void ApplyWindowSegDRM(float *dst, const float *src, const float *win, int len, bool reverse)
 {
-    int i;
     if (reverse) {
-        for (i = 0; i < len; i++) dst[i] = src[i] * win[len - 1 - i];
+        for (int i = 0; i < len; i++) dst[i] = src[i] * win[len - 1 - i];
     } else {
-        for (i = 0; i < len; i++) dst[i] = src[i] * win[i];
+        for (int i = 0; i < len; i++) dst[i] = src[i] * win[i];
     }
 }
 
@@ -199,44 +186,34 @@ void DRM_FilterBank(faacEncStruct* hEncoder,
 {
     float *overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
     int block_type = coderInfo->block_type;
-    const float *leftWin, *rightWin;
-    int k;
+    const DRMContext *ctx = &hEncoder->drmContext;
 
     memcpy(overlapBuf, p_prev_data, BLOCK_LEN_LONG_960 * sizeof(float));
     memcpy(overlapBuf + BLOCK_LEN_LONG_960, p_in_data, BLOCK_LEN_LONG_960 * sizeof(float));
 
     switch (block_type) {
     case ONLY_LONG_WINDOW: {
-        leftWin  = SelectDRMWindow(coderInfo->prev_window_shape, true);
-        rightWin = SelectDRMWindow(coderInfo->window_shape, true);
-
-        ApplyWindowSegDRM(p_out_mdct, overlapBuf, leftWin, BLOCK_LEN_LONG_960, false);
-        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960, overlapBuf + BLOCK_LEN_LONG_960, rightWin, BLOCK_LEN_LONG_960, true);
-        DRM_MDCT(p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
+        ApplyWindowSegDRM(p_out_mdct, overlapBuf, ctx->drm_sin_window_long, BLOCK_LEN_LONG_960, false);
+        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960, overlapBuf + BLOCK_LEN_LONG_960, ctx->drm_sin_window_long, BLOCK_LEN_LONG_960, true);
+        DRM_MDCT(ctx, p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
         break;
     }
 
     case LONG_SHORT_WINDOW: {
-        leftWin  = SelectDRMWindow(coderInfo->prev_window_shape, true);
-        rightWin = SelectDRMWindow(coderInfo->window_shape, false);
-
-        ApplyWindowSegDRM(p_out_mdct, overlapBuf, leftWin, BLOCK_LEN_LONG_960, false);
+        ApplyWindowSegDRM(p_out_mdct, overlapBuf, ctx->drm_sin_window_long, BLOCK_LEN_LONG_960, false);
         memcpy(p_out_mdct + BLOCK_LEN_LONG_960, overlapBuf + BLOCK_LEN_LONG_960, NFLAT_LS_960 * sizeof(float));
-        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960 + NFLAT_LS_960, overlapBuf + BLOCK_LEN_LONG_960 + NFLAT_LS_960, rightWin, BLOCK_LEN_SHORT_120, true);
+        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960 + NFLAT_LS_960, overlapBuf + BLOCK_LEN_LONG_960 + NFLAT_LS_960, ctx->drm_sin_window_short, BLOCK_LEN_SHORT_120, true);
         memset(p_out_mdct + BLOCK_LEN_LONG_960 + NFLAT_LS_960 + BLOCK_LEN_SHORT_120, 0, NFLAT_LS_960 * sizeof(float));
-        DRM_MDCT(p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
+        DRM_MDCT(ctx, p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
         break;
     }
 
     case SHORT_LONG_WINDOW: {
-        leftWin  = SelectDRMWindow(coderInfo->prev_window_shape, false);
-        rightWin = SelectDRMWindow(coderInfo->window_shape, true);
-
         memset(p_out_mdct, 0, NFLAT_LS_960 * sizeof(float));
-        ApplyWindowSegDRM(p_out_mdct + NFLAT_LS_960, overlapBuf + NFLAT_LS_960, leftWin, BLOCK_LEN_SHORT_120, false);
+        ApplyWindowSegDRM(p_out_mdct + NFLAT_LS_960, overlapBuf + NFLAT_LS_960, ctx->drm_sin_window_short, BLOCK_LEN_SHORT_120, false);
         memcpy(p_out_mdct + NFLAT_LS_960 + BLOCK_LEN_SHORT_120, overlapBuf + NFLAT_LS_960 + BLOCK_LEN_SHORT_120, NFLAT_LS_960 * sizeof(float));
-        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960, overlapBuf + BLOCK_LEN_LONG_960, rightWin, BLOCK_LEN_LONG_960, true);
-        DRM_MDCT(p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
+        ApplyWindowSegDRM(p_out_mdct + BLOCK_LEN_LONG_960, overlapBuf + BLOCK_LEN_LONG_960, ctx->drm_sin_window_long, BLOCK_LEN_LONG_960, true);
+        DRM_MDCT(ctx, p_out_mdct, p_out_mdct, 2 * BLOCK_LEN_LONG_960);
         break;
     }
 
@@ -244,17 +221,13 @@ void DRM_FilterBank(faacEncStruct* hEncoder,
         float *src = overlapBuf + NFLAT_LS_960;
         float *dst = p_out_mdct;
 
-        leftWin  = SelectDRMWindow(coderInfo->prev_window_shape, false);
-        rightWin = SelectDRMWindow(coderInfo->window_shape, false);
-
-        for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
-            ApplyWindowSegDRM(dst, src, leftWin, BLOCK_LEN_SHORT_120, false);
-            ApplyWindowSegDRM(dst + BLOCK_LEN_SHORT_120, src + BLOCK_LEN_SHORT_120, rightWin, BLOCK_LEN_SHORT_120, true);
-            DRM_MDCT(dst, dst, 2 * BLOCK_LEN_SHORT_120);
+        for (int k = 0; k < MAX_SHORT_WINDOWS; k++) {
+            ApplyWindowSegDRM(dst, src, ctx->drm_sin_window_short, BLOCK_LEN_SHORT_120, false);
+            ApplyWindowSegDRM(dst + BLOCK_LEN_SHORT_120, src + BLOCK_LEN_SHORT_120, ctx->drm_sin_window_short, BLOCK_LEN_SHORT_120, true);
+            DRM_MDCT(ctx, dst, dst, 2 * BLOCK_LEN_SHORT_120);
 
             dst += BLOCK_LEN_SHORT_120;
             src += BLOCK_LEN_SHORT_120;
-            leftWin = rightWin;
         }
         break;
     }
