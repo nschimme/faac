@@ -1,0 +1,134 @@
+/*
+ * Syntax elements and bitstream unpacking
+ */
+
+#include "faad_internal.h"
+
+static void decode_ics_info(BitReader *bs, ICSInfo *ics)
+{
+    bits_skip(bs, 1);
+    ics->window_sequence = bits_get(bs, 2);
+    ics->window_shape = bits_get(bs, 1);
+
+    if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
+        ics->max_sfb = bits_get(bs, 4);
+        uint32_t scale_factor_grouping = bits_get(bs, 7);
+
+        ics->num_window_groups = 1;
+        ics->window_group_length[0] = 1;
+        for (int i = 0; i < 7; i++) {
+            if ((scale_factor_grouping >> (6 - i)) & 1) {
+                ics->window_group_length[ics->num_window_groups - 1]++;
+            } else {
+                ics->num_window_groups++;
+                ics->window_group_length[ics->num_window_groups - 1] = 1;
+            }
+        }
+        ics->num_windows = 8;
+    } else {
+        ics->max_sfb = bits_get(bs, 6);
+        ics->num_window_groups = 1;
+        ics->window_group_length[0] = 1;
+        ics->num_windows = 1;
+
+        if (bits_get(bs, 1)) {
+            bits_skip(bs, 1);
+        }
+    }
+}
+
+static void decode_section_data(BitReader *bs, ICSInfo *ics)
+{
+    uint32_t sect_bits = (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 3 : 5;
+    for (int g = 0; g < ics->num_window_groups; g++) {
+        int k = 0;
+        int i = 0;
+        while (k < ics->max_sfb) {
+            uint32_t cb = bits_get(bs, 4);
+            uint32_t len = bits_get(bs, sect_bits);
+            while (len == ((1U << sect_bits) - 1)) {
+                len += bits_get(bs, sect_bits);
+            }
+            ics->sect_cb[g][i] = cb;
+            ics->sect_start[g][i] = k;
+            ics->sect_end[g][i] = k + len;
+            k += len;
+            i++;
+        }
+        ics->num_sections[g] = i;
+    }
+}
+
+faad_status decode_ics(BitReader *bs, ICSInfo *ics, float *spec)
+{
+    ics->global_gain = bits_get(bs, 8);
+
+    decode_ics_info(bs, ics);
+    decode_section_data(bs, ics);
+
+    ics->pulse_data_present = bits_get(bs, 1);
+    if (ics->pulse_data_present) {
+        bits_skip(bs, 2);
+        bits_skip(bs, 6);
+    }
+
+    ics->tns_data_present = bits_get(bs, 1);
+    if (ics->tns_data_present) {
+        uint32_t n_filt_bits = (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 1 : 2;
+        for (int w = 0; w < ics->num_windows; w++) {
+            ics->tns_n_filt[w] = bits_get(bs, n_filt_bits);
+            if (ics->tns_n_filt[w]) {
+                uint32_t coef_res = bits_get(bs, 1);
+                for (int f = 0; f < ics->tns_n_filt[w]; f++) {
+                    ics->tns_length[w][f] = bits_get(bs, (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 4 : 6);
+                    ics->tns_order[w][f] = bits_get(bs, (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 3 : 5);
+                    if (ics->tns_order[w][f]) {
+                        ics->tns_direction[w][f] = bits_get(bs, 1);
+                        bits_skip(bs, 1);
+                        int bits_per_coef = coef_res ? 4 : 3;
+                        for (int c = 0; c < ics->tns_order[w][f]; c++) {
+                            ics->tns_coef[w][f][c] = (int8_t)bits_get(bs, bits_per_coef);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ics->gain_control_present = bits_get(bs, 1);
+    if (ics->gain_control_present) {
+    }
+
+    return huffman_decode_spectrum(bs, ics, spec);
+}
+
+faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)
+{
+    bits_skip(bs, 4);
+    cpe->common_window = bits_get(bs, 1);
+
+    if (cpe->common_window) {
+        decode_ics_info(bs, &cpe->ics[0]);
+        cpe->ics[1] = cpe->ics[0];
+
+        cpe->ms_mask_present = bits_get(bs, 2);
+        if (cpe->ms_mask_present == 1) {
+            for (int g = 0; g < cpe->ics[0].num_window_groups; g++) {
+                for (int sfb = 0; sfb < cpe->ics[0].max_sfb; sfb++) {
+                    cpe->ms_used[g][sfb] = bits_get(bs, 1);
+                }
+            }
+        }
+    }
+
+    decode_ics(bs, &cpe->ics[0], dec->spec[ch]);
+    decode_ics(bs, &cpe->ics[1], dec->spec[ch + 1]);
+
+    return FAAD_OK;
+}
+
+faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch)
+{
+    bits_skip(bs, 4);
+    return decode_ics(bs, ics, dec->spec[ch]);
+}
