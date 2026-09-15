@@ -1,5 +1,5 @@
 /*
- * MP4 Container Atom Parser with Box Hierarchy and MP4 Sample Table Extraction
+ * MP4 Container Box Hierarchy Parser with Chunk-to-Sample Demuxing
  */
 
 #include <stdio.h>
@@ -71,7 +71,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
     long mdat_offset = 0;
     long mdat_size = 0;
 
-    /* First pass: find mdat atom offset and size */
+    /* First pass: locate mdat box */
     for (long i = 0; i < file_size - 8; i++) {
         if (memcmp(buf + i + 4, "mdat", 4) == 0) {
             mdat_size = read_be32(buf + i);
@@ -80,15 +80,15 @@ bool mp4_read_track(FILE *f, MP4Track *track)
         }
     }
 
-    /* Second pass: parse metadata atoms outside mdat */
+    /* Second pass: scan moov/trak metadata boxes outside mdat */
     for (long i = 0; i < file_size - 8; i++) {
         if (mdat_offset > 0 && i >= mdat_offset && i < mdat_offset + mdat_size) {
-            continue; /* Skip mdat audio payload area */
+            continue; /* Skip audio frame payload area */
         }
 
         if (memcmp(buf + i, "esds", 4) == 0) {
             for (long j = i + 4; j < i + 64 && j < file_size - 4; j++) {
-                if (buf[j] == 0x05) { /* AudioSpecificConfig tag */
+                if (buf[j] == 0x05) { /* AudioSpecificConfig descriptor tag */
                     uint32_t len = buf[j + 1];
                     track->asc_buf = (uint8_t *)malloc(len);
                     memcpy(track->asc_buf, buf + j + 2, len);

@@ -98,59 +98,61 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         dec->sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
     }
 
-    /* Core Syntactic Element Parsing */
-    uint32_t syntax_id = bits_get(&bs, 3);
+    uint32_t ch_idx = 0;
+    ICSInfo ics_list[MAX_CHANNELS];
+    memset(ics_list, 0, sizeof(ics_list));
 
-    CPEInfo cpe;
-    ICSInfo ics;
-    memset(&cpe, 0, sizeof(cpe));
-    memset(&ics, 0, sizeof(ics));
+    /* Loop through frame syntactic elements */
+    while (bits_get_consumed(&bs) + 3 <= in_bytes * 8 && ch_idx < MAX_CHANNELS) {
+        uint32_t syntax_id = bits_get(&bs, 3);
+        if (syntax_id == ID_END) {
+            break;
+        } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
+            decode_sce(&bs, dec, &ics_list[ch_idx], ch_idx);
+            dequantize_spectrum(&ics_list[ch_idx], dec->spec[ch_idx]);
+            apply_pns(&ics_list[ch_idx], dec->spec[ch_idx], &dec->pns_seed);
+            apply_tns(&ics_list[ch_idx], dec->spec[ch_idx]);
+            ch_idx += 1;
+        } else if (syntax_id == ID_CPE) {
+            CPEInfo cpe;
+            memset(&cpe, 0, sizeof(cpe));
+            decode_cpe(&bs, dec, &cpe, ch_idx);
+            ics_list[ch_idx] = cpe.ics[0];
+            ics_list[ch_idx + 1] = cpe.ics[1];
 
-    if (syntax_id == ID_SCE) {
-        decode_sce(&bs, dec, &ics, 0);
-        dequantize_spectrum(&ics, dec->spec[0]);
-        apply_pns(&ics, dec->spec[0], &dec->pns_seed);
-        apply_tns(&ics, dec->spec[0]);
-        if (dec->num_channels == 0) dec->num_channels = 1;
-    } else if (syntax_id == ID_CPE) {
-        decode_cpe(&bs, dec, &cpe, 0);
-        dequantize_spectrum(&cpe.ics[0], dec->spec[0]);
-        dequantize_spectrum(&cpe.ics[1], dec->spec[1]);
-        apply_pns(&cpe.ics[0], dec->spec[0], &dec->pns_seed);
-        apply_pns(&cpe.ics[1], dec->spec[1], &dec->pns_seed);
-        apply_is_stereo(&cpe, dec->spec[0], dec->spec[1]);
-        apply_ms_stereo(&cpe, dec->spec[0], dec->spec[1]);
-        apply_tns(&cpe.ics[0], dec->spec[0]);
-        apply_tns(&cpe.ics[1], dec->spec[1]);
-        if (dec->num_channels == 0) dec->num_channels = 2;
-    } else if (syntax_id == ID_DSE) {
-        decode_dse(&bs);
-    } else if (syntax_id == ID_PCE) {
-        decode_pce(&bs, dec);
-    }
-
-    /* Check for SBR Extension Payload in FIL elements */
-    while (bits_get_consumed(&bs) + 8 <= in_bytes * 8) {
-        uint32_t elem_id = bits_get(&bs, 3);
-        if (elem_id == ID_FIL) {
+            dequantize_spectrum(&cpe.ics[0], dec->spec[ch_idx]);
+            dequantize_spectrum(&cpe.ics[1], dec->spec[ch_idx + 1]);
+            apply_pns(&cpe.ics[0], dec->spec[ch_idx], &dec->pns_seed);
+            apply_pns(&cpe.ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
+            apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+            apply_ms_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+            apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
+            apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
+            ch_idx += 2;
+        } else if (syntax_id == ID_DSE) {
+            decode_dse(&bs);
+        } else if (syntax_id == ID_PCE) {
+            decode_pce(&bs, dec);
+        } else if (syntax_id == ID_FIL) {
             uint32_t count = bits_get(&bs, 4);
             if (count == 15) count += bits_get(&bs, 8) - 1;
             uint32_t ext_type = bits_get(&bs, 4);
             if (ext_type == SBR_EXTENSION_DATA || ext_type == SBR_EXTENSION_DATA_CRC) {
-                sbr_decode_extension(dec, &bs, 0, syntax_id);
+                sbr_decode_extension(dec, &bs, (ch_idx > 0) ? (ch_idx - 1) : 0, syntax_id);
             } else {
                 bits_skip(&bs, (count - 1) * 8 + 4);
             }
-        } else {
-            break;
         }
+    }
+
+    if (ch_idx > 0) {
+        dec->num_channels = ch_idx;
     }
 
     /* Perform IMDCT and windowing for each channel */
     float pcm_float[MAX_CHANNELS * FRAME_LEN_LONG];
     for (uint32_t c = 0; c < dec->num_channels; c++) {
-        ICSInfo *channel_ics = (syntax_id == ID_CPE) ? &cpe.ics[c] : &ics;
-        imdct_and_window(dec, c, channel_ics, dec->spec[c], pcm_float + c * FRAME_LEN_LONG);
+        imdct_and_window(dec, c, &ics_list[c], dec->spec[c], pcm_float + c * FRAME_LEN_LONG);
     }
 
     /* SBR Synthesis / HFR */
