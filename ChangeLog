@@ -18,8 +18,6 @@
 	  reduce SBR FFT/MDCT footprint overhead.
 	* bitstream: Optimize bitstream writing via direct bitfield packing and
 	  BitAccumulator.
-	* frontend: Port WASM frontend without CBR support and add audio tag
-	  auto-population.
 
 2.1 (Aug 18, 2026)
 
