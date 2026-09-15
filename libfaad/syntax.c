@@ -87,7 +87,13 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
                         bits_skip(bs, 1);
                         int bits_per_coef = coef_res ? 4 : 3;
                         for (int c = 0; c < ics->tns_order[w][f]; c++) {
-                            ics->tns_coef[w][f][c] = (int8_t)bits_get(bs, bits_per_coef);
+                            uint32_t val = bits_get(bs, bits_per_coef);
+                            /* Sign-extend bits_per_coef integer */
+                            int32_t sval = (int32_t)val;
+                            if (sval & (1 << (bits_per_coef - 1))) {
+                                sval |= ~((1 << bits_per_coef) - 1);
+                            }
+                            ics->tns_coef[w][f][c] = (int8_t)sval;
                         }
                     }
                 }

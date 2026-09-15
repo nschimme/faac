@@ -1,5 +1,5 @@
 /*
- * FAAD CLI Executable - Mimics faad2 interface
+ * FAAD CLI Executable - Mimics faad2 interface with ADTS and MP4 support
  */
 
 #include <stdio.h>
@@ -10,7 +10,7 @@
 
 #include "faad.h"
 
-#define BUFFER_SIZE (1024 * 1024)
+extern bool mp4_read_header(FILE *f, uint8_t **asc_buf, uint32_t *asc_len, uint32_t *delay, uint32_t *padding);
 
 static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes)
 {
@@ -41,7 +41,7 @@ static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 static void print_usage(const char *prog)
 {
     printf("FAAD - Freeware Advanced Audio Decoder\n");
-    printf("Usage: %s [options] infile.aac\n", prog);
+    printf("Usage: %s [options] infile.aac|infile.m4a\n", prog);
     printf("Options:\n");
     printf("  -o <filename>  Set output WAV file name\n");
     printf("  -i             Display AAC file and bitstream information\n");
@@ -78,6 +78,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    uint8_t *asc_buf = NULL;
+    uint32_t asc_len = 0;
+    uint32_t delay = 0, padding = 0;
+    bool is_mp4 = mp4_read_header(fin, &asc_buf, &asc_len, &delay, &padding);
+
     fseek(fin, 0, SEEK_END);
     long file_len = ftell(fin);
     fseek(fin, 0, SEEK_SET);
@@ -98,13 +103,14 @@ int main(int argc, char **argv)
 
     faad_params params;
     faad_params_init(&params, sizeof(params));
-    params.stream_format = FAAD_STREAM_ADTS;
+    params.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
     params.output_format = FAAD_OUTPUT_16BIT;
 
     faad_decoder *dec = NULL;
-    faad_status st = faad_decoder_open(&params, NULL, 0, &dec);
+    faad_status st = faad_decoder_open(&params, asc_buf, asc_len, &dec);
     if (st != FAAD_OK) {
         fprintf(stderr, "Failed to open FAAD decoder: %s\n", faad_strerror(st));
+        if (asc_buf) free(asc_buf);
         free(inbuf);
         return 1;
     }
@@ -115,10 +121,10 @@ int main(int argc, char **argv)
         if (!fout) {
             fprintf(stderr, "Error opening output file %s\n", outfile);
             faad_decoder_close(&dec);
+            if (asc_buf) free(asc_buf);
             free(inbuf);
             return 1;
         }
-        /* Write dummy header */
         write_wav_header(fout, 44100, 2, 0);
     }
 
@@ -140,7 +146,7 @@ int main(int argc, char **argv)
             if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
                 break;
             }
-            offset += 1; /* Skip corrupted byte */
+            offset += 1;
             continue;
         }
 
@@ -161,10 +167,14 @@ int main(int argc, char **argv)
     }
 
     if (info_only) {
-        printf("AAC file info:\n");
-        printf("Sample rate : %u Hz\n", sample_rate);
-        printf("Channels    : %u\n", num_channels);
-        printf("Total frames: %u\n", frames_decoded);
+        printf("AAC file info (%s):\n", is_mp4 ? "MP4/M4A Container" : "ADTS Bitstream");
+        printf("Sample rate   : %u Hz\n", sample_rate);
+        printf("Channels      : %u\n", num_channels);
+        printf("Total frames  : %u\n", frames_decoded);
+        if (is_mp4 && delay > 0) {
+            printf("Gapless delay : %u samples\n", delay);
+            printf("Gapless padding: %u samples\n", padding);
+        }
     } else if (fout) {
         write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes);
         fclose(fout);
@@ -172,6 +182,7 @@ int main(int argc, char **argv)
     }
 
     faad_decoder_close(&dec);
+    if (asc_buf) free(asc_buf);
     free(inbuf);
     return 0;
 }

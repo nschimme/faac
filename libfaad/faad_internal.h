@@ -75,7 +75,7 @@ typedef struct {
     uint8_t num_window_groups;
     uint8_t window_group_length[NUM_WINDOWS];
     uint8_t num_windows;
-    uint8_t sfb_offsets[64];
+    uint16_t sfb_offsets[64];
     uint8_t num_sfbs;
     uint8_t sect_cb[8][64];
     uint8_t sect_start[8][64];

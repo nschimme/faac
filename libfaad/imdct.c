@@ -106,13 +106,15 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
     float imdct_out[FRAME_LEN_LONG * 2];
     memset(imdct_out, 0, sizeof(imdct_out));
 
+    const float *win_long = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
+    const float *win_short = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         float short_out[256];
         for (int w = 0; w < 8; w++) {
             fast_imdct(spec + w * 128, short_out, 256);
-            const float *win = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
             for (int i = 0; i < 256; i++) {
-                short_out[i] *= win[i];
+                short_out[i] *= win_short[i];
             }
             int offset = 448 + w * 128;
             for (int i = 0; i < 256; i++) {
@@ -121,9 +123,32 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
         }
     } else {
         fast_imdct(spec, imdct_out, 2048);
-        const float *win = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
-        for (int i = 0; i < 2048; i++) {
-            imdct_out[i] *= win[i];
+        if (ics->window_sequence == ONLY_LONG_SEQUENCE) {
+            for (int i = 0; i < 2048; i++) {
+                imdct_out[i] *= win_long[i];
+            }
+        } else if (ics->window_sequence == LONG_START_SEQUENCE) {
+            for (int i = 0; i < 1024; i++) {
+                imdct_out[i] *= win_long[i];
+            }
+            /* 1024..1447: 1.0f */
+            for (int i = 1448; i < 1704; i++) {
+                imdct_out[i] *= win_short[i - 1448];
+            }
+            for (int i = 1704; i < 2048; i++) {
+                imdct_out[i] = 0.0f;
+            }
+        } else if (ics->window_sequence == LONG_STOP_SEQUENCE) {
+            for (int i = 0; i < 448; i++) {
+                imdct_out[i] = 0.0f;
+            }
+            for (int i = 448; i < 704; i++) {
+                imdct_out[i] *= win_short[i - 448];
+            }
+            /* 704..1023: 1.0f */
+            for (int i = 1024; i < 2048; i++) {
+                imdct_out[i] *= win_long[i];
+            }
         }
     }
 

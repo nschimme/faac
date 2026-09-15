@@ -12,13 +12,13 @@ static void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
         ics->num_sfbs = num_sfbs_128[sr_idx];
         const uint16_t *offsets = sfb_offsets_128[sr_idx];
         for (int i = 0; i <= ics->num_sfbs; i++) {
-            ics->sfb_offsets[i] = (uint8_t)offsets[i];
+            ics->sfb_offsets[i] = offsets[i];
         }
     } else {
         ics->num_sfbs = num_sfbs_1024[sr_idx];
         const uint16_t *offsets = sfb_offsets_1024[sr_idx];
         for (int i = 0; i <= ics->num_sfbs; i++) {
-            ics->sfb_offsets[i] = (uint8_t)offsets[i];
+            ics->sfb_offsets[i] = offsets[i];
         }
     }
 }

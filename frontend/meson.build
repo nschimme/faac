@@ -23,7 +23,7 @@ faac = executable('faac',
 
 if get_option('decoder')
     faad = executable('faad',
-        ['faad_main.c'],
+        ['faad_main.c', 'mp4read.c'],
         include_directories: ['..', '../include'],
         link_with: [libfaad],
         dependencies: [libshell32],
