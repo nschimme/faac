@@ -152,19 +152,21 @@ static void DRM_MDCT(const DRMContext *ctx, const float *data, float *out, int N
 
     if (!sin_tbl || !cos_tbl) return;
 
-    float tmp[BLOCK_LEN_LONG_960];
+    float tmp[BLOCK_LEN_LONG_960] = {0.0f};
 
-    for (int k = 0; k < N2; k++) {
-        float s1 = 0.0f, s2 = 0.0f;
-        float sign = (k % 2 != 0) ? -1.0f : 1.0f;
+    if (N2 > 0 && N2 <= BLOCK_LEN_LONG_960) {
+        for (int k = 0; k < N2; k++) {
+            float s1 = 0.0f, s2 = 0.0f;
+            float sign = (k % 2 != 0) ? -1.0f : 1.0f;
 
-        for (int n = 0; n < N4; n++) {
-            float f1 = data[N4 - 1 - n] - data[N4 + n];
-            float f2 = -data[3 * N4 - 1 - n] - data[3 * N4 + n];
-            s1 += f1 * sin_tbl[n * N2 + k];
-            s2 += f2 * cos_tbl[n * N2 + k];
+            for (int n = 0; n < N4; n++) {
+                float f1 = data[N4 - 1 - n] - data[N4 + n];
+                float f2 = -data[3 * N4 - 1 - n] - data[3 * N4 + n];
+                s1 += f1 * sin_tbl[n * N2 + k];
+                s2 += f2 * cos_tbl[n * N2 + k];
+            }
+            tmp[k] = sign * s1 + s2;
         }
-        tmp[k] = sign * s1 + s2;
     }
     memcpy(out, tmp, N2 * sizeof(float));
 }

@@ -220,7 +220,7 @@ static faac_status validate_params(const faac_params *p)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
     /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0] || p->reserved[1])
+    if (p->reserved[0])
         return FAAC_ERR_INVALID_ARGUMENT;
 #if !defined(FAAC_DRM)
     if (p->use_drm)

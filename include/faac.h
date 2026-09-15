@@ -172,7 +172,8 @@ typedef struct faac_params {
 
     bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
     bool                    use_tns;       /* temporal noise shaping                   */
-    uint8_t                 reserved[2];   /* explicit pad; must remain 0              */
+    bool                    use_drm;       /* Enable Digital Radio Mondiale (DRM) 960-sample frame mode */
+    uint8_t                 reserved[1];   /* explicit pad; must remain 0              */
 
     uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quant_quality */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = derive from bit_rate             */
@@ -208,9 +209,6 @@ typedef struct faac_params {
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
-
-    bool                    use_drm;       /* Enable Digital Radio Mondiale (DRM) 960-sample frame mode */
-    uint8_t                 reserved2[3];  /* explicit pad; must remain 0 */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
