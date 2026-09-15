@@ -102,7 +102,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
     ICSInfo ics_list[MAX_CHANNELS];
     memset(ics_list, 0, sizeof(ics_list));
 
-    /* Loop through frame syntactic elements */
+    /* Loop through frame syntactic elements with strict MAX_CHANNELS boundary guards */
     while (bits_get_consumed(&bs) + 3 <= in_bytes * 8 && ch_idx < MAX_CHANNELS) {
         uint32_t syntax_id = bits_get(&bs, 3);
         if (syntax_id == ID_END) {
@@ -114,6 +114,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
             apply_tns(&ics_list[ch_idx], dec->spec[ch_idx]);
             ch_idx += 1;
         } else if (syntax_id == ID_CPE) {
+            if (ch_idx + 1 >= MAX_CHANNELS) break;
             CPEInfo cpe;
             memset(&cpe, 0, sizeof(cpe));
             decode_cpe(&bs, dec, &cpe, ch_idx);

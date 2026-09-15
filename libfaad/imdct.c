@@ -14,6 +14,17 @@ static float sine_window_2048[2048];
 static float kbd_window_256[256];
 static float sine_window_256[256];
 
+/* Precomputed twiddle tables for fast IMDCT */
+static float imdct_cos_2048[256];
+static float imdct_sin_2048[256];
+static float imdct_post_cos_2048[256];
+static float imdct_post_sin_2048[256];
+
+static float imdct_cos_256[32];
+static float imdct_sin_256[32];
+static float imdct_post_cos_256[32];
+static float imdct_post_sin_256[32];
+
 static FFT_Tables fft_tbl;
 static bool tables_init = false;
 
@@ -59,6 +70,28 @@ static void init_windows(void)
         kbd_window_256[255 - i] = kbd_window_256[i];
     }
 
+    /* Precompute IMDCT pre- and post-twiddle tables for N=2048 */
+    for (int k = 0; k < 256; k++) {
+        float angle_pre = (float)M_PI * (2 * k + 0.5f) / 2048.0f;
+        imdct_cos_2048[k] = cosf(angle_pre);
+        imdct_sin_2048[k] = sinf(angle_pre);
+
+        float angle_post = (float)M_PI * (2 * k + 0.5f + 1024.0f) / 4096.0f;
+        imdct_post_cos_2048[k] = cosf(angle_post);
+        imdct_post_sin_2048[k] = sinf(angle_post);
+    }
+
+    /* Precompute IMDCT pre- and post-twiddle tables for N=256 */
+    for (int k = 0; k < 32; k++) {
+        float angle_pre = (float)M_PI * (2 * k + 0.5f) / 256.0f;
+        imdct_cos_256[k] = cosf(angle_pre);
+        imdct_sin_256[k] = sinf(angle_pre);
+
+        float angle_post = (float)M_PI * (2 * k + 0.5f + 128.0f) / 512.0f;
+        imdct_post_cos_256[k] = cosf(angle_post);
+        imdct_post_sin_256[k] = sinf(angle_post);
+    }
+
     tables_init = true;
 }
 
@@ -71,25 +104,28 @@ static void fast_imdct(const float *in, float *out, int n)
 
     float xr[1024], xi[1024];
 
-    /* Pre-twiddle */
+    const float *cos_pre = (n == 2048) ? imdct_cos_2048 : imdct_cos_256;
+    const float *sin_pre = (n == 2048) ? imdct_sin_2048 : imdct_sin_256;
+    const float *cos_post = (n == 2048) ? imdct_post_cos_2048 : imdct_post_cos_256;
+    const float *sin_post = (n == 2048) ? imdct_post_sin_2048 : imdct_post_sin_256;
+
+    /* Fast table-driven Pre-twiddle */
     for (int k = 0; k < n4; k++) {
         float re = in[2 * k];
         float im = in[n2 - 1 - 2 * k];
-        float angle = (float)M_PI * (2 * k + 0.5f) / n;
-        float c = cosf(angle);
-        float s = sinf(angle);
+        float c = cos_pre[k];
+        float s = sin_pre[k];
         xr[k] = re * c + im * s;
         xi[k] = im * c - re * s;
     }
 
     fft(&fft_tbl, xr, xi, logm - 1);
 
-    /* Post-twiddle and mirror with 2.0 / n scaling factor */
+    /* Fast table-driven Post-twiddle and mirror with 2.0 / n scaling */
     float scale = 2.0f / (float)n;
     for (int k = 0; k < n4; k++) {
-        float angle = (float)M_PI * (2 * k + 0.5f + n2) / (2 * n);
-        float c = cosf(angle);
-        float s = sinf(angle);
+        float c = cos_post[k];
+        float s = sin_post[k];
         float re = (xr[k] * c - xi[k] * s) * scale;
         float im = (xi[k] * c + xr[k] * s) * scale;
 

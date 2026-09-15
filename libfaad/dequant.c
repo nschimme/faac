@@ -4,25 +4,50 @@
 
 #include "faad_internal.h"
 
-static float pow_4_3(int x)
+static float pow_4_3_lut[33];
+static float sf_scale_lut[256];
+static bool dequant_tables_init = false;
+
+static void init_dequant_tables(void)
 {
-    if (x == 0) return 0.0f;
-    return powf((float)x, 4.0f / 3.0f);
+    if (dequant_tables_init) return;
+
+    for (int i = 0; i <= 32; i++) {
+        pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
+    }
+    for (int i = 0; i < 256; i++) {
+        sf_scale_lut[i] = powf(2.0f, 0.25f * (i - 100));
+    }
+
+    dequant_tables_init = true;
+}
+
+static inline float pow_4_3_fast(int x)
+{
+    int abs_x = abs(x);
+    if (abs_x <= 32) {
+        float val = pow_4_3_lut[abs_x];
+        return (x < 0) ? -val : val;
+    }
+    float val = powf((float)abs_x, 4.0f / 3.0f);
+    return (x < 0) ? -val : val;
 }
 
 void dequantize_spectrum(ICSInfo *ics, float *spec)
 {
+    init_dequant_tables();
+
     for (int g = 0; g < ics->num_window_groups; g++) {
         for (int i = 0; i < ics->num_sections[g]; i++) {
             int cb = ics->sect_cb[g][i];
-            if (cb == HCB_ZERO || cb == HCB_PNS) continue;
+            if (cb == 0 || cb == 13) continue;
 
             int start_sfb = ics->sect_start[g][i];
             int end_sfb = ics->sect_end[g][i];
 
             for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
                 int sf = ics->scalefactors[g][sfb];
-                float scale = powf(2.0f, 0.25f * (sf - 100));
+                float scale = (sf >= 0 && sf < 256) ? sf_scale_lut[sf] : powf(2.0f, 0.25f * (sf - 100));
 
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
@@ -31,10 +56,8 @@ void dequantize_spectrum(ICSInfo *ics, float *spec)
                     float *ptr = spec + w * 128 + start_k;
                     for (int k = start_k; k < end_k; k++) {
                         int val = (int)(*ptr);
-                        if (val < 0) {
-                            *ptr = -pow_4_3(-val) * scale;
-                        } else if (val > 0) {
-                            *ptr = pow_4_3(val) * scale;
+                        if (val != 0) {
+                            *ptr = pow_4_3_fast(val) * scale;
                         }
                         ptr++;
                     }
@@ -46,11 +69,13 @@ void dequantize_spectrum(ICSInfo *ics, float *spec)
 
 void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed)
 {
+    init_dequant_tables();
+
     for (int g = 0; g < ics->num_window_groups; g++) {
         for (int sfb = 0; sfb < ics->num_sfbs; sfb++) {
             if (ics->pns_used[g][sfb]) {
                 int sf = ics->scalefactors[g][sfb];
-                float scale = powf(2.0f, 0.25f * (sf - 100));
+                float scale = (sf >= 0 && sf < 256) ? sf_scale_lut[sf] : powf(2.0f, 0.25f * (sf - 100));
 
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];

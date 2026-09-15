@@ -101,11 +101,13 @@ faad_status decode_dse(BitReader *bs)
     return FAAD_OK;
 }
 
-faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec)
+faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec, bool common_window)
 {
     ics->global_gain = bits_get(bs, 8);
 
-    decode_ics_info(bs, ics);
+    if (!common_window) {
+        decode_ics_info(bs, ics);
+    }
     decode_section_data(bs, ics);
 
     ics->pulse_data_present = bits_get(bs, 1);
@@ -169,8 +171,8 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
         }
     }
 
-    decode_ics(bs, dec, &cpe->ics[0], dec->spec[ch]);
-    decode_ics(bs, dec, &cpe->ics[1], dec->spec[ch + 1]);
+    decode_ics(bs, dec, &cpe->ics[0], dec->spec[ch], cpe->common_window);
+    decode_ics(bs, dec, &cpe->ics[1], dec->spec[ch + 1], cpe->common_window);
 
     return FAAD_OK;
 }
@@ -178,5 +180,5 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
 faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch)
 {
     bits_skip(bs, 4);
-    return decode_ics(bs, dec, ics, dec->spec[ch]);
+    return decode_ics(bs, dec, ics, dec->spec[ch], false);
 }
