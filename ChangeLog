@@ -1,40 +1,43 @@
 (unreleased)
 
 	[ enzo1982 ]
-	* build: Don't force LTO when explicitly disabled.
-	* build: Remove `__stdcall` calling convention for x86 Windows builds.
+	* build: Don't force LTO when explicitly disabled
+	* build: Remove `__stdcall` calling convention for x86 Windows builds
 
 	[ Nils Schimmelmann ]
-	* api: Bump ABI version to 2 for safe `faac_params_init` caller sizing,
-	  enforce proper baseline size checks in info getters, and allow pipeline
-	  draining during flush on short streams.
-	* sbr: Align SBR payload timing with core audio frames, fix parameter
-	  resolution in VBR mode and transient normalization, stack-allocate
-	  `BitStream`, signal `psPresentFlag = 0` explicitly for mono HE-AAC,
-	  drain SBR tail on flush frames, write stream constants directly, expand
-	  HE-AAC v1 auto-resolution threshold, and widen reconstruction toward
-	  20 kHz.
-	* tns: Enable TNS by default, drop prediction-gain ceiling, screen frames
-	  before LPC analysis, and optimize runtime footprint.
-	* ratecontrol: Implement ABR rate controller with signed bit account,
-	  add CBR bit reservoir behind `--cbr`, decouple HE-AAC VBR ceiling,
-	  and enforce ISO/IEC 14496-3 per-channel bitrate limits.
-	* bandwidth: Refit ABR bandwidth curve to optimize cutoff frequency
-	  across bitrates.
-	* blockswitch / stereo: Judge each sub-block attack once in time domain,
-	  rework short-window grouping, masking, and M/S policy, and restrict
-	  M/S / dynamic IS crossover at low bitrates.
-	* quantize / huffman: Optimize scale-factor and codebook processing
-	  in `huff2` and `quantize`.
-	* frontend: Default to MP4 output with automatic format detection,
-	  support 64-bit `mdat`/duration and track language, add UTF-8 and
-	  wide-character support across CLI/GUI, add native 24-bit packed PCM
-	  input handling, add iTunes gapless playback metadata (`iTunSMPB`),
-	  extract shared encoding engine, and resolve container timing/gapless
-	  bugs.
-	* build & diagnostics: Force-include `config.h` via build system, optimize
-	  memory footprint, simplify filterbank init, and add optional encoding
-	  diagnostics (`--stats`).
+	* API: Bump SONAME/ABI version to 2 for safe `faac_params_init` caller sizing
+	* API: Enforce baseline size checks in parameter query/info getter functions
+	* API: Allow pipeline draining during flush on short streams
+	* Rate Control: Refactor ABR rate controller with a signed bit account module
+	* Rate Control: Add bit reservoir for CBR rate control behind `--cbr`
+	* Rate Control: Enforce ISO/IEC 14496-3 per-channel frame ceiling and bitrate limits
+	* Rate Control: Decouple HE-AAC VBR object-type gate from ABR ceiling
+	* Bandwidth: Refit ABR bandwidth curve for optimal cutoff frequency selection
+	* SBR: Align SBR payload timing with core audio frames
+	* SBR: Fix parameter resolution in VBR mode and transient normalization
+	* SBR: Expand HE-AAC v1 auto-resolution threshold to 96k and widen reconstruction toward 20 kHz
+	* SBR: Stack-allocate BitStream and simplify SBR context structures for reduced memory footprint
+	* SBR: Signal `psPresentFlag = 0` explicitly for mono HE-AAC streams
+	* SBR: Drain SBR payload tail on HE-AAC flush frames
+	* SBR: Write stream constants directly and decide header once per access unit
+	* TNS: Enable TNS by default across library API, CLI, and GUI
+	* TNS: Drop prediction-gain ceiling and screen frames before LPC analysis
+	* TNS: Optimize runtime footprint and TNS kernel execution
+	* Block Switching: Judge each sub-block attack once in the time domain
+	* Stereo: Dynamic Intensity Stereo crossover and M/S restriction at low bitrates
+	* Quantization & Psychoacoustics: Rework short-window grouping, masking, and M/S policy
+	* Huffman: Optimize scale-factor and codebook processing in `huff2` and `quantize`
+	* Filterbank: Reuse shared work buffer for MDCT scratch and simplify filterbank init
+	* Frontend: Default to MP4 container output with automatic format detection
+	* Frontend: Support 64-bit `mdat` size/duration atoms and track language tagging
+	* Frontend: Add UTF-8 and wide-character filename support across CLI and GUI
+	* Frontend: Add native 24-bit packed PCM input handling
+	* Frontend: Add iTunes gapless playback metadata (`iTunSMPB`)
+	* Frontend: Extract shared encoding engine and enable MP4 output in Win32 GUI
+	* Frontend: Fix GUI PCM clipping bug and MSVC compiler warnings
+	* Frontend: Fix container timing, HE-AAC sample rate reporting, and gapless playback bugs
+	* Build & Diagnostics: Force-include `config.h` via build system
+	* Build & Diagnostics: Add optional encoding diagnostics summary (`--stats`)
 
 2.1 (Aug 18, 2026)
 
