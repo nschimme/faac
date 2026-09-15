@@ -105,6 +105,7 @@ typedef struct {
     uint8_t tns_length[8][4];
     uint8_t tns_order[8][4];
     uint8_t tns_direction[8][4];
+    uint8_t tns_coef_res[8];
     int8_t  tns_coef[8][4][32];
 
     /* Gain control */

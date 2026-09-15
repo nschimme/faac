@@ -105,6 +105,7 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, ui
     memset(spec, 0, FRAME_LEN_LONG * sizeof(float));
 
     int sf = ics->global_gain;
+    int is_pos = 0;
     int pns_energy = sf;
 
     int window_offset = 0;
@@ -123,11 +124,11 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, ui
                     ics->scalefactors[g][sfb] = pns_energy;
                     ics->pns_used[g][sfb] = true;
                 }
-            } else if (cb == 14 || cb == 15) { /* Intensity stereo */
+            } else if (cb == 14 || cb == 15) { /* Intensity stereo (decoupled predictor) */
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
-                    int dsf = decode_huffman_symbol(bs, 11);
-                    sf += dsf - 60;
-                    ics->scalefactors[g][sfb] = sf;
+                    int dis = decode_huffman_symbol(bs, 11);
+                    is_pos += dis - 60;
+                    ics->scalefactors[g][sfb] = is_pos;
                 }
             } else {
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {

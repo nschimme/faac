@@ -61,9 +61,11 @@ void apply_tns(ICSInfo *ics, float *spec)
             /* Convert quantized Reflection Coefficients (parcor) to LPC coefficients via Levinson-Durbin step-down */
             float rc[32];
             float lpc[32];
+            float scale_factor = (ics->tns_coef_res[w] == 1) ? (float)(M_PI / 16.0) : (float)(M_PI / 8.0);
+
             for (int i = 0; i < order; i++) {
                 int8_t val = ics->tns_coef[w][f][i];
-                rc[i] = sinf((float)val * (float)M_PI / 16.0f); /* ISO 14496-3 parcor conversion */
+                rc[i] = sinf((float)val * scale_factor);
             }
 
             for (int m = 0; m < order; m++) {
