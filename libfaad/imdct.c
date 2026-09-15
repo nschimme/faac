@@ -1,8 +1,9 @@
 /*
- * IMDCT and Windowing
+ * Fast FFT-based IMDCT and Windowing
  */
 
 #include "faad_internal.h"
+#include "fft.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -12,11 +13,15 @@ static float kbd_window_2048[2048];
 static float sine_window_2048[2048];
 static float kbd_window_256[256];
 static float sine_window_256[256];
+
+static FFT_Tables fft_tbl;
 static bool tables_init = false;
 
 static void init_windows(void)
 {
     if (tables_init) return;
+
+    fft_initialize(&fft_tbl);
 
     for (int i = 0; i < 2048; i++) {
         sine_window_2048[i] = sinf((float)M_PI * (i + 0.5f) / 2048.0f);
@@ -40,18 +45,57 @@ static void init_windows(void)
         kbd_window_2048[2047 - i] = kbd_window_2048[i];
     }
 
+    sum = 0.0;
+    for (int i = 0; i < 128; i++) {
+        double v = (2.0 * i / 128.0) - 1.0;
+        double term = cosh(alpha * sqrt(1.0 - v * v));
+        sum += term;
+    }
+    run_sum = 0.0;
+    for (int i = 0; i < 128; i++) {
+        double v = (2.0 * i / 128.0) - 1.0;
+        run_sum += cosh(alpha * sqrt(1.0 - v * v));
+        kbd_window_256[i] = sqrt(run_sum / sum);
+        kbd_window_256[255 - i] = kbd_window_256[i];
+    }
+
     tables_init = true;
 }
 
-static void imdct_transform(const float *in, float *out, int n)
+static void fast_imdct(const float *in, float *out, int n)
 {
     int n2 = n / 2;
-    for (int i = 0; i < n; i++) {
-        double sum = 0.0;
-        for (int k = 0; k < n2; k++) {
-            sum += in[k] * cos((M_PI / n2) * (i + 0.5 + n2 * 0.5) * (k + 0.5));
-        }
-        out[i] = (float)(sum * 2.0 / n2);
+    int n4 = n / 4;
+    int logm = 0;
+    while ((1 << logm) < n2) logm++;
+
+    float xr[1024], xi[1024];
+
+    /* Pre-twiddle */
+    for (int k = 0; k < n4; k++) {
+        float re = in[2 * k];
+        float im = in[n2 - 1 - 2 * k];
+        float angle = (float)M_PI * (2 * k + 0.5f) / n;
+        float c = cosf(angle);
+        float s = sinf(angle);
+        xr[k] = re * c + im * s;
+        xi[k] = im * c - re * s;
+    }
+
+    fft(&fft_tbl, xr, xi, logm - 1);
+
+    /* Post-twiddle and mirror */
+    for (int k = 0; k < n4; k++) {
+        float angle = (float)M_PI * (2 * k + 0.5f + n2) / (2 * n);
+        float c = cosf(angle);
+        float s = sinf(angle);
+        float re = xr[k] * c - xi[k] * s;
+        float im = xi[k] * c + xr[k] * s;
+
+        out[2 * k] = -re;
+        out[n2 - 1 - 2 * k] = im;
+        out[n2 + 2 * k] = im;
+        out[n - 1 - 2 * k] = re;
     }
 }
 
@@ -65,7 +109,7 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         float short_out[256];
         for (int w = 0; w < 8; w++) {
-            imdct_transform(spec + w * 128, short_out, 256);
+            fast_imdct(spec + w * 128, short_out, 256);
             const float *win = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
             for (int i = 0; i < 256; i++) {
                 short_out[i] *= win[i];
@@ -76,7 +120,7 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
             }
         }
     } else {
-        imdct_transform(spec, imdct_out, 2048);
+        fast_imdct(spec, imdct_out, 2048);
         const float *win = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
         for (int i = 0; i < 2048; i++) {
             imdct_out[i] *= win[i];

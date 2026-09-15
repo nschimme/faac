@@ -145,7 +145,7 @@ struct faad_decoder {
     uint32_t pns_seed;
 };
 
-faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec);
+faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, uint32_t sample_rate);
 void dequantize_spectrum(ICSInfo *ics, float *spec);
 void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed);
 void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
@@ -153,7 +153,7 @@ void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_tns(ICSInfo *ics, float *spec);
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float *spec, float *out_pcm);
 
-faad_status decode_ics(BitReader *bs, ICSInfo *ics, float *spec);
+faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec);
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch);
 faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch);
 

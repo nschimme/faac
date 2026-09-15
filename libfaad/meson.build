@@ -9,6 +9,7 @@ faad_src = [
     'tns.c',
     'imdct.c',
     'sbr.c',
+    'sfb_tables.c',
     '../libfaac/huffdata.c',
     '../libfaac/fft.c',
     '../libfaac/sbr_tables.c',

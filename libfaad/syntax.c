@@ -59,7 +59,7 @@ static void decode_section_data(BitReader *bs, ICSInfo *ics)
     }
 }
 
-faad_status decode_ics(BitReader *bs, ICSInfo *ics, float *spec)
+faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec)
 {
     ics->global_gain = bits_get(bs, 8);
 
@@ -99,7 +99,7 @@ faad_status decode_ics(BitReader *bs, ICSInfo *ics, float *spec)
     if (ics->gain_control_present) {
     }
 
-    return huffman_decode_spectrum(bs, ics, spec);
+    return huffman_decode_spectrum(bs, ics, spec, dec->sample_rate);
 }
 
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)
@@ -121,8 +121,8 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
         }
     }
 
-    decode_ics(bs, &cpe->ics[0], dec->spec[ch]);
-    decode_ics(bs, &cpe->ics[1], dec->spec[ch + 1]);
+    decode_ics(bs, dec, &cpe->ics[0], dec->spec[ch]);
+    decode_ics(bs, dec, &cpe->ics[1], dec->spec[ch + 1]);
 
     return FAAD_OK;
 }
@@ -130,5 +130,5 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
 faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch)
 {
     bits_skip(bs, 4);
-    return decode_ics(bs, ics, dec->spec[ch]);
+    return decode_ics(bs, dec, ics, dec->spec[ch]);
 }

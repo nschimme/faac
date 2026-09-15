@@ -3,30 +3,22 @@
  */
 
 #include "faad_internal.h"
-
-/* AAC 1024 long-window SFB offsets for sample rates */
-static const uint16_t sfb_offsets_1024_44100[] = {
-    0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 80, 88, 96, 108, 120, 132, 144, 156, 172, 188, 204, 220, 240, 260, 284, 308, 336, 364, 396, 432, 468, 508, 552, 600, 652, 708, 768, 832, 900, 972, 1024
-};
-static const uint8_t num_sfbs_1024_44100 = 45;
-
-static const uint16_t sfb_offsets_128_44100[] = {
-    0, 4, 8, 12, 16, 20, 28, 36, 44, 56, 68, 80, 96, 112, 128
-};
-static const uint8_t num_sfbs_128_44100 = 14;
+#include "sfb_tables.h"
 
 static void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
 {
-    (void)sample_rate;
+    int sr_idx = get_sr_index(sample_rate);
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
-        ics->num_sfbs = num_sfbs_128_44100;
-        for (int i = 0; i <= num_sfbs_128_44100; i++) {
-            ics->sfb_offsets[i] = (uint8_t)sfb_offsets_128_44100[i];
+        ics->num_sfbs = num_sfbs_128[sr_idx];
+        const uint16_t *offsets = sfb_offsets_128[sr_idx];
+        for (int i = 0; i <= ics->num_sfbs; i++) {
+            ics->sfb_offsets[i] = (uint8_t)offsets[i];
         }
     } else {
-        ics->num_sfbs = num_sfbs_1024_44100;
-        for (int i = 0; i <= num_sfbs_1024_44100; i++) {
-            ics->sfb_offsets[i] = (uint8_t)sfb_offsets_1024_44100[i];
+        ics->num_sfbs = num_sfbs_1024[sr_idx];
+        const uint16_t *offsets = sfb_offsets_1024[sr_idx];
+        for (int i = 0; i <= ics->num_sfbs; i++) {
+            ics->sfb_offsets[i] = (uint8_t)offsets[i];
         }
     }
 }
@@ -107,14 +99,15 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     }
 }
 
-faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec)
+faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, uint32_t sample_rate)
 {
-    setup_sfb_offsets(ics, 44100);
+    setup_sfb_offsets(ics, sample_rate);
     memset(spec, 0, FRAME_LEN_LONG * sizeof(float));
 
     int sf = ics->global_gain;
     int pns_energy = sf;
 
+    int window_offset = 0;
     for (int g = 0; g < ics->num_window_groups; g++) {
         for (int i = 0; i < ics->num_sections[g]; i++) {
             int cb = ics->sect_cb[g][i];
@@ -147,7 +140,7 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec)
                     int end_k = ics->sfb_offsets[sfb + 1];
 
                     for (int w = 0; w < ics->window_group_length[g]; w++) {
-                        float *ptr = spec + w * 128 + start_k;
+                        float *ptr = spec + (window_offset + w) * 128 + start_k;
                         int k = start_k;
                         while (k < end_k) {
                             if (cb <= 4) {
@@ -172,6 +165,7 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec)
                 }
             }
         }
+        window_offset += ics->window_group_length[g];
     }
     return FAAD_OK;
 }
