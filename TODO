@@ -1,57 +1,10 @@
-# Ranked by size (S/M/L) then expected payoff within each tier.
-# Context: psychoacoustic-model levers (TNS, bmask/SFM-tonality, PNS threshold
-# scaling) are exhausted -- exhaustively tested and NO-GO/noise per project
-# memory. Remaining upside is in coding efficiency (bit allocation, codebook
-# selection) and rate targeting, without touching footprint or throughput
-# (FAAC has 3-5x speed headroom over every competitor on the leaderboard).
-
-## Small (isolated bug/tuning, contained blast radius)
-- investigate 16k_mono_40k bitrate-targeting outlier (22.9% error vs aac-enc's
-  2.0%, worse than even Apple's 16.6%) -- looks like a low-samplerate/
-  high-relative-bitrate mistargeting bug, isolated from the stereo quality gap
-- add PCE (Program Config Element) or 4-bit AudioSpecificConfig
-- HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
-- drop the dead count mode from the core bitstream writer: BuildFrame is only
-  ever called with write=true (ADTS length is patched afterwards), so the
-  writeFlag plumbing through WriteElement/WriteICS/writebooks/writesf (~40
-  `if (write)` branches in channels.c and huff2.c) never runs false
-## Medium (contained algorithmic change, one subsystem)
-- Add adaptive bit reservoir control
-- HE-AAC v1: measured SBR noise floor / invf per band. The constant floor
-  saturates once the fill is effectively off and global invf 1/2/3 are
-  within 0.005 MOS of each other, so a measured version has at most the
-  tonal-clip remainder to win (SinceAlways/velvet/Changes/girl trail
-  fdkaac by 0.3-0.4 in the SBR band at 64k). More envelopes per stationary
-  frame lose at every rate without time-direction delta coding
-- stereo: on wide-stereo material (Severance: L/R corr 0.37, no HF) the
-  default joint mode scores 0.3-0.6 below --joint 0 and M/S-only 1.1 below;
-  the penalty is in the side channel at 3-12 kHz, where apply_ms zeroes the
-  minor component (and with a real side kept, the quantizer zeroes it). The
-  side needs its threshold from L/R masking, not its own energy. Band-swap
-  against fdkaac puts two thirds of the remaining HE gap at 64k in the core
-- VBR feeds SBR a synthetic rate (quantqual * 1280, ~2x off at 16-48k) that
-  drives amp_res and the band table, and gates HE by a separately frozen
-  HE_VBR_QUANTQUAL_MAX; derive one operating point from the calibrated
-  -q/bitrate map for both modes and re-measure the VBR SBR knobs on it
-- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
-
-## Large (cross-cutting, higher risk, higher potential payoff)
-- long windows are side-info bound below about 18 kbps per channel: at 24k
-  stereo a long frame is ~88% side info (sections, the scalefactor deltas
-  that carry the PNS and intensity envelope, the M/S mask) against ~62% for
-  a grouped short frame. #471 codes such frames short unless the spectrum
-  is sparse; what remains is rate-aware long-window coding (drop bands
-  whose side cost exceeds their payoff, section-aware book choice), gated
-  on LC and HE. The HE core is already short at every rate; long windows
-  on it lose even with the M/S trap removed
 - optimize codebook list (section_data) via joint/DP optimization
-  [leaderboard: biggest MOS gap vs Apple/aac-enc is 48k_stereo_24-56k (3.28-3.39
-  vs 3.5-4.4) despite FAAC having the BEST stereo fidelity in class there
-  (0.91-0.98) and competitive bitrate-error -- so it's a coding-efficiency gap,
-  not stereo-image or rate-targeting; this is the top candidate to close it
-  since psychoacoustic levers are exhausted]
 - optimize CPE windows grouping jointly across channel pairs
-  [same 24-56k stereo gap as above; joint window-shape decisions across L/R
-  could recover quality the current independent-channel grouping leaves on
-  the table -- higher risk since it touches block-switching logic that TNS
-  co-tuning already depends on]
+- add PCE (Program Config Element) or 4-bit AudioSpecificConfig
+- rate-aware long-window coding below ~18 kbps/ch, where side info is most of the frame
+- stereo: threshold the side channel from L/R masking; apply_ms zeroes it at 3-12 kHz on wide material
+- VBR: SBR reads quantqual * 1280 as a rate for amp_res and the band table; measure the two tiers at -q
+- HE-AAC v1: per-band SBR noise floor / invf from within-band tonality
+- HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
+- HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
+- drop the dead count mode from the core bitstream writer (BuildFrame is only called with write=true)
