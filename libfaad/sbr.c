@@ -4,6 +4,7 @@
 
 #include "faad_internal.h"
 #include "sfb_tables.h"
+#include "sbr_tables.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -158,7 +159,13 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
 
         /* Extract 64 time-domain output samples from windowed delay line history */
         for (int n = 0; n < 64; n++) {
-            out[t * 64 + n] = sbr->qmf_ovl[0][1216 + n];
+            float sample = 0.0f;
+            for (int j = 0; j < 10; j++) {
+                int idx = j * 64 + n;
+                float coeff = qmf_c[idx];
+                sample += sbr->qmf_ovl[0][j * 128 + n] * coeff;
+            }
+            out[t * 64 + n] = sample;
         }
     }
 }

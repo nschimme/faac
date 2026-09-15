@@ -29,6 +29,100 @@ typedef struct {
 extern bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track);
 extern void mp4_free_track(MP4Track *track);
 
+typedef struct {
+    uint8_t *data;
+    uint32_t size;
+    uint32_t head;
+    uint32_t tail;
+    uint32_t fill;
+} PCMFifo;
+
+static void fifo_init(PCMFifo *f, uint32_t capacity)
+{
+    f->data = (uint8_t *)malloc(capacity > 0 ? capacity : 65536);
+    f->size = capacity > 0 ? capacity : 65536;
+    f->head = 0;
+    f->tail = 0;
+    f->fill = 0;
+}
+
+static void fifo_free(PCMFifo *f)
+{
+    if (f->data) free(f->data);
+    f->data = NULL;
+    f->size = 0;
+    f->head = 0;
+    f->tail = 0;
+    f->fill = 0;
+}
+
+static void fifo_push(PCMFifo *f, const uint8_t *src, uint32_t len)
+{
+    if (len == 0) return;
+    if (f->fill + len > f->size) {
+        uint32_t new_size = f->size * 2;
+        while (new_size < f->fill + len) new_size *= 2;
+        uint8_t *new_data = (uint8_t *)malloc(new_size);
+        if (f->fill > 0) {
+            if (f->tail < f->head) {
+                memcpy(new_data, f->data + f->tail, f->fill);
+            } else {
+                uint32_t first = f->size - f->tail;
+                memcpy(new_data, f->data + f->tail, first);
+                memcpy(new_data + first, f->data, f->head);
+            }
+        }
+        free(f->data);
+        f->data = new_data;
+        f->size = new_size;
+        f->tail = 0;
+        f->head = f->fill;
+    }
+    uint32_t first = f->size - f->head;
+    if (len <= first) {
+        memcpy(f->data + f->head, src, len);
+        f->head = (f->head + len) % f->size;
+    } else {
+        memcpy(f->data + f->head, src, first);
+        memcpy(f->data, src + first, len - first);
+        f->head = len - first;
+    }
+    f->fill += len;
+}
+
+static uint32_t fifo_pop(PCMFifo *f, uint8_t *dst, uint32_t len)
+{
+    if (len > f->fill) len = f->fill;
+    if (len == 0) return 0;
+    uint32_t first = f->size - f->tail;
+    if (len <= first) {
+        memcpy(dst, f->data + f->tail, len);
+        f->tail = (f->tail + len) % f->size;
+    } else {
+        memcpy(dst, f->data + f->tail, first);
+        memcpy(dst + first, f->data, len - first);
+        f->tail = len - first;
+    }
+    f->fill -= len;
+    return len;
+}
+
+static void fifo_truncate_tail(PCMFifo *f, uint32_t bytes_to_remove)
+{
+    if (bytes_to_remove >= f->fill) {
+        f->head = 0;
+        f->tail = 0;
+        f->fill = 0;
+        return;
+    }
+    if (f->head >= bytes_to_remove) {
+        f->head -= bytes_to_remove;
+    } else {
+        f->head = f->size - (bytes_to_remove - f->head);
+    }
+    f->fill -= bytes_to_remove;
+}
+
 static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float)
 {
     fseek(f, 0, SEEK_SET);
@@ -252,6 +346,8 @@ int main(int argc, char **argv)
     }
 
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
+    PCMFifo fifo;
+    fifo_init(&fifo, 262144);
 
     if (is_mp4) {
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
@@ -303,13 +399,22 @@ int main(int argc, char **argv)
                             pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
                             pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
                         }
-                        uint32_t bytes_to_write = total_items * 3;
-                        fwrite(pcm24_buf, 1, bytes_to_write, fout);
-                        total_pcm_bytes += bytes_to_write;
+                        fifo_push(&fifo, pcm24_buf, total_items * 3);
                     } else {
-                        uint32_t bytes_to_write = samples_to_write * dec_bytes_per_frame_sample;
-                        fwrite(write_ptr, 1, bytes_to_write, fout);
-                        total_pcm_bytes += bytes_to_write;
+                        fifo_push(&fifo, write_ptr, samples_to_write * dec_bytes_per_frame_sample);
+                    }
+
+                    uint32_t padding_bytes = (gapless && track.padding > 0) ? (track.padding * num_channels * (bit_depth / 8)) : 0;
+                    if (fifo.fill > padding_bytes) {
+                        uint32_t can_pop = fifo.fill - padding_bytes;
+                        uint8_t pop_buf[4096];
+                        while (can_pop > 0) {
+                            uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
+                            fifo_pop(&fifo, pop_buf, chunk);
+                            fwrite(pop_buf, 1, chunk, fout);
+                            total_pcm_bytes += chunk;
+                            can_pop -= chunk;
+                        }
                     }
                 }
                 frames_decoded++;
@@ -354,12 +459,17 @@ int main(int argc, char **argv)
                         pcm24_buf[k * 3 + 1] = (uint8_t)((val24 >> 8) & 0xFF);
                         pcm24_buf[k * 3 + 2] = (uint8_t)((val24 >> 16) & 0xFF);
                     }
-                    uint32_t bytes_to_write = total_items * 3;
-                    fwrite(pcm24_buf, 1, bytes_to_write, fout);
-                    total_pcm_bytes += bytes_to_write;
+                    fifo_push(&fifo, pcm24_buf, total_items * 3);
                 } else {
-                    fwrite(outbuf, 1, bytes_written, fout);
-                    total_pcm_bytes += bytes_written;
+                    fifo_push(&fifo, outbuf, bytes_written);
+                }
+
+                uint8_t pop_buf[4096];
+                while (fifo.fill > 0) {
+                    uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
+                    fifo_pop(&fifo, pop_buf, chunk);
+                    fwrite(pop_buf, 1, chunk, fout);
+                    total_pcm_bytes += chunk;
                 }
             }
 
@@ -368,15 +478,24 @@ int main(int argc, char **argv)
         }
     }
 
-    if (is_mp4 && gapless && track.padding > 0 && total_pcm_bytes > track.padding * num_channels * (bit_depth / 8)) {
-        uint32_t padding_bytes = track.padding * num_channels * (bit_depth / 8);
-        total_pcm_bytes -= padding_bytes;
-        if (fout && fout != stdout) {
-            fseek(fout, 0, SEEK_SET);
-            write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
-            fflush(fout);
+    if (fout) {
+        if (is_mp4 && gapless && track.padding > 0) {
+            uint32_t padding_bytes = track.padding * num_channels * (bit_depth / 8);
+            if (fifo.fill > padding_bytes) {
+                fifo_truncate_tail(&fifo, padding_bytes);
+            } else {
+                fifo.fill = 0;
+            }
+        }
+        uint8_t pop_buf[4096];
+        while (fifo.fill > 0) {
+            uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
+            fifo_pop(&fifo, pop_buf, chunk);
+            fwrite(pop_buf, 1, chunk, fout);
+            total_pcm_bytes += chunk;
         }
     }
+    fifo_free(&fifo);
 
     double duration_sec = (double)(frames_decoded * 1024) / (sample_rate ? sample_rate : 44100);
     double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);

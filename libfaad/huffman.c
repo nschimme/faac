@@ -27,15 +27,20 @@ static const hcode16_t * const huffbook_tables[] = {
     NULL, book01, book02, book03, book04, book05, book06, book07, book08, book09, book10, book11
 };
 
+static const int huffbook_sizes[] = {
+    0, 81, 81, 81, 81, 81, 81, 64, 64, 169, 169, 289
+};
+
 static int decode_huffman_symbol(BitReader *bs, int book)
 {
     if (book < 1 || book > 11) return 0;
     const hcode16_t *table = huffbook_tables[book];
+    int size = huffbook_sizes[book];
     if (!table) return 0;
 
     for (uint32_t len = 1; len <= 19; len++) {
         uint32_t cw = bits_show(bs, len);
-        for (int i = 0; table[i].len != 0; i++) {
+        for (int i = 0; i < size; i++) {
             if (table[i].len == len && table[i].data == cw) {
                 bits_skip(bs, len);
                 return i;
@@ -62,7 +67,7 @@ static int decode_huffman_scalefactor(BitReader *bs)
 static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
-    int base = (book == 1 || book == 2) ? 3 : 5;
+    int base = (book >= 1 && book <= 4) ? 3 : 5;
     *v = idx / (base * base * base);
     idx %= (base * base * base);
     *w = idx / (base * base);
@@ -87,7 +92,7 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     int idx = decode_huffman_symbol(bs, book);
     int base = 16;
     if (book == 5 || book == 6) base = 9;
-    else if (book == 7 || book == 8) base = 13;
+    else if (book == 7 || book == 8) base = 8;
     else if (book == 9 || book == 10) base = 13;
     else if (book == 11) base = 17;
 

@@ -56,6 +56,40 @@ static uint32_t parse_ber_length(const uint8_t *buf, long *offset, long max_offs
     return len;
 }
 
+static bool is_audio_trak(const uint8_t *buf, long offset, long end)
+{
+    long cur = offset;
+    while (cur + 8 <= end) {
+        uint64_t box_size = read_be32(buf + cur);
+        char type[5] = {0};
+        memcpy(type, buf + cur + 4, 4);
+
+        long header_size = 8;
+        if (box_size == 1 && cur + 16 <= end) {
+            box_size = read_be64(buf + cur + 8);
+            header_size = 16;
+        } else if (box_size == 0) {
+            box_size = end - cur;
+        }
+
+        if (box_size < (uint64_t)header_size || cur + (long)box_size > end) break;
+
+        long payload_offset = cur + header_size;
+        long payload_end = cur + (long)box_size;
+
+        if (memcmp(type, "mdia", 4) == 0) {
+            return is_audio_trak(buf, payload_offset, payload_end);
+        } else if (memcmp(type, "hdlr", 4) == 0 && payload_offset + 12 <= payload_end) {
+            if (memcmp(buf + payload_offset + 8, "soun", 4) == 0) {
+                return true;
+            }
+            return false;
+        }
+        cur = payload_end;
+    }
+    return true;
+}
+
 /* Recursive box parser walking container hierarchy */
 static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *track,
                         uint32_t **stsz_table, uint32_t *num_stsz_samples, uint32_t *fixed_sample_size,
@@ -84,6 +118,13 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
         long payload_end = cur + (long)box_size;
 
         /* Container boxes to recurse into */
+        if (memcmp(type, "trak", 4) == 0) {
+            if (!is_audio_trak(buf, payload_offset, payload_end)) {
+                cur = payload_end;
+                continue;
+            }
+        }
+
         if (memcmp(type, "moov", 4) == 0 || memcmp(type, "trak", 4) == 0 ||
             memcmp(type, "mdia", 4) == 0 || memcmp(type, "minf", 4) == 0 ||
             memcmp(type, "stbl", 4) == 0 || memcmp(type, "udta", 4) == 0 ||
@@ -108,6 +149,7 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
                     pos += 13; /* skip objectType, streamType, bufferSizeDB, maxBitrate, avgBitrate */
                 } else if (tag == 0x05) { /* AudioSpecificConfig Descriptor */
                     if (tag_len > 0 && pos + tag_len <= payload_end) {
+                        if (track->asc_buf) { free(track->asc_buf); track->asc_buf = NULL; }
                         track->asc_buf = (uint8_t *)malloc(tag_len);
                         memcpy(track->asc_buf, buf + pos, tag_len);
                         track->asc_len = tag_len;
@@ -130,6 +172,7 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
             *fixed_sample_size = read_be32(buf + payload_offset + 4);
             uint32_t sample_count = read_be32(buf + payload_offset + 8);
             if (sample_count > 0 && sample_count < 1000000) {
+                if (*stsz_table) { free(*stsz_table); *stsz_table = NULL; }
                 *num_stsz_samples = sample_count;
                 if (*fixed_sample_size == 0) {
                     *stsz_table = (uint32_t *)calloc(sample_count, sizeof(uint32_t));
@@ -141,6 +184,7 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
         } else if (memcmp(type, "stsc", 4) == 0 && payload_offset + 8 <= payload_end) {
             uint32_t entries = read_be32(buf + payload_offset + 4);
             if (entries > 0 && entries < 100000) {
+                if (*stsc_table) { free(*stsc_table); *stsc_table = NULL; }
                 *num_stsc_entries = entries;
                 *stsc_table = (STSCEntry *)calloc(entries, sizeof(STSCEntry));
                 for (uint32_t e = 0; e < entries && (payload_offset + 8 + e * 12) <= payload_end - 12; e++) {
@@ -152,6 +196,7 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
         } else if (memcmp(type, "stco", 4) == 0 && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_be32(buf + payload_offset + 4);
             if (chunks > 0 && chunks < 1000000) {
+                if (*stco_table) { free(*stco_table); *stco_table = NULL; }
                 *num_stco_chunks = chunks;
                 *stco_table = (uint64_t *)calloc(chunks, sizeof(uint64_t));
                 for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 4) <= payload_end - 4; c++) {
@@ -161,6 +206,7 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
         } else if (memcmp(type, "co64", 4) == 0 && payload_offset + 8 <= payload_end) {
             uint32_t chunks = read_be32(buf + payload_offset + 4);
             if (chunks > 0 && chunks < 1000000) {
+                if (*stco_table) { free(*stco_table); *stco_table = NULL; }
                 *num_stco_chunks = chunks;
                 *stco_table = (uint64_t *)calloc(chunks, sizeof(uint64_t));
                 for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 8) <= payload_end - 8; c++) {
