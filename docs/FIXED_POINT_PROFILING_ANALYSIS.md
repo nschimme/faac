@@ -40,8 +40,8 @@ Callgrind profiling of FAAC encoding sessions reveals the following breakdown of
 
 1. **Quantization & Energy Calculation (`libfaac/quantize.c`)**
    - **Impact**: ~18.1% of CPU time.
-   - **Conversion Approach**: Analysis of Q15/Q31 fixed-point energy accumulation (`x[i]^2`) and log/pow lookup tables (LUTs) for scale-factor bands.
-   - **SOC Benefit**: High on software-emulated FPU target SOCs.
+   - **Conversion Approach**: Implemented Q31 fixed-point scale-factor band energy calculation (`measure_band_energy`) and peak energy tracking.
+   - **SOC Benefit**: High on software-emulated FPU target SOCs; reduces floating-point multiplications in band energy loops.
 
 2. **SBR Analysis & QMF Filterbank (`libfaac/sbr_analysis.c`, `libfaac/sbr.c`)**
    - **Impact**: Variable (~15-30% on HE-AAC profiles).

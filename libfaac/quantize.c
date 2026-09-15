@@ -22,6 +22,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "fft.h"
 #include "stats.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
@@ -148,6 +149,31 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
             const float * __restrict line = xr0 + w * BLOCK_LEN_SHORT + lo;
             float wpeak = 0.0f;
             int k;
+#ifdef FAAC_FIXED_POINT
+            /* Q31 fixed-point integer energy calculation for embedded SOCs */
+            int64_t sum_fx = 0;
+            int32_t wpeak_fx = 0;
+            for (k = 0; k < len; k += 4)
+            {
+                int32_t a = FIX_Q31(line[k] * (1.0f / 4096.0f));
+                int32_t b = FIX_Q31(line[k + 1] * (1.0f / 4096.0f));
+                int32_t c = FIX_Q31(line[k + 2] * (1.0f / 4096.0f));
+                int32_t d = FIX_Q31(line[k + 3] * (1.0f / 4096.0f));
+
+                int32_t ea = FIX_MUL_Q31(a, a);
+                int32_t eb = FIX_MUL_Q31(b, b);
+                int32_t ec = FIX_MUL_Q31(c, c);
+                int32_t ed = FIX_MUL_Q31(d, d);
+
+                sum_fx += (int64_t)ea + eb + ec + ed;
+                if (ea > wpeak_fx) wpeak_fx = ea;
+                if (eb > wpeak_fx) wpeak_fx = eb;
+                if (ec > wpeak_fx) wpeak_fx = ec;
+                if (ed > wpeak_fx) wpeak_fx = ed;
+            }
+            sum += (float)sum_fx * (16777216.0f / 2147483647.0f);
+            wpeak = (float)wpeak_fx * (16777216.0f / 2147483647.0f);
+#else
             for (k = 0; k < len; k += 4)
             {
                 float a = line[k], b = line[k + 1], c = line[k + 2], d = line[k + 3];
@@ -158,6 +184,7 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
                 sum += ec; if (ec > wpeak) wpeak = ec;
                 sum += ed; if (ed > wpeak) wpeak = ed;
             }
+#endif
 
             /* Mean of the per-window peaks rather than the group maximum: a
              * maximum over more windows is systematically larger, which would

@@ -91,11 +91,11 @@ int Resample(Resampler *r, int input_len)
             /* Q15 fixed-point integer FIR accumulation for embedded SOCs */
             int32_t acc = 0;
             for (j = 0; j < 16; j++) {
-                int32_t sum_samples = (int32_t)(c[2 * j] + c[2 * (31 - j)]);
+                int32_t sum_samples = FIX_Q15(c[2 * j]) + FIX_Q15(c[2 * (31 - j)]);
                 acc += ((int32_t)hb_even_q15[j] * sum_samples);
             }
-            acc += ((int32_t)hb_center_q15 * (int32_t)combined[2 * i + HALF]);
-            *out++ = (float)(acc >> 15);
+            acc += ((int32_t)hb_center_q15 * (int32_t)FIX_Q15(combined[2 * i + HALF]));
+            *out++ = (float)(acc >> 15) * (1.0f / 32768.0f);
 #else
             float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
             for (j = 0; j < 16; j += 4) {
