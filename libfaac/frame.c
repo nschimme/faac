@@ -469,6 +469,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].block_type = ONLY_LONG_WINDOW;
         hEncoder->coderInfo[channel].groups.n = 1;
         hEncoder->coderInfo[channel].groups.len[0] = 1;
+        hEncoder->coderInfo[channel].band_fill = 1.0f;
 
         for (buf = 0; buf < 4; buf++) {
             hEncoder->audioFIFO[channel][buf] = (float*)AllocMemory(FRAME_LEN*sizeof(float));
@@ -958,6 +959,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     unsigned long long peakBits = 0;
     float baseQuality = hEncoder->aacquantCfg.quality;
     int sfbnSnap[MAX_CHANNELS];
+    float fillSnap[MAX_CHANNELS];
     int attempt;
     /* Every cap below is on the raw_data_block; the ADTS header is transport. */
     int hdrBytes = (hEncoder->config.outputFormat == 1) ? ADTS_HEADER_SIZE : 0;
@@ -1008,6 +1010,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         memcpy(hEncoder->peakSnap[channel] + MAX_SCFAC_BANDS, coderInfo[channel].sf,
                MAX_SCFAC_BANDS * sizeof(int));
         sfbnSnap[channel] = coderInfo[channel].sfbn;
+        fillSnap[channel] = coderInfo[channel].band_fill;
     }
 
     /* Retry while the frame busts peakBits. The search is bounded, not
@@ -1068,6 +1071,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
             memcpy(coderInfo[channel].sf, hEncoder->peakSnap[channel] + MAX_SCFAC_BANDS,
                    MAX_SCFAC_BANDS * sizeof(int));
             coderInfo[channel].sfbn = sfbnSnap[channel];
+            /* BlocQuant smooths band_fill; a retry must not count the frame twice. */
+            coderInfo[channel].band_fill = fillSnap[channel];
         }
     }
 

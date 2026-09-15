@@ -54,6 +54,16 @@ psydata_t;
  * transient. */
 #define PSY_TD_THRESH (0.5f)
 
+/* Below this rate (bps per channel) frames are coded short unless the
+ * spectrum is sparse: a starved long window spends most of its bits on
+ * per-band side info (the PNS and intensity envelope of ~40 bands) where a
+ * grouped short window codes the same span in ~15. Isolated partials are
+ * the exception; the coarse grid smears them. Gated on the configured rate,
+ * not the running quality, which reacts to the window choice and would
+ * flap. */
+#define PSY_SHORT_ONLY_BITRATE 18000
+#define PSY_SHORT_ONLY_FILL    0.3f
+
 static int PsyIsAttack(float lasteng, float eng)
 {
   float toteng = (eng < lasteng) ? eng : lasteng;
@@ -224,15 +234,18 @@ void BlockSwitch(struct faacEncStruct *hEncoder, CoderInfo * coderInfo, PsyInfo 
       }
   }
 
-  /* Use the same block type for all channels
-     If there is 1 channel that wants a short block,
-     use a short block on all channels.
-   */
+  /* Use the same block type for all channels: one channel wanting a short
+     block, or a dense spectrum on a starved channel, makes all of them short. */
+  float fill = 0.0f;
   for (channel = 0; channel < numChannels; channel++)
   {
     if (psyInfo[channel].block_type == ONLY_SHORT_WINDOW)
       desire = ONLY_SHORT_WINDOW;
+    if (coderInfo[channel].band_fill > fill) fill = coderInfo[channel].band_fill;
   }
+  if (fill >= PSY_SHORT_ONLY_FILL
+      && hEncoder->config.bitRate && hEncoder->config.bitRate < PSY_SHORT_ONLY_BITRATE)
+    desire = ONLY_SHORT_WINDOW;
 
   for (channel = 0; channel < numChannels; channel++)
   {
