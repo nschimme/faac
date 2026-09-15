@@ -17,9 +17,10 @@
 	* tns: Enable TNS by default, drop prediction-gain ceiling, screen frames
 	  before LPC analysis, and optimize runtime footprint.
 	* ratecontrol: Implement ABR rate controller with signed bit account,
-	  add CBR bit reservoir behind `--cbr`, refit ABR bandwidth curve,
-	  decouple HE-AAC VBR ceiling, and enforce ISO/IEC 14496-3 per-channel
-	  bitrate limits.
+	  add CBR bit reservoir behind `--cbr`, decouple HE-AAC VBR ceiling,
+	  and enforce ISO/IEC 14496-3 per-channel bitrate limits.
+	* bandwidth: Refit ABR bandwidth curve to optimize cutoff frequency
+	  across bitrates.
 	* blockswitch / stereo: Judge each sub-block attack once in time domain,
 	  rework short-window grouping, masking, and M/S policy, and restrict
 	  M/S / dynamic IS crossover at low bitrates.
