@@ -8,8 +8,8 @@
 	* api: Bump SONAME/ABI version to 2 for safe `faac_params_init` caller sizing,
 	  enforce proper baseline size checks in getter functions, and allow pipeline
 	  draining during flush on short streams.
-	* sbr: Align SBR payload timing with core audio frames, fix parameter
-	  resolution in VBR mode and transient normalization, stack-allocate
+	* sbr: Align SBR payload timing with core audio frames (thanks maikmerten),
+	  fix parameter resolution in VBR mode and transient normalization, stack-allocate
 	  `BitStream`, signal `psPresentFlag = 0` explicitly for mono HE-AAC,
 	  drain SBR tail on flush frames, write stream constants directly, expand
 	  HE-AAC v1 auto-resolution threshold to 96k, and widen reconstruction toward
