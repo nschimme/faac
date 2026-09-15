@@ -12,8 +12,9 @@
 	  fix parameter resolution in VBR mode and transient normalization, stack-allocate
 	  `BitStream`, signal `psPresentFlag = 0` explicitly for mono HE-AAC,
 	  drain SBR tail on flush frames, write stream constants directly, expand
-	  HE-AAC v1 auto-resolution threshold to 96k, and widen reconstruction toward
-	  20 kHz.
+	  HE-AAC v1 auto-resolution threshold to 96k, code HE-AAC v1 for multichannel
+	  layouts (up to 8 channels), tune SBR noise floor to -18 dB with a log-spaced
+	  band table, and widen reconstruction toward 20 kHz.
 	* tns: Enable TNS by default across API and frontends, drop prediction-gain
 	  ceiling, screen frames before LPC analysis, and optimize runtime footprint.
 	* ratecontrol: Implement ABR rate controller with signed bit account, add
@@ -22,8 +23,9 @@
 	* bandwidth: Refit ABR bandwidth curve for optimal cutoff frequency selection
 	  across bitrates.
 	* blockswitch / stereo: Judge each sub-block attack once in time domain,
-	  rework short-window grouping, masking, and M/S policy, and restrict
-	  M/S / dynamic IS crossover at low bitrates.
+	  rework short-window grouping, masking, and M/S policy, restrict M/S / dynamic IS
+	  crossover at low bitrates, and tune joint-stereo policy by bitrate.
+	* frame: Raise HE-AAC auto profile selection ceiling to 32 kbps per channel at 48 kHz.
 	* quantize / huffman: Optimize scale-factor and codebook processing in
 	  `huff2` and `quantize`.
 	* frontend: Default to MP4 container output with automatic format detection,
