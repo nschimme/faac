@@ -490,6 +490,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.use_tns = opts->use_tns;
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
+    params.use_drm = opts->use_drm;
     if (opts->pns_level >= 0)
         params.pns_level = opts->pns_level;
 

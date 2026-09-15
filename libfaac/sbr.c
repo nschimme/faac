@@ -249,7 +249,13 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     AccumPutBits(&a, LOW,       5); /* core object type */
     AccumPutBits(&a, coreSRIdx, 4); /* core rate (Fs/2, dual-rate) */
     AccumPutBits(&a, channels,  4);
+#ifdef FAAC_DRM
+    /* frameLengthFlag: 1 for 960/1920 DRM frame, 0 for 1024/2048 */
+    AccumPutBits(&a, sbrCtx->useDrm ? 1 : 0, 1);
+    AccumPutBits(&a, 0, 2); /* dependsOnCoreCoder, extensionFlag */
+#else
     AccumPutBits(&a, 0,         3); /* frameLengthFlag, dependsOnCoreCoder, extensionFlag */
+#endif
     AccumPutBits(&a, 0x2b7,    11); /* syncExtensionType */
     AccumPutBits(&a, HE_V1,     5); /* extObjectType = SBR */
     AccumPutBits(&a, 1,         1); /* sbrPresentFlag */

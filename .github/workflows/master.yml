@@ -34,6 +34,13 @@ jobs:
               options: -Dsbr-decimation=4,
             }
           - {
+              name: Linux GCC (DRM Support),
+              os: ubuntu-latest,
+              compiler: gcc,
+              shell: bash,
+              options: -Ddrm=true,
+            }
+          - {
               name: Linux GCC (32-bit),
               os: ubuntu-latest,
               compiler: gcc,

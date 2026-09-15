@@ -30,6 +30,7 @@
 #include "stereo.h"
 #include "sbr.h"
 #include "ratecontrol.h"
+#include "sbr_internal.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -146,10 +147,17 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 
     if(*ppBuffer != NULL){
         BitStream bs;
-        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the 3 trailing pad bits need no write */
+        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the trailing pad bits need no write */
         PutBit(&bs, hEncoder->config.aacObjectType, 5);
         PutBit(&bs, hEncoder->sampleRateIdx,        4);
         PutBit(&bs, hEncoder->numChannels,          4);
+#ifdef FAAC_DRM
+        if (hEncoder->config.useDrm) {
+            PutBit(&bs, 1, 1); /* frameLengthFlag: 1 = 960 samples */
+            PutBit(&bs, 0, 1); /* dependsOnCoreCoder */
+            PutBit(&bs, 0, 1); /* extensionFlag */
+        }
+#endif
         return 0;
     } else {
         return -3;
@@ -169,6 +177,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
+    hEncoder->config.useDrm = config->useDrm;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -252,6 +261,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
         SbrContextResolveRate(hEncoder->sbrContext, &hEncoder->sampleRate, &hEncoder->sampleRateIdx, &hEncoder->srInfo);
     }
+
+#ifdef FAAC_DRM
+    if (hEncoder->config.useDrm) {
+        hEncoder->srInfo = DRM_GetSRInfo(hEncoder->sampleRateIdx);
+        if (hEncoder->sbrContext) hEncoder->sbrContext->useDrm = true;
+    }
+#endif
 
     /* MaxBitrate() is already per channel, and its frame is FRAME_LEN samples
      * at the core rate -- so the clamp has to follow the HE-AAC resolution
@@ -376,12 +392,21 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         }
     }
 
+    int blockLenLong = BLOCK_LEN_LONG;
+#ifdef FAAC_DRM
+    if (hEncoder->config.useDrm) {
+        blockLenLong = BLOCK_LEN_LONG_960;
+        DRM_Init(hEncoder);
+    }
+#endif
+
     CalcBW(&hEncoder->config.bandWidth,
               hEncoder->sampleRate,
               hEncoder->srInfo,
               &hEncoder->aacquantCfg,
               hEncoder->sfbOffsetShort,
-              hEncoder->sfbOffsetLong);
+              hEncoder->sfbOffsetLong,
+              blockLenLong);
 
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
@@ -459,7 +484,15 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->config.inputFormat = INPUT_32BIT;
 
     /* find correct sampling rate depending parameters */
-    hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+#ifdef FAAC_DRM
+    if (hEncoder->config.useDrm) {
+        hEncoder->srInfo = DRM_GetSRInfo(hEncoder->sampleRateIdx);
+        if (hEncoder->sbrContext) hEncoder->sbrContext->useDrm = true;
+    } else
+#endif
+    {
+        hEncoder->srInfo = &srInfo[hEncoder->sampleRateIdx];
+    }
 
     for (channel = 0; channel < numChannels; channel++)
 	{
@@ -645,6 +678,10 @@ int faacEncClose(faacEncHandle hpEncoder)
     }
 
     if (hEncoder->ascCache) free(hEncoder->ascCache);
+
+#ifdef FAAC_DRM
+    DRM_End(hEncoder);
+#endif
 
     if (hEncoder->sbrContext) {
         SbrContextEnd(hEncoder->sbrContext);
@@ -843,11 +880,22 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* AAC Filterbank, MDCT with overlap and add */
     for (channel = 0; channel < numChannels; channel++) {
-        FilterBank(hEncoder,
-            &coderInfo[channel],
-            hEncoder->audioFIFO[channel][FIFO_PAST],
-            hEncoder->audioFIFO[channel][FIFO_CURR],
-            hEncoder->freqBuff[channel]);
+#ifdef FAAC_DRM
+        if (hEncoder->config.useDrm) {
+            DRM_FilterBank(hEncoder,
+                &coderInfo[channel],
+                hEncoder->audioFIFO[channel][FIFO_PAST],
+                hEncoder->audioFIFO[channel][FIFO_CURR],
+                hEncoder->freqBuff[channel]);
+        } else
+#endif
+        {
+            FilterBank(hEncoder,
+                &coderInfo[channel],
+                hEncoder->audioFIFO[channel][FIFO_PAST],
+                hEncoder->audioFIFO[channel][FIFO_CURR],
+                hEncoder->freqBuff[channel]);
+        }
     }
 
     for (channel = 0; channel < numChannels; channel++) {

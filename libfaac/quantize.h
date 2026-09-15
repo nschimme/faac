@@ -45,7 +45,7 @@ enum {
 void ResetCoderSections(CoderInfo *coderInfo);
 int BlocQuant(CoderInfo *coderInfo, float *xr, AACQuantCfg *aacquantCfg);
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
-            int *sfbOffsetShort, int *sfbOffsetLong);
+            int *sfbOffsetShort, int *sfbOffsetLong, int blockLenLong);
 void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AACQuantCfg *cfg);
 void QuantizeInit(void);
 

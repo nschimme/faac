@@ -67,6 +67,7 @@ typedef struct faacEncConfiguration
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     int pnslevel;
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
+    unsigned int useDrm;             /* 0 = standard AAC, 1 = DRM (960 frame length) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;
