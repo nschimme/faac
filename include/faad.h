@@ -59,6 +59,7 @@ enum faad_object_type {
     FAAD_OBJ_NULL      = 0,
     FAAD_OBJ_LOW       = 2,          /* AAC-LC */
     FAAD_OBJ_HE_AAC_V1 = 5,          /* HE-AAC v1 (AAC-LC + SBR) */
+    FAAD_OBJ_HE_AAC_V2 = 29,         /* HE-AAC v2 (AAC-LC + SBR + PS) */
     FAAD_OBJ_MAX       = 0x7fffffff
 };
 
@@ -86,7 +87,7 @@ typedef struct faad_decoder_info {
     uint32_t                sample_rate;   /* Effective output sample rate in Hz */
     uint32_t                num_channels;  /* Effective channel count (1..8) */
     uint32_t                frame_samples; /* Samples per channel per frame (1024 or 2048) */
-    enum faad_object_type   object_type;   /* Resolved object type (LC or HE-AAC v1) */
+    enum faad_object_type   object_type;   /* Resolved object type (LC, HE-AAC v1, or HE-AAC v2) */
     uint32_t                max_output_bytes; /* Upper bound on PCM bytes per frame */
 } faad_decoder_info;
 
@@ -100,15 +101,6 @@ FAADAPI faad_status faad_decoder_close(faad_decoder **dec);
 
 FAADAPI faad_status faad_decoder_get_info(faad_decoder *dec, faad_decoder_info *out);
 
-/*
- * Decode one frame of AAC.
- * `in`: input AAC bitstream payload buffer.
- * `in_bytes`: size of `in` payload.
- * `bytes_consumed`: output parameter receiving bytes consumed from `in`.
- * `out`: output PCM buffer.
- * `out_cap`: capacity of `out` buffer in bytes.
- * `bytes_written`: output parameter receiving written PCM bytes.
- */
 FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
                                         const uint8_t *in, uint32_t in_bytes,
                                         uint32_t *bytes_consumed,

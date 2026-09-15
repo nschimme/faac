@@ -56,7 +56,11 @@ static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
     *x = idx / base;
     *y = idx % base;
 
-    if (book == 1 || book == 3) {
+    if (book == 2) {
+        *v -= 1; *w -= 1; *x -= 1; *y -= 1;
+    } else if (book == 4) {
+        *v -= 2; *w -= 2; *x -= 2; *y -= 2;
+    } else if (book == 1 || book == 3) {
         if (*v) if (bits_get(bs, 1)) *v = -*v;
         if (*w) if (bits_get(bs, 1)) *w = -*w;
         if (*x) if (bits_get(bs, 1)) *x = -*x;
@@ -76,7 +80,13 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     *x = idx / base;
     *y = idx % base;
 
-    if (book == 5 || book == 7 || book == 9 || book == 11) {
+    if (book == 6) {
+        *x -= 4; *y -= 4;
+    } else if (book == 8) {
+        *x -= 6; *y -= 6;
+    } else if (book == 10) {
+        *x -= 6; *y -= 6;
+    } else if (book == 5 || book == 7 || book == 9 || book == 11) {
         if (*x) if (bits_get(bs, 1)) *x = -*x;
         if (*y) if (bits_get(bs, 1)) *y = -*y;
     }
@@ -124,7 +134,7 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, ui
                     ics->scalefactors[g][sfb] = pns_energy;
                     ics->pns_used[g][sfb] = true;
                 }
-            } else if (cb == 14 || cb == 15) { /* Intensity stereo (decoupled predictor) */
+            } else if (cb == 14 || cb == 15) { /* Intensity stereo */
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
                     int dis = decode_huffman_symbol(bs, 11);
                     is_pos += dis - 60;

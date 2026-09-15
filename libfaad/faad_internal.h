@@ -47,9 +47,14 @@
 #define SINE_WINDOW 0
 #define KBD_WINDOW  1
 
-/* SBR Constants */
+/* SBR & PS Constants */
 #define SBR_EXTENSION_DATA 13
 #define SBR_EXTENSION_DATA_CRC 14
+#define PS_EXTENSION_DATA 2
+
+#define SBR_PS_BANDS 20
+#define SBR_PS_IID_LEVELS 15
+#define SBR_PS_ICC_LEVELS 8
 
 typedef struct {
     const uint8_t *buffer;
@@ -70,6 +75,7 @@ typedef struct {
     uint32_t sample_rate;
     uint32_t num_channels;
     bool is_sbr;
+    bool is_ps;
     uint32_t sbr_sample_rate;
 } AudioSpecificConfig;
 
@@ -120,6 +126,18 @@ typedef struct {
 } CPEInfo;
 
 typedef struct {
+    bool header_present;
+    bool enable_iid;
+    bool enable_icc;
+    int8_t iid_idx[SBR_PS_BANDS];
+    int8_t icc_idx[SBR_PS_BANDS];
+    float h11[SBR_PS_BANDS];
+    float h22[SBR_PS_BANDS];
+    float h12[SBR_PS_BANDS];
+    float h21[SBR_PS_BANDS];
+} PSState;
+
+typedef struct {
     uint8_t bs_frame_class;
     uint8_t bs_num_env;
     uint8_t bs_freq_res[8];
@@ -150,6 +168,9 @@ struct faad_decoder {
 
     SBRState sbr[MAX_CHANNELS];
     bool sbr_present;
+
+    PSState ps;
+    bool ps_present;
 
     uint32_t pns_seed;
 };
