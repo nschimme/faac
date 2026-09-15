@@ -5,6 +5,10 @@
 #include "faad_internal.h"
 #include "sfb_tables.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 static void tns_ar_filter(float *spec, int length, int dir, const float *lpc, int order)
 {
     int start = 0;

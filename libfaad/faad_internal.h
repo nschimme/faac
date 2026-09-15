@@ -5,11 +5,19 @@
 #ifndef FAAD_INTERNAL_H
 #define FAAD_INTERNAL_H
 
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 #include "faad.h"
 #include "huffdata.h"

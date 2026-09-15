@@ -10,7 +10,22 @@
 
 #include "faad.h"
 
-extern bool mp4_read_header(FILE *f, uint8_t **asc_buf, uint32_t *asc_len, uint32_t *delay, uint32_t *padding);
+typedef struct {
+    uint32_t offset;
+    uint32_t size;
+} MP4Sample;
+
+typedef struct {
+    uint8_t *asc_buf;
+    uint32_t asc_len;
+    uint32_t delay;
+    uint32_t padding;
+    MP4Sample *samples;
+    uint32_t num_samples;
+} MP4Track;
+
+extern bool mp4_read_track(FILE *f, MP4Track *track);
+extern void mp4_free_track(MP4Track *track);
 
 static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes)
 {
@@ -78,10 +93,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    uint8_t *asc_buf = NULL;
-    uint32_t asc_len = 0;
-    uint32_t delay = 0, padding = 0;
-    bool is_mp4 = mp4_read_header(fin, &asc_buf, &asc_len, &delay, &padding);
+    MP4Track track;
+    bool is_mp4 = mp4_read_track(fin, &track);
 
     fseek(fin, 0, SEEK_END);
     long file_len = ftell(fin);
@@ -90,6 +103,7 @@ int main(int argc, char **argv)
     uint8_t *inbuf = (uint8_t *)malloc(file_len);
     if (!inbuf) {
         fclose(fin);
+        if (is_mp4) mp4_free_track(&track);
         return 1;
     }
 
@@ -97,6 +111,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Error reading input file\n");
         free(inbuf);
         fclose(fin);
+        if (is_mp4) mp4_free_track(&track);
         return 1;
     }
     fclose(fin);
@@ -107,11 +122,11 @@ int main(int argc, char **argv)
     params.output_format = FAAD_OUTPUT_16BIT;
 
     faad_decoder *dec = NULL;
-    faad_status st = faad_decoder_open(&params, asc_buf, asc_len, &dec);
+    faad_status st = faad_decoder_open(&params, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
     if (st != FAAD_OK) {
         fprintf(stderr, "Failed to open FAAD decoder: %s\n", faad_strerror(st));
-        if (asc_buf) free(asc_buf);
         free(inbuf);
+        if (is_mp4) mp4_free_track(&track);
         return 1;
     }
 
@@ -121,49 +136,78 @@ int main(int argc, char **argv)
         if (!fout) {
             fprintf(stderr, "Error opening output file %s\n", outfile);
             faad_decoder_close(&dec);
-            if (asc_buf) free(asc_buf);
             free(inbuf);
+            if (is_mp4) mp4_free_track(&track);
             return 1;
         }
         write_wav_header(fout, 44100, 2, 0);
     }
 
     uint8_t outbuf[65536];
-    uint32_t offset = 0;
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
     uint32_t frames_decoded = 0;
 
-    while (offset < (uint32_t)file_len) {
-        uint32_t bytes_consumed = 0;
-        uint32_t bytes_written = 0;
+    if (is_mp4) {
+        for (uint32_t s = 0; s < track.num_samples; s++) {
+            uint32_t offset = track.samples[s].offset;
+            uint32_t size = track.samples[s].size;
+            if (offset + size > (uint32_t)file_len) continue;
 
-        st = faad_decoder_decode(dec, inbuf + offset, file_len - offset,
-                                 &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
+            uint32_t bytes_consumed = 0;
+            uint32_t bytes_written = 0;
 
-        if (st != FAAD_OK) {
-            if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
-                break;
+            st = faad_decoder_decode(dec, inbuf + offset, size,
+                                     &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
+
+            if (st == FAAD_OK) {
+                faad_decoder_info info;
+                info.struct_size = sizeof(info);
+                if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
+                    sample_rate = info.sample_rate;
+                    num_channels = info.num_channels;
+                }
+
+                if (fout && bytes_written > 0) {
+                    fwrite(outbuf, 1, bytes_written, fout);
+                    total_pcm_bytes += bytes_written;
+                }
+                frames_decoded++;
             }
-            offset += 1;
-            continue;
         }
+    } else {
+        uint32_t offset = 0;
+        while (offset < (uint32_t)file_len) {
+            uint32_t bytes_consumed = 0;
+            uint32_t bytes_written = 0;
 
-        faad_decoder_info info;
-        info.struct_size = sizeof(info);
-        if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
-            sample_rate = info.sample_rate;
-            num_channels = info.num_channels;
+            st = faad_decoder_decode(dec, inbuf + offset, file_len - offset,
+                                     &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
+
+            if (st != FAAD_OK) {
+                if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
+                    break;
+                }
+                offset += 1;
+                continue;
+            }
+
+            faad_decoder_info info;
+            info.struct_size = sizeof(info);
+            if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
+                sample_rate = info.sample_rate;
+                num_channels = info.num_channels;
+            }
+
+            if (fout && bytes_written > 0) {
+                fwrite(outbuf, 1, bytes_written, fout);
+                total_pcm_bytes += bytes_written;
+            }
+
+            frames_decoded++;
+            offset += bytes_consumed;
         }
-
-        if (fout && bytes_written > 0) {
-            fwrite(outbuf, 1, bytes_written, fout);
-            total_pcm_bytes += bytes_written;
-        }
-
-        frames_decoded++;
-        offset += bytes_consumed;
     }
 
     if (info_only) {
@@ -171,9 +215,9 @@ int main(int argc, char **argv)
         printf("Sample rate   : %u Hz\n", sample_rate);
         printf("Channels      : %u\n", num_channels);
         printf("Total frames  : %u\n", frames_decoded);
-        if (is_mp4 && delay > 0) {
-            printf("Gapless delay : %u samples\n", delay);
-            printf("Gapless padding: %u samples\n", padding);
+        if (is_mp4 && track.delay > 0) {
+            printf("Gapless delay : %u samples\n", track.delay);
+            printf("Gapless padding: %u samples\n", track.padding);
         }
     } else if (fout) {
         write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes);
@@ -182,7 +226,7 @@ int main(int argc, char **argv)
     }
 
     faad_decoder_close(&dec);
-    if (asc_buf) free(asc_buf);
     free(inbuf);
+    if (is_mp4) mp4_free_track(&track);
     return 0;
 }

@@ -84,13 +84,14 @@ static void fast_imdct(const float *in, float *out, int n)
 
     fft(&fft_tbl, xr, xi, logm - 1);
 
-    /* Post-twiddle and mirror */
+    /* Post-twiddle and mirror with 2.0 / n scaling factor */
+    float scale = 2.0f / (float)n;
     for (int k = 0; k < n4; k++) {
         float angle = (float)M_PI * (2 * k + 0.5f + n2) / (2 * n);
         float c = cosf(angle);
         float s = sinf(angle);
-        float re = xr[k] * c - xi[k] * s;
-        float im = xi[k] * c + xr[k] * s;
+        float re = (xr[k] * c - xi[k] * s) * scale;
+        float im = (xi[k] * c + xr[k] * s) * scale;
 
         out[2 * k] = -re;
         out[n2 - 1 - 2 * k] = im;
@@ -131,21 +132,21 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
             for (int i = 0; i < 1024; i++) {
                 imdct_out[i] *= win_long[i];
             }
-            /* 1024..1447: 1.0f */
-            for (int i = 1448; i < 1704; i++) {
-                imdct_out[i] *= win_short[i - 1448];
+            /* 1024..1447: flat 1.0 */
+            for (int i = 1448; i < 1576; i++) {
+                imdct_out[i] *= win_short[i - 1448 + 128]; /* falling half of short window */
             }
-            for (int i = 1704; i < 2048; i++) {
+            for (int i = 1576; i < 2048; i++) {
                 imdct_out[i] = 0.0f;
             }
         } else if (ics->window_sequence == LONG_STOP_SEQUENCE) {
             for (int i = 0; i < 448; i++) {
                 imdct_out[i] = 0.0f;
             }
-            for (int i = 448; i < 704; i++) {
-                imdct_out[i] *= win_short[i - 448];
+            for (int i = 448; i < 576; i++) {
+                imdct_out[i] *= win_short[i - 448]; /* rising half of short window */
             }
-            /* 704..1023: 1.0f */
+            /* 576..1023: flat 1.0 */
             for (int i = 1024; i < 2048; i++) {
                 imdct_out[i] *= win_long[i];
             }
