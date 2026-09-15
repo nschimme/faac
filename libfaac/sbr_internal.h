@@ -16,6 +16,7 @@
 #ifndef SBR_INTERNAL_H
 #define SBR_INTERNAL_H
 
+#include <stdbool.h>
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
@@ -89,6 +90,7 @@ struct SBRInfo {
 };
 
 struct SBRContext {
+    bool          useDrm;
     unsigned long fullSampleRate;
     unsigned int  fullSampleRateIdx;
     SBRInfo      *sbrInfo;

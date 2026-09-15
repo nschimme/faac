@@ -18,6 +18,8 @@ common_src = [
     'channels.c',
     'channels.h',
     'coder.h',
+    'drm.c',
+    'drm.h',
     'cpu_compute.c',
     'cpu_compute.h',
     'faac.c',

@@ -208,6 +208,9 @@ typedef struct faac_params {
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
+
+    bool                    use_drm;       /* Enable Digital Radio Mondiale (DRM) 960-sample frame mode */
+    uint8_t                 reserved2[3];  /* explicit pad; must remain 0 */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and

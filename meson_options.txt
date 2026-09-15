@@ -31,3 +31,8 @@ option('stats',
     description: 'Enable optional end-of-encode statistics banner',
     type: 'boolean',
     value: false)
+
+option('drm',
+    description: 'Enable optional Digital Radio Mondiale (DRM 960-sample frame) support',
+    type: 'boolean',
+    value: false)

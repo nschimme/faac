@@ -437,9 +437,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
  * [0, max_cbs] and [0, max_cbl] are written; callers never index sfb_offset
  * past their own sfbn, which is exactly max_cbs/max_cbl. */
 void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
-            int *sfbOffsetShort, int *sfbOffsetLong)
+            int *sfbOffsetShort, int *sfbOffsetLong, int blockLenLong)
 {
-    int i, l = 0, max = *bw * (BLOCK_LEN_SHORT << 1) / rate;
+    int blockLenShort = blockLenLong / 8;
+    int i, l = 0, max = *bw * (blockLenShort << 1) / rate;
     for (i = 0; i < sr->num_cb_short && l < max; i++) {
         sfbOffsetShort[i] = l;
         l += sr->cb_width_short[i];
@@ -451,7 +452,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
      * 14-band short grid compounds two round-ups and leaves the cutoff far
      * coarser than the long grid can express. */
 
-    l = 0, max = *bw * (BLOCK_LEN_LONG << 1) / rate;
+    l = 0, max = *bw * (blockLenLong << 1) / rate;
     for (i = 0; i < sr->num_cb_long && l < max; i++) {
         sfbOffsetLong[i] = l;
         l += sr->cb_width_long[i];
@@ -459,7 +460,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     sfbOffsetLong[i] = l;
     aacquantCfg->max_cbl = i;
     aacquantCfg->max_l = l;
-    *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
+    *bw = (float)l * rate / (blockLenLong << 1);
 }
 
 // short-window grouping: keep spectrally-similar windows together so they

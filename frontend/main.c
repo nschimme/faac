@@ -85,7 +85,8 @@ enum flags
     OPT_OVERWRITE,
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
-    LANG_FLAG
+    LANG_FLAG,
+    DRM_FLAG
 };
 
 typedef struct {
@@ -198,6 +199,7 @@ static help_t help_advanced[] = {
     {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n", NULL},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n", NULL},
+    {"--drm\t\tUse Digital Radio Mondiale (DRM 960-sample frame) mode.\n", NULL},
     {NULL, NULL}
 };
 
@@ -579,6 +581,7 @@ int main(int argc, char *argv[])
             {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {"cbr", 0, 0, CBR_FLAG},
+            {"drm", 0, 0, DRM_FLAG},
             {0, 0, 0, 0}
         };
 
@@ -812,6 +815,9 @@ int main(int argc, char *argv[])
             break;
         case CBR_FLAG:
             opts.cbr = true;
+            break;
+        case DRM_FLAG:
+            opts.use_drm = true;
             break;
         case CAP_RATE_FLAG:
             opts.max_bit_rate = atoi(optarg) * 1000;

@@ -41,6 +41,7 @@ extern "C" {
 #include "sbr.h"
 #include "stats.h"
 #include "ratecontrol.h"
+#include "drm.h"
 
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
@@ -127,7 +128,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
  * needs two FRAME_LENs of input to emit one frame at the full rate; LC needs one. */
 static inline unsigned int faacFrameSamples(const faacEncStruct *hEncoder)
 {
-    return (hEncoder->config.aacObjectType == HE_V1) ? 2 * FRAME_LEN : FRAME_LEN;
+    unsigned int coreLen = (
+#ifdef FAAC_DRM
+        hEncoder->config.useDrm ? BLOCK_LEN_LONG_960 :
+#endif
+        FRAME_LEN
+    );
+    return (hEncoder->config.aacObjectType == HE_V1) ? 2 * coreLen : coreLen;
 }
 
 #ifdef __cplusplus
