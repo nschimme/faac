@@ -46,6 +46,10 @@ typedef struct
 #endif
 } FFT_Tables;
 
+#ifdef FAAC_FIXED_POINT
+void fft_pure_fx(FFT_Tables *fft_tables, int32_t *xr_fx, int32_t *xi_fx, int logm);
+#endif
+
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 

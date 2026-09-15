@@ -28,12 +28,12 @@ Callgrind profiling of FAAC encoding sessions reveals the following breakdown of
 
 1. **Radix-4 DIF FFT (`libfaac/fft.c`)**
    - **Impact**: ~25% of overall CPU time.
-   - **Conversion Approach**: Implemented Q31 (32-bit integer fixed-point) butterfly arithmetic (`FIX_MUL_Q31`) and precomputed fixed-point twiddle factor tables (`costbl_fx`, `negsintbl_fx`).
-   - **SOC Benefit**: High. Converts major floating-point multiply-accumulate (MAC) loops into standard 32-bit/64-bit integer MAC instructions available on embedded cores (e.g. ARM Cortex-M4/M7, Cortex-A without VFP, RISC-V RV32IM/RV64IM).
+   - **Conversion Approach**: Implemented pure Q31 integer FFT processing (`fft_pure_fx` / `radix4_dif_proc_pure_fx`) operating on `int32_t` arrays with zero inner-loop soft-float calls and stage-by-stage bit shifts (`>> 1`) for dynamic headroom.
+   - **SOC Benefit**: High. Converts major floating-point multiply-accumulate (MAC) loops into standard 32-bit integer MAC instructions available on embedded cores (e.g. ARM Cortex-M4/M7, Cortex-A without VFP, RISC-V RV32IM/RV64IM).
 
 2. **MDCT & Filterbank (`libfaac/filtbank.c`)**
    - **Impact**: ~4.4% of CPU time in twiddle folding/unfolding, plus windowing.
-   - **Conversion Approach**: Implemented Phase 2 Q31 fixed-point MDCT pre/post-twiddle modulation (`cos_fx`, `sin_fx`) and unfolding routines.
+   - **Conversion Approach**: Implemented pure Q31 integer MDCT transform execution (`xr_fx`, `xi_fx` work buffers) with pre/post-twiddle modulation and unfolding.
    - **SOC Benefit**: High. Eliminates floating-point multiplication during transform domain folding/unfolding.
 
 ### B. Secondary Candidates (Phased Option)
