@@ -33,11 +33,25 @@ static int decode_huffman_symbol(BitReader *bs, int book)
     const hcode16_t *table = huffbook_tables[book];
     if (!table) return 0;
 
-    uint32_t cw = 0;
     for (uint32_t len = 1; len <= 19; len++) {
-        cw = (cw << 1) | bits_get(bs, 1);
+        uint32_t cw = bits_show(bs, len);
         for (int i = 0; table[i].len != 0; i++) {
             if (table[i].len == len && table[i].data == cw) {
+                bits_skip(bs, len);
+                return i;
+            }
+        }
+    }
+    return 0;
+}
+
+static int decode_huffman_scalefactor(BitReader *bs)
+{
+    for (uint32_t len = 1; len <= 19; len++) {
+        uint32_t cw = bits_show(bs, len);
+        for (int i = 0; i < 121; i++) {
+            if (book12[i].len == len && book12[i].data == cw) {
+                bits_skip(bs, len);
                 return i;
             }
         }
@@ -129,20 +143,20 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, ui
                 continue;
             } else if (cb == 13) { /* PNS */
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
-                    int dpns = decode_huffman_symbol(bs, 11);
+                    int dpns = decode_huffman_scalefactor(bs);
                     pns_energy += dpns - 60;
                     ics->scalefactors[g][sfb] = pns_energy;
                     ics->pns_used[g][sfb] = true;
                 }
-            } else if (cb == 14 || cb == 15) { /* Intensity stereo */
+            } else if (cb == 14 || cb == 15) { /* Intensity stereo (decoupled predictor) */
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
-                    int dis = decode_huffman_symbol(bs, 11);
+                    int dis = decode_huffman_scalefactor(bs);
                     is_pos += dis - 60;
                     ics->scalefactors[g][sfb] = is_pos;
                 }
             } else {
                 for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
-                    int dsf = decode_huffman_symbol(bs, 11);
+                    int dsf = decode_huffman_scalefactor(bs);
                     sf += dsf - 60;
                     ics->scalefactors[g][sfb] = sf;
                     ics->sfb_cb[g][sfb] = cb;

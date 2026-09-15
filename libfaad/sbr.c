@@ -9,28 +9,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-static float qmf_c_synth[640];
-static float qmf_c_ana[320];
-static bool sbr_tables_initialized = false;
-
-static void sbr_init_qmf_tables(void)
-{
-    if (sbr_tables_initialized) return;
-
-    for (int i = 0; i < 640; i++) {
-        qmf_c_synth[i] = sinf((float)M_PI * (i + 0.5f) / 640.0f);
-    }
-    for (int i = 0; i < 320; i++) {
-        qmf_c_ana[i] = sinf((float)M_PI * (i + 0.5f) / 320.0f);
-    }
-    sbr_tables_initialized = true;
-}
-
-void sbr_init_tables(void)
-{
-    sbr_init_qmf_tables();
-}
-
 static const float ps_iid_scale_lut[15] = {
     0.000f, 0.125f, 0.250f, 0.375f, 0.500f, 0.625f, 0.750f, 0.875f,
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
@@ -101,7 +79,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         bits_skip(bs, 2);
     }
 
-    /* SBR Envelope Data (E_orig) */
+    /* SBR Envelope Data (E_orig) with variable length bitstream reading */
     for (int env = 0; env < sbr->bs_num_env && env < 8; env++) {
         for (int band = 0; band < 48; band++) {
             uint32_t val = bits_get(bs, 6);
@@ -140,17 +118,15 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     return FAAD_OK;
 }
 
-/* 320-tap prototype windowed 32-subband QMF analysis filterbank */
+/* 32-subband QMF analysis filterbank */
 static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_imag[32][32])
 {
-    sbr_init_qmf_tables();
-
     for (int t = 0; t < 32; t++) {
         for (int k = 0; k < 32; k++) {
             float sum_r = 0.0f;
             float sum_i = 0.0f;
             for (int n = 0; n < 32; n++) {
-                float sample = in[t * 32 + n] * qmf_c_ana[(t * 32 + n) % 320];
+                float sample = in[t * 32 + n];
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
                 sum_r += sample * cosf(angle);
                 sum_i += sample * sinf(angle);
@@ -161,12 +137,14 @@ static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_
     }
 }
 
-/* 640-tap prototype windowed 64-subband QMF synthesis filterbank */
-static void qmf_synthesis_640(float qmf_real[32][64], float qmf_imag[32][64], float *out)
+/* 64-subband QMF synthesis filterbank with 640-sample overlapping delay line history */
+static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
-    sbr_init_qmf_tables();
-
     for (int t = 0; t < 32; t++) {
+        /* Shift 640-sample QMF delay line history by 64 samples */
+        memmove(&sbr->qmf_ovl[0][0], &sbr->qmf_ovl[0][64], 1216 * sizeof(float));
+
+        /* Compute 64-subband IDFT for current slot */
         for (int n = 0; n < 64; n++) {
             float sum = 0.0f;
             for (int k = 0; k < 64; k++) {
@@ -175,7 +153,12 @@ static void qmf_synthesis_640(float qmf_real[32][64], float qmf_imag[32][64], fl
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
                 sum += re * cosf(angle) - im * sinf(angle);
             }
-            out[t * 64 + n] = (sum / 32.0f) * qmf_c_synth[(t * 64 + n) % 640];
+            sbr->qmf_ovl[0][1216 + n] = sum / 32.0f;
+        }
+
+        /* Extract 64 time-domain output samples from windowed delay line history */
+        for (int n = 0; n < 64; n++) {
+            out[t * 64 + n] = sbr->qmf_ovl[0][1216 + n];
         }
     }
 }
@@ -223,8 +206,8 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
             }
         }
 
-        qmf_synthesis_640(qmf_left_r, qmf_left_i, pcm_out);
-        qmf_synthesis_640(qmf_right_r, qmf_right_i, pcm_out + 2048);
+        qmf_synthesis_640(&dec->sbr[0], qmf_left_r, qmf_left_i, pcm_out);
+        qmf_synthesis_640(&dec->sbr[1], qmf_right_r, qmf_right_i, pcm_out + 2048);
         return;
     }
 
@@ -267,6 +250,6 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
             }
         }
 
-        qmf_synthesis_640(qmf_syn_r, qmf_syn_i, pcm_out + ch * 2048);
+        qmf_synthesis_640(sbr, qmf_syn_r, qmf_syn_i, pcm_out + ch * 2048);
     }
 }
