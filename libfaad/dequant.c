@@ -37,33 +37,42 @@ void dequantize_spectrum(ICSInfo *ics, float *spec)
 {
     init_dequant_tables();
 
-    for (int g = 0; g < ics->num_window_groups; g++) {
-        for (int i = 0; i < ics->num_sections[g]; i++) {
+    int window_offset = 0;
+    for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
+        for (int i = 0; i < ics->num_sections[g] && i < 64; i++) {
             int cb = ics->sect_cb[g][i];
             if (cb == 0 || cb == 13) continue;
 
             int start_sfb = ics->sect_start[g][i];
             int end_sfb = ics->sect_end[g][i];
+            if (start_sfb < 0 || start_sfb >= ics->num_sfbs || start_sfb >= 64) continue;
+            if (end_sfb > ics->num_sfbs) end_sfb = ics->num_sfbs;
+            if (end_sfb > 64) end_sfb = 64;
 
-            for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
+            for (int sfb = start_sfb; sfb < end_sfb && (sfb + 1) <= ics->num_sfbs && (sfb + 1) < 68; sfb++) {
                 int sf = ics->scalefactors[g][sfb];
                 float scale = (sf >= 0 && sf < 256) ? sf_scale_lut[sf] : powf(2.0f, 0.25f * (sf - 100));
 
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
+                if (start_k >= FRAME_LEN_LONG) continue;
+                if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
 
                 for (int w = 0; w < ics->window_group_length[g]; w++) {
-                    float *ptr = spec + w * 128 + start_k;
+                    int win_idx = window_offset + w;
                     for (int k = start_k; k < end_k; k++) {
-                        int val = (int)(*ptr);
-                        if (val != 0) {
-                            *ptr = pow_4_3_fast(val) * scale;
+                        int idx = win_idx * 128 + k;
+                        if (idx >= 0 && idx < FRAME_LEN_LONG) {
+                            int val = (int)(spec[idx]);
+                            if (val != 0) {
+                                spec[idx] = pow_4_3_fast(val) * scale;
+                            }
                         }
-                        ptr++;
                     }
                 }
             }
         }
+        window_offset += ics->window_group_length[g];
     }
 }
 
@@ -71,35 +80,45 @@ void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed)
 {
     init_dequant_tables();
 
-    for (int g = 0; g < ics->num_window_groups; g++) {
-        for (int sfb = 0; sfb < ics->num_sfbs; sfb++) {
+    int window_offset = 0;
+    for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
+        for (int sfb = 0; sfb < ics->num_sfbs && (sfb + 1) <= ics->num_sfbs && (sfb + 1) < 68; sfb++) {
             if (ics->pns_used[g][sfb]) {
                 int sf = ics->scalefactors[g][sfb];
                 float scale = (sf >= 0 && sf < 256) ? sf_scale_lut[sf] : powf(2.0f, 0.25f * (sf - 100));
 
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
+                if (start_k >= FRAME_LEN_LONG) continue;
+                if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
                 int len = end_k - start_k;
 
                 for (int w = 0; w < ics->window_group_length[g]; w++) {
-                    float *ptr = spec + w * 128 + start_k;
+                    int win_idx = window_offset + w;
                     float energy = 0.0f;
 
                     for (int k = 0; k < len; k++) {
-                        *pns_seed = (*pns_seed * 1664525U) + 1013904223U;
-                        float noise = ((float)(int32_t)*pns_seed) / 2147483648.0f;
-                        ptr[k] = noise;
-                        energy += noise * noise;
+                        int idx = win_idx * 128 + start_k + k;
+                        if (idx >= 0 && idx < FRAME_LEN_LONG) {
+                            *pns_seed = (*pns_seed * 1664525U) + 1013904223U;
+                            float noise = ((float)(int32_t)*pns_seed) / 2147483648.0f;
+                            spec[idx] = noise;
+                            energy += noise * noise;
+                        }
                     }
 
                     if (energy > 0.0f) {
                         float norm = scale / sqrtf(energy);
                         for (int k = 0; k < len; k++) {
-                            ptr[k] *= norm;
+                            int idx = win_idx * 128 + start_k + k;
+                            if (idx >= 0 && idx < FRAME_LEN_LONG) {
+                                spec[idx] *= norm;
+                            }
                         }
                     }
                 }
             }
         }
+        window_offset += ics->window_group_length[g];
     }
 }

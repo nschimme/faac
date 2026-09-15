@@ -22,6 +22,8 @@ typedef struct {
     uint32_t padding;
     MP4Sample *samples;
     uint32_t num_samples;
+    char major_brand[16];
+    char encoder_tag[64];
 } MP4Track;
 
 typedef struct {
@@ -46,17 +48,22 @@ bool mp4_read_track(FILE *f, MP4Track *track)
 
     if (file_size < 32) return false;
 
-    uint8_t *buf = (uint8_t *)malloc(file_size);
+    uint8_t *buf = (uint8_t *)malloc(file_size + 1);
     if (!buf) return false;
     if (fread(buf, 1, file_size, f) != (size_t)file_size) {
         free(buf);
         return false;
     }
+    buf[file_size] = '\0';
 
     if (memcmp(buf + 4, "ftyp", 4) != 0) {
         free(buf);
         return false;
     }
+
+    /* Extract major brand from ftyp */
+    memcpy(track->major_brand, buf + 8, 4);
+    track->major_brand[4] = '\0';
 
     uint32_t num_stsz_samples = 0;
     uint32_t *stsz_table = NULL;
@@ -80,7 +87,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
         }
     }
 
-    /* Second pass: scan moov/trak metadata boxes outside mdat */
+    /* Second pass: parse metadata atoms outside mdat */
     for (long i = 0; i < file_size - 8; i++) {
         if (mdat_offset > 0 && i >= mdat_offset && i < mdat_offset + mdat_size) {
             continue; /* Skip audio frame payload area */
@@ -88,7 +95,7 @@ bool mp4_read_track(FILE *f, MP4Track *track)
 
         if (memcmp(buf + i, "esds", 4) == 0) {
             for (long j = i + 4; j < i + 64 && j < file_size - 4; j++) {
-                if (buf[j] == 0x05) { /* AudioSpecificConfig descriptor tag */
+                if (buf[j] == 0x05) { /* AudioSpecificConfig tag */
                     uint32_t len = buf[j + 1];
                     track->asc_buf = (uint8_t *)malloc(len);
                     memcpy(track->asc_buf, buf + j + 2, len);
@@ -101,7 +108,9 @@ bool mp4_read_track(FILE *f, MP4Track *track)
         if (memcmp(buf + i, "iTunSMPB", 8) == 0) {
             for (long j = i + 8; j < i + 128 && j < file_size - 32; j++) {
                 if (memcmp(buf + j, " 00000000 ", 10) == 0) {
-                    sscanf((char *)buf + j, " %*x %x %x", &track->delay, &track->padding);
+                    char str_buf[128] = {0};
+                    memcpy(str_buf, buf + j, 100);
+                    sscanf(str_buf, " %*x %x %x", &track->delay, &track->padding);
                     break;
                 }
             }

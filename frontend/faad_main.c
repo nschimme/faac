@@ -1,5 +1,5 @@
 /*
- * FAAD CLI Executable - Mimics faad2 interface with ADTS and MP4 support
+ * FAAD CLI Executable - Modernized Unix Audio Decoder Utility
  */
 
 #include <stdio.h>
@@ -22,25 +22,27 @@ typedef struct {
     uint32_t padding;
     MP4Sample *samples;
     uint32_t num_samples;
+    char major_brand[16];
+    char encoder_tag[64];
 } MP4Track;
 
 extern bool mp4_read_track(FILE *f, MP4Track *track);
 extern void mp4_free_track(MP4Track *track);
 
-static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes)
+static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channels, uint32_t total_pcm_bytes, uint16_t bits_per_sample, bool is_float)
 {
     fseek(f, 0, SEEK_SET);
     uint32_t file_size = 36 + total_pcm_bytes;
-    uint32_t byte_rate = sample_rate * num_channels * 2;
-    uint16_t block_align = num_channels * 2;
-    uint16_t bits_per_sample = 16;
+    uint16_t bytes_per_sample = bits_per_sample / 8;
+    uint32_t byte_rate = sample_rate * num_channels * bytes_per_sample;
+    uint16_t block_align = num_channels * bytes_per_sample;
 
     fwrite("RIFF", 1, 4, f);
     fwrite(&file_size, 4, 1, f);
     fwrite("WAVEfmt ", 1, 8, f);
 
     uint32_t fmt_chunk_size = 16;
-    uint16_t audio_format = 1; /* PCM */
+    uint16_t audio_format = is_float ? 3 : 1; /* 1 = PCM, 3 = IEEE Float */
     fwrite(&fmt_chunk_size, 4, 1, f);
     fwrite(&audio_format, 2, 1, f);
     fwrite(&num_channels, 2, 1, f);
@@ -56,24 +58,70 @@ static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 static void print_usage(const char *prog)
 {
     printf("FAAD - Freeware Advanced Audio Decoder\n");
-    printf("Usage: %s [options] infile.aac|infile.m4a\n", prog);
-    printf("Options:\n");
-    printf("  -o <filename>  Set output WAV file name\n");
-    printf("  -i             Display AAC file and bitstream information\n");
-    printf("  -h             Show help summary\n");
+    printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
+    printf("I/O & Format Options:\n");
+    printf("  -o, --output <file>    Set output filename (default: stdout if piped, or infile.wav)\n");
+    printf("  -w, --stdout           Write output PCM to stdout\n");
+    printf("  -f, --format <type>    Output container format: wav (default), raw\n");
+    printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32f (32-bit float)\n");
+    printf("  -a, --adts <file>      Extract raw ADTS stream from MP4 without decoding\n\n");
+    printf("Processing Options:\n");
+    printf("  -d, --downmix          Downmix multichannel (5.1/7.1) to stereo\n");
+    printf("  -j, --jump <seconds>   Start decoding from specified timestamp\n");
+    printf("      --no-gapless       Disable automatic gapless trim/padding handling\n\n");
+    printf("Information & General:\n");
+    printf("  -i, --info             Display bitstream & container metadata, then exit\n");
+    printf("      --json             Output bitstream info in JSON format\n");
+    printf("  -q, --quiet            Quiet mode (suppress decoding progress)\n");
+    printf("  -h, --help             Display this help text\n");
 }
 
 int main(int argc, char **argv)
 {
     const char *infile = NULL;
-    const char *outfile = "output.wav";
+    const char *outfile = NULL;
+    const char *adts_outfile = NULL;
+    bool write_stdout = false;
+    bool raw_format = false;
+    uint32_t bit_depth = 16;
+    bool is_float = false;
+    bool downmix_stereo = false;
+    bool gapless = true;
     bool info_only = false;
+    bool json_info = false;
+    bool quiet = false;
+    double jump_seconds = 0.0;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+        if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && i + 1 < argc) {
             outfile = argv[++i];
-        } else if (strcmp(argv[i], "-i") == 0) {
+        } else if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--stdout") == 0) {
+            write_stdout = true;
+        } else if ((strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) && i + 1 < argc) {
+            i++;
+            if (strcmp(argv[i], "raw") == 0) raw_format = true;
+        } else if ((strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bits") == 0) && i + 1 < argc) {
+            i++;
+            if (strcmp(argv[i], "24") == 0) bit_depth = 24;
+            else if (strcmp(argv[i], "32f") == 0 || strcmp(argv[i], "32") == 0) {
+                bit_depth = 32;
+                is_float = true;
+            } else bit_depth = 16;
+        } else if ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--adts") == 0) && i + 1 < argc) {
+            adts_outfile = argv[++i];
+        } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--downmix") == 0) {
+            downmix_stereo = true;
+        } else if ((strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--jump") == 0) && i + 1 < argc) {
+            jump_seconds = atof(argv[++i]);
+        } else if (strcmp(argv[i], "--no-gapless") == 0) {
+            gapless = false;
+        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--info") == 0) {
             info_only = true;
+        } else if (strcmp(argv[i], "--json") == 0) {
+            json_info = true;
+            info_only = true;
+        } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
+            quiet = true;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -94,6 +142,7 @@ int main(int argc, char **argv)
     }
 
     MP4Track track;
+    memset(&track, 0, sizeof(track));
     bool is_mp4 = mp4_read_track(fin, &track);
 
     fseek(fin, 0, SEEK_END);
@@ -116,10 +165,40 @@ int main(int argc, char **argv)
     }
     fclose(fin);
 
+    /* Direct ADTS extraction from MP4 container without decoding */
+    if (adts_outfile && is_mp4) {
+        FILE *fadts = fopen(adts_outfile, "wb");
+        if (!fadts) {
+            fprintf(stderr, "Error opening ADTS output file %s\n", adts_outfile);
+            free(inbuf);
+            mp4_free_track(&track);
+            return 1;
+        }
+        for (uint32_t s = 0; s < track.num_samples; s++) {
+            uint32_t offset = track.samples[s].offset;
+            uint32_t size = track.samples[s].size;
+            if (offset > 0 && offset + size <= (uint32_t)file_len) {
+                uint8_t adts_hdr[7] = { 0xFF, 0xF1, 0x50, 0x80, 0x00, 0x1F, 0xFC };
+                uint32_t frame_len = size + 7;
+                adts_hdr[3] = (uint8_t)(0x80 | ((frame_len >> 11) & 0x03));
+                adts_hdr[4] = (uint8_t)((frame_len >> 3) & 0xFF);
+                adts_hdr[5] = (uint8_t)(((frame_len & 0x07) << 5) | 0x1F);
+                fwrite(adts_hdr, 1, 7, fadts);
+                fwrite(inbuf + offset, 1, size, fadts);
+            }
+        }
+        fclose(fadts);
+        if (!quiet) printf("Extracted %u raw ADTS frames to %s\n", track.num_samples, adts_outfile);
+        free(inbuf);
+        mp4_free_track(&track);
+        return 0;
+    }
+
     faad_params params;
     faad_params_init(&params, sizeof(params));
     params.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
-    params.output_format = FAAD_OUTPUT_16BIT;
+    params.output_format = is_float ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT;
+    params.downmix_stereo = downmix_stereo;
 
     faad_decoder *dec = NULL;
     faad_status st = faad_decoder_open(&params, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
@@ -132,28 +211,51 @@ int main(int argc, char **argv)
 
     FILE *fout = NULL;
     if (!info_only) {
-        fout = fopen(outfile, "wb");
-        if (!fout) {
-            fprintf(stderr, "Error opening output file %s\n", outfile);
-            faad_decoder_close(&dec);
-            free(inbuf);
-            if (is_mp4) mp4_free_track(&track);
-            return 1;
+        if (write_stdout) {
+            fout = stdout;
+            quiet = true;
+        } else {
+            if (!outfile) {
+                char *out_path = (char *)malloc(strlen(infile) + 8);
+                strcpy(out_path, infile);
+                char *dot = strrchr(out_path, '.');
+                if (dot) strcpy(dot, raw_format ? ".raw" : ".wav");
+                else strcat(out_path, raw_format ? ".raw" : ".wav");
+                outfile = out_path;
+            }
+            fout = fopen(outfile, "wb");
+            if (!fout) {
+                fprintf(stderr, "Error opening output file %s\n", outfile);
+                faad_decoder_close(&dec);
+                free(inbuf);
+                if (is_mp4) mp4_free_track(&track);
+                return 1;
+            }
+            if (!raw_format) {
+                write_wav_header(fout, 44100, 2, 0, bit_depth, is_float);
+            }
         }
-        write_wav_header(fout, 44100, 2, 0);
     }
 
     uint8_t outbuf[65536];
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
+    enum faad_object_type obj_type = FAAD_OBJ_LOW;
     uint32_t frames_decoded = 0;
 
+    uint32_t start_frame = 0;
+    if (jump_seconds > 0.0) {
+        start_frame = (uint32_t)(jump_seconds * 43.0);
+    }
+
+    uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
+
     if (is_mp4) {
-        for (uint32_t s = 0; s < track.num_samples; s++) {
+        for (uint32_t s = start_frame; s < track.num_samples; s++) {
             uint32_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
-            if (offset + size > (uint32_t)file_len) continue;
+            if (offset == 0 || offset + size > (uint32_t)file_len) continue;
 
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
@@ -161,17 +263,35 @@ int main(int argc, char **argv)
             st = faad_decoder_decode(dec, inbuf + offset, size,
                                      &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
 
-            if (st == FAAD_OK) {
+            if (st == FAAD_OK && bytes_written > 0) {
                 faad_decoder_info info;
                 info.struct_size = sizeof(info);
                 if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
                     sample_rate = info.sample_rate;
                     num_channels = info.num_channels;
+                    obj_type = info.object_type;
                 }
 
-                if (fout && bytes_written > 0) {
-                    fwrite(outbuf, 1, bytes_written, fout);
-                    total_pcm_bytes += bytes_written;
+                uint32_t bytes_per_frame_sample = num_channels * (bit_depth / 8);
+                uint32_t frame_samples = bytes_written / bytes_per_frame_sample;
+                uint8_t *write_ptr = outbuf;
+                uint32_t samples_to_write = frame_samples;
+
+                if (samples_to_skip > 0) {
+                    if (samples_to_skip >= samples_to_write) {
+                        samples_to_skip -= samples_to_write;
+                        samples_to_write = 0;
+                    } else {
+                        write_ptr += samples_to_skip * bytes_per_frame_sample;
+                        samples_to_write -= samples_to_skip;
+                        samples_to_skip = 0;
+                    }
+                }
+
+                if (fout && samples_to_write > 0) {
+                    uint32_t bytes_to_write = samples_to_write * bytes_per_frame_sample;
+                    fwrite(write_ptr, 1, bytes_to_write, fout);
+                    total_pcm_bytes += bytes_to_write;
                 }
                 frames_decoded++;
             }
@@ -198,6 +318,7 @@ int main(int argc, char **argv)
             if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
                 sample_rate = info.sample_rate;
                 num_channels = info.num_channels;
+                obj_type = info.object_type;
             }
 
             if (fout && bytes_written > 0) {
@@ -210,19 +331,52 @@ int main(int argc, char **argv)
         }
     }
 
-    if (info_only) {
-        printf("AAC file info (%s):\n", is_mp4 ? "MP4/M4A Container" : "ADTS Bitstream");
-        printf("Sample rate   : %u Hz\n", sample_rate);
-        printf("Channels      : %u\n", num_channels);
-        printf("Total frames  : %u\n", frames_decoded);
-        if (is_mp4 && track.delay > 0) {
-            printf("Gapless delay : %u samples\n", track.delay);
-            printf("Gapless padding: %u samples\n", track.padding);
-        }
+    if (is_mp4 && gapless && track.padding > 0 && total_pcm_bytes > track.padding * num_channels * (bit_depth / 8)) {
+        total_pcm_bytes -= track.padding * num_channels * (bit_depth / 8);
+    }
+
+    double duration_sec = (double)(frames_decoded * 1024) / (sample_rate ? sample_rate : 44100);
+    double avg_bitrate_kbps = (file_len * 8.0) / (duration_sec > 0 ? duration_sec * 1000.0 : 1.0);
+
+    if (json_info) {
+        printf("{\n");
+        printf("  \"file\": \"%s\",\n", infile);
+        printf("  \"container\": \"%s\",\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream");
+        printf("  \"major_brand\": \"%s\",\n", track.major_brand[0] ? track.major_brand : "M4A");
+        printf("  \"duration_seconds\": %.2f,\n", duration_sec);
+        printf("  \"audio\": {\n");
+        printf("    \"profile\": \"%s\",\n", (obj_type == FAAD_OBJ_HE_AAC_V1) ? "HE-AAC v1 (AAC-LC + SBR)" : "AAC-LC");
+        printf("    \"channels\": %u,\n", num_channels);
+        printf("    \"sample_rate_hz\": %u,\n", sample_rate);
+        printf("    \"bitrate_avg_kbps\": %.1f,\n", avg_bitrate_kbps);
+        printf("    \"total_frames\": %u\n", frames_decoded);
+        printf("  },\n");
+        printf("  \"metadata\": {\n");
+        printf("    \"encoder\": \"%s\"\n", track.encoder_tag[0] ? track.encoder_tag : "FAAC");
+        printf("  }\n");
+        printf("}\n");
+    } else if (info_only) {
+        printf("File:        %s\n", infile);
+        printf("Container:   %s (Major Brand: %s)\n", is_mp4 ? "MP4 / M4A" : "ADTS Bitstream", track.major_brand[0] ? track.major_brand : "M4A");
+        printf("Duration:    %02d:%02d:%02d.%02d (%.2f seconds)\n\n",
+               (int)duration_sec / 3600, ((int)duration_sec % 3600) / 60, (int)duration_sec % 60, (int)(duration_sec * 100) % 100, duration_sec);
+        printf("Audio Stream:\n");
+        printf("  Profile:   %s\n", (obj_type == FAAD_OBJ_HE_AAC_V1) ? "HE-AAC v1 (AAC-LC + SBR)" : "AAC-LC");
+        printf("  Channels:  %u (%s)\n", num_channels, (num_channels == 1) ? "Mono" : ((num_channels == 2) ? "Stereo" : "Multichannel"));
+        printf("  Sample Rate: %.1f kHz\n", sample_rate / 1000.0f);
+        printf("  Bitrate:   %.1f kbps (Avg)\n", avg_bitrate_kbps);
+        printf("  Frames:    %u frames\n\n", frames_decoded);
+        printf("Metadata (Tags):\n");
+        printf("  Encoder:   %s\n", track.encoder_tag[0] ? track.encoder_tag : "FAAC");
     } else if (fout) {
-        write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes);
-        fclose(fout);
-        printf("Decoded %u frames (%u bytes) to %s\n", frames_decoded, total_pcm_bytes, outfile);
+        if (!raw_format && fout != stdout) {
+            write_wav_header(fout, sample_rate, (uint16_t)num_channels, total_pcm_bytes, bit_depth, is_float);
+            fclose(fout);
+        }
+        if (!quiet) {
+            printf("Decoded %u frames (%u bytes, %d-bit %s) to %s\n",
+                   frames_decoded, total_pcm_bytes, bit_depth, is_float ? "float" : "PCM", outfile ? outfile : "stdout");
+        }
     }
 
     faad_decoder_close(&dec);

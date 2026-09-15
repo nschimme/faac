@@ -12,6 +12,7 @@ static void decode_ics_info(BitReader *bs, ICSInfo *ics)
 
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         ics->max_sfb = bits_get(bs, 4);
+        if (ics->max_sfb > 64) ics->max_sfb = 64;
         uint32_t scale_factor_grouping = bits_get(bs, 7);
 
         ics->num_window_groups = 1;
@@ -20,13 +21,16 @@ static void decode_ics_info(BitReader *bs, ICSInfo *ics)
             if ((scale_factor_grouping >> (6 - i)) & 1) {
                 ics->window_group_length[ics->num_window_groups - 1]++;
             } else {
-                ics->num_window_groups++;
-                ics->window_group_length[ics->num_window_groups - 1] = 1;
+                if (ics->num_window_groups < 8) {
+                    ics->num_window_groups++;
+                    ics->window_group_length[ics->num_window_groups - 1] = 1;
+                }
             }
         }
         ics->num_windows = 8;
     } else {
         ics->max_sfb = bits_get(bs, 6);
+        if (ics->max_sfb > 64) ics->max_sfb = 64;
         ics->num_window_groups = 1;
         ics->window_group_length[0] = 1;
         ics->num_windows = 1;
@@ -40,10 +44,10 @@ static void decode_ics_info(BitReader *bs, ICSInfo *ics)
 static void decode_section_data(BitReader *bs, ICSInfo *ics)
 {
     uint32_t sect_bits = (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 3 : 5;
-    for (int g = 0; g < ics->num_window_groups; g++) {
+    for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         int k = 0;
         int i = 0;
-        while (k < ics->max_sfb) {
+        while (k < ics->max_sfb && i < 64) {
             uint32_t cb = bits_get(bs, 4);
             uint32_t len = bits_get(bs, sect_bits);
             while (len == ((1U << sect_bits) - 1)) {
@@ -51,7 +55,7 @@ static void decode_section_data(BitReader *bs, ICSInfo *ics)
             }
             ics->sect_cb[g][i] = cb;
             ics->sect_start[g][i] = k;
-            ics->sect_end[g][i] = k + len;
+            ics->sect_end[g][i] = (k + len <= 64) ? (k + len) : 64;
             k += len;
             i++;
         }
@@ -119,19 +123,19 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     ics->tns_data_present = bits_get(bs, 1);
     if (ics->tns_data_present) {
         uint32_t n_filt_bits = (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 1 : 2;
-        for (int w = 0; w < ics->num_windows; w++) {
+        for (int w = 0; w < ics->num_windows && w < 8; w++) {
             ics->tns_n_filt[w] = bits_get(bs, n_filt_bits);
             if (ics->tns_n_filt[w]) {
                 uint32_t coef_res = bits_get(bs, 1);
                 ics->tns_coef_res[w] = coef_res;
-                for (int f = 0; f < ics->tns_n_filt[w]; f++) {
+                for (int f = 0; f < ics->tns_n_filt[w] && f < 4; f++) {
                     ics->tns_length[w][f] = bits_get(bs, (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 4 : 6);
                     ics->tns_order[w][f] = bits_get(bs, (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 3 : 5);
                     if (ics->tns_order[w][f]) {
                         ics->tns_direction[w][f] = bits_get(bs, 1);
                         bits_skip(bs, 1);
                         int bits_per_coef = coef_res ? 4 : 3;
-                        for (int c = 0; c < ics->tns_order[w][f]; c++) {
+                        for (int c = 0; c < ics->tns_order[w][f] && c < 32; c++) {
                             uint32_t val = bits_get(bs, bits_per_coef);
                             int32_t sval = (int32_t)val;
                             if (sval & (1 << (bits_per_coef - 1))) {
@@ -163,8 +167,8 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
 
         cpe->ms_mask_present = bits_get(bs, 2);
         if (cpe->ms_mask_present == 1) {
-            for (int g = 0; g < cpe->ics[0].num_window_groups; g++) {
-                for (int sfb = 0; sfb < cpe->ics[0].max_sfb; sfb++) {
+            for (int g = 0; g < cpe->ics[0].num_window_groups && g < 8; g++) {
+                for (int sfb = 0; sfb < cpe->ics[0].max_sfb && sfb < 64; sfb++) {
                     cpe->ms_used[g][sfb] = bits_get(bs, 1);
                 }
             }

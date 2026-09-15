@@ -87,6 +87,9 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         return FAAD_ERR_INVALID_ARGUMENT;
     }
 
+    /* Reset spec buffer for new frame */
+    memset(dec->spec, 0, sizeof(dec->spec));
+
     BitReader bs;
     bits_init(&bs, in, in_bytes);
 
