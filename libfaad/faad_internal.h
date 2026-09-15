@@ -162,6 +162,8 @@ void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_tns(ICSInfo *ics, float *spec);
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float *spec, float *out_pcm);
 
+faad_status decode_pce(BitReader *bs, struct faad_decoder *dec);
+faad_status decode_dse(BitReader *bs);
 faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, float *spec);
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch);
 faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch);

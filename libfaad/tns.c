@@ -61,6 +61,7 @@ void apply_tns(ICSInfo *ics, float *spec)
             /* Convert quantized Reflection Coefficients (parcor) to LPC coefficients via Levinson-Durbin step-down */
             float rc[32];
             float lpc[32];
+            float lpc_tmp[32];
             float scale_factor = (ics->tns_coef_res[w] == 1) ? (float)(M_PI / 16.0) : (float)(M_PI / 8.0);
 
             for (int i = 0; i < order; i++) {
@@ -71,8 +72,10 @@ void apply_tns(ICSInfo *ics, float *spec)
             for (int m = 0; m < order; m++) {
                 lpc[m] = rc[m];
                 for (int i = 0; i < m; i++) {
-                    float tmp = lpc[i];
-                    lpc[i] = tmp + rc[m] * lpc[m - 1 - i];
+                    lpc_tmp[i] = lpc[i] + rc[m] * lpc[m - 1 - i];
+                }
+                for (int i = 0; i < m; i++) {
+                    lpc[i] = lpc_tmp[i];
                 }
             }
 

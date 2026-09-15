@@ -123,6 +123,10 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         apply_tns(&cpe.ics[0], dec->spec[0]);
         apply_tns(&cpe.ics[1], dec->spec[1]);
         if (dec->num_channels == 0) dec->num_channels = 2;
+    } else if (syntax_id == ID_DSE) {
+        decode_dse(&bs);
+    } else if (syntax_id == ID_PCE) {
+        decode_pce(&bs, dec);
     }
 
     /* Check for SBR Extension Payload in FIL elements */

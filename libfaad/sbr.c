@@ -23,11 +23,40 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         sbr->bs_start_freq = bits_get(bs, 4);
         sbr->bs_stop_freq = bits_get(bs, 4);
         sbr->bs_xover_band = bits_get(bs, 3);
-        bits_skip(bs, 2);
+        bits_skip(bs, 2); /* reserved */
     }
 
+    /* SBR Frame Grid Decoding */
     sbr->bs_frame_class = bits_get(bs, 2);
     sbr->bs_num_env = bits_get(bs, 2) + 1;
+
+    /* SBR Inverse Filtering Mode */
+    for (int i = 0; i < 4; i++) {
+        bits_skip(bs, 2); /* bs_invf_mode */
+    }
+
+    /* SBR Envelope Data */
+    for (int env = 0; env < sbr->bs_num_env; env++) {
+        for (int band = 0; band < 48; band++) {
+            bits_skip(bs, 6); /* E_orig envelope scalefactors */
+        }
+    }
+
+    /* SBR Noise Floor Data */
+    sbr->bs_num_noise = (sbr->bs_num_env > 1) ? 2 : 1;
+    for (int n = 0; n < sbr->bs_num_noise; n++) {
+        for (int band = 0; band < 5; band++) {
+            bits_skip(bs, 5); /* Q_orig noise floor scalefactors */
+        }
+    }
+
+    /* SBR Synthetics / Harmonics */
+    bool bs_add_harmonic_flag = bits_get(bs, 1);
+    if (bs_add_harmonic_flag) {
+        for (int band = 0; band < 48; band++) {
+            sbr->bs_add_harmonic[band] = bits_get(bs, 1);
+        }
+    }
 
     return FAAD_OK;
 }
