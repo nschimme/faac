@@ -9,6 +9,28 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+static float qmf_c_synth[640];
+static float qmf_c_ana[320];
+static bool sbr_tables_initialized = false;
+
+static void sbr_init_qmf_tables(void)
+{
+    if (sbr_tables_initialized) return;
+
+    for (int i = 0; i < 640; i++) {
+        qmf_c_synth[i] = sinf((float)M_PI * (i + 0.5f) / 640.0f);
+    }
+    for (int i = 0; i < 320; i++) {
+        qmf_c_ana[i] = sinf((float)M_PI * (i + 0.5f) / 320.0f);
+    }
+    sbr_tables_initialized = true;
+}
+
+void sbr_init_tables(void)
+{
+    sbr_init_qmf_tables();
+}
+
 static const float ps_iid_scale_lut[15] = {
     0.000f, 0.125f, 0.250f, 0.375f, 0.500f, 0.625f, 0.750f, 0.875f,
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
@@ -21,7 +43,7 @@ static void ps_decode_payload(struct faad_decoder *dec, BitReader *bs)
 
     ps->enable_iid = bits_get(bs, 1);
     if (ps->enable_iid) {
-        bool iid_mode = bits_get(bs, 1); /* 0 = 10 bands, 1 = 20 bands */
+        bool iid_mode = bits_get(bs, 1);
         int bands = iid_mode ? 20 : 10;
         for (int b = 0; b < bands; b++) {
             int val = bits_get(bs, 4);
@@ -67,7 +89,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         sbr->bs_start_freq = bits_get(bs, 4);
         sbr->bs_stop_freq = bits_get(bs, 4);
         sbr->bs_xover_band = bits_get(bs, 3);
-        bits_skip(bs, 2); /* reserved */
+        bits_skip(bs, 2);
     }
 
     /* SBR Frame Grid Decoding */
@@ -79,18 +101,20 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         bits_skip(bs, 2);
     }
 
-    /* SBR Envelope Data */
-    for (int env = 0; env < sbr->bs_num_env; env++) {
+    /* SBR Envelope Data (E_orig) */
+    for (int env = 0; env < sbr->bs_num_env && env < 8; env++) {
         for (int band = 0; band < 48; band++) {
-            bits_skip(bs, 6);
+            uint32_t val = bits_get(bs, 6);
+            sbr->E_orig[env][band] = (int8_t)val;
         }
     }
 
-    /* SBR Noise Floor Data */
+    /* SBR Noise Floor Data (Q_orig) */
     sbr->bs_num_noise = (sbr->bs_num_env > 1) ? 2 : 1;
-    for (int n = 0; n < sbr->bs_num_noise; n++) {
+    for (int n = 0; n < sbr->bs_num_noise && n < 8; n++) {
         for (int band = 0; band < 5; band++) {
-            bits_skip(bs, 5);
+            uint32_t val = bits_get(bs, 5);
+            sbr->Q_orig[n][band] = (int8_t)val;
         }
     }
 
@@ -107,7 +131,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         bool ps_extended = bits_get(bs, 1);
         if (ps_extended) {
             uint32_t sync_ext = bits_get(bs, 11);
-            if (sync_ext == 0x548) { /* Parametric Stereo Sync Header */
+            if (sync_ext == 0x548) {
                 ps_decode_payload(dec, bs);
             }
         }
@@ -116,15 +140,17 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     return FAAD_OK;
 }
 
-/* 32-subband QMF analysis filterbank */
+/* 320-tap prototype windowed 32-subband QMF analysis filterbank */
 static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_imag[32][32])
 {
+    sbr_init_qmf_tables();
+
     for (int t = 0; t < 32; t++) {
         for (int k = 0; k < 32; k++) {
             float sum_r = 0.0f;
             float sum_i = 0.0f;
             for (int n = 0; n < 32; n++) {
-                float sample = in[t * 32 + n];
+                float sample = in[t * 32 + n] * qmf_c_ana[(t * 32 + n) % 320];
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
                 sum_r += sample * cosf(angle);
                 sum_i += sample * sinf(angle);
@@ -135,9 +161,11 @@ static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_
     }
 }
 
-/* 64-subband QMF synthesis filterbank */
+/* 640-tap prototype windowed 64-subband QMF synthesis filterbank */
 static void qmf_synthesis_640(float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
+    sbr_init_qmf_tables();
+
     for (int t = 0; t < 32; t++) {
         for (int n = 0; n < 64; n++) {
             float sum = 0.0f;
@@ -147,7 +175,7 @@ static void qmf_synthesis_640(float qmf_real[32][64], float qmf_imag[32][64], fl
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
                 sum += re * cosf(angle) - im * sinf(angle);
             }
-            out[t * 64 + n] = sum / 32.0f;
+            out[t * 64 + n] = (sum / 32.0f) * qmf_c_synth[(t * 64 + n) % 640];
         }
     }
 }
@@ -182,7 +210,6 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
         qmf_analysis_320(pcm_in, qmf_ana_r, qmf_ana_i);
 
-        /* Apply Parametric Stereo IID pan gains across subbands */
         for (int t = 0; t < 32; t++) {
             for (int k = 0; k < 64; k++) {
                 int band = (k * SBR_PS_BANDS) / 64;
@@ -203,6 +230,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
     /* Standard HE-AAC v1 SBR Synthesis */
     for (uint32_t ch = 0; ch < num_ch; ch++) {
+        SBRState *sbr = &dec->sbr[ch];
         float qmf_ana_r[32][32];
         float qmf_ana_i[32][32];
         float qmf_syn_r[32][64];
@@ -220,11 +248,22 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
             }
         }
 
+        /* High Frequency Reconstruction with Envelope Scalefactor Gain Control */
         for (int t = 0; t < 32; t++) {
+            int env_idx = (t * sbr->bs_num_env) / 32;
+            if (env_idx >= 8) env_idx = 7;
+
             for (int k = 32; k < 64; k++) {
                 int src_k = k - 32;
-                qmf_syn_r[t][k] = qmf_ana_r[t][src_k];
-                qmf_syn_i[t][k] = qmf_ana_i[t][src_k];
+                int band_idx = (k - 32) * 48 / 32;
+                float gain = 1.0f;
+
+                if (sbr->E_orig[env_idx][band_idx] > 0) {
+                    gain = powf(2.0f, 0.25f * (sbr->E_orig[env_idx][band_idx] - 20));
+                }
+
+                qmf_syn_r[t][k] = qmf_ana_r[t][src_k] * gain;
+                qmf_syn_i[t][k] = qmf_ana_i[t][src_k] * gain;
             }
         }
 
