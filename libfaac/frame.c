@@ -290,9 +290,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             }
             /* Boost initial seed for mono speech streams */
             if (hEncoder->numChannels == 1 && bps >= 32000.0f) q_seed *= 2.5f;
-            config->quantqual = q_seed * (float)hEncoder->numChannels * rateFactor;
+            config->quantqual = (unsigned long)(q_seed * (float)hEncoder->numChannels * rateFactor);
             if (config->quantqual > DEFQUAL)
-                config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
+                config->quantqual = (unsigned long)((float)(config->quantqual - DEFQUAL) * 3.0f + (float)DEFQUAL);
         }
     }
 
@@ -948,7 +948,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
-              (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
+              (float)hEncoder->aacquantCfg.quality / (float)DEFQUAL, jointmode, (int)hEncoder->sampleRate,
               hEncoder->config.bandWidth);
 
     /* AACstereo has already consumed freqBuff in place and BlocQuant
