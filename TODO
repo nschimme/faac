@@ -11,17 +11,8 @@
   high-relative-bitrate mistargeting bug, isolated from the stereo quality gap
 - add PCE (Program Config Element) or 4-bit AudioSpecificConfig
 - HE-AAC v1: Use dedicated noise Huffman tables in write_sbr_noise
-- drop the dead count mode from the core bitstream writer: BuildFrame is only
-  ever called with write=true (ADTS length is patched afterwards), so the
-  writeFlag plumbing through WriteElement/WriteICS/writebooks/writesf (~40
-  `if (write)` branches in channels.c and huff2.c) never runs false
-- FAAC_STATS "Core Tr" counts coderInfo[0].block_type right after BlockSwitch,
-  before the final window decision; on LC it reports 60-98% where the
-  bitstream carries 1-3% short windows. Count the window_sequence actually
-  written instead
 
 ## Medium (contained algorithmic change, one subsystem)
-- Add adaptive bit reservoir control
 - HE-AAC v1: SBR noise floor / invf mode from within-band tonality
 - HE-AAC v1: Move numEnvelopes/eff_amp_res/tEnv to SBRChannel for independent borders
 

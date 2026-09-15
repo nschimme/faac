@@ -1,3 +1,26 @@
+(unreleased)
+
+	[ Nils Schimmelmann ]
+	* sbr: Add HE-AAC v1 multichannel layout support, improve SBR payload
+	  time alignment and transient envelope grid generation, tune SBR SFM
+	  inverse filtering thresholds, and streamline SBR payload emission.
+	* tns: Switch to Schur algorithm, enable TNS by default with
+	  transient-aware direction selection and bitrate/block-type gating, and
+	  optimize runtime footprint.
+	* ratecontrol: Replace PE-gated reservoir with signed bit account and
+	  improve ABR rate targeting and low-bitrate AAC bounds.
+	* blockswitch / stereo: Implement per-CPE lockstep block switching, tune
+	  transient detection threshold and attack mask timing, and add Mixed Mode
+	  intensity coding for starved long windows.
+	* quantize / huffman: Implement single-pass section merging in Huffman
+	  quantizer and optimize LC core rate-distortion and scalefactor gain LUT.
+	* fft / filtbank: Drop bit-reversal pass by indexing output in-place and
+	  reduce SBR FFT/MDCT footprint overhead.
+	* bitstream: Optimize bitstream writing via direct bitfield packing and
+	  BitAccumulator.
+	* frontend: Port WASM frontend without CBR support and add audio tag
+	  auto-population.
+
 2.1 (Aug 18, 2026)
 
 	[ Nils Schimmelmann ]
