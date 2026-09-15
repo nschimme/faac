@@ -459,7 +459,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     sfbOffsetLong[i] = l;
     aacquantCfg->max_cbl = i;
     aacquantCfg->max_l = l;
-    *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
+    *bw = (unsigned int)((float)l * (float)rate / (float)(BLOCK_LEN_LONG << 1));
 }
 
 // short-window grouping: keep spectrally-similar windows together so they

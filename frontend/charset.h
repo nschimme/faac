@@ -20,6 +20,10 @@
 #include <stdio.h>
 #include <time.h>
 
+#if defined(_MSC_VER) && !defined(strdup)
+#define strdup _strdup
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
