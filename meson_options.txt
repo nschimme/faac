@@ -31,3 +31,8 @@ option('stats',
     description: 'Enable optional end-of-encode statistics banner',
     type: 'boolean',
     value: false)
+
+option('fixed-point',
+    description: 'Enable fixed-point math implementation for embedded SOCs without FPU hardware',
+    type: 'boolean',
+    value: false)

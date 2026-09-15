@@ -21,6 +21,14 @@
 
 typedef float fftfloat;
 
+#ifdef FAAC_FIXED_POINT
+#include <stdint.h>
+typedef int32_t fftfix32;
+
+#define FIX_Q31(x) ((int32_t)((x) * 2147483647.0))
+#define FIX_MUL_Q31(a, b) ((int32_t)(((int64_t)(a) * (b)) >> 31))
+#endif
+
 typedef struct
 {
     fftfloat **costbl;
@@ -32,6 +40,10 @@ typedef struct
      * from vectorizing, and is more accurate than the recurrence. */
     fftfloat *mdct_cos[FFT_MAXLOGM + 1];
     fftfloat *mdct_sin[FFT_MAXLOGM + 1];
+#ifdef FAAC_FIXED_POINT
+    fftfix32 **costbl_fx;
+    fftfix32 **negsintbl_fx;
+#endif
 } FFT_Tables;
 
 void fft_initialize		( FFT_Tables *fft_tables );
