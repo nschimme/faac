@@ -208,9 +208,6 @@ typedef struct faac_params {
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
-
-    void                *(*alloc_func)(size_t size); /* optional custom allocator (e.g. PSRAM heap_caps_malloc); NULL = malloc */
-    void                 (*free_func)(void *ptr);     /* optional custom deallocator; NULL = free */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and

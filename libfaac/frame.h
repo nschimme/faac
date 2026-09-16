@@ -119,27 +119,7 @@ typedef struct faacEncStruct {
     int *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
-
-    void *(*alloc_func)(size_t size);
-    void  (*free_func)(void *ptr);
 } faacEncStruct;
-
-static inline void *faac_alloc(const faacEncStruct *h, size_t size)
-{
-    if (h && h->alloc_func)
-        return h->alloc_func(size);
-    return AllocMemory(size);
-}
-
-static inline void faac_free(const faacEncStruct *h, void *ptr)
-{
-    if (!ptr) return;
-    if (h && h->free_func) {
-        h->free_func(ptr);
-        return;
-    }
-    FreeMemory(ptr);
-}
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,

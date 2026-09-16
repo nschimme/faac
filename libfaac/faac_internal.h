@@ -68,8 +68,6 @@ typedef struct faacEncConfiguration
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     int pnslevel;
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
-    void *(*alloc_func)(size_t size);
-    void  (*free_func)(void *ptr);
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;
@@ -79,9 +77,6 @@ int  faacEncGetDecoderSpecificInfo(faacEncHandle hEncoder, unsigned char **ppBuf
                                    unsigned long *pSizeOfDecoderSpecificInfo);
 faacEncHandle faacEncOpen(unsigned long sampleRate, unsigned int numChannels,
                           unsigned long *inputSamples, unsigned long *maxOutputBytes);
-faacEncHandle faacEncOpenEx(unsigned long sampleRate, unsigned int numChannels,
-                            unsigned long *inputSamples, unsigned long *maxOutputBytes,
-                            void *(*alloc_func)(size_t), void (*free_func)(void *));
 int  faacEncEncode(faacEncHandle hEncoder, int32_t *inputBuffer, unsigned int samplesInput,
                    unsigned char *outputBuffer, unsigned int bufferSize);
 int  faacEncClose(faacEncHandle hEncoder);

@@ -6,24 +6,6 @@
 
 #include <faac.h>
 
-static size_t g_alloc_count = 0;
-static size_t g_free_count = 0;
-
-static void *custom_alloc(size_t size)
-{
-    g_alloc_count++;
-    /* Allocation wrapper simulating PSRAM or custom memory arena */
-    return malloc(size);
-}
-
-static void custom_free(void *ptr)
-{
-    if (ptr) {
-        g_free_count++;
-        free(ptr);
-    }
-}
-
 int main(void)
 {
     faac_params params;
@@ -31,7 +13,7 @@ int main(void)
     faac_encoder_info info;
     faac_status status;
 
-    printf("Testing FAAC custom memory allocator integration...\n");
+    printf("Testing FAAC embedded configuration and 16-bit encoding...\n");
 
     status = faac_params_init(&params, sizeof(params));
     assert(status == FAAC_OK);
@@ -39,14 +21,12 @@ int main(void)
     params.sample_rate = 44100;
     params.num_channels = 2;
     params.bit_rate = 64000;
-    params.use_tns = false;
-    params.alloc_func = custom_alloc;
-    params.free_func = custom_free;
+    params.use_tns = false; /* bypass TNS for low CPU overhead */
+    params.input_format = FAAC_INPUT_16BIT;
 
     status = faac_encoder_open(&params, &enc);
     assert(status == FAAC_OK);
     assert(enc != NULL);
-    assert(g_alloc_count > 0);
 
     info.struct_size = sizeof(info);
     status = faac_encoder_get_info(enc, &info);
@@ -71,11 +51,8 @@ int main(void)
     status = faac_encoder_close(&enc);
     assert(status == FAAC_OK);
     assert(enc == NULL);
-    assert(g_alloc_count > 0);
-    assert(g_alloc_count == g_free_count);
 
-    printf("Custom allocator test passed! Allocs: %zu, Frees: %zu\n",
-           g_alloc_count, g_free_count);
+    printf("FAAC embedded test passed successfully!\n");
 
     return 0;
 }
