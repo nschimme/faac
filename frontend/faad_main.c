@@ -327,7 +327,15 @@ int main(int argc, char **argv)
                 return 1;
             }
             if (!raw_format) {
-                write_wav_header(fout, 44100, 2, 0, bit_depth, is_float);
+                faad_decoder_info info;
+                info.struct_size = sizeof(info);
+                uint32_t init_sr = 44100;
+                uint32_t init_ch = 2;
+                if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
+                    if (info.sample_rate > 0) init_sr = info.sample_rate;
+                    if (info.num_channels > 0) init_ch = info.num_channels;
+                }
+                write_wav_header(fout, init_sr, (uint16_t)init_ch, 0, bit_depth, is_float);
             }
         }
     }

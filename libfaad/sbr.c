@@ -10,6 +10,30 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+
+static int sbr_clamp_int(int val, int min_val, int max_val) {
+    if (val < min_val) return min_val;
+    if (val > max_val) return max_val;
+    return val;
+}
+
+static int sbr_compute_num_bands(uint32_t sample_rate, uint32_t start_freq, uint32_t stop_freq) {
+    if (sample_rate == 0) sample_rate = 44100;
+    int sr_row = (sample_rate <= 16000) ? 0 : (sample_rate <= 22050) ? 1 : (sample_rate <= 24000) ? 2 : (sample_rate <= 32000) ? 3 : (sample_rate <= 64000) ? 4 : 5;
+    int temp = (sample_rate < 32000) ? 3000 : (sample_rate < 64000) ? 4000 : 5000;
+    int start_min = ((temp << 7) + (int)(sample_rate >> 1)) / (int)sample_rate;
+    int kx = sbr_clamp_int(start_min + sbr_offset[sr_row][start_freq & 15], 1, 63);
+    int k2 = 64;
+    if (stop_freq < 14) {
+        int stop_min = ((temp << 8) + (int)(sample_rate >> 1)) / (int)sample_rate;
+        k2 = sbr_clamp_int(stop_min + sbr_offset[sr_row][stop_freq & 15], kx + 1, 64);
+    }
+    int num_bands = k2 - kx;
+    if (num_bands < 1) num_bands = 1;
+    if (num_bands > 48) num_bands = 48;
+    return num_bands;
+}
+
 static const float ps_iid_scale_lut[15] = {
     0.000f, 0.125f, 0.250f, 0.375f, 0.500f, 0.625f, 0.750f, 0.875f,
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
@@ -102,11 +126,12 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     int huff_nsyms = bs_amp_res ? F_HUFF_ENV_1_5DB_NSYMS : F_HUFF_ENV_3_0DB_NSYMS;
     int huff_offset = bs_amp_res ? F_HUFF_ENV_1_5DB_OFFSET : F_HUFF_ENV_3_0DB_OFFSET;
 
+    int num_bands = sbr_compute_num_bands(dec->asc.sbr_sample_rate > 0 ? dec->asc.sbr_sample_rate : 2 * dec->sample_rate, sbr->bs_start_freq, sbr->bs_stop_freq);
     for (int env = 0; env < sbr->bs_num_env && env < 8; env++) {
         bool bs_df_env = bits_get(bs, 1);
         int prev_val = bs_amp_res ? 60 : 30;
 
-        for (int band = 0; band < 48; band++) {
+        for (int band = 0; band < num_bands; band++) {
             if (env == 0 && !bs_df_env) {
                 /* First envelope, frequency direction: absolute value or delta */
                 if (band == 0) {
@@ -156,7 +181,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     /* SBR Synthetics / Harmonics */
     bool bs_add_harmonic_flag = bits_get(bs, 1);
     if (bs_add_harmonic_flag) {
-        for (int band = 0; band < 48; band++) {
+        for (int band = 0; band < num_bands; band++) {
             sbr->bs_add_harmonic[band] = bits_get(bs, 1);
         }
     }
