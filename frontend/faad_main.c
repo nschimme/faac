@@ -160,7 +160,7 @@ static void print_usage(const char *prog)
     printf("  -b, --bits <depth>     Sample depth: 16 (default), 24, 32f (32-bit float)\n");
     printf("  -a, --adts <file>      Extract raw ADTS stream from MP4 without decoding\n\n");
     printf("Processing Options:\n");
-    printf("  -d, --downmix          Downmix multichannel (5.1/7.1) to stereo\n");
+    printf("  -d, --downmix [mode]   Downmix audio (mono/1 or stereo/2, default: mono)\n");
     printf("  -j, --jump <seconds>   Start decoding from specified timestamp\n");
     printf("      --no-gapless       Disable automatic gapless trim/padding handling\n\n");
     printf("Information & General:\n");
@@ -208,6 +208,10 @@ int main(int argc, char **argv)
             adts_outfile = argv[++i];
         } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--downmix") == 0) {
             downmix_stereo = true;
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
+                i++;
+                /* Accept optional target downmix mode */
+            }
         } else if ((strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--jump") == 0) && i + 1 < argc) {
             jump_seconds = atof(argv[++i]);
         } else if (strcmp(argv[i], "--no-gapless") == 0) {

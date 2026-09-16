@@ -69,6 +69,7 @@ uint32_t bits_show(BitReader *bs, uint32_t nbits);
 void bits_skip(BitReader *bs, uint32_t nbits);
 void bits_byte_align(BitReader *bs);
 uint32_t bits_get_consumed(BitReader *bs);
+void bits_slice_rtp_au(BitReader *sub_bs, const BitReader *parent_bs, uint32_t byte_offset, uint32_t au_len);
 
 typedef struct {
     enum faad_object_type object_type;
@@ -182,6 +183,7 @@ void dequantize_spectrum(ICSInfo *ics, float *spec);
 void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed);
 void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
+void apply_freq_downmix_mono(float *spec_l, const float *spec_r);
 void apply_tns(ICSInfo *ics, float *spec);
 void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float *spec, float *out_pcm);
 

@@ -132,7 +132,13 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
             apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
             apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
             apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
-            ch_idx += 2;
+
+            if (dec->params.downmix_stereo) {
+                apply_freq_downmix_mono(dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                ch_idx += 1;
+            } else {
+                ch_idx += 2;
+            }
         } else if (syntax_id == ID_DSE) {
             decode_dse(&bs);
         } else if (syntax_id == ID_PCE) {
