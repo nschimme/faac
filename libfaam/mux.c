@@ -399,29 +399,18 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     if (!m) return FAAM_ERR_INVALID_ARG;
     m->mem_error = 0;
 
+    /* Write updated mdat atom size directly to file/stream before allocating membuf for moov */
     if (m->file_handle) {
         long pos = ftell(m->file_handle);
-        if (m->mdat_size + 8 <= 0xFFFFFFFFULL) {
-            fseek(m->file_handle, (long)m->mdat_pos - 8, SEEK_SET);
-            put_u32(m, (uint32_t)(m->mdat_size + 8));
-        } else {
-            fseek(m->file_handle, (long)m->mdat_pos - 16, SEEK_SET);
-            put_u32(m, 1);
-            put_data(m, "mdat", 4);
-            put_u64(m, m->mdat_size + 16);
-        }
+        fseek(m->file_handle, (long)m->mdat_pos - 8, SEEK_SET);
+        uint32_t sz_be = BSWAP32((uint32_t)(m->mdat_size + 8));
+        fwrite(&sz_be, 1, 4, m->file_handle);
         fseek(m->file_handle, pos, SEEK_SET);
     } else if (m->io.seek && m->io.write) {
         uint64_t pos = m->io.tell ? m->io.tell(m->io.user_data) : 0;
-        if (m->mdat_size + 8 <= 0xFFFFFFFFULL) {
-            m->io.seek(m->io.user_data, m->mdat_pos - 8);
-            put_u32(m, (uint32_t)(m->mdat_size + 8));
-        } else {
-            m->io.seek(m->io.user_data, m->mdat_pos - 16);
-            put_u32(m, 1);
-            put_data(m, "mdat", 4);
-            put_u64(m, m->mdat_size + 16);
-        }
+        m->io.seek(m->io.user_data, m->mdat_pos - 8);
+        uint32_t sz_be = BSWAP32((uint32_t)(m->mdat_size + 8));
+        m->io.write(m->io.user_data, &sz_be, 4);
         m->io.seek(m->io.user_data, pos);
     }
 

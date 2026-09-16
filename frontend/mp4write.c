@@ -60,8 +60,13 @@ int mp4_open(const char *path, bool overwrite) {
     g_io.tell = file_tell_cb;
 
     faam_metadata meta_backup = g_cfg.metadata;
+    const uint8_t *asc_buf_backup = g_cfg.asc_buf;
+    uint32_t asc_len_backup = g_cfg.asc_len;
+
     faam_muxer_config_init(&g_cfg, sizeof(g_cfg));
     g_cfg.metadata = meta_backup;
+    g_cfg.asc_buf = asc_buf_backup;
+    g_cfg.asc_len = asc_len_backup;
     return 0;
 #else
     (void)path; (void)overwrite;
