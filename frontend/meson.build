@@ -44,12 +44,18 @@ if get_option('decoder')
     if get_option('muxer')
         decoder_link_libs += [libfaam_static]
     endif
+    gc_args = []
+    if cc.has_link_argument('-Wl,--gc-sections')
+        gc_args += ['-Wl,--gc-sections']
+    elif cc.has_link_argument('-Wl,-dead_strip')
+        gc_args += ['-Wl,-dead_strip']
+    endif
     faad = executable('faad',
         ['faad_main.c', 'mp4read.c', 'charset.c'],
         include_directories: ['..', '../include'],
         link_with: decoder_link_libs,
         c_args: c_args_list,
-        link_args: cc.get_argument_syntax() != 'msvc' ? ['-Wl,--gc-sections'] : [],
+        link_args: gc_args,
         dependencies: [libshell32, libiconv],
         install: true
     )

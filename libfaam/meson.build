@@ -24,11 +24,16 @@ libfaam_shared = shared_library(
   install: true,
 )
 
+ffunc_args = []
+if cc.has_argument('-ffunction-sections')
+    ffunc_args += ['-ffunction-sections', '-fdata-sections']
+endif
+
 libfaam_static = static_library(
   'faam',
   libfaam_sources,
   include_directories: libfaam_inc,
-  c_args: ['-ffunction-sections', '-fdata-sections'],
+  c_args: ffunc_args,
   install: true,
 )
 

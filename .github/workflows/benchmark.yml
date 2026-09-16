@@ -233,6 +233,13 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
 
+      - name: Checkout Benchmark Suite
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          repository: nschimme/faac-benchmark
+          path: bench
+
       - name: Download all results
         uses: actions/download-artifact@v4
         with:
@@ -242,12 +249,14 @@ jobs:
 
       - name: Generate Report
         id: generate
-        uses: nschimme/faac-benchmark/report@master
-        with:
-          results-path: ./results
-          base-sha: ${{ github.event.pull_request.base.sha }}
-          cand-sha: ${{ github.event.pull_request.head.sha }}
-          summary-only: false
+        run: |
+          pip install -r bench/requirements.txt
+          python3 bench/compare_results.py ./results \
+            --output report.md \
+            --summary-output summary.md \
+            --base-sha ${{ github.event.pull_request.base.sha }} \
+            --cand-sha ${{ github.event.pull_request.head.sha }} \
+            --gates footprint,throughput
 
       - name: Upload Full Report
         uses: actions/upload-artifact@v4
