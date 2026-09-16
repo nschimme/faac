@@ -119,11 +119,15 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     return FAAD_OK;
 }
 
-/* 32-subband QMF analysis filterbank with 320-tap prototype windowing */
-static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_imag[32][32])
+/* 32-subband QMF analysis filterbank with 320-tap prototype windowing and persistent state */
+static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][32], float qmf_imag[32][32])
 {
-    float ovl[320];
-    memset(ovl, 0, sizeof(ovl));
+    float *ovl = sbr ? sbr->qmf_ana_ovl : NULL;
+    float local_ovl[320];
+    if (!ovl) {
+        memset(local_ovl, 0, sizeof(local_ovl));
+        ovl = local_ovl;
+    }
 
     for (int t = 0; t < 32; t++) {
         memmove(&ovl[0], &ovl[32], 288 * sizeof(float));
@@ -136,9 +140,9 @@ static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_
             float sum_i = 0.0f;
             for (int n = 0; n < 32; n++) {
                 float sample = 0.0f;
-                for (int j = 0; j < 5; j++) {
+                for (int j = 0; j < 10; j++) {
                     int idx = j * 64 + 2 * n;
-                    sample += ovl[j * 64 + n] * qmf_c[idx];
+                    sample += ovl[j * 32 + n] * qmf_c[idx];
                 }
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
                 sum_r += sample * cosf(angle);
@@ -210,7 +214,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
         memset(qmf_right_r, 0, sizeof(qmf_right_r));
         memset(qmf_right_i, 0, sizeof(qmf_right_i));
 
-        qmf_analysis_320(pcm_in, qmf_ana_r, qmf_ana_i);
+        qmf_analysis_320(&dec->sbr[0], pcm_in, qmf_ana_r, qmf_ana_i);
 
         for (int t = 0; t < 32; t++) {
             for (int k = 0; k < 64; k++) {
@@ -241,7 +245,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
         memset(qmf_syn_r, 0, sizeof(qmf_syn_r));
         memset(qmf_syn_i, 0, sizeof(qmf_syn_i));
 
-        qmf_analysis_320(pcm_in + ch * FRAME_LEN_LONG, qmf_ana_r, qmf_ana_i);
+        qmf_analysis_320(sbr, pcm_in + ch * FRAME_LEN_LONG, qmf_ana_r, qmf_ana_i);
 
         for (int t = 0; t < 32; t++) {
             for (int k = 0; k < 32; k++) {
