@@ -163,7 +163,9 @@ static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *tra
             for (long j = payload_offset; j < payload_end - 32; j++) {
                 if (memcmp(buf + j, " 00000000 ", 10) == 0) {
                     char str_buf[128] = {0};
-                    memcpy(str_buf, buf + j, 100);
+                    long copy_len = payload_end - j;
+                    if (copy_len > (long)(sizeof(str_buf) - 1)) copy_len = sizeof(str_buf) - 1;
+                    if (copy_len > 0) memcpy(str_buf, buf + j, copy_len);
                     sscanf(str_buf, " %*x %x %x", &track->delay, &track->padding);
                     break;
                 }

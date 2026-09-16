@@ -44,8 +44,8 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
     }
 
     /* Set default if AOT == LC */
-    if (asc->object_type == FAAD_OBJ_LOW || asc->object_type == FAAD_OBJ_HE_AAC_V1 || asc->object_type == FAAD_OBJ_NULL) {
-        asc->object_type = FAAD_OBJ_LOW;
+    if (asc->object_type == FAAD_OBJ_LC || asc->object_type == FAAD_OBJ_HE_AAC_V1 || asc->object_type == FAAD_OBJ_NULL) {
+        asc->object_type = FAAD_OBJ_LC;
         return FAAD_OK;
     }
 

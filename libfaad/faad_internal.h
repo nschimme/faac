@@ -158,8 +158,10 @@ typedef struct {
 } SBRState;
 
 struct faad_decoder {
-    faad_params params;
+    faad_config config;
     AudioSpecificConfig asc;
+    bool asc_parsed;
+    bool is_heap_allocated;
 
     uint32_t frame_samples; /* 1024 or 2048 */
     uint32_t num_channels;

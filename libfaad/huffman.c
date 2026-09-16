@@ -32,10 +32,8 @@ static const int huffbook_sizes[] = {
 };
 
 
-typedef struct {
-    uint8_t len;
-    uint16_t sym;
-} HuffLutEntry;
+/* Compact 16-bit LUT entry: bits 0..3 = len (0..10), bits 4..15 = symbol index (0..288) */
+typedef uint16_t HuffLutEntry;
 
 static HuffLutEntry huff_lut_10bit[13][1024];
 static bool huff_luts_initialized = false;
@@ -50,15 +48,13 @@ static void init_huffman_luts(void)
         if (!table) continue;
 
         for (int cw = 0; cw < 1024; cw++) {
-            huff_lut_10bit[b][cw].len = 0;
-            huff_lut_10bit[b][cw].sym = 0;
+            huff_lut_10bit[b][cw] = 0;
 
             for (uint32_t len = 1; len <= 10; len++) {
                 uint32_t prefix = cw >> (10 - len);
                 for (int i = 0; i < size; i++) {
                     if (table[i].len == len && table[i].data == prefix) {
-                        huff_lut_10bit[b][cw].len = (uint8_t)len;
-                        huff_lut_10bit[b][cw].sym = (uint16_t)i;
+                        huff_lut_10bit[b][cw] = (uint16_t)(len | ((uint32_t)i << 4));
                         goto found_sym;
                     }
                 }
@@ -69,15 +65,13 @@ static void init_huffman_luts(void)
 
     /* Book 12 (Scalefactors) LUT */
     for (int cw = 0; cw < 1024; cw++) {
-        huff_lut_10bit[12][cw].len = 0;
-        huff_lut_10bit[12][cw].sym = 0;
+        huff_lut_10bit[12][cw] = 0;
 
         for (uint32_t len = 1; len <= 10; len++) {
             uint32_t prefix = cw >> (10 - len);
             for (int i = 0; i < 121; i++) {
                 if (book12[i].len == len && book12[i].data == prefix) {
-                    huff_lut_10bit[12][cw].len = (uint8_t)len;
-                    huff_lut_10bit[12][cw].sym = (uint16_t)i;
+                    huff_lut_10bit[12][cw] = (uint16_t)(len | ((uint32_t)i << 4));
                     goto found_sf;
                 }
             }
@@ -95,20 +89,21 @@ static int decode_huffman_symbol(BitReader *bs, int book)
 
     uint32_t cw10 = bits_show(bs, 10);
     HuffLutEntry lut = huff_lut_10bit[book][cw10];
-    if (lut.len > 0) {
-        bits_skip(bs, lut.len);
-        return lut.sym;
+    uint32_t len = lut & 0x0F;
+    if (len > 0) {
+        bits_skip(bs, len);
+        return (int)(lut >> 4);
     }
 
     const hcode16_t *table = huffbook_tables[book];
     int size = huffbook_sizes[book];
     if (!table) return 0;
 
-    for (uint32_t len = 11; len <= 19; len++) {
-        uint32_t cw = bits_show(bs, len);
+    for (uint32_t l = 11; l <= 19; l++) {
+        uint32_t cw = bits_show(bs, l);
         for (int i = 0; i < size; i++) {
-            if (table[i].len == len && table[i].data == cw) {
-                bits_skip(bs, len);
+            if (table[i].len == l && table[i].data == cw) {
+                bits_skip(bs, l);
                 return i;
             }
         }
@@ -122,16 +117,17 @@ static int decode_huffman_scalefactor(BitReader *bs)
 
     uint32_t cw10 = bits_show(bs, 10);
     HuffLutEntry lut = huff_lut_10bit[12][cw10];
-    if (lut.len > 0) {
-        bits_skip(bs, lut.len);
-        return lut.sym;
+    uint32_t len = lut & 0x0F;
+    if (len > 0) {
+        bits_skip(bs, len);
+        return (int)(lut >> 4);
     }
 
-    for (uint32_t len = 11; len <= 19; len++) {
-        uint32_t cw = bits_show(bs, len);
+    for (uint32_t l = 11; l <= 19; l++) {
+        uint32_t cw = bits_show(bs, l);
         for (int i = 0; i < 121; i++) {
-            if (book12[i].len == len && book12[i].data == cw) {
-                bits_skip(bs, len);
+            if (book12[i].len == l && book12[i].data == cw) {
+                bits_skip(bs, l);
                 return i;
             }
         }
@@ -206,7 +202,8 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
 
     int sf = ics->global_gain;
     int is_pos = 0;
-    int pns_energy = sf;
+    int pns_energy = sf - 60;
+    bool is_first_pns = true;
 
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         for (int i = 0; i < ics->num_sections[g] && i < 64; i++) {
@@ -218,12 +215,17 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
                 continue;
             } else if (cb == 13) { /* PNS */
                 for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
-                    int dpns = decode_huffman_scalefactor(bs);
-                    pns_energy += dpns - 60;
+                    if (is_first_pns) {
+                        pns_energy = (int)bits_get(bs, 9) - 256;
+                        is_first_pns = false;
+                    } else {
+                        int dpns = decode_huffman_scalefactor(bs);
+                        pns_energy += dpns - 60;
+                    }
                     ics->scalefactors[g][sfb] = pns_energy;
                     ics->pns_used[g][sfb] = true;
                 }
-            } else if (cb == 14 || cb == 15) { /* Intensity stereo (decoupled predictor) */
+            } else if (cb == 14 || cb == 15) { /* Intensity stereo */
                 for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
                     int dis = decode_huffman_scalefactor(bs);
                     is_pos += dis - 60;

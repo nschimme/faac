@@ -293,14 +293,14 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    faad_params params;
-    faad_params_init(&params, sizeof(params));
-    params.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
-    params.output_format = is_float ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT;
-    params.downmix_stereo = downmix_stereo;
+    faad_config cfg;
+    faad_config_init(&cfg, sizeof(cfg));
+    cfg.stream_format = is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
+    cfg.output_format = is_float ? FAAD_OUTPUT_FLOAT : FAAD_OUTPUT_16BIT;
+    cfg.downmix_mode = downmix_stereo ? FAAD_DOWNMIX_MONO : FAAD_DOWNMIX_NONE;
 
     faad_decoder *dec = NULL;
-    faad_status st = faad_decoder_open(&params, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
+    faad_status st = faad_decoder_create(&cfg, is_mp4 ? track.asc_buf : NULL, is_mp4 ? track.asc_len : 0, &dec);
     if (st != FAAD_OK) {
         fprintf(stderr, "Failed to open FAAD decoder: %s\n", faad_strerror(st));
         free(inbuf);
@@ -325,19 +325,18 @@ int main(int argc, char **argv)
             fout = fopen(outfile, "wb");
             if (!fout) {
                 fprintf(stderr, "Error opening output file %s\n", outfile);
-                faad_decoder_close(&dec);
+                faad_decoder_destroy(dec); dec = NULL;
                 free(inbuf);
                 if (is_mp4) mp4_free_track(&track);
                 return 1;
             }
             if (!raw_format) {
-                faad_decoder_info info;
-                info.struct_size = sizeof(info);
+                faad_stream_info sinfo;
                 uint32_t init_sr = 44100;
                 uint32_t init_ch = 2;
-                if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
-                    if (info.sample_rate > 0) init_sr = info.sample_rate;
-                    if (info.num_channels > 0) init_ch = info.num_channels;
+                if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
+                    if (sinfo.sample_rate > 0) init_sr = sinfo.sample_rate;
+                    if (sinfo.channels > 0) init_ch = sinfo.channels;
                 }
                 write_wav_header(fout, init_sr, (uint16_t)init_ch, 0, bit_depth, is_float);
             }
@@ -349,18 +348,17 @@ int main(int argc, char **argv)
     uint32_t total_pcm_bytes = 0;
     uint32_t sample_rate = 44100;
     uint32_t num_channels = 2;
-    enum faad_object_type obj_type = FAAD_OBJ_LOW;
+    enum faad_object_type obj_type = FAAD_OBJ_LC;
     uint32_t frames_decoded = 0;
 
     uint32_t start_frame = 0;
     if (jump_seconds > 0.0) {
-        faad_decoder_info info;
-        info.struct_size = sizeof(info);
+        faad_stream_info sinfo;
         uint32_t sr = 44100;
         uint32_t fl = 1024;
-        if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
-            if (info.sample_rate > 0) sr = info.sample_rate;
-            if (info.object_type == FAAD_OBJ_HE_AAC_V1 || info.object_type == FAAD_OBJ_HE_AAC_V2) {
+        if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
+            if (sinfo.sample_rate > 0) sr = sinfo.sample_rate;
+            if (sinfo.object_type == FAAD_OBJ_HE_AAC_V1 || sinfo.object_type == FAAD_OBJ_HE_AAC_V2) {
                 fl = 2048;
             }
         }
@@ -380,16 +378,16 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            st = faad_decoder_decode(dec, inbuf + offset, size,
-                                     &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
+            faad_frame_info finfo;
+            st = faad_decode_frame(dec, inbuf + offset, size,
+                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
             if (st == FAAD_OK && bytes_written > 0) {
-                faad_decoder_info info;
-                info.struct_size = sizeof(info);
-                if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
-                    sample_rate = info.sample_rate;
-                    num_channels = info.num_channels;
-                    obj_type = info.object_type;
+                faad_stream_info sinfo;
+                if (faad_decoder_get_info(dec, &sinfo) == FAAD_OK) {
+                    sample_rate = sinfo.sample_rate;
+                    num_channels = sinfo.channels;
+                    obj_type = sinfo.object_type;
                 }
 
                 uint32_t dec_bytes_per_sample = is_float ? 4 : 2;
@@ -448,8 +446,9 @@ int main(int argc, char **argv)
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
-            st = faad_decoder_decode(dec, inbuf + offset, file_len - offset,
-                                     &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written);
+            faad_frame_info finfo;
+            st = faad_decode_frame(dec, inbuf + offset, file_len - offset,
+                                   &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
             if (st != FAAD_OK) {
                 if (st == FAAD_ERR_NEED_MORE_DATA || bytes_consumed == 0) {
@@ -459,13 +458,9 @@ int main(int argc, char **argv)
                 continue;
             }
 
-            faad_decoder_info info;
-            info.struct_size = sizeof(info);
-            if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
-                sample_rate = info.sample_rate;
-                num_channels = info.num_channels;
-                obj_type = info.object_type;
-            }
+            sample_rate = finfo.sample_rate;
+            num_channels = finfo.channels;
+            obj_type = finfo.sbr_active ? FAAD_OBJ_HE_AAC_V1 : FAAD_OBJ_LC;
 
             if (fout && bytes_written > 0) {
                 uint32_t dec_bytes_per_sample = is_float ? 4 : 2;
@@ -563,7 +558,7 @@ int main(int argc, char **argv)
         }
     }
 
-    faad_decoder_close(&dec);
+    faad_decoder_destroy(dec); dec = NULL;
     free(inbuf);
     if (is_mp4) mp4_free_track(&track);
     return 0;

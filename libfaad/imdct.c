@@ -15,15 +15,15 @@ static float kbd_window_256[256];
 static float sine_window_256[256];
 
 /* Precomputed twiddle tables for fast IMDCT */
-static float imdct_cos_2048[256];
-static float imdct_sin_2048[256];
-static float imdct_post_cos_2048[256];
-static float imdct_post_sin_2048[256];
+static float imdct_cos_2048[512];
+static float imdct_sin_2048[512];
+static float imdct_post_cos_2048[512];
+static float imdct_post_sin_2048[512];
 
-static float imdct_cos_256[32];
-static float imdct_sin_256[32];
-static float imdct_post_cos_256[32];
-static float imdct_post_sin_256[32];
+static float imdct_cos_256[64];
+static float imdct_sin_256[64];
+static float imdct_post_cos_256[64];
+static float imdct_post_sin_256[64];
 
 static FFT_Tables fft_tbl;
 static bool tables_init = false;
@@ -71,7 +71,7 @@ static void init_windows(void)
     }
 
     /* Precompute IMDCT pre- and post-twiddle tables for N=2048 */
-    for (int k = 0; k < 256; k++) {
+    for (int k = 0; k < 512; k++) {
         float angle_pre = (float)M_PI * (2 * k + 0.5f) / 2048.0f;
         imdct_cos_2048[k] = cosf(angle_pre);
         imdct_sin_2048[k] = sinf(angle_pre);
@@ -82,7 +82,7 @@ static void init_windows(void)
     }
 
     /* Precompute IMDCT pre- and post-twiddle tables for N=256 */
-    for (int k = 0; k < 32; k++) {
+    for (int k = 0; k < 64; k++) {
         float angle_pre = (float)M_PI * (2 * k + 0.5f) / 256.0f;
         imdct_cos_256[k] = cosf(angle_pre);
         imdct_sin_256[k] = sinf(angle_pre);
