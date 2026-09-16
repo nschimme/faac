@@ -172,27 +172,33 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     if (book == 5 || book == 6) {
         /* Signed 2-tuple: values in {-4 .. 4} */
         *x -= 4; *y -= 4;
-    } else if (book >= 7 && book <= 11) {
+    } else if (book == 11) {
+        /* Codebook 11 (ESCBOOK): decode escape sequence FIRST for max magnitude (16) */
+        int abs_x = *x;
+        int abs_y = *y;
+        if (abs_x == 16) {
+            int prefix = 0;
+            while (bits_get(bs, 1) == 1) prefix++;
+            abs_x = (1 << (prefix + 4)) + bits_get(bs, prefix + 4);
+        }
+        if (abs_y == 16) {
+            int prefix = 0;
+            while (bits_get(bs, 1) == 1) prefix++;
+            abs_y = (1 << (prefix + 4)) + bits_get(bs, prefix + 4);
+        }
+        /* Read sign bits AFTER escape sequence per ISO/IEC 14496-3 Section 4.6.3 */
+        if (abs_x) {
+            if (bits_get(bs, 1)) abs_x = -abs_x;
+        }
+        if (abs_y) {
+            if (bits_get(bs, 1)) abs_y = -abs_y;
+        }
+        *x = abs_x;
+        *y = abs_y;
+    } else if (book >= 7 && book <= 10) {
         /* Unsigned 2-tuple: read sign bit for non-zero values */
         if (*x) if (bits_get(bs, 1)) *x = -*x;
         if (*y) if (bits_get(bs, 1)) *y = -*y;
-    }
-
-    if (book == 11) {
-        if (abs(*x) == 16) {
-            int sign = (*x < 0) ? -1 : 1;
-            int prefix = 0;
-            while (bits_get(bs, 1) == 1) prefix++;
-            int escape_val = (1 << (prefix + 4)) + bits_get(bs, prefix + 4);
-            *x = sign * escape_val;
-        }
-        if (abs(*y) == 16) {
-            int sign = (*y < 0) ? -1 : 1;
-            int prefix = 0;
-            while (bits_get(bs, 1) == 1) prefix++;
-            int escape_val = (1 << (prefix + 4)) + bits_get(bs, prefix + 4);
-            *y = sign * escape_val;
-        }
     }
 }
 

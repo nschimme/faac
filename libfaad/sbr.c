@@ -394,9 +394,8 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
                 int band_idx = (k - 32) * 48 / 32;
                 float gain = 1.0f;
 
-                if (sbr->E_orig[env_idx][band_idx] > 0) {
-                    gain = powf(2.0f, 0.25f * (sbr->E_orig[env_idx][band_idx] - 20));
-                }
+                int e_val = sbr->E_orig[env_idx][band_idx];
+                gain = powf(2.0f, 0.25f * (e_val - 20));
 
                 qmf_syn_r[t][k] = qmf_ana_r[t][src_k] * gain;
                 qmf_syn_i[t][k] = qmf_ana_i[t][src_k] * gain;
