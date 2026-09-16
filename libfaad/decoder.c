@@ -158,15 +158,18 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     bits_init(&bs, in_buf, in_bytes);
 
     uint32_t adts_frame_len = 0;
+    bool decode_success = true;
     if (dec->config.stream_format == FAAD_STREAM_ADTS) {
         faad_status st = adts_decode_header(&bs, &dec->asc, &adts_frame_len);
-        if (st != FAAD_OK) return FAAD_ERR_SYNC_LOST;
-        if (adts_frame_len > in_bytes) {
+        if (st != FAAD_OK) {
+            decode_success = false;
+        } else if (adts_frame_len > in_bytes) {
             return FAAD_ERR_NEED_MORE_DATA;
+        } else {
+            dec->num_channels = dec->asc.num_channels ? dec->asc.num_channels : 2;
+            dec->sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
+            bs.len = adts_frame_len;
         }
-        dec->num_channels = dec->asc.num_channels ? dec->asc.num_channels : 2;
-        dec->sample_rate = dec->asc.sample_rate ? dec->asc.sample_rate : 44100;
-        bs.len = adts_frame_len;
     } else {
         adts_frame_len = in_bytes;
     }
@@ -175,57 +178,73 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
     ICSInfo ics_list[MAX_CHANNELS];
     memset(ics_list, 0, sizeof(ics_list));
 
-    while (bits_get_consumed(&bs) + 3 <= bs.len * 8 && ch_idx < MAX_CHANNELS) {
-        uint32_t syntax_id = bits_get(&bs, 3);
-        if (syntax_id == ID_END) {
-            break;
-        } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
-            decode_sce(&bs, dec, &ics_list[ch_idx], ch_idx);
-            dequantize_spectrum(&ics_list[ch_idx], dec->spec[ch_idx]);
-            apply_pns(&ics_list[ch_idx], dec->spec[ch_idx], &dec->pns_seed);
-            apply_tns(&ics_list[ch_idx], dec->spec[ch_idx]);
-            ch_idx += 1;
-        } else if (syntax_id == ID_CPE) {
-            if (ch_idx + 1 >= MAX_CHANNELS) break;
-            CPEInfo cpe;
-            memset(&cpe, 0, sizeof(cpe));
-            decode_cpe(&bs, dec, &cpe, ch_idx);
-            ics_list[ch_idx] = cpe.ics[0];
-            ics_list[ch_idx + 1] = cpe.ics[1];
-
-            dequantize_spectrum(&cpe.ics[0], dec->spec[ch_idx]);
-            dequantize_spectrum(&cpe.ics[1], dec->spec[ch_idx + 1]);
-            apply_pns(&cpe.ics[0], dec->spec[ch_idx], &dec->pns_seed);
-            apply_pns(&cpe.ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
-            apply_ms_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
-            apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
-            apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
-            apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
-
-            if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO && cpe.common_window) {
-                apply_freq_downmix_mono(dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+    if (decode_success) {
+        while (bits_get_consumed(&bs) + 3 <= bs.len * 8 && ch_idx < MAX_CHANNELS) {
+            uint32_t syntax_id = bits_get(&bs, 3);
+            if (syntax_id == ID_END) {
+                break;
+            } else if (syntax_id == ID_SCE || syntax_id == ID_LFE) {
+                decode_sce(&bs, dec, &ics_list[ch_idx], ch_idx);
+                dequantize_spectrum(&ics_list[ch_idx], dec->spec[ch_idx]);
+                apply_pns(&ics_list[ch_idx], dec->spec[ch_idx], &dec->pns_seed);
+                apply_tns(&ics_list[ch_idx], dec->spec[ch_idx]);
                 ch_idx += 1;
-            } else {
-                ch_idx += 2;
-            }
-        } else if (syntax_id == ID_DSE) {
-            decode_dse(&bs);
-        } else if (syntax_id == ID_PCE) {
-            decode_pce(&bs, dec);
-        } else if (syntax_id == ID_FIL) {
-            uint32_t count = bits_get(&bs, 4);
-            if (count == 15) count += bits_get(&bs, 8) - 1;
-            uint32_t ext_type = bits_get(&bs, 4);
-            if (ext_type == SBR_EXTENSION_DATA || ext_type == SBR_EXTENSION_DATA_CRC) {
-                sbr_decode_extension(dec, &bs, (ch_idx > 0) ? (ch_idx - 1) : 0, syntax_id);
-            } else {
-                bits_skip(&bs, (count - 1) * 8 + 4);
+            } else if (syntax_id == ID_CPE) {
+                if (ch_idx + 1 >= MAX_CHANNELS) break;
+                CPEInfo cpe;
+                memset(&cpe, 0, sizeof(cpe));
+                decode_cpe(&bs, dec, &cpe, ch_idx);
+                ics_list[ch_idx] = cpe.ics[0];
+                ics_list[ch_idx + 1] = cpe.ics[1];
+
+                dequantize_spectrum(&cpe.ics[0], dec->spec[ch_idx]);
+                dequantize_spectrum(&cpe.ics[1], dec->spec[ch_idx + 1]);
+                apply_pns(&cpe.ics[0], dec->spec[ch_idx], &dec->pns_seed);
+                apply_pns(&cpe.ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
+                apply_ms_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
+                apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
+
+                if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO && cpe.common_window) {
+                    apply_freq_downmix_mono(dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                    ch_idx += 1;
+                } else {
+                    ch_idx += 2;
+                }
+            } else if (syntax_id == ID_DSE) {
+                decode_dse(&bs);
+            } else if (syntax_id == ID_PCE) {
+                decode_pce(&bs, dec);
+            } else if (syntax_id == ID_FIL) {
+                uint32_t count = bits_get(&bs, 4);
+                if (count == 15) count += bits_get(&bs, 8) - 1;
+                uint32_t ext_type = bits_get(&bs, 4);
+                if (ext_type == SBR_EXTENSION_DATA || ext_type == SBR_EXTENSION_DATA_CRC) {
+                    sbr_decode_extension(dec, &bs, (ch_idx > 0) ? (ch_idx - 1) : 0, syntax_id);
+                } else {
+                    bits_skip(&bs, (count - 1) * 8 + 4);
+                }
             }
         }
     }
 
-    if (ch_idx > 0) {
+    /* Error Concealment & Fade-Out Fading Mechanism */
+    if (decode_success && ch_idx > 0) {
+        dec->consecutive_errors = 0;
+        memcpy(dec->prev_spec, dec->spec, sizeof(dec->spec));
         dec->num_channels = ch_idx;
+    } else {
+        dec->consecutive_errors++;
+        float fade = 0.0f;
+        if (dec->consecutive_errors <= 5) {
+            fade = powf(0.8f, (float)dec->consecutive_errors);
+        }
+        for (uint32_t c = 0; c < dec->num_channels; c++) {
+            for (int i = 0; i < FRAME_LEN_LONG; i++) {
+                dec->spec[c][i] = dec->prev_spec[c][i] * fade;
+            }
+        }
     }
 
     float pcm_float[MAX_CHANNELS * FRAME_LEN_LONG];

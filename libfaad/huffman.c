@@ -37,6 +37,15 @@ typedef uint16_t HuffLutEntry;
 
 static HuffLutEntry huff_lut_10bit[13][1024];
 
+typedef struct {
+    uint8_t len;
+    uint16_t data;
+    uint16_t sym;
+} HuffEscEntry;
+
+static HuffEscEntry huff_esc_table[13][64];
+static uint8_t huff_esc_count[13];
+
 static bool huff_luts_initialized = false;
 
 void init_huffman_luts(void)
@@ -62,6 +71,17 @@ void init_huffman_luts(void)
             }
             found_sym:;
         }
+
+        /* Build compact escape table for codewords >= 11 bits */
+        huff_esc_count[b] = 0;
+        for (int i = 0; i < size; i++) {
+            if (table[i].len >= 11 && huff_esc_count[b] < 64) {
+                huff_esc_table[b][huff_esc_count[b]].len = (uint8_t)table[i].len;
+                huff_esc_table[b][huff_esc_count[b]].data = table[i].data;
+                huff_esc_table[b][huff_esc_count[b]].sym = (uint16_t)i;
+                huff_esc_count[b]++;
+            }
+        }
     }
 
     /* Book 12 (Scalefactors) LUT */
@@ -80,6 +100,16 @@ void init_huffman_luts(void)
         found_sf:;
     }
 
+    huff_esc_count[12] = 0;
+    for (int i = 0; i < 121; i++) {
+        if (book12[i].len >= 11 && huff_esc_count[12] < 64) {
+            huff_esc_table[12][huff_esc_count[12]].len = (uint8_t)book12[i].len;
+            huff_esc_table[12][huff_esc_count[12]].data = book12[i].data;
+            huff_esc_table[12][huff_esc_count[12]].sym = (uint16_t)i;
+            huff_esc_count[12]++;
+        }
+    }
+
     huff_luts_initialized = true;
 }
 
@@ -96,17 +126,13 @@ static int decode_huffman_symbol(BitReader *bs, int book)
         return (int)(lut >> 4);
     }
 
-    const hcode16_t *table = huffbook_tables[book];
-    int size = huffbook_sizes[book];
-    if (!table) return 0;
-
-    for (uint32_t l = 11; l <= 19; l++) {
-        uint32_t cw = bits_show(bs, l);
-        for (int i = 0; i < size; i++) {
-            if (table[i].len == l && table[i].data == cw) {
-                bits_skip(bs, l);
-                return i;
-            }
+    int esc_cnt = huff_esc_count[book];
+    const HuffEscEntry *esc_tab = huff_esc_table[book];
+    for (int i = 0; i < esc_cnt; i++) {
+        uint32_t l = esc_tab[i].len;
+        if (bits_show(bs, l) == esc_tab[i].data) {
+            bits_skip(bs, l);
+            return esc_tab[i].sym;
         }
     }
     return 0;
@@ -170,7 +196,11 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     *x = idx / base;
     *y = idx % base;
 
-    if (book == 11) {
+    if (book == 6) {
+        /* Codebook 6: Signed 2-tuple in [-4, 4] directly encoded via offset +4 */
+        *x -= 4;
+        *y -= 4;
+    } else if (book == 11) {
         /* Codebook 11 (ESCBOOK): decode escape sequence FIRST for max magnitude (16) */
         int abs_x = *x;
         int abs_y = *y;
@@ -193,7 +223,7 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
         }
         *x = abs_x;
         *y = abs_y;
-    } else if (book >= 5 && book <= 10) {
+    } else if (book == 5 || (book >= 7 && book <= 10)) {
         /* Unsigned 2-tuple: read sign bit for non-zero values */
         if (*x) if (bits_get(bs, 1)) *x = -*x;
         if (*y) if (bits_get(bs, 1)) *y = -*y;

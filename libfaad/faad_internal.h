@@ -136,6 +136,8 @@ typedef struct {
     float h22[SBR_PS_BANDS];
     float h12[SBR_PS_BANDS];
     float h21[SBR_PS_BANDS];
+    float delay_r[3][64];
+    float delay_i[3][64];
 } PSState;
 
 typedef struct {
@@ -177,6 +179,8 @@ struct faad_decoder {
     bool ps_present;
 
     uint32_t pns_seed;
+    uint32_t consecutive_errors;
+    float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
 };
 
 faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);

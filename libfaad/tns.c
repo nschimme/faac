@@ -34,6 +34,7 @@ static void tns_ar_filter(float *spec, int length, int dir, const float *lpc, in
 
 void apply_tns(ICSInfo *ics, float *spec)
 {
+#ifndef FAAD_DISABLE_TNS
     if (!ics->tns_data_present) return;
 
     for (int w = 0; w < ics->num_windows; w++) {
@@ -82,4 +83,7 @@ void apply_tns(ICSInfo *ics, float *spec)
             tns_ar_filter(window_spec + start_line, num_lines, dir, lpc, order);
         }
     }
+#else
+    (void)ics; (void)spec;
+#endif
 }

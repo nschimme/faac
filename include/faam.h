@@ -208,8 +208,10 @@ FAAMAPI uint16_t faam_muxer_get_max_frame_size(faam_muxer *m);
 
 FAAMAPI const char *faam_strerror(faam_status status);
 
+FAAMAPI faam_status faam_update_tags(const char *filepath, const faam_metadata *meta);
 FAAMAPI faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta);
 
+FAAMAPI faam_status faam_update_chapters(const char *filepath, const faam_chapter *chapters, uint32_t count);
 FAAMAPI faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *chapters, uint32_t count);
 
 #ifdef __cplusplus

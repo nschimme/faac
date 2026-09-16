@@ -35,10 +35,16 @@ static int sbr_compute_num_bands(uint32_t sample_rate, uint32_t start_freq, uint
 }
 
 
-static float qmf_syn_cos_lut[64][64];
-static float qmf_syn_sin_lut[64][64];
+#include "fft.h"
+
 static float qmf_ana_cos_lut[32][32];
 static float qmf_ana_sin_lut[32][32];
+
+static float qmf_rot_cos[64];
+static float qmf_rot_sin[64];
+
+static float qmf_post_cos[64];
+static float qmf_post_sin[64];
 
 static bool qmf_twiddles_init = false;
 
@@ -47,11 +53,13 @@ void init_qmf_twiddles(void)
     if (qmf_twiddles_init) return;
 
     for (int n = 0; n < 64; n++) {
-        for (int k = 0; k < 64; k++) {
-            float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
-            qmf_syn_cos_lut[n][k] = cosf(angle);
-            qmf_syn_sin_lut[n][k] = sinf(angle);
-        }
+        float angle = (float)M_PI * (n - 0.25f) / 128.0f;
+        qmf_rot_cos[n] = cosf(angle);
+        qmf_rot_sin[n] = sinf(angle);
+
+        float angle_post = (float)M_PI * (2 * n + 1) / 128.0f;
+        qmf_post_cos[n] = cosf(angle_post);
+        qmf_post_sin[n] = sinf(angle_post);
     }
 
     for (int k = 0; k < 32; k++) {
@@ -127,6 +135,7 @@ static void ps_decode_payload(struct faad_decoder *dec, BitReader *bs)
 
 faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch, uint32_t syntax_id)
 {
+#ifndef FAAD_DISABLE_SBR
     (void)syntax_id;
     if (ch >= MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
 
@@ -218,6 +227,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     }
 
     /* Check for Parametric Stereo (PS) extension payload */
+#ifndef FAAD_DISABLE_PS
     if (bits_get_consumed(bs) + 12 <= bs->len * 8) {
         bool ps_extended = bits_get(bs, 1);
         if (ps_extended) {
@@ -227,8 +237,13 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
             }
         }
     }
+#endif
 
     return FAAD_OK;
+#else
+    (void)dec; (void)bs; (void)ch; (void)syntax_id;
+    return FAAD_OK;
+#endif
 }
 
 /* 32-subband QMF analysis filterbank with 320-tap prototype windowing and persistent state */
@@ -278,22 +293,32 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
 static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
     init_qmf_twiddles();
+    FFT_Tables fft_tbl;
+    fft_initialize(&fft_tbl);
+
     for (int t = 0; t < 32; t++) {
         /* Shift 640-sample QMF delay line history by 64 samples */
         memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
 
-        /* Fast precalculated twiddle 64-subband IDFT for current slot with restrict pointers */
+        /* Fast FFT-accelerated 64-point QMF synthesis IDFT */
         const float * restrict re_ptr = qmf_real[t];
         const float * restrict im_ptr = qmf_imag[t];
+        float xr[64], xi[64];
+
+        for (int k = 0; k < 64; k++) {
+            float c = qmf_rot_cos[k];
+            float s = qmf_rot_sin[k];
+            xr[k] = re_ptr[k] * c + im_ptr[k] * s;
+            xi[k] = im_ptr[k] * c - re_ptr[k] * s;
+        }
+
+        fft(&fft_tbl, xr, xi, 6);
 
         for (int n = 0; n < 64; n++) {
-            float sum = 0.0f;
-            const float * restrict c_row = qmf_syn_cos_lut[n];
-            const float * restrict s_row = qmf_syn_sin_lut[n];
-            for (int k = 0; k < 64; k++) {
-                sum += re_ptr[k] * c_row[k] - im_ptr[k] * s_row[k];
-            }
-            sbr->qmf_ovl[576 + n] = sum * 0.03125f;
+            float r = xr[n];
+            float i = xi[n];
+            float post_r = r * qmf_post_cos[n] - i * qmf_post_sin[n];
+            sbr->qmf_ovl[576 + n] = post_r * 0.03125f;
         }
 
         /* Extract 64 time-domain output samples with unit-stride auto-vectorizable inner loop */
@@ -319,6 +344,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
 
 void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *pcm_out)
 {
+#ifndef FAAD_DISABLE_SBR
     if (!dec->sbr_present) {
         for (uint32_t ch = 0; ch < num_ch; ch++) {
             float prev = pcm_in[ch * FRAME_LEN_LONG];
@@ -347,16 +373,33 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
         qmf_analysis_320(&dec->sbr[0], pcm_in, qmf_ana_r, qmf_ana_i);
 
+        static const float ps_allpass_a = 0.43f;
+        PSState *ps = &dec->ps;
+
         for (int t = 0; t < 32; t++) {
             for (int k = 0; k < 64; k++) {
                 int band = (k * SBR_PS_BANDS) / 64;
                 float src_r = (k < 32) ? qmf_ana_r[t][k] : qmf_ana_r[t][k - 32];
                 float src_i = (k < 32) ? qmf_ana_i[t][k] : qmf_ana_i[t][k - 32];
 
-                qmf_left_r[t][k]  = src_r * dec->ps.h11[band];
-                qmf_left_i[t][k]  = src_i * dec->ps.h11[band];
-                qmf_right_r[t][k] = src_r * dec->ps.h22[band];
-                qmf_right_i[t][k] = src_i * dec->ps.h22[band];
+                /* PS All-Pass QMF Decorrelation Filterbank */
+                float d_r = ps->delay_r[2][k];
+                float d_i = ps->delay_i[2][k];
+                ps->delay_r[2][k] = ps->delay_r[1][k];
+                ps->delay_i[2][k] = ps->delay_i[1][k];
+                ps->delay_r[1][k] = ps->delay_r[0][k];
+                ps->delay_i[1][k] = ps->delay_i[0][k];
+                ps->delay_r[0][k] = src_r;
+                ps->delay_i[0][k] = src_i;
+
+                float dec_r = -ps_allpass_a * src_r + d_r;
+                float dec_i = -ps_allpass_a * src_i + d_i;
+
+                /* PS Spatial Matrix Mixing */
+                qmf_left_r[t][k]  = src_r * ps->h11[band] + dec_r * ps->h12[band];
+                qmf_left_i[t][k]  = src_i * ps->h11[band] + dec_i * ps->h12[band];
+                qmf_right_r[t][k] = src_r * ps->h21[band] + dec_r * ps->h22[band];
+                qmf_right_i[t][k] = src_i * ps->h21[band] + dec_i * ps->h22[band];
             }
         }
 
@@ -385,18 +428,25 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
             }
         }
 
-        /* High Frequency Reconstruction with Envelope Scalefactor Gain Control */
+        /* High Frequency Reconstruction with ISO Time-Slot Envelope Gain Interpolation */
         for (int t = 0; t < 32; t++) {
-            int env_idx = (t * sbr->bs_num_env) / 32;
-            if (env_idx >= 8) env_idx = 7;
+            int env_curr = (t * sbr->bs_num_env) / 32;
+            int env_next = (env_curr + 1 < sbr->bs_num_env) ? env_curr + 1 : env_curr;
+            if (env_curr >= 8) env_curr = 7;
+            if (env_next >= 8) env_next = 7;
+
+            float alpha = (float)(t % (32 / sbr->bs_num_env)) / (float)(32 / sbr->bs_num_env);
 
             for (int k = 32; k < 64; k++) {
                 int src_k = k - 32;
                 int band_idx = (k - 32) * 48 / 32;
-                float gain = 1.0f;
 
-                int e_val = sbr->E_orig[env_idx][band_idx];
-                gain = powf(2.0f, 0.25f * (e_val - 20));
+                int e_curr = sbr->E_orig[env_curr][band_idx];
+                int e_next = sbr->E_orig[env_next][band_idx];
+
+                float g_curr = powf(2.0f, 0.25f * (e_curr - 20));
+                float g_next = powf(2.0f, 0.25f * (e_next - 20));
+                float gain = (1.0f - alpha) * g_curr + alpha * g_next;
 
                 qmf_syn_r[t][k] = qmf_ana_r[t][src_k] * gain;
                 qmf_syn_i[t][k] = qmf_ana_i[t][src_k] * gain;
@@ -405,4 +455,15 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
         qmf_synthesis_640(sbr, qmf_syn_r, qmf_syn_i, pcm_out + ch * 2048);
     }
+#else
+    for (uint32_t ch = 0; ch < num_ch; ch++) {
+        float prev = pcm_in[ch * FRAME_LEN_LONG];
+        for (uint32_t i = 0; i < FRAME_LEN_LONG; i++) {
+            float sample = pcm_in[ch * FRAME_LEN_LONG + i];
+            pcm_out[ch * 2048 + i * 2]     = 0.5f * (prev + sample);
+            pcm_out[ch * 2048 + i * 2 + 1] = sample;
+            prev = sample;
+        }
+    }
+#endif
 }

@@ -33,7 +33,6 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y meson ninja-build
 
@@ -167,7 +166,6 @@ jobs:
     steps:
       - name: Install build dependencies
         run: |
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list
           sudo apt-get update
           sudo apt-get install -y meson ninja-build python3-numpy python3-scipy
 

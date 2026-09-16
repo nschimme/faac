@@ -108,9 +108,8 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
             if (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
                 track->samples[i].offset = loc.file_offset;
                 track->samples[i].size = loc.frame_bytes;
-                uint8_t dummy[1024];
                 uint32_t bytes_read = 0;
-                faam_demuxer_read_frame(d, dummy, sizeof(dummy), &bytes_read);
+                faam_demuxer_read_frame(d, NULL, 0, &bytes_read);
             }
         }
     }
