@@ -11,7 +11,7 @@
 #include "faad.h"
 
 typedef struct {
-    uint32_t offset;
+    uint64_t offset;
     uint32_t size;
 } MP4Sample;
 

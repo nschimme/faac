@@ -11,7 +11,7 @@
 #include "faad.h"
 
 typedef struct {
-    uint32_t offset;
+    uint64_t offset;
     uint32_t size;
 } MP4Sample;
 
@@ -271,7 +271,7 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
                 uint32_t sample_offset_in_chunk = 0;
                 for (uint32_t s = 0; s < samples_in_chunk && sample_idx < num_stsz_samples; s++) {
                     uint32_t size = (fixed_sample_size != 0) ? fixed_sample_size : (stsz_table ? stsz_table[sample_idx] : 0);
-                    track->samples[sample_idx].offset = (uint32_t)(chunk_offset + sample_offset_in_chunk);
+                    track->samples[sample_idx].offset = chunk_offset + sample_offset_in_chunk;
                     track->samples[sample_idx].size = size;
                     sample_offset_in_chunk += size;
                     sample_idx++;

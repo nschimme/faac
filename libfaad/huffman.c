@@ -67,7 +67,6 @@ static int decode_huffman_scalefactor(BitReader *bs)
 static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
-    int base = 3;
     *v = idx / 27;
     idx %= 27;
     *w = idx / 9;
