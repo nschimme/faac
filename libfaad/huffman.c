@@ -31,14 +31,80 @@ static const int huffbook_sizes[] = {
     0, 81, 81, 81, 81, 81, 81, 64, 64, 169, 169, 289
 };
 
+
+typedef struct {
+    uint8_t len;
+    uint16_t sym;
+} HuffLutEntry;
+
+static HuffLutEntry huff_lut_8bit[13][256];
+static bool huff_luts_initialized = false;
+
+static void init_huffman_luts(void)
+{
+    if (huff_luts_initialized) return;
+
+    for (int b = 1; b <= 11; b++) {
+        const hcode16_t *table = huffbook_tables[b];
+        int size = huffbook_sizes[b];
+        if (!table) continue;
+
+        for (int cw = 0; cw < 256; cw++) {
+            huff_lut_8bit[b][cw].len = 0;
+            huff_lut_8bit[b][cw].sym = 0;
+
+            for (uint32_t len = 1; len <= 8; len++) {
+                uint32_t prefix = cw >> (8 - len);
+                for (int i = 0; i < size; i++) {
+                    if (table[i].len == len && table[i].data == prefix) {
+                        huff_lut_8bit[b][cw].len = (uint8_t)len;
+                        huff_lut_8bit[b][cw].sym = (uint16_t)i;
+                        goto found_sym;
+                    }
+                }
+            }
+            found_sym:;
+        }
+    }
+
+    /* Book 12 (Scalefactors) LUT */
+    for (int cw = 0; cw < 256; cw++) {
+        huff_lut_8bit[12][cw].len = 0;
+        huff_lut_8bit[12][cw].sym = 0;
+
+        for (uint32_t len = 1; len <= 8; len++) {
+            uint32_t prefix = cw >> (8 - len);
+            for (int i = 0; i < 121; i++) {
+                if (book12[i].len == len && book12[i].data == prefix) {
+                    huff_lut_8bit[12][cw].len = (uint8_t)len;
+                    huff_lut_8bit[12][cw].sym = (uint16_t)i;
+                    goto found_sf;
+                }
+            }
+        }
+        found_sf:;
+    }
+
+    huff_luts_initialized = true;
+}
+
 static int decode_huffman_symbol(BitReader *bs, int book)
 {
     if (book < 1 || book > 11) return 0;
+    init_huffman_luts();
+
+    uint32_t cw8 = bits_show(bs, 8);
+    HuffLutEntry lut = huff_lut_8bit[book][cw8];
+    if (lut.len > 0) {
+        bits_skip(bs, lut.len);
+        return lut.sym;
+    }
+
     const hcode16_t *table = huffbook_tables[book];
     int size = huffbook_sizes[book];
     if (!table) return 0;
 
-    for (uint32_t len = 1; len <= 19; len++) {
+    for (uint32_t len = 9; len <= 19; len++) {
         uint32_t cw = bits_show(bs, len);
         for (int i = 0; i < size; i++) {
             if (table[i].len == len && table[i].data == cw) {
@@ -52,7 +118,16 @@ static int decode_huffman_symbol(BitReader *bs, int book)
 
 static int decode_huffman_scalefactor(BitReader *bs)
 {
-    for (uint32_t len = 1; len <= 19; len++) {
+    init_huffman_luts();
+
+    uint32_t cw8 = bits_show(bs, 8);
+    HuffLutEntry lut = huff_lut_8bit[12][cw8];
+    if (lut.len > 0) {
+        bits_skip(bs, lut.len);
+        return lut.sym;
+    }
+
+    for (uint32_t len = 9; len <= 19; len++) {
         uint32_t cw = bits_show(bs, len);
         for (int i = 0; i < 121; i++) {
             if (book12[i].len == len && book12[i].data == cw) {
@@ -63,6 +138,7 @@ static int decode_huffman_scalefactor(BitReader *bs)
     }
     return 0;
 }
+
 
 static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {

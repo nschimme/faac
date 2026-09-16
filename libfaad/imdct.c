@@ -136,7 +136,7 @@ static void fast_imdct(const float *in, float *out, int n)
     }
 }
 
-void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float *spec, float *out_pcm)
+void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float * restrict spec, float * restrict out_pcm)
 {
     init_windows();
 

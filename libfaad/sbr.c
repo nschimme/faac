@@ -34,6 +34,36 @@ static int sbr_compute_num_bands(uint32_t sample_rate, uint32_t start_freq, uint
     return num_bands;
 }
 
+
+static float qmf_syn_cos_lut[64][64];
+static float qmf_syn_sin_lut[64][64];
+static float qmf_ana_cos_lut[32][32];
+static float qmf_ana_sin_lut[32][32];
+static bool qmf_twiddles_init = false;
+
+static void init_qmf_twiddles(void)
+{
+    if (qmf_twiddles_init) return;
+
+    for (int n = 0; n < 64; n++) {
+        for (int k = 0; k < 64; k++) {
+            float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
+            qmf_syn_cos_lut[n][k] = cosf(angle);
+            qmf_syn_sin_lut[n][k] = sinf(angle);
+        }
+    }
+
+    for (int k = 0; k < 32; k++) {
+        for (int n = 0; n < 32; n++) {
+            float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
+            qmf_ana_cos_lut[k][n] = cosf(angle);
+            qmf_ana_sin_lut[k][n] = sinf(angle);
+        }
+    }
+
+    qmf_twiddles_init = true;
+}
+
 static const float ps_iid_scale_lut[15] = {
     0.000f, 0.125f, 0.250f, 0.375f, 0.500f, 0.625f, 0.750f, 0.875f,
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
@@ -203,6 +233,7 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
 /* 32-subband QMF analysis filterbank with 320-tap prototype windowing and persistent state */
 static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][32], float qmf_imag[32][32])
 {
+    init_qmf_twiddles();
     float *ovl = sbr ? sbr->qmf_ana_ovl : NULL;
     float local_ovl[320];
     if (!ovl) {
@@ -216,21 +247,28 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
             ovl[288 + n] = in[t * 32 + n];
         }
 
+        float samples[32];
+        for (int n = 0; n < 32; n++) {
+            float sample = 0.0f;
+            for (int j = 0; j < 10; j++) {
+                int idx = j * 64 + 2 * n;
+                sample += ovl[j * 32 + n] * qmf_c[idx];
+            }
+            samples[n] = sample;
+        }
+
         for (int k = 0; k < 32; k++) {
             float sum_r = 0.0f;
             float sum_i = 0.0f;
+            const float *cos_row = qmf_ana_cos_lut[k];
+            const float *sin_row = qmf_ana_sin_lut[k];
             for (int n = 0; n < 32; n++) {
-                float sample = 0.0f;
-                for (int j = 0; j < 10; j++) {
-                    int idx = j * 64 + 2 * n;
-                    sample += ovl[j * 32 + n] * qmf_c[idx];
-                }
-                float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
-                sum_r += sample * cosf(angle);
-                sum_i += sample * sinf(angle);
+                float s = samples[n];
+                sum_r += s * cos_row[n];
+                sum_i += s * sin_row[n];
             }
-            qmf_real[t][k] = sum_r / 32.0f;
-            qmf_imag[t][k] = sum_i / 32.0f;
+            qmf_real[t][k] = sum_r * 0.03125f;
+            qmf_imag[t][k] = sum_i * 0.03125f;
         }
     }
 }
@@ -238,20 +276,22 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
 /* 64-subband QMF synthesis filterbank with 640-sample overlapping delay line history */
 static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
+    init_qmf_twiddles();
     for (int t = 0; t < 32; t++) {
         /* Shift 640-sample QMF delay line history by 64 samples */
         memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
 
-        /* Compute 64-subband IDFT for current slot */
+        /* Fast precalculated twiddle 64-subband IDFT for current slot */
         for (int n = 0; n < 64; n++) {
             float sum = 0.0f;
+            const float *c_row = qmf_syn_cos_lut[n];
+            const float *s_row = qmf_syn_sin_lut[n];
             for (int k = 0; k < 64; k++) {
                 float re = qmf_real[t][k];
                 float im = qmf_imag[t][k];
-                float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
-                sum += re * cosf(angle) - im * sinf(angle);
+                sum += re * c_row[k] - im * s_row[k];
             }
-            sbr->qmf_ovl[576 + n] = sum / 32.0f;
+            sbr->qmf_ovl[576 + n] = sum * 0.03125f;
         }
 
         /* Extract 64 time-domain output samples from windowed delay line history */
@@ -259,8 +299,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
             float sample = 0.0f;
             for (int j = 0; j < 10; j++) {
                 int idx = j * 64 + n;
-                float coeff = qmf_c[idx];
-                sample += sbr->qmf_ovl[idx] * coeff;
+                sample += sbr->qmf_ovl[idx] * qmf_c[idx];
             }
             out[t * 64 + n] = sample;
         }
