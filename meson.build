@@ -35,6 +35,8 @@ config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
 config_h.set('FAAC_STATS', get_option('stats'))
 
+config_h.set('FAAC_16BIT_ONLY', get_option('16bit-only'))
+
 config_h.set('MAX_CHANNELS', get_option('max-channels'))
 
 c_args = []
@@ -62,3 +64,11 @@ subdir('libfaac')
 if get_option('frontend')
     subdir('frontend')
 endif
+
+test_embedded_exe = executable('test_embedded',
+    'test/test_embedded.c',
+    include_directories: include_directories('include'),
+    link_with: libfaac_static,
+    dependencies: libm
+)
+test('test_embedded', test_embedded_exe)

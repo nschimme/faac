@@ -145,7 +145,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
     }
 
     *pSizeOfDecoderSpecificInfo = 2;
-    *ppBuffer = (unsigned char *)malloc(2);
+    *ppBuffer = (unsigned char *)faac_alloc(hEncoder, 2);
 
     if(*ppBuffer != NULL){
         BitStream bs;
@@ -177,6 +177,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.outputFormat = config->outputFormat;
     hEncoder->config.inputFormat = config->inputFormat;
     hEncoder->config.shortctl = config->shortctl;
+    hEncoder->alloc_func = config->alloc_func;
+    hEncoder->free_func = config->free_func;
 
     assert((hEncoder->config.outputFormat == 0) || (hEncoder->config.outputFormat == 1));
 
@@ -188,10 +190,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     switch( hEncoder->config.inputFormat )
     {
         case INPUT_16BIT:
+            break;
+#ifndef FAAC_16BIT_ONLY
         case INPUT_24BIT:
         case INPUT_32BIT:
         case INPUT_FLOAT:
             break;
+#endif
         default:
             return 0;
     }
@@ -353,7 +358,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             if (!hEncoder->inputFifo[channel])
             {
                 hEncoder->inputFifo[channel] =
-                    (float *)AllocMemory(cap * sizeof(float));
+                    (float *)faac_alloc(hEncoder, cap * sizeof(float));
                 if (!hEncoder->inputFifo[channel]) return 0;
             }
         hEncoder->inputFifoCap  = cap;
@@ -367,7 +372,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned int ch;
         for (ch = 0; ch < hEncoder->numChannels; ch++) {
             if (!hEncoder->peakSnap[ch])
-                hEncoder->peakSnap[ch] = (int *)AllocMemory(2 * MAX_SCFAC_BANDS * sizeof(int));
+                hEncoder->peakSnap[ch] = (int *)faac_alloc(hEncoder, 2 * MAX_SCFAC_BANDS * sizeof(int));
             if (!hEncoder->peakSnap[ch])
                 return 0;
         }
@@ -410,9 +415,19 @@ faacEncStats g_faacStats;
 #endif
 
 faacEncHandle faacEncOpen(unsigned long sampleRate,
-                                  unsigned int numChannels,
-                                  unsigned long *inputSamples,
-                                  unsigned long *maxOutputBytes)
+                          unsigned int numChannels,
+                          unsigned long *inputSamples,
+                          unsigned long *maxOutputBytes)
+{
+    return faacEncOpenEx(sampleRate, numChannels, inputSamples, maxOutputBytes, NULL, NULL);
+}
+
+faacEncHandle faacEncOpenEx(unsigned long sampleRate,
+                            unsigned int numChannels,
+                            unsigned long *inputSamples,
+                            unsigned long *maxOutputBytes,
+                            void *(*alloc_func)(size_t),
+                            void (*free_func)(void *))
 {
 #ifdef FAAC_STATS
     memset(&g_faacStats, 0, sizeof(faacEncStats));
@@ -427,9 +442,11 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     *inputSamples = FRAME_LEN*numChannels;
     *maxOutputBytes = ADTS_FRAMESIZE;
 
-    hEncoder = (faacEncStruct*)AllocMemory(sizeof(faacEncStruct));
+    hEncoder = (faacEncStruct*)(alloc_func ? alloc_func(sizeof(faacEncStruct)) : AllocMemory(sizeof(faacEncStruct)));
     if (!hEncoder) return NULL;
     SetMemory(hEncoder, 0, sizeof(faacEncStruct));
+    hEncoder->alloc_func = alloc_func;
+    hEncoder->free_func = free_func;
 
     hEncoder->numChannels = numChannels;
     hEncoder->sampleRate = sampleRate;
@@ -475,7 +492,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
         hEncoder->coderInfo[channel].groups.len[0] = 1;
 
         for (buf = 0; buf < 4; buf++) {
-            hEncoder->audioFIFO[channel][buf] = (float*)AllocMemory(FRAME_LEN*sizeof(float));
+            hEncoder->audioFIFO[channel][buf] = (float*)faac_alloc(hEncoder, FRAME_LEN*sizeof(float));
             if (!hEncoder->audioFIFO[channel][buf])
             {
                 faacEncClose(hEncoder);
@@ -527,6 +544,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
                 break;
             }
+#ifndef FAAC_16BIT_ONLY
             case INPUT_24BIT: {
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
@@ -551,6 +569,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
                 break;
             }
+#endif
             default: return -1;
         }
     }
@@ -640,22 +659,22 @@ int faacEncClose(faacEncHandle hpEncoder)
         int buf;
         for (buf = 0; buf < 4; buf++) {
             if (hEncoder->audioFIFO[channel][buf])
-                FreeMemory(hEncoder->audioFIFO[channel][buf]);
+                faac_free(hEncoder, hEncoder->audioFIFO[channel][buf]);
         }
 		if (hEncoder->inputFifo[channel])
-			FreeMemory (hEncoder->inputFifo[channel]);
+			faac_free(hEncoder, hEncoder->inputFifo[channel]);
         if (hEncoder->peakSnap[channel])
-            FreeMemory(hEncoder->peakSnap[channel]);
+            faac_free(hEncoder, hEncoder->peakSnap[channel]);
     }
 
-    if (hEncoder->ascCache) free(hEncoder->ascCache);
+    if (hEncoder->ascCache) faac_free(hEncoder, hEncoder->ascCache);
 
     if (hEncoder->sbrContext) {
         SbrContextEnd(hEncoder->sbrContext);
         hEncoder->sbrContext = NULL;
     }
 
-    FreeMemory(hEncoder);
+    faac_free(hEncoder, hEncoder);
 
     return 0;
 }

@@ -127,6 +127,8 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
     tmp.pns_level     = 4;
+    tmp.alloc_func    = NULL;
+    tmp.free_func     = NULL;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -168,8 +170,12 @@ static faac_status validate_params(const faac_params *p)
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->input_format) {
-        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
+        case FAAC_INPUT_16BIT:
             break;
+#ifndef FAAC_16BIT_ONLY
+        case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
+            break;
+#endif
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
@@ -241,8 +247,9 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     if (st != FAAC_OK)
         return st;
 
-    h = (faacEncStruct *)faacEncOpen(p->sample_rate, p->num_channels,
-                                     &inSamples, &maxOut);
+    h = (faacEncStruct *)faacEncOpenEx(p->sample_rate, p->num_channels,
+                                       &inSamples, &maxOut,
+                                       p->alloc_func, p->free_func);
     if (!h)
         return FAAC_ERR_NO_MEMORY;
 
@@ -263,6 +270,8 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->pnslevel      = p->pns_level;
     cfg->maxBitRate    = p->max_bit_rate;
     cfg->rateControl   = (unsigned int)p->rate_control;
+    cfg->alloc_func    = p->alloc_func;
+    cfg->free_func     = p->free_func;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)
