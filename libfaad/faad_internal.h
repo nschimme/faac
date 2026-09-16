@@ -152,7 +152,7 @@ typedef struct {
     uint8_t bs_stop_freq;
     uint8_t bs_xover_band;
     float qmf_delay[2][32][64];
-    float qmf_ovl[2][1280];
+    float qmf_ovl[640];
     float qmf_ana_ovl[320];
 } SBRState;
 

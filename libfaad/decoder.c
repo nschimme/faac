@@ -128,8 +128,8 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
             dequantize_spectrum(&cpe.ics[1], dec->spec[ch_idx + 1]);
             apply_pns(&cpe.ics[0], dec->spec[ch_idx], &dec->pns_seed);
             apply_pns(&cpe.ics[1], dec->spec[ch_idx + 1], &dec->pns_seed);
-            apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
             apply_ms_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+            apply_is_stereo(&cpe, dec->spec[ch_idx], dec->spec[ch_idx + 1]);
             apply_tns(&cpe.ics[0], dec->spec[ch_idx]);
             apply_tns(&cpe.ics[1], dec->spec[ch_idx + 1]);
             ch_idx += 2;

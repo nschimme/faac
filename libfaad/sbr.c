@@ -159,7 +159,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
 {
     for (int t = 0; t < 32; t++) {
         /* Shift 640-sample QMF delay line history by 64 samples */
-        memmove(&sbr->qmf_ovl[0][0], &sbr->qmf_ovl[0][64], 576 * sizeof(float));
+        memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
 
         /* Compute 64-subband IDFT for current slot */
         for (int n = 0; n < 64; n++) {
@@ -170,7 +170,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
                 sum += re * cosf(angle) - im * sinf(angle);
             }
-            sbr->qmf_ovl[0][576 + n] = sum / 32.0f;
+            sbr->qmf_ovl[576 + n] = sum / 32.0f;
         }
 
         /* Extract 64 time-domain output samples from windowed delay line history */
@@ -179,7 +179,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
             for (int j = 0; j < 10; j++) {
                 int idx = j * 64 + n;
                 float coeff = qmf_c[idx];
-                sample += sbr->qmf_ovl[0][idx] * coeff;
+                sample += sbr->qmf_ovl[idx] * coeff;
             }
             out[t * 64 + n] = sample;
         }

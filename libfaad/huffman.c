@@ -74,19 +74,11 @@ static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
     *x = idx / 3;
     *y = idx % 3;
 
-    if (book == 1) {
+    if (book == 1 || book == 2) {
+        /* Signed 4-tuple: values in {-1, 0, 1} */
         *v -= 1; *w -= 1; *x -= 1; *y -= 1;
-    } else if (book == 2) {
-        if (*v) if (bits_get(bs, 1)) *v = -*v;
-        if (*w) if (bits_get(bs, 1)) *w = -*w;
-        if (*x) if (bits_get(bs, 1)) *x = -*x;
-        if (*y) if (bits_get(bs, 1)) *y = -*y;
-    } else if (book == 3) {
-        if (*v) if (bits_get(bs, 1)) *v = -*v;
-        if (*w) if (bits_get(bs, 1)) *w = -*w;
-        if (*x) if (bits_get(bs, 1)) *x = -*x;
-        if (*y) if (bits_get(bs, 1)) *y = -*y;
-    } else if (book == 4) {
+    } else if (book == 3 || book == 4) {
+        /* Unsigned 4-tuple: read sign bit for non-zero values */
         if (*v) if (bits_get(bs, 1)) *v = -*v;
         if (*w) if (bits_get(bs, 1)) *w = -*w;
         if (*x) if (bits_get(bs, 1)) *x = -*x;
@@ -105,12 +97,11 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     *x = idx / base;
     *y = idx % base;
 
-    if (book == 5) {
+    if (book == 5 || book == 6) {
+        /* Signed 2-tuple: values in {-4 .. 4} */
         *x -= 4; *y -= 4;
-    } else if (book == 6) {
-        if (*x) if (bits_get(bs, 1)) *x = -*x;
-        if (*y) if (bits_get(bs, 1)) *y = -*y;
-    } else if (book == 7 || book == 9 || book == 11) {
+    } else if (book >= 7 && book <= 11) {
+        /* Unsigned 2-tuple: read sign bit for non-zero values */
         if (*x) if (bits_get(bs, 1)) *x = -*x;
         if (*y) if (bits_get(bs, 1)) *y = -*y;
     }
