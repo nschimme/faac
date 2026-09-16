@@ -25,6 +25,20 @@ FAADAPI faad_status faad_get_state_size(const faad_config *cfg, uint32_t *state_
     return FAAD_OK;
 }
 
+void faad_init_global_tables(void)
+{
+    /* Single-threaded pre-initialization of all global lookup tables */
+    extern void init_dequant_tables(void);
+    extern void init_huffman_luts(void);
+    extern void init_windows(void);
+    extern void init_qmf_twiddles(void);
+
+    init_dequant_tables();
+    init_huffman_luts();
+    init_windows();
+    init_qmf_twiddles();
+}
+
 FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
                                       const faad_config *cfg,
                                       const uint8_t *asc_buf, uint32_t asc_len,
@@ -33,6 +47,8 @@ FAADAPI faad_status faad_decoder_init(void *mem_buf, uint32_t mem_size,
     if (!mem_buf || mem_size < sizeof(faad_decoder) || !out_dec) {
         return FAAD_ERR_INVALID_ARGUMENT;
     }
+
+    faad_init_global_tables();
 
     faad_decoder *dec = (faad_decoder *)mem_buf;
     memset(dec, 0, sizeof(faad_decoder));

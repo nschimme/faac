@@ -9,6 +9,7 @@
 #include <stdbool.h>
 
 #include "faad.h"
+#include "charset.h"
 
 typedef struct {
     uint64_t offset;
@@ -236,7 +237,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+#ifdef _WIN32
+    FILE *fin = win32_fopen_utf8(infile, "rb");
+#else
     FILE *fin = fopen(infile, "rb");
+#endif
     if (!fin) {
         fprintf(stderr, "Error opening input file %s\n", infile);
         return 1;
@@ -322,7 +327,11 @@ int main(int argc, char **argv)
                 else strcat(out_path, raw_format ? ".raw" : ".wav");
                 outfile = out_path;
             }
+#ifdef _WIN32
+            fout = win32_fopen_utf8(outfile, "wb");
+#else
             fout = fopen(outfile, "wb");
+#endif
             if (!fout) {
                 fprintf(stderr, "Error opening output file %s\n", outfile);
                 faad_decoder_destroy(dec); dec = NULL;

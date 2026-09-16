@@ -57,6 +57,10 @@ subdir('docs')
 subdir('include')
 subdir('libfaac')
 
+if get_option('muxer')
+    subdir('libfaam')
+endif
+
 if get_option('decoder')
     subdir('libfaad')
 endif

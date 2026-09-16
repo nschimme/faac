@@ -2,12 +2,20 @@
 libiconv = cc.find_library('iconv', required: false)
 has_iconv = cc.has_header('iconv.h') and cc.has_function('iconv_open', dependencies: [libiconv])
 
+frontend_link_libs = [libfaac]
+c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
+
+if get_option('muxer')
+    frontend_link_libs += [libfaam_shared]
+    c_args_list += ['-DHAVE_LIBFAAM']
+endif
+
 libfrontend = static_library('frontend',
     ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
      'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h'],
     include_directories: ['..', '../include'],
-    link_with: libfaac,
-    c_args: has_iconv ? ['-DHAVE_ICONV'] : [],
+    link_with: frontend_link_libs,
+    c_args: c_args_list,
     dependencies: [libiconv]
 )
 
@@ -21,12 +29,27 @@ faac = executable('faac',
     install: true
 )
 
-if get_option('decoder')
-    faad = executable('faad',
-        ['faad_main.c', 'mp4read.c'],
+if get_option('muxer')
+    faam = executable('faam',
+        ['faam_main.c', 'charset.c'],
         include_directories: ['..', '../include'],
-        link_with: [libfaad],
-        dependencies: [libshell32],
+        link_with: [libfaam_shared],
+        dependencies: [libshell32, libiconv],
+        install: true
+    )
+endif
+
+if get_option('decoder')
+    decoder_link_libs = [libfaad]
+    if get_option('muxer')
+        decoder_link_libs += [libfaam_shared]
+    endif
+    faad = executable('faad',
+        ['faad_main.c', 'mp4read.c', 'charset.c'],
+        include_directories: ['..', '../include'],
+        link_with: decoder_link_libs,
+        c_args: c_args_list,
+        dependencies: [libshell32, libiconv],
         install: true
     )
 endif

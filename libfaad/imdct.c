@@ -27,17 +27,12 @@ static float imdct_post_sin_256[64];
 
 static FFT_Tables fft_tbl;
 
-#if defined(_MSC_VER)
-#include <windows.h>
-#include <intrin.h>
-#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
-static volatile long imdct_init_state = 0;
-#else
-static volatile int imdct_init_state = 0;
-#endif
+static bool tables_init = false;
 
 static void init_windows_impl(void)
 {
+    if (tables_init) return;
+
     fft_initialize(&fft_tbl);
 
     for (int i = 0; i < 2048; i++) {
@@ -97,38 +92,12 @@ static void init_windows_impl(void)
         imdct_post_cos_256[k] = cosf(angle_post);
         imdct_post_sin_256[k] = sinf(angle_post);
     }
+
 }
 
-static void init_windows(void)
+void init_windows(void)
 {
-#if defined(_MSC_VER)
-    if (_InterlockedCompareExchange(&imdct_init_state, 1, 0) == 0) {
-        init_windows_impl();
-        _InterlockedExchange(&imdct_init_state, 2);
-    } else {
-        while (_InterlockedCompareExchange(&imdct_init_state, 2, 2) != 2) {
-            Sleep(0);
-        }
-    }
-#elif defined(__GNUC__) || defined(__clang__)
-    if (__atomic_load_n(&imdct_init_state, __ATOMIC_ACQUIRE) == 2) return;
-    if (__sync_bool_compare_and_swap(&imdct_init_state, 0, 1)) {
-        init_windows_impl();
-        __atomic_store_n(&imdct_init_state, 2, __ATOMIC_RELEASE);
-    } else {
-        while (__atomic_load_n(&imdct_init_state, __ATOMIC_ACQUIRE) != 2) {
-            #if defined(__x86_64__) || defined(__i386__)
-            __asm__ __volatile__("pause" ::: "memory");
-            #endif
-        }
-    }
-#else
-    static bool init = false;
-    if (!init) {
-        init_windows_impl();
-        init = true;
-    }
-#endif
+    init_windows_impl();
 }
 
 static void fast_imdct(const float *in, float *out, int n)

@@ -1,5 +1,5 @@
 /*
- * MP4 Container Box Hierarchy Parser with Chunk-to-Sample Demuxing
+ * Direct memory-stream wrapper for mp4_read_track_buf
  */
 
 #include <stdio.h>
@@ -8,7 +8,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "faad.h"
+#ifdef HAVE_LIBFAAM
+#include "faam.h"
+#endif
 
 typedef struct {
     uint64_t offset;
@@ -26,267 +28,105 @@ typedef struct {
     char encoder_tag[64];
 } MP4Track;
 
+#ifdef HAVE_LIBFAAM
 typedef struct {
-    uint32_t first_chunk;
-    uint32_t samples_per_chunk;
-    uint32_t sample_description_index;
-} STSCEntry;
+    const uint8_t *buf;
+    uint64_t size;
+    uint64_t pos;
+} memory_stream;
 
-static uint32_t read_be32(const uint8_t *b)
-{
-    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+static int32_t mem_read_cb(void *user_data, void *dst, uint32_t bytes) {
+    memory_stream *ms = (memory_stream *)user_data;
+    if (ms->pos >= ms->size) return 0;
+    uint32_t avail = (uint32_t)(ms->size - ms->pos);
+    uint32_t copy_bytes = bytes < avail ? bytes : avail;
+    memcpy(dst, ms->buf + ms->pos, copy_bytes);
+    ms->pos += copy_bytes;
+    return (int32_t)copy_bytes;
 }
 
-static uint64_t read_be64(const uint8_t *b)
-{
-    return ((uint64_t)b[0] << 56) | ((uint64_t)b[1] << 48) | ((uint64_t)b[2] << 40) | ((uint64_t)b[3] << 32) |
-           ((uint64_t)b[4] << 24) | ((uint64_t)b[5] << 16) | ((uint64_t)b[6] << 8) | (uint64_t)b[7];
-}
-
-static uint32_t parse_ber_length(const uint8_t *buf, long *offset, long max_offset)
-{
-    uint32_t len = 0;
-    int count = 0;
-    while (*offset < max_offset && count < 4) {
-        uint8_t b = buf[(*offset)++];
-        len = (len << 7) | (b & 0x7F);
-        if (!(b & 0x80)) break;
-        count++;
-    }
-    return len;
-}
-
-static bool is_audio_trak(const uint8_t *buf, long offset, long end)
-{
-    long cur = offset;
-    while (cur + 8 <= end) {
-        uint64_t box_size = read_be32(buf + cur);
-        char type[5] = {0};
-        memcpy(type, buf + cur + 4, 4);
-
-        long header_size = 8;
-        if (box_size == 1 && cur + 16 <= end) {
-            box_size = read_be64(buf + cur + 8);
-            header_size = 16;
-        } else if (box_size == 0) {
-            box_size = end - cur;
-        }
-
-        if (box_size < (uint64_t)header_size || cur + (long)box_size > end) break;
-
-        long payload_offset = cur + header_size;
-        long payload_end = cur + (long)box_size;
-
-        if (memcmp(type, "mdia", 4) == 0) {
-            return is_audio_trak(buf, payload_offset, payload_end);
-        } else if (memcmp(type, "hdlr", 4) == 0 && payload_offset + 12 <= payload_end) {
-            if (memcmp(buf + payload_offset + 8, "soun", 4) == 0) {
-                return true;
-            }
-            return false;
-        }
-        cur = payload_end;
-    }
+static bool mem_seek_cb(void *user_data, uint64_t offset) {
+    memory_stream *ms = (memory_stream *)user_data;
+    if (offset > ms->size) return false;
+    ms->pos = offset;
     return true;
 }
 
-/* Recursive box parser walking container hierarchy */
-static void parse_boxes(const uint8_t *buf, long offset, long end, MP4Track *track,
-                        uint32_t **stsz_table, uint32_t *num_stsz_samples, uint32_t *fixed_sample_size,
-                        STSCEntry **stsc_table, uint32_t *num_stsc_entries,
-                        uint64_t **stco_table, uint32_t *num_stco_chunks)
-{
-    long cur = offset;
-    while (cur + 8 <= end) {
-        uint64_t box_size = read_be32(buf + cur);
-        char type[5] = {0};
-        memcpy(type, buf + cur + 4, 4);
-
-        long header_size = 8;
-        if (box_size == 1 && cur + 16 <= end) {
-            box_size = read_be64(buf + cur + 8);
-            header_size = 16;
-        } else if (box_size == 0) {
-            box_size = end - cur;
-        }
-
-        if (box_size < (uint64_t)header_size || cur + (long)box_size > end) {
-            break;
-        }
-
-        long payload_offset = cur + header_size;
-        long payload_end = cur + (long)box_size;
-
-        /* Container boxes to recurse into */
-        if (memcmp(type, "trak", 4) == 0) {
-            if (!is_audio_trak(buf, payload_offset, payload_end)) {
-                cur = payload_end;
-                continue;
-            }
-        }
-
-        if (memcmp(type, "moov", 4) == 0 || memcmp(type, "trak", 4) == 0 ||
-            memcmp(type, "mdia", 4) == 0 || memcmp(type, "minf", 4) == 0 ||
-            memcmp(type, "stbl", 4) == 0 || memcmp(type, "udta", 4) == 0 ||
-            memcmp(type, "meta", 4) == 0 || memcmp(type, "ilst", 4) == 0 ||
-            memcmp(type, "stsd", 4) == 0 || memcmp(type, "mp4a", 4) == 0) {
-            long sub_offset = payload_offset;
-            if (memcmp(type, "meta", 4) == 0) sub_offset += 4; /* skip meta fullbox version */
-            if (memcmp(type, "stsd", 4) == 0) sub_offset += 8; /* skip stsd header & entry count */
-            if (memcmp(type, "mp4a", 4) == 0) sub_offset += 28;/* skip mp4a audio entry header */
-            parse_boxes(buf, sub_offset, payload_end, track,
-                        stsz_table, num_stsz_samples, fixed_sample_size,
-                        stsc_table, num_stsc_entries,
-                        stco_table, num_stco_chunks);
-        } else if (memcmp(type, "esds", 4) == 0) {
-            long pos = payload_offset + 4; /* skip version & flags */
-            while (pos < payload_end - 2) {
-                uint8_t tag = buf[pos++];
-                uint32_t tag_len = parse_ber_length(buf, &pos, payload_end);
-                if (tag == 0x03) { /* ES_Descriptor */
-                    pos += 3; /* skip ES_ID + flags */
-                } else if (tag == 0x04) { /* DecoderConfigDescriptor */
-                    pos += 13; /* skip objectType, streamType, bufferSizeDB, maxBitrate, avgBitrate */
-                } else if (tag == 0x05) { /* AudioSpecificConfig Descriptor */
-                    if (tag_len > 0 && pos + tag_len <= payload_end) {
-                        if (track->asc_buf) { free(track->asc_buf); track->asc_buf = NULL; }
-                        track->asc_buf = (uint8_t *)malloc(tag_len);
-                        memcpy(track->asc_buf, buf + pos, tag_len);
-                        track->asc_len = tag_len;
-                    }
-                    break;
-                } else {
-                    pos += tag_len;
-                }
-            }
-        } else if (memcmp(type, "iTun", 4) == 0 || memcmp(type, "SMPB", 4) == 0) {
-            for (long j = payload_offset; j < payload_end - 32; j++) {
-                if (memcmp(buf + j, " 00000000 ", 10) == 0) {
-                    char str_buf[128] = {0};
-                    long copy_len = payload_end - j;
-                    if (copy_len > (long)(sizeof(str_buf) - 1)) copy_len = sizeof(str_buf) - 1;
-                    if (copy_len > 0) memcpy(str_buf, buf + j, copy_len);
-                    sscanf(str_buf, " %*x %x %x", &track->delay, &track->padding);
-                    break;
-                }
-            }
-        } else if (memcmp(type, "stsz", 4) == 0 && payload_offset + 12 <= payload_end) {
-            *fixed_sample_size = read_be32(buf + payload_offset + 4);
-            uint32_t sample_count = read_be32(buf + payload_offset + 8);
-            if (sample_count > 0 && sample_count < 1000000) {
-                if (*stsz_table) { free(*stsz_table); *stsz_table = NULL; }
-                *num_stsz_samples = sample_count;
-                if (*fixed_sample_size == 0) {
-                    *stsz_table = (uint32_t *)calloc(sample_count, sizeof(uint32_t));
-                    for (uint32_t s = 0; s < sample_count && (payload_offset + 12 + s * 4) <= payload_end - 4; s++) {
-                        (*stsz_table)[s] = read_be32(buf + payload_offset + 12 + s * 4);
-                    }
-                }
-            }
-        } else if (memcmp(type, "stsc", 4) == 0 && payload_offset + 8 <= payload_end) {
-            uint32_t entries = read_be32(buf + payload_offset + 4);
-            if (entries > 0 && entries < 100000) {
-                if (*stsc_table) { free(*stsc_table); *stsc_table = NULL; }
-                *num_stsc_entries = entries;
-                *stsc_table = (STSCEntry *)calloc(entries, sizeof(STSCEntry));
-                for (uint32_t e = 0; e < entries && (payload_offset + 8 + e * 12) <= payload_end - 12; e++) {
-                    (*stsc_table)[e].first_chunk = read_be32(buf + payload_offset + 8 + e * 12);
-                    (*stsc_table)[e].samples_per_chunk = read_be32(buf + payload_offset + 8 + e * 12 + 4);
-                    (*stsc_table)[e].sample_description_index = read_be32(buf + payload_offset + 8 + e * 12 + 8);
-                }
-            }
-        } else if (memcmp(type, "stco", 4) == 0 && payload_offset + 8 <= payload_end) {
-            uint32_t chunks = read_be32(buf + payload_offset + 4);
-            if (chunks > 0 && chunks < 1000000) {
-                if (*stco_table) { free(*stco_table); *stco_table = NULL; }
-                *num_stco_chunks = chunks;
-                *stco_table = (uint64_t *)calloc(chunks, sizeof(uint64_t));
-                for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 4) <= payload_end - 4; c++) {
-                    (*stco_table)[c] = read_be32(buf + payload_offset + 8 + c * 4);
-                }
-            }
-        } else if (memcmp(type, "co64", 4) == 0 && payload_offset + 8 <= payload_end) {
-            uint32_t chunks = read_be32(buf + payload_offset + 4);
-            if (chunks > 0 && chunks < 1000000) {
-                if (*stco_table) { free(*stco_table); *stco_table = NULL; }
-                *num_stco_chunks = chunks;
-                *stco_table = (uint64_t *)calloc(chunks, sizeof(uint64_t));
-                for (uint32_t c = 0; c < chunks && (payload_offset + 8 + c * 8) <= payload_end - 8; c++) {
-                    (*stco_table)[c] = read_be64(buf + payload_offset + 8 + c * 8);
-                }
-            }
-        }
-
-        cur = payload_end;
-    }
+static uint64_t mem_tell_cb(void *user_data) {
+    memory_stream *ms = (memory_stream *)user_data;
+    return ms->pos;
 }
+#endif
 
 bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
 {
     memset(track, 0, sizeof(*track));
-    track->delay = 1024; /* Default priming delay */
+#ifdef HAVE_LIBFAAM
+    if (!buf || file_size < 32) return false;
 
-    if (file_size < 32 || !buf) return false;
+    memory_stream ms = { buf, (uint64_t)file_size, 0 };
 
-    if (memcmp(buf + 4, "ftyp", 4) != 0) {
+    faam_io io;
+    io.user_data = &ms;
+    io.read = mem_read_cb;
+    io.write = NULL;
+    io.seek = mem_seek_cb;
+    io.tell = mem_tell_cb;
+
+    uint32_t demux_size = 0;
+    faam_demuxer_get_state_size(&demux_size);
+    void *mem = malloc(demux_size);
+
+    faam_demuxer *d = NULL;
+    if (faam_demuxer_init(mem, demux_size, &io, &d) != FAAM_OK) {
+        free(mem);
         return false;
     }
 
-    memcpy(track->major_brand, buf + 8, 4);
-    track->major_brand[4] = '\0';
+    uint8_t asc[64];
+    uint32_t asc_len = 0;
+    faam_demuxer_get_asc(d, asc, sizeof(asc), &asc_len);
+    if (asc_len > 0) {
+        track->asc_buf = (uint8_t *)malloc(asc_len);
+        memcpy(track->asc_buf, asc, asc_len);
+        track->asc_len = asc_len;
+    }
 
-    uint32_t num_stsz_samples = 0;
-    uint32_t *stsz_table = NULL;
-    uint32_t fixed_sample_size = 0;
+    faam_gapless_info gapless;
+    faam_demuxer_get_gapless(d, &gapless);
+    track->delay = gapless.encoder_delay;
+    track->padding = gapless.end_padding;
 
-    STSCEntry *stsc_table = NULL;
-    uint32_t num_stsc_entries = 0;
+    /* Extract frame locations directly from demuxer without reading payloads */
+    faam_frame_loc loc;
+    uint32_t count = 0;
 
-    uint64_t *stco_table = NULL;
-    uint32_t num_stco_chunks = 0;
+    faam_demuxer_seek_sample(d, 0);
+    while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
+        count++;
+        faam_demuxer_seek_sample(d, count * 1024);
+    }
 
-    /* Parse MP4 box hierarchy starting from root */
-    parse_boxes(buf, 0, file_size, track,
-                &stsz_table, &num_stsz_samples, &fixed_sample_size,
-                &stsc_table, &num_stsc_entries,
-                &stco_table, &num_stco_chunks);
-
-    if (num_stsz_samples > 0) {
-        track->samples = (MP4Sample *)calloc(num_stsz_samples, sizeof(MP4Sample));
-        track->num_samples = num_stsz_samples;
-
-        if (stco_table && num_stco_chunks > 0 && stsc_table && num_stsc_entries > 0) {
-            uint32_t sample_idx = 0;
-            for (uint32_t chunk_idx = 0; chunk_idx < num_stco_chunks; chunk_idx++) {
-                uint32_t chunk_num = chunk_idx + 1;
-                uint64_t chunk_offset = stco_table[chunk_idx];
-
-                uint32_t samples_in_chunk = stsc_table[0].samples_per_chunk;
-                for (uint32_t e = 0; e < num_stsc_entries; e++) {
-                    if (chunk_num >= stsc_table[e].first_chunk) {
-                        samples_in_chunk = stsc_table[e].samples_per_chunk;
-                    } else {
-                        break;
-                    }
-                }
-
-                uint32_t sample_offset_in_chunk = 0;
-                for (uint32_t s = 0; s < samples_in_chunk && sample_idx < num_stsz_samples; s++) {
-                    uint32_t size = (fixed_sample_size != 0) ? fixed_sample_size : (stsz_table ? stsz_table[sample_idx] : 0);
-                    track->samples[sample_idx].offset = chunk_offset + sample_offset_in_chunk;
-                    track->samples[sample_idx].size = size;
-                    sample_offset_in_chunk += size;
-                    sample_idx++;
-                }
+    if (count > 0) {
+        track->samples = (MP4Sample *)calloc(count, sizeof(MP4Sample));
+        track->num_samples = count;
+        faam_demuxer_seek_sample(d, 0);
+        for (uint32_t i = 0; i < count; i++) {
+            if (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
+                track->samples[i].offset = loc.file_offset;
+                track->samples[i].size = loc.frame_bytes;
+                faam_demuxer_seek_sample(d, (i + 1) * 1024);
             }
         }
     }
 
-    if (stsz_table) free(stsz_table);
-    if (stsc_table) free(stsc_table);
-    if (stco_table) free(stco_table);
-
-    return (track->asc_buf != NULL && track->num_samples > 0 && track->samples != NULL);
+    faam_demuxer_close(d);
+    free(mem);
+    return track->asc_buf != NULL && track->num_samples > 0;
+#else
+    (void)buf; (void)file_size;
+    return false;
+#endif
 }
 
 void mp4_free_track(MP4Track *track)
