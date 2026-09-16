@@ -116,8 +116,13 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
 
     ics->pulse_data_present = bits_get(bs, 1);
     if (ics->pulse_data_present) {
-        bits_skip(bs, 2);
-        bits_skip(bs, 6);
+        uint32_t number_pulse = bits_get(bs, 2);
+        uint32_t pulse_start_sfb = bits_get(bs, 6);
+        (void)pulse_start_sfb;
+        for (uint32_t i = 0; i <= number_pulse; i++) {
+            bits_skip(bs, 5); /* pulse_offset */
+            bits_skip(bs, 4); /* pulse_amp */
+        }
     }
 
     ics->tns_data_present = bits_get(bs, 1);
@@ -153,7 +158,8 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     if (ics->gain_control_present) {
     }
 
-    return huffman_decode_spectrum(bs, ics, spec, dec->sample_rate);
+    decode_scale_factor_data(bs, ics, dec->sample_rate);
+    return decode_spectral_data(bs, ics, spec);
 }
 
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)

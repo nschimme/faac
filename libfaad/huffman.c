@@ -67,19 +67,27 @@ static int decode_huffman_scalefactor(BitReader *bs)
 static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
-    int base = (book >= 1 && book <= 4) ? 3 : 5;
-    *v = idx / (base * base * base);
-    idx %= (base * base * base);
-    *w = idx / (base * base);
-    idx %= (base * base);
-    *x = idx / base;
-    *y = idx % base;
+    int base = 3;
+    *v = idx / 27;
+    idx %= 27;
+    *w = idx / 9;
+    idx %= 9;
+    *x = idx / 3;
+    *y = idx % 3;
 
-    if (book == 2) {
+    if (book == 1) {
         *v -= 1; *w -= 1; *x -= 1; *y -= 1;
+    } else if (book == 2) {
+        if (*v) if (bits_get(bs, 1)) *v = -*v;
+        if (*w) if (bits_get(bs, 1)) *w = -*w;
+        if (*x) if (bits_get(bs, 1)) *x = -*x;
+        if (*y) if (bits_get(bs, 1)) *y = -*y;
+    } else if (book == 3) {
+        if (*v) if (bits_get(bs, 1)) *v = -*v;
+        if (*w) if (bits_get(bs, 1)) *w = -*w;
+        if (*x) if (bits_get(bs, 1)) *x = -*x;
+        if (*y) if (bits_get(bs, 1)) *y = -*y;
     } else if (book == 4) {
-        *v -= 2; *w -= 2; *x -= 2; *y -= 2;
-    } else if (book == 1 || book == 3) {
         if (*v) if (bits_get(bs, 1)) *v = -*v;
         if (*w) if (bits_get(bs, 1)) *w = -*w;
         if (*x) if (bits_get(bs, 1)) *x = -*x;
@@ -90,22 +98,20 @@ static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 static void decode_pair(BitReader *bs, int book, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
-    int base = 16;
+    int base = 17;
     if (book == 5 || book == 6) base = 9;
     else if (book == 7 || book == 8) base = 8;
     else if (book == 9 || book == 10) base = 13;
-    else if (book == 11) base = 17;
 
     *x = idx / base;
     *y = idx % base;
 
-    if (book == 6) {
+    if (book == 5) {
         *x -= 4; *y -= 4;
-    } else if (book == 8) {
-        *x -= 6; *y -= 6;
-    } else if (book == 10) {
-        *x -= 6; *y -= 6;
-    } else if (book == 5 || book == 7 || book == 9 || book == 11) {
+    } else if (book == 6) {
+        if (*x) if (bits_get(bs, 1)) *x = -*x;
+        if (*y) if (bits_get(bs, 1)) *y = -*y;
+    } else if (book == 7 || book == 9 || book == 11) {
         if (*x) if (bits_get(bs, 1)) *x = -*x;
         if (*y) if (bits_get(bs, 1)) *y = -*y;
     }
@@ -128,18 +134,16 @@ static void decode_pair(BitReader *bs, int book, int *x, int *y)
     }
 }
 
-faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, uint32_t sample_rate)
+faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate)
 {
     setup_sfb_offsets(ics, sample_rate);
-    memset(spec, 0, FRAME_LEN_LONG * sizeof(float));
 
     int sf = ics->global_gain;
     int is_pos = 0;
     int pns_energy = sf;
 
-    int window_offset = 0;
-    for (int g = 0; g < ics->num_window_groups; g++) {
-        for (int i = 0; i < ics->num_sections[g]; i++) {
+    for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
+        for (int i = 0; i < ics->num_sections[g] && i < 64; i++) {
             int cb = ics->sect_cb[g][i];
             int start_sfb = ics->sect_start[g][i];
             int end_sfb = ics->sect_end[g][i];
@@ -147,49 +151,70 @@ faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, ui
             if (cb == 0) {
                 continue;
             } else if (cb == 13) { /* PNS */
-                for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
                     int dpns = decode_huffman_scalefactor(bs);
                     pns_energy += dpns - 60;
                     ics->scalefactors[g][sfb] = pns_energy;
                     ics->pns_used[g][sfb] = true;
                 }
             } else if (cb == 14 || cb == 15) { /* Intensity stereo (decoupled predictor) */
-                for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
                     int dis = decode_huffman_scalefactor(bs);
                     is_pos += dis - 60;
                     ics->scalefactors[g][sfb] = is_pos;
                 }
             } else {
-                for (int sfb = start_sfb; sfb < end_sfb; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
                     int dsf = decode_huffman_scalefactor(bs);
                     sf += dsf - 60;
                     ics->scalefactors[g][sfb] = sf;
                     ics->sfb_cb[g][sfb] = cb;
+                }
+            }
+        }
+    }
+    return FAAD_OK;
+}
 
-                    int start_k = ics->sfb_offsets[sfb];
-                    int end_k = ics->sfb_offsets[sfb + 1];
+faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
+{
+    memset(spec, 0, FRAME_LEN_LONG * sizeof(float));
 
-                    for (int w = 0; w < ics->window_group_length[g]; w++) {
-                        float *ptr = spec + (window_offset + w) * 128 + start_k;
-                        int k = start_k;
-                        while (k < end_k) {
-                            if (cb <= 4) {
-                                int v, w_val, x, y;
-                                decode_quad(bs, cb, &v, &w_val, &x, &y);
-                                ptr[0] = (float)v;
-                                ptr[1] = (float)w_val;
-                                ptr[2] = (float)x;
-                                ptr[3] = (float)y;
-                                ptr += 4;
-                                k += 4;
-                            } else {
-                                int x, y;
-                                decode_pair(bs, cb, &x, &y);
-                                ptr[0] = (float)x;
-                                ptr[1] = (float)y;
-                                ptr += 2;
-                                k += 2;
-                            }
+    int window_offset = 0;
+    for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
+        for (int i = 0; i < ics->num_sections[g] && i < 64; i++) {
+            int cb = ics->sect_cb[g][i];
+            int start_sfb = ics->sect_start[g][i];
+            int end_sfb = ics->sect_end[g][i];
+
+            if (cb == 0 || cb == 13 || cb == 14 || cb == 15) continue;
+
+            for (int sfb = start_sfb; sfb < end_sfb && sfb < 64 && (sfb + 1) <= ics->num_sfbs; sfb++) {
+                int start_k = ics->sfb_offsets[sfb];
+                int end_k = ics->sfb_offsets[sfb + 1];
+                if (start_k >= FRAME_LEN_LONG) continue;
+                if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
+
+                for (int w = 0; w < ics->window_group_length[g]; w++) {
+                    float *ptr = spec + (window_offset + w) * 128 + start_k;
+                    int k = start_k;
+                    while (k < end_k) {
+                        if (cb <= 4) {
+                            int v, w_val, x, y;
+                            decode_quad(bs, cb, &v, &w_val, &x, &y);
+                            ptr[0] = (float)v;
+                            ptr[1] = (float)w_val;
+                            ptr[2] = (float)x;
+                            ptr[3] = (float)y;
+                            ptr += 4;
+                            k += 4;
+                        } else {
+                            int x, y;
+                            decode_pair(bs, cb, &x, &y);
+                            ptr[0] = (float)x;
+                            ptr[1] = (float)y;
+                            ptr += 2;
+                            k += 2;
                         }
                     }
                 }

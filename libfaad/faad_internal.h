@@ -175,8 +175,8 @@ struct faad_decoder {
     uint32_t pns_seed;
 };
 
-faad_status huffman_decode_spectrum(BitReader *bs, ICSInfo *ics, float *spec, uint32_t sample_rate);
-void dequantize_spectrum(ICSInfo *ics, float *spec);
+faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);
+faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec);
 void apply_pns(ICSInfo *ics, float *spec, uint32_t *pns_seed);
 void apply_ms_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);
 void apply_is_stereo(CPEInfo *cpe, float *spec_l, float *spec_r);

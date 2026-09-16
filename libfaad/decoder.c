@@ -181,7 +181,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         int16_t *out_int16 = (int16_t *)out;
         for (uint32_t i = 0; i < dec->frame_samples; i++) {
             for (uint32_t c = 0; c < dec->num_channels; c++) {
-                float val = pcm_final[c * dec->frame_samples + i];
+                float val = pcm_final[c * dec->frame_samples + i] * 32768.0f;
                 if (val > 32767.0f) val = 32767.0f;
                 if (val < -32768.0f) val = -32768.0f;
                 out_int16[i * dec->num_channels + c] = (int16_t)val;
@@ -191,7 +191,7 @@ FAADAPI faad_status faad_decoder_decode(faad_decoder *dec,
         float *out_f32 = (float *)out;
         for (uint32_t i = 0; i < dec->frame_samples; i++) {
             for (uint32_t c = 0; c < dec->num_channels; c++) {
-                out_f32[i * dec->num_channels + c] = pcm_final[c * dec->frame_samples + i] / 32768.0f;
+                out_f32[i * dec->num_channels + c] = pcm_final[c * dec->frame_samples + i];
             }
         }
     }
