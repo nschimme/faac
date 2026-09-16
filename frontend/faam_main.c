@@ -376,18 +376,25 @@ static int cmd_tag(int argc, char **argv)
         return 1;
     }
 
-    const char *filepath = argv[0];
+    const char *filepath = NULL;
     faam_metadata meta;
     memset(&meta, 0, sizeof(meta));
 
-    for (int i = 1; i < argc; i++) {
+    for (int i = 0; i < argc; i++) {
         if (strcmp(argv[i], "--title") == 0 && i + 1 < argc) {
             strncpy(meta.title, argv[++i], sizeof(meta.title) - 1);
         } else if (strcmp(argv[i], "--artist") == 0 && i + 1 < argc) {
             strncpy(meta.artist, argv[++i], sizeof(meta.artist) - 1);
         } else if (strcmp(argv[i], "--album") == 0 && i + 1 < argc) {
             strncpy(meta.album, argv[++i], sizeof(meta.album) - 1);
+        } else if (argv[i][0] != '-') {
+            filepath = argv[i];
         }
+    }
+
+    if (!filepath) {
+        fprintf(stderr, "Error: Missing input file.\nUsage: faam tag <input.m4a> [options]\n");
+        return 1;
     }
 
     faam_status st = faam_update_tags(filepath, &meta);

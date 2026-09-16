@@ -34,6 +34,22 @@ static uint32_t append_data_box(uint8_t *dst, const char *name, uint32_t type_co
     return box_size;
 }
 
+static int32_t file_read_cb(void *user_data, void *buf, uint32_t bytes) {
+    return (int32_t)fread(buf, 1, bytes, (FILE *)user_data);
+}
+
+static int32_t file_write_cb(void *user_data, const void *buf, uint32_t bytes) {
+    return (int32_t)fwrite(buf, 1, bytes, (FILE *)user_data);
+}
+
+static bool file_seek_cb(void *user_data, uint64_t offset) {
+    return fseek((FILE *)user_data, (long)offset, SEEK_SET) == 0;
+}
+
+static uint64_t file_tell_cb(void *user_data) {
+    return (uint64_t)ftell((FILE *)user_data);
+}
+
 faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta)
 {
     if (!io || !meta) return FAAM_ERR_INVALID_ARG;
@@ -69,6 +85,9 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     /* Locate ilst atom inside moov/udta/meta */
     uint32_t pos = 0;
     uint32_t ilst_offset = 0;
+    uint32_t meta_offset = 0;
+    uint32_t udta_offset = 0;
+
     while (pos + 8 <= (uint32_t)bytes) {
         uint32_t size = read_u32_be(buf + pos);
         if (size < 8 || pos + size > (uint32_t)bytes) break;
@@ -81,12 +100,14 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
                 if (sub_size < 8 || sub + sub_size > moov_end) break;
 
                 if (memcmp(buf + sub + 4, "udta", 4) == 0) {
+                    udta_offset = sub;
                     uint32_t u_sub = sub + 8;
                     uint32_t udta_end = sub + sub_size;
                     while (u_sub + 8 <= udta_end) {
                         uint32_t u_size = read_u32_be(buf + u_sub);
                         if (u_size < 8 || u_sub + u_size > udta_end) break;
                         if (memcmp(buf + u_sub + 4, "meta", 4) == 0) {
+                            meta_offset = u_sub;
                             uint32_t m_sub = u_sub + 12;
                             uint32_t meta_end = u_sub + u_size;
                             while (m_sub + 8 <= meta_end) {
@@ -111,6 +132,19 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     if (ilst_offset > 0) {
         io->seek(io->user_data, ilst_offset);
         io->write(io->user_data, ilst_buf, ilst_len);
+    } else if (meta_offset > 0) {
+        io->seek(io->user_data, meta_offset + 12);
+        io->write(io->user_data, ilst_buf, ilst_len);
+    } else if (udta_offset > 0) {
+        uint8_t meta_wrap[16384 + 12];
+        uint32_t meta_len = 12 + ilst_len;
+        write_u32(meta_wrap, meta_len);
+        memcpy(meta_wrap + 4, "meta", 4);
+        write_u32(meta_wrap + 8, 0); /* flags */
+        memcpy(meta_wrap + 12, ilst_buf, ilst_len);
+
+        io->seek(io->user_data, udta_offset + 8);
+        io->write(io->user_data, meta_wrap, meta_len);
     }
 
     free(buf);
@@ -126,10 +160,10 @@ faam_status faam_update_tags(const char *filepath, const faam_metadata *meta)
 
     faam_io io;
     io.user_data = f;
-    io.read = (int32_t (*)(void *, void *, uint32_t))fread;
-    io.write = (int32_t (*)(void *, const void *, uint32_t))fwrite;
-    io.seek = (bool (*)(void *, uint64_t))fseek;
-    io.tell = (uint64_t (*)(void *))ftell;
+    io.read = file_read_cb;
+    io.write = file_write_cb;
+    io.seek = file_seek_cb;
+    io.tell = file_tell_cb;
 
     faam_status st = faam_update_tags_stream(&io, meta);
     fclose(f);
