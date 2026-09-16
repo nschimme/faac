@@ -31,8 +31,3 @@ option('stats',
     description: 'Enable optional end-of-encode statistics banner',
     type: 'boolean',
     value: false)
-
-option('16bit-only',
-    description: 'Restrict input format to 16-bit PCM only for reduced flash memory footprint',
-    type: 'boolean',
-    value: false)

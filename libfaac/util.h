@@ -60,6 +60,12 @@ static inline int clamp_int(int x, int lo, int hi)
 #ifndef SetMemory
 #define SetMemory(block, value, size) memset(block, value, size)
 #endif
+#ifndef CopyMemory
+#define CopyMemory(dst, src, size) memcpy(dst, src, size)
+#endif
+#ifndef MoveMemory
+#define MoveMemory(dst, src, size) memmove(dst, src, size)
+#endif
 
 int GetSRIndex(unsigned int sampleRate);
 unsigned int MaxBitrate(unsigned long sampleRate);

@@ -306,7 +306,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
      * by tick 2 both are zero, so the rest of the drain is known silence. */
     if (realPerCh == 0 && flushTick > 1) {
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-            memset(rs->halfRate[channel], 0, FRAME_LEN * sizeof(float));
+            SetMemory(rs->halfRate[channel], 0, FRAME_LEN * sizeof(float));
             heHalfRate[channel] = rs->halfRate[channel];
             sCtx->signalAnalysis.ch[channel].transientStrength = 0.0f;
             sCtx->signalAnalysis.ch[channel].wantShort = 0;
@@ -321,7 +321,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
             /* Final partial frame: silence-pad the unfilled full-rate tail to
              * prevent the resampler from consuming stale data. */
             if (realPerCh < 2 * FRAME_LEN)
-                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
+                SetMemory(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
             heHalfRate[channel] = rs->halfRate[channel];
         }
 

@@ -108,7 +108,7 @@ static unsigned int CalcBandwidth(unsigned long bitRate, unsigned long sampleRat
  * hEncoder->elements[] for every channel on every frame. */
 static void RefreshLfeMap(faacEncStruct *hEncoder)
 {
-    memset(hEncoder->isLfeChannel, 0, sizeof(hEncoder->isLfeChannel));
+    SetMemory(hEncoder->isLfeChannel, 0, sizeof(hEncoder->isLfeChannel));
     for (int e = 0; e < hEncoder->numElements; e++) {
         if (hEncoder->elements[e].type == ID_LFE)
             hEncoder->isLfeChannel[hEncoder->elements[e].channels[0]] = true;
@@ -188,13 +188,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     switch( hEncoder->config.inputFormat )
     {
         case INPUT_16BIT:
-            break;
-#ifndef FAAC_16BIT_ONLY
         case INPUT_24BIT:
         case INPUT_32BIT:
         case INPUT_FLOAT:
             break;
-#endif
         default:
             return 0;
     }
@@ -418,7 +415,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
                                   unsigned long *maxOutputBytes)
 {
 #ifdef FAAC_STATS
-    memset(&g_faacStats, 0, sizeof(faacEncStats));
+    SetMemory(&g_faacStats, 0, sizeof(faacEncStats));
     RateControlStatsInit();
 #endif
     unsigned int channel;
@@ -484,7 +481,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
                 faacEncClose(hEncoder);
                 return NULL;
             }
-            memset(hEncoder->audioFIFO[channel][buf], 0, FRAME_LEN*sizeof(float));
+            SetMemory(hEncoder->audioFIFO[channel][buf], 0, FRAME_LEN*sizeof(float));
         }
     }
 
@@ -530,7 +527,6 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
                 break;
             }
-#ifndef FAAC_16BIT_ONLY
             case INPUT_24BIT: {
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
@@ -555,7 +551,6 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 for (i = 0; i < spch; i++) { dst[i] = (float)*src; src += numChannels; }
                 break;
             }
-#endif
             default: return -1;
         }
     }
@@ -780,7 +775,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             else if (realPerCh == 0)
             {
                 /* start flushing*/
-                memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(float));
+                SetMemory(hEncoder->audioFIFO[channel][FIFO_AHEAD2], 0, FRAME_LEN * sizeof(float));
             }
             else
             {
@@ -789,7 +784,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 unsigned int spc = ((unsigned int)realPerCh < FRAME_LEN) ? (unsigned int)realPerCh : FRAME_LEN;
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], hEncoder->inputFifo[channel], spc * sizeof(float));
                 if (spc < FRAME_LEN)
-                    memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
+                    SetMemory(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
             }
 
             /* LFE's block_type is always forced to ONLY_LONG_WINDOW in PsyCalculate,

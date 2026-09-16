@@ -106,7 +106,7 @@ static inline void apply_mute(float * restrict s0, int start, int len, int wstar
     size_t bytes = (size_t)len * sizeof(float);
     for (win = wstart; win < wend; win++) {
         float * restrict s = s0 + win * BLOCK_LEN_SHORT + start;
-        memset(s, 0, bytes);
+        SetMemory(s, 0, bytes);
     }
 }
 
@@ -125,7 +125,7 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
             float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++)
                 sl[i] = 0.5f * (sl[i] + sr[i]);
-            memset(sr, 0, bytes);
+            SetMemory(sr, 0, bytes);
         }
     } else {
         for (win = wstart; win < wend; win++) {
@@ -133,7 +133,7 @@ static inline void apply_ms(float * restrict sl0, float * restrict sr0,
             float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
             for (i = 0; i < len; i++)
                 sr[i] = 0.5f * (sl[i] - sr[i]);
-            memset(sl, 0, bytes);
+            SetMemory(sl, 0, bytes);
         }
     }
 }

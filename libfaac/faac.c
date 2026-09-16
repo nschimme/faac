@@ -88,7 +88,7 @@ FAACAPI faac_status faac_get_library_info(faac_library_info *out)
 
     faacEncGetVersion(&vid, &vcopy);
 
-    memset(&info, 0, sizeof(info));
+    SetMemory(&info, 0, sizeof(info));
     info.max_channels   = (uint32_t)MAX_CHANNELS;
     info.version        = vid;
     info.copyright      = vcopy;
@@ -112,7 +112,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     if (caller_size < PARAMS_BASELINE_SIZE)
         return FAAC_ERR_INVALID_ARGUMENT;
 
-    memset(&tmp, 0, sizeof(tmp));
+    SetMemory(&tmp, 0, sizeof(tmp));
     tmp.mpeg_version  = FAAC_MPEG4;
     tmp.object_type   = FAAC_OBJ_LOW;
     tmp.joint_mode    = FAAC_JOINT_MIXED;
@@ -168,12 +168,8 @@ static faac_status validate_params(const faac_params *p)
         default: return FAAC_ERR_INVALID_ARGUMENT;
     }
     switch (p->input_format) {
-        case FAAC_INPUT_16BIT:
+        case FAAC_INPUT_16BIT: case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
             break;
-#ifndef FAAC_16BIT_ONLY
-        case FAAC_INPUT_24BIT: case FAAC_INPUT_32BIT: case FAAC_INPUT_FLOAT:
-            break;
-#endif
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
