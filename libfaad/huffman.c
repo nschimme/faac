@@ -39,7 +39,7 @@ static HuffLutEntry huff_lut_10bit[13][1024];
 
 static bool huff_luts_initialized = false;
 
-static void init_huffman_luts_impl(void)
+void init_huffman_luts(void)
 {
     if (huff_luts_initialized) return;
 
@@ -80,11 +80,7 @@ static void init_huffman_luts_impl(void)
         found_sf:;
     }
 
-}
-
-void init_huffman_luts(void)
-{
-    init_huffman_luts_impl();
+    huff_luts_initialized = true;
 }
 
 static int decode_huffman_symbol(BitReader *bs, int book)

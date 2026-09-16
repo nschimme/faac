@@ -54,14 +54,14 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     uint8_t ilst_buf[16384];
     uint32_t ilst_len = 8; /* reserve 8 bytes for ilst size and type */
 
-    if (meta->title[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9nam", ITUNES_DATA_TEXT, meta->title, strlen(meta->title));
-    if (meta->artist[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9ART", ITUNES_DATA_TEXT, meta->artist, strlen(meta->artist));
-    if (meta->album[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9alb", ITUNES_DATA_TEXT, meta->album, strlen(meta->album));
+    if (meta->title[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251nam", ITUNES_DATA_TEXT, meta->title, strlen(meta->title));
+    if (meta->artist[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251ART", ITUNES_DATA_TEXT, meta->artist, strlen(meta->artist));
+    if (meta->album[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251alb", ITUNES_DATA_TEXT, meta->album, strlen(meta->album));
     if (meta->album_artist[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "aART", ITUNES_DATA_TEXT, meta->album_artist, strlen(meta->album_artist));
-    if (meta->composer[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9wrt", ITUNES_DATA_TEXT, meta->composer, strlen(meta->composer));
-    if (meta->year[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9day", ITUNES_DATA_TEXT, meta->year, strlen(meta->year));
-    if (meta->comment[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9cmt", ITUNES_DATA_TEXT, meta->comment, strlen(meta->comment));
-    if (meta->encoder[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\xa9too", ITUNES_DATA_TEXT, meta->encoder, strlen(meta->encoder));
+    if (meta->composer[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251wrt", ITUNES_DATA_TEXT, meta->composer, strlen(meta->composer));
+    if (meta->year[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251day", ITUNES_DATA_TEXT, meta->year, strlen(meta->year));
+    if (meta->comment[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251cmt", ITUNES_DATA_TEXT, meta->comment, strlen(meta->comment));
+    if (meta->encoder[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251too", ITUNES_DATA_TEXT, meta->encoder, strlen(meta->encoder));
 
     write_u32(ilst_buf, ilst_len);
     memcpy(ilst_buf + 4, "ilst", 4);

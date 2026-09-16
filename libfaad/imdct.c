@@ -29,7 +29,7 @@ static FFT_Tables fft_tbl;
 
 static bool tables_init = false;
 
-static void init_windows_impl(void)
+void init_windows(void)
 {
     if (tables_init) return;
 
@@ -93,11 +93,7 @@ static void init_windows_impl(void)
         imdct_post_sin_256[k] = sinf(angle_post);
     }
 
-}
-
-void init_windows(void)
-{
-    init_windows_impl();
+    tables_init = true;
 }
 
 static void fast_imdct(const float *in, float *out, int n)

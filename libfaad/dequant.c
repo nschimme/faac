@@ -9,7 +9,7 @@ static float sf_scale_lut[256];
 
 static bool dequant_tables_init = false;
 
-static void init_dequant_tables_impl(void)
+void init_dequant_tables(void)
 {
     if (dequant_tables_init) return;
 
@@ -21,11 +21,6 @@ static void init_dequant_tables_impl(void)
     }
 
     dequant_tables_init = true;
-}
-
-void init_dequant_tables(void)
-{
-    init_dequant_tables_impl();
 }
 
 static inline float pow_4_3_fast(int x)

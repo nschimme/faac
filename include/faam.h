@@ -152,6 +152,8 @@ FAAMAPI faam_status faam_demuxer_get_metadata(faam_demuxer *d, faam_metadata *ou
 FAAMAPI faam_status faam_demuxer_get_chapters(faam_demuxer *d, faam_chapter *out_chapters,
                                                uint32_t cap, uint32_t *out_count);
 
+FAAMAPI uint32_t faam_demuxer_get_total_frames(faam_demuxer *d);
+
 FAAMAPI faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc);
 
 FAAMAPI faam_status faam_demuxer_read_frame(faam_demuxer *d,

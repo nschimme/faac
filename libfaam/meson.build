@@ -28,6 +28,7 @@ libfaam_static = static_library(
   'faam',
   libfaam_sources,
   include_directories: libfaam_inc,
+  c_args: ['-ffunction-sections', '-fdata-sections'],
   install: true,
 )
 

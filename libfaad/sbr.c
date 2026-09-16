@@ -42,7 +42,7 @@ static float qmf_ana_sin_lut[32][32];
 
 static bool qmf_twiddles_init = false;
 
-static void init_qmf_twiddles_impl(void)
+void init_qmf_twiddles(void)
 {
     if (qmf_twiddles_init) return;
 
@@ -62,11 +62,7 @@ static void init_qmf_twiddles_impl(void)
         }
     }
 
-}
-
-void init_qmf_twiddles(void)
-{
-    init_qmf_twiddles_impl();
+    qmf_twiddles_init = true;
 }
 
 static const float ps_iid_scale_lut[15] = {

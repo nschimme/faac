@@ -97,25 +97,20 @@ bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track)
     track->delay = gapless.encoder_delay;
     track->padding = gapless.end_padding;
 
-    /* Extract frame locations directly from demuxer without reading payloads */
-    faam_frame_loc loc;
-    uint32_t count = 0;
+    /* Query total frames directly from demuxer */
+    uint32_t total_frames = faam_demuxer_get_total_frames(d);
+    if (total_frames > 0) {
+        track->samples = (MP4Sample *)calloc(total_frames, sizeof(MP4Sample));
+        track->num_samples = total_frames;
 
-    faam_demuxer_seek_sample(d, 0);
-    while (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
-        count++;
-        faam_demuxer_seek_sample(d, count * 1024);
-    }
-
-    if (count > 0) {
-        track->samples = (MP4Sample *)calloc(count, sizeof(MP4Sample));
-        track->num_samples = count;
-        faam_demuxer_seek_sample(d, 0);
-        for (uint32_t i = 0; i < count; i++) {
+        faam_frame_loc loc;
+        for (uint32_t i = 0; i < total_frames; i++) {
             if (faam_demuxer_next_frame_loc(d, &loc) == FAAM_OK) {
                 track->samples[i].offset = loc.file_offset;
                 track->samples[i].size = loc.frame_bytes;
-                faam_demuxer_seek_sample(d, (i + 1) * 1024);
+                uint8_t dummy[1024];
+                uint32_t bytes_read = 0;
+                faam_demuxer_read_frame(d, dummy, sizeof(dummy), &bytes_read);
             }
         }
     }

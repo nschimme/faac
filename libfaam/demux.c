@@ -326,6 +326,11 @@ faam_status faam_demuxer_get_chapters(faam_demuxer *d, faam_chapter *out_chapter
     return FAAM_OK;
 }
 
+uint32_t faam_demuxer_get_total_frames(faam_demuxer *d)
+{
+    return d ? d->total_frames : 0;
+}
+
 faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc)
 {
     if (!d || !out_loc) return FAAM_ERR_INVALID_ARG;

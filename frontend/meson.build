@@ -6,7 +6,7 @@ frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 
 if get_option('muxer')
-    frontend_link_libs += [libfaam_shared]
+    frontend_link_libs += [libfaam_static]
     c_args_list += ['-DHAVE_LIBFAAM']
 endif
 
@@ -42,13 +42,14 @@ endif
 if get_option('decoder')
     decoder_link_libs = [libfaad]
     if get_option('muxer')
-        decoder_link_libs += [libfaam_shared]
+        decoder_link_libs += [libfaam_static]
     endif
     faad = executable('faad',
         ['faad_main.c', 'mp4read.c', 'charset.c'],
         include_directories: ['..', '../include'],
         link_with: decoder_link_libs,
         c_args: c_args_list,
+        link_args: cc.get_argument_syntax() != 'msvc' ? ['-Wl,--gc-sections'] : [],
         dependencies: [libshell32, libiconv],
         install: true
     )
