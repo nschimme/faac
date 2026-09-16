@@ -37,7 +37,7 @@ typedef struct {
     uint16_t sym;
 } HuffLutEntry;
 
-static HuffLutEntry huff_lut_8bit[13][256];
+static HuffLutEntry huff_lut_10bit[13][1024];
 static bool huff_luts_initialized = false;
 
 static void init_huffman_luts(void)
@@ -49,16 +49,16 @@ static void init_huffman_luts(void)
         int size = huffbook_sizes[b];
         if (!table) continue;
 
-        for (int cw = 0; cw < 256; cw++) {
-            huff_lut_8bit[b][cw].len = 0;
-            huff_lut_8bit[b][cw].sym = 0;
+        for (int cw = 0; cw < 1024; cw++) {
+            huff_lut_10bit[b][cw].len = 0;
+            huff_lut_10bit[b][cw].sym = 0;
 
-            for (uint32_t len = 1; len <= 8; len++) {
-                uint32_t prefix = cw >> (8 - len);
+            for (uint32_t len = 1; len <= 10; len++) {
+                uint32_t prefix = cw >> (10 - len);
                 for (int i = 0; i < size; i++) {
                     if (table[i].len == len && table[i].data == prefix) {
-                        huff_lut_8bit[b][cw].len = (uint8_t)len;
-                        huff_lut_8bit[b][cw].sym = (uint16_t)i;
+                        huff_lut_10bit[b][cw].len = (uint8_t)len;
+                        huff_lut_10bit[b][cw].sym = (uint16_t)i;
                         goto found_sym;
                     }
                 }
@@ -68,16 +68,16 @@ static void init_huffman_luts(void)
     }
 
     /* Book 12 (Scalefactors) LUT */
-    for (int cw = 0; cw < 256; cw++) {
-        huff_lut_8bit[12][cw].len = 0;
-        huff_lut_8bit[12][cw].sym = 0;
+    for (int cw = 0; cw < 1024; cw++) {
+        huff_lut_10bit[12][cw].len = 0;
+        huff_lut_10bit[12][cw].sym = 0;
 
-        for (uint32_t len = 1; len <= 8; len++) {
-            uint32_t prefix = cw >> (8 - len);
+        for (uint32_t len = 1; len <= 10; len++) {
+            uint32_t prefix = cw >> (10 - len);
             for (int i = 0; i < 121; i++) {
                 if (book12[i].len == len && book12[i].data == prefix) {
-                    huff_lut_8bit[12][cw].len = (uint8_t)len;
-                    huff_lut_8bit[12][cw].sym = (uint16_t)i;
+                    huff_lut_10bit[12][cw].len = (uint8_t)len;
+                    huff_lut_10bit[12][cw].sym = (uint16_t)i;
                     goto found_sf;
                 }
             }
@@ -93,8 +93,8 @@ static int decode_huffman_symbol(BitReader *bs, int book)
     if (book < 1 || book > 11) return 0;
     init_huffman_luts();
 
-    uint32_t cw8 = bits_show(bs, 8);
-    HuffLutEntry lut = huff_lut_8bit[book][cw8];
+    uint32_t cw10 = bits_show(bs, 10);
+    HuffLutEntry lut = huff_lut_10bit[book][cw10];
     if (lut.len > 0) {
         bits_skip(bs, lut.len);
         return lut.sym;
@@ -104,7 +104,7 @@ static int decode_huffman_symbol(BitReader *bs, int book)
     int size = huffbook_sizes[book];
     if (!table) return 0;
 
-    for (uint32_t len = 9; len <= 19; len++) {
+    for (uint32_t len = 11; len <= 19; len++) {
         uint32_t cw = bits_show(bs, len);
         for (int i = 0; i < size; i++) {
             if (table[i].len == len && table[i].data == cw) {
@@ -120,14 +120,14 @@ static int decode_huffman_scalefactor(BitReader *bs)
 {
     init_huffman_luts();
 
-    uint32_t cw8 = bits_show(bs, 8);
-    HuffLutEntry lut = huff_lut_8bit[12][cw8];
+    uint32_t cw10 = bits_show(bs, 10);
+    HuffLutEntry lut = huff_lut_10bit[12][cw10];
     if (lut.len > 0) {
         bits_skip(bs, lut.len);
         return lut.sym;
     }
 
-    for (uint32_t len = 9; len <= 19; len++) {
+    for (uint32_t len = 11; len <= 19; len++) {
         uint32_t cw = bits_show(bs, len);
         for (int i = 0; i < 121; i++) {
             if (book12[i].len == len && book12[i].data == cw) {

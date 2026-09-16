@@ -4,7 +4,7 @@
 
 #include "faad_internal.h"
 
-static float pow_4_3_lut[33];
+static float pow_4_3_lut[128];
 static float sf_scale_lut[256];
 static bool dequant_tables_init = false;
 
@@ -12,7 +12,7 @@ static void init_dequant_tables(void)
 {
     if (dequant_tables_init) return;
 
-    for (int i = 0; i <= 32; i++) {
+    for (int i = 0; i < 128; i++) {
         pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
     }
     for (int i = 0; i < 256; i++) {
@@ -25,7 +25,7 @@ static void init_dequant_tables(void)
 static inline float pow_4_3_fast(int x)
 {
     int abs_x = abs(x);
-    if (abs_x <= 32) {
+    if (abs_x < 128) {
         float val = pow_4_3_lut[abs_x];
         return (x < 0) ? -val : val;
     }
