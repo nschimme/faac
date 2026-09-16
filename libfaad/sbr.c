@@ -15,6 +15,22 @@ static const float ps_iid_scale_lut[15] = {
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
 };
 
+static int sbr_decode_huffman_env_delta(BitReader *bs, const SBRHuffEntry *table, int nsyms, int offset)
+{
+    uint32_t val = 0;
+    int len = 0;
+    while (len < 20) {
+        val = (val << 1) | bits_get(bs, 1);
+        len++;
+        for (int i = 0; i < nsyms; i++) {
+            if (table[i].len == len && table[i].code == val) {
+                return i - offset;
+            }
+        }
+    }
+    return 0;
+}
+
 static void ps_decode_payload(struct faad_decoder *dec, BitReader *bs)
 {
     PSState *ps = &dec->ps;
@@ -80,20 +96,60 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
         bits_skip(bs, 2);
     }
 
-    /* SBR Envelope Data (E_orig) with variable length bitstream reading */
+    /* SBR Envelope Data (E_orig) decoding using ISO/IEC 14496-3 SBR Huffman tables */
+    bool bs_amp_res = bits_get(bs, 1);
+    const SBRHuffEntry *huff_tab = bs_amp_res ? f_huff_env_1_5dB : f_huff_env_3_0dB;
+    int huff_nsyms = bs_amp_res ? F_HUFF_ENV_1_5DB_NSYMS : F_HUFF_ENV_3_0DB_NSYMS;
+    int huff_offset = bs_amp_res ? F_HUFF_ENV_1_5DB_OFFSET : F_HUFF_ENV_3_0DB_OFFSET;
+
     for (int env = 0; env < sbr->bs_num_env && env < 8; env++) {
+        bool bs_df_env = bits_get(bs, 1);
+        int prev_val = bs_amp_res ? 60 : 30;
+
         for (int band = 0; band < 48; band++) {
-            uint32_t val = bits_get(bs, 6);
-            sbr->E_orig[env][band] = (int8_t)val;
+            if (env == 0 && !bs_df_env) {
+                /* First envelope, frequency direction: absolute value or delta */
+                if (band == 0) {
+                    prev_val = bits_get(bs, bs_amp_res ? 7 : 6);
+                } else {
+                    int delta = sbr_decode_huffman_env_delta(bs, huff_tab, huff_nsyms, huff_offset);
+                    prev_val += delta;
+                }
+            } else if (bs_df_env) {
+                /* Time direction delta coding from previous envelope */
+                int delta = sbr_decode_huffman_env_delta(bs, huff_tab, huff_nsyms, huff_offset);
+                prev_val = sbr->E_orig[env == 0 ? 0 : env - 1][band] + delta;
+            } else {
+                /* Frequency direction delta coding from previous band */
+                int delta = sbr_decode_huffman_env_delta(bs, huff_tab, huff_nsyms, huff_offset);
+                prev_val += delta;
+            }
+
+            sbr->E_orig[env][band] = (int8_t)prev_val;
         }
     }
 
     /* SBR Noise Floor Data (Q_orig) */
     sbr->bs_num_noise = (sbr->bs_num_env > 1) ? 2 : 1;
     for (int n = 0; n < sbr->bs_num_noise && n < 8; n++) {
+        bool bs_df_noise = bits_get(bs, 1);
+        int prev_val = 30;
         for (int band = 0; band < 5; band++) {
-            uint32_t val = bits_get(bs, 5);
-            sbr->Q_orig[n][band] = (int8_t)val;
+            if (n == 0 && !bs_df_noise) {
+                if (band == 0) {
+                    prev_val = bits_get(bs, 5);
+                } else {
+                    int delta = sbr_decode_huffman_env_delta(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET);
+                    prev_val += delta;
+                }
+            } else if (bs_df_noise) {
+                int delta = sbr_decode_huffman_env_delta(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET);
+                prev_val = sbr->Q_orig[n == 0 ? 0 : n - 1][band] + delta;
+            } else {
+                int delta = sbr_decode_huffman_env_delta(bs, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET);
+                prev_val += delta;
+            }
+            sbr->Q_orig[n][band] = (int8_t)prev_val;
         }
     }
 

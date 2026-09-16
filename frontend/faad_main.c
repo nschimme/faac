@@ -342,7 +342,17 @@ int main(int argc, char **argv)
 
     uint32_t start_frame = 0;
     if (jump_seconds > 0.0) {
-        start_frame = (uint32_t)(jump_seconds * 43.0);
+        faad_decoder_info info;
+        info.struct_size = sizeof(info);
+        uint32_t sr = 44100;
+        uint32_t fl = 1024;
+        if (faad_decoder_get_info(dec, &info) == FAAD_OK) {
+            if (info.sample_rate > 0) sr = info.sample_rate;
+            if (info.object_type == FAAD_OBJ_HE_AAC_V1 || info.object_type == FAAD_OBJ_HE_AAC_V2) {
+                fl = 2048;
+            }
+        }
+        start_frame = (uint32_t)((jump_seconds * (double)sr) / (double)fl);
     }
 
     uint32_t samples_to_skip = (is_mp4 && gapless) ? track.delay : 0;
