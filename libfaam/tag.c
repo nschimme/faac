@@ -66,20 +66,51 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     write_u32(ilst_buf, ilst_len);
     memcpy(ilst_buf + 4, "ilst", 4);
 
-    /* Locate moov atom */
+    /* Locate ilst atom inside moov/udta/meta */
     uint32_t pos = 0;
+    uint32_t ilst_offset = 0;
     while (pos + 8 <= (uint32_t)bytes) {
         uint32_t size = read_u32_be(buf + pos);
         if (size < 8 || pos + size > (uint32_t)bytes) break;
 
         if (memcmp(buf + pos + 4, "moov", 4) == 0) {
-            /* Seek to moov payload and commit updated ilst_buf */
-            uint64_t ilst_pos = pos + 8;
-            io->seek(io->user_data, ilst_pos);
-            io->write(io->user_data, ilst_buf, ilst_len);
-            break;
+            uint32_t sub = pos + 8;
+            uint32_t moov_end = pos + size;
+            while (sub + 8 <= moov_end) {
+                uint32_t sub_size = read_u32_be(buf + sub);
+                if (sub_size < 8 || sub + sub_size > moov_end) break;
+
+                if (memcmp(buf + sub + 4, "udta", 4) == 0) {
+                    uint32_t u_sub = sub + 8;
+                    uint32_t udta_end = sub + sub_size;
+                    while (u_sub + 8 <= udta_end) {
+                        uint32_t u_size = read_u32_be(buf + u_sub);
+                        if (u_size < 8 || u_sub + u_size > udta_end) break;
+                        if (memcmp(buf + u_sub + 4, "meta", 4) == 0) {
+                            uint32_t m_sub = u_sub + 12;
+                            uint32_t meta_end = u_sub + u_size;
+                            while (m_sub + 8 <= meta_end) {
+                                uint32_t m_size = read_u32_be(buf + m_sub);
+                                if (m_size < 8 || m_sub + m_size > meta_end) break;
+                                if (memcmp(buf + m_sub + 4, "ilst", 4) == 0) {
+                                    ilst_offset = m_sub;
+                                    break;
+                                }
+                                m_sub += m_size;
+                            }
+                        }
+                        u_sub += u_size;
+                    }
+                }
+                sub += sub_size;
+            }
         }
         pos += size;
+    }
+
+    if (ilst_offset > 0) {
+        io->seek(io->user_data, ilst_offset);
+        io->write(io->user_data, ilst_buf, ilst_len);
     }
 
     free(buf);

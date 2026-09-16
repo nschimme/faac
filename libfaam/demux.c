@@ -258,17 +258,20 @@ faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes, const faam_io *
     if (d->io.read) {
         if (d->io.seek) d->io.seek(d->io.user_data, 0);
 
+        /* Read header metadata (limit to 128 KB max to avoid buffering mdat payload) */
         size_t buf_cap = 65536;
         size_t buf_len = 0;
         uint8_t *buf = (uint8_t *)malloc(buf_cap);
         if (buf) {
             int32_t r = 0;
-            while (1) {
+            while (buf_len < 131072) {
                 if (buf_len >= buf_cap) {
-                    buf_cap *= 2;
-                    uint8_t *nb = (uint8_t *)realloc(buf, buf_cap);
+                    size_t new_cap = buf_cap * 2;
+                    if (new_cap > 131072) new_cap = 131072;
+                    uint8_t *nb = (uint8_t *)realloc(buf, new_cap);
                     if (!nb) break;
                     buf = nb;
+                    buf_cap = new_cap;
                 }
                 r = d->io.read(d->io.user_data, buf + buf_len, (uint32_t)(buf_cap - buf_len));
                 if (r <= 0) break;
@@ -344,20 +347,23 @@ faam_status faam_demuxer_next_frame_loc(faam_demuxer *d, faam_frame_loc *out_loc
 
 faam_status faam_demuxer_read_frame(faam_demuxer *d, uint8_t *out_frame, uint32_t frame_cap, uint32_t *frame_bytes)
 {
-    if (!d || !out_frame || !frame_bytes) return FAAM_ERR_INVALID_ARG;
+    if (!d || !frame_bytes) return FAAM_ERR_INVALID_ARG;
 
     faam_frame_loc loc;
     faam_status st = faam_demuxer_next_frame_loc(d, &loc);
     if (st != FAAM_OK) return st;
 
-    if (loc.frame_bytes > frame_cap) return FAAM_ERR_INSUFFICIENT_MEM;
+    *frame_bytes = loc.frame_bytes;
 
-    if (d->io.seek && d->io.read) {
-        d->io.seek(d->io.user_data, loc.file_offset);
-        int32_t r = d->io.read(d->io.user_data, out_frame, loc.frame_bytes);
-        if (r <= 0) return FAAM_ERR_IO_READ;
-        *frame_bytes = (uint32_t)r;
-    } else return FAAM_ERR_IO_READ;
+    if (out_frame != NULL) {
+        if (loc.frame_bytes > frame_cap) return FAAM_ERR_INSUFFICIENT_MEM;
+
+        if (d->io.seek && d->io.read) {
+            d->io.seek(d->io.user_data, loc.file_offset);
+            int32_t r = d->io.read(d->io.user_data, out_frame, loc.frame_bytes);
+            if (r <= 0) return FAAM_ERR_IO_READ;
+        } else return FAAM_ERR_IO_READ;
+    }
 
     d->current_frame++;
     return FAAM_OK;

@@ -37,9 +37,56 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
         pos += len;
     }
 
-    /* Seek to moov/udta position if present, or write atom to stream */
+    /* Locate chpl atom inside moov/udta */
     io->seek(io->user_data, 0);
-    io->write(io->user_data, atom_buf, atom_size);
+    uint32_t cap = 65536;
+    uint8_t *buf = (uint8_t *)malloc(cap);
+    if (!buf) {
+        free(atom_buf);
+        return FAAM_ERR_INSUFFICIENT_MEM;
+    }
+
+    int32_t bytes = io->read(io->user_data, buf, cap);
+    uint32_t chpl_offset = 0;
+
+    if (bytes >= 32) {
+        uint32_t pos = 0;
+        while (pos + 8 <= (uint32_t)bytes) {
+            uint32_t size = read_u32_be(buf + pos);
+            if (size < 8 || pos + size > (uint32_t)bytes) break;
+
+            if (memcmp(buf + pos + 4, "moov", 4) == 0) {
+                uint32_t sub = pos + 8;
+                uint32_t moov_end = pos + size;
+                while (sub + 8 <= moov_end) {
+                    uint32_t sub_size = read_u32_be(buf + sub);
+                    if (sub_size < 8 || sub + sub_size > moov_end) break;
+
+                    if (memcmp(buf + sub + 4, "udta", 4) == 0) {
+                        uint32_t u_sub = sub + 8;
+                        uint32_t udta_end = sub + sub_size;
+                        while (u_sub + 8 <= udta_end) {
+                            uint32_t u_size = read_u32_be(buf + u_sub);
+                            if (u_size < 8 || u_sub + u_size > udta_end) break;
+                            if (memcmp(buf + u_sub + 4, "chpl", 4) == 0) {
+                                chpl_offset = u_sub;
+                                break;
+                            }
+                            u_sub += u_size;
+                        }
+                    }
+                    sub += sub_size;
+                }
+            }
+            pos += size;
+        }
+    }
+    free(buf);
+
+    if (chpl_offset > 0) {
+        io->seek(io->user_data, chpl_offset);
+        io->write(io->user_data, atom_buf, atom_size);
+    }
 
     free(atom_buf);
     return FAAM_OK;
