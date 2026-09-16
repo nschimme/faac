@@ -36,12 +36,18 @@ static const int huffbook_sizes[] = {
 typedef uint16_t HuffLutEntry;
 
 static HuffLutEntry huff_lut_10bit[13][1024];
-static bool huff_luts_initialized = false;
 
-static void init_huffman_luts(void)
+#if defined(_MSC_VER)
+#include <windows.h>
+#include <intrin.h>
+#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
+static volatile long huff_init_state = 0;
+#else
+static volatile int huff_init_state = 0;
+#endif
+
+static void init_huffman_luts_impl(void)
 {
-    if (huff_luts_initialized) return;
-
     for (int b = 1; b <= 11; b++) {
         const hcode16_t *table = huffbook_tables[b];
         int size = huffbook_sizes[b];
@@ -78,8 +84,38 @@ static void init_huffman_luts(void)
         }
         found_sf:;
     }
+}
 
-    huff_luts_initialized = true;
+static void init_huffman_luts(void)
+{
+#if defined(_MSC_VER)
+    if (_InterlockedCompareExchange(&huff_init_state, 1, 0) == 0) {
+        init_huffman_luts_impl();
+        _InterlockedExchange(&huff_init_state, 2);
+    } else {
+        while (_InterlockedCompareExchange(&huff_init_state, 2, 2) != 2) {
+            Sleep(0);
+        }
+    }
+#elif defined(__GNUC__) || defined(__clang__)
+    if (__atomic_load_n(&huff_init_state, __ATOMIC_ACQUIRE) == 2) return;
+    if (__sync_bool_compare_and_swap(&huff_init_state, 0, 1)) {
+        init_huffman_luts_impl();
+        __atomic_store_n(&huff_init_state, 2, __ATOMIC_RELEASE);
+    } else {
+        while (__atomic_load_n(&huff_init_state, __ATOMIC_ACQUIRE) != 2) {
+            #if defined(__x86_64__) || defined(__i386__)
+            __asm__ __volatile__("pause" ::: "memory");
+            #endif
+        }
+    }
+#else
+    static bool init = false;
+    if (!init) {
+        init_huffman_luts_impl();
+        init = true;
+    }
+#endif
 }
 
 static int decode_huffman_symbol(BitReader *bs, int book)

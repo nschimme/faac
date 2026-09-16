@@ -6,7 +6,58 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
+
 #include "faad.h"
+
+#define NUM_THREADS 8
+#define ITERATIONS_PER_THREAD 100
+
+static void run_decoder_iteration(void)
+{
+    faad_config cfg;
+    faad_status st = faad_config_init(&cfg, sizeof(cfg));
+    assert(st == FAAD_OK);
+
+    faad_decoder *dec = NULL;
+    st = faad_decoder_create(&cfg, NULL, 0, &dec);
+    assert(st == FAAD_OK);
+    assert(dec != NULL);
+
+    faad_stream_info info;
+    st = faad_decoder_get_info(dec, &info);
+    assert(st == FAAD_OK);
+
+    st = faad_decoder_flush(dec);
+    assert(st == FAAD_OK);
+
+    faad_decoder_destroy(dec);
+}
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+static DWORD WINAPI thread_test_worker(LPVOID arg)
+{
+    (void)arg;
+    for (int i = 0; i < ITERATIONS_PER_THREAD; i++) {
+        run_decoder_iteration();
+    }
+    return 0;
+}
+#else
+static void *thread_test_worker(void *arg)
+{
+    (void)arg;
+    for (int i = 0; i < ITERATIONS_PER_THREAD; i++) {
+        run_decoder_iteration();
+    }
+    return NULL;
+}
+#endif
 
 int main(void)
 {
@@ -50,6 +101,29 @@ int main(void)
 
     faad_decoder_destroy(dec_heap);
 
-    printf("FAAD3 static placement and heap unit tests passed successfully.\n");
+    /* Test 3: Concurrent Multi-Threaded Stress Test */
+#if defined(_WIN32) && !defined(__MINGW32__)
+    HANDLE threads[NUM_THREADS];
+    for (int i = 0; i < NUM_THREADS; i++) {
+        threads[i] = CreateThread(NULL, 0, thread_test_worker, NULL, 0, NULL);
+        assert(threads[i] != NULL);
+    }
+    WaitForMultipleObjects(NUM_THREADS, threads, TRUE, INFINITE);
+    for (int i = 0; i < NUM_THREADS; i++) {
+        CloseHandle(threads[i]);
+    }
+#else
+    pthread_t threads[NUM_THREADS];
+    for (int i = 0; i < NUM_THREADS; i++) {
+        int rc = pthread_create(&threads[i], NULL, thread_test_worker, NULL);
+        assert(rc == 0);
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+#endif
+
+    printf("FAAD3 static placement, heap, and concurrent multi-threading tests passed successfully.\n");
     return 0;
 }

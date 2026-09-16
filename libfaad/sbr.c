@@ -39,12 +39,18 @@ static float qmf_syn_cos_lut[64][64];
 static float qmf_syn_sin_lut[64][64];
 static float qmf_ana_cos_lut[32][32];
 static float qmf_ana_sin_lut[32][32];
-static bool qmf_twiddles_init = false;
 
-static void init_qmf_twiddles(void)
+#if defined(_MSC_VER)
+#include <windows.h>
+#include <intrin.h>
+#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
+static volatile long qmf_init_state = 0;
+#else
+static volatile int qmf_init_state = 0;
+#endif
+
+static void init_qmf_twiddles_impl(void)
 {
-    if (qmf_twiddles_init) return;
-
     for (int n = 0; n < 64; n++) {
         for (int k = 0; k < 64; k++) {
             float angle = (float)M_PI * (k + 0.5f) * (n - 0.25f) / 64.0f;
@@ -60,8 +66,38 @@ static void init_qmf_twiddles(void)
             qmf_ana_sin_lut[k][n] = sinf(angle);
         }
     }
+}
 
-    qmf_twiddles_init = true;
+static void init_qmf_twiddles(void)
+{
+#if defined(_MSC_VER)
+    if (_InterlockedCompareExchange(&qmf_init_state, 1, 0) == 0) {
+        init_qmf_twiddles_impl();
+        _InterlockedExchange(&qmf_init_state, 2);
+    } else {
+        while (_InterlockedCompareExchange(&qmf_init_state, 2, 2) != 2) {
+            Sleep(0);
+        }
+    }
+#elif defined(__GNUC__) || defined(__clang__)
+    if (__atomic_load_n(&qmf_init_state, __ATOMIC_ACQUIRE) == 2) return;
+    if (__sync_bool_compare_and_swap(&qmf_init_state, 0, 1)) {
+        init_qmf_twiddles_impl();
+        __atomic_store_n(&qmf_init_state, 2, __ATOMIC_RELEASE);
+    } else {
+        while (__atomic_load_n(&qmf_init_state, __ATOMIC_ACQUIRE) != 2) {
+            #if defined(__x86_64__) || defined(__i386__)
+            __asm__ __volatile__("pause" ::: "memory");
+            #endif
+        }
+    }
+#else
+    static bool init = false;
+    if (!init) {
+        init_qmf_twiddles_impl();
+        init = true;
+    }
+#endif
 }
 
 static const float ps_iid_scale_lut[15] = {

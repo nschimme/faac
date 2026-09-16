@@ -59,7 +59,16 @@ static float log10_width_sf_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
-void QuantizeInit(void)
+#if defined(_MSC_VER)
+#include <windows.h>
+#include <intrin.h>
+#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
+static volatile long quant_init_state = 0;
+#else
+static volatile int quant_init_state = 0;
+#endif
+
+static void QuantizeInitImpl(void)
 {
     int i;
 #if defined(HAVE_SSE2)
@@ -82,6 +91,38 @@ void QuantizeInit(void)
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
+}
+
+void QuantizeInit(void)
+{
+#if defined(_MSC_VER)
+    if (_InterlockedCompareExchange(&quant_init_state, 1, 0) == 0) {
+        QuantizeInitImpl();
+        _InterlockedExchange(&quant_init_state, 2);
+    } else {
+        while (_InterlockedCompareExchange(&quant_init_state, 2, 2) != 2) {
+            Sleep(0);
+        }
+    }
+#elif defined(__GNUC__) || defined(__clang__)
+    if (__atomic_load_n(&quant_init_state, __ATOMIC_ACQUIRE) == 2) return;
+    if (__sync_bool_compare_and_swap(&quant_init_state, 0, 1)) {
+        QuantizeInitImpl();
+        __atomic_store_n(&quant_init_state, 2, __ATOMIC_RELEASE);
+    } else {
+        while (__atomic_load_n(&quant_init_state, __ATOMIC_ACQUIRE) != 2) {
+            #if defined(__x86_64__) || defined(__i386__)
+            __asm__ __volatile__("pause" ::: "memory");
+            #endif
+        }
+    }
+#else
+    static int init = 0;
+    if (!init) {
+        QuantizeInitImpl();
+        init = 1;
+    }
+#endif
 }
 
 static inline float sfac_to_gain(int sfac)

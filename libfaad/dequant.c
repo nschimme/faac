@@ -6,20 +6,56 @@
 
 static float pow_4_3_lut[128];
 static float sf_scale_lut[256];
-static bool dequant_tables_init = false;
 
-static void init_dequant_tables(void)
+#if defined(_MSC_VER)
+#include <windows.h>
+#include <intrin.h>
+#pragma intrinsic(_InterlockedCompareExchange, _InterlockedExchange)
+static volatile long dequant_init_state = 0;
+#else
+static volatile int dequant_init_state = 0;
+#endif
+
+static void init_dequant_tables_impl(void)
 {
-    if (dequant_tables_init) return;
-
     for (int i = 0; i < 128; i++) {
         pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
     }
     for (int i = 0; i < 256; i++) {
         sf_scale_lut[i] = powf(2.0f, 0.25f * (i - 100));
     }
+}
 
-    dequant_tables_init = true;
+static void init_dequant_tables(void)
+{
+#if defined(_MSC_VER)
+    if (_InterlockedCompareExchange(&dequant_init_state, 1, 0) == 0) {
+        init_dequant_tables_impl();
+        _InterlockedExchange(&dequant_init_state, 2);
+    } else {
+        while (_InterlockedCompareExchange(&dequant_init_state, 2, 2) != 2) {
+            Sleep(0);
+        }
+    }
+#elif defined(__GNUC__) || defined(__clang__)
+    if (__atomic_load_n(&dequant_init_state, __ATOMIC_ACQUIRE) == 2) return;
+    if (__sync_bool_compare_and_swap(&dequant_init_state, 0, 1)) {
+        init_dequant_tables_impl();
+        __atomic_store_n(&dequant_init_state, 2, __ATOMIC_RELEASE);
+    } else {
+        while (__atomic_load_n(&dequant_init_state, __ATOMIC_ACQUIRE) != 2) {
+            #if defined(__x86_64__) || defined(__i386__)
+            __asm__ __volatile__("pause" ::: "memory");
+            #endif
+        }
+    }
+#else
+    static bool init = false;
+    if (!init) {
+        init_dequant_tables_impl();
+        init = true;
+    }
+#endif
 }
 
 static inline float pow_4_3_fast(int x)
