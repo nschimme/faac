@@ -183,6 +183,7 @@ struct faad_decoder {
     float prev_spec[MAX_CHANNELS][FRAME_LEN_LONG];
 };
 
+void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sample_rate);
 faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec);
 void dequantize_spectrum(ICSInfo *ics, float *spec);

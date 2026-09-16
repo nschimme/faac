@@ -258,20 +258,17 @@ faam_status faam_demuxer_init(void *mem_buf, uint32_t mem_bytes, const faam_io *
     if (d->io.read) {
         if (d->io.seek) d->io.seek(d->io.user_data, 0);
 
-        /* Read header metadata (limit to 128 KB max to avoid buffering mdat payload) */
         size_t buf_cap = 65536;
         size_t buf_len = 0;
         uint8_t *buf = (uint8_t *)malloc(buf_cap);
         if (buf) {
             int32_t r = 0;
-            while (buf_len < 131072) {
+            while (1) {
                 if (buf_len >= buf_cap) {
-                    size_t new_cap = buf_cap * 2;
-                    if (new_cap > 131072) new_cap = 131072;
-                    uint8_t *nb = (uint8_t *)realloc(buf, new_cap);
+                    buf_cap *= 2;
+                    uint8_t *nb = (uint8_t *)realloc(buf, buf_cap);
                     if (!nb) break;
                     buf = nb;
-                    buf_cap = new_cap;
                 }
                 r = d->io.read(d->io.user_data, buf + buf_len, (uint32_t)(buf_cap - buf_len));
                 if (r <= 0) break;

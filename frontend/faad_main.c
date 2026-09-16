@@ -379,9 +379,11 @@ int main(int argc, char **argv)
     fifo_init(&fifo, 262144);
 
     if (is_mp4) {
+        fprintf(stderr, "Starting MP4 loop: num_samples=%u\n", track.num_samples); fflush(stderr);
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
             uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
+            fprintf(stderr, "Sample %u: offset=%llu size=%u\n", s, (unsigned long long)offset, size); fflush(stderr);
             if (offset == 0 || offset + size > (uint64_t)file_len) continue;
 
             uint32_t bytes_consumed = 0;
@@ -439,10 +441,11 @@ int main(int argc, char **argv)
                         uint8_t pop_buf[4096];
                         while (can_pop > 0) {
                             uint32_t chunk = can_pop < sizeof(pop_buf) ? can_pop : sizeof(pop_buf);
-                            fifo_pop(&fifo, pop_buf, chunk);
-                            fwrite(pop_buf, 1, chunk, fout);
-                            total_pcm_bytes += chunk;
-                            can_pop -= chunk;
+                            uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                            if (popped == 0) break;
+                            fwrite(pop_buf, 1, popped, fout);
+                            total_pcm_bytes += popped;
+                            can_pop -= popped;
                         }
                     }
                 }
@@ -493,9 +496,10 @@ int main(int argc, char **argv)
                 uint8_t pop_buf[4096];
                 while (fifo.fill > 0) {
                     uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
-                    fifo_pop(&fifo, pop_buf, chunk);
-                    fwrite(pop_buf, 1, chunk, fout);
-                    total_pcm_bytes += chunk;
+                    uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+                    if (popped == 0) break;
+                    fwrite(pop_buf, 1, popped, fout);
+                    total_pcm_bytes += popped;
                 }
             }
 
@@ -516,9 +520,10 @@ int main(int argc, char **argv)
         uint8_t pop_buf[4096];
         while (fifo.fill > 0) {
             uint32_t chunk = fifo.fill < sizeof(pop_buf) ? fifo.fill : sizeof(pop_buf);
-            fifo_pop(&fifo, pop_buf, chunk);
-            fwrite(pop_buf, 1, chunk, fout);
-            total_pcm_bytes += chunk;
+            uint32_t popped = fifo_pop(&fifo, pop_buf, chunk);
+            if (popped == 0) break;
+            fwrite(pop_buf, 1, popped, fout);
+            total_pcm_bytes += popped;
         }
     }
     fifo_free(&fifo);

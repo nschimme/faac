@@ -429,13 +429,16 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
         }
 
         /* High Frequency Reconstruction with ISO Time-Slot Envelope Gain Interpolation */
+        int num_env = (sbr->bs_num_env > 0 && sbr->bs_num_env <= 8) ? sbr->bs_num_env : 1;
+        int step = 32 / num_env;
+
         for (int t = 0; t < 32; t++) {
-            int env_curr = (t * sbr->bs_num_env) / 32;
-            int env_next = (env_curr + 1 < sbr->bs_num_env) ? env_curr + 1 : env_curr;
+            int env_curr = (t * num_env) / 32;
+            int env_next = (env_curr + 1 < num_env) ? env_curr + 1 : env_curr;
             if (env_curr >= 8) env_curr = 7;
             if (env_next >= 8) env_next = 7;
 
-            float alpha = (float)(t % (32 / sbr->bs_num_env)) / (float)(32 / sbr->bs_num_env);
+            float alpha = (float)(t % step) / (float)step;
 
             for (int k = 32; k < 64; k++) {
                 int src_k = k - 32;

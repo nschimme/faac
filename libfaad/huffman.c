@@ -5,7 +5,7 @@
 #include "faad_internal.h"
 #include "sfb_tables.h"
 
-static void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
+void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
 {
     int sr_idx = get_sr_index(sample_rate);
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {

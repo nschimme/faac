@@ -51,8 +51,11 @@ static void decode_section_data(BitReader *bs, ICSInfo *ics)
             uint32_t cb = bits_get(bs, 4);
             uint32_t len = bits_get(bs, sect_bits);
             while (len == ((1U << sect_bits) - 1)) {
-                len += bits_get(bs, sect_bits);
+                uint32_t esc_len = bits_get(bs, sect_bits);
+                len += esc_len;
+                if (esc_len == 0) break;
             }
+            if (len == 0) len = 1;
             ics->sect_cb[g][i] = cb;
             ics->sect_start[g][i] = k;
             ics->sect_end[g][i] = (k + len <= 64) ? (k + len) : 64;
@@ -112,6 +115,10 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
     if (!common_window) {
         decode_ics_info(bs, ics);
     }
+
+    extern void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate);
+    setup_sfb_offsets(ics, dec->sample_rate);
+
     decode_section_data(bs, ics);
 
     ics->pulse_data_present = bits_get(bs, 1);
