@@ -3,6 +3,16 @@ option('frontend',
     type: 'boolean',
     value: true)
 
+option('decoder-sbr',
+    description: 'Enable SBR (HE-AAC v1) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-ps',
+    description: 'Enable Parametric Stereo (HE-AAC v2) support in libfaad',
+    type: 'boolean',
+    value: true)
+
 option('decoder',
     description: 'Build the FAAD decoder library and frontend executable',
     type: 'boolean',
