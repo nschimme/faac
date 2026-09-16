@@ -59,14 +59,13 @@ void dequantize_spectrum(ICSInfo *ics, float *spec)
                 if (end_k > FRAME_LEN_LONG) end_k = FRAME_LEN_LONG;
 
                 for (int w = 0; w < ics->window_group_length[g]; w++) {
-                    int win_idx = window_offset + w;
-                    for (int k = start_k; k < end_k; k++) {
-                        int idx = win_idx * 128 + k;
-                        if (idx >= 0 && idx < FRAME_LEN_LONG) {
-                            int val = (int)(spec[idx]);
-                            if (val != 0) {
-                                spec[idx] = pow_4_3_fast(val) * scale;
-                            }
+                    float * restrict ptr = spec + (window_offset + w) * 128 + start_k;
+                    int len = end_k - start_k;
+                    for (int k = 0; k < len; k++) {
+                        float quant = ptr[k];
+                        if (quant != 0.0f) {
+                            int val = (int)quant;
+                            ptr[k] = pow_4_3_fast(val) * scale;
                         }
                     }
                 }

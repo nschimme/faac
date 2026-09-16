@@ -281,15 +281,16 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
         /* Shift 640-sample QMF delay line history by 64 samples */
         memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
 
-        /* Fast precalculated twiddle 64-subband IDFT for current slot */
+        /* Fast precalculated twiddle 64-subband IDFT for current slot with restrict pointers */
+        const float * restrict re_ptr = qmf_real[t];
+        const float * restrict im_ptr = qmf_imag[t];
+
         for (int n = 0; n < 64; n++) {
             float sum = 0.0f;
-            const float *c_row = qmf_syn_cos_lut[n];
-            const float *s_row = qmf_syn_sin_lut[n];
+            const float * restrict c_row = qmf_syn_cos_lut[n];
+            const float * restrict s_row = qmf_syn_sin_lut[n];
             for (int k = 0; k < 64; k++) {
-                float re = qmf_real[t][k];
-                float im = qmf_imag[t][k];
-                sum += re * c_row[k] - im * s_row[k];
+                sum += re_ptr[k] * c_row[k] - im_ptr[k] * s_row[k];
             }
             sbr->qmf_ovl[576 + n] = sum * 0.03125f;
         }
