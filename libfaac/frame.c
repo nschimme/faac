@@ -37,10 +37,13 @@
  * lands, the more spectrum SBR is rescuing. 8000 is HE-AAC's design floor and
  * the lowest rate measured. */
 #define HE_MIN_BITRATE_PER_CH 8000
-/* Crossover measured on the refitted LC curve: HE leads by 0.070 MOS at 24000
- * per channel and trails by 0.011 at 28000. A wider LC core moves this down --
- * refit the curve and this constant has to be re-measured with it. */
-#define HE_MAX_BITRATE_PER_CH 26000
+/* Crossover measured against the LC curve at 48 kHz: HE still leads at
+ * 32000 per channel and ties at 48000, with no rung measured between. At
+ * 44.1 kHz it already ties at 32000, so the ceiling reaches this value
+ * only at HE_MAX_SAMPLE_RATE. Either side moving (a wider LC core, a
+ * better SBR) re-opens this constant. */
+#define HE_MAX_BITRATE_PER_CH 32000
+#define HE_MAX_SAMPLE_RATE    48000
 /* Frozen, not derived: quantqual doesn't map onto a bitrate ceiling cleanly
  * (the two are off by 2-4.5x across the range), so this is set by measurement.
  * Deriving it from HE_MAX_BITRATE_PER_CH instead would flip -q 42+ to LC for
@@ -210,32 +213,26 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned long rate_per_ch = config->bitRate;
         int rate_ok;
         if (rate_per_ch > 0) {
-            /* Below 44.1 kHz, SBR has less core bandwidth to extend from, so the
+            /* Below 48 kHz, SBR has less core bandwidth to extend from, so the
              * ceiling ramps down toward 20000 bps/ch at the HE_MIN_SAMPLE_RATE floor. */
             unsigned int max_he_rate = 0;
-            if (hEncoder->sampleRate >= 44100) {
+            if (hEncoder->sampleRate >= HE_MAX_SAMPLE_RATE) {
                 max_he_rate = HE_MAX_BITRATE_PER_CH;
             } else if (hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) {
-                max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - 32000) *
-                              (HE_MAX_BITRATE_PER_CH - 20000) / (44100 - 32000));
+                max_he_rate = 20000 + (unsigned int)((hEncoder->sampleRate - HE_MIN_SAMPLE_RATE) *
+                              (HE_MAX_BITRATE_PER_CH - 20000) / (HE_MAX_SAMPLE_RATE - HE_MIN_SAMPLE_RATE));
             }
             rate_ok = (rate_per_ch >= HE_MIN_BITRATE_PER_CH && rate_per_ch <= max_he_rate);
         } else {
             rate_ok = (config->quantqual <= HE_VBR_QUANTQUAL_MAX);
         }
-        /* One SBR payload per frame, bound to the element it follows, so it
-         * serves a single SCE or CPE. Past two channels the rest get no SBR,
-         * and with an LFE present it lands on ID_LFE, which decoders reject. */
-        int channels_ok = (hEncoder->numChannels <= SBR_MAX_CODED_CHANNELS);
-
         hEncoder->config.aacObjectType =
-            (rate_ok && channels_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
+            (rate_ok && hEncoder->sampleRate >= HE_MIN_SAMPLE_RATE) ? HE_V1 : LOW;
         config->aacObjectType = hEncoder->config.aacObjectType;
     }
 
     if (hEncoder->config.aacObjectType == HE_V1
-        && (hEncoder->sampleRate < HE_MIN_SAMPLE_RATE
-            || hEncoder->numChannels > SBR_MAX_CODED_CHANNELS))
+        && hEncoder->sampleRate < HE_MIN_SAMPLE_RATE)
         return 0;
 
     /* HE-AAC: encode the core as AAC-LC; SBR rebuilds the top octave. The core
@@ -382,6 +379,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
               &hEncoder->aacquantCfg,
               hEncoder->sfbOffsetShort,
               hEncoder->sfbOffsetLong);
+
+    {
+        const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
+        const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
+        StereoConfigure(&hEncoder->stereoCfg, (JointMode)hEncoder->config.jointmode, hEncoder->sampleRate,
+                        hEncoder->config.bandWidth, hEncoder->config.bitRate, sfbOffset, sfbn);
+    }
 
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
@@ -667,7 +671,7 @@ __attribute__((cold, noinline))
 static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
                          float *heHalfRate[MAX_CHANNELS])
 {
-    SbrContextProcessFrame(hEncoder->sbrContext, hEncoder->numChannels, (int)realPerCh,
+    SbrContextProcessFrame(hEncoder->sbrContext, hEncoder->numChannels, hEncoder->isLfeChannel, (int)realPerCh,
                            (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
 }
 
@@ -697,7 +701,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
     unsigned int useTns = hEncoder->config.useTns;
-    unsigned int jointmode = hEncoder->config.jointmode;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
@@ -948,8 +951,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
-              (float)hEncoder->aacquantCfg.quality/DEFQUAL, jointmode, hEncoder->sampleRate,
-              hEncoder->config.bandWidth);
+              (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
 
     /* AACstereo has already consumed freqBuff in place and BlocQuant
      * accumulates into sf[] while reading book[], so a retry can re-run
