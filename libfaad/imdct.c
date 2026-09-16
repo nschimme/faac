@@ -143,8 +143,9 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
     float imdct_out[FRAME_LEN_LONG * 2];
     memset(imdct_out, 0, sizeof(imdct_out));
 
-    const float *win_long = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
-    const float *win_short = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+    const float * restrict win_long = (ics->window_shape == KBD_WINDOW) ? kbd_window_2048 : sine_window_2048;
+    const float * restrict win_short = (ics->window_shape == KBD_WINDOW) ? kbd_window_256 : sine_window_256;
+    float * restrict overlap_ch = dec->overlap[ch];
 
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         float short_out[256];
@@ -191,7 +192,7 @@ void imdct_and_window(struct faad_decoder *dec, uint32_t ch, ICSInfo *ics, float
 
     /* Overlap-add with previous frame overlap buffer */
     for (int i = 0; i < FRAME_LEN_LONG; i++) {
-        out_pcm[i] = imdct_out[i] + dec->overlap[ch][i];
-        dec->overlap[ch][i] = imdct_out[FRAME_LEN_LONG + i];
+        out_pcm[i] = imdct_out[i] + overlap_ch[i];
+        overlap_ch[i] = imdct_out[FRAME_LEN_LONG + i];
     }
 }

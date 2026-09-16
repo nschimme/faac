@@ -294,14 +294,23 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
             sbr->qmf_ovl[576 + n] = sum * 0.03125f;
         }
 
-        /* Extract 64 time-domain output samples from windowed delay line history */
+        /* Extract 64 time-domain output samples with unit-stride auto-vectorizable inner loop */
+        const float * restrict ovl_ptr = sbr->qmf_ovl;
+        const float * restrict win_ptr = qmf_c;
+        float * restrict out_ptr = out + t * 64;
+
         for (int n = 0; n < 64; n++) {
-            float sample = 0.0f;
-            for (int j = 0; j < 10; j++) {
-                int idx = j * 64 + n;
-                sample += sbr->qmf_ovl[idx] * qmf_c[idx];
-            }
-            out[t * 64 + n] = sample;
+            float sample = ovl_ptr[n] * win_ptr[n]
+                         + ovl_ptr[64 + n] * win_ptr[64 + n]
+                         + ovl_ptr[128 + n] * win_ptr[128 + n]
+                         + ovl_ptr[192 + n] * win_ptr[192 + n]
+                         + ovl_ptr[256 + n] * win_ptr[256 + n]
+                         + ovl_ptr[320 + n] * win_ptr[320 + n]
+                         + ovl_ptr[384 + n] * win_ptr[384 + n]
+                         + ovl_ptr[448 + n] * win_ptr[448 + n]
+                         + ovl_ptr[512 + n] * win_ptr[512 + n]
+                         + ovl_ptr[576 + n] * win_ptr[576 + n];
+            out_ptr[n] = sample;
         }
     }
 }
