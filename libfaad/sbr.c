@@ -119,15 +119,27 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
     return FAAD_OK;
 }
 
-/* 32-subband QMF analysis filterbank */
+/* 32-subband QMF analysis filterbank with 320-tap prototype windowing */
 static void qmf_analysis_320(const float *in, float qmf_real[32][32], float qmf_imag[32][32])
 {
+    float ovl[320];
+    memset(ovl, 0, sizeof(ovl));
+
     for (int t = 0; t < 32; t++) {
+        memmove(&ovl[0], &ovl[32], 288 * sizeof(float));
+        for (int n = 0; n < 32; n++) {
+            ovl[288 + n] = in[t * 32 + n];
+        }
+
         for (int k = 0; k < 32; k++) {
             float sum_r = 0.0f;
             float sum_i = 0.0f;
             for (int n = 0; n < 32; n++) {
-                float sample = in[t * 32 + n];
+                float sample = 0.0f;
+                for (int j = 0; j < 5; j++) {
+                    int idx = j * 64 + 2 * n;
+                    sample += ovl[j * 64 + n] * qmf_c[idx];
+                }
                 float angle = (float)M_PI * (k + 0.5f) * (n - 0.5f) / 32.0f;
                 sum_r += sample * cosf(angle);
                 sum_i += sample * sinf(angle);

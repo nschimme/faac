@@ -270,9 +270,9 @@ int main(int argc, char **argv)
             return 1;
         }
         for (uint32_t s = 0; s < track.num_samples; s++) {
-            uint32_t offset = track.samples[s].offset;
+            uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
-            if (offset > 0 && offset + size <= (uint32_t)file_len) {
+            if (offset > 0 && offset + size <= (uint64_t)file_len) {
                 uint8_t adts_hdr[7] = { 0xFF, 0xF1, 0x50, 0x80, 0x00, 0x1F, 0xFC };
                 uint32_t frame_len = size + 7;
                 adts_hdr[3] = (uint8_t)(0x80 | ((frame_len >> 11) & 0x03));
@@ -351,9 +351,9 @@ int main(int argc, char **argv)
 
     if (is_mp4) {
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
-            uint32_t offset = track.samples[s].offset;
+            uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
-            if (offset == 0 || offset + size > (uint32_t)file_len) continue;
+            if (offset == 0 || offset + size > (uint64_t)file_len) continue;
 
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
