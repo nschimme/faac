@@ -97,18 +97,12 @@ const char *usage =
     "Usage: %s [options] infile\n\n";
 
 static help_t help_qual[] = {
-    {"Rate control: -q (VBR), -b (ABR, default 128), -b --cbr (CBR);\n"
-     "\t\t--cap-rate bounds any frame in any mode.\n",
-    "\t\tVBR holds a quality and lets the bitrate follow the material;\n"
-    "\t\tABR holds an average over the file; CBR holds it in every\n"
-    "\t\tframe. -q with --cap-rate is capped VBR: constant quality, no\n"
-    "\t\tframe above the cap. -q and -b are exclusive.\n"},
-    {"-q <quality>\tSet encoding quality. (VBR)\n",
-    "\t\tConstant quality, 1..5000, default 100; higher is better and\n"
-    "\t\tcosts more bits. With --object-type auto, -q up to 75 uses\n"
-    "\t\tHE-AAC v1. On 44.1/48 kHz stereo music, -q 50 lands at 22-33\n"
-    "\t\tkbps (HE-AAC), -q 100 at 55-110 (median 75), -q 200 at\n"
-    "\t\t80-175 (median 125).\n"},
+    {"-q <quality>\tSet encoding quality.\n",
+    "\t\tSet default variable bitrate (VBR) quantizer quality in percent.\n"
+    "\t\tmax. 5000, min. 10.\n"
+    "\t\tdefault: 100, averages at approx. 120 kbps VBR for a normal\n"
+    "\t\tstereo input file with 16 bit and 44.1 kHz sample rate\n"
+    },
     {"-b <bitrate>\tSet average bitrate to x kbps. (ABR)\n",
     "\t\tSet average bitrate (ABR) to approximately <bitrate> kbps.\n"
     "\t\tmax. ~500 (stereo)\n"},
@@ -118,19 +112,14 @@ static help_t help_qual[] = {
     "\t\trate lands exactly; ADTS declares the buffer fullness, MP4 the\n"
     "\t\tbuffer size. For constant-rate channels and matched-rate tests;\n"
     "\t\ton a file or a packet network the stuffing is bytes for nothing.\n"},
-    {"-c <freq>\tCut the audio off above <freq> Hz.\n",
-    "\t\tLeft out, the encoder chooses the cutoff from the bitrate,\n"
-    "\t\tbetween 14 and 19 kHz on most stereo settings; VBR codes up to\n"
-    "\t\t19 kHz. It is printed at the start. Set it as high as half the\n"
-    "\t\tsample rate to keep everything; the bitrate rises with it.\n"
-    "\t\tHE-AAC sets its own and ignores this. The actual frequency is\n"
-    "\t\tadjusted to a band edge.\n"},
+    {"-c <freq>\tSet the bandwidth in Hz.\n",
+    "\t\tThe actual frequency is adjusted to maximize upper spectral band\n"
+    "\t\tusage.\n"},
     {"--cap-rate <bitrate>\tCap any single frame at x kbps.\n",
     "\t\tFor packet-oriented transports that cannot fragment a frame, where\n"
-    "\t\tan oversized frame is dropped rather than split, and for bounding\n"
-    "\t\tVBR (-q). Must be >= the -b bitrate. Best-effort: quality is\n"
-    "\t\tbacked off until the frame fits, so pathological input can still\n"
-    "\t\texceed the cap.\n"},
+    "\t\tan oversized frame is dropped rather than split. Must be >= the -b\n"
+    "\t\tbitrate. Best-effort: quality is backed off until the frame fits,\n"
+    "\t\tso pathological input can still exceed the cap.\n"},
     {NULL, NULL}
 };
 
@@ -274,13 +263,11 @@ static void help0(help_t *h, int l)
     printf("\n\n");
 }
 
-static void help(int mode, const char *lib_version)
+static void help(int mode)
 {
     int cnt;
     static const char *name = "faac";
 
-    char ver_buf[128];
-    printf("FAAC %s\n", faac_version_string(ver_buf, sizeof(ver_buf), lib_version ? lib_version : PACKAGE_VERSION));
     printf(usage, name);
     switch (mode)
     {
@@ -391,8 +378,6 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     {
         fprintf(stderr, "Quantization quality: %u\n", info->quant_quality);
     }
-    if (opts->max_bit_rate)
-        fprintf(stderr, "Peak bitrate: %u kbps\n", (opts->max_bit_rate + 500) / 1000);
     fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
     if (info->pns_level > 0)
         fprintf(stderr, "PNS level: %d\n", info->pns_level);
@@ -480,8 +465,6 @@ int main(int argc, char *argv[])
     bool aacFileNameGiven = false;
     bool stream_flag_given = false;
     bool has_custom_tags = false;
-    bool quality_given = false;
-    bool bitrate_given = false;
     const char *dieMessage = NULL;
     int ret = 0;
 
@@ -543,7 +526,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        help('?', libinfo.version);
+        help('?');
         ret = 1;
         goto cleanup;
     }
@@ -640,11 +623,9 @@ int main(int argc, char *argv[])
             break;
         case 'b':
             parse_quality_or_bitrate(optarg, true, &opts);
-            bitrate_given = true;
             break;
         case 'q':
             parse_quality_or_bitrate(optarg, false, &opts);
-            quality_given = true;
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)
@@ -844,12 +825,12 @@ int main(int argc, char *argv[])
         case HELP_ADVANCED:
         case 'H':
         case 'h':
-            help(c, libinfo.version);
+            help(c);
             ret = 1;
             goto cleanup;
         case '?':
         default:
-            help('?', libinfo.version);
+            help('?');
             ret = 1;
             goto cleanup;
         }
@@ -865,10 +846,6 @@ int main(int argc, char *argv[])
     {
         dieMessage = "No input file specified.\n";
     }
-
-    /* The last one would silently win; the user meant one mode. */
-    if (!dieMessage && quality_given && bitrate_given)
-        dieMessage = "-q and -b are exclusive; use --cap-rate to bound VBR.\n";
 
     if (dieMessage)
     {
@@ -911,8 +888,7 @@ int main(int argc, char *argv[])
 
     if (opts.verbose > 0 && libinfo.version)
     {
-        char ver_buf[128];
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
     }
 
     opts.output_filename = aacFileName;

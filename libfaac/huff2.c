@@ -259,7 +259,7 @@ int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
 }
 
 /* Encode the section data (codebook indices and run lengths). */
-int writebooks(CoderInfo *coder, BitStream *stream)
+int writebooks(CoderInfo *coder, BitStream *stream, int write)
 {
     int bits = 0;
     /* Section run field is 3 bits for short windows (max 7 windows/section) and
@@ -269,7 +269,7 @@ int writebooks(CoderInfo *coder, BitStream *stream)
     int g;
     BitAccumulator acc = {0};
 
-    AccumBegin(&acc, stream);
+    if (write) AccumBegin(&acc, stream);
 
     for (g = 0; g < coder->groups.n; g++) {
         int b = g * coder->sfbn;
@@ -280,25 +280,25 @@ int writebooks(CoderInfo *coder, BitStream *stream)
             while (b + run < end && coder->book[b + run] == book) run++;
             b += run;
 
-            AccumPutBits(&acc, (uint32_t)book, 4);
+            if (write) AccumPutBits(&acc, (uint32_t)book, 4);
             bits += 4;
 
             while (run >= max_run) {
-                AccumPutBits(&acc, (uint32_t)max_run, run_bits);
+                if (write) AccumPutBits(&acc, (uint32_t)max_run, run_bits);
                 bits += run_bits;
                 run -= max_run;
             }
-            AccumPutBits(&acc, (uint32_t)run, run_bits);
+            if (write) AccumPutBits(&acc, (uint32_t)run, run_bits);
             bits += run_bits;
         }
     }
 
-    AccumEnd(&acc);
+    if (write) AccumEnd(&acc);
     return bits;
 }
 
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
-int writesf(CoderInfo *coder, BitStream *stream)
+int writesf(CoderInfo *coder, BitStream *stream, int write)
 {
     int i, bits = 0;
     int lastsf = coder->global_gain;
@@ -307,7 +307,7 @@ int writesf(CoderInfo *coder, BitStream *stream)
     int is_first_pns = 1;
     BitAccumulator acc = {0};
 
-    AccumBegin(&acc, stream);
+    if (write) AccumBegin(&acc, stream);
 
     for (i = 0; i < coder->bandcnt; i++) {
         int book = coder->book[i];
@@ -324,7 +324,7 @@ int writesf(CoderInfo *coder, BitStream *stream)
             if (is_first_pns) {
                 /* First PNS band is coded as an absolute 9-bit value (biased by 256)
                  * because there is no prior PNS entry to delta from yet. */
-                AccumPutBits(&acc, (uint32_t)(diff + 256), 9);
+                if (write) AccumPutBits(&acc, (uint32_t)(diff + 256), 9);
                 bits += 9;
                 lastpns = val;
                 is_first_pns = 0;
@@ -339,10 +339,10 @@ int writesf(CoderInfo *coder, BitStream *stream)
 
         code = book12[SF_DELTA + diff].data;
         len = book12[SF_DELTA + diff].len;
-        AccumPutBits(&acc, (uint32_t)code, len);
+        if (write) AccumPutBits(&acc, (uint32_t)code, len);
         bits += len;
     }
 
-    AccumEnd(&acc);
+    if (write) AccumEnd(&acc);
     return bits;
 }
