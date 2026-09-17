@@ -74,6 +74,8 @@ typedef struct {
 } TnsInfo;
 
 typedef struct CoderInfo {
+    int window_shape;
+    int prev_window_shape;
     int block_type;
     int desired_block_type;
 
