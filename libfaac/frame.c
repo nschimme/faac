@@ -30,6 +30,7 @@
 #include "stereo.h"
 #include "sbr.h"
 #include "ratecontrol.h"
+#include "asc_codec.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -141,11 +142,11 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
     *ppBuffer = (unsigned char *)malloc(2);
 
     if(*ppBuffer != NULL){
-        BitStream bs;
-        InitBitStream(&bs, *ppBuffer, 2); /* zeroes the buffer, so the 3 trailing pad bits need no write */
-        PutBit(&bs, hEncoder->config.aacObjectType, 5);
-        PutBit(&bs, hEncoder->sampleRateIdx,        4);
-        PutBit(&bs, hEncoder->numChannels,          4);
+        AscBuildInfo info = {0};
+        info.object_type = (uint8_t)hEncoder->config.aacObjectType;
+        info.sr_idx = (uint8_t)hEncoder->sampleRateIdx;
+        info.channels = (uint8_t)hEncoder->numChannels;
+        asc_codec_build(&info, *ppBuffer, 2);
         return 0;
     } else {
         return -3;
