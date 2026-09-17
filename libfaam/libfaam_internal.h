@@ -99,34 +99,115 @@ struct faam_muxer {
     int mem_error;
 };
 
-/* Endian utilities */
+/* Byte swap & Endian utilities */
+#if defined(__has_builtin)
+#  if __has_builtin(__builtin_bswap16) && __has_builtin(__builtin_bswap32) && __has_builtin(__builtin_bswap64)
+#    define FAAM_BSWAP16 __builtin_bswap16
+#    define FAAM_BSWAP32 __builtin_bswap32
+#    define FAAM_BSWAP64 __builtin_bswap64
+#  endif
+#elif defined(__GNUC__)
+#  define FAAM_BSWAP16 __builtin_bswap16
+#  define FAAM_BSWAP32 __builtin_bswap32
+#  define FAAM_BSWAP64 __builtin_bswap64
+#elif defined(_MSC_VER)
+#  define FAAM_BSWAP16 _byteswap_ushort
+#  define FAAM_BSWAP32 _byteswap_ulong
+#  define FAAM_BSWAP64 _byteswap_uint64
+#endif
+
+#ifndef FAAM_BSWAP16
+static inline uint16_t FAAM_BSWAP16(uint16_t x) {
+    return (uint16_t)((x >> 8) | (x << 8));
+}
+#endif
+
+#ifndef FAAM_BSWAP32
+static inline uint32_t FAAM_BSWAP32(uint32_t x) {
+    return (x >> 24) | ((x >> 8) & 0xff00) | ((x << 8) & 0xff0000) | (x << 24);
+}
+#endif
+
+#ifndef FAAM_BSWAP64
+static inline uint64_t FAAM_BSWAP64(uint64_t x) {
+    return ((x >> 56) & 0x00000000000000FFULL) |
+           ((x >> 40) & 0x000000000000FF00ULL) |
+           ((x >> 24) & 0x0000000000FF0000ULL) |
+           ((x >> 8)  & 0x00000000FF000000ULL) |
+           ((x << 8)  & 0x000000FF00000000ULL) |
+           ((x << 24) & 0x0000FF0000000000ULL) |
+           ((x << 40) & 0x00FF000000000000ULL) |
+           ((x << 56) & 0xFF00000000000000ULL);
+}
+#endif
+
+#if (defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#  define FAAM_IS_BIG_ENDIAN 1
+#else
+#  define FAAM_IS_BIG_ENDIAN 0
+#endif
+
 static inline uint16_t read_u16_be(const uint8_t *b) {
-    return (uint16_t)((b[0] << 8) | b[1]);
+#if FAAM_IS_BIG_ENDIAN
+    uint16_t v;
+    memcpy(&v, b, sizeof(v));
+    return v;
+#else
+    uint16_t v;
+    memcpy(&v, b, sizeof(v));
+    return FAAM_BSWAP16(v);
+#endif
 }
 
 static inline uint32_t read_u32_be(const uint8_t *b) {
-    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+#if FAAM_IS_BIG_ENDIAN
+    uint32_t v;
+    memcpy(&v, b, sizeof(v));
+    return v;
+#else
+    uint32_t v;
+    memcpy(&v, b, sizeof(v));
+    return FAAM_BSWAP32(v);
+#endif
 }
 
 static inline uint64_t read_u64_be(const uint8_t *b) {
-    return ((uint64_t)read_u32_be(b) << 32) | (uint64_t)read_u32_be(b + 4);
+#if FAAM_IS_BIG_ENDIAN
+    uint64_t v;
+    memcpy(&v, b, sizeof(v));
+    return v;
+#else
+    uint64_t v;
+    memcpy(&v, b, sizeof(v));
+    return FAAM_BSWAP64(v);
+#endif
 }
 
 static inline void write_u16_be(uint8_t *b, uint16_t val) {
-    b[0] = (uint8_t)(val >> 8);
-    b[1] = (uint8_t)val;
+#if FAAM_IS_BIG_ENDIAN
+    memcpy(b, &val, sizeof(val));
+#else
+    uint16_t v = FAAM_BSWAP16(val);
+    memcpy(b, &v, sizeof(v));
+#endif
 }
 
 static inline void write_u32_be(uint8_t *b, uint32_t val) {
-    b[0] = (uint8_t)(val >> 24);
-    b[1] = (uint8_t)(val >> 16);
-    b[2] = (uint8_t)(val >> 8);
-    b[3] = (uint8_t)val;
+#if FAAM_IS_BIG_ENDIAN
+    memcpy(b, &val, sizeof(val));
+#else
+    uint32_t v = FAAM_BSWAP32(val);
+    memcpy(b, &v, sizeof(v));
+#endif
 }
 
 static inline void write_u64_be(uint8_t *b, uint64_t val) {
-    write_u32_be(b, (uint32_t)(val >> 32));
-    write_u32_be(b + 4, (uint32_t)val);
+#if FAAM_IS_BIG_ENDIAN
+    memcpy(b, &val, sizeof(val));
+#else
+    uint64_t v = FAAM_BSWAP64(val);
+    memcpy(b, &v, sizeof(v));
+#endif
 }
 
 #endif /* LIBFAAM_INTERNAL_H */

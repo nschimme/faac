@@ -9,26 +9,19 @@
 #define ITUNES_DATA_UINT8  0x15
 #define ITUNES_DATA_IMAGE  0x0d
 
-static inline void write_u32(uint8_t *b, uint32_t val) {
-    b[0] = (uint8_t)(val >> 24);
-    b[1] = (uint8_t)(val >> 16);
-    b[2] = (uint8_t)(val >> 8);
-    b[3] = (uint8_t)val;
-}
-
 static uint32_t append_data_box(uint8_t *dst, const char *name, uint32_t type_code, const void *data, size_t len) {
     if (!name || !data || len == 0) return 0;
     uint32_t box_size = 8 + 16 + (uint32_t)len;
 
     /* Atom box header */
-    write_u32(dst, box_size);
+    write_u32_be(dst, box_size);
     memcpy(dst + 4, name, 4);
 
     /* Data box header */
-    write_u32(dst + 8, 16 + (uint32_t)len);
+    write_u32_be(dst + 8, 16 + (uint32_t)len);
     memcpy(dst + 12, "data", 4);
-    write_u32(dst + 16, type_code);
-    write_u32(dst + 20, 0);
+    write_u32_be(dst + 16, type_code);
+    write_u32_be(dst + 20, 0);
 
     memcpy(dst + 24, data, len);
     return box_size;
@@ -63,7 +56,7 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     if (meta->comment[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251cmt", ITUNES_DATA_TEXT, meta->comment, strlen(meta->comment));
     if (meta->encoder[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251too", ITUNES_DATA_TEXT, meta->encoder, strlen(meta->encoder));
 
-    write_u32(ilst_buf, ilst_len);
+    write_u32_be(ilst_buf, ilst_len);
     memcpy(ilst_buf + 4, "ilst", 4);
 
     /* Locate ilst atom inside moov/udta/meta */
@@ -121,12 +114,12 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
                 io->seek(io->user_data, ilst_offset);
                 io->write(io->user_data, ilst_buf, ilst_len);
                 uint8_t free_box[8];
-                write_u32(free_box, diff);
+                write_u32_be(free_box, diff);
                 memcpy(free_box + 4, "free", 4);
                 io->write(io->user_data, free_box, 8);
             } else {
                 /* Pad atom size to match old_ilst_size exactly */
-                write_u32(ilst_buf, old_ilst_size);
+                write_u32_be(ilst_buf, old_ilst_size);
                 io->seek(io->user_data, ilst_offset);
                 io->write(io->user_data, ilst_buf, ilst_len);
             }
@@ -138,17 +131,17 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
 
             if (meta_offset > 0) {
                 uint32_t meta_sz = read_u32_be(buf + meta_offset) + delta;
-                uint8_t hdr[4]; write_u32(hdr, meta_sz);
+                uint8_t hdr[4]; write_u32_be(hdr, meta_sz);
                 io->seek(io->user_data, meta_offset); io->write(io->user_data, hdr, 4);
             }
             if (udta_offset > 0) {
                 uint32_t udta_sz = read_u32_be(buf + udta_offset) + delta;
-                uint8_t hdr[4]; write_u32(hdr, udta_sz);
+                uint8_t hdr[4]; write_u32_be(hdr, udta_sz);
                 io->seek(io->user_data, udta_offset); io->write(io->user_data, hdr, 4);
             }
             if (pos > 0) { /* moov */
                 uint32_t moov_sz = read_u32_be(buf) + delta;
-                uint8_t hdr[4]; write_u32(hdr, moov_sz);
+                uint8_t hdr[4]; write_u32_be(hdr, moov_sz);
                 io->seek(io->user_data, 0); io->write(io->user_data, hdr, 4);
             }
         }
@@ -158,9 +151,9 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     } else if (udta_offset > 0) {
         uint8_t meta_wrap[16384 + 12];
         uint32_t meta_len = 12 + ilst_len;
-        write_u32(meta_wrap, meta_len);
+        write_u32_be(meta_wrap, meta_len);
         memcpy(meta_wrap + 4, "meta", 4);
-        write_u32(meta_wrap + 8, 0); /* flags */
+        write_u32_be(meta_wrap + 8, 0); /* flags */
         memcpy(meta_wrap + 12, ilst_buf, ilst_len);
 
         io->seek(io->user_data, udta_offset + 8);

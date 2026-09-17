@@ -20,8 +20,22 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
     /* Fast single-word 32-bit shift-accumulator path */
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
         const uint8_t *ptr = bs->buffer + bs->byte_pos;
-        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
-                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t word;
+#if (defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+        memcpy(&word, ptr, sizeof(word));
+#elif defined(__has_builtin) && __has_builtin(__builtin_bswap32)
+        memcpy(&word, ptr, sizeof(word));
+        word = __builtin_bswap32(word);
+#elif defined(__GNUC__)
+        memcpy(&word, ptr, sizeof(word));
+        word = __builtin_bswap32(word);
+#elif defined(_MSC_VER)
+        memcpy(&word, ptr, sizeof(word));
+        word = _byteswap_ulong(word);
+#else
+        word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
+               ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+#endif
         uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;

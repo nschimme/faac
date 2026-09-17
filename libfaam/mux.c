@@ -5,28 +5,9 @@
 #include <stdio.h>
 #include "libfaam_internal.h"
 
-#if defined(__has_builtin)
-#if __has_builtin(__builtin_bswap32) && __has_builtin(__builtin_bswap16)
-#define MP4_HAVE_BSWAP_BUILTINS 1
-#endif
-#elif defined(__GNUC__)
-#define MP4_HAVE_BSWAP_BUILTINS 1
-#endif
-
-#if defined(MP4_HAVE_BSWAP_BUILTINS)
-#define BSWAP32 __builtin_bswap32
-#define BSWAP16 __builtin_bswap16
-#elif defined(_MSC_VER)
-#define BSWAP32 _byteswap_ulong
-#define BSWAP16 _byteswap_ushort
-#else
-static inline uint32_t BSWAP32(uint32_t x) {
-    return (x >> 24) | ((x >> 8) & 0xff00) | ((x << 8) & 0xff0000) | (x << 24);
-}
-static inline uint16_t BSWAP16(uint16_t x) {
-    return (uint16_t)((x >> 8) | (x << 8));
-}
-#endif
+#define BSWAP32 FAAM_BSWAP32
+#define BSWAP16 FAAM_BSWAP16
+#define BSWAP64 FAAM_BSWAP64
 
 enum {
     MP4_EPOCH_OFFSET = 2082844800,
@@ -79,37 +60,21 @@ static inline void mem_write(faam_muxer *m, const void *data, size_t size) {
 }
 
 static inline void put_u32(faam_muxer *m, uint32_t val) {
-#ifndef WORDS_BIGENDIAN
-    val = BSWAP32(val);
-#endif
-    mem_write(m, &val, 4);
+    uint8_t buf[4];
+    write_u32_be(buf, val);
+    mem_write(m, buf, 4);
 }
 
 static inline void put_u16(faam_muxer *m, uint16_t val) {
-#ifndef WORDS_BIGENDIAN
-    val = BSWAP16(val);
-#endif
-    mem_write(m, &val, 2);
+    uint8_t buf[2];
+    write_u16_be(buf, val);
+    mem_write(m, buf, 2);
 }
 
 static inline void put_u64(faam_muxer *m, uint64_t val) {
-#ifndef WORDS_BIGENDIAN
-#if defined(MP4_HAVE_BSWAP_BUILTINS)
-    val = __builtin_bswap64(val);
-#elif defined(_MSC_VER)
-    val = _byteswap_uint64(val);
-#else
-    val = ((val >> 56) & 0x00000000000000FFULL) |
-          ((val >> 40) & 0x000000000000FF00ULL) |
-          ((val >> 24) & 0x0000000000FF0000ULL) |
-          ((val >> 8)  & 0x00000000FF000000ULL) |
-          ((val << 8)  & 0x000000FF00000000ULL) |
-          ((val << 24) & 0x0000FF0000000000ULL) |
-          ((val << 40) & 0x00FF000000000000ULL) |
-          ((val << 56) & 0xFF00000000000000ULL);
-#endif
-#endif
-    mem_write(m, &val, 8);
+    uint8_t buf[8];
+    write_u64_be(buf, val);
+    mem_write(m, buf, 8);
 }
 
 static inline void put_time(faam_muxer *m, uint64_t val, bool use64) {
@@ -129,10 +94,7 @@ static inline long start_atom(faam_muxer *m, const char *name) {
 static inline void end_atom(faam_muxer *m, long pos) {
     if (m->membuf) {
         uint32_t size = (uint32_t)(m->mempos - pos);
-#ifndef WORDS_BIGENDIAN
-        size = BSWAP32(size);
-#endif
-        memcpy(m->membuf + pos, &size, 4);
+        write_u32_be(m->membuf + pos, size);
     } else if (m->io.seek && m->io.write && m->io.tell) {
         uint64_t curr = m->io.tell(m->io.user_data);
         m->io.seek(m->io.user_data, (uint64_t)pos);
@@ -172,26 +134,15 @@ static void put_tag_u8(faam_muxer *m, const char *name, uint8_t val) {
 }
 
 static void put_tag_genre(faam_muxer *m, uint16_t genre) {
-#ifndef WORDS_BIGENDIAN
-    uint16_t val = BSWAP16(genre);
-#else
-    uint16_t val = genre;
-#endif
-    put_itunes_data_box(m, "gnre", ITUNES_DATA_BINARY, &val, 2);
+    uint8_t buf[2];
+    write_u16_be(buf, genre);
+    put_itunes_data_box(m, "gnre", ITUNES_DATA_BINARY, buf, 2);
 }
 
 static void put_tag_index(faam_muxer *m, const char *name, uint16_t num, uint16_t total) {
-    uint16_t buf[4] = {
-        0,
-#ifndef WORDS_BIGENDIAN
-        BSWAP16(num),
-        BSWAP16(total),
-#else
-        num,
-        total,
-#endif
-        0
-    };
+    uint8_t buf[8] = {0};
+    write_u16_be(buf + 2, num);
+    write_u16_be(buf + 4, total);
     put_itunes_data_box(m, name, ITUNES_DATA_BINARY, buf, sizeof(buf));
 }
 
@@ -359,8 +310,9 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     if (m->io.seek && m->io.write) {
         uint64_t pos = m->io.tell ? m->io.tell(m->io.user_data) : 0;
         m->io.seek(m->io.user_data, m->mdat_pos - 8);
-        uint32_t sz_be = BSWAP32((uint32_t)(m->mdat_size + 8));
-        m->io.write(m->io.user_data, &sz_be, 4);
+        uint8_t sz_be[4];
+        write_u32_be(sz_be, (uint32_t)(m->mdat_size + 8));
+        m->io.write(m->io.user_data, sz_be, 4);
         m->io.seek(m->io.user_data, pos);
     }
 
