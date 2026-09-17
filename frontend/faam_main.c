@@ -8,6 +8,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 #include "faam.h"
 #include "charset.h"
 
@@ -123,8 +127,26 @@ static void dump_atoms(const uint8_t *buf, long offset, long end, int indent)
 
         if (size < 8 || cur + size > end) break;
 
+        bool is_ascii = true;
+        for (int i = 0; i < 4; i++) {
+            char c = type[i];
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))) {
+                is_ascii = false;
+                break;
+            }
+        }
+
         for (int i = 0; i < indent; i++) printf("  ");
-        printf("<%sBox Size=\"%u\" Offset=\"%ld\">\n", type, size, cur);
+        if (is_ascii) {
+            printf("<%sBox Size=\"%u\" Offset=\"%ld\">\n", type, size, cur);
+        } else {
+            printf("<Box Type=\"%c%c%c%c\" Size=\"%u\" Offset=\"%ld\">\n",
+                   type[0] >= 32 && type[0] <= 126 ? type[0] : '?',
+                   type[1] >= 32 && type[1] <= 126 ? type[1] : '?',
+                   type[2] >= 32 && type[2] <= 126 ? type[2] : '?',
+                   type[3] >= 32 && type[3] <= 126 ? type[3] : '?',
+                   size, cur);
+        }
 
         if (memcmp(type, "moov", 4) == 0 || memcmp(type, "trak", 4) == 0 ||
             memcmp(type, "mdia", 4) == 0 || memcmp(type, "minf", 4) == 0 ||
@@ -136,7 +158,11 @@ static void dump_atoms(const uint8_t *buf, long offset, long end, int indent)
         }
 
         for (int i = 0; i < indent; i++) printf("  ");
-        printf("</%sBox>\n", type);
+        if (is_ascii) {
+            printf("</%sBox>\n", type);
+        } else {
+            printf("</Box>\n");
+        }
 
         cur += size;
     }
