@@ -15,6 +15,7 @@ void bits_init(BitReader *bs, const uint8_t *buffer, uint32_t len)
 uint32_t bits_get(BitReader *bs, uint32_t nbits)
 {
     if (nbits == 0) return 0;
+    if (nbits > 32) nbits = 32;
 
     /* Fast single-word 32-bit shift-accumulator path */
     if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
@@ -62,12 +63,14 @@ uint32_t bits_show(BitReader *bs, uint32_t nbits)
 
 void bits_skip(BitReader *bs, uint32_t nbits)
 {
-    uint32_t total_bits = bs->byte_pos * 8 + bs->bit_pos + nbits;
-    bs->byte_pos = total_bits / 8;
-    bs->bit_pos = total_bits % 8;
-    if (bs->byte_pos > bs->len) {
+    uint64_t total_bits = (uint64_t)bs->byte_pos * 8 + bs->bit_pos + nbits;
+    uint64_t byte_pos = total_bits / 8;
+    bs->bit_pos = (uint32_t)(total_bits % 8);
+    if (byte_pos >= (uint64_t)bs->len) {
         bs->byte_pos = bs->len;
         bs->bit_pos = 0;
+    } else {
+        bs->byte_pos = (uint32_t)byte_pos;
     }
 }
 

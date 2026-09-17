@@ -171,6 +171,7 @@ faad_status decode_ics(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, fl
 
 faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, uint32_t ch)
 {
+    if (ch + 1 >= MAX_CHANNELS) return FAAD_ERR_DECODE_FAILED;
     bits_skip(bs, 4);
     cpe->common_window = bits_get(bs, 1);
 
@@ -196,6 +197,7 @@ faad_status decode_cpe(BitReader *bs, struct faad_decoder *dec, CPEInfo *cpe, ui
 
 faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, uint32_t ch)
 {
+    if (ch >= MAX_CHANNELS) return FAAD_ERR_DECODE_FAILED;
     bits_skip(bs, 4);
     return decode_ics(bs, dec, ics, dec->spec[ch], false);
 }

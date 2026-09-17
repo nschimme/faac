@@ -232,6 +232,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
 
                 if (dec->config.downmix_mode == FAAD_DOWNMIX_MONO && cpe.common_window) {
                     apply_freq_downmix_mono(dec->spec[ch_idx], dec->spec[ch_idx + 1]);
+                    memset(dec->spec[ch_idx + 1], 0, sizeof(float) * FRAME_LEN_LONG);
                     ch_idx += 1;
                 } else {
                     ch_idx += 2;

@@ -476,7 +476,11 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
                 int band_idx = (k - kx) * num_bands / (k2 - kx);
                 if (band_idx >= num_bands) band_idx = num_bands - 1;
 
-                int src_k = (k - kx) % kx;
+                int base_k = (kx < 32) ? kx : 32;
+                if (base_k < 1) base_k = 1;
+                int src_k = (k - kx) % base_k;
+                if (src_k < 0) src_k = 0;
+                if (src_k >= 32) src_k = 31;
 
                 int e_curr = sbr->E_orig[env_curr][band_idx];
                 int e_next = sbr->E_orig[env_next][band_idx];

@@ -41,7 +41,6 @@ extern "C" {
 #include "sbr.h"
 #include "stats.h"
 #include "ratecontrol.h"
-#include "stereo.h"
 
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
@@ -69,6 +68,8 @@ typedef struct faacEncStruct {
     /* Filterbank buffers */
     float *sin_window_long;
     float *sin_window_short;
+    float *kbd_window_long;
+    float *kbd_window_short;
     float *freqBuff[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
@@ -88,8 +89,6 @@ typedef struct faacEncStruct {
 
     /* quantizer specific config */
     AACQuantCfg aacquantCfg;
-
-    StereoConfig stereoCfg;
 
     /* FFT Tables */
     FFT_Tables	fft_tables;
