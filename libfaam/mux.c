@@ -630,8 +630,18 @@ void faam_muxer_close(faam_muxer *m)
     if (m->is_heap_allocated) free(m);
 }
 
-uint32_t faam_muxer_get_frame_count(faam_muxer *m) { return m ? m->frame_count : 0; }
-uint64_t faam_muxer_get_sample_count(faam_muxer *m) { return m ? m->sample_count : 0; }
-uint32_t faam_muxer_get_max_bitrate(faam_muxer *m) { return m ? m->max_bitrate : 0; }
-uint32_t faam_muxer_get_avg_bitrate(faam_muxer *m) { return m ? m->avg_bitrate : 0; }
-uint16_t faam_muxer_get_max_frame_size(faam_muxer *m) { return m ? m->max_frame_size : 0; }
+faam_status faam_muxer_get_info(faam_muxer *m, faam_muxer_info *out_info)
+{
+    if (!m || !out_info || out_info->struct_size < sizeof(faam_muxer_info)) {
+        return FAAM_ERR_INVALID_ARG;
+    }
+
+    out_info->struct_size = sizeof(faam_muxer_info);
+    out_info->frame_count = m->frame_count;
+    out_info->sample_count = m->sample_count;
+    out_info->max_bitrate = m->max_bitrate;
+    out_info->avg_bitrate = m->avg_bitrate;
+    out_info->max_frame_size = m->max_frame_size;
+
+    return FAAM_OK;
+}

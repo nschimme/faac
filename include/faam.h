@@ -45,6 +45,16 @@ typedef enum faam_status {
     FAAM_STATUS_MAX           = 0x7fffffff
 } faam_status;
 
+/* Global library metadata */
+typedef struct faam_library_info {
+    uint32_t                struct_size;
+    const char             *version;
+    const char             *copyright;
+    uint32_t                max_channels;
+} faam_library_info;
+
+FAAMAPI faam_status faam_get_library_info(faam_library_info *out);
+
 /* Abstract Stream I/O for embedded platforms (SPIFFS, SDMMC, RAM, network) */
 typedef struct faam_io {
     void    *user_data;
@@ -182,6 +192,16 @@ typedef struct faam_muxer_config {
     uint32_t                num_chapters;    /* Chapter count */
 } faam_muxer_config;
 
+/* Muxer statistics / info structure */
+typedef struct faam_muxer_info {
+    uint32_t                struct_size;     /* set by caller to sizeof(faam_muxer_info) */
+    uint32_t                frame_count;
+    uint64_t                sample_count;
+    uint32_t                max_bitrate;
+    uint32_t                avg_bitrate;
+    uint16_t                max_frame_size;
+} faam_muxer_info;
+
 FAAMAPI faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size);
 
 FAAMAPI faam_status faam_muxer_get_state_size(const faam_muxer_config *cfg, uint32_t *state_bytes);
@@ -199,12 +219,8 @@ FAAMAPI faam_status faam_muxer_finalize(faam_muxer *m);
 
 FAAMAPI void faam_muxer_close(faam_muxer *m);
 
-/* Querying Muxer Statistics */
-FAAMAPI uint32_t faam_muxer_get_frame_count(faam_muxer *m);
-FAAMAPI uint64_t faam_muxer_get_sample_count(faam_muxer *m);
-FAAMAPI uint32_t faam_muxer_get_max_bitrate(faam_muxer *m);
-FAAMAPI uint32_t faam_muxer_get_avg_bitrate(faam_muxer *m);
-FAAMAPI uint16_t faam_muxer_get_max_frame_size(faam_muxer *m);
+/* Querying Muxer Statistics via extensible info struct */
+FAAMAPI faam_status faam_muxer_get_info(faam_muxer *m, faam_muxer_info *out_info);
 
 FAAMAPI const char *faam_strerror(faam_status status);
 

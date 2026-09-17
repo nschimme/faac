@@ -33,8 +33,13 @@ static uint64_t file_tell_cb(void *user_data) {
 
 static void print_usage(void)
 {
-    printf("FAAM - Freeware Advanced Audio Muxer (v%d.%d.%d)\n",
-           FAAM_VERSION_MAJOR, FAAM_VERSION_MINOR, FAAM_VERSION_PATCH);
+    faam_library_info info;
+    info.struct_size = sizeof(info);
+    if (faam_get_library_info(&info) != FAAM_OK) {
+        info.version = "1.0.0";
+    }
+
+    printf("FAAM - Freeware Advanced Audio Muxer (v%s)\n", info.version);
     printf("Usage: faam [options] <input_file>\n\n");
     printf("MP4Box-Compatible Options:\n");
     printf("  -info <file.m4a>             Print audio & container summary\n");

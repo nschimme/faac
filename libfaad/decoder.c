@@ -4,6 +4,30 @@
 
 #include "faad_internal.h"
 
+FAADAPI faad_status faad_get_library_info(faad_library_info *out)
+{
+    if (!out || out->struct_size < sizeof(faad_library_info)) {
+        return FAAD_ERR_INVALID_ARGUMENT;
+    }
+
+    out->struct_size = sizeof(faad_library_info);
+    out->version = "3.0.0";
+    out->copyright = "Copyright (C) 2026 FAAD Project";
+    out->max_channels = MAX_CHANNELS;
+#ifndef FAAD_DISABLE_SBR
+    out->sbr_supported = true;
+#else
+    out->sbr_supported = false;
+#endif
+#ifndef FAAD_DISABLE_PS
+    out->ps_supported = true;
+#else
+    out->ps_supported = false;
+#endif
+
+    return FAAD_OK;
+}
+
 FAADAPI faad_status faad_config_init(faad_config *cfg, uint32_t caller_size)
 {
     if (!cfg || caller_size < sizeof(faad_config)) {

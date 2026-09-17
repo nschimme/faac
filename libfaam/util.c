@@ -20,6 +20,20 @@ uint64_t faam_file_tell_cb(void *user_data) {
     return (uint64_t)ftell((FILE *)user_data);
 }
 
+faam_status faam_get_library_info(faam_library_info *out)
+{
+    if (!out || out->struct_size < sizeof(faam_library_info)) {
+        return FAAM_ERR_INVALID_ARG;
+    }
+
+    out->struct_size = sizeof(faam_library_info);
+    out->version = "1.0.0";
+    out->copyright = "Copyright (C) 2026 FAAC Project";
+    out->max_channels = MAX_CHANNELS;
+
+    return FAAM_OK;
+}
+
 const char *faam_strerror(faam_status status)
 {
     switch (status) {

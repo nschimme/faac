@@ -40,6 +40,12 @@ static bool file_seek_cb(void *user_data, uint64_t offset) {
 static uint64_t file_tell_cb(void *user_data) {
     return (uint64_t)ftell((FILE *)user_data);
 }
+
+static faam_status get_current_info(faam_muxer_info *info) {
+    if (!info) return FAAM_ERR_INVALID_ARG;
+    info->struct_size = sizeof(faam_muxer_info);
+    return faam_muxer_get_info(g_muxer, info);
+}
 #endif
 
 int mp4_open(const char *path, bool overwrite) {
@@ -261,7 +267,8 @@ int mp4_close(void) {
 
 uint32_t mp4_frame_count(void) {
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_frame_count(g_muxer);
+    faam_muxer_info info;
+    return (get_current_info(&info) == FAAM_OK) ? info.frame_count : 0;
 #else
     return 0;
 #endif
@@ -269,7 +276,8 @@ uint32_t mp4_frame_count(void) {
 
 uint64_t mp4_sample_count(void) {
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_sample_count(g_muxer);
+    faam_muxer_info info;
+    return (get_current_info(&info) == FAAM_OK) ? info.sample_count : 0;
 #else
     return 0;
 #endif
@@ -277,7 +285,8 @@ uint64_t mp4_sample_count(void) {
 
 uint32_t mp4_max_bitrate(void) {
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_max_bitrate(g_muxer);
+    faam_muxer_info info;
+    return (get_current_info(&info) == FAAM_OK) ? info.max_bitrate : 0;
 #else
     return 0;
 #endif
@@ -285,7 +294,8 @@ uint32_t mp4_max_bitrate(void) {
 
 uint32_t mp4_avg_bitrate(void) {
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_avg_bitrate(g_muxer);
+    faam_muxer_info info;
+    return (get_current_info(&info) == FAAM_OK) ? info.avg_bitrate : 0;
 #else
     return 0;
 #endif
@@ -293,7 +303,8 @@ uint32_t mp4_avg_bitrate(void) {
 
 uint16_t mp4_max_frame_size(void) {
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_max_frame_size(g_muxer);
+    faam_muxer_info info;
+    return (get_current_info(&info) == FAAM_OK) ? info.max_frame_size : 0;
 #else
     return 0;
 #endif
