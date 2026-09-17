@@ -19,12 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#if defined(_WIN32)
-#include <windows.h>
-#else
-#include <pthread.h>
-#endif
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -65,7 +59,7 @@ static float log10_width_sf_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
-static void QuantizeInit_impl(void)
+void QuantizeInit(void)
 {
     int i;
 #if defined(HAVE_SSE2)
@@ -89,27 +83,6 @@ static void QuantizeInit_impl(void)
      * correctly rounded, at zero runtime cost. */
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
 }
-
-#if defined(_WIN32)
-static BOOL CALLBACK QuantizeInit_cb(PINIT_ONCE once, PVOID param, PVOID *ctx)
-{
-    (void)once; (void)param; (void)ctx;
-    QuantizeInit_impl();
-    return TRUE;
-}
-
-void QuantizeInit(void)
-{
-    static INIT_ONCE once = INIT_ONCE_STATIC_INIT;
-    InitOnceExecuteOnce(&once, QuantizeInit_cb, NULL, NULL);
-}
-#else
-void QuantizeInit(void)
-{
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    pthread_once(&once, QuantizeInit_impl);
-}
-#endif
 
 static inline float sfac_to_gain(int sfac)
 {
