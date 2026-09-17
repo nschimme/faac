@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include "libfaam_internal.h"
 
-#define BSWAP32 FAAM_BSWAP32
-#define BSWAP16 FAAM_BSWAP16
-#define BSWAP64 FAAM_BSWAP64
+#define BSWAP32 FAAC_BSWAP32
+#define BSWAP16 FAAC_BSWAP16
+#define BSWAP64 FAAC_BSWAP64
 
 enum {
     MP4_EPOCH_OFFSET = 2082844800,

@@ -25,7 +25,7 @@ endif
 libfrontend = static_library('frontend',
     ['input.c', 'mp4write.c', 'charset.c', 'output.c', 'encode_engine.c', 'progress.c',
      'input.h', 'mp4write.h', 'charset.h', 'progress.h', 'output.h', 'encode_engine.h', git_version_h],
-    include_directories: ['..', '../include'],
+    include_directories: ['..', '../include', '../libfaac'],
     link_with: frontend_link_libs,
     c_args: c_args_list,
     dependencies: [libiconv]

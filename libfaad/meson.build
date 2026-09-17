@@ -70,7 +70,7 @@ pkgconfig.generate(
 
 test_faad = executable('test_faad',
     'test_faad.c',
-    include_directories: ['..', '../include'],
+    include_directories: ['..', '../include', '../libfaac'],
     link_with: [libfaad],
     dependencies: [thread_dep],
 )

@@ -24,29 +24,15 @@
 
 #include "input.h"
 #include "charset.h"
+#include "faac_endian.h"
 
-#if defined(__has_builtin)
-#  if __has_builtin(__builtin_bswap16) && __has_builtin(__builtin_bswap32)
-#    define SWAP16(x) __builtin_bswap16((uint16_t)(x))
-#    define SWAP32(x) __builtin_bswap32((uint32_t)(x))
-#  endif
-#elif defined(_MSC_VER)
-#  define SWAP16(x) _byteswap_ushort((uint16_t)(x))
-#  define SWAP32(x) _byteswap_ulong((uint32_t)(x))
-#endif
-
-#ifndef SWAP16
-#define SWAP16(x) (((x & 0xff) << 8) | ((x & 0xff00) >> 8))
-#endif
-#ifndef SWAP32
-#define SWAP32(x) (((x & 0xff) << 24) | ((x & 0xff00) << 8) \
-	| ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24))
-#endif
+#define SWAP16(x) FAAC_BSWAP16(x)
+#define SWAP32(x) FAAC_BSWAP32(x)
 
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
 #define PCM_32BIT_FLOAT_SCALE 65536.0f
 
-#if (defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#if FAAC_IS_BIG_ENDIAN
 # define UINT32(x) SWAP32(x)
 # define UINT16(x) SWAP16(x)
 #else
@@ -309,7 +295,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
     sndf->samples = (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels);
   }
 
-#if (defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#if FAAC_IS_BIG_ENDIAN
   sndf->swap = !sndf->bigendian;
 #else
   sndf->swap = sndf->bigendian;

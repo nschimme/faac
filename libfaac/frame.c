@@ -31,6 +31,7 @@
 #include "sbr.h"
 #include "ratecontrol.h"
 #include "asc_codec.h"
+#include "faac_endian.h"
 
 /* HE-AAC auto-mode thresholds; tuned via ViSQOL on a 49-clip corpus. */
 #define HE_MIN_SAMPLE_RATE    32000  /* Fs/2 < 16 kHz below this → core too narrow for SBR */
@@ -499,7 +500,7 @@ static int appendInputFifo(faacEncStruct *hEncoder, int32_t *inputBuffer,
                 const uint8_t *src_base = (const uint8_t *)inputBuffer;
                 for (i = 0; i < spch; i++) {
                     const uint8_t *src = src_base + (i * numChannels + hEncoder->config.channel_map[channel]) * 3;
-#if defined(WORDS_BIGENDIAN) && WORDS_BIGENDIAN
+#if FAAC_IS_BIG_ENDIAN
                     int32_t s = ((int32_t)src[0] << 16) | ((int32_t)src[1] << 8) | (int32_t)src[2];
 #else
                     int32_t s = (int32_t)src[0] | ((int32_t)src[1] << 8) | ((int32_t)src[2] << 16);
