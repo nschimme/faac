@@ -4,7 +4,7 @@ if config_h.get('HAVE_SSE2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag,
+        c_args: c_args + sse2_flag + ['-DFAAC_ASC_BUILD_ONLY'],
         gnu_symbol_visibility: 'hidden'
     )
     quantize_simd_libs += quantize_sse
@@ -25,10 +25,14 @@ common_src = [
     'faac_internal.h',
     'filtbank.c',
     'filtbank.h',
+    'fft.c',
+    'fft.h',
     'frame.c',
     'frame.h',
     'huff2.c',
     'huff2.h',
+    'huffdata.c',
+    'huffdata.h',
     'quantize.c',
     'quantize.h',
     'ratecontrol.c',
@@ -37,6 +41,8 @@ common_src = [
     'sbr.h',
     'sbr_internal.h',
     'sbr_bitstream.c',
+    'sbr_tables.c',
+    'sbr_tables.h',
     'sbr_analysis.c',
     'sbr_analysis.h',
     'resample.c',
@@ -49,36 +55,28 @@ common_src = [
     'util.h',
 ]
 
-# fft.c, sbr_tables.c and huffdata.c are shared verbatim with libfaad (decoder
-# tables/transform are the same non-copyrightable ISO/IEC 14496-3 data and FFT
-# engine). Built once here, as a static-only helper, and link_with'd into both
-# libfaac and libfaad so a consumer linking both static archives into one
-# program doesn't hit duplicate-symbol errors from two independent copies of
-# these non-static globals.
+# fft.c, sbr_tables.c and huffdata.c are shared verbatim with libfaad
 libfaac_common_static = static_library(
     'faac_common',
     ['fft.c', 'fft.h', 'sbr_tables.c', 'sbr_tables.h', 'huffdata.c', 'huffdata.h'],
     include_directories: ['..', '../include'],
-    c_args: c_args,
-    dependencies: [libm],
+    c_args: c_args + ['-DFAAC_ASC_BUILD_ONLY'],
     gnu_symbol_visibility: 'hidden',
-    override_options: ['b_lto=false'],
 )
 
 libfaac = disabler()
 
 common_args = {
     'include_directories' : ['..', '../include'],
-    'c_args' : c_args,
+    'c_args' : c_args + ['-DFAAC_ASC_BUILD_ONLY'],
     'dependencies' : [libm],
-    'link_with' : quantize_simd_libs + [libfaac_common_static],
+    'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
 }
 
 default_lib = get_option('default_library')
 
-# LTO on the static archive ships unportable compiler bytecode, so keep it off.
 if default_lib == 'static' or default_lib == 'both'
     libfaac_static = static_library(
         'faac',

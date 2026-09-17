@@ -12,7 +12,7 @@ faad_src = [
     'sfb_tables.c',
 ]
 
-faad_c_args = c_args
+faad_c_args = c_args + ['-DFAAC_ASC_PARSE_ONLY']
 if not get_option('decoder-sbr')
     faad_c_args += ['-DFAAD_DISABLE_SBR']
 endif

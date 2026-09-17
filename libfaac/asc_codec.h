@@ -20,6 +20,9 @@
 #include <stdbool.h>
 #include <string.h>
 
+#define ASC_SYNC_EXTENSION_SBR 0x2b7u
+#define ASC_SYNC_EXTENSION_PS  0x548u
+
 /* ISO/IEC 14496-3 Table 1.16 sampling_frequency_index. */
 static const uint32_t asc_codec_sample_rates[16] = {
     96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
@@ -42,6 +45,8 @@ typedef struct {
     uint32_t sbr_sample_rate; /* post-SBR (extension) rate, Hz; == 2*sample_rate if not explicitly signaled */
     bool     ps_present;
 } AscInfo;
+
+#ifndef FAAC_ASC_BUILD_ONLY
 
 typedef struct { const uint8_t *buf; uint32_t len_bits; uint32_t pos; } asc_bitreader;
 
@@ -70,9 +75,6 @@ static inline uint32_t asc_parse_sample_rate(asc_bitreader *br)
     uint32_t idx = asc_br_get(br, 4);
     return idx == 15 ? asc_br_get(br, 24) : asc_codec_sample_rates[idx];
 }
-
-#define ASC_SYNC_EXTENSION_SBR 0x2b7u
-#define ASC_SYNC_EXTENSION_PS  0x548u
 
 /*
  * Parses aot/sample_rate/channels, then either the "explicit" nested-AOT
@@ -138,6 +140,10 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
     }
 }
 
+#endif /* !FAAC_ASC_BUILD_ONLY */
+
+#ifndef FAAC_ASC_PARSE_ONLY
+
 typedef struct { uint8_t *buf; uint32_t cap_bits; uint32_t pos; } asc_bitwriter;
 
 static inline void asc_bw_put(asc_bitwriter *bw, uint32_t val, uint32_t n)
@@ -200,5 +206,7 @@ static inline uint32_t asc_codec_build(const AscBuildInfo *info, uint8_t *out, u
 
     return (bw.pos + 7) / 8;
 }
+
+#endif /* !FAAC_ASC_PARSE_ONLY */
 
 #endif /* FAAC_ASC_CODEC_H */
