@@ -376,3 +376,8 @@ const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS] = {
     /*  +30 */ { 0x000ffffeu, 20 },
     /*  +31 */ { 0x000fffffu, 20 },
 };
+
+_Static_assert(sizeof(qmf_c) / sizeof(qmf_c[0]) == 640, "qmf_c size mismatch");
+_Static_assert(sizeof(sbr_offset) / sizeof(sbr_offset[0][0]) == 96, "sbr_offset size mismatch");
+_Static_assert(sizeof(f_huff_env_1_5dB) / sizeof(f_huff_env_1_5dB[0]) == F_HUFF_ENV_1_5DB_NSYMS, "f_huff_env_1_5dB size mismatch");
+_Static_assert(sizeof(f_huff_env_3_0dB) / sizeof(f_huff_env_3_0dB[0]) == F_HUFF_ENV_3_0DB_NSYMS, "f_huff_env_3_0dB size mismatch");

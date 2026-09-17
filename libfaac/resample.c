@@ -36,6 +36,8 @@ static const resfloat hb_even[RESAMPLE_FILTER_LEN / 2 + 1] = {
      3.94878764e-03f, -2.88625768e-03f,  2.03978735e-03f, -2.39042884e-03f,
 };
 
+_Static_assert(sizeof(hb_even) / sizeof(hb_even[0]) == RESAMPLE_FILTER_LEN / 2 + 1, "hb_even size mismatch");
+
 Resampler *ResampleInit(int channels)
 {
     Resampler *r = (Resampler *)AllocMemory(sizeof(Resampler));

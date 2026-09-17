@@ -230,3 +230,16 @@ hcode32_t book12[2 * SF_DELTA + 1] = {
  {19,524257},{19,524258},{19,524259},{19,524260},{19,524261},{19,524247},{19,524268},{19,524276},
  {19,524275},
 };
+
+_Static_assert(sizeof(book01) / sizeof(book01[0]) == 81, "book01 size mismatch");
+_Static_assert(sizeof(book02) / sizeof(book02[0]) == 81, "book02 size mismatch");
+_Static_assert(sizeof(book03) / sizeof(book03[0]) == 81, "book03 size mismatch");
+_Static_assert(sizeof(book04) / sizeof(book04[0]) == 81, "book04 size mismatch");
+_Static_assert(sizeof(book05) / sizeof(book05[0]) == 81, "book05 size mismatch");
+_Static_assert(sizeof(book06) / sizeof(book06[0]) == 81, "book06 size mismatch");
+_Static_assert(sizeof(book07) / sizeof(book07[0]) == 64, "book07 size mismatch");
+_Static_assert(sizeof(book08) / sizeof(book08[0]) == 64, "book08 size mismatch");
+_Static_assert(sizeof(book09) / sizeof(book09[0]) == 169, "book09 size mismatch");
+_Static_assert(sizeof(book10) / sizeof(book10[0]) == 169, "book10 size mismatch");
+_Static_assert(sizeof(book11) / sizeof(book11[0]) == 289, "book11 size mismatch");
+_Static_assert(sizeof(book12) / sizeof(book12[0]) == 2 * SF_DELTA + 1, "book12 size mismatch");

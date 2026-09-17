@@ -31,6 +31,8 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
+_Static_assert(sizeof(tns_sfb_range) / sizeof(tns_sfb_range[0]) == 12, "tns_sfb_range size mismatch");
+
 #define TNS_LPC_ORDER       8     /* fixed filter order; the spec allows up to 20, but higher orders rarely paid for themselves here */
 _Static_assert(TNS_LPC_ORDER <= TNS_MAX_ORDER,
                "coder.h's TNS array bound must cover the order tns.c actually fits");
