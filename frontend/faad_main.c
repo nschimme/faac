@@ -8,6 +8,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef HAVE_GETOPT_H
+# include <getopt.h>
+#else
+# include "getopt.h"
+# include "getopt.c"
+#endif
+
 #include "faad.h"
 #include "charset.h"
 
@@ -152,7 +163,13 @@ static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 
 static void print_usage(const char *prog)
 {
-    printf("FAAD - Freeware Advanced Audio Decoder\n");
+    faad_library_info info;
+    info.struct_size = sizeof(info);
+    if (faad_get_library_info(&info) != FAAD_OK) {
+        info.version = "3.0.0";
+    }
+
+    printf("FAAD - Freeware Advanced Audio Decoder (v%s)\n", info.version);
     printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
     printf("I/O & Format Options:\n");
     printf("  -o, --output <file>    Set output filename (default: stdout if piped, or infile.wav)\n");
@@ -171,8 +188,28 @@ static void print_usage(const char *prog)
     printf("  -h, --help             Display this help text\n");
 }
 
+enum {
+    OPT_NO_GAPLESS = 300,
+    OPT_JSON
+};
+
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+    int wargc = 0;
+    wchar_t **wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    char **allocated_argv = NULL;
+    if (wargv && wargc > 0) {
+        allocated_argv = (char **)calloc((size_t)wargc, sizeof(char *));
+        if (allocated_argv) {
+            for (int i = 0; i < wargc; i++)
+                allocated_argv[i] = win32_utf16_to_utf8(wargv[i]);
+            argv = allocated_argv;
+            argc = wargc;
+        }
+    }
+#endif
+
     const char *infile = NULL;
     const char *outfile = NULL;
     const char *adts_outfile = NULL;
@@ -187,49 +224,48 @@ int main(int argc, char **argv)
     bool quiet = false;
     double jump_seconds = 0.0;
 
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && i + 1 < argc) {
-            outfile = argv[++i];
-        } else if (strcmp(argv[i], "-w") == 0 || strcmp(argv[i], "--stdout") == 0) {
-            write_stdout = true;
-        } else if ((strcmp(argv[i], "-f") == 0 || strcmp(argv[i], "--format") == 0) && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "raw") == 0) raw_format = true;
-        } else if ((strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--bits") == 0) && i + 1 < argc) {
-            i++;
-            if (strcmp(argv[i], "24") == 0) {
-                bit_depth = 24;
-            } else if (strcmp(argv[i], "32f") == 0 || strcmp(argv[i], "32") == 0) {
-                bit_depth = 32;
-                is_float = true;
-            } else {
-                bit_depth = 16;
-            }
-        } else if ((strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--adts") == 0) && i + 1 < argc) {
-            adts_outfile = argv[++i];
-        } else if (strcmp(argv[i], "-d") == 0 || strcmp(argv[i], "--downmix") == 0) {
-            downmix_stereo = true;
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
-                i++;
-                /* Accept optional target downmix mode */
-            }
-        } else if ((strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--jump") == 0) && i + 1 < argc) {
-            jump_seconds = atof(argv[++i]);
-        } else if (strcmp(argv[i], "--no-gapless") == 0) {
-            gapless = false;
-        } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--info") == 0) {
-            info_only = true;
-        } else if (strcmp(argv[i], "--json") == 0) {
-            json_info = true;
-            info_only = true;
-        } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
-            quiet = true;
-        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-            print_usage(argv[0]);
-            return 0;
-        } else if (argv[i][0] != '-') {
-            infile = argv[i];
+    static struct option long_options[] = {
+        {"output", required_argument, 0, 'o'},
+        {"stdout", no_argument, 0, 'w'},
+        {"format", required_argument, 0, 'f'},
+        {"bits", required_argument, 0, 'b'},
+        {"adts", required_argument, 0, 'a'},
+        {"downmix", optional_argument, 0, 'd'},
+        {"jump", required_argument, 0, 'j'},
+        {"no-gapless", no_argument, 0, OPT_NO_GAPLESS},
+        {"info", no_argument, 0, 'i'},
+        {"json", no_argument, 0, OPT_JSON},
+        {"quiet", no_argument, 0, 'q'},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    int option_index = 0;
+    while ((opt = getopt_long(argc, argv, "o:wf:b:a:d::j:iqh", long_options, &option_index)) != -1) {
+        switch (opt) {
+        case 'o': outfile = optarg; break;
+        case 'w': write_stdout = true; break;
+        case 'f': if (strcmp(optarg, "raw") == 0) raw_format = true; break;
+        case 'b':
+            if (strcmp(optarg, "24") == 0) bit_depth = 24;
+            else if (strcmp(optarg, "32f") == 0 || strcmp(optarg, "32") == 0) { bit_depth = 32; is_float = true; }
+            else bit_depth = 16;
+            break;
+        case 'a': adts_outfile = optarg; break;
+        case 'd': downmix_stereo = true; break;
+        case 'j': jump_seconds = atof(optarg); break;
+        case OPT_NO_GAPLESS: gapless = false; break;
+        case 'i': info_only = true; break;
+        case OPT_JSON: json_info = true; info_only = true; break;
+        case 'q': quiet = true; break;
+        case 'h': print_usage(argv[0]); return 0;
+        default: break;
         }
+    }
+
+    if (optind < argc) {
+        infile = argv[optind];
     }
 
     if (!infile) {
@@ -271,7 +307,11 @@ int main(int argc, char **argv)
 
     /* Direct ADTS extraction from MP4 container without decoding */
     if (adts_outfile && is_mp4) {
+#ifdef _WIN32
+        FILE *fadts = win32_fopen_utf8(adts_outfile, "wb");
+#else
         FILE *fadts = fopen(adts_outfile, "wb");
+#endif
         if (!fadts) {
             fprintf(stderr, "Error opening ADTS output file %s\n", adts_outfile);
             free(inbuf);
@@ -573,5 +613,15 @@ int main(int argc, char **argv)
     faad_decoder_destroy(dec); dec = NULL;
     free(inbuf);
     if (is_mp4) mp4_free_track(&track);
+
+#ifdef _WIN32
+    if (allocated_argv) {
+        for (int i = 0; i < argc; i++) {
+            if (allocated_argv[i]) free(allocated_argv[i]);
+        }
+        free(allocated_argv);
+    }
+#endif
+
     return 0;
 }

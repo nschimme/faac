@@ -7,6 +7,17 @@
 #include <string.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+#ifdef HAVE_GETOPT_H
+# include <getopt.h>
+#else
+# include "getopt.h"
+# include "getopt.c"
+#endif
+
 #include "faam.h"
 #include "charset.h"
 
@@ -42,12 +53,23 @@ static void print_usage(void)
 
 static int cmd_info(int argc, char **argv)
 {
-    if (argc < 1) {
+    const char *filepath = NULL;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+    int opt;
+    optind = 1;
+    while ((opt = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
+        if (opt == 'h') { print_usage(); return 0; }
+    }
+    if (optind < argc) filepath = argv[optind];
+
+    if (!filepath) {
         fprintf(stderr, "Error: Missing input file.\nUsage: faam info <input.m4a>\n");
         return 1;
     }
 
-    const char *filepath = argv[0];
 #ifdef _WIN32
     FILE *f = win32_fopen_utf8(filepath, "rb");
 #else
@@ -132,13 +154,28 @@ static void dump_atoms(const uint8_t *buf, long offset, long end, int indent)
 
 static int cmd_dump(int argc, char **argv)
 {
-    if (argc < 1) {
+    const char *filepath = NULL;
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+    int opt;
+    optind = 1;
+    while ((opt = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
+        if (opt == 'h') { print_usage(); return 0; }
+    }
+    if (optind < argc) filepath = argv[optind];
+
+    if (!filepath) {
         fprintf(stderr, "Error: Missing input file.\nUsage: faam dump <input.m4a>\n");
         return 1;
     }
 
-    const char *filepath = argv[0];
+#ifdef _WIN32
+    FILE *f = win32_fopen_utf8(filepath, "rb");
+#else
     FILE *f = fopen(filepath, "rb");
+#endif
     if (!f) {
         fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
@@ -174,6 +211,16 @@ static int cmd_dump(int argc, char **argv)
     return 0;
 }
 
+enum {
+    OPT_BRAND = 400,
+    OPT_ENCODER_DELAY,
+    OPT_PADDING_DELAY,
+    OPT_EXPORT_ASC,
+    OPT_TITLE,
+    OPT_ARTIST,
+    OPT_ALBUM
+};
+
 static int cmd_mux(int argc, char **argv)
 {
     const char *input_file = NULL;
@@ -182,19 +229,29 @@ static int cmd_mux(int argc, char **argv)
     uint32_t delay = 1024;
     uint32_t padding = 0;
 
-    for (int i = 0; i < argc; i++) {
-        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
-            output_file = argv[++i];
-        } else if (strcmp(argv[i], "--brand") == 0 && i + 1 < argc) {
-            if (strcmp(argv[++i], "m4b") == 0) is_m4b = true;
-        } else if (strcmp(argv[i], "--encoder-delay") == 0 && i + 1 < argc) {
-            delay = (uint32_t)atoi(argv[++i]);
-        } else if (strcmp(argv[i], "--padding-delay") == 0 && i + 1 < argc) {
-            padding = (uint32_t)atoi(argv[++i]);
-        } else if (argv[i][0] != '-') {
-            input_file = argv[i];
+    static struct option long_options[] = {
+        {"output", required_argument, 0, 'o'},
+        {"brand", required_argument, 0, OPT_BRAND},
+        {"encoder-delay", required_argument, 0, OPT_ENCODER_DELAY},
+        {"padding-delay", required_argument, 0, OPT_PADDING_DELAY},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    optind = 1;
+    while ((opt = getopt_long(argc, argv, "o:h", long_options, NULL)) != -1) {
+        switch (opt) {
+        case 'o': output_file = optarg; break;
+        case OPT_BRAND: if (strcmp(optarg, "m4b") == 0) is_m4b = true; break;
+        case OPT_ENCODER_DELAY: delay = (uint32_t)atoi(optarg); break;
+        case OPT_PADDING_DELAY: padding = (uint32_t)atoi(optarg); break;
+        case 'h': print_usage(); return 0;
+        default: break;
         }
     }
+
+    if (optind < argc) input_file = argv[optind];
 
     if (!input_file) {
         fprintf(stderr, "Error: Missing input AAC file.\nUsage: faam mux <input.aac> -o <out.m4a>\n");
@@ -300,22 +357,36 @@ static int cmd_demux(int argc, char **argv)
     const char *output_file = "output.aac";
     const char *export_asc = NULL;
 
-    for (int i = 0; i < argc; i++) {
-        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
-            output_file = argv[++i];
-        } else if (strcmp(argv[i], "--export-asc") == 0 && i + 1 < argc) {
-            export_asc = argv[++i];
-        } else if (argv[i][0] != '-') {
-            input_file = argv[i];
+    static struct option long_options[] = {
+        {"output", required_argument, 0, 'o'},
+        {"export-asc", required_argument, 0, OPT_EXPORT_ASC},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    optind = 1;
+    while ((opt = getopt_long(argc, argv, "o:h", long_options, NULL)) != -1) {
+        switch (opt) {
+        case 'o': output_file = optarg; break;
+        case OPT_EXPORT_ASC: export_asc = optarg; break;
+        case 'h': print_usage(); return 0;
+        default: break;
         }
     }
+
+    if (optind < argc) input_file = argv[optind];
 
     if (!input_file) {
         fprintf(stderr, "Error: Missing input M4A file.\nUsage: faam demux <input.m4a> -o <out.aac>\n");
         return 1;
     }
 
+#ifdef _WIN32
+    FILE *fin = win32_fopen_utf8(input_file, "rb");
+#else
     FILE *fin = fopen(input_file, "rb");
+#endif
     if (!fin) {
         fprintf(stderr, "Error opening %s\n", input_file);
         return 1;
@@ -339,7 +410,11 @@ static int cmd_demux(int argc, char **argv)
         uint8_t asc_buf[64];
         uint32_t asc_len = 0;
         faam_demuxer_get_asc(d, asc_buf, sizeof(asc_buf), &asc_len);
+#ifdef _WIN32
+        FILE *fasc = win32_fopen_utf8(export_asc, "wb");
+#else
         FILE *fasc = fopen(export_asc, "wb");
+#endif
         if (fasc) {
             fwrite(asc_buf, 1, asc_len, fasc);
             fclose(fasc);
@@ -347,7 +422,11 @@ static int cmd_demux(int argc, char **argv)
         }
     }
 
+#ifdef _WIN32
+    FILE *fout = win32_fopen_utf8(output_file, "wb");
+#else
     FILE *fout = fopen(output_file, "wb");
+#endif
     if (!fout) {
         fprintf(stderr, "Error opening output %s\n", output_file);
         faam_demuxer_close(d); free(mem); fclose(fin);
@@ -371,33 +450,51 @@ static int cmd_demux(int argc, char **argv)
 
 static int cmd_tag(int argc, char **argv)
 {
-    if (argc < 1) {
-        fprintf(stderr, "Error: Missing input file.\nUsage: faam tag <input.m4a> [--title \"Title\"] [--artist \"Artist\"]\n");
-        return 1;
-    }
-
     const char *filepath = NULL;
     faam_metadata meta;
     memset(&meta, 0, sizeof(meta));
 
-    for (int i = 0; i < argc; i++) {
-        if (strcmp(argv[i], "--title") == 0 && i + 1 < argc) {
-            strncpy(meta.title, argv[++i], sizeof(meta.title) - 1);
-        } else if (strcmp(argv[i], "--artist") == 0 && i + 1 < argc) {
-            strncpy(meta.artist, argv[++i], sizeof(meta.artist) - 1);
-        } else if (strcmp(argv[i], "--album") == 0 && i + 1 < argc) {
-            strncpy(meta.album, argv[++i], sizeof(meta.album) - 1);
-        } else if (argv[i][0] != '-') {
-            filepath = argv[i];
+    static struct option long_options[] = {
+        {"title", required_argument, 0, OPT_TITLE},
+        {"artist", required_argument, 0, OPT_ARTIST},
+        {"album", required_argument, 0, OPT_ALBUM},
+        {"help", no_argument, 0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    optind = 1;
+    while ((opt = getopt_long(argc, argv, "h", long_options, NULL)) != -1) {
+        switch (opt) {
+        case OPT_TITLE: strncpy(meta.title, optarg, sizeof(meta.title) - 1); break;
+        case OPT_ARTIST: strncpy(meta.artist, optarg, sizeof(meta.artist) - 1); break;
+        case OPT_ALBUM: strncpy(meta.album, optarg, sizeof(meta.album) - 1); break;
+        case 'h': print_usage(); return 0;
+        default: break;
         }
     }
+
+    if (optind < argc) filepath = argv[optind];
 
     if (!filepath) {
         fprintf(stderr, "Error: Missing input file.\nUsage: faam tag <input.m4a> [options]\n");
         return 1;
     }
 
-    faam_status st = faam_update_tags(filepath, &meta);
+#ifdef _WIN32
+    FILE *f = win32_fopen_utf8(filepath, "r+b");
+#else
+    FILE *f = fopen(filepath, "r+b");
+#endif
+    if (!f) {
+        fprintf(stderr, "Error opening %s\n", filepath);
+        return 1;
+    }
+
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
+    faam_status st = faam_update_tags_stream(&io, &meta);
+    fclose(f);
+
     if (st != FAAM_OK) {
         fprintf(stderr, "Error updating tags on %s: %s\n", filepath, faam_strerror(st));
         return 1;
@@ -430,30 +527,57 @@ static int cmd_chapter(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+#ifdef _WIN32
+    int wargc = 0;
+    wchar_t **wargv = CommandLineToArgvW(GetCommandLineW(), &wargc);
+    char **allocated_argv = NULL;
+    if (wargv && wargc > 0) {
+        allocated_argv = (char **)calloc((size_t)wargc, sizeof(char *));
+        if (allocated_argv) {
+            for (int i = 0; i < wargc; i++)
+                allocated_argv[i] = win32_utf16_to_utf8(wargv[i]);
+            argv = allocated_argv;
+            argc = wargc;
+        }
+    }
+#endif
+
     if (argc < 2) {
         print_usage();
         return 1;
     }
 
+    int ret = 0;
     const char *cmd = argv[1];
     if (strcmp(cmd, "info") == 0) {
-        return cmd_info(argc - 2, argv + 2);
+        ret = cmd_info(argc - 1, argv + 1);
     } else if (strcmp(cmd, "dump") == 0) {
-        return cmd_dump(argc - 2, argv + 2);
+        ret = cmd_dump(argc - 1, argv + 1);
     } else if (strcmp(cmd, "mux") == 0) {
-        return cmd_mux(argc - 2, argv + 2);
+        ret = cmd_mux(argc - 1, argv + 1);
     } else if (strcmp(cmd, "demux") == 0) {
-        return cmd_demux(argc - 2, argv + 2);
+        ret = cmd_demux(argc - 1, argv + 1);
     } else if (strcmp(cmd, "tag") == 0) {
-        return cmd_tag(argc - 2, argv + 2);
+        ret = cmd_tag(argc - 1, argv + 1);
     } else if (strcmp(cmd, "chapter") == 0) {
-        return cmd_chapter(argc - 2, argv + 2);
+        ret = cmd_chapter(argc - 1, argv + 1);
     } else if (strcmp(cmd, "-h") == 0 || strcmp(cmd, "--help") == 0) {
         print_usage();
-        return 0;
+        ret = 0;
+    } else {
+        fprintf(stderr, "Unknown subcommand: %s\n", cmd);
+        print_usage();
+        ret = 1;
     }
 
-    fprintf(stderr, "Unknown subcommand: %s\n", cmd);
-    print_usage();
-    return 1;
+#ifdef _WIN32
+    if (allocated_argv) {
+        for (int i = 0; i < argc; i++) {
+            if (allocated_argv[i]) free(allocated_argv[i]);
+        }
+        free(allocated_argv);
+    }
+#endif
+
+    return ret;
 }
