@@ -147,7 +147,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         int kEnd = sbr->k2;
         for (int ch = 0; ch < nch; ch++) {
             if (isLfe[ch]) continue;
-            memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
+            SetMemory(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));

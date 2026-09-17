@@ -23,6 +23,7 @@
 #ifndef FAAC_INTERNAL_H
 #define FAAC_INTERNAL_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #define FAAC_CFG_VERSION 106

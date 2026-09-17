@@ -87,7 +87,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   {
     psydata_t *psydata = (psydata_t *)AllocMemory(sizeof(psydata_t));
     if (!psydata) return;
-    memset(psydata, 0, sizeof(psydata_t));
+    SetMemory(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
   }
 

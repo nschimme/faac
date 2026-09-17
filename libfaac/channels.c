@@ -41,7 +41,7 @@ int InitElements(AACElement * __restrict elements, int *numElements, int numChan
     int currentCh = 0;
     int channelsRemaining = numChannels;
 
-    memset(elements, 0, sizeof(AACElement) * MAX_CHANNELS);
+    SetMemory(elements, 0, sizeof(AACElement) * MAX_CHANNELS);
 
     // Initial SCE for Config 1, 3, 4, 5, 6, 7
     if (channelsRemaining != 2 && channelsRemaining > 0) {

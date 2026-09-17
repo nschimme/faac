@@ -27,6 +27,7 @@
 #define FIFO_AHEAD1     2
 #define FIFO_AHEAD2     3
 
+#include <stddef.h>
 #include "faac_internal.h"
 
 #ifdef __cplusplus

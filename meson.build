@@ -62,3 +62,11 @@ subdir('libfaac')
 if get_option('frontend')
     subdir('frontend')
 endif
+
+test_embedded_exe = executable('test_embedded',
+    'test/test_embedded.c',
+    include_directories: include_directories('include'),
+    link_with: libfaac_static,
+    dependencies: libm
+)
+test('test_embedded', test_embedded_exe)

@@ -43,7 +43,7 @@ void InitBitStream(BitStream *bs, uint8_t *buffer, uint32_t size)
     bs->size = size;
     bs->currentBit = 0;
 
-    if (buffer) memset(buffer, 0, size);
+    if (buffer) SetMemory(buffer, 0, size);
 }
 
 /* Packs the low `numBits` bits of `data` into `bs`, MSB-first. Returns 0,
