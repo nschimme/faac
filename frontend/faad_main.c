@@ -379,11 +379,9 @@ int main(int argc, char **argv)
     fifo_init(&fifo, 262144);
 
     if (is_mp4) {
-        fprintf(stderr, "Starting MP4 loop: num_samples=%u\n", track.num_samples); fflush(stderr);
         for (uint32_t s = start_frame; s < track.num_samples; s++) {
             uint64_t offset = track.samples[s].offset;
             uint32_t size = track.samples[s].size;
-            fprintf(stderr, "Sample %u: offset=%llu size=%u\n", s, (unsigned long long)offset, size); fflush(stderr);
             if (offset == 0 || offset + size > (uint64_t)file_len) continue;
 
             uint32_t bytes_consumed = 0;

@@ -10,7 +10,6 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-
 static int sbr_clamp_int(int val, int min_val, int max_val) {
     if (val < min_val) return min_val;
     if (val > max_val) return max_val;
@@ -33,7 +32,6 @@ static int sbr_compute_num_bands(uint32_t sample_rate, uint32_t start_freq, uint
     if (num_bands > 48) num_bands = 48;
     return num_bands;
 }
-
 
 #include "fft.h"
 
@@ -264,11 +262,14 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
         }
 
         float samples[32];
+        const float * restrict win_ptr = qmf_c;
+        const float * restrict ovl_ptr = ovl;
+
         for (int n = 0; n < 32; n++) {
             float sample = 0.0f;
             for (int j = 0; j < 10; j++) {
                 int idx = j * 64 + 2 * n;
-                sample += ovl[j * 32 + n] * qmf_c[idx];
+                sample += ovl_ptr[j * 32 + n] * win_ptr[idx];
             }
             samples[n] = sample;
         }
@@ -276,10 +277,12 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
         for (int k = 0; k < 32; k++) {
             float sum_r = 0.0f;
             float sum_i = 0.0f;
-            const float *cos_row = qmf_ana_cos_lut[k];
-            const float *sin_row = qmf_ana_sin_lut[k];
+            const float * restrict cos_row = qmf_ana_cos_lut[k];
+            const float * restrict sin_row = qmf_ana_sin_lut[k];
+            const float * restrict smp_ptr = samples;
+
             for (int n = 0; n < 32; n++) {
-                float s = samples[n];
+                float s = smp_ptr[n];
                 sum_r += s * cos_row[n];
                 sum_i += s * sin_row[n];
             }
@@ -303,22 +306,28 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
         /* Fast FFT-accelerated 64-point QMF synthesis IDFT */
         const float * restrict re_ptr = qmf_real[t];
         const float * restrict im_ptr = qmf_imag[t];
+        const float * restrict rot_c = qmf_rot_cos;
+        const float * restrict rot_s = qmf_rot_sin;
         float xr[64], xi[64];
 
         for (int k = 0; k < 64; k++) {
-            float c = qmf_rot_cos[k];
-            float s = qmf_rot_sin[k];
+            float c = rot_c[k];
+            float s = rot_s[k];
             xr[k] = re_ptr[k] * c + im_ptr[k] * s;
             xi[k] = im_ptr[k] * c - re_ptr[k] * s;
         }
 
         fft(&fft_tbl, xr, xi, 6);
 
+        const float * restrict post_c = qmf_post_cos;
+        const float * restrict post_s = qmf_post_sin;
+        float * restrict ovl_dst = sbr->qmf_ovl + 576;
+
         for (int n = 0; n < 64; n++) {
             float r = xr[n];
             float i = xi[n];
-            float post_r = r * qmf_post_cos[n] - i * qmf_post_sin[n];
-            sbr->qmf_ovl[576 + n] = post_r * 0.03125f;
+            float post_r = r * post_c[n] - i * post_s[n];
+            ovl_dst[n] = post_r * 0.03125f;
         }
 
         /* Extract 64 time-domain output samples with unit-stride auto-vectorizable inner loop */
@@ -421,11 +430,20 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
         qmf_analysis_320(sbr, pcm_in + ch * FRAME_LEN_LONG, qmf_ana_r, qmf_ana_i);
 
+        uint32_t sbr_sr = dec->asc.sbr_sample_rate > 0 ? dec->asc.sbr_sample_rate : 2 * dec->sample_rate;
+        int num_bands = sbr_compute_num_bands(sbr_sr, sbr->bs_start_freq, sbr->bs_stop_freq);
+
+        int sr_row = (sbr_sr <= 16000) ? 0 : (sbr_sr <= 22050) ? 1 : (sbr_sr <= 24000) ? 2 : (sbr_sr <= 32000) ? 3 : (sbr_sr <= 64000) ? 4 : 5;
+        int temp = (sbr_sr < 32000) ? 3000 : (sbr_sr < 64000) ? 4000 : 5000;
+        int start_min = ((temp << 7) + (int)(sbr_sr >> 1)) / (int)sbr_sr;
+        int kx = sbr_clamp_int(start_min + sbr_offset[sr_row][sbr->bs_start_freq & 15], 1, 63);
+        int k2 = sbr_clamp_int(kx + num_bands, kx + 1, 64);
+
         for (int t = 0; t < 32; t++) {
-            for (int k = 0; k < 32; k++) {
-                qmf_syn_r[t][k] = qmf_ana_r[t][k];
-                qmf_syn_i[t][k] = qmf_ana_i[t][k];
-            }
+            /* Copy baseband subbands up to start frequency kx */
+            int base_subbands = kx < 32 ? kx : 32;
+            memcpy(qmf_syn_r[t], qmf_ana_r[t], base_subbands * sizeof(float));
+            memcpy(qmf_syn_i[t], qmf_ana_i[t], base_subbands * sizeof(float));
         }
 
         /* High Frequency Reconstruction with ISO Time-Slot Envelope Gain Interpolation */
@@ -440,9 +458,11 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 
             float alpha = (float)(t % step) / (float)step;
 
-            for (int k = 32; k < 64; k++) {
-                int src_k = k - 32;
-                int band_idx = (k - 32) * 48 / 32;
+            for (int k = kx; k < k2; k++) {
+                int band_idx = (k - kx) * num_bands / (k2 - kx);
+                if (band_idx >= num_bands) band_idx = num_bands - 1;
+
+                int src_k = (k - kx) % kx;
 
                 int e_curr = sbr->E_orig[env_curr][band_idx];
                 int e_next = sbr->E_orig[env_next][band_idx];
