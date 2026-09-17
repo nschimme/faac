@@ -1,8 +1,24 @@
 /*
- * Utility functions and error strings for libfaam
+ * Utility functions, common file I/O callbacks, and error strings for libfaam
  */
 
 #include "libfaam_internal.h"
+
+int32_t faam_file_read_cb(void *user_data, void *buf, uint32_t bytes) {
+    return (int32_t)fread(buf, 1, bytes, (FILE *)user_data);
+}
+
+int32_t faam_file_write_cb(void *user_data, const void *buf, uint32_t bytes) {
+    return (int32_t)fwrite(buf, 1, bytes, (FILE *)user_data);
+}
+
+bool faam_file_seek_cb(void *user_data, uint64_t offset) {
+    return fseek((FILE *)user_data, (long)offset, SEEK_SET) == 0;
+}
+
+uint64_t faam_file_tell_cb(void *user_data) {
+    return (uint64_t)ftell((FILE *)user_data);
+}
 
 const char *faam_strerror(faam_status status)
 {

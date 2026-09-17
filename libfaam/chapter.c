@@ -92,22 +92,6 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
     return FAAM_OK;
 }
 
-static int32_t file_read_cb(void *user_data, void *buf, uint32_t bytes) {
-    return (int32_t)fread(buf, 1, bytes, (FILE *)user_data);
-}
-
-static int32_t file_write_cb(void *user_data, const void *buf, uint32_t bytes) {
-    return (int32_t)fwrite(buf, 1, bytes, (FILE *)user_data);
-}
-
-static bool file_seek_cb(void *user_data, uint64_t offset) {
-    return fseek((FILE *)user_data, (long)offset, SEEK_SET) == 0;
-}
-
-static uint64_t file_tell_cb(void *user_data) {
-    return (uint64_t)ftell((FILE *)user_data);
-}
-
 faam_status faam_update_chapters(const char *filepath, const faam_chapter *chapters, uint32_t count)
 {
     if (!filepath || (!chapters && count > 0)) return FAAM_ERR_INVALID_ARG;
@@ -117,10 +101,10 @@ faam_status faam_update_chapters(const char *filepath, const faam_chapter *chapt
 
     faam_io io;
     io.user_data = f;
-    io.read = file_read_cb;
-    io.write = file_write_cb;
-    io.seek = file_seek_cb;
-    io.tell = file_tell_cb;
+    io.read = faam_file_read_cb;
+    io.write = faam_file_write_cb;
+    io.seek = faam_file_seek_cb;
+    io.tell = faam_file_tell_cb;
 
     faam_status st = faam_update_chapters_stream(&io, chapters, count);
     fclose(f);
