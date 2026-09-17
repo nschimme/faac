@@ -81,13 +81,58 @@ faam_status faam_update_chapters_stream(const faam_io *io, const faam_chapter *c
             pos += size;
         }
     }
-    free(buf);
-
     if (chpl_offset > 0) {
-        io->seek(io->user_data, chpl_offset);
-        io->write(io->user_data, atom_buf, atom_size);
+        uint32_t old_chpl_size = read_u32_be(buf + chpl_offset);
+        if (old_chpl_size >= atom_size) {
+            uint32_t diff = old_chpl_size - atom_size;
+            if (diff >= 8) {
+                io->seek(io->user_data, chpl_offset);
+                io->write(io->user_data, atom_buf, atom_size);
+                uint8_t free_box[8];
+                write_u32_be(free_box, diff);
+                memcpy(free_box + 4, "free", 4);
+                io->write(io->user_data, free_box, 8);
+            } else {
+                write_u32_be(atom_buf, old_chpl_size);
+                io->seek(io->user_data, chpl_offset);
+                io->write(io->user_data, atom_buf, atom_size);
+            }
+        } else {
+            int32_t delta = (int32_t)(atom_size - old_chpl_size);
+            io->seek(io->user_data, chpl_offset);
+            io->write(io->user_data, atom_buf, atom_size);
+
+            /* Update parent udta and moov sizes */
+            uint32_t pos = 0;
+            while (pos + 8 <= (uint32_t)bytes) {
+                uint32_t size = read_u32_be(buf + pos);
+                if (size < 8 || pos + size > (uint32_t)bytes) break;
+                if (memcmp(buf + pos + 4, "moov", 4) == 0) {
+                    uint32_t moov_sz = size + delta;
+                    uint8_t hdr[4]; write_u32_be(hdr, moov_sz);
+                    io->seek(io->user_data, pos); io->write(io->user_data, hdr, 4);
+
+                    uint32_t sub = pos + 8;
+                    uint32_t moov_end = pos + size;
+                    while (sub + 8 <= moov_end) {
+                        uint32_t sub_size = read_u32_be(buf + sub);
+                        if (sub_size < 8 || sub + sub_size > moov_end) break;
+                        if (memcmp(buf + sub + 4, "udta", 4) == 0) {
+                            uint32_t udta_sz = sub_size + delta;
+                            write_u32_be(hdr, udta_sz);
+                            io->seek(io->user_data, sub); io->write(io->user_data, hdr, 4);
+                            break;
+                        }
+                        sub += sub_size;
+                    }
+                    break;
+                }
+                pos += size;
+            }
+        }
     }
 
+    free(buf);
     free(atom_buf);
     return FAAM_OK;
 }

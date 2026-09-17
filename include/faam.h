@@ -203,11 +203,16 @@ FAAMAPI faam_status faam_muxer_finalize(faam_muxer *m);
 FAAMAPI void faam_muxer_close(faam_muxer *m);
 
 /* Querying Muxer Statistics */
-FAAMAPI uint32_t faam_muxer_get_frame_count(faam_muxer *m);
-FAAMAPI uint64_t faam_muxer_get_sample_count(faam_muxer *m);
-FAAMAPI uint32_t faam_muxer_get_max_bitrate(faam_muxer *m);
-FAAMAPI uint32_t faam_muxer_get_avg_bitrate(faam_muxer *m);
-FAAMAPI uint16_t faam_muxer_get_max_frame_size(faam_muxer *m);
+typedef struct faam_muxer_info {
+    uint32_t struct_size;
+    uint32_t frame_count;
+    uint64_t sample_count;
+    uint32_t max_bitrate;
+    uint32_t avg_bitrate;
+    uint16_t max_frame_size;
+} faam_muxer_info;
+
+FAAMAPI faam_status faam_muxer_get_info(const faam_muxer *m, faam_muxer_info *out_info);
 
 FAAMAPI const char *faam_strerror(faam_status status);
 

@@ -259,42 +259,30 @@ int mp4_close(void) {
     return mp4_finish();
 }
 
-uint32_t mp4_frame_count(void) {
+static inline void get_info_helper(faam_muxer_info *info) {
+    memset(info, 0, sizeof(*info));
+    info->struct_size = sizeof(*info);
 #ifdef HAVE_LIBFAAM
-    return faam_muxer_get_frame_count(g_muxer);
-#else
-    return 0;
+    if (g_muxer) faam_muxer_get_info(g_muxer, info);
 #endif
+}
+
+uint32_t mp4_frame_count(void) {
+    faam_muxer_info info; get_info_helper(&info); return info.frame_count;
 }
 
 uint64_t mp4_sample_count(void) {
-#ifdef HAVE_LIBFAAM
-    return faam_muxer_get_sample_count(g_muxer);
-#else
-    return 0;
-#endif
+    faam_muxer_info info; get_info_helper(&info); return info.sample_count;
 }
 
 uint32_t mp4_max_bitrate(void) {
-#ifdef HAVE_LIBFAAM
-    return faam_muxer_get_max_bitrate(g_muxer);
-#else
-    return 0;
-#endif
+    faam_muxer_info info; get_info_helper(&info); return info.max_bitrate;
 }
 
 uint32_t mp4_avg_bitrate(void) {
-#ifdef HAVE_LIBFAAM
-    return faam_muxer_get_avg_bitrate(g_muxer);
-#else
-    return 0;
-#endif
+    faam_muxer_info info; get_info_helper(&info); return info.avg_bitrate;
 }
 
 uint16_t mp4_max_frame_size(void) {
-#ifdef HAVE_LIBFAAM
-    return faam_muxer_get_max_frame_size(g_muxer);
-#else
-    return 0;
-#endif
+    faam_muxer_info info; get_info_helper(&info); return info.max_frame_size;
 }
