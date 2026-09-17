@@ -27,7 +27,7 @@ static const hcode16_t * const huffbook_tables[] = {
     NULL, book01, book02, book03, book04, book05, book06, book07, book08, book09, book10, book11
 };
 
-static const int huffbook_sizes[] = {
+static const uint16_t huffbook_sizes[] = {
     0, 81, 81, 81, 81, 81, 81, 64, 64, 169, 169, 289
 };
 
