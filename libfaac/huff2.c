@@ -24,7 +24,7 @@
 
 /* Escape coding for HCB_ESC as per ISO/IEC 14496-3.
  * Represents values |q| >= 16 by sending 16 plus an escape suffix. */
-static inline int escape(int x, int *code)
+static int escape(int x, int *code)
 {
     if (x > MAX_HUFF_ESC_VAL) {
         fprintf(stderr, "Huffman escape value out of range: %d\n", x);
@@ -61,20 +61,21 @@ static hcode16_t * const hmap[12] = {
  * there is deliberately no escape case. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
 {
-    const hcode16_t * __restrict booka = hmap[bnum];
-    const hcode16_t * __restrict bookb = hmap[bnum + 1];
+    const hcode16_t *booka = hmap[bnum];
+    const hcode16_t *bookb = hmap[bnum + 1];
     int a = 0, b = 0;
+    int i;
 
     switch (bnum) {
     case HCB_1:
-        for (int i = 0; i < len; i += 4) {
+        for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
         break;
     case HCB_3:
-        for (int i = 0; i < len; i += 4) {
+        for (i = 0; i < len; i += 4) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
@@ -83,14 +84,14 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
         }
         break;
     case HCB_5:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
         break;
     case HCB_7:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_7 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
@@ -99,7 +100,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
         }
         break;
     case HCB_9:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_12 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
@@ -118,13 +119,14 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
 /* Bitstream mutation function, called once per finalized frame. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
-    const hcode16_t * __restrict book = hmap[bnum];
+    const hcode16_t *book = hmap[bnum];
+    int i;
     int datacnt = coder->datacnt;
 
     switch (bnum) {
     case HCB_1:
     case HCB_2:
-        for (int i = 0; i < len; i += 4) {
+        for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
             coder->s[datacnt].data = book[idx].data;
             coder->s[datacnt++].len = book[idx].len;
@@ -132,7 +134,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     case HCB_3:
     case HCB_4:
-        for (int i = 0; i < len; i += 4) {
+        for (i = 0; i < len; i += 4) {
             int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
             int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
@@ -148,7 +150,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     case HCB_5:
     case HCB_6:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
             coder->s[datacnt].data = book[idx].data;
             coder->s[datacnt++].len = book[idx].len;
@@ -156,7 +158,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     case HCB_7:
     case HCB_8:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_7 * a0 + a1;
@@ -170,7 +172,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     case HCB_9:
     case HCB_10:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_12 * a0 + a1;
@@ -183,7 +185,7 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         }
         break;
     case HCB_ESC:
-        for (int i = 0; i < len; i += 2) {
+        for (i = 0; i < len; i += 2) {
             int x0 = abs(qs[i]), x1 = abs(qs[i+1]);
             int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
             int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
@@ -264,11 +266,12 @@ int writebooks(CoderInfo *coder, BitStream *stream)
      * 5 bits for long windows (max 31 bands/section) — ISO 14496-3 §4.6.8.2. */
     int max_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
     int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
+    int g;
     BitAccumulator acc = {0};
 
     AccumBegin(&acc, stream);
 
-    for (int g = 0; g < coder->groups.n; g++) {
+    for (g = 0; g < coder->groups.n; g++) {
         int b = g * coder->sfbn;
         int end = b + coder->sfbn;
         while (b < end) {
@@ -297,7 +300,7 @@ int writebooks(CoderInfo *coder, BitStream *stream)
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
 int writesf(CoderInfo *coder, BitStream *stream)
 {
-    int bits = 0;
+    int i, bits = 0;
     int lastsf = coder->global_gain;
     int lastis = 0;
     int lastpns = coder->global_gain - SF_PNS_OFFSET;
@@ -306,7 +309,7 @@ int writesf(CoderInfo *coder, BitStream *stream)
 
     AccumBegin(&acc, stream);
 
-    for (int i = 0; i < coder->bandcnt; i++) {
+    for (i = 0; i < coder->bandcnt; i++) {
         int book = coder->book[i];
         int val = coder->sf[i];
         int diff, code, len;

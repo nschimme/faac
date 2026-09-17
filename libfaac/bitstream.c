@@ -66,14 +66,11 @@ int PutBit(BitStream *bs, uint32_t data, int numBits)
     if (numBits < 32)
         data &= (1U << numBits) - 1;
 
-    uint32_t startByte = start >> 3;
-    uint32_t endByte = (end - 1) >> 3;
-
-    if (startByte == endByte) {
-        uint32_t bitsAvailable = (end & 7) ? (end & 7) : 8;
+    if ((start >> 3) == ((end - 1) >> 3)) {
+        uint32_t bitsAvailable = ((end - 1) & 7) + 1;
         uint32_t shift = 8 - bitsAvailable;
-        assert((bs->data[startByte] & (((1U << (uint32_t)numBits) - 1) << shift)) == 0);
-        bs->data[startByte] |= (uint8_t)(data << shift);
+        assert((bs->data[start >> 3] & (((1U << (uint32_t)numBits) - 1) << shift)) == 0);
+        bs->data[start >> 3] |= (uint8_t)(data << shift);
         return 0;
     }
 

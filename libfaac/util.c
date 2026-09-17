@@ -1,7 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
  * Copyright (C) 2001 Menno Bakker
- * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,7 +42,7 @@ int GetSRIndex(unsigned int sampleRate)
 unsigned int MaxBitrate(unsigned long sampleRate)
 {
     /* ISO/IEC 14496-3 maximum frame payload: 6144 bits per channel */
-    return (unsigned int)((uint64_t)AAC_MAX_BITS_PER_CH * sampleRate / FRAME_LEN);
+    return AAC_MAX_BITS_PER_CH * sampleRate / FRAME_LEN;
 }
 
 /* Portable CLZ (returns 32 for x==0); lets escape() get a magnitude's bit-length
@@ -54,7 +53,7 @@ int CountLeadingZeros(unsigned int x)
 #ifdef _MSC_VER
     unsigned long leading_zero;
     _BitScanReverse(&leading_zero, x);
-    return 31 - (int)leading_zero;
+    return 31 - leading_zero;
 #elif defined(__GNUC__) || defined(__clang__)
     return __builtin_clz(x);
 #else

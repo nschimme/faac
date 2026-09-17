@@ -63,7 +63,8 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
 }
 
-/* Helper functions for window application (left half = direct window, right half = reversed window) */
+/* Four ICS window sequences, ISO/IEC 13818-7 4.3.2.4.
+ * Applying sine windowing directly in vectorizable loops without indirect struct dispatch. */
 
 static inline void ApplyWindowDirect(float * restrict dst,
                                      const float * restrict src,
