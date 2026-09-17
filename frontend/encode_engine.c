@@ -39,6 +39,7 @@
 #include "input.h"
 #include "mp4write.h"
 #include "charset.h"
+#include "git_version.h"
 
 void init_encode_options(encode_options_t *opts)
 {
@@ -137,6 +138,9 @@ void parse_quality_or_bitrate(const char *text, bool is_bitrate_mode,
     }
     else
     {
+        /* The library clamps to its range; keep the cast from wrapping first. */
+        if (val > UINT16_MAX)
+            val = UINT16_MAX;
         opts->quant_quality = (val > 0) ? (uint16_t)val : DEFAULT_QUANT_QUALITY;
         opts->bit_rate = 0;
     }
@@ -399,11 +403,11 @@ static bool finalize_mp4(faac_encoder *hEncoder, const encode_options_t *opts, u
 
     if (opts->encoder_info && libinfo.version)
     {
-        size_t ver_len = strlen(libinfo.version) + 6;
-        char *version_string = malloc(ver_len);
+        char *version_string = malloc(128);
         if (version_string)
         {
-            snprintf(version_string, ver_len, "FAAC %s", libinfo.version);
+            char ver_buf[128];
+            snprintf(version_string, 128, "FAAC %s", faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
             metadata.encoder = version_string;
             allocated_tags[num_allocated++] = version_string;
         }

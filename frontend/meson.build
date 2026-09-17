@@ -2,6 +2,18 @@
 libiconv = cc.find_library('iconv', required: false)
 has_iconv = cc.has_header('iconv.h') and cc.has_function('iconv_open', dependencies: [libiconv])
 
+# Reruns every build, unlike config.h; only encode_engine.c needs it, so
+# it's scoped here, not the root meson.build. No --tags: release tags here
+# are lightweight, so this always resolves to the bare short hash rather
+# than a tag name -- avoids reconciling it against meson.project_version().
+git_version_h = vcs_tag(
+    input: 'git_version.h.in',
+    output: 'git_version.h',
+    replace_string: '@GIT_VERSION@',
+    command: ['git', 'describe', '--always', '--dirty'],
+    fallback: '',
+)
+
 frontend_link_libs = [libfaac]
 c_args_list = has_iconv ? ['-DHAVE_ICONV'] : []
 

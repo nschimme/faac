@@ -316,6 +316,8 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     {
         fprintf(stderr, "Quantization quality: %u\n", info->quant_quality);
     }
+    if (opts->max_bit_rate)
+        fprintf(stderr, "Peak bitrate: %u kbps\n", (opts->max_bit_rate + 500) / 1000);
     fprintf(stderr, "Bandwidth: %u Hz\n", info->bandwidth);
 
     const char *jm_str = "";
@@ -401,6 +403,8 @@ int main(int argc, char *argv[])
     bool aacFileNameGiven = false;
     bool stream_flag_given = false;
     bool has_custom_tags = false;
+    bool quality_given = false;
+    bool bitrate_given = false;
     const char *dieMessage = NULL;
     int ret = 0;
 
@@ -462,7 +466,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        help('?');
+        help('?', libinfo.version);
         ret = 1;
         goto cleanup;
     }
@@ -563,9 +567,11 @@ int main(int argc, char *argv[])
             break;
         case 'b':
             parse_quality_or_bitrate(optarg, true, &opts);
+            bitrate_given = true;
             break;
         case 'q':
             parse_quality_or_bitrate(optarg, false, &opts);
+            quality_given = true;
             break;
         case 'I':
             if (sscanf(optarg, "%hu,%hu", &opts.center_channel, &opts.lfe_channel) < 1)
@@ -768,12 +774,12 @@ int main(int argc, char *argv[])
         case HELP_ADVANCED:
         case 'H':
         case 'h':
-            help(c);
+            help(c, libinfo.version);
             ret = 1;
             goto cleanup;
         case '?':
         default:
-            help('?');
+            help('?', libinfo.version);
             ret = 1;
             goto cleanup;
         }
@@ -789,6 +795,10 @@ int main(int argc, char *argv[])
     {
         dieMessage = "No input file specified.\n";
     }
+
+    /* The last one would silently win; the user meant one mode. */
+    if (!dieMessage && quality_given && bitrate_given)
+        dieMessage = "-q and -b are exclusive; use --cap-rate to bound VBR.\n";
 
     if (dieMessage)
     {
@@ -832,7 +842,8 @@ int main(int argc, char *argv[])
 
     if (opts.verbose > 0 && libinfo.version)
     {
-        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", libinfo.version);
+        char ver_buf[128];
+        fprintf(stderr, "Freeware Advanced Audio Coder\nFAAC %s\n\n", faac_version_string(ver_buf, sizeof(ver_buf), libinfo.version));
     }
 
     opts.output_filename = aacFileName;
