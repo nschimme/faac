@@ -28,23 +28,19 @@
 
 static void FillSineWindow(float *win, int halfLen)
 {
-    int i;
-
-    for (i = 0; i < halfLen; i++)
+    for (int i = 0; i < halfLen; i++)
         win[i] = (float)sin((M_PI_DOUBLE / (2 * halfLen)) * (i + 0.5));
 }
 
 void FilterBankInit(faacEncStruct* hEncoder)
 {
-    unsigned int channel;
-
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
-        hEncoder->freqBuff[channel] = (float*)AllocMemory(2*FRAME_LEN*sizeof(float));
+    for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
+        hEncoder->freqBuff[channel] = (float*)AllocMemory(2 * FRAME_LEN * sizeof(float));
         if (!hEncoder->freqBuff[channel]) return;
     }
 
-    hEncoder->sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG*sizeof(float));
-    hEncoder->sin_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT*sizeof(float));
+    hEncoder->sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG * sizeof(float));
+    hEncoder->sin_window_short = (float*)AllocMemory(BLOCK_LEN_SHORT * sizeof(float));
 
     if (!hEncoder->sin_window_long || !hEncoder->sin_window_short)
         return;
@@ -52,14 +48,12 @@ void FilterBankInit(faacEncStruct* hEncoder)
     FillSineWindow(hEncoder->sin_window_long, BLOCK_LEN_LONG);
     FillSineWindow(hEncoder->sin_window_short, BLOCK_LEN_SHORT);
 
-    hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
+    hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2 * BLOCK_LEN_LONG * sizeof(float));
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)
 {
-    unsigned int channel;
-
-    for (channel = 0; channel < hEncoder->numChannels; channel++) {
+    for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
     }
 
@@ -69,37 +63,36 @@ void FilterBankEnd(faacEncStruct* hEncoder)
     if (hEncoder->gpsyInfo.sharedWorkBuffLong) FreeMemory(hEncoder->gpsyInfo.sharedWorkBuffLong);
 }
 
-/* Four ICS window sequences, ISO/IEC 13818-7 4.3.2.4. */
+/* Helper functions for window application (left half = direct window, right half = reversed window) */
 
-typedef struct {
-    float *dst;
-    const float *src;
-    const float *win;
-    int len;
-    bool reverse;
-} WindowSeg;
-
-static void ApplyWindowSeg(const WindowSeg *seg)
+static inline void ApplyWindowDirect(float * restrict dst,
+                                     const float * restrict src,
+                                     const float * restrict win,
+                                     int len)
 {
-    int i;
-
-    if (seg->reverse) {
-        for (i = 0; i < seg->len; i++)
-            seg->dst[i] = seg->src[i] * seg->win[seg->len - 1 - i];
-    } else {
-        for (i = 0; i < seg->len; i++)
-            seg->dst[i] = seg->src[i] * seg->win[i];
+    for (int i = 0; i < len; i++) {
+        dst[i] = src[i] * win[i];
     }
 }
 
-static void CopyFlat(float *dst, const float *src, int len)
+static inline void ApplyWindowReverse(float * restrict dst,
+                                      const float * restrict src,
+                                      const float * restrict win,
+                                      int len)
+{
+    for (int i = 0; i < len; i++) {
+        dst[i] = src[i] * win[len - 1 - i];
+    }
+}
+
+static inline void CopyFlat(float * restrict dst, const float * restrict src, int len)
 {
     memcpy(dst, src, len * sizeof(float));
 }
 
-static void ZeroFlat(float *dst, int len)
+static inline void ZeroFlat(float * restrict dst, int len)
 {
-    SetMemory(dst, 0, len * sizeof(float));
+    memset(dst, 0, len * sizeof(float));
 }
 
 void FilterBank(faacEncStruct* hEncoder,
@@ -110,66 +103,47 @@ void FilterBank(faacEncStruct* hEncoder,
 {
     float * restrict overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
     int block_type = coderInfo->block_type;
-    int k;
 
     /* Assemble the 2048-sample overlap window from the previous and
        current frame's time-domain samples. */
-    memcpy(overlapBuf, p_prev_data, BLOCK_LEN_LONG*sizeof(float));
-    memcpy(overlapBuf+BLOCK_LEN_LONG, p_in_data, BLOCK_LEN_LONG*sizeof(float));
+    memcpy(overlapBuf, p_prev_data, BLOCK_LEN_LONG * sizeof(float));
+    memcpy(overlapBuf + BLOCK_LEN_LONG, p_in_data, BLOCK_LEN_LONG * sizeof(float));
 
     switch (block_type) {
     case ONLY_LONG_WINDOW: {
-        WindowSeg left  = { p_out_mdct, overlapBuf,
-                             hEncoder->sin_window_long, BLOCK_LEN_LONG, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG,
-                             hEncoder->sin_window_long, BLOCK_LEN_LONG, true };
-
-        ApplyWindowSeg(&left);
-        ApplyWindowSeg(&right);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        ApplyWindowDirect(p_out_mdct, overlapBuf, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowReverse(p_out_mdct + BLOCK_LEN_LONG, overlapBuf + BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2 * BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
 
     case LONG_SHORT_WINDOW: {
-        WindowSeg left  = { p_out_mdct, overlapBuf,
-                             hEncoder->sin_window_long, BLOCK_LEN_LONG, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, overlapBuf+BLOCK_LEN_LONG+NFLAT_LS,
-                             hEncoder->sin_window_short, BLOCK_LEN_SHORT, true };
-
-        ApplyWindowSeg(&left);
-        CopyFlat(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, NFLAT_LS);
-        ApplyWindowSeg(&right);
-        ZeroFlat(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        ApplyWindowDirect(p_out_mdct, overlapBuf, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        CopyFlat(p_out_mdct + BLOCK_LEN_LONG, overlapBuf + BLOCK_LEN_LONG, NFLAT_LS);
+        ApplyWindowReverse(p_out_mdct + BLOCK_LEN_LONG + NFLAT_LS, overlapBuf + BLOCK_LEN_LONG + NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
+        ZeroFlat(p_out_mdct + BLOCK_LEN_LONG + NFLAT_LS + BLOCK_LEN_SHORT, NFLAT_LS);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2 * BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
 
     case SHORT_LONG_WINDOW: {
-        WindowSeg left  = { p_out_mdct+NFLAT_LS, overlapBuf+NFLAT_LS,
-                             hEncoder->sin_window_short, BLOCK_LEN_SHORT, false };
-        WindowSeg right = { p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG,
-                             hEncoder->sin_window_long, BLOCK_LEN_LONG, true };
-
         ZeroFlat(p_out_mdct, NFLAT_LS);
-        ApplyWindowSeg(&left);
-        CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, overlapBuf+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
-        ApplyWindowSeg(&right);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        ApplyWindowDirect(p_out_mdct + NFLAT_LS, overlapBuf + NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
+        CopyFlat(p_out_mdct + NFLAT_LS + BLOCK_LEN_SHORT, overlapBuf + NFLAT_LS + BLOCK_LEN_SHORT, NFLAT_LS);
+        ApplyWindowReverse(p_out_mdct + BLOCK_LEN_LONG, overlapBuf + BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2 * BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
         break;
     }
 
     case ONLY_SHORT_WINDOW: {
-        const float *win = hEncoder->sin_window_short;
-        float *src = overlapBuf + NFLAT_LS;
-        float *dst = p_out_mdct;
+        const float * restrict win = hEncoder->sin_window_short;
+        float * restrict src = overlapBuf + NFLAT_LS;
+        float * restrict dst = p_out_mdct;
 
-        for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
-            WindowSeg left  = { dst, src, win, BLOCK_LEN_SHORT, false };
-            WindowSeg right = { dst+BLOCK_LEN_SHORT, src+BLOCK_LEN_SHORT, win, BLOCK_LEN_SHORT, true };
-
-            ApplyWindowSeg(&left);
-            ApplyWindowSeg(&right);
-            MDCT(&hEncoder->fft_tables, dst, 2*BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        for (int k = 0; k < MAX_SHORT_WINDOWS; k++) {
+            ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
+            ApplyWindowReverse(dst + BLOCK_LEN_SHORT, src + BLOCK_LEN_SHORT, win, BLOCK_LEN_SHORT);
+            MDCT(&hEncoder->fft_tables, dst, 2 * BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
 
             dst += BLOCK_LEN_SHORT;
             src += BLOCK_LEN_SHORT;
@@ -192,11 +166,9 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
     float * restrict xr = work;
     float * restrict xi = work + N4;
 
-    int i;
-
     /* Sign pattern flips at N/8 - the real input's symmetry folds
        differently on either side of that midpoint. */
-    for (i = 0; i < N8; i++) {
+    for (int i = 0; i < N8; i++) {
         int n1 = N2 - 1 - 2*i;
         int n2 = 2*i;
         float foldedRe = data[N4 + n1] + data[N + N4 - 1 - n1];
@@ -205,7 +177,7 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
         xr[i] = foldedRe * cosT[i] + foldedIm * sinT[i];
         xi[i] = foldedIm * cosT[i] - foldedRe * sinT[i];
     }
-    for (; i < N4; i++) {
+    for (int i = N8; i < N4; i++) {
         int n1 = N2 - 1 - 2*i;
         int n2 = 2*i;
         float foldedRe = data[N4 + n1] - data[N4 - 1 - n1];
@@ -219,7 +191,7 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
 
     /* Unfold N/4 complex FFT outputs into N real coefficients, one write
        per output quarter. */
-    for (i = 0; i < N4; i++) {
+    for (int i = 0; i < N4; i++) {
         int n2 = 2*i;
         float unfoldRe = 2.0f * (xr[i] * cosT[i] + xi[i] * sinT[i]);
         float unfoldIm = 2.0f * (xi[i] * cosT[i] - xr[i] * sinT[i]);
