@@ -299,54 +299,6 @@ FAAMAPI faam_status faam_muxer_set_metadata(faam_muxer *m, const faam_metadata *
     return FAAM_OK;
 }
 
-faam_status faam_muxer_open_file(const char *filepath, const faam_muxer_config *cfg, faam_muxer **out_muxer)
-{
-    if (!filepath || !cfg || !out_muxer) return FAAM_ERR_INVALID_ARG;
-
-    FILE *f = fopen(filepath, "wb");
-    if (!f) return FAAM_ERR_IO_WRITE;
-    setvbuf(f, NULL, _IOFBF, MP4_IO_BUFSIZE);
-
-    struct faam_muxer *m = (struct faam_muxer *)calloc(1, sizeof(struct faam_muxer));
-    if (!m) { fclose(f); return FAAM_ERR_INSUFFICIENT_MEM; }
-
-    m->file_handle = f;
-    m->is_heap_allocated = true;
-    m->cfg = *cfg;
-    m->sample_rate = cfg->timescale ? cfg->timescale : 44100;
-    m->num_channels = cfg->channels ? cfg->channels : 2;
-    m->bits_per_sample = cfg->bits_per_sample ? cfg->bits_per_sample : 16;
-
-    if (cfg->asc_buf && cfg->asc_len > 0) {
-        m->asc_len = cfg->asc_len < sizeof(m->asc_buf) ? cfg->asc_len : sizeof(m->asc_buf);
-        memcpy(m->asc_buf, cfg->asc_buf, m->asc_len);
-    }
-
-    m->sample_capacity = 1024;
-    m->samples = (faam_sample *)calloc(m->sample_capacity, sizeof(faam_sample));
-    m->stts_capacity = 16;
-    m->stts_entries = (faam_stts_entry *)calloc(m->stts_capacity, sizeof(faam_stts_entry));
-
-    uint8_t ftyp[36] = {
-        0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p',
-        'M', '4', 'A', ' ', 0x00, 0x00, 0x00, 0x00,
-        'M', '4', 'A', ' ', 'i', 's', 'o', 'm',
-        0x00, 0x00, 0x00, 0x08, 'w', 'i', 'd', 'e',
-        0x00, 0x00, 0x00, 0x00
-    };
-    if (cfg->is_m4b) {
-        ftyp[8] = 'M'; ftyp[9] = '4'; ftyp[10] = 'B'; ftyp[11] = ' ';
-        ftyp[16] = 'M'; ftyp[17] = '4'; ftyp[18] = 'B'; ftyp[19] = ' ';
-    }
-    fwrite(ftyp, 1, 32, f);
-
-    uint8_t mdat_hdr[8] = { 0x00, 0x00, 0x00, 0x00, 'm', 'd', 'a', 't' };
-    m->mdat_pos = (uint64_t)ftell(f) + 8;
-    fwrite(mdat_hdr, 1, 8, f);
-
-    *out_muxer = m;
-    return FAAM_OK;
-}
 
 faam_status faam_muxer_write_frame(faam_muxer *m, const uint8_t *frame_buf, uint32_t frame_bytes, uint32_t duration_ticks)
 {
