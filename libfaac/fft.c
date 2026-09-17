@@ -53,6 +53,11 @@ void fft_initialize(FFT_Tables *fft_tables)
         fft_tables->mdct_sin[i] = NULL;
     }
 
+#ifdef FAAC_FIXED_POINT
+    fft_tables->costbl_fx = NULL;
+    fft_tables->negsintbl_fx = NULL;
+#endif
+
     /* Precompute MDCT pre/post-twiddles for both block sizes now, so the
        per-frame twiddle loop is a table lookup instead of a cos/sin recurrence. */
     {
@@ -81,6 +86,7 @@ void fft_initialize(FFT_Tables *fft_tables)
             }
             fft_tables->mdct_cos[logm] = c;
             fft_tables->mdct_sin[logm] = s;
+
         }
     }
 }
@@ -109,7 +115,15 @@ void fft_terminate(FFT_Tables *fft_tables)
             FreeMemory(fft_tables->mdct_sin[i]);
         fft_tables->mdct_cos[i] = NULL;
         fft_tables->mdct_sin[i] = NULL;
+#ifdef FAAC_FIXED_POINT
+        if (fft_tables->costbl_fx && fft_tables->costbl_fx[i]) FreeMemory(fft_tables->costbl_fx[i]);
+        if (fft_tables->negsintbl_fx && fft_tables->negsintbl_fx[i]) FreeMemory(fft_tables->negsintbl_fx[i]);
+#endif
     }
+#ifdef FAAC_FIXED_POINT
+    if (fft_tables->costbl_fx) FreeMemory(fft_tables->costbl_fx);
+    if (fft_tables->negsintbl_fx) FreeMemory(fft_tables->negsintbl_fx);
+#endif
 
     FreeMemory(fft_tables->costbl);
     FreeMemory(fft_tables->negsintbl);
@@ -150,6 +164,24 @@ static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
             fft_tables->costbl[logm][i] = (fftfloat)cos(theta);
             fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
         }
+
+#ifdef FAAC_FIXED_POINT
+        if (!fft_tables->costbl_fx) fft_tables->costbl_fx = AllocMemory((FFT_MAXLOGM + 1) * sizeof(fftfix32*));
+        if (!fft_tables->negsintbl_fx) fft_tables->negsintbl_fx = AllocMemory((FFT_MAXLOGM + 1) * sizeof(fftfix32*));
+        if (fft_tables->costbl_fx && fft_tables->negsintbl_fx)
+        {
+            fft_tables->costbl_fx[logm] = AllocMemory(size * sizeof(fftfix32));
+            fft_tables->negsintbl_fx[logm] = AllocMemory(size * sizeof(fftfix32));
+            if (fft_tables->costbl_fx[logm] && fft_tables->negsintbl_fx[logm])
+            {
+                for (i = 0; i < size; i++)
+                {
+                    fft_tables->costbl_fx[logm][i] = FIX_Q31(fft_tables->costbl[logm][i]);
+                    fft_tables->negsintbl_fx[logm][i] = FIX_Q31(fft_tables->negsintbl[logm][i]);
+                }
+            }
+        }
+#endif
     }
 }
 
@@ -279,6 +311,163 @@ static void bit_reverse(
         }
     }
 }
+
+#ifdef FAAC_FIXED_POINT
+/* Pure Q31 integer Radix-4 DIF FFT processing loop with stage scaling (>> 1) */
+static void radix4_dif_proc_pure_fx(
+    int32_t * restrict xr_fx,
+    int32_t * restrict xi_fx,
+    int logm,
+    const fftfix32 * restrict costbl_fx,
+    const fftfix32 * restrict sintbl_fx)
+{
+    int n = 1 << logm;
+    int n2 = n;
+    int n1;
+    int i, j, k;
+
+    for (k = 0; k < (logm >> 1); k++)
+    {
+        n1 = n2;
+        n2 >>= 2;
+        for (i = 0; i < n; i += n1)
+        {
+            int32_t * restrict r1p = xr_fx + i;
+            int32_t * restrict r2p = xr_fx + i + n2;
+            int32_t * restrict r3p = xr_fx + i + 2*n2;
+            int32_t * restrict r4p = xr_fx + i + 3*n2;
+            int32_t * restrict i1p = xi_fx + i;
+            int32_t * restrict i2p = xi_fx + i + n2;
+            int32_t * restrict i3p = xi_fx + i + 2*n2;
+            int32_t * restrict i4p = xi_fx + i + 3*n2;
+
+            {
+                int32_t r1 = *r1p >> 1, i1 = *i1p >> 1;
+                int32_t r2 = *r2p >> 1, i2 = *i2p >> 1;
+                int32_t r3 = *r3p >> 1, i3 = *i3p >> 1;
+                int32_t r4 = *r4p >> 1, i4 = *i4p >> 1;
+
+                int32_t t1 = r1 + r3, t2 = i1 + i3;
+                int32_t t3 = r2 + r4, t4 = i2 + i4;
+                int32_t t5 = r1 - r3, t6 = i1 - i3;
+                int32_t t7 = r2 - r4, t8 = i2 - i4;
+
+                *r1p = t1 + t3; *i1p = t2 + t4;
+                *r3p = t5 + t8; *i3p = t6 - t7;
+                *r2p = t1 - t3; *i2p = t2 - t4;
+                *r4p = t5 - t8; *i4p = t6 + t7;
+
+                r1p++; r2p++; r3p++; r4p++;
+                i1p++; i2p++; i3p++; i4p++;
+            }
+
+            for (j = 1; j < n2; j++)
+            {
+                int tw_idx = j << (2 * k);
+                const fftfix32 c1 = costbl_fx[tw_idx];
+                const fftfix32 s1 = sintbl_fx[tw_idx];
+                const fftfix32 c2 = costbl_fx[2 * tw_idx];
+                const fftfix32 s2 = sintbl_fx[2 * tw_idx];
+                const fftfix32 c3 = costbl_fx[3 * tw_idx];
+                const fftfix32 s3 = sintbl_fx[3 * tw_idx];
+
+                int32_t r1 = *r1p >> 1, i1 = *i1p >> 1;
+                int32_t r2 = *r2p >> 1, i2 = *i2p >> 1;
+                int32_t r3 = *r3p >> 1, i3 = *i3p >> 1;
+                int32_t r4 = *r4p >> 1, i4 = *i4p >> 1;
+
+                int32_t t1 = r1 + r3, t2 = i1 + i3;
+                int32_t t3 = r2 + r4, t4 = i2 + i4;
+                int32_t t5 = r1 - r3, t6 = i1 - i3;
+                int32_t t7 = r2 - r4, t8 = i2 - i4;
+
+                *r1p = t1 + t3;
+                *i1p = t2 + t4;
+
+                r1 = t1 - t3; i1 = t2 - t4;
+                r2 = t5 + t8; i2 = t6 - t7;
+                r3 = t5 - t8; i3 = t6 + t7;
+
+                *r3p = FIX_MUL_Q31(r2, c1) - FIX_MUL_Q31(i2, s1);
+                *i3p = FIX_MUL_Q31(r2, s1) + FIX_MUL_Q31(i2, c1);
+                *r2p = FIX_MUL_Q31(r1, c2) - FIX_MUL_Q31(i1, s2);
+                *i2p = FIX_MUL_Q31(r1, s2) + FIX_MUL_Q31(i1, c2);
+                *r4p = FIX_MUL_Q31(r3, c3) - FIX_MUL_Q31(i3, s3);
+                *i4p = FIX_MUL_Q31(r3, s3) + FIX_MUL_Q31(i3, c3);
+
+                r1p++; r2p++; r3p++; r4p++;
+                i1p++; i2p++; i3p++; i4p++;
+            }
+        }
+    }
+
+    if (logm & 1)
+    {
+        int32_t * restrict r1p = xr_fx;
+        int32_t * restrict r2p = xr_fx + 1;
+        int32_t * restrict i1p = xi_fx;
+        int32_t * restrict i2p = xi_fx + 1;
+        for (i = 0; i < n; i += 2)
+        {
+            int32_t r1 = *r1p >> 1, i1 = *i1p >> 1;
+            int32_t r2 = *r2p >> 1, i2 = *i2p >> 1;
+            *r1p = r1 + r2; *i1p = i1 + i2;
+            *r2p = r1 - r2; *i2p = i1 - i2;
+            r1p += 2; r2p += 2; i1p += 2; i2p += 2;
+        }
+    }
+}
+
+static void bit_reverse_fx(
+    int32_t * restrict xr_fx,
+    int32_t * restrict xi_fx,
+    int logm,
+    const unsigned short * restrict r)
+{
+    int i;
+    int size = 1 << logm;
+
+    for (i = 0; i < size; i++)
+    {
+        int j = (int)r[i];
+        if (j > i)
+        {
+            int32_t tr = xr_fx[i]; xr_fx[i] = xr_fx[j]; xr_fx[j] = tr;
+            int32_t ti = xi_fx[i]; xi_fx[i] = xi_fx[j]; xi_fx[j] = ti;
+        }
+    }
+}
+
+void fft_pure_fx(FFT_Tables *fft_tables, int32_t *xr_fx, int32_t *xi_fx, int logm)
+{
+    if (logm > FFT_MAXLOGM || logm < 1) return;
+    check_tables_radix4(fft_tables, logm);
+
+    if (fft_tables->reordertbl[logm] == NULL)
+    {
+        int size = 1 << logm;
+        int i;
+        fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
+        if (!fft_tables->reordertbl[logm]) return;
+
+        for (i = 0; i < size; i++)
+        {
+            int reversed = 0;
+            int b;
+            int tmp = i;
+            for (b = 0; b < logm; b++)
+            {
+                reversed = (reversed << 1) | (tmp & 1);
+                tmp >>= 1;
+            }
+            fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
+        }
+    }
+
+    radix4_dif_proc_pure_fx(xr_fx, xi_fx, logm, fft_tables->costbl_fx[logm], fft_tables->negsintbl_fx[logm]);
+    bit_reverse_fx(xr_fx, xi_fx, logm, fft_tables->reordertbl[logm]);
+}
+#endif
 
 void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
 {

@@ -189,10 +189,63 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
     const fftfloat * restrict cosT = fft_tables->mdct_cos[logm];
     const fftfloat * restrict sinT = fft_tables->mdct_sin[logm];
 
+    int i;
+
+#ifdef FAAC_FIXED_POINT
+    /* Pure Q31 integer MDCT transform execution operating on integer work arrays */
+    int32_t xr_fx[BLOCK_LEN_LONG / 2];
+    int32_t xi_fx[BLOCK_LEN_LONG / 2];
+
+    for (i = 0; i < N8; i++) {
+        int n1 = N2 - 1 - 2*i;
+        int n2 = 2*i;
+        float foldedRe = data[N4 + n1] + data[N + N4 - 1 - n1];
+        float foldedIm = data[N4 + n2] - data[N4 - 1 - n2];
+
+        int32_t cos_fx = FIX_Q31(cosT[i]);
+        int32_t sin_fx = FIX_Q31(sinT[i]);
+        int32_t fre_fx = FIX_Q31(foldedRe * (1.0f / 32768.0f));
+        int32_t fim_fx = FIX_Q31(foldedIm * (1.0f / 32768.0f));
+
+        xr_fx[i] = FIX_MUL_Q31(fre_fx, cos_fx) + FIX_MUL_Q31(fim_fx, sin_fx);
+        xi_fx[i] = FIX_MUL_Q31(fim_fx, cos_fx) - FIX_MUL_Q31(fre_fx, sin_fx);
+    }
+    for (; i < N4; i++) {
+        int n1 = N2 - 1 - 2*i;
+        int n2 = 2*i;
+        float foldedRe = data[N4 + n1] - data[N4 - 1 - n1];
+        float foldedIm = data[N4 + n2] + data[N + N4 - 1 - n2];
+
+        int32_t cos_fx = FIX_Q31(cosT[i]);
+        int32_t sin_fx = FIX_Q31(sinT[i]);
+        int32_t fre_fx = FIX_Q31(foldedRe * (1.0f / 32768.0f));
+        int32_t fim_fx = FIX_Q31(foldedIm * (1.0f / 32768.0f));
+
+        xr_fx[i] = FIX_MUL_Q31(fre_fx, cos_fx) + FIX_MUL_Q31(fim_fx, sin_fx);
+        xi_fx[i] = FIX_MUL_Q31(fim_fx, cos_fx) - FIX_MUL_Q31(fre_fx, sin_fx);
+    }
+
+    fft_pure_fx(fft_tables, xr_fx, xi_fx, logm);
+
+    for (i = 0; i < N4; i++) {
+        int n2 = 2*i;
+        int32_t cos_fx = FIX_Q31(cosT[i]);
+        int32_t sin_fx = FIX_Q31(sinT[i]);
+
+        int32_t unfoldRe_fx = FIX_MUL_Q31(xr_fx[i], cos_fx) + FIX_MUL_Q31(xi_fx[i], sin_fx);
+        int32_t unfoldIm_fx = FIX_MUL_Q31(xi_fx[i], cos_fx) - FIX_MUL_Q31(xr_fx[i], sin_fx);
+
+        float unfoldRe = 2.0f * (float)unfoldRe_fx * (32768.0f / 2147483647.0f);
+        float unfoldIm = 2.0f * (float)unfoldIm_fx * (32768.0f / 2147483647.0f);
+
+        data[n2]             = -unfoldRe;
+        data[N2 - 1 - n2]    =  unfoldIm;
+        data[N2 + n2]        = -unfoldIm;
+        data[N - 1 - n2]     =  unfoldRe;
+    }
+#else
     float * restrict xr = work;
     float * restrict xi = work + N4;
-
-    int i;
 
     /* Sign pattern flips at N/8 - the real input's symmetry folds
        differently on either side of that midpoint. */
@@ -229,4 +282,5 @@ void MDCT( FFT_Tables *fft_tables, float * restrict data, int N, float * restric
         data[N2 + n2]        = -unfoldIm;
         data[N - 1 - n2]     =  unfoldRe;
     }
+#endif
 }

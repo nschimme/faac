@@ -16,6 +16,7 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "sbr_internal.h"
+#include "fft.h"
 #include "util.h"
 #include <string.h>
 
@@ -53,6 +54,32 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
             float hp_stot = 0.0f;
+#ifdef FAAC_FIXED_POINT
+            /* Q31 / 64-bit integer energy and high-pass energy accumulation for embedded SOCs */
+            int64_t stot_fx = 0;
+            int64_t hp_stot_fx = 0;
+            for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
+                int32_t v0 = FIX_Q31(p_in[0]);
+                int32_t v1 = FIX_Q31(p_in[1]);
+                int32_t v2 = FIX_Q31(p_in[2]);
+                int32_t v3 = FIX_Q31(p_in[3]);
+                int32_t val_in_fx = FIX_Q31(val_in);
+
+                stot_fx += (int64_t)FIX_MUL_Q31(v0, v0) + FIX_MUL_Q31(v1, v1) + FIX_MUL_Q31(v2, v2) + FIX_MUL_Q31(v3, v3);
+
+                int32_t d0 = v0 - val_in_fx;
+                int32_t d1 = v1 - v0;
+                int32_t d2 = v2 - v1;
+                int32_t d3 = v3 - v2;
+
+                hp_stot_fx += (int64_t)FIX_MUL_Q31(d0, d0) + FIX_MUL_Q31(d1, d1) + FIX_MUL_Q31(d2, d2) + FIX_MUL_Q31(d3, d3);
+
+                val_in = p_in[3];
+                p_in += 4;
+            }
+            stot = (float)stot_fx * (1.0f / 2147483647.0f);
+            hp_stot = (float)hp_stot_fx * (1.0f / 2147483647.0f);
+#else
             for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
                 float v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
                 stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
@@ -60,6 +87,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
                 val_in = v3; p_in += 4;
             }
+#endif
             if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
             if (stot > smax) {
