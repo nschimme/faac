@@ -3,6 +3,9 @@
  */
 
 #include "faad_internal.h"
+#ifdef HAVE_LIBFAAM
+#include "faam.h"
+#endif
 
 const uint32_t faad_sample_rates[16] = {
     96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350, 0, 0, 0
@@ -11,6 +14,28 @@ const uint32_t faad_sample_rates[16] = {
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 {
     memset(asc, 0, sizeof(*asc));
+
+#ifdef HAVE_LIBFAAM
+    uint8_t raw_asc[16];
+    uint32_t rem_bytes = bs->len - bs->byte_pos;
+    if (rem_bytes > sizeof(raw_asc)) rem_bytes = sizeof(raw_asc);
+    memcpy(raw_asc, bs->buffer + bs->byte_pos, rem_bytes);
+
+    faam_asc_info info;
+    if (faam_asc_parse(raw_asc, rem_bytes, &info) == FAAM_OK) {
+        asc->object_type = (enum faad_object_type)info.object_type;
+        asc->sample_rate = info.sample_rate;
+        asc->num_channels = info.channels;
+        asc->is_sbr = info.sbr_present;
+        asc->sbr_sample_rate = info.sbr_present ? info.sample_rate * 2 : info.sample_rate;
+
+        if (asc->object_type == FAAD_OBJ_NULL || asc->object_type == FAAD_OBJ_HE_AAC_V1) {
+            asc->object_type = FAAD_OBJ_LC;
+        }
+        return FAAD_OK;
+    }
+#endif
+
     uint32_t aot = bits_get(bs, 5);
     if (aot == 31) {
         aot = 32 + bits_get(bs, 6);
@@ -43,7 +68,6 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
         asc->sbr_sample_rate = asc->sample_rate * 2;
     }
 
-    /* Set default if AOT == LC */
     if (asc->object_type == FAAD_OBJ_LC || asc->object_type == FAAD_OBJ_HE_AAC_V1 || asc->object_type == FAAD_OBJ_NULL) {
         asc->object_type = FAAD_OBJ_LC;
         return FAAD_OK;
