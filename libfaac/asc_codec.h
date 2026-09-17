@@ -46,8 +46,6 @@ typedef struct {
     bool     ps_present;
 } AscInfo;
 
-#ifndef FAAC_ASC_BUILD_ONLY
-
 typedef struct { const uint8_t *buf; uint32_t len_bits; uint32_t pos; } asc_bitreader;
 
 static inline uint32_t asc_br_get(asc_bitreader *br, uint32_t n)
@@ -140,10 +138,6 @@ static inline void asc_codec_parse(const uint8_t *buf, uint32_t len, AscInfo *ou
     }
 }
 
-#endif /* !FAAC_ASC_BUILD_ONLY */
-
-#ifndef FAAC_ASC_PARSE_ONLY
-
 typedef struct { uint8_t *buf; uint32_t cap_bits; uint32_t pos; } asc_bitwriter;
 
 static inline void asc_bw_put(asc_bitwriter *bw, uint32_t val, uint32_t n)
@@ -206,7 +200,5 @@ static inline uint32_t asc_codec_build(const AscBuildInfo *info, uint8_t *out, u
 
     return (bw.pos + 7) / 8;
 }
-
-#endif /* !FAAC_ASC_PARSE_ONLY */
 
 #endif /* FAAC_ASC_CODEC_H */

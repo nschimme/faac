@@ -4,7 +4,7 @@ if config_h.get('HAVE_SSE2')
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
-        c_args: c_args + sse2_flag + ['-DFAAC_ASC_BUILD_ONLY'],
+        c_args: c_args + sse2_flag,
         gnu_symbol_visibility: 'hidden'
     )
     quantize_simd_libs += quantize_sse
@@ -60,7 +60,7 @@ libfaac_common_static = static_library(
     'faac_common',
     ['fft.c', 'fft.h', 'sbr_tables.c', 'sbr_tables.h', 'huffdata.c', 'huffdata.h'],
     include_directories: ['..', '../include'],
-    c_args: c_args + ['-DFAAC_ASC_BUILD_ONLY'],
+    c_args: c_args,
     gnu_symbol_visibility: 'hidden',
 )
 
@@ -68,7 +68,7 @@ libfaac = disabler()
 
 common_args = {
     'include_directories' : ['..', '../include'],
-    'c_args' : c_args + ['-DFAAC_ASC_BUILD_ONLY'],
+    'c_args' : c_args,
     'dependencies' : [libm],
     'link_with' : quantize_simd_libs,
     'install' : true,
