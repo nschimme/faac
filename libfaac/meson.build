@@ -105,3 +105,17 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
+
+if default_lib == 'shared' and not is_variable('libfaac_static')
+    libfaac_for_test = static_library('faac_test_static', common_src, kwargs: common_args)
+else
+    libfaac_for_test = libfaac_static
+endif
+
+test_tables_exe = executable('test_tables', 'test_tables.c',
+    include_directories: ['..', '../include'],
+    c_args: c_args,
+    dependencies: [libm],
+    link_with: libfaac_for_test
+)
+test('table_contents', test_tables_exe)
