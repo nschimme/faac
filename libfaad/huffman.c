@@ -33,10 +33,10 @@ static const uint16_t huffbook_sizes[] = {
 };
 
 
-/* Compact 16-bit LUT entry: bits 0..3 = len (0..10), bits 4..15 = symbol index (0..288) */
+/* Direct 11-bit LUT entry: bits 0..3 = len (0..11), bits 4..15 = symbol index (0..288) */
 typedef uint16_t HuffLutEntry;
 
-static HuffLutEntry huff_lut_10bit[13][1024];
+static HuffLutEntry huff_lut_11bit[13][2048];
 
 typedef struct {
     uint8_t len;
@@ -58,14 +58,14 @@ void init_huffman_luts(void)
         int size = huffbook_sizes[b];
         if (!table) continue;
 
-        for (int cw = 0; cw < 1024; cw++) {
-            huff_lut_10bit[b][cw] = 0;
+        for (int cw = 0; cw < 2048; cw++) {
+            huff_lut_11bit[b][cw] = 0;
 
-            for (uint32_t len = 1; len <= 10; len++) {
-                uint32_t prefix = cw >> (10 - len);
+            for (uint32_t len = 1; len <= 11; len++) {
+                uint32_t prefix = cw >> (11 - len);
                 for (int i = 0; i < size; i++) {
                     if (table[i].len == len && table[i].data == prefix) {
-                        huff_lut_10bit[b][cw] = (uint16_t)(len | ((uint32_t)i << 4));
+                        huff_lut_11bit[b][cw] = (uint16_t)(len | ((uint32_t)i << 4));
                         goto found_sym;
                     }
                 }
@@ -73,10 +73,10 @@ void init_huffman_luts(void)
             found_sym:;
         }
 
-        /* Build compact escape table for codewords >= 11 bits */
+        /* Build compact escape table for codewords >= 12 bits */
         huff_esc_count[b] = 0;
         for (int i = 0; i < size; i++) {
-            if (table[i].len >= 11 && huff_esc_count[b] < 64) {
+            if (table[i].len >= 12 && huff_esc_count[b] < 64) {
                 huff_esc_table[b][huff_esc_count[b]].len = (uint8_t)table[i].len;
                 huff_esc_table[b][huff_esc_count[b]].data = table[i].data;
                 huff_esc_table[b][huff_esc_count[b]].sym = (uint16_t)i;
@@ -86,14 +86,14 @@ void init_huffman_luts(void)
     }
 
     /* Book 12 (Scalefactors) LUT */
-    for (int cw = 0; cw < 1024; cw++) {
-        huff_lut_10bit[12][cw] = 0;
+    for (int cw = 0; cw < 2048; cw++) {
+        huff_lut_11bit[12][cw] = 0;
 
-        for (uint32_t len = 1; len <= 10; len++) {
-            uint32_t prefix = cw >> (10 - len);
+        for (uint32_t len = 1; len <= 11; len++) {
+            uint32_t prefix = cw >> (11 - len);
             for (int i = 0; i < 121; i++) {
                 if (book12[i].len == len && book12[i].data == prefix) {
-                    huff_lut_10bit[12][cw] = (uint16_t)(len | ((uint32_t)i << 4));
+                    huff_lut_11bit[12][cw] = (uint16_t)(len | ((uint32_t)i << 4));
                     goto found_sf;
                 }
             }
@@ -103,7 +103,7 @@ void init_huffman_luts(void)
 
     huff_esc_count[12] = 0;
     for (int i = 0; i < 121; i++) {
-        if (book12[i].len >= 11 && huff_esc_count[12] < 64) {
+        if (book12[i].len >= 12 && huff_esc_count[12] < 64) {
             huff_esc_table[12][huff_esc_count[12]].len = (uint8_t)book12[i].len;
             huff_esc_table[12][huff_esc_count[12]].data = book12[i].data;
             huff_esc_table[12][huff_esc_count[12]].sym = (uint16_t)i;
@@ -118,8 +118,8 @@ static inline int decode_huffman_symbol(BitReader *bs, int book)
 {
     if (book < 1 || book > 11) return 0;
 
-    uint32_t cw10 = bits_show(bs, 10);
-    HuffLutEntry lut = huff_lut_10bit[book][cw10];
+    uint32_t cw11 = bits_show(bs, 11);
+    HuffLutEntry lut = huff_lut_11bit[book][cw11];
     uint32_t len = lut & 0x0F;
     if (len > 0) {
         bits_skip(bs, len);
@@ -140,8 +140,8 @@ static inline int decode_huffman_symbol(BitReader *bs, int book)
 
 static inline int decode_huffman_scalefactor(BitReader *bs)
 {
-    uint32_t cw10 = bits_show(bs, 10);
-    HuffLutEntry lut = huff_lut_10bit[12][cw10];
+    uint32_t cw11 = bits_show(bs, 11);
+    HuffLutEntry lut = huff_lut_11bit[12][cw11];
     uint32_t len = lut & 0x0F;
     if (len > 0) {
         bits_skip(bs, len);
