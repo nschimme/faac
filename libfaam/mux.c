@@ -287,6 +287,18 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     return FAAM_OK;
 }
 
+FAAMAPI faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless) {
+    if (!m || !gapless) return FAAM_ERR_INVALID_ARG;
+    m->cfg.gapless = *gapless;
+    return FAAM_OK;
+}
+
+FAAMAPI faam_status faam_muxer_set_metadata(faam_muxer *m, const faam_metadata *meta) {
+    if (!m || !meta) return FAAM_ERR_INVALID_ARG;
+    m->cfg.metadata = *meta;
+    return FAAM_OK;
+}
+
 faam_status faam_muxer_open_file(const char *filepath, const faam_muxer_config *cfg, faam_muxer **out_muxer)
 {
     if (!filepath || !cfg || !out_muxer) return FAAM_ERR_INVALID_ARG;

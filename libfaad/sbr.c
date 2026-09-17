@@ -76,6 +76,10 @@ static const float ps_iid_scale_lut[15] = {
     1.000f, 1.125f, 1.250f, 1.375f, 1.500f, 1.750f, 2.000f
 };
 
+static const float ps_icc_scale_lut[8] = {
+    1.000f, 0.937f, 0.841f, 0.600f, 0.367f, 0.000f, -0.589f, -1.000f
+};
+
 static int sbr_decode_huffman_env_delta(BitReader *bs, const SBRHuffEntry *table, int nsyms, int offset)
 {
     uint32_t val = 0;
@@ -117,17 +121,27 @@ static void ps_decode_payload(struct faad_decoder *dec, BitReader *bs)
         }
     }
 
-    /* Compute PS mixing gains H11, H22, H12, H21 */
+    /* ISO/IEC 14496-3 Section 8.6.4: Compute PS spatial mixing gains H11, H22, H12, H21 */
     for (int b = 0; b < SBR_PS_BANDS; b++) {
         int iid = ps->iid_idx[b] + 7;
         if (iid < 0) iid = 0;
         if (iid > 14) iid = 14;
 
+        int icc = ps->icc_idx[b];
+        if (icc < 0) icc = 0;
+        if (icc > 7) icc = 7;
+
         float c = ps_iid_scale_lut[iid];
-        ps->h11[b] = sqrtf(2.0f / (1.0f + c * c));
-        ps->h22[b] = c * ps->h11[b];
-        ps->h12[b] = 0.0f;
-        ps->h21[b] = 0.0f;
+        float rho = ps_icc_scale_lut[icc];
+
+        float cos_alpha = sqrtf(2.0f / (1.0f + c * c));
+        float sin_alpha = c * cos_alpha;
+        float gamma = 0.5f * acosf(rho);
+
+        ps->h11[b] = cos_alpha * cosf(gamma);
+        ps->h22[b] = sin_alpha * cosf(gamma);
+        ps->h12[b] = -sin_alpha * sinf(gamma);
+        ps->h21[b] = cos_alpha * sinf(gamma);
     }
 }
 
