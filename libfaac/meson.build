@@ -25,14 +25,10 @@ common_src = [
     'faac_internal.h',
     'filtbank.c',
     'filtbank.h',
-    'fft.c',
-    'fft.h',
     'frame.c',
     'frame.h',
     'huff2.c',
     'huff2.h',
-    'huffdata.c',
-    'huffdata.h',
     'quantize.c',
     'quantize.h',
     'ratecontrol.c',
@@ -41,8 +37,6 @@ common_src = [
     'sbr.h',
     'sbr_internal.h',
     'sbr_bitstream.c',
-    'sbr_tables.c',
-    'sbr_tables.h',
     'sbr_analysis.c',
     'sbr_analysis.h',
     'resample.c',
@@ -55,7 +49,7 @@ common_src = [
     'util.h',
 ]
 
-# fft.c, sbr_tables.c and huffdata.c are shared verbatim with libfaad
+# Shared ISO tables/FFT engine static helper for libfaad and internal targets.
 libfaac_common_static = static_library(
     'faac_common',
     ['fft.c', 'fft.h', 'sbr_tables.c', 'sbr_tables.h', 'huffdata.c', 'huffdata.h'],
@@ -66,11 +60,14 @@ libfaac_common_static = static_library(
 
 libfaac = disabler()
 
+# Derives library shared object version directly from project_version in root meson.build
+project_ver = meson.project_version()
+
 common_args = {
     'include_directories' : ['..', '../include'],
     'c_args' : c_args,
     'dependencies' : [libm],
-    'link_with' : quantize_simd_libs,
+    'link_with' : quantize_simd_libs + [libfaac_common_static],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',
 }
@@ -92,8 +89,7 @@ if default_lib == 'shared' or default_lib == 'both'
         'faac',
         common_src,
         kwargs : common_args + {
-          # Keep in sync with FAAC_VERSION_MAJOR/MINOR/PATCH in include/faac.h.
-          'version' : '2.0.0',
+          'version' : project_ver,
           'vs_module_defs' : 'libfaac.def',
         },
     )
@@ -111,6 +107,6 @@ pkgconfig.generate(
     libfaac,
     name: 'FAAC',
     description: 'Freeware Advanced Audio Coder',
-    version: meson.project_version(),
+    version: project_ver,
     filebase: 'faac'
 )
