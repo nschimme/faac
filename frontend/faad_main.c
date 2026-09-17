@@ -152,13 +152,7 @@ static void write_wav_header(FILE *f, uint32_t sample_rate, uint16_t num_channel
 
 static void print_usage(const char *prog)
 {
-    faad_library_info info;
-    info.struct_size = sizeof(info);
-    if (faad_get_library_info(&info) != FAAD_OK) {
-        info.version = "3.0.0";
-    }
-
-    printf("FAAD - Freeware Advanced Audio Decoder (v%s)\n", info.version);
+    printf("FAAD - Freeware Advanced Audio Decoder\n");
     printf("Usage: %s [options] <infile.aac|infile.m4a>\n\n", prog);
     printf("I/O & Format Options:\n");
     printf("  -o, --output <file>    Set output filename (default: stdout if piped, or infile.wav)\n");

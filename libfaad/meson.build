@@ -15,9 +15,17 @@ faad_src = [
     '../libfaac/sbr_tables.c',
 ]
 
+faad_c_args = c_args
+if not get_option('decoder-sbr')
+    faad_c_args += ['-DFAAD_DISABLE_SBR']
+endif
+if not get_option('decoder-ps')
+    faad_c_args += ['-DFAAD_DISABLE_PS']
+endif
+
 common_args = {
     'include_directories' : ['..', '../include', '../libfaac'],
-    'c_args' : c_args,
+    'c_args' : faad_c_args,
     'dependencies' : [libm],
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',

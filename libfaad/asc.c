@@ -11,7 +11,6 @@ const uint32_t faad_sample_rates[16] = {
 faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
 {
     memset(asc, 0, sizeof(*asc));
-
     uint32_t aot = bits_get(bs, 5);
     if (aot == 31) {
         aot = 32 + bits_get(bs, 6);
@@ -44,6 +43,7 @@ faad_status asc_decode(BitReader *bs, AudioSpecificConfig *asc)
         asc->sbr_sample_rate = asc->sample_rate * 2;
     }
 
+    /* Set default if AOT == LC */
     if (asc->object_type == FAAD_OBJ_LC || asc->object_type == FAAD_OBJ_HE_AAC_V1 || asc->object_type == FAAD_OBJ_NULL) {
         asc->object_type = FAAD_OBJ_LC;
         return FAAD_OK;

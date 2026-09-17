@@ -47,18 +47,6 @@ typedef enum faad_status {
     FAAD_STATUS_MAX            = 0x7fffffff
 } faad_status;
 
-/* Global library metadata */
-typedef struct faad_library_info {
-    uint32_t                struct_size;
-    const char             *version;
-    const char             *copyright;
-    uint32_t                max_channels;
-    bool                    sbr_supported;
-    bool                    ps_supported;
-} faad_library_info;
-
-FAADAPI faad_status faad_get_library_info(faad_library_info *out);
-
 enum faad_object_type {
     FAAD_OBJ_NULL      = 0,
     FAAD_OBJ_LC        = 2,           /* AAC-LC (Low Complexity) */

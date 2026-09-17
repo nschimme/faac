@@ -102,8 +102,8 @@ static inline void put_u64(faam_muxer *m, uint64_t val) {
 #else
     val = ((val >> 56) & 0x00000000000000FFULL) |
           ((val >> 40) & 0x000000000000FF00ULL) |
-          ((val >> 24) & 0x00000000FF000000ULL) |
-          ((val >> 8)  & 0x000000FF00000000ULL) |
+          ((val >> 24) & 0x0000000000FF0000ULL) |
+          ((val >> 8)  & 0x00000000FF000000ULL) |
           ((val << 8)  & 0x000000FF00000000ULL) |
           ((val << 24) & 0x0000FF0000000000ULL) |
           ((val << 40) & 0x00FF000000000000ULL) |
@@ -226,7 +226,7 @@ faam_status faam_muxer_config_init(faam_muxer_config *cfg, uint32_t caller_size)
     memset(cfg, 0, caller_size);
     cfg->struct_size = caller_size;
     cfg->timescale = 44100;
-    cfg->gapless.encoder_delay = 0;
+    cfg->gapless.encoder_delay = 1024;
     return FAAM_OK;
 }
 
@@ -284,18 +284,6 @@ faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes, const faam_muxer_
     m->mdat_pos = m->io.tell ? m->io.tell(m->io.user_data) : 40;
 
     *out_muxer = m;
-    return FAAM_OK;
-}
-
-faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless) {
-    if (!m || !gapless) return FAAM_ERR_INVALID_ARG;
-    m->cfg.gapless = *gapless;
-    return FAAM_OK;
-}
-
-faam_status faam_muxer_set_metadata(faam_muxer *m, const faam_metadata *meta) {
-    if (!m || !meta) return FAAM_ERR_INVALID_ARG;
-    m->cfg.metadata = *meta;
     return FAAM_OK;
 }
 
@@ -465,7 +453,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
     put_u32(m, 0); put_u32(m, 0);
     end_atom(m, tkhd);
 
-    if (m->cfg.gapless.encoder_delay > 0 && m->cfg.gapless.total_samples > 0) {
+    if (m->cfg.gapless.encoder_delay > 0) {
         long edts = start_atom(m, "edts");
         long elst = start_atom(m, "elst");
         put_u32(m, use64_time ? (1U << 24) : 0);
@@ -600,7 +588,7 @@ faam_status faam_muxer_finalize(faam_muxer *m)
         put_itunes_data_box(m, "covr", type_code, m->cfg.metadata.cover_art, m->cfg.metadata.cover_bytes);
     }
 
-    if (m->cfg.gapless.encoder_delay > 0 && m->cfg.gapless.total_samples > 0) {
+    if (m->cfg.gapless.encoder_delay > 0) {
         char smpb[128];
         snprintf(smpb, sizeof(smpb),
                  " 00000000 %08X %08X %08X%08X 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000",
@@ -642,18 +630,8 @@ void faam_muxer_close(faam_muxer *m)
     if (m->is_heap_allocated) free(m);
 }
 
-faam_status faam_muxer_get_info(faam_muxer *m, faam_muxer_info *out_info)
-{
-    if (!m || !out_info || out_info->struct_size < sizeof(faam_muxer_info)) {
-        return FAAM_ERR_INVALID_ARG;
-    }
-
-    out_info->struct_size = sizeof(faam_muxer_info);
-    out_info->frame_count = m->frame_count;
-    out_info->sample_count = m->sample_count;
-    out_info->max_bitrate = m->max_bitrate;
-    out_info->avg_bitrate = m->avg_bitrate;
-    out_info->max_frame_size = m->max_frame_size;
-
-    return FAAM_OK;
-}
+uint32_t faam_muxer_get_frame_count(faam_muxer *m) { return m ? m->frame_count : 0; }
+uint64_t faam_muxer_get_sample_count(faam_muxer *m) { return m ? m->sample_count : 0; }
+uint32_t faam_muxer_get_max_bitrate(faam_muxer *m) { return m ? m->max_bitrate : 0; }
+uint32_t faam_muxer_get_avg_bitrate(faam_muxer *m) { return m ? m->avg_bitrate : 0; }
+uint16_t faam_muxer_get_max_frame_size(faam_muxer *m) { return m ? m->max_frame_size : 0; }

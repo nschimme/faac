@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -59,8 +60,12 @@ static float log10_width_sf_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
+static bool quant_initialized = false;
+
 void QuantizeInit(void)
 {
+    if (quant_initialized) return;
+
     int i;
 #if defined(HAVE_SSE2)
     CPUCaps caps = get_cpu_caps();
@@ -82,6 +87,8 @@ void QuantizeInit(void)
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
     max_quant_limit = (float)pow((double)MAX_HUFF_ESC_VAL + 1.0 - (double)MAGIC_NUMBER, 4.0/3.0);
+
+    quant_initialized = true;
 }
 
 static inline float sfac_to_gain(int sfac)

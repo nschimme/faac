@@ -7,17 +7,18 @@
 
 void setup_sfb_offsets(ICSInfo *ics, uint32_t sample_rate)
 {
+    memset(ics->sfb_offsets, 0, sizeof(ics->sfb_offsets));
     int sr_idx = get_sr_index(sample_rate);
     if (ics->window_sequence == EIGHT_SHORT_SEQUENCE) {
         ics->num_sfbs = num_sfbs_128[sr_idx];
         const uint16_t *offsets = sfb_offsets_128[sr_idx];
-        for (int i = 0; i <= ics->num_sfbs; i++) {
+        for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
             ics->sfb_offsets[i] = offsets[i];
         }
     } else {
         ics->num_sfbs = num_sfbs_1024[sr_idx];
         const uint16_t *offsets = sfb_offsets_1024[sr_idx];
-        for (int i = 0; i <= ics->num_sfbs; i++) {
+        for (int i = 0; i <= ics->num_sfbs && i < 68; i++) {
             ics->sfb_offsets[i] = offsets[i];
         }
     }
@@ -113,10 +114,9 @@ void init_huffman_luts(void)
     huff_luts_initialized = true;
 }
 
-static int decode_huffman_symbol(BitReader *bs, int book)
+static inline int decode_huffman_symbol(BitReader *bs, int book)
 {
     if (book < 1 || book > 11) return 0;
-    init_huffman_luts();
 
     uint32_t cw10 = bits_show(bs, 10);
     HuffLutEntry lut = huff_lut_10bit[book][cw10];
@@ -138,10 +138,8 @@ static int decode_huffman_symbol(BitReader *bs, int book)
     return 0;
 }
 
-static int decode_huffman_scalefactor(BitReader *bs)
+static inline int decode_huffman_scalefactor(BitReader *bs)
 {
-    init_huffman_luts();
-
     uint32_t cw10 = bits_show(bs, 10);
     HuffLutEntry lut = huff_lut_10bit[12][cw10];
     uint32_t len = lut & 0x0F;
@@ -150,20 +148,20 @@ static int decode_huffman_scalefactor(BitReader *bs)
         return (int)(lut >> 4);
     }
 
-    for (uint32_t l = 11; l <= 19; l++) {
-        uint32_t cw = bits_show(bs, l);
-        for (int i = 0; i < 121; i++) {
-            if (book12[i].len == l && book12[i].data == cw) {
-                bits_skip(bs, l);
-                return i;
-            }
+    int esc_cnt = huff_esc_count[12];
+    const HuffEscEntry *esc_tab = huff_esc_table[12];
+    for (int i = 0; i < esc_cnt; i++) {
+        uint32_t l = esc_tab[i].len;
+        if (bits_show(bs, l) == esc_tab[i].data) {
+            bits_skip(bs, l);
+            return esc_tab[i].sym;
         }
     }
     return 0;
 }
 
 
-static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
+static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
     *v = idx / 27;
@@ -185,7 +183,7 @@ static void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y)
     }
 }
 
-static void decode_pair(BitReader *bs, int book, int *x, int *y)
+static inline void decode_pair(BitReader *bs, int book, int *x, int *y)
 {
     int idx = decode_huffman_symbol(bs, book);
     int base = 17;
@@ -248,7 +246,7 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
             if (cb == 0) {
                 continue;
             } else if (cb == 13) { /* PNS */
-                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < ics->num_sfbs && sfb < 64; sfb++) {
                     if (is_first_pns) {
                         pns_energy = (int)bits_get(bs, 9) - 256;
                         is_first_pns = false;
@@ -260,13 +258,13 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
                     ics->pns_used[g][sfb] = true;
                 }
             } else if (cb == 14 || cb == 15) { /* Intensity stereo */
-                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < ics->num_sfbs && sfb < 64; sfb++) {
                     int dis = decode_huffman_scalefactor(bs);
                     is_pos += dis - 60;
                     ics->scalefactors[g][sfb] = is_pos;
                 }
             } else {
-                for (int sfb = start_sfb; sfb < end_sfb && sfb < 64; sfb++) {
+                for (int sfb = start_sfb; sfb < end_sfb && sfb < ics->num_sfbs && sfb < 64; sfb++) {
                     int dsf = decode_huffman_scalefactor(bs);
                     sf += dsf - 60;
                     ics->scalefactors[g][sfb] = sf;
@@ -280,8 +278,6 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
 
 faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
 {
-    memset(spec, 0, FRAME_LEN_LONG * sizeof(float));
-
     int window_offset = 0;
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         for (int i = 0; i < ics->num_sections[g] && i < 64; i++) {
@@ -291,7 +287,7 @@ faad_status decode_spectral_data(BitReader *bs, ICSInfo *ics, float *spec)
 
             if (cb == 0 || cb == 13 || cb == 14 || cb == 15) continue;
 
-            for (int sfb = start_sfb; sfb < end_sfb && sfb < 64 && (sfb + 1) <= ics->num_sfbs; sfb++) {
+            for (int sfb = start_sfb; sfb < end_sfb && sfb < ics->num_sfbs && sfb < 64; sfb++) {
                 int start_k = ics->sfb_offsets[sfb];
                 int end_k = ics->sfb_offsets[sfb + 1];
                 if (start_k >= FRAME_LEN_LONG) continue;

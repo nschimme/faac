@@ -23,6 +23,17 @@ void init_dequant_tables(void)
     dequant_tables_init = true;
 }
 
+static inline float pow_4_3_fast(int x)
+{
+    int abs_x = abs(x);
+    if (abs_x < 128) {
+        float val = pow_4_3_lut[abs_x];
+        return (x < 0) ? -val : val;
+    }
+    float val = powf((float)abs_x, 4.0f / 3.0f);
+    return (x < 0) ? -val : val;
+}
+
 void dequantize_spectrum(ICSInfo *ics, float *spec)
 {
     init_dequant_tables();

@@ -1,27 +1,8 @@
 /*
- * Bitstream reader implementation using 64-bit Big-Endian Bit-Accumulator
+ * Bitstream reader implementation
  */
 
 #include "faad_internal.h"
-
-#if defined(__has_builtin)
-#if __has_builtin(__builtin_bswap64)
-#define HAVE_BSWAP64 1
-#endif
-#endif
-
-static inline uint64_t load_be64(const uint8_t *p) {
-#if defined(HAVE_BSWAP64)
-    uint64_t val;
-    memcpy(&val, p, 8);
-    return __builtin_bswap64(val);
-#else
-    return ((uint64_t)p[0] << 56) | ((uint64_t)p[1] << 48) |
-           ((uint64_t)p[2] << 40) | ((uint64_t)p[3] << 32) |
-           ((uint64_t)p[4] << 24) | ((uint64_t)p[5] << 16) |
-           ((uint64_t)p[6] << 8)  | (uint64_t)p[7];
-#endif
-}
 
 void bits_init(BitReader *bs, const uint8_t *buffer, uint32_t len)
 {
@@ -35,10 +16,12 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
 {
     if (nbits == 0) return 0;
 
-    /* Fast 64-bit register shift-accumulator path for <= 32 bits */
-    if (nbits <= 32 && bs->byte_pos + 8 <= bs->len) {
-        uint64_t word = load_be64(bs->buffer + bs->byte_pos);
-        uint32_t val = (uint32_t)((word >> (64 - bs->bit_pos - nbits)) & ((1ULL << nbits) - 1ULL));
+    /* Fast single-word 32-bit shift-accumulator path */
+    if (nbits <= 24 && bs->byte_pos + 4 <= bs->len) {
+        const uint8_t *ptr = bs->buffer + bs->byte_pos;
+        uint32_t word = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) |
+                        ((uint32_t)ptr[2] << 8)  | (uint32_t)ptr[3];
+        uint32_t val = (word >> (32 - bs->bit_pos - nbits)) & ((1U << nbits) - 1U);
         uint32_t total_bits = bs->bit_pos + nbits;
         bs->byte_pos += total_bits >> 3;
         bs->bit_pos = total_bits & 7;
@@ -73,13 +56,6 @@ uint32_t bits_get(BitReader *bs, uint32_t nbits)
 
 uint32_t bits_show(BitReader *bs, uint32_t nbits)
 {
-    if (nbits == 0) return 0;
-
-    if (nbits <= 32 && bs->byte_pos + 8 <= bs->len) {
-        uint64_t word = load_be64(bs->buffer + bs->byte_pos);
-        return (uint32_t)((word >> (64 - bs->bit_pos - nbits)) & ((1ULL << nbits) - 1ULL));
-    }
-
     BitReader tmp = *bs;
     return bits_get(&tmp, nbits);
 }

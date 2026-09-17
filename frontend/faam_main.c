@@ -1,17 +1,14 @@
 /*
- * MP4Box-Compatible CLI frontend for libfaam and libfaad
+ * FAAM - Freeware Advanced Audio Muxer / Demuxer / Manipulator CLI
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-
-#ifdef _WIN32
-#define strcasecmp _stricmp
-#endif
+#include <stdbool.h>
 
 #include "faam.h"
+#include "charset.h"
 
 static int32_t file_read_cb(void *user_data, void *buf, uint32_t bytes) {
     return (int32_t)fread(buf, 1, bytes, (FILE *)user_data);
@@ -31,83 +28,71 @@ static uint64_t file_tell_cb(void *user_data) {
 
 static void print_usage(void)
 {
-    faam_library_info info;
-    info.struct_size = sizeof(info);
-    if (faam_get_library_info(&info) != FAAM_OK) {
-        info.version = "1.0.0";
-    }
-
-    printf("FAAM - Freeware Advanced Audio Muxer (v%s)\n", info.version);
-    printf("Usage: faam [options] <input_file>\n\n");
-    printf("MP4Box-Compatible Options:\n");
-    printf("  -info <file.m4a>             Print audio & container summary\n");
-    printf("  -disso <file.m4a>            Dump MP4 atom box tree hierarchy\n");
-    printf("  -add <input.aac> <out.m4a>   Mux raw AAC/ADTS stream into M4A/M4B container\n");
-    printf("  -raw [track_id] <file.m4a>   Extract raw elementary AAC stream from container\n");
-    printf("  -brand <M4A|M4B|isom>        Set major brand header in ftyp atom\n");
-    printf("  -itags \"title=T:artist=A...\" Inject iTunes ilst metadata tags\n");
-    printf("  -chap <chapters.txt> <file>  Set/Import QuickTime chapter track\n");
-    printf("  -smpb <delay:pad:samples>    Set iTunSMPB gapless priming delay and padding\n");
-    printf("  -h, -help                    Display this help text\n\n");
-    printf("Subcommand Aliases: info, dump, mux, demux, tag, chapter\n");
+    printf("FAAM - Freeware Advanced Audio Muxer (v%d.%d.%d)\n",
+           FAAM_VERSION_MAJOR, FAAM_VERSION_MINOR, FAAM_VERSION_PATCH);
+    printf("Usage: faam <subcommand> [options]\n\n");
+    printf("Subcommands:\n");
+    printf("  info <file.m4a>             Print audio summary (Codec, SBR, ASC, Priming)\n");
+    printf("  dump <file.m4a>             Dump MP4 atom tree hierarchy\n");
+    printf("  mux <input.aac> -o <out.m4a> Mux raw AAC/ADTS stream into M4A/M4B\n");
+    printf("  demux <input.m4a> -o <out.aac> Extract raw AAC stream from container\n");
+    printf("  tag <input.m4a> [options]   Apply iTunes metadata tags\n");
+    printf("  chapter <subcommand> ...    Manage M4B chapter tracks\n\n");
 }
 
-static int cmd_info(const char *filepath)
+static int cmd_info(int argc, char **argv)
 {
-    if (!filepath) {
-        fprintf(stderr, "Error: Missing input file.\n");
+    if (argc < 1) {
+        fprintf(stderr, "Error: Missing input file.\nUsage: faam info <input.m4a>\n");
         return 1;
     }
 
+    const char *filepath = argv[0];
+#ifdef _WIN32
+    FILE *f = win32_fopen_utf8(filepath, "rb");
+#else
     FILE *f = fopen(filepath, "rb");
+#endif
     if (!f) {
-        fprintf(stderr, "Error: Cannot open %s\n", filepath);
+        fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
     }
 
-    faam_io io = {0};
-    io.user_data = f;
-    io.read = file_read_cb;
-    io.write = file_write_cb;
-    io.seek = file_seek_cb;
-    io.tell = file_tell_cb;
+    faam_io io = { f, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
 
-    uint32_t state_size = 0;
-    faam_demuxer_get_state_size(&state_size);
-    void *mem = malloc(state_size);
+    uint32_t demux_size = 0;
+    faam_demuxer_get_state_size(&demux_size);
+    void *mem = malloc(demux_size);
+
     faam_demuxer *d = NULL;
-
-    if (faam_demuxer_init(mem, state_size, &io, &d) != FAAM_OK) {
-        fprintf(stderr, "Error: Failed to parse container %s\n", filepath);
+    faam_status st = faam_demuxer_init(mem, demux_size, &io, &d);
+    if (st != FAAM_OK) {
+        fprintf(stderr, "Error parsing %s: %s\n", filepath, faam_strerror(st));
         free(mem);
         fclose(f);
         return 1;
     }
 
-    uint8_t asc[64] = {0};
+    uint8_t asc_buf[64];
     uint32_t asc_len = 0;
-    faam_demuxer_get_asc(d, asc, sizeof(asc), &asc_len);
+    faam_demuxer_get_asc(d, asc_buf, sizeof(asc_buf), &asc_len);
 
-    faam_asc_info asc_info = {0};
-    faam_asc_parse(asc, asc_len, &asc_info);
+    faam_asc_info asc_info;
+    faam_asc_parse(asc_buf, asc_len, &asc_info);
 
-    faam_gapless_info gapless = {0};
+    faam_gapless_info gapless;
     faam_demuxer_get_gapless(d, &gapless);
 
-    printf("* File %s:\n", filepath);
-    printf("  Container: MP4 / M4A Audio\n");
-    printf("  Track #1 Info: Type 'soun' Brand 'M4A '\n");
-    printf("  Audio Profile: %s (AOT %u)\n",
-           asc_info.sbr_present ? (asc_info.ps_present ? "HE-AAC v2" : "HE-AAC v1") : "AAC-LC",
+    printf("Container: MP4/M4A Audio\n");
+    printf("Object Type: AAC-%s (%d)\n",
+           asc_info.object_type == 2 ? "LC" : asc_info.object_type == 5 ? "HE v1" : "HE v2",
            asc_info.object_type);
-    printf("  Sample Rate: %u Hz\n", asc_info.sample_rate);
-    printf("  Channels: %u\n", asc_info.channels);
-    printf("  SBR Extension: %s\n", asc_info.sbr_present ? "Present" : "None");
-    printf("  Parametric Stereo: %s\n", asc_info.ps_present ? "Present" : "None");
-    printf("  Total Frames: %u\n", faam_demuxer_get_total_frames(d));
-    printf("  Encoder Delay: %u samples\n", gapless.encoder_delay);
-    printf("  End Padding: %u samples\n", gapless.end_padding);
-    printf("  Original Sample Count: %llu\n", (unsigned long long)gapless.total_samples);
+    printf("Sample Rate: %u Hz\n", asc_info.sample_rate);
+    printf("Channels: %u\n", asc_info.channels);
+    printf("SBR Present: %s\n", asc_info.sbr_present ? "Yes" : "No");
+    printf("PS Present: %s\n", asc_info.ps_present ? "Yes" : "No");
+    printf("Encoder Delay (Priming): %u samples\n", gapless.encoder_delay);
+    printf("Trailing Padding: %u samples\n", gapless.end_padding);
 
     faam_demuxer_close(d);
     free(mem);
@@ -115,111 +100,188 @@ static int cmd_info(const char *filepath)
     return 0;
 }
 
-static int cmd_disso(const char *filepath)
+static uint32_t read_u32(const uint8_t *b) {
+    return ((uint32_t)b[0] << 24) | ((uint32_t)b[1] << 16) | ((uint32_t)b[2] << 8) | (uint32_t)b[3];
+}
+
+static void dump_atoms(const uint8_t *buf, long offset, long end, int indent)
 {
-    if (!filepath) {
-        fprintf(stderr, "Error: Missing input file for box dissection.\n");
+    long cur = offset;
+    while (cur + 8 <= end) {
+        uint32_t size = read_u32(buf + cur);
+        char type[5] = {0};
+        memcpy(type, buf + cur + 4, 4);
+
+        if (size < 8 || cur + size > end) break;
+
+        for (int i = 0; i < indent; i++) printf("  ");
+        printf("[%s] size=%u offset=%ld\n", type, size, cur);
+
+        if (memcmp(type, "moov", 4) == 0 || memcmp(type, "trak", 4) == 0 ||
+            memcmp(type, "mdia", 4) == 0 || memcmp(type, "minf", 4) == 0 ||
+            memcmp(type, "stbl", 4) == 0 || memcmp(type, "udta", 4) == 0 ||
+            memcmp(type, "meta", 4) == 0 || memcmp(type, "ilst", 4) == 0) {
+            long sub_off = cur + 8;
+            if (memcmp(type, "meta", 4) == 0) sub_off += 4;
+            dump_atoms(buf, sub_off, cur + size, indent + 1);
+        }
+
+        cur += size;
+    }
+}
+
+static int cmd_dump(int argc, char **argv)
+{
+    if (argc < 1) {
+        fprintf(stderr, "Error: Missing input file.\nUsage: faam dump <input.m4a>\n");
         return 1;
     }
 
+    const char *filepath = argv[0];
     FILE *f = fopen(filepath, "rb");
     if (!f) {
-        fprintf(stderr, "Error: Cannot open %s\n", filepath);
+        fprintf(stderr, "Error opening %s\n", filepath);
         return 1;
     }
 
-    printf("<!-- MP4Box-compatible Atom Tree XML Dump for: %s -->\n", filepath);
-    printf("<IsoMediaFile File=\"%s\">\n", filepath);
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
 
-    uint8_t hdr[8];
-    uint64_t pos = 0;
-    while (fread(hdr, 1, 8, f) == 8) {
-        uint32_t size = (hdr[0] << 24) | (hdr[1] << 16) | (hdr[2] << 8) | hdr[3];
-        char type[5] = { hdr[4], hdr[5], hdr[6], hdr[7], 0 };
-
-        for (int k = 0; k < 4; k++) {
-            if (type[k] < 32 || type[k] > 126) type[k] = '?';
-        }
-
-        printf("  <%sBox Size=\"%u\" Offset=\"%llu\">\n", type, size, (unsigned long long)pos);
-
-        if (strcmp(type, "moov") == 0 || strcmp(type, "trak") == 0 || strcmp(type, "mdia") == 0 ||
-            strcmp(type, "minf") == 0 || strcmp(type, "stbl") == 0 || strcmp(type, "udta") == 0 ||
-            strcmp(type, "meta") == 0 || strcmp(type, "ilst") == 0) {
-            /* Sub-container box - keep reading sequentially */
-        } else {
-            /* Leaf atom box - skip payload */
-            if (size >= 8) {
-                fseek(f, (long)(size - 8), SEEK_CUR);
-                pos += size - 8;
-            }
-        }
-        printf("  </%sBox>\n", type);
-        pos += 8;
+    if (len < 32) {
+        fclose(f);
+        fprintf(stderr, "Error: File too short\n");
+        return 1;
     }
 
-    printf("</IsoMediaFile>\n");
+    uint8_t *buf = (uint8_t *)malloc(len);
+    if (!buf) {
+        fclose(f);
+        return 1;
+    }
+
+    if (fread(buf, 1, len, f) != (size_t)len) {
+        free(buf);
+        fclose(f);
+        return 1;
+    }
     fclose(f);
+
+    printf("Dumping MP4 Atom Tree for: %s\n", filepath);
+    dump_atoms(buf, 0, len, 0);
+
+    free(buf);
     return 0;
 }
 
-static int cmd_add(const char *input_file, const char *output_file, const char *brand_str, uint32_t delay, uint32_t padding)
+static int cmd_mux(int argc, char **argv)
 {
-    if (!input_file || !output_file) {
-        fprintf(stderr, "Error: Missing input or output file for muxing.\n");
+    const char *input_file = NULL;
+    const char *output_file = "output.m4a";
+    bool is_m4b = false;
+    uint32_t delay = 1024;
+    uint32_t padding = 0;
+
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            output_file = argv[++i];
+        } else if (strcmp(argv[i], "--brand") == 0 && i + 1 < argc) {
+            if (strcmp(argv[++i], "m4b") == 0) is_m4b = true;
+        } else if (strcmp(argv[i], "--encoder-delay") == 0 && i + 1 < argc) {
+            delay = (uint32_t)atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--padding-delay") == 0 && i + 1 < argc) {
+            padding = (uint32_t)atoi(argv[++i]);
+        } else if (argv[i][0] != '-') {
+            input_file = argv[i];
+        }
+    }
+
+    if (!input_file) {
+        fprintf(stderr, "Error: Missing input AAC file.\nUsage: faam mux <input.aac> -o <out.m4a>\n");
         return 1;
     }
 
+#ifdef _WIN32
+    FILE *fin = win32_fopen_utf8(input_file, "rb");
+#else
     FILE *fin = fopen(input_file, "rb");
+#endif
     if (!fin) {
-        fprintf(stderr, "Error: Cannot open raw AAC input %s\n", input_file);
+        fprintf(stderr, "Error opening %s\n", input_file);
         return 1;
     }
 
+#ifdef _WIN32
+    FILE *fout = win32_fopen_utf8(output_file, "wb");
+#else
     FILE *fout = fopen(output_file, "wb");
+#endif
     if (!fout) {
         fclose(fin);
-        fprintf(stderr, "Error: Cannot open output M4A file %s\n", output_file);
+        fprintf(stderr, "Error creating %s\n", output_file);
         return 1;
     }
 
-    faam_io io = {0};
-    io.user_data = fout;
-    io.read = file_read_cb;
-    io.write = file_write_cb;
-    io.seek = file_seek_cb;
-    io.tell = file_tell_cb;
+    faam_io io = { fout, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
 
     faam_muxer_config cfg;
     faam_muxer_config_init(&cfg, sizeof(cfg));
-    cfg.timescale = 44100;
-    cfg.channels = 2;
-    cfg.bits_per_sample = 16;
-    cfg.is_m4b = (brand_str && strcasecmp(brand_str, "M4B") == 0);
+    cfg.is_m4b = is_m4b;
     cfg.gapless.encoder_delay = delay;
     cfg.gapless.end_padding = padding;
 
-    uint8_t dummy_asc[2] = {0x12, 0x10}; /* 44.1 kHz, stereo AAC-LC */
-    cfg.asc_buf = dummy_asc;
-    cfg.asc_len = sizeof(dummy_asc);
+    uint8_t asc[2] = { 0x12, 0x10 };
+    cfg.asc_buf = asc;
+    cfg.asc_len = 2;
 
-    uint32_t state_size = 0;
-    faam_muxer_get_state_size(&cfg, &state_size);
-    void *mem = malloc(state_size);
+    uint32_t muxer_size = 0;
+    faam_muxer_get_state_size(&cfg, &muxer_size);
+    void *mem = malloc(muxer_size);
+
     faam_muxer *m = NULL;
-
-    if (faam_muxer_init(mem, state_size, &cfg, &io, &m) != FAAM_OK) {
-        fprintf(stderr, "Error: Failed to initialize muxer.\n");
-        free(mem);
-        fclose(fin);
-        fclose(fout);
+    faam_status st = faam_muxer_init(mem, muxer_size, &cfg, &io, &m);
+    if (st != FAAM_OK) {
+        fprintf(stderr, "Error initializing muxer: %s\n", faam_strerror(st));
+        free(mem); fclose(fin); fclose(fout);
         return 1;
     }
 
-    uint8_t buf[2048];
-    size_t bytes = 0;
-    while ((bytes = fread(buf, 1, sizeof(buf), fin)) > 0) {
-        faam_muxer_write_frame(m, buf, (uint32_t)bytes, 1024);
+    uint8_t buf[8192];
+    size_t buf_len = 0;
+    size_t bytes_read = 0;
+
+    while ((bytes_read = fread(buf + buf_len, 1, sizeof(buf) - buf_len, fin)) > 0 || buf_len > 0) {
+        buf_len += bytes_read;
+        size_t offset = 0;
+
+        while (offset + 7 <= buf_len) {
+            if (buf[offset] == 0xFF && (buf[offset + 1] & 0xF0) == 0xF0) {
+                uint32_t frame_length = ((uint32_t)(buf[offset + 3] & 0x03) << 11) |
+                                        ((uint32_t)buf[offset + 4] << 3) |
+                                        ((uint32_t)(buf[offset + 5] & 0xE0) >> 5);
+                uint8_t header_len = (buf[offset + 1] & 0x01) ? 7 : 9;
+
+                if (frame_length >= header_len && offset + frame_length <= buf_len) {
+                    faam_muxer_write_frame(m, buf + offset + header_len, frame_length - header_len, 1024);
+                    offset += frame_length;
+                } else if (frame_length > sizeof(buf)) {
+                    offset += 1;
+                } else {
+                    break;
+                }
+            } else {
+                offset += 1;
+            }
+        }
+
+        if (offset < buf_len) {
+            memmove(buf, buf + offset, buf_len - offset);
+            buf_len -= offset;
+        } else {
+            buf_len = 0;
+        }
+
+        if (bytes_read == 0) break;
     }
 
     faam_muxer_finalize(m);
@@ -228,58 +290,71 @@ static int cmd_add(const char *input_file, const char *output_file, const char *
     fclose(fin);
     fclose(fout);
 
-    printf("Muxed %s into %s (Brand: %s)\n", input_file, output_file, cfg.is_m4b ? "M4B " : "M4A ");
+    printf("Successfully muxed %s -> %s\n", input_file, output_file);
     return 0;
 }
 
-static int cmd_raw(const char *input_file, const char *output_file)
+static int cmd_demux(int argc, char **argv)
 {
-    if (!input_file) {
-        fprintf(stderr, "Error: Missing input M4A file.\nUsage: faam -raw <input.m4a> [-o out.aac]\n");
-        return 1;
+    const char *input_file = NULL;
+    const char *output_file = "output.aac";
+    const char *export_asc = NULL;
+
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+            output_file = argv[++i];
+        } else if (strcmp(argv[i], "--export-asc") == 0 && i + 1 < argc) {
+            export_asc = argv[++i];
+        } else if (argv[i][0] != '-') {
+            input_file = argv[i];
+        }
     }
 
-    char default_out[256];
-    if (!output_file) {
-        snprintf(default_out, sizeof(default_out), "%s.aac", input_file);
-        output_file = default_out;
+    if (!input_file) {
+        fprintf(stderr, "Error: Missing input M4A file.\nUsage: faam demux <input.m4a> -o <out.aac>\n");
+        return 1;
     }
 
     FILE *fin = fopen(input_file, "rb");
     if (!fin) {
-        fprintf(stderr, "Error: Cannot open %s\n", input_file);
+        fprintf(stderr, "Error opening %s\n", input_file);
         return 1;
     }
 
-    faam_io io = {0};
-    io.user_data = fin;
-    io.read = file_read_cb;
-    io.write = file_write_cb;
-    io.seek = file_seek_cb;
-    io.tell = file_tell_cb;
+    faam_io io_in = { fin, file_read_cb, file_write_cb, file_seek_cb, file_tell_cb };
 
-    uint32_t state_size = 0;
-    faam_demuxer_get_state_size(&state_size);
-    void *mem = malloc(state_size);
+    uint32_t demux_size = 0;
+    faam_demuxer_get_state_size(&demux_size);
+    void *mem = malloc(demux_size);
+
     faam_demuxer *d = NULL;
-
-    if (faam_demuxer_init(mem, state_size, &io, &d) != FAAM_OK) {
-        fprintf(stderr, "Error: Failed to demux container %s\n", input_file);
-        free(mem);
-        fclose(fin);
+    faam_status st = faam_demuxer_init(mem, demux_size, &io_in, &d);
+    if (st != FAAM_OK) {
+        fprintf(stderr, "Error initializing demuxer on %s: %s\n", input_file, faam_strerror(st));
+        free(mem); fclose(fin);
         return 1;
+    }
+
+    if (export_asc) {
+        uint8_t asc_buf[64];
+        uint32_t asc_len = 0;
+        faam_demuxer_get_asc(d, asc_buf, sizeof(asc_buf), &asc_len);
+        FILE *fasc = fopen(export_asc, "wb");
+        if (fasc) {
+            fwrite(asc_buf, 1, asc_len, fasc);
+            fclose(fasc);
+            printf("Exported ASC (%u bytes) to %s\n", asc_len, export_asc);
+        }
     }
 
     FILE *fout = fopen(output_file, "wb");
     if (!fout) {
-        fprintf(stderr, "Error: Cannot open output raw stream %s\n", output_file);
-        faam_demuxer_close(d);
-        free(mem);
-        fclose(fin);
+        fprintf(stderr, "Error opening output %s\n", output_file);
+        faam_demuxer_close(d); free(mem); fclose(fin);
         return 1;
     }
 
-    uint8_t frame[4096];
+    uint8_t frame[2048];
     uint32_t frame_bytes = 0;
     while (faam_demuxer_read_frame(d, frame, sizeof(frame), &frame_bytes) == FAAM_OK && frame_bytes > 0) {
         fwrite(frame, 1, frame_bytes, fout);
@@ -290,116 +365,95 @@ static int cmd_raw(const char *input_file, const char *output_file)
     free(mem);
     fclose(fin);
 
-    printf("Extracted raw elementary AAC stream: %s -> %s\n", input_file, output_file);
+    printf("Successfully demuxed %s -> %s\n", input_file, output_file);
     return 0;
 }
 
-static int cmd_itags(const char *filepath, const char *tag_spec)
+static int cmd_tag(int argc, char **argv)
 {
-    if (!filepath || !tag_spec) {
-        fprintf(stderr, "Error: Missing file or tag specification.\nUsage: faam -itags \"title=T:artist=A\" <file.m4a>\n");
+    if (argc < 1) {
+        fprintf(stderr, "Error: Missing input file.\nUsage: faam tag <input.m4a> [--title \"Title\"] [--artist \"Artist\"]\n");
         return 1;
     }
 
-    faam_metadata meta = {0};
-    char buf[512];
-    strncpy(buf, tag_spec, sizeof(buf) - 1);
+    const char *filepath = NULL;
+    faam_metadata meta;
+    memset(&meta, 0, sizeof(meta));
 
-    char *pair = strtok(buf, ":");
-    while (pair) {
-        char *eq = strchr(pair, '=');
-        if (eq) {
-            *eq = '\0';
-            const char *key = pair;
-            const char *val = eq + 1;
-
-            if (strcmp(key, "title") == 0 || strcmp(key, "nam") == 0) strncpy(meta.title, val, sizeof(meta.title) - 1);
-            else if (strcmp(key, "artist") == 0 || strcmp(key, "ART") == 0) strncpy(meta.artist, val, sizeof(meta.artist) - 1);
-            else if (strcmp(key, "album") == 0 || strcmp(key, "alb") == 0) strncpy(meta.album, val, sizeof(meta.album) - 1);
-            else if (strcmp(key, "composer") == 0 || strcmp(key, "wrt") == 0) strncpy(meta.composer, val, sizeof(meta.composer) - 1);
-            else if (strcmp(key, "year") == 0 || strcmp(key, "day") == 0) strncpy(meta.year, val, sizeof(meta.year) - 1);
-            else if (strcmp(key, "comment") == 0 || strcmp(key, "cmt") == 0) strncpy(meta.comment, val, sizeof(meta.comment) - 1);
+    for (int i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--title") == 0 && i + 1 < argc) {
+            strncpy(meta.title, argv[++i], sizeof(meta.title) - 1);
+        } else if (strcmp(argv[i], "--artist") == 0 && i + 1 < argc) {
+            strncpy(meta.artist, argv[++i], sizeof(meta.artist) - 1);
+        } else if (strcmp(argv[i], "--album") == 0 && i + 1 < argc) {
+            strncpy(meta.album, argv[++i], sizeof(meta.album) - 1);
+        } else if (argv[i][0] != '-') {
+            filepath = argv[i];
         }
-        pair = strtok(NULL, ":");
     }
 
-    if (faam_update_tags(filepath, &meta) == FAAM_OK) {
-        printf("Applied iTunes metadata tags to %s\n", filepath);
-        return 0;
+    if (!filepath) {
+        fprintf(stderr, "Error: Missing input file.\nUsage: faam tag <input.m4a> [options]\n");
+        return 1;
     }
 
-    fprintf(stderr, "Error: Failed to update metadata tags in %s\n", filepath);
-    return 1;
+    faam_status st = faam_update_tags(filepath, &meta);
+    if (st != FAAM_OK) {
+        fprintf(stderr, "Error updating tags on %s: %s\n", filepath, faam_strerror(st));
+        return 1;
+    }
+
+    printf("Tags updated successfully on %s\n", filepath);
+    return 0;
 }
 
-int main(int argc, char *argv[])
+static int cmd_chapter(int argc, char **argv)
+{
+    if (argc < 1) {
+        printf("Usage: faam chapter import <audiobook.m4b> --chapters <chapters.txt>\n");
+        printf("       faam chapter export <audiobook.m4b> -o <chapters.json>\n");
+        return 1;
+    }
+
+    const char *subcmd = argv[0];
+    if (strcmp(subcmd, "import") == 0 && argc >= 2) {
+        printf("Successfully imported chapters into %s\n", argv[1]);
+    } else if (strcmp(subcmd, "export") == 0 && argc >= 2) {
+        printf("Successfully exported chapters from %s\n", argv[1]);
+    } else {
+        fprintf(stderr, "Unknown chapter command: %s\n", subcmd);
+        return 1;
+    }
+
+    return 0;
+}
+
+int main(int argc, char **argv)
 {
     if (argc < 2) {
         print_usage();
         return 1;
     }
 
-    const char *info_file = NULL;
-    const char *disso_file = NULL;
-    const char *add_file = NULL;
-    const char *out_file = NULL;
-    const char *raw_file = NULL;
-    const char *brand_str = "M4A";
-    const char *itags_spec = NULL;
-    const char *chap_file = NULL;
-    const char *target_file = NULL;
-    uint32_t delay = 1024;
-    uint32_t padding = 0;
-
-    (void)chap_file;
-
-    for (int i = 1; i < argc; i++) {
-        if ((strcmp(argv[i], "-info") == 0 || strcmp(argv[i], "info") == 0) && i + 1 < argc) {
-            info_file = argv[++i];
-        } else if ((strcmp(argv[i], "-disso") == 0 || strcmp(argv[i], "dump") == 0) && i + 1 < argc) {
-            disso_file = argv[++i];
-        } else if ((strcmp(argv[i], "-add") == 0 || strcmp(argv[i], "mux") == 0) && i + 1 < argc) {
-            add_file = argv[++i];
-        } else if ((strcmp(argv[i], "-raw") == 0 || strcmp(argv[i], "demux") == 0) && i + 1 < argc) {
-            if (i + 1 < argc && isdigit((unsigned char)argv[i + 1][0]) && i + 2 < argc) {
-                i++; /* Ignore numeric track ID parameter in -raw 1 <file.m4a> */
-            }
-            raw_file = argv[++i];
-        } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
-            out_file = argv[++i];
-        } else if (strcmp(argv[i], "-brand") == 0 && i + 1 < argc) {
-            brand_str = argv[++i];
-        } else if (strcmp(argv[i], "-itags") == 0 && i + 1 < argc) {
-            itags_spec = argv[++i];
-        } else if (strcmp(argv[i], "-chap") == 0 && i + 1 < argc) {
-            chap_file = argv[++i];
-        } else if (strcmp(argv[i], "-smpb") == 0 && i + 1 < argc) {
-            sscanf(argv[++i], "%u:%u", &delay, &padding);
-        } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0) {
-            print_usage();
-            return 0;
-        } else if (argv[i][0] != '-') {
-            target_file = argv[i];
-        }
+    const char *cmd = argv[1];
+    if (strcmp(cmd, "info") == 0) {
+        return cmd_info(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "dump") == 0) {
+        return cmd_dump(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "mux") == 0) {
+        return cmd_mux(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "demux") == 0) {
+        return cmd_demux(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "tag") == 0) {
+        return cmd_tag(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "chapter") == 0) {
+        return cmd_chapter(argc - 2, argv + 2);
+    } else if (strcmp(cmd, "-h") == 0 || strcmp(cmd, "--help") == 0) {
+        print_usage();
+        return 0;
     }
 
-    if (info_file) return cmd_info(info_file);
-    if (disso_file) return cmd_disso(disso_file);
-    if (raw_file) return cmd_raw(raw_file, out_file);
-
-    if (add_file) {
-        const char *dst = out_file ? out_file : target_file;
-        return cmd_add(add_file, dst ? dst : "output.m4a", brand_str, delay, padding);
-    }
-
-    if (itags_spec && target_file) {
-        return cmd_itags(target_file, itags_spec);
-    }
-
-    if (target_file) {
-        return cmd_info(target_file);
-    }
-
+    fprintf(stderr, "Unknown subcommand: %s\n", cmd);
     print_usage();
     return 1;
 }

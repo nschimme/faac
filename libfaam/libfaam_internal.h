@@ -13,11 +13,6 @@
 
 #include "faam.h"
 
-int32_t faam_file_read_cb(void *user_data, void *buf, uint32_t bytes);
-int32_t faam_file_write_cb(void *user_data, const void *buf, uint32_t bytes);
-bool faam_file_seek_cb(void *user_data, uint64_t offset);
-uint64_t faam_file_tell_cb(void *user_data);
-
 typedef struct {
     uint64_t offset;
     uint32_t size;

@@ -40,12 +40,6 @@ static bool file_seek_cb(void *user_data, uint64_t offset) {
 static uint64_t file_tell_cb(void *user_data) {
     return (uint64_t)ftell((FILE *)user_data);
 }
-
-static faam_status get_current_info(faam_muxer_info *info) {
-    if (!info) return FAAM_ERR_INVALID_ARG;
-    info->struct_size = sizeof(faam_muxer_info);
-    return faam_muxer_get_info(g_muxer, info);
-}
 #endif
 
 int mp4_open(const char *path, bool overwrite) {
@@ -117,10 +111,7 @@ void mp4_set_decoder_config(const uint8_t *asc, unsigned long size) {
 
 void mp4_set_encoder(const char *value) {
 #ifdef HAVE_LIBFAAM
-    if (value) {
-        strncpy(g_cfg.metadata.encoder, value, sizeof(g_cfg.metadata.encoder) - 1);
-        if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
-    }
+    if (value) strncpy(g_cfg.metadata.encoder, value, sizeof(g_cfg.metadata.encoder) - 1);
 #else
     (void)value;
 #endif
@@ -130,42 +121,19 @@ void mp4_set_tag(mp4_tag_id_t id, const char *value) {
 #ifdef HAVE_LIBFAAM
     if (!value) return;
     switch (id) {
-    case MP4TAG_ARTIST:
-        strncpy(g_cfg.metadata.artist, value, sizeof(g_cfg.metadata.artist) - 1);
-        break;
-    case MP4TAG_ARTISTSORT:
-        strncpy(g_cfg.metadata.artist_sort, value, sizeof(g_cfg.metadata.artist_sort) - 1);
-        break;
-    case MP4TAG_TITLE:
-        strncpy(g_cfg.metadata.title, value, sizeof(g_cfg.metadata.title) - 1);
-        break;
-    case MP4TAG_ALBUM:
-        strncpy(g_cfg.metadata.album, value, sizeof(g_cfg.metadata.album) - 1);
-        break;
-    case MP4TAG_ALBUMSORT:
-        strncpy(g_cfg.metadata.album_sort, value, sizeof(g_cfg.metadata.album_sort) - 1);
-        break;
-    case MP4TAG_ALBUMARTIST:
-        strncpy(g_cfg.metadata.album_artist, value, sizeof(g_cfg.metadata.album_artist) - 1);
-        break;
-    case MP4TAG_ALBUMARTISTSORT:
-        strncpy(g_cfg.metadata.album_artist_sort, value, sizeof(g_cfg.metadata.album_artist_sort) - 1);
-        break;
-    case MP4TAG_COMPOSER:
-        strncpy(g_cfg.metadata.composer, value, sizeof(g_cfg.metadata.composer) - 1);
-        break;
-    case MP4TAG_COMPOSERSORT:
-        strncpy(g_cfg.metadata.composer_sort, value, sizeof(g_cfg.metadata.composer_sort) - 1);
-        break;
-    case MP4TAG_YEAR:
-        strncpy(g_cfg.metadata.year, value, sizeof(g_cfg.metadata.year) - 1);
-        break;
-    case MP4TAG_COMMENT:
-        strncpy(g_cfg.metadata.comment, value, sizeof(g_cfg.metadata.comment) - 1);
-        break;
+    case MP4TAG_ARTIST: strncpy(g_cfg.metadata.artist, value, sizeof(g_cfg.metadata.artist) - 1); break;
+    case MP4TAG_ARTISTSORT: strncpy(g_cfg.metadata.artist_sort, value, sizeof(g_cfg.metadata.artist_sort) - 1); break;
+    case MP4TAG_TITLE: strncpy(g_cfg.metadata.title, value, sizeof(g_cfg.metadata.title) - 1); break;
+    case MP4TAG_ALBUM: strncpy(g_cfg.metadata.album, value, sizeof(g_cfg.metadata.album) - 1); break;
+    case MP4TAG_ALBUMSORT: strncpy(g_cfg.metadata.album_sort, value, sizeof(g_cfg.metadata.album_sort) - 1); break;
+    case MP4TAG_ALBUMARTIST: strncpy(g_cfg.metadata.album_artist, value, sizeof(g_cfg.metadata.album_artist) - 1); break;
+    case MP4TAG_ALBUMARTISTSORT: strncpy(g_cfg.metadata.album_artist_sort, value, sizeof(g_cfg.metadata.album_artist_sort) - 1); break;
+    case MP4TAG_COMPOSER: strncpy(g_cfg.metadata.composer, value, sizeof(g_cfg.metadata.composer) - 1); break;
+    case MP4TAG_COMPOSERSORT: strncpy(g_cfg.metadata.composer_sort, value, sizeof(g_cfg.metadata.composer_sort) - 1); break;
+    case MP4TAG_YEAR: strncpy(g_cfg.metadata.year, value, sizeof(g_cfg.metadata.year) - 1); break;
+    case MP4TAG_COMMENT: strncpy(g_cfg.metadata.comment, value, sizeof(g_cfg.metadata.comment) - 1); break;
     default: break;
     }
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)id; (void)value;
 #endif
@@ -174,7 +142,6 @@ void mp4_set_tag(mp4_tag_id_t id, const char *value) {
 void mp4_set_genre(uint16_t genre) {
 #ifdef HAVE_LIBFAAM
     g_cfg.metadata.genre_code = genre;
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)genre;
 #endif
@@ -182,10 +149,7 @@ void mp4_set_genre(uint16_t genre) {
 
 void mp4_set_language(const char *lang) {
 #ifdef HAVE_LIBFAAM
-    if (lang) {
-        strncpy(g_cfg.metadata.language, lang, sizeof(g_cfg.metadata.language) - 1);
-        if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
-    }
+    if (lang) strncpy(g_cfg.metadata.language, lang, sizeof(g_cfg.metadata.language) - 1);
 #else
     (void)lang;
 #endif
@@ -194,7 +158,6 @@ void mp4_set_language(const char *lang) {
 void mp4_set_compilation(bool flag) {
 #ifdef HAVE_LIBFAAM
     g_cfg.metadata.compilation = flag;
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)flag;
 #endif
@@ -203,7 +166,6 @@ void mp4_set_compilation(bool flag) {
 void mp4_set_track(uint16_t num, uint16_t total) {
 #ifdef HAVE_LIBFAAM
     g_cfg.metadata.track_num = num; g_cfg.metadata.track_total = total;
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)num; (void)total;
 #endif
@@ -212,7 +174,6 @@ void mp4_set_track(uint16_t num, uint16_t total) {
 void mp4_set_disc(uint16_t num, uint16_t total) {
 #ifdef HAVE_LIBFAAM
     g_cfg.metadata.disc_num = num; g_cfg.metadata.disc_total = total;
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)num; (void)total;
 #endif
@@ -221,7 +182,6 @@ void mp4_set_disc(uint16_t num, uint16_t total) {
 void mp4_set_cover(const uint8_t *data, uint32_t size) {
 #ifdef HAVE_LIBFAAM
     g_cfg.metadata.cover_art = data; g_cfg.metadata.cover_bytes = size;
-    if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
 #else
     (void)data; (void)size;
 #endif
@@ -232,9 +192,6 @@ void mp4_set_gapless(uint32_t priming, uint32_t padding, uint64_t original_sampl
     g_cfg.gapless.encoder_delay = priming;
     g_cfg.gapless.end_padding = padding;
     g_cfg.gapless.total_samples = original_samples;
-    if (g_muxer) {
-        faam_muxer_set_gapless(g_muxer, &g_cfg.gapless);
-    }
 #else
     (void)priming; (void)padding; (void)original_samples;
 #endif
@@ -248,7 +205,6 @@ int mp4_add_custom_tag(const char *name, const char *value) {
         strncpy(g_cfg.metadata.custom_tags[idx].name, name, sizeof(g_cfg.metadata.custom_tags[idx].name) - 1);
         strncpy(g_cfg.metadata.custom_tags[idx].value, value, sizeof(g_cfg.metadata.custom_tags[idx].value) - 1);
         g_cfg.metadata.num_custom_tags++;
-        if (g_muxer) faam_muxer_set_metadata(g_muxer, &g_cfg.metadata);
     }
     return 0;
 #else
@@ -305,8 +261,7 @@ int mp4_close(void) {
 
 uint32_t mp4_frame_count(void) {
 #ifdef HAVE_LIBFAAM
-    faam_muxer_info info;
-    return (get_current_info(&info) == FAAM_OK) ? info.frame_count : 0;
+    return faam_muxer_get_frame_count(g_muxer);
 #else
     return 0;
 #endif
@@ -314,8 +269,7 @@ uint32_t mp4_frame_count(void) {
 
 uint64_t mp4_sample_count(void) {
 #ifdef HAVE_LIBFAAM
-    faam_muxer_info info;
-    return (get_current_info(&info) == FAAM_OK) ? info.sample_count : 0;
+    return faam_muxer_get_sample_count(g_muxer);
 #else
     return 0;
 #endif
@@ -323,8 +277,7 @@ uint64_t mp4_sample_count(void) {
 
 uint32_t mp4_max_bitrate(void) {
 #ifdef HAVE_LIBFAAM
-    faam_muxer_info info;
-    return (get_current_info(&info) == FAAM_OK) ? info.max_bitrate : 0;
+    return faam_muxer_get_max_bitrate(g_muxer);
 #else
     return 0;
 #endif
@@ -332,8 +285,7 @@ uint32_t mp4_max_bitrate(void) {
 
 uint32_t mp4_avg_bitrate(void) {
 #ifdef HAVE_LIBFAAM
-    faam_muxer_info info;
-    return (get_current_info(&info) == FAAM_OK) ? info.avg_bitrate : 0;
+    return faam_muxer_get_avg_bitrate(g_muxer);
 #else
     return 0;
 #endif
@@ -341,8 +293,7 @@ uint32_t mp4_avg_bitrate(void) {
 
 uint16_t mp4_max_frame_size(void) {
 #ifdef HAVE_LIBFAAM
-    faam_muxer_info info;
-    return (get_current_info(&info) == FAAM_OK) ? info.max_frame_size : 0;
+    return faam_muxer_get_max_frame_size(g_muxer);
 #else
     return 0;
 #endif
