@@ -211,6 +211,10 @@ FAAMAPI faam_status faam_muxer_init(void *mem_buf, uint32_t mem_bytes,
                                     const faam_io *io,
                                     faam_muxer **out_muxer);
 
+FAAMAPI faam_status faam_muxer_set_gapless(faam_muxer *m, const faam_gapless_info *gapless);
+
+FAAMAPI faam_status faam_muxer_set_metadata(faam_muxer *m, const faam_metadata *meta);
+
 FAAMAPI faam_status faam_muxer_write_frame(faam_muxer *m,
                                            const uint8_t *frame_buf, uint32_t frame_bytes,
                                            uint32_t duration_ticks);
