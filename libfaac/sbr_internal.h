@@ -20,8 +20,9 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
-#if defined(HAVE_THREADS_H) && defined(FAAC_MULTITHREADING)
+#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING)
 #include <threads.h>
+#include <stdatomic.h>
 #define SBR_WORKER_THREAD 1
 #endif
 
@@ -116,11 +117,8 @@ struct SBRContext {
 
 #ifdef SBR_WORKER_THREAD
     thrd_t          workerThread;
-    mtx_t           threadMtx;
-    cnd_t           threadCndStart;
-    cnd_t           threadCndDone;
-    int             threadCmd;       /* 0 = idle, 1 = process frame, 2 = stop */
-    int             threadDone;      /* 1 = frame complete */
+    atomic_int      threadCmd;       /* 0 = idle, 1 = process frame, 2 = stop */
+    atomic_int      threadDone;      /* 1 = frame complete */
     bool            threadActive;    /* true if worker thread running */
 #endif
     int             noThreads;       /* 1 if caller requested single-threaded */

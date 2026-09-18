@@ -208,18 +208,23 @@ static void sbr_frame_silence(SbrFrameData *fd)
 static int sbr_worker_loop(void *arg)
 {
     SBRContext *sCtx = (SBRContext *)arg;
-    mtx_lock(&sCtx->threadMtx);
     while (1) {
-        while (sCtx->threadCmd == 0) {
-            cnd_wait(&sCtx->threadCndStart, &sCtx->threadMtx);
+        int spin = 0;
+        while (atomic_load_explicit(&sCtx->threadCmd, memory_order_acquire) == 0) {
+            if (spin < 500) {
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+                __builtin_ia32_pause();
+#endif
+                spin++;
+            } else {
+                thrd_yield();
+            }
         }
 
-        if (sCtx->threadCmd == 2) {
-            mtx_unlock(&sCtx->threadMtx);
+        int cmd = atomic_load_explicit(&sCtx->threadCmd, memory_order_relaxed);
+        if (cmd == 2) {
             break;
         }
-
-        mtx_unlock(&sCtx->threadMtx);
 
         /* Process SBR frame job */
         float *fullPtrs[MAX_CHANNELS];
@@ -247,10 +252,8 @@ static int sbr_worker_loop(void *arg)
             sCtx->wantShortFIFO[ch][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[ch].wantShort;
         }
 
-        mtx_lock(&sCtx->threadMtx);
-        sCtx->threadCmd = 0;
-        sCtx->threadDone = 1;
-        cnd_signal(&sCtx->threadCndDone);
+        atomic_store_explicit(&sCtx->threadCmd, 0, memory_order_relaxed);
+        atomic_store_explicit(&sCtx->threadDone, 1, memory_order_release);
     }
     return 0;
 }
@@ -287,18 +290,11 @@ void SbrContextEnd(SBRContext *sbrCtx)
 
 #ifdef SBR_WORKER_THREAD
     if (sbrCtx->threadActive) {
-        mtx_lock(&sbrCtx->threadMtx);
-        while (sbrCtx->threadCmd != 0) {
-            cnd_wait(&sbrCtx->threadCndDone, &sbrCtx->threadMtx);
+        while (atomic_load_explicit(&sbrCtx->threadCmd, memory_order_acquire) != 0) {
+            thrd_yield();
         }
-        sbrCtx->threadCmd = 2;
-        cnd_signal(&sbrCtx->threadCndStart);
-        mtx_unlock(&sbrCtx->threadMtx);
-
+        atomic_store_explicit(&sbrCtx->threadCmd, 2, memory_order_release);
         thrd_join(sbrCtx->workerThread, NULL);
-        mtx_destroy(&sbrCtx->threadMtx);
-        cnd_destroy(&sbrCtx->threadCndStart);
-        cnd_destroy(&sbrCtx->threadCndDone);
         sbrCtx->threadActive = false;
     }
 #endif
@@ -380,11 +376,8 @@ void SbrContextStartAsyncFrame(SBRContext *sCtx, int numChannels, const bool *is
 #ifdef SBR_WORKER_THREAD
     if (!sCtx->noThreads) {
         if (!sCtx->threadActive) {
-            mtx_init(&sCtx->threadMtx, mtx_plain);
-            cnd_init(&sCtx->threadCndStart);
-            cnd_init(&sCtx->threadCndDone);
-            sCtx->threadCmd = 0;
-            sCtx->threadDone = 0;
+            atomic_init(&sCtx->threadCmd, 0);
+            atomic_init(&sCtx->threadDone, 0);
             if (thrd_create(&sCtx->workerThread, sbr_worker_loop, sCtx) == thrd_success) {
                 sCtx->threadActive = true;
             } else {
@@ -412,12 +405,8 @@ void SbrContextStartAsyncFrame(SBRContext *sCtx, int numChannels, const bool *is
             }
         }
 
-        mtx_lock(&sCtx->threadMtx);
-        sCtx->threadDone = 0;
-        sCtx->threadCmd = 1;
-        cnd_signal(&sCtx->threadCndStart);
-        mtx_unlock(&sCtx->threadMtx);
-
+        atomic_store_explicit(&sCtx->threadDone, 0, memory_order_relaxed);
+        atomic_store_explicit(&sCtx->threadCmd, 1, memory_order_release);
         sCtx->asyncFramePending = true;
         return;
     }
@@ -446,11 +435,17 @@ void SbrContextWaitAsyncFrame(SBRContext *sCtx, int numChannels, float *heHalfRa
     sCtx->asyncFramePending = false;
 #ifdef SBR_WORKER_THREAD
     if (sCtx->threadActive) {
-        mtx_lock(&sCtx->threadMtx);
-        while (sCtx->threadDone == 0) {
-            cnd_wait(&sCtx->threadCndDone, &sCtx->threadMtx);
+        int spin = 0;
+        while (atomic_load_explicit(&sCtx->threadDone, memory_order_acquire) == 0) {
+            if (spin < 500) {
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+                __builtin_ia32_pause();
+#endif
+                spin++;
+            } else {
+                thrd_yield();
+            }
         }
-        mtx_unlock(&sCtx->threadMtx);
 
         for (int ch = 0; ch < numChannels; ch++) {
             heHalfRate[ch] = sCtx->resampler->halfRate[sCtx->asyncPingPong & 1][ch];
