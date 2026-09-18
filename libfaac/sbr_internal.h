@@ -20,9 +20,8 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
-#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING)
+#if defined(HAVE_THREADS_H) && defined(FAAC_MULTITHREADING)
 #include <threads.h>
-#include <stdatomic.h>
 #define SBR_WORKER_THREAD 1
 #endif
 

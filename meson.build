@@ -18,19 +18,21 @@ config_h = configuration_data()
 config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 
-foreach h: ['getopt.h', 'immintrin.h', 'threads.h', 'stdatomic.h']
+foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
+
+has_threads_h = cc.compiles('#include <threads.h>\nint main(void){ thrd_t t; (void)t; return 0; }', name: 'threads.h')
+config_h.set('HAVE_THREADS_H', has_threads_h)
 
 mt_opt = get_option('multithreading')
 if mt_opt.disabled()
     config_h.set('FAAC_MULTITHREADING', false)
 else
-    has_threads = cc.has_header('threads.h') and cc.has_header('stdatomic.h')
-    if mt_opt.enabled() and not has_threads
-        error('Multithreading requested but C11 <threads.h> or <stdatomic.h> header not found.')
+    if mt_opt.enabled() and not has_threads_h
+        error('Multithreading requested but C11 <threads.h> header not found or usable.')
     endif
-    config_h.set('FAAC_MULTITHREADING', has_threads)
+    config_h.set('FAAC_MULTITHREADING', has_threads_h)
 endif
 
 config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
