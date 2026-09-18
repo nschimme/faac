@@ -83,8 +83,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
          * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
          * Low source tonality (noise/transients) -> INVF_LOW/MID. */
-        const float invf_mid_thresh = 3.0f;
-        const float invf_low_thresh = 1.8f;
+        const float invf_mid_thresh = 2.5f;
+        const float invf_low_thresh = 1.5f;
 
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
