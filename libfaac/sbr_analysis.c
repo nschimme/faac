@@ -189,25 +189,22 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             float maxBandSlotE[SBR_QMF_BANDS_64];
             memset(maxBandSlotE, 0, sizeof(maxBandSlotE));
 
-            int decimation = 1;
-            if (sa->frameClass == SBR_FRAME_CLASS_FIXFIX && sa->ch[ch].transientStrength < 2.0f) {
-                decimation = 2;
-            }
-
             for (int slot = 0; slot < num_slots; slot++) {
-                if (slot % decimation != 0) continue;
+#if FAAC_SBR_DECIMATION > 1
+                if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+                {
+                    float slotEnergy[SBR_QMF_BANDS_64];
+                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
-                float slotEnergy[SBR_QMF_BANDS_64];
-                SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
-                int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
-
-                float * restrict bE = sa->bandE[ch][e];
-                float scale = (float)decimation;
-                for (int k = kx; k < kEnd; k++) {
-                    bE[k] += slotEnergy[k] * scale;
-                    if (slotEnergy[k] > maxBandSlotE[k])
-                        maxBandSlotE[k] = slotEnergy[k];
+                    float * restrict bE = sa->bandE[ch][e];
+                    for (int k = kx; k < kEnd; k++) {
+                        bE[k] += slotEnergy[k];
+                        if (slotEnergy[k] > maxBandSlotE[k])
+                            maxBandSlotE[k] = slotEnergy[k];
+                    }
                 }
             }
 
