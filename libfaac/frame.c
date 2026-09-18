@@ -60,6 +60,10 @@
 #include "win32_ver.h"
 #endif
 
+#ifdef FAAC_WORKER_THREAD
+static int frame_worker_loop(void *arg);
+#endif
+
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
  * collapsing quality to MINQUAL in a single step. */
@@ -398,6 +402,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
+#ifdef FAAC_WORKER_THREAD
+    if (!config->no_threads && !hEncoder->threadActive) {
+        atomic_init(&hEncoder->threadCmd, 0);
+        atomic_init(&hEncoder->threadDone, 0);
+        if (thrd_create(&hEncoder->workerThread, frame_worker_loop, hEncoder) == thrd_success) {
+            hEncoder->threadActive = true;
+        }
+    }
+#endif
+
     return 1;
 }
 
@@ -626,10 +640,54 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
+#ifdef FAAC_WORKER_THREAD
+    if (hEncoder->threadActive) {
+        while (atomic_load_explicit(&hEncoder->threadCmd, memory_order_acquire) != 0) {
+            thrd_yield();
+        }
+        atomic_store_explicit(&hEncoder->threadCmd, 4, memory_order_release);
+        thrd_join(hEncoder->workerThread, NULL);
+        hEncoder->threadActive = false;
+    }
+#endif
+
     FreeMemory(hEncoder);
 
     return 0;
 }
+
+#ifdef FAAC_WORKER_THREAD
+static int frame_worker_loop(void *arg)
+{
+    faacEncStruct *hEncoder = (faacEncStruct *)arg;
+    while (1) {
+        int spin = 0;
+        while (atomic_load_explicit(&hEncoder->threadCmd, memory_order_acquire) == 0) {
+            if (spin < 500) {
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+                __builtin_ia32_pause();
+#endif
+                spin++;
+            } else {
+                thrd_yield();
+            }
+        }
+
+        int cmd = atomic_load_explicit(&hEncoder->threadCmd, memory_order_relaxed);
+        if (cmd == 4) break;
+
+        if (cmd == 1 && hEncoder->sbrContext) {
+            SbrContextProcessFrame(hEncoder->sbrContext, (int)hEncoder->numChannels,
+                                   hEncoder->isLfeChannel, hEncoder->jobRealPerCh,
+                                   hEncoder->jobFlushTick, NULL, NULL);
+        }
+
+        atomic_store_explicit(&hEncoder->threadCmd, 0, memory_order_relaxed);
+        atomic_store_explicit(&hEncoder->threadDone, 1, memory_order_release);
+    }
+    return 0;
+}
+#endif
 
 
 /* Admission gate: TNS shapes noise along the temporal envelope, so a window
