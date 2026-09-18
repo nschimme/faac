@@ -285,12 +285,6 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
     sndf->samples = (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels);
   }
 
-#if WORDS_BIGENDIAN
-  sndf->swap = !sndf->bigendian;
-#else
-  sndf->swap = sndf->bigendian;
-#endif
-
   return sndf;
 }
 
@@ -404,20 +398,15 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
       case 2:
           {
               const int16_t *in = (const int16_t *)bufi;
-              if (sndf->swap)
+              if (!sndf->bigendian)
               {
                   for (size_t i = 0; i < cnt; i++)
-                  {
-                      int16_t val = (int16_t)bswap16(in[i]);
-                      buf[i] = (float)val;
-                  }
+                      buf[i] = (float)(int16_t)le16toh(in[i]);
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                  {
-                      buf[i] = (float)in[i];
-                  }
+                      buf[i] = (float)(int16_t)be16toh(in[i]);
               }
           }
           break;
@@ -427,34 +416,27 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               if (!sndf->bigendian)
               {
                   for (size_t i = 0; i < cnt; i++)
-                  {
-                      int s = read_pcm24_le(&in[3*i]);
-                      buf[i] = (float)s / 256.0f;
-                  }
+                      buf[i] = (float)read_pcm24_le(&in[3*i]) / 256.0f;
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                  {
-                      int s = read_pcm24_be(&in[3*i]);
-                      buf[i] = (float)s / 256.0f;
-                  }
+                      buf[i] = (float)read_pcm24_be(&in[3*i]) / 256.0f;
               }
           }
-        break;
+          break;
       case 4:
           {
               int32_t *in = (int32_t*)bufi;
-              int swap = sndf->swap;
-              if (swap)
+              if (!sndf->bigendian)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)bswap32(in[i]) / PCM_32BIT_FLOAT_SCALE;
+                      buf[i] = (float)(int32_t)le32toh(in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)in[i] / PCM_32BIT_FLOAT_SCALE;
+                      buf[i] = (float)(int32_t)be32toh(in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
           }
           break;
