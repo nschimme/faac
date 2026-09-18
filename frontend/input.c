@@ -430,8 +430,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               {
                   for (size_t i = 0; i < cnt; i++)
                   {
-                      int s = in[3*i] | (in[3*i+1] << 8) | (in[3*i+2] << 16);
-                      if (s & 0x800000) s |= 0xff000000;
+                      int s = read_24_le(&in[3*i]);
                       buf[i] = (float)s / 256.0f;
                   }
               }
@@ -439,8 +438,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               {
                   for (size_t i = 0; i < cnt; i++)
                   {
-                      int s = (in[3*i] << 16) | (in[3*i+1] << 8) | in[3*i+2];
-                      if (s & 0x800000) s |= 0xff000000;
+                      int s = read_24_be(&in[3*i]);
                       buf[i] = (float)s / 256.0f;
                   }
               }
