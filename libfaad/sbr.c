@@ -44,11 +44,16 @@ static float qmf_rot_sin[64];
 static float qmf_post_cos[64];
 static float qmf_post_sin[64];
 
+static float sbr_env_scale_lut[128];
+static FFT_Tables qmf_fft_tbl;
+
 static bool qmf_twiddles_init = false;
 
 void init_qmf_twiddles(void)
 {
     if (qmf_twiddles_init) return;
+
+    fft_initialize(&qmf_fft_tbl);
 
     for (int n = 0; n < 64; n++) {
         float angle = (float)M_PI * (n - 0.25f) / 128.0f;
@@ -66,6 +71,10 @@ void init_qmf_twiddles(void)
             qmf_ana_cos_lut[k][n] = cosf(angle);
             qmf_ana_sin_lut[k][n] = sinf(angle);
         }
+    }
+
+    for (int e = 0; e < 128; e++) {
+        sbr_env_scale_lut[e] = powf(2.0f, 0.25f * (e - 20));
     }
 
     qmf_twiddles_init = true;
@@ -427,10 +436,6 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
 /* 64-subband QMF synthesis filterbank with 640-sample overlapping delay line history */
 static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
-    init_qmf_twiddles();
-    FFT_Tables fft_tbl;
-    fft_initialize(&fft_tbl);
-
     for (int t = 0; t < 32; t++) {
         /* Shift 640-sample QMF delay line history by 64 samples */
         memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
@@ -449,7 +454,7 @@ static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_i
             xi[k] = im_ptr[k] * c - re_ptr[k] * s;
         }
 
-        fft(&fft_tbl, xr, xi, 6);
+        fft(&qmf_fft_tbl, xr, xi, 6);
 
         const float * restrict post_c = qmf_post_cos;
         const float * restrict post_s = qmf_post_sin;
@@ -603,8 +608,8 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
                 int e_curr = sbr->E_orig[env_curr][band_idx];
                 int e_next = sbr->E_orig[env_next][band_idx];
 
-                float g_curr = powf(2.0f, 0.25f * (e_curr - 20));
-                float g_next = powf(2.0f, 0.25f * (e_next - 20));
+                float g_curr = (e_curr >= 0 && e_curr < 128) ? sbr_env_scale_lut[e_curr] : powf(2.0f, 0.25f * (e_curr - 20));
+                float g_next = (e_next >= 0 && e_next < 128) ? sbr_env_scale_lut[e_next] : powf(2.0f, 0.25f * (e_next - 20));
                 float gain = (1.0f - alpha) * g_curr + alpha * g_next;
 
                 qmf_syn_r[t][k] = qmf_ana_r[t][src_k] * gain;

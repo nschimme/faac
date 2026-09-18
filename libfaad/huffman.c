@@ -197,6 +197,18 @@ static inline int decode_huffman_scalefactor(BitReader *bs
 #define DECODE_HUFF_SF(bs) decode_huffman_scalefactor((bs))
 #endif
 
+static const int8_t quad_lut[81][4] = {
+    {0,0,0,0},{0,0,0,1},{0,0,0,2},{0,0,1,0},{0,0,1,1},{0,0,1,2},{0,0,2,0},{0,0,2,1},{0,0,2,2},
+    {0,1,0,0},{0,1,0,1},{0,1,0,2},{0,1,1,0},{0,1,1,1},{0,1,1,2},{0,1,2,0},{0,1,2,1},{0,1,2,2},
+    {0,2,0,0},{0,2,0,1},{0,2,0,2},{0,2,1,0},{0,2,1,1},{0,2,1,2},{0,2,2,0},{0,2,2,1},{0,2,2,2},
+    {1,0,0,0},{1,0,0,1},{1,0,0,2},{1,0,1,0},{1,0,1,1},{1,0,1,2},{1,0,2,0},{1,0,2,1},{1,0,2,2},
+    {1,1,0,0},{1,1,0,1},{1,1,0,2},{1,1,1,0},{1,1,1,1},{1,1,1,2},{1,1,2,0},{1,1,2,1},{1,1,2,2},
+    {1,2,0,0},{1,2,0,1},{1,2,0,2},{1,2,1,0},{1,2,1,1},{1,2,1,2},{1,2,2,0},{1,2,2,1},{1,2,2,2},
+    {2,0,0,0},{2,0,0,1},{2,0,0,2},{2,0,1,0},{2,0,1,1},{2,0,1,2},{2,0,2,0},{2,0,2,1},{2,0,2,2},
+    {2,1,0,0},{2,1,0,1},{2,1,0,2},{2,1,1,0},{2,1,1,1},{2,1,1,2},{2,1,2,0},{2,1,2,1},{2,1,2,2},
+    {2,2,0,0},{2,2,0,1},{2,2,0,2},{2,2,1,0},{2,2,1,1},{2,2,1,2},{2,2,2,0},{2,2,2,1},{2,2,2,2}
+};
+
 static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, int *y
 #ifdef FAAD_STATS
     , FaadDecStats *stats
@@ -208,12 +220,11 @@ static inline void decode_quad(BitReader *bs, int book, int *v, int *w, int *x, 
         , stats
 #endif
     );
-    *v = idx / 27;
-    idx %= 27;
-    *w = idx / 9;
-    idx %= 9;
-    *x = idx / 3;
-    *y = idx % 3;
+    if (idx < 0 || idx >= 81) idx = 0;
+    *v = quad_lut[idx][0];
+    *w = quad_lut[idx][1];
+    *x = quad_lut[idx][2];
+    *y = quad_lut[idx][3];
 
     if (book == 1 || book == 2) {
         /* Signed 4-tuple: values in {-1, 0, 1} */
@@ -295,8 +306,7 @@ faad_status decode_scale_factor_data(BitReader *bs, ICSInfo *ics, uint32_t sampl
 #endif
 )
 {
-    setup_sfb_offsets(ics, sample_rate);
-
+    (void)sample_rate;
     int sf = ics->global_gain;
     int is_pos = 0;
     int pns_energy = sf - 60;
