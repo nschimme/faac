@@ -98,15 +98,9 @@ static inline int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, int ch, 
 
 static inline int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    int bits = n_q * 2;
-    if (write) {
-        for (int ne = 0; ne < n_q; ne++) {
-            int invf = clamp_int(fd->invfMode[ch], 0, 3);
-            PutBit(bs, invf, 2);
-        }
-    }
-    return bits;
+    int invf = clamp_int(fd->invfMode[ch], 0, 3);
+    if (write) PutBit(bs, invf, 2);
+    return 2;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
