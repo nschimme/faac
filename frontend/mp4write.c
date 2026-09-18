@@ -737,10 +737,14 @@ int mp4_finish(void) {
         if (!grow_membuf(stsz_size))
             return 1;
         uint8_t *p = g_membuf + g_mempos;
+#if WORDS_BIGENDIAN
+        memcpy(p, g_mp4.frame.data, stsz_size);
+#else
         for (uint32_t i = 0; i < g_mp4.frame.ents; i++) {
             uint32_t val = htobe32(g_mp4.frame.data[i]);
             memcpy(p + i * 4, &val, 4);
         }
+#endif
         g_mempos += stsz_size;
     }
     end_atom(stsz);
