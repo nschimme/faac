@@ -169,7 +169,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
-    hEncoder->config.no_threads = config->no_threads;
+    hEncoder->config.max_threads = config->max_threads;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -330,7 +330,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
 #ifdef SBR_WORKER_THREAD
-        sCtx->noThreads = config->no_threads;
+        sCtx->noThreads = (config->max_threads == 1) ? 1 : 0;
 #endif
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
@@ -403,7 +403,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
 #ifdef FAAC_WORKER_THREAD
-    if (!config->no_threads && !hEncoder->threadActive) {
+    if (config->max_threads != 1 && !hEncoder->threadActive) {
         atomic_init(&hEncoder->threadCmd, 0);
         atomic_init(&hEncoder->threadDone, 0);
         if (thrd_create(&hEncoder->workerThread, frame_worker_loop, hEncoder) == thrd_success) {

@@ -86,6 +86,7 @@ enum flags
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
     OPT_NO_THREADS,
+    OPT_THREADS,
     LANG_FLAG
 };
 
@@ -201,7 +202,8 @@ static help_t help_mp4[] = {
 
 static help_t help_advanced[] = {
     {"--no-tns\tDisable coding of TNS, temporal noise shaping (default: on).\n", NULL},
-    {"--no-threads\tDisable multithreaded HE-AAC encoding (default: on).\n", NULL},
+    {"--threads <N>\tSet maximum worker threads (0 = auto, 1 = single-threaded).\n", NULL},
+    {"--no-threads\tDisable multithreaded encoding (same as --threads 1).\n", NULL},
     {"--joint 0\tDisable joint stereo coding.\n", NULL},
     {"--joint 1\tUse Mid/Side coding.\n", NULL},
     {"--joint 2\tUse Intensity Stereo coding.\n", NULL},
@@ -569,6 +571,7 @@ int main(int argc, char *argv[])
             {"pcmchannels", 1, 0, 'C'},
             {"shortctl", 1, 0, SHORTCTL_FLAG},
             {"no-tns", 0, 0, OPT_TNS_DISABLE},
+            {"threads", 1, 0, OPT_THREADS},
             {"no-threads", 0, 0, OPT_NO_THREADS},
             {"mpeg-version", 1, 0, MPEGVERS_FLAG},
             {"object-type", 1, 0, OBJTYPE_FLAG},
@@ -612,7 +615,8 @@ int main(int argc, char *argv[])
         switch (c)
         {
         case OPT_TNS_DISABLE: opts.use_tns = false; break;
-        case OPT_NO_THREADS: opts.no_threads = true; break;
+        case OPT_THREADS: opts.max_threads = (uint32_t)atoi(optarg); break;
+        case OPT_NO_THREADS: opts.max_threads = 1; break;
         case OPT_OVERWRITE: opts.overwrite = true; break;
         case OPT_COMPILATION: opts.metadata.compilation = true; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;

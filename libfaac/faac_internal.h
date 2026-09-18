@@ -67,7 +67,7 @@ typedef struct faacEncConfiguration
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     int pnslevel;
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
-    int no_threads;                  /* 1 = disable multithreading */
+    unsigned int max_threads;        /* 0 = auto, 1 = single-threaded */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;

@@ -172,8 +172,9 @@ typedef struct faac_params {
 
     bool                    use_lfe;       /* treat the last channel as LFE (>= 6 ch) */
     bool                    use_tns;       /* temporal noise shaping                   */
-    bool                    no_threads;    /* opt out of C11 multi-threaded encoding   */
-    uint8_t                 reserved[1];   /* explicit pad; must remain 0              */
+    uint8_t                 reserved[2];   /* explicit pad; must remain 0              */
+
+    uint32_t                max_threads;   /* max worker threads (0 = auto, 1 = single-threaded) */
 
     uint32_t                bit_rate;      /* target bits/sec PER CHANNEL; 0 = use quant_quality */
     uint32_t                bandwidth;     /* cutoff in Hz; 0 = from bit_rate, the curve's top in VBR */
@@ -245,6 +246,7 @@ typedef struct faac_encoder_info {
     uint32_t                encoder_delay;
 
     enum faac_rate_control  rate_control;     /* resolved mode (AUTO becomes VBR or ABR)          */
+    uint32_t                max_threads;      /* resolved worker thread limit                     */
 } faac_encoder_info;
 
 /*

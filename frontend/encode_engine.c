@@ -502,7 +502,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.object_type = opts->object_type;
     params.joint_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
-    params.no_threads = opts->no_threads;
+    params.max_threads = opts->max_threads;
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
     if (opts->pns_level >= 0)
