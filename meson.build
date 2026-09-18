@@ -32,12 +32,12 @@ config_h.set('HAVE_STDATOMIC_H', has_stdatomic_h)
 
 mt_opt = get_option('multithreading')
 if mt_opt.disabled()
-    config_h.set('FAAC_MULTITHREADING', false)
+    config_h.set10('FAAC_MULTITHREADING', false)
 else
     if mt_opt.enabled() and not has_multithreading
         error('Multithreading requested but C11 <threads.h> or <stdatomic.h> header not found or usable.')
     endif
-    config_h.set('FAAC_MULTITHREADING', has_multithreading)
+    config_h.set10('FAAC_MULTITHREADING', has_multithreading)
 endif
 
 config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')

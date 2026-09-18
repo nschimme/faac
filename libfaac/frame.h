@@ -43,7 +43,7 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 
-#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING)
+#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING) && FAAC_MULTITHREADING
 #include <threads.h>
 #include <stdatomic.h>
 #define FAAC_WORKER_THREAD 1

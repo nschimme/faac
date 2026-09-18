@@ -33,8 +33,7 @@ option('stats',
     value: false)
 
 # C11 multi-threading support for concurrent HE-AAC / AAC-LC core encoding.
-# 'auto' auto-detects standard C11 <threads.h> availability.
 option('multithreading',
     description: 'Enable C11 multi-threaded HE-AAC / AAC-LC core encoding',
     type: 'feature',
-    value: 'auto')
+    value: 'disabled')
