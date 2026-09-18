@@ -83,14 +83,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
          * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
          * Low source tonality (noise/transients) -> INVF_LOW/MID. */
-        static float invf_mid_thresh = -1.0f;
-        static float invf_low_thresh = -1.0f;
-        if (invf_mid_thresh < 0.0f) {
-            const char *env_mid = getenv("FAAC_SBR_INVF_MID_THRESH");
-            invf_mid_thresh = env_mid ? atof(env_mid) : 3.0f;
-            const char *env_low = getenv("FAAC_SBR_INVF_LOW_THRESH");
-            invf_low_thresh = env_low ? atof(env_low) : 1.8f;
-        }
+        const float invf_mid_thresh = 3.0f;
+        const float invf_low_thresh = 1.8f;
 
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
@@ -213,44 +207,27 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 }
             }
 
-            /* Estimate noise floor level per envelope across 2 noise bands (low-SBR vs top-octave) */
-            int k_mid = kx + (kEnd - kx) / 2;
+            /* Estimate noise floor level per envelope */
             for (int e = 0; e < sa->numEnvelopes; e++) {
                 int e_slots = sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
-
-                /* Band 0: Low SBR subbands [kx, k_mid) */
-                float e_low = 0.0f;
-                int n_low = k_mid - kx;
-                for (int k = kx; k < k_mid; k++) e_low += sa->bandE[ch][e][k];
-                float avg_low = e_low / (float)(e_slots * (n_low > 0 ? n_low : 1) + 1e-6f);
-
-                /* Band 1: Top-octave SBR subbands [k_mid, kEnd) */
-                float e_high = 0.0f;
-                int n_high = kEnd - k_mid;
-                for (int k = k_mid; k < kEnd; k++) e_high += sa->bandE[ch][e][k];
-                float avg_high = e_high / (float)(e_slots * (n_high > 0 ? n_high : 1) + 1e-6f);
-
-                /* Map noise floor levels: lower SBR band keeps harmonic presence (less noise),
-                 * top octave allows synthetic air injection */
-                int noise_low = 12, noise_high = 12;
-                if (avg_low > 1e-4f) noise_low = 4;
-                else if (avg_low > 1e-6f) noise_low = 8;
-
-                if (avg_high > 1e-4f) noise_high = 8;
-                else if (avg_high > 1e-6f) noise_high = 12;
-                else if (avg_high < 1e-10f) noise_high = 16;
-
-                sa->noiseFloor[ch][0] = clamp_int(noise_low, 0, 31);
-                sa->noiseFloor[ch][1] = clamp_int(noise_high, 0, 31);
+                float tot_high_e = 0.0f;
+                int n_high_bands = kEnd - kx;
+                for (int k = kx; k < kEnd; k++) {
+                    tot_high_e += sa->bandE[ch][e][k];
+                }
+                float avg_high_e = tot_high_e / (float)(e_slots * (n_high_bands > 0 ? n_high_bands : 1) + 1e-6f);
+                /* Map noise floor level dynamically: higher avg energy -> noise level lower (less synthetic noise),
+                 * lower avg energy -> noise level higher (synthetic noise floor injected). Default baseline is 12. */
+                int noise_lvl = 12;
+                if (avg_high_e > 1e-4f) noise_lvl = 6;
+                else if (avg_high_e > 1e-6f) noise_lvl = 10;
+                else if (avg_high_e < 1e-10f) noise_lvl = 16;
+                sa->noiseFloor[ch][e] = clamp_int(noise_lvl, 0, 31);
             }
 
             /* Detect isolated strong sinusoids in target high-frequency bands for bs_add_harmonic */
-            static float harm_thresh = -1.0f;
-            if (harm_thresh < 0.0f) {
-                const char *env_h = getenv("FAAC_SBR_HARMONIC_THRESH");
-                harm_thresh = env_h ? atof(env_h) : 8.0f;
-            }
+            const float harm_thresh = 8.0f;
 
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b];
