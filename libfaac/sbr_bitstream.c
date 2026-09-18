@@ -98,9 +98,14 @@ static inline int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, int ch, 
 
 static inline int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
+    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     int invf = clamp_int(fd->invfMode[ch], 0, 3);
-    if (write) PutBit(bs, invf, 2);
-    return 2;
+    if (write) {
+        for (int ne = 0; ne < n_q; ne++) {
+            PutBit(bs, invf, 2);
+        }
+    }
+    return n_q * 2;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
@@ -149,20 +154,17 @@ static inline int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, int ch,
 
 static inline int write_sbr_sinusoids(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    int bits = 1; /* bs_add_harmonic_flag */
     int active = fd->ch[ch].addHarmonicFlag;
     if (write) PutBit(bs, active ? 1 : 0, 1);
-    if (active) {
-        /* ISO/IEC 14496-3 §4.6.18.3: sbr_sinusoidal_coding() always transmits N_high flags */
-        int nb = sbr->numBands;
-        if (write) {
-            for (int b = 0; b < nb; b++) {
-                PutBit(bs, fd->ch[ch].addHarmonic[b] ? 1 : 0, 1);
-            }
+    if (!active) return 1;
+
+    int nb = sbr->numBands;
+    if (write) {
+        for (int b = 0; b < nb; b++) {
+            PutBit(bs, fd->ch[ch].addHarmonic[b] ? 1 : 0, 1);
         }
-        bits += nb;
     }
-    return bits;
+    return 1 + nb;
 }
 
 static inline int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)

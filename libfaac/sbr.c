@@ -472,9 +472,12 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, int nch, const struct Si
         fd->invfMode[ch] = sa->invfMode[ch];
         fd->ch[ch].noiseFloor[0] = sa->noiseFloor[ch][0];
         fd->ch[ch].noiseFloor[1] = sa->noiseFloor[ch][1];
-        fd->ch[ch].addHarmonicFlag = sa->addHarmonicFlag[ch];
-        for (int b = 0; b < SBR_MAX_BANDS; b++) {
-            fd->ch[ch].addHarmonic[b] = sa->addHarmonic[ch][b];
+        int active = sa->addHarmonicFlag[ch];
+        fd->ch[ch].addHarmonicFlag = active;
+        if (active) {
+            for (int b = 0; b < SBR_MAX_BANDS; b++) {
+                fd->ch[ch].addHarmonic[b] = sa->addHarmonic[ch][b];
+            }
         }
     }
 }
