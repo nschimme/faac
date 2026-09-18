@@ -79,29 +79,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         sa->ch[ch].lastVal = val_in;
 
         sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
-
-        /* Pass 1b: Spectral Flatness / Tonality Estimation for Dynamic Inverse Filtering.
-         * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
-         * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
-         * Low source tonality (noise/transients) -> INVF_LOW/MID. */
-        const float invf_mid_thresh = 3.0f;
-        const float invf_low_thresh = 1.8f;
-
-        float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
-        if (sa->ch[ch].transientStrength > 8.0f) {
-            sa->invfMode[ch] = SBR_INVF_HIGH; /* INVF_HIGH on strong transients to prevent chirping */
-        } else if (avg_slot_eng < 1e-8f) {
-            sa->invfMode[ch] = SBR_INVF_OFF; /* INVF_OFF on silence */
-        } else {
-            float peak_ratio = smax / (avg_slot_eng + SBR_ENERGY_FLOOR);
-            if (peak_ratio > invf_mid_thresh) {
-                sa->invfMode[ch] = SBR_INVF_MID;
-            } else if (peak_ratio > invf_low_thresh) {
-                sa->invfMode[ch] = SBR_INVF_LOW;
-            } else {
-                sa->invfMode[ch] = SBR_INVF_OFF;
-            }
-        }
+        sa->invfMode[ch] = SBR_INVF_OFF;
         sa->ch[ch].transientSlot = smax_idx;
 
         /* Evaluate relative energy jumps to inform block switching. */
@@ -185,10 +163,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
 
-            /* Track max peak energy per band to detect isolated strong sinusoids */
-            float maxBandSlotE[SBR_QMF_BANDS_64];
-            memset(maxBandSlotE, 0, sizeof(maxBandSlotE));
-
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)
@@ -202,8 +176,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                     float * restrict bE = sa->bandE[ch][e];
                     for (int k = kx; k < kEnd; k++) {
                         bE[k] += slotEnergy[k];
-                        if (slotEnergy[k] > maxBandSlotE[k])
-                            maxBandSlotE[k] = slotEnergy[k];
                     }
                 }
             }
@@ -211,26 +183,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             /* Estimate noise floor level per envelope */
             for (int e = 0; e < SBR_MAX_ENVELOPES; e++) {
                 sa->noiseFloor[ch][e] = 12; /* SBR_NOISE_LEVEL_DEFAULT */
-            }
-
-            /* Detect isolated strong sinusoids in target high-frequency bands for bs_add_harmonic */
-            const float harm_thresh = 8.0f;
-
-            for (int b = 0; b < sbr->numBands; b++) {
-                int k_lo = sbr->bandEdges[b];
-                int k_hi = sbr->bandEdges[b+1];
-                for (int k = k_lo; k < k_hi; k++) {
-                    float max_e = maxBandSlotE[k];
-                    if (max_e > 1e-3f) {
-                        float total_e = sa->bandE[ch][0][k] + (sa->numEnvelopes > 1 ? sa->bandE[ch][1][k] : 0.0f);
-                        float avg_e = total_e / (float)(num_slots + 1e-6f);
-                        if (max_e > harm_thresh * (avg_e + SBR_ENERGY_FLOOR)) {
-                            sa->addHarmonic[ch][b] = 1;
-                            sa->addHarmonicFlag[ch] = 1;
-                            break;
-                        }
-                    }
-                }
             }
         }
     }
