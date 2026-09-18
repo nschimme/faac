@@ -39,10 +39,12 @@ typedef struct SbrFrameData {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
     int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
-    /* The noise floor and inverse-filter mode are stream constants
-     * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+    int invfMode[MAX_CHANNELS]; /* Dynamic inverse filtering mode per channel (0..3) */
     struct {
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int noiseFloor[2]; /* Per-envelope adaptive noise floor level (5 bits each: 0..31) */
+        int addHarmonicFlag; /* 1 if missing harmonic synthetic sine injection is active */
+        int addHarmonic[SBR_MAX_BANDS]; /* Per-band missing harmonic flags */
     } ch[MAX_CHANNELS];
 } SbrFrameData;
 
