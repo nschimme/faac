@@ -165,6 +165,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     hEncoder->config.jointmode = config->jointmode;
     hEncoder->config.useLfe = config->useLfe;
     hEncoder->config.useTns = config->useTns;
+    hEncoder->config.no_threads = config->no_threads;
     hEncoder->config.aacObjectType = config->aacObjectType;
     hEncoder->config.mpegVersion = config->mpegVersion;
     hEncoder->config.outputFormat = config->outputFormat;
@@ -324,6 +325,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SBRContext *sCtx = hEncoder->sbrContext;
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
+#ifdef SBR_WORKER_THREAD
+        sCtx->noThreads = config->no_threads;
+#endif
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);
@@ -627,20 +631,6 @@ int faacEncClose(faacEncHandle hpEncoder)
     return 0;
 }
 
-/* HE-AAC per-frame front end: take one assembled full-rate frame from the FIFO
- * front (realPerCh real samples/ch, the rest silence-padded), run SBR analysis
- * on it, then 2:1 downsample to produce the AAC-LC core signal. The FIFO is not
- * consumed here; the caller drops the frame after the core has read heHalfRate.
- * Cold path, kept out of the LC fast path. */
-#if defined(__GNUC__)
-__attribute__((cold, noinline))
-#endif
-static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
-                         float *heHalfRate[MAX_CHANNELS])
-{
-    SbrContextProcessFrame(hEncoder->sbrContext, hEncoder->numChannels, hEncoder->isLfeChannel, (int)realPerCh,
-                           (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
-}
 
 /* Admission gate: TNS shapes noise along the temporal envelope, so a window
  * with no envelope discontinuity has nothing for it to do, but the LPC gate
@@ -723,7 +713,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * through the drain or the tail access units re-emit stale envelopes. */
         float *heHalfRate[MAX_CHANNELS] = {0};
         if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
-            doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
+        {
+            if (SbrContextIsAsyncPending(hEncoder->sbrContext)) {
+                SbrContextWaitAsyncFrame(hEncoder->sbrContext, (int)numChannels, heHalfRate);
+            } else {
+                SbrContextProcessFrame(hEncoder->sbrContext, (int)numChannels, hEncoder->isLfeChannel,
+                                       realPerCh, (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
+            }
+        }
 
         /* Update current sample buffers */
         for (channel = 0; channel < numChannels; channel++)
@@ -772,6 +769,26 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * HE doHEAACFrame read the leading frameSamplesPerCh samples). */
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
+
+        /* Asynchronously start next frame's SBR analysis on worker thread if ready */
+        if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext) && !SbrContextIsAsyncPending(hEncoder->sbrContext)) {
+            int nextRealPerCh = 0;
+            if (hEncoder->inputFifoFill >= frameSamplesPerCh)
+                nextRealPerCh = (int)frameSamplesPerCh;
+            else if (flushing && hEncoder->inputFifoFill > 0)
+                nextRealPerCh = (int)hEncoder->inputFifoFill;
+            else if (flushing)
+                nextRealPerCh = 0;
+
+            if (nextRealPerCh > 0 || flushing) {
+                int nextFlush = (int)hEncoder->flushFrame + (nextRealPerCh == 0 ? 1 : 0);
+                if (nextFlush <= (int)flushBudget) {
+                    SbrContextStartAsyncFrame(hEncoder->sbrContext, (int)numChannels,
+                                              hEncoder->isLfeChannel, nextRealPerCh,
+                                              nextFlush, hEncoder->inputFifo);
+                }
+            }
+        }
 
         if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
             break;

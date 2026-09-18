@@ -20,6 +20,12 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
+#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING)
+#include <threads.h>
+#include <stdatomic.h>
+#define SBR_WORKER_THREAD 1
+#endif
+
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
     float qmfOvl64[SBR_QMF_OVL_LEN_64]; /* QMF overlap state (carries across frames) */
@@ -108,6 +114,25 @@ struct SBRContext {
        the payload the current access unit emits. */
     SbrFrameData frameFIFO[SBR_FRAME_FIFO];
     int          frameHead;
+
+#ifdef SBR_WORKER_THREAD
+    thrd_t          workerThread;
+    mtx_t           threadMtx;
+    cnd_t           threadCndStart;
+    cnd_t           threadCndDone;
+    int             threadCmd;       /* 0 = idle, 1 = process frame, 2 = stop */
+    int             threadDone;      /* 1 = frame complete */
+    bool            threadActive;    /* true if worker thread running */
+#endif
+    int             noThreads;       /* 1 if caller requested single-threaded */
+    bool            asyncFramePending; /* true if async SBR frame is in flight */
+    int             asyncPingPong;   /* 0 or 1 ping-pong index for double-buffering */
+
+    /* Job params passed to worker thread */
+    int             jobNumChannels;
+    bool            jobIsLfe[MAX_CHANNELS];
+    int             jobRealPerCh;
+    int             jobFlushTick;
 };
 
 /* The envelope band table this frame codes over. The quantizer and the writer

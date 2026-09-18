@@ -215,7 +215,7 @@ static faac_status validate_params(const faac_params *p)
             return FAAC_ERR_INVALID_ARGUMENT;
     }
     /* reserved padding must be zero so future fields can claim it safely */
-    if (p->reserved[0] || p->reserved[1])
+    if (p->reserved[0])
         return FAAC_ERR_INVALID_ARGUMENT;
     return FAAC_OK;
 }
@@ -263,6 +263,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->pnslevel      = p->pns_level;
     cfg->maxBitRate    = p->max_bit_rate;
     cfg->rateControl   = (unsigned int)p->rate_control;
+    cfg->no_threads    = p->no_threads ? 1 : 0;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)

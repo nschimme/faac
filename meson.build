@@ -18,9 +18,20 @@ config_h = configuration_data()
 config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 
-foreach h: ['getopt.h', 'immintrin.h']
+foreach h: ['getopt.h', 'immintrin.h', 'threads.h', 'stdatomic.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
+
+mt_opt = get_option('multithreading')
+if mt_opt.disabled()
+    config_h.set('FAAC_MULTITHREADING', false)
+else
+    has_threads = cc.has_header('threads.h') and cc.has_header('stdatomic.h')
+    if mt_opt.enabled() and not has_threads
+        error('Multithreading requested but C11 <threads.h> or <stdatomic.h> header not found.')
+    endif
+    config_h.set('FAAC_MULTITHREADING', has_threads)
+endif
 
 config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 

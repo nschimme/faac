@@ -79,6 +79,7 @@ typedef struct {
     enum faac_shortctl_mode shortctl;
 
     bool use_tns;
+    bool no_threads;
     int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
     int8_t pns_level; /* -1 to leave default */
 
