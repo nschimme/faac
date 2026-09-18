@@ -17,6 +17,7 @@
 #define ENDIAN_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,6 +86,9 @@ static inline uint64_t bswap64(uint64_t x) {
 
 static inline int16_t read_pcm16_le(const int16_t *src) { return (int16_t)le16toh(*src); }
 static inline int16_t read_pcm16_be(const int16_t *src) { return (int16_t)be16toh(*src); }
+static inline int16_t read_pcm16(const int16_t *src, bool bigendian) {
+    return bigendian ? read_pcm16_be(src) : read_pcm16_le(src);
+}
 
 static inline int32_t read_pcm24_le(const uint8_t *src) {
     int32_t s = (int32_t)src[0] | ((int32_t)src[1] << 8) | ((int32_t)src[2] << 16);
@@ -98,8 +102,15 @@ static inline int32_t read_pcm24_be(const uint8_t *src) {
     return s;
 }
 
+static inline int32_t read_pcm24(const uint8_t *src, bool bigendian) {
+    return bigendian ? read_pcm24_be(src) : read_pcm24_le(src);
+}
+
 static inline int32_t read_pcm32_le(const int32_t *src) { return (int32_t)le32toh(*src); }
 static inline int32_t read_pcm32_be(const int32_t *src) { return (int32_t)be32toh(*src); }
+static inline int32_t read_pcm32(const int32_t *src, bool bigendian) {
+    return bigendian ? read_pcm32_be(src) : read_pcm32_le(src);
+}
 
 #ifdef __cplusplus
 }
