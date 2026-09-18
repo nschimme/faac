@@ -29,8 +29,6 @@
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
 #define PCM_32BIT_FLOAT_SCALE 65536.0f
 
-#define UINT32(x) le32toh(x)
-#define UINT16(x) le16toh(x)
 
 typedef struct
 {
@@ -128,7 +126,7 @@ static int seekchunk(FILE *f, riffsub_t *riffsub, char *name)
    if (fread(riffsub, 1, sizeof(*riffsub), f) != sizeof(*riffsub))
      return 0;
 
-   riffsub->len = UINT32(riffsub->len);
+   riffsub->len = le32toh(riffsub->len);
    if (riffsub->len & 1)
      riffsub->len++;
 
@@ -206,11 +204,11 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
     if (!seekchunk(wave_f, &riffsub, datal))
       return NULL;
 
-    if (UINT16(wave.Format.wFormatTag) != WAVE_FORMAT_PCM && UINT16(wave.Format.wFormatTag) != WAVE_FORMAT_FLOAT)
+    if (le16toh(wave.Format.wFormatTag) != WAVE_FORMAT_PCM && le16toh(wave.Format.wFormatTag) != WAVE_FORMAT_FLOAT)
     {
-      if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_EXTENSIBLE)
+      if (le16toh(wave.Format.wFormatTag) == WAVE_FORMAT_EXTENSIBLE)
       {
-        if (UINT16(wave.Format.cbSize) < 22) // struct too small
+        if (le16toh(wave.Format.cbSize) < 22) // struct too small
           return NULL;
         if (memcmp(wave.SubFormat, waveformat_pcm_guid, 16))
         {
@@ -243,7 +241,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
      no float flag of its own -- isfloat stays false, its memset() default. */
   if (!rawinput)
   {
-    if (UINT16(wave.Format.wFormatTag) == WAVE_FORMAT_FLOAT) {
+    if (le16toh(wave.Format.wFormatTag) == WAVE_FORMAT_FLOAT) {
       sndf->isfloat = true;
     } else {
       sndf->isfloat = (wave.SubFormat[0] == WAVE_FORMAT_FLOAT);
@@ -270,9 +268,9 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   else
   {
     sndf->bigendian = false;
-    sndf->channels = UINT16(wave.Format.nChannels);
-    sndf->samplebytes = (uint8_t)(UINT16(wave.Format.wBitsPerSample) / 8);
-    sndf->samplerate = UINT32(wave.Format.nSamplesPerSec);
+    sndf->channels = le16toh(wave.Format.nChannels);
+    sndf->samplebytes = (uint8_t)(le16toh(wave.Format.wBitsPerSample) / 8);
+    sndf->samplerate = le32toh(wave.Format.nSamplesPerSec);
 
     /* channel/sample-width bounds guard against a corrupt header (e.g. a
        bogus huge channel count) driving an oversized allocation downstream */
@@ -430,7 +428,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               {
                   for (size_t i = 0; i < cnt; i++)
                   {
-                      int s = read_24_le(&in[3*i]);
+                      int s = read_pcm24_le(&in[3*i]);
                       buf[i] = (float)s / 256.0f;
                   }
               }
@@ -438,7 +436,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               {
                   for (size_t i = 0; i < cnt; i++)
                   {
-                      int s = read_24_be(&in[3*i]);
+                      int s = read_pcm24_be(&in[3*i]);
                       buf[i] = (float)s / 256.0f;
                   }
               }
