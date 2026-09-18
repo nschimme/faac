@@ -165,9 +165,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
      * Higher-order parametric reconstruction below 10 kHz is audible and
      * generally inferior to the bit-starved LC core. */
     sbr->bs_start_freq = 15;
-    /* Log-spaced envelope bands: fine master table (bs_freq_scale 1) at
-     * 24k+ bps/ch gives high frequency-resolution envelope matching,
-     * while medium (2) / coarse (3) save bit budget at low rates. */
+    /* Log-spaced envelope bands, fewer per octave while bits are scarce:
+     * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
                        : (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
@@ -459,46 +458,35 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 }
 
 
-static void sbr_adopt_envelope_grid(const SBRInfo *sbr, int nch, const struct SignalAnalysis *sa, SbrFrameData *fd)
+static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     fd->numEnvelopes = sa->numEnvelopes;
     fd->frameClass   = sa->frameClass;
     fd->bsPointer    = sa->bsPointer;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
-
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     fd->freqRes = sbr->bs_freq_res;
-    for (int ch = 0; ch < nch && ch < MAX_CHANNELS; ch++) {
-        fd->invfMode[ch] = sa->invfMode[ch];
-        fd->ch[ch].noiseFloor[0] = sa->noiseFloor[ch][0];
-        fd->ch[ch].noiseFloor[1] = sa->noiseFloor[ch][1];
-        int active = sa->addHarmonicFlag[ch];
-        fd->ch[ch].addHarmonicFlag = active;
-        if (active) {
-            for (int b = 0; b < SBR_MAX_BANDS; b++) {
-                fd->ch[ch].addHarmonic[b] = sa->addHarmonic[ch][b];
-            }
-        }
-    }
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
+    /* Must match write_sbr_envelope's table, or the decoder desyncs. */
     int nb = sbr_env_bands(sbr, fd);
     const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe[ch]) continue;
+        /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
-
         for (int e = 0; e < n_env; e++) {
-            fd->ch[ch].dfEnv[e] = 0; /* Always frequency delta coding for static grid stability */
             int prevLevel = -1;
             for (int b = 0; b < nb; b++) {
                 int k_lo = edges[b], k_hi = edges[b+1];
+                /* Weight energy by the number of QMF slots per envelope to
+                 * maintain normalized power levels across variable borders. */
                 int e_slots = sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
                 float E = 0;
@@ -527,7 +515,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
         if (!isLfe[ch])
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
-    sbr_adopt_envelope_grid(sbr, numChannels, sa, fd);
+    sbr_adopt_envelope_grid(sbr, sa, fd);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS

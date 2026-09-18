@@ -17,7 +17,6 @@
 #define SBR_ANALYSIS_H
 
 #include <stdbool.h>
-#include "sbr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,10 +24,6 @@ extern "C" {
 
 #ifndef SBR_QMF_BANDS_64
 #define SBR_QMF_BANDS_64 64
-#endif
-
-#ifndef SBR_MAX_BANDS
-#define SBR_MAX_BANDS 64
 #endif
 
 #ifndef SBR_MAX_ENVELOPES
@@ -63,16 +58,6 @@ typedef struct SignalAnalysis {
     /* Per-envelope QMF band energy, binned over the grid above; only the first
        numEnvelopes rows are written. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
-
-    /* Dynamic inverse filtering mode per channel */
-    SbrInvfMode invfMode[MAX_CHANNELS];
-
-    /* Adaptive noise floor level per channel & envelope */
-    int noiseFloor[MAX_CHANNELS][SBR_MAX_ENVELOPES];
-
-    /* Missing harmonic detection flags per channel & band */
-    int addHarmonicFlag[MAX_CHANNELS];
-    int addHarmonic[MAX_CHANNELS][SBR_MAX_BANDS];
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);

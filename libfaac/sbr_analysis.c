@@ -40,10 +40,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
-    /* Pass 1: Downsampled time-domain transient detection (2x stride).
-     * Identifies the temporal position and strength of transients across
-     * all channels while cutting transient-path MAC operations by 50%.
-     * Preserves exact discrete QMF time-slot boundary alignment. */
+    /* Pass 1: Time-domain transient detection. Identifies the temporal position
+     * and strength of transients across all channels. */
     for (int ch = 0; ch < nch; ch++) {
         float smax = 0.0f, ssum = 0.0f;
         int smax_idx = 0;
@@ -55,14 +53,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
             float hp_stot = 0.0f;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
-                float v = *p_in++;
-                stot += v * v;
-                float d = v - val_in;
-                hp_stot += d * d;
-                val_in = v;
+            for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
+                float v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
+                stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
+                float d0 = v0 - val_in, d1 = v1 - v0, d2 = v2 - v1, d3 = v3 - v2;
+                hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+                val_in = v3; p_in += 4;
             }
-
             if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
             if (stot > smax) {
@@ -74,7 +71,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         sa->ch[ch].lastVal = val_in;
 
         sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
-        sa->invfMode[ch] = SBR_INVF_OFF;
         sa->ch[ch].transientSlot = smax_idx;
 
         /* Evaluate relative energy jumps to inform block switching. */
@@ -152,8 +148,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         for (int ch = 0; ch < nch; ch++) {
             if (isLfe[ch]) continue;
             memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
-            memset(sa->addHarmonic[ch], 0, sizeof(sa->addHarmonic[ch]));
-            sa->addHarmonicFlag[ch] = 0;
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
@@ -169,15 +163,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                     int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
                     float * restrict bE = sa->bandE[ch][e];
-                    for (int k = kx; k < kEnd; k++) {
+                    for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
-                    }
                 }
-            }
-
-            /* Estimate noise floor level per envelope */
-            for (int e = 0; e < SBR_MAX_ENVELOPES; e++) {
-                sa->noiseFloor[ch][e] = 12; /* SBR_NOISE_LEVEL_DEFAULT */
             }
         }
     }
