@@ -79,12 +79,21 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     return bits;
 }
 
-static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
+static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    int len = fd->numEnvelopes + n_q;
-    if (write) PutBit(bs, 0, len);
-    return len;
+    int num_env = fd->numEnvelopes;
+    int n_q = num_env > 1 ? 2 : 1;
+    int bits = num_env + n_q;
+
+    if (write) {
+        for (int e = 0; e < num_env; e++) {
+            PutBit(bs, clamp_int(fd->ch[ch].dfEnv[e], 0, 1), 1); /* bs_df_env */
+        }
+        for (int ne = 0; ne < n_q; ne++) {
+            PutBit(bs, 0, 1); /* bs_df_noise = 0 */
+        }
+    }
+    return bits;
 }
 
 static int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
@@ -167,7 +176,7 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_grid(sbr, fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_dtdf(fd, bs, write);
+        bits += write_sbr_dtdf(fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_invf(fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)

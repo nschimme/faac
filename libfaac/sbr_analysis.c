@@ -94,17 +94,17 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
 
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
-            sa->invfMode[ch] = 3; /* INVF_HIGH on strong transients to prevent chirping */
+            sa->invfMode[ch] = SBR_INVF_HIGH; /* INVF_HIGH on strong transients to prevent chirping */
         } else if (avg_slot_eng < 1e-8f) {
-            sa->invfMode[ch] = 0; /* INVF_OFF on silence */
+            sa->invfMode[ch] = SBR_INVF_OFF; /* INVF_OFF on silence */
         } else {
             float peak_ratio = smax / (avg_slot_eng + SBR_ENERGY_FLOOR);
             if (peak_ratio > invf_mid_thresh) {
-                sa->invfMode[ch] = 2; /* INVF_MID */
+                sa->invfMode[ch] = SBR_INVF_MID;
             } else if (peak_ratio > invf_low_thresh) {
-                sa->invfMode[ch] = 1; /* INVF_LOW */
+                sa->invfMode[ch] = SBR_INVF_LOW;
             } else {
-                sa->invfMode[ch] = 0; /* INVF_OFF */
+                sa->invfMode[ch] = SBR_INVF_OFF;
             }
         }
         sa->ch[ch].transientSlot = smax_idx;

@@ -63,8 +63,8 @@ typedef struct SignalAnalysis {
        numEnvelopes rows are written. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 
-    /* Dynamic inverse filtering mode per channel (0=INVF_OFF, 1=INVF_LOW, 2=INVF_MID, 3=INVF_HIGH) */
-    int invfMode[MAX_CHANNELS];
+    /* Dynamic inverse filtering mode per channel */
+    SbrInvfMode invfMode[MAX_CHANNELS];
 
     /* Adaptive noise floor level per channel & envelope */
     int noiseFloor[MAX_CHANNELS][SBR_MAX_ENVELOPES];

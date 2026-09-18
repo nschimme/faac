@@ -485,6 +485,7 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
+            fd->ch[ch].dfEnv[e] = 0; /* Always frequency delta coding for static grid stability */
             int prevLevel = -1;
             for (int b = 0; b < nb; b++) {
                 int k_lo = edges[b], k_hi = edges[b+1];
