@@ -502,8 +502,8 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
      * by tick 2 both are zero, so the rest of the drain is known silence. */
     if (realPerCh == 0 && flushTick > 1) {
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-            memset(rs->halfRate[0][channel], 0, FRAME_LEN * sizeof(float));
-            heHalfRate[channel] = rs->halfRate[0][channel];
+            memset(rs->halfRate[sCtx->asyncPingPong & 1][channel], 0, FRAME_LEN * sizeof(float));
+            if (heHalfRate) heHalfRate[channel] = rs->halfRate[sCtx->asyncPingPong & 1][channel];
             sCtx->signalAnalysis.ch[channel].transientStrength = 0.0f;
             sCtx->signalAnalysis.ch[channel].wantShort = 0;
         }
@@ -512,13 +512,13 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
             float *fullRate = rs->fullRate[channel];
             fullPtrs[channel] = fullRate;
-            if (realPerCh)
-                memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
-            /* Final partial frame: silence-pad the unfilled full-rate tail to
-             * prevent the resampler from consuming stale data. */
-            if (realPerCh < 2 * FRAME_LEN)
-                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
-            heHalfRate[channel] = rs->halfRate[0][channel];
+            if (inputFifo && inputFifo[channel]) {
+                if (realPerCh)
+                    memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
+                if (realPerCh < 2 * FRAME_LEN)
+                    memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
+            }
+            if (heHalfRate) heHalfRate[channel] = rs->halfRate[sCtx->asyncPingPong & 1][channel];
         }
 
         /* Always the full padded frame, never [0, realPerCh): the grid unconditionally
@@ -528,7 +528,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
-        Resample(rs, 2 * FRAME_LEN, 0);
+        Resample(rs, 2 * FRAME_LEN, sCtx->asyncPingPong);
     }
 
     /* Update the transient FIFO. Shift down by one and push
