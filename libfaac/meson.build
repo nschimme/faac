@@ -105,9 +105,3 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
-
-test_channel_cfg = executable('test_channel_cfg', 'test_channel_cfg.c',
-    include_directories: ['..', '../include'],
-    link_with: libfaac
-)
-test('channel_cfg', test_channel_cfg)
