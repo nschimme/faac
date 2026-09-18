@@ -104,10 +104,9 @@ void init_windows(void)
 
 static void fast_imdct(const float *in, float *out, int n)
 {
-    int n2 = n / 2;
-    int n4 = n / 4;
-    int logm = 0;
-    while ((1 << logm) < n2) logm++;
+    int n2 = n >> 1;
+    int n4 = n >> 2;
+    int fft_logm = (n == 2048) ? 9 : 6;
 
     float xr[1024], xi[1024];
 
@@ -126,7 +125,7 @@ static void fast_imdct(const float *in, float *out, int n)
         xi[k] = im * c - re * s;
     }
 
-    fft(&fft_tbl, xr, xi, logm - 1);
+    fft(&fft_tbl, xr, xi, fft_logm);
 
     /* Fast table-driven Post-twiddle and mirror with 2.0 / n scaling */
     float scale = 2.0f / (float)n;

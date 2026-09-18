@@ -249,13 +249,20 @@ static inline void decode_pair(BitReader *bs, int book, int *x, int *y
         , stats
 #endif
     );
-    int base = 17;
-    if (book == 5 || book == 6) base = 9;
-    else if (book == 7 || book == 8) base = 8;
-    else if (book == 9 || book == 10) base = 13;
 
-    *x = idx / base;
-    *y = idx % base;
+    if (book == 7 || book == 8) {
+        *x = idx >> 3;
+        *y = idx & 7;
+    } else if (book == 5 || book == 6) {
+        *x = idx / 9;
+        *y = idx % 9;
+    } else if (book == 9 || book == 10) {
+        *x = idx / 13;
+        *y = idx % 13;
+    } else {
+        *x = idx / 17;
+        *y = idx % 17;
+    }
 
     if (book == 6) {
         /* Codebook 6: Signed 2-tuple in [-4, 4] directly encoded via offset +4 */
