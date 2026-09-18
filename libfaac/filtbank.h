@@ -34,7 +34,8 @@ void			FilterBank( faacEncStruct* hEncoder,
 						CoderInfo *coderInfo,
 						float * restrict p_prev_data,
 						float * restrict p_in_data,
-						float * restrict p_out_mdct);
+                float * restrict p_out_mdct,
+                float * restrict workBuf);
 
 
 #ifdef __cplusplus

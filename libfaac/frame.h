@@ -70,6 +70,7 @@ typedef struct faacEncStruct {
     float *sin_window_long;
     float *sin_window_short;
     float *freqBuff[MAX_CHANNELS];
+    float *channelWorkBuf[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];

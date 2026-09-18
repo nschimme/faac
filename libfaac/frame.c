@@ -820,7 +820,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
             &coderInfo[channel],
             hEncoder->audioFIFO[channel][FIFO_PAST],
             hEncoder->audioFIFO[channel][FIFO_CURR],
-            hEncoder->freqBuff[channel]);
+            hEncoder->freqBuff[channel],
+            hEncoder->channelWorkBuf[channel]);
     }
 
     for (channel = 0; channel < numChannels; channel++) {
