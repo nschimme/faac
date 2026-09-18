@@ -117,7 +117,7 @@ static void seekcur(FILE *f, int ofs)
     }
 }
 
-static int seekchunk(FILE *f, riffsub_t *riffsub, char *name)
+static int seekchunk(FILE *f, riffsub_t *riffsub, const char *name)
 {
  int skipped;
 
@@ -145,10 +145,6 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   riff_t riff;
   riffsub_t riffsub = {0};
   struct WAVEFORMATEXTENSIBLE wave = {0};
-  char *riffl = "RIFF";
-  char *wavel = "WAVE";
-  char *fmtl = "fmt ";
-  char *datal = "data";
   int fmtsize;
   pcmfile_t *sndf;
   int dostdin = 0;
@@ -179,15 +175,15 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
   {
     if (fread(&riff, 1, sizeof(riff), wave_f) != sizeof(riff))
       return NULL;
-    if (memcmp(&(riff.label), riffl, 4))
+    if (memcmp(&(riff.label), "RIFF", 4))
       return NULL;
-    if (memcmp(&(riff.chunk_type), wavel, 4))
-      return NULL;
-
-    if (!seekchunk(wave_f, &riffsub, fmtl))
+    if (memcmp(&(riff.chunk_type), "WAVE", 4))
       return NULL;
 
-    if (memcmp(&(riffsub.label), fmtl, 4))
+    if (!seekchunk(wave_f, &riffsub, "fmt "))
+      return NULL;
+
+    if (memcmp(&(riffsub.label), "fmt ", 4))
         return NULL;
     memset(&wave, 0, sizeof(wave));
 
@@ -201,7 +197,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
 
     seekcur(wave_f, riffsub.len - fmtsize);
 
-    if (!seekchunk(wave_f, &riffsub, datal))
+    if (!seekchunk(wave_f, &riffsub, "data"))
       return NULL;
 
     if (le16toh(wave.Format.wFormatTag) != WAVE_FORMAT_PCM && le16toh(wave.Format.wFormatTag) != WAVE_FORMAT_FLOAT)
@@ -401,12 +397,12 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               if (!sndf->bigendian)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)(int16_t)le16toh(in[i]);
+                      buf[i] = (float)read_pcm16_le(&in[i]);
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)(int16_t)be16toh(in[i]);
+                      buf[i] = (float)read_pcm16_be(&in[i]);
               }
           }
           break;
@@ -427,16 +423,16 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
           break;
       case 4:
           {
-              int32_t *in = (int32_t*)bufi;
+              const int32_t *in = (const int32_t*)bufi;
               if (!sndf->bigendian)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)(int32_t)le32toh(in[i]) / PCM_32BIT_FLOAT_SCALE;
+                      buf[i] = (float)read_pcm32_le(&in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
               else
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)(int32_t)be32toh(in[i]) / PCM_32BIT_FLOAT_SCALE;
+                      buf[i] = (float)read_pcm32_be(&in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
           }
           break;

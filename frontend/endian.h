@@ -83,6 +83,9 @@ static inline uint64_t bswap64(uint64_t x) {
 #define le32toh(x) htole32(x)
 #define le64toh(x) htole64(x)
 
+static inline int16_t read_pcm16_le(const int16_t *src) { return (int16_t)le16toh(*src); }
+static inline int16_t read_pcm16_be(const int16_t *src) { return (int16_t)be16toh(*src); }
+
 static inline int32_t read_pcm24_le(const uint8_t *src) {
     int32_t s = (int32_t)src[0] | ((int32_t)src[1] << 8) | ((int32_t)src[2] << 16);
     if (s & 0x800000) s |= (int32_t)0xff000000;
@@ -94,6 +97,9 @@ static inline int32_t read_pcm24_be(const uint8_t *src) {
     if (s & 0x800000) s |= (int32_t)0xff000000;
     return s;
 }
+
+static inline int32_t read_pcm32_le(const int32_t *src) { return (int32_t)le32toh(*src); }
+static inline int32_t read_pcm32_be(const int32_t *src) { return (int32_t)be32toh(*src); }
 
 #ifdef __cplusplus
 }
