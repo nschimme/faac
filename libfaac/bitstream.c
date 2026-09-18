@@ -69,6 +69,10 @@ int PutBit(BitStream *bs, uint32_t data, int numBits)
     if ((start >> 3) == ((end - 1) >> 3)) {
         uint32_t bitsAvailable = ((end - 1) & 7) + 1;
         uint32_t shift = 8 - bitsAvailable;
+        /* PutBit ORs bits into place; it never zeroes them first, so every
+         * caller-supplied buffer must already be zeroed (OpenBitStream does
+         * this). A stale/reused buffer that skips OpenBitStream will corrupt
+         * silently in release builds -- catch it here in debug builds. */
         assert((bs->data[start >> 3] & (((1U << (uint32_t)numBits) - 1) << shift)) == 0);
         bs->data[start >> 3] |= (uint8_t)(data << shift);
         return 0;
