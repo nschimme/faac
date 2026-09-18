@@ -44,12 +44,12 @@ static void decode_ics_info(BitReader *bs, ICSInfo *ics)
 static void decode_section_data(BitReader *bs, ICSInfo *ics)
 {
     uint32_t sect_bits = (ics->window_sequence == EIGHT_SHORT_SEQUENCE) ? 3 : 5;
+    uint32_t max_run = (1U << sect_bits) - 1;
     for (int g = 0; g < ics->num_window_groups && g < 8; g++) {
         int k = 0;
         int i = 0;
         while (k < ics->max_sfb && i < 64) {
             uint32_t cb = bits_get(bs, 4);
-            uint32_t max_run = (1U << sect_bits) - 1;
             uint32_t run_field = bits_get(bs, sect_bits);
             uint32_t len = run_field;
             /* Section escape fields in libfaac (writebooks() in huff2.c) and ISO/IEC 13818-7 / 14496-3:
