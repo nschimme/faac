@@ -79,17 +79,27 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     return bits;
 }
 
-static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
+static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    int len = fd->numEnvelopes + n_q;
-    if (write) PutBit(bs, 0, len);
-    return len;
+    int num_env = fd->numEnvelopes;
+    int n_q = num_env > 1 ? 2 : 1;
+    int bits = num_env + n_q;
+
+    if (write) {
+        for (int e = 0; e < num_env; e++) {
+            PutBit(bs, clamp_int(fd->ch[ch].dfEnv[e], 0, 1), 1); /* bs_df_env */
+        }
+        for (int ne = 0; ne < n_q; ne++) {
+            PutBit(bs, 0, 1); /* bs_df_noise = 0 */
+        }
+    }
+    return bits;
 }
 
-static int write_sbr_invf(BitStream *bs, bool write)
+static int write_sbr_invf(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    if (write) PutBit(bs, SBR_INVF_MODE, 2);
+    int invf = clamp_int(fd->invfMode[ch], 0, 3);
+    if (write) PutBit(bs, invf, 2);
     return 2;
 }
 
@@ -125,37 +135,58 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     return bits;
 }
 
-static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
+static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     if (write) {
-        for (int ne = 0; ne < n_q; ne++)
-            PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
+        for (int ne = 0; ne < n_q; ne++) {
+            int lvl = clamp_int(fd->ch[ch].noiseFloor[ne], 0, 31);
+            PutBit(bs, lvl, 5);
+        }
     }
     return n_q * 5;
+}
+
+static int write_sbr_sinusoids(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
+{
+    int bits = 1; /* bs_add_harmonic_flag */
+    int active = fd->ch[ch].addHarmonicFlag;
+    if (write) PutBit(bs, active ? 1 : 0, 1);
+    if (active) {
+        /* ISO/IEC 14496-3 §4.6.18.3: sbr_sinusoidal_coding() always transmits N_high flags */
+        int nb = sbr->numBands;
+        if (write) {
+            for (int b = 0; b < nb; b++) {
+                PutBit(bs, fd->ch[ch].addHarmonic[b] ? 1 : 0, 1);
+            }
+        }
+        bits += nb;
+    }
+    return bits;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
 {
     int nch = (id_aac == ID_CPE) ? 2 : 1;
-    int flags_len = (id_aac == ID_CPE) ? 3 : 2;
     int lead_len = (id_aac == ID_CPE) ? 2 : 1;
-    int bits = lead_len + flags_len;
+    int bits = lead_len + 1; /* lead_len + 1 bit bs_extended_data = 0 */
 
     if (write) PutBit(bs, 0, lead_len); /* bs_coupling / reserved */
 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_grid(sbr, fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_dtdf(fd, bs, write);
+        bits += write_sbr_dtdf(fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_invf(bs, write);
+        bits += write_sbr_invf(fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_envelope(sbr, fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_noise(fd, bs, write);
+        bits += write_sbr_noise(fd, bs, ch0 + ch, write);
+    for (int ch = 0; ch < nch; ch++)
+        bits += write_sbr_sinusoids(sbr, fd, bs, ch0 + ch, write);
 
-    if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
+    if (write) PutBit(bs, 0, 1); /* bs_extended_data = 0 */
 
     return bits;
 }
