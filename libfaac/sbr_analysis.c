@@ -63,6 +63,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 val_in = v2;
                 p_in += 4;
             }
+            val_in = p_in[-1]; /* Sample index 63 at the end of the 64-sample QMF slot */
             /* Scale energy estimations by 2.0f to match 1x energy baseline. */
             stot *= 2.0f;
             hp_stot *= 2.0f;
@@ -83,8 +84,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
          * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
          * Low source tonality (noise/transients) -> INVF_LOW/MID. */
-        const float invf_mid_thresh = 3.0f;
-        const float invf_low_thresh = 1.8f;
+        const float invf_mid_thresh = 3.5f;
+        const float invf_low_thresh = 2.0f;
 
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
@@ -211,7 +212,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             }
 
             /* Estimate noise floor level per envelope */
-            for (int e = 0; e < sa->numEnvelopes; e++) {
+            for (int e = 0; e < SBR_MAX_ENVELOPES; e++) {
                 sa->noiseFloor[ch][e] = 12; /* SBR_NOISE_LEVEL_DEFAULT */
             }
 
