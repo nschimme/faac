@@ -106,11 +106,7 @@ typedef struct {
  */
 static inline int GetChannelConfig(int numChannels)
 {
-    if (numChannels >= 1 && numChannels <= 6)
-        return numChannels;
-    if (numChannels == 8)
-        return 7;
-    return 0;
+    return (numChannels >= 1 && numChannels <= 6) ? numChannels : (numChannels == 8 ? 7 : 0);
 }
 
 int InitElements(AACElement * __restrict elements, int *numElements, int numChannels, bool useLfe);
