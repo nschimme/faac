@@ -83,8 +83,12 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
          * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
          * Low source tonality (noise/transients) -> INVF_LOW/MID. */
-        const float invf_mid_thresh = 2.5f;
-        const float invf_low_thresh = 1.5f;
+        /* Pass 1b: Spectral Flatness / Tonality Estimation for Dynamic Inverse Filtering.
+         * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
+         * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
+         * Low source tonality (noise/transients) -> INVF_LOW/MID. */
+        const float invf_mid_thresh = 3.0f;
+        const float invf_low_thresh = 1.8f;
 
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
@@ -226,20 +230,33 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 sa->noiseFloor[ch][e] = clamp_int(noise_lvl, 0, 31);
             }
 
-            /* Detect isolated strong sinusoids in target high-frequency bands for bs_add_harmonic */
+            /* Subband-grained spectral tonality analysis for bs_invf_mode and bs_add_harmonic */
             const float harm_thresh = 8.0f;
 
+            float max_subband_tonality = 0.0f;
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b];
                 int k_hi = sbr->bandEdges[b+1];
                 for (int k = k_lo; k < k_hi; k++) {
                     float total_e = sa->bandE[ch][0][k] + (sa->numEnvelopes > 1 ? sa->bandE[ch][1][k] : 0.0f);
                     float avg_e = total_e / (float)num_slots;
-                    if (maxBandSlotE[k] > harm_thresh * (avg_e + SBR_ENERGY_FLOOR) && maxBandSlotE[k] > 1e-4f) {
+                    float tonality = maxBandSlotE[k] / (avg_e + SBR_ENERGY_FLOOR);
+                    if (tonality > max_subband_tonality) max_subband_tonality = tonality;
+                    if (tonality > harm_thresh && maxBandSlotE[k] > 1e-4f) {
                         sa->addHarmonic[ch][b] = 1;
                         sa->addHarmonicFlag[ch] = 1;
                         break;
                     }
+                }
+            }
+
+            /* Adjust inverse filtering mode based on subband tonality:
+             * High subband tonality -> INVF_OFF (0) or INVF_LOW (1) to protect harmonics */
+            if (sa->ch[ch].transientStrength < 3.0f) {
+                if (max_subband_tonality > 3.0f) {
+                    sa->invfMode[ch] = SBR_INVF_OFF; /* INVF_OFF: preserve true harmonic purity */
+                } else if (max_subband_tonality > 1.8f) {
+                    sa->invfMode[ch] = SBR_INVF_LOW;
                 }
             }
         }
