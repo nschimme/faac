@@ -436,6 +436,7 @@ static void qmf_analysis_320(SBRState *sbr, const float *in, float qmf_real[32][
 /* 64-subband QMF synthesis filterbank with 640-sample overlapping delay line history */
 static void qmf_synthesis_640(SBRState *sbr, float qmf_real[32][64], float qmf_imag[32][64], float *out)
 {
+    init_qmf_twiddles();
     for (int t = 0; t < 32; t++) {
         /* Shift 640-sample QMF delay line history by 64 samples */
         memmove(&sbr->qmf_ovl[0], &sbr->qmf_ovl[64], 576 * sizeof(float));
