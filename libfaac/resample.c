@@ -51,7 +51,7 @@ void ResampleEnd(Resampler *r)
 }
 
 /* The symmetric-fold gather below defeats autovectorization. */
-int Resample(Resampler *r, int input_len, int ping_pong_idx)
+int Resample(Resampler *r, int input_len)
 {
     int output_len = input_len / 2;
     const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
@@ -60,7 +60,7 @@ int Resample(Resampler *r, int input_len, int ping_pong_idx)
 
     for (ch = 0; ch < r->channels; ch++) {
         float * __restrict in  = r->fullRate[ch];
-        float * __restrict out = r->halfRate[ping_pong_idx & 1][ch];
+        float * __restrict out = r->halfRate[ch];
         float * __restrict hist = r->buf[ch];
 
         /* Fixed-size buffers to avoid VLA (MSVC portability): history + one

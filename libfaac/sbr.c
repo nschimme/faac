@@ -204,62 +204,6 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->freqRes      = 1;
 }
 
-#ifdef SBR_WORKER_THREAD
-static int sbr_worker_loop(void *arg)
-{
-    SBRContext *sCtx = (SBRContext *)arg;
-    while (1) {
-        int spin = 0;
-        while (atomic_load_explicit(&sCtx->threadCmd, memory_order_acquire) == 0) {
-            if (spin < 500) {
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-                __builtin_ia32_pause();
-#endif
-                spin++;
-            } else {
-                thrd_yield();
-            }
-        }
-
-        int cmd = atomic_load_explicit(&sCtx->threadCmd, memory_order_relaxed);
-        if (cmd == 2) {
-            break;
-        }
-
-        /* Process SBR frame job */
-        float *fullPtrs[MAX_CHANNELS];
-        for (int ch = 0; ch < sCtx->jobNumChannels; ch++) {
-            fullPtrs[ch] = sCtx->resampler->fullRate[ch];
-        }
-
-        if (sCtx->jobRealPerCh == 0 && sCtx->jobFlushTick > 1) {
-            for (int ch = 0; ch < sCtx->jobNumChannels; ch++) {
-                memset(sCtx->resampler->halfRate[sCtx->asyncPingPong & 1][ch], 0, FRAME_LEN * sizeof(float));
-                sCtx->signalAnalysis.ch[ch].transientStrength = 0.0f;
-                sCtx->signalAnalysis.ch[ch].wantShort = 0;
-            }
-            sbr_frame_silence(&sCtx->frameFIFO[sCtx->frameHead]);
-        } else {
-            SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, sCtx->jobNumChannels, sCtx->jobIsLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
-            SbrEncode(sCtx->sbrInfo, fullPtrs, sCtx->jobNumChannels, sCtx->jobIsLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, &sCtx->frameFIFO[sCtx->frameHead]);
-            Resample(sCtx->resampler, 2 * FRAME_LEN, sCtx->asyncPingPong);
-        }
-
-        for (int ch = 0; ch < sCtx->jobNumChannels; ch++) {
-            memmove(&sCtx->transientStrengthFIFO[ch][0], &sCtx->transientStrengthFIFO[ch][1], (SBR_DETECT_FIFO - 1) * sizeof(float));
-            sCtx->transientStrengthFIFO[ch][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[ch].transientStrength;
-            memmove(&sCtx->wantShortFIFO[ch][0], &sCtx->wantShortFIFO[ch][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
-            sCtx->wantShortFIFO[ch][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[ch].wantShort;
-        }
-
-        atomic_store_explicit(&sCtx->threadCmd, 0, memory_order_relaxed);
-        atomic_store_explicit(&sCtx->threadDone, 1, memory_order_release);
-    }
-    return 0;
-}
-#endif
-
-
 SBRContext *SbrContextInit(int channels)
 {
     SBRContext *sbrCtx = (SBRContext *)AllocMemory(sizeof(SBRContext));
@@ -281,23 +225,6 @@ SBRContext *SbrContextInit(int channels)
 void SbrContextEnd(SBRContext *sbrCtx)
 {
     if (!sbrCtx) return;
-
-    if (sbrCtx->asyncFramePending) {
-        float *dummy[MAX_CHANNELS];
-        SbrContextWaitAsyncFrame(sbrCtx, sbrCtx->sbrInfo ? sbrCtx->sbrInfo->numChannels : 0, dummy);
-        sbrCtx->asyncFramePending = false;
-    }
-
-#ifdef SBR_WORKER_THREAD
-    if (sbrCtx->threadActive) {
-        while (atomic_load_explicit(&sbrCtx->threadCmd, memory_order_acquire) != 0) {
-            thrd_yield();
-        }
-        atomic_store_explicit(&sbrCtx->threadCmd, 2, memory_order_release);
-        thrd_join(sbrCtx->workerThread, NULL);
-        sbrCtx->threadActive = false;
-    }
-#endif
 
     if (sbrCtx->sbrInfo) {
         SbrEnd(sbrCtx->sbrInfo);
@@ -365,127 +292,6 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
         SbrUpdate(sCtx->sbrInfo, bitrate);
 }
 
-int SbrContextIsAsyncPending(SBRContext *sCtx)
-{
-    return sCtx ? (sCtx->asyncFramePending ? 1 : 0) : 0;
-}
-
-void SbrContextStartAsyncFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS])
-{
-    if (!sCtx) return;
-#ifdef SBR_WORKER_THREAD
-    if (!sCtx->noThreads) {
-        if (!sCtx->threadActive) {
-            atomic_init(&sCtx->threadCmd, 0);
-            atomic_init(&sCtx->threadDone, 0);
-            if (thrd_create(&sCtx->workerThread, sbr_worker_loop, sCtx) == thrd_success) {
-                sCtx->threadActive = true;
-            } else {
-                sCtx->noThreads = 1;
-            }
-        }
-    }
-
-    if (sCtx->threadActive) {
-        sCtx->asyncPingPong ^= 1;
-        sCtx->frameHead = (sCtx->frameHead + 1) % SBR_FRAME_FIFO;
-        sCtx->sbrInfo->headerDecided = 0;
-
-        sCtx->jobNumChannels = numChannels;
-        sCtx->jobRealPerCh = realPerCh;
-        sCtx->jobFlushTick = flushTick;
-        for (int ch = 0; ch < numChannels; ch++) {
-            sCtx->jobIsLfe[ch] = isLfe[ch];
-            float *fullRate = sCtx->resampler->fullRate[ch];
-            if (realPerCh > 0 && inputFifo[ch]) {
-                memcpy(fullRate, inputFifo[ch], realPerCh * sizeof(float));
-            }
-            if (realPerCh < 2 * FRAME_LEN) {
-                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
-            }
-        }
-
-        atomic_store_explicit(&sCtx->threadDone, 0, memory_order_relaxed);
-        atomic_store_explicit(&sCtx->threadCmd, 1, memory_order_release);
-        sCtx->asyncFramePending = true;
-        return;
-    }
-#endif
-
-    /* Single-threaded fallback */
-    sCtx->jobNumChannels = numChannels;
-    sCtx->jobRealPerCh = realPerCh;
-    sCtx->jobFlushTick = flushTick;
-    for (int ch = 0; ch < numChannels; ch++) {
-        sCtx->jobIsLfe[ch] = isLfe[ch];
-        float *fullRate = sCtx->resampler->fullRate[ch];
-        if (realPerCh > 0 && inputFifo[ch]) {
-            memcpy(fullRate, inputFifo[ch], realPerCh * sizeof(float));
-        }
-        if (realPerCh < 2 * FRAME_LEN) {
-            memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
-        }
-    }
-    sCtx->asyncFramePending = true;
-}
-
-void SbrContextWaitAsyncFrame(SBRContext *sCtx, int numChannels, float *heHalfRate[MAX_CHANNELS])
-{
-    if (!sCtx) return;
-    sCtx->asyncFramePending = false;
-#ifdef SBR_WORKER_THREAD
-    if (sCtx->threadActive) {
-        int spin = 0;
-        while (atomic_load_explicit(&sCtx->threadDone, memory_order_acquire) == 0) {
-            if (spin < 500) {
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-                __builtin_ia32_pause();
-#endif
-                spin++;
-            } else {
-                thrd_yield();
-            }
-        }
-
-        for (int ch = 0; ch < numChannels; ch++) {
-            heHalfRate[ch] = sCtx->resampler->halfRate[sCtx->asyncPingPong & 1][ch];
-        }
-        return;
-    }
-#endif
-
-    /* Single-threaded execution */
-    float *fullPtrs[MAX_CHANNELS];
-    for (int ch = 0; ch < numChannels; ch++) {
-        fullPtrs[ch] = sCtx->resampler->fullRate[ch];
-        heHalfRate[ch] = sCtx->resampler->halfRate[sCtx->asyncPingPong & 1][ch];
-    }
-
-    sCtx->frameHead = (sCtx->frameHead + 1) % SBR_FRAME_FIFO;
-    sCtx->sbrInfo->headerDecided = 0;
-
-    sCtx->asyncPingPong ^= 1;
-    if (sCtx->jobRealPerCh == 0 && sCtx->jobFlushTick > 1) {
-        for (int ch = 0; ch < numChannels; ch++) {
-            memset(sCtx->resampler->halfRate[sCtx->asyncPingPong & 1][ch], 0, FRAME_LEN * sizeof(float));
-            sCtx->signalAnalysis.ch[ch].transientStrength = 0.0f;
-            sCtx->signalAnalysis.ch[ch].wantShort = 0;
-        }
-        sbr_frame_silence(&sCtx->frameFIFO[sCtx->frameHead]);
-    } else {
-        SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, sCtx->jobIsLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
-        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, sCtx->jobIsLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, &sCtx->frameFIFO[sCtx->frameHead]);
-        Resample(sCtx->resampler, 2 * FRAME_LEN, sCtx->asyncPingPong);
-    }
-
-    for (int ch = 0; ch < numChannels; ch++) {
-        memmove(&sCtx->transientStrengthFIFO[ch][0], &sCtx->transientStrengthFIFO[ch][1], (SBR_DETECT_FIFO - 1) * sizeof(float));
-        sCtx->transientStrengthFIFO[ch][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[ch].transientStrength;
-        memmove(&sCtx->wantShortFIFO[ch][0], &sCtx->wantShortFIFO[ch][1], (SBR_DETECT_FIFO - 1) * sizeof(int));
-        sCtx->wantShortFIFO[ch][SBR_DETECT_FIFO - 1] = sCtx->signalAnalysis.ch[ch].wantShort;
-    }
-}
-
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
 {
     unsigned int channel;
@@ -502,8 +308,8 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
      * by tick 2 both are zero, so the rest of the drain is known silence. */
     if (realPerCh == 0 && flushTick > 1) {
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
-            memset(rs->halfRate[sCtx->asyncPingPong & 1][channel], 0, FRAME_LEN * sizeof(float));
-            if (heHalfRate) heHalfRate[channel] = rs->halfRate[sCtx->asyncPingPong & 1][channel];
+            memset(rs->halfRate[channel], 0, FRAME_LEN * sizeof(float));
+            heHalfRate[channel] = rs->halfRate[channel];
             sCtx->signalAnalysis.ch[channel].transientStrength = 0.0f;
             sCtx->signalAnalysis.ch[channel].wantShort = 0;
         }
@@ -512,13 +318,13 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         for (channel = 0; channel < (unsigned int)numChannels; channel++) {
             float *fullRate = rs->fullRate[channel];
             fullPtrs[channel] = fullRate;
-            if (inputFifo && inputFifo[channel]) {
-                if (realPerCh)
-                    memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
-                if (realPerCh < 2 * FRAME_LEN)
-                    memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
-            }
-            if (heHalfRate) heHalfRate[channel] = rs->halfRate[sCtx->asyncPingPong & 1][channel];
+            if (realPerCh)
+                memcpy(fullRate, inputFifo[channel], realPerCh * sizeof(float));
+            /* Final partial frame: silence-pad the unfilled full-rate tail to
+             * prevent the resampler from consuming stale data. */
+            if (realPerCh < 2 * FRAME_LEN)
+                memset(fullRate + realPerCh, 0, (2 * FRAME_LEN - realPerCh) * sizeof(float));
+            heHalfRate[channel] = rs->halfRate[channel];
         }
 
         /* Always the full padded frame, never [0, realPerCh): the grid unconditionally
@@ -528,7 +334,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
-        Resample(rs, 2 * FRAME_LEN, sCtx->asyncPingPong);
+        Resample(rs, 2 * FRAME_LEN);
     }
 
     /* Update the transient FIFO. Shift down by one and push

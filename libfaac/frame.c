@@ -60,9 +60,6 @@
 #include "win32_ver.h"
 #endif
 
-#ifdef FAAC_WORKER_THREAD
-static int frame_worker_loop(void *arg);
-#endif
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -402,16 +399,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
-#ifdef FAAC_WORKER_THREAD
-    if (config->max_threads != 1 && !hEncoder->threadActive) {
-        atomic_init(&hEncoder->threadCmd, 0);
-        atomic_init(&hEncoder->threadDone, 0);
-        if (thrd_create(&hEncoder->workerThread, frame_worker_loop, hEncoder) == thrd_success) {
-            hEncoder->threadActive = true;
-        }
-    }
-#endif
-
     return 1;
 }
 
@@ -640,54 +627,22 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
-#ifdef FAAC_WORKER_THREAD
-    if (hEncoder->threadActive) {
-        while (atomic_load_explicit(&hEncoder->threadCmd, memory_order_acquire) != 0) {
-            thrd_yield();
-        }
-        atomic_store_explicit(&hEncoder->threadCmd, 4, memory_order_release);
-        thrd_join(hEncoder->workerThread, NULL);
-        hEncoder->threadActive = false;
-    }
-#endif
-
     FreeMemory(hEncoder);
 
     return 0;
 }
 
-#ifdef FAAC_WORKER_THREAD
-static int frame_worker_loop(void *arg)
+/* HE-AAC per-frame front end: take one assembled full-rate frame from the FIFO
+ * front (realPerCh real samples/ch, the rest silence-padded), run SBR analysis
+ * on it, then 2:1 downsample to produce the AAC-LC core signal. The FIFO is not
+ * consumed here; the caller drops the frame after the core has read heHalfRate.
+ * Cold path, kept out of the LC fast path. */
+static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
+                         float *heHalfRate[MAX_CHANNELS])
 {
-    faacEncStruct *hEncoder = (faacEncStruct *)arg;
-    while (1) {
-        int spin = 0;
-        while (atomic_load_explicit(&hEncoder->threadCmd, memory_order_acquire) == 0) {
-            if (spin < 500) {
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-                __builtin_ia32_pause();
-#endif
-                spin++;
-            } else {
-                thrd_yield();
-            }
-        }
-
-        int cmd = atomic_load_explicit(&hEncoder->threadCmd, memory_order_relaxed);
-        if (cmd == 4) break;
-
-        if (cmd == 1 && hEncoder->sbrContext) {
-            SbrContextProcessFrame(hEncoder->sbrContext, (int)hEncoder->numChannels,
-                                   hEncoder->isLfeChannel, hEncoder->jobRealPerCh,
-                                   hEncoder->jobFlushTick, NULL, NULL);
-        }
-
-        atomic_store_explicit(&hEncoder->threadCmd, 0, memory_order_relaxed);
-        atomic_store_explicit(&hEncoder->threadDone, 1, memory_order_release);
-    }
-    return 0;
+    SbrContextProcessFrame(hEncoder->sbrContext, hEncoder->numChannels, hEncoder->isLfeChannel, (int)realPerCh,
+                           (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
 }
-#endif
 
 
 /* Admission gate: TNS shapes noise along the temporal envelope, so a window
@@ -771,14 +726,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * through the drain or the tail access units re-emit stale envelopes. */
         float *heHalfRate[MAX_CHANNELS] = {0};
         if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
-        {
-            if (SbrContextIsAsyncPending(hEncoder->sbrContext)) {
-                SbrContextWaitAsyncFrame(hEncoder->sbrContext, (int)numChannels, heHalfRate);
-            } else {
-                SbrContextProcessFrame(hEncoder->sbrContext, (int)numChannels, hEncoder->isLfeChannel,
-                                       realPerCh, (int)hEncoder->flushFrame, hEncoder->inputFifo, heHalfRate);
-            }
-        }
+            doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
 
         /* Update current sample buffers */
         for (channel = 0; channel < numChannels; channel++)
@@ -827,26 +775,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * HE doHEAACFrame read the leading frameSamplesPerCh samples). */
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
-
-        /* Asynchronously start next frame's SBR analysis on worker thread if ready */
-        if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext) && !SbrContextIsAsyncPending(hEncoder->sbrContext)) {
-            int nextRealPerCh = 0;
-            if (hEncoder->inputFifoFill >= frameSamplesPerCh)
-                nextRealPerCh = (int)frameSamplesPerCh;
-            else if (flushing && hEncoder->inputFifoFill > 0)
-                nextRealPerCh = (int)hEncoder->inputFifoFill;
-            else if (flushing)
-                nextRealPerCh = 0;
-
-            if (nextRealPerCh > 0 || flushing) {
-                int nextFlush = (int)hEncoder->flushFrame + (nextRealPerCh == 0 ? 1 : 0);
-                if (nextFlush <= (int)flushBudget) {
-                    SbrContextStartAsyncFrame(hEncoder->sbrContext, (int)numChannels,
-                                              hEncoder->isLfeChannel, nextRealPerCh,
-                                              nextFlush, hEncoder->inputFifo);
-                }
-            }
-        }
 
         if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
             break;

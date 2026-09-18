@@ -43,12 +43,6 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 
-#if defined(HAVE_THREADS_H) && defined(HAVE_STDATOMIC_H) && defined(FAAC_MULTITHREADING) && FAAC_MULTITHREADING
-#include <threads.h>
-#include <stdatomic.h>
-#define FAAC_WORKER_THREAD 1
-#endif
-
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
@@ -122,15 +116,6 @@ typedef struct faacEncStruct {
     int *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
-
-#ifdef FAAC_WORKER_THREAD
-    thrd_t          workerThread;
-    atomic_int      threadCmd;       /* 0 = idle, 1 = SBR, 2 = FilterBank ch1, 3 = BlocQuant ch1, 4 = stop */
-    atomic_int      threadDone;      /* 1 = job complete */
-    bool            threadActive;    /* true if worker thread running */
-    int             jobRealPerCh;
-    int             jobFlushTick;
-#endif
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

@@ -33,14 +33,14 @@ typedef float resfloat;
 typedef struct Resampler {
     float  buf     [MAX_CHANNELS][RESAMPLE_FILTER_LEN]; /* FIR overlap state (carries between frames) */
     float  fullRate[MAX_CHANNELS][2 * FRAME_LEN];       /* full-rate input: caller fills, SBR reads, FIR consumes */
-    float  halfRate[2][MAX_CHANNELS][FRAME_LEN];        /* downsampled output: ping-pong double buffered */
+    float  halfRate[MAX_CHANNELS][FRAME_LEN];           /* downsampled output: written by Resample */
     int        channels;
 } Resampler;
 
 Resampler *ResampleInit(int channels);
 void ResampleEnd(Resampler *r);
 
-int Resample(Resampler *r, int input_len, int ping_pong_idx);
+int Resample(Resampler *r, int input_len);
 
 #ifdef __cplusplus
 }
