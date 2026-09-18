@@ -24,17 +24,14 @@
 
 #include "input.h"
 #include "charset.h"
-
-#define SWAP32(x) (((x & 0xff) << 24) | ((x & 0xff00) << 8) \
-	| ((x & 0xff0000) >> 8) | ((x & 0xff000000) >> 24))
-#define SWAP16(x) (((x & 0xff) << 8) | ((x & 0xff00) >> 8))
+#include "endian.h"
 
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
 #define PCM_32BIT_FLOAT_SCALE 65536.0f
 
 #if WORDS_BIGENDIAN
-# define UINT32(x) SWAP32(x)
-# define UINT16(x) SWAP16(x)
+# define UINT32(x) bswap32(x)
+# define UINT16(x) bswap16(x)
 #else
 # define UINT32(x) (x)
 # define UINT16(x) (x)
@@ -418,7 +415,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               {
                   for (size_t i = 0; i < cnt; i++)
                   {
-                      int16_t val = (int16_t)SWAP16(in[i]);
+                      int16_t val = (int16_t)bswap16(in[i]);
                       buf[i] = (float)val;
                   }
               }
@@ -461,7 +458,7 @@ size_t wav_read_float32(pcmfile_t *sndf, float *buf, size_t num, int *map)
               if (swap)
               {
                   for (size_t i = 0; i < cnt; i++)
-                      buf[i] = (float)SWAP32(in[i]) / PCM_32BIT_FLOAT_SCALE;
+                      buf[i] = (float)bswap32(in[i]) / PCM_32BIT_FLOAT_SCALE;
               }
               else
               {
