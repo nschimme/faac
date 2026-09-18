@@ -510,6 +510,7 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                 }
             }
         }
+
     }
 }
 
