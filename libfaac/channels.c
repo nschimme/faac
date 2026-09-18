@@ -39,45 +39,80 @@ int InitElements(AACElement * __restrict elements, int *numElements, int numChan
 
     int currentElem = 0;
     int currentCh = 0;
-    int channelsRemaining = numChannels;
 
     memset(elements, 0, sizeof(AACElement) * MAX_CHANNELS);
 
-    // Initial SCE for Config 1, 3, 4, 5, 6, 7
-    if (channelsRemaining != 2 && channelsRemaining > 0) {
-        elements[currentElem].type = ID_SCE;
-        elements[currentElem].tag = sceTag++;
-        elements[currentElem].channels[0] = currentCh++;
-        elements[currentElem].channels[1] = -1;
-
-        currentElem++;
-        channelsRemaining--;
-    }
-
-    // CPE groups
-    while (channelsRemaining > 1) {
+    if (numChannels == 8) {
+        /* ISO/IEC 13818-7 Table 1.19 Config 7 (7.1 surround):
+         * 1 CPE (front L/R), 1 SCE (center), 2 CPE (side & back L/R), 1 LFE */
         elements[currentElem].type = ID_CPE;
         elements[currentElem].tag = cpeTag++;
         elements[currentElem].channels[0] = currentCh++;
         elements[currentElem].channels[1] = currentCh++;
-
         currentElem++;
-        channelsRemaining -= 2;
-    }
 
-    // Residual SCE or LFE
-    if (channelsRemaining == 1) {
-        if (useLfe) {
-            elements[currentElem].type = ID_LFE;
-            elements[currentElem].tag = lfeTag++;
-        } else {
-            elements[currentElem].type = ID_SCE;
-            elements[currentElem].tag = sceTag++;
-        }
+        elements[currentElem].type = ID_SCE;
+        elements[currentElem].tag = sceTag++;
         elements[currentElem].channels[0] = currentCh++;
         elements[currentElem].channels[1] = -1;
-
         currentElem++;
+
+        elements[currentElem].type = ID_CPE;
+        elements[currentElem].tag = cpeTag++;
+        elements[currentElem].channels[0] = currentCh++;
+        elements[currentElem].channels[1] = currentCh++;
+        currentElem++;
+
+        elements[currentElem].type = ID_CPE;
+        elements[currentElem].tag = cpeTag++;
+        elements[currentElem].channels[0] = currentCh++;
+        elements[currentElem].channels[1] = currentCh++;
+        currentElem++;
+
+        elements[currentElem].type = useLfe ? ID_LFE : ID_SCE;
+        elements[currentElem].tag = useLfe ? lfeTag++ : sceTag++;
+        elements[currentElem].channels[0] = currentCh++;
+        elements[currentElem].channels[1] = -1;
+        currentElem++;
+    } else {
+        int channelsRemaining = numChannels;
+
+        // Initial SCE for Config 1, 3, 4, 5, 6
+        if (channelsRemaining != 2 && channelsRemaining > 0) {
+            elements[currentElem].type = ID_SCE;
+            elements[currentElem].tag = sceTag++;
+            elements[currentElem].channels[0] = currentCh++;
+            elements[currentElem].channels[1] = -1;
+
+            currentElem++;
+            channelsRemaining--;
+        }
+
+        // CPE groups
+        while (channelsRemaining > 1) {
+            elements[currentElem].type = ID_CPE;
+            elements[currentElem].tag = cpeTag++;
+            elements[currentElem].channels[0] = currentCh++;
+            elements[currentElem].channels[1] = currentCh++;
+
+            currentElem++;
+            channelsRemaining -= 2;
+        }
+
+        // Residual SCE or LFE
+        if (channelsRemaining == 1) {
+            if (useLfe) {
+                elements[currentElem].type = ID_LFE;
+                elements[currentElem].tag = lfeTag++;
+            } else {
+                elements[currentElem].type = ID_SCE;
+                elements[currentElem].tag = sceTag++;
+            }
+            elements[currentElem].channels[0] = currentCh++;
+            elements[currentElem].channels[1] = -1;
+
+            currentElem++;
+        }
     }
 
     *numElements = currentElem;
