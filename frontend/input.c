@@ -29,13 +29,8 @@
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
 #define PCM_32BIT_FLOAT_SCALE 65536.0f
 
-#if WORDS_BIGENDIAN
-# define UINT32(x) bswap32(x)
-# define UINT16(x) bswap16(x)
-#else
-# define UINT32(x) (x)
-# define UINT16(x) (x)
-#endif
+#define UINT32(x) le32toh(x)
+#define UINT16(x) le16toh(x)
 
 typedef struct
 {

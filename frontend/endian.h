@@ -60,6 +60,29 @@ static inline uint64_t bswap64(uint64_t x) {
 }
 #endif
 
+#if WORDS_BIGENDIAN
+# define htobe16(x) ((uint16_t)(x))
+# define htobe32(x) ((uint32_t)(x))
+# define htobe64(x) ((uint64_t)(x))
+# define htole16(x) bswap16(x)
+# define htole32(x) bswap32(x)
+# define htole64(x) bswap64(x)
+#else
+# define htobe16(x) bswap16(x)
+# define htobe32(x) bswap32(x)
+# define htobe64(x) bswap64(x)
+# define htole16(x) ((uint16_t)(x))
+# define htole32(x) ((uint32_t)(x))
+# define htole64(x) ((uint64_t)(x))
+#endif
+
+#define be16toh(x) htobe16(x)
+#define be32toh(x) htobe32(x)
+#define be64toh(x) htobe64(x)
+#define le16toh(x) htole16(x)
+#define le32toh(x) htole32(x)
+#define le64toh(x) htole64(x)
+
 #ifdef __cplusplus
 }
 #endif

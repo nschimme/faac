@@ -191,9 +191,7 @@ static inline void mem_write(const void *data, size_t size) {
 
 
 static inline void put_u32(uint32_t val) {
-#if !WORDS_BIGENDIAN
-    val = bswap32(val);
-#endif
+    val = htobe32(val);
     if (g_membuf && g_mempos + 4 <= g_memcap) {
         memcpy(g_membuf + g_mempos, &val, 4);
         g_mempos += 4;
@@ -203,9 +201,7 @@ static inline void put_u32(uint32_t val) {
 }
 
 static inline void put_u16(uint16_t val) {
-#if !WORDS_BIGENDIAN
-    val = bswap16(val);
-#endif
+    val = htobe16(val);
     if (g_membuf && g_mempos + 2 <= g_memcap) {
         memcpy(g_membuf + g_mempos, &val, 2);
         g_mempos += 2;
@@ -215,9 +211,7 @@ static inline void put_u16(uint16_t val) {
 }
 
 static inline void put_u64(uint64_t val) {
-#if !WORDS_BIGENDIAN
-    val = bswap64(val);
-#endif
+    val = htobe64(val);
     if (g_membuf && g_mempos + 8 <= g_memcap) {
         memcpy(g_membuf + g_mempos, &val, 8);
         g_mempos += 8;
@@ -249,10 +243,7 @@ static inline long start_atom(const char *name) {
 
 static inline void end_atom(long pos) {
     if (g_membuf) {
-        uint32_t size = (uint32_t)(g_mempos - pos);
-#if !WORDS_BIGENDIAN
-        size = bswap32(size);
-#endif
+        uint32_t size = htobe32((uint32_t)(g_mempos - pos));
         memcpy(g_membuf + pos, &size, 4);
     } else if (g_mp4.fout) {
         long curr = ftell(g_mp4.fout);
@@ -526,24 +517,15 @@ static void put_tag_u8(const char *name, uint8_t val) {
 }
 
 static void put_tag_genre(uint16_t genre) {
-#if !WORDS_BIGENDIAN
-    uint16_t val = bswap16(genre);
-#else
-    uint16_t val = genre;
-#endif
+    uint16_t val = htobe16(genre);
     put_itunes_data_box("gnre", ITUNES_DATA_BINARY, &val, 2);
 }
 
 static void put_tag_index(const char *name, uint16_t num, uint16_t total) {
     uint16_t buf[4] = {
         0,
-#if !WORDS_BIGENDIAN
-        bswap16(num),
-        bswap16(total),
-#else
-        num,
-        total,
-#endif
+        htobe16(num),
+        htobe16(total),
         0
     };
     put_itunes_data_box(name, ITUNES_DATA_BINARY, buf, sizeof(buf));
@@ -759,7 +741,7 @@ int mp4_finish(void) {
         memcpy(p, g_mp4.frame.data, stsz_size);
 #else
         for (uint32_t i = 0; i < g_mp4.frame.ents; i++) {
-            uint32_t val = bswap32(g_mp4.frame.data[i]);
+            uint32_t val = htobe32(g_mp4.frame.data[i]);
             memcpy(p + i * 4, &val, 4);
         }
 #endif
