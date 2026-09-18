@@ -483,22 +483,19 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
-    /* Must match write_sbr_envelope's table, or the decoder desyncs. */
     int nb = sbr_env_bands(sbr, fd);
     const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe[ch]) continue;
-        /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
+
         for (int e = 0; e < n_env; e++) {
             fd->ch[ch].dfEnv[e] = 0; /* Always frequency delta coding for static grid stability */
             int prevLevel = -1;
             for (int b = 0; b < nb; b++) {
                 int k_lo = edges[b], k_hi = edges[b+1];
-                /* Weight energy by the number of QMF slots per envelope to
-                 * maintain normalized power levels across variable borders. */
                 int e_slots = sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
                 float E = 0;
