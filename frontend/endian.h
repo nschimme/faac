@@ -1,6 +1,6 @@
 /*
  * FAAC - Freeware Advanced Audio Coder
- * Copyright (C) 2026 FAAC Development Team
+ * Copyright (C) 2026 Nils Schimmelmann
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -13,10 +13,14 @@
  * Lesser General Public License for more details.
  */
 
-#ifndef FAAC_FRONTEND_ENDIAN_H
-#define FAAC_FRONTEND_ENDIAN_H
+#ifndef ENDIAN_H
+#define ENDIAN_H
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #if defined(__has_builtin)
 # if __has_builtin(__builtin_bswap16) && __has_builtin(__builtin_bswap32) && __has_builtin(__builtin_bswap64)
@@ -56,4 +60,8 @@ static inline uint64_t bswap64(uint64_t x) {
 }
 #endif
 
-#endif /* FAAC_FRONTEND_ENDIAN_H */
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ENDIAN_H */
