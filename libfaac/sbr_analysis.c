@@ -60,7 +60,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 stot += v0 * v0 + v2 * v2;
                 float d0 = v0 - val_in, d1 = v2 - v0;
                 hp_stot += d0 * d0 + d1 * d1;
-                val_in = p_in[3];
+                val_in = v2;
                 p_in += 4;
             }
             /* Scale energy estimations by 2.0f to match 1x energy baseline. */
@@ -83,6 +83,15 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
          * High source tonality + low high-band energy -> INVF_HIGH to remove tonal chirping.
          * High source tonality + preserved high-band harmonic structure -> INVF_OFF/LOW.
          * Low source tonality (noise/transients) -> INVF_LOW/MID. */
+        static float invf_mid_thresh = -1.0f;
+        static float invf_low_thresh = -1.0f;
+        if (invf_mid_thresh < 0.0f) {
+            const char *env_mid = getenv("FAAC_SBR_INVF_MID_THRESH");
+            invf_mid_thresh = env_mid ? atof(env_mid) : 3.0f;
+            const char *env_low = getenv("FAAC_SBR_INVF_LOW_THRESH");
+            invf_low_thresh = env_low ? atof(env_low) : 1.8f;
+        }
+
         float avg_slot_eng = ssum / (float)(num_slots + 1e-6f);
         if (sa->ch[ch].transientStrength > 5.0f) {
             sa->invfMode[ch] = 3; /* INVF_HIGH on strong transients to prevent chirping */
@@ -90,9 +99,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             sa->invfMode[ch] = 0; /* INVF_OFF on silence */
         } else {
             float peak_ratio = smax / (avg_slot_eng + SBR_ENERGY_FLOOR);
-            if (peak_ratio > 3.0f) {
+            if (peak_ratio > invf_mid_thresh) {
                 sa->invfMode[ch] = 2; /* INVF_MID */
-            } else if (peak_ratio > 1.8f) {
+            } else if (peak_ratio > invf_low_thresh) {
                 sa->invfMode[ch] = 1; /* INVF_LOW */
             } else {
                 sa->invfMode[ch] = 0; /* INVF_OFF */
@@ -224,13 +233,19 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             }
 
             /* Detect isolated strong sinusoids in target high-frequency bands for bs_add_harmonic */
+            static float harm_thresh = -1.0f;
+            if (harm_thresh < 0.0f) {
+                const char *env_h = getenv("FAAC_SBR_HARMONIC_THRESH");
+                harm_thresh = env_h ? atof(env_h) : 8.0f;
+            }
+
             for (int b = 0; b < sbr->numBands; b++) {
                 int k_lo = sbr->bandEdges[b];
                 int k_hi = sbr->bandEdges[b+1];
                 for (int k = k_lo; k < k_hi; k++) {
                     float total_e = sa->bandE[ch][0][k] + (sa->numEnvelopes > 1 ? sa->bandE[ch][1][k] : 0.0f);
                     float avg_e = total_e / (float)num_slots;
-                    if (maxBandSlotE[k] > 8.0f * (avg_e + SBR_ENERGY_FLOOR) && maxBandSlotE[k] > 1e-4f) {
+                    if (maxBandSlotE[k] > harm_thresh * (avg_e + SBR_ENERGY_FLOOR) && maxBandSlotE[k] > 1e-4f) {
                         sa->addHarmonic[ch][b] = 1;
                         sa->addHarmonicFlag[ch] = 1;
                         break;
