@@ -32,7 +32,7 @@
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
 #define PCM_32BIT_FLOAT_SCALE 65536.0f
 
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
 # define UINT32(x) SWAP32(x)
 # define UINT16(x) SWAP16(x)
 #else
@@ -295,7 +295,7 @@ pcmfile_t *wav_open_read(const char *name, bool rawinput)
     sndf->samples = (int64_t)riffsub.len / ((int64_t)sndf->samplebytes * sndf->channels);
   }
 
-#ifdef WORDS_BIGENDIAN
+#if WORDS_BIGENDIAN
   sndf->swap = !sndf->bigendian;
 #else
   sndf->swap = sndf->bigendian;
