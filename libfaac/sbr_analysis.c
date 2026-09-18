@@ -55,18 +55,13 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
             float hp_stot = 0.0f;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
-                float v0 = p_in[0], v2 = p_in[2];
-                stot += v0 * v0 + v2 * v2;
-                float d0 = v0 - val_in, d1 = v2 - v0;
-                hp_stot += d0 * d0 + d1 * d1;
-                val_in = v2;
-                p_in += 4;
+            for (int n = 0; n < SBR_QMF_BANDS_64; n++) {
+                float v = *p_in++;
+                stot += v * v;
+                float d = v - val_in;
+                hp_stot += d * d;
+                val_in = v;
             }
-            val_in = p_in[-1]; /* Sample index 63 at the end of the 64-sample QMF slot */
-            /* Scale energy estimations by 2.0f to match 1x energy baseline. */
-            stot *= 2.0f;
-            hp_stot *= 2.0f;
 
             if (slot < 128) slot_hp_eng[slot] = hp_stot;
 

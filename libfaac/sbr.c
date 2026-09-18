@@ -169,7 +169,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
      * 24k+ bps/ch gives high frequency-resolution envelope matching,
      * while medium (2) / coarse (3) save bit budget at low rates. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
-                       : (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 2 : 3;
+                       : (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
