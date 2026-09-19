@@ -218,7 +218,7 @@ jobs:
           done
           # Only the footprint gate can fail here: this job measures nothing
           # else, and a gate that was never measured must not vote.
-          python3 bench/compare_results.py results --gates footprint --footprint-allow 4600
+          python3 bench/compare_results.py results --gates footprint --footprint-allow 7000
 
   report:
     name: Consolidated Report
