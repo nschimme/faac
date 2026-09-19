@@ -54,6 +54,7 @@ typedef struct WorkerContext {
     struct faacEncStruct *hEncoder;
     thrd_t thread;
     atomic_int threadCmd;
+    int workerId;
     char pad2[64];
 } WorkerContext;
 #endif
