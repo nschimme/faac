@@ -60,6 +60,12 @@
 #include "win32_ver.h"
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__unix__) || defined(__APPLE__) || defined(__linux__)
+#include <unistd.h>
+#endif
+
 
 /* Bounds on the peak limiter's quality scale factor: the ceiling guarantees
  * each retry makes progress, the floor keeps one outsized frame from
@@ -163,7 +169,8 @@ static int frame_worker_loop(void *arg)
 
     while (1) {
         int spin = 0;
-        while (atomic_load_explicit(&w->threadCmd, memory_order_acquire) == 0) {
+        int cmd = 0;
+        while ((cmd = atomic_load_explicit(&w->threadCmd, memory_order_acquire)) == 0) {
             if (spin < 500) {
                 FAAC_PAUSE();
                 spin++;
@@ -172,7 +179,6 @@ static int frame_worker_loop(void *arg)
             }
         }
 
-        int cmd = atomic_load_explicit(&w->threadCmd, memory_order_relaxed);
         if (cmd == 4) break;
 
         if (cmd == 1) {
@@ -195,10 +201,45 @@ static int frame_worker_loop(void *arg)
                       &hEncoder->aacquantCfg);
         }
 
-        atomic_store_explicit(&w->threadCmd, 0, memory_order_relaxed);
-        atomic_store_explicit(&w->threadDone, 1, memory_order_release);
+        atomic_store_explicit(&w->threadCmd, 0, memory_order_release);
     }
     return 0;
+}
+
+static inline void dispatch_workers(faacEncStruct *hEncoder, int cmd)
+{
+    for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
+        atomic_store_explicit(&hEncoder->workers[w].threadCmd, cmd, memory_order_release);
+    }
+}
+
+static inline void wait_workers(faacEncStruct *hEncoder)
+{
+    for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
+        int spin = 0;
+        while (atomic_load_explicit(&hEncoder->workers[w].threadCmd, memory_order_acquire) != 0) {
+            if (spin < 500) {
+                FAAC_PAUSE();
+                spin++;
+            } else {
+                thrd_yield();
+            }
+        }
+    }
+}
+
+static unsigned int get_hardware_threads(void)
+{
+#ifdef _WIN32
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return sysinfo.dwNumberOfProcessors > 0 ? sysinfo.dwNumberOfProcessors : 1;
+#elif defined(_SC_NPROCESSORS_ONLN)
+    long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+    return nprocs > 0 ? (unsigned int)nprocs : 1;
+#else
+    return 1;
+#endif
 }
 #endif
 
@@ -445,10 +486,20 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
 #if FAAC_MULTITHREADING
+    unsigned int hw_threads = get_hardware_threads();
     unsigned int maxWorkers = hEncoder->numChannels - 1;
-    if (config->max_threads > 1 && (config->max_threads - 1) < maxWorkers) {
-        maxWorkers = config->max_threads - 1;
-    } else if (config->max_threads == 1) {
+
+    unsigned int target_threads = config->max_threads;
+    if (target_threads == 0) {
+        target_threads = hw_threads; /* Auto: detect available cores */
+    }
+    if (target_threads > hw_threads) {
+        target_threads = hw_threads; /* Cap at available logical CPU cores */
+    }
+
+    if (target_threads > 1 && (target_threads - 1) < maxWorkers) {
+        maxWorkers = target_threads - 1;
+    } else if (target_threads <= 1) {
         maxWorkers = 0;
     }
 
@@ -459,7 +510,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             wc->hEncoder = hEncoder;
             wc->channel = w + 1;
             atomic_init(&wc->threadCmd, 0);
-            atomic_init(&wc->threadDone, 0);
             if (thrd_create(&wc->thread, frame_worker_loop, wc) == thrd_success) {
                 hEncoder->numWorkers++;
             } else {
@@ -850,10 +900,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #if FAAC_MULTITHREADING
         if (hEncoder->threadActive && hEncoder->numWorkers > 0)
         {
-            for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-                atomic_store_explicit(&hEncoder->workers[w].threadDone, 0, memory_order_relaxed);
-                atomic_store_explicit(&hEncoder->workers[w].threadCmd, 1, memory_order_release);
-            }
+            dispatch_workers(hEncoder, 1);
 
             if (!hEncoder->isLfeChannel[0] &&
                 (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
@@ -875,17 +922,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 }
             }
 
-            for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-                int spin = 0;
-                while (atomic_load_explicit(&hEncoder->workers[w].threadDone, memory_order_acquire) == 0) {
-                    if (spin < 500) {
-                        FAAC_PAUSE();
-                        spin++;
-                    } else {
-                        thrd_yield();
-                    }
-                }
-            }
+            wait_workers(hEncoder);
         }
         else
 #endif
@@ -949,10 +986,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* AAC Filterbank, MDCT with overlap and add */
 #if FAAC_MULTITHREADING
     if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-        for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-            atomic_store_explicit(&hEncoder->workers[w].threadDone, 0, memory_order_relaxed);
-            atomic_store_explicit(&hEncoder->workers[w].threadCmd, 2, memory_order_release);
-        }
+        dispatch_workers(hEncoder, 2);
 
         FilterBank(hEncoder, &coderInfo[0],
             hEncoder->audioFIFO[0][FIFO_PAST],
@@ -968,17 +1002,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 hEncoder->channelWorkBuf[channel]);
         }
 
-        for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-            int spin = 0;
-            while (atomic_load_explicit(&hEncoder->workers[w].threadDone, memory_order_acquire) == 0) {
-                if (spin < 500) {
-                    FAAC_PAUSE();
-                    spin++;
-                } else {
-                    thrd_yield();
-                }
-            }
-        }
+        wait_workers(hEncoder);
     } else {
         for (channel = 0; channel < numChannels; channel++) {
             FilterBank(hEncoder, &coderInfo[channel],
@@ -1164,10 +1188,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     {
 #if FAAC_MULTITHREADING
         if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-            for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-                atomic_store_explicit(&hEncoder->workers[w].threadDone, 0, memory_order_relaxed);
-                atomic_store_explicit(&hEncoder->workers[w].threadCmd, 3, memory_order_release);
-            }
+            dispatch_workers(hEncoder, 3);
 
             BlocQuant(&coderInfo[0], hEncoder->freqBuff[0], &(hEncoder->aacquantCfg));
 
@@ -1175,17 +1196,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
             }
 
-            for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
-                int spin = 0;
-                while (atomic_load_explicit(&hEncoder->workers[w].threadDone, memory_order_acquire) == 0) {
-                    if (spin < 500) {
-                        FAAC_PAUSE();
-                        spin++;
-                    } else {
-                        thrd_yield();
-                    }
-                }
-            }
+            wait_workers(hEncoder);
         } else {
             for (channel = 0; channel < numChannels; channel++) {
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));

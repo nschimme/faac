@@ -54,7 +54,6 @@ typedef struct WorkerContext {
     unsigned int channel;
     thrd_t thread;
     atomic_int threadCmd;
-    atomic_int threadDone;
 } WorkerContext;
 #endif
 
