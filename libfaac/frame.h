@@ -90,8 +90,8 @@ typedef struct faacEncStruct {
     float *freqBuff[MAX_CHANNELS];
     float *channelWorkBuf[MAX_CHANNELS];
 
-    /* Channel and Coder data for all channels */
-    CoderInfo coderInfo[MAX_CHANNELS];
+    /* Channel and Coder data for active channels */
+    CoderInfo *coderInfo;
 
     /* Element-centric configuration */
     AACElement elements[MAX_CHANNELS];

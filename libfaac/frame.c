@@ -674,6 +674,13 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRate = sampleRate;
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
+    hEncoder->coderInfo = (CoderInfo *)AllocMemory(numChannels * sizeof(CoderInfo));
+    if (!hEncoder->coderInfo) {
+        faacEncClose(hEncoder);
+        return NULL;
+    }
+    memset(hEncoder->coderInfo, 0, numChannels * sizeof(CoderInfo));
+
     /* Identity map; faac_encoder_open() sets every other config field. */
 	for( channel = 0; channel < MAX_CHANNELS; channel++ )
 		hEncoder->config.channel_map[channel] = channel;
@@ -863,6 +870,8 @@ int faacEncClose(faacEncHandle hpEncoder)
     }
 
     if (hEncoder->ascCache) free(hEncoder->ascCache);
+
+    if (hEncoder->coderInfo) FreeMemory(hEncoder->coderInfo);
 
     if (hEncoder->sbrContext) {
         SbrContextEnd(hEncoder->sbrContext);
