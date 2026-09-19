@@ -43,7 +43,7 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
 #include <threads.h>
 #include <stdatomic.h>
 #endif
@@ -123,7 +123,7 @@ typedef struct faacEncStruct {
 
     RateControl rc;
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
     thrd_t workerThread;
     atomic_int threadCmd;
     atomic_int threadDone;

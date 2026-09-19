@@ -154,7 +154,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 }
 
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
 static int frame_worker_loop(void *arg)
 {
     faacEncStruct *hEncoder = (faacEncStruct *)arg;
@@ -437,7 +437,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
     if (config->max_threads != 1 && !hEncoder->threadActive && hEncoder->numChannels > 1) {
         atomic_init(&hEncoder->threadCmd, 0);
         atomic_init(&hEncoder->threadDone, 0);
@@ -675,7 +675,7 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
     if (hEncoder->threadActive) {
         atomic_store_explicit(&hEncoder->threadCmd, 4, memory_order_release);
         thrd_join(hEncoder->workerThread, NULL);
@@ -816,7 +816,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         }
 
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
         if (numChannels > 1 && hEncoder->threadActive && !hEncoder->isLfeChannel[1] &&
             (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
         {
@@ -913,7 +913,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* AAC Filterbank, MDCT with overlap and add */
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
     if (numChannels > 1 && hEncoder->threadActive) {
         atomic_store_explicit(&hEncoder->threadDone, 0, memory_order_relaxed);
         atomic_store_explicit(&hEncoder->threadCmd, 2, memory_order_release);
@@ -1124,7 +1124,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * exact-fit: an exact fit can fail to terminate on pathological input. */
     for (attempt = 0; attempt <= PEAK_MAX_RETRIES; attempt++)
     {
-#ifdef FAAC_MULTITHREADING
+#if FAAC_MULTITHREADING
         if (numChannels > 1 && hEncoder->threadActive) {
             atomic_store_explicit(&hEncoder->threadDone, 0, memory_order_relaxed);
             atomic_store_explicit(&hEncoder->threadCmd, 3, memory_order_release);
