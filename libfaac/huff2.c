@@ -214,7 +214,7 @@ static int huffcode_op(const int * __restrict qs, int len, int bnum, CoderInfo *
             }
             if (x0 >= LAV_ESC) {
                 int esc_code = 0;
-                int esc_len = escape(x0, &esc_code);
+                int esc_len = escape(abs(qs[i]), &esc_code);
                 total_bits += esc_len;
                 if (coder) {
                     coder->s[datacnt].data = esc_code;
@@ -223,7 +223,7 @@ static int huffcode_op(const int * __restrict qs, int len, int bnum, CoderInfo *
             }
             if (x1 >= LAV_ESC) {
                 int esc_code = 0;
-                int esc_len = escape(x1, &esc_code);
+                int esc_len = escape(abs(qs[i+1]), &esc_code);
                 total_bits += esc_len;
                 if (coder) {
                     coder->s[datacnt].data = esc_code;

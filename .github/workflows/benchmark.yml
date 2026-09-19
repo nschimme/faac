@@ -28,13 +28,13 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64]
-        rate_control: [abr, vbr]
+        rate_control: [abr, vbr, cbr]
 
     steps:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y meson ninja-build bc ffmpeg
+          sudo apt-get install -y meson ninja-build
 
       - name: Checkout Candidate
         uses: actions/checkout@v4
@@ -118,6 +118,7 @@ jobs:
           run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_base
           output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
           build-dir: ./baseline/build_base
+          sha: ${{ steps.baseline-sha.outputs.sha }}
 
       - name: Refresh Baseline Throughput
         if: steps.cache-baseline.outputs.cache-hit == 'true' && steps.baseline-ok.outputs.usable == 'true'
@@ -130,6 +131,7 @@ jobs:
           output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
           build-dir: ./baseline/build_base
           throughput-only: 'true'
+          sha: ${{ steps.baseline-sha.outputs.sha }}
 
       - name: Save Baseline Results
         if: success() && (steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true')
@@ -149,6 +151,7 @@ jobs:
           run-name: ${{ matrix.arch }}_${{ matrix.rate_control }}_cand
           output-json: ./results/${{ matrix.arch }}_${{ matrix.rate_control }}_cand.json
           build-dir: ./candidate/build_cand
+          sha: ${{ github.event.pull_request.head.sha }}
 
       - name: Upload Results
         if: github.event_name == 'pull_request'
@@ -216,9 +219,7 @@ jobs:
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
               lc results/lc_$tag.json --skip-mos --build-dir $d/build
           done
-          # Only the footprint gate can fail here: this job measures nothing
-          # else, and a gate that was never measured must not vote.
-          python3 bench/compare_results.py results --gates footprint --footprint-allow 7000
+          python3 bench/compare_results.py results --gates footprint
 
   report:
     name: Consolidated Report
