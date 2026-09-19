@@ -3,6 +3,36 @@ option('frontend',
     type: 'boolean',
     value: true)
 
+option('decoder-sbr',
+    description: 'Enable SBR (HE-AAC v1) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-ps',
+    description: 'Enable Parametric Stereo (HE-AAC v2) support in libfaad',
+    type: 'boolean',
+    value: true)
+
+option('decoder-lp-sbr',
+    description: 'Enable Low Power SBR (LP-SBR) real DCT mode in libfaad (default: true)',
+    type: 'boolean',
+    value: true)
+
+option('decoder-downsampled-sbr',
+    description: 'Enable Downsampled SBR (D-SBR) half-rate synthesis mode in libfaad (default: false)',
+    type: 'boolean',
+    value: false)
+
+option('decoder',
+    description: 'Build the FAAD decoder library and frontend executable',
+    type: 'boolean',
+    value: true)
+
+option('muxer',
+    description: 'Build the FAAM media manipulator library and faam CLI tool',
+    type: 'boolean',
+    value: true)
+
 # SBR spectral analysis density: analyse every Nth slot per frame.
 # 1 = full quality (every slot); higher values trade MOS for faster encode.
 # Max 8: above that, both halves of the frame are sampled but the gain is negligible.
