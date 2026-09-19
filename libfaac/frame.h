@@ -76,7 +76,7 @@ typedef struct faacEncStruct {
     unsigned int flushFrame;
 
     /* Scalefactorband data */
-    SR_INFO *srInfo;
+    const SR_INFO *srInfo;
     /* Prefix sums of srInfo's cb_width tables, built once per config. */
     int sfbOffsetLong[NSFB_LONG + 1];
     int sfbOffsetShort[NSFB_SHORT + 1];

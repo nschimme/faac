@@ -1260,7 +1260,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
 
 /* Scalefactorband data table for 1024 transform length */
-SR_INFO srInfo[12+1] =
+const SR_INFO srInfo[12+1] =
 {
     { 96000, 41, 12,
         {
