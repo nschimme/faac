@@ -215,6 +215,10 @@ static inline void process_worker_cmd(faacEncStruct *hEncoder, int cmd, int ch)
             SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
                                    hEncoder->sbrNumSamples, hEncoder->sbrEnvStart, hEncoder->sbrContext->sbrInfo);
         }
+            } else if (cmd == 8) {
+                if (hEncoder->sbrContext && hEncoder->sbrContext->resampler) {
+                    ResampleChannel(hEncoder->sbrContext->resampler, ch, 2 * FRAME_LEN);
+                }
     }
 }
 
@@ -555,8 +559,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     unsigned int maxWorkers = hEncoder->numChannels - 1;
 
     unsigned int target_threads = config->max_threads;
-    if (target_threads == 0 || target_threads > hw_threads) {
-        target_threads = hw_threads; /* Cap at available logical CPU cores to prevent oversubscription */
+    if (target_threads == 0) {
+        target_threads = hw_threads; /* Auto mode: default to hardware cores */
     }
 
     if (target_threads > 1 && (target_threads - 1) < maxWorkers) {

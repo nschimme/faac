@@ -26,6 +26,7 @@
 #include "bitstream.h"
 #include "sbr_internal.h"
 #include "faac_internal.h"
+#include "frame.h"
 #include "channels.h"
 #include "stats.h"
 
@@ -149,6 +150,10 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
      * logm=6 size as the short-block MDCT). The core owns init/terminate; the
      * logm=6 table is built lazily on first use, single-threaded per encoder. */
     sbr->fftTables = fft_tables;
+    if (fft_tables) {
+        float dummy_r[64] = {0}, dummy_i[64] = {0};
+        fft(fft_tables, dummy_r, dummy_i, 6);
+    }
 
     SbrUpdate(sbr, bitRate);
     return sbr;
@@ -334,7 +339,18 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
         SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo, hEncoderPtr);
         SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
         /* Dual-rate decimation: produces the halved-rate core signal. */
-        Resample(rs, 2 * FRAME_LEN);
+#if FAAC_MULTITHREADING
+        faacEncStruct *hEncoder = (faacEncStruct *)hEncoderPtr;
+        if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
+            faacDispatchWorkers(hEncoder, 8);
+            int ch0 = hEncoder->channelOrder[0];
+            ResampleChannel(rs, ch0, 2 * FRAME_LEN);
+            faacWaitWorkers(hEncoder);
+        } else
+#endif
+        {
+            Resample(rs, 2 * FRAME_LEN);
+        }
     }
 
     /* Update the transient FIFO. Shift down by one and push
