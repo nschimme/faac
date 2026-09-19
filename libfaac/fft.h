@@ -27,6 +27,16 @@ typedef float fftfloat;
 
 extern unsigned short fft_reordertbl[FFT_TBL_LEN];
 
+static inline const unsigned short *fft_reorder_table(int logm)
+{
+    return fft_reordertbl + FFT_TBL_OFFSET(logm);
+}
+
+static inline int fft_reorder_index(int logm, int i)
+{
+    return (int)fft_reordertbl[FFT_TBL_OFFSET(logm) + i];
+}
+
 /* Builds the process-wide twiddle tables; the caller runs it exactly once. */
 void fft_init(void);
 

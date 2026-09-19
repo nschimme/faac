@@ -429,7 +429,7 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         p0 += 2;
     }
     fft(xr, xi, FFT_LOGM_SHORT);
-    const unsigned short * restrict r = fft_reordertbl + FFT_TBL_OFFSET(FFT_LOGM_SHORT);
+    const unsigned short * restrict r = fft_reorder_table(FFT_LOGM_SHORT);
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         int rev_k = r[k];

@@ -188,7 +188,7 @@ void MDCT( float * restrict data, int N, float * restrict work )
 
     const fftfloat * restrict cosT = mdct_cos + FFT_TBL_OFFSET(logm);
     const fftfloat * restrict sinT = mdct_sin + FFT_TBL_OFFSET(logm);
-    const unsigned short * restrict r = fft_reordertbl + FFT_TBL_OFFSET(logm);
+    const unsigned short * restrict r = fft_reorder_table(logm);
 
     float * restrict xr = work;
     float * restrict xi = work + N4;
