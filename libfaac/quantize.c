@@ -26,7 +26,7 @@
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 
-#if defined(HAVE_SSE2)
+#if HAVE_SSE2
 extern int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 #endif
 
@@ -62,7 +62,7 @@ static float log10_width_sf_lut[128];
 void QuantizeInit(void)
 {
     int i;
-#if defined(HAVE_SSE2)
+#if HAVE_SSE2
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;
@@ -406,7 +406,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         int b = coder->book[i];
         if (b && b != HCB_INTENSITY && b != HCB_INTENSITY2 && b != HCB_PNS)
         {
-            coder->global_gain = coder->sf[i];
+            coder->global_gain = (unsigned int)coder->sf[i];
             break;
         }
     }
@@ -459,7 +459,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     sfbOffsetLong[i] = l;
     aacquantCfg->max_cbl = i;
     aacquantCfg->max_l = l;
-    *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
+    *bw = (unsigned int)((float)l * (float)rate / (float)(BLOCK_LEN_LONG << 1));
 }
 
 // short-window grouping: keep spectrally-similar windows together so they

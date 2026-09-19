@@ -1,6 +1,6 @@
 quantize_simd_libs = []
 
-if config_h.get('HAVE_SSE2')
+if config_h.get('HAVE_SSE2') == 1
     sse2_flag = (cc.get_argument_syntax() == 'msvc') ? ['/arch:SSE2'] : ['-msse2']
     quantize_sse = static_library('quantize_sse', 'quantize_sse.c',
         include_directories: ['..', '../include'],
