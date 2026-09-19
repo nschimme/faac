@@ -263,6 +263,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->pnslevel      = p->pns_level;
     cfg->maxBitRate    = p->max_bit_rate;
     cfg->rateControl   = (unsigned int)p->rate_control;
+    cfg->max_threads   = p->max_threads;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)

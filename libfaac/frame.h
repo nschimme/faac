@@ -16,6 +16,10 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /* Input sample FIFO slots, each one frame (FRAME_LEN samples) wide, relative to
    the frame currently being coded (FIFO_CURR): one frame behind (FIFO_PAST,
    reused as the MDCT overlap) and two frames ahead. The two ahead slots are
@@ -42,6 +46,22 @@ extern "C" {
 #include "stats.h"
 #include "ratecontrol.h"
 #include "stereo.h"
+
+#if FAAC_MULTITHREADING
+#include <threads.h>
+#include <stdatomic.h>
+
+struct faacEncStruct;
+
+typedef struct WorkerContext {
+    char pad1[64];
+    struct faacEncStruct *hEncoder;
+    thrd_t thread;
+    atomic_int threadCmd;
+    int workerId;
+    char pad2[64];
+} WorkerContext;
+#endif
 
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
@@ -70,6 +90,7 @@ typedef struct faacEncStruct {
     float *sin_window_long;
     float *sin_window_short;
     float *freqBuff[MAX_CHANNELS];
+    float *channelWorkBuf[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];
@@ -78,6 +99,7 @@ typedef struct faacEncStruct {
     AACElement elements[MAX_CHANNELS];
     int numElements;
     bool isLfeChannel[MAX_CHANNELS]; /* per-channel LFE lookup, derived from elements[] whenever it changes */
+    unsigned int channelOrder[MAX_CHANNELS]; /* remapped channel dispatch order prioritizing non-LFE channels */
 
     /* Psychoacoustics data */
     PsyInfo psyInfo[MAX_CHANNELS];
@@ -116,7 +138,35 @@ typedef struct faacEncStruct {
     int *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
+
+    SignalAnalysis *sbrSa;
+    float **sbrFullPtrs;
+    int sbrNumSlots;
+    int sbrNumSamples;
+    int sbrEnvStart[SBR_MAX_ENVELOPES + 1];
+
+#if FAAC_MULTITHREADING
+    WorkerContext workers[MAX_CHANNELS - 1];
+    unsigned int numWorkers;
+    int threadActive;
+    atomic_int nextChannel;
+#endif
 } faacEncStruct;
+
+void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
+
+#if FAAC_MULTITHREADING
+void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
+void faacWaitWorkers(faacEncStruct *hEncoder);
+void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
+#else
+static inline void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
+{
+    for (unsigned int ch = 0; ch < hEncoder->numChannels; ch++) {
+        faacProcessWorkerCmd(hEncoder, cmd, (int)ch);
+    }
+}
+#endif
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,

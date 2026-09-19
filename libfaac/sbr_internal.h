@@ -20,6 +20,7 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
+
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
     float qmfOvl64[SBR_QMF_OVL_LEN_64]; /* QMF overlap state (carries across frames) */

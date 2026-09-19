@@ -26,6 +26,7 @@
 #include "bitstream.h"
 #include "sbr_internal.h"
 #include "faac_internal.h"
+#include "frame.h"
 #include "channels.h"
 #include "stats.h"
 
@@ -149,6 +150,10 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
      * logm=6 size as the short-block MDCT). The core owns init/terminate; the
      * logm=6 table is built lazily on first use, single-threaded per encoder. */
     sbr->fftTables = fft_tables;
+    if (fft_tables) {
+        float dummy_r[64] = {0}, dummy_i[64] = {0};
+        fft(fft_tables, dummy_r, dummy_i, 6);
+    }
 
     SbrUpdate(sbr, bitRate);
     return sbr;
@@ -225,6 +230,7 @@ SBRContext *SbrContextInit(int channels)
 void SbrContextEnd(SBRContext *sbrCtx)
 {
     if (!sbrCtx) return;
+
     if (sbrCtx->sbrInfo) {
         SbrEnd(sbrCtx->sbrInfo);
     }
@@ -291,7 +297,7 @@ void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrat
         SbrUpdate(sCtx->sbrInfo, bitrate);
 }
 
-void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])
+void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS], void *hEncoderPtr)
 {
     unsigned int channel;
     Resampler *rs = sCtx->resampler;
@@ -330,10 +336,33 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
          * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
-        SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
-        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
-        /* Dual-rate decimation: produces the halved-rate core signal. */
-        Resample(rs, 2 * FRAME_LEN);
+        faacEncStruct *hEncoder = (faacEncStruct *)hEncoderPtr;
+        if (hEncoder) {
+            hEncoder->sbrSa = &sCtx->signalAnalysis;
+            hEncoder->sbrFullPtrs = fullPtrs;
+            hEncoder->sbrNumSlots = (2 * FRAME_LEN) / SBR_QMF_BANDS_64;
+            hEncoder->sbrNumSamples = 2 * FRAME_LEN;
+
+            sCtx->signalAnalysis.valid = 1;
+            sCtx->signalAnalysis.numSlots = hEncoder->sbrNumSlots;
+            sCtx->signalAnalysis.sampled = (hEncoder->sbrNumSlots - 1) / FAAC_SBR_DECIMATION + 1;
+
+            faacRunParallelPass(hEncoder, 6);
+
+            /* Main thread SBR grid selection */
+            SbrGridSelection(&sCtx->signalAnalysis, isLfe, numChannels, hEncoder->sbrNumSlots, sCtx->sbrInfo);
+
+            for (int e = 0; e <= sCtx->signalAnalysis.numEnvelopes; e++)
+                hEncoder->sbrEnvStart[e] = (sCtx->signalAnalysis.tEnv[e] * hEncoder->sbrNumSlots) / SBR_NUM_TIME_SLOTS;
+
+            faacRunParallelPass(hEncoder, 7);
+
+            SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
+        } else {
+            SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo, hEncoderPtr);
+            SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
+            Resample(rs, 2 * FRAME_LEN);
+        }
     }
 
     /* Update the transient FIFO. Shift down by one and push
@@ -417,6 +446,11 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
+    const float * restrict tCos = sbr->twidCos;
+    const float * restrict tSin = sbr->twidSin;
+    const float * restrict oCos = sbr->oddCos;
+    const float * restrict oSin = sbr->oddSin;
+
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
         float a = p0[0]   * ovl_pos[639 - n0]
@@ -430,8 +464,8 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
                     + p0[385] * ovl_pos[254 - n0]
                     + p0[513] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
-        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
-        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        xr[m] = a * tCos[m] - b * tSin[m];
+        xi[m] = -(a * tSin[m] + b * tCos[m]);
         p0 += 2;
     }
     fft(sbr->fftTables, xr, xi, 6);
@@ -444,8 +478,8 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         float Bi = 0.5f * (xr[kr] - xr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
-        float wr = sbr->oddCos[k];
-        float wi = sbr->oddSin[k];
+        float wr = oCos[k];
+        float wi = oSin[k];
         float Sr = Ar + wr * Br - wi * Bi;
         float Si = Ai + wr * Bi + wi * Br;
         energy[k] = Sr * Sr + Si * Si;

@@ -341,8 +341,6 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         int is_start_sfb = cfg->isStart[shortwin];
         if (is_start_sfb > coder[lch].sfbn) is_start_sfb = coder[lch].sfbn;
 
-        /* Mixed mode never M/S-codes a short window: the shared scalefactor
-         * set would spread the side channel's noise ahead of the attack. */
         int allow_ms = !(shortwin && cfg->mode == JOINT_MIXED);
         for (int g = 0; g < coder[lch].groups.n; g++) {
             int end = start + coder[lch].groups.len[g];

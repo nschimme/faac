@@ -16,6 +16,10 @@
 #ifndef SBR_ANALYSIS_H
 #define SBR_ANALYSIS_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdbool.h>
 
 #ifdef __cplusplus
@@ -60,7 +64,10 @@ typedef struct SignalAnalysis {
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 
-void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);
+void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots);
+void SbrGridSelection(SignalAnalysis *sa, const bool *isLfe, int nch, int num_slots, struct SBRInfo *sbr);
+void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr);
+void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr, void *hEncoderPtr);
 
 #ifdef __cplusplus
 }

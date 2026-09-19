@@ -22,6 +22,26 @@ foreach h: ['getopt.h', 'immintrin.h']
     config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
+threads_dep = dependency('threads', required: false)
+
+has_threads_h = cc.compiles('#include <threads.h>\nint main(void){ thrd_t t; (void)t; return 0; }', dependencies: threads_dep, name: 'threads.h')
+has_stdatomic_h = cc.compiles('#include <stdatomic.h>\nint main(void){ atomic_int a; atomic_store_explicit(&a, 1, memory_order_relaxed); return 0; }', name: 'stdatomic.h')
+
+has_multithreading = has_threads_h and has_stdatomic_h
+
+config_h.set('HAVE_THREADS_H', has_threads_h)
+config_h.set('HAVE_STDATOMIC_H', has_stdatomic_h)
+
+mt_opt = get_option('multithreading')
+if mt_opt.disabled()
+    config_h.set10('FAAC_MULTITHREADING', false)
+else
+    if mt_opt.enabled() and not has_multithreading
+        error('Multithreading requested but C11 <threads.h> or <stdatomic.h> header not found or usable.')
+    endif
+    config_h.set10('FAAC_MULTITHREADING', has_multithreading)
+endif
+
 config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
 

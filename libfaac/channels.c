@@ -134,9 +134,6 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
     bits += LEN_TNS_PRES;
 
-    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
-     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
-     * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
         TnsWindowData *win = &tns->windowData;
 
@@ -173,10 +170,22 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
 
     BitAccumulator acc = {0};
     AccumBegin(&acc, bs);
-    for (int i = 0; i < coder->datacnt; i++) {
-        if (coder->s[i].len > 0) {
-            AccumPutBits(&acc, (uint32_t)coder->s[i].data, coder->s[i].len);
-            bits += coder->s[i].len;
+    int datacnt = coder->datacnt;
+    for (int i = 0; i < datacnt; i++) {
+        int l = coder->s[i].len;
+        if (l > 0) {
+            uint32_t val = (uint32_t)coder->s[i].data;
+            if (l < 32) val &= (1U << l) - 1;
+            acc.bits |= (uint64_t)val << (64 - acc.fill - l);
+            acc.fill += l;
+            while (acc.fill >= 8) {
+                if (acc.out < acc.limit) *acc.out = (uint8_t)(acc.bits >> 56);
+                else acc.overflow = 1;
+                acc.out++;
+                acc.bits <<= 8;
+                acc.fill -= 8;
+            }
+            bits += l;
         }
     }
     AccumEnd(&acc);

@@ -25,6 +25,19 @@
 
 #include <stdint.h>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#define FAAC_PAUSE() _mm_pause()
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#define FAAC_PAUSE() __builtin_ia32_pause()
+#elif defined(__aarch64__) || defined(__arm__)
+#define FAAC_PAUSE() __asm__ __volatile__("yield" ::: "memory")
+#elif defined(__GNUC__) || defined(__clang__)
+#define FAAC_PAUSE() __asm__ __volatile__("" ::: "memory")
+#else
+#define FAAC_PAUSE() ((void)0)
+#endif
+
 #define FAAC_CFG_VERSION 106
 
 /* MPEG version */
@@ -67,6 +80,7 @@ typedef struct faacEncConfiguration
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     int pnslevel;
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
+    unsigned int max_threads;        /* 0 = auto, 1 = single-threaded */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;

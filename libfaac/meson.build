@@ -59,7 +59,7 @@ libfaac = disabler()
 common_args = {
     'include_directories' : ['..', '../include'],
     'c_args' : c_args,
-    'dependencies' : [libm],
+    'dependencies' : [libm, threads_dep],
     'link_with' : quantize_simd_libs,
     'install' : true,
     'gnu_symbol_visibility' : 'hidden',

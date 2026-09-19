@@ -40,7 +40,8 @@ void FilterBankInit(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         hEncoder->freqBuff[channel] = (float*)AllocMemory(2*FRAME_LEN*sizeof(float));
-        if (!hEncoder->freqBuff[channel]) return;
+        hEncoder->channelWorkBuf[channel] = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
+        if (!hEncoder->freqBuff[channel] || !hEncoder->channelWorkBuf[channel]) return;
     }
 
     hEncoder->sin_window_long = (float*)AllocMemory(BLOCK_LEN_LONG*sizeof(float));
@@ -61,6 +62,7 @@ void FilterBankEnd(faacEncStruct* hEncoder)
 
     for (channel = 0; channel < hEncoder->numChannels; channel++) {
         if (hEncoder->freqBuff[channel]) FreeMemory(hEncoder->freqBuff[channel]);
+        if (hEncoder->channelWorkBuf[channel]) FreeMemory(hEncoder->channelWorkBuf[channel]);
     }
 
     if (hEncoder->sin_window_long) FreeMemory(hEncoder->sin_window_long);
@@ -108,9 +110,10 @@ void FilterBank(faacEncStruct* hEncoder,
                 CoderInfo *coderInfo,
                 float * restrict p_prev_data,
                 float * restrict p_in_data,
-                float * restrict p_out_mdct)
+                float * restrict p_out_mdct,
+                float * restrict workBuf)
 {
-    float * restrict overlapBuf = hEncoder->gpsyInfo.sharedWorkBuffLong;
+    float * restrict overlapBuf = workBuf ? workBuf : hEncoder->gpsyInfo.sharedWorkBuffLong;
     int block_type = coderInfo->block_type;
     int k;
 
@@ -123,7 +126,7 @@ void FilterBank(faacEncStruct* hEncoder,
     case ONLY_LONG_WINDOW: {
         ApplyWindowDirect(p_out_mdct, overlapBuf, hEncoder->sin_window_long, BLOCK_LEN_LONG);
         ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;
     }
 
@@ -132,7 +135,7 @@ void FilterBank(faacEncStruct* hEncoder,
         CopyFlat(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, NFLAT_LS);
         ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, overlapBuf+BLOCK_LEN_LONG+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
         ZeroFlat(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;
     }
 
@@ -141,7 +144,7 @@ void FilterBank(faacEncStruct* hEncoder,
         ApplyWindowDirect(p_out_mdct+NFLAT_LS, overlapBuf+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
         CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, overlapBuf+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
         ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
-        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, hEncoder->gpsyInfo.sharedWorkBuffLong);
+        MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;
     }
 
@@ -153,7 +156,7 @@ void FilterBank(faacEncStruct* hEncoder,
         for (k = 0; k < MAX_SHORT_WINDOWS; k++) {
             ApplyWindowDirect(dst, src, win, BLOCK_LEN_SHORT);
             ApplyWindowReverse(dst+BLOCK_LEN_SHORT, src+BLOCK_LEN_SHORT, win, BLOCK_LEN_SHORT);
-            MDCT(&hEncoder->fft_tables, dst, 2*BLOCK_LEN_SHORT, hEncoder->gpsyInfo.sharedWorkBuffLong);
+            MDCT(&hEncoder->fft_tables, dst, 2*BLOCK_LEN_SHORT, overlapBuf);
 
             dst += BLOCK_LEN_SHORT;
             src += BLOCK_LEN_SHORT;

@@ -157,8 +157,8 @@ static void radix4_dif_proc(
     float * restrict xr,
     float * restrict xi,
     int logm,
-    const fftfloat * restrict costbl,
-    const fftfloat * restrict sintbl)
+    const fftfloat *costbl,
+    const fftfloat *sintbl)
 {
     int n = 1 << logm;
     int n2 = n;
@@ -169,6 +169,8 @@ static void radix4_dif_proc(
     {
         n1 = n2;
         n2 >>= 2;
+        int tw_step = 1 << (2 * k);
+
         for (i = 0; i < n; i += n1)
         {
             float * restrict r1p = xr + i;
@@ -202,15 +204,16 @@ static void radix4_dif_proc(
             }
 
             /* unit-stride pointers, not xr[i+j+...], so the compiler can vectorize this */
+            int tw_idx = tw_step;
             for (j = 1; j < n2; j++)
             {
-                int tw_idx = j << (2 * k);
                 const float c1 = (float)costbl[tw_idx];
                 const float s1 = (float)sintbl[tw_idx];
                 const float c2 = (float)costbl[2 * tw_idx];
                 const float s2 = (float)sintbl[2 * tw_idx];
                 const float c3 = (float)costbl[3 * tw_idx];
                 const float s3 = (float)sintbl[3 * tw_idx];
+                tw_idx += tw_step;
 
                 float r1 = *r1p, i1 = *i1p;
                 float r2 = *r2p, i2 = *i2p;
