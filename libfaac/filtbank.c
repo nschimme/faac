@@ -188,6 +188,7 @@ void MDCT( float * restrict data, int N, float * restrict work )
 
     const fftfloat * restrict cosT = mdct_cos + FFT_TBL_OFFSET(logm);
     const fftfloat * restrict sinT = mdct_sin + FFT_TBL_OFFSET(logm);
+    const unsigned short * restrict r = fft_reordertbl + FFT_TBL_OFFSET(logm);
 
     float * restrict xr = work;
     float * restrict xi = work + N4;
@@ -217,12 +218,13 @@ void MDCT( float * restrict data, int N, float * restrict work )
 
     fft(xr, xi, logm);
 
-    /* Unfold N/4 complex FFT outputs into N real coefficients, one write
-       per output quarter. */
+    /* Unfold N/4 complex FFT outputs into N real coefficients, looking up
+       bit-reversed indices directly to eliminate the bit-reversal pass. */
     for (i = 0; i < N4; i++) {
+        int rev = r[i];
         int n2 = 2*i;
-        float unfoldRe = 2.0f * (xr[i] * cosT[i] + xi[i] * sinT[i]);
-        float unfoldIm = 2.0f * (xi[i] * cosT[i] - xr[i] * sinT[i]);
+        float unfoldRe = 2.0f * (xr[rev] * cosT[i] + xi[rev] * sinT[i]);
+        float unfoldIm = 2.0f * (xi[rev] * cosT[i] - xr[rev] * sinT[i]);
 
         data[n2]             = -unfoldRe;
         data[N2 - 1 - n2]    =  unfoldIm;

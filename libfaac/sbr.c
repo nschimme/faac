@@ -429,13 +429,16 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         p0 += 2;
     }
     fft(xr, xi, FFT_LOGM_SHORT);
+    const unsigned short * restrict r = fft_reordertbl + FFT_TBL_OFFSET(FFT_LOGM_SHORT);
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
+        int rev_k = r[k];
+        int rev_kr = r[kr];
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (xr[k] + xr[kr]);
-        float Ai = 0.5f * (xi[kr] - xi[k]);
-        float Br = -0.5f * (xi[k] + xi[kr]);
-        float Bi = 0.5f * (xr[kr] - xr[k]);
+        float Ar = 0.5f * (xr[rev_k] + xr[rev_kr]);
+        float Ai = 0.5f * (xi[rev_kr] - xi[rev_k]);
+        float Br = -0.5f * (xi[rev_k] + xi[rev_kr]);
+        float Bi = 0.5f * (xr[rev_kr] - xr[rev_k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];

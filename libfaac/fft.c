@@ -18,15 +18,8 @@
 #include "fft.h"
 #include "util.h"
 
-/* Bit-reversal order for the two transform sizes, short slice first, and the
- * radix-4 twiddles laid out in the order the butterflies consume them: stage
- * by stage, six floats per butterfly (W^j, W^2j, W^3j as cos, -sin). One
- * unit-stride stream instead of three gathers keeps the kernel's inner loop
- * inside the register file. Built once per process and read-only afterwards,
- * so every encoder handle shares them. */
-static unsigned short reordertbl[FFT_TBL_LEN];
+unsigned short fft_reordertbl[FFT_TBL_LEN];
 
-/* Butterflies per transform: n/4 + n/16 + ... over the radix-4 stages. */
 #define TW_SHORT (16 + 4 + 1)
 #define TW_LONG  (128 + 32 + 8 + 2)
 #define TW_OFFSET(logm) (6 * ((logm) == FFT_LOGM_SHORT ? 0 : TW_SHORT))
@@ -41,7 +34,7 @@ void fft_init(void)
     {
         int logm = logms[t];
         int size = 1 << logm;
-        unsigned short *r = reordertbl + FFT_TBL_OFFSET(logm);
+        unsigned short *r = fft_reordertbl + FFT_TBL_OFFSET(logm);
         fftfloat *tw = twiddles + TW_OFFSET(logm);
         int n2, i;
 
@@ -189,28 +182,7 @@ static void radix4_dif_proc(
     }
 }
 
-static void bit_reverse(
-    float * restrict xr,
-    float * restrict xi,
-    int logm,
-    const unsigned short * restrict r)
-{
-    int i;
-    int size = 1 << logm;
-
-    for (i = 0; i < size; i++)
-    {
-        int j = (int)r[i];
-        if (j > i)
-        {
-            float tr = xr[i]; xr[i] = xr[j]; xr[j] = tr;
-            float ti = xi[i]; xi[i] = xi[j]; xi[j] = ti;
-        }
-    }
-}
-
 void fft(float *xr, float *xi, int logm)
 {
     radix4_dif_proc(xr, xi, logm, twiddles + TW_OFFSET(logm));
-    bit_reverse(xr, xi, logm, reordertbl + FFT_TBL_OFFSET(logm));
 }

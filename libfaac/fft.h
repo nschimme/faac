@@ -25,6 +25,8 @@ typedef float fftfloat;
 #define FFT_TBL_OFFSET(logm) ((logm) == FFT_LOGM_SHORT ? 0 : (1 << FFT_LOGM_SHORT))
 #define FFT_TBL_LEN ((1 << FFT_LOGM_SHORT) + (1 << FFT_LOGM_LONG))
 
+extern unsigned short fft_reordertbl[FFT_TBL_LEN];
+
 /* Builds the process-wide twiddle tables; the caller runs it exactly once. */
 void fft_init(void);
 
