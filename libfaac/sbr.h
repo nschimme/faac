@@ -24,14 +24,6 @@ typedef enum SbrFrameClass {
     SBR_FRAME_CLASS_VARVAR = 3
 } SbrFrameClass;
 
-/* SBR inverse filtering modes (ISO 14496-3 §4.6.18.6.4). */
-typedef enum SbrInvfMode {
-    SBR_INVF_OFF  = 0,
-    SBR_INVF_LOW  = 1,
-    SBR_INVF_MID  = 2,
-    SBR_INVF_HIGH = 3
-} SbrInvfMode;
-
 #include "coder.h"
 #include "channels.h"
 #include "fft.h"
