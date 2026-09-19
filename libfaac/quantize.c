@@ -228,22 +228,23 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
 
-        target_out[sfb] = target * quality;
-    }
+        float sfb_target = target * quality;
 
-    /* Inter-Band Frequency Masking Spreading: Forward masking energy spreading
-     * from lower adjacent scalefactor bands (simultaneous masking). Strong lower
-     * bands mask higher bands, relaxing target and freeing bits for unmasked bands. */
-    for (sfb = 1; sfb < ci->sfbn; sfb++)
-    {
-        float prev_spread = target_out[sfb - 1] * 0.25f;
-        if (sfb >= 2)
+        /* Single-Pass Inter-Band Masking Target Fusion: Spread masking from lower adjacent
+         * bands in-place, avoiding an extra iteration loop over all scalefactor bands. */
+        if (sfb >= 1)
         {
-            float prev2_spread = target_out[sfb - 2] * 0.10f;
-            if (prev2_spread > prev_spread) prev_spread = prev2_spread;
+            float prev_spread = target_out[sfb - 1] * 0.25f;
+            if (sfb >= 2)
+            {
+                float prev2_spread = target_out[sfb - 2] * 0.10f;
+                if (prev2_spread > prev_spread) prev_spread = prev2_spread;
+            }
+            if (prev_spread > sfb_target)
+                sfb_target = prev_spread;
         }
-        if (prev_spread > target_out[sfb])
-            target_out[sfb] = prev_spread;
+
+        target_out[sfb] = sfb_target;
     }
 }
 
@@ -289,11 +290,11 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
-static inline void set_fixed_book(CoderInfo *ci, int band, int b)
+static inline void set_fixed_book(CoderInfo *ci, uint16_t bit_cost[MAX_SCFAC_BANDS][16], int band, int b)
 {
     ci->book[band] = b;
     for (int cb = 0; cb < 16; cb++) {
-        ci->bit_cost[band][cb] = (cb == b) ? 0 : DP_INF;
+        bit_cost[band][cb] = (cb == b) ? 0 : DP_INF;
     }
     ci->bandcnt++;
 }
@@ -308,6 +309,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int sb;
     int start_band = ci->bandcnt;
     int group_qs[FRAME_LEN];
+    uint16_t bit_cost[MAX_SCFAC_BANDS][16];
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
@@ -319,7 +321,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (ci->book[band] != HCB_NONE)
         {
-            set_fixed_book(ci, band, ci->book[band]);
+            set_fixed_book(ci, bit_cost, band, ci->book[band]);
             continue;
         }
 
@@ -330,7 +332,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
-            set_fixed_book(ci, band, HCB_ZERO);
+            set_fixed_book(ci, bit_cost, band, HCB_ZERO);
             continue;
         }
 
@@ -346,7 +348,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             g_faacStats.pnsBands++;
 #endif
             ci->sf[band] += lrintf(sf_enrg_avg);
-            set_fixed_book(ci, band, HCB_PNS);
+            set_fixed_book(ci, bit_cost, band, HCB_PNS);
             continue;
         }
 
@@ -357,7 +359,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (sf_rel < SF_MIN)
         {
-            set_fixed_book(ci, band, HCB_ZERO);
+            set_fixed_book(ci, bit_cost, band, HCB_ZERO);
             ci->sf[band] += sf_rel;
         }
         else
@@ -372,14 +374,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi_dst + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-            huffbook(ci, xi_dst, gsize * width, maxq);
+            huffbook(ci, bit_cost, xi_dst, gsize * width, maxq);
             *p_last_abs = sf_abs;
             ci->sf[ci->bandcnt++] += sf_rel;
         }
     }
 
     int num_bands = ci->bandcnt - start_band;
-    optimize_section_codebooks(ci, start_band, num_bands);
+    optimize_section_codebooks(ci, bit_cost, start_band, num_bands);
 
     for (sb = 0; sb < num_bands; sb++)
     {
