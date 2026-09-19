@@ -811,6 +811,42 @@ int faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
+    /* Dynamic Bandwidth Expansion: Spend accumulated DP bit savings in rc.balance
+     * to widen encoded audio bandwidth up to 15% when bit credit exists,
+     * resetting cleanly to base bandwidth when bit credit is exhausted. */
+    if (hEncoder->config.bitRate)
+    {
+        unsigned int target_bw = CalcBandwidth(hEncoder->config.bitRate);
+        unsigned int max_avail_bw = hEncoder->sampleRate / 2;
+        if (max_avail_bw > BANDWIDTH_CEILING) max_avail_bw = BANDWIDTH_CEILING;
+
+        if (hEncoder->rc.balance > 0)
+        {
+            int desbits = hEncoder->rc.frameBudget;
+            if (desbits > 0)
+            {
+                float ratio = (float)hEncoder->rc.balance / (float)(4 * desbits);
+                if (ratio > 1.0f) ratio = 1.0f;
+                if (ratio > 0.05f)
+                {
+                    target_bw += (unsigned int)((max_avail_bw - target_bw) * 0.35f * ratio);
+                    if (target_bw > max_avail_bw) target_bw = max_avail_bw;
+                }
+            }
+        }
+
+        if (target_bw != hEncoder->config.bandWidth)
+        {
+            hEncoder->config.bandWidth = target_bw;
+            CalcBW(&hEncoder->config.bandWidth,
+                   hEncoder->sampleRate,
+                   hEncoder->srInfo,
+                   &hEncoder->aacquantCfg,
+                   hEncoder->sfbOffsetShort,
+                   hEncoder->sfbOffsetLong);
+        }
+    }
+
     /* AAC Filterbank, MDCT with overlap and add */
     for (channel = 0; channel < numChannels; channel++) {
         FilterBank(hEncoder,
@@ -874,6 +910,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 #endif
         }
     }
+
 
     /* Perform TNS analysis and filtering */
     for (channel = 0; channel < numChannels; channel++) {
