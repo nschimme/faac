@@ -54,6 +54,7 @@ typedef struct WorkerContext {
     unsigned int channel;
     thrd_t thread;
     atomic_int threadCmd;
+    char pad[64]; /* Eliminate false sharing across worker L1 cache lines */
 } WorkerContext;
 #endif
 

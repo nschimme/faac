@@ -74,6 +74,8 @@
 #define PEAK_BACKOFF_FLOOR     0.10f
 #define PEAK_MAX_RETRIES       12
 
+#define TNS_ATTACK_MIN         0.5f
+
 static char *libfaacName = PACKAGE_VERSION;
 static char *libCopyright =
   "FAAC - Freeware Advanced Audio Coder (http://faac.sourceforge.net/)\n"
@@ -171,7 +173,7 @@ static int frame_worker_loop(void *arg)
         int spin = 0;
         int cmd = 0;
         while ((cmd = atomic_load_explicit(&w->threadCmd, memory_order_acquire)) == 0) {
-            if (spin < 500) {
+            if (spin < 5000) {
                 FAAC_PAUSE();
                 spin++;
             } else {
@@ -199,6 +201,17 @@ static int frame_worker_loop(void *arg)
         } else if (cmd == 3) {
             BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
                       &hEncoder->aacquantCfg);
+        } else if (cmd == 5) {
+            if (!hEncoder->isLfeChannel[ch] && hEncoder->config.useTns && hEncoder->coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
+                float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
+                if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
+                    TnsEncode(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch]);
+                } else {
+                    hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
+                }
+            } else {
+                hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
+            }
         }
 
         atomic_store_explicit(&w->threadCmd, 0, memory_order_release);
@@ -218,7 +231,7 @@ static inline void wait_workers(faacEncStruct *hEncoder)
     for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
         int spin = 0;
         while (atomic_load_explicit(&hEncoder->workers[w].threadCmd, memory_order_acquire) != 0) {
-            if (spin < 500) {
+            if (spin < 5000) {
                 FAAC_PAUSE();
                 spin++;
             } else {
@@ -490,8 +503,8 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     unsigned int maxWorkers = hEncoder->numChannels - 1;
 
     unsigned int target_threads = config->max_threads;
-    if (target_threads == 0) {
-        target_threads = hw_threads; /* Default: cap target threads at hardware cores */
+    if (target_threads == 0 || target_threads > hw_threads) {
+        target_threads = hw_threads; /* Cap at available logical CPU cores to prevent oversubscription */
     }
 
     if (target_threads > 1 && (target_threads - 1) < maxWorkers) {
@@ -789,16 +802,6 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
 }
 
 
-/* Admission gate: TNS shapes noise along the temporal envelope, so a window
- * with no envelope discontinuity has nothing for it to do, but the LPC gate
- * only discovers that after normalization, autocorrelation and Levinson-Durbin
- * have run. Screening on the envelope first skips that work for frames headed
- * for rejection anyway.
- *
- * Scaled to PsyGetAttack's statistic (largest relative energy jump between
- * adjacent sub-blocks). Not portable to a different sub-block count/size --
- * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
-#define TNS_ATTACK_MIN 0.5f
 
 int faacEncEncode(faacEncHandle hpEncoder,
                           int32_t *inputBuffer,
@@ -1085,31 +1088,49 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Perform TNS analysis and filtering */
-    for (channel = 0; channel < numChannels; channel++) {
-        if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-            float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+#if FAAC_MULTITHREADING
+    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
+        dispatch_workers(hEncoder, 5);
 
-#ifdef FAAC_STATS
-            if (attack > 0.0f && isfinite(attack)) {
-                g_faacStats.totalAttack += attack;
-                if (attack > g_faacStats.maxAttack) {
-                    g_faacStats.maxAttack = attack;
-                }
-                g_faacStats.attackCount++;
+        if (!hEncoder->isLfeChannel[0] && useTns && coderInfo[0].block_type != ONLY_SHORT_WINDOW) {
+            float attack = PsyGetAttack(&hEncoder->psyInfo[0]);
+            if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
+                TnsEncode(&coderInfo[0], hEncoder->freqBuff[0]);
+            } else {
+                coderInfo[0].tnsInfo.tnsDataPresent = 0;
             }
-            g_faacStats.longBlocks++;
-#endif
-
-            /* No envelope available (HE-AAC skips PsyBufferUpdate) means no
-               basis to reject on, so admit and let the LPC gates decide. */
-            if (attack > 0.0f && attack < TNS_ATTACK_MIN) {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                continue;
-            }
-
-            TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
         } else {
-            coderInfo[channel].tnsInfo.tnsDataPresent = 0;      /* TNS not used for LFE or short blocks */
+            coderInfo[0].tnsInfo.tnsDataPresent = 0;
+        }
+
+        for (channel = hEncoder->numWorkers + 1; channel < numChannels; channel++) {
+            if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+                if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
+                    TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+                } else {
+                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+                }
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
+        }
+
+        wait_workers(hEncoder);
+    } else
+#endif
+    {
+        for (channel = 0; channel < numChannels; channel++) {
+            if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+                if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
+                    TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
+                } else {
+                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+                }
+            } else {
+                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
+            }
         }
     }
 
