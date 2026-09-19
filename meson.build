@@ -4,7 +4,7 @@ project('faac', 'c',
         'default_library=both',
         'buildtype=release',
         'warning_level=3',
-        'c_std=gnu11,c11',
+        'c_std=c11',
         'b_lto=true'
     ])
 
@@ -15,6 +15,8 @@ if cc.get_argument_syntax() == 'msvc'
 endif
 
 config_h = configuration_data()
+config_h.set('_POSIX_C_SOURCE', '200809L')
+config_h.set('_XOPEN_SOURCE', '700')
 config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 
