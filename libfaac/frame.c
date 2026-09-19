@@ -175,7 +175,6 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 }
 
 
-#if FAAC_MULTITHREADING
 void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
 {
     if (cmd == 1) {
@@ -233,6 +232,7 @@ void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
     }
 }
 
+#if FAAC_MULTITHREADING
 static int frame_worker_loop(void *arg)
 {
     WorkerContext *w = (WorkerContext *)arg;
@@ -306,6 +306,30 @@ void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd)
 void faacWaitWorkers(faacEncStruct *hEncoder)
 {
     wait_workers(hEncoder);
+}
+
+void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
+{
+    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
+        dispatch_workers(hEncoder, cmd);
+
+        int ch0 = hEncoder->channelOrder[0];
+        faacProcessWorkerCmd(hEncoder, cmd, ch0);
+        if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
+            while (1) {
+                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                if ((unsigned int)idx >= hEncoder->numChannels) break;
+                int ch = hEncoder->channelOrder[idx];
+                faacProcessWorkerCmd(hEncoder, cmd, ch);
+            }
+        }
+
+        wait_workers(hEncoder);
+    } else {
+        for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
+            faacProcessWorkerCmd(hEncoder, cmd, (int)channel);
+        }
+    }
 }
 
 static unsigned int get_hardware_threads(void)
@@ -884,7 +908,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     CoderInfo *coderInfo = hEncoder->coderInfo;
     unsigned int numChannels = hEncoder->numChannels;
-    unsigned int useTns = hEncoder->config.useTns;
     unsigned int shortctl = hEncoder->config.shortctl;
     int maxqual = hEncoder->config.outputFormat ? MAXQUALADTS : MAXQUAL;
 
@@ -978,44 +1001,14 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
 
+        faacRunParallelPass(hEncoder, 1);
+
         if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
             break;
     } while (flushing);
 
     if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
         return 0;
-
-#if FAAC_MULTITHREADING
-    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-        dispatch_workers(hEncoder, 1);
-
-        int ch0 = hEncoder->channelOrder[0];
-        faacProcessWorkerCmd(hEncoder, 1, ch0);
-        if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
-            while (1) {
-                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
-                if ((unsigned int)idx >= hEncoder->numChannels) break;
-                int ch = hEncoder->channelOrder[idx];
-                faacProcessWorkerCmd(hEncoder, 1, ch);
-            }
-        }
-
-        wait_workers(hEncoder);
-    } else
-#endif
-    {
-        for (channel = 0; channel < numChannels; channel++)
-        {
-            if (!hEncoder->isLfeChannel[channel] &&
-                (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
-            {
-                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
-                    hEncoder->audioFIFO[channel][FIFO_AHEAD1],
-                    hEncoder->audioFIFO[channel][FIFO_AHEAD2],
-                    hEncoder->channelWorkBuf[channel]);
-            }
-        }
-    }
 
     /* Psychoacoustics */
     /* Shared detector replacement on HE: skip half-rate PsyCalculate. */
@@ -1049,56 +1042,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* Fused Pre-Joint Processing: AAC Filterbank MDCT, sfb assignment, TNS, and ResetCoderSections */
-#if FAAC_MULTITHREADING
-    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-        dispatch_workers(hEncoder, 2);
-
-        int ch0 = hEncoder->channelOrder[0];
-        faacProcessWorkerCmd(hEncoder, 2, ch0);
-        if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
-            while (1) {
-                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
-                if ((unsigned int)idx >= hEncoder->numChannels) break;
-                int ch = hEncoder->channelOrder[idx];
-                faacProcessWorkerCmd(hEncoder, 2, ch);
-            }
-        }
-
-        wait_workers(hEncoder);
-    } else
-#endif
-    {
-        for (channel = 0; channel < numChannels; channel++) {
-            FilterBank(hEncoder, &coderInfo[channel],
-                hEncoder->audioFIFO[channel][FIFO_PAST],
-                hEncoder->audioFIFO[channel][FIFO_CURR],
-                hEncoder->freqBuff[channel],
-                hEncoder->channelWorkBuf[channel]);
-
-            if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
-                coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
-                coderInfo[channel].sfb_offset = hEncoder->sfbOffsetShort;
-            } else {
-                coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
-                coderInfo[channel].sfb_offset = hEncoder->sfbOffsetLong;
-
-                coderInfo[channel].groups.n = 1;
-                coderInfo[channel].groups.len[0] = 1;
-            }
-
-            if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
-                float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
-                if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
-                    TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
-                } else {
-                    coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                }
-            } else {
-                coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
-            ResetCoderSections(&coderInfo[channel]);
-        }
-    }
+    faacRunParallelPass(hEncoder, 2);
 
     /* Funnelled through one call site so BlocGroup stays a single inlined copy. */
     for (int e = 0; e < hEncoder->numElements; e++)
@@ -1216,33 +1160,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * exact-fit: an exact fit can fail to terminate on pathological input. */
     for (attempt = 0; attempt <= PEAK_MAX_RETRIES; attempt++)
     {
-#if FAAC_MULTITHREADING
-        if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-            dispatch_workers(hEncoder, 3);
-
-            int ch0 = hEncoder->channelOrder[0];
-            faacProcessWorkerCmd(hEncoder, 3, ch0);
-            if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
-                while (1) {
-                    int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
-                    if ((unsigned int)idx >= hEncoder->numChannels) break;
-                    int ch = hEncoder->channelOrder[idx];
-                    faacProcessWorkerCmd(hEncoder, 3, ch);
-                }
-            }
-
-            wait_workers(hEncoder);
-        } else {
-            for (channel = 0; channel < numChannels; channel++) {
-                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
-            }
-        }
-#else
-        for (channel = 0; channel < numChannels; channel++) {
-            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
-                      &(hEncoder->aacquantCfg));
-        }
-#endif
+        faacRunParallelPass(hEncoder, 3);
 
         // fix max_sfb in CPE mode
         for (int e = 0; e < hEncoder->numElements; e++)

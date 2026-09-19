@@ -16,6 +16,10 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /* Input sample FIFO slots, each one frame (FRAME_LEN samples) wide, relative to
    the frame currently being coded (FIFO_CURR): one frame behind (FIFO_PAST,
    reused as the MDCT overlap) and two frames ahead. The two ahead slots are
@@ -135,24 +139,33 @@ typedef struct faacEncStruct {
 
     RateControl rc;
 
-#if FAAC_MULTITHREADING
-    WorkerContext workers[MAX_CHANNELS - 1];
-    unsigned int numWorkers;
-    int threadActive;
-    atomic_int nextChannel;
-
     SignalAnalysis *sbrSa;
     float **sbrFullPtrs;
     int sbrNumSlots;
     int sbrNumSamples;
     int sbrEnvStart[SBR_MAX_ENVELOPES + 1];
+
+#if FAAC_MULTITHREADING
+    WorkerContext workers[MAX_CHANNELS - 1];
+    unsigned int numWorkers;
+    int threadActive;
+    atomic_int nextChannel;
 #endif
 } faacEncStruct;
+
+void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
 
 #if FAAC_MULTITHREADING
 void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
 void faacWaitWorkers(faacEncStruct *hEncoder);
-void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
+void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
+#else
+static inline void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
+{
+    for (unsigned int ch = 0; ch < hEncoder->numChannels; ch++) {
+        faacProcessWorkerCmd(hEncoder, cmd, (int)ch);
+    }
+}
 #endif
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
