@@ -378,7 +378,15 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 #ifdef FAAC_STATS
             g_faacStats.pnsBands++;
 #endif
-            ci->sf[band] += lrintf(sf_enrg_avg);
+            float peak_ratio = be[sb].peak_energy / (avg_per_window + 1e-9f);
+            float pns_enrg = sf_enrg_avg;
+            if (peak_ratio > 0.20f)
+            {
+                float atten = (peak_ratio - 0.20f) * 4.0f;
+                if (atten > 2.0f) atten = 2.0f;
+                pns_enrg -= atten;
+            }
+            ci->sf[band] += lrintf(pns_enrg);
             set_fixed_book(ci, bit_cost, band, HCB_PNS);
             continue;
         }
