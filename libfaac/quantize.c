@@ -22,6 +22,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 #include "stats.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
@@ -56,6 +57,7 @@ static float max_quant_limit;
  * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
+static float inv_width_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -75,9 +77,12 @@ void QuantizeInit(void)
     for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
         gain_lut[i + GAIN_LUT_BIAS] = powf(10.0f, (float)i / sfstep);
 
-    /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
+    /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) and precompute inverse widths */
     for (i = 1; i < 128; i++)
+    {
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
+        inv_width_lut[i] = 1.0f / (float)i;
+    }
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -225,10 +230,50 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
                + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
         if (ci->block_type == ONLY_SHORT_WINDOW)
+        {
             target *= SHORT_BLOCK_TIGHTEN;
+
+            /* Short-Block Temporal Asymmetric Masking Target Tuning:
+             * Apply asymmetric temporal masking factors relative to attack onset window gnum.
+             * Pre-attack windows (gnum < 2) receive tightened targets (0.70x) to eliminate pre-echo.
+             * Post-attack windows (gnum >= 2) receive relaxed targets (1.25x) to exploit forward auditory masking. */
+            if (gnum < 2)
+                target *= 0.70f;
+            else
+                target *= 1.25f;
+        }
         target *= treble_rolloff(lo, hi, inv_block_len);
 
-        target_out[sfb] = target * quality;
+        /* Tonal-Aware Target Tightening: Tighten masking target on highly tonal bands (high peak-to-average energy ratio)
+         * to concentrate quantization precision on pitch harmonics. */
+        if (avg > 0.0f && peak > 0.0f)
+        {
+            float tonality = peak / (avg + 1e-9f);
+            if (tonality > 3.0f)
+            {
+                float factor = 1.0f - 0.15f * (tonality - 3.0f) / 10.0f;
+                if (factor < 0.75f) factor = 0.75f;
+                target *= factor;
+            }
+        }
+
+        float sfb_target = target * quality;
+
+        /* Single-Pass Inter-Band Masking Target Fusion: Spread masking from lower adjacent
+         * bands in-place, avoiding an extra iteration loop over all scalefactor bands. */
+        if (sfb >= 1)
+        {
+            float prev_spread = target_out[sfb - 1] * 0.25f;
+            if (sfb >= 2)
+            {
+                float prev2_spread = target_out[sfb - 2] * 0.10f;
+                if (prev2_spread > prev_spread) prev_spread = prev2_spread;
+            }
+            if (prev_spread > sfb_target)
+                sfb_target = prev_spread;
+        }
+
+        target_out[sfb] = sfb_target;
     }
 }
 
@@ -274,6 +319,15 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+static inline void set_fixed_book(CoderInfo *ci, uint16_t bit_cost[MAX_SCFAC_BANDS][16], int band, int b)
+{
+    ci->book[band] = b;
+    for (int cb = 0; cb < 16; cb++) {
+        bit_cost[band][cb] = (cb == b) ? 0 : DP_INF;
+    }
+    ci->bandcnt++;
+}
+
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
@@ -282,6 +336,10 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
+    int start_band = ci->bandcnt;
+    int short_qs_buf[BLOCK_LEN_SHORT * MAX_SHORT_WINDOWS];
+    int *group_qs = (ci->block_type == ONLY_SHORT_WINDOW) ? short_qs_buf : (int *)AllocMemory(FRAME_LEN * sizeof(int));
+    uint16_t bit_cost[MAX_SCFAC_BANDS][16];
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
@@ -293,19 +351,19 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (ci->book[band] != HCB_NONE)
         {
-            ci->bandcnt++;
+            set_fixed_book(ci, bit_cost, band, ci->book[band]);
             continue;
         }
 
         int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
         int width = hi - lo;
+        float inv_w = (width < 128) ? inv_width_lut[width] : (1.0f / (float)width);
         float avg_per_window = be[sb].sum / (float)gsize;
-        float rms = sqrtf(avg_per_window / width);
+        float rms = sqrtf(avg_per_window * inv_w);
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
-            ci->book[band] = HCB_ZERO;
-            ci->bandcnt++;
+            set_fixed_book(ci, bit_cost, band, HCB_ZERO);
             continue;
         }
 
@@ -317,12 +375,19 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * TNS filter shapes the substituted noise too. */
         if (target[sb] < pns_threshold)
         {
-            ci->book[band] = HCB_PNS;
 #ifdef FAAC_STATS
             g_faacStats.pnsBands++;
 #endif
-            ci->sf[band] += lrintf(sf_enrg_avg);
-            ci->bandcnt++;
+            float peak_ratio = be[sb].peak_energy / (avg_per_window + 1e-9f);
+            float pns_enrg = sf_enrg_avg;
+            if (peak_ratio > 0.20f)
+            {
+                float atten = (peak_ratio - 0.20f) * 4.0f;
+                if (atten > 2.0f) atten = 2.0f;
+                pns_enrg -= atten;
+            }
+            ci->sf[band] += lrintf(pns_enrg);
+            set_fixed_book(ci, bit_cost, band, HCB_PNS);
             continue;
         }
 
@@ -333,25 +398,45 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         if (sf_rel < SF_MIN)
         {
-            ci->book[band] = HCB_ZERO;
+            set_fixed_book(ci, bit_cost, band, HCB_ZERO);
+            ci->sf[band] += sf_rel;
         }
         else
         {
             int sf_abs;
             float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
-            int xi[FRAME_LEN];
+            int *xi_dst = group_qs + gsize * lo;
             int win, maxq = 0;
 
             for (win = 0; win < gsize; win++)
             {
-                int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi_dst + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-            huffbook(ci, xi, gsize * width, maxq);
+            huffbook(ci, bit_cost, xi_dst, gsize * width, maxq);
             *p_last_abs = sf_abs;
+            ci->sf[ci->bandcnt++] += sf_rel;
         }
+    }
 
-        ci->sf[ci->bandcnt++] += sf_rel;
+    int num_bands = ci->bandcnt - start_band;
+    optimize_section_codebooks(ci, bit_cost, start_band, num_bands);
+
+    for (sb = 0; sb < num_bands; sb++)
+    {
+        int band = start_band + sb;
+        int bnum = ci->book[band];
+        if (bnum != HCB_ZERO && bnum != HCB_PNS && bnum != HCB_INTENSITY && bnum != HCB_INTENSITY2 && bnum != HCB_NONE)
+        {
+            int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
+            int width = hi - lo;
+            huffcode_write_band(ci, group_qs + gsize * lo, gsize * width, bnum);
+        }
+    }
+
+    if (ci->block_type != ONLY_SHORT_WINDOW)
+    {
+        FreeMemory(group_qs);
     }
 }
 
