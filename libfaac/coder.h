@@ -88,8 +88,8 @@ typedef struct CoderInfo {
     const int *sfb_offset;
 
     struct {
-        int n;
-        int len[MAX_SHORT_WINDOWS];
+        uint8_t n;
+        uint8_t len[MAX_SHORT_WINDOWS];
     } groups;
 
     /* worst case: one codeword with two escapes per two spectral lines */

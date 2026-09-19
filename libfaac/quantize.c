@@ -22,6 +22,7 @@
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
+#include "util.h"
 #include "stats.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
@@ -56,6 +57,7 @@ static float max_quant_limit;
  * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
+static float inv_width_lut[128];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -75,9 +77,12 @@ void QuantizeInit(void)
     for (i = -GAIN_LUT_BIAS; i < GAIN_LUT_SIZE - GAIN_LUT_BIAS; i++)
         gain_lut[i + GAIN_LUT_BIAS] = powf(10.0f, (float)i / sfstep);
 
-    /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
+    /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) and precompute inverse widths */
     for (i = 1; i < 128; i++)
+    {
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
+        inv_width_lut[i] = 1.0f / (float)i;
+    }
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -308,7 +313,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
     int start_band = ci->bandcnt;
-    int group_qs[FRAME_LEN];
+    int short_qs_buf[BLOCK_LEN_SHORT * MAX_SHORT_WINDOWS];
+    int *group_qs = (ci->block_type == ONLY_SHORT_WINDOW) ? short_qs_buf : (int *)AllocMemory(FRAME_LEN * sizeof(int));
     uint16_t bit_cost[MAX_SCFAC_BANDS][16];
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
@@ -327,8 +333,9 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
         int width = hi - lo;
+        float inv_w = (width < 128) ? inv_width_lut[width] : (1.0f / (float)width);
         float avg_per_window = be[sb].sum / (float)gsize;
-        float rms = sqrtf(avg_per_window / width);
+        float rms = sqrtf(avg_per_window * inv_w);
 
         if (rms < SILENCE_RMS || target[sb] == 0.0f)
         {
@@ -393,6 +400,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             int width = hi - lo;
             huffcode_write_band(ci, group_qs + gsize * lo, gsize * width, bnum);
         }
+    }
+
+    if (ci->block_type != ONLY_SHORT_WINDOW)
+    {
+        FreeMemory(group_qs);
     }
 }
 
