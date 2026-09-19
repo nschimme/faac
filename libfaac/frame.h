@@ -152,6 +152,7 @@ typedef struct faacEncStruct {
 #if FAAC_MULTITHREADING
 void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
 void faacWaitWorkers(faacEncStruct *hEncoder);
+void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
 #endif
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

@@ -344,10 +344,22 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
             hEncoder->sbrNumSlots = (2 * FRAME_LEN) / SBR_QMF_BANDS_64;
             hEncoder->sbrNumSamples = 2 * FRAME_LEN;
 
+            sCtx->signalAnalysis.valid = 1;
+            sCtx->signalAnalysis.numSlots = hEncoder->sbrNumSlots;
+            sCtx->signalAnalysis.sampled = (hEncoder->sbrNumSlots - 1) / FAAC_SBR_DECIMATION + 1;
+
             /* Pass 1 parallel dispatch */
             faacDispatchWorkers(hEncoder, 6);
             int ch0 = hEncoder->channelOrder[0];
-            SbrAnalyzePass1Channel(&sCtx->signalAnalysis, fullPtrs, ch0, hEncoder->sbrNumSlots);
+            faacProcessWorkerCmd(hEncoder, 6, ch0);
+            if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
+                while (1) {
+                    int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                    if ((unsigned int)idx >= hEncoder->numChannels) break;
+                    int ch = hEncoder->channelOrder[idx];
+                    faacProcessWorkerCmd(hEncoder, 6, ch);
+                }
+            }
             faacWaitWorkers(hEncoder);
 
             /* Main thread SBR grid selection */
@@ -358,8 +370,14 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
 
             /* Pass 2 parallel dispatch */
             faacDispatchWorkers(hEncoder, 7);
-            if (!isLfe[ch0]) {
-                SbrAnalyzePass2Channel(&sCtx->signalAnalysis, fullPtrs, ch0, hEncoder->sbrNumSlots, 2 * FRAME_LEN, hEncoder->sbrEnvStart, sCtx->sbrInfo);
+            faacProcessWorkerCmd(hEncoder, 7, ch0);
+            if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
+                while (1) {
+                    int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                    if ((unsigned int)idx >= hEncoder->numChannels) break;
+                    int ch = hEncoder->channelOrder[idx];
+                    faacProcessWorkerCmd(hEncoder, 7, ch);
+                }
             }
             faacWaitWorkers(hEncoder);
 
@@ -367,7 +385,15 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
 
             /* Resample parallel dispatch */
             faacDispatchWorkers(hEncoder, 8);
-            if (rs) ResampleChannel(rs, ch0, 2 * FRAME_LEN);
+            faacProcessWorkerCmd(hEncoder, 8, ch0);
+            if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
+                while (1) {
+                    int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                    if ((unsigned int)idx >= hEncoder->numChannels) break;
+                    int ch = hEncoder->channelOrder[idx];
+                    faacProcessWorkerCmd(hEncoder, 8, ch);
+                }
+            }
             faacWaitWorkers(hEncoder);
         } else
 #endif
