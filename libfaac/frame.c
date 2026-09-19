@@ -500,6 +500,15 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         maxWorkers = 0;
     }
 
+    if (hEncoder->threadActive && hEncoder->numWorkers != maxWorkers) {
+        for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
+            atomic_store_explicit(&hEncoder->workers[w].threadCmd, 4, memory_order_release);
+            thrd_join(hEncoder->workers[w].thread, NULL);
+        }
+        hEncoder->numWorkers = 0;
+        hEncoder->threadActive = 0;
+    }
+
     if (!hEncoder->threadActive && maxWorkers > 0) {
         hEncoder->numWorkers = 0;
         for (unsigned int w = 0; w < maxWorkers; w++) {
