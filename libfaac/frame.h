@@ -50,11 +50,12 @@ extern "C" {
 struct faacEncStruct;
 
 typedef struct WorkerContext {
+    char pad1[64];
     struct faacEncStruct *hEncoder;
     unsigned int channel;
     thrd_t thread;
     atomic_int threadCmd;
-    char pad[64]; /* Eliminate false sharing across worker L1 cache lines */
+    char pad2[64];
 } WorkerContext;
 #endif
 

@@ -173,9 +173,12 @@ static int frame_worker_loop(void *arg)
         int spin = 0;
         int cmd = 0;
         while ((cmd = atomic_load_explicit(&w->threadCmd, memory_order_acquire)) == 0) {
-            if (spin < 5000) {
+            if (spin < 200) {
                 FAAC_PAUSE();
                 spin++;
+            } else if (spin < 1000) {
+                FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE();
+                spin += 4;
             } else {
                 thrd_yield();
             }
@@ -183,7 +186,13 @@ static int frame_worker_loop(void *arg)
 
         if (cmd == 4) break;
 
-        if (cmd == 1) {
+        if (cmd == 2) {
+            FilterBank(hEncoder, &hEncoder->coderInfo[ch],
+                       hEncoder->audioFIFO[ch][FIFO_PAST],
+                       hEncoder->audioFIFO[ch][FIFO_CURR],
+                       hEncoder->freqBuff[ch],
+                       hEncoder->channelWorkBuf[ch]);
+
             if (!hEncoder->isLfeChannel[ch] &&
                 (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
             {
@@ -192,12 +201,6 @@ static int frame_worker_loop(void *arg)
                                 hEncoder->audioFIFO[ch][FIFO_AHEAD2],
                                 hEncoder->channelWorkBuf[ch]);
             }
-        } else if (cmd == 2) {
-            FilterBank(hEncoder, &hEncoder->coderInfo[ch],
-                       hEncoder->audioFIFO[ch][FIFO_PAST],
-                       hEncoder->audioFIFO[ch][FIFO_CURR],
-                       hEncoder->freqBuff[ch],
-                       hEncoder->channelWorkBuf[ch]);
         } else if (cmd == 3) {
             BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
                       &hEncoder->aacquantCfg);
@@ -231,9 +234,12 @@ static inline void wait_workers(faacEncStruct *hEncoder)
     for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
         int spin = 0;
         while (atomic_load_explicit(&hEncoder->workers[w].threadCmd, memory_order_acquire) != 0) {
-            if (spin < 5000) {
+            if (spin < 200) {
                 FAAC_PAUSE();
                 spin++;
+            } else if (spin < 1000) {
+                FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE();
+                spin += 4;
             } else {
                 thrd_yield();
             }
@@ -906,48 +912,19 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
         }
 
-#if FAAC_MULTITHREADING
-        if (hEncoder->threadActive && hEncoder->numWorkers > 0)
+#if !FAAC_MULTITHREADING
+        for (channel = 0; channel < numChannels; channel++)
         {
-            dispatch_workers(hEncoder, 1);
-
-            if (!hEncoder->isLfeChannel[0] &&
+            if (!hEncoder->isLfeChannel[channel] &&
                 (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
             {
-                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[0],
-                    hEncoder->audioFIFO[0][FIFO_AHEAD1],
-                    hEncoder->audioFIFO[0][FIFO_AHEAD2],
-                    hEncoder->channelWorkBuf[0]);
+                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD1],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD2],
+                    hEncoder->channelWorkBuf[channel]);
             }
-
-            for (channel = hEncoder->numWorkers + 1; channel < numChannels; channel++) {
-                if (!hEncoder->isLfeChannel[channel] &&
-                    (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
-                {
-                    PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
-                        hEncoder->audioFIFO[channel][FIFO_AHEAD1],
-                        hEncoder->audioFIFO[channel][FIFO_AHEAD2],
-                        hEncoder->channelWorkBuf[channel]);
-                }
-            }
-
-            wait_workers(hEncoder);
         }
-        else
 #endif
-        {
-            for (channel = 0; channel < numChannels; channel++)
-            {
-                if (!hEncoder->isLfeChannel[channel] &&
-                    (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
-                {
-                    PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
-                        hEncoder->audioFIFO[channel][FIFO_AHEAD1],
-                        hEncoder->audioFIFO[channel][FIFO_AHEAD2],
-                        hEncoder->channelWorkBuf[channel]);
-                }
-            }
-        }
 
         /* Drop the consumed frame from the FIFO front (both the LC copy and the
          * HE doHEAACFrame read the leading frameSamplesPerCh samples). */
@@ -995,6 +972,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     /* AAC Filterbank, MDCT with overlap and add */
 #if FAAC_MULTITHREADING
     if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
+        /* Fused FilterBank + PsyBufferUpdate dispatch */
         dispatch_workers(hEncoder, 2);
 
         FilterBank(hEncoder, &coderInfo[0],
@@ -1003,12 +981,30 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->freqBuff[0],
             hEncoder->channelWorkBuf[0]);
 
+        if (!hEncoder->isLfeChannel[0] &&
+            (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+        {
+            PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[0],
+                hEncoder->audioFIFO[0][FIFO_AHEAD1],
+                hEncoder->audioFIFO[0][FIFO_AHEAD2],
+                hEncoder->channelWorkBuf[0]);
+        }
+
         for (channel = hEncoder->numWorkers + 1; channel < numChannels; channel++) {
             FilterBank(hEncoder, &coderInfo[channel],
                 hEncoder->audioFIFO[channel][FIFO_PAST],
                 hEncoder->audioFIFO[channel][FIFO_CURR],
                 hEncoder->freqBuff[channel],
                 hEncoder->channelWorkBuf[channel]);
+
+            if (!hEncoder->isLfeChannel[channel] &&
+                (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+            {
+                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD1],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD2],
+                    hEncoder->channelWorkBuf[channel]);
+            }
         }
 
         wait_workers(hEncoder);
