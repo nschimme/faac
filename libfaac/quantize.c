@@ -233,6 +233,19 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
             target *= SHORT_BLOCK_TIGHTEN;
         target *= treble_rolloff(lo, hi, inv_block_len);
 
+        /* Tonal-Aware Target Tightening: Tighten masking target on highly tonal bands (high peak-to-average energy ratio)
+         * to concentrate quantization precision on pitch harmonics. */
+        if (avg > 0.0f && peak > 0.0f)
+        {
+            float tonality = peak / (avg + 1e-9f);
+            if (tonality > 3.0f)
+            {
+                float factor = 1.0f - 0.15f * (tonality - 3.0f) / 10.0f;
+                if (factor < 0.75f) factor = 0.75f;
+                target *= factor;
+            }
+        }
+
         float sfb_target = target * quality;
 
         /* Single-Pass Inter-Band Masking Target Fusion: Spread masking from lower adjacent

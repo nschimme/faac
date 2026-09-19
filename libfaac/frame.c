@@ -831,7 +831,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                     if (max_avail_bw > BANDWIDTH_CEILING) max_avail_bw = BANDWIDTH_CEILING;
                     if (ratio > 1.0f) ratio = 1.0f;
 
-                    target_bw += (unsigned int)((max_avail_bw - target_bw) * 0.35f * ratio);
+                    target_bw += (unsigned int)((max_avail_bw - target_bw) * 0.85f * ratio);
                     if (target_bw > max_avail_bw) target_bw = max_avail_bw;
                 }
             }
