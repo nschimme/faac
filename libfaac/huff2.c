@@ -307,13 +307,12 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
 
     int sb;
 
-    /* DP matrices constrained strictly to NUM_SPECTRAL_BOOKS (12 valid spectral books: 0..11).
-     * Reduces stack allocation by 25% (from 3.2 KB to 2.4 KB) and trellis transitions by 43.7% (144 vs 256). */
-    uint16_t dp[MAX_SCFAC_BANDS][NUM_SPECTRAL_BOOKS];
-    int8_t run[MAX_SCFAC_BANDS][NUM_SPECTRAL_BOOKS];
-    int8_t back_cb[MAX_SCFAC_BANDS][NUM_SPECTRAL_BOOKS];
+    /* DP matrices over all 16 section codebooks (including PNS, Intensity, Zero). */
+    uint16_t dp[MAX_SCFAC_BANDS][NUM_SECTION_BOOKS];
+    int8_t run[MAX_SCFAC_BANDS][NUM_SECTION_BOOKS];
+    int8_t back_cb[MAX_SCFAC_BANDS][NUM_SECTION_BOOKS];
 
-    for (int cb = 0; cb < NUM_SPECTRAL_BOOKS; cb++) {
+    for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
         int band_idx = start_band + 0;
         if (coder->bit_cost[band_idx][cb] < DP_INF) {
             dp[0][cb] = section_header_cost + coder->bit_cost[band_idx][cb];
@@ -327,7 +326,7 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
     for (sb = 1; sb < num_bands; sb++) {
         int band_idx = start_band + sb;
 
-        for (int cb = 0; cb < NUM_SPECTRAL_BOOKS; cb++) {
+        for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
             dp[sb][cb] = DP_INF;
             run[sb][cb] = 0;
             back_cb[sb][cb] = -1;
@@ -345,7 +344,7 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
             }
 
             /* Option 2: Switch codebook from any prev_cb at sb-1 */
-            for (int prev_cb = 0; prev_cb < NUM_SPECTRAL_BOOKS; prev_cb++) {
+            for (int prev_cb = 0; prev_cb < NUM_SECTION_BOOKS; prev_cb++) {
                 if (prev_cb == cb) continue;
                 if (dp[sb - 1][prev_cb] < DP_INF) {
                     uint16_t cost = dp[sb - 1][prev_cb] + section_header_cost + coder->bit_cost[band_idx][cb];
@@ -362,7 +361,7 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
     /* Find best ending codebook at num_bands - 1 */
     int best_cb = -1;
     uint16_t min_total_bits = DP_INF;
-    for (int cb = 0; cb < NUM_SPECTRAL_BOOKS; cb++) {
+    for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
         if (dp[num_bands - 1][cb] < min_total_bits) {
             min_total_bits = dp[num_bands - 1][cb];
             best_cb = cb;

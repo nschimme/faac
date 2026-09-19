@@ -230,6 +230,21 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
         target_out[sfb] = target * quality;
     }
+
+    /* Inter-Band Frequency Masking Spreading: Forward masking energy spreading
+     * from lower adjacent scalefactor bands (simultaneous masking). Strong lower
+     * bands mask higher bands, relaxing target and freeing bits for unmasked bands. */
+    for (sfb = 1; sfb < ci->sfbn; sfb++)
+    {
+        float prev_spread = target_out[sfb - 1] * 0.25f;
+        if (sfb >= 2)
+        {
+            float prev2_spread = target_out[sfb - 2] * 0.10f;
+            if (prev2_spread > prev_spread) prev_spread = prev2_spread;
+        }
+        if (prev_spread > target_out[sfb])
+            target_out[sfb] = prev_spread;
+    }
 }
 
 // per-band codebook assignment: zero / PNS / regular+Huffman
