@@ -215,10 +215,10 @@ static inline void process_worker_cmd(faacEncStruct *hEncoder, int cmd, int ch)
             SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
                                    hEncoder->sbrNumSamples, hEncoder->sbrEnvStart, hEncoder->sbrContext->sbrInfo);
         }
-            } else if (cmd == 8) {
-                if (hEncoder->sbrContext && hEncoder->sbrContext->resampler) {
-                    ResampleChannel(hEncoder->sbrContext->resampler, ch, 2 * FRAME_LEN);
-                }
+    } else if (cmd == 8) {
+        if (hEncoder->sbrContext && hEncoder->sbrContext->resampler) {
+            ResampleChannel(hEncoder->sbrContext->resampler, ch, 2 * FRAME_LEN);
+        }
     }
 }
 
@@ -1159,12 +1159,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
                 if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
                     TnsEncode(&coderInfo[channel], hEncoder->freqBuff[channel]);
-                } else {
+            } else {
                     coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-                }
+            }
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
-            }
+        }
             ResetCoderSections(&coderInfo[channel]);
         }
     }

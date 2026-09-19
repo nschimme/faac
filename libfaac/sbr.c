@@ -336,19 +336,44 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
          * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
          * would inflate its levels, and the QMF-overlap save below reads the last
          * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
-        SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo, hEncoderPtr);
-        SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
-        /* Dual-rate decimation: produces the halved-rate core signal. */
 #if FAAC_MULTITHREADING
         faacEncStruct *hEncoder = (faacEncStruct *)hEncoderPtr;
         if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
-            faacDispatchWorkers(hEncoder, 8);
+            hEncoder->sbrSa = &sCtx->signalAnalysis;
+            hEncoder->sbrFullPtrs = fullPtrs;
+            hEncoder->sbrNumSlots = (2 * FRAME_LEN) / SBR_QMF_BANDS_64;
+            hEncoder->sbrNumSamples = 2 * FRAME_LEN;
+
+            /* Pass 1 parallel dispatch */
+            faacDispatchWorkers(hEncoder, 6);
             int ch0 = hEncoder->channelOrder[0];
-            ResampleChannel(rs, ch0, 2 * FRAME_LEN);
+            SbrAnalyzePass1Channel(&sCtx->signalAnalysis, fullPtrs, ch0, hEncoder->sbrNumSlots);
+            faacWaitWorkers(hEncoder);
+
+            /* Main thread SBR grid selection */
+            SbrGridSelection(&sCtx->signalAnalysis, isLfe, numChannels, hEncoder->sbrNumSlots, sCtx->sbrInfo);
+
+            for (int e = 0; e <= sCtx->signalAnalysis.numEnvelopes; e++)
+                hEncoder->sbrEnvStart[e] = (sCtx->signalAnalysis.tEnv[e] * hEncoder->sbrNumSlots) / SBR_NUM_TIME_SLOTS;
+
+            /* Pass 2 parallel dispatch */
+            faacDispatchWorkers(hEncoder, 7);
+            if (!isLfe[ch0]) {
+                SbrAnalyzePass2Channel(&sCtx->signalAnalysis, fullPtrs, ch0, hEncoder->sbrNumSlots, 2 * FRAME_LEN, hEncoder->sbrEnvStart, sCtx->sbrInfo);
+            }
+            faacWaitWorkers(hEncoder);
+
+            SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
+
+            /* Resample parallel dispatch */
+            faacDispatchWorkers(hEncoder, 8);
+            if (rs) ResampleChannel(rs, ch0, 2 * FRAME_LEN);
             faacWaitWorkers(hEncoder);
         } else
 #endif
         {
+            SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo, hEncoderPtr);
+            SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
             Resample(rs, 2 * FRAME_LEN);
         }
     }

@@ -33,11 +33,7 @@ static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slo
     return e;
 }
 
-#if FAAC_MULTITHREADING
 void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots)
-#else
-static inline void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots)
-#endif
 {
     float smax = 0.0f, ssum = 0.0f;
     int smax_idx = 0;
@@ -87,11 +83,52 @@ static inline void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[],
     }
 }
 
-#if FAAC_MULTITHREADING
-void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
-#else
-static inline void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
+void SbrGridSelection(SignalAnalysis *sa, const bool *isLfe, int nch, int num_slots, struct SBRInfo *sbr)
+{
+    float frameStrength = 0.0f;
+    int frameSlot = 0;
+    for (int ch = 0; ch < nch; ch++) {
+        if (isLfe[ch]) continue;
+        if (sa->ch[ch].transientStrength > frameStrength) {
+            frameStrength = sa->ch[ch].transientStrength;
+            frameSlot = sa->ch[ch].transientSlot;
+        }
+    }
+
+    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0;
+        int rel = clamp_int((Ts - 2) / 2, 0, 3);
+        int innerSbr = 2 * rel + 2;
+        sa->numEnvelopes = 2;
+        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
+        sa->tEnv[0] = 0;
+        sa->tEnv[1] = innerSbr;
+        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
+        sa->bsPointer = 0;
+    } else {
+        sa->numEnvelopes = 1;
+        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
+        sa->tEnv[0] = 0;
+        sa->tEnv[1] = SBR_NUM_TIME_SLOTS;
+        sa->bsPointer = 0;
+    }
+
+    int envStart[SBR_MAX_ENVELOPES + 1];
+    for (int e = 0; e <= sa->numEnvelopes; e++)
+        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+
+    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
+        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
+    }
+    for (int e = 0; e < sa->numEnvelopes; e++)
+        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
+}
+
+void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
 {
     float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
     int kx = sbr->kx;
@@ -131,96 +168,20 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
-#if FAAC_MULTITHREADING
-    faacEncStruct *hEncoder = (faacEncStruct *)hEncoderPtr;
-    if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
-        hEncoder->sbrSa = sa;
-        hEncoder->sbrFullPtrs = fullPtrs;
-        hEncoder->sbrNumSlots = num_slots;
-        hEncoder->sbrNumSamples = numSamples;
-
-        /* Pass 1 parallel dispatch */
-        faacDispatchWorkers(hEncoder, 6);
-        int ch0 = hEncoder->channelOrder[0];
-        SbrAnalyzePass1Channel(sa, fullPtrs, ch0, num_slots);
-        faacWaitWorkers(hEncoder);
-    } else
-#endif
-    {
-        for (int ch = 0; ch < nch; ch++) {
-            SbrAnalyzePass1Channel(sa, fullPtrs, ch, num_slots);
-        }
-    }
-
-    /* Choose the temporal grid based on the strongest transient. Synchronizes
-     * envelope borders across all channels to maintain spatial imaging. The
-     * LFE carries no SBR, so it gets no vote. */
-    float frameStrength = 0.0f;
-    int frameSlot = 0;
     for (int ch = 0; ch < nch; ch++) {
-        if (isLfe[ch]) continue;
-        if (sa->ch[ch].transientStrength > frameStrength) {
-            frameStrength = sa->ch[ch].transientStrength;
-            frameSlot = sa->ch[ch].transientSlot;
-        }
+        SbrAnalyzePass1Channel(sa, fullPtrs, ch, num_slots);
     }
 
-    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
-        int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
-        int rel = clamp_int((Ts - 2) / 2, 0, 3);
-        int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
-        sa->numEnvelopes = 2;
-        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = innerSbr;
-        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
-    } else {
-        sa->numEnvelopes = 1;
-        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
-    }
+    SbrGridSelection(sa, isLfe, nch, num_slots, sbr);
 
-    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
-    int envStart[SBR_MAX_ENVELOPES + 1];
-    for (int e = 0; e <= sa->numEnvelopes; e++)
-        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
-
-    /* Count slots per envelope for power normalization. */
-    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
-    for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
-#endif
-        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
-    }
-    for (int e = 0; e < sa->numEnvelopes; e++)
-        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
-
-    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
-     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
     if (sbr) {
-#if FAAC_MULTITHREADING
-        if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
-            for (int e = 0; e <= sa->numEnvelopes; e++)
-                hEncoder->sbrEnvStart[e] = envStart[e];
+        int envStart[SBR_MAX_ENVELOPES + 1];
+        for (int e = 0; e <= sa->numEnvelopes; e++)
+            envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
 
-            /* Pass 2 parallel dispatch */
-            faacDispatchWorkers(hEncoder, 7);
-            int ch0 = hEncoder->channelOrder[0];
-            if (!isLfe[ch0]) {
-                SbrAnalyzePass2Channel(sa, fullPtrs, ch0, num_slots, numSamples, envStart, sbr);
-            }
-            faacWaitWorkers(hEncoder);
-        } else
-#endif
-        {
-            for (int ch = 0; ch < nch; ch++) {
-                if (isLfe[ch]) continue;
-                SbrAnalyzePass2Channel(sa, fullPtrs, ch, num_slots, numSamples, envStart, sbr);
-            }
+        for (int ch = 0; ch < nch; ch++) {
+            if (isLfe[ch]) continue;
+            SbrAnalyzePass2Channel(sa, fullPtrs, ch, num_slots, numSamples, envStart, sbr);
         }
     }
 }
