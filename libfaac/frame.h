@@ -52,7 +52,6 @@ struct faacEncStruct;
 typedef struct WorkerContext {
     char pad1[64];
     struct faacEncStruct *hEncoder;
-    unsigned int channel;
     thrd_t thread;
     atomic_int threadCmd;
     char pad2[64];
@@ -138,6 +137,7 @@ typedef struct faacEncStruct {
     WorkerContext workers[MAX_CHANNELS - 1];
     unsigned int numWorkers;
     int threadActive;
+    atomic_int nextChannel;
 #endif
 } faacEncStruct;
 
