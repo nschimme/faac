@@ -22,8 +22,6 @@
 #define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
 #define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
 
-static void check_tables_radix4(FFT_Tables *fft_tables, int logm);
-
 void fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
@@ -83,29 +81,6 @@ void fft_initialize(FFT_Tables *fft_tables)
             }
             fft_tables->mdct_cos[logm] = c;
             fft_tables->mdct_sin[logm] = s;
-        }
-
-        /* Precompute Radix-4 twiddle and bit-reorder tables for LOGM_SHORT (6) */
-        check_tables_radix4(fft_tables, LOGM_SHORT);
-        if (fft_tables->reordertbl[LOGM_SHORT] == NULL && fft_tables->costbl[LOGM_SHORT] != NULL)
-        {
-            int size = 1 << LOGM_SHORT;
-            fft_tables->reordertbl[LOGM_SHORT] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
-            if (fft_tables->reordertbl[LOGM_SHORT])
-            {
-                for (i = 0; i < size; i++)
-                {
-                    int reversed = 0;
-                    int b;
-                    int tmp = i;
-                    for (b = 0; b < LOGM_SHORT; b++)
-                    {
-                        reversed = (reversed << 1) | (tmp & 1);
-                        tmp >>= 1;
-                    }
-                    fft_tables->reordertbl[LOGM_SHORT][i] = (unsigned short)reversed;
-                }
-            }
         }
     }
 }
@@ -307,11 +282,10 @@ static void bit_reverse(
 
 void fft(FFT_Tables *fft_tables, float *xr, float *xi, int logm)
 {
-    if (logm > FFT_MAXLOGM || logm < 1) return;
+    if (logm > FFT_MAXLOGM) return;
+    if (logm < 1) return;
 
-    if (fft_tables->costbl[logm] == NULL) {
-        check_tables_radix4(fft_tables, logm);
-    }
+    check_tables_radix4(fft_tables, logm);
 
     if (fft_tables->reordertbl[logm] == NULL)
     {
