@@ -149,26 +149,32 @@ void PsyEnd(PsyInfo * psyInfo, unsigned int numChannels)
   }
 }
 
+void PsyCalculateChannel(PsyInfo * psyInfo, bool isLfeChannel)
+{
+  if (isLfeChannel)
+      psyInfo->block_type = ONLY_LONG_WINDOW;
+  else
+      PsyCheckShort(psyInfo);
+}
+
 /* Do psychoacoustical analysis */
 void PsyCalculate(PsyInfo * psyInfo, const bool * isLfeChannel,
 			 unsigned int numChannels)
 {
   for (unsigned int channel = 0; channel < numChannels; channel++)
   {
-      if (isLfeChannel[channel])
-          psyInfo[channel].block_type = ONLY_LONG_WINDOW;
-      else
-          PsyCheckShort(&psyInfo[channel]);
+      PsyCalculateChannel(&psyInfo[channel], isLfeChannel[channel]);
   }
 }
 
 void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
                             float * restrict p_lookahead1,
-                            float * restrict p_lookahead2)
+                            float * restrict p_lookahead2,
+                            float * restrict transBuff)
 {
   int win;
-  float * restrict transBuff = gpsyInfo->sharedWorkBuffLong;
   psydata_t *psydata = (psydata_t *)psyInfo->data;
+  (void)gpsyInfo;
 
   /* Shift the energy windows down by one frame: PREV<-CUR, CUR<-NEXT, freeing
      the NEXT region for the freshly-computed lookahead window below. */

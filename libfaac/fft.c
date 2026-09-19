@@ -22,6 +22,33 @@
 #define LOGM_SHORT 6      /* logm for the 256-sample short block MDCT */
 #define LOGM_LONG  FFT_MAXLOGM /* logm for the 2048-sample long block MDCT */
 
+static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
+{
+    if (fft_tables->costbl[logm] == NULL)
+    {
+        int size = 1 << logm;
+        int i;
+        /* one table serves all stages: stage k needs W_N^{k<<2k'} via tw_idx below */
+        fft_tables->costbl[logm] = AllocMemory(size * sizeof(*(fft_tables->costbl[0])));
+        fft_tables->negsintbl[logm] = AllocMemory(size * sizeof(*(fft_tables->negsintbl[0])));
+
+        if (!fft_tables->costbl[logm] || !fft_tables->negsintbl[logm])
+        {
+            if (fft_tables->costbl[logm]) FreeMemory(fft_tables->costbl[logm]);
+            if (fft_tables->negsintbl[logm]) FreeMemory(fft_tables->negsintbl[logm]);
+            fft_tables->costbl[logm] = fft_tables->negsintbl[logm] = NULL;
+            return;
+        }
+
+        for (i = 0; i < size; i++)
+        {
+            double theta = 2.0 * M_PI_DOUBLE * (double)i / (double)size;
+            fft_tables->costbl[logm][i] = (fftfloat)cos(theta);
+            fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
+        }
+    }
+}
+
 void fft_initialize(FFT_Tables *fft_tables)
 {
     int i;
@@ -83,6 +110,34 @@ void fft_initialize(FFT_Tables *fft_tables)
             fft_tables->mdct_sin[logm] = s;
         }
     }
+
+    check_tables_radix4(fft_tables, LOGM_SHORT);
+    check_tables_radix4(fft_tables, LOGM_LONG);
+    {
+        static const int logms[2] = { LOGM_SHORT, LOGM_LONG };
+        int t;
+        for (t = 0; t < 2; t++)
+        {
+            int logm = logms[t];
+            int size = 1 << logm;
+            fft_tables->reordertbl[logm] = AllocMemory(size * sizeof(*(fft_tables->reordertbl[0])));
+            if (fft_tables->reordertbl[logm])
+            {
+                for (i = 0; i < size; i++)
+                {
+                    int reversed = 0;
+                    int b;
+                    int tmp = i;
+                    for (b = 0; b < logm; b++)
+                    {
+                        reversed = (reversed << 1) | (tmp & 1);
+                        tmp >>= 1;
+                    }
+                    fft_tables->reordertbl[logm][i] = (unsigned short)reversed;
+                }
+            }
+        }
+    }
 }
 
 void fft_terminate(FFT_Tables *fft_tables)
@@ -126,32 +181,6 @@ void fft_terminate(FFT_Tables *fft_tables)
  * logm=9 (512) isn't a power of 4, so it ends with one radix-2 stage.
  */
 
-static void check_tables_radix4(FFT_Tables *fft_tables, int logm)
-{
-    if (fft_tables->costbl[logm] == NULL)
-    {
-        int size = 1 << logm;
-        int i;
-        /* one table serves all stages: stage k needs W_N^{k<<2k'} via tw_idx below */
-        fft_tables->costbl[logm] = AllocMemory(size * sizeof(*(fft_tables->costbl[0])));
-        fft_tables->negsintbl[logm] = AllocMemory(size * sizeof(*(fft_tables->negsintbl[0])));
-
-        if (!fft_tables->costbl[logm] || !fft_tables->negsintbl[logm])
-        {
-            if (fft_tables->costbl[logm]) FreeMemory(fft_tables->costbl[logm]);
-            if (fft_tables->negsintbl[logm]) FreeMemory(fft_tables->negsintbl[logm]);
-            fft_tables->costbl[logm] = fft_tables->negsintbl[logm] = NULL;
-            return;
-        }
-
-        for (i = 0; i < size; i++)
-        {
-            double theta = 2.0 * M_PI_DOUBLE * (double)i / (double)size;
-            fft_tables->costbl[logm][i] = (fftfloat)cos(theta);
-            fft_tables->negsintbl[logm][i] = (fftfloat)-sin(theta);
-        }
-    }
-}
 
 static void radix4_dif_proc(
     float * restrict xr,

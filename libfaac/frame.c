@@ -154,6 +154,47 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 }
 
 
+#ifdef FAAC_MULTITHREADING
+static int frame_worker_loop(void *arg)
+{
+    faacEncStruct *hEncoder = (faacEncStruct *)arg;
+    while (1) {
+        int spin = 0;
+        while (atomic_load_explicit(&hEncoder->threadCmd, memory_order_acquire) == 0) {
+            if (spin < 500) {
+                FAAC_PAUSE();
+                spin++;
+            } else {
+                thrd_yield();
+            }
+        }
+
+        int cmd = atomic_load_explicit(&hEncoder->threadCmd, memory_order_relaxed);
+        if (cmd == 4) break;
+
+        if (cmd == 1) {
+            PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[1],
+                            hEncoder->audioFIFO[1][FIFO_AHEAD1],
+                            hEncoder->audioFIFO[1][FIFO_AHEAD2],
+                            hEncoder->channelWorkBuf[1]);
+        } else if (cmd == 2) {
+            FilterBank(hEncoder, &hEncoder->coderInfo[1],
+                       hEncoder->audioFIFO[1][FIFO_PAST],
+                       hEncoder->audioFIFO[1][FIFO_CURR],
+                       hEncoder->freqBuff[1],
+                       hEncoder->channelWorkBuf[1]);
+        } else if (cmd == 3) {
+            BlocQuant(&hEncoder->coderInfo[1], hEncoder->freqBuff[1],
+                      &hEncoder->aacquantCfg);
+        }
+
+        atomic_store_explicit(&hEncoder->threadCmd, 0, memory_order_relaxed);
+        atomic_store_explicit(&hEncoder->threadDone, 1, memory_order_release);
+    }
+    return 0;
+}
+#endif
+
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder for it. Returns 1 on
  * success, 0 on failure. */
@@ -326,9 +367,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         SBRContext *sCtx = hEncoder->sbrContext;
         unsigned long sbr_bitrate = hEncoder->config.bitRate ? (hEncoder->config.bitRate * hEncoder->numChannels) : ((unsigned long)hEncoder->config.quantqual * 1280);
         SbrContextUpdateConfig(sCtx, hEncoder->numChannels, sbr_bitrate, &hEncoder->fft_tables);
-#ifdef SBR_WORKER_THREAD
-        sCtx->noThreads = (config->max_threads == 1) ? 1 : 0;
-#endif
         /* kx * Fs / (2*64): each QMF band is Fs/(2*SBR_QMF_BANDS_64) Hz wide.
          * Matching core bandwidth to the SBR crossover avoids a gap or overlap. */
         hEncoder->config.bandWidth = SbrContextGetXOverBandwidth(sCtx);
@@ -398,6 +436,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     RateControlReset(&hEncoder->rc, hEncoder->numChannels, hEncoder->config.bitRate,
                      hEncoder->sampleRate, hEncoder->config.rateControl == RATE_CBR);
+
+#ifdef FAAC_MULTITHREADING
+    if (config->max_threads != 1 && !hEncoder->threadActive && hEncoder->numChannels > 1) {
+        atomic_init(&hEncoder->threadCmd, 0);
+        atomic_init(&hEncoder->threadDone, 0);
+        if (thrd_create(&hEncoder->workerThread, frame_worker_loop, hEncoder) == thrd_success) {
+            hEncoder->threadActive = 1;
+        }
+    }
+#endif
 
     return 1;
 }
@@ -627,10 +675,19 @@ int faacEncClose(faacEncHandle hpEncoder)
         hEncoder->sbrContext = NULL;
     }
 
+#ifdef FAAC_MULTITHREADING
+    if (hEncoder->threadActive) {
+        atomic_store_explicit(&hEncoder->threadCmd, 4, memory_order_release);
+        thrd_join(hEncoder->workerThread, NULL);
+        hEncoder->threadActive = 0;
+    }
+#endif
+
     FreeMemory(hEncoder);
 
     return 0;
 }
+
 
 /* HE-AAC per-frame front end: take one assembled full-rate frame from the FIFO
  * front (realPerCh real samples/ch, the rest silence-padded), run SBR analysis
@@ -757,16 +814,57 @@ int faacEncEncode(faacEncHandle hpEncoder,
                     memset(hEncoder->audioFIFO[channel][FIFO_AHEAD2] + spc, 0, (FRAME_LEN - spc) * sizeof(float));
             }
 
-            /* LFE's block_type is always forced to ONLY_LONG_WINDOW in PsyCalculate,
-             * so the transient analysis below would be discarded -- skip it. */
-            if (!hEncoder->isLfeChannel[channel])
+        }
+
+#ifdef FAAC_MULTITHREADING
+        if (numChannels > 1 && hEncoder->threadActive && !hEncoder->isLfeChannel[1] &&
+            (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+        {
+            atomic_store_explicit(&hEncoder->threadDone, 0, memory_order_relaxed);
+            atomic_store_explicit(&hEncoder->threadCmd, 1, memory_order_release);
+
+            if (!hEncoder->isLfeChannel[0] &&
+                (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
             {
-                /* Shared detector replacement on HE: skip half-rate PsyBufferUpdate. */
-                if (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext))
+                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[0],
+                    hEncoder->audioFIFO[0][FIFO_AHEAD1],
+                    hEncoder->audioFIFO[0][FIFO_AHEAD2],
+                    hEncoder->channelWorkBuf[0]);
+            }
+
+            int spin = 0;
+            while (atomic_load_explicit(&hEncoder->threadDone, memory_order_acquire) == 0) {
+                if (spin < 500) {
+                    FAAC_PAUSE();
+                    spin++;
+                } else {
+                    thrd_yield();
+                }
+            }
+
+            for (channel = 2; channel < numChannels; channel++) {
+                if (!hEncoder->isLfeChannel[channel] &&
+                    (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
                 {
                     PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
                         hEncoder->audioFIFO[channel][FIFO_AHEAD1],
-                        hEncoder->audioFIFO[channel][FIFO_AHEAD2]);
+                        hEncoder->audioFIFO[channel][FIFO_AHEAD2],
+                        hEncoder->channelWorkBuf[channel]);
+                }
+            }
+        }
+        else
+#endif
+        {
+            for (channel = 0; channel < numChannels; channel++)
+            {
+                if (!hEncoder->isLfeChannel[channel] &&
+                    (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+                {
+                    PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
+                        hEncoder->audioFIFO[channel][FIFO_AHEAD1],
+                        hEncoder->audioFIFO[channel][FIFO_AHEAD2],
+                        hEncoder->channelWorkBuf[channel]);
                 }
             }
         }
@@ -815,6 +913,44 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     /* AAC Filterbank, MDCT with overlap and add */
+#ifdef FAAC_MULTITHREADING
+    if (numChannels > 1 && hEncoder->threadActive) {
+        atomic_store_explicit(&hEncoder->threadDone, 0, memory_order_relaxed);
+        atomic_store_explicit(&hEncoder->threadCmd, 2, memory_order_release);
+
+        FilterBank(hEncoder, &coderInfo[0],
+            hEncoder->audioFIFO[0][FIFO_PAST],
+            hEncoder->audioFIFO[0][FIFO_CURR],
+            hEncoder->freqBuff[0],
+            hEncoder->channelWorkBuf[0]);
+
+        int spin = 0;
+        while (atomic_load_explicit(&hEncoder->threadDone, memory_order_acquire) == 0) {
+            if (spin < 500) {
+                FAAC_PAUSE();
+                spin++;
+            } else {
+                thrd_yield();
+            }
+        }
+
+        for (channel = 2; channel < numChannels; channel++) {
+            FilterBank(hEncoder, &coderInfo[channel],
+                hEncoder->audioFIFO[channel][FIFO_PAST],
+                hEncoder->audioFIFO[channel][FIFO_CURR],
+                hEncoder->freqBuff[channel],
+                hEncoder->channelWorkBuf[channel]);
+        }
+    } else {
+        for (channel = 0; channel < numChannels; channel++) {
+            FilterBank(hEncoder, &coderInfo[channel],
+                hEncoder->audioFIFO[channel][FIFO_PAST],
+                hEncoder->audioFIFO[channel][FIFO_CURR],
+                hEncoder->freqBuff[channel],
+                hEncoder->channelWorkBuf[channel]);
+        }
+    }
+#else
     for (channel = 0; channel < numChannels; channel++) {
         FilterBank(hEncoder,
             &coderInfo[channel],
@@ -823,6 +959,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->freqBuff[channel],
             hEncoder->channelWorkBuf[channel]);
     }
+#endif
 
     for (channel = 0; channel < numChannels; channel++) {
         if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
@@ -987,10 +1124,37 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * exact-fit: an exact fit can fail to terminate on pathological input. */
     for (attempt = 0; attempt <= PEAK_MAX_RETRIES; attempt++)
     {
+#ifdef FAAC_MULTITHREADING
+        if (numChannels > 1 && hEncoder->threadActive) {
+            atomic_store_explicit(&hEncoder->threadDone, 0, memory_order_relaxed);
+            atomic_store_explicit(&hEncoder->threadCmd, 3, memory_order_release);
+
+            BlocQuant(&coderInfo[0], hEncoder->freqBuff[0], &(hEncoder->aacquantCfg));
+
+            int spin = 0;
+            while (atomic_load_explicit(&hEncoder->threadDone, memory_order_acquire) == 0) {
+                if (spin < 500) {
+                    FAAC_PAUSE();
+                    spin++;
+                } else {
+                    thrd_yield();
+                }
+            }
+
+            for (channel = 2; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
+            }
+        } else {
+            for (channel = 0; channel < numChannels; channel++) {
+                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel], &(hEncoder->aacquantCfg));
+            }
+        }
+#else
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                       &(hEncoder->aacquantCfg));
         }
+#endif
 
         // fix max_sfb in CPE mode
         for (int e = 0; e < hEncoder->numElements; e++)

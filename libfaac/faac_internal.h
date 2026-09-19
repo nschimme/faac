@@ -25,6 +25,15 @@
 
 #include <stdint.h>
 
+#if defined(_MSC_VER)
+#include <intrin.h>
+#define FAAC_PAUSE() _mm_pause()
+#elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#define FAAC_PAUSE() __builtin_ia32_pause()
+#else
+#define FAAC_PAUSE() ((void)0)
+#endif
+
 #define FAAC_CFG_VERSION 106
 
 /* MPEG version */
