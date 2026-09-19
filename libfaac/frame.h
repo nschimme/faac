@@ -46,6 +46,16 @@ extern "C" {
 #if FAAC_MULTITHREADING
 #include <threads.h>
 #include <stdatomic.h>
+
+struct faacEncStruct;
+
+typedef struct WorkerContext {
+    struct faacEncStruct *hEncoder;
+    unsigned int channel;
+    thrd_t thread;
+    atomic_int threadCmd;
+    atomic_int threadDone;
+} WorkerContext;
 #endif
 
 typedef struct faacEncStruct {
@@ -124,9 +134,8 @@ typedef struct faacEncStruct {
     RateControl rc;
 
 #if FAAC_MULTITHREADING
-    thrd_t workerThread;
-    atomic_int threadCmd;
-    atomic_int threadDone;
+    WorkerContext workers[MAX_CHANNELS - 1];
+    unsigned int numWorkers;
     int threadActive;
 #endif
 } faacEncStruct;
