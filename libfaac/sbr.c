@@ -358,8 +358,6 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
             faacRunParallelPass(hEncoder, 7);
 
             SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
-
-            faacRunParallelPass(hEncoder, 8);
         } else {
             SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo, hEncoderPtr);
             SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
