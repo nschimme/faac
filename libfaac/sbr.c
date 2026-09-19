@@ -446,6 +446,11 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
+    const float * restrict tCos = sbr->twidCos;
+    const float * restrict tSin = sbr->twidSin;
+    const float * restrict oCos = sbr->oddCos;
+    const float * restrict oSin = sbr->oddSin;
+
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
         float a = p0[0]   * ovl_pos[639 - n0]
@@ -459,8 +464,8 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
                     + p0[385] * ovl_pos[254 - n0]
                     + p0[513] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
-        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
-        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        xr[m] = a * tCos[m] - b * tSin[m];
+        xi[m] = -(a * tSin[m] + b * tCos[m]);
         p0 += 2;
     }
     fft(sbr->fftTables, xr, xi, 6);
@@ -473,8 +478,8 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         float Bi = 0.5f * (xr[kr] - xr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
-        float wr = sbr->oddCos[k];
-        float wi = sbr->oddSin[k];
+        float wr = oCos[k];
+        float wi = oSin[k];
         float Sr = Ar + wr * Br - wi * Bi;
         float Si = Ai + wr * Bi + wi * Br;
         energy[k] = Sr * Sr + Si * Si;

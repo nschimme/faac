@@ -68,15 +68,17 @@ int ResampleChannel(Resampler *r, int ch, int input_len)
     memcpy(combined,     hist, H         * sizeof(float));
     memcpy(combined + H, in,   input_len * sizeof(float));
 
+    const float * restrict hbe = hb_even;
+
     /* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
     for (i = 0; i < output_len; i++) {
-        const float * __restrict c = combined + 2 * i;
+        const float * restrict c = combined + 2 * i;
         float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
         for (j = 0; j < 16; j += 4) {
-            a0 += hb_even[j + 0] * (c[2 * (j + 0)] + c[2 * (31 - j - 0)]);
-            a1 += hb_even[j + 1] * (c[2 * (j + 1)] + c[2 * (31 - j - 1)]);
-            a2 += hb_even[j + 2] * (c[2 * (j + 2)] + c[2 * (31 - j - 2)]);
-            a3 += hb_even[j + 3] * (c[2 * (j + 3)] + c[2 * (31 - j - 3)]);
+            a0 += hbe[j + 0] * (c[2 * (j + 0)] + c[2 * (31 - j - 0)]);
+            a1 += hbe[j + 1] * (c[2 * (j + 1)] + c[2 * (31 - j - 1)]);
+            a2 += hbe[j + 2] * (c[2 * (j + 2)] + c[2 * (31 - j - 2)]);
+            a3 += hbe[j + 3] * (c[2 * (j + 3)] + c[2 * (31 - j - 3)]);
         }
         *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
     }
