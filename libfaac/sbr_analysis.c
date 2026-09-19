@@ -13,9 +13,14 @@
  * Lesser General Public License for more details.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "sbr_internal.h"
+#include "frame.h"
 #include "util.h"
 #include <string.h>
 
@@ -28,68 +33,114 @@ static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slo
     return e;
 }
 
+void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots)
+{
+    float smax = 0.0f, ssum = 0.0f;
+    int smax_idx = 0;
+    float slot_hp_eng[128];
+
+    sa->ch[ch].wantShort = 0;
+    float val_in = sa->ch[ch].lastVal;
+    const float * restrict p_in = fullPtrs[ch];
+    for (int slot = 0; slot < num_slots; slot++) {
+        float stot = 0.0f;
+        float hp_stot = 0.0f;
+        for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
+            float v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
+            stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
+            float d0 = v0 - val_in, d1 = v1 - v0, d2 = v2 - v1, d3 = v3 - v2;
+            hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+            val_in = v3; p_in += 4;
+        }
+        if (slot < 128) slot_hp_eng[slot] = hp_stot;
+
+        if (stot > smax) {
+            smax = stot;
+            smax_idx = slot;
+        }
+        ssum += stot;
+    }
+    sa->ch[ch].lastVal = val_in;
+
+    sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
+    sa->ch[ch].transientSlot = smax_idx;
+
+    float last_hp_eng = 0.0f;
+    int have_last = 0;
+    for (int slot = 0; slot < num_slots; slot++) {
+        if (slot >= 128) break;
+        float hp_eng = slot_hp_eng[slot];
+        if (have_last) {
+            float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
+            float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
+            if (volchg > (0.5f * toteng)) {
+                sa->ch[ch].wantShort = 1;
+                break;
+            }
+        }
+        last_hp_eng = hp_eng;
+        have_last = 1;
+    }
+}
+
+void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
+{
+    float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+    int kx = sbr->kx;
+    int kEnd = sbr->k2;
+
+    memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
+
+    memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
+
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION == 0)
+#endif
+        {
+            float slotEnergy[SBR_QMF_BANDS_64];
+            SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+
+            int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+
+            float * restrict bE = sa->bandE[ch][e];
+            for (int k = kx; k < kEnd; k++)
+                bE[k] += slotEnergy[k];
+        }
+    }
+}
+
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
  * and subband energy accumulation. */
-void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
+void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr, void *hEncoderPtr)
 {
+    (void)hEncoderPtr;
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
-    float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
     sa->valid = 1;
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
-    /* Pass 1: Time-domain transient detection. Identifies the temporal position
-     * and strength of transients across all channels. */
-    for (int ch = 0; ch < nch; ch++) {
-        float smax = 0.0f, ssum = 0.0f;
-        int smax_idx = 0;
-        float slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
+#if FAAC_MULTITHREADING
+    faacEncStruct *hEncoder = (faacEncStruct *)hEncoderPtr;
+    if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
+        hEncoder->sbrSa = sa;
+        hEncoder->sbrFullPtrs = fullPtrs;
+        hEncoder->sbrNumSlots = num_slots;
+        hEncoder->sbrNumSamples = numSamples;
 
-        sa->ch[ch].wantShort = 0;
-        float val_in = sa->ch[ch].lastVal;
-        const float * restrict p_in = fullPtrs[ch];
-        for (int slot = 0; slot < num_slots; slot++) {
-            float stot = 0.0f;
-            float hp_stot = 0.0f;
-            for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
-                float v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
-                stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
-                float d0 = v0 - val_in, d1 = v1 - v0, d2 = v2 - v1, d3 = v3 - v2;
-                hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
-                val_in = v3; p_in += 4;
-            }
-            if (slot < 128) slot_hp_eng[slot] = hp_stot;
-
-            if (stot > smax) {
-                smax = stot;
-                smax_idx = slot;
-            }
-            ssum += stot;
-        }
-        sa->ch[ch].lastVal = val_in;
-
-        sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
-        sa->ch[ch].transientSlot = smax_idx;
-
-        /* Evaluate relative energy jumps to inform block switching. */
-        float last_hp_eng = 0.0f;
-        int have_last = 0;
-        for (int slot = 0; slot < num_slots; slot++) {
-            if (slot >= 128) break;
-            float hp_eng = slot_hp_eng[slot];
-            if (have_last) {
-                float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
-                float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
-                /* PSY_TD_THRESH = 0.5 */
-                if (volchg > (0.5f * toteng)) {
-                    sa->ch[ch].wantShort = 1;
-                    break;
-                }
-            }
-            last_hp_eng = hp_eng;
-            have_last = 1;
+        /* Pass 1 parallel dispatch */
+        faacDispatchWorkers(hEncoder, 6);
+        int ch0 = hEncoder->channelOrder[0];
+        SbrAnalyzePass1Channel(sa, fullPtrs, ch0, num_slots);
+        faacWaitWorkers(hEncoder);
+    } else
+#endif
+    {
+        for (int ch = 0; ch < nch; ch++) {
+            SbrAnalyzePass1Channel(sa, fullPtrs, ch, num_slots);
         }
     }
 
@@ -143,29 +194,24 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
     if (sbr) {
-        int kx = sbr->kx;
-        int kEnd = sbr->k2;
-        for (int ch = 0; ch < nch; ch++) {
-            if (isLfe[ch]) continue;
-            memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
+#if FAAC_MULTITHREADING
+        if (hEncoder && hEncoder->threadActive && hEncoder->numWorkers > 0) {
+            for (int e = 0; e <= sa->numEnvelopes; e++)
+                hEncoder->sbrEnvStart[e] = envStart[e];
 
-            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-            memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
-
-            for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+            /* Pass 2 parallel dispatch */
+            faacDispatchWorkers(hEncoder, 7);
+            int ch0 = hEncoder->channelOrder[0];
+            if (!isLfe[ch0]) {
+                SbrAnalyzePass2Channel(sa, fullPtrs, ch0, num_slots, numSamples, envStart, sbr);
+            }
+            faacWaitWorkers(hEncoder);
+        } else
 #endif
-                {
-                    float slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
-
-                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
-
-                    float * restrict bE = sa->bandE[ch][e];
-                    for (int k = kx; k < kEnd; k++)
-                        bE[k] += slotEnergy[k];
-                }
+        {
+            for (int ch = 0; ch < nch; ch++) {
+                if (isLfe[ch]) continue;
+                SbrAnalyzePass2Channel(sa, fullPtrs, ch, num_slots, numSamples, envStart, sbr);
             }
         }
     }

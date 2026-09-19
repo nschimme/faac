@@ -94,6 +94,7 @@ typedef struct faacEncStruct {
     AACElement elements[MAX_CHANNELS];
     int numElements;
     bool isLfeChannel[MAX_CHANNELS]; /* per-channel LFE lookup, derived from elements[] whenever it changes */
+    unsigned int channelOrder[MAX_CHANNELS]; /* remapped channel dispatch order prioritizing non-LFE channels */
 
     /* Psychoacoustics data */
     PsyInfo psyInfo[MAX_CHANNELS];
@@ -138,8 +139,19 @@ typedef struct faacEncStruct {
     unsigned int numWorkers;
     int threadActive;
     atomic_int nextChannel;
+
+    SignalAnalysis *sbrSa;
+    float **sbrFullPtrs;
+    int sbrNumSlots;
+    int sbrNumSamples;
+    int sbrEnvStart[SBR_MAX_ENVELOPES + 1];
 #endif
 } faacEncStruct;
+
+#if FAAC_MULTITHREADING
+void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
+void faacWaitWorkers(faacEncStruct *hEncoder);
+#endif
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,
