@@ -13,6 +13,15 @@
  * Lesser General Public License for more details.
  */
 
+#ifndef _WIN32
+# ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200809L
+# endif
+# ifndef _XOPEN_SOURCE
+#  define _XOPEN_SOURCE 700
+# endif
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
