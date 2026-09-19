@@ -54,12 +54,10 @@ extern "C" {
 struct faacEncStruct;
 
 typedef struct WorkerContext {
-    char pad1[64];
     struct faacEncStruct *hEncoder;
     thrd_t thread;
     atomic_int threadCmd;
     int workerId;
-    char pad2[64];
 } WorkerContext;
 #endif
 
@@ -155,17 +153,11 @@ typedef struct faacEncStruct {
 
 void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
 
+void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
+
 #if FAAC_MULTITHREADING
 void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
 void faacWaitWorkers(faacEncStruct *hEncoder);
-void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
-#else
-static inline void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
-{
-    for (unsigned int ch = 0; ch < hEncoder->numChannels; ch++) {
-        faacProcessWorkerCmd(hEncoder, cmd, (int)ch);
-    }
-}
 #endif
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

@@ -307,30 +307,6 @@ void faacWaitWorkers(faacEncStruct *hEncoder)
     wait_workers(hEncoder);
 }
 
-void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
-{
-    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
-        dispatch_workers(hEncoder, cmd);
-
-        int ch0 = hEncoder->channelOrder[0];
-        faacProcessWorkerCmd(hEncoder, cmd, ch0);
-        if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
-            while (1) {
-                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
-                if ((unsigned int)idx >= hEncoder->numChannels) break;
-                int ch = hEncoder->channelOrder[idx];
-                faacProcessWorkerCmd(hEncoder, cmd, ch);
-            }
-        }
-
-        wait_workers(hEncoder);
-    } else {
-        for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
-            faacProcessWorkerCmd(hEncoder, cmd, (int)channel);
-        }
-    }
-}
-
 static unsigned int get_hardware_threads(void)
 {
 #ifdef _WIN32
@@ -632,6 +608,32 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 #endif
 
     return 1;
+}
+
+void faacRunParallelPass(faacEncStruct *hEncoder, int cmd)
+{
+#if FAAC_MULTITHREADING
+    if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
+        dispatch_workers(hEncoder, cmd);
+
+        int ch0 = hEncoder->channelOrder[0];
+        faacProcessWorkerCmd(hEncoder, cmd, ch0);
+        if (hEncoder->numWorkers < hEncoder->numChannels - 1) {
+            while (1) {
+                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                if ((unsigned int)idx >= hEncoder->numChannels) break;
+                int ch = hEncoder->channelOrder[idx];
+                faacProcessWorkerCmd(hEncoder, cmd, ch);
+            }
+        }
+
+        wait_workers(hEncoder);
+        return;
+    }
+#endif
+    for (unsigned int channel = 0; channel < hEncoder->numChannels; channel++) {
+        faacProcessWorkerCmd(hEncoder, cmd, (int)channel);
+    }
 }
 
 #ifdef FAAC_STATS
