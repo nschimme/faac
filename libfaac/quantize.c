@@ -230,7 +230,18 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
                + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
         if (ci->block_type == ONLY_SHORT_WINDOW)
+        {
             target *= SHORT_BLOCK_TIGHTEN;
+
+            /* Short-Block Temporal Asymmetric Masking Target Tuning:
+             * Apply asymmetric temporal masking factors relative to attack onset window gnum.
+             * Pre-attack windows (gnum < 2) receive tightened targets (0.70x) to eliminate pre-echo.
+             * Post-attack windows (gnum >= 2) receive relaxed targets (1.25x) to exploit forward auditory masking. */
+            if (gnum < 2)
+                target *= 0.70f;
+            else
+                target *= 1.25f;
+        }
         target *= treble_rolloff(lo, hi, inv_block_len);
 
         /* Tonal-Aware Target Tightening: Tighten masking target on highly tonal bands (high peak-to-average energy ratio)
