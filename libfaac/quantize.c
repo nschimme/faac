@@ -26,7 +26,7 @@
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 
-#if defined(HAVE_SSE2)
+#if HAVE_SSE2
 extern int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n, float sfacfix);
 #endif
 
@@ -62,7 +62,7 @@ static float log10_width_sf_lut[128];
 void QuantizeInit(void)
 {
     int i;
-#if defined(HAVE_SSE2)
+#if HAVE_SSE2
     CPUCaps caps = get_cpu_caps();
     if (caps & CPU_CAP_SSE2)
         qfunc = quantize_sse2;
