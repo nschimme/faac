@@ -584,25 +584,33 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             atomic_store_explicit(&hEncoder->workers[w].threadCmd, 4, memory_order_release);
             thrd_join(hEncoder->workers[w].thread, NULL);
         }
+        if (hEncoder->workers) {
+            FreeMemory(hEncoder->workers);
+            hEncoder->workers = NULL;
+        }
         hEncoder->numWorkers = 0;
         hEncoder->threadActive = 0;
     }
 
     if (!hEncoder->threadActive && maxWorkers > 0) {
-        hEncoder->numWorkers = 0;
-        for (unsigned int w = 0; w < maxWorkers; w++) {
-            WorkerContext *wc = &hEncoder->workers[w];
-            wc->hEncoder = hEncoder;
-            wc->workerId = (int)w;
-            atomic_init(&wc->threadCmd, 0);
-            if (thrd_create(&wc->thread, frame_worker_loop, wc) == thrd_success) {
-                hEncoder->numWorkers++;
-            } else {
-                break;
+        hEncoder->workers = (WorkerContext *)AllocMemory(maxWorkers * sizeof(WorkerContext));
+        if (hEncoder->workers) {
+            memset(hEncoder->workers, 0, maxWorkers * sizeof(WorkerContext));
+            hEncoder->numWorkers = 0;
+            for (unsigned int w = 0; w < maxWorkers; w++) {
+                WorkerContext *wc = &hEncoder->workers[w];
+                wc->hEncoder = hEncoder;
+                wc->workerId = (int)w;
+                atomic_init(&wc->threadCmd, 0);
+                if (thrd_create(&wc->thread, frame_worker_loop, wc) == thrd_success) {
+                    hEncoder->numWorkers++;
+                } else {
+                    break;
+                }
             }
-        }
-        if (hEncoder->numWorkers > 0) {
-            hEncoder->threadActive = 1;
+            if (hEncoder->numWorkers > 0) {
+                hEncoder->threadActive = 1;
+            }
         }
     }
 #endif
@@ -866,6 +874,10 @@ int faacEncClose(faacEncHandle hpEncoder)
         for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
             atomic_store_explicit(&hEncoder->workers[w].threadCmd, 4, memory_order_release);
             thrd_join(hEncoder->workers[w].thread, NULL);
+        }
+        if (hEncoder->workers) {
+            FreeMemory(hEncoder->workers);
+            hEncoder->workers = NULL;
         }
         hEncoder->numWorkers = 0;
         hEncoder->threadActive = 0;

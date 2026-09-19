@@ -144,7 +144,7 @@ typedef struct faacEncStruct {
     int sbrEnvStart[SBR_MAX_ENVELOPES + 1];
 
 #if FAAC_MULTITHREADING
-    WorkerContext workers[MAX_CHANNELS - 1];
+    WorkerContext *workers;
     unsigned int numWorkers;
     int threadActive;
     atomic_int nextChannel;
