@@ -248,8 +248,6 @@ int huffbook(CoderInfo *coder, int *qs, int len, int maxq)
     int bookmin = HCB_ZERO;
     int band = coder->bandcnt;
 
-    coder->maxq[band] = maxq;
-
     for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
         coder->bit_cost[band][cb] = DP_INF;
     }
@@ -304,12 +302,12 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
 
     int max_run = (coder->block_type == ONLY_SHORT_WINDOW) ? 7 : 31;
     int run_bits = (coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
-    int section_header_cost = 4 + run_bits; /* 4-bit book index + 3/5-bit run length */
+    uint16_t section_header_cost = 4 + run_bits; /* 4-bit book index + 3/5-bit run length */
 
     int sb;
 
     /* DP matrices: dp[sb][cb] = min bits up to band sb ending in cb */
-    int dp[NSFB_LONG][NUM_SECTION_BOOKS];
+    uint16_t dp[NSFB_LONG][NUM_SECTION_BOOKS];
     int8_t run[NSFB_LONG][NUM_SECTION_BOOKS];
     int8_t back_cb[NSFB_LONG][NUM_SECTION_BOOKS];
 
@@ -337,8 +335,8 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
             /* Option 1: Continue same codebook cb from sb-1 */
             if (dp[sb - 1][cb] < DP_INF) {
                 int prev_run = run[sb - 1][cb];
-                int extra_hdr = (prev_run % max_run == 0) ? section_header_cost : 0;
-                int cost = dp[sb - 1][cb] + extra_hdr + coder->bit_cost[band_idx][cb];
+                uint16_t extra_hdr = (prev_run % max_run == 0) ? section_header_cost : 0;
+                uint16_t cost = dp[sb - 1][cb] + extra_hdr + coder->bit_cost[band_idx][cb];
                 dp[sb][cb] = cost;
                 run[sb][cb] = prev_run + 1;
                 back_cb[sb][cb] = cb;
@@ -348,7 +346,7 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
             for (int prev_cb = 0; prev_cb < NUM_SECTION_BOOKS; prev_cb++) {
                 if (prev_cb == cb) continue;
                 if (dp[sb - 1][prev_cb] < DP_INF) {
-                    int cost = dp[sb - 1][prev_cb] + section_header_cost + coder->bit_cost[band_idx][cb];
+                    uint16_t cost = dp[sb - 1][prev_cb] + section_header_cost + coder->bit_cost[band_idx][cb];
                     if (cost < dp[sb][cb]) {
                         dp[sb][cb] = cost;
                         run[sb][cb] = 1;
@@ -361,7 +359,7 @@ void optimize_section_codebooks(CoderInfo *coder, int start_band, int num_bands)
 
     /* Find best ending codebook at num_bands - 1 */
     int best_cb = -1;
-    int min_total_bits = DP_INF;
+    uint16_t min_total_bits = DP_INF;
     for (int cb = 0; cb < NUM_SECTION_BOOKS; cb++) {
         if (dp[num_bands - 1][cb] < min_total_bits) {
             min_total_bits = dp[num_bands - 1][cb];

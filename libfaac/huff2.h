@@ -78,7 +78,7 @@ enum {
     SF_MAX_ABS = 255,
 };
 
-#define DP_INF 100000000
+#define DP_INF 65535
 
 /**
  * Restrict scalefactor delta to the spec-defined +/- SF_DELTA range.

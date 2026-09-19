@@ -292,7 +292,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
     int start_band = ci->bandcnt;
-    int start_datacnt = ci->datacnt;
+    int group_qs[FRAME_LEN];
 
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
@@ -349,26 +349,23 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             int sf_abs;
             float gain = resolve_band_gain(sfac, sf_bias, sqrtf(be[sb].peak_energy), *p_last_abs, &sf_rel, &sf_abs);
-            int xi[FRAME_LEN];
+            int *xi_dst = group_qs + gsize * lo;
             int win, maxq = 0;
 
             for (win = 0; win < gsize; win++)
             {
-                int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
+                int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi_dst + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-            huffbook(ci, xi, gsize * width, maxq);
+            huffbook(ci, xi_dst, gsize * width, maxq);
             *p_last_abs = sf_abs;
             ci->sf[ci->bandcnt++] += sf_rel;
-
-            memcpy(ci->qs_store + band * FRAME_LEN, xi, gsize * width * sizeof(int));
         }
     }
 
     int num_bands = ci->bandcnt - start_band;
     optimize_section_codebooks(ci, start_band, num_bands);
 
-    ci->datacnt = start_datacnt;
     for (sb = 0; sb < num_bands; sb++)
     {
         int band = start_band + sb;
@@ -377,7 +374,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             int lo = ci->sfb_offset[sb], hi = ci->sfb_offset[sb + 1];
             int width = hi - lo;
-            huffcode_write_band(ci, ci->qs_store + band * FRAME_LEN, gsize * width, bnum);
+            huffcode_write_band(ci, group_qs + gsize * lo, gsize * width, bnum);
         }
     }
 }

@@ -80,9 +80,7 @@ typedef struct CoderInfo {
     int global_gain;
     int sf[MAX_SCFAC_BANDS];
     int book[MAX_SCFAC_BANDS];
-    int maxq[MAX_SCFAC_BANDS];
-    int bit_cost[MAX_SCFAC_BANDS][16];
-    int qs_store[MAX_SCFAC_BANDS * FRAME_LEN];
+    uint16_t bit_cost[MAX_SCFAC_BANDS][16];
     int bandcnt;
     int sfbn;
     /* Points at the encoder's prebuilt long or short table (frame.c); the
