@@ -215,6 +215,7 @@ static int frame_worker_loop(void *arg)
             } else {
                 hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
             }
+            ResetCoderSections(&hEncoder->coderInfo[ch]);
         }
 
         atomic_store_explicit(&w->threadCmd, 0, memory_order_release);
@@ -1083,7 +1084,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
         }
     }
 
-    /* Perform TNS analysis and filtering */
+    for (int e = 0; e < hEncoder->numElements; e++) {
+      // reduce LFE bandwidth
+		if (hEncoder->elements[e].type == ID_LFE)
+		{
+                    coderInfo[hEncoder->elements[e].channels[0]].sfbn = 3;
+		}
+	}
+
+    /* Perform TNS analysis/filtering and clear section state */
 #if FAAC_MULTITHREADING
     if (hEncoder->threadActive && hEncoder->numWorkers > 0) {
         dispatch_workers(hEncoder, 5);
@@ -1098,6 +1107,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         } else {
             coderInfo[0].tnsInfo.tnsDataPresent = 0;
         }
+        ResetCoderSections(&coderInfo[0]);
 
         for (channel = hEncoder->numWorkers + 1; channel < numChannels; channel++) {
             if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
@@ -1110,6 +1120,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
             }
+            ResetCoderSections(&coderInfo[channel]);
         }
 
         wait_workers(hEncoder);
@@ -1127,21 +1138,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
             } else {
                 coderInfo[channel].tnsInfo.tnsDataPresent = 0;
             }
+            ResetCoderSections(&coderInfo[channel]);
         }
     }
-
-    for (int e = 0; e < hEncoder->numElements; e++) {
-      // reduce LFE bandwidth
-		if (hEncoder->elements[e].type == ID_LFE)
-		{
-                    coderInfo[hEncoder->elements[e].channels[0]].sfbn = 3;
-		}
-	}
-
-    /* Clear each channel's section state before AACstereo pre-loads intensity
-     * bands and BlocQuant resolves the rest. */
-    for (channel = 0; channel < numChannels; channel++)
-        ResetCoderSections(&coderInfo[channel]);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
