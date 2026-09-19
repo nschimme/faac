@@ -23,7 +23,7 @@
 #include "util.h"
 #include "faac_internal.h"
 
-static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
+static inline int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     if (write) {
         /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
@@ -44,7 +44,7 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 /* Width of the transient pointer field, indexed by number of envelopes. */
 static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
 
-static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, bool write)
+static inline int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, bool write)
 {
     int num_env = fd->numEnvelopes;
     int bits = 2;
@@ -79,7 +79,7 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     return bits;
 }
 
-static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
+static inline int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     int len = fd->numEnvelopes + n_q;
@@ -87,14 +87,14 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
     return len;
 }
 
-static int write_sbr_invf(BitStream *bs, bool write)
+static inline int write_sbr_invf(BitStream *bs, bool write)
 {
     if (write) PutBit(bs, SBR_INVF_MODE, 2);
     return 2;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
-static int put_huff(BitAccumulator *acc, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
+static inline int put_huff(BitAccumulator *acc, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
 {
     int sym = clamp_int(delta + offset, 0, nsyms - 1);
     if (write) AccumPutBits(acc, (uint32_t)table[sym].code, table[sym].len);
@@ -102,7 +102,7 @@ static int put_huff(BitAccumulator *acc, bool write, const SBRHuffEntry *table, 
 }
 
 /* Same shape as writesf()'s per-band loop, so it gets the same BitAccumulator batching. */
-static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
+static inline int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     const SBRHuffEntry *table = fd->eff_amp_res ? f_huff_env_3_0dB : f_huff_env_1_5dB;
     int nsyms = fd->eff_amp_res ? F_HUFF_ENV_3_0DB_NSYMS : F_HUFF_ENV_1_5DB_NSYMS;
@@ -125,7 +125,7 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     return bits;
 }
 
-static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
+static inline int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     if (write) {
@@ -135,7 +135,7 @@ static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
     return n_q * 5;
 }
 
-static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
+static inline int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
 {
     int nch = (id_aac == ID_CPE) ? 2 : 1;
     int flags_len = (id_aac == ID_CPE) ? 3 : 2;
@@ -162,7 +162,7 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
 
 /* Emit the full extension_payload body for EXT_SBR_DATA: the 4-bit extension
  * type, the 1-bit header flag, the optional header, and the channel data. */
-static int emit_sbr_payload(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
+static inline int emit_sbr_payload(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
 {
     int bits = 5;
     if (write) PutBit(bs, (SBR_EXT_TYPE_SBR << 1) | (sendHeader & 1), 5);
