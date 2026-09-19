@@ -458,14 +458,30 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 }
 
 
-static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd)
+static void sbr_adopt_envelope_grid(const SBRInfo *sbr, int nch, const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     fd->numEnvelopes = sa->numEnvelopes;
     fd->frameClass   = sa->frameClass;
     fd->bsPointer    = sa->bsPointer;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
+
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     fd->freqRes = sbr->bs_freq_res;
+    for (int ch = 0; ch < nch && ch < MAX_CHANNELS; ch++) {
+        fd->invfMode[ch] = sa->invfMode[ch];
+        fd->ch[ch].noiseFloor[0] = sa->noiseFloor[ch][0];
+        fd->ch[ch].noiseFloor[1] = sa->noiseFloor[ch][1];
+        for (int e = 0; e < SBR_MAX_ENVELOPES; e++) {
+            fd->ch[ch].dfEnv[e] = 0; /* 0 = frequency delta coding */
+        }
+        int active = sa->addHarmonicFlag[ch];
+        fd->ch[ch].addHarmonicFlag = active;
+        if (active) {
+            for (int b = 0; b < SBR_MAX_BANDS; b++) {
+                fd->ch[ch].addHarmonic[b] = sa->addHarmonic[ch][b];
+            }
+        }
+    }
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
@@ -515,7 +531,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
         if (!isLfe[ch])
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
 
-    sbr_adopt_envelope_grid(sbr, sa, fd);
+    sbr_adopt_envelope_grid(sbr, numChannels, sa, fd);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
