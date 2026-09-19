@@ -166,7 +166,7 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
 /* Unified CPE element processing.  Consolidating joint stereo modes into a single
  * pass minimizes cache misses on spectral data and allows the compiler to
  * optimize the mode-specific branches using constant propagation. */
-static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
+static int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
                                int * restrict sfcnt, int wstart, int wend,
