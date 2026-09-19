@@ -491,10 +491,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     unsigned int target_threads = config->max_threads;
     if (target_threads == 0) {
-        target_threads = hw_threads; /* Auto: detect available cores */
-    }
-    if (target_threads > hw_threads) {
-        target_threads = hw_threads; /* Cap at available logical CPU cores */
+        target_threads = hw_threads; /* Default: cap target threads at hardware cores */
     }
 
     if (target_threads > 1 && (target_threads - 1) < maxWorkers) {
