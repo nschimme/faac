@@ -227,12 +227,12 @@ static int frame_worker_loop(void *arg)
         int spin = 0;
         int cmd = 0;
         while ((cmd = atomic_load_explicit(&w->threadCmd, memory_order_acquire)) == 0) {
-            if (spin < 200) {
+            if (spin < 16) {
                 FAAC_PAUSE();
                 spin++;
-            } else if (spin < 1000) {
-                FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE();
-                spin += 4;
+            } else if (spin < 100) {
+                FAAC_PAUSE(); FAAC_PAUSE();
+                spin += 2;
             } else {
                 thrd_yield();
             }
@@ -270,12 +270,12 @@ static inline void wait_workers(faacEncStruct *hEncoder)
     for (unsigned int w = 0; w < hEncoder->numWorkers; w++) {
         int spin = 0;
         while (atomic_load_explicit(&hEncoder->workers[w].threadCmd, memory_order_acquire) != 0) {
-            if (spin < 200) {
+            if (spin < 16) {
                 FAAC_PAUSE();
                 spin++;
-            } else if (spin < 1000) {
-                FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE(); FAAC_PAUSE();
-                spin += 4;
+            } else if (spin < 100) {
+                FAAC_PAUSE(); FAAC_PAUSE();
+                spin += 2;
             } else {
                 thrd_yield();
             }
