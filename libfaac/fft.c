@@ -89,25 +89,28 @@ static void radix4_dif_proc(
 {
     int n = 1 << logm;
     int n2 = n;
-    int n1;
-    int i, j, k;
+    int k;
 
     for (k = 0; k < (logm >> 1); k++, stage_tw += 6 * n2)
     {
-        n1 = n2;
+        int n1 = n2;
         n2 >>= 2;
+        const fftfloat * restrict tw_base = stage_tw + 6;
+        int i, j;
+
         for (i = 0; i < n; i += n1)
         {
-            const fftfloat * restrict tw = stage_tw + 6;
+            const fftfloat * restrict tw = tw_base;
 
             float * restrict r1p = xr + i;
             float * restrict r2p = xr + i + n2;
-            float * restrict r3p = xr + i + 2*n2;
-            float * restrict r4p = xr + i + 3*n2;
+            float * restrict r3p = xr + i + 2 * n2;
+            float * restrict r4p = xr + i + 3 * n2;
+
             float * restrict i1p = xi + i;
             float * restrict i2p = xi + i + n2;
-            float * restrict i3p = xi + i + 2*n2;
-            float * restrict i4p = xi + i + 3*n2;
+            float * restrict i3p = xi + i + 2 * n2;
+            float * restrict i4p = xi + i + 3 * n2;
 
             /* j=0 unrolled: skip the twiddle multiply, it's the identity here */
             {
@@ -174,6 +177,7 @@ static void radix4_dif_proc(
         float * restrict r2p = xr + 1;
         float * restrict i1p = xi;
         float * restrict i2p = xi + 1;
+        int i;
         for (i = 0; i < n; i += 2)
         {
             float r1 = *r1p, i1 = *i1p;
