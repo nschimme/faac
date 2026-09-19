@@ -127,7 +127,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables *fft_tables)
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -145,11 +145,6 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
         sbr->oddCos[m] = (float)cos(M_PI_DOUBLE * (2 * m + 1) / 128.0);
         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
     }
-    /* Borrow the encoder's shared core FFT tables (same fft() routine, same
-     * logm=6 size as the short-block MDCT). The core owns init/terminate; the
-     * logm=6 table is built lazily on first use, single-threaded per encoder. */
-    sbr->fftTables = fft_tables;
-
     SbrUpdate(sbr, bitRate);
     return sbr;
 }
@@ -186,7 +181,6 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 void SbrEnd(SBRInfo *sbr)
 {
     if (!sbr) return;
-    /* fftTables is borrowed from the encoder; the core terminates it. */
     FreeMemory(sbr);
 }
 
@@ -282,11 +276,11 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, FFT_Tables *fft_tables)
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
 {
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
-        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, fft_tables);
+        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
     else
         SbrUpdate(sCtx->sbrInfo, bitrate);
 }
@@ -415,7 +409,9 @@ static inline float fast_log2(float x)
  * SBR bitstream only transmits envelope magnitudes. */
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
 {
-    float xr[64], xi[64];
+    float x[128], y[128];
+    float * restrict xr = x, * restrict xi = x + 64;
+    const float * restrict yr = y, * restrict yi = y + 64;
     const sbrfloat * restrict p0 = qmf_c;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
@@ -434,14 +430,14 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
         p0 += 2;
     }
-    fft(sbr->fftTables, xr, xi, 6);
+    fft(x, y, FFT_LOGM_SHORT);
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
-        float Ar = 0.5f * (xr[k] + xr[kr]);
-        float Ai = 0.5f * (xi[kr] - xi[k]);
-        float Br = -0.5f * (xi[k] + xi[kr]);
-        float Bi = 0.5f * (xr[kr] - xr[k]);
+        float Ar = 0.5f * (yr[k] + yr[kr]);
+        float Ai = 0.5f * (yi[kr] - yi[k]);
+        float Br = -0.5f * (yi[k] + yi[kr]);
+        float Bi = 0.5f * (yr[kr] - yr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
