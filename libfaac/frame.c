@@ -176,6 +176,48 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 
 
 #if FAAC_MULTITHREADING
+static inline void process_worker_cmd(faacEncStruct *hEncoder, int cmd, int ch)
+{
+    if (cmd == 1) {
+        if (!hEncoder->isLfeChannel[ch] &&
+            (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+        {
+            PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[ch],
+                            hEncoder->audioFIFO[ch][FIFO_AHEAD1],
+                            hEncoder->audioFIFO[ch][FIFO_AHEAD2],
+                            hEncoder->channelWorkBuf[ch]);
+        }
+    } else if (cmd == 2) {
+        FilterBank(hEncoder, &hEncoder->coderInfo[ch],
+                   hEncoder->audioFIFO[ch][FIFO_PAST],
+                   hEncoder->audioFIFO[ch][FIFO_CURR],
+                   hEncoder->freqBuff[ch],
+                   hEncoder->channelWorkBuf[ch]);
+    } else if (cmd == 3) {
+        BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
+                  &hEncoder->aacquantCfg);
+    } else if (cmd == 5) {
+        if (!hEncoder->isLfeChannel[ch] && hEncoder->config.useTns && hEncoder->coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
+            float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
+            if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
+                TnsEncode(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch]);
+            } else {
+                hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
+            }
+        } else {
+            hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
+        }
+        ResetCoderSections(&hEncoder->coderInfo[ch]);
+    } else if (cmd == 6) {
+        SbrAnalyzePass1Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots);
+    } else if (cmd == 7) {
+        if (!hEncoder->isLfeChannel[ch] && hEncoder->sbrContext && hEncoder->sbrContext->sbrInfo) {
+            SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
+                                   hEncoder->sbrNumSamples, hEncoder->sbrEnvStart, hEncoder->sbrContext->sbrInfo);
+        }
+    }
+}
+
 static int frame_worker_loop(void *arg)
 {
     WorkerContext *w = (WorkerContext *)arg;
@@ -198,48 +240,15 @@ static int frame_worker_loop(void *arg)
 
         if (cmd == 4) break;
 
-        while (1) {
-            int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
-            if ((unsigned int)idx >= hEncoder->numChannels) break;
-            int ch = hEncoder->channelOrder[idx];
-
-            if (cmd == 1) {
-                if (!hEncoder->isLfeChannel[ch] &&
-                    (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
-                {
-                    PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[ch],
-                                    hEncoder->audioFIFO[ch][FIFO_AHEAD1],
-                                    hEncoder->audioFIFO[ch][FIFO_AHEAD2],
-                                    hEncoder->channelWorkBuf[ch]);
-                }
-            } else if (cmd == 2) {
-                FilterBank(hEncoder, &hEncoder->coderInfo[ch],
-                           hEncoder->audioFIFO[ch][FIFO_PAST],
-                           hEncoder->audioFIFO[ch][FIFO_CURR],
-                           hEncoder->freqBuff[ch],
-                           hEncoder->channelWorkBuf[ch]);
-            } else if (cmd == 3) {
-                BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
-                          &hEncoder->aacquantCfg);
-            } else if (cmd == 5) {
-                if (!hEncoder->isLfeChannel[ch] && hEncoder->config.useTns && hEncoder->coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
-                    float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
-                    if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
-                        TnsEncode(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch]);
-                    } else {
-                        hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
-                    }
-                } else {
-                    hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
-                }
-                ResetCoderSections(&hEncoder->coderInfo[ch]);
-            } else if (cmd == 6) {
-                SbrAnalyzePass1Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots);
-            } else if (cmd == 7) {
-                if (!hEncoder->isLfeChannel[ch] && hEncoder->sbrContext && hEncoder->sbrContext->sbrInfo) {
-                    SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
-                                           hEncoder->sbrNumSamples, hEncoder->sbrEnvStart, hEncoder->sbrContext->sbrInfo);
-                }
+        if (hEncoder->numWorkers == hEncoder->numChannels - 1) {
+            int ch = hEncoder->channelOrder[w->workerId + 1];
+            process_worker_cmd(hEncoder, cmd, ch);
+        } else {
+            while (1) {
+                int idx = atomic_fetch_add_explicit(&hEncoder->nextChannel, 1, memory_order_relaxed);
+                if ((unsigned int)idx >= hEncoder->numChannels) break;
+                int ch = hEncoder->channelOrder[idx];
+                process_worker_cmd(hEncoder, cmd, ch);
             }
         }
 
@@ -570,6 +579,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         for (unsigned int w = 0; w < maxWorkers; w++) {
             WorkerContext *wc = &hEncoder->workers[w];
             wc->hEncoder = hEncoder;
+            wc->workerId = (int)w;
             atomic_init(&wc->threadCmd, 0);
             if (thrd_create(&wc->thread, frame_worker_loop, wc) == thrd_success) {
                 hEncoder->numWorkers++;

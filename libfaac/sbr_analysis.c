@@ -33,7 +33,11 @@ static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slo
     return e;
 }
 
+#if FAAC_MULTITHREADING
 void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots)
+#else
+static inline void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots)
+#endif
 {
     float smax = 0.0f, ssum = 0.0f;
     int smax_idx = 0;
@@ -83,7 +87,11 @@ void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int n
     }
 }
 
+#if FAAC_MULTITHREADING
 void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
+#else
+static inline void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr)
+#endif
 {
     float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
     int kx = sbr->kx;

@@ -64,8 +64,10 @@ typedef struct SignalAnalysis {
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 
+#if FAAC_MULTITHREADING
 void SbrAnalyzePass1Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots);
 void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int num_slots, int numSamples, const int *envStart, struct SBRInfo *sbr);
+#endif
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr, void *hEncoderPtr);
 
 #ifdef __cplusplus

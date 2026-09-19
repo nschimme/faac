@@ -36,4 +36,4 @@ option('stats',
 option('multithreading',
     description: 'Enable C11 multi-threaded HE-AAC / AAC-LC core encoding',
     type: 'feature',
-    value: 'auto')
+    value: 'disabled')
