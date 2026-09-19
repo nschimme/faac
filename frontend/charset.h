@@ -29,6 +29,9 @@ char *utf8_ensure(const char *str);
 
 #ifdef _WIN32
 #include <windows.h>
+#if !defined(strdup)
+# define strdup _strdup
+#endif
 /* Convert UTF-16 wchar_t string to heap-allocated UTF-8 string */
 char *win32_utf16_to_utf8(const wchar_t *wstr);
 

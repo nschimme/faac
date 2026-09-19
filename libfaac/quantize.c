@@ -406,7 +406,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         int b = coder->book[i];
         if (b && b != HCB_INTENSITY && b != HCB_INTENSITY2 && b != HCB_PNS)
         {
-            coder->global_gain = coder->sf[i];
+            coder->global_gain = (unsigned int)coder->sf[i];
             break;
         }
     }
@@ -459,7 +459,7 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
     sfbOffsetLong[i] = l;
     aacquantCfg->max_cbl = i;
     aacquantCfg->max_l = l;
-    *bw = (float)l * rate / (BLOCK_LEN_LONG << 1);
+    *bw = (unsigned int)((float)l * (float)rate / (float)(BLOCK_LEN_LONG << 1));
 }
 
 // short-window grouping: keep spectrally-similar windows together so they

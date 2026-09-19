@@ -310,12 +310,12 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
         if (hEncoder->rc.resMean)
             fullness = RateControlReservoirAfter(&hEncoder->rc, (frameBytes - ADTS_HEADER_SIZE) * 8) >> 5;
         bs->data[0] = 0xFF;
-        bs->data[1] = 0xF0 | (hEncoder->config.mpegVersion << 3) | 1;
-        bs->data[2] = ((LOW - 1) << 6) | (hEncoder->sampleRateIdx << 2) | (channelConfig >> 2);
-        bs->data[3] = ((channelConfig & 3) << 6) | (frameBytes >> 11);
-        bs->data[4] = (frameBytes >> 3) & 0xFF;
-        bs->data[5] = ((frameBytes & 7) << 5) | (fullness >> 6);
-        bs->data[6] = (fullness & 0x3F) << 2;
+        bs->data[1] = (uint8_t)(0xF0 | (hEncoder->config.mpegVersion << 3) | 1);
+        bs->data[2] = (uint8_t)(((LOW - 1) << 6) | (hEncoder->sampleRateIdx << 2) | (channelConfig >> 2));
+        bs->data[3] = (uint8_t)(((channelConfig & 3) << 6) | (frameBytes >> 11));
+        bs->data[4] = (uint8_t)((frameBytes >> 3) & 0xFF);
+        bs->data[5] = (uint8_t)(((frameBytes & 7) << 5) | (fullness >> 6));
+        bs->data[6] = (uint8_t)((fullness & 0x3F) << 2);
     }
 }
 
