@@ -133,6 +133,17 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     for (int e = 0; e <= sa->numEnvelopes; e++)
         envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
 
+    /* Count slots per envelope for power normalization. */
+    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
+    for (int slot = 0; slot < num_slots; slot++) {
+#if FAAC_SBR_DECIMATION > 1
+        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+#endif
+        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
+    }
+    for (int e = 0; e < sa->numEnvelopes; e++)
+        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
+
     /* Adaptive decimation: run 1x full slot analysis on transient frames (VARFIX/VARVAR),
      * and 2x slot decimation on steady-state FIXFIX frames to save ~35% QMF FLOPs. */
     int decimation = (sa->frameClass != SBR_FRAME_CLASS_FIXFIX) ? 1 : 2;
