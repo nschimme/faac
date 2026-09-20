@@ -210,14 +210,6 @@ void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
     } else if (cmd == 3) {
         BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
                   &hEncoder->aacquantCfg);
-    } else if (cmd == 7) {
-        if (!hEncoder->isLfeChannel[ch] && hEncoder->sbrContext && hEncoder->sbrContext->sbrInfo) {
-            SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
-                                   hEncoder->sbrNumSamples, hEncoder->sbrEnvStart, hEncoder->sbrContext->sbrInfo);
-        }
-        if (hEncoder->sbrContext && hEncoder->sbrContext->resampler) {
-            ResampleChannel(hEncoder->sbrContext->resampler, ch, 2 * FRAME_LEN);
-        }
     }
 }
 

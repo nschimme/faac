@@ -133,20 +133,15 @@ typedef struct faacEncStruct {
 
     RateControl rc;
 
+    int channelOrder[MAX_CHANNELS];
+
 #if FAAC_MULTITHREADING
     WorkerContext workers[MAX_CHANNELS - 1];
     unsigned int numWorkers;
     int threadActive;
     atomic_int nextChannel;
-    int channelOrder[MAX_CHANNELS];
 #endif
 
-    /* SBR parallel pass scratch state */
-    void *sbrSa;
-    float **sbrFullPtrs;
-    int sbrNumSlots;
-    int sbrNumSamples;
-    int sbrEnvStart[SBR_MAX_ENVELOPES + 1];
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,
