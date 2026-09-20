@@ -50,41 +50,42 @@ void ResampleEnd(Resampler *r)
     FreeMemory(r);
 }
 
-/* The symmetric-fold gather below defeats autovectorization. */
-int Resample(Resampler *r, int input_len)
+void ResampleChannel(Resampler *r, int ch, int input_len)
 {
     int output_len = input_len / 2;
     const int H = RESAMPLE_FILTER_LEN - 1;            /* 62 */
     const int HALF = RESAMPLE_FILTER_LEN / 2;         /* 31 */
-    int ch, i, j;
+    int i, j;
 
-    for (ch = 0; ch < r->channels; ch++) {
-        float * __restrict in  = r->fullRate[ch];
-        float * __restrict out = r->halfRate[ch];
-        float * __restrict hist = r->buf[ch];
+    float * __restrict in  = r->fullRate[ch];
+    float * __restrict out = r->halfRate[ch];
+    float * __restrict hist = r->buf[ch];
 
-        /* Fixed-size buffers to avoid VLA (MSVC portability): history + one
-         * full-rate HE frame (2 * FRAME_LEN input samples). */
-        float combined[RESAMPLE_FILTER_LEN - 1 + 2 * FRAME_LEN];
+    float combined[RESAMPLE_FILTER_LEN - 1 + 2 * FRAME_LEN];
 
-        memcpy(combined,     hist, H         * sizeof(float));
-        memcpy(combined + H, in,   input_len * sizeof(float));
+    memcpy(combined,     hist, H         * sizeof(float));
+    memcpy(combined + H, in,   input_len * sizeof(float));
 
-        /* Exploit FIR symmetry to fold the tap-delay line before multiplication. */
-        for (i = 0; i < output_len; i++) {
-            const float * __restrict c = combined + 2 * i;
-            float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
-            for (j = 0; j < 16; j += 4) {
-                a0 += hb_even[j + 0] * (c[2 * (j + 0)] + c[2 * (31 - j - 0)]);
-                a1 += hb_even[j + 1] * (c[2 * (j + 1)] + c[2 * (31 - j - 1)]);
-                a2 += hb_even[j + 2] * (c[2 * (j + 2)] + c[2 * (31 - j - 2)]);
-                a3 += hb_even[j + 3] * (c[2 * (j + 3)] + c[2 * (31 - j - 3)]);
-            }
-            *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
+    for (i = 0; i < output_len; i++) {
+        const float * __restrict c = combined + 2 * i;
+        float a0 = 0, a1 = 0, a2 = 0, a3 = 0;
+        for (j = 0; j < 16; j += 4) {
+            a0 += hb_even[j + 0] * (c[2 * (j + 0)] + c[2 * (31 - j - 0)]);
+            a1 += hb_even[j + 1] * (c[2 * (j + 1)] + c[2 * (31 - j - 1)]);
+            a2 += hb_even[j + 2] * (c[2 * (j + 2)] + c[2 * (31 - j - 2)]);
+            a3 += hb_even[j + 3] * (c[2 * (j + 3)] + c[2 * (31 - j - 3)]);
         }
-
-        memcpy(hist, combined + input_len, H * sizeof(float));
+        *out++ = (a0 + a1) + (a2 + a3) + HB_CENTER * combined[2 * i + HALF];
     }
 
-    return output_len;
+    memcpy(hist, combined + input_len, H * sizeof(float));
+}
+
+int Resample(Resampler *r, int input_len)
+{
+    int ch;
+    for (ch = 0; ch < r->channels; ch++) {
+        ResampleChannel(r, ch, input_len);
+    }
+    return input_len / 2;
 }

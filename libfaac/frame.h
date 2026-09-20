@@ -43,6 +43,21 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 
+#if FAAC_MULTITHREADING
+#include <threads.h>
+#include <stdatomic.h>
+
+struct faacEncStruct;
+
+typedef struct WorkerContext {
+    struct faacEncStruct *hEncoder;
+    int workerId;
+    thrd_t thread;
+    atomic_int threadCmd;
+    uint8_t pad[64];
+} WorkerContext;
+#endif
+
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
@@ -70,6 +85,7 @@ typedef struct faacEncStruct {
     float *sin_window_long;
     float *sin_window_short;
     float *freqBuff[MAX_CHANNELS];
+    float *channelWorkBuf[MAX_CHANNELS];
 
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];
@@ -116,6 +132,16 @@ typedef struct faacEncStruct {
     int *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
+
+    int channelOrder[MAX_CHANNELS];
+
+#if FAAC_MULTITHREADING
+    WorkerContext workers[MAX_CHANNELS - 1];
+    unsigned int numWorkers;
+    int threadActive;
+    atomic_int nextChannel;
+#endif
+
 } faacEncStruct;
 
 /* Configuration worker behind faac_encoder_open(): validates the config,

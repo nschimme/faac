@@ -149,6 +149,10 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, FFT_Tables
      * logm=6 size as the short-block MDCT). The core owns init/terminate; the
      * logm=6 table is built lazily on first use, single-threaded per encoder. */
     sbr->fftTables = fft_tables;
+    if (fft_tables) {
+        float dummy_r[64] = {0}, dummy_i[64] = {0};
+        fft(fft_tables, dummy_r, dummy_i, 6);
+    }
 
     SbrUpdate(sbr, bitRate);
     return sbr;
@@ -225,6 +229,7 @@ SBRContext *SbrContextInit(int channels)
 void SbrContextEnd(SBRContext *sbrCtx)
 {
     if (!sbrCtx) return;
+
     if (sbrCtx->sbrInfo) {
         SbrEnd(sbrCtx->sbrInfo);
     }
