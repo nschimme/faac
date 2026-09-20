@@ -54,6 +54,13 @@ void FilterBankInit(faacEncStruct* hEncoder)
     FillSineWindow(hEncoder->sin_window_short, BLOCK_LEN_SHORT);
 
     hEncoder->gpsyInfo.sharedWorkBuffLong = (float*)AllocMemory(2*BLOCK_LEN_LONG*sizeof(float));
+
+    /* Pre-warm FFT tables for long and short MDCTs on main thread to avoid multithreaded lazy-init races */
+    if (hEncoder->channelWorkBuf[0]) {
+        float dummy_in[2 * BLOCK_LEN_LONG] = {0};
+        MDCT(&hEncoder->fft_tables, dummy_in, 2 * BLOCK_LEN_LONG, hEncoder->channelWorkBuf[0]);
+        MDCT(&hEncoder->fft_tables, dummy_in, 2 * BLOCK_LEN_SHORT, hEncoder->channelWorkBuf[0]);
+    }
 }
 
 void FilterBankEnd(faacEncStruct* hEncoder)

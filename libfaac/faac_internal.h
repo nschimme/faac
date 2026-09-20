@@ -30,8 +30,10 @@
 #define FAAC_PAUSE() _mm_pause()
 #elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #define FAAC_PAUSE() __builtin_ia32_pause()
+#elif defined(__aarch64__) || defined(__arm__)
+#define FAAC_PAUSE() __asm__ __volatile__("yield" ::: "memory")
 #else
-#define FAAC_PAUSE() ((void)0)
+#define FAAC_PAUSE() __asm__ __volatile__("" ::: "memory")
 #endif
 
 #define FAAC_CFG_VERSION 106

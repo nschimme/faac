@@ -150,6 +150,10 @@ void SbrAnalyzePass2Channel(SignalAnalysis *sa, float *fullPtrs[], int ch, int n
                 bE[k] += slotEnergy[k];
         }
     }
+
+    if (sbr) {
+        memcpy(sbr->ch[ch].qmfOvl64, workspace + numSamples, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    }
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,

@@ -195,7 +195,10 @@ void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
             hEncoder->coderInfo[ch].groups.n = 1;
             hEncoder->coderInfo[ch].groups.len[0] = 1;
         }
-
+    } else if (cmd == 3) {
+        BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
+                  &hEncoder->aacquantCfg);
+    } else if (cmd == 5) {
         if (!hEncoder->isLfeChannel[ch] && hEncoder->config.useTns && hEncoder->coderInfo[ch].block_type != ONLY_SHORT_WINDOW) {
             float attack = PsyGetAttack(&hEncoder->psyInfo[ch]);
             if (attack <= 0.0f || attack >= TNS_ATTACK_MIN) {
@@ -207,9 +210,6 @@ void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
             hEncoder->coderInfo[ch].tnsInfo.tnsDataPresent = 0;
         }
         ResetCoderSections(&hEncoder->coderInfo[ch]);
-    } else if (cmd == 3) {
-        BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
-                  &hEncoder->aacquantCfg);
     }
 }
 
@@ -1036,7 +1036,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 		}
     }
 
-    /* Fused Pre-Joint Processing: AAC Filterbank MDCT, sfb assignment, TNS, and ResetCoderSections */
+    /* AAC Filterbank MDCT & sfb assignment */
     faacRunParallelPass(hEncoder, 2);
 
     /* Funnelled through one call site so BlocGroup stays a single inlined copy. */
@@ -1088,6 +1088,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
                     coderInfo[hEncoder->elements[e].channels[0]].sfbn = 3;
 		}
 	}
+
+    /* TNS analysis, filtering, and section reset */
+    faacRunParallelPass(hEncoder, 5);
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
