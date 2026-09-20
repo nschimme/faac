@@ -45,7 +45,7 @@ static int escape(int x, int *code)
     return (preflen + 1) + (preflen + 4);
 }
 
-static const hcode16_t * const hmap[12] = {
+static hcode16_t * const hmap[12] = {
     NULL, book01, book02, book03, book04, book05,
     book06, book07, book08, book09, book10, book11
 };

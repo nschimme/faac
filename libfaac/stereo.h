@@ -31,11 +31,11 @@ typedef struct {
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
                      unsigned long bitRatePerCh, const int *sfbOffset[2], const int sfbn[2]);
 
-FAAC_NOINLINE void AACstereo(CoderInfo *coder,
-                           AACElement *elements,
-                           int numElements,
-                           float *s[MAX_CHANNELS],
-                           float quality,
-                           const StereoConfig *cfg);
+void AACstereo(CoderInfo *coder,
+               AACElement *elements,
+               int numElements,
+               float *s[MAX_CHANNELS],
+               float quality,
+               const StereoConfig *cfg);
 
 #endif

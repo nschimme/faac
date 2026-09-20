@@ -124,16 +124,16 @@ void FilterBank(faacEncStruct* hEncoder,
 
     switch (block_type) {
     case ONLY_LONG_WINDOW: {
-        ApplyWindowDirect(p_out_mdct, overlapBuf, hEncoder->sin_window_long, BLOCK_LEN_LONG);
-        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowDirect(p_out_mdct, p_prev_data, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, p_in_data, hEncoder->sin_window_long, BLOCK_LEN_LONG);
         MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;
     }
 
     case LONG_SHORT_WINDOW: {
-        ApplyWindowDirect(p_out_mdct, overlapBuf, hEncoder->sin_window_long, BLOCK_LEN_LONG);
-        CopyFlat(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, NFLAT_LS);
-        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, overlapBuf+BLOCK_LEN_LONG+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
+        ApplyWindowDirect(p_out_mdct, p_prev_data, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        CopyFlat(p_out_mdct+BLOCK_LEN_LONG, p_in_data, NFLAT_LS);
+        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS, p_in_data+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
         ZeroFlat(p_out_mdct+BLOCK_LEN_LONG+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
         MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;

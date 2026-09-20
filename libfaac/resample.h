@@ -40,7 +40,6 @@ typedef struct Resampler {
 Resampler *ResampleInit(int channels);
 void ResampleEnd(Resampler *r);
 
-int ResampleChannel(Resampler *r, int ch, int input_len);
 int Resample(Resampler *r, int input_len);
 
 #ifdef __cplusplus

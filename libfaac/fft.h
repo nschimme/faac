@@ -16,7 +16,6 @@
 #ifndef _FFT_H_
 #define _FFT_H_
 
-#include "faac_internal.h"
 
 #define FFT_MAXLOGM 9
 
@@ -38,6 +37,6 @@ typedef struct
 void fft_initialize		( FFT_Tables *fft_tables );
 void fft_terminate	( FFT_Tables *fft_tables );
 
-FAAC_NOINLINE void fft( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
+void fft			( FFT_Tables *fft_tables, float *xr, float *xi, int logm );
 
 #endif

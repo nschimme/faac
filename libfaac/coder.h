@@ -114,7 +114,7 @@ typedef struct {
 } SR_INFO;
 
 /* Scalefactor-band layout per sampling_rate_index, shared by frame.c and sbr.c. */
-extern const SR_INFO srInfo[12 + 1];
+extern SR_INFO srInfo[12 + 1];
 
 #ifdef __cplusplus
 }

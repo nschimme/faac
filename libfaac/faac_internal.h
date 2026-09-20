@@ -25,25 +25,11 @@
 
 #include <stdint.h>
 
-#ifndef FAAC_NOINLINE
-#if defined(__GNUC__) || defined(__clang__)
-#define FAAC_NOINLINE __attribute__((noinline))
-#elif defined(_MSC_VER)
-#define FAAC_NOINLINE __declspec(noinline)
-#else
-#define FAAC_NOINLINE
-#endif
-#endif
-
 #if defined(_MSC_VER)
 #include <intrin.h>
 #define FAAC_PAUSE() _mm_pause()
 #elif defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #define FAAC_PAUSE() __builtin_ia32_pause()
-#elif defined(__aarch64__) || defined(__arm__)
-#define FAAC_PAUSE() __asm__ __volatile__("yield" ::: "memory")
-#elif defined(__GNUC__) || defined(__clang__)
-#define FAAC_PAUSE() __asm__ __volatile__("" ::: "memory")
 #else
 #define FAAC_PAUSE() ((void)0)
 #endif

@@ -436,7 +436,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
  * bound, so there's nothing left for a caller to redo afterward. Only
  * [0, max_cbs] and [0, max_cbl] are written; callers never index sfb_offset
  * past their own sfbn, which is exactly max_cbs/max_cbl. */
-void CalcBW(unsigned *bw, int rate, const SR_INFO *sr, AACQuantCfg *aacquantCfg,
+void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
             int *sfbOffsetShort, int *sfbOffsetLong)
 {
     int i, l = 0, max = *bw * (BLOCK_LEN_SHORT << 1) / rate;

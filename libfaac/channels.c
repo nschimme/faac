@@ -134,6 +134,9 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
     bits += LEN_TNS_PRES;
 
+    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
+     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
+     * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
         TnsWindowData *win = &tns->windowData;
 
