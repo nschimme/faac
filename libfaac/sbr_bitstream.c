@@ -171,7 +171,7 @@ static int emit_sbr_payload(const SBRInfo *sbr, const SbrFrameData *fd, BitStrea
     return bits;
 }
 
-static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0)
+static int SbrWrite(const SBRInfo *sbr, SbrFrameData *fd, BitStream *bs, int id_aac, int ch0)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
 
@@ -185,7 +185,7 @@ static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
         payloadBits = fd->cachedPayloadBits[ch_idx];
     } else {
         payloadBits = emit_sbr_payload(sbr, fd, NULL, id_aac, ch0, sendHeader, false);
-        ((SbrFrameData *)fd)->cachedPayloadBits[ch_idx] = payloadBits;
+        fd->cachedPayloadBits[ch_idx] = payloadBits;
     }
     int fillBytes = (payloadBits + 7) / 8;
     int padBits = fillBytes * 8 - payloadBits;
@@ -221,7 +221,7 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, i
             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
             /* One step past the newest slot is the oldest: the payload whose
              * audio this access unit's core carries. See SBR_FRAME_FIFO. */
-            const SbrFrameData *fd = &sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
+            SbrFrameData *fd = &sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
             SBRInfo *sbr = sCtx->sbrInfo;
             if (!sbr->headerDecided) {
                 sbr->sendHeaderThisFrame = (sbr->frameCount++ % SBR_HEADER_PERIOD == 0);

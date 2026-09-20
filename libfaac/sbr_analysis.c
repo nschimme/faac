@@ -136,22 +136,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     /* Count slots per envelope for power normalization. */
     for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
     for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
-#endif
-        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
-    }
-    for (int e = 0; e < sa->numEnvelopes; e++)
-        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
-
-    /* Adaptive decimation: run 1x full slot analysis on transient frames (VARFIX/VARVAR),
-     * and 2x slot decimation on steady-state FIXFIX frames to save ~35% QMF FLOPs. */
-    int decimation = (sa->frameClass != SBR_FRAME_CLASS_FIXFIX) ? 1 : 2;
-
-    /* Count slots per envelope for power normalization. */
-    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
-    for (int slot = 0; slot < num_slots; slot++) {
-        if (slot % decimation != 0) continue;
         sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
     }
     for (int e = 0; e < sa->numEnvelopes; e++)
@@ -173,10 +157,8 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
 
             for (int slot = 0; slot < num_slots; slot++) {
-                if (slot % decimation == 0) {
-                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->bandE[ch][e], kx, kEnd);
-                }
+                int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+                SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->bandE[ch][e], kx, kEnd);
             }
         }
     }
