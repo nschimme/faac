@@ -177,12 +177,16 @@ static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
 
     int sendHeader = sbr->sendHeaderThisFrame;
 
-    /* The fill_element's cnt field must precede the payload in the bitstream,
-     * so its size is needed before anything is written. Re-deriving it with a
-     * dry (write=false) pass is cheap -- a few hundred fixed-width/Huffman
-     * fields, not a hot loop -- re-deriving it from sbr's already-quantized
-     * envelope/noise data. */
-    int payloadBits = emit_sbr_payload(sbr, fd, NULL, id_aac, ch0, sendHeader, false);
+    /* Cache payloadBits across rate-control / peak-limiter retry loops for this frame.
+     * Index by ch0 (element start channel) to ensure independent caching per element in 5.1/surround. */
+    int ch_idx = (ch0 >= 0 && ch0 < MAX_CHANNELS) ? ch0 : 0;
+    int payloadBits;
+    if (fd->cachedPayloadBits[ch_idx] >= 0) {
+        payloadBits = fd->cachedPayloadBits[ch_idx];
+    } else {
+        payloadBits = emit_sbr_payload(sbr, fd, NULL, id_aac, ch0, sendHeader, false);
+        ((SbrFrameData *)fd)->cachedPayloadBits[ch_idx] = payloadBits;
+    }
     int fillBytes = (payloadBits + 7) / 8;
     int padBits = fillBytes * 8 - payloadBits;
 

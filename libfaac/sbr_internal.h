@@ -39,6 +39,7 @@ typedef struct SbrFrameData {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
     int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
+    int cachedPayloadBits[MAX_CHANNELS]; /* -1 if uncomputed per ch0, cached payloadBits during bitstream retries */
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     struct {
