@@ -202,8 +202,6 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
     fd->freqRes      = 1;
-    for (int ch = 0; ch < MAX_CHANNELS; ch++)
-        fd->cachedPayloadBits[ch] = -1;
 }
 
 SBRContext *SbrContextInit(int channels)
@@ -419,9 +417,6 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 {
     float xr[64], xi[64];
     const sbrfloat * restrict p0 = qmf_c;
-    const float * restrict twidCos = sbr->twidCos;
-    const float * restrict twidSin = sbr->twidSin;
-
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
         float a = p0[0]   * ovl_pos[639 - n0]
@@ -435,15 +430,11 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
                     + p0[385] * ovl_pos[254 - n0]
                     + p0[513] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
-        xr[m] = a * twidCos[m] - b * twidSin[m];
-        xi[m] = -(a * twidSin[m] + b * twidCos[m]);
+        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
+        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
         p0 += 2;
     }
-
     fft(sbr->fftTables, xr, xi, 6);
-
-    const float * restrict oddCos = sbr->oddCos;
-    const float * restrict oddSin = sbr->oddSin;
     for (int k = kx; k < k2; k++) {
         int kr = 63 - k;
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
@@ -453,11 +444,11 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
         float Bi = 0.5f * (xr[kr] - xr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
-        float wr = oddCos[k];
-        float wi = oddSin[k];
+        float wr = sbr->oddCos[k];
+        float wi = sbr->oddSin[k];
         float Sr = Ar + wr * Br - wi * Bi;
         float Si = Ai + wr * Bi + wi * Br;
-        energy[k] += Sr * Sr + Si * Si;
+        energy[k] = Sr * Sr + Si * Si;
     }
 }
 
@@ -470,8 +461,6 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
     fd->freqRes = sbr->bs_freq_res;
-    for (int ch = 0; ch < MAX_CHANNELS; ch++)
-        fd->cachedPayloadBits[ch] = -1;
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
