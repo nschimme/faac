@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "faac_internal.h"
 #include "bitstream.h"
 #include "coder.h"
 
@@ -113,11 +114,11 @@ int InitElements(AACElement * __restrict elements, int *numElements, int numChan
 
 int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder);
 
-int WriteBitstream(struct faacEncStruct* hEncoder,
-                   CoderInfo *coderInfo,
-                   AACElement *elements,
-                   int numElements,
-                   BitStream *bitStream);
+FAAC_NOINLINE int WriteBitstream(struct faacEncStruct* hEncoder,
+                                CoderInfo *coderInfo,
+                                AACElement *elements,
+                                int numElements,
+                                BitStream *bitStream);
 
 #ifdef __cplusplus
 }

@@ -25,6 +25,16 @@
 
 #include <stdint.h>
 
+#ifndef FAAC_NOINLINE
+#if defined(__GNUC__) || defined(__clang__)
+#define FAAC_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define FAAC_NOINLINE __declspec(noinline)
+#else
+#define FAAC_NOINLINE
+#endif
+#endif
+
 #if defined(_MSC_VER)
 #include <intrin.h>
 #define FAAC_PAUSE() _mm_pause()

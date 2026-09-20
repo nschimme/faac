@@ -153,7 +153,7 @@ typedef struct faacEncStruct {
 
 void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch);
 
-void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
+FAAC_NOINLINE void faacRunParallelPass(faacEncStruct *hEncoder, int cmd);
 
 #if FAAC_MULTITHREADING
 void faacDispatchWorkers(faacEncStruct *hEncoder, int cmd);
@@ -163,8 +163,8 @@ void faacWaitWorkers(faacEncStruct *hEncoder);
 /* Configuration worker behind faac_encoder_open(): validates the config,
  * resolves AUTO/HE-AAC, and (re)initializes the encoder. Returns 1 on success,
  * 0 on failure. */
-int faacEncApplyConfig(faacEncStruct* hEncoder,
-                       faacEncConfigurationPtr config);
+FAAC_NOINLINE int faacEncApplyConfig(faacEncStruct* hEncoder,
+                                     faacEncConfigurationPtr config);
 
 /* Samples/channel per full frame: HE-AAC's core runs dual-rate at Fs/2, so it
  * needs two FRAME_LENs of input to emit one frame at the full rate; LC needs one. */
