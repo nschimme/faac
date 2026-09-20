@@ -40,8 +40,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
-    float totalFrameEnergy = 0.0f;
-
     /* Pass 1: Time-domain transient detection. Identifies the temporal position
      * and strength of transients across all channels. */
     for (int ch = 0; ch < nch; ch++) {
@@ -71,8 +69,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             ssum += stot;
         }
         sa->ch[ch].lastVal = val_in;
-
-        if (!isLfe[ch]) totalFrameEnergy += ssum;
 
         sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
@@ -149,9 +145,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         for (int ch = 0; ch < nch; ch++) {
             if (isLfe[ch]) continue;
             memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
-
-            /* Early-exit: if entire frame is silent (< -120 dB), bypass QMF FFTs. */
-            if (totalFrameEnergy < 1e-12f) continue;
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
             memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
