@@ -177,16 +177,7 @@ int faacEncGetDecoderSpecificInfo(faacEncHandle hpEncoder,unsigned char** ppBuff
 
 void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
 {
-    if (cmd == 1) {
-        if (!hEncoder->isLfeChannel[ch] &&
-            (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
-        {
-            PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[ch],
-                            hEncoder->audioFIFO[ch][FIFO_AHEAD1],
-                            hEncoder->audioFIFO[ch][FIFO_AHEAD2],
-                            hEncoder->channelWorkBuf[ch]);
-        }
-    } else if (cmd == 2) {
+    if (cmd == 2) {
         FilterBank(hEncoder, &hEncoder->coderInfo[ch],
                    hEncoder->audioFIFO[ch][FIFO_PAST],
                    hEncoder->audioFIFO[ch][FIFO_CURR],
@@ -218,8 +209,6 @@ void faacProcessWorkerCmd(faacEncStruct *hEncoder, int cmd, int ch)
     } else if (cmd == 3) {
         BlocQuant(&hEncoder->coderInfo[ch], hEncoder->freqBuff[ch],
                   &hEncoder->aacquantCfg);
-    } else if (cmd == 6) {
-        SbrAnalyzePass1Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots);
     } else if (cmd == 7) {
         if (!hEncoder->isLfeChannel[ch] && hEncoder->sbrContext && hEncoder->sbrContext->sbrInfo) {
             SbrAnalyzePass2Channel(hEncoder->sbrSa, hEncoder->sbrFullPtrs, ch, hEncoder->sbrNumSlots,
@@ -1023,7 +1012,17 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (realPerCh > 0)
             consumeInputFifo(hEncoder, frameSamplesPerCh);
 
-        faacRunParallelPass(hEncoder, 1);
+        for (channel = 0; channel < numChannels; channel++)
+        {
+            if (!hEncoder->isLfeChannel[channel] &&
+                (hEncoder->config.aacObjectType != HE_V1 || !SbrContextIsAnalysisValid(hEncoder->sbrContext)))
+            {
+                PsyBufferUpdate(&hEncoder->gpsyInfo, &hEncoder->psyInfo[channel],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD1],
+                    hEncoder->audioFIFO[channel][FIFO_AHEAD2],
+                    hEncoder->channelWorkBuf[channel]);
+            }
+        }
 
         if (hEncoder->frameNum > LOOKAHEAD_DEPTH)
             break;

@@ -347,7 +347,9 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
             sCtx->signalAnalysis.numSlots = hEncoder->sbrNumSlots;
             sCtx->signalAnalysis.sampled = (hEncoder->sbrNumSlots - 1) / FAAC_SBR_DECIMATION + 1;
 
-            faacRunParallelPass(hEncoder, 6);
+            for (int ch = 0; ch < numChannels; ch++) {
+                SbrAnalyzePass1Channel(&sCtx->signalAnalysis, fullPtrs, ch, hEncoder->sbrNumSlots);
+            }
 
             /* Main thread SBR grid selection */
             SbrGridSelection(&sCtx->signalAnalysis, isLfe, numChannels, hEncoder->sbrNumSlots, sCtx->sbrInfo);
