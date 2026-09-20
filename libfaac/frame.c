@@ -487,17 +487,19 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
 #if FAAC_MULTITHREADING
     unsigned int hw_threads = get_hardware_threads();
-    unsigned int maxWorkers = hEncoder->numChannels - 1;
-
     unsigned int target_threads = config->max_threads;
-    if (target_threads == 0) {
-        target_threads = hw_threads; /* Default: cap target threads at hardware cores */
+
+    if (target_threads == 0 || target_threads >= 999) {
+        /* Default: auto-detect available hardware threads */
+        target_threads = hw_threads;
     }
 
-    if (target_threads > 1 && (target_threads - 1) < maxWorkers) {
+    unsigned int maxWorkers = 0;
+    if (target_threads > 1) {
         maxWorkers = target_threads - 1;
-    } else if (target_threads <= 1) {
-        maxWorkers = 0;
+        if (maxWorkers > hEncoder->numChannels - 1) {
+            maxWorkers = hEncoder->numChannels - 1;
+        }
     }
 
     if (hEncoder->threadActive && hEncoder->numWorkers != maxWorkers) {

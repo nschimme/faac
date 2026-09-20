@@ -612,7 +612,12 @@ int main(int argc, char *argv[])
         switch (c)
         {
         case OPT_TNS_DISABLE: opts.use_tns = false; break;
-        case OPT_THREADS: opts.max_threads = (uint32_t)atoi(optarg); break;
+        case OPT_THREADS:
+            {
+                int t = atoi(optarg);
+                opts.max_threads = (t <= 0) ? 999 : (uint32_t)t;
+            }
+            break;
         case OPT_OVERWRITE: opts.overwrite = true; break;
         case OPT_COMPILATION: opts.metadata.compilation = true; break;
         case OPT_IGNORE_LENGTH: opts.ignore_wav_length = true; break;

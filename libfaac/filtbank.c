@@ -141,9 +141,9 @@ void FilterBank(faacEncStruct* hEncoder,
 
     case SHORT_LONG_WINDOW: {
         ZeroFlat(p_out_mdct, NFLAT_LS);
-        ApplyWindowDirect(p_out_mdct+NFLAT_LS, overlapBuf+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
-        CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, overlapBuf+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
-        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, overlapBuf+BLOCK_LEN_LONG, hEncoder->sin_window_long, BLOCK_LEN_LONG);
+        ApplyWindowDirect(p_out_mdct+NFLAT_LS, p_prev_data+NFLAT_LS, hEncoder->sin_window_short, BLOCK_LEN_SHORT);
+        CopyFlat(p_out_mdct+NFLAT_LS+BLOCK_LEN_SHORT, p_prev_data+NFLAT_LS+BLOCK_LEN_SHORT, NFLAT_LS);
+        ApplyWindowReverse(p_out_mdct+BLOCK_LEN_LONG, p_in_data, hEncoder->sin_window_long, BLOCK_LEN_LONG);
         MDCT(&hEncoder->fft_tables, p_out_mdct, 2*BLOCK_LEN_LONG, overlapBuf);
         break;
     }
