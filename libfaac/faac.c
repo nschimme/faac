@@ -69,7 +69,7 @@ _Static_assert((int)FAAC_INPUT_NULL  == INPUT_NULL  && (int)FAAC_INPUT_16BIT == 
 #define LIBRARY_INFO_BASELINE_SIZE \
     ((uint32_t)(offsetof(faac_library_info, sbr_decimation) + sizeof(uint32_t)))
 #define ENCODER_INFO_BASELINE_SIZE \
-    ((uint32_t)(offsetof(faac_encoder_info, use_pns) + sizeof(bool)))
+    ((uint32_t)(offsetof(faac_encoder_info, max_bit_rate) + sizeof(uint32_t)))
 
 /* faac_encoder* and faacEncHandle are the same underlying object. */
 static inline faacEncStruct *unwrap(faac_encoder *enc) { return (faacEncStruct *)enc; }
@@ -326,7 +326,6 @@ FAACAPI faac_status faac_encoder_get_info(faac_encoder *enc, faac_encoder_info *
     info.bit_rate         = (uint32_t)h->config.bitRate;
     info.bandwidth        = (uint32_t)h->config.bandWidth;
     info.quant_quality    = (uint32_t)h->config.quantqual;
-    info.use_pns          = (h->aacquantCfg.pnslevel > 0);
     info.max_bit_rate     = (uint32_t)h->config.maxBitRate;
     info.encoder_delay    = faacEncoderDelay(h);
     info.rate_control     = (enum faac_rate_control)h->config.rateControl;

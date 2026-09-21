@@ -238,8 +238,6 @@ typedef struct faac_encoder_info {
     uint32_t                bit_rate;         /* resolved bits/sec per channel (0 if quality-driven) */
     uint32_t                bandwidth;        /* resolved cutoff in Hz                               */
     uint32_t                quant_quality;    /* resolved quantizer quality                          */
-    bool                    use_pns;          /* perceptual noise substitution in effect             */
-    uint8_t                 info_reserved[3]; /* explicit pad                                        */
     uint32_t                max_bit_rate;     /* resolved peak cap, 0 if unlimited                   */
 
     /* Priming delay in samples/channel at the output rate: leading samples the
