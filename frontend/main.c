@@ -204,7 +204,7 @@ static help_t help_advanced[] = {
     {"--joint 1\tUse Mid/Side coding.\n", NULL},
     {"--joint 2\tUse Intensity Stereo coding.\n", NULL},
     {"--joint 3\tUse Mixed Mode (dynamic M/S and IS) coding (default).\n", NULL},
-    {"--pns <0 .. 10>\tPNS level; 0=disabled.\n", NULL},
+    {"--pns <0 .. 10>\tPNS level; 0=disabled, -1=auto.\n", NULL},
     {"--mpeg-vers X\tForce AAC MPEG version, X can be 2 or 4\n", NULL},
     {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n", NULL},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
