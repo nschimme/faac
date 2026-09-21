@@ -334,7 +334,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             }
         }
 
-        if (eff_rate <= 24000 || br_per_ch <= 24000) {
+        if (eff_rate <= 16000) {
             hEncoder->aacquantCfg.pnslevel = 2;
         } else if (br_per_ch >= 96000) {
             hEncoder->aacquantCfg.pnslevel = 0;
