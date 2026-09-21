@@ -117,7 +117,7 @@ static int WriteICSInfo(BitStream *bs, CoderInfo *coder)
     return bits;
 }
 
-static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
+static int WriteICS(BitStream *bs, CoderInfo *coder, CoderData *coderData, bool commonWindow)
 {
     PutBit(bs, coder->global_gain, LEN_GLOB_GAIN);
     int bits = LEN_GLOB_GAIN;
@@ -173,10 +173,10 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
 
     BitAccumulator acc = {0};
     AccumBegin(&acc, bs);
-    for (int i = 0; i < coder->datacnt; i++) {
-        if (coder->s[i].len > 0) {
-            AccumPutBits(&acc, (uint32_t)coder->s[i].data, coder->s[i].len);
-            bits += coder->s[i].len;
+    for (int i = 0; i < coderData->datacnt; i++) {
+        if (coderData->s[i].len > 0) {
+            AccumPutBits(&acc, (uint32_t)coderData->s[i].data, coderData->s[i].len);
+            bits += coderData->s[i].len;
         }
     }
     AccumEnd(&acc);
@@ -184,7 +184,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     return bits;
 }
 
-int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
+int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, CoderData *coderData)
 {
     PutBit(bs, elem->type, LEN_SE_ID);
     PutBit(bs, elem->tag, LEN_TAG);
@@ -193,7 +193,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
     switch (elem->type) {
         case ID_SCE:
         case ID_LFE:
-            bits += WriteICS(bs, &coder[elem->channels[0]], false);
+            bits += WriteICS(bs, &coder[elem->channels[0]], &coderData[elem->channels[0]], false);
             break;
 
         case ID_CPE:
@@ -211,8 +211,8 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
                 if (elem->msInfo.is_present == 1)
                     bits += coder[elem->channels[0]].groups.n * coder[elem->channels[0]].sfbn * LEN_MASK;
             }
-            bits += WriteICS(bs, &coder[elem->channels[0]], elem->common_window);
-            bits += WriteICS(bs, &coder[elem->channels[1]], elem->common_window);
+            bits += WriteICS(bs, &coder[elem->channels[0]], &coderData[elem->channels[0]], elem->common_window);
+            bits += WriteICS(bs, &coder[elem->channels[1]], &coderData[elem->channels[1]], elem->common_window);
             break;
         default: break;
     }
@@ -260,7 +260,7 @@ static int WriteAACFillBits(BitStream *bs, int numBits)
     return left;
 }
 
-static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
+static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, CoderData *coderData, AACElement *elems, int nElems, BitStream *bs)
 {
     int bits = 0;
     if (hEncoder->config.outputFormat == 1) bits += WriteADTSHeader(hEncoder, bs);
@@ -268,7 +268,7 @@ static int BuildFrame(struct faacEncStruct *hEncoder, CoderInfo *coder, AACEleme
      * the core, so its total is kept aside. */
     int sbrBits = 0;
     for (int i = 0; i < nElems; i++) {
-        bits += WriteElement(bs, &elems[i], coder);
+        bits += WriteElement(bs, &elems[i], coder, coderData);
         sbrBits += SbrContextGetBits(hEncoder->sbrContext, bs,
                                      &elems[i], (int)hEncoder->config.aacObjectType);
     }
@@ -319,12 +319,12 @@ static void PatchADTSHeader(struct faacEncStruct *hEncoder, BitStream *bs, int f
     }
 }
 
-int WriteBitstream(struct faacEncStruct *hEncoder, CoderInfo *coder, AACElement *elems, int nElems, BitStream *bs)
+int WriteBitstream(struct faacEncStruct *hEncoder, CoderInfo *coder, CoderData *coderData, AACElement *elems, int nElems, BitStream *bs)
 {
     /* Zero so the header's own length field is written as zero, then patched. */
     hEncoder->usedBytes = 0;
     bs->currentBit = 0;
-    int bits = BuildFrame(hEncoder, coder, elems, nElems, bs);
+    int bits = BuildFrame(hEncoder, coder, coderData, elems, nElems, bs);
     if (bits < 0) return -1;
 
     /* Safe to bounds-check after writing: PutBit refuses to write past

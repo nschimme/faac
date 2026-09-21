@@ -117,19 +117,19 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
 }
 
 /* Bitstream mutation function, called once per finalized frame. */
-static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
+static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderData *cd)
 {
     const hcode16_t *book = hmap[bnum];
     int i;
-    int datacnt = coder->datacnt;
+    int datacnt = cd->datacnt;
 
     switch (bnum) {
     case HCB_1:
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            coder->s[datacnt].data = book[idx].data;
-            coder->s[datacnt++].len = book[idx].len;
+            cd->s[datacnt].data = book[idx].data;
+            cd->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_3:
@@ -144,16 +144,16 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             if (q2) { blen++; data = (data << 1) | (q2 < 0); }
             if (q3) { blen++; data = (data << 1) | (q3 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            cd->s[datacnt].data = data;
+            cd->s[datacnt++].len = blen;
         }
         break;
     case HCB_5:
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            coder->s[datacnt].data = book[idx].data;
-            coder->s[datacnt++].len = book[idx].len;
+            cd->s[datacnt].data = book[idx].data;
+            cd->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_7:
@@ -166,8 +166,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            cd->s[datacnt].data = data;
+            cd->s[datacnt++].len = blen;
         }
         break;
     case HCB_9:
@@ -180,8 +180,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            cd->s[datacnt].data = data;
+            cd->s[datacnt++].len = blen;
         }
         break;
     case HCB_ESC:
@@ -200,19 +200,19 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
                 blen++;
                 data = (data << 1) | (qs[i+1] < 0);
             }
-            coder->s[datacnt].data = data;
-            coder->s[datacnt++].len = blen;
+            cd->s[datacnt].data = data;
+            cd->s[datacnt++].len = blen;
             if (x0 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x0, &esc_code);
-                coder->s[datacnt].data = esc_code;
-                coder->s[datacnt++].len = esc_len;
+                cd->s[datacnt].data = esc_code;
+                cd->s[datacnt++].len = esc_len;
             }
             if (x1 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x1, &esc_code);
-                coder->s[datacnt].data = esc_code;
-                coder->s[datacnt++].len = esc_len;
+                cd->s[datacnt].data = esc_code;
+                cd->s[datacnt++].len = esc_len;
             }
         }
         break;
@@ -220,11 +220,11 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
         break;
     }
 
-    coder->datacnt = datacnt;
+    cd->datacnt = datacnt;
 }
 
 /* Pick the codebook that minimizes the bit cost for a given band. */
-int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
+int huffbook(CoderInfo *coder, CoderData *cd, const int *qs, int len, int maxq)
 {
     int bookmin = HCB_ZERO;
 
@@ -248,7 +248,7 @@ int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
         } else {
             bookmin = HCB_ESC;
         }
-        huffcode_write(qs, len, bookmin, coder);
+        huffcode_write(qs, len, bookmin, cd);
     }
 
     /* Record the chosen book at the current band slot, but do NOT advance

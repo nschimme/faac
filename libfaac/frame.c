@@ -999,7 +999,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     for (attempt = 0; attempt <= PEAK_MAX_RETRIES; attempt++)
     {
         for (channel = 0; channel < numChannels; channel++) {
-            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+            BlocQuant(&coderInfo[channel], &hEncoder->coderData[channel], hEncoder->freqBuff[channel],
                       &(hEncoder->aacquantCfg));
         }
 
@@ -1022,7 +1022,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
         if (!bitStream)
             return -1;
 
-        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0)
+        if (WriteBitstream(hEncoder, coderInfo, hEncoder->coderData, hEncoder->elements, hEncoder->numElements, bitStream) < 0)
             return -1;
 
         /* Close the bitstream and return the number of bytes written */
