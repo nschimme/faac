@@ -18,6 +18,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#define strcasecmp _stricmp
 #else
 #include <signal.h>
 #include <locale.h>
