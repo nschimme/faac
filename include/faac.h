@@ -187,7 +187,9 @@ typedef struct faac_params {
     enum faac_input_format  input_format;
     enum faac_shortctl_mode short_control;
 
-    int32_t                 pns_level;     /* perceptual noise substitution, 0..10 (0 = off) */
+#define FAAC_PNS_AUTO (-1)
+
+    int32_t                 pns_level;     /* perceptual noise substitution, -1 = AUTO, 0 = off, 1..10 = level */
 
     const int32_t          *channel_map;   /* optional reorder table, num_channels entries;
                                             * NULL = identity. Caller-owned; copied by open(). */

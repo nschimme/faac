@@ -506,6 +506,8 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.short_control = opts->shortctl;
     if (opts->pns_level >= 0)
         params.pns_level = opts->pns_level;
+    else
+        params.pns_level = FAAC_PNS_AUTO;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
