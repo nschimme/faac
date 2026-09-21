@@ -337,11 +337,11 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
     if (szTemp[0] != '\0')
     {
         int pns = atoi(szTemp);
-        opts.pns_level = (pns < -1) ? -1 : ((pns > 10) ? 10 : (int8_t)pns);
+        opts.use_pns = (pns != 0);
     }
     else
     {
-        opts.pns_level = -1;
+        opts.use_pns = true;
     }
 
     if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)

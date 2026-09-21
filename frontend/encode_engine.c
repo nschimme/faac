@@ -55,8 +55,8 @@ void init_encode_options(encode_options_t *opts)
     opts->stream_format = FAAC_STREAM_ADTS;
     opts->shortctl = FAAC_SHORTCTL_NORMAL;
     opts->use_tns = true;
+    opts->use_pns = true;
     opts->use_lfe = -1;
-    opts->pns_level = -1;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
@@ -502,12 +502,9 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.object_type = opts->object_type;
     params.joint_mode = opts->joint_mode;
     params.use_tns = opts->use_tns;
+    params.use_pns = opts->use_pns;
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
-    if (opts->pns_level >= 0)
-        params.pns_level = opts->pns_level;
-    else
-        params.pns_level = FAAC_PNS_AUTO;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {
@@ -536,7 +533,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         else if (opts->shortctl == FAAC_SHORTCTL_NOLONG)
             log_cb(1, "disabling long blocks\n", user_data);
 
-        if (opts->pns_level > 0 && opts->mpeg_version == FAAC_MPEG2)
+        if (opts->use_pns && opts->mpeg_version == FAAC_MPEG2)
             log_cb(1, "PNS not allowed in MPEG-2 mode, disabling PNS\n", user_data);
     }
 
@@ -634,7 +631,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
             .object_type = info.object_type,
             .joint_mode = params.joint_mode,
             .use_tns = params.use_tns,
-            .pns_level = (int8_t)info.pns_level,
+            .use_pns = info.use_pns,
             .bandwidth = info.bandwidth,
             .quant_quality = (uint16_t)info.quant_quality,
             .bit_rate = info.bit_rate,

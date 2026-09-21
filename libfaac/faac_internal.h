@@ -65,7 +65,7 @@ typedef struct faacEncConfiguration
     unsigned int inputFormat;
     int shortctl;
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
-    int pnslevel;
+    int usePns;
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 

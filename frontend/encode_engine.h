@@ -79,8 +79,8 @@ typedef struct {
     enum faac_shortctl_mode shortctl;
 
     bool use_tns;
+    bool use_pns;
     int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
-    int8_t pns_level; /* -1 to leave default */
 
     uint16_t quant_quality;
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */
@@ -143,7 +143,7 @@ typedef struct {
     enum faac_object_type object_type;
     enum faac_joint_mode joint_mode;
     bool use_tns;
-    int8_t pns_level;
+    bool use_pns;
     uint32_t bandwidth;
     uint16_t quant_quality;
     uint32_t bit_rate; /* bps per channel */
