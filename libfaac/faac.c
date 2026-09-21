@@ -126,7 +126,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
-    tmp.pns_level     = 4;
+    tmp.pns_level     = -1;             /* -1 = AUTO (derived from bitrate and sample rate) */
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -177,7 +177,7 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->num_channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->pns_level < 0 || p->pns_level > 10)
+    if ((p->pns_level < 0 && p->pns_level != -1) || p->pns_level > 10)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->channel_map) {
         uint32_t i;
@@ -292,13 +292,14 @@ FAACAPI faac_status faac_encoder_close(faac_encoder **enc)
 
 /* LC: one frame of 50% MDCT overlap. HE-AAC: that same core delay at full
  * rate (2*FRAME_LEN) plus one extra full-rate frame the SBR/resample pipeline
- * buffers ahead of the core, net of the resampler's own FIR group delay.
+ * buffers ahead of the core, net of the resampler's own FIR group delay, plus
+ * the one sample the input FIFO is primed with to make the count even.
  * Verified against decoded output, not derived from spec. */
 static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
     switch (h->config.aacObjectType) {
         case LOW:   return FRAME_LEN;
-        case HE_V1: return 3 * FRAME_LEN - RESAMPLE_FILTER_LEN / 2;
+        case HE_V1: return 3 * FRAME_LEN - RESAMPLE_FILTER_LEN / 2 + 1;
     }
     assert(0 && "faacEncoderDelay: unhandled aacObjectType");
     return FRAME_LEN;
