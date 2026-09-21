@@ -274,7 +274,8 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
-static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
+static void assign_band_codebooks(CoderInfo * __restrict ci, CoderData * __restrict cd,
+                                   const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
                                    int * __restrict p_last_abs)
@@ -347,7 +348,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int qm = qfunc(xr0 + win * BLOCK_LEN_SHORT + lo, xi + win * width, width, gain);
                 if (qm > maxq) maxq = qm;
             }
-            huffbook(ci, xi, gsize * width, maxq);
+            huffbook(ci, cd, xi, gsize * width, maxq);
             *p_last_abs = sf_abs;
         }
 
@@ -376,7 +377,8 @@ static void assert_band_widths_align(const CoderInfo * __restrict ci)
         assert((ci->sfb_offset[sfb + 1] - ci->sfb_offset[sfb]) % 4 == 0);
 }
 
-int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
+int BlocQuant(CoderInfo * __restrict coder, CoderData * __restrict coderData,
+              float * __restrict xr, AACQuantCfg *aacquantCfg)
 {
     float target[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
@@ -387,13 +389,14 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     assert_band_widths_align(coder);
 
-    coder->bandcnt = coder->datacnt = 0;
+    coder->bandcnt = 0;
+    coderData->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
     {
         float group_total = measure_band_energy(coder, gxr, i, cutoff, be);
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf);
+        assign_band_codebooks(coder, coderData, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 

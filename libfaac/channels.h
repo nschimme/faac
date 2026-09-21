@@ -111,10 +111,11 @@ static inline int GetChannelConfig(int numChannels)
 
 int InitElements(AACElement * __restrict elements, int *numElements, int numChannels, bool useLfe);
 
-int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder);
+int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder, CoderData *coderData);
 
 int WriteBitstream(struct faacEncStruct* hEncoder,
                    CoderInfo *coderInfo,
+                   CoderData *coderData,
                    AACElement *elements,
                    int numElements,
                    BitStream *bitStream);

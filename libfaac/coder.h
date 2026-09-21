@@ -92,18 +92,24 @@ typedef struct CoderInfo {
         int len[MAX_SHORT_WINDOWS];
     } groups;
 
-    /* worst case: one codeword with two escapes per two spectral lines */
+    TnsInfo tnsInfo;
+} CoderInfo;
+
+/* Worst case: one codeword with two escapes per two spectral lines. Written
+ * only by BlocQuant/huffbook during final Huffman coding, read only by
+ * WriteICS during bitstream emission. Kept out of CoderInfo (~12KB/channel
+ * here vs. ~1.5KB/channel for the rest) so the per-frame passes over
+ * coderInfo[] in frame.c/stereo.c/tns.c/blockswitch.c/filtbank.c, which never
+ * touch this buffer, don't drag it through cache. */
 #define DATASIZE (3*FRAME_LEN/2)
 
+typedef struct CoderData {
     struct {
         int data;
         int len;
     } s[DATASIZE];
     int datacnt;
-
-
-    TnsInfo tnsInfo;
-} CoderInfo;
+} CoderData;
 
 typedef struct {
   unsigned long sampling_rate;  /* the following entries are for this sampling rate */

@@ -72,6 +72,10 @@ typedef struct faacEncStruct {
     /* Channel and Coder data for all channels */
     CoderInfo coderInfo[MAX_CHANNELS];
 
+    /* Per-channel Huffman escape/codeword scratch, split out of CoderInfo
+     * so hot per-frame passes over coderInfo[] don't touch it (see coder.h). */
+    CoderData coderData[MAX_CHANNELS];
+
     /* Element-centric configuration */
     AACElement elements[MAX_CHANNELS];
     int numElements;
