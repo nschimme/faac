@@ -127,6 +127,74 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
+/* The decoder's patch map (ISO 14496-3 §4.6.18.6.3): the SBR range is
+ * filled from the top of the core band downwards, in as many copies as it
+ * takes, each copy no wider than the source below it. srcBand records which
+ * source band lands on each SBR band. */
+static void build_patches(SBRInfo *sbr)
+{
+    const int *fm = sbr->bandEdges;
+    int nm = sbr->numBands;
+    int k0 = sbr->kx, kx = sbr->kx, k2 = sbr->k2;
+    int msb = k0, usb = kx, np = 0;
+    int goal = (int)((2048000 + (sbr->sampleRate >> 1)) / sbr->sampleRate);
+    int k, sb;
+
+    if (goal < k2) {
+        for (k = 0; fm[k] < goal; k++) ;
+    } else {
+        k = nm;
+    }
+    do {
+        int j = k + 1, odd;
+        do {
+            j--;
+            sb = fm[j];
+            odd = (sb - 2 + k0) & 1;
+        } while (sb > k0 - 1 + msb - odd);
+
+        if (np >= SBR_MAX_PATCHES) break;
+        int num = sb - usb > 0 ? sb - usb : 0;
+        sbr->patchNum[np] = num;
+        sbr->patchStart[np] = k0 - odd - num;
+        if (num > 0) {
+            usb = sb;
+            msb = sb;
+            np++;
+        } else {
+            msb = kx;
+        }
+        if (fm[k] - sb < 3) k = nm;
+    } while (sb != k2);
+
+    if (np > 1 && sbr->patchNum[np - 1] < 3) np--;
+    sbr->numPatches = np;
+
+    sbr->srcLo = kx;
+    int t = kx;
+    for (int i = 0; i < np; i++) {
+        if (sbr->patchStart[i] < sbr->srcLo) sbr->srcLo = sbr->patchStart[i];
+        for (int x = 0; x < sbr->patchNum[i]; x++, t++)
+            sbr->srcBand[t] = sbr->patchStart[i] + x;
+    }
+    for (; t < k2; t++) sbr->srcBand[t] = kx - 1;
+}
+
+/* Noise floor bands (ISO 14496-3 §4.6.18.3.2.3): SBR_NOISE_BANDS per octave
+ * of the SBR range, on low-resolution band edges. */
+static void build_noise_bands(SBRInfo *sbr)
+{
+    int nq = (int)lrintf(SBR_NOISE_BANDS * log2f((float)sbr->k2 / (float)sbr->kx));
+    nq = clamp_int(nq, 1, SBR_MAX_NQ);
+    sbr->numNoiseBands = nq;
+    sbr->noiseEdges[0] = sbr->bandEdgesLow[0];
+    int idx = 0;
+    for (int k = 1; k <= nq; k++) {
+        idx += (sbr->numBandsLow - idx) / (nq + 1 - k);
+        sbr->noiseEdges[k] = sbr->bandEdgesLow[idx];
+    }
+}
+
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
@@ -176,6 +244,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
 
     build_freq_table(sbr);
+    build_patches(sbr);
+    build_noise_bands(sbr);
 }
 
 void SbrEnd(SBRInfo *sbr)
@@ -196,6 +266,8 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
     fd->freqRes      = 1;
+    for (int ch = 0; ch < MAX_CHANNELS; ch++)
+        for (int g = 0; g < SBR_MAX_NQ; g++) fd->ch[ch].noiseLevel[g] = SBR_NOISE_LEVEL_MAX;
 }
 
 SBRContext *SbrContextInit(int channels)
@@ -405,9 +477,9 @@ static inline float fast_log2(float x)
 /* 64-band subband energy analysis using a 64-point complex FFT.
  * Leverages conjugate symmetry to extract two 64-point real-subsequence
  * DFTs from one complex transform, reducing FLOPs by ~50% compared to
- * a standard 128-point implementation. Phase info is discarded as the
- * SBR bitstream only transmits envelope magnitudes. */
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+ * a standard 128-point implementation. Writes the complex subband samples
+ * of bands [kx, k2) as real and imaginary planes. */
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict re, float * restrict im, int kx, int k2)
 {
     float x[128], y[128];
     float * restrict xr = x, * restrict xi = x + 64;
@@ -442,9 +514,8 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
         float wi = sbr->oddSin[k];
-        float Sr = Ar + wr * Br - wi * Bi;
-        float Si = Ai + wr * Bi + wi * Br;
-        energy[k] = Sr * Sr + Si * Si;
+        re[k] = Ar + wr * Br - wi * Bi;
+        im[k] = Ai + wr * Bi + wi * Br;
     }
 }
 
@@ -500,6 +571,84 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
     }
 }
 
+/* Inverse filtering, noise floor and missing harmonics from tonality
+ * (ISO 14496-3 §4.6.18.6.4). A patch carries the source's harmonics to
+ * frequencies where they don't belong, so per noise band the strongest
+ * chirp factor is used unless the original is more tonal than what it
+ * leaves; the tonality the patch keeps beyond the original's is buried under
+ * the noise floor, and a band the whitened patch leaves far less tonal than
+ * an original above SBR_HARMONIC_MIN_TONALITY gets a sinusoid. Tonalities
+ * are energy-weighted over each band, as the decoder's envelope adjuster
+ * treats a band as one. */
+static const float sbr_chirp[4] = { 0.0f, 0.75f, 0.9f, SBR_CHIRP_MAX };
+
+static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
+                                const struct SignalAnalysis *sa, SbrFrameData *fd)
+{
+    int nq = sbr->numNoiseBands, nb = sbr->numBands;
+
+    for (int ch = 0; ch < nch; ch++) {
+        if (isLfe[ch]) continue;
+        /* [0] energy, [1] original, [2] patch as is, [3] patch whitened */
+        float q[SBR_MAX_NQ][4];
+        memset(q, 0, sizeof(q));
+        int g = 0;
+        for (int k = sbr->kx; k < sbr->k2; k++) {
+            while (g + 1 < nq && k >= sbr->noiseEdges[g + 1]) g++;
+            float e = 0;
+            for (int env = 0; env < sa->numEnvelopes; env++) e += sa->bandE[ch][env][k];
+            const float *ts = sa->tonSrc[ch][sbr->srcBand[k]];
+            q[g][0] += e;
+            q[g][1] += e * sa->tonTgt[ch][k];
+            q[g][2] += e * ts[0];
+            q[g][3] += e * ts[1];
+        }
+
+        float chosen[SBR_MAX_NQ];
+        for (g = 0; g < nq; g++) {
+            float inv = 1.0f / (q[g][0] + SBR_ENERGY_FLOOR);
+            float t_orig = q[g][1] * inv, t_raw = q[g][2] * inv, t_white = q[g][3] * inv;
+            /* The weaker modes leave tonality between the two measured ends,
+             * by the square of their distance from full whitening: their
+             * zeros sit that much further from the source's poles. */
+            int c = 3;
+            float ts = t_white;
+            while (c > 0 && ts < t_orig) {
+                c--;
+                float d = (1.0f - sbr_chirp[c]) / (1.0f - SBR_CHIRP_MAX);
+                ts = t_white + (t_raw - t_white) * d * d;
+            }
+            chosen[g] = ts;
+            fd->ch[ch].invfMode[g] = c;
+
+            /* Decoded tonal-to-noise ratio t/(n + NF) should equal the
+             * original's, with t and n the whitened patch's tonal and noise
+             * fractions; solve for the noise floor NF. */
+            float nf = ts / ((1.0f + ts) * (t_orig + SBR_ENERGY_FLOOR)) - 1.0f / (1.0f + ts);
+            int level = SBR_NOISE_LEVEL_MAX;
+            if (nf > 0.0f)
+                level = clamp_int((int)lrintf(SBR_NOISE_LEVEL_OFFSET - fast_log2(nf)), 0, SBR_NOISE_LEVEL_MAX);
+            fd->ch[ch].noiseLevel[g] = level;
+        }
+
+        /* A band gets its sinusoid when any of its QMF bands is a tone the
+         * whitened patch falls far short of. */
+        int flag = 0;
+        g = 0;
+        for (int b = 0; b < nb; b++) {
+            int add = 0;
+            for (int k = sbr->bandEdges[b]; k < sbr->bandEdges[b + 1]; k++) {
+                while (g + 1 < nq && k >= sbr->noiseEdges[g + 1]) g++;
+                float t_orig = sa->tonTgt[ch][k];
+                add |= t_orig > SBR_HARMONIC_MIN_TONALITY && chosen[g] * 4.0f < t_orig;
+            }
+            fd->ch[ch].addHarmonic[b] = (unsigned char)add;
+            flag |= add;
+        }
+        fd->ch[ch].addHarmonicFlag = flag;
+    }
+}
+
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     for (int ch = 0; ch < numChannels; ch++)
@@ -508,6 +657,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
+    sbr_choose_hf_tools(sbr, numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
@@ -516,8 +666,10 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
     }
     for (int ch = 0; ch < numChannels; ch++) {
         if (isLfe[ch]) continue;
-        g_faacStats.sbrInvfSum += SBR_INVF_MODE;
-        g_faacStats.sbrInvfCount++;
+        for (int g = 0; g < sbr->numNoiseBands; g++) {
+            g_faacStats.sbrInvfSum += fd->ch[ch].invfMode[g];
+            g_faacStats.sbrInvfCount++;
+        }
     }
 #endif
 }

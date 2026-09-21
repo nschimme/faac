@@ -65,6 +65,14 @@ struct BitStream;
  * (ISO 14496-3 §4.6.18.3: numTimeSlots = 16). All bs_rel_bord/t_env values
  * written in a variable grid live in [0, SBR_NUM_TIME_SLOTS]. */
 #define SBR_NUM_TIME_SLOTS   16
+/* QMF slots analysed per frame: 2*FRAME_LEN samples in 64-sample slots,
+ * every FAAC_SBR_DECIMATION-th one. */
+#define SBR_MAX_SLOTS        32
+#define SBR_TON_SLOTS        ((SBR_MAX_SLOTS - 1) / FAAC_SBR_DECIMATION + 1)
+/* Slot step of the tonality's autocorrelation. */
+#define SBR_TON_STEP         2
+/* Chirp factor of the strongest inverse filtering mode (§4.6.18.6.1). */
+#define SBR_CHIRP_MAX        0.98f
 
 /* SBR extension types (ISO 14496-3 §4.6.18). */
 #define SBR_EXT_TYPE_SBR     0xd
@@ -76,14 +84,18 @@ struct BitStream;
 #define SBR_ENERGY_FLOOR                (1e-15f)
 /* log2(0) guard in envelope quantization: -200 dBFS^2, below all SBR quantizer ranges. */
 #define SBR_LOG_ENERGY_FLOOR            (1e-20f)
-/* Noise floor level, written for the single noise band of every noise
- * envelope (ISO 14496-3 §4.6.18.6.4). The decoder adds noise at
- * 2^(6 - level) relative to the patched signal; quality keeps rising with
- * the level until the fill is effectively off, so this keeps a floor at
- * little cost. */
-#define SBR_NOISE_LEVEL_DEFAULT         12
-/* Inverse filtering mode, written for every channel (ISO 14496-3 §4.6.18.6.4). */
-#define SBR_INVF_MODE                   3
+/* Noise floor levels (ISO 14496-3 §4.6.18.6.4): the decoder adds noise at
+ * 2^(SBR_NOISE_LEVEL_OFFSET - level) relative to the patched signal, so the
+ * top of the range is a fill that is effectively off. */
+#define SBR_NOISE_LEVEL_OFFSET          6
+#define SBR_NOISE_LEVEL_MAX             30
+/* Noise floor bands per octave of SBR range (bs_noise_bands). */
+#define SBR_NOISE_BANDS                 2
+#define SBR_MAX_NQ                      5
+#define SBR_MAX_PATCHES                 6
+/* A band whose predictable energy exceeds its residual by this much is a
+ * tone the patch must reproduce; where it can't, a sinusoid is added. */
+#define SBR_HARMONIC_MIN_TONALITY       8.0f
 /* 6 = log2(64): normalises 64-band QMF energy to per-band level. ISO 14496-3 §4.6.18.6.3. */
 #define SBR_ENV_LEVEL_LOG2_OFFSET       (6.0f)
 /* Rate-dependent resolution thresholds. */

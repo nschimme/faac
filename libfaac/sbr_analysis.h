@@ -58,6 +58,13 @@ typedef struct SignalAnalysis {
     /* Per-envelope QMF band energy, binned over the grid above; only the first
        numEnvelopes rows are written. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+
+    /* Tonality of each QMF band over the frame: predictable energy over the
+       residual of a second-order predictor. tonSrc holds the same for the
+       patch source bands, as they are and after the decoder's strongest
+       inverse filter. */
+    float tonTgt[MAX_CHANNELS][SBR_QMF_BANDS_64];
+    float tonSrc[MAX_CHANNELS][SBR_QMF_BANDS_64][2]; /* [0] as is, [1] whitened */
 } SignalAnalysis;
 
 void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);

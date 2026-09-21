@@ -36,7 +36,7 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
         PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 */
         PutBit(bs, sbr->bs_freq_scale,  2);
         PutBit(bs, sbr->bs_alter_scale, 1);
-        PutBit(bs, 0,                   2); /* bs_noise_bands = 0 */
+        PutBit(bs, SBR_NOISE_BANDS,     2); /* bs_noise_bands */
     }
     return 21;
 }
@@ -87,10 +87,12 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
     return len;
 }
 
-static int write_sbr_invf(BitStream *bs, bool write)
+static int write_sbr_invf(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    if (write) PutBit(bs, SBR_INVF_MODE, 2);
-    return 2;
+    if (write)
+        for (int g = 0; g < sbr->numNoiseBands; g++)
+            PutBit(bs, fd->ch[ch].invfMode[g], 2);
+    return 2 * sbr->numNoiseBands;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
@@ -125,22 +127,43 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     return bits;
 }
 
-static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
+/* Noise floors delta-coded in frequency (§4.6.18.3.6): a 5-bit first band,
+ * then f_huffman_env_3_0dB deltas. */
+static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    if (write) {
-        for (int ne = 0; ne < n_q; ne++)
-            PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
+    const int *level = fd->ch[ch].noiseLevel;
+    int bits = 0;
+    BitAccumulator acc = {0};
+
+    if (write) AccumBegin(&acc, bs);
+    for (int ne = 0; ne < n_q; ne++) {
+        if (write) AccumPutBits(&acc, (uint32_t)level[0], 5);
+        bits += 5;
+        for (int g = 1; g < sbr->numNoiseBands; g++)
+            bits += put_huff(&acc, write, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, level[g] - level[g - 1]);
     }
-    return n_q * 5;
+    if (write) AccumEnd(&acc);
+    return bits;
+}
+
+/* Missing harmonics (§4.6.18.3.7): a flag, then one bit per high-res band. */
+static int write_sbr_sinusoids(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
+{
+    int flag = fd->ch[ch].addHarmonicFlag;
+    if (write) PutBit(bs, flag, 1);
+    if (!flag) return 1;
+    if (write)
+        for (int b = 0; b < sbr->numBands; b++)
+            PutBit(bs, fd->ch[ch].addHarmonic[b], 1);
+    return 1 + sbr->numBands;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
 {
     int nch = (id_aac == ID_CPE) ? 2 : 1;
-    int flags_len = (id_aac == ID_CPE) ? 3 : 2;
     int lead_len = (id_aac == ID_CPE) ? 2 : 1;
-    int bits = lead_len + flags_len;
+    int bits = lead_len + 1;
 
     if (write) PutBit(bs, 0, lead_len); /* bs_coupling / reserved */
 
@@ -149,13 +172,15 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_dtdf(fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_invf(bs, write);
+        bits += write_sbr_invf(sbr, fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_envelope(sbr, fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_noise(fd, bs, write);
+        bits += write_sbr_noise(sbr, fd, bs, ch0 + ch, write);
+    for (int ch = 0; ch < nch; ch++)
+        bits += write_sbr_sinusoids(sbr, fd, bs, ch0 + ch, write);
 
-    if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
+    if (write) PutBit(bs, 0, 1); /* bs_extended_data */
 
     return bits;
 }

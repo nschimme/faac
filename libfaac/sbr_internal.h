@@ -39,10 +39,12 @@ typedef struct SbrFrameData {
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
     int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
-    /* The noise floor and inverse-filter mode are stream constants
-     * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     struct {
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int invfMode[SBR_MAX_NQ];              /* per noise band */
+        int noiseLevel[SBR_MAX_NQ];            /* per noise band, absolute */
+        int addHarmonicFlag;
+        unsigned char addHarmonic[SBR_MAX_BANDS]; /* per high-res band */
     } ch[MAX_CHANNELS];
 } SbrFrameData;
 
@@ -59,6 +61,16 @@ struct SBRInfo {
     int bandEdges[SBR_MAX_BANDS + 1];
     int numBandsLow; /* low-res band count: every other high-res edge */
     int bandEdgesLow[SBR_MAX_BANDS + 1];
+    /* The decoder's patch map and noise band table (ISO 14496-3
+     * §4.6.18.6.3, §4.6.18.3.2.3): which source band lands on each SBR band
+     * and which bands share a noise floor and inverse filter. */
+    int numPatches;
+    int patchStart[SBR_MAX_PATCHES];
+    int patchNum[SBR_MAX_PATCHES];
+    int srcBand[SBR_MAX_BANDS];    /* source QMF band of each band k >= kx */
+    int srcLo;                     /* lowest source band any patch reads */
+    int numNoiseBands;
+    int noiseEdges[SBR_MAX_NQ + 1];
 
     /* --- bitstream header fields --- */
     int bs_amp_res;
@@ -127,7 +139,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict re, float * restrict im, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
 
