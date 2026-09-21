@@ -313,34 +313,10 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (config->mpegVersion == MPEG2 || !config->usePns) {
         hEncoder->aacquantCfg.pnslevel = 0;
+    } else if (hEncoder->sampleRate <= 16000) {
+        hEncoder->aacquantCfg.pnslevel = 2;
     } else {
-        unsigned long eff_rate = hEncoder->sampleRate;
-        unsigned long br_per_ch = config->bitRate;
-
-        if (config->aacObjectType == HE_V1) {
-            eff_rate *= 2;
-        }
-
-        if (br_per_ch == 0) {
-            /* VBR estimation per channel */
-            if (config->quantqual <= 30) {
-                br_per_ch = 16000;
-            } else if (config->quantqual <= 75) {
-                br_per_ch = 24000;
-            } else if (config->quantqual < 300) {
-                br_per_ch = 64000;
-            } else {
-                br_per_ch = 96000;
-            }
-        }
-
-        if (eff_rate <= 16000) {
-            hEncoder->aacquantCfg.pnslevel = 2;
-        } else if (br_per_ch >= 96000) {
-            hEncoder->aacquantCfg.pnslevel = 0;
-        } else {
-            hEncoder->aacquantCfg.pnslevel = 4;
-        }
+        hEncoder->aacquantCfg.pnslevel = 4;
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
