@@ -333,16 +333,7 @@ static DWORD WINAPI EncodeFile(LPVOID pParam)
         opts.cbr = (mode == RATEMODE_CBR);
     }
 
-    GetDlgItemText(hWnd, IDC_PNS, szTemp, sizeof(szTemp));
-    if (szTemp[0] != '\0')
-    {
-        int pns = atoi(szTemp);
-        opts.use_pns = (pns != 0);
-    }
-    else
-    {
-        opts.use_pns = true;
-    }
+    opts.use_pns = (IsDlgButtonChecked(hWnd, IDC_USEPNS) == BST_CHECKED);
 
     if (IsDlgButtonChecked(hWnd, IDC_BWCTL) == BST_CHECKED)
     {
@@ -576,7 +567,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
 
         CheckDlgButton(hWnd, IDC_USETNS, TRUE); /* library default, libfaac/frame.c */
         ApplyRateModeUI(hWnd, RATEMODE_ABR);
-        SetDlgItemText(hWnd, IDC_PNS, "4"); /* library default, libfaac/faac.c */
+        CheckDlgButton(hWnd, IDC_USEPNS, TRUE); /* library default, libfaac/faac.c */
         SetDlgItemText(hWnd, IDC_BANDWIDTH, "0");
 
         hwndTip = CreateWindowEx(WS_EX_TOPMOST, TOOLTIPS_CLASS, NULL,
@@ -605,7 +596,7 @@ static INT_PTR CALLBACK DialogProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lP
                 "Auto picks LC or HE-AAC v1 based on bitrate; force one to\n"
                 "override that choice.");
             AddTip(hWnd, IDC_USETNS, "Temporal Noise Shaping: reduces pre-echo on transients.");
-            AddTip(hWnd, IDC_PNS, "Perceptual Noise Substitution level, 0-10; 0 disables it.");
+            AddTip(hWnd, IDC_USEPNS, "Perceptual Noise Substitution: substitutes noise for high-frequency noise bands.");
             AddTip(hWnd, IDC_SHORTCTL,
                 "Normal switches block length automatically; No Short/No Long\n"
                 "force one block type throughout the encode.");
