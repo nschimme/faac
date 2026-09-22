@@ -227,7 +227,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
      * Higher-order parametric reconstruction below 10 kHz is audible and
      * generally inferior to the bit-starved LC core. */
-    sbr->bs_start_freq = 15;
+    sbr->bs_start_freq = 12; /* probe */
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
@@ -640,7 +640,7 @@ static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
             for (int k = sbr->bandEdges[b]; k < sbr->bandEdges[b + 1]; k++) {
                 while (g + 1 < nq && k >= sbr->noiseEdges[g + 1]) g++;
                 float t_orig = sa->tonTgt[ch][k];
-                add |= 0 && t_orig > SBR_HARMONIC_MIN_TONALITY && chosen[g] * 4.0f < t_orig; /* probe: off */
+                add |= t_orig > SBR_HARMONIC_MIN_TONALITY && chosen[g] * 4.0f < t_orig;
             }
             fd->ch[ch].addHarmonic[b] = (unsigned char)add;
             flag |= add;
