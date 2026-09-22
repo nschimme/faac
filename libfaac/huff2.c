@@ -45,7 +45,7 @@ static int escape(int x, int *code)
     return (preflen + 1) + (preflen + 4);
 }
 
-static hcode16_t * const hmap[12] = {
+static const hcode16_t * const hmap[12] = {
     NULL, book01, book02, book03, book04, book05,
     book06, book07, book08, book09, book10, book11
 };
@@ -298,7 +298,7 @@ int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
 }
 
 /* Encode the section data (codebook indices and run lengths). */
-int writebooks(CoderInfo *coder, BitStream *stream)
+int writebooks(const CoderInfo *coder, BitStream *stream)
 {
     int bits = 0;
     /* Section run field is 3 bits for short windows (max 7 windows/section) and
@@ -337,7 +337,7 @@ int writebooks(CoderInfo *coder, BitStream *stream)
 }
 
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
-int writesf(CoderInfo *coder, BitStream *stream)
+int writesf(const CoderInfo *coder, BitStream *stream)
 {
     int i, bits = 0;
     int lastsf = coder->global_gain;
