@@ -21,26 +21,49 @@
 #include <stdint.h>
 
 typedef struct {
-    uint16_t len;
-    uint16_t data;
+    uint8_t len;
+    uint8_t data_lo;
+    uint8_t data_hi;
 } hcode16_t;
 
+#define H16(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff) }
+
+static inline uint8_t hcode16_len(hcode16_t code) {
+    return code.len;
+}
+
+static inline uint16_t hcode16_data(hcode16_t code) {
+    return (uint16_t)code.data_lo | ((uint16_t)code.data_hi << 8);
+}
+
 typedef struct {
-    uint32_t len  : 8;    /* lengths <= 19        */
-    uint32_t data : 24;   /* codes are <= 19 bits */
+    uint8_t len;
+    uint8_t data_lo;
+    uint8_t data_mid;
+    uint8_t data_hi;
 } hcode32_t;
 
-extern hcode16_t book01[81];
-extern hcode16_t book02[81];
-extern hcode16_t book03[81];
-extern hcode16_t book04[81];
-extern hcode16_t book05[81];
-extern hcode16_t book06[81];
-extern hcode16_t book07[64];
-extern hcode16_t book08[64];
-extern hcode16_t book09[169];
-extern hcode16_t book10[169];
-extern hcode16_t book11[289];
-extern hcode32_t book12[2 * SF_DELTA + 1];
+#define H32(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff), (uint8_t)(((d) >> 16) & 0xff) }
+
+static inline uint8_t hcode32_len(hcode32_t code) {
+    return code.len;
+}
+
+static inline uint32_t hcode32_data(hcode32_t code) {
+    return (uint32_t)code.data_lo | ((uint32_t)code.data_mid << 8) | ((uint32_t)code.data_hi << 16);
+}
+
+extern const hcode16_t book01[81];
+extern const hcode16_t book02[81];
+extern const hcode16_t book03[81];
+extern const hcode16_t book04[81];
+extern const hcode16_t book05[81];
+extern const hcode16_t book06[81];
+extern const hcode16_t book07[64];
+extern const hcode16_t book08[64];
+extern const hcode16_t book09[169];
+extern const hcode16_t book10[169];
+extern const hcode16_t book11[289];
+extern const hcode32_t book12[2 * SF_DELTA + 1];
 
 #endif /* HUFFDATA_H */
