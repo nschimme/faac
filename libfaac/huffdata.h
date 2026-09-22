@@ -28,14 +28,6 @@ typedef struct {
 
 #define H16(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff) }
 
-static inline uint8_t hcode16_len(hcode16_t code) {
-    return code.len;
-}
-
-static inline uint16_t hcode16_data(hcode16_t code) {
-    return (uint16_t)code.data_lo | ((uint16_t)code.data_hi << 8);
-}
-
 typedef struct {
     uint8_t len;
     uint8_t data_lo;
@@ -44,14 +36,6 @@ typedef struct {
 } hcode32_t;
 
 #define H32(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff), (uint8_t)(((d) >> 16) & 0xff) }
-
-static inline uint8_t hcode32_len(hcode32_t code) {
-    return code.len;
-}
-
-static inline uint32_t hcode32_data(hcode32_t code) {
-    return (uint32_t)code.data_lo | ((uint32_t)code.data_mid << 8) | ((uint32_t)code.data_hi << 16);
-}
 
 extern const hcode16_t book01[81];
 extern const hcode16_t book02[81];

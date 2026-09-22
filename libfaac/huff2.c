@@ -70,8 +70,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_1:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            a += hcode16_len(booka[idx]);
-            b += hcode16_len(bookb[idx]);
+            a += booka[idx].len;
+            b += bookb[idx].len;
         }
         break;
     case HCB_3:
@@ -79,15 +79,15 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
-            a += hcode16_len(booka[idx]) + sign;
-            b += hcode16_len(bookb[idx]) + sign;
+            a += booka[idx].len + sign;
+            b += bookb[idx].len + sign;
         }
         break;
     case HCB_5:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            a += hcode16_len(booka[idx]);
-            b += hcode16_len(bookb[idx]);
+            a += booka[idx].len;
+            b += bookb[idx].len;
         }
         break;
     case HCB_7:
@@ -95,8 +95,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_7 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
-            a += hcode16_len(booka[idx]) + sign;
-            b += hcode16_len(bookb[idx]) + sign;
+            a += booka[idx].len + sign;
+            b += bookb[idx].len + sign;
         }
         break;
     case HCB_9:
@@ -104,8 +104,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_12 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
-            a += hcode16_len(booka[idx]) + sign;
-            b += hcode16_len(bookb[idx]) + sign;
+            a += booka[idx].len + sign;
+            b += bookb[idx].len + sign;
         }
         break;
     default:
@@ -129,8 +129,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            coder->s[datacnt].data = hcode16_data(book[idx]);
-            coder->s[datacnt++].len = hcode16_len(book[idx]);
+            coder->s[datacnt].data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_3:
@@ -139,8 +139,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
             int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
-            int blen = hcode16_len(book[idx]);
-            int data = hcode16_data(book[idx]);
+            int blen = book[idx].len;
+            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             if (q2) { blen++; data = (data << 1) | (q2 < 0); }
@@ -153,8 +153,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            coder->s[datacnt].data = hcode16_data(book[idx]);
-            coder->s[datacnt++].len = hcode16_len(book[idx]);
+            coder->s[datacnt].data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_7:
@@ -163,8 +163,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_7 * a0 + a1;
-            int blen = hcode16_len(book[idx]);
-            int data = hcode16_data(book[idx]);
+            int blen = book[idx].len;
+            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             coder->s[datacnt].data = data;
@@ -177,8 +177,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_12 * a0 + a1;
-            int blen = hcode16_len(book[idx]);
-            int data = hcode16_data(book[idx]);
+            int blen = book[idx].len;
+            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             coder->s[datacnt].data = data;
@@ -191,8 +191,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
             int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
             int idx = DIM_ESC * v0 + v1;
-            int blen = hcode16_len(book[idx]);
-            int data = hcode16_data(book[idx]);
+            int blen = book[idx].len;
+            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
             if (qs[i]) {
                 blen++;
                 data = (data << 1) | (qs[i] < 0);
@@ -376,8 +376,8 @@ int writesf(const CoderInfo *coder, BitStream *stream)
             lastsf += diff;
         }
 
-        code = hcode32_data(book12[SF_DELTA + diff]);
-        len = hcode32_len(book12[SF_DELTA + diff]);
+        code = (uint32_t)book12[SF_DELTA + diff].data_lo | ((uint32_t)book12[SF_DELTA + diff].data_mid << 8) | ((uint32_t)book12[SF_DELTA + diff].data_hi << 16);
+        len = book12[SF_DELTA + diff].len;
         AccumPutBits(&acc, (uint32_t)code, len);
         bits += len;
     }
