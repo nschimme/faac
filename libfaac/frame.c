@@ -313,10 +313,17 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     if (config->mpegVersion == MPEG2 || !config->usePns) {
         hEncoder->aacquantCfg.pnslevel = 0;
-    } else if (hEncoder->sampleRate <= 16000) {
-        hEncoder->aacquantCfg.pnslevel = 2;
     } else {
-        hEncoder->aacquantCfg.pnslevel = 4;
+        unsigned long eff_rate = hEncoder->sampleRate;
+        if (config->aacObjectType == HE_V1) {
+            eff_rate *= 2;
+        }
+
+        if (eff_rate <= 16000 && hEncoder->numChannels == 1) {
+            hEncoder->aacquantCfg.pnslevel = 2;
+        } else {
+            hEncoder->aacquantCfg.pnslevel = 4;
+        }
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
