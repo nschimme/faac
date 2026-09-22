@@ -14,6 +14,8 @@
  */
 
 #include <assert.h>
+#include <limits.h>
+#include <string.h>
 
 #include "sbr.h"
 #include "sbr_internal.h"
@@ -79,12 +81,16 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     return bits;
 }
 
-static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
+/* bs_df_env from the choices the sizing pass cached; bs_df_noise whenever a
+ * reference exists (see write_sbr_noise). */
+static int write_sbr_dtdf(const SBRChannel *sc, const SbrFrameData *fd, int noiseLinked, BitStream *bs, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    int len = fd->numEnvelopes + n_q;
-    if (write) PutBit(bs, 0, len);
-    return len;
+    if (write) {
+        for (int e = 0; e < fd->numEnvelopes; e++) PutBit(bs, (sc->envDt >> e) & 1, 1);
+        for (int q = 0; q < n_q; q++) PutBit(bs, q || noiseLinked, 1);
+    }
+    return fd->numEnvelopes + n_q;
 }
 
 static int write_sbr_invf(BitStream *bs, bool write)
@@ -93,85 +99,133 @@ static int write_sbr_invf(BitStream *bs, bool write)
     return 2;
 }
 
-/* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
-static int put_huff(BitAccumulator *acc, bool write, const SBRHuffEntry *table, int nsyms, int offset, int delta)
+/* Codes one envelope as time deltas against ref, or as an absolute first band
+ * plus frequency deltas; returns its bits, INT_MAX when a time delta has no
+ * codeword. Counting and writing share it so both passes agree. */
+static int code_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int *cur, const int *ref,
+                         BitAccumulator *acc, bool write)
 {
-    int sym = clamp_int(delta + offset, 0, nsyms - 1);
-    if (write) AccumPutBits(acc, (uint32_t)table[sym].code, table[sym].len);
-    return table[sym].len;
+    int amp = fd->eff_amp_res;
+    int nb = sbr_env_bands(sbr, fd);
+    const SBRHuffEntry *tab = amp ? f_huff_env_3_0dB : f_huff_env_1_5dB;
+    int lav = amp ? F_HUFF_ENV_3_0DB_OFFSET : F_HUFF_ENV_1_5DB_OFFSET;
+    int bits = 0, b = 0;
+
+    if (ref) {
+        tab = amp ? t_huff_env_3_0dB : t_huff_env_1_5dB;
+        lav = T_HUFF_ENV_LAV;
+    } else {
+        bits = amp ? 6 : 7;
+        if (write) AccumPutBits(acc, (uint32_t)cur[0], bits);
+        b = 1;
+    }
+    for (; b < nb; b++) {
+        int d = cur[b] - (ref ? ref[b] : cur[b - 1]);
+        if (d < -lav || d > lav) return INT_MAX;
+        if (write) AccumPutBits(acc, (uint32_t)tab[d + lav].code, tab[d + lav].len);
+        bits += tab[d + lav].len;
+    }
+    return bits;
 }
 
-/* Same shape as writesf()'s per-band loop, so it gets the same BitAccumulator batching. */
-static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
+/* Each envelope takes the cheaper of frequency and time deltas; a frame's
+ * first envelope refers to the channel's last written one, when linked. The
+ * sizing pass (write false) makes the choice and caches it for the write pass,
+ * which always follows it with the same frame. */
+static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, int linked, BitStream *bs, int ch, bool write)
 {
-    const SBRHuffEntry *table = fd->eff_amp_res ? f_huff_env_3_0dB : f_huff_env_1_5dB;
-    int nsyms = fd->eff_amp_res ? F_HUFF_ENV_3_0DB_NSYMS : F_HUFF_ENV_1_5DB_NSYMS;
-    int offset = fd->eff_amp_res ? F_HUFF_ENV_3_0DB_OFFSET : F_HUFF_ENV_1_5DB_OFFSET;
-    int first_bits = fd->eff_amp_res ? 6 : 7;
-    int first_max = (1 << first_bits) - 1;
-    int nb = sbr_env_bands(sbr, fd);
+    SBRChannel *sc = &sbr->ch[ch];
+    unsigned chosen = 0;
     int bits = 0;
     BitAccumulator acc = {0};
 
     if (write) AccumBegin(&acc, bs);
     for (int e = 0; e < fd->numEnvelopes; e++) {
-        const int *env_ch = fd->ch[ch].envData[e];
-        if (write) AccumPutBits(&acc, (uint32_t)clamp_int(env_ch[0], 0, first_max), first_bits);
-        bits += first_bits;
-        for (int b = 1; b < nb; b++)
-            bits += put_huff(&acc, write, table, nsyms, offset, env_ch[b]);
+        const int *ref = e ? fd->ch[ch].envData[e - 1] : sc->ref[~sbr->frameCount & 1].env;
+        int first = write ? (sc->envDt >> e) & 1 : 0;
+        int last = write ? first : (e || linked);
+        int best = INT_MAX;
+        for (int t = first; t <= last; t++) {
+            int n = code_envelope(sbr, fd, fd->ch[ch].envData[e], t ? ref : NULL, &acc, write);
+            if (n < best) { best = n; chosen = (chosen & ~(1u << e)) | ((unsigned)t << e); }
+        }
+        bits += best;
     }
     if (write) AccumEnd(&acc);
+    else sc->envDt = chosen;
     return bits;
 }
 
-static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
+/* One noise band at a constant level: 5-bit absolute, or the time delta 0,
+ * whose t_huffman_noise_3_0dB code is the single bit 0 -- always the cheaper
+ * once a reference exists. */
+static int write_sbr_noise(const SbrFrameData *fd, int noiseLinked, BitStream *bs, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    if (write) {
-        for (int ne = 0; ne < n_q; ne++)
-            PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
+    int bits = 0;
+    for (int q = 0; q < n_q; q++) {
+        int len = (q || noiseLinked) ? 1 : 5;
+        if (write) PutBit(bs, len == 1 ? 0 : SBR_NOISE_LEVEL_DEFAULT, len);
+        bits += len;
     }
-    return n_q * 5;
+    return bits;
 }
 
-static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
+static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
 {
     int nch = (id_aac == ID_CPE) ? 2 : 1;
     int flags_len = (id_aac == ID_CPE) ? 3 : 2;
     int lead_len = (id_aac == ID_CPE) ? 2 : 1;
     int bits = lead_len + flags_len;
+    /* Time deltas need the previous frame's envelope in the same layout;
+     * header frames stay self-contained so a decoder can start there. */
+    const SBRChannel *sc0 = &sbr->ch[ch0];
+    const SbrEnvRef *prev = &sc0->ref[~sbr->frameCount & 1];
+    int noiseLinked = !sendHeader && prev->nb;
+    int linked = noiseLinked && prev->nb == sbr_env_bands(sbr, fd) && prev->ampRes == fd->eff_amp_res;
 
     if (write) PutBit(bs, 0, lead_len); /* bs_coupling / reserved */
 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_grid(sbr, fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_dtdf(fd, bs, write);
+        bits += write_sbr_dtdf(&sbr->ch[ch0 + ch], fd, noiseLinked, bs, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_invf(bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_envelope(sbr, fd, bs, ch0 + ch, write);
+        bits += write_sbr_envelope(sbr, fd, linked, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_noise(fd, bs, write);
+        bits += write_sbr_noise(fd, noiseLinked, bs, write);
 
     if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
+
+    /* Only the real write records the reference, so the sizing pass makes
+     * the same choices. */
+    if (write) {
+        int nb = sbr_env_bands(sbr, fd);
+        for (int ch = 0; ch < nch; ch++) {
+            SbrEnvRef *cur = &sbr->ch[ch0 + ch].ref[sbr->frameCount & 1];
+            memcpy(cur->env, fd->ch[ch0 + ch].envData[fd->numEnvelopes - 1], nb * sizeof(int));
+            cur->nb = nb;
+            cur->ampRes = fd->eff_amp_res;
+        }
+    }
 
     return bits;
 }
 
 /* Emit the full extension_payload body for EXT_SBR_DATA: the 4-bit extension
  * type, the 1-bit header flag, the optional header, and the channel data. */
-static int emit_sbr_payload(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
+static int emit_sbr_payload(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
 {
     int bits = 5;
     if (write) PutBit(bs, (SBR_EXT_TYPE_SBR << 1) | (sendHeader & 1), 5);
     if (sendHeader) bits += write_sbr_header(sbr, bs, write);
-    bits += write_sbr_data(sbr, fd, bs, id_aac, ch0, write);
+    bits += write_sbr_data(sbr, fd, bs, id_aac, ch0, sendHeader, write);
     return bits;
 }
 
-static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0)
+static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
 
