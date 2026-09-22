@@ -613,7 +613,7 @@ static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
              * zeros sit that much further from the source's poles. */
             int c = 3;
             float ts = t_white;
-            while (c > 0 && ts < t_orig) {
+            while (0 && c > 0 && ts < t_orig) { /* probe: pinned at 3 */
                 c--;
                 float d = (1.0f - sbr_chirp[c]) / (1.0f - SBR_CHIRP_MAX);
                 ts = t_white + (t_raw - t_white) * d * d;
@@ -640,7 +640,7 @@ static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
             for (int k = sbr->bandEdges[b]; k < sbr->bandEdges[b + 1]; k++) {
                 while (g + 1 < nq && k >= sbr->noiseEdges[g + 1]) g++;
                 float t_orig = sa->tonTgt[ch][k];
-                add |= t_orig > SBR_HARMONIC_MIN_TONALITY && chosen[g] * 4.0f < t_orig;
+                add |= 0 && t_orig > SBR_HARMONIC_MIN_TONALITY && chosen[g] * 4.0f < t_orig; /* probe: off */
             }
             fd->ch[ch].addHarmonic[b] = (unsigned char)add;
             flag |= add;
