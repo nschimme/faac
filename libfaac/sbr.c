@@ -47,7 +47,7 @@ static int cmp_int16(const void *a, const void *b) { return (int)(*(const short 
 static int cmp_int(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }
 
 /* SBR stop frequency (k2). Bark-scale distribution maximizes bit efficiency. */
-static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
+static int compute_k2(int sampleRate, int bs_stop_freq)
 {
     if (bs_stop_freq == 14 || bs_stop_freq == 15) return 64;
     int temp = (sampleRate < 32000) ? 3000 : (sampleRate < 64000) ? 4000 : 5000;
@@ -72,20 +72,30 @@ static int compute_k2(int sampleRate, int kx, int bs_stop_freq)
         k2 = 64;
     }
 
-    int max_span = (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
-    return clamp_int(k2, kx + 1, kx + max_span > 64 ? 64 : kx + max_span);
+    return k2;
 }
 
-/* Smallest stop-frequency index reaching targetHz, or the largest useful one.
- * Searched rather than tabulated: the index-to-frequency mapping comes from
- * compute_k2 and shifts with sample rate, so a fixed table would overshoot
- * at some rates. */
+/* The widest SBR range a decoder accepts, in QMF bands (§4.6.18.3.2.1). */
+static int max_sbr_span(int sampleRate)
+{
+    return (sampleRate <= 32000) ? 48 : (sampleRate <= 44100) ? 35 : 32;
+}
+
+/* Smallest stop-frequency index reaching targetHz, or the largest one the
+ * decoder still accepts. Searched rather than tabulated: the index-to-
+ * frequency mapping comes from compute_k2 and shifts with sample rate, so a
+ * fixed table would overshoot at some rates. The decoder derives k2 from the
+ * index alone, so the range limit has to be met by the choice of index. */
 static int pick_stop_freq(int sampleRate, int kx, int targetHz)
 {
-    for (int sf = SBR_STOP_FREQ_MIN; sf < SBR_STOP_FREQ_MAX; sf++)
-        if ((long)compute_k2(sampleRate, kx, sf) * sampleRate / (2 * SBR_QMF_BANDS_64) >= targetHz)
-            return sf;
-    return SBR_STOP_FREQ_MAX;
+    int best = SBR_STOP_FREQ_MIN;
+    for (int sf = SBR_STOP_FREQ_MIN; sf <= SBR_STOP_FREQ_MAX; sf++) {
+        int k2 = compute_k2(sampleRate, sf);
+        if (k2 - kx > max_sbr_span(sampleRate)) break;
+        best = sf;
+        if ((long)k2 * sampleRate / (2 * SBR_QMF_BANDS_64) >= targetHz) break;
+    }
+    return best;
 }
 
 /* Master table (ISO 14496-3 §4.6.18.3.2.1). bs_freq_scale 0: uniform
@@ -173,7 +183,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
      * bands above the target cost the same envelope bits as the ones below, so
      * there's no reason to stop short of what's audible. */
     sbr->bs_stop_freq = pick_stop_freq(sampleRate, sbr->kx, SBR_STOP_FREQ_TARGET_HZ);
-    sbr->k2 = compute_k2(sampleRate, sbr->kx, sbr->bs_stop_freq);
+    sbr->k2 = compute_k2(sampleRate, sbr->bs_stop_freq);
 
     build_freq_table(sbr);
 }
