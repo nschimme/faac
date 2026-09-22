@@ -311,8 +311,13 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
+    const char *pns_env = getenv("FAAC_PNS_LEVEL");
+    if (!pns_env) pns_env = getenv("PNS");
+
     if (config->mpegVersion == MPEG2 || !config->usePns) {
         hEncoder->aacquantCfg.pnslevel = 0;
+    } else if (pns_env && *pns_env) {
+        hEncoder->aacquantCfg.pnslevel = atoi(pns_env);
     } else {
         unsigned long eff_rate = hEncoder->sampleRate;
         if (config->aacObjectType == HE_V1) {
