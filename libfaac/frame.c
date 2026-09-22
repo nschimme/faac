@@ -311,7 +311,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->mpegVersion == MPEG2)
+    if (config->mpegVersion == MPEG2 || config->aacObjectType == HE_V1)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
         config->pnslevel = 0;
