@@ -311,13 +311,14 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->mpegVersion == MPEG2 || config->aacObjectType == HE_V1)
+    if (config->mpegVersion == MPEG2)
         config->pnslevel = 0;
     if (config->pnslevel < 0)
         config->pnslevel = 0;
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.is_he_v1 = (hEncoder->config.aacObjectType == HE_V1);
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
 
