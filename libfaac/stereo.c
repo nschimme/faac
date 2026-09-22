@@ -265,7 +265,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                     apply_mute(sr0, start, len, wstart, wend);
                 }
             }
-            element->msInfo.ms_used[*sfcnt] = ms;
+            element->msInfo.ms_used[*sfcnt] = (uint8_t)ms;
         }
         (*sfcnt)++;
     }
@@ -284,7 +284,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
             if (thrmid > 0.25f) thrmid = 0.25f;
             thrmid += 1.0f;
             isthr = 0.18f * inv_quality + 1.0f;
-            if (isthr > M_SQRT2) isthr = M_SQRT2;
+            if (isthr > (float)M_SQRT2) isthr = (float)M_SQRT2;
             thrside = 0.1f * inv_quality;
             if (thrside > 0.3f) thrside = 0.3f;
             break;
@@ -298,7 +298,7 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         case JOINT_IS:
             isthr = 0.18f * (inv_quality * inv_quality);
             isthr += 1.0f;
-            if (isthr > M_SQRT2) isthr = M_SQRT2;
+            if (isthr > (float)M_SQRT2) isthr = (float)M_SQRT2;
             break;
         default:
             return;

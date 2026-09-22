@@ -286,9 +286,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
             }
             /* Boost initial seed for mono speech streams */
             if (hEncoder->numChannels == 1 && bps >= 32000.0f) q_seed *= 2.5f;
-            config->quantqual = q_seed * (float)hEncoder->numChannels * rateFactor;
+            config->quantqual = (unsigned long)(q_seed * (float)hEncoder->numChannels * rateFactor);
             if (config->quantqual > DEFQUAL)
-                config->quantqual = (config->quantqual - DEFQUAL) * 3.0f + DEFQUAL;
+                config->quantqual = (unsigned long)((float)(config->quantqual - DEFQUAL) * 3.0f + (float)DEFQUAL);
         }
     }
 
@@ -1083,7 +1083,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
 
     /* Adjust quality to get correct average bitrate */
     if (hEncoder->config.bitRate)
-        hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
+        hEncoder->aacquantCfg.quality = (float)RateControlUpdate(&hEncoder->rc, payloadBits,
                                                           hEncoder->aacquantCfg.quality, maxqual);
 
     return frameBytes;
@@ -1192,5 +1192,5 @@ SR_INFO srInfo[12+1] =
             4, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 12, 16, 20, 20
         }
     },
-{ -1, 0, 0, {0}, {0} }
+{ (unsigned int)-1, 0, 0, {0}, {0} }
 };

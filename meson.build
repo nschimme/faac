@@ -19,17 +19,17 @@ config_h.set_quoted('PACKAGE', meson.project_name())
 config_h.set_quoted('PACKAGE_VERSION', meson.project_version())
 
 foreach h: ['getopt.h', 'immintrin.h']
-    config_h.set('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
+    config_h.set10('HAVE_' + h.underscorify().to_upper(), cc.has_header(h))
 endforeach
 
-config_h.set('WORDS_BIGENDIAN', host_machine.endian() == 'big')
+config_h.set10('WORDS_BIGENDIAN', host_machine.endian() == 'big')
 
 
 libm = cc.find_library('m', required: false)
 
 cpu_family = target_machine.cpu_family()
 
-config_h.set('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and config_h.get('HAVE_IMMINTRIN_H'))
+config_h.set10('HAVE_SSE2', (cpu_family in ['x86', 'x86_64']) and (config_h.get('HAVE_IMMINTRIN_H') == 1))
 
 config_h.set('FAAC_SBR_DECIMATION', get_option('sbr-decimation'))
 
@@ -52,6 +52,18 @@ if cc.get_argument_syntax() == 'msvc'
     add_project_arguments('/FI' + meson.current_build_dir() / 'config.h', language: 'c')
 else
     add_project_arguments('-include', meson.current_build_dir() / 'config.h', language: 'c')
+    add_project_arguments(
+        cc.get_supported_arguments([
+            '-Wshadow',
+            '-Wstrict-prototypes',
+            '-Wmissing-prototypes',
+            '-Wmissing-declarations',
+            '-Wpointer-arith',
+            '-Wundef',
+            '-Wvla'
+        ]),
+        language: 'c'
+    )
 endif
 
 

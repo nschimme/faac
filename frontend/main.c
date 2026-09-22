@@ -32,7 +32,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-#ifdef HAVE_GETOPT_H
+#if HAVE_GETOPT_H
 # include <getopt.h>
 #else
 # include "getopt.h"

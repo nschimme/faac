@@ -49,4 +49,8 @@ void CalcBW(unsigned *bw, int rate, SR_INFO *sr, AACQuantCfg *aacquantCfg,
 void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AACQuantCfg *cfg);
 void QuantizeInit(void);
 
+#if HAVE_SSE2
+int quantize_sse2(const float * restrict xr, int * restrict xi, int n, float sfacfix);
+#endif
+
 #endif
