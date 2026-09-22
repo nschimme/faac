@@ -159,7 +159,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
      * Higher-order parametric reconstruction below 10 kHz is audible and
      * generally inferior to the bit-starved LC core. */
-    sbr->bs_start_freq = 15;
+    sbr->bs_start_freq = 12; /* probe */
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
