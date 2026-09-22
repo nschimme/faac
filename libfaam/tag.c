@@ -4,10 +4,7 @@
 
 #include "libfaam_internal.h"
 
-#define ITUNES_DATA_BINARY 0
-#define ITUNES_DATA_TEXT   1
-#define ITUNES_DATA_UINT8  0x15
-#define ITUNES_DATA_IMAGE  0x0d
+#define ITUNES_DATA_TEXT 1
 
 static inline void write_u32(uint8_t *b, uint32_t val) {
     b[0] = (uint8_t)(val >> 24);
@@ -34,6 +31,11 @@ static uint32_t append_data_box(uint8_t *dst, const char *name, uint32_t type_co
     return box_size;
 }
 
+typedef struct {
+    const char *atom;
+    const char *value;
+} MetadataMap;
+
 faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta)
 {
     if (!io || !meta) return FAAM_ERR_INVALID_ARG;
@@ -58,14 +60,23 @@ faam_status faam_update_tags_stream(const faam_io *io, const faam_metadata *meta
     }
     uint32_t ilst_len = 8; /* reserve 8 bytes for ilst size and type */
 
-    if (meta->title[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251nam", ITUNES_DATA_TEXT, meta->title, strlen(meta->title));
-    if (meta->artist[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251ART", ITUNES_DATA_TEXT, meta->artist, strlen(meta->artist));
-    if (meta->album[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251alb", ITUNES_DATA_TEXT, meta->album, strlen(meta->album));
-    if (meta->album_artist[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "aART", ITUNES_DATA_TEXT, meta->album_artist, strlen(meta->album_artist));
-    if (meta->composer[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251wrt", ITUNES_DATA_TEXT, meta->composer, strlen(meta->composer));
-    if (meta->year[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251day", ITUNES_DATA_TEXT, meta->year, strlen(meta->year));
-    if (meta->comment[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251cmt", ITUNES_DATA_TEXT, meta->comment, strlen(meta->comment));
-    if (meta->encoder[0]) ilst_len += append_data_box(ilst_buf + ilst_len, "\251too", ITUNES_DATA_TEXT, meta->encoder, strlen(meta->encoder));
+    const MetadataMap maps[] = {
+        { "\251nam", meta->title },
+        { "\251ART", meta->artist },
+        { "\251alb", meta->album },
+        { "aART",     meta->album_artist },
+        { "\251wrt", meta->composer },
+        { "\251day", meta->year },
+        { "\251cmt", meta->comment },
+        { "\251too", meta->encoder }
+    };
+    size_t num_maps = sizeof(maps) / sizeof(maps[0]);
+
+    for (size_t i = 0; i < num_maps; i++) {
+        if (maps[i].value && maps[i].value[0]) {
+            ilst_len += append_data_box(ilst_buf + ilst_len, maps[i].atom, ITUNES_DATA_TEXT, maps[i].value, strlen(maps[i].value));
+        }
+    }
 
     write_u32(ilst_buf, ilst_len);
     memcpy(ilst_buf + 4, "ilst", 4);
