@@ -126,7 +126,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
-    tmp.pns_level     = 4;
+    tmp.pns_level     = -1;             /* -1 = AUTO (derived from bitrate and sample rate) */
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -177,7 +177,7 @@ static faac_status validate_params(const faac_params *p)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (GetChannelConfig((int)p->num_channels) == 0)
         return FAAC_ERR_INVALID_ARGUMENT;
-    if (p->pns_level < 0 || p->pns_level > 10)
+    if ((p->pns_level < 0 && p->pns_level != -1) || p->pns_level > 10)
         return FAAC_ERR_INVALID_ARGUMENT;
     if (p->channel_map) {
         uint32_t i;

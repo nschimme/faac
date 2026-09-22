@@ -311,10 +311,27 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->mpegVersion == MPEG2)
+    if (config->mpegVersion == MPEG2) {
         config->pnslevel = 0;
-    if (config->pnslevel < 0)
-        config->pnslevel = 0;
+    } else if (config->pnslevel < 0) {
+        /* Auto pnslevel derivation based on target bitrate per channel */
+        unsigned long bitrate_per_ch = hEncoder->numChannels > 0
+                                     ? config->bitRate / hEncoder->numChannels
+                                     : config->bitRate;
+        if (!bitrate_per_ch) {
+            /* VBR mode or unconstrained bitrate */
+            config->pnslevel = 4;
+        } else if (bitrate_per_ch <= 24000) {
+            /* Low-bitrate / speech optimal PNS level */
+            config->pnslevel = 2;
+        } else if (bitrate_per_ch <= 64000) {
+            /* Medium-bitrate / audio optimal PNS level */
+            config->pnslevel = 4;
+        } else {
+            /* High-bitrate: taper PNS to prioritize exact spectral line quantization */
+            config->pnslevel = 1;
+        }
+    }
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
