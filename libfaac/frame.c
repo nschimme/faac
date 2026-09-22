@@ -311,7 +311,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 
     hEncoder->config.quantqual = config->quantqual;
 
-    if (config->mpegVersion == MPEG2 || !config->usePns || config->aacObjectType == HE_V1) {
+    if (config->mpegVersion == MPEG2 || !config->usePns) {
         hEncoder->aacquantCfg.pnslevel = 0;
     } else {
         if (hEncoder->sampleRate <= 16000 && hEncoder->numChannels == 1) {
