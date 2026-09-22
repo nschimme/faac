@@ -1,8 +1,60 @@
 (unreleased)
 
+	[ Robert Kausch ]
+	* build: honor an explicit b_lto=false; drop __stdcall on x86 Windows
+
 	[ Nils Schimmelmann ]
-	* Build the lookup tables shared between encoder handles once per
-	  process, so independent handles can be opened concurrently
+	* Bump the ABI to 2: faac_params_init() takes the caller's struct size
+	* HE-AAC auto range 8-32 kbps per channel at 48 kHz (was 12-28), VBR up
+	  to -q 75 (was 60); HE-AAC v1 for multichannel layouts up to 8 channels
+	* Rate control: signed bit account for ABR; a real bit reservoir for CBR
+	  behind `--cbr`
+	* Refit the ABR bandwidth curve from a sweep: a wider core at 24-56 kbps
+	  stereo and every cutoff on the band grid reachable, where a double
+	  snap had left seven
+	* VBR codes at the top of the bandwidth curve (18750 Hz) instead of the
+	  full band; `-q` and `-b` are exclusive; `-q` documented as 1..5000
+	* SBR: reconstruction toward 20 kHz; noise floor -18 dB; log-spaced band
+	  table by rate
+	* Stereo: joint-stereo policy by rate; intensity on long windows below
+	  40 kbps per channel, L/R on short windows below the crossover from 80;
+	  short-window grouping and masking targets reworked
+	* TNS on by default; frames screened before LPC analysis
+	* Block switching: judge each sub-block's attack once, in the time domain
+	* Enforce the ISO/IEC 14496-3 per-channel frame ceiling and bitrate limits
+	* frontend: MP4 output by default with detection from the extension;
+	  24-bit packed PCM input; 64-bit mdat and duration; track language;
+	  UTF-8 and wide-character paths on CLI and Win32 GUI; iTunes gapless
+	  metadata (iTunSMPB); shared encoding engine and MP4 output in the GUI;
+	  GUI opens on ABR at 128 kbps; optional end-of-encode diagnostics;
+	  a PCM WAV could be read as float from an uninitialised header field
+	* mp4write: container timing, HE-AAC sample rate declaration and gapless
+	  fixes; GUI PCM clipping fix
+	* SBR: parameter resolution in VBR, tail drained on flush, psPresentFlag
+	  for mono, less per-frame work in the writer
+	* Pipeline draining during flush on short streams
+	* HUFF2/quantize: scale-factor and codebook processing optimized
+	* Drop the never-selected KBD window from the filter bank
+	* Drop dead count mode from bitstream writer
+	* build: force-include config.h instead of per-file guards
+	* frontend: show the git commit hash in `-h`, the GUI, verbose logging,
+	  and the MP4 tag; `-h` reports the runtime libfaac version, not the
+	  compile-time one
+	* frame/channels: fix 64 kHz short-window band width sum in srInfo and add ISO/IEC 14496-3 channel configuration mapping
+	* filtbank/channels: simplify windowing calculations and bit operations for performance
+	* frontend: unify endian conversion utilities in endian.h and fix preprocessor checks
+	* build: build process-wide lookup tables once per process using thread-safe atomic once-primitives
+	* fft: replace bit-reversed DIF kernel with self-sorting Stockham FFT
+	* frame: make HE-AAC pipeline delay even for exact gapless decoding and remove cold path attributes
+	* huff2: keep scale factor band in previous section when section header bits exceed section coding gain
+	* SBR: choose high-frequency tools (inverse filtering mode, noise floor, patch map, and sinusoids) from band tonality, fix stop frequency signaling for 44.1 kHz decoders, and vectorize QMF analysis
+	* PNS: calibrate noise floor energy by SFM peak-to-average ratio, bypass upper bands near SBR crossover, decide PNS level dynamically in the encoder (PNS level 4 or level 2 for 16 kHz mono), and replace --pns with --no-pns
+	* build: enforce C11 standard (c_std=gnu11,c11) in Meson, fix MSVC compiler warnings, and clean up feature macros
+	* multithreading: implement portable C11 atomic lock-free parallel channel processing across MDCT, TNS, quantization, SBR analysis, and downsampling with --threads support
+	* quantize: sum grouping band energies in four SIMD lanes and align short block masking targets with long blocks
+	* coder: split CoderInfo into hot and cold structs (CoderData) to reduce per-channel working set for L1 cache locality
+	* frontend: fix option descriptions, man page limits, and placeholders in CLI help text
+	* ci: add FAAC Benchmark Suite workflow for automated regression testing
 
 2.1 (Aug 18, 2026)
 
