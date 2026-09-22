@@ -318,6 +318,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     if (config->pnslevel > 10)
         config->pnslevel = 10;
     hEncoder->aacquantCfg.pnslevel = config->pnslevel;
+    hEncoder->aacquantCfg.is_he_v1 = (hEncoder->config.aacObjectType == HE_V1);
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
 

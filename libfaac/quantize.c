@@ -277,7 +277,7 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs)
+                                   int is_he_v1, int cutoff, int * __restrict p_last_abs)
 {
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
@@ -314,8 +314,16 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
-         * TNS filter shapes the substituted noise too. */
-        if (target[sb] < pns_threshold)
+         * TNS filter shapes the substituted noise too. Bypass PNS in upper
+         * core bands near SBR crossover in HE-AAC to prevent tool conflict. */
+        int pns_allowed = (pnslevel > 0);
+        if (is_he_v1 && pns_allowed)
+        {
+            int pns_cutoff = cutoff * 4 / 5;
+            if (hi > pns_cutoff)
+                pns_allowed = 0;
+        }
+        if (pns_allowed && target[sb] < pns_threshold)
         {
             ci->book[band] = HCB_PNS;
 #ifdef FAAC_STATS
@@ -393,7 +401,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         float group_total = measure_band_energy(coder, gxr, i, cutoff, be);
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, aacquantCfg->is_he_v1, cutoff, &lastsf);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
 
