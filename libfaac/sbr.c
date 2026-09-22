@@ -613,7 +613,7 @@ static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
              * zeros sit that much further from the source's poles. */
             int c = 3;
             float ts = t_white;
-            while (c > 0 && ts < t_orig) {
+            while (0 && c > 0 && ts < t_orig) { /* probe: pinned at 3 */
                 c--;
                 float d = (1.0f - sbr_chirp[c]) / (1.0f - SBR_CHIRP_MAX);
                 ts = t_white + (t_raw - t_white) * d * d;
@@ -628,7 +628,7 @@ static void sbr_choose_hf_tools(const SBRInfo *sbr, int nch, const bool *isLfe,
             int level = SBR_NOISE_LEVEL_MAX;
             if (nf > 0.0f)
                 level = clamp_int((int)lrintf(SBR_NOISE_LEVEL_OFFSET - fast_log2(nf)), 0, SBR_NOISE_LEVEL_MAX);
-            fd->ch[ch].noiseLevel[g] = level;
+            fd->ch[ch].noiseLevel[g] = 12; (void)level; /* probe: pinned */
         }
 
         /* A band gets its sinusoid when any of its QMF bands is a tone the
