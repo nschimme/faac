@@ -17,37 +17,40 @@
 #define HUFFDATA_H
 
 #include "huff2.h"
-
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct {
-    uint8_t len;
-    uint8_t data_lo;
-    uint8_t data_hi;
-} hcode16_t;
-
-#define H16(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff) }
-
-typedef struct {
-    uint8_t len;
-    uint8_t data_lo;
-    uint8_t data_mid;
-    uint8_t data_hi;
+    uint32_t len  : 8;    /* lengths <= 19        */
+    uint32_t data : 24;   /* codes are <= 19 bits */
 } hcode32_t;
 
-#define H32(l, d) { (uint8_t)(l), (uint8_t)((d) & 0xff), (uint8_t)(((d) >> 8) & 0xff), (uint8_t)(((d) >> 16) & 0xff) }
+extern const uint8_t book01_len[81];
+extern const uint16_t book01_data[81];
+extern const uint8_t book02_len[81];
+extern const uint16_t book02_data[81];
+extern const uint8_t book03_len[81];
+extern const uint16_t book03_data[81];
+extern const uint8_t book04_len[81];
+extern const uint16_t book04_data[81];
+extern const uint8_t book05_len[81];
+extern const uint16_t book05_data[81];
+extern const uint8_t book06_len[81];
+extern const uint16_t book06_data[81];
+extern const uint8_t book07_len[64];
+extern const uint16_t book07_data[64];
+extern const uint8_t book08_len[64];
+extern const uint16_t book08_data[64];
+extern const uint8_t book09_len[169];
+extern const uint16_t book09_data[169];
+extern const uint8_t book10_len[169];
+extern const uint16_t book10_data[169];
+extern const uint8_t book11_len[289];
+extern const uint16_t book11_data[289];
 
-extern const hcode16_t book01[81];
-extern const hcode16_t book02[81];
-extern const hcode16_t book03[81];
-extern const hcode16_t book04[81];
-extern const hcode16_t book05[81];
-extern const hcode16_t book06[81];
-extern const hcode16_t book07[64];
-extern const hcode16_t book08[64];
-extern const hcode16_t book09[169];
-extern const hcode16_t book10[169];
-extern const hcode16_t book11[289];
 extern const hcode32_t book12[2 * SF_DELTA + 1];
+
+extern const uint8_t * const hmap_len[12];
+extern const uint16_t * const hmap_data[12];
 
 #endif /* HUFFDATA_H */

@@ -45,12 +45,6 @@ static int escape(int x, int *code)
     return (preflen + 1) + (preflen + 4);
 }
 
-static const hcode16_t * const hmap[12] = {
-    NULL, book01, book02, book03, book04, book05,
-    book06, book07, book08, book09, book10, book11
-};
-
-
 /* Both books of a pair share the index expression and the sign-bit count; only
  * the table differs. One walk, two lookups.
  *
@@ -61,8 +55,8 @@ static const hcode16_t * const hmap[12] = {
  * there is deliberately no escape case. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
 {
-    const hcode16_t *booka = hmap[bnum];
-    const hcode16_t *bookb = hmap[bnum + 1];
+    const uint8_t *booka_len = hmap_len[bnum];
+    const uint8_t *bookb_len = hmap_len[bnum + 1];
     int a = 0, b = 0;
     int i;
 
@@ -70,8 +64,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     case HCB_1:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            a += booka[idx].len;
-            b += bookb[idx].len;
+            a += booka_len[idx];
+            b += bookb_len[idx];
         }
         break;
     case HCB_3:
@@ -79,15 +73,15 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
             int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
+            a += booka_len[idx] + sign;
+            b += bookb_len[idx] + sign;
         }
         break;
     case HCB_5:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            a += booka[idx].len;
-            b += bookb[idx].len;
+            a += booka_len[idx];
+            b += bookb_len[idx];
         }
         break;
     case HCB_7:
@@ -95,8 +89,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_7 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
+            a += booka_len[idx] + sign;
+            b += bookb_len[idx] + sign;
         }
         break;
     case HCB_9:
@@ -104,8 +98,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
             int idx = DIM_M2_12 * a0 + a1;
             int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
+            a += booka_len[idx] + sign;
+            b += bookb_len[idx] + sign;
         }
         break;
     default:
@@ -120,7 +114,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
  * restoring datacnt, so nothing here may touch state the caller cannot undo. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
-    const hcode16_t *book = hmap[bnum];
+    const uint8_t *book_len = hmap_len[bnum];
+    const uint16_t *book_data = hmap_data[bnum];
     int i;
     int datacnt = coder->datacnt;
 
@@ -129,8 +124,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            coder->s[datacnt].data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
-            coder->s[datacnt++].len = book[idx].len;
+            coder->s[datacnt].data = book_data[idx];
+            coder->s[datacnt++].len = book_len[idx];
         }
         break;
     case HCB_3:
@@ -139,8 +134,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
             int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
-            int blen = book[idx].len;
-            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            int blen = book_len[idx];
+            int data = book_data[idx];
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             if (q2) { blen++; data = (data << 1) | (q2 < 0); }
@@ -153,8 +148,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            coder->s[datacnt].data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
-            coder->s[datacnt++].len = book[idx].len;
+            coder->s[datacnt].data = book_data[idx];
+            coder->s[datacnt++].len = book_len[idx];
         }
         break;
     case HCB_7:
@@ -163,8 +158,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_7 * a0 + a1;
-            int blen = book[idx].len;
-            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            int blen = book_len[idx];
+            int data = book_data[idx];
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             coder->s[datacnt].data = data;
@@ -177,8 +172,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int q0 = qs[i], q1 = qs[i+1];
             int a0 = abs(q0), a1 = abs(q1);
             int idx = DIM_M2_12 * a0 + a1;
-            int blen = book[idx].len;
-            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            int blen = book_len[idx];
+            int data = book_data[idx];
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             coder->s[datacnt].data = data;
@@ -191,8 +186,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int v0 = (x0 > LAV_ESC) ? LAV_ESC : x0;
             int v1 = (x1 > LAV_ESC) ? LAV_ESC : x1;
             int idx = DIM_ESC * v0 + v1;
-            int blen = book[idx].len;
-            int data = (uint16_t)book[idx].data_lo | ((uint16_t)book[idx].data_hi << 8);
+            int blen = book_len[idx];
+            int data = book_data[idx];
             if (qs[i]) {
                 blen++;
                 data = (data << 1) | (qs[i] < 0);
@@ -376,7 +371,7 @@ int writesf(const CoderInfo *coder, BitStream *stream)
             lastsf += diff;
         }
 
-        code = (uint32_t)book12[SF_DELTA + diff].data_lo | ((uint32_t)book12[SF_DELTA + diff].data_mid << 8) | ((uint32_t)book12[SF_DELTA + diff].data_hi << 16);
+        code = book12[SF_DELTA + diff].data;
         len = book12[SF_DELTA + diff].len;
         AccumPutBits(&acc, (uint32_t)code, len);
         bits += len;
