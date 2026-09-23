@@ -236,6 +236,8 @@ static int tns_fit_subrange(faacEncStruct *hEncoder, int b_start, int b_stop,
     float *trial = hEncoder->gpsyInfo.sharedWorkBuffLong + BLOCK_LEN_LONG;
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
+    float k4[TNS_MAX_ORDER + 1];
+    int idx4[TNS_MAX_ORDER + 1];
     float est_gain;
     int order, limit, i, best_dir;
     float filt_e = 0.0f;
@@ -303,11 +305,12 @@ static int tns_fit_subrange(faacEncStruct *hEncoder, int b_start, int b_stop,
         return 0;
 
     filter->order = order;
+    filter->coefCompress = 0;
 
     /* Quantize coefficients at full 4-bit resolution */
     quantize_coeffs(order, DEF_TNS_COEFF_RES, k, filter->index);
 
-    /* Enable coefCompress = 1 if all indices fit in 3-bit signed range [-4, 3] */
+    /* Check if 4-bit indices fit in [-4, 3] for coefCompress = 1 */
     filter->coefCompress = 1;
     limit = 1 << (DEF_TNS_COEFF_RES - 2); /* limit = 4 */
     for (i = 1; i <= order; i++) {
