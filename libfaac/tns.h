@@ -13,13 +13,6 @@
  * Lesser General Public License for more details.
  */
 
-/*
- * Temporal Noise Shaping (TNS): a predictive filter along the frequency axis
- * that reshapes quantization noise in time so it hides behind transients
- * instead of leaking out as pre-echo. Long-window only here; short windows
- * already have the temporal resolution to not need it.
- */
-
 #ifndef TNS_H
 #define TNS_H
 
@@ -34,7 +27,7 @@ void TnsInit(faacEncStruct* hEncoder);
 
 /* Analyse one channel and, if it pays off, whiten `spec` in place.
  * Long blocks only -- the caller must not pass an ONLY_SHORT_WINDOW channel. */
-void TnsEncode(CoderInfo *coderInfo, float *spec);
+void TnsEncode(faacEncStruct* hEncoder, CoderInfo *coderInfo, float *spec);
 
 #ifdef __cplusplus
 }
