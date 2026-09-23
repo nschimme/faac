@@ -77,12 +77,21 @@ jobs:
           echo "CPU fingerprint: $fp"
           lscpu 2>/dev/null | grep -E '^(Model name|CPU\(s\)):' || true
 
+      # A baseline measured by an older harness can differ in more than MOS
+      # (per-clip timings, new metrics), so the harness commit is part of the key.
+      - name: Resolve Benchmark Version
+        id: bench-sha
+        run: |
+          sha=$(git ls-remote https://github.com/nschimme/faac-benchmark refs/heads/master | cut -c1-12)
+          echo "sha=${sha:-unknown}" >> $GITHUB_OUTPUT
+          echo "faac-benchmark: ${sha:-unknown}"
+
       - name: Restore Baseline Results
         id: cache-baseline
         uses: actions/cache/restore@v4
         with:
           path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-bench-${{ steps.bench-sha.outputs.sha }}
 
       - name: Validate Restored Baseline
         id: baseline-ok
@@ -139,7 +148,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: results/${{ matrix.arch }}_${{ matrix.rate_control }}_base.json
-          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}
+          key: ${{ runner.os }}-baseline-${{ matrix.arch }}-${{ matrix.rate_control }}-${{ steps.hw.outputs.fp }}-${{ steps.baseline-sha.outputs.sha }}-bench-${{ steps.bench-sha.outputs.sha }}
 
       - name: Run Benchmark (Candidate)
         if: github.event_name == 'pull_request'
