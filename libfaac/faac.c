@@ -149,7 +149,8 @@ static faac_status validate_params(const faac_params *p)
         case FAAC_OBJ_AUTO: case FAAC_OBJ_LOW: case FAAC_OBJ_HE_AAC_V1:
             break;
         case FAAC_OBJ_HE_AAC_V2:
-            return FAAC_ERR_UNSUPPORTED;   /* parametric stereo not implemented */
+            if (p->num_channels != 2) return FAAC_ERR_INVALID_ARGUMENT;
+            break;
         default:
             return FAAC_ERR_INVALID_ARGUMENT;
     }
@@ -297,7 +298,8 @@ static uint32_t faacEncoderDelay(const faacEncStruct *h)
 {
     switch (h->config.aacObjectType) {
         case LOW:   return FRAME_LEN;
-        case HE_V1: return 3 * FRAME_LEN - RESAMPLE_FILTER_LEN / 2 + 1;
+        case HE_V1:
+        case HE_V2: return 3 * FRAME_LEN - RESAMPLE_FILTER_LEN / 2 + 1;
     }
     assert(0 && "faacEncoderDelay: unhandled aacObjectType");
     return FRAME_LEN;
@@ -382,7 +384,8 @@ FAACAPI faac_status faac_encoder_encode(faac_encoder *enc,
 
     if (out_cap < (uint32_t)ADTS_FRAMESIZE)
         return FAAC_ERR_OUTPUT_TOO_SMALL;
-    if (in_samples > faacFrameSamples(h) * h->numChannels)
+    unsigned int inputCh = IsHEV2(h->config.aacObjectType) ? 2 : h->numChannels;
+    if (in_samples > faacFrameSamples(h) * inputCh)
         return FAAC_ERR_INPUT_OVERFLOW;
 
     /* faacEncEncode reinterprets the input bytes per the configured
