@@ -81,6 +81,7 @@ typedef struct {
     bool use_tns;
     bool use_pns;
     int8_t use_lfe; /* -1 for auto (ch >= 6), 0 = false, 1 = true */
+    int32_t sbr_start_freq; /* SBR start frequency index (0..15, default 15) */
 
     uint16_t quant_quality;
     uint32_t bit_rate; /* total bitrate in bps (whole stream) */

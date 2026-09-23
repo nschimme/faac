@@ -68,6 +68,7 @@ struct SBRInfo {
     int bs_xover_band;
     int bs_alter_scale;
     int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
+    int sbrStartFreq;      /* configured start frequency index (0..15, 15=default) */
 
     /* --- per-frame state --- */
     /* The header decision is made once per access unit, on the first write
@@ -114,10 +115,10 @@ static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *f
     return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
 }
 
-SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int sbrStartFreq);
 /* Recompute the bitrate-dependent band config without reallocating; lets
  * SetConfiguration adjust an existing handle. */
-void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int sbrStartFreq);
 void SbrEnd(SBRInfo *sbr);
 
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);

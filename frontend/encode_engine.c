@@ -57,6 +57,7 @@ void init_encode_options(encode_options_t *opts)
     opts->use_tns = true;
     opts->use_pns = true;
     opts->use_lfe = -1;
+    opts->sbr_start_freq = 15;
     opts->quant_quality = 0;
     opts->bit_rate = DEFAULT_ABR_KBPS * 1000;
     opts->center_channel = 3;
@@ -505,6 +506,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     params.use_pns = opts->use_pns;
     params.use_lfe = (opts->use_lfe != -1) ? (opts->use_lfe != 0) : (num_channels >= 6);
     params.short_control = opts->shortctl;
+    params.sbr_start_freq = opts->sbr_start_freq;
 
     if (opts->quant_quality > 0 && opts->bit_rate == 0)
     {

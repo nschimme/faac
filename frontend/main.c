@@ -85,7 +85,8 @@ enum flags
     OPT_OVERWRITE,
     OPT_COMPILATION,
     OPT_IGNORE_LENGTH,
-    LANG_FLAG
+    LANG_FLAG,
+    OPT_SBR_START_FREQ
 };
 
 typedef struct {
@@ -210,6 +211,7 @@ static help_t help_advanced[] = {
     {"--object-type X\tForce AAC object type: lc, he-aac-v1, or auto (default)\n", NULL},
     {"--shortctl X\tEnforce block type (0 = both (default); 1 = no short; 2 = no\n"
     "\t\tlong).\n", NULL},
+    {"--sbr-start-freq N\tSet SBR start frequency index (0..15, default: 15).\n", NULL},
     {NULL, NULL}
 };
 
@@ -595,6 +597,7 @@ int main(int argc, char *argv[])
             {"language", 1, 0, LANG_FLAG},
             {"cap-rate", 1, 0, CAP_RATE_FLAG},
             {"cbr", 0, 0, CBR_FLAG},
+            {"sbr-start-freq", required_argument, 0, OPT_SBR_START_FREQ},
             {0, 0, 0, 0}
         };
 
@@ -607,6 +610,7 @@ int main(int argc, char *argv[])
 
         switch (c)
         {
+        case OPT_SBR_START_FREQ: opts.sbr_start_freq = atoi(optarg); break;
         case OPT_TNS_DISABLE: opts.use_tns = false; break;
         case OPT_PNS_DISABLE: opts.use_pns = false; break;
         case OPT_OVERWRITE: opts.overwrite = true; break;
