@@ -195,13 +195,13 @@ static float loudness(float energy_ratio)
 }
 
 // masking sensitivity drops above ~4 kHz; de-emphasize bands toward Nyquist
-static float treble_rolloff(int lo, int hi, float inv_block_len)
+static float treble_rolloff(int lo, int hi, float slope_per_line)
 {
-    return 10.0f / (1.0f + (float)(lo + hi) * inv_block_len);
+    return 10.0f / (1.0f + (float)(lo + hi) * slope_per_line);
 }
 
 static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float quality,
-                                    const BandEnergy * __restrict be, float group_total,
+                                    float treble_slope, const BandEnergy * __restrict be, float group_total,
                                     float * __restrict target_out)
 {
     int gsize = ci->groups.len[gnum];
@@ -220,6 +220,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
     int block_len = (ci->block_type == ONLY_SHORT_WINDOW) ? BLOCK_LEN_SHORT : BLOCK_LEN_LONG;
     float inv_block_len = 1.0f / (float)block_len;
+    float slope_per_line = treble_slope * inv_block_len;
 
     for (sfb = 0; sfb < ci->sfbn; sfb++)
     {
@@ -239,7 +240,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
                + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
-        target *= treble_rolloff(lo, hi, inv_block_len);
+        target *= treble_rolloff(lo, hi, slope_per_line);
 
         target_out[sfb] = target * quality;
     }
@@ -452,7 +453,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         if (coder->useRef)
             group_total = coder->refTotal[i];
 
-        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+        derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, aacquantCfg->treble_slope, be, group_total, target);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
