@@ -131,24 +131,24 @@ static int build_freq_table(SBRInfo *sbr)
         int prev1 = kx;
         int n1 = 2 * (int)(bands_per_octave * log2f((float)k1 / (float)kx) / 2.0f + 0.5f);
         if (n1 < 1) n1 = 1;
-        int dk1[SBR_MAX_BANDS];
+        int dk1[SBR_MAX_BANDS] = {0};
         for (int k = 0; k < n1; k++) {
             int edge = (int)(kx * powf((float)k1 / (float)kx, (float)(k + 1) / (float)n1) + 0.5f);
             dk1[k] = edge - prev1;
             prev1 = edge;
         }
-        qsort(dk1, n1, sizeof(int), cmp_int);
+        if (n1 > 0) qsort(dk1, n1, sizeof(int), cmp_int);
 
         int prev2 = k1;
         int n2 = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)k1) / 2.0f + 0.5f);
         if (n2 < 1) n2 = 1;
-        int dk2[SBR_MAX_BANDS];
+        int dk2[SBR_MAX_BANDS] = {0};
         for (int k = 0; k < n2; k++) {
             int edge = (int)(k1 * powf((float)k2 / (float)k1, (float)(k + 1) / (float)n2) + 0.5f);
             dk2[k] = edge - prev2;
             prev2 = edge;
         }
-        qsort(dk2, n2, sizeof(int), cmp_int);
+        if (n2 > 0) qsort(dk2, n2, sizeof(int), cmp_int);
 
         n_master = clamp_int(n1 + n2, 1, SBR_MAX_BANDS);
         for (int k = 0; k < n1 && (k + 1) <= n_master; k++) {
