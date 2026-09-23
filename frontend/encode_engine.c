@@ -555,9 +555,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
     unsigned long max_output_bytes = info.max_output_bytes;
     uint16_t frame_size = (uint16_t)(samples_per_frame / num_channels);
 
-    /* Implicit SBR signaling expects the container declared at the core
-       (pre-SBR) rate, half the reconstructed output rate. */
-    rate_conv_t rc = { .div = (info.object_type == FAAC_OBJ_HE_AAC_V1 || info.object_type == FAAC_OBJ_HE_AAC_V2) ? 2 : 1 };
+    rate_conv_t rc = { .div = 1 };
 
     pcmbuf = malloc(samples_per_frame * sizeof(float));
     bitbuf = malloc(max_output_bytes * sizeof(unsigned char));
@@ -582,8 +580,7 @@ int run_encoding_session_ext(const encode_options_t *opts,
         if (mp4_open(opts->output_filename, opts->overwrite) != 0)
             FAIL("Couldn't create MP4 output file %s\n", opts->output_filename);
         mp4_is_open = true;
-        uint32_t mp4_ch = (info.object_type == FAAC_OBJ_HE_AAC_V2) ? 1 : num_channels;
-        mp4_set_format(rc_scalar(rc, sample_rate), mp4_ch, infile->samplebytes * 8);
+        mp4_set_format(sample_rate, num_channels, infile->samplebytes * 8);
         mp4_set_constant_rate(opts->cbr);
     }
     else if (opts->output_filename)
