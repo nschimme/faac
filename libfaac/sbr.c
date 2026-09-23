@@ -103,6 +103,11 @@ static int build_freq_table(SBRInfo *sbr)
     for (int k = 1; k <= n_master; k++) f_master[k] += f_master[k - 1];
     sbr->numBands = n_master;
     for (int b = 0; b <= n_master; b++) sbr->bandEdges[b] = f_master[b];
+    sbr->numBandsLow = (sbr->numBands + 1) / 2;
+    for (int i = 0; i <= sbr->numBandsLow; i++)
+        sbr->bandEdgesLow[i] = sbr->bandEdges[i * 2];
+    if (sbr->numBands % 2 != 0)
+        sbr->bandEdgesLow[sbr->numBandsLow] = sbr->bandEdges[sbr->numBands];
     sbr->numNoiseBands = 1;
     return n_master;
 }
@@ -340,7 +345,7 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
      * claims SBR_NUM_TIME_SLOTS, so normalising a short frame over fewer slots
      * would inflate its levels, and the QMF-overlap save below reads the last
      * SBR_QMF_OVL_LEN_64 samples -- behind the buffer for a short frame. */
-    SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, 2 * FRAME_LEN, sCtx->sbrInfo);
+    SbrAnalyze(&sCtx->signalAnalysis, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, sCtx->sbrInfo);
 
     SbrEncode(sCtx->sbrInfo, fullPtrs, numChannels, isLfe, 2 * FRAME_LEN, &sCtx->signalAnalysis, fd);
 
@@ -388,7 +393,7 @@ void SbrContextResolveRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned
 
 int SbrContextIsAnalysisValid(SBRContext *sCtx)
 {
-    return sCtx ? sCtx->signalAnalysis.valid : 0;
+    return sCtx && sCtx->signalAnalysis.numSlots > 0;
 }
 
 int SbrContextGetWantShort(SBRContext *sCtx, int channel, int index)
@@ -430,11 +435,12 @@ static inline float fast_log2(float x)
 #if defined(__GNUC__)
 __attribute__((hot, noinline))
 #endif
-void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2)
+void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
 {
-    float x_buf[128], y_buf[128];
+    float x[128], y[128];
+    float * restrict xr = x, * restrict xi = x + 64;
+    const float * restrict yr = y, * restrict yi = y + 64;
     const sbrfloat * restrict p0 = qmf_c;
-    const sbrfloat * restrict p1 = qmf_c + 1;
     for (int m = 0; m < 64; m++) {
         int n0 = 2 * m;
         float a = p0[0]   * ovl_pos[639 - n0]
@@ -442,44 +448,72 @@ void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float *
                     + p0[256] * ovl_pos[383 - n0]
                     + p0[384] * ovl_pos[255 - n0]
                     + p0[512] * ovl_pos[127 - n0];
-        float b = p1[0]   * ovl_pos[638 - n0]
-                    + p1[128] * ovl_pos[510 - n0]
-                    + p1[256] * ovl_pos[382 - n0]
-                    + p1[384] * ovl_pos[254 - n0]
-                    + p1[512] * ovl_pos[126 - n0];
+        float b = p0[1]   * ovl_pos[638 - n0]
+                    + p0[129] * ovl_pos[510 - n0]
+                    + p0[257] * ovl_pos[382 - n0]
+                    + p0[385] * ovl_pos[254 - n0]
+                    + p0[513] * ovl_pos[126 - n0];
         /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
-        x_buf[m]      = a * sbr->twidCos[m] - b * sbr->twidSin[m];
-        x_buf[m + 64] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
-        p0 += 2; p1 += 2;
+        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
+        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        p0 += 2;
     }
-    fft(x_buf, y_buf, 6);
-    const float *yr = y_buf;
-    const float *yi = y_buf + 64;
+    fft(x, y, 6);
     for (int k = kx; k < k2; k++) {
-        int kr = (64 - k) & 63;
+        int kr = 63 - k;
         /* Separate the two real-subsequence DFTs by conjugate symmetry. */
         float Ar = 0.5f * (yr[k] + yr[kr]);
-        float Ai = 0.5f * (yi[k] - yi[kr]);
-        float Br = 0.5f * (yi[k] + yi[kr]);
-        float Bi = -0.5f * (yr[k] - yr[kr]);
+        float Ai = 0.5f * (yi[kr] - yi[k]);
+        float Br = -0.5f * (yi[k] + yi[kr]);
+        float Bi = 0.5f * (yr[kr] - yr[k]);
         /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
          * Si = Ai + w_k_real * Bi + w_k_imag * Br */
         float wr = sbr->oddCos[k];
         float wi = sbr->oddSin[k];
-        xr_out[k] = Ar + wr * Br - wi * Bi;
-        xi_out[k] = Ai + wr * Bi + wi * Br;
+        float Sr = Ar + wr * Br - wi * Bi;
+        float Si = Ai + wr * Bi + wi * Br;
+        energy[k] = Sr * Sr + Si * Si;
     }
 }
 
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
-void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2)
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2)
 {
-    float xr_out[64], xi_out[64];
-    SbrQmfAnalysisComplex(sbr, ovl_pos, xr_out, xi_out, kx, k2);
-    for (int k = kx; k < k2; k++)
-        energy[k] = xr_out[k] * xr_out[k] + xi_out[k] * xi_out[k];
+    float x[128], y[128];
+    float * restrict xr = x, * restrict xi = x + 64;
+    const float * restrict yr = y, * restrict yi = y + 64;
+    const sbrfloat * restrict p0 = qmf_c;
+    for (int m = 0; m < 64; m++) {
+        int n0 = 2 * m;
+        float a = p0[0]   * ovl_pos[639 - n0]
+                    + p0[128] * ovl_pos[511 - n0]
+                    + p0[256] * ovl_pos[383 - n0]
+                    + p0[384] * ovl_pos[255 - n0]
+                    + p0[512] * ovl_pos[127 - n0];
+        float b = p0[1]   * ovl_pos[638 - n0]
+                    + p0[129] * ovl_pos[510 - n0]
+                    + p0[257] * ovl_pos[382 - n0]
+                    + p0[385] * ovl_pos[254 - n0]
+                    + p0[513] * ovl_pos[126 - n0];
+        /* c[m] = (a + j*b) * exp(-j*pi*m/64) */
+        xr[m] = a * sbr->twidCos[m] - b * sbr->twidSin[m];
+        xi[m] = -(a * sbr->twidSin[m] + b * sbr->twidCos[m]);
+        p0 += 2;
+    }
+    fft(x, y, 6);
+    for (int k = kx; k < k2; k++) {
+        int kr = 63 - k;
+        /* Separate the two real-subsequence DFTs by conjugate symmetry. */
+        float Ar = 0.5f * (yr[k] + yr[kr]);
+        float Ai = 0.5f * (yi[kr] - yi[k]);
+        float Br = -0.5f * (yi[k] + yi[kr]);
+        float Bi = 0.5f * (yr[kr] - yr[k]);
+        /* Sr = Ar + w_k_real * Br - w_k_imag * Bi
+         * Si = Ai + w_k_real * Bi + w_k_imag * Br */
+        float wr = sbr->oddCos[k];
+        float wi = sbr->oddSin[k];
+        if (xr_out) xr_out[k] = Ar + wr * Br - wi * Bi;
+        if (xi_out) xi_out[k] = Ai + wr * Bi + wi * Br;
+    }
 }
 
 
@@ -488,39 +522,39 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     fd->numEnvelopes = sa->numEnvelopes;
     fd->frameClass   = sa->frameClass;
     fd->bsPointer    = sa->bsPointer;
+    fd->freqRes      = sbr->bs_freq_res;
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : sbr->bs_amp_res;
 }
 
-static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, int sampled,
+static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int n_env = fd->numEnvelopes;
+    int nb = sbr_env_bands(sbr, fd);
+    const int *edges = sbr_env_edges(sbr, fd);
 
     for (int ch = 0; ch < nch; ch++) {
+        if (isLfe && isLfe[ch]) continue;
         /* Read-only alias; the quantizer never writes back through it. */
-        const float (* restrict bandHalfE)[SBR_QMF_BANDS_64] = sa->ch[ch].bandHalfE;
+        const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
         int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode = 3;
 
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
-            for (int b = 0; b < sbr->numBands; b++) {
-                int k_lo = sbr->bandEdges[b], k_hi = sbr->bandEdges[b+1];
+            for (int b = 0; b < nb; b++) {
+                int k_lo = edges[b], k_hi = edges[b+1];
                 /* Weight energy by the number of QMF slots per envelope to
                  * maintain normalized power levels across variable borders. */
-                int e_slots = (n_env == 1) ? sampled : sa->envSampled[e];
+                int e_slots = sa->envSampled[e];
                 if (e_slots < 1) e_slots = 1;
-                float E = 0;
-                if (n_env == 1) {
-                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[0][k] + bandHalfE[1][k];
-                } else {
-                    for (int k = k_lo; k < k_hi; k++) E += bandHalfE[e][k];
-                }
+                float E = 0.0f;
+                for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
                 E /= (float)(e_slots * (k_hi - k_lo));
                 float factor = fd->eff_amp_res ? 1.0f : 2.0f;
-                int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
+                int level = (int)(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
                     raw_level = clamp_int(raw_level, 0, fd->eff_amp_res ? 63 : 127);
@@ -615,8 +649,8 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
 
         for (int h = 0; h < n_env; h++) {
             for (int k = ps_band_qmf[b][0]; k < ps_band_qmf[b][1]; k++) {
-                eL  += sa->ch[0].bandHalfE[h][k];
-                eR  += sa->ch[1].bandHalfE[h][k];
+                eL  += sa->bandE[0][h][k];
+                eR  += sa->bandE[1][h][k];
                 eLR += sa->bandCrossE[h][k];
                 eLRi += sa->bandCrossIm[h][k];
             }
@@ -706,8 +740,8 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
      * See SBR_PS_ICC_MAX_INDEX. */
     float gg = 0.25f * sbr->downmixGain * sbr->downmixGain;
     for (int h = 0; h < n_env; h++) {
-        float * restrict eM = sa->ch[0].bandHalfE[h];
-        const float * restrict eR2 = sa->ch[1].bandHalfE[h];
+        float * restrict eM = sa->bandE[0][h];
+        const float * restrict eR2 = sa->bandE[1][h];
         const float * restrict eX = sa->bandCrossE[h];
         for (int k = 0; k < SBR_QMF_BANDS_64; k++)
             eM[k] = (k >= sbr->kx) ? 0.5f * (eM[k] + eR2[k])
@@ -718,7 +752,6 @@ static void sbr_analyze_parametric_stereo(SBRInfo *sbr, struct SignalAnalysis *s
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd)
 {
     int nch = clamp_int(numChannels, 1, SBR_MAX_CODED_CHANNELS);
-    (void)isLfe;
     /* HE-AAC v2 analyses two input channels but codes one: the core sees a
      * downmix, so exactly one set of envelopes is quantized. */
     int coded_nch = sbr->is_he_v2 ? 1 : nch;
@@ -727,8 +760,10 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
     sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
 
-    for (int ch = 0; ch < nch; ch++)
+    for (int ch = 0; ch < nch; ch++) {
+        if (isLfe && isLfe[ch]) continue;
         memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_OVL_LEN_64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+    }
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
 
@@ -737,7 +772,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
     if (sbr->is_he_v2 && nch == 2)
         sbr_analyze_parametric_stereo(sbr, sa, fd);
 
-    sbr_quantize_envelopes(sbr, coded_nch, sa->sampled, sa, fd);
+    sbr_quantize_envelopes(sbr, coded_nch, isLfe, sa, fd);
 }
 
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.

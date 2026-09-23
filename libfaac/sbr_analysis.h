@@ -16,6 +16,8 @@
 #ifndef SBR_ANALYSIS_H
 #define SBR_ANALYSIS_H
 
+#include <stdbool.h>
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -48,13 +50,9 @@ struct SBRInfo;
 typedef struct SignalAnalysisChannel {
     int       transientSlot;
     float transientStrength;
-    int       wantShort;
-    float lastVal;
-    float bandHalfE[2][SBR_QMF_BANDS_64];
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {
-    int valid;
     int numSlots;
     int sampled;
 
@@ -67,24 +65,16 @@ typedef struct SignalAnalysis {
 
     SignalAnalysisChannel ch[MAX_CHANNELS];
 
-    /* HE-AAC v2 only: per-band Re{L * conj(R)} accumulated alongside the two
-     * channels' band energies, so IID, ICC and the downmix gain all come out of
-     * the one QMF pass. */
-    float bandCrossE[2][SBR_QMF_BANDS_64];
-    /* Imaginary half of the same cross product. Re alone cannot tell a
-     * decorrelated band from a coherent one whose channels are phase-rotated;
-     * both halves give the coherence magnitude. */
-    float bandCrossIm[2][SBR_QMF_BANDS_64];
+    /* Per-envelope QMF band energy, binned over the grid above; only the first
+       numEnvelopes rows are written. */
+    float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 
-    /* QMF analysis scratch: overlap tail + the current frame, per analyzed
-     * channel. Lives here (SignalAnalysis is heap-allocated inside SBRContext)
-     * rather than on SbrAnalyze's stack -- two of these are 21 KB, which is more
-     * stack than an embedded target can spare. Slot 0 serves the single-channel
-     * path; HE-AAC v2 uses both. */
-    float qmfWork[2][SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+    /* HE-AAC v2 only: per-band Re{L * conj(R)} and Im{L * conj(R)} */
+    float bandCrossE[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
+    float bandCrossIm[SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 
-void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr);
+void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr);
 
 #ifdef __cplusplus
 }

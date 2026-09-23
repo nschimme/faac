@@ -94,7 +94,8 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
 
 static int write_sbr_invf(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    if (write) for (int nb = 0; nb < sbr->numNoiseBands; nb++) PutBit(bs, fd->ch[ch].invfMode, 2);
+    (void)fd; (void)ch;
+    if (write) for (int nb = 0; nb < sbr->numNoiseBands; nb++) PutBit(bs, SBR_INVF_MODE, 2);
     return sbr->numNoiseBands * 2;
 }
 
@@ -122,16 +123,16 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
 
 static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
+    (void)ch;
     int bits = 0;
-    for (int ne = 0; ne < n_q; ne++) {
-        for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-            int val = fd->ch[ch].noiseData[ne][nb];
-            if (nb == 0) {
-                if (write) PutBit(bs, clamp_int(val, 0, 30), 5);
+    for (int e = 0; e < (fd->numEnvelopes > 1 ? 2 : 1); e++) {
+        for (int b = 0; b < sbr->numNoiseBands; b++) {
+            if (b == 0) {
+                if (write) PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
                 bits += 5;
             } else {
-                bits += put_huff(bs, write, f_huff_env_3_0dB, F_HUFF_ENV_3_0DB_NSYMS, F_HUFF_ENV_3_0DB_OFFSET, val);
+                if (write) PutBit(bs, 0, 1);
+                bits += 1;
             }
         }
     }

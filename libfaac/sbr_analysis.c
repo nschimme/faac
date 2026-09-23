@@ -23,73 +23,23 @@
 #include "config.h"
 #endif
 
-/* HE-AAC v2 stereo band analysis: per-band left/right energy plus the real part
- * of the inter-channel cross product, which is what PS derives IID and ICC from.
- *
- * Split out of SbrAnalyze, and noinline, on purpose. Inline it and this branch
- * is a second vectorized loop nest inside a hot function that every LC and
- * HE-v1 encode runs, so those paths pay its register pressure and code size
- * (+1054 bytes in SbrAnalyze.constprop.0, and ~3% throughput) to reach an if
- * that is false for them. Out of line, the cost falls only on HE-v2. */
-#if defined(__GNUC__)
-__attribute__((noinline))
-#endif
-static void SbrAnalyzeStereoBands(SignalAnalysis *sa, float *fullPtrs[], int numSamples,
-                                  struct SBRInfo *sbr, int num_slots, int split, int kx, int kEnd)
+/* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
+ * envelope 0 rather than dropping their energy. */
+static inline int sbr_env_of_slot(int numEnvelopes, const int *envStart, int slot)
 {
-    memset(sa->ch[0].bandHalfE, 0, sizeof(sa->ch[0].bandHalfE));
-    memset(sa->ch[1].bandHalfE, 0, sizeof(sa->ch[1].bandHalfE));
-    memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
-    memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
-
-    float * restrict workspaceL = sa->qmfWork[0];
-    float * restrict workspaceR = sa->qmfWork[1];
-
-    memcpy(workspaceL, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-    memcpy(workspaceL + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
-
-    memcpy(workspaceR, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-    memcpy(workspaceR + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
-
-    for (int slot = 0; slot < num_slots; slot++) {
-#if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION == 0)
-#endif
-        {
-            float xrL[64], xiL[64];
-            float xrR[64], xiR[64];
-            SbrQmfAnalysisComplex(sbr, workspaceL + slot * SBR_QMF_BANDS_64, xrL, xiL, kx, kEnd);
-            SbrQmfAnalysisComplex(sbr, workspaceR + slot * SBR_QMF_BANDS_64, xrR, xiR, kx, kEnd);
-
-            int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
-
-            float * restrict bEL = sa->ch[0].bandHalfE[h];
-            float * restrict bER = sa->ch[1].bandHalfE[h];
-            float * restrict bCross = sa->bandCrossE[h];
-            float * restrict bCrossI = sa->bandCrossIm[h];
-
-            for (int k = kx; k < kEnd; k++) {
-                bEL[k] += xrL[k] * xrL[k] + xiL[k] * xiL[k];
-                bER[k] += xrR[k] * xrR[k] + xiR[k] * xiR[k];
-                bCross[k] += xrL[k] * xrR[k] + xiL[k] * xiR[k];
-                bCrossI[k] += xrR[k] * xiL[k] - xrL[k] * xiR[k];
-            }
-        }
-    }
+    int e = 0;
+    while (e + 1 < numEnvelopes && slot >= envStart[e + 1]) e++;
+    return e;
 }
 
 /* Multi-pass signal analysis: transient detection, temporal grid selection,
- * and subband energy accumulation. hot keeps it vectorized under LTO despite
- * only being reached through the cold dispatcher. */
-#if defined(__GNUC__)
-__attribute__((hot))
-#endif
-void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, struct SBRInfo *sbr)
+ * and subband energy accumulation. */
+void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLfe, int numSamples, struct SBRInfo *sbr)
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
+    float workspace[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
 
-    sa->valid = 1;
     sa->numSlots = num_slots;
     sa->sampled = sampled;
 
@@ -98,22 +48,14 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
     for (int ch = 0; ch < nch; ch++) {
         float smax = 0.0f, ssum = 0.0f;
         int smax_idx = 0;
-        float slot_hp_eng[128]; /* high-pass energy per slot (max slots = 2*1024/64 = 32) */
-
-        sa->ch[ch].wantShort = 0;
-        float val_in = sa->ch[ch].lastVal;
         const float * restrict p_in = fullPtrs[ch];
         for (int slot = 0; slot < num_slots; slot++) {
             float stot = 0.0f;
-            float hp_stot = 0.0f;
             for (int n = 0; n < SBR_QMF_BANDS_64; n += 4) {
                 float v0 = p_in[0], v1 = p_in[1], v2 = p_in[2], v3 = p_in[3];
                 stot += v0 * v0 + v1 * v1 + v2 * v2 + v3 * v3;
-                float d0 = v0 - val_in, d1 = v1 - v0, d2 = v2 - v1, d3 = v3 - v2;
-                hp_stot += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
-                val_in = v3; p_in += 4;
+                p_in += 4;
             }
-            if (slot < 128) slot_hp_eng[slot] = hp_stot;
 
             if (stot > smax) {
                 smax = stot;
@@ -121,43 +63,24 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
             }
             ssum += stot;
         }
-        sa->ch[ch].lastVal = val_in;
 
-        sa->ch[ch].transientStrength = smax * (float)sampled / (ssum + SBR_ENERGY_FLOOR);
+        sa->ch[ch].transientStrength = smax * (float)num_slots / (ssum + SBR_ENERGY_FLOOR);
         sa->ch[ch].transientSlot = smax_idx;
-
-        /* Evaluate relative energy jumps to inform block switching. */
-        float last_hp_eng = 0.0f;
-        int have_last = 0;
-        for (int slot = 0; slot < num_slots; slot++) {
-            if (slot >= 128) break;
-            float hp_eng = slot_hp_eng[slot];
-            if (have_last) {
-                float toteng = (hp_eng < last_hp_eng) ? hp_eng : last_hp_eng;
-                float volchg = (hp_eng > last_hp_eng) ? (hp_eng - last_hp_eng) : (last_hp_eng - hp_eng);
-                /* PSY_TD_THRESH = 0.5 */
-                if (volchg > (0.5f * toteng)) {
-                    sa->ch[ch].wantShort = 1;
-                    break;
-                }
-            }
-            last_hp_eng = hp_eng;
-            have_last = 1;
-        }
     }
 
     /* Choose the temporal grid based on the strongest transient. Synchronizes
-     * envelope borders across all channels to maintain spatial imaging. */
+     * envelope borders across all channels to maintain spatial imaging. The
+     * LFE carries no SBR, so it gets no vote. */
     float frameStrength = 0.0f;
     int frameSlot = 0;
     for (int ch = 0; ch < nch; ch++) {
+        if (isLfe && isLfe[ch]) continue;
         if (sa->ch[ch].transientStrength > frameStrength) {
             frameStrength = sa->ch[ch].transientStrength;
             frameSlot = sa->ch[ch].transientSlot;
         }
     }
 
-    int split = num_slots;   /* default: single envelope spans the whole frame */
     if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
@@ -168,7 +91,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->tEnv[1] = innerSbr;
         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
         sa->bsPointer = 0;
-        split = clamp_int(innerSbr * num_slots / SBR_NUM_TIME_SLOTS, 1, num_slots - 1);
     } else {
         sa->numEnvelopes = 1;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
@@ -177,55 +99,76 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
         sa->bsPointer = 0;
     }
 
+    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
+    int envStart[SBR_MAX_ENVELOPES + 1];
+    for (int e = 0; e <= sa->numEnvelopes; e++)
+        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+
     /* Count slots per envelope for power normalization. */
-    sa->envSampled[0] = sa->envSampled[1] = 0;
+    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
     for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
         if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
-        sa->envSampled[h]++;
+        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
     }
-    if (sa->envSampled[0] < 1) sa->envSampled[0] = 1;
-    if (sa->numEnvelopes > 1 && sa->envSampled[1] < 1) sa->envSampled[1] = 1;
+    for (int e = 0; e < sa->numEnvelopes; e++)
+        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
-    /* Pass 2: Subband analysis. Accumulates energy across QMF bands within
-     * the selected temporal envelopes. */
-    /* Only [kx, k2) feeds the envelope quantizer; bands below kx are core-coded
-     * and never read, so skip their post-FFT extraction and accumulation. */
-    int kx = sbr ? sbr->kx : 0;
-    int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    if (sbr && sbr->is_he_v2) {
-        kx = 0;
-        kEnd = 64;
-    }
+    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
+     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
+    if (sbr) {
+        int kx = (sbr->is_he_v2) ? 0 : sbr->kx;
+        int kEnd = (sbr->is_he_v2) ? 64 : sbr->k2;
 
-    if (nch == 2 && sbr && sbr->is_he_v2) {
-        SbrAnalyzeStereoBands(sa, fullPtrs, numSamples, sbr, num_slots, split, kx, kEnd);
-    } else {
         for (int ch = 0; ch < nch; ch++) {
-            memset(sa->ch[ch].bandHalfE, 0, sizeof(sa->ch[ch].bandHalfE));
+            if (isLfe && isLfe[ch]) continue;
+            memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
-            if (sbr) {
-                float * restrict workspace = sa->qmfWork[0];
+            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+            memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
 
-                memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
-                memcpy(workspace + SBR_QMF_OVL_LEN_64, fullPtrs[ch], numSamples * sizeof(float));
-
-                for (int slot = 0; slot < num_slots; slot++) {
+            for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                    if (slot % FAAC_SBR_DECIMATION == 0)
+                if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                    {
-                        float slotEnergy[SBR_QMF_BANDS_64];
-                        SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
+                {
+                    float slotEnergy[SBR_QMF_BANDS_64];
+                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
 
-                        int h = (sa->numEnvelopes > 1 && slot >= split) ? 1 : 0;
+                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
 
-                        float * restrict bE = sa->ch[ch].bandHalfE[h];
-                        for (int k = kx; k < kEnd; k++)
-                            bE[k] += slotEnergy[k];
-                    }
+                    float * restrict bE = sa->bandE[ch][e];
+                    for (int k = kx; k < kEnd; k++)
+                        bE[k] += slotEnergy[k];
+                }
+            }
+        }
+
+        /* HE-AAC v2 Parametric Stereo cross-correlation analysis */
+        if (sbr->is_he_v2 && nch == 2) {
+            memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+            memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
+
+            float ws0[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            float ws1[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            memcpy(ws0, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+            memcpy(ws0 + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
+            memcpy(ws1, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+            memcpy(ws1 + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
+
+            for (int slot = 0; slot < num_slots; slot++) {
+                float xr0[64], xi0[64], xr1[64], xi1[64];
+                SbrQmfAnalysisComplex(sbr, ws0 + slot * SBR_QMF_BANDS_64, xr0, xi0, 0, 64);
+                SbrQmfAnalysisComplex(sbr, ws1 + slot * SBR_QMF_BANDS_64, xr1, xi1, 0, 64);
+
+                int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+                float * restrict bCrossR = sa->bandCrossE[e];
+                float * restrict bCrossI = sa->bandCrossIm[e];
+
+                for (int k = 0; k < 64; k++) {
+                    bCrossR[k] += xr0[k] * xr1[k] + xi0[k] * xi1[k];
+                    bCrossI[k] += xi0[k] * xr1[k] - xr0[k] * xi1[k];
                 }
             }
         }
