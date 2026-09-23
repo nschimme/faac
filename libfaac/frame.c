@@ -394,6 +394,16 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
               hEncoder->sfbOffsetShort,
               hEncoder->sfbOffsetLong);
 
+    /* The decoder replaces every QMF band from kx up with SBR output, so core
+     * lines past the crossover are discarded; stop the quantizer there rather
+     * than at the band edge CalcBW snapped up to. Rounded because the Hz value
+     * is truncated; the true line is a whole number of 32-line QMF bands. */
+    if (hEncoder->config.aacObjectType == HE_V1) {
+        unsigned int xover = SbrContextGetXOverBandwidth(hEncoder->sbrContext);
+        hEncoder->aacquantCfg.max_l = (xover * (BLOCK_LEN_LONG << 1) + hEncoder->sampleRate / 2)
+                                      / hEncoder->sampleRate;
+    }
+
     {
         const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };
@@ -854,6 +864,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         } else {
             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbl;
             coderInfo[channel].sfb_offset = hEncoder->sfbOffsetLong;
+            for (int k = hEncoder->aacquantCfg.max_l; k < hEncoder->sfbOffsetLong[hEncoder->aacquantCfg.max_cbl]; k++)
+                hEncoder->freqBuff[channel][k] = 0.0f;
 
             coderInfo[channel].groups.n = 1;
             coderInfo[channel].groups.len[0] = 1;
