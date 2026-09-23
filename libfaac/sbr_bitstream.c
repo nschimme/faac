@@ -138,7 +138,6 @@ static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream
     return bits;
 }
 
-#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
 /* Delta-code one parametric-stereo parameter set across frequency.
  * Returns the bit cost; pass write=false to price an encoding without emitting it. */
 static int write_ps_params(BitStream *bs, bool write, const int *cur,
@@ -229,7 +228,6 @@ static int write_ps_extension(const SbrFrameData *fd, BitStream *bs, int write)
 
     return bits;
 }
-#endif /* FAAC_PARAMETRIC_STEREO */
 
 static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, bool write)
 {
@@ -256,13 +254,10 @@ static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
         bits += write_sbr_envelope(sbr, fd, bs, 0, write);
         bits += write_sbr_noise(sbr, fd, bs, 0, write);
         WB(0, 1);               /* bs_add_harmonic_flag = 0 */
-#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
-        if (SbrIsHEV2(sbr)) {
+        if (sbr->is_he_v2) {
             WB(1, 1);           /* bs_extended_data = 1 */
             bits += write_ps_extension(fd, bs, write);
-        } else
-#endif
-        {
+        } else {
             WB(0, 1);           /* bs_extended_data = 0 */
         }
     }

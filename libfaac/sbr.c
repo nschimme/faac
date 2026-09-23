@@ -137,7 +137,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 {
     int sampleRate = sbr->sampleRate;
-    int coded_channels = SbrIsHEV2(sbr) ? 1 : sbr->numChannels;
+    int coded_channels = sbr->is_he_v2 ? 1 : sbr->numChannels;
     unsigned long rate_per_ch = bitRate / coded_channels;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
     /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
@@ -242,7 +242,7 @@ int SbrContextGetASC(SBRContext *sbrCtx, int coreSRIdx, int channels, unsigned c
     BitStream *pBitStream = OpenBitStream(cap, *ppBuffer);
     PutBit(pBitStream, LOW,                         5);  /* core object type = 2 */
     PutBit(pBitStream, coreSRIdx,                   4);  /* core rate (Fs/2, dual-rate) */
-    PutBit(pBitStream, channels,                    4);  /* core channels (1 for HE-AAC v2) */
+    PutBit(pBitStream, IsHEV2(aacObjectType) ? 1 : channels, 4); /* core channels (1 for HE-AAC v2) */
     PutBit(pBitStream, 0, 1);                            /* frameLengthFlag */
     PutBit(pBitStream, 0, 1);                            /* dependsOnCoreCoder */
     PutBit(pBitStream, 0, 1);                            /* extensionFlag */
@@ -346,6 +346,15 @@ void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe
 
     /* Dual-rate decimation: produces the halved-rate core signal. */
     Resample(rs, 2 * FRAME_LEN);
+
+    if (sCtx->sbrInfo->is_he_v2 && numChannels == 2) {
+        float gain = sCtx->sbrInfo->downmixGain * 0.5f;
+        float * restrict mono = rs->halfRate[0];
+        const float * restrict right = rs->halfRate[1];
+        for (int i = 0; i < FRAME_LEN; i++) {
+            mono[i] = (mono[i] + right[i]) * gain;
+        }
+    }
 }
 
 void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned int *sampleRateIdx, SR_INFO **srInfoPtr)
@@ -712,7 +721,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
     (void)isLfe;
     /* HE-AAC v2 analyses two input channels but codes one: the core sees a
      * downmix, so exactly one set of envelopes is quantized. */
-    int coded_nch = SbrIsHEV2(sbr) ? 1 : nch;
+    int coded_nch = sbr->is_he_v2 ? 1 : nch;
 
     /* New frame: freeze the header-send decision now, before SbrWrite's write
      * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
@@ -725,7 +734,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 
     /* PS runs before the envelope quantizer: it derives the downmix gain, and
      * the envelopes must describe the gained downmix the core actually codes. */
-    if (SbrIsHEV2(sbr) && nch == 2)
+    if (sbr->is_he_v2 && nch == 2)
         sbr_analyze_parametric_stereo(sbr, sa, fd);
 
     sbr_quantize_envelopes(sbr, coded_nch, sa->sampled, sa, fd);

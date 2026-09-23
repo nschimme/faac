@@ -377,8 +377,6 @@ const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS] = {
     /*  +31 */ { 0x000fffffu, 20 },
 };
 
-#if !defined(FAAC_PARAMETRIC_STEREO) || FAAC_PARAMETRIC_STEREO
-
 const SBRHuffEntry ps_huff_iid_df[29] = {
     /* -14 */ { 0x01fffbu, 17 },
     /* -13 */ { 0x01fffcu, 17 },
@@ -428,5 +426,3 @@ const SBRHuffEntry ps_huff_icc_df[15] = {
     /*  +6 */ { 0x0007feu, 11 },
     /*  +7 */ { 0x001ffeu, 13 },
 };
-
-#endif

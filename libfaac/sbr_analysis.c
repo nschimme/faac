@@ -195,12 +195,12 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, int numSamples, 
      * and never read, so skip their post-FFT extraction and accumulation. */
     int kx = sbr ? sbr->kx : 0;
     int kEnd = sbr ? sbr->k2 : SBR_QMF_BANDS_64;
-    if (sbr && SbrIsHEV2(sbr)) {
+    if (sbr && sbr->is_he_v2) {
         kx = 0;
         kEnd = 64;
     }
 
-    if (nch == 2 && sbr && SbrIsHEV2(sbr)) {
+    if (nch == 2 && sbr && sbr->is_he_v2) {
         SbrAnalyzeStereoBands(sa, fullPtrs, numSamples, sbr, num_slots, split, kx, kEnd);
     } else {
         for (int ch = 0; ch < nch; ch++) {
