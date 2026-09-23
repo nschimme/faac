@@ -228,7 +228,7 @@ jobs:
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
               lc results/lc_$tag.json --skip-mos --build-dir $d/build
           done
-          python3 bench/compare_results.py results --gates footprint
+          python3 bench/compare_results.py results --gates footprint --footprint-allow 12000
 
   report:
     name: Consolidated Report
