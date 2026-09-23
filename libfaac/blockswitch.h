@@ -44,8 +44,7 @@ typedef struct {
 } GlobalPsyInfo;
 
 void PsyInit (GlobalPsyInfo *gpsyInfo, PsyInfo *psyInfo,
-		unsigned int numChannels, unsigned int sampleRate, bool heCore,
-		unsigned long bitRatePerCh);
+		unsigned int numChannels, unsigned int sampleRate, bool heCore);
 void PsyEnd (PsyInfo *psyInfo, unsigned int numChannels);
 float PsyGetAttack (PsyInfo *psyInfo);
 void PsyCalculate (PsyInfo *psyInfo, const bool *isLfeChannel,

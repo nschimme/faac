@@ -73,19 +73,14 @@ static void PsyCheckShort(PsyInfo * psyInfo)
 }
 
 void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChannels,
-		    unsigned int sampleRate, bool heCore, unsigned long bitRatePerCh)
+		    unsigned int sampleRate, bool heCore)
 {
   unsigned int channel;
   int size;
 
   gpsyInfo->sampleRate = (float) sampleRate;
-  if (heCore) {
-    gpsyInfo->levelRatio = PSY_LEVEL_RATIO_HE;
-    gpsyInfo->levelSmooth = 1.0f;
-  } else {
-    gpsyInfo->levelRatio = PSY_LEVEL_RATIO_LC;
-    gpsyInfo->levelSmooth = PSY_LEVEL_SMOOTH_LC;
-  }
+  gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
+  gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
 
   for (channel = 0; channel < numChannels; channel++)
   {

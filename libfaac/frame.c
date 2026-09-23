@@ -407,11 +407,9 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     }
 
     // reset psymodel
-    unsigned long bitRatePerCh = (hEncoder->config.bitRate && hEncoder->numChannels)
-        ? (hEncoder->config.bitRate / hEncoder->numChannels) : 0;
     PsyEnd(hEncoder->psyInfo, hEncoder->numChannels);
     PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
-			hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1, bitRatePerCh);
+			hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
@@ -499,7 +497,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     RefreshLfeMap(hEncoder);
 
 	PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, hEncoder->numChannels,
-        hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1, 0);
+        hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
 
     FilterBankInit(hEncoder);
 

@@ -236,8 +236,6 @@ static int tns_fit_subrange(faacEncStruct *hEncoder, int b_start, int b_stop,
     float *trial = hEncoder->gpsyInfo.sharedWorkBuffLong + BLOCK_LEN_LONG;
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
-    float k4[TNS_MAX_ORDER + 1];
-    int idx4[TNS_MAX_ORDER + 1];
     float est_gain;
     int order, limit, i, best_dir;
     float filt_e = 0.0f;
