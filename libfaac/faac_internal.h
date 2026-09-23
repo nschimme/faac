@@ -70,6 +70,7 @@ typedef struct faacEncConfiguration
     int shortctl;
     int channel_map[64];             /* MAX_CHANNELS entries; identity by default */
     unsigned int rateControl;        /* enum rate_control_mode; AUTO resolves on apply */
+    int sbrStartFreq;                /* SBR start frequency index (0..15, default 15) */
 } faacEncConfiguration, *faacEncConfigurationPtr;
 
 typedef void *faacEncHandle;

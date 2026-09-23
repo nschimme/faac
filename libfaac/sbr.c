@@ -109,17 +109,56 @@ static int build_freq_table(SBRInfo *sbr)
     int kx = sbr->kx, k2 = sbr->k2;
     int *edges = sbr->bandEdges;
     int n_master;
-
-    int prev = kx;
     int bands_per_octave = 14 - 2 * sbr->bs_freq_scale; /* 12, 10, 8 for bs_freq_scale 1, 2, 3 */
-    n_master = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)kx) / 2.0f + 0.5f);
-    n_master = clamp_int(n_master, 1, SBR_MAX_BANDS);
-    for (int k = 0; k < n_master; k++) {
-        int edge = (int)(kx * powf((float)k2 / (float)kx, (float)(k + 1) / (float)n_master) + 0.5f);
-        edges[1 + k] = edge - prev;
-        prev = edge;
+
+    if ((float)k2 / (float)kx < 2.2449f) {
+        /* One region */
+        int prev = kx;
+        n_master = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)kx) / 2.0f + 0.5f);
+        n_master = clamp_int(n_master, 1, SBR_MAX_BANDS);
+        for (int k = 0; k < n_master; k++) {
+            int edge = (int)(kx * powf((float)k2 / (float)kx, (float)(k + 1) / (float)n_master) + 0.5f);
+            edges[1 + k] = edge - prev;
+            prev = edge;
+        }
+        qsort(edges + 1, n_master, sizeof(int), cmp_int);
+    } else {
+        /* Two regions (ISO/IEC 14496-3 §4.6.18.3.2.1) */
+        float temp = (sbr->bs_alter_scale == 1) ? 2.2449f : 2.0f;
+        int k1 = (int)lrintf(temp * (float)kx);
+        if (k1 > k2) k1 = k2;
+
+        int prev1 = kx;
+        int n1 = 2 * (int)(bands_per_octave * log2f((float)k1 / (float)kx) / 2.0f + 0.5f);
+        n1 = clamp_int(n1, 1, SBR_MAX_BANDS);
+        int dk1[SBR_MAX_BANDS] = {0};
+        for (int k = 0; k < n1; k++) {
+            int edge = (int)(kx * powf((float)k1 / (float)kx, (float)(k + 1) / (float)n1) + 0.5f);
+            dk1[k] = edge - prev1;
+            prev1 = edge;
+        }
+        if (n1 > 0) qsort(dk1, n1, sizeof(int), cmp_int);
+
+        int prev2 = k1;
+        int n2 = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)k1) / 2.0f + 0.5f);
+        n2 = clamp_int(n2, 1, SBR_MAX_BANDS);
+        int dk2[SBR_MAX_BANDS] = {0};
+        for (int k = 0; k < n2; k++) {
+            int edge = (int)(k1 * powf((float)k2 / (float)k1, (float)(k + 1) / (float)n2) + 0.5f);
+            dk2[k] = edge - prev2;
+            prev2 = edge;
+        }
+        if (n2 > 0) qsort(dk2, n2, sizeof(int), cmp_int);
+
+        n_master = clamp_int(n1 + n2, 1, SBR_MAX_BANDS);
+        for (int k = 0; k < n1 && (k + 1) <= n_master; k++) {
+            edges[1 + k] = dk1[k];
+        }
+        for (int k = 0; k < n2 && (n1 + 1 + k) <= n_master; k++) {
+            edges[1 + n1 + k] = dk2[k];
+        }
     }
-    qsort(edges + 1, n_master, sizeof(int), cmp_int);
+
     edges[0] = kx;
     for (int k = 1; k <= n_master; k++) edges[k] += edges[k - 1];
     sbr->numBands = n_master;
@@ -136,7 +175,7 @@ static int build_freq_table(SBRInfo *sbr)
     return n_master;
 }
 
-SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate, int sbrStartFreq)
 {
     SBRInfo *sbr = (SBRInfo *)AllocMemory(sizeof(SBRInfo));
     if (!sbr) return NULL;
@@ -154,21 +193,19 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
         sbr->oddCos[m] = (float)cos(M_PI_DOUBLE * (2 * m + 1) / 128.0);
         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
     }
-    SbrUpdate(sbr, bitRate);
+    SbrUpdate(sbr, bitRate, sbrStartFreq);
     return sbr;
 }
 
 /* Re-resolve SBR operational parameters (crossover, resolution) when the
  * bitrate or sample rate changes, avoiding handle reallocation. */
-void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+void SbrUpdate(SBRInfo *sbr, unsigned long bitRate, int sbrStartFreq)
 {
     int sampleRate = sbr->sampleRate;
     unsigned long rate_per_ch = bitRate / sbr->numChannels;
+    sbr->sbrStartFreq = (sbrStartFreq >= 0 && sbrStartFreq <= 15) ? sbrStartFreq : 15;
     sbr->bs_amp_res = (rate_per_ch < SBR_AMP_RES_BITRATE_BPS) ? 0 : 1;
-    /* Target crossover near the core ceiling (~11.6 kHz) maximizes MOS.
-     * Higher-order parametric reconstruction below 10 kHz is audible and
-     * generally inferior to the bit-starved LC core. */
-    sbr->bs_start_freq = 15;
+    sbr->bs_start_freq = sbr->sbrStartFreq;
     /* Log-spaced envelope bands, fewer per octave while bits are scarce:
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
@@ -285,13 +322,13 @@ unsigned int SbrContextGetXOverBandwidth(SBRContext *sbrCtx)
                            (2 * SBR_QMF_BANDS_64));
 }
 
-void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate)
+void SbrContextUpdateConfig(SBRContext *sCtx, int channels, unsigned long bitrate, int sbrStartFreq)
 {
     if (!sCtx) return;
     if (!sCtx->sbrInfo)
-        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate);
+        sCtx->sbrInfo = SbrInit(channels, sCtx->fullSampleRate, bitrate, sbrStartFreq);
     else
-        SbrUpdate(sCtx->sbrInfo, bitrate);
+        SbrUpdate(sCtx->sbrInfo, bitrate, sbrStartFreq);
 }
 
 void SbrContextProcessFrame(SBRContext *sCtx, int numChannels, const bool *isLfe, int realPerCh, int flushTick, float *inputFifo[MAX_CHANNELS], float *heHalfRate[MAX_CHANNELS])

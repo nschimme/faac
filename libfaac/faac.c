@@ -127,6 +127,7 @@ FAACAPI faac_status faac_params_init(faac_params *p, uint32_t caller_size)
     tmp.output_format = FAAC_STREAM_ADTS;
     tmp.input_format  = FAAC_INPUT_16BIT;
     tmp.short_control = FAAC_SHORTCTL_NORMAL;
+    tmp.sbr_start_freq = 15;
 
     /* Write at most the caller's struct_size so a newer library cannot overrun
      * an older, smaller faac_params; report the byte count actually set. */
@@ -197,6 +198,8 @@ static faac_status validate_params(const faac_params *p)
     case FAAC_RC_CBR:  if (!p->bit_rate) return FAAC_ERR_INVALID_ARGUMENT; break;
     default:           return FAAC_ERR_INVALID_ARGUMENT;
     }
+    if (p->sbr_start_freq < -1 || p->sbr_start_freq > 15)
+        return FAAC_ERR_INVALID_ARGUMENT;
     if (p->max_bit_rate) {
         /* Bounded because it is converted into a per-frame bit budget; an
          * absurd value is a caller error, not a request for an unlimited
@@ -261,6 +264,7 @@ FAACAPI faac_status faac_encoder_open(const faac_params *p, faac_encoder **out)
     cfg->usePns        = p->use_pns ? 1 : 0;
     cfg->maxBitRate    = p->max_bit_rate;
     cfg->rateControl   = (unsigned int)p->rate_control;
+    cfg->sbrStartFreq  = (p->struct_size >= offsetof(faac_params, sbr_start_freq) + sizeof(int32_t)) ? (p->sbr_start_freq < 0 ? 15 : p->sbr_start_freq) : 15;
     if (p->channel_map) {
         uint32_t i;
         for (i = 0; i < p->num_channels; i++)

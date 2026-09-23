@@ -212,6 +212,8 @@ typedef struct faac_params {
     uint32_t                max_bit_rate;  /* whole-stream peak bits/sec; 0 = unlimited */
 
     enum faac_rate_control  rate_control;  /* see enum; AUTO = ABR if bit_rate, else VBR */
+
+    int32_t                 sbr_start_freq;/* SBR start frequency index (0..15; -1 or 15 = default 15) */
 } faac_params;
 
 /* Upper bound on faac_params.max_bit_rate: far above any real stream rate, and
