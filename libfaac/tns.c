@@ -21,8 +21,9 @@
 #include "util.h"
 
 /* Per-sample-rate scalefactor-band range TNS is allowed to filter over, from
- * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). Not
- * an original heuristic: this is the spec's fixed table. */
+ * ISO/IEC 13818-7/14496-3's TNS tool tables (indexed by sampleRateIdx). The
+ * upper bounds are the spec's TNS_MAX_BANDS; the lower bounds are this
+ * encoder's choice, as the spec lets a filter reach band 0. */
 static const struct {
     uint8_t min;
     uint8_t max;
@@ -35,7 +36,7 @@ static const struct {
 _Static_assert(TNS_LPC_ORDER <= TNS_MAX_ORDER,
                "coder.h's TNS array bound must cover the order tns.c actually fits");
 #define TNS_GAIN_LIMIT      1.4f  /* Levinson-Durbin prediction gain below this isn't worth the filter's bit cost */
-#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the filter actually being transmitted */
+#define TNS_MEASURED_GAIN   1.4f  /* post-quantization re-check: same bar as TNS_GAIN_LIMIT, applied to the transmitted filter on the spectrum it filters */
 
 /* Below this, a band's spectral energy is indistinguishable from float
  * rounding noise, so there's nothing real for TNS to whiten. Also reused
@@ -182,17 +183,11 @@ static void finalize_filter(int order, const float * k, float * a)
 static void filter_spec(int length, int order, const float * a, const float * src, float * dst)
 {
     int i, j;
-    int limit = order < length ? order : length;
 
-    for (i = 0; i < limit; i++) {
+    for (i = 0; i < length; i++) {
+        int taps = i < order ? i : order;
         float acc = src[i];
-        for (j = 1; j <= i; j++)
-            acc += a[j] * src[i - j];
-        dst[i] = acc;
-    }
-    for (; i < length; i++) {
-        float acc = src[i];
-        for (j = 1; j <= order; j++)
+        for (j = 1; j <= taps; j++)
             acc += a[j] * src[i - j];
         dst[i] = acc;
     }
@@ -225,7 +220,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     float trial[BLOCK_LEN_LONG];
     float r[TNS_MAX_ORDER + 1] = {0};
     float k[TNS_MAX_ORDER + 1] = {0};
-    float gain;
+    float gain, total_energy = 0.0f;
     int order, limit, i;
 
     if (length <= TNS_LPC_ORDER)
@@ -241,7 +236,6 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     {
         float maxrms = 0.0f, floorrms;
         float sum_rms = 0.0f, sum_log_rms = 0.0f;
-        float total_energy = 0.0f;
         int nbands = b_stop - b_start;
         float rms_band[MAX_SCFAC_BANDS];
         int b;
@@ -306,8 +300,6 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     if (order == 0)
         return 0;
 
-    filter->order = order;
-
     /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
      * reversal, so both directions give the same LPC fit and prediction gain.
      * Picking the right one needs the time-domain transient position, which
@@ -327,26 +319,23 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
 
     finalize_filter(order, k, filter->aCoeffs);
 
-    /* compute_lpc's gain estimate was on the un-quantized coefficients;
-     * quantization can erode it enough that the filter actually being
-     * transmitted no longer pays for itself. Re-check on a trial run of the
-     * real (quantized) filter before committing to writing it out. */
+    /* The fit ran on the band-normalised copy, but the filter is applied to
+     * the real spectrum, where quantization and the normalisation can leave
+     * it raising the energy it was meant to remove. Judge the transmitted
+     * filter where it is applied. */
     {
-        /* The unfiltered energy is r[0]: calc_autocorr_f's lag-0 term is the
-         * same sum(wspec[i]^2) over the same range, and compute_lpc only reads
-         * r. Only the filtered energy needs a pass here. */
         float filt_e = 0.0f;
 
-        filter_spec(length, order, filter->aCoeffs, wspec, trial);
+        filter_spec(length, order, filter->aCoeffs, band, trial);
         for (i = 0; i < length; i++)
             filt_e += trial[i] * trial[i];
-        if (filt_e < TNS_MIN_ENERGY)
-            filt_e = TNS_MIN_ENERGY;
-        if (r[0] < TNS_MEASURED_GAIN * filt_e)
+        if (total_energy < TNS_MEASURED_GAIN * filt_e)
             return 0;
     }
 
-    filter_spec(length, order, filter->aCoeffs, band, trial);
+    /* Set only once accepted: a rejected filter must not leave an order
+     * behind for the bitstream writer. */
+    filter->order = order;
     memcpy(band, trial, length * sizeof(float));
     return 1;
 }
