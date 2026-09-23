@@ -116,6 +116,8 @@ static float gain_with_overflow_clamp(int *sfac, float band_peak)
 #define LOUDNESS_EXPONENT      0.4f     // Zwicker-ish loudness compression
 #define AVG_ENERGY_FLOOR_FRAC  0.0010f  // -30 dB floor, keeps quiet bands from collapsing the target
 #define PEAK_ENERGY_FLOOR_FRAC 0.0050f  // ~-23 dB floor, same purpose for peak energy
+#define QUIET_BAND_FRAC        0.0003f  // ~-35 dB below the frame mean: masked by the frame as a whole (1e-4 and 1e-3 both score lower)
+#define QUIET_BAND_EXPONENT    0.2f     // how fast such a band's target falls below it
 
 typedef struct
 {
@@ -240,6 +242,10 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
         target = AVG_ENERGY_WEIGHT * loudness(avg / ref)
                + (1.0f - AVG_ENERGY_WEIGHT) * PEAK_ENERGY_WEIGHT * loudness(peak / ref_win);
         target *= treble_rolloff(lo, hi, inv_block_len);
+        /* A band this far under the frame is masked by it; the floors above
+         * would otherwise pin its target at the floor. */
+        if (be[sfb].sum < ref * QUIET_BAND_FRAC)
+            target *= powf(be[sfb].sum / (ref * QUIET_BAND_FRAC), QUIET_BAND_EXPONENT);
 
         target_out[sfb] = target * quality;
     }
