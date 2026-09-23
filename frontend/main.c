@@ -406,7 +406,7 @@ static void cli_session_start_callback(const encode_session_info_t *info, void *
     }
 
     fprintf(stderr, "Object type: %s (MPEG-%d)%s%s%s\n",
-            (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity",
+            (info->object_type == FAAC_OBJ_HE_AAC_V2) ? "HE-AAC v2 (Parametric Stereo)" : (info->object_type == FAAC_OBJ_HE_AAC_V1) ? "HE-AAC v1" : "Low Complexity",
             (info->mpeg_version == FAAC_MPEG4) ? 4 : 2,
             opts->use_tns ? " + TNS" : "",
             jm_str,
@@ -733,12 +733,14 @@ int main(int argc, char *argv[])
         case OBJTYPE_FLAG:
             if (!strcmp(optarg, "lc"))
                 opts.object_type = FAAC_OBJ_LOW;
-            else if (!strcmp(optarg, "he-aac-v1"))
+            else if (!strcmp(optarg, "he-aac-v1") || !strcmp(optarg, "hev1") || !strcmp(optarg, "he-v1"))
                 opts.object_type = FAAC_OBJ_HE_AAC_V1;
+            else if (!strcmp(optarg, "he-aac-v2") || !strcmp(optarg, "hev2") || !strcmp(optarg, "he-v2"))
+                opts.object_type = FAAC_OBJ_HE_AAC_V2;
             else if (!strcmp(optarg, "auto"))
                 opts.object_type = FAAC_OBJ_AUTO;
             else
-                dieMessage = "Unrecognised object type (use lc, he-aac-v1, or auto)!\n";
+                dieMessage = "Unrecognised object type (use lc, he-aac-v1, he-aac-v2, or auto)!\n";
             break;
         case SHORTCTL_FLAG:
             opts.shortctl = (enum faac_shortctl_mode)atoi(optarg);
