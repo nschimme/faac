@@ -30,7 +30,7 @@ static const struct {
     {25, 46}, {26, 46}, {24, 42}, {28, 42}, {30, 42}, {31, 39}
 };
 
-#define TNS_GAIN_LIMIT      1.20f  /* Base prediction gain threshold */
+#define TNS_GAIN_LIMIT      1.40f  /* Base prediction gain threshold */
 #define TNS_MIN_ENERGY      1e-9f  /* Minimum energy floor */
 #define TNS_PNS_SFM_SKIP    0.85f  /* Skip TNS on noise-like flat spectrums */
 
