@@ -399,8 +399,6 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
               hEncoder->sfbOffsetShort,
               hEncoder->sfbOffsetLong);
 
-    hEncoder->aacquantCfg.pns_max_sfb = 0;
-
     {
         const int *sfbOffset[2] = { hEncoder->sfbOffsetLong, hEncoder->sfbOffsetShort };
         const int  sfbn[2]      = { hEncoder->aacquantCfg.max_cbl, hEncoder->aacquantCfg.max_cbs };

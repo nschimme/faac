@@ -130,7 +130,7 @@ static int build_freq_table(SBRInfo *sbr)
 
         int prev1 = kx;
         int n1 = 2 * (int)(bands_per_octave * log2f((float)k1 / (float)kx) / 2.0f + 0.5f);
-        if (n1 < 1) n1 = 1;
+        n1 = clamp_int(n1, 1, SBR_MAX_BANDS);
         int dk1[SBR_MAX_BANDS] = {0};
         for (int k = 0; k < n1; k++) {
             int edge = (int)(kx * powf((float)k1 / (float)kx, (float)(k + 1) / (float)n1) + 0.5f);
@@ -141,7 +141,7 @@ static int build_freq_table(SBRInfo *sbr)
 
         int prev2 = k1;
         int n2 = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)k1) / 2.0f + 0.5f);
-        if (n2 < 1) n2 = 1;
+        n2 = clamp_int(n2, 1, SBR_MAX_BANDS);
         int dk2[SBR_MAX_BANDS] = {0};
         for (int k = 0; k < n2; k++) {
             int edge = (int)(k1 * powf((float)k2 / (float)k1, (float)(k + 1) / (float)n2) + 0.5f);
