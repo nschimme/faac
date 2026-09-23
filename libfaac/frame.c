@@ -438,7 +438,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
     // reset psymodel
     PsyEnd(hEncoder->psyInfo, coreChannels);
     PsyInit(&hEncoder->gpsyInfo, hEncoder->psyInfo, coreChannels,
-			hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
+			hEncoder->sampleRate, IsHEAAC(hEncoder->config.aacObjectType));
 
 	/* load channel_map */
 	for( i = 0; i < MAX_CHANNELS; i++ )
