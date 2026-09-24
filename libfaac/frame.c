@@ -1125,6 +1125,8 @@ int faacEncEncode(faacEncHandle hpEncoder,
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
                                                           hEncoder->aacquantCfg.quality, maxqual);
 
+    SbrContextResetHeaderDecided(hEncoder->sbrContext);
+
     return frameBytes;
 }
 

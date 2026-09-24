@@ -58,8 +58,8 @@ typedef struct SbrFrameData {
 
 struct SBRInfo {
     int sbrPresent;
-    int headerSent;
     int frameCount;
+    int headerDecided;
     int numChannels;
     int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
 
@@ -151,6 +151,6 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
 /* Emits the payload in *fd, which is a delayed slot, not the newest one. */
-int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac, int writeFlag);
+int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac);
 
 #endif

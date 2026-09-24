@@ -230,7 +230,7 @@ static int write_ps_extension(const SbrFrameData *fd, BitStream *bs, int write)
     return bits;
 }
 
-static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, bool write)
+static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, bool write)
 {
     int bits = 0;
 #define WB(v,n) do { if (write) PutBit(bs,(v),(n)); bits += (n); } while(0)
@@ -268,57 +268,42 @@ static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
 
 /* Emit the full extension_payload body for EXT_SBR_DATA: the 4-bit extension
  * type, the 1-bit header flag, the optional header, and the channel data. */
-static int emit_sbr_payload(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int sendHeader, bool write)
+static int emit_sbr_payload(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int sendHeader, bool write)
 {
-    int bits = 0;
-#define WB(v,n) do { if (write) PutBit(bs,(v),(n)); bits += (n); } while(0)
-    WB(SBR_EXT_TYPE_SBR, 4);
-    WB(sendHeader, 1);
-#undef WB
+    int bits = 5;
+    if (write) PutBit(bs, (SBR_EXT_TYPE_SBR << 1) | (sendHeader & 1), 5);
     if (sendHeader) bits += write_sbr_header(sbr, bs, write);
     bits += write_sbr_data(sbr, fd, bs, id_aac, write);
     return bits;
 }
 
-int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int writeFlag)
+int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac)
 {
     if (!sbr || !sbr->sbrPresent) return 0;
 
     int sendHeader = sbr->sendHeaderThisFrame;
-
-    /* The fill_element's cnt field must precede the payload in the bitstream,
-     * so its size is needed before anything is written. Re-deriving it with a
-     * dry (write=false) pass is cheap -- a few hundred fixed-width/Huffman
-     * fields, not a hot loop -- so there's no need to cache the emitted bits
-     * across a frame's several SbrWrite calls (BuildFrame's count and write
-     * passes, plus frame.c's rate-control bit-accounting call): every call
-     * just re-derives them from sbr's already-quantized envelope/noise data,
-     * the same way channels.c's WriteElement/WriteICS do for the rest of the
-     * frame. */
     int payloadBits = emit_sbr_payload(sbr, fd, NULL, id_aac, sendHeader, false);
     int fillBytes = (payloadBits + 7) / 8;
     int padBits = fillBytes * 8 - payloadBits;
 
-    /* The fill_element count escapes through an 8-bit field, so a single
-     * extension_payload tops out at 15 + 255 - 1 = 269 bytes. A larger SBR
-     * payload would silently truncate esc_count and corrupt the boundary. */
     assert(fillBytes <= 14 + 255);
 
-    int totalBits = 0;
-#define WB(v,n) do { if (writeFlag) PutBit(bs,(v),(n)); totalBits += (n); } while(0)
-    /* fill_element(): id, then 4-bit count with optional 8-bit escape. The
-     * decoder reconstructs cnt = 15 + esc_count - 1, hence esc_count = N - 14. */
-    WB(ID_FIL, 3);
-    if (fillBytes < 15) WB(fillBytes, 4);
-    else { WB(15, 4); WB(fillBytes - 14, 8); }
-#undef WB
+    int totalBits;
+    if (bs) PutBit(bs, ID_FIL, 3);
+    if (fillBytes < 15) {
+        if (bs) PutBit(bs, fillBytes, 4);
+        totalBits = 7;
+    } else {
+        if (bs) {
+            PutBit(bs, 15, 4);
+            PutBit(bs, fillBytes - 14, 8);
+        }
+        totalBits = 15;
+    }
+    if (bs) emit_sbr_payload(sbr, fd, bs, id_aac, sendHeader, true);
+    if (padBits > 0 && bs) PutBit(bs, 0, padBits);
 
-    if (writeFlag) emit_sbr_payload(sbr, fd, bs, id_aac, sendHeader, true);
-    totalBits += payloadBits;
-    if (padBits > 0) { if (writeFlag) PutBit(bs, 0, padBits); totalBits += padBits; }
-
-    if (writeFlag) { sbr->headerSent = 1; sbr->frameCount++; }
-    return totalBits;
+    return totalBits + payloadBits + padBits;
 }
 
 int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, int aacObjectType)
@@ -326,10 +311,13 @@ int SbrContextGetBits(SBRContext *sCtx, BitStream *bs, const AACElement *elem, i
     if (IsHEAAC(aacObjectType) && sCtx && elem->type != ID_LFE) {
         if (sCtx->sbrInfo) {
             int id_aac = (elem->type == ID_CPE) ? ID_CPE : ID_SCE;
-            /* One step past the newest slot is the oldest: the payload whose
-             * audio this access unit's core carries. See SBR_FRAME_FIFO. */
             const SbrFrameData *fd = &sCtx->frameFIFO[(sCtx->frameHead + 1) % SBR_FRAME_FIFO];
-            return SbrWrite(sCtx->sbrInfo, fd, bs, id_aac, bs != NULL);
+            SBRInfo *sbr = sCtx->sbrInfo;
+            if (!sbr->headerDecided) {
+                sbr->sendHeaderThisFrame = (sbr->frameCount++ % SBR_HEADER_PERIOD == 0);
+                sbr->headerDecided = 1;
+            }
+            return SbrWrite(sbr, fd, bs, id_aac);
         }
     }
     return 0;

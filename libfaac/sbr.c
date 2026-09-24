@@ -372,6 +372,12 @@ void SbrContextRestoreRate(SBRContext *sCtx, unsigned long *sampleRate, unsigned
     }
 }
 
+void SbrContextResetHeaderDecided(SBRContext *sCtx)
+{
+    if (sCtx && sCtx->sbrInfo)
+        sCtx->sbrInfo->headerDecided = 0;
+}
+
 unsigned long SbrContextGetFullRate(SBRContext *sCtx, unsigned long defaultRate)
 {
     return (sCtx && sCtx->fullSampleRate) ? sCtx->fullSampleRate : defaultRate;
@@ -755,10 +761,6 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
     /* HE-AAC v2 analyses two input channels but codes one: the core sees a
      * downmix, so exactly one set of envelopes is quantized. */
     int coded_nch = sbr->is_he_v2 ? 1 : nch;
-
-    /* New frame: freeze the header-send decision now, before SbrWrite's write
-     * pass (later, in the bitstream stage) mutates headerSent/frameCount. */
-    sbr->sendHeaderThisFrame = (!sbr->headerSent || (sbr->frameCount % SBR_HEADER_PERIOD == 0));
 
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe && isLfe[ch]) continue;
