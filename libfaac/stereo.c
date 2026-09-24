@@ -179,104 +179,50 @@ static inline void apply_is(float * restrict sl0, float * restrict sr0,
     }
 }
 
-/* Starved-rate CPE with a low-band M/S split: below ms_end a band whose weaker
- * of mid/side is small takes a real M/S butterfly (both components coded);
- * from ms_end up it takes intensity stereo as in JOINT_IS. Intensity folds
- * the image, M/S keeps it, and in the low band the side channel is cheap.
- * Returns whether any band used M/S; tl and tr get the group's L/R energy
- * before any band is transformed. */
-static int process_cpe_split(CoderInfo * restrict cl, CoderInfo * restrict cr,
-                             AACElement * restrict element,
-                             float * restrict sl0, float * restrict sr0,
-                             int * restrict sfcnt, int wstart, int wend,
-                             float inv_isthr, int ms_end, float *tl, float *tr)
+static inline void apply_ms_full(float * restrict sl0, float * restrict sr0,
+                                int start, int len, int wstart, int wend)
 {
-    const int * restrict sfb_offset = cl->sfb_offset;
-    int msused = 0;
-
-    *tl = *tr = 0.0f;
-    for (int sfb = 0; sfb < cl->sfbn; sfb++) {
-        int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
-        int band = (*sfcnt)++;
-        float el, er, elr;
-        calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
-        *tl += el;
-        *tr += er;
-        element->msInfo.ms_used[band] = 0;
-
-        float es = el + er + 2.0f*elr, ed = el + er - 2.0f*elr, etot = el + er;
-        if (es < 0) es = 0;
-        if (ed < 0) ed = 0;
-        if (etot <= 0) continue;
-
-        if (sfb >= ms_end) {
-            if (el <= 0 || er <= 0) continue;
-            float th = (el + er + 2.0f * sqrtf(el * er)) * inv_isthr;
-            int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
-            if (hcb == HCB_NONE) continue;
-            float inv_etot = 1.0f / etot;
-            int sf  = lrintf(log10f(el * inv_etot) * SF_STEP_ENRG);
-            int pan = lrintf(log10f(er * inv_etot) * SF_STEP_ENRG) - sf;
-            if (pan > IS_PAN_LIMIT) { cl->book[band] = HCB_ZERO; continue; }
-            if (pan < -IS_PAN_LIMIT) { cr->book[band] = HCB_ZERO; continue; }
-            cl->sf[band]   = sf;
-            cr->sf[band]   = -pan;
-            cr->book[band] = hcb;
-#ifdef FAAC_STATS
-            g_faacStats.isBands += 2;
-#endif
-            float dom = (hcb == HCB_INTENSITY) ? es : ed;
-            apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, sqrtf(etot / dom));
-            continue;
-        }
-
-        /* es and ed are 4x the mid and side energies. */
-        if (0.25f * min(es, ed) < MS_SPLIT_SIDE_RATIO * min(el, er)) {
-            for (int win = wstart; win < wend; win++) {
-                float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
-                float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
-                for (int i = 0; i < len; i++) {
-                    float m = 0.5f * (sl[i] + sr[i]), s = 0.5f * (sl[i] - sr[i]);
-                    sl[i] = m;
-                    sr[i] = s;
-                }
-            }
-            element->msInfo.ms_used[band] = 1;
-            /* Decoders skip M/S on a noise band, so these bands can't be PNS. */
-            cl->noPns[band] = cr->noPns[band] = 1;
-            msused = 1;
-#ifdef FAAC_STATS
-            g_faacStats.msBands += 2;
-#endif
+    for (int win = wstart; win < wend; win++) {
+        float * restrict sl = sl0 + win * BLOCK_LEN_SHORT + start;
+        float * restrict sr = sr0 + win * BLOCK_LEN_SHORT + start;
+        for (int i = 0; i < len; i++) {
+            float m = 0.5f * (sl[i] + sr[i]);
+            float s = 0.5f * (sl[i] - sr[i]);
+            sl[i] = m;
+            sr[i] = s;
         }
     }
-    return msused;
 }
 
-/* Unified CPE element processing.  Consolidating joint stereo modes into a single
- * pass minimizes cache misses on spectral data and allows the compiler to
- * optimize the mode-specific branches using constant propagation. */
+/* Unified CPE element processing. Consolidating joint stereo modes and starved-rate
+ * M/S split into a single pass minimizes cache misses on spectral data and reduces
+ * code duplication and binary footprint. */
 static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                                AACElement * restrict element,
                                float * restrict sl0, float * restrict sr0,
                                int * restrict sfcnt, int wstart, int wend,
                                float thrmid, float inv_isthr,
-                               int is_start_sfb, JointMode mode, int allow_ms)
+                               int is_start_sfb, int ms_end, JointMode mode, int allow_ms,
+                               float *tl, float *tr)
 {
-    int sfb, sfmin = (cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8, msused = 0;
+    int sfb, msused = 0;
     const int * restrict sfb_offset = cl->sfb_offset;
+    int sfmin = (ms_end > 0) ? 0 : ((cl->block_type == ONLY_SHORT_WINDOW) ? 1 : 8);
 
-    if (mode == JOINT_IS) {
-        *sfcnt += sfmin;
-    } else {
-        for (sfb = 0; sfb < sfmin; sfb++)
-            element->msInfo.ms_used[(*sfcnt)++] = 0;
-    }
+    if (tl && tr) *tl = *tr = 0.0f;
+
+    for (sfb = 0; sfb < sfmin; sfb++)
+        element->msInfo.ms_used[(*sfcnt)++] = 0;
 
     for (sfb = sfmin; sfb < cl->sfbn; sfb++) {
         int start = sfb_offset[sfb], len = sfb_offset[sfb+1] - start;
         float el, er, elr;
         calculate_energies(sl0, sr0, start, len, wstart, wend, &el, &er, &elr);
+
+        if (tl && tr) {
+            *tl += el;
+            *tr += er;
+        }
 
         float es   = el + er + 2.0f*elr;
         float ed   = el + er - 2.0f*elr;
@@ -284,14 +230,65 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         if (es < 0) es = 0;
         if (ed < 0) ed = 0;
         if (etot <= 0) {
-            if (mode != JOINT_IS) element->msInfo.ms_used[*sfcnt] = 0;
+            if (mode != JOINT_IS || ms_end > 0) element->msInfo.ms_used[*sfcnt] = 0;
             (*sfcnt)++;
             continue;
         }
 
-        /* Intensity Stereo check.  The threshold formula is expanded from
-         * (sqrt(L)+sqrt(R))^2 to (L+R + 2*sqrt(L*R)) to eliminate one square
-         * root per band while maintaining identical decision margins. */
+        element->msInfo.ms_used[*sfcnt] = 0;
+
+        /* Starved-rate M/S split check for sfb < ms_end */
+        if (ms_end > 0 && sfb < ms_end) {
+            if (0.25f * min(es, ed) < MS_SPLIT_SIDE_RATIO * min(el, er)) {
+                apply_ms_full(sl0, sr0, start, len, wstart, wend);
+                element->msInfo.ms_used[*sfcnt] = 1;
+                /* Decoders skip M/S on a noise band, so these bands can't be PNS. */
+                cl->noPns[*sfcnt] = cr->noPns[*sfcnt] = 1;
+                msused = 1;
+#ifdef FAAC_STATS
+                g_faacStats.msBands += 2;
+#endif
+            }
+            (*sfcnt)++;
+            continue;
+        }
+
+        /* Starved-rate IS check for sfb >= ms_end */
+        if (ms_end > 0 && sfb >= ms_end) {
+            if (el > 0 && er > 0) {
+                float th = (el + er + 2.0f * sqrtf(el * er)) * inv_isthr;
+                int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
+                if (hcb != HCB_NONE) {
+                    float inv_etot = 1.0f / etot;
+                    int sf  = lrintf(log10f(el * inv_etot) * SF_STEP_ENRG);
+                    int pan = lrintf(log10f(er * inv_etot) * SF_STEP_ENRG) - sf;
+                    if (pan > IS_PAN_LIMIT) {
+                        cl->book[*sfcnt] = HCB_ZERO;
+                        (*sfcnt)++;
+                        continue;
+                    }
+                    if (pan < -IS_PAN_LIMIT) {
+                        cr->book[*sfcnt] = HCB_ZERO;
+                        (*sfcnt)++;
+                        continue;
+                    }
+                    cl->sf[*sfcnt]   = sf;
+                    cr->sf[*sfcnt]   = -pan;
+                    cr->book[*sfcnt] = hcb;
+#ifdef FAAC_STATS
+                    g_faacStats.isBands += 2;
+#endif
+                    float dom = (hcb == HCB_INTENSITY) ? es : ed;
+                    apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, sqrtf(etot / dom));
+                    (*sfcnt)++;
+                    continue;
+                }
+            }
+            (*sfcnt)++;
+            continue;
+        }
+
+        /* Standard Intensity Stereo check */
         if ((mode == JOINT_IS || (mode == JOINT_MIXED && sfb >= is_start_sfb)) && el > 0 && er > 0) {
             float th = (el + er + 2.0f * sqrtf(el * er)) * inv_isthr;
             int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
@@ -299,17 +296,13 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 float inv_etot = 1.0f / etot;
                 int sf  = lrintf(log10f(el * inv_etot) * SF_STEP_ENRG);
                 int pan = lrintf(log10f(er * inv_etot) * SF_STEP_ENRG) - sf;
-                /* Extreme pan: drop the inaudible channel to HCB_ZERO instead of
-                 * intensity-coding it, keeping the band cheap for the quantizer. */
                 if (pan > IS_PAN_LIMIT) {
                     cl->book[*sfcnt] = HCB_ZERO;
-                    if (mode != JOINT_IS) element->msInfo.ms_used[*sfcnt] = 0;
                     (*sfcnt)++;
                     continue;
                 }
                 if (pan < -IS_PAN_LIMIT) {
                     cr->book[*sfcnt] = HCB_ZERO;
-                    if (mode != JOINT_IS) element->msInfo.ms_used[*sfcnt] = 0;
                     (*sfcnt)++;
                     continue;
                 }
@@ -321,7 +314,6 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 #endif
                 float dom = (hcb == HCB_INTENSITY) ? es : ed;
                 apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, sqrtf(etot / dom));
-                if (mode != JOINT_IS) element->msInfo.ms_used[*sfcnt] = 0;
                 (*sfcnt)++;
                 continue;
             }
@@ -416,33 +408,32 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         elem->msInfo.is_present = (cur_mode == JOINT_MS);
 
         int start = 0, sfcnt = 0, msused = 0;
-        int is_start_sfb = cfg->isStart[shortwin];
+        int ms_end = (cur_mode == JOINT_IS) ? cfg->msEnd[shortwin] : 0;
+        int is_start_sfb = (ms_end > 0) ? ms_end : cfg->isStart[shortwin];
         if (is_start_sfb > coder[lch].sfbn) is_start_sfb = coder[lch].sfbn;
 
         /* Mixed mode never M/S-codes a short window: the shared scalefactor
          * set would spread the side channel's noise ahead of the attack. */
         int allow_ms = !(shortwin && cfg->mode == JOINT_MIXED);
-        if (cur_mode == JOINT_IS && cfg->msEnd[shortwin] > 0) {
-            for (int g = 0; g < coder[lch].groups.n; g++) {
-                int end = start + coder[lch].groups.len[g];
-                msused |= process_cpe_split(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                            &sfcnt, start, end, inv_isthr, cfg->msEnd[shortwin],
-                                            &coder[lch].refTotal[g], &coder[rch].refTotal[g]);
-                start = end;
-            }
+
+        for (int g = 0; g < coder[lch].groups.n; g++) {
+            int end = start + coder[lch].groups.len[g];
+            float *tl = (ms_end > 0) ? &coder[lch].refTotal[g] : NULL;
+            float *tr = (ms_end > 0) ? &coder[rch].refTotal[g] : NULL;
+            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
+                                  &sfcnt, start, end, thrmid, inv_isthr,
+                                  is_start_sfb, ms_end, cur_mode, allow_ms,
+                                  tl, tr);
+            start = end;
+        }
+
+        if (ms_end > 0) {
             /* Mid and side levels would skew each channel's allocation; keep
              * the group reference on the L/R energies. */
             coder[lch].useRef = coder[rch].useRef = 1;
             elem->msInfo.is_present = msused;
-            continue;
+        } else if (cur_mode == JOINT_MIXED && msused) {
+            elem->msInfo.is_present = true;
         }
-        for (int g = 0; g < coder[lch].groups.n; g++) {
-            int end = start + coder[lch].groups.len[g];
-            msused |= process_cpe(coder+lch, coder+rch, elem, s[lch], s[rch],
-                                  &sfcnt, start, end, thrmid, inv_isthr,
-                                  is_start_sfb, cur_mode, allow_ms);
-            start = end;
-        }
-        if (cur_mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
     }
 }
