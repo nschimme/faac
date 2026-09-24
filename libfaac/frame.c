@@ -1020,6 +1020,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
         for (channel = 0; channel < numChannels; channel++) {
             BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                       &(hEncoder->aacquantCfg));
+            for (int e = 0; e < hEncoder->numElements; e++) {
+                const AACElement *el = &hEncoder->elements[e];
+                if (el->type == ID_CPE && el->common_window && (unsigned)el->channels[0] == channel)
+                    ResolveIntensityNoise(&coderInfo[channel], &coderInfo[el->channels[1]]);
+            }
         }
 
         // fix max_sfb in CPE mode
