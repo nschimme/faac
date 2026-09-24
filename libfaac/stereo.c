@@ -22,6 +22,8 @@
 #include "faac_internal.h"
 #include "stats.h"
 
+#if MAX_CHANNELS > 1
+
 /* Intensity stereo crossover scales with core bandwidth (3.5-7 kHz) to save low-band phase bits at low rates. */
 #define IS_BW_RATIO              0.35f
 #define IS_START_FREQ_MIN        3500
@@ -331,3 +333,5 @@ void AACstereo(CoderInfo *coder, AACElement *elements, int numElements, float *s
         if (cur_mode == JOINT_MIXED && msused) elem->msInfo.is_present = true;
     }
 }
+
+#endif /* MAX_CHANNELS > 1 */
