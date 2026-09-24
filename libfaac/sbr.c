@@ -188,11 +188,6 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[0]      = 0;
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
-    for (int ch = 0; ch < SBR_MAX_CODED_CHANNELS; ch++) {
-        fd->ch[ch].invfMode = 3;
-        for (int ne = 0; ne < SBR_MAX_NOISE_ENVELOPES; ne++)
-            fd->ch[ch].noiseData[ne][0] = SBR_NOISE_LEVEL_DEFAULT;
-    }
 }
 
 SBRContext *SbrContextInit(int channels)
@@ -544,8 +539,6 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
         if (isLfe && isLfe[ch]) continue;
         /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
-        int noise_level = SBR_NOISE_LEVEL_DEFAULT;
-        fd->ch[ch].invfMode = 3;
 
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
@@ -570,19 +563,6 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                     int delta = clamp_int(raw_level - prevLevel, -dlav, dlav);
                     fd->ch[ch].envData[e][b] = delta;
                     prevLevel += delta;
-                }
-            }
-        }
-        int n_q = n_env > 1 ? 2 : 1;
-        for (int ne = 0; ne < n_q; ne++) {
-            int prevNoise = -1;
-            for (int nb = 0; nb < sbr->numNoiseBands; nb++) {
-                if (prevNoise < 0) {
-                    fd->ch[ch].noiseData[ne][nb] = noise_level;
-                    prevNoise = noise_level;
-                } else {
-                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
-                    fd->ch[ch].noiseData[ne][nb] = delta; prevNoise += delta;
                 }
             }
         }

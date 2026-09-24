@@ -42,10 +42,8 @@ typedef struct SbrFrameData {
     int bsPointer;
     int freqRes;
     struct {
-        int envData  [SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
-        int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
-        int invfMode;
-    } ch[SBR_MAX_CODED_CHANNELS];
+        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+    } ch[MAX_CHANNELS];
 
     /* HE-AAC v2 parametric stereo, riding the same delay as the envelopes above.
      * PS rescales the very band energies those envelopes describe, so shipping
@@ -151,6 +149,6 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
 /* Emits the payload in *fd, which is a delayed slot, not the newest one. */
-int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac);
+int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac, int ch0);
 
 #endif
