@@ -116,9 +116,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     *bits_b = b;
 }
 
-/* Appends the band's codewords to coder->s_data and coder->s_len.
- * A speculative write is rewound by restoring datacnt, so nothing
- * here may touch state the caller cannot undo. */
+/* Appends the band's codewords to coder->s. A speculative write is rewound by
+ * restoring datacnt, so nothing here may touch state the caller cannot undo. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
     const hcode16_t *book = hmap[bnum];
@@ -130,8 +129,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     case HCB_2:
         for (i = 0; i < len; i += 4) {
             int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
-            coder->s_data[datacnt] = book[idx].data;
-            coder->s_len[datacnt++] = book[idx].len;
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_3:
@@ -146,16 +145,16 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
             if (q2) { blen++; data = (data << 1) | (q2 < 0); }
             if (q3) { blen++; data = (data << 1) | (q3 < 0); }
-            coder->s_data[datacnt] = data;
-            coder->s_len[datacnt++] = blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_5:
     case HCB_6:
         for (i = 0; i < len; i += 2) {
             int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
-            coder->s_data[datacnt] = book[idx].data;
-            coder->s_len[datacnt++] = book[idx].len;
+            coder->s[datacnt].data = book[idx].data;
+            coder->s[datacnt++].len = book[idx].len;
         }
         break;
     case HCB_7:
@@ -168,8 +167,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s_data[datacnt] = data;
-            coder->s_len[datacnt++] = blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_9:
@@ -182,8 +181,8 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
             int data = book[idx].data;
             if (q0) { blen++; data = (data << 1) | (q0 < 0); }
             if (q1) { blen++; data = (data << 1) | (q1 < 0); }
-            coder->s_data[datacnt] = data;
-            coder->s_len[datacnt++] = blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
         }
         break;
     case HCB_ESC:
@@ -202,19 +201,19 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
                 blen++;
                 data = (data << 1) | (qs[i+1] < 0);
             }
-            coder->s_data[datacnt] = data;
-            coder->s_len[datacnt++] = blen;
+            coder->s[datacnt].data = data;
+            coder->s[datacnt++].len = blen;
             if (x0 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x0, &esc_code);
-                coder->s_data[datacnt] = esc_code;
-                coder->s_len[datacnt++] = esc_len;
+                coder->s[datacnt].data = esc_code;
+                coder->s[datacnt++].len = esc_len;
             }
             if (x1 >= LAV_ESC) {
                 int esc_code = 0;
                 int esc_len = escape(x1, &esc_code);
-                coder->s_data[datacnt] = esc_code;
-                coder->s_len[datacnt++] = esc_len;
+                coder->s[datacnt].data = esc_code;
+                coder->s[datacnt++].len = esc_len;
             }
         }
         break;
@@ -277,7 +276,7 @@ int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
                     break;
                 /* Stop as soon as the codewords have eaten the header they save. */
                 for (k = start; k < coder->datacnt && lenp < best + header; k++)
-                    lenp += coder->s_len[k];
+                    lenp += coder->s[k].len;
                 if (lenp < best + header) {
                     bookmin = book;
                     break;

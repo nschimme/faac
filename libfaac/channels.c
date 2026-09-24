@@ -172,9 +172,9 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     BitAccumulator acc = {0};
     AccumBegin(&acc, bs);
     for (int i = 0; i < coder->datacnt; i++) {
-        if (coder->s_len[i] > 0) {
-            AccumPutBits(&acc, coder->s_data[i], coder->s_len[i]);
-            bits += coder->s_len[i];
+        if (coder->s[i].len > 0) {
+            AccumPutBits(&acc, coder->s[i].data, coder->s[i].len);
+            bits += coder->s[i].len;
         }
     }
     AccumEnd(&acc);

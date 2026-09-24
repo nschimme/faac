@@ -129,7 +129,7 @@ static float compute_lpc(int order, const float * r, float * k)
 /* Reflection coefficients live in (-1, 1); arcsine-warp them before
  * quantizing so equal code steps land closer to equal perceptual steps
  * near the +-1 ends, per the tns_data() coefficient law in the spec. */
-static void quantize_coeffs(int order, int res, float * k, int8_t * idx)
+static void quantize_coeffs(int order, int res, float * k, int * idx)
 {
     const float s_p = (float)(((1 << (res - 1)) - 0.5f) / (M_PI / 2));
     const float s_n = (float)(((1 << (res - 1)) + 0.5f) / (M_PI / 2));
@@ -144,7 +144,7 @@ static void quantize_coeffs(int order, int res, float * k, int8_t * idx)
 
         if (q > i_max) q = i_max;
         else if (q < i_min) q = i_min;
-        idx[i] = (int8_t)q;
+        idx[i] = q;
 
         /* Re-derive k[] from the quantized index (not the original float)
          * so finalize_filter below builds the same filter the decoder will,
@@ -306,7 +306,7 @@ static int tns_fit_range(int b_start, int b_stop, const int *sfbOffsetTable,
     if (order == 0)
         return 0;
 
-    filter->order = (int8_t)order;
+    filter->order = order;
 
     /* Fixed at 0, not chosen: calc_autocorr_f is invariant under sequence
      * reversal, so both directions give the same LPC fit and prediction gain.
@@ -381,7 +381,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
 
     /* Declared from b_start to the top of the spectrum rather than to b_stop,
      * over-declaring the region. */
-    tnsInfo->tnsFilter[0].length = (int8_t)(tnsInfo->tnsNumSwbLong - b_start);
+    tnsInfo->tnsFilter[0].length = tnsInfo->tnsNumSwbLong - b_start;
     tnsInfo->numFilters = 1;
     tnsInfo->coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
