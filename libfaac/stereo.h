@@ -28,6 +28,7 @@ typedef struct {
     int isStart[2];
 } StereoConfig;
 
+#if MAX_CHANNELS > 1
 void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
                      unsigned long bitRatePerCh, const int *sfbOffset[2], const int sfbn[2]);
 
@@ -37,5 +38,22 @@ void AACstereo(CoderInfo *coder,
                float *s[MAX_CHANNELS],
                float quality,
                const StereoConfig *cfg);
+#else
+static inline void StereoConfigure(StereoConfig *cfg, JointMode mode, int sampleRate, unsigned int bandWidth,
+                                    unsigned long bitRatePerCh, const int *sfbOffset[2], const int sfbn[2])
+{
+    (void)cfg; (void)mode; (void)sampleRate; (void)bandWidth; (void)bitRatePerCh; (void)sfbOffset; (void)sfbn;
+}
+
+static inline void AACstereo(CoderInfo *coder,
+                              AACElement *elements,
+                              int numElements,
+                              float *s[MAX_CHANNELS],
+                              float quality,
+                              const StereoConfig *cfg)
+{
+    (void)coder; (void)elements; (void)numElements; (void)s; (void)quality; (void)cfg;
+}
+#endif
 
 #endif

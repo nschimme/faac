@@ -196,6 +196,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
             bits += WriteICS(bs, &coder[elem->channels[0]], false);
             break;
 
+#if MAX_CHANNELS > 1
         case ID_CPE:
             PutBit(bs, elem->common_window, LEN_COM_WIN);
             bits += LEN_COM_WIN;
@@ -214,6 +215,7 @@ int WriteElement(BitStream *bs, AACElement *elem, CoderInfo *coder)
             bits += WriteICS(bs, &coder[elem->channels[0]], elem->common_window);
             bits += WriteICS(bs, &coder[elem->channels[1]], elem->common_window);
             break;
+#endif
         default: break;
     }
     return bits;
