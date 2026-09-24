@@ -239,6 +239,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         /* Starved-rate M/S split check for sfb < ms_end */
         if (ms_end > 0 && sfb < ms_end) {
+            /* es and ed are 4x mid/side energy; test if weaker component is below ratio */
             if (0.25f * min(es, ed) < MS_SPLIT_SIDE_RATIO * min(el, er)) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);
                 element->msInfo.ms_used[*sfcnt] = 1;
@@ -253,42 +254,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
             continue;
         }
 
-        /* Starved-rate IS check for sfb >= ms_end */
-        if (ms_end > 0 && sfb >= ms_end) {
-            if (el > 0 && er > 0) {
-                float th = (el + er + 2.0f * sqrtf(el * er)) * inv_isthr;
-                int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
-                if (hcb != HCB_NONE) {
-                    float inv_etot = 1.0f / etot;
-                    int sf  = lrintf(log10f(el * inv_etot) * SF_STEP_ENRG);
-                    int pan = lrintf(log10f(er * inv_etot) * SF_STEP_ENRG) - sf;
-                    if (pan > IS_PAN_LIMIT) {
-                        cl->book[*sfcnt] = HCB_ZERO;
-                        (*sfcnt)++;
-                        continue;
-                    }
-                    if (pan < -IS_PAN_LIMIT) {
-                        cr->book[*sfcnt] = HCB_ZERO;
-                        (*sfcnt)++;
-                        continue;
-                    }
-                    cl->sf[*sfcnt]   = sf;
-                    cr->sf[*sfcnt]   = -pan;
-                    cr->book[*sfcnt] = hcb;
-#ifdef FAAC_STATS
-                    g_faacStats.isBands += 2;
-#endif
-                    float dom = (hcb == HCB_INTENSITY) ? es : ed;
-                    apply_is(sl0, sr0, start, len, wstart, wend, hcb == HCB_INTENSITY, sqrtf(etot / dom));
-                    (*sfcnt)++;
-                    continue;
-                }
-            }
-            (*sfcnt)++;
-            continue;
-        }
-
-        /* Standard Intensity Stereo check */
+        /* Intensity Stereo check */
         if ((mode == JOINT_IS || (mode == JOINT_MIXED && sfb >= is_start_sfb)) && el > 0 && er > 0) {
             float th = (el + er + 2.0f * sqrtf(el * er)) * inv_isthr;
             int hcb = (es >= th) ? HCB_INTENSITY : (ed >= th ? HCB_INTENSITY2 : HCB_NONE);
@@ -296,6 +262,8 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 float inv_etot = 1.0f / etot;
                 int sf  = lrintf(log10f(el * inv_etot) * SF_STEP_ENRG);
                 int pan = lrintf(log10f(er * inv_etot) * SF_STEP_ENRG) - sf;
+                /* Extreme pan: drop the inaudible channel to HCB_ZERO instead of
+                 * intensity-coding it, keeping the band cheap for the quantizer. */
                 if (pan > IS_PAN_LIMIT) {
                     cl->book[*sfcnt] = HCB_ZERO;
                     (*sfcnt)++;
@@ -317,6 +285,10 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 (*sfcnt)++;
                 continue;
             }
+        }
+        if (ms_end > 0 && sfb >= ms_end) {
+            (*sfcnt)++;
+            continue;
         }
 
         /* Mid/Side Stereo check */
