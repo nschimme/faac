@@ -43,6 +43,11 @@ extern "C" {
 #include "ratecontrol.h"
 #include "stereo.h"
 
+typedef struct {
+    int8_t book[MAX_SCFAC_BANDS];
+    int16_t sf[MAX_SCFAC_BANDS];
+} BandSnapshot;
+
 typedef struct faacEncStruct {
     /* number of channels in AAC file */
     unsigned int numChannels;
@@ -108,9 +113,8 @@ typedef struct faacEncStruct {
     /* HE-AAC / SBR state */
     struct SBRContext *sbrContext;   /* SBR analysis state and bitstream data */
 
-    /* Peak-limiter retry scratch: one buffer per channel holding book[] at
-     * [0] and sf[] at [MAX_SCFAC_BANDS]. */
-    int *peakSnap[MAX_CHANNELS];
+    /* Peak-limiter retry scratch: one buffer per channel holding book[] and sf[]. */
+    BandSnapshot *peakSnap[MAX_CHANNELS];
 
     RateControl rc;
 } faacEncStruct;
