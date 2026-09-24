@@ -412,7 +412,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
 			hEncoder->sampleRate, hEncoder->config.aacObjectType == HE_V1);
 
 	/* load channel_map */
-	for( i = 0; i < MAX_CHANNELS; i++ )
+	for( i = 0; i < (int)hEncoder->numChannels; i++ )
 		hEncoder->config.channel_map[i] = config->channel_map[i];
 
     InitElements(hEncoder->elements, &hEncoder->numElements, (int)hEncoder->numChannels, hEncoder->config.useLfe);
@@ -468,7 +468,7 @@ faacEncHandle faacEncOpen(unsigned long sampleRate,
     hEncoder->sampleRateIdx = GetSRIndex(sampleRate);
 
     /* Identity map; faac_encoder_open() sets every other config field. */
-	for( channel = 0; channel < MAX_CHANNELS; channel++ )
+	for( channel = 0; channel < hEncoder->numChannels; channel++ )
 		hEncoder->config.channel_map[channel] = channel;
 
     /* find correct sampling rate depending parameters */

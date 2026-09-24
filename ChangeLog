@@ -72,6 +72,9 @@
 	* build: force-include config.h instead of per-file guards; drop the
 	  cold/noinline hints on the HE-AAC frame path so PGO and -Os/-O3
 	  make the call instead of a fixed attribute
+	* Dimension channel_map to MAX_CHANNELS in faac_internal.h and bound
+	  initialization loops to numChannels in frame.c
+	* huffman: Add const qualifiers to Huffman lookup tables
 	* frontend: show the git commit hash in `-h`, the GUI, verbose logging,
 	  and the MP4 tag; `-h` reports the runtime libfaac version, not the
 	  compile-time one
