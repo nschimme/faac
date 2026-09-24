@@ -23,7 +23,7 @@
 #endif
 
 #include "input.h"
-#include "charset.h"
+#include "cli_common.h"
 #include "endian.h"
 
 #define PCM_16BIT_FLOAT_SCALE 32768.0f
