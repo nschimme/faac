@@ -103,6 +103,11 @@ typedef struct CoderInfo {
 
 
     TnsInfo tnsInfo;
+
+    /* Set by the starved-rate M/S split (stereo.c). */
+    int useRef;                           /* quantize against refTotal[] */
+    float refTotal[MAX_SHORT_WINDOWS];    /* per group: L/R energy before M/S */
+    unsigned char noPns[MAX_SCFAC_BANDS]; /* M/S band: zero it rather than PNS */
 } CoderInfo;
 
 typedef struct {
