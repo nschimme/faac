@@ -34,7 +34,6 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
 {
     int num_slots = numSamples / SBR_QMF_BANDS_64;
     int sampled = (num_slots - 1) / FAAC_SBR_DECIMATION + 1;
-    float workspace[SBR_QMF_HIST_LEN + 2 * FRAME_LEN];
 
     sa->numSlots = num_slots;
     sa->sampled = sampled;
@@ -124,22 +123,16 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
             if (isLfe[ch]) continue;
             memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
-            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
-            memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[ch], numSamples * sizeof(float));
-
             for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
                 if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
                 {
-                    float slotEnergy[SBR_QMF_BANDS_64];
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, slotEnergy, kx, kEnd);
-
+                    int pos = slot * SBR_QMF_BANDS_64 - SBR_ANALYSIS_DELAY;
+                    const float * restrict p_in = (pos < 0) ? sbr->ch[ch].qmfOvl64 + SBR_QMF_HIST_LEN + pos
+                                                            : fullPtrs[ch] + pos;
                     int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
-
-                    float * restrict bE = sa->bandE[ch][e];
-                    for (int k = kx; k < kEnd; k++)
-                        bE[k] += slotEnergy[k];
+                    SbrQmfAnalysis(sbr, p_in, sa->bandE[ch][e], kx, kEnd);
                 }
             }
         }
