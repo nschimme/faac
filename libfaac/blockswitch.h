@@ -16,7 +16,6 @@
 #ifndef BLOCKSWITCH_H
 #define BLOCKSWITCH_H
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -25,12 +24,8 @@ extern "C" {
 #include "channels.h"
 
 typedef struct {
-	int size;
-	int sizeS;
-
 	int block_type;
-
-        void *data;
+	void *data;
 } PsyInfo;
 
 typedef struct {
