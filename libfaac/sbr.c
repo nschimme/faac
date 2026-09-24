@@ -540,6 +540,7 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
         /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
 
+        int noise_level = SBR_NOISE_LEVEL_DEFAULT;
         int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
             int prevLevel = -1;
@@ -563,6 +564,20 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                     int delta = clamp_int(raw_level - prevLevel, -dlav, dlav);
                     fd->ch[ch].envData[e][b] = delta;
                     prevLevel += delta;
+                }
+            }
+        }
+        int n_q = n_env > 1 ? 2 : 1;
+        for (int ne = 0; ne < n_q; ne++) {
+            int prevNoise = -1;
+            for (int nb_idx = 0; nb_idx < sbr->numNoiseBands; nb_idx++) {
+                if (prevNoise < 0) {
+                    fd->ch[ch].noiseData[ne][nb_idx] = noise_level;
+                    prevNoise = noise_level;
+                } else {
+                    int delta = clamp_int(noise_level - prevNoise, -15, 15);
+                    fd->ch[ch].noiseData[ne][nb_idx] = delta;
+                    prevNoise += delta;
                 }
             }
         }

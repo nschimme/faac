@@ -793,7 +793,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
          * SBR_FRAME_FIFO-1 frames behind, so the pipeline has to keep ticking
          * through the drain or the tail access units re-emit stale envelopes. */
         float *heHalfRate[MAX_CHANNELS] = {0};
-        if (hEncoder->config.aacObjectType == HE_V1 && SbrContextIsPresent(hEncoder->sbrContext))
+        if (IsHEAAC(hEncoder->config.aacObjectType) && SbrContextIsPresent(hEncoder->sbrContext))
             doHEAACFrame(hEncoder, (unsigned int)realPerCh, heHalfRate);
 
         /* Update current sample buffers */
@@ -805,7 +805,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->audioFIFO[channel][FIFO_AHEAD1]  = hEncoder->audioFIFO[channel][FIFO_AHEAD2];
             hEncoder->audioFIFO[channel][FIFO_AHEAD2] = tmp;
 
-            if (hEncoder->config.aacObjectType == HE_V1 && heHalfRate[channel])
+            if (IsHEAAC(hEncoder->config.aacObjectType) && heHalfRate[channel])
             {
                 /* ahead of the flush case: this carries the resampler's tail */
                 memcpy(hEncoder->audioFIFO[channel][FIFO_AHEAD2], heHalfRate[channel], FRAME_LEN * sizeof(float));
@@ -1124,8 +1124,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
     if (hEncoder->config.bitRate)
         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
                                                           hEncoder->aacquantCfg.quality, maxqual);
-
-    SbrContextResetHeaderDecided(hEncoder->sbrContext);
 
     return frameBytes;
 }

@@ -43,6 +43,7 @@ typedef struct SbrFrameData {
     int freqRes;
     struct {
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
     } ch[MAX_CHANNELS];
 
     /* HE-AAC v2 parametric stereo, riding the same delay as the envelopes above.
