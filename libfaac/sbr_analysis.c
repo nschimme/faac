@@ -13,11 +13,15 @@
  * Lesser General Public License for more details.
  */
 
-#include "sbr.h"
 #include "sbr_analysis.h"
+#include "sbr.h"
 #include "sbr_internal.h"
 #include "util.h"
 #include <string.h>
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 /* Which envelope a QMF slot falls in; slots before tEnv[0] fold into
  * envelope 0 rather than dropping their energy. */
@@ -70,7 +74,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     float frameStrength = 0.0f;
     int frameSlot = 0;
     for (int ch = 0; ch < nch; ch++) {
-        if (isLfe[ch]) continue;
+        if (isLfe && isLfe[ch]) continue;
         if (sa->ch[ch].transientStrength > frameStrength) {
             frameStrength = sa->ch[ch].transientStrength;
             frameSlot = sa->ch[ch].transientSlot;
@@ -114,10 +118,11 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
     if (sbr) {
-        int kx = sbr->kx;
-        int kEnd = sbr->k2;
+        int kx = (sbr->is_he_v2) ? 0 : sbr->kx;
+        int kEnd = (sbr->is_he_v2) ? 64 : sbr->k2;
+
         for (int ch = 0; ch < nch; ch++) {
-            if (isLfe[ch]) continue;
+            if (isLfe && isLfe[ch]) continue;
             memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
             memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
@@ -136,6 +141,34 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                     float * restrict bE = sa->bandE[ch][e];
                     for (int k = kx; k < kEnd; k++)
                         bE[k] += slotEnergy[k];
+                }
+            }
+        }
+
+        /* HE-AAC v2 Parametric Stereo cross-correlation analysis */
+        if (sbr->is_he_v2 && nch == 2) {
+            memset(sa->bandCrossE, 0, sizeof(sa->bandCrossE));
+            memset(sa->bandCrossIm, 0, sizeof(sa->bandCrossIm));
+
+            float ws0[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            float ws1[SBR_QMF_OVL_LEN_64 + 2 * FRAME_LEN];
+            memcpy(ws0, sbr->ch[0].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+            memcpy(ws0 + SBR_QMF_OVL_LEN_64, fullPtrs[0], numSamples * sizeof(float));
+            memcpy(ws1, sbr->ch[1].qmfOvl64, SBR_QMF_OVL_LEN_64 * sizeof(float));
+            memcpy(ws1 + SBR_QMF_OVL_LEN_64, fullPtrs[1], numSamples * sizeof(float));
+
+            for (int slot = 0; slot < num_slots; slot++) {
+                float xr0[64], xi0[64], xr1[64], xi1[64];
+                SbrQmfAnalysisComplex(sbr, ws0 + slot * SBR_QMF_BANDS_64, xr0, xi0, 0, 64);
+                SbrQmfAnalysisComplex(sbr, ws1 + slot * SBR_QMF_BANDS_64, xr1, xi1, 0, 64);
+
+                int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+                float * restrict bCrossR = sa->bandCrossE[e];
+                float * restrict bCrossI = sa->bandCrossIm[e];
+
+                for (int k = 0; k < 64; k++) {
+                    bCrossR[k] += xr0[k] * xr1[k] + xi0[k] * xi1[k];
+                    bCrossI[k] += xi0[k] * xr1[k] - xr0[k] * xi1[k];
                 }
             }
         }

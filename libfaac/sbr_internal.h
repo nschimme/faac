@@ -19,6 +19,8 @@
 #include "sbr.h"
 #include "sbr_analysis.h"
 #include "resample.h"
+#include "faac_internal.h"
+
 
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
@@ -27,7 +29,7 @@ typedef struct SBRChannel {
 
 /* One frame's coded SBR payload: every field SbrWrite reads that varies per
  * frame. What it reads that is constant for the stream (bs_* header fields,
- * numBands) stays in SBRInfo.
+ * numBands, numNoiseBands) stays in SBRInfo.
  *
  * Sole home for these values: SbrEncode quantizes into a SBRContext.frameFIFO
  * slot and SbrWrite reads an older one, so the delay costs a ring index. Caching
@@ -35,30 +37,40 @@ typedef struct SBRChannel {
 typedef struct SbrFrameData {
     int numEnvelopes;
     int eff_amp_res;
-    SbrFrameClass frameClass;
+    int frameClass;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
-    int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
-    /* The noise floor and inverse-filter mode are stream constants
-     * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+    int freqRes;
     struct {
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int noiseData[SBR_MAX_NOISE_ENVELOPES][SBR_MAX_NOISE_BANDS];
     } ch[MAX_CHANNELS];
+
+    /* HE-AAC v2 parametric stereo, riding the same delay as the envelopes above.
+     * PS rescales the very band energies those envelopes describe, so shipping
+     * it undelayed would put the stereo image 3 frames ahead of the spectrum it
+     * acts on -- the same skew, on the other axis. */
+    int iid[SBR_PS_BANDS];   /* IID indices, -7..+7 */
+    int icc[SBR_PS_BANDS];   /* ICC indices, 0..7 */
+    int enable_icc;          /* transmit ICC for this frame? */
 } SbrFrameData;
 
 struct SBRInfo {
     int sbrPresent;
-    int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */
+    int frameCount;
+    int headerDecided;
     int numChannels;
     int sampleRate;        /* full output rate; the dual-rate core runs at sampleRate/2 */
 
     /* --- frequency band configuration (set at init, constant per stream) --- */
     int kx;
     int k2;
+    int dk;                /* master frequency table step (1 or 2 QMF bands) */
     int numBands;
     int bandEdges[SBR_MAX_BANDS + 1];
-    int numBandsLow; /* low-res band count: every other high-res edge */
+    int numBandsLow;
     int bandEdgesLow[SBR_MAX_BANDS + 1];
+    int numNoiseBands;
 
     /* --- bitstream header fields --- */
     int bs_amp_res;
@@ -67,15 +79,21 @@ struct SBRInfo {
     int bs_stop_freq;
     int bs_xover_band;
     int bs_alter_scale;
-    int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
 
     /* --- per-frame state --- */
-    /* The header decision is made once per access unit, on the first write
-     * request after analysis: the writer runs once per element and again on
-     * every CBR retry, and only access units that are actually written count
-     * toward the header period. */
-    int headerDecided;
+    /* Whether SbrWrite should (re)send the sbr_header this frame. Frozen once
+     * per frame (in SbrEncode) rather than recomputed in SbrWrite, since
+     * headerSent/frameCount only advance on SbrWrite's real write pass, and
+     * SbrWrite is called multiple times per frame (BuildFrame's count and
+     * write passes, plus frame.c's rate-control bit-accounting call). */
     int sendHeaderThisFrame;
+
+    /* --- HE-AAC v2 parametric stereo state that is NOT per-frame payload --- */
+    int is_he_v2;            /* constant for the stream */
+    /* Smoothed energy-preserving downmix gain. Deliberately undelayed: it is
+     * applied to the core samples at analysis time, so it travels with the audio
+     * through the core's own pipeline rather than with the coded payload. */
+    float downmixGain;
 
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
@@ -95,6 +113,13 @@ struct SBRContext {
 
     /* Shared signal analysis */
     SignalAnalysis  signalAnalysis;
+    /* Shared-detector FIFO: holds the HE block-switch decision for the last
+       SBR_DETECT_FIFO analyzed frames. Index 0 is the decision aligned to the
+       core frame being coded now, which lags the freshest analysis by the core
+       lookahead (LOOKAHEAD_DEPTH frames); newest sits at SBR_DETECT_FIFO-1. */
+    float transientStrengthFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+    int       wantShortFIFO[MAX_CHANNELS][SBR_DETECT_FIFO];
+
     /* Coded-payload delay ring; see SBR_FRAME_FIFO. frameHead is the newest
        entry, so its successor (frameHead + 1) % SBR_FRAME_FIFO is the oldest --
        the payload the current access unit emits. */
@@ -120,8 +145,11 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
 void SbrUpdate(SBRInfo *sbr, unsigned long bitRate);
 void SbrEnd(SBRInfo *sbr);
 
+void SbrQmfAnalysisComplex(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict xr_out, float * restrict xi_out, int kx, int k2);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
+/* Emits the payload in *fd, which is a delayed slot, not the newest one. */
+int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, struct BitStream *bs, int id_aac, int ch0);
 
 #endif
