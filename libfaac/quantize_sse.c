@@ -24,8 +24,7 @@ int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n4, floa
     // Mask to strip the sign bit (0x7FFFFFFF)
     const __m128 abs_mask = _mm_castsi128_ps(_mm_set1_epi32(0x7FFFFFFF));
     __m128i max_vec = _mm_setzero_si128();
-    int maxq_arr[4];
-    int cnt, maxq;
+    int cnt;
 
     // Process 4 elements per iteration; band widths are multiples of 4
     for (cnt = 0; cnt < 4 * n4; cnt += 4)
@@ -53,11 +52,14 @@ int quantize_sse2(const float * __restrict xr, int * __restrict xi, int n4, floa
         _mm_storeu_si128((__m128i*)&xi[cnt], q);
     }
 
-    _mm_storeu_si128((__m128i*)maxq_arr, max_vec);
-    maxq = maxq_arr[0];
-    if (maxq_arr[1] > maxq) maxq = maxq_arr[1];
-    if (maxq_arr[2] > maxq) maxq = maxq_arr[2];
-    if (maxq_arr[3] > maxq) maxq = maxq_arr[3];
+    // Branchless horizontal vector max reduction across the 4 32-bit vector lanes
+    __m128i max_shuf = _mm_shuffle_epi32(max_vec, _MM_SHUFFLE(1, 0, 3, 2));
+    __m128i mask = _mm_cmpgt_epi32(max_shuf, max_vec);
+    max_vec = _mm_or_si128(_mm_and_si128(mask, max_shuf), _mm_andnot_si128(mask, max_vec));
 
-    return maxq;
+    max_shuf = _mm_shuffle_epi32(max_vec, _MM_SHUFFLE(2, 3, 0, 1));
+    mask = _mm_cmpgt_epi32(max_shuf, max_vec);
+    max_vec = _mm_or_si128(_mm_and_si128(mask, max_shuf), _mm_andnot_si128(mask, max_vec));
+
+    return _mm_cvtsi128_si32(max_vec);
 }
