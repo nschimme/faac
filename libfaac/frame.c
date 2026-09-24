@@ -725,6 +725,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                           )
 {
     faacEncStruct* hEncoder = (faacEncStruct*)hpEncoder;
+    SbrContextResetHeaderDecided(hEncoder->sbrContext);
     unsigned int channel;
     int frameBytes;
     BitStream *bitStream;
