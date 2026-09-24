@@ -21,7 +21,7 @@
 #include <stdio.h>
 
 _Static_assert(TNS_MAX_FILTERS <= (1 << LEN_TNS_NFILTL) - 1,
-               "TnsWindowData.tnsFilter[] holds more filters than numFilters can encode in LEN_TNS_NFILTL bits");
+               "TnsInfo.tnsFilter[] holds more filters than numFilters can encode in LEN_TNS_NFILTL bits");
 _Static_assert(TNS_MAX_ORDER <= (1 << LEN_TNS_ORDERL) - 1,
                "TnsFilterData order exceeds what LEN_TNS_ORDERL bits can encode");
 
@@ -138,17 +138,15 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
      * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
      * to write, always at the long-window field widths. */
     if (tns->tnsDataPresent) {
-        TnsWindowData *win = &tns->windowData;
-
-        PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
+        PutBit(bs, tns->numFilters, LEN_TNS_NFILTL);
         bits += LEN_TNS_NFILTL;
 
-        if (win->numFilters > 0) {
-            PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+        if (tns->numFilters > 0) {
+            PutBit(bs, tns->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
             bits += LEN_TNS_COEFF_RES;
 
-            for (int f = 0; f < win->numFilters; f++) {
-                TnsFilterData *flt = &win->tnsFilter[f];
+            for (int f = 0; f < tns->numFilters; f++) {
+                TnsFilterData *flt = &tns->tnsFilter[f];
                 PutBit(bs, flt->length, LEN_TNS_LENGTHL);
                 PutBit(bs, flt->order, LEN_TNS_ORDERL);
                 bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
@@ -158,7 +156,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
                     PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
                     bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
 
-                    int res = win->coefResolution - flt->coefCompress;
+                    int res = tns->coefResolution - flt->coefCompress;
                     for (int i = 1; i <= flt->order; i++) {
                         PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
                         bits += res;
@@ -174,9 +172,9 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     BitAccumulator acc = {0};
     AccumBegin(&acc, bs);
     for (int i = 0; i < coder->datacnt; i++) {
-        if (coder->s[i].len > 0) {
-            AccumPutBits(&acc, (uint32_t)coder->s[i].data, coder->s[i].len);
-            bits += coder->s[i].len;
+        if (coder->s_len[i] > 0) {
+            AccumPutBits(&acc, coder->s_data[i], coder->s_len[i]);
+            bits += coder->s_len[i];
         }
     }
     AccumEnd(&acc);
