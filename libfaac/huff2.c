@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "coder.h"
 #include "huffdata.h"
 #include "huff2.h"
@@ -45,7 +46,7 @@ static int escape(int x, int *code)
     return (preflen + 1) + (preflen + 4);
 }
 
-static hcode16_t * const hmap[12] = {
+static const hcode16_t * const hmap[12] = {
     NULL, book01, book02, book03, book04, book05,
     book06, book07, book08, book09, book10, book11
 };
@@ -57,8 +58,8 @@ static hcode16_t * const hmap[12] = {
  * ISO 14496-3 multidimensional Huffman section tuple indexing. Constant dimensions
  * (DIM_S4, DIM_M4, DIM_S2, DIM_M2_7, DIM_M2_12) allow constant folding into shift-adds.
  *
- * bnum is always a pair base -- huffbook takes HCB_ESC without sizing it -- so
- * there is deliberately no escape case. */
+ * bnum is always a pair base; huffbook sizes HCB_ESC itself, so there is
+ * deliberately no escape case. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
 {
     const hcode16_t *booka = hmap[bnum];
@@ -116,8 +117,7 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
     *bits_b = b;
 }
 
-/* Appends the band's codewords to coder->s. A speculative write is rewound by
- * restoring datacnt, so nothing here may touch state the caller cannot undo. */
+/* Appends the band's codewords to coder->s. */
 static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderInfo *coder)
 {
     const hcode16_t *book = hmap[bnum];
@@ -224,77 +224,71 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
     coder->datacnt = datacnt;
 }
 
-/* Pick the codebook that minimizes the bit cost for a given band, counting
- * the section header a change of book costs. */
-int huffbook(CoderInfo *coder, const int *qs, int len, int maxq)
+/* Choose every band's book jointly: per window group, a Viterbi over books
+ * where a band costs its codewords in that book and each new section costs
+ * a header, so a band can take a dearer book to stay in its neighbours'
+ * section. qs holds the regular bands' values back to back, and book[] the
+ * lowest book that covers each one's peak. State 0 stands for the band's
+ * own zero/PNS/intensity book. Emits the codewords once the books are known. */
+void huffbook(CoderInfo *coder, const int *qs)
 {
-    int bookmin = HCB_ZERO;
+    enum { NSTATE = HCB_ESC + 1 };
+    unsigned char from[MAX_SCFAC_BANDS][NSTATE];
+    int header = 4 + ((coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5);
+    int g, b, k, off = 0;
 
-    if (maxq > 0) {
-        /* Each spectral book covers values up to its LAV; select the range-pair
-         * whose lower book just fits maxq, then pick the partner if it costs fewer
-         * bits — both books in a pair cover the same amplitude range but use
-         * different codeword assignments optimized for different spectral shapes. */
-        int pair_base;
-        if (maxq <= LAV_1) pair_base = HCB_1;
-        else if (maxq <= LAV_2) pair_base = HCB_3;
-        else if (maxq <= LAV_4) pair_base = HCB_5;
-        else if (maxq <= LAV_7) pair_base = HCB_7;
-        else if (maxq <= LAV_12) pair_base = HCB_9;
-        else pair_base = HCB_ESC;
+    for (g = 0, b = 0; g < coder->groups.n; g++) {
+        int end = b + coder->sfbn, dp[NSTATE], c[NSTATE];
+        /* the previous band's states and its cheapest; none before the first */
+        int plo = 1, phi = 0, best = 0, arg = 0;
 
-        if (pair_base != HCB_ESC) {
-            int len1, len2;
-            huffcode_size_pair(qs, len, pair_base, &len1, &len2);
-            bookmin = (len2 < len1) ? pair_base + 1 : pair_base;
+        for (; b < end; b++) {
+            int book = coder->book[b], lo = 0, hi = 0, nbest = INT_MAX, narg = 0;
 
-            /* Extending the previous band's section beats opening a new one, so
-             * a book up to a section header dearer still comes out ahead. A book
-             * from a higher pair covers maxq as well, but only its own codewords
-             * give its cost, so it is written and then kept or rewound. */
-            int first = (coder->bandcnt % coder->sfbn) == 0;
-            int prev = first ? HCB_ZERO : coder->book[coder->bandcnt - 1];
-            /* What opening a section costs writebooks: book field plus run field. */
-            int header = 4 + ((coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5);
-            int best = (len2 < len1) ? len2 : len1;
-            int book = bookmin;
-
-            if (prev != bookmin && prev >= HCB_1 && prev <= HCB_10) {
-                int prev_base = ((prev - 1) / 2) * 2 + 1;
-                if (prev_base == pair_base) {
-                    if (((prev == pair_base) ? len1 : len2) - best < header)
-                        bookmin = book = prev;
-                } else if (prev_base > pair_base) {
-                    book = prev;
+            c[0] = 0;
+            if (book >= HCB_1 && book <= HCB_ESC) {
+                int sfb = b % coder->sfbn;
+                int len = (coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb]) * coder->groups.len[g];
+                lo = ((book - 1) & ~1) + 1;
+                hi = HCB_ESC;
+                for (k = lo; k < HCB_ESC; k += 2)
+                    huffcode_size_pair(qs + off, len, k, &c[k], &c[k + 1]);
+                for (c[HCB_ESC] = 0, k = 0; k < len; k += 2) {
+                    int x0 = abs(qs[off + k]), x1 = abs(qs[off + k + 1]);
+                    c[HCB_ESC] += book11[DIM_ESC * ((x0 > LAV_ESC) ? LAV_ESC : x0) + ((x1 > LAV_ESC) ? LAV_ESC : x1)].len
+                                + (x0 != 0) + (x1 != 0)
+                                + ((x0 >= LAV_ESC) ? escape(x0, NULL) : 0) + ((x1 >= LAV_ESC) ? escape(x1, NULL) : 0);
                 }
+                off += len;
             }
 
-            for (;;) {
-                int start = coder->datacnt, k, lenp = 0;
-                huffcode_write(qs, len, book, coder);
-                if (book == bookmin)
-                    break;
-                /* Stop as soon as the codewords have eaten the header they save. */
-                for (k = start; k < coder->datacnt && lenp < best + header; k++)
-                    lenp += coder->s[k].len;
-                if (lenp < best + header) {
-                    bookmin = book;
-                    break;
-                }
-                coder->datacnt = start;
-                book = bookmin;
+            for (k = lo; k <= hi; k++) {
+                int open = best + header;
+                int stay = (k >= plo && k <= phi && (k || coder->book[b - 1] == book)) ? dp[k] : INT_MAX;
+                from[b][k] = (stay <= open) ? k : arg;
+                dp[k] = c[k] + ((stay <= open) ? stay : open);
+                if (dp[k] < nbest) { nbest = dp[k]; narg = k; }
             }
-        } else {
-            bookmin = HCB_ESC;
-            huffcode_write(qs, len, bookmin, coder);
+            plo = lo; phi = hi; best = nbest; arg = narg;
         }
+
+        for (k = arg, b = end - 1; b >= end - coder->sfbn; b--) {
+            if (k)
+                coder->book[b] = k;
+            k = from[b][k];
+        }
+        b = end;
     }
 
-    /* Record the chosen book at the current band slot, but do NOT advance
-       bandcnt: the caller (BlocQuant in quantize.c) owns that increment after
-       it has also stored the band's scalefactor. */
-    coder->book[coder->bandcnt] = bookmin;
-    return 0;
+    for (b = 0, off = 0; b < coder->bandcnt; b++) {
+        int book = coder->book[b];
+        if (book >= HCB_1 && book <= HCB_ESC) {
+            int sfb = b % coder->sfbn;
+            int len = (coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb]) * coder->groups.len[b / coder->sfbn];
+            huffcode_write(qs + off, len, book, coder);
+            off += len;
+        }
+    }
 }
 
 /* Encode the section data (codebook indices and run lengths). */
