@@ -70,8 +70,8 @@ typedef struct {
 } TnsInfo;
 
 typedef struct {
-    uint32_t data : 26;
-    uint32_t len  : 6;
+    uint32_t data;
+    uint32_t len;
 } BitCode;
 
 typedef struct CoderInfo {
