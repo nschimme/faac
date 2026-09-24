@@ -94,16 +94,14 @@ static inline void AccumPutBits(BitAccumulator *a, uint32_t value, int numBits)
     a->bits |= (uint64_t)value << (64 - a->fill - numBits);
     a->fill += numBits;
 
-    if (a->fill >= 8) {
-        do {
-            if (a->out < a->limit)
-                *a->out = (uint8_t)(a->bits >> 56);
-            else
-                a->overflow = 1;
-            a->out++;
-            a->bits <<= 8;
-            a->fill -= 8;
-        } while (a->fill >= 8);
+    while (a->fill >= 8) {
+        if (a->out < a->limit)
+            *a->out = (uint8_t)(a->bits >> 56);
+        else
+            a->overflow = 1;
+        a->out++;
+        a->bits <<= 8;
+        a->fill -= 8;
     }
 }
 

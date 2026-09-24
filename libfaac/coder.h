@@ -51,63 +51,54 @@ enum WINDOW_TYPE {
 #define DEF_TNS_RES_OFFSET 3
 
 typedef struct {
-    float aCoeffs[TNS_MAX_ORDER+1];         /* LPC (AR) coefficients (36 bytes) */
-    int8_t order;                           /* Filter order */
-    int8_t direction;                       /* Filtering direction */
-    int8_t coefCompress;                    /* Are coeffs compressed? */
-    int8_t length;                          /* Length, in bands */
-    int8_t index[TNS_MAX_ORDER+1];          /* Quantized reflection-coeff indices (9 bytes) */
-    uint8_t pad[3];                         /* Padding to 4-byte boundary */
+    float aCoeffs[TNS_MAX_ORDER+1];       /* LPC (AR) coefficients */
+    int order;                           /* Filter order */
+    int direction;                       /* Filtering direction */
+    int coefCompress;                    /* Are coeffs compressed? */
+    int length;                          /* Length, in bands */
+    int index[TNS_MAX_ORDER+1];          /* Quantized reflection-coeff indices */
 } TnsFilterData;
 
 typedef struct {
-    TnsFilterData tnsFilter[TNS_MAX_FILTERS];/* TNS filters (52 bytes) */
-    uint8_t tnsDataPresent;
-    uint8_t numFilters;                     /* Number of filters */
-    uint8_t coefResolution;                 /* Coefficient resolution */
-    uint8_t tnsMinBandNumberLong;
-    uint8_t tnsMaxBandsLong;
-    uint8_t tnsNumSwbLong;                  /* 6 bytes */
-    uint8_t pad[2];                         /* Padding to 4-byte boundary */
+    TnsFilterData tnsFilter[TNS_MAX_FILTERS];    /* TNS filters */
+    int tnsDataPresent;
+    int numFilters;                             /* Number of filters */
+    int coefResolution;                         /* Coefficient resolution */
+    int tnsMinBandNumberLong;
+    int tnsMaxBandsLong;
+    int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
 } TnsInfo;
 
-typedef struct {
-    uint32_t data;
-    uint32_t len;
-} BitCode;
-
 typedef struct CoderInfo {
-    /* 8-byte aligned members */
+    int block_type;
+    int desired_block_type;
+
+    int global_gain;
+    int sf[MAX_SCFAC_BANDS];
+    int book[MAX_SCFAC_BANDS];
+    int bandcnt;
+    int sfbn;
     /* Points at the encoder's prebuilt long or short table (frame.c); the
      * contents depend only on the sample rate and the coded bandwidth, so
      * there is one of each per encoder rather than one per channel. */
     const int *sfb_offset;
 
+    struct {
+        int n;
+        int len[MAX_SHORT_WINDOWS];
+    } groups;
+
     /* worst case: one codeword with two escapes per two spectral lines */
 #define DATASIZE (3*FRAME_LEN/2)
-    BitCode s[DATASIZE];                    /* 12288 bytes */
-
-    /* 4-byte aligned members */
-    TnsInfo tnsInfo;                         /* 60 bytes */
-
-    /* 2-byte aligned members */
-    int16_t sf[MAX_SCFAC_BANDS];             /* 256 bytes */
-    int16_t global_gain;                     /* 2 bytes */
-    uint16_t bandcnt;                        /* 2 bytes */
-    uint16_t datacnt;                        /* 2 bytes */
-
-    /* 1-byte aligned members */
-    int8_t book[MAX_SCFAC_BANDS];            /* 128 bytes */
-    uint8_t block_type;                      /* 1 byte */
-    uint8_t desired_block_type;              /* 1 byte */
-    uint8_t sfbn;                            /* 1 byte */
 
     struct {
-        uint8_t n;
-        uint8_t len[MAX_SHORT_WINDOWS];
-    } groups;                                /* 9 bytes */
+        int data;
+        int len;
+    } s[DATASIZE];
+    int datacnt;
 
-    uint8_t pad[3];                         /* Padding to 8-byte boundary */
+
+    TnsInfo tnsInfo;
 } CoderInfo;
 
 typedef struct {

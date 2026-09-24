@@ -76,6 +76,7 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
 		    unsigned int sampleRate, bool heCore)
 {
   unsigned int channel;
+  int size;
 
   gpsyInfo->sampleRate = (float) sampleRate;
   gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
@@ -88,6 +89,16 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
     memset(psydata, 0, sizeof(psydata_t));
     psyInfo[channel].data = psydata;
   }
+
+  size = BLOCK_LEN_LONG;
+  for (channel = 0; channel < numChannels; channel++)
+  {
+    psyInfo[channel].size = size;
+  }
+
+  size = BLOCK_LEN_SHORT;
+  for (channel = 0; channel < numChannels; channel++)
+    psyInfo[channel].sizeS = size;
 }
 
 /* Strongest relative energy jump across the sub-blocks of the window the MDCT
@@ -175,7 +186,7 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
      * difference carries across the sub-block boundary instead of resetting. */
     float *seg = transBuff + (win * BLOCK_LEN_SHORT) + (BLOCK_LEN_LONG - BLOCK_LEN_SHORT) / 2;
     float e = 0.0f;
-    int l, n = 2 * BLOCK_LEN_SHORT;
+    int l, n = 2 * psyInfo->sizeS;
 
     for (l = 0; l < n; l++)
     {

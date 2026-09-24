@@ -156,11 +156,10 @@ static float measure_band_energy(const CoderInfo * __restrict ci, const float * 
                 float a = line[k], b = line[k + 1], c = line[k + 2], d = line[k + 3];
                 float ea = a * a, eb = b * b, ec = c * c, ed = d * d;
 
-                sum += (ea + eb) + (ec + ed);
-                wpeak = fmaxf(wpeak, ea);
-                wpeak = fmaxf(wpeak, eb);
-                wpeak = fmaxf(wpeak, ec);
-                wpeak = fmaxf(wpeak, ed);
+                sum += ea; if (ea > wpeak) wpeak = ea;
+                sum += eb; if (eb > wpeak) wpeak = eb;
+                sum += ec; if (ec > wpeak) wpeak = ec;
+                sum += ed; if (ed > wpeak) wpeak = ed;
             }
 
             /* Mean of the per-window peaks rather than the group maximum: a

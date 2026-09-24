@@ -386,7 +386,7 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned int ch;
         for (ch = 0; ch < hEncoder->numChannels; ch++) {
             if (!hEncoder->peakSnap[ch])
-                hEncoder->peakSnap[ch] = (BandSnapshot *)AllocMemory(sizeof(BandSnapshot));
+                hEncoder->peakSnap[ch] = (int *)AllocMemory(2 * MAX_SCFAC_BANDS * sizeof(int));
             if (!hEncoder->peakSnap[ch])
                 return 0;
         }
@@ -1006,10 +1006,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
     }
 
     for (channel = 0; channel < numChannels; channel++) {
-        memcpy(hEncoder->peakSnap[channel]->book, coderInfo[channel].book,
-               sizeof(coderInfo[channel].book));
-        memcpy(hEncoder->peakSnap[channel]->sf, coderInfo[channel].sf,
-               sizeof(coderInfo[channel].sf));
+        memcpy(hEncoder->peakSnap[channel], coderInfo[channel].book,
+               MAX_SCFAC_BANDS * sizeof(int));
+        memcpy(hEncoder->peakSnap[channel] + MAX_SCFAC_BANDS, coderInfo[channel].sf,
+               MAX_SCFAC_BANDS * sizeof(int));
         sfbnSnap[channel] = coderInfo[channel].sfbn;
     }
 
@@ -1066,10 +1066,10 @@ int faacEncEncode(faacEncHandle hpEncoder,
             hEncoder->aacquantCfg.quality = MINQUAL;
 
         for (channel = 0; channel < numChannels; channel++) {
-            memcpy(coderInfo[channel].book, hEncoder->peakSnap[channel]->book,
-                   sizeof(coderInfo[channel].book));
-            memcpy(coderInfo[channel].sf, hEncoder->peakSnap[channel]->sf,
-                   sizeof(coderInfo[channel].sf));
+            memcpy(coderInfo[channel].book, hEncoder->peakSnap[channel],
+                   MAX_SCFAC_BANDS * sizeof(int));
+            memcpy(coderInfo[channel].sf, hEncoder->peakSnap[channel] + MAX_SCFAC_BANDS,
+                   MAX_SCFAC_BANDS * sizeof(int));
             coderInfo[channel].sfbn = sfbnSnap[channel];
         }
     }

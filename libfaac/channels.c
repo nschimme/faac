@@ -173,7 +173,7 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     AccumBegin(&acc, bs);
     for (int i = 0; i < coder->datacnt; i++) {
         if (coder->s[i].len > 0) {
-            AccumPutBits(&acc, coder->s[i].data, coder->s[i].len);
+            AccumPutBits(&acc, (uint32_t)coder->s[i].data, coder->s[i].len);
             bits += coder->s[i].len;
         }
     }
