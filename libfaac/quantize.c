@@ -432,6 +432,22 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     return 1;
 }
 
+/* Decoders disagree on whether an intensity band copies the left channel's
+ * substituted noise or its still-empty lines, so an intensity band over a
+ * noise band can decode silent. Code it as noise at the level the intensity
+ * position implies (both are 1.5 dB steps). Runs between the left and right
+ * channels' BlocQuant. */
+void ResolveIntensityNoise(const CoderInfo *left, CoderInfo *right)
+{
+    for (int i = 0; i < left->bandcnt; i++) {
+        int b = right->book[i];
+        if (left->book[i] == HCB_PNS && (b == HCB_INTENSITY || b == HCB_INTENSITY2)) {
+            right->book[i] = HCB_PNS;
+            right->sf[i] = left->sf[i] - right->sf[i];
+        }
+    }
+}
+
 /* sfbOffsetShort/Long are filled as a side effect of the same bandwidth walk
  * that picks max_cbs/max_cbl -- a prefix sum over the same table, to the same
  * bound, so there's nothing left for a caller to redo afterward. Only
