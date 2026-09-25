@@ -56,7 +56,7 @@ psydata_t;
  * windows while onsets and the drop-outs after them still do. The bit-starved
  * HE core gains from more short windows than its attacks alone call for, so
  * it judges against the neighbouring sub-block alone, with a tighter band. */
-#define PSY_LEVEL_RATIO_LC  (2.5f)
+#define PSY_LEVEL_RATIO_LC  (4.0f)
 #define PSY_LEVEL_SMOOTH_LC (0.3f)
 #define PSY_LEVEL_RATIO_HE  (1.5f)
 
