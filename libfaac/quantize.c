@@ -23,6 +23,7 @@
 #include "huff2.h"
 #include "cpu_compute.h"
 #include "stats.h"
+#include "util.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n4, float sfacfix);
 
@@ -245,6 +246,155 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     }
 }
 
+typedef struct {
+    double lambda;
+    float xr[FRAME_LEN];
+    double weight[MAX_SCFAC_BANDS];
+    int bias[MAX_SCFAC_BANDS], offset[MAX_SCFAC_BANDS];
+    int length[MAX_SCFAC_BANDS], original_sf[MAX_SCFAC_BANDS];
+    int regular[MAX_SCFAC_BANDS], qs[FRAME_LEN];
+    int costs[MAX_SCFAC_BANDS][RD_BOOKS];
+} RDContext;
+
+static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
+                         const BandEnergy *energy, const float *target, int g)
+{
+    int sb, win, offset = g ? p->offset[g * c->sfbn - 1] + p->length[g * c->sfbn - 1] : 0;
+    for (sb = 0; sb < c->sfbn; sb++) {
+        int band = g * c->sfbn + sb, lo = c->sfb_offset[sb], width = c->sfb_offset[sb + 1] - lo;
+        int len = width * c->groups.len[g];
+        p->offset[band] = offset; p->length[band] = len; p->bias[band] = c->sf[band];
+        for (win = 0; win < c->groups.len[g]; win++)
+            memcpy(p->xr + offset + win * width, xr + win * BLOCK_LEN_SHORT + lo, width * sizeof(float));
+        p->weight[band] = energy[sb].sum > 0 ? (double)target[sb] * target[sb] * len / energy[sb].sum : 0;
+        offset += len;
+    }
+}
+
+static double rd_error(float x, int q, double inverse_gain, double weight)
+{
+    double reconstructed = pow((double)abs(q), 4.0 / 3.0) * inverse_gain;
+    double error = (q < 0 ? -reconstructed : reconstructed) - x;
+    return error * error * weight;
+}
+
+static double rd_distortion(const RDContext *p, int b, const int *qs, int sf)
+{
+    double d = 0, inverse_gain = 1.0 / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+    int k;
+    for (k = 0; k < p->length[b]; k++)
+        d += rd_error(p->xr[p->offset[b] + k], qs[k], inverse_gain, p->weight[b]);
+    return d;
+}
+
+static double rd_candidate(const RDContext *p, int b, const int *base, int sf,
+                            int book, int *out, int *bits)
+{
+    int k, dim = book <= 4 ? 4 : 2, len = p->length[b];
+    double distortion = 0, inverse_gain = 1.0 / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+    *bits = 0;
+    if (!book) {
+        for (k = 0; k < len; k++) {
+            if (abs(base[k]) > 1) return HUGE_VAL;
+            out[k] = 0;
+            distortion += rd_error(p->xr[p->offset[b] + k], 0, inverse_gain, p->weight[b]);
+        }
+        return distortion;
+    }
+    for (k = 0; k < len; k += dim) {
+        double errors[4][2], best = HUGE_VAL, best_d = 0;
+        int values[4][2], m, j, best_bits = 0, best_mask = 0;
+        for (j = 0; j < dim; j++) {
+            values[j][0] = base[k + j];
+            values[j][1] = base[k + j] - (base[k + j] > 0) + (base[k + j] < 0);
+            for (m = 0; m < 2; m++)
+                errors[j][m] = rd_error(p->xr[p->offset[b] + k + j], values[j][m], inverse_gain, p->weight[b]);
+        }
+        for (m = 0; m < (1 << dim); m++) {
+            int q[4], bits_t;
+            double d = 0, value;
+            for (j = 0; j < dim; j++) { q[j] = values[j][(m >> j) & 1]; d += errors[j][(m >> j) & 1]; }
+            bits_t = rd_tuple_bits(q, dim, book);
+            if (bits_t >= RD_INF) continue;
+            value = d + p->lambda * bits_t;
+            if (value < best) { best = value; best_d = d; best_bits = bits_t; best_mask = m; }
+        }
+        if (!isfinite(best)) return HUGE_VAL;
+        for (j = 0; j < dim; j++) out[k + j] = values[j][(best_mask >> j) & 1];
+        distortion += best_d; *bits += best_bits;
+    }
+    return distortion;
+}
+
+static int rd_spectral(const CoderInfo *c, const RDContext *p)
+{
+    int b, bits = 0;
+    for (b = 0; b < c->bandcnt; b++) bits += p->costs[b][c->book[b]];
+    return bits;
+}
+
+static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
+{
+    int b, k, off = 0, pass, changed;
+    int base[FRAME_LEN], candidate[FRAME_LEN], bestq[FRAME_LEN];
+    for (b = 0; b < c->bandcnt; b++) {
+        int book = c->book[b];
+        p->original_sf[b] = c->sf[b];
+        p->regular[b] = book >= HCB_1 && book <= HCB_ESC;
+        if (p->regular[b]) {
+            memcpy(p->qs + p->offset[b], packed + off, p->length[b] * sizeof(int));
+            off += p->length[b];
+            rd_band_costs(p->qs + p->offset[b], p->length[b], p->costs[b]);
+        } else {
+            for (k = 0; k < RD_BOOKS; k++) p->costs[b][k] = RD_INF;
+            p->costs[b][book] = 0;
+        }
+    }
+    rd_select_books(c, p->costs);
+    for (pass = 0; pass < 2; pass++) {
+        changed = 0;
+        for (b = 0; b < c->bandcnt; b++) if (p->regular[b]) {
+            int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
+            int len = p->length[b], rest = rd_spectral(c, p) - p->costs[b][oldbook];
+            double best = rd_distortion(p, b, p->qs + p->offset[b], oldsf)
+                + p->lambda * (rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
+            int delta, book;
+            memcpy(bestq, p->qs + p->offset[b], len * sizeof(int));
+            for (delta = -1; delta <= 1; delta++) {
+                int sf = p->original_sf[b] + delta;
+                if (sf < 0 || sf > 255) continue;
+                qfunc(p->xr + p->offset[b], base, len / 4, sfac_to_gain(SF_OFFSET + p->bias[b] - sf));
+                int min_book = (oldbook > 1) ? oldbook - 1 : 0;
+                int max_book = (oldbook < HCB_ESC) ? oldbook + 1 : HCB_ESC;
+                for (book = min_book; book <= max_book; book++) {
+                    int bits, sf_bits, actual_book = book, nonzero = 0;
+                    double d = rd_candidate(p, b, base, sf, book, candidate, &bits), value;
+                    if (!isfinite(d)) continue;
+                    for (k = 0; k < len; k++) nonzero |= candidate[k];
+                    if (!nonzero) { actual_book = 0; bits = 0; }
+                    c->book[b] = actual_book; c->sf[b] = sf;
+                    sf_bits = rd_scalefactors(c);
+                    if (sf_bits >= RD_INF) continue;
+                    value = d + p->lambda * (rest + bits + rd_sections(c) + sf_bits);
+                    if (value < best - 1e-9 * (1 + fabs(best))) {
+                        best = value; bestsf = sf; bestbook = actual_book;
+                        memcpy(bestq, candidate, len * sizeof(int));
+                    }
+                }
+            }
+            c->book[b] = bestbook; c->sf[b] = bestsf;
+            if (bestbook != oldbook || bestsf != oldsf || memcmp(bestq, p->qs + p->offset[b], len * sizeof(int))) {
+                memcpy(p->qs + p->offset[b], bestq, len * sizeof(int));
+                rd_band_costs(bestq, len, p->costs[b]);
+                rd_select_books(c, p->costs);
+                changed = 1;
+            }
+        }
+        if (!changed) break;
+    }
+    rd_emit(c, p->qs, p->offset, p->costs);
+}
+
 // per-band codebook assignment: zero / PNS / regular+Huffman
 
 /* Re-derives gain after each clamp stage since scalefactor and gain are
@@ -442,8 +592,14 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     float *gxr = xr;
     int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
                ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
+    RDContext *rd = (RDContext *)AllocMemory(sizeof(RDContext));
 
     assert_band_widths_align(coder);
+
+    if (rd) {
+        memset(rd, 0, sizeof(*rd));
+        rd->lambda = 0.03;
+    }
 
     coder->bandcnt = coder->datacnt = 0;
     for (i = 0; i < coder->groups.n; i++)
@@ -453,10 +609,17 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+        if (rd)
+            rd_reference(rd, coder, gxr, be, target, i);
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
-    huffbook(coder, qs);
+    if (rd) {
+        rd_optimize(rd, coder, qs);
+        FreeMemory(rd);
+    } else {
+        huffbook(coder, qs);
+    }
 
     // global_gain must come from a regular band: it's an 8-bit bitstream field,
     // and intensity/PNS bands store stereo-position/noise-energy on a different
