@@ -253,6 +253,7 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 
 typedef struct {
     float lambda;
+    float lambda_band[MAX_SCFAC_BANDS];
     float xr[FRAME_LEN];
     float weight[MAX_SCFAC_BANDS];
     int bias[MAX_SCFAC_BANDS];
@@ -275,6 +276,12 @@ static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
         for (win = 0; win < c->groups.len[g]; win++)
             memcpy(p->xr + offset + win * width, xr + win * BLOCK_LEN_SHORT + lo, width * sizeof(float));
         p->weight[band] = energy[sb].sum > 0.0f ? target[sb] * target[sb] * (float)len / energy[sb].sum : 0.0f;
+
+        float avg = energy[sb].sum / (float)c->groups.len[g];
+        float peak_ratio = (avg > 1e-9f) ? energy[sb].peak_energy / avg : 0.0f;
+        float tonal_scale = (peak_ratio > 2.5f) ? 0.80f : ((peak_ratio < 0.20f && avg > 0.0f) ? 1.25f : 1.0f);
+        p->lambda_band[band] = p->lambda * tonal_scale;
+
         offset += len;
     }
 }
@@ -337,7 +344,7 @@ static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
             }
             bits_t = rd_tuple_bits(q, dim, book);
             if (bits_t >= RD_INF) continue;
-            value = d + p->lambda * (float)bits_t;
+            value = d + p->lambda_band[b] * (float)bits_t;
             if (value < best) { best = value; best_d = d; best_bits = bits_t; best_mask = m; }
         }
         if (!isfinite(best)) return INFINITY;
@@ -357,7 +364,7 @@ static int rd_spectral(const CoderInfo *c, const RDContext *p)
 static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
 {
     int b, k, off = 0, pass, changed;
-    int base[256], candidate[256], bestq[256];
+    int base[FRAME_LEN], candidate[FRAME_LEN], bestq[FRAME_LEN];
     for (b = 0; b < c->bandcnt; b++) {
         int book = c->book[b];
         p->original_sf[b] = c->sf[b];
@@ -378,7 +385,7 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
             int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
             int len = p->length[b], rest = rd_spectral(c, p) - p->costs[b][oldbook];
             float best = rd_distortion(p, b, p->qs + p->offset[b], oldsf)
-                + p->lambda * (float)(rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
+                + p->lambda_band[b] * (float)(rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
             int delta, book;
             memcpy(bestq, p->qs + p->offset[b], len * sizeof(int));
             for (delta = -1; delta <= 1; delta++) {
@@ -397,7 +404,7 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
                     c->book[b] = actual_book; c->sf[b] = sf;
                     sf_bits = rd_scalefactors(c);
                     if (sf_bits >= RD_INF) continue;
-                    value = d + p->lambda * (float)(rest + bits + rd_sections(c) + sf_bits);
+                    value = d + p->lambda_band[b] * (float)(rest + bits + rd_sections(c) + sf_bits);
                     if (value < best - 1e-6f * (1.0f + fabsf(best))) {
                         best = value; bestsf = sf; bestbook = actual_book;
                         memcpy(bestq, candidate, len * sizeof(int));

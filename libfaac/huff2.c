@@ -369,8 +369,8 @@ int rd_tuple_bits(const int *q, int len, int b)
     case 3:
     case 4: {
         int a0 = abs(q[0]), a1 = abs(q[1]), a2 = abs(q[2]), a3 = abs(q[3]);
-        if ((unsigned)a0 > 1 || (unsigned)a1 > 1 ||
-            (unsigned)a2 > 1 || (unsigned)a3 > 1)
+        if ((unsigned)a0 > 2 || (unsigned)a1 > 2 ||
+            (unsigned)a2 > 2 || (unsigned)a3 > 2)
             return RD_INF;
         int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
         int nnz = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
