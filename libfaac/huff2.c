@@ -23,6 +23,12 @@
 #include "bitstream.h"
 #include "util.h"
 
+static inline int escape_len(int x)
+{
+    int preflen = 27 - CountLeadingZeros(x);
+    return (preflen << 1) + 5;
+}
+
 /* Escape coding for HCB_ESC as per ISO/IEC 14496-3.
  * Represents values |q| >= 16 by sending 16 plus an escape suffix. */
 static int escape(int x, int *code)
@@ -43,7 +49,7 @@ static int escape(int x, int *code)
         *code = (*code << (preflen + 4)) | (x - base);
     }
 
-    return (preflen + 1) + (preflen + 4);
+    return (preflen << 1) + 5;
 }
 
 static const hcode16_t * const hmap[12] = {
@@ -56,55 +62,58 @@ static const hcode16_t * const hmap[12] = {
  * the table differs. One walk, two lookups.
  *
  * ISO 14496-3 multidimensional Huffman section tuple indexing. Constant dimensions
- * (DIM_S4, DIM_M4, DIM_S2, DIM_M2_7, DIM_M2_12) allow constant folding into shift-adds.
+ * allow constant folding into shift-adds.
  *
  * bnum is always a pair base; huffbook sizes HCB_ESC itself, so there is
  * deliberately no escape case. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
 {
-    const hcode16_t *booka = hmap[bnum];
-    const hcode16_t *bookb = hmap[bnum + 1];
+    const hcode16_t * __restrict booka = hmap[bnum];
+    const hcode16_t * __restrict bookb = hmap[bnum + 1];
     int a = 0, b = 0;
     int i;
 
     switch (bnum) {
     case HCB_1:
         for (i = 0; i < len; i += 4) {
-            int idx = 40 + DIM_S4*DIM_S4*DIM_S4 * qs[i] + DIM_S4*DIM_S4 * qs[i+1] + DIM_S4 * qs[i+2] + qs[i+3];
+            int idx = 40 + 27 * qs[i] + 9 * qs[i+1] + 3 * qs[i+2] + qs[i+3];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
         break;
     case HCB_3:
         for (i = 0; i < len; i += 4) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
-            int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
-            int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
+            int q0 = qs[i], q1 = qs[i+1], q2 = qs[i+2], q3 = qs[i+3];
+            int a0 = abs(q0), a1 = abs(q1), a2 = abs(q2), a3 = abs(q3);
+            int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+            int sign = (q0 != 0) + (q1 != 0) + (q2 != 0) + (q3 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
         }
         break;
     case HCB_5:
         for (i = 0; i < len; i += 2) {
-            int idx = 40 + DIM_S2 * qs[i] + qs[i+1];
+            int idx = 40 + 9 * qs[i] + qs[i+1];
             a += booka[idx].len;
             b += bookb[idx].len;
         }
         break;
     case HCB_7:
         for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_7 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
+            int q0 = qs[i], q1 = qs[i+1];
+            int a0 = abs(q0), a1 = abs(q1);
+            int idx = (a0 << 3) + a1;
+            int sign = (q0 != 0) + (q1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
         }
         break;
     case HCB_9:
         for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_12 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
+            int q0 = qs[i], q1 = qs[i+1];
+            int a0 = abs(q0), a1 = abs(q1);
+            int idx = 13 * a0 + a1;
+            int sign = (q0 != 0) + (q1 != 0);
             a += booka[idx].len + sign;
             b += bookb[idx].len + sign;
         }
@@ -257,7 +266,7 @@ void huffbook(CoderInfo *coder, const int *qs)
                     int x0 = abs(qs[off + k]), x1 = abs(qs[off + k + 1]);
                     c[HCB_ESC] += book11[DIM_ESC * ((x0 > LAV_ESC) ? LAV_ESC : x0) + ((x1 > LAV_ESC) ? LAV_ESC : x1)].len
                                 + (x0 != 0) + (x1 != 0)
-                                + ((x0 >= LAV_ESC) ? escape(x0, NULL) : 0) + ((x1 >= LAV_ESC) ? escape(x1, NULL) : 0);
+                                + ((x0 >= LAV_ESC) ? escape_len(x0) : 0) + ((x1 >= LAV_ESC) ? escape_len(x1) : 0);
                 }
                 off += len;
             }
