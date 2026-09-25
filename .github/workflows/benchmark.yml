@@ -20,12 +20,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Integration experiment: keep the original pre-stack baseline fixed.
+env:
+  CUMULATIVE_BASELINE_SHA: 95e6c483a77e931884a2c533a41c05e4dbf632ac
+
 jobs:
   benchmark:
     name: Benchmark ${{ matrix.arch }} (${{ matrix.rate_control }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         arch: [amd64]
         rate_control: [abr, vbr, cbr]
@@ -50,11 +55,7 @@ jobs:
       - name: Determine Baseline SHA
         id: baseline-sha
         run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
-          fi
+          echo "sha=$CUMULATIVE_BASELINE_SHA" >> $GITHUB_OUTPUT
 
       - name: Fingerprint Runner Hardware and Toolchain
         id: hw
@@ -82,7 +83,7 @@ jobs:
       - name: Resolve Benchmark Version
         id: bench-sha
         run: |
-          sha=$(git ls-remote https://github.com/nschimme/faac-benchmark refs/heads/master | cut -c1-12)
+          sha=916be7905213913a30b112a4c13f2547a47942f4
           echo "sha=${sha:-unknown}" >> $GITHUB_OUTPUT
           echo "faac-benchmark: ${sha:-unknown}"
 
@@ -119,7 +120,7 @@ jobs:
 
       - name: Run Benchmark (Baseline)
         if: steps.cache-baseline.outputs.cache-hit != 'true' || steps.baseline-ok.outputs.usable != 'true'
-        uses: nschimme/faac-benchmark@master
+        uses: nschimme/faac-benchmark@916be7905213913a30b112a4c13f2547a47942f4
         with:
           faac-bin: ./baseline/build_base/frontend/faac
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
@@ -131,7 +132,7 @@ jobs:
 
       - name: Refresh Baseline Throughput
         if: steps.cache-baseline.outputs.cache-hit == 'true' && steps.baseline-ok.outputs.usable == 'true'
-        uses: nschimme/faac-benchmark@master
+        uses: nschimme/faac-benchmark@916be7905213913a30b112a4c13f2547a47942f4
         with:
           faac-bin: ./baseline/build_base/frontend/faac
           libfaac-so: ./baseline/build_base/libfaac/libfaac.so
@@ -152,7 +153,7 @@ jobs:
 
       - name: Run Benchmark (Candidate)
         if: github.event_name == 'pull_request'
-        uses: nschimme/faac-benchmark@master
+        uses: nschimme/faac-benchmark@916be7905213913a30b112a4c13f2547a47942f4
         with:
           faac-bin: ./candidate/build_cand/frontend/faac
           libfaac-so: ./candidate/build_cand/libfaac/libfaac.so
@@ -187,15 +188,7 @@ jobs:
       - name: Resolve Baseline SHA
         id: baseline-sha
         run: |
-          cd candidate
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
-          elif sha=$(git rev-parse --verify --quiet HEAD~1); then
-            echo "sha=$sha" >> $GITHUB_OUTPUT
-          else
-            echo "sha=" >> $GITHUB_OUTPUT
-            echo "::notice::No parent commit; skipping the footprint comparison."
-          fi
+          echo "sha=$CUMULATIVE_BASELINE_SHA" >> $GITHUB_OUTPUT
 
       - name: Checkout Baseline
         if: steps.baseline-sha.outputs.sha != ''
@@ -209,6 +202,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nschimme/faac-benchmark
+          ref: 916be7905213913a30b112a4c13f2547a47942f4
           path: bench
 
       - name: Build Both Sides
@@ -226,7 +220,7 @@ jobs:
             d=${pair%%:*}; tag=${pair##*:}
             python3 bench/phase1_encode.py \
               $d/build/frontend/faac $d/build/libfaac/libfaac.so \
-              lc results/lc_$tag.json --skip-mos --build-dir $d/build
+              lc results/lc_$tag.json --skip-encode --build-dir $d/build
           done
           python3 bench/compare_results.py results --gates footprint
 
@@ -251,10 +245,10 @@ jobs:
 
       - name: Generate Report
         id: generate
-        uses: nschimme/faac-benchmark/report@master
+        uses: nschimme/faac-benchmark/report@916be7905213913a30b112a4c13f2547a47942f4
         with:
           results-path: ./results
-          base-sha: ${{ github.event.pull_request.base.sha }}
+          base-sha: ${{ env.CUMULATIVE_BASELINE_SHA }}
           cand-sha: ${{ github.event.pull_request.head.sha }}
           summary-only: false
 
