@@ -386,11 +386,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             float best_J = 1e30f;
             int tot_len = gsize * width;
 
-            /* Scratch buffers for candidate evaluation, initialized to default sfac=0 output */
-            int xi_cand[FRAME_LEN];
-            int xi_best[FRAME_LEN];
-            memcpy(xi_best, xi, tot_len * sizeof(int));
-
+            /* Single 1024-entry scratch buffer for candidate line pruning */
+            int xi_cand[BLOCK_LEN_LONG];
             int prev_abs = (*p_last_abs == SF_CHAIN_UNSET) ? sf_abs : *p_last_abs;
             float lambda = 0.035f * (float)gsize * (target[sb] > 0.0f ? (1.0f / target[sb]) : 1.0f);
 
@@ -411,13 +408,35 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     if (qm > cand_maxq) cand_maxq = qm;
                 }
 
+                /* Pre-calculate initial total band distortion */
+                float total_dist = 0.0f;
+                for (int k = 0; k < tot_len; k++)
+                {
+                    int qval = xi_cand[k];
+                    int abs_q = abs(qval);
+                    if (abs_q > 0) {
+                        int win_idx = k / width;
+                        int sub_k = k % width;
+                        float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
+                        float hat = (abs_q < 128 ? gain_lut[abs_q] : powf((float)abs_q, 4.0f/3.0f)) * inv_cand_gain;
+                        if (qval < 0) hat = -hat;
+                        float err = orig_x - hat;
+                        total_dist += err * err;
+                    } else {
+                        int win_idx = k / width;
+                        int sub_k = k % width;
+                        float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
+                        total_dist += orig_x * orig_x;
+                    }
+                }
+
                 /* Exact Huffman & Scalefactor Rate-Distortion Line Pruning */
                 if (cand_maxq > 0)
                 {
-                    int cand_book = !cand_maxq ? HCB_ZERO : cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
+                    int cand_book = cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
                                   : cand_maxq <= LAV_4 ? HCB_5 : cand_maxq <= LAV_7 ? HCB_7 : cand_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
                     int cur_spec_bits = huff_band_bits(cand_book, xi_cand, tot_len);
-                    int cur_sf_bits = (cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
+                    int cur_sf_bits = sf_delta_bits(cand_sf_abs - prev_abs);
 
                     for (int k = 0; k < tot_len; k++)
                     {
@@ -445,7 +464,6 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                         /* Tentatively prune line and evaluate exact new rate */
                         xi_cand[k] = (qval < 0) ? -new_q : new_q;
 
-                        /* If pruning didn't change the peak value, cand_maxq is unchanged */
                         int test_maxq = cand_maxq;
                         if (abs_q == cand_maxq) {
                             test_maxq = 0;
@@ -467,6 +485,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                             cur_spec_bits = test_spec_bits;
                             cur_sf_bits = test_sf_bits;
                             cand_maxq = test_maxq;
+                            total_dist += delta_dist;
                         }
                         else
                         {
@@ -474,28 +493,12 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                         }
                     }
 
-                    /* Recalculate cand_maxq after line pruning */
                     cand_maxq = 0;
                     for (int k = 0; k < tot_len; k++)
                     {
                         int qm = abs(xi_cand[k]);
                         if (qm > cand_maxq) cand_maxq = qm;
                     }
-                }
-
-                /* Calculate total band distortion D */
-                float total_dist = 0.0f;
-                for (int k = 0; k < tot_len; k++)
-                {
-                    int qval = xi_cand[k];
-                    int abs_q = abs(qval);
-                    int win_idx = k / width;
-                    int sub_k = k % width;
-                    float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
-                    float hat = (abs_q > 0) ? ((abs_q < 128 ? gain_lut[abs_q] : powf((float)abs_q, 4.0f/3.0f)) * inv_cand_gain) : 0.0f;
-                    if (qval < 0) hat = -hat;
-                    float err = orig_x - hat;
-                    total_dist += err * err;
                 }
 
                 /* Calculate total rate R = Huffman spectral bits + Scalefactor delta bits */
@@ -512,7 +515,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                     best_sf_abs = cand_sf_abs;
                     best_sf_rel = cand_sf_rel;
                     best_maxq = cand_maxq;
-                    memcpy(xi_best, xi_cand, tot_len * sizeof(int));
+                    memcpy(xi, xi_cand, tot_len * sizeof(int));
                 }
             }
 
@@ -520,7 +523,6 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             sf_abs = best_sf_abs;
             sf_rel = best_sf_rel;
             maxq = best_maxq;
-            memcpy(xi, xi_best, tot_len * sizeof(int));
 
             /* huffbook picks the final book; record the lowest that covers maxq */
             ci->book[band] = !maxq ? HCB_ZERO : maxq <= LAV_1 ? HCB_1 : maxq <= LAV_2 ? HCB_3
