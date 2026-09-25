@@ -52,14 +52,14 @@ static const hcode16_t * const hmap[12] = {
 };
 
 
-/* Both books of a pair share the index expression and the sign-bit count; only
- * the table differs. One walk, two lookups.
+/* Both books of a pair share the index expression; only the table differs.
+ * One walk, two lookups.
  *
  * ISO 14496-3 multidimensional Huffman section tuple indexing. Constant dimensions
- * (DIM_S4, DIM_M4, DIM_S2, DIM_M2_7, DIM_M2_12) allow constant folding into shift-adds.
+ * (DIM_S4, DIM_M4, DIM_S2) allow constant folding into shift-adds.
  *
- * bnum is always a pair base; huffbook sizes HCB_ESC itself, so there is
- * deliberately no escape case. */
+ * bnum is HCB_1, HCB_3 or HCB_5; size_books walks the unsigned pair books
+ * itself. HCB_3 leaves out its sign bits, which size_books adds. */
 static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int *bits_a, int *bits_b)
 {
     const hcode16_t *booka = hmap[bnum];
@@ -79,9 +79,8 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
         for (i = 0; i < len; i += 4) {
             int a0 = abs(qs[i]), a1 = abs(qs[i+1]), a2 = abs(qs[i+2]), a3 = abs(qs[i+3]);
             int idx = DIM_M4*DIM_M4*DIM_M4 * a0 + DIM_M4*DIM_M4 * a1 + DIM_M4 * a2 + a3;
-            int sign = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
+            a += booka[idx].len;
+            b += bookb[idx].len;
         }
         break;
     case HCB_5:
@@ -91,30 +90,45 @@ static void huffcode_size_pair(const int * __restrict qs, int len, int bnum, int
             b += bookb[idx].len;
         }
         break;
-    case HCB_7:
-        for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_7 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
-        }
-        break;
-    case HCB_9:
-        for (i = 0; i < len; i += 2) {
-            int a0 = abs(qs[i]), a1 = abs(qs[i+1]);
-            int idx = DIM_M2_12 * a0 + a1;
-            int sign = (a0 != 0) + (a1 != 0);
-            a += booka[idx].len + sign;
-            b += bookb[idx].len + sign;
-        }
-        break;
     default:
         break;
     }
 
     *bits_a = a;
     *bits_b = b;
+}
+
+/* Sizes a band in every book from lo up. The unsigned pair books share one
+ * walk: magnitudes are clamped to each table, and a book whose LAV the band
+ * exceeds is sized but never picked, as lo is above it. Unsigned books pay one
+ * sign bit per nonzero value, counted once. */
+static void size_books(const int * __restrict qs, int len, int lo, int * __restrict c)
+{
+    int i, nnz = 0;
+
+    for (i = 0; i < len; i++)
+        nnz += qs[i] != 0;
+    for (i = lo; i < HCB_7; i += 2) {
+        huffcode_size_pair(qs, len, i, &c[i], &c[i + 1]);
+        if (i == HCB_3) {
+            c[i] += nnz;
+            c[i + 1] += nnz;
+        }
+    }
+    for (i = HCB_7; i <= HCB_ESC; i++)
+        c[i] = nnz;
+    for (i = 0; i < len; i += 2) {
+        int x0 = abs(qs[i]), x1 = abs(qs[i + 1]);
+        int i7 = DIM_M2_7 * ((x0 > LAV_7) ? LAV_7 : x0) + ((x1 > LAV_7) ? LAV_7 : x1);
+        int i9 = DIM_M2_12 * ((x0 > LAV_12) ? LAV_12 : x0) + ((x1 > LAV_12) ? LAV_12 : x1);
+        int ie = DIM_ESC * ((x0 > LAV_ESC) ? LAV_ESC : x0) + ((x1 > LAV_ESC) ? LAV_ESC : x1);
+        c[HCB_7] += book07[i7].len;
+        c[HCB_8] += book08[i7].len;
+        c[HCB_9] += book09[i9].len;
+        c[HCB_10] += book10[i9].len;
+        c[HCB_ESC] += book11[ie].len + ((x0 >= LAV_ESC) ? escape(x0, NULL) : 0)
+                    + ((x1 >= LAV_ESC) ? escape(x1, NULL) : 0);
+    }
 }
 
 /* Appends the band's codewords to coder->s. */
@@ -251,14 +265,11 @@ void huffbook(CoderInfo *coder, const int *qs)
                 int len = (coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb]) * coder->groups.len[g];
                 lo = ((book - 1) & ~1) + 1;
                 hi = HCB_ESC;
-                for (k = lo; k < HCB_ESC; k += 2)
-                    huffcode_size_pair(qs + off, len, k, &c[k], &c[k + 1]);
-                for (c[HCB_ESC] = 0, k = 0; k < len; k += 2) {
-                    int x0 = abs(qs[off + k]), x1 = abs(qs[off + k + 1]);
-                    c[HCB_ESC] += book11[DIM_ESC * ((x0 > LAV_ESC) ? LAV_ESC : x0) + ((x1 > LAV_ESC) ? LAV_ESC : x1)].len
-                                + (x0 != 0) + (x1 != 0)
-                                + ((x0 >= LAV_ESC) ? escape(x0, NULL) : 0) + ((x1 >= LAV_ESC) ? escape(x1, NULL) : 0);
-                }
+                /* An escape-only band has one choice, so its cost is moot. */
+                if (lo < HCB_ESC)
+                    size_books(qs + off, len, lo, c);
+                else
+                    c[HCB_ESC] = 0;
                 off += len;
             }
 
