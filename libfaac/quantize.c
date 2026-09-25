@@ -61,6 +61,7 @@ static float max_quant_limit;
  * Precomputed 2^(sfac/4) LUT eliminates repeated transcendental powf calls during gain coupling. */
 static float gain_lut[GAIN_LUT_SIZE];
 static float log10_width_sf_lut[128];
+static float pow_4_3_lut[MAX_HUFF_ESC_VAL + 1];
 
 #define SF_CHAIN_UNSET INT_MIN
 
@@ -83,6 +84,10 @@ void QuantizeInit(void)
     /* Pre-multiply width logarithm by SF_STEP_ENRG (= sfstep / 2) */
     for (i = 1; i < 128; i++)
         log10_width_sf_lut[i] = log10f((float)i) * SF_STEP_ENRG;
+
+    /* Precompute q^(4/3) table to eliminate repeated powf() calls in RDO distortion loops */
+    for (i = 0; i <= MAX_HUFF_ESC_VAL; i++)
+        pow_4_3_lut[i] = powf((float)i, 4.0f / 3.0f);
 
     /* One-time constant: computed in double so the stored float is
      * correctly rounded, at zero runtime cost. */
@@ -247,12 +252,15 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
 }
 
 typedef struct {
-    double lambda;
+    float lambda;
     float xr[FRAME_LEN];
-    double weight[MAX_SCFAC_BANDS];
-    int bias[MAX_SCFAC_BANDS], offset[MAX_SCFAC_BANDS];
-    int length[MAX_SCFAC_BANDS], original_sf[MAX_SCFAC_BANDS];
-    int regular[MAX_SCFAC_BANDS], qs[FRAME_LEN];
+    float weight[MAX_SCFAC_BANDS];
+    int bias[MAX_SCFAC_BANDS];
+    int offset[MAX_SCFAC_BANDS];
+    int length[MAX_SCFAC_BANDS];
+    int original_sf[MAX_SCFAC_BANDS];
+    uint8_t regular[MAX_SCFAC_BANDS];
+    int qs[FRAME_LEN];
     int costs[MAX_SCFAC_BANDS][RD_BOOKS];
 } RDContext;
 
@@ -266,60 +274,73 @@ static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
         p->offset[band] = offset; p->length[band] = len; p->bias[band] = c->sf[band];
         for (win = 0; win < c->groups.len[g]; win++)
             memcpy(p->xr + offset + win * width, xr + win * BLOCK_LEN_SHORT + lo, width * sizeof(float));
-        p->weight[band] = energy[sb].sum > 0 ? (double)target[sb] * target[sb] * len / energy[sb].sum : 0;
+        p->weight[band] = energy[sb].sum > 0.0f ? target[sb] * target[sb] * (float)len / energy[sb].sum : 0.0f;
         offset += len;
     }
 }
 
-static double rd_error(float x, int q, double inverse_gain, double weight)
+static inline float rd_error(float x, int q, float inverse_gain, float weight)
 {
-    double reconstructed = pow((double)abs(q), 4.0 / 3.0) * inverse_gain;
-    double error = (q < 0 ? -reconstructed : reconstructed) - x;
+    int absq = abs(q);
+    float q_pow = (absq <= MAX_HUFF_ESC_VAL) ? pow_4_3_lut[absq] : powf((float)absq, 4.0f / 3.0f);
+    float reconstructed = q_pow * inverse_gain;
+    float error = (q < 0 ? -reconstructed : reconstructed) - x;
     return error * error * weight;
 }
 
-static double rd_distortion(const RDContext *p, int b, const int *qs, int sf)
+static float rd_distortion(const RDContext *p, int b, const int *qs, int sf)
 {
-    double d = 0, inverse_gain = 1.0 / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+    float d = 0.0f, inverse_gain = 1.0f / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
     int k;
     for (k = 0; k < p->length[b]; k++)
         d += rd_error(p->xr[p->offset[b] + k], qs[k], inverse_gain, p->weight[b]);
     return d;
 }
 
-static double rd_candidate(const RDContext *p, int b, const int *base, int sf,
-                            int book, int *out, int *bits)
+static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
+                           int book, int *out, int *bits)
 {
     int k, dim = book <= 4 ? 4 : 2, len = p->length[b];
-    double distortion = 0, inverse_gain = 1.0 / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+    float distortion = 0.0f, inverse_gain = 1.0f / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
     *bits = 0;
     if (!book) {
         for (k = 0; k < len; k++) {
-            if (abs(base[k]) > 1) return HUGE_VAL;
+            if (abs(base[k]) > 1) return INFINITY;
             out[k] = 0;
             distortion += rd_error(p->xr[p->offset[b] + k], 0, inverse_gain, p->weight[b]);
         }
         return distortion;
     }
     for (k = 0; k < len; k += dim) {
-        double errors[4][2], best = HUGE_VAL, best_d = 0;
-        int values[4][2], m, j, best_bits = 0, best_mask = 0;
+        float errors[4][2], best = INFINITY, best_d = 0.0f;
+        int values[4][2], m, j, best_bits = 0, best_mask = 0, active_mask = 0;
         for (j = 0; j < dim; j++) {
-            values[j][0] = base[k + j];
-            values[j][1] = base[k + j] - (base[k + j] > 0) + (base[k + j] < 0);
-            for (m = 0; m < 2; m++)
-                errors[j][m] = rd_error(p->xr[p->offset[b] + k + j], values[j][m], inverse_gain, p->weight[b]);
+            int val = base[k + j];
+            values[j][0] = val;
+            if (val != 0) {
+                values[j][1] = val - (val > 0) + (val < 0);
+                active_mask |= (1 << j);
+            } else {
+                values[j][1] = 0;
+            }
+            errors[j][0] = rd_error(p->xr[p->offset[b] + k + j], values[j][0], inverse_gain, p->weight[b]);
+            errors[j][1] = (val != 0) ? rd_error(p->xr[p->offset[b] + k + j], values[j][1], inverse_gain, p->weight[b]) : errors[j][0];
         }
         for (m = 0; m < (1 << dim); m++) {
+            if (m & ~active_mask) continue;
             int q[4], bits_t;
-            double d = 0, value;
-            for (j = 0; j < dim; j++) { q[j] = values[j][(m >> j) & 1]; d += errors[j][(m >> j) & 1]; }
+            float d = 0.0f, value;
+            for (j = 0; j < dim; j++) {
+                int bit = (m >> j) & 1;
+                q[j] = values[j][bit];
+                d += errors[j][bit];
+            }
             bits_t = rd_tuple_bits(q, dim, book);
             if (bits_t >= RD_INF) continue;
-            value = d + p->lambda * bits_t;
+            value = d + p->lambda * (float)bits_t;
             if (value < best) { best = value; best_d = d; best_bits = bits_t; best_mask = m; }
         }
-        if (!isfinite(best)) return HUGE_VAL;
+        if (!isfinite(best)) return INFINITY;
         for (j = 0; j < dim; j++) out[k + j] = values[j][(best_mask >> j) & 1];
         distortion += best_d; *bits += best_bits;
     }
@@ -336,7 +357,7 @@ static int rd_spectral(const CoderInfo *c, const RDContext *p)
 static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
 {
     int b, k, off = 0, pass, changed;
-    int base[FRAME_LEN], candidate[FRAME_LEN], bestq[FRAME_LEN];
+    int base[256], candidate[256], bestq[256];
     for (b = 0; b < c->bandcnt; b++) {
         int book = c->book[b];
         p->original_sf[b] = c->sf[b];
@@ -356,8 +377,8 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
         for (b = 0; b < c->bandcnt; b++) if (p->regular[b]) {
             int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
             int len = p->length[b], rest = rd_spectral(c, p) - p->costs[b][oldbook];
-            double best = rd_distortion(p, b, p->qs + p->offset[b], oldsf)
-                + p->lambda * (rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
+            float best = rd_distortion(p, b, p->qs + p->offset[b], oldsf)
+                + p->lambda * (float)(rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
             int delta, book;
             memcpy(bestq, p->qs + p->offset[b], len * sizeof(int));
             for (delta = -1; delta <= 1; delta++) {
@@ -366,17 +387,18 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
                 qfunc(p->xr + p->offset[b], base, len / 4, sfac_to_gain(SF_OFFSET + p->bias[b] - sf));
                 int min_book = (oldbook > 1) ? oldbook - 1 : 0;
                 int max_book = (oldbook < HCB_ESC) ? oldbook + 1 : HCB_ESC;
+
                 for (book = min_book; book <= max_book; book++) {
                     int bits, sf_bits, actual_book = book, nonzero = 0;
-                    double d = rd_candidate(p, b, base, sf, book, candidate, &bits), value;
+                    float d = rd_candidate(p, b, base, sf, book, candidate, &bits), value;
                     if (!isfinite(d)) continue;
                     for (k = 0; k < len; k++) nonzero |= candidate[k];
                     if (!nonzero) { actual_book = 0; bits = 0; }
                     c->book[b] = actual_book; c->sf[b] = sf;
                     sf_bits = rd_scalefactors(c);
                     if (sf_bits >= RD_INF) continue;
-                    value = d + p->lambda * (rest + bits + rd_sections(c) + sf_bits);
-                    if (value < best - 1e-9 * (1 + fabs(best))) {
+                    value = d + p->lambda * (float)(rest + bits + rd_sections(c) + sf_bits);
+                    if (value < best - 1e-6f * (1.0f + fabsf(best))) {
                         best = value; bestsf = sf; bestbook = actual_book;
                         memcpy(bestq, candidate, len * sizeof(int));
                     }
@@ -598,7 +620,8 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     if (rd) {
         memset(rd, 0, sizeof(*rd));
-        rd->lambda = 0.03;
+        float qual_factor = (float)aacquantCfg->quality / DEFQUAL;
+        rd->lambda = 0.03f * fminf(1.2f, fmaxf(0.6f, 1.0f / qual_factor));
     }
 
     coder->bandcnt = coder->datacnt = 0;
