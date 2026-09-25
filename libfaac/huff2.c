@@ -353,9 +353,8 @@ void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS])
     for (k = 0; k < lo; k++) costs[k] = RD_INF;
 }
 
-int rd_tuple_bits(const int *q, int len, int b)
+int rd_tuple_bits(const int *q, int b)
 {
-    (void)len;
     switch (b) {
     case 1:
     case 2: {
@@ -498,10 +497,9 @@ int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
     return total;
 }
 
-void rd_emit(CoderInfo *c, const int *qs, const int *offset, int costs[][RD_BOOKS])
+void rd_emit(CoderInfo *c, const int *qs, const int *offset)
 {
     int b;
-    (void)costs;
     c->datacnt = 0;
     for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
         int sfb = b%c->sfbn;

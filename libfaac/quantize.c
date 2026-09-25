@@ -251,20 +251,22 @@ static void derive_masking_targets(CoderInfo * __restrict ci, int gnum, float qu
     }
 }
 
+/* Rate-Distortion Optimization (RDO) workspace context */
 typedef struct {
-    float lambda;
-    float lambda_band[MAX_SCFAC_BANDS];
-    float xr[FRAME_LEN];
-    float weight[MAX_SCFAC_BANDS];
-    int bias[MAX_SCFAC_BANDS];
-    int offset[MAX_SCFAC_BANDS];
-    int length[MAX_SCFAC_BANDS];
-    int original_sf[MAX_SCFAC_BANDS];
-    uint8_t regular[MAX_SCFAC_BANDS];
-    int qs[FRAME_LEN];
-    int costs[MAX_SCFAC_BANDS][RD_BOOKS];
+    float lambda;                         /* Base rate-distortion tradeoff weight */
+    float lambda_band[MAX_SCFAC_BANDS];   /* Per-band tonality-scaled lambda */
+    float xr[FRAME_LEN];                  /* Target MDCT spectral coefficients */
+    float weight[MAX_SCFAC_BANDS];        /* Perceptual masking distortion weights */
+    int bias[MAX_SCFAC_BANDS];            /* Per-band initial scalefactor bias */
+    int offset[MAX_SCFAC_BANDS];          /* Per-band spectral coefficient offset */
+    int length[MAX_SCFAC_BANDS];          /* Per-band spectral coefficient length */
+    int original_sf[MAX_SCFAC_BANDS];     /* Baseline scalefactor values */
+    uint8_t regular[MAX_SCFAC_BANDS];     /* Flag indicating regular Huffman band */
+    int qs[FRAME_LEN];                    /* Quantized spectral coefficients */
+    int costs[MAX_SCFAC_BANDS][RD_BOOKS]; /* Bit-costs per codebook choice */
 } RDContext;
 
+/* Extract reference spectral coefficients, weights, and tonal lambda scaling */
 static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
                          const BandEnergy *energy, const float *target, int g)
 {
@@ -277,6 +279,7 @@ static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
             memcpy(p->xr + offset + win * width, xr + win * BLOCK_LEN_SHORT + lo, width * sizeof(float));
         p->weight[band] = energy[sb].sum > 0.0f ? target[sb] * target[sb] * (float)len / energy[sb].sum : 0.0f;
 
+        /* Tonal-aware per-band lambda scaling: preserve bits on tonal harmonics, prune in noise bands */
         float avg = energy[sb].sum / (float)c->groups.len[g];
         float peak_ratio = (avg > 1e-9f) ? energy[sb].peak_energy / avg : 0.0f;
         float tonal_scale = (peak_ratio > 2.5f) ? 0.80f : ((peak_ratio < 0.20f && avg > 0.0f) ? 1.25f : 1.0f);
@@ -286,6 +289,7 @@ static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
     }
 }
 
+/* Fast weighted squared quantization error calculation using O(1) q^(4/3) LUT */
 static inline float rd_error(float x, int q, float inverse_gain, float weight)
 {
     int absq = abs(q);
@@ -295,6 +299,7 @@ static inline float rd_error(float x, int q, float inverse_gain, float weight)
     return error * error * weight;
 }
 
+/* Total weighted distortion for a scale factor band */
 static float rd_distortion(const RDContext *p, int b, const int *qs, int sf)
 {
     float d = 0.0f, inverse_gain = 1.0f / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
@@ -304,6 +309,7 @@ static float rd_distortion(const RDContext *p, int b, const int *qs, int sf)
     return d;
 }
 
+/* Evaluate tuple quantization candidate choices for a scale factor band */
 static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
                            int book, int *out, int *bits)
 {
@@ -333,6 +339,7 @@ static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
             errors[j][0] = rd_error(p->xr[p->offset[b] + k + j], values[j][0], inverse_gain, p->weight[b]);
             errors[j][1] = (val != 0) ? rd_error(p->xr[p->offset[b] + k + j], values[j][1], inverse_gain, p->weight[b]) : errors[j][0];
         }
+        /* Branchless active_mask pruning skips redundant tuple permutations on zero lines */
         for (m = 0; m < (1 << dim); m++) {
             if (m & ~active_mask) continue;
             int q[4], bits_t;
@@ -342,7 +349,7 @@ static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
                 q[j] = values[j][bit];
                 d += errors[j][bit];
             }
-            bits_t = rd_tuple_bits(q, dim, book);
+            bits_t = rd_tuple_bits(q, book);
             if (bits_t >= RD_INF) continue;
             value = d + p->lambda_band[b] * (float)bits_t;
             if (value < best) { best = value; best_d = d; best_bits = bits_t; best_mask = m; }
@@ -354,6 +361,7 @@ static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
     return distortion;
 }
 
+/* Sum total spectral bits across all scale factor bands */
 static int rd_spectral(const CoderInfo *c, const RDContext *p)
 {
     int b, bits = 0;
@@ -361,6 +369,7 @@ static int rd_spectral(const CoderInfo *c, const RDContext *p)
     return bits;
 }
 
+/* Iterative Joint Rate-Distortion Optimization across scalefactors and codebooks */
 static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
 {
     int b, k, off = 0, pass, changed;
@@ -421,7 +430,7 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
         }
         if (!changed) break;
     }
-    rd_emit(c, p->qs, p->offset, p->costs);
+    rd_emit(c, p->qs, p->offset);
 }
 
 // per-band codebook assignment: zero / PNS / regular+Huffman
@@ -628,13 +637,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     if (rd) {
         memset(rd, 0, sizeof(*rd));
         float qual_factor = (float)aacquantCfg->quality / DEFQUAL;
-        float base_lambda = 0.025f;
-        const char *env_lambda = getenv("FAAC_RDO_LAMBDA");
-        if (env_lambda) {
-            float val = (float)atof(env_lambda);
-            if (val > 0.0f) base_lambda = val;
-        }
-        rd->lambda = base_lambda * fminf(1.2f, fmaxf(0.6f, 1.0f / qual_factor));
+        rd->lambda = 0.025f * fminf(1.2f, fmaxf(0.6f, 1.0f / qual_factor));
     }
 
     coder->bandcnt = coder->datacnt = 0;
