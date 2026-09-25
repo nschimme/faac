@@ -532,10 +532,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                            : maxq <= LAV_4 ? HCB_5 : maxq <= LAV_7 ? HCB_7 : maxq <= LAV_12 ? HCB_9 : HCB_ESC;
             if (maxq)
                 *p_qlen += gsize * width;
-            *p_last_abs = sf_abs;
+            if (ci->book[band] != HCB_ZERO)
+                *p_last_abs = sf_abs;
         }
 
-        ci->sf[ci->bandcnt++] += sf_rel;
+        ci->sf[ci->bandcnt++] = sf_rel;
     }
 }
 
