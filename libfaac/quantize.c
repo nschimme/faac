@@ -104,6 +104,17 @@ static inline float dequant_spec(int q, float inv_gain)
     return (q < 0) ? -hat : hat;
 }
 
+static inline int maxq_to_book(int maxq)
+{
+    if (!maxq) return HCB_ZERO;
+    if (maxq <= LAV_1) return HCB_1;
+    if (maxq <= LAV_2) return HCB_3;
+    if (maxq <= LAV_4) return HCB_5;
+    if (maxq <= LAV_7) return HCB_7;
+    if (maxq <= LAV_12) return HCB_9;
+    return HCB_ESC;
+}
+
 /* sfac and gain are coupled; clamping one forces a recompute of the other. */
 static float gain_with_overflow_clamp(int *sfac, float band_peak)
 {
@@ -295,6 +306,9 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
     return gain;
 }
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
 static void rdo_optimize_band(int sfac, int sf_bias, float band_peak, int last_abs,
                               int gsize, int width, int lo, const float *xr0,
                               float target_sb, int *out_sf_abs, int *out_sf_rel,
@@ -328,75 +342,76 @@ static void rdo_optimize_band(int sfac, int sf_bias, float band_peak, int last_a
         }
 
         float total_dist = 0.0f;
-        for (int k = 0; k < tot_len; k++)
+        for (int win = 0; win < gsize; win++)
         {
-            int qval = xi_cand[k];
-            int win_idx = k / width;
-            int sub_k = k % width;
-            float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
-            float err = orig_x - dequant_spec(qval, inv_cand_gain);
-            total_dist += err * err;
+            const float *win_xr = xr0 + win * BLOCK_LEN_SHORT + lo;
+            const int *win_xi = xi_cand + win * width;
+            for (int k = 0; k < width; k++)
+            {
+                float err = win_xr[k] - dequant_spec(win_xi[k], inv_cand_gain);
+                total_dist += err * err;
+            }
         }
 
         if (cand_maxq > 0)
         {
-            int cand_book = cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
-                          : cand_maxq <= LAV_4 ? HCB_5 : cand_maxq <= LAV_7 ? HCB_7 : cand_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
+            int cand_book = maxq_to_book(cand_maxq);
             int cur_spec_bits = huff_band_bits(cand_book, xi_cand, tot_len);
             int cur_sf_bits = (!is_first_band && cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
 
             int pruned;
             do {
                 pruned = 0;
-                for (int k = 0; k < tot_len; k++)
+                for (int win = 0; win < gsize; win++)
                 {
-                    int qval = xi_cand[k];
-                    int abs_q = abs(qval);
-                    if (abs_q == 0) continue;
+                    const float *win_xr = xr0 + win * BLOCK_LEN_SHORT + lo;
+                    int *win_xi = xi_cand + win * width;
+                    for (int k = 0; k < width; k++)
+                    {
+                        int qval = win_xi[k];
+                        int abs_q = abs(qval);
+                        if (abs_q == 0) continue;
 
-                    int win_idx = k / width;
-                    int sub_k = k % width;
-                    float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
+                        float orig_x = win_xr[k];
+                        float err_curr = orig_x - dequant_spec(qval, inv_cand_gain);
+                        float dist_curr = err_curr * err_curr;
 
-                    float err_curr = orig_x - dequant_spec(qval, inv_cand_gain);
-                    float dist_curr = err_curr * err_curr;
+                        int new_q = abs_q - 1;
+                        int signed_new_q = (qval < 0) ? -new_q : new_q;
+                        float err_new = orig_x - dequant_spec(signed_new_q, inv_cand_gain);
+                        float dist_new = err_new * err_new;
 
-                    int new_q = abs_q - 1;
-                    int signed_new_q = (qval < 0) ? -new_q : new_q;
-                    float err_new = orig_x - dequant_spec(signed_new_q, inv_cand_gain);
-                    float dist_new = err_new * err_new;
+                        float delta_dist = dist_new - dist_curr;
 
-                    float delta_dist = dist_new - dist_curr;
+                        win_xi[k] = signed_new_q;
 
-                    xi_cand[k] = (qval < 0) ? -new_q : new_q;
-
-                    int test_maxq = cand_maxq;
-                    if (abs_q == cand_maxq) {
-                        test_maxq = 0;
-                        for (int m = 0; m < tot_len; m++) {
-                            int aq = abs(xi_cand[m]);
-                            if (aq > test_maxq) test_maxq = aq;
+                        int test_maxq = cand_maxq;
+                        if (abs_q == cand_maxq) {
+                            test_maxq = 0;
+                            for (int m = 0; m < tot_len; m++) {
+                                int aq = abs(xi_cand[m]);
+                                if (aq > test_maxq) test_maxq = aq;
+                            }
                         }
-                    }
 
-                    int test_book = !test_maxq ? HCB_ZERO : test_maxq <= LAV_1 ? HCB_1 : test_maxq <= LAV_2 ? HCB_3
-                                  : test_maxq <= LAV_4 ? HCB_5 : test_maxq <= LAV_7 ? HCB_7 : test_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
-                    int test_spec_bits = huff_band_bits(test_book, xi_cand, tot_len);
-                    int test_sf_bits = (!is_first_band && test_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
+                        int test_book = maxq_to_book(test_maxq);
+                        int test_spec_bits = huff_band_bits(test_book, xi_cand, tot_len);
+                        int test_sf_bits = (!is_first_band && test_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
 
-                    int exact_bit_savings = (cur_spec_bits + cur_sf_bits) - (test_spec_bits + test_sf_bits);
+                        int exact_bit_savings = (cur_spec_bits + cur_sf_bits) - (test_spec_bits + test_sf_bits);
 
-                    if (exact_bit_savings > 0 && delta_dist < lambda * (float)exact_bit_savings)
-                    {
-                        cur_spec_bits = test_spec_bits;
-                        cur_sf_bits = test_sf_bits;
-                        cand_maxq = test_maxq;
-                        total_dist += delta_dist;
-                        pruned = 1;
-                    }
-                    else
-                    {
-                        xi_cand[k] = qval;
+                        if (exact_bit_savings > 0 && delta_dist < lambda * (float)exact_bit_savings)
+                        {
+                            cur_spec_bits = test_spec_bits;
+                            cur_sf_bits = test_sf_bits;
+                            cand_maxq = test_maxq;
+                            total_dist += delta_dist;
+                            pruned = 1;
+                        }
+                        else
+                        {
+                            win_xi[k] = qval;
+                        }
                     }
                 }
             } while (pruned);
@@ -409,8 +424,7 @@ static void rdo_optimize_band(int sfac, int sf_bias, float band_peak, int last_a
             }
         }
 
-        int cand_book = !cand_maxq ? HCB_ZERO : cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
-                      : cand_maxq <= LAV_4 ? HCB_5 : cand_maxq <= LAV_7 ? HCB_7 : cand_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
+        int cand_book = maxq_to_book(cand_maxq);
         int spec_bits = huff_band_bits(cand_book, xi_cand, tot_len);
         int sf_bits = (!is_first_band && cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
         int total_rate = spec_bits + sf_bits;
@@ -528,8 +542,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                               target[sb], &sf_abs, &sf_rel, &maxq, xi);
 
             /* huffbook picks the final book; record the lowest that covers maxq */
-            ci->book[band] = !maxq ? HCB_ZERO : maxq <= LAV_1 ? HCB_1 : maxq <= LAV_2 ? HCB_3
-                           : maxq <= LAV_4 ? HCB_5 : maxq <= LAV_7 ? HCB_7 : maxq <= LAV_12 ? HCB_9 : HCB_ESC;
+            ci->book[band] = maxq_to_book(maxq);
             if (maxq)
                 *p_qlen += gsize * width;
             if (ci->book[band] != HCB_ZERO)
