@@ -388,7 +388,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
             /* Single 1024-entry scratch buffer for candidate line pruning */
             int xi_cand[BLOCK_LEN_LONG];
-            int prev_abs = (*p_last_abs == SF_CHAIN_UNSET) ? sf_abs : *p_last_abs;
+            int is_first_band = (*p_last_abs == SF_CHAIN_UNSET);
+            int prev_abs = is_first_band ? sf_abs : *p_last_abs;
             float lambda = 0.035f * (float)gsize * (target[sb] > 0.0f ? (1.0f / target[sb]) : 1.0f);
 
             /* Evaluate scalefactor step candidates: sfac_offset in {-1, 0, +1} */
@@ -414,84 +415,86 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 {
                     int qval = xi_cand[k];
                     int abs_q = abs(qval);
+                    int win_idx = k / width;
+                    int sub_k = k % width;
+                    float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
                     if (abs_q > 0) {
-                        int win_idx = k / width;
-                        int sub_k = k % width;
-                        float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
                         float hat = (abs_q < 128 ? gain_lut[abs_q] : powf((float)abs_q, 4.0f/3.0f)) * inv_cand_gain;
                         if (qval < 0) hat = -hat;
                         float err = orig_x - hat;
                         total_dist += err * err;
                     } else {
-                        int win_idx = k / width;
-                        int sub_k = k % width;
-                        float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
                         total_dist += orig_x * orig_x;
                     }
                 }
 
-                /* Exact Huffman & Scalefactor Rate-Distortion Line Pruning */
+                /* Exact Huffman & Scalefactor Rate-Distortion Line Pruning (iterative until convergence) */
                 if (cand_maxq > 0)
                 {
                     int cand_book = cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
                                   : cand_maxq <= LAV_4 ? HCB_5 : cand_maxq <= LAV_7 ? HCB_7 : cand_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
                     int cur_spec_bits = huff_band_bits(cand_book, xi_cand, tot_len);
-                    int cur_sf_bits = sf_delta_bits(cand_sf_abs - prev_abs);
+                    int cur_sf_bits = (!is_first_band && cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
 
-                    for (int k = 0; k < tot_len; k++)
-                    {
-                        int qval = xi_cand[k];
-                        int abs_q = abs(qval);
-                        if (abs_q == 0) continue;
+                    int pruned;
+                    do {
+                        pruned = 0;
+                        for (int k = 0; k < tot_len; k++)
+                        {
+                            int qval = xi_cand[k];
+                            int abs_q = abs(qval);
+                            if (abs_q == 0) continue;
 
-                        int win_idx = k / width;
-                        int sub_k = k % width;
-                        float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
+                            int win_idx = k / width;
+                            int sub_k = k % width;
+                            float orig_x = xr0[win_idx * BLOCK_LEN_SHORT + lo + sub_k];
 
-                        float hat_curr = (abs_q < 128 ? gain_lut[abs_q] : powf((float)abs_q, 4.0f/3.0f)) * inv_cand_gain;
-                        if (qval < 0) hat_curr = -hat_curr;
-                        float err_curr = orig_x - hat_curr;
-                        float dist_curr = err_curr * err_curr;
+                            float hat_curr = (abs_q < 128 ? gain_lut[abs_q] : powf((float)abs_q, 4.0f/3.0f)) * inv_cand_gain;
+                            if (qval < 0) hat_curr = -hat_curr;
+                            float err_curr = orig_x - hat_curr;
+                            float dist_curr = err_curr * err_curr;
 
-                        int new_q = abs_q - 1;
-                        float hat_new = (new_q > 0) ? ((new_q < 128 ? gain_lut[new_q] : powf((float)new_q, 4.0f/3.0f)) * inv_cand_gain) : 0.0f;
-                        if (qval < 0) hat_new = -hat_new;
-                        float err_new = orig_x - hat_new;
-                        float dist_new = err_new * err_new;
+                            int new_q = abs_q - 1;
+                            float hat_new = (new_q > 0) ? ((new_q < 128 ? gain_lut[new_q] : powf((float)new_q, 4.0f/3.0f)) * inv_cand_gain) : 0.0f;
+                            if (qval < 0) hat_new = -hat_new;
+                            float err_new = orig_x - hat_new;
+                            float dist_new = err_new * err_new;
 
-                        float delta_dist = dist_new - dist_curr;
+                            float delta_dist = dist_new - dist_curr;
 
-                        /* Tentatively prune line and evaluate exact new rate */
-                        xi_cand[k] = (qval < 0) ? -new_q : new_q;
+                            /* Tentatively prune line and evaluate exact new rate */
+                            xi_cand[k] = (qval < 0) ? -new_q : new_q;
 
-                        int test_maxq = cand_maxq;
-                        if (abs_q == cand_maxq) {
-                            test_maxq = 0;
-                            for (int m = 0; m < tot_len; m++) {
-                                int aq = abs(xi_cand[m]);
-                                if (aq > test_maxq) test_maxq = aq;
+                            int test_maxq = cand_maxq;
+                            if (abs_q == cand_maxq) {
+                                test_maxq = 0;
+                                for (int m = 0; m < tot_len; m++) {
+                                    int aq = abs(xi_cand[m]);
+                                    if (aq > test_maxq) test_maxq = aq;
+                                }
+                            }
+
+                            int test_book = !test_maxq ? HCB_ZERO : test_maxq <= LAV_1 ? HCB_1 : test_maxq <= LAV_2 ? HCB_3
+                                          : test_maxq <= LAV_4 ? HCB_5 : test_maxq <= LAV_7 ? HCB_7 : test_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
+                            int test_spec_bits = huff_band_bits(test_book, xi_cand, tot_len);
+                            int test_sf_bits = (!is_first_band && test_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
+
+                            int exact_bit_savings = (cur_spec_bits + cur_sf_bits) - (test_spec_bits + test_sf_bits);
+
+                            if (exact_bit_savings > 0 && delta_dist < lambda * (float)exact_bit_savings)
+                            {
+                                cur_spec_bits = test_spec_bits;
+                                cur_sf_bits = test_sf_bits;
+                                cand_maxq = test_maxq;
+                                total_dist += delta_dist;
+                                pruned = 1;
+                            }
+                            else
+                            {
+                                xi_cand[k] = qval; /* Revert line */
                             }
                         }
-
-                        int test_book = !test_maxq ? HCB_ZERO : test_maxq <= LAV_1 ? HCB_1 : test_maxq <= LAV_2 ? HCB_3
-                                      : test_maxq <= LAV_4 ? HCB_5 : test_maxq <= LAV_7 ? HCB_7 : test_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
-                        int test_spec_bits = huff_band_bits(test_book, xi_cand, tot_len);
-                        int test_sf_bits = (test_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
-
-                        int exact_bit_savings = (cur_spec_bits + cur_sf_bits) - (test_spec_bits + test_sf_bits);
-
-                        if (exact_bit_savings > 0 && delta_dist < lambda * (float)exact_bit_savings)
-                        {
-                            cur_spec_bits = test_spec_bits;
-                            cur_sf_bits = test_sf_bits;
-                            cand_maxq = test_maxq;
-                            total_dist += delta_dist;
-                        }
-                        else
-                        {
-                            xi_cand[k] = qval; /* Revert line */
-                        }
-                    }
+                    } while (pruned);
 
                     cand_maxq = 0;
                     for (int k = 0; k < tot_len; k++)
@@ -505,7 +508,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                 int cand_book = !cand_maxq ? HCB_ZERO : cand_maxq <= LAV_1 ? HCB_1 : cand_maxq <= LAV_2 ? HCB_3
                               : cand_maxq <= LAV_4 ? HCB_5 : cand_maxq <= LAV_7 ? HCB_7 : cand_maxq <= LAV_12 ? HCB_9 : HCB_ESC;
                 int spec_bits = huff_band_bits(cand_book, xi_cand, tot_len);
-                int sf_bits = (cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
+                int sf_bits = (!is_first_band && cand_book != HCB_ZERO) ? sf_delta_bits(cand_sf_abs - prev_abs) : 0;
                 int total_rate = spec_bits + sf_bits;
 
                 float J = total_dist + lambda * (float)total_rate;
