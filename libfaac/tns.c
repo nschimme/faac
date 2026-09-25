@@ -361,7 +361,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
     /* Long blocks only: the caller screens ONLY_SHORT_WINDOW out, since short
      * windows already have the temporal resolution to not need TNS. */
     tnsInfo->tnsDataPresent = 0;
-    tnsInfo->windowData.numFilters = 0;
+    tnsInfo->numFilters = 0;
 
     /* Frame-invariant: the band limits come from the sample rate's TNS table and
      * numBands is aacquantCfg.max_cbl for every long channel. Recomputed rather
@@ -372,7 +372,7 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
         return;
 
     if (!tns_fit_range(b_start, b_stop, sfbOffsetTable, spec,
-                       &tnsInfo->windowData.tnsFilter[0]))
+                       &tnsInfo->tnsFilter[0]))
         return;
 
 #ifdef FAAC_STATS
@@ -381,8 +381,8 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
 
     /* Declared from b_start to the top of the spectrum rather than to b_stop,
      * over-declaring the region. */
-    tnsInfo->windowData.tnsFilter[0].length = tnsInfo->tnsNumSwbLong - b_start;
-    tnsInfo->windowData.numFilters = 1;
-    tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
+    tnsInfo->tnsFilter[0].length = tnsInfo->tnsNumSwbLong - b_start;
+    tnsInfo->numFilters = 1;
+    tnsInfo->coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
 }

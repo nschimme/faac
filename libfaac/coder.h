@@ -51,26 +51,22 @@ enum WINDOW_TYPE {
 #define DEF_TNS_RES_OFFSET 3
 
 typedef struct {
+    float aCoeffs[TNS_MAX_ORDER+1];       /* LPC (AR) coefficients */
     int order;                           /* Filter order */
     int direction;                       /* Filtering direction */
     int coefCompress;                    /* Are coeffs compressed? */
     int length;                          /* Length, in bands */
-    float aCoeffs[TNS_MAX_ORDER+1];       /* LPC (AR) coefficients */
     int index[TNS_MAX_ORDER+1];          /* Quantized reflection-coeff indices */
 } TnsFilterData;
 
 typedef struct {
+    TnsFilterData tnsFilter[TNS_MAX_FILTERS];    /* TNS filters */
+    int tnsDataPresent;
     int numFilters;                             /* Number of filters */
     int coefResolution;                         /* Coefficient resolution */
-    TnsFilterData tnsFilter[TNS_MAX_FILTERS];    /* TNS filters */
-} TnsWindowData;
-
-typedef struct {
-    int tnsDataPresent;
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
-    TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
 } TnsInfo;
 
 typedef struct CoderInfo {
