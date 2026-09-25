@@ -20,9 +20,22 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
+/* A written frame's last envelope: the reference for time-delta coding the
+ * next frame's first one. nb 0 = none yet. */
+typedef struct {
+    int env[SBR_MAX_BANDS];
+    int nb;
+    int ampRes;
+} SbrEnvRef;
+
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
 typedef struct SBRChannel {
     float qmfOvl64[SBR_QMF_HIST_LEN]; /* QMF overlap plus analysis delay (carries across frames) */
+    /* By access-unit parity: a frame reads the previous frame's slot and writes
+     * its own, so a frame the rate loop writes again codes against the same
+     * reference as the first time. */
+    SbrEnvRef ref[2];
+    unsigned envDt; /* bit e: envelope e time-delta coded (sizing pass -> write pass) */
 } SBRChannel;
 
 /* One frame's coded SBR payload: every field SbrWrite reads that varies per

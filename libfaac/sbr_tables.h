@@ -37,10 +37,17 @@ typedef struct {
 #define F_HUFF_ENV_3_0DB_OFFSET  31
 #define F_HUFF_ENV_3_0DB_NSYMS   63
 
+/* Time-delta envelope codes, central entries only: a wider jump always costs
+ * less as frequency deltas, so the encoder never needs the rest. */
+#define T_HUFF_ENV_LAV    6
+#define T_HUFF_ENV_NSYMS  (2 * T_HUFF_ENV_LAV + 1)
+
 extern const sbrfloat qmf_c[640];
 extern const int8_t sbr_offset[6][16];
 extern const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS];
 extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
+extern const SBRHuffEntry t_huff_env_1_5dB[T_HUFF_ENV_NSYMS];
+extern const SBRHuffEntry t_huff_env_3_0dB[T_HUFF_ENV_NSYMS];
 
 #ifdef __cplusplus
 }
