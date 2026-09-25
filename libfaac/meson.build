@@ -105,3 +105,10 @@ pkgconfig.generate(
     version: meson.project_version(),
     filebase: 'faac'
 )
+
+if get_option('rd-probe')
+    rd_test = executable('test_rd', ['test_rd.c', 'huff2.c', 'huffdata.c', 'bitstream.c', 'util.c'],
+        include_directories: ['..', '../include'], dependencies: [libm],
+        c_args: cc.get_argument_syntax() == 'msvc' ? ['/UNDEBUG'] : ['-UNDEBUG'])
+    test('rd-accounting', rd_test)
+endif

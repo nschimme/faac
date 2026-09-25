@@ -98,4 +98,15 @@ void huffbook(struct CoderInfo *coder, const int *qs);
 int writebooks(struct CoderInfo *coder, BitStream *stream);
 int writesf(struct CoderInfo *coder, BitStream *bitStream);
 
+#ifdef FAAC_RD_PROBE
+enum { RD_BOOKS = 16, RD_INF = 0x1000000 };
+void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS]);
+int rd_tuple_bits(const int *qs, int len, int book);
+int rd_sections(const struct CoderInfo *coder);
+int rd_scalefactors(struct CoderInfo *coder);
+int rd_select_books(struct CoderInfo *coder, int costs[][RD_BOOKS]);
+void rd_emit(struct CoderInfo *coder, const int *qs, const int *offset,
+             int costs[][RD_BOOKS]);
+#endif
+
 #endif /* HUFF2_H */

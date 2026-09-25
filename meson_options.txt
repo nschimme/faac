@@ -31,3 +31,5 @@ option('stats',
     description: 'Enable optional end-of-encode statistics banner',
     type: 'boolean',
     value: false)
+option('rd-probe', type: 'boolean', value: false,
+    description: 'Experimental joint quantization probe (FAAC_RD_LAMBDA); not for production')

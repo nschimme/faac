@@ -433,8 +433,15 @@ static void ResolveIntensityNoise(const CoderInfo *left, CoderInfo *right)
     }
 }
 
+#ifdef FAAC_RD_PROBE
+#include "rd_probe.h"
+#endif
+
 int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *aacquantCfg)
 {
+#ifdef FAAC_RD_PROBE
+    RDProbe *rd = rd_create();
+#endif
     float target[MAX_SCFAC_BANDS];
     BandEnergy be[NSFB_LONG];
     int qs[FRAME_LEN];
@@ -453,10 +460,16 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+#ifdef FAAC_RD_PROBE
+        if (rd) rd_reference(rd, coder, gxr, be, target, i);
+#endif
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
-    huffbook(coder, qs);
+#ifdef FAAC_RD_PROBE
+    if (!rd)
+#endif
+        huffbook(coder, qs);
 
     // global_gain must come from a regular band: it's an 8-bit bitstream field,
     // and intensity/PNS bands store stereo-position/noise-energy on a different
@@ -489,6 +502,9 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             coder->sf[i] = lastpns;
         }
     }
+#ifdef FAAC_RD_PROBE
+    if (rd) { rd_optimize(rd, coder, qs); free(rd); }
+#endif
     if (coder->partner)
         ResolveIntensityNoise(coder, coder->partner);
     return 1;
