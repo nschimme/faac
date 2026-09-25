@@ -341,6 +341,21 @@ int writebooks(CoderInfo *coder, BitStream *stream)
     return bits;
 }
 
+int sf_delta_bits(int diff)
+{
+    int d = clamp_sf_diff(diff);
+    return book12[SF_DELTA + d].len;
+}
+
+int huff_band_bits(int bnum, const int *qs, int len)
+{
+    if (bnum <= HCB_ZERO || bnum > HCB_ESC) return 0;
+    int c[16] = {0};
+    int lo = ((bnum - 1) & ~1) + 1;
+    size_books(qs, len, lo, c);
+    return c[bnum];
+}
+
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
 int writesf(CoderInfo *coder, BitStream *stream)
 {
