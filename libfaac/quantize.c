@@ -628,7 +628,13 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     if (rd) {
         memset(rd, 0, sizeof(*rd));
         float qual_factor = (float)aacquantCfg->quality / DEFQUAL;
-        rd->lambda = 0.03f * fminf(1.2f, fmaxf(0.6f, 1.0f / qual_factor));
+        float base_lambda = 0.025f;
+        const char *env_lambda = getenv("FAAC_RDO_LAMBDA");
+        if (env_lambda) {
+            float val = (float)atof(env_lambda);
+            if (val > 0.0f) base_lambda = val;
+        }
+        rd->lambda = base_lambda * fminf(1.2f, fmaxf(0.6f, 1.0f / qual_factor));
     }
 
     coder->bandcnt = coder->datacnt = 0;
