@@ -616,7 +616,10 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
 
     if (rd) {
         memset(rd, 0, sizeof(*rd));
-        rd->lambda = 0.03;
+        if (coder->block_type == ONLY_SHORT_WINDOW || coder->sfbn < 30)
+            rd->lambda = 0.012;
+        else
+            rd->lambda = 0.025;
     }
 
     coder->bandcnt = coder->datacnt = 0;
