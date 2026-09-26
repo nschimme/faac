@@ -418,18 +418,25 @@ int rd_tuple_bits(const int *q, int b)
     }
 }
 
+int calc_group_sec_bits(const CoderInfo *c, int g)
+{
+    int bits = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int b = g * c->sfbn, end = b + c->sfbn;
+    while (b < end) {
+        int n = 1;
+        while (b + n < end && c->book[b + n] == c->book[b]) n++;
+        bits += 4 + rb * (1 + n / maxrun);
+        b += n;
+    }
+    return bits;
+}
+
 int rd_sections(const CoderInfo *c)
 {
-    int g, bits = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
-    int maxrun = (1 << rb)-1;
+    int g, bits = 0;
     for (g = 0; g < c->groups.n; g++) {
-        int b = g*c->sfbn, end = b+c->sfbn;
-        while (b < end) {
-            int n = 1;
-            while (b+n < end && c->book[b+n] == c->book[b]) n++;
-            bits += 4 + rb*(1+n/maxrun);
-            b += n;
-        }
+        bits += calc_group_sec_bits(c, g);
     }
     return bits;
 }
@@ -464,35 +471,43 @@ int rd_scalefactors(CoderInfo *c)
     return bits;
 }
 
-int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
+int rd_select_books_group(CoderInfo *c, int costs[][RD_BOOKS], int g)
 {
-    int g, total = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
-    int maxrun = (1 << rb)-1;
-    for (g = 0; g < c->groups.n; g++) {
-        int dp[NSFB_LONG+1], prev[NSFB_LONG+1], book[NSFB_LONG+1];
-        int end, k, start, base = g*c->sfbn;
-        dp[0] = 0;
-        for (end = 1; end <= c->sfbn; end++) {
-            dp[end] = RD_INF;
-            for (k = 0; k < RD_BOOKS; k++) {
-                int sum = 0;
-                for (start = end-1; start >= 0; start--) {
-                    int cost = costs[base+start][k], value;
-                    if (cost >= RD_INF) break;
-                    sum += cost;
-                    value = dp[start]+sum+4+rb*(1+(end-start)/maxrun);
-                    if (value < dp[end]) {
-                        dp[end] = value; prev[end] = start; book[end] = k;
-                    }
+    int rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int dp[NSFB_LONG + 1], prev[NSFB_LONG + 1], book[NSFB_LONG + 1];
+    int end, k, start, base = g * c->sfbn;
+    dp[0] = 0;
+    for (end = 1; end <= c->sfbn; end++) {
+        dp[end] = RD_INF;
+        for (k = 0; k < RD_BOOKS; k++) {
+            int sum = 0;
+            for (start = end - 1; start >= 0; start--) {
+                int cost = costs[base + start][k], value;
+                if (cost >= RD_INF) break;
+                sum += cost;
+                value = dp[start] + sum + 4 + rb * (1 + (end - start) / maxrun);
+                if (value < dp[end]) {
+                    dp[end] = value; prev[end] = start; book[end] = k;
                 }
             }
         }
-        if (dp[c->sfbn] >= RD_INF) return RD_INF;
-        total += dp[c->sfbn];
-        for (end = c->sfbn; end; end = start) {
-            start = prev[end];
-            for (k = start; k < end; k++) c->book[base+k] = book[end];
-        }
+    }
+    if (dp[c->sfbn] >= RD_INF) return RD_INF;
+    for (end = c->sfbn; end; end = start) {
+        start = prev[end];
+        for (k = start; k < end; k++) c->book[base + k] = book[end];
+    }
+    return dp[c->sfbn];
+}
+
+int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
+{
+    int g, total = 0;
+    for (g = 0; g < c->groups.n; g++) {
+        int cost = rd_select_books_group(c, costs, g);
+        if (cost >= RD_INF) return RD_INF;
+        total += cost;
     }
     return total;
 }

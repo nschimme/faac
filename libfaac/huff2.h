@@ -103,8 +103,10 @@ int writesf(struct CoderInfo *coder, BitStream *bitStream);
 
 void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS]);
 int rd_tuple_bits(const int *q, int b);
+int calc_group_sec_bits(const struct CoderInfo *c, int g);
 int rd_sections(const struct CoderInfo *c);
 int rd_scalefactors(struct CoderInfo *c);
+int rd_select_books_group(struct CoderInfo *c, int costs[][RD_BOOKS], int g);
 int rd_select_books(struct CoderInfo *c, int costs[][RD_BOOKS]);
 void rd_emit(struct CoderInfo *c, const int *qs, const int *offset);
 
