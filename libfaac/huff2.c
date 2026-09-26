@@ -341,6 +341,188 @@ int writebooks(CoderInfo *coder, BitStream *stream)
     return bits;
 }
 
+void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS])
+{
+    int peak = 0, k, lo;
+    for (k = 0; k < len; k++) if (abs(qs[k]) > peak) peak = abs(qs[k]);
+    for (k = 0; k < RD_BOOKS; k++) costs[k] = RD_INF;
+    if (!peak) { costs[0] = 0; return; }
+    if (peak > MAX_HUFF_ESC_VAL) return;
+    lo = peak <= 1 ? 1 : peak <= 2 ? 3 : peak <= 4 ? 5 : peak <= 7 ? 7 : peak <= 12 ? 9 : 11;
+    size_books(qs, len, lo, costs);
+    for (k = 0; k < lo; k++) costs[k] = RD_INF;
+}
+
+int rd_tuple_bits(const int *q, int b)
+{
+    switch (b) {
+    case 1:
+    case 2: {
+        int q0 = q[0], q1 = q[1], q2 = q[2], q3 = q[3];
+        if ((unsigned)(q0 + 1) > 2 || (unsigned)(q1 + 1) > 2 ||
+            (unsigned)(q2 + 1) > 2 || (unsigned)(q3 + 1) > 2)
+            return RD_INF;
+        int idx = 27 * (q0 + 1) + 9 * (q1 + 1) + 3 * (q2 + 1) + (q3 + 1);
+        return hmap[b][idx].len;
+    }
+    case 3:
+    case 4: {
+        int a0 = abs(q[0]), a1 = abs(q[1]), a2 = abs(q[2]), a3 = abs(q[3]);
+        if ((unsigned)a0 > 2 || (unsigned)a1 > 2 ||
+            (unsigned)a2 > 2 || (unsigned)a3 > 2)
+            return RD_INF;
+        int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+        int nnz = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
+        return hmap[b][idx].len + nnz;
+    }
+    case 5:
+    case 6: {
+        int q0 = q[0], q1 = q[1];
+        if ((unsigned)(q0 + 4) > 8 || (unsigned)(q1 + 4) > 8)
+            return RD_INF;
+        int idx = 40 + 9 * q0 + q1;
+        return hmap[b][idx].len;
+    }
+    case 7:
+    case 8: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if ((unsigned)a0 > 7 || (unsigned)a1 > 7)
+            return RD_INF;
+        int idx = (a0 << 3) + a1;
+        int nnz = (a0 != 0) + (a1 != 0);
+        return hmap[b][idx].len + nnz;
+    }
+    case 9:
+    case 10: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if ((unsigned)a0 > 12 || (unsigned)a1 > 12)
+            return RD_INF;
+        int idx = 13 * a0 + a1;
+        int nnz = (a0 != 0) + (a1 != 0);
+        return hmap[b][idx].len + nnz;
+    }
+    case 11: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if (a0 > MAX_HUFF_ESC_VAL || a1 > MAX_HUFF_ESC_VAL)
+            return RD_INF;
+        int v0 = (a0 > 16) ? 16 : a0;
+        int v1 = (a1 > 16) ? 16 : a1;
+        int idx = 17 * v0 + v1;
+        int bits = hmap[11][idx].len + (a0 != 0) + (a1 != 0);
+        if (a0 >= 16) bits += escape(a0, NULL);
+        if (a1 >= 16) bits += escape(a1, NULL);
+        return bits;
+    }
+    default:
+        return RD_INF;
+    }
+}
+
+int calc_group_sec_bits(const CoderInfo *c, int g)
+{
+    int bits = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int b = g * c->sfbn, end = b + c->sfbn;
+    while (b < end) {
+        int n = 1;
+        while (b + n < end && c->book[b + n] == c->book[b]) n++;
+        bits += 4 + rb * (1 + n / maxrun);
+        b += n;
+    }
+    return bits;
+}
+
+int rd_sections(const CoderInfo *c)
+{
+    int g, bits = 0;
+    for (g = 0; g < c->groups.n; g++) {
+        bits += calc_group_sec_bits(c, g);
+    }
+    return bits;
+}
+
+int rd_scalefactors(CoderInfo *c)
+{
+    int b, last, pns, is = 0, first = 1, bits = 0;
+    c->global_gain = 0;
+    for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
+        c->global_gain = c->sf[b]; break;
+    }
+    if (c->global_gain < 0 || c->global_gain > 255) return RD_INF;
+    last = c->global_gain; pns = last-SF_PNS_OFFSET;
+    for (b = 0; b < c->bandcnt; b++) {
+        int book = c->book[b], val = c->sf[b], diff;
+        if (!book) continue;
+        if (book == HCB_PNS) {
+            diff = val-pns; pns = val;
+            if (first) {
+                if (diff < -256 || diff > 255) return RD_INF;
+                first = 0; bits += 9; continue;
+            }
+        } else if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
+            diff = val-is; is = val;
+        } else {
+            if (val < 0 || val > 255) return RD_INF;
+            diff = val-last; last = val;
+        }
+        if (diff < -60 || diff > 60) return RD_INF;
+        bits += book12[SF_DELTA+diff].len;
+    }
+    return bits;
+}
+
+int rd_select_books_group(CoderInfo *c, int costs[][RD_BOOKS], int g)
+{
+    int rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int dp[NSFB_LONG + 1], prev[NSFB_LONG + 1], book[NSFB_LONG + 1];
+    int end, k, start, base = g * c->sfbn;
+    dp[0] = 0;
+    for (end = 1; end <= c->sfbn; end++) {
+        dp[end] = RD_INF;
+        for (k = 0; k < RD_BOOKS; k++) {
+            int sum = 0;
+            for (start = end - 1; start >= 0; start--) {
+                int cost = costs[base + start][k], value;
+                if (cost >= RD_INF) break;
+                sum += cost;
+                value = dp[start] + sum + 4 + rb * (1 + (end - start) / maxrun);
+                if (value < dp[end]) {
+                    dp[end] = value; prev[end] = start; book[end] = k;
+                }
+            }
+        }
+    }
+    if (dp[c->sfbn] >= RD_INF) return RD_INF;
+    for (end = c->sfbn; end; end = start) {
+        start = prev[end];
+        for (k = start; k < end; k++) c->book[base + k] = book[end];
+    }
+    return dp[c->sfbn];
+}
+
+int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
+{
+    int g, total = 0;
+    for (g = 0; g < c->groups.n; g++) {
+        int cost = rd_select_books_group(c, costs, g);
+        if (cost >= RD_INF) return RD_INF;
+        total += cost;
+    }
+    return total;
+}
+
+void rd_emit(CoderInfo *c, const int *qs, const int *offset)
+{
+    int b;
+    c->datacnt = 0;
+    for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
+        int sfb = b%c->sfbn;
+        int len = (c->sfb_offset[sfb+1]-c->sfb_offset[sfb])*c->groups.len[b/c->sfbn];
+        huffcode_write(qs+offset[b], len, c->book[b], c);
+    }
+}
+
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
 int writesf(CoderInfo *coder, BitStream *stream)
 {
