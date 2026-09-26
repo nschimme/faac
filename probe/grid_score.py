@@ -48,7 +48,8 @@ def grid_match(donor, encoded):
     for channel in (0, 1):
         total = matched = 0
         for (frame, ch), got in encoded.items():
-            if ch != channel or not {'f', 'g', 'r'} <= got.keys():
+            # Frames 2-3 precede the first injected payload (SBR FIFO priming).
+            if ch != channel or frame < 4 or not {'f', 'g', 'r'} <= got.keys():
                 continue
             expected = donor.get((frame + 1, channel), {}) # calibrated FDK +1
             # FAAC's final flush payload has no corresponding padded-FDK
