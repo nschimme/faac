@@ -230,15 +230,45 @@ jobs:
         if: steps.baseline-sha.outputs.sha != ''
         run: |
           mkdir -p results
-          for pair in "baseline:base" "candidate:cand"; do
-            d=${pair%%:*}; tag=${pair##*:}
-            python3 bench/phase1_encode.py \
-              lc results/lc_$tag.json \
-              --encoder-bin $d/build/frontend/faac \
-              --encoder-lib $d/build/libfaac/libfaac.so \
-              --skip-mos --build-dir $d/build
-          done
-          python3 bench/compare_results.py results --gates footprint | tee -a $GITHUB_STEP_SUMMARY
+          python3 -c '
+          import os, sys, json
+          sys.path.append("bench")
+          from utils import get_elf_section_sizes, get_section_sizes, get_binary_size, get_object_sizes, get_toolchain_fp, get_host_fp
+
+          for pair in [("baseline", "base"), ("candidate", "cand")]:
+              d, tag = pair
+              lib_path = f"{d}/build/libfaac/libfaac.so"
+              faac_bin = f"{d}/build/frontend/faac"
+              build_dir = f"{d}/build"
+              sec_sizes = get_elf_section_sizes(lib_path)
+              exact_rom = sec_sizes.get("text", 0) + sec_sizes.get("rodata", 0) + sec_sizes.get("data", 0)
+              if exact_rom == 0:
+                  exact_rom = get_binary_size(lib_path)
+              data = {
+                  "name": "lc",
+                  "sha": "",
+                  "matrix": {},
+                  "throughput": {},
+                  "throughput_samples": {},
+                  "lib_size": exact_rom,
+                  "lib_text_size": sec_sizes.get("text", 0),
+                  "lib_rodata_size": sec_sizes.get("rodata", 0),
+                  "lib_bss_size": sec_sizes.get("bss", 0),
+                  "lib_data_size": sec_sizes.get("data", 0),
+                  "lib_sections": get_section_sizes(lib_path),
+                  "frontend_size": get_binary_size(faac_bin),
+                  "object_text": get_object_sizes(build_dir) if build_dir else {},
+                  "toolchain_fp": get_toolchain_fp(build_dir),
+                  "host_fp": get_host_fp(),
+              }
+              with open(f"results/lc_{tag}.json", "w") as f:
+                  json.dump(data, f, indent=2)
+          '
+          echo "<details><summary><b>📦 View Footprint Details</b></summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python3 bench/compare_results.py results --gates footprint >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "</details>" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Results
         if: github.event_name == 'pull_request' && steps.baseline-sha.outputs.sha != ''
