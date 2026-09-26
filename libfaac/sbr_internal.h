@@ -27,6 +27,8 @@ typedef struct {
     int nb;
     int ampRes;
     int coupled;
+    int trailingBorder;
+    int lastFreqRes;
 } SbrEnvRef;
 
 /* Per-channel SBR analysis state. Everything indexed [ch] in SBRInfo lives here. */
@@ -47,11 +49,11 @@ typedef struct SBRChannel {
  * slot and SbrWrite reads an older one, so the delay costs a ring index. Caching
  * a copy anywhere else reintroduces the skew this ring exists to remove. */
 typedef struct SbrFrameData {
-    int eff_amp_res;
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     struct {
         SbrGrid grid;
+        int eff_amp_res;
         int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
     } ch[MAX_CHANNELS];
 } SbrFrameData;

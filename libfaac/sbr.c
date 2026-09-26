@@ -198,9 +198,9 @@ void SbrEnd(SBRInfo *sbr)
 static void sbr_frame_silence(SbrFrameData *fd)
 {
     SetMemory(fd, 0, sizeof(*fd));
-    fd->eff_amp_res  = 0;
     for (int ch = 0; ch < MAX_CHANNELS; ch++) {
         SbrGrid *grid = &fd->ch[ch].grid;
+        fd->ch[ch].eff_amp_res = 0;
         grid->frameClass = SBR_FRAME_CLASS_FIXFIX;
         grid->numEnvelopes = 1;
         grid->tEnv[0] = 0;
@@ -443,7 +443,9 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
         for (int e = 0; e < fd->ch[ch].grid.numEnvelopes; e++)
             fd->ch[ch].grid.freqRes[e] = sbr->bs_freq_res;
     }
-    fd->eff_amp_res = (fd->ch[0].grid.numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+    for (int ch = 0; ch < nch; ch++)
+        fd->ch[ch].eff_amp_res = (fd->ch[ch].grid.frameClass == SBR_FRAME_CLASS_FIXFIX &&
+                                  fd->ch[ch].grid.numEnvelopes == 1) ? 0 : SBR_AMP_RES;
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
@@ -452,9 +454,10 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe[ch]) continue;
         const SbrGrid *grid = &fd->ch[ch].grid;
+        int eff_amp_res = fd->ch[ch].eff_amp_res;
         /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
-        int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
+        int dlav = eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < grid->numEnvelopes; e++) {
             int nb = sbr_env_bands(sbr, grid, e);
             const int *edges = sbr_env_edges(sbr, grid, e);
@@ -468,12 +471,12 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                 float E = 0;
                 for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
                 E /= (float)(e_slots * (k_hi - k_lo));
-                float factor = fd->eff_amp_res ? 1.0f : 2.0f;
+                float factor = eff_amp_res ? 1.0f : 2.0f;
                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 /* Clamped so the frequency-delta chain stays codable. */
                 if (prevLevel < 0)
-                    raw_level = clamp_int(raw_level, 0, fd->eff_amp_res ? 63 : 127);
+                    raw_level = clamp_int(raw_level, 0, eff_amp_res ? 63 : 127);
                 else
                     raw_level = clamp_int(raw_level, prevLevel - dlav, prevLevel + dlav);
                 fd->ch[ch].envData[e][b] = prevLevel = raw_level;
