@@ -100,22 +100,32 @@ static int write_sbr_invf(BitStream *bs, bool write)
 }
 
 /* Codes one envelope as time deltas against ref, or as an absolute first band
- * plus frequency deltas; returns its bits, INT_MAX when a time delta has no
- * codeword. Counting and writing share it so both passes agree. */
+ * plus frequency deltas; returns its bits, INT_MAX when a delta has no
+ * codeword. bal selects the coupled pair's balance books. Counting and
+ * writing share it so both passes agree. */
 static int code_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int *cur, const int *ref,
-                         BitAccumulator *acc, bool write)
+                         int bal, BitAccumulator *acc, bool write)
 {
-    int amp = fd->eff_amp_res;
+    /* [balance][amp_res]: frequency and time books, frequency lav, start bits */
+    static const struct EnvBooks {
+        const SBRHuffEntry *f, *t;
+        int lav, start;
+    } books[2][2] = {
+        { { f_huff_env_1_5dB, t_huff_env_1_5dB, F_HUFF_ENV_1_5DB_OFFSET, 7 },
+          { f_huff_env_3_0dB, t_huff_env_3_0dB, F_HUFF_ENV_3_0DB_OFFSET, 6 } },
+        { { f_huff_env_bal_1_5dB, t_huff_env_bal_1_5dB, F_HUFF_ENV_BAL_1_5DB_OFFSET, 6 },
+          { f_huff_env_bal_3_0dB, t_huff_env_bal_3_0dB, F_HUFF_ENV_BAL_3_0DB_OFFSET, 5 } },
+    };
+    const struct EnvBooks *bk = &books[bal][fd->eff_amp_res];
     int nb = sbr_env_bands(sbr, fd);
-    const SBRHuffEntry *tab = amp ? f_huff_env_3_0dB : f_huff_env_1_5dB;
-    int lav = amp ? F_HUFF_ENV_3_0DB_OFFSET : F_HUFF_ENV_1_5DB_OFFSET;
-    int bits = 0, b = 0;
+    const SBRHuffEntry *tab = bk->f;
+    int lav = bk->lav, bits = 0, b = 0;
 
     if (ref) {
-        tab = amp ? t_huff_env_3_0dB : t_huff_env_1_5dB;
+        tab = bk->t;
         lav = T_HUFF_ENV_LAV;
     } else {
-        bits = amp ? 6 : 7;
+        bits = bk->start;
         if (write) AccumPutBits(acc, (uint32_t)cur[0], bits);
         b = 1;
     }
@@ -132,7 +142,8 @@ static int code_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int *
  * first envelope refers to the channel's last written one, when linked. The
  * sizing pass (write false) makes the choice and caches it for the write pass,
  * which always follows it with the same frame. */
-static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, int linked, BitStream *bs, int ch, bool write)
+static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, const int (*env)[SBR_MAX_BANDS],
+                              int bal, int linked, BitStream *bs, int ch, bool write)
 {
     SBRChannel *sc = &sbr->ch[ch];
     unsigned chosen = 0;
@@ -141,14 +152,15 @@ static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, int linked, 
 
     if (write) AccumBegin(&acc, bs);
     for (int e = 0; e < fd->numEnvelopes; e++) {
-        const int *ref = e ? fd->ch[ch].envData[e - 1] : sc->ref[~sbr->frameCount & 1].env;
+        const int *ref = e ? env[e - 1] : sc->ref[~sbr->frameCount & 1].env;
         int first = write ? (sc->envDt >> e) & 1 : 0;
         int last = write ? first : (e || linked);
         int best = INT_MAX;
         for (int t = first; t <= last; t++) {
-            int n = code_envelope(sbr, fd, fd->ch[ch].envData[e], t ? ref : NULL, &acc, write);
+            int n = code_envelope(sbr, fd, env[e], t ? ref : NULL, bal, &acc, write);
             if (n < best) { best = n; chosen = (chosen & ~(1u << e)) | ((unsigned)t << e); }
         }
+        if (best == INT_MAX) { bits = INT_MAX; break; }
         bits += best;
     }
     if (write) AccumEnd(&acc);
@@ -156,48 +168,81 @@ static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, int linked, 
     return bits;
 }
 
-/* One noise band at a constant level: 5-bit absolute, or the time delta 0,
- * whose t_huffman_noise_3_0dB code is the single bit 0 -- always the cheaper
- * once a reference exists. */
-static int write_sbr_noise(const SbrFrameData *fd, int noiseLinked, BitStream *bs, bool write)
+/* One noise band at a constant level: 5-bit absolute (the level, or for a
+ * coupled balance channel the centre 6), or the time delta 0, whose code is
+ * the single bit 0 -- always the cheaper once a reference exists. */
+static int write_sbr_noise(const SbrFrameData *fd, int value, int noiseLinked, BitStream *bs, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
     int bits = 0;
     for (int q = 0; q < n_q; q++) {
         int len = (q || noiseLinked) ? 1 : 5;
-        if (write) PutBit(bs, len == 1 ? 0 : SBR_NOISE_LEVEL_DEFAULT, len);
+        if (write) PutBit(bs, len == 1 ? 0 : value, len);
         bits += len;
     }
     return bits;
 }
 
-static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
+/* Coupled rendition of a pair from the channels' own levels: the level of
+ * (L + R) / 2, and the balance L - R at half resolution around its centre. */
+static void couple_envelopes(SBRInfo *sbr, const SbrFrameData *fd, int ch0)
 {
-    int nch = (id_aac == ID_CPE) ? 2 : 1;
-    int flags_len = (id_aac == ID_CPE) ? 3 : 2;
-    int lead_len = (id_aac == ID_CPE) ? 2 : 1;
-    int bits = lead_len + flags_len;
+    int amp = fd->eff_amp_res;
+    int pan = amp ? 12 : 24;
+    int nb = sbr_env_bands(sbr, fd);
+
+    for (int e = 0; e < fd->numEnvelopes; e++) {
+        const int *restrict left = fd->ch[ch0].envData[e], *restrict right = fd->ch[ch0 + 1].envData[e];
+        int *restrict level = sbr->cplEnv[0][e], *restrict balance = sbr->cplEnv[1][e];
+        for (int b = 0; b < nb; b++) {
+            int l = left[b], r = right[b];
+            int d = l > r ? l - r : r - l;
+            /* the louder side plus log2((1 + 2^-d) / 2) in level steps, rounded */
+            level[b] = (l > r ? l : r) - (d >= 2) - (!amp && d >= 5);
+            balance[b] = (clamp_int(pan + l - r, 0, 2 * pan) + 1) >> 1;
+        }
+    }
+}
+
+static int write_sbr_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int nch, int ch0,
+                              int sendHeader, int coupled, bool write)
+{
+    int bits = (nch == 2) ? 5 : 3; /* data_extra, coupling, add_harmonic flags, ext data flag */
     /* Time deltas need the previous frame's envelope in the same layout;
      * header frames stay self-contained so a decoder can start there. */
     const SBRChannel *sc0 = &sbr->ch[ch0];
     const SbrEnvRef *prev = &sc0->ref[~sbr->frameCount & 1];
-    int noiseLinked = !sendHeader && prev->nb;
+    int noiseLinked = !sendHeader && prev->nb && prev->coupled == coupled;
     int linked = noiseLinked && prev->nb == sbr_env_bands(sbr, fd) && prev->ampRes == fd->eff_amp_res;
-
-    if (write) PutBit(bs, 0, lead_len); /* bs_coupling / reserved */
+    const int (*env[2])[SBR_MAX_BANDS];
+    int ngrid = coupled ? 1 : nch;
 
     for (int ch = 0; ch < nch; ch++)
+        env[ch] = coupled ? (const int (*)[SBR_MAX_BANDS])sbr->cplEnv[ch]
+                          : (const int (*)[SBR_MAX_BANDS])fd->ch[ch0 + ch].envData;
+
+    if (write) PutBit(bs, coupled, nch); /* bs_data_extra 0, then bs_coupling */
+
+    for (int ch = 0; ch < ngrid; ch++)
         bits += write_sbr_grid(sbr, fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_dtdf(&sbr->ch[ch0 + ch], fd, noiseLinked, bs, write);
-    for (int ch = 0; ch < nch; ch++)
+    for (int ch = 0; ch < ngrid; ch++)
         bits += write_sbr_invf(bs, write);
-    for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_envelope(sbr, fd, linked, bs, ch0 + ch, write);
-    for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_noise(fd, noiseLinked, bs, write);
+    /* Coupled: envelope and noise per channel in turn; otherwise all
+     * envelopes, then all noise floors. */
+    for (int k = 0; k < 2 * nch; k++) {
+        int ch = coupled ? k >> 1 : k % nch;
+        if (coupled ? k & 1 : k >= nch) {
+            bits += write_sbr_noise(fd, coupled && ch ? 6 : SBR_NOISE_LEVEL_DEFAULT, noiseLinked, bs, write);
+        } else {
+            int n = write_sbr_envelope(sbr, fd, env[ch], coupled && ch, linked, bs, ch0 + ch, write);
+            if (n == INT_MAX) return INT_MAX;
+            bits += n;
+        }
+    }
 
-    if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
+    if (write) PutBit(bs, 0, nch + 1); /* add_harmonic / extended data flags */
 
     /* Only the real write records the reference, so the sizing pass makes
      * the same choices. */
@@ -205,13 +250,37 @@ static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
         int nb = sbr_env_bands(sbr, fd);
         for (int ch = 0; ch < nch; ch++) {
             SbrEnvRef *cur = &sbr->ch[ch0 + ch].ref[sbr->frameCount & 1];
-            memcpy(cur->env, fd->ch[ch0 + ch].envData[fd->numEnvelopes - 1], nb * sizeof(int));
+            memcpy(cur->env, env[ch][fd->numEnvelopes - 1], nb * sizeof(int));
             cur->nb = nb;
             cur->ampRes = fd->eff_amp_res;
+            cur->coupled = coupled;
         }
     }
-
     return bits;
+}
+
+/* A pair is coupled when that codes smaller. The sizing pass costs both
+ * layouts and ends on the chosen one, so the channel caches match it. */
+static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
+{
+    int nch = (id_aac == ID_CPE) ? 2 : 1;
+    int trial = !write && nch == 2;
+    int cost[2], bits;
+
+    if (trial) {
+        couple_envelopes(sbr, fd, ch0);
+        sbr->coupled = 1;
+    } else if (!write) {
+        sbr->coupled = 0;
+    }
+    for (int pass = 0;; pass++) {
+        bits = write_sbr_channels(sbr, fd, bs, nch, ch0, sendHeader, sbr->coupled, write);
+        if (!trial || pass == 2) return bits;
+        cost[sbr->coupled] = bits;
+        /* coupled, then uncoupled, then back to coupled if it won */
+        if (pass == 1 && cost[1] >= cost[0]) return bits;
+        sbr->coupled = pass;
+    }
 }
 
 /* Emit the full extension_payload body for EXT_SBR_DATA: the 4-bit extension

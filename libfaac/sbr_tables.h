@@ -48,6 +48,15 @@ extern const SBRHuffEntry f_huff_env_1_5dB[F_HUFF_ENV_1_5DB_NSYMS];
 extern const SBRHuffEntry f_huff_env_3_0dB[F_HUFF_ENV_3_0DB_NSYMS];
 extern const SBRHuffEntry t_huff_env_1_5dB[T_HUFF_ENV_NSYMS];
 extern const SBRHuffEntry t_huff_env_3_0dB[T_HUFF_ENV_NSYMS];
+/* Balance (coupled second channel) codes. */
+#define F_HUFF_ENV_BAL_1_5DB_OFFSET 24
+#define F_HUFF_ENV_BAL_1_5DB_NSYMS  49
+#define F_HUFF_ENV_BAL_3_0DB_OFFSET 12
+#define F_HUFF_ENV_BAL_3_0DB_NSYMS  25
+extern const SBRHuffEntry f_huff_env_bal_1_5dB[F_HUFF_ENV_BAL_1_5DB_NSYMS];
+extern const SBRHuffEntry f_huff_env_bal_3_0dB[F_HUFF_ENV_BAL_3_0DB_NSYMS];
+extern const SBRHuffEntry t_huff_env_bal_1_5dB[T_HUFF_ENV_NSYMS];
+extern const SBRHuffEntry t_huff_env_bal_3_0dB[T_HUFF_ENV_NSYMS];
 
 #ifdef __cplusplus
 }
