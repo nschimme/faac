@@ -388,7 +388,7 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
         }
     }
     rd_select_books(c, p->costs);
-    for (pass = 0; pass < 2; pass++) {
+    for (pass = 0; pass < 1; pass++) {
         changed = 0;
         for (b = 0; b < c->bandcnt; b++) if (p->regular[b]) {
             int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
