@@ -94,39 +94,41 @@ static int write_sbr_invf(BitStream *bs, bool write)
 
 struct EnvBooks {
     const SBRHuffEntry *f, *t;
-    int lav, start;
+    int lav, nsyms, start;
 };
 
 static const struct EnvBooks books[2][2] = {
-    { { f_huff_env_1_5dB, t_huff_env_1_5dB, F_HUFF_ENV_1_5DB_OFFSET, 7 },
-      { f_huff_env_3_0dB, t_huff_env_3_0dB, F_HUFF_ENV_3_0DB_OFFSET, 6 } },
-    { { f_huff_env_bal_1_5dB, t_huff_env_bal_1_5dB, F_HUFF_ENV_BAL_1_5DB_OFFSET, 6 },
-      { f_huff_env_bal_3_0dB, t_huff_env_bal_3_0dB, F_HUFF_ENV_BAL_3_0DB_OFFSET, 5 } },
+    { { f_huff_env_1_5dB, t_huff_env_1_5dB, F_HUFF_ENV_1_5DB_OFFSET, F_HUFF_ENV_1_5DB_NSYMS, 7 },
+      { f_huff_env_3_0dB, t_huff_env_3_0dB, F_HUFF_ENV_3_0DB_OFFSET, F_HUFF_ENV_3_0DB_NSYMS, 6 } },
+    { { f_huff_env_bal_1_5dB, t_huff_env_bal_1_5dB, F_HUFF_ENV_BAL_1_5DB_OFFSET, F_HUFF_ENV_BAL_1_5DB_NSYMS, 6 },
+      { f_huff_env_bal_3_0dB, t_huff_env_bal_3_0dB, F_HUFF_ENV_BAL_3_0DB_OFFSET, F_HUFF_ENV_BAL_3_0DB_NSYMS, 5 } },
 };
 
-static int code_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int *cur, const int *ref,
-                         int bal, BitAccumulator *acc, bool write)
+/* Unified delta coder: when acc is non-NULL, emits symbols; when acc is NULL, calculates bit cost.
+ * When ref is non-NULL, codes time-deltas against reference.
+ * When ref is NULL, codes frequency-deltas with first-value and delta clamping matching master. */
+static int code_delta_run(BitAccumulator *acc, const int *cur, const int *ref, int nb,
+                          const SBRHuffEntry *table, int offset, int nsyms, int first_bits)
 {
-    const struct EnvBooks *bk = &books[bal][fd->eff_amp_res];
-    int nb = sbr_env_bands(sbr, fd);
-    const SBRHuffEntry *tab = bk->f;
-    int offset = bk->lav, bits = 0, b = 0;
-
+    int bits = 0;
     if (ref) {
-        tab = bk->t;
-        offset = T_HUFF_ENV_LAV;
+        for (int b = 0; b < nb; b++) {
+            int d = cur[b] - ref[b];
+            if (d < -offset || d > offset) return INT_MAX;
+            int idx = d + offset;
+            if (acc) AccumPutBits(acc, sbr_huff_code(table[idx]), sbr_huff_len(table[idx]));
+            bits += sbr_huff_len(table[idx]);
+        }
     } else {
-        bits = bk->start;
-        int first_max = (1 << bits) - 1;
-        if (write) AccumPutBits(acc, (uint32_t)clamp_int(cur[0], 0, first_max), bits);
-        b = 1;
-    }
-    for (; b < nb; b++) {
-        int d = cur[b] - (ref ? ref[b] : cur[b - 1]);
-        if (d < -offset || d > offset) return INT_MAX;
-        int idx = d + offset;
-        if (write) AccumPutBits(acc, sbr_huff_code(tab[idx]), sbr_huff_len(tab[idx]));
-        bits += sbr_huff_len(tab[idx]);
+        bits = first_bits;
+        int first_max = (1 << first_bits) - 1;
+        if (acc) AccumPutBits(acc, (uint32_t)clamp_int(cur[0], 0, first_max), first_bits);
+        for (int b = 1; b < nb; b++) {
+            int d = cur[b] - cur[b - 1];
+            int idx = clamp_int(d + offset, 0, nsyms - 1);
+            if (acc) AccumPutBits(acc, sbr_huff_code(table[idx]), sbr_huff_len(table[idx]));
+            bits += sbr_huff_len(table[idx]);
+        }
     }
     return bits;
 }
@@ -135,6 +137,8 @@ static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, const int (*
                               int bal, int linked, BitStream *bs, int ch, bool write)
 {
     SBRChannel *sc = &sbr->ch[ch];
+    const struct EnvBooks *bk = &books[bal][fd->eff_amp_res];
+    int nb = sbr_env_bands(sbr, fd);
     unsigned chosen = 0;
     int bits = 0;
     BitAccumulator acc = {0};
@@ -142,15 +146,23 @@ static int write_sbr_envelope(SBRInfo *sbr, const SbrFrameData *fd, const int (*
     if (write) AccumBegin(&acc, bs);
     for (int e = 0; e < fd->numEnvelopes; e++) {
         const int *ref = (e || linked) ? (e ? env[e - 1] : sc->ref[~sbr->frameCount & 1].env) : NULL;
-        int first = write ? ((sc->envDt >> e) & 1) : 0;
-        int last = write ? first : (ref != NULL);
-        int best = INT_MAX;
-        for (int t = first; t <= last; t++) {
-            int n = code_envelope(sbr, fd, env[e], t ? ref : NULL, bal, &acc, write);
-            if (n < best) { best = n; chosen = (chosen & ~(1u << e)) | ((unsigned)t << e); }
+        if (!write) {
+            int freq_cost = code_delta_run(NULL, env[e], NULL, nb, bk->f, bk->lav, bk->nsyms, bk->start);
+            int time_cost = ref ? code_delta_run(NULL, env[e], ref, nb, bk->t, T_HUFF_ENV_LAV, T_HUFF_ENV_NSYMS, 0) : INT_MAX;
+            if (time_cost < freq_cost) {
+                bits += time_cost;
+                chosen |= (1u << e);
+            } else {
+                if (freq_cost == INT_MAX) { bits = INT_MAX; break; }
+                bits += freq_cost;
+            }
+        } else {
+            int use_dt = (sc->envDt >> e) & 1;
+            if (use_dt && ref)
+                bits += code_delta_run(&acc, env[e], ref, nb, bk->t, T_HUFF_ENV_LAV, T_HUFF_ENV_NSYMS, 0);
+            else
+                bits += code_delta_run(&acc, env[e], NULL, nb, bk->f, bk->lav, bk->nsyms, bk->start);
         }
-        if (best == INT_MAX) { bits = INT_MAX; break; }
-        bits += best;
     }
     if (write) AccumEnd(&acc);
     else sc->envDt = chosen;
@@ -240,22 +252,37 @@ static int write_sbr_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *b
 static int write_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)
 {
     int nch = (id_aac == ID_CPE) ? 2 : 1;
-    int trial = !write && nch == 2;
-    int cost[2], bits;
+    if (!write && nch == 2) {
+        unsigned envDt_uncoupled[2], envDt_coupled[2];
 
-    if (trial) {
+        /* Sizing pass for uncoupled */
+        int cost_uncoupled = write_sbr_channels(sbr, fd, NULL, 2, ch0, sendHeader, 0, false);
+        envDt_uncoupled[0] = sbr->ch[ch0].envDt;
+        envDt_uncoupled[1] = sbr->ch[ch0 + 1].envDt;
+
+        /* Sizing pass for coupled */
         couple_envelopes(sbr, fd, ch0);
-        sbr->coupled = 1;
-    } else if (!write) {
+        int cost_coupled = write_sbr_channels(sbr, fd, NULL, 2, ch0, sendHeader, 1, false);
+        envDt_coupled[0] = sbr->ch[ch0].envDt;
+        envDt_coupled[1] = sbr->ch[ch0 + 1].envDt;
+
+        if (cost_coupled < cost_uncoupled) {
+            sbr->coupled = 1;
+            sbr->ch[ch0].envDt = envDt_coupled[0];
+            sbr->ch[ch0 + 1].envDt = envDt_coupled[1];
+            return cost_coupled;
+        } else {
+            sbr->coupled = 0;
+            sbr->ch[ch0].envDt = envDt_uncoupled[0];
+            sbr->ch[ch0 + 1].envDt = envDt_uncoupled[1];
+            return cost_uncoupled;
+        }
+    }
+    if (!write) {
         sbr->coupled = 0;
+        return write_sbr_channels(sbr, fd, NULL, nch, ch0, sendHeader, 0, false);
     }
-    for (int pass = 0;; pass++) {
-        bits = write_sbr_channels(sbr, fd, bs, nch, ch0, sendHeader, sbr->coupled, write);
-        if (!trial || pass == 2) return bits;
-        cost[sbr->coupled] = bits;
-        if (pass == 1 && cost[1] >= cost[0]) return bits;
-        sbr->coupled = pass;
-    }
+    return write_sbr_channels(sbr, fd, bs, nch, ch0, sendHeader, sbr->coupled, true);
 }
 
 static int emit_sbr_payload(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, int sendHeader, bool write)

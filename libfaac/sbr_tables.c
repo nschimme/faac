@@ -482,7 +482,7 @@ const SBRHuffEntry f_huff_env_bal_3_0dB[F_HUFF_ENV_BAL_3_0DB_NSYMS] = {
     /*   -1 */ SBR_HUFF(0x00000002u,  2),
     /*    0 */ SBR_HUFF(0x00000000u,  1),
     /*    1 */ SBR_HUFF(0x00000006u,  3),
-    /*    2 */ SBR_HUFF(0x000001feu,  5),
+    /*    2 */ SBR_HUFF(0x0000001eu,  5),
     /*    3 */ SBR_HUFF(0x0000003eu,  6),
     /*    4 */ SBR_HUFF(0x000001feu,  9),
     /*    5 */ SBR_HUFF(0x00000ffau, 12),
