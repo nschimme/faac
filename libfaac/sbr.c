@@ -97,29 +97,52 @@ static int pick_stop_freq(int sampleRate, int kx, int targetHz)
     return best;
 }
 
-/* Master table (ISO 14496-3 §4.6.18.3.2.1). bs_freq_scale 0: uniform
- * dk-spacing, residual bands merged into the first/last pairs. 1/2/3:
- * log-spaced with 12/10/8 bands per octave, widths of a geometric series
- * rounded and sorted so the narrow bands sit at the bottom. Only the
- * one-region case exists here: at bs_start_freq 15 kx is at least 30 at
- * every sample rate and k2 at most 64, so k2/kx never reaches the 2.2449
- * split. */
+/* Widths of n log-spaced bands from lo to hi: a geometric series, rounded
+ * and sorted so the narrow bands sit at the bottom. */
+static int log_band_widths(int *dk, int lo, int hi, float bands_per_octave)
+{
+    int n = 2 * (int)(bands_per_octave * log2f((float)hi / (float)lo) / 2.0f + 0.5f);
+    int prev = lo;
+
+    n = clamp_int(n, 1, SBR_MAX_BANDS);
+    for (int k = 0; k < n; k++) {
+        int edge = (int)(lo * powf((float)hi / (float)lo, (float)(k + 1) / (float)n) + 0.5f);
+        dk[k] = edge - prev;
+        prev = edge;
+    }
+    qsort(dk, n, sizeof(int), cmp_int);
+    return n;
+}
+
+/* Master table (ISO 14496-3 §4.6.18.3.2.1) for bs_freq_scale 1/2/3: 12/10/8
+ * log-spaced bands per octave. Past a 2.2449 ratio the range splits at twice
+ * kx, and the upper region's bands widen by 1.3 with bs_alter_scale. Its
+ * narrowest band is then widened to at least the lower region's widest and
+ * the widths re-sorted, as decoders do; a table that differs from theirs
+ * puts every envelope in the wrong band. */
 static int build_freq_table(SBRInfo *sbr)
 {
     int kx = sbr->kx, k2 = sbr->k2;
     int *edges = sbr->bandEdges;
-    int n_master;
+    float bands_per_octave = (float)(14 - 2 * sbr->bs_freq_scale);
+    int two_regions = (float)k2 / (float)kx > 2.2449f;
+    int k1 = two_regions ? 2 * kx : k2;
+    int n_master = log_band_widths(edges + 1, kx, k1, bands_per_octave);
 
-    int prev = kx;
-    int bands_per_octave = 14 - 2 * sbr->bs_freq_scale; /* 12, 10, 8 for bs_freq_scale 1, 2, 3 */
-    n_master = 2 * (int)(bands_per_octave * log2f((float)k2 / (float)kx) / 2.0f + 0.5f);
-    n_master = clamp_int(n_master, 1, SBR_MAX_BANDS);
-    for (int k = 0; k < n_master; k++) {
-        int edge = (int)(kx * powf((float)k2 / (float)kx, (float)(k + 1) / (float)n_master) + 0.5f);
-        edges[1 + k] = edge - prev;
-        prev = edge;
+    if (two_regions) {
+        int dk1[SBR_MAX_BANDS];
+        int n1 = log_band_widths(dk1, k1, k2, bands_per_octave / (sbr->bs_alter_scale ? 1.3f : 1.0f));
+        if (dk1[0] < edges[n_master]) {
+            int change = edges[n_master] - dk1[0];
+            if (change > (dk1[n1 - 1] - dk1[0]) / 2) change = (dk1[n1 - 1] - dk1[0]) / 2;
+            dk1[0] += change;
+            dk1[n1 - 1] -= change;
+            qsort(dk1, n1, sizeof(int), cmp_int);
+        }
+        n1 = clamp_int(n1, 0, SBR_MAX_BANDS - n_master);
+        memcpy(edges + 1 + n_master, dk1, n1 * sizeof(int));
+        n_master += n1;
     }
-    qsort(edges + 1, n_master, sizeof(int), cmp_int);
     edges[0] = kx;
     for (int k = 1; k <= n_master; k++) edges[k] += edges[k - 1];
     sbr->numBands = n_master;
@@ -173,7 +196,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
      * what they save, rate control hands to the core. */
     sbr->bs_freq_scale = (rate_per_ch >= SBR_FREQ_SCALE_FINE_BPS) ? 1
                        : (rate_per_ch >= SBR_FREQ_SCALE_COARSE_BPS) ? 3 : 2;
-    sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
+    sbr->bs_alter_scale = 0; /* only widens a two-region table's upper bands */
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
