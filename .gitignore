@@ -10,6 +10,7 @@
 *.mp4
 *.m4a
 *.lo
+cachegrind.out*
 Makefile*
 *.deps
 *.libs
