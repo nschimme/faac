@@ -53,7 +53,9 @@ struct BitStream;
 #define SBR_ANALYSIS_DELAY   (6 * SBR_QMF_BANDS_64)
 #define SBR_QMF_HIST_LEN     (SBR_QMF_OVL_LEN_64 + SBR_ANALYSIS_DELAY)
 #define SBR_MAX_BANDS        64
-#define SBR_MAX_ENVELOPES     2
+#ifndef SBR_MAX_ENVELOPES
+#define SBR_MAX_ENVELOPES     5
+#endif
 #define SBR_HEADER_PERIOD    30
 
 /* Envelope time-slot resolution the decoder uses for an AAC-LC core frame

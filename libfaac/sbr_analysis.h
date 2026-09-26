@@ -27,7 +27,7 @@ extern "C" {
 #endif
 
 #ifndef SBR_MAX_ENVELOPES
-#define SBR_MAX_ENVELOPES 2
+#define SBR_MAX_ENVELOPES 5
 #endif
 
 struct SBRInfo;

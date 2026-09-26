@@ -80,7 +80,9 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         }
     }
 
-    if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
+    if (sbr && SbrInjectGetGrid(sbr, sa, sbr->frameCount)) {
+        /* Injected grid loaded into sa */
+    } else if (frameStrength > SBR_TRANSIENT_THRESH_DEFAULT) {
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
         int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
@@ -91,7 +93,7 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
         sa->bsPointer = 0;
     } else {
-        int ne = sbr->numEnvFixFix;
+        int ne = sbr ? sbr->numEnvFixFix : 1;
         sa->numEnvelopes = ne;
         sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
         for (int e = 0; e <= ne; e++)

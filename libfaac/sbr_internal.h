@@ -139,6 +139,7 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
 struct SbrInject *loadit(void);
+int SbrInjectGetGrid(SBRInfo *sbr, SignalAnalysis *sa, int stream_frame);
 int SbrInjectApply(SBRInfo *sbr, SbrFrameData *fd, int stream_frame, int channels);
 void SbrInjectFree(struct SbrInject *in);
 
