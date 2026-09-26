@@ -23,7 +23,7 @@ def run(cmd, env=None):
     return p.stdout
 
 def stem(clip):
-    return re.sub(r'[^A-Za-z0-9.-]', '_', clip.stem)
+    return re.sub(r'[^A-Za-z0-9._-]+', '_', clip.stem).strip('_')
 
 def dump(path):
     """Return class/count, grid, and freq-res records keyed by (frame, channel)."""
