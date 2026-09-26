@@ -36,7 +36,7 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
         PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 */
         PutBit(bs, sbr->bs_freq_scale,  2);
         PutBit(bs, sbr->bs_alter_scale, 1);
-        PutBit(bs, sbr->inject ? sbr->bs_noise_bands : 0, 2);
+        PutBit(bs, 0, 2); /* grid-only probe retains FAAC's one noise band */
     }
     return 21;
 }
@@ -76,7 +76,12 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrGrid *g, BitStream *bs, b
            the split whose relative borders are all legal 2,4,6,8-slot
            syntax values. This is essential for FDK grids such as 3,6,10,16. */
         int n0 = 0, n1 = num_env - 1;
-        for (int split = 0; split < num_env; split++) {
+        /* bs_num_rel_0/1 are two-bit fields.  Five envelopes need four
+           relative borders, which must be split 1+3, 2+2, or 3+1; encoding
+           all four on one side silently writes zero and collapses the grid. */
+        int first_split = num_env - 1 - 3;
+        if (first_split < 0) first_split = 0;
+        for (int split = first_split; split < num_env && split <= 3; split++) {
             int ok = 1;
             for (int i = 0; i < split; i++) { int d = g->tEnv[i + 1] - g->tEnv[i]; if (d < 2 || d > 8 || (d & 1)) ok = 0; }
             for (int i = 0; i < num_env - 1 - split; i++) { int d = g->tEnv[num_env - i] - g->tEnv[num_env - i - 1]; if (d < 2 || d > 8 || (d & 1)) ok = 0; }
@@ -106,10 +111,9 @@ static int write_sbr_dtdf(const SbrGrid *g, BitStream *bs, bool write)
 
 static int write_sbr_invf(const SBRInfo *sbr, const SbrFrameData *fd, int ch, BitStream *bs, bool write)
 {
-    if (!sbr->inject) { if (write) PutBit(bs, SBR_INVF_MODE, 2); return 2; }
-    int n = sbr->bs_noise_bands ? sbr->numBandsLow : 1;
-    for (int k=0;k<n;k++) if (write) PutBit(bs, fd->ch[ch].invfMode[k], 2);
-    return 2*n;
+    (void)sbr; (void)fd; (void)ch;
+    if (write) PutBit(bs, SBR_INVF_MODE, 2);
+    return 2;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
@@ -134,7 +138,7 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
 
     if (write) AccumBegin(&acc, bs);
     for (int e = 0; e < g->numEnvelopes; e++) {
-        int nb = sbr->inject ? sbr_env_bands_at(sbr, g, e) : sbr_env_bands(sbr, g);
+        int nb = sbr_env_bands_at(sbr, g, e);
         const int *env_ch = fd->ch[ch].envData[e];
         if (write) AccumPutBits(&acc, (uint32_t)clamp_int(env_ch[0], 0, first_max), first_bits);
         bits += first_bits;
@@ -147,17 +151,10 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
 
 static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
+    (void)sbr; (void)fd; (void)ch;
     int n_q = fd->grid[ch].numEnvelopes > 1 ? 2 : 1;
-    if (!sbr->inject) { if(write) for(int ne=0;ne<n_q;ne++) PutBit(bs,SBR_NOISE_LEVEL_DEFAULT,5); return n_q*5; }
-    int nb = sbr->bs_noise_bands ? sbr->numBandsLow : 1;
-    BitAccumulator a={0}; if(write) AccumBegin(&a,bs);
-    int bits=0;
-    for (int ne = 0; ne < n_q; ne++) {
-        if(write) AccumPutBits(&a, fd->ch[ch].noiseData[ne][0], 5); bits += 5;
-        for(int k=1;k<nb;k++) bits += put_huff(&a,write,f_huff_env_3_0dB,F_HUFF_ENV_3_0DB_NSYMS,F_HUFF_ENV_3_0DB_OFFSET,fd->ch[ch].noiseData[ne][k]-fd->ch[ch].noiseData[ne][k-1]);
-    }
-    if(write) AccumEnd(&a);
-    return bits;
+    if (write) for (int ne = 0; ne < n_q; ne++) PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
+    return n_q * 5;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
@@ -180,8 +177,7 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_noise(sbr, fd, bs, ch0 + ch, write);
 
-    if (!sbr->inject) { if(write) PutBit(bs,0,flags_len); }
-    else { bits -= flags_len; for (int ch=0;ch<nch;ch++) { if(write) { PutBit(bs, fd->ch[ch0+ch].addHarmonicFlag,1); if(fd->ch[ch0+ch].addHarmonicFlag) for(int k=0;k<sbr->numBands;k++) PutBit(bs,fd->ch[ch0+ch].addHarmonic[k],1); } bits += 1 + (fd->ch[ch0+ch].addHarmonicFlag?sbr->numBands:0); } if (write) PutBit(bs, 0, 1); bits++; }
+    if (write) PutBit(bs, 0, flags_len);
 
     return bits;
 }
