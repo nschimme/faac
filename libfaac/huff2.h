@@ -102,10 +102,10 @@ int writesf(struct CoderInfo *coder, BitStream *bitStream);
 #define RD_INF 1000000000
 
 void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS]);
-int rd_tuple_bits(const int *q, int b);
+int rd_tuple_bits(const int *q, int len, int b);
 int rd_sections(const struct CoderInfo *c);
 int rd_scalefactors(struct CoderInfo *c);
 int rd_select_books(struct CoderInfo *c, int costs[][RD_BOOKS]);
-void rd_emit(struct CoderInfo *c, const int *qs, const int *offset);
+void rd_emit(struct CoderInfo *c, const int *qs, const int *offset, int costs[][RD_BOOKS]);
 
 #endif /* HUFF2_H */
