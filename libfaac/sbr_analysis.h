@@ -43,6 +43,7 @@ typedef struct {
 typedef struct SignalAnalysisChannel {
     int       transientSlot;
     float transientStrength;
+    int       trailingBorder;
     SbrGrid grid;
     int envSampled[SBR_MAX_ENVELOPES];
 } SignalAnalysisChannel;

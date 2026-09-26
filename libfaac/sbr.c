@@ -436,12 +436,10 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 }
 
 
-static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd, int nch)
+static void sbr_adopt_envelope_grid(const struct SignalAnalysis *sa, SbrFrameData *fd, int nch)
 {
     for (int ch = 0; ch < nch; ch++) {
         fd->ch[ch].grid = sa->ch[ch].grid;
-        for (int e = 0; e < fd->ch[ch].grid.numEnvelopes; e++)
-            fd->ch[ch].grid.freqRes[e] = sbr->bs_freq_res;
     }
     for (int ch = 0; ch < nch; ch++)
         fd->ch[ch].eff_amp_res = (fd->ch[ch].grid.frameClass == SBR_FRAME_CLASS_FIXFIX &&
@@ -491,7 +489,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
         if (!isLfe[ch])
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
 
-    sbr_adopt_envelope_grid(sbr, sa, fd, numChannels);
+    sbr_adopt_envelope_grid(sa, fd, numChannels);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
 
 #ifdef FAAC_STATS
