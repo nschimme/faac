@@ -155,6 +155,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
     }
     SbrUpdate(sbr, bitRate);
+    sbr->inject = loadit();
     return sbr;
 }
 
@@ -176,6 +177,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
     sbr->bs_freq_res = 1; /* HIGH resolution */
     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
+    sbr->bs_noise_bands = 0;
+    sbr->bs_amp_res = SBR_AMP_RES;
     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
 
     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
@@ -190,6 +193,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
 void SbrEnd(SBRInfo *sbr)
 {
     if (!sbr) return;
+    SbrInjectFree(sbr->inject);
     FreeMemory(sbr);
 }
 
@@ -205,6 +209,12 @@ static void sbr_frame_silence(SbrFrameData *fd)
     fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
     fd->bsPointer    = 0;
     fd->freqRes      = 1;
+    fd->freqResEnv[0] = 1;
+    for (int ch = 0; ch < MAX_CHANNELS; ch++) {
+        fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
+        fd->ch[ch].noiseData[1][0] = SBR_NOISE_LEVEL_DEFAULT;
+        fd->ch[ch].invfMode[0] = SBR_INVF_MODE;
+    }
 }
 
 SBRContext *SbrContextInit(int channels)
@@ -442,6 +452,7 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
     for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
     fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
     fd->freqRes = sbr->bs_freq_res;
+    for (int i=0;i<fd->numEnvelopes;i++) fd->freqResEnv[i] = sbr->bs_freq_res;
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
@@ -493,6 +504,12 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 
     sbr_adopt_envelope_grid(sbr, sa, fd);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
+    for (int ch=0; ch<numChannels; ch++) {
+        fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
+        fd->ch[ch].noiseData[1][0] = SBR_NOISE_LEVEL_DEFAULT;
+        fd->ch[ch].invfMode[0] = SBR_INVF_MODE;
+    }
+    SbrInjectApply(sbr, fd, sbr->frameCount, numChannels);
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
@@ -510,4 +527,3 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
  * Replays the write sequence into a counting sink during rate control to
  * ensure accurate bit budget allocation. */
-

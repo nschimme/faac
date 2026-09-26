@@ -24,6 +24,7 @@
 typedef struct SBRChannel {
     float qmfOvl64[SBR_QMF_HIST_LEN]; /* QMF overlap plus analysis delay (carries across frames) */
 } SBRChannel;
+#define SBR_INJECT_MAX_ENVELOPES 5
 
 /* One frame's coded SBR payload: every field SbrWrite reads that varies per
  * frame. What it reads that is constant for the stream (bs_* header fields,
@@ -36,13 +37,18 @@ typedef struct SbrFrameData {
     int numEnvelopes;
     int eff_amp_res;
     SbrFrameClass frameClass;
-    int tEnv[SBR_MAX_ENVELOPES + 1];
+    int tEnv[SBR_INJECT_MAX_ENVELOPES + 1];
     int bsPointer;
-    int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
+    int freqRes; /* compatibility default; freqResEnv is authoritative */
+    int freqResEnv[SBR_INJECT_MAX_ENVELOPES];
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     struct {
-        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int envData[SBR_INJECT_MAX_ENVELOPES][SBR_MAX_BANDS];
+        int noiseData[2][SBR_MAX_BANDS];
+        int invfMode[SBR_MAX_BANDS];
+        int addHarmonic[SBR_MAX_BANDS];
+        int addHarmonicFlag;
     } ch[MAX_CHANNELS];
 } SbrFrameData;
 
@@ -67,6 +73,8 @@ struct SBRInfo {
     int bs_xover_band;
     int bs_alter_scale;
     int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
+    int bs_noise_bands;
+    int bs_amp_res;
     int numEnvFixFix;      /* envelopes in a frame without a transient: 1 or 2 */
 
     /* --- per-frame state --- */
@@ -76,6 +84,8 @@ struct SBRInfo {
      * toward the header period. */
     int headerDecided;
     int sendHeaderThisFrame;
+
+    struct SbrInject *inject;
 
     /* --- per-channel state --- */
     SBRChannel ch[MAX_CHANNELS];
@@ -109,6 +119,11 @@ static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
     return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
 }
 
+static inline int sbr_env_bands_at(const SBRInfo *sbr, const SbrFrameData *fd, int e)
+{
+    return fd->freqResEnv[e] ? sbr->numBands : sbr->numBandsLow;
+}
+
 static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
 {
     return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
@@ -123,5 +138,8 @@ void SbrEnd(SBRInfo *sbr);
 void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
 /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
 void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
+struct SbrInject *loadit(void);
+int SbrInjectApply(SBRInfo *sbr, SbrFrameData *fd, int stream_frame, int channels);
+void SbrInjectFree(struct SbrInject *in);
 
 #endif

@@ -27,7 +27,7 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
 {
     if (write) {
         /* ISO 14496-3:2009 §4.6.18.5 sbr_header() (21 bits) */
-        PutBit(bs, SBR_AMP_RES,         1); /* bs_amp_res: 0=1.5dB, 1=3dB */
+        PutBit(bs, sbr->inject ? sbr->bs_amp_res : SBR_AMP_RES, 1);
         PutBit(bs, sbr->bs_start_freq,  4); /* bs_start_freq: crossover index */
         PutBit(bs, sbr->bs_stop_freq,   4); /* bs_stop_freq: high-band ceil */
         PutBit(bs, sbr->bs_xover_band,  3); /* bs_xover_band: low-res split (0=none) */
@@ -36,7 +36,7 @@ static int write_sbr_header(const SBRInfo *sbr, BitStream *bs, bool write)
         PutBit(bs, 0,                   1); /* bs_header_extra_2 = 0 */
         PutBit(bs, sbr->bs_freq_scale,  2);
         PutBit(bs, sbr->bs_alter_scale, 1);
-        PutBit(bs, 0,                   2); /* bs_noise_bands = 0 */
+        PutBit(bs, sbr->inject ? sbr->bs_noise_bands : 0, 2);
     }
     return 21;
 }
@@ -46,11 +46,15 @@ static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
 
 static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, bool write)
 {
+    (void)sbr;
     int num_env = fd->numEnvelopes;
     int bits = 2;
 
     if (write) PutBit(bs, fd->frameClass, 2);
-    if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
+    if (fd->frameClass == SBR_FRAME_CLASS_FIXVAR) {
+        if(write){ PutBit(bs,fd->tEnv[num_env]-16,2); PutBit(bs,num_env-1,2); for(int i=0;i<num_env-1;i++) PutBit(bs,(fd->tEnv[num_env-i]-fd->tEnv[num_env-i-1]-2)/2,2); PutBit(bs,fd->bsPointer,sbr_ceil_log2[num_env]); for(int i=num_env-1;i>=0;i--) PutBit(bs,fd->freqResEnv[i],1); }
+        bits += 4 + 2*(num_env-1) + sbr_ceil_log2[num_env] + num_env;
+    } else if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
         /* VARFIX (§4.6.18.3.6): variable leading borders, fixed (untransmitted)
          * trailing border at numTimeSlots, then bs_pointer and per-envelope
          * bs_freq_res. */
@@ -64,15 +68,19 @@ static int write_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
         if (write) {
             PutBit(bs, fd->bsPointer, ptr_len);
             for (int i = 0; i < num_env; i++)
-                PutBit(bs, sbr->bs_freq_res, 1);
+                PutBit(bs, sbr->inject ? fd->freqResEnv[i] : sbr->bs_freq_res, 1);
         }
         bits += 4 + 2 * (num_env - 1) + ptr_len + num_env;
+    } else if (fd->frameClass == SBR_FRAME_CLASS_VARVAR) {
+        int n0=0,n1=0; while(n0<num_env-1 && fd->tEnv[n0+1]<16)n0++; n1=num_env-1-n0;
+        if(write){PutBit(bs,fd->tEnv[0],2);PutBit(bs,fd->tEnv[num_env]-16,2);PutBit(bs,n0,2);PutBit(bs,n1,2);for(int i=0;i<n0;i++)PutBit(bs,(fd->tEnv[i+1]-fd->tEnv[i]-2)/2,2);for(int i=0;i<n1;i++)PutBit(bs,(fd->tEnv[num_env-i]-fd->tEnv[num_env-i-1]-2)/2,2);PutBit(bs,fd->bsPointer,sbr_ceil_log2[num_env]);for(int i=0;i<num_env;i++)PutBit(bs,fd->freqResEnv[i],1);}
+        bits += 8+2*(num_env-1)+sbr_ceil_log2[num_env]+num_env;
     } else {
         /* FIXFIX: equal-spaced borders (not transmitted, the decoder derives
          * them from the envelope count), one bs_freq_res for all envelopes. */
         if (write) {
             PutBit(bs, num_env > 1 ? 1 : 0, 2);         /* bs_num_env = 1 << this */
-            PutBit(bs, sbr->bs_freq_res, 1);
+            PutBit(bs, sbr->inject ? fd->freqResEnv[0] : sbr->bs_freq_res, 1);
         }
         bits += 3;
     }
@@ -87,10 +95,12 @@ static int write_sbr_dtdf(const SbrFrameData *fd, BitStream *bs, bool write)
     return len;
 }
 
-static int write_sbr_invf(BitStream *bs, bool write)
+static int write_sbr_invf(const SBRInfo *sbr, const SbrFrameData *fd, int ch, BitStream *bs, bool write)
 {
-    if (write) PutBit(bs, SBR_INVF_MODE, 2);
-    return 2;
+    if (!sbr->inject) { if (write) PutBit(bs, SBR_INVF_MODE, 2); return 2; }
+    int n = sbr->bs_noise_bands ? sbr->numBandsLow : 1;
+    for (int k=0;k<n;k++) if (write) PutBit(bs, fd->ch[ch].invfMode[k], 2);
+    return 2*n;
 }
 
 /* count-and-write helper, matching channels.c's WriteElement/WriteICS style. */
@@ -109,12 +119,12 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     int offset = fd->eff_amp_res ? F_HUFF_ENV_3_0DB_OFFSET : F_HUFF_ENV_1_5DB_OFFSET;
     int first_bits = fd->eff_amp_res ? 6 : 7;
     int first_max = (1 << first_bits) - 1;
-    int nb = sbr_env_bands(sbr, fd);
     int bits = 0;
     BitAccumulator acc = {0};
 
     if (write) AccumBegin(&acc, bs);
     for (int e = 0; e < fd->numEnvelopes; e++) {
+        int nb = sbr->inject ? sbr_env_bands_at(sbr, fd, e) : sbr_env_bands(sbr, fd);
         const int *env_ch = fd->ch[ch].envData[e];
         if (write) AccumPutBits(&acc, (uint32_t)clamp_int(env_ch[0], 0, first_max), first_bits);
         bits += first_bits;
@@ -125,14 +135,19 @@ static int write_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, BitStr
     return bits;
 }
 
-static int write_sbr_noise(const SbrFrameData *fd, BitStream *bs, bool write)
+static int write_sbr_noise(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int ch, bool write)
 {
     int n_q = fd->numEnvelopes > 1 ? 2 : 1;
-    if (write) {
-        for (int ne = 0; ne < n_q; ne++)
-            PutBit(bs, SBR_NOISE_LEVEL_DEFAULT, 5);
+    if (!sbr->inject) { if(write) for(int ne=0;ne<n_q;ne++) PutBit(bs,SBR_NOISE_LEVEL_DEFAULT,5); return n_q*5; }
+    int nb = sbr->bs_noise_bands ? sbr->numBandsLow : 1;
+    BitAccumulator a={0}; if(write) AccumBegin(&a,bs);
+    int bits=0;
+    for (int ne = 0; ne < n_q; ne++) {
+        if(write) AccumPutBits(&a, fd->ch[ch].noiseData[ne][0], 5); bits += 5;
+        for(int k=1;k<nb;k++) bits += put_huff(&a,write,f_huff_env_3_0dB,F_HUFF_ENV_3_0DB_NSYMS,F_HUFF_ENV_3_0DB_OFFSET,fd->ch[ch].noiseData[ne][k]-fd->ch[ch].noiseData[ne][k-1]);
     }
-    return n_q * 5;
+    if(write) AccumEnd(&a);
+    return bits;
 }
 
 static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_aac, int ch0, bool write)
@@ -149,13 +164,14 @@ static int write_sbr_data(const SBRInfo *sbr, const SbrFrameData *fd, BitStream 
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_dtdf(fd, bs, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_invf(bs, write);
+        bits += write_sbr_invf(sbr, fd, ch0 + ch, bs, write);
     for (int ch = 0; ch < nch; ch++)
         bits += write_sbr_envelope(sbr, fd, bs, ch0 + ch, write);
     for (int ch = 0; ch < nch; ch++)
-        bits += write_sbr_noise(fd, bs, write);
+        bits += write_sbr_noise(sbr, fd, bs, ch0 + ch, write);
 
-    if (write) PutBit(bs, 0, flags_len); /* add_harmonic / extended data flags */
+    if (!sbr->inject) { if(write) PutBit(bs,0,flags_len); }
+    else { bits -= flags_len; for (int ch=0;ch<nch;ch++) { if(write) { PutBit(bs, fd->ch[ch0+ch].addHarmonicFlag,1); if(fd->ch[ch0+ch].addHarmonicFlag) for(int k=0;k<sbr->numBands;k++) PutBit(bs,fd->ch[ch0+ch].addHarmonic[k],1); } bits += 1 + (fd->ch[ch0+ch].addHarmonicFlag?sbr->numBands:0); } if (write) PutBit(bs, 0, 1); bits++; }
 
     return bits;
 }

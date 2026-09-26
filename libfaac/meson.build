@@ -37,6 +37,7 @@ common_src = [
     'ratecontrol.c',
     'ratecontrol.h',
     'sbr.c',
+    'sbr_inject.c',
     'sbr.h',
     'sbr_internal.h',
     'sbr_bitstream.c',
