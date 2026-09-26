@@ -29,7 +29,8 @@ for row in source_rows:
     if arm not in ARMS or key in seen:
         continue
     seen.add(key)
-    matches = list((ROOT / 'clips').glob(f'*_{clip.stem}/{rate}/{arm}.wav'))
+    stem = re.sub(r'[^A-Za-z0-9._-]+', '_', clip.stem).strip('_')
+    matches = list((ROOT / 'clips').glob(f'[0-9][0-9]_{stem}/{rate}/{arm}.wav'))
     if len(matches) != 1:
         raise RuntimeError(f'cannot identify control WAV for {key}: {matches}')
     value = score(clip, matches[0])
