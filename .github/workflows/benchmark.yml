@@ -225,7 +225,7 @@ jobs:
           for pair in "baseline:base" "candidate:cand"; do
             d=${pair%%:*}; tag=${pair##*:}
             python3 bench/phase1_encode.py \
-              $d/build/frontend/faac $d/build/libfaac/libfaac.so \
+              --encoder-bin $d/build/frontend/faac --encoder-lib $d/build/libfaac/libfaac.so \
               lc results/lc_$tag.json --skip-mos --build-dir $d/build
           done
           python3 bench/compare_results.py results --gates footprint
