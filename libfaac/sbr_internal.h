@@ -20,8 +20,8 @@
 #include "sbr_analysis.h"
 #include "resample.h"
 
-/* A written frame's last envelope and the layout it was coded in: the
- * reference for time-delta coding the next frame's first one. nb 0 = none yet. */
+/* A written frame's last envelope: the reference for time-delta coding the
+ * next frame's first one. nb 0 = none yet. */
 typedef struct {
     int env[SBR_MAX_BANDS];
     int nb;
@@ -62,8 +62,6 @@ typedef struct SbrFrameData {
 
 struct SBRInfo {
     int sbrPresent;
-    /* Coupled rendition of the pair being written, and whether the sizing
-     * pass chose it; valid from the sizing pass to the write pass. */
     int cplEnv[2][SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
     int coupled;
     int frameCount;        /* access units so far; the header repeats every SBR_HEADER_PERIOD */

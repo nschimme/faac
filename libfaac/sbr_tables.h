@@ -27,10 +27,17 @@ extern "C" {
 
 typedef float sbrfloat;
 
-typedef struct {
-    uint32_t code : 24;
-    uint32_t len  : 8;
-} SBRHuffEntry;
+typedef uint32_t SBRHuffEntry;
+
+#define SBR_HUFF(code, len) (((uint32_t)(code) << 5) | (uint32_t)(len))
+
+static inline uint32_t sbr_huff_code(SBRHuffEntry entry) {
+    return entry >> 5;
+}
+
+static inline int sbr_huff_len(SBRHuffEntry entry) {
+    return (int)(entry & 0x1f);
+}
 
 #define F_HUFF_ENV_1_5DB_OFFSET  60
 #define F_HUFF_ENV_1_5DB_NSYMS   121
