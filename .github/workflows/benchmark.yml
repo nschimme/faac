@@ -273,16 +273,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
 
-      - name: Upload Results
-        if: github.event_name == 'pull_request' && steps.baseline-sha.outputs.sha != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: results-footprint
-          path: results/*.json
-
   report:
     name: Consolidated Report
-    needs: [benchmark, footprint]
+    needs: benchmark
     runs-on: ubuntu-24.04
     if: always() && github.event_name == 'pull_request'
     permissions:
