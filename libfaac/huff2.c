@@ -353,29 +353,69 @@ void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS])
     for (k = 0; k < lo; k++) costs[k] = RD_INF;
 }
 
-int rd_tuple_bits(const int *q, int len, int b)
+int rd_tuple_bits(const int *q, int b)
 {
-    static const int lav[] = {0,1,1,2,2,4,4,7,7,12,12,8191};
-    int k, nnz = 0, index = 0, radix, bits;
-    if (b < 1 || b > 11) return RD_INF;
-    for (k = 0; k < len; k++) {
-        if (abs(q[k]) > lav[b]) return RD_INF;
-        nnz += q[k] != 0;
+    switch (b) {
+    case 1:
+    case 2: {
+        int q0 = q[0], q1 = q[1], q2 = q[2], q3 = q[3];
+        if ((unsigned)(q0 + 1) > 2 || (unsigned)(q1 + 1) > 2 ||
+            (unsigned)(q2 + 1) > 2 || (unsigned)(q3 + 1) > 2)
+            return RD_INF;
+        int idx = 27 * (q0 + 1) + 9 * (q1 + 1) + 3 * (q2 + 1) + (q3 + 1);
+        return hmap[b][idx].len;
     }
-    if (b <= 2) {
-        for (k = 0; k < len; k++) index = 3*index + q[k]+1;
-        return hmap[b][index].len;
+    case 3:
+    case 4: {
+        int a0 = abs(q[0]), a1 = abs(q[1]), a2 = abs(q[2]), a3 = abs(q[3]);
+        if ((unsigned)a0 > 2 || (unsigned)a1 > 2 ||
+            (unsigned)a2 > 2 || (unsigned)a3 > 2)
+            return RD_INF;
+        int idx = 27 * a0 + 9 * a1 + 3 * a2 + a3;
+        int nnz = (a0 != 0) + (a1 != 0) + (a2 != 0) + (a3 != 0);
+        return hmap[b][idx].len + nnz;
     }
-    if (b <= 4) {
-        for (k = 0; k < len; k++) index = 3*index + abs(q[k]);
-        return hmap[b][index].len + nnz;
+    case 5:
+    case 6: {
+        int q0 = q[0], q1 = q[1];
+        if ((unsigned)(q0 + 4) > 8 || (unsigned)(q1 + 4) > 8)
+            return RD_INF;
+        int idx = 40 + 9 * q0 + q1;
+        return hmap[b][idx].len;
     }
-    if (b <= 6) return hmap[b][40+9*q[0]+q[1]].len;
-    radix = b <= 8 ? 8 : b <= 10 ? 13 : 17;
-    for (k = 0; k < len; k++) index = radix*index + (abs(q[k]) > 16 ? 16 : abs(q[k]));
-    bits = hmap[b][index].len + nnz;
-    if (b == 11) for (k = 0; k < len; k++) if (abs(q[k]) >= 16) bits += escape(abs(q[k]), NULL);
-    return bits;
+    case 7:
+    case 8: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if ((unsigned)a0 > 7 || (unsigned)a1 > 7)
+            return RD_INF;
+        int idx = (a0 << 3) + a1;
+        int nnz = (a0 != 0) + (a1 != 0);
+        return hmap[b][idx].len + nnz;
+    }
+    case 9:
+    case 10: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if ((unsigned)a0 > 12 || (unsigned)a1 > 12)
+            return RD_INF;
+        int idx = 13 * a0 + a1;
+        int nnz = (a0 != 0) + (a1 != 0);
+        return hmap[b][idx].len + nnz;
+    }
+    case 11: {
+        int a0 = abs(q[0]), a1 = abs(q[1]);
+        if (a0 > MAX_HUFF_ESC_VAL || a1 > MAX_HUFF_ESC_VAL)
+            return RD_INF;
+        int v0 = (a0 > 16) ? 16 : a0;
+        int v1 = (a1 > 16) ? 16 : a1;
+        int idx = 17 * v0 + v1;
+        int bits = hmap[11][idx].len + (a0 != 0) + (a1 != 0);
+        if (a0 >= 16) bits += escape(a0, NULL);
+        if (a1 >= 16) bits += escape(a1, NULL);
+        return bits;
+    }
+    default:
+        return RD_INF;
+    }
 }
 
 int rd_sections(const CoderInfo *c)
@@ -457,10 +497,9 @@ int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
     return total;
 }
 
-void rd_emit(CoderInfo *c, const int *qs, const int *offset, int costs[][RD_BOOKS])
+void rd_emit(CoderInfo *c, const int *qs, const int *offset)
 {
     int b;
-    (void)costs;
     c->datacnt = 0;
     for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
         int sfb = b%c->sfbn;
