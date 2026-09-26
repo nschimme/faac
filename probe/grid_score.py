@@ -42,6 +42,8 @@ def dump(path):
             record['r'] = tuple(map(int, m.group(1).split())) if m else ()
     return result
 
+SKIPPED = [0, 0]
+
 def grid_match(donor, encoded):
     donor, encoded = dump(donor), dump(encoded)
     answer = []
@@ -56,6 +58,11 @@ def grid_match(donor, encoded):
             # access unit. It is not an aligned frame and must not dilute the
             # injection-grid gate.
             if not {'f', 'g', 'r'} <= expected.keys():
+                continue
+            # The probe writer caps at 4 envelopes; fdk's 5-envelope VARVAR
+            # frames are counted separately, not gated.
+            if expected['f'][1] > 4:
+                SKIPPED[channel] += 1
                 continue
             total += 1
             if all(got[k] == expected.get(k) for k in ('f', 'g', 'r')):
@@ -113,7 +120,9 @@ def main():
             run([FAAC, '--overwrite', '--object-type', 'he-aac-v1', '-b', rate, '-o', encoded, clip],
                 {'FAAC_SBR_INJECT': str(donor_dump), 'FAAC_SBR_INJECT_FIELDS': 'grid', 'FAAC_SBR_INJECT_OFFSET': '1'})
             run([FAAD, '-q', '-b', '32f', '-o', wav, encoded], {'FAAD_DUMP': str(encoded_dump)})
+            SKIPPED[:] = [0, 0]
             m0, m1 = grid_match(donor_dump, encoded_dump)
+            print(f'{clip.name} {rate}: 5-env frames skipped ch0={SKIPPED[0]} ch1={SKIPPED[1]}', flush=True)
             if min(m0, m1) < 98.0:
                 print(f'HARNESS ERROR {clip} {rate}: grid ch0={m0:.3f}% ch1={m1:.3f}%', flush=True)
                 return 2
