@@ -244,8 +244,9 @@ static void huffcode_write(const int * __restrict qs, int len, int bnum, CoderIn
  * section. qs holds the regular bands' values back to back, and book[] the
  * lowest book that covers each one's peak. State 0 stands for the band's
  * own zero/PNS/intensity book. Emits the codewords once the books are known. */
-void huffbook(CoderInfo *coder, const int *qs)
+void huffbook(CoderInfo *coder, const int *qs, const int *offset)
 {
+    coder->datacnt = 0;
     enum { NSTATE = HCB_ESC + 1 };
     unsigned char from[MAX_SCFAC_BANDS][NSTATE];
     int header = 4 + ((coder->block_type == ONLY_SHORT_WINDOW) ? 3 : 5);
@@ -263,14 +264,15 @@ void huffbook(CoderInfo *coder, const int *qs)
             if (book >= HCB_1 && book <= HCB_ESC) {
                 int sfb = b % coder->sfbn;
                 int len = (coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb]) * coder->groups.len[g];
+                int band_off = offset ? offset[b] : off;
                 lo = ((book - 1) & ~1) + 1;
                 hi = HCB_ESC;
                 /* An escape-only band has one choice, so its cost is moot. */
                 if (lo < HCB_ESC)
-                    size_books(qs + off, len, lo, c);
+                    size_books(qs + band_off, len, lo, c);
                 else
                     c[HCB_ESC] = 0;
-                off += len;
+                if (!offset) off += len;
             }
 
             for (k = lo; k <= hi; k++) {
@@ -296,8 +298,9 @@ void huffbook(CoderInfo *coder, const int *qs)
         if (book >= HCB_1 && book <= HCB_ESC) {
             int sfb = b % coder->sfbn;
             int len = (coder->sfb_offset[sfb + 1] - coder->sfb_offset[sfb]) * coder->groups.len[b / coder->sfbn];
-            huffcode_write(qs + off, len, book, coder);
-            off += len;
+            int band_off = offset ? offset[b] : off;
+            huffcode_write(qs + band_off, len, book, coder);
+            if (!offset) off += len;
         }
     }
 }
@@ -418,95 +421,6 @@ int rd_tuple_bits(const int *q, int b)
     }
 }
 
-int rd_sections(const CoderInfo *c)
-{
-    int g, bits = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
-    int maxrun = (1 << rb)-1;
-    for (g = 0; g < c->groups.n; g++) {
-        int b = g*c->sfbn, end = b+c->sfbn;
-        while (b < end) {
-            int n = 1;
-            while (b+n < end && c->book[b+n] == c->book[b]) n++;
-            bits += 4 + rb*(1+n/maxrun);
-            b += n;
-        }
-    }
-    return bits;
-}
-
-int rd_scalefactors(CoderInfo *c)
-{
-    int b, last, pns, is = 0, first = 1, bits = 0;
-    c->global_gain = 0;
-    for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
-        c->global_gain = c->sf[b]; break;
-    }
-    if (c->global_gain < 0 || c->global_gain > 255) return RD_INF;
-    last = c->global_gain; pns = last-SF_PNS_OFFSET;
-    for (b = 0; b < c->bandcnt; b++) {
-        int book = c->book[b], val = c->sf[b], diff;
-        if (!book) continue;
-        if (book == HCB_PNS) {
-            diff = val-pns; pns = val;
-            if (first) {
-                if (diff < -256 || diff > 255) return RD_INF;
-                first = 0; bits += 9; continue;
-            }
-        } else if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
-            diff = val-is; is = val;
-        } else {
-            if (val < 0 || val > 255) return RD_INF;
-            diff = val-last; last = val;
-        }
-        if (diff < -60 || diff > 60) return RD_INF;
-        bits += book12[SF_DELTA+diff].len;
-    }
-    return bits;
-}
-
-int rd_select_books(CoderInfo *c, int costs[][RD_BOOKS])
-{
-    int g, total = 0, rb = c->block_type == ONLY_SHORT_WINDOW ? 3 : 5;
-    int maxrun = (1 << rb)-1;
-    for (g = 0; g < c->groups.n; g++) {
-        int dp[NSFB_LONG+1], prev[NSFB_LONG+1], book[NSFB_LONG+1];
-        int end, k, start, base = g*c->sfbn;
-        dp[0] = 0;
-        for (end = 1; end <= c->sfbn; end++) {
-            dp[end] = RD_INF;
-            for (k = 0; k < RD_BOOKS; k++) {
-                int sum = 0;
-                for (start = end-1; start >= 0; start--) {
-                    int cost = costs[base+start][k], value;
-                    if (cost >= RD_INF) break;
-                    sum += cost;
-                    value = dp[start]+sum+4+rb*(1+(end-start)/maxrun);
-                    if (value < dp[end]) {
-                        dp[end] = value; prev[end] = start; book[end] = k;
-                    }
-                }
-            }
-        }
-        if (dp[c->sfbn] >= RD_INF) return RD_INF;
-        total += dp[c->sfbn];
-        for (end = c->sfbn; end; end = start) {
-            start = prev[end];
-            for (k = start; k < end; k++) c->book[base+k] = book[end];
-        }
-    }
-    return total;
-}
-
-void rd_emit(CoderInfo *c, const int *qs, const int *offset)
-{
-    int b;
-    c->datacnt = 0;
-    for (b = 0; b < c->bandcnt; b++) if (c->book[b] >= 1 && c->book[b] <= 11) {
-        int sfb = b%c->sfbn;
-        int len = (c->sfb_offset[sfb+1]-c->sfb_offset[sfb])*c->groups.len[b/c->sfbn];
-        huffcode_write(qs+offset[b], len, c->book[b], c);
-    }
-}
 
 /* Encode scalefactor deltas using HCB_DELTA (book12). */
 int writesf(CoderInfo *coder, BitStream *stream)

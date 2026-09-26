@@ -94,18 +94,18 @@ static inline int clamp_sf_diff(int diff)
 /* Forward declaration for CoderInfo */
 struct CoderInfo;
 
-void huffbook(struct CoderInfo *coder, const int *qs);
+void huffbook(struct CoderInfo *coder, const int *qs, const int *offset);
 int writebooks(struct CoderInfo *coder, BitStream *stream);
 int writesf(struct CoderInfo *coder, BitStream *bitStream);
 
 #define RD_BOOKS 16
 #define RD_INF 1000000000
 
+#ifndef RD_ROUND_WINDOW
+#define RD_ROUND_WINDOW 0.25f
+#endif
+
 void rd_band_costs(const int *qs, int len, int costs[RD_BOOKS]);
 int rd_tuple_bits(const int *q, int b);
-int rd_sections(const struct CoderInfo *c);
-int rd_scalefactors(struct CoderInfo *c);
-int rd_select_books(struct CoderInfo *c, int costs[][RD_BOOKS]);
-void rd_emit(struct CoderInfo *c, const int *qs, const int *offset);
 
 #endif /* HUFF2_H */

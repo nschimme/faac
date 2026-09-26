@@ -21,6 +21,7 @@
 #include <string.h>
 #include "quantize.h"
 #include "huff2.h"
+#include "huffdata.h"
 #include "cpu_compute.h"
 #include "stats.h"
 #include "util.h"
@@ -256,6 +257,7 @@ typedef struct {
     float lambda;                         /* Base rate-distortion tradeoff weight */
     float lambda_band[MAX_SCFAC_BANDS];   /* Per-band tonality-scaled lambda */
     float xr[FRAME_LEN];                  /* Target MDCT spectral coefficients */
+    float xr_pow[FRAME_LEN];              /* Precalculated |xr|^0.75 for fast quantization */
     float weight[MAX_SCFAC_BANDS];        /* Perceptual masking distortion weights */
     int bias[MAX_SCFAC_BANDS];            /* Per-band initial scalefactor bias */
     int offset[MAX_SCFAC_BANDS];          /* Per-band spectral coefficient offset */
@@ -270,13 +272,17 @@ typedef struct {
 static void rd_reference(RDContext *p, const CoderInfo *c, const float *xr,
                          const BandEnergy *energy, const float *target, int g)
 {
-    int sb, win, offset = g ? p->offset[g * c->sfbn - 1] + p->length[g * c->sfbn - 1] : 0;
+    int sb, win, k, offset = g ? p->offset[g * c->sfbn - 1] + p->length[g * c->sfbn - 1] : 0;
     for (sb = 0; sb < c->sfbn; sb++) {
         int band = g * c->sfbn + sb, lo = c->sfb_offset[sb], width = c->sfb_offset[sb + 1] - lo;
         int len = width * c->groups.len[g];
         p->offset[band] = offset; p->length[band] = len; p->bias[band] = c->sf[band];
         for (win = 0; win < c->groups.len[g]; win++)
             memcpy(p->xr + offset + win * width, xr + win * BLOCK_LEN_SHORT + lo, width * sizeof(float));
+        for (k = 0; k < len; k++) {
+            float val = fabsf(p->xr[offset + k]);
+            p->xr_pow[offset + k] = sqrtf(val * sqrtf(val));
+        }
         p->weight[band] = energy[sb].sum > 0.0f ? target[sb] * target[sb] * (float)len / energy[sb].sum : 0.0f;
 
         /* Tonal-aware per-band lambda scaling: preserve bits on tonal harmonics, prune in noise bands */
@@ -299,55 +305,93 @@ static inline float rd_error(float x, int q, float inverse_gain, float weight)
     return error * error * weight;
 }
 
-/* Total weighted distortion for a scale factor band */
-static float rd_distortion(const RDContext *p, int b, const int *qs, int sf)
+static int quantize_rd(const float * __restrict xr, const float * __restrict xr_pow,
+                       int * __restrict xi, uint8_t * __restrict amb,
+                       float errors[][2], int n4, float sfacfix, float inverse_gain, float weight)
 {
-    float d = 0.0f, inverse_gain = 1.0f / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
-    int k;
-    for (k = 0; k < p->length[b]; k++)
-        d += rd_error(p->xr[p->offset[b] + k], qs[k], inverse_gain, p->weight[b]);
-    return d;
+    int i, maxq = 0;
+    float gain_pow = sqrtf(sfacfix * sqrtf(sfacfix));
+    for (i = 0; i < 4 * n4; i++)
+    {
+        float val = xr[i];
+        float tmp = xr_pow[i] * gain_pow;
+        int q, m;
+        q = (int)(tmp + MAGIC_NUMBER);
+        m = -(val < 0.0f);
+        if (q > maxq) maxq = q;
+        q = (q ^ m) - m;
+        xi[i] = q;
+
+        float e0 = rd_error(val, q, inverse_gain, weight);
+        errors[i][0] = e0;
+
+        if (q != 0) {
+            float frac = tmp - floorf(tmp);
+            if (fabsf(frac - 0.5f) < RD_ROUND_WINDOW) {
+                amb[i] = 1;
+                int q1 = q - (q > 0) + (q < 0);
+                errors[i][1] = rd_error(val, q1, inverse_gain, weight);
+            } else {
+                amb[i] = 0;
+                errors[i][1] = e0;
+            }
+        } else {
+            amb[i] = 0;
+            errors[i][1] = e0;
+        }
+    }
+    return maxq;
+}
+
+static inline int min_book_for_maxq(int maxq) {
+    if (!maxq) return 0;
+    if (maxq <= LAV_1) return HCB_1;
+    if (maxq <= LAV_2) return HCB_3;
+    if (maxq <= LAV_4) return HCB_5;
+    if (maxq <= LAV_7) return HCB_7;
+    if (maxq <= LAV_12) return HCB_9;
+    return HCB_ESC;
 }
 
 /* Evaluate tuple quantization candidate choices for a scale factor band */
-static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
-                           int book, int *out, int *bits)
+static float rd_candidate(const RDContext *p, int b, const int *base, const uint8_t *amb,
+                           float errors[][2], int book, float max_d,
+                           int *out, int *bits)
 {
     int k, dim = book <= 4 ? 4 : 2, len = p->length[b];
-    float distortion = 0.0f, inverse_gain = 1.0f / sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+    float distortion = 0.0f, min_d_total = 0.0f;
     *bits = 0;
     if (!book) {
         for (k = 0; k < len; k++) {
             if (abs(base[k]) > 1) return INFINITY;
             out[k] = 0;
-            distortion += rd_error(p->xr[p->offset[b] + k], 0, inverse_gain, p->weight[b]);
+            distortion += errors[k][0];
+            if (distortion > max_d) return INFINITY;
         }
         return distortion;
     }
     for (k = 0; k < len; k += dim) {
-        float errors[4][2], best = INFINITY, best_d = 0.0f;
-        int values[4][2], m, j, best_bits = 0, best_mask = 0, active_mask = 0;
+        float best = INFINITY, best_d = 0.0f, min_tuple_d = 0.0f;
+        int m, j, best_bits = 0, best_mask = 0, amb_mask = 0;
         for (j = 0; j < dim; j++) {
-            int val = base[k + j];
-            values[j][0] = val;
-            if (val != 0) {
-                values[j][1] = val - (val > 0) + (val < 0);
-                active_mask |= (1 << j);
+            if (amb[k + j]) {
+                amb_mask |= (1 << j);
+                min_tuple_d += (errors[k + j][0] < errors[k + j][1] ? errors[k + j][0] : errors[k + j][1]);
             } else {
-                values[j][1] = 0;
+                min_tuple_d += errors[k + j][0];
             }
-            errors[j][0] = rd_error(p->xr[p->offset[b] + k + j], values[j][0], inverse_gain, p->weight[b]);
-            errors[j][1] = (val != 0) ? rd_error(p->xr[p->offset[b] + k + j], values[j][1], inverse_gain, p->weight[b]) : errors[j][0];
         }
-        /* Branchless active_mask pruning skips redundant tuple permutations on zero lines */
+        min_d_total += min_tuple_d;
+        if (min_d_total > max_d) return INFINITY;
+
         for (m = 0; m < (1 << dim); m++) {
-            if (m & ~active_mask) continue;
+            if (m & ~amb_mask) continue;
             int q[4], bits_t;
             float d = 0.0f, value;
             for (j = 0; j < dim; j++) {
                 int bit = (m >> j) & 1;
-                q[j] = values[j][bit];
-                d += errors[j][bit];
+                q[j] = (bit ? base[k + j] - (base[k + j] > 0) + (base[k + j] < 0) : base[k + j]);
+                d += errors[k + j][bit];
             }
             bits_t = rd_tuple_bits(q, book);
             if (bits_t >= RD_INF) continue;
@@ -355,25 +399,248 @@ static float rd_candidate(const RDContext *p, int b, const int *base, int sf,
             if (value < best) { best = value; best_d = d; best_bits = bits_t; best_mask = m; }
         }
         if (!isfinite(best)) return INFINITY;
-        for (j = 0; j < dim; j++) out[k + j] = values[j][(best_mask >> j) & 1];
+        for (j = 0; j < dim; j++) {
+            int bit = (best_mask >> j) & 1;
+            out[k + j] = (bit ? base[k + j] - (base[k + j] > 0) + (base[k + j] < 0) : base[k + j]);
+        }
         distortion += best_d; *bits += best_bits;
     }
     return distortion;
 }
 
-/* Sum total spectral bits across all scale factor bands */
-static int rd_spectral(const CoderInfo *c, const RDContext *p)
-{
-    int b, bits = 0;
-    for (b = 0; b < c->bandcnt; b++) bits += p->costs[b][c->book[b]];
+static inline int calc_group_section_bits(const CoderInfo *c, int g) {
+    int rb = (c->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int b = g * c->sfbn, end = b + c->sfbn;
+    int bits = 0;
+    while (b < end) {
+        int book = c->book[b];
+        int n = 1;
+        while (b + n < end && c->book[b + n] == book) n++;
+        bits += 4 + rb * (1 + n / maxrun);
+        b += n;
+    }
     return bits;
 }
 
+static inline int calc_group_sec_bits_delta(const CoderInfo *c, int g, int target_b, int cand_book) {
+    int old_book = c->book[target_b];
+    if (cand_book == old_book) return 0;
+
+    int rb = (c->block_type == ONLY_SHORT_WINDOW) ? 3 : 5;
+    int maxrun = (1 << rb) - 1;
+    int start = g * c->sfbn, end = start + c->sfbn;
+
+    int L = 0;
+    while (target_b - 1 - L >= start && c->book[target_b - 1 - L] == old_book) L++;
+    int R = 0;
+    while (target_b + 1 + R < end && c->book[target_b + 1 + R] == old_book) R++;
+
+    int L_cand = 0;
+    if (L == 0) {
+        while (target_b - 1 - L_cand >= start && c->book[target_b - 1 - L_cand] == cand_book) L_cand++;
+    }
+
+    int R_cand = 0;
+    if (R == 0) {
+        while (target_b + 1 + R_cand < end && c->book[target_b + 1 + R_cand] == cand_book) R_cand++;
+    }
+
+    int old_cost = (4 + rb * (1 + (L + 1 + R) / maxrun))
+                 + (L_cand > 0 ? 4 + rb * (1 + L_cand / maxrun) : 0)
+                 + (R_cand > 0 ? 4 + rb * (1 + R_cand / maxrun) : 0);
+
+    int new_cost = (L > 0 ? 4 + rb * (1 + L / maxrun) : 0)
+                 + (R > 0 ? 4 + rb * (1 + R / maxrun) : 0)
+                 + (4 + rb * (1 + (L_cand + 1 + R_cand) / maxrun));
+
+    return new_cost - old_cost;
+}
+
+static inline int calc_frame_section_bits(const CoderInfo *c) {
+    int g, total = 0;
+    for (g = 0; g < c->groups.n; g++)
+        total += calc_group_section_bits(c, g);
+    return total;
+}
+
+static int calc_frame_scalefactor_bits(CoderInfo *c) {
+    int b, bits = 0;
+    int first_reg = -1;
+    for (b = 0; b < c->bandcnt; b++) {
+        if (c->book[b] >= HCB_1 && c->book[b] <= HCB_ESC) {
+            first_reg = b;
+            break;
+        }
+    }
+    if (first_reg < 0) return 0;
+    int global_gain = c->sf[first_reg];
+    if (global_gain < 0 || global_gain > 255) return RD_INF;
+    c->global_gain = global_gain;
+
+    int lastsf = global_gain;
+    int lastis = 0;
+    int lastpns = global_gain - SF_PNS_OFFSET;
+    int is_first_pns = 1;
+
+    for (b = 0; b < c->bandcnt; b++) {
+        int book = c->book[b];
+        int val = c->sf[b];
+        int diff;
+        if (!book || book == HCB_NONE) continue;
+        if (book == HCB_INTENSITY || book == HCB_INTENSITY2) {
+            diff = clamp_sf_diff(val - lastis);
+            lastis += diff;
+            bits += book12[SF_DELTA + diff].len;
+        } else if (book == HCB_PNS) {
+            diff = val - lastpns;
+            if (is_first_pns) {
+                if (diff < -256 || diff > 255) return RD_INF;
+                lastpns = val;
+                is_first_pns = 0;
+                bits += 9;
+            } else {
+                diff = clamp_sf_diff(diff);
+                lastpns += diff;
+                bits += book12[SF_DELTA + diff].len;
+            }
+        } else {
+            if (val < 0 || val > 255) return RD_INF;
+            diff = clamp_sf_diff(val - lastsf);
+            lastsf += diff;
+            bits += book12[SF_DELTA + diff].len;
+        }
+    }
+    return bits;
+}
+
+static int get_cand_sf_bits(CoderInfo *c, int b, int p_reg, int n_reg, int oldsf, int sf, int cand_book, int running_sf_bits) {
+    if (p_reg != -1) {
+        int odiff1 = oldsf - c->sf[p_reg];
+        int odiff2 = (n_reg != -1) ? c->sf[n_reg] - oldsf : 0;
+        if (cand_book != 0) {
+            int ndiff1 = sf - c->sf[p_reg];
+            int ndiff2 = (n_reg != -1) ? c->sf[n_reg] - sf : 0;
+            if (ndiff1 < -60 || ndiff1 > 60 || (n_reg != -1 && (ndiff2 < -60 || ndiff2 > 60)))
+                return RD_INF;
+            int delta_sf = book12[SF_DELTA + ndiff1].len - book12[SF_DELTA + odiff1].len
+                         + (n_reg != -1 ? book12[SF_DELTA + ndiff2].len - book12[SF_DELTA + odiff2].len : 0);
+            return running_sf_bits + delta_sf;
+        } else {
+            int ndiff = (n_reg != -1) ? c->sf[n_reg] - c->sf[p_reg] : 0;
+            if (n_reg != -1 && (ndiff < -60 || ndiff > 60))
+                return RD_INF;
+            int delta_sf = (n_reg != -1 ? book12[SF_DELTA + ndiff].len : 0)
+                         - book12[SF_DELTA + odiff1].len
+                         - (n_reg != -1 ? book12[SF_DELTA + odiff2].len : 0);
+            return running_sf_bits + delta_sf;
+        }
+    }
+    int save_sf = c->sf[b], save_book = c->book[b];
+    c->sf[b] = sf; c->book[b] = cand_book;
+    int bits = calc_frame_scalefactor_bits(c);
+    c->sf[b] = save_sf; c->book[b] = save_book;
+    return bits;
+}
+
+static void rd_evaluate_band(RDContext *p, CoderInfo *c, int b, int running_sec_bits,
+                             int running_sf_bits, int rest_spec, int p_reg, int n_reg,
+                             int *out_bestsf, int *out_bestbook, int *out_bestq)
+{
+    int oldbook = c->book[b], oldsf = c->sf[b];
+    int bestbook = oldbook, bestsf = oldsf;
+    int len = p->length[b], group = b / c->sfbn;
+    int base[FRAME_LEN], candidate[FRAME_LEN];
+    uint8_t amb[FRAME_LEN];
+    float errors[FRAME_LEN][2];
+
+    float best = INFINITY;
+    memcpy(out_bestq, p->qs + p->offset[b], len * sizeof(int));
+
+    static const int deltas[3] = {0, -1, 1};
+    int d_idx, k;
+    float baseline_d = 0.0f;
+    int baseline_bits = 0;
+
+    for (d_idx = 0; d_idx < 3; d_idx++) {
+        int delta = deltas[d_idx];
+        int sf = p->original_sf[b] + delta;
+        if (sf < 0 || sf > 255) continue;
+
+        if (delta == -1 && 0.11f * baseline_d < p->lambda_band[b] * 1.0f) continue;
+        if (delta == 1 && 0.12f * baseline_d > p->lambda_band[b] * (float)(baseline_bits + 4)) continue;
+
+        int cand_sf_bits_nz = get_cand_sf_bits(c, b, p_reg, n_reg, oldsf, sf, 1, running_sf_bits);
+
+        float gain = sfac_to_gain(SF_OFFSET + p->bias[b] - sf);
+        float inv_gain = 1.0f / gain;
+        int maxq = quantize_rd(p->xr + p->offset[b], p->xr_pow + p->offset[b], base, amb, errors, len / 4, gain, inv_gain, p->weight[b]);
+
+        if (maxq == 0) {
+            int cand_sec_bits = running_sec_bits + calc_group_sec_bits_delta(c, group, b, 0);
+            int cand_sf_bits = get_cand_sf_bits(c, b, p_reg, n_reg, oldsf, sf, 0, running_sf_bits);
+
+            if (cand_sf_bits < RD_INF) {
+                float d0 = 0.0f;
+                for (k = 0; k < len; k++) d0 += errors[k][0];
+                float value = d0 + p->lambda_band[b] * (float)(rest_spec + cand_sec_bits + cand_sf_bits);
+                if (value < best - 1e-6f * (1.0f + fabsf(best))) {
+                    best = value; bestsf = sf; bestbook = 0;
+                    memset(out_bestq, 0, len * sizeof(int));
+                }
+            }
+            continue;
+        }
+
+        if (cand_sf_bits_nz >= RD_INF) continue;
+
+        int min_book = (oldbook > 1) ? oldbook - 1 : 1;
+        int max_book = (oldbook < HCB_ESC) ? oldbook + 1 : HCB_ESC;
+        int req_book = min_book_for_maxq(maxq);
+        int start_book = (min_book > req_book) ? min_book : req_book;
+        if (start_book > max_book) continue;
+
+        int book;
+        for (book = start_book; book <= max_book; book++) {
+            int bits = 0, actual_book = book;
+            int cand_sec_bits = running_sec_bits + calc_group_sec_bits_delta(c, group, b, book);
+
+            float max_d = best - p->lambda_band[b] * (float)(rest_spec + cand_sec_bits + cand_sf_bits_nz);
+            if (max_d < 0.0f) continue;
+
+            float d = rd_candidate(p, b, base, amb, errors, book, max_d, candidate, &bits);
+            if (!isfinite(d)) continue;
+
+            int nonzero = 0;
+            for (k = 0; k < len; k++) nonzero |= candidate[k];
+            if (!nonzero) { actual_book = 0; bits = 0; }
+
+            float value = d + p->lambda_band[b] * (float)(rest_spec + bits + cand_sec_bits + cand_sf_bits_nz);
+            if (value < best - 1e-6f * (1.0f + fabsf(best))) {
+                best = value; bestsf = sf; bestbook = actual_book;
+                if (!nonzero)
+                    memset(out_bestq, 0, len * sizeof(int));
+                else
+                    memcpy(out_bestq, candidate, len * sizeof(int));
+            }
+            if (delta == 0) {
+                baseline_d = d;
+                baseline_bits = bits;
+            }
+        }
+    }
+
+    *out_bestsf = bestsf;
+    *out_bestbook = bestbook;
+}
+
 /* Iterative Joint Rate-Distortion Optimization across scalefactors and codebooks */
-static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
+void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
 {
     int b, k, off = 0, pass, changed;
-    int base[FRAME_LEN], candidate[FRAME_LEN], bestq[FRAME_LEN];
+    int bestq[FRAME_LEN];
+    int prev_reg[MAX_SCFAC_BANDS], next_reg[MAX_SCFAC_BANDS];
+
     for (b = 0; b < c->bandcnt; b++) {
         int book = c->book[b];
         p->original_sf[b] = c->sf[b];
@@ -387,50 +654,56 @@ static void rd_optimize(RDContext *p, CoderInfo *c, const int *packed)
             p->costs[b][book] = 0;
         }
     }
-    rd_select_books(c, p->costs);
+
+    int running_spec_bits = 0;
+    for (b = 0; b < c->bandcnt; b++) {
+        int book = c->book[b];
+        if (p->regular[b])
+            running_spec_bits += p->costs[b][book];
+    }
+    int running_sec_bits = calc_frame_section_bits(c);
+    int running_sf_bits = calc_frame_scalefactor_bits(c);
+
     for (pass = 0; pass < 1; pass++) {
         changed = 0;
-        for (b = 0; b < c->bandcnt; b++) if (p->regular[b]) {
-            int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
-            int len = p->length[b], rest = rd_spectral(c, p) - p->costs[b][oldbook];
-            float best = rd_distortion(p, b, p->qs + p->offset[b], oldsf)
-                + p->lambda_band[b] * (float)(rest + p->costs[b][oldbook] + rd_sections(c) + rd_scalefactors(c));
-            int delta, book;
-            memcpy(bestq, p->qs + p->offset[b], len * sizeof(int));
-            for (delta = -1; delta <= 1; delta++) {
-                int sf = p->original_sf[b] + delta;
-                if (sf < 0 || sf > 255) continue;
-                qfunc(p->xr + p->offset[b], base, len / 4, sfac_to_gain(SF_OFFSET + p->bias[b] - sf));
-                int min_book = (oldbook > 1) ? oldbook - 1 : 0;
-                int max_book = (oldbook < HCB_ESC) ? oldbook + 1 : HCB_ESC;
 
-                for (book = min_book; book <= max_book; book++) {
-                    int bits, sf_bits, actual_book = book, nonzero = 0;
-                    float d = rd_candidate(p, b, base, sf, book, candidate, &bits), value;
-                    if (!isfinite(d)) continue;
-                    for (k = 0; k < len; k++) nonzero |= candidate[k];
-                    if (!nonzero) { actual_book = 0; bits = 0; }
-                    c->book[b] = actual_book; c->sf[b] = sf;
-                    sf_bits = rd_scalefactors(c);
-                    if (sf_bits >= RD_INF) continue;
-                    value = d + p->lambda_band[b] * (float)(rest + bits + rd_sections(c) + sf_bits);
-                    if (value < best - 1e-6f * (1.0f + fabsf(best))) {
-                        best = value; bestsf = sf; bestbook = actual_book;
-                        memcpy(bestq, candidate, len * sizeof(int));
-                    }
-                }
-            }
+        int last_r = -1;
+        for (b = 0; b < c->bandcnt; b++) {
+            prev_reg[b] = last_r;
+            if (c->book[b] >= HCB_1 && c->book[b] <= HCB_ESC)
+                last_r = b;
+        }
+        last_r = -1;
+        for (b = c->bandcnt - 1; b >= 0; b--) {
+            next_reg[b] = last_r;
+            if (c->book[b] >= HCB_1 && c->book[b] <= HCB_ESC)
+                last_r = b;
+        }
+
+        for (b = 0; b < c->bandcnt; b++) {
+            if (!p->regular[b]) continue;
+
+            int oldbook = c->book[b], oldsf = c->sf[b], bestbook = oldbook, bestsf = oldsf;
+            int len = p->length[b];
+            int rest_spec = running_spec_bits - p->costs[b][oldbook];
+
+            rd_evaluate_band(p, c, b, running_sec_bits, running_sf_bits, rest_spec,
+                             prev_reg[b], next_reg[b], &bestsf, &bestbook, bestq);
+
             c->book[b] = bestbook; c->sf[b] = bestsf;
             if (bestbook != oldbook || bestsf != oldsf || memcmp(bestq, p->qs + p->offset[b], len * sizeof(int))) {
                 memcpy(p->qs + p->offset[b], bestq, len * sizeof(int));
                 rd_band_costs(bestq, len, p->costs[b]);
-                rd_select_books(c, p->costs);
+                running_spec_bits = running_spec_bits - p->costs[b][oldbook] + p->costs[b][bestbook];
+                running_sec_bits = calc_frame_section_bits(c);
+                running_sf_bits = calc_frame_scalefactor_bits(c);
                 changed = 1;
             }
         }
         if (!changed) break;
     }
-    rd_emit(c, p->qs, p->offset);
+
+    huffbook(c, p->qs, p->offset);
 }
 
 // per-band codebook assignment: zero / PNS / regular+Huffman
@@ -657,7 +930,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
         rd_optimize(rd, coder, qs);
         FreeMemory(rd);
     } else {
-        huffbook(coder, qs);
+        huffbook(coder, qs, NULL);
     }
 
     // global_gain must come from a regular band: it's an 8-bit bitstream field,
