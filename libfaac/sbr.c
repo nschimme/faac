@@ -202,15 +202,15 @@ void SbrEnd(SBRInfo *sbr)
 static void sbr_frame_silence(SbrFrameData *fd)
 {
     SetMemory(fd, 0, sizeof(*fd));
-    fd->numEnvelopes = 1;
-    fd->eff_amp_res  = 0;
-    fd->frameClass   = SBR_FRAME_CLASS_FIXFIX;
-    fd->tEnv[0]      = 0;
-    fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
-    fd->bsPointer    = 0;
-    fd->freqRes      = 1;
-    fd->freqResEnv[0] = 1;
     for (int ch = 0; ch < MAX_CHANNELS; ch++) {
+        SbrGrid *g = &fd->grid[ch];
+        g->numEnvelopes = 1;
+        g->eff_amp_res = 0;
+        g->frameClass = SBR_FRAME_CLASS_FIXFIX;
+        g->tEnv[0] = 0;
+        g->tEnv[1] = SBR_NUM_TIME_SLOTS;
+        g->bsPointer = 0;
+        g->freqResEnv[0] = 1;
         fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].noiseData[1][0] = SBR_NOISE_LEVEL_DEFAULT;
         fd->ch[ch].invfMode[0] = SBR_INVF_MODE;
@@ -444,46 +444,48 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
 }
 
 
-static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd)
+static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd, int nch)
 {
-    fd->numEnvelopes = sa->numEnvelopes;
-    fd->frameClass   = sa->frameClass;
-    fd->bsPointer    = sa->bsPointer;
-    for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
-    fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
-    fd->freqRes = sbr->bs_freq_res;
-    for (int i=0;i<fd->numEnvelopes;i++) fd->freqResEnv[i] = sbr->bs_freq_res;
+    for (int ch = 0; ch < nch; ch++) {
+        const SbrAnalysisGrid *a = &sa->grid[ch];
+        SbrGrid *g = &fd->grid[ch];
+        g->numEnvelopes = a->numEnvelopes;
+        g->frameClass = a->frameClass;
+        g->bsPointer = a->bsPointer;
+        for (int i = 0; i <= a->numEnvelopes; i++) g->tEnv[i] = a->tEnv[i];
+        g->eff_amp_res = (g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+        for (int i = 0; i < g->numEnvelopes; i++) g->freqResEnv[i] = a->freqResEnv[i];
+    }
 }
 
 static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
 {
-    int n_env = fd->numEnvelopes;
-    /* Must match write_sbr_envelope's table, or the decoder desyncs. */
-    int nb = sbr_env_bands(sbr, fd);
-    const int *edges = sbr_env_edges(sbr, fd);
-
     for (int ch = 0; ch < nch; ch++) {
         if (isLfe[ch]) continue;
         /* Read-only alias; the quantizer never writes back through it. */
         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
-        int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
+        const SbrGrid *g = &fd->grid[ch];
+        int n_env = g->numEnvelopes;
+        int dlav = g->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
         for (int e = 0; e < n_env; e++) {
+            int nb = sbr_env_bands_at(sbr, g, e);
+            const int *edges = g->freqResEnv[e] ? sbr->bandEdges : sbr->bandEdgesLow;
             int prevLevel = -1;
             for (int b = 0; b < nb; b++) {
                 int k_lo = edges[b], k_hi = edges[b+1];
                 /* Weight energy by the number of QMF slots per envelope to
                  * maintain normalized power levels across variable borders. */
-                int e_slots = sa->envSampled[e];
+                int e_slots = sa->grid[ch].envSampled[e];
                 if (e_slots < 1) e_slots = 1;
                 float E = 0;
                 for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
                 E /= (float)(e_slots * (k_hi - k_lo));
-                float factor = fd->eff_amp_res ? 1.0f : 2.0f;
+                float factor = g->eff_amp_res ? 1.0f : 2.0f;
                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
                 if (prevLevel < 0) {
-                    raw_level = clamp_int(raw_level, 0, fd->eff_amp_res ? 63 : 127);
+                    raw_level = clamp_int(raw_level, 0, g->eff_amp_res ? 63 : 127);
                     fd->ch[ch].envData[e][b] = raw_level;
                     prevLevel = raw_level;
                 } else {
@@ -502,7 +504,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
         if (!isLfe[ch])
             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
 
-    sbr_adopt_envelope_grid(sbr, sa, fd);
+    sbr_adopt_envelope_grid(sbr, sa, fd, numChannels);
     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
     for (int ch=0; ch<numChannels; ch++) {
         fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
@@ -513,7 +515,7 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
 
 #ifdef FAAC_STATS
     g_faacStats.sbrFrames++;
-    if (fd->frameClass != SBR_FRAME_CLASS_FIXFIX) {
+    if (fd->grid[0].frameClass != SBR_FRAME_CLASS_FIXFIX) {
         g_faacStats.sbrTransientFrames++;
     }
     for (int ch = 0; ch < numChannels; ch++) {

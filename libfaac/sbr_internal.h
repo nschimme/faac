@@ -33,14 +33,17 @@ typedef struct SBRChannel {
  * Sole home for these values: SbrEncode quantizes into a SBRContext.frameFIFO
  * slot and SbrWrite reads an older one, so the delay costs a ring index. Caching
  * a copy anywhere else reintroduces the skew this ring exists to remove. */
-typedef struct SbrFrameData {
+typedef struct SbrGrid {
     int numEnvelopes;
     int eff_amp_res;
     SbrFrameClass frameClass;
     int tEnv[SBR_INJECT_MAX_ENVELOPES + 1];
     int bsPointer;
-    int freqRes; /* compatibility default; freqResEnv is authoritative */
     int freqResEnv[SBR_INJECT_MAX_ENVELOPES];
+} SbrGrid;
+
+typedef struct SbrFrameData {
+    SbrGrid grid[MAX_CHANNELS];
     /* The noise floor and inverse-filter mode are stream constants
      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
     struct {
@@ -114,19 +117,14 @@ struct SBRContext {
 
 /* The envelope band table this frame codes over. The quantizer and the writer
  * must agree on it, and the decoder picks the same one from bs_freq_res. */
-static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
+static inline int sbr_env_bands(const SBRInfo *sbr, const SbrGrid *grid)
 {
-    return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
+    return grid->freqResEnv[0] ? sbr->numBands : sbr->numBandsLow;
 }
 
-static inline int sbr_env_bands_at(const SBRInfo *sbr, const SbrFrameData *fd, int e)
+static inline int sbr_env_bands_at(const SBRInfo *sbr, const SbrGrid *grid, int e)
 {
-    return fd->freqResEnv[e] ? sbr->numBands : sbr->numBandsLow;
-}
-
-static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
-{
-    return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
+    return grid->freqResEnv[e] ? sbr->numBands : sbr->numBandsLow;
 }
 
 SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);

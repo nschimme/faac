@@ -37,16 +37,22 @@ typedef struct SignalAnalysisChannel {
     float transientStrength;
 } SignalAnalysisChannel;
 
-typedef struct SignalAnalysis {
-    int numSlots;
-    int sampled;
-
-    /* Frame envelope grid configuration. Synchronized across all channels. */
+typedef struct SbrAnalysisGrid {
     SbrFrameClass frameClass;
     int numEnvelopes;
     int tEnv[SBR_MAX_ENVELOPES + 1];
     int bsPointer;
+    int freqResEnv[SBR_MAX_ENVELOPES];
     int envSampled[SBR_MAX_ENVELOPES];
+} SbrAnalysisGrid;
+
+typedef struct SignalAnalysis {
+    int numSlots;
+    int sampled;
+
+    /* Normal FAAC uses identical grids. The probe preserves FDK's distinct
+       CPE grids so each channel's QMF energy is binned on its own borders. */
+    SbrAnalysisGrid grid[MAX_CHANNELS];
 
     /* Block switching needs a decision for every core channel, so pass 1 runs
        full width. */

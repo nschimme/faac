@@ -86,36 +86,43 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
         int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
-        sa->numEnvelopes = 2;
-        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = innerSbr;
-        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
+        for (int ch = 0; ch < nch; ch++) {
+            SbrAnalysisGrid *g = &sa->grid[ch];
+            g->numEnvelopes = 2;
+            g->frameClass = SBR_FRAME_CLASS_VARFIX;
+            g->tEnv[0] = 0;
+            g->tEnv[1] = innerSbr;
+            g->tEnv[2] = SBR_NUM_TIME_SLOTS;
+            g->bsPointer = 0;
+        }
     } else {
         int ne = sbr ? sbr->numEnvFixFix : 1;
-        sa->numEnvelopes = ne;
-        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
-        for (int e = 0; e <= ne; e++)
-            sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
-        sa->bsPointer = 0;
+        for (int ch = 0; ch < nch; ch++) {
+            SbrAnalysisGrid *g = &sa->grid[ch];
+            g->numEnvelopes = ne;
+            g->frameClass = SBR_FRAME_CLASS_FIXFIX;
+            for (int e = 0; e <= ne; e++) g->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
+            g->bsPointer = 0;
+        }
     }
 
-    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
-    int envStart[SBR_MAX_ENVELOPES + 1];
-    for (int e = 0; e <= sa->numEnvelopes; e++)
-        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
-
-    /* Count slots per envelope for power normalization. */
-    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
-    for (int slot = 0; slot < num_slots; slot++) {
+    /* Normal FAAC uses the stream's high/low choice for every envelope.
+       SbrInjectGetGrid has already populated the per-envelope values. */
+    for (int ch = 0; ch < nch; ch++) {
+        SbrAnalysisGrid *g = &sa->grid[ch];
+        if (!sbr || !sbr->inject)
+            for (int e = 0; e < g->numEnvelopes; e++) g->freqResEnv[e] = sbr ? sbr->bs_freq_res : 1;
+        for (int e = 0; e < g->numEnvelopes; e++) g->envSampled[e] = 0;
+        for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+            if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
+            int envStart[SBR_MAX_ENVELOPES + 1];
+            for (int e = 0; e <= g->numEnvelopes; e++) envStart[e] = g->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+            g->envSampled[sbr_env_of_slot(g->numEnvelopes, envStart, slot)]++;
+        }
+        for (int e = 0; e < g->numEnvelopes; e++) if (g->envSampled[e] < 1) g->envSampled[e] = 1;
     }
-    for (int e = 0; e < sa->numEnvelopes; e++)
-        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
 
     /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
      * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
@@ -134,7 +141,10 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
                 if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
                 {
-                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
+                    SbrAnalysisGrid *g = &sa->grid[ch];
+                    int envStart[SBR_MAX_ENVELOPES + 1];
+                    for (int i = 0; i <= g->numEnvelopes; i++) envStart[i] = g->tEnv[i] * num_slots / SBR_NUM_TIME_SLOTS;
+                    int e = sbr_env_of_slot(g->numEnvelopes, envStart, slot);
                     SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->bandE[ch][e], kx, kEnd);
                 }
             }
