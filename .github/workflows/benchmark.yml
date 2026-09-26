@@ -246,7 +246,9 @@ jobs:
           if pair_data and "gates" in pair_data:
               for g in pair_data["gates"]:
                   if g.get("name") == "footprint":
-                      print(f"::notice title=Code Footprint Status ({g.get(\"status\", \"pass\")})::{g.get(\"detail\", \"\")}")
+                      st = g.get("status", "pass")
+                      dt = g.get("detail", "")
+                      print(f"::notice title=Code Footprint Status ({st})::{dt}")
           '
           python3 bench/compare_results.py results --gates footprint
 
