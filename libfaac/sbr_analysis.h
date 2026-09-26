@@ -32,28 +32,30 @@ extern "C" {
 
 struct SBRInfo;
 
+typedef struct {
+    SbrFrameClass frameClass;
+    int numEnvelopes;
+    int tEnv[SBR_MAX_ENVELOPES + 1];
+    int bsPointer;
+    int freqRes[SBR_MAX_ENVELOPES];
+} SbrGrid;
+
 typedef struct SignalAnalysisChannel {
     int       transientSlot;
     float transientStrength;
+    SbrGrid grid;
+    int envSampled[SBR_MAX_ENVELOPES];
 } SignalAnalysisChannel;
 
 typedef struct SignalAnalysis {
     int numSlots;
     int sampled;
 
-    /* Frame envelope grid configuration. Synchronized across all channels. */
-    SbrFrameClass frameClass;
-    int numEnvelopes;
-    int tEnv[SBR_MAX_ENVELOPES + 1];
-    int bsPointer;
-    int envSampled[SBR_MAX_ENVELOPES];
-
     /* Block switching needs a decision for every core channel, so pass 1 runs
        full width. */
     SignalAnalysisChannel ch[MAX_CHANNELS];
 
-    /* Per-envelope QMF band energy, binned over the grid above; only the first
-       numEnvelopes rows are written. */
+    /* Per-envelope QMF band energy, binned over each channel's grid. */
     float bandE[MAX_CHANNELS][SBR_MAX_ENVELOPES][SBR_QMF_BANDS_64];
 } SignalAnalysis;
 

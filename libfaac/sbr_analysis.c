@@ -84,57 +84,48 @@ void SbrAnalyze(SignalAnalysis *sa, float *fullPtrs[], int nch, const bool *isLf
         int Ts = (num_slots > 0) ? frameSlot * SBR_NUM_TIME_SLOTS / num_slots : 0; /* 0..16 */
         int rel = clamp_int((Ts - 2) / 2, 0, 3);
         int innerSbr = 2 * rel + 2;                  /* {2,4,6,8} */
-        sa->numEnvelopes = 2;
-        sa->frameClass = SBR_FRAME_CLASS_VARFIX;
-        sa->tEnv[0] = 0;
-        sa->tEnv[1] = innerSbr;
-        sa->tEnv[2] = SBR_NUM_TIME_SLOTS;
-        sa->bsPointer = 0;
+        SbrGrid grid = { .frameClass = SBR_FRAME_CLASS_VARFIX, .numEnvelopes = 2,
+                         .tEnv = { 0, innerSbr, SBR_NUM_TIME_SLOTS } };
+        for (int ch = 0; ch < nch; ch++) sa->ch[ch].grid = grid;
     } else {
         int ne = sbr->numEnvFixFix;
-        sa->numEnvelopes = ne;
-        sa->frameClass = SBR_FRAME_CLASS_FIXFIX;
-        for (int e = 0; e <= ne; e++)
-            sa->tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
-        sa->bsPointer = 0;
+        SbrGrid grid = { .frameClass = SBR_FRAME_CLASS_FIXFIX, .numEnvelopes = ne };
+        for (int e = 0; e <= ne; e++) grid.tEnv[e] = e * SBR_NUM_TIME_SLOTS / ne;
+        for (int ch = 0; ch < nch; ch++) sa->ch[ch].grid = grid;
     }
 
-    /* Envelope borders in QMF slots, for binning the per-slot energies below. */
-    int envStart[SBR_MAX_ENVELOPES + 1];
-    for (int e = 0; e <= sa->numEnvelopes; e++)
-        envStart[e] = sa->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
-
-    /* Count slots per envelope for power normalization. */
-    for (int e = 0; e < sa->numEnvelopes; e++) sa->envSampled[e] = 0;
-    for (int slot = 0; slot < num_slots; slot++) {
+    /* Each channel bins against its own grid. They are copies today. */
+    for (int ch = 0; ch < nch; ch++) {
+        SbrGrid *grid = &sa->ch[ch].grid;
+        int envStart[SBR_MAX_ENVELOPES + 1];
+        for (int e = 0; e <= grid->numEnvelopes; e++)
+            envStart[e] = grid->tEnv[e] * num_slots / SBR_NUM_TIME_SLOTS;
+        for (int e = 0; e < grid->numEnvelopes; e++) sa->ch[ch].envSampled[e] = 0;
+        for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-        if (slot % FAAC_SBR_DECIMATION != 0) continue;
+            if (slot % FAAC_SBR_DECIMATION != 0) continue;
 #endif
-        sa->envSampled[sbr_env_of_slot(sa->numEnvelopes, envStart, slot)]++;
-    }
-    for (int e = 0; e < sa->numEnvelopes; e++)
-        if (sa->envSampled[e] < 1) sa->envSampled[e] = 1;
+            sa->ch[ch].envSampled[sbr_env_of_slot(grid->numEnvelopes, envStart, slot)]++;
+        }
+        for (int e = 0; e < grid->numEnvelopes; e++)
+            if (sa->ch[ch].envSampled[e] < 1) sa->ch[ch].envSampled[e] = 1;
 
-    /* Pass 2: subband analysis, accumulating QMF band energy per envelope.
-     * Only [kx, k2) feeds the quantizer, so skip bands below kx. */
-    if (sbr) {
+        /* Pass 2: only [kx, k2) feeds the quantizer. */
+        if (!sbr || isLfe[ch]) continue;
         int kx = sbr->kx;
         int kEnd = sbr->k2;
-        for (int ch = 0; ch < nch; ch++) {
-            if (isLfe[ch]) continue;
-            memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
+        memset(sa->bandE[ch], 0, sizeof(sa->bandE[ch]));
 
-            memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
-            memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[ch], numSamples * sizeof(float));
+        memcpy(workspace, sbr->ch[ch].qmfOvl64, SBR_QMF_HIST_LEN * sizeof(float));
+        memcpy(workspace + SBR_QMF_HIST_LEN, fullPtrs[ch], numSamples * sizeof(float));
 
-            for (int slot = 0; slot < num_slots; slot++) {
+        for (int slot = 0; slot < num_slots; slot++) {
 #if FAAC_SBR_DECIMATION > 1
-                if (slot % FAAC_SBR_DECIMATION == 0)
+            if (slot % FAAC_SBR_DECIMATION == 0)
 #endif
-                {
-                    int e = sbr_env_of_slot(sa->numEnvelopes, envStart, slot);
-                    SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->bandE[ch][e], kx, kEnd);
-                }
+            {
+                int e = sbr_env_of_slot(grid->numEnvelopes, envStart, slot);
+                SbrQmfAnalysis(sbr, workspace + slot * SBR_QMF_BANDS_64, sa->bandE[ch][e], kx, kEnd);
             }
         }
     }
