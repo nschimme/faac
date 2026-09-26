@@ -153,6 +153,11 @@ FAADAPI faad_status faad_decoder_create(const faad_config *cfg,
 /* Destroys the decoder. Only calls free() if created via faad_decoder_create(). */
 FAADAPI void faad_decoder_destroy(faad_decoder *dec);
 
+/* Decoder-side SBR transplant probe.  This is deliberately a small hook for
+ * the bundled frontend rather than a stream-format feature. */
+FAADAPI void faad_decoder_set_sbr_donor(faad_decoder *dec, faad_decoder *donor,
+                                        unsigned fields, bool valid);
+
 
 /* --- Execution & Control --- */
 

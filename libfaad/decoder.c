@@ -207,6 +207,15 @@ FAADAPI void faad_decoder_destroy(faad_decoder *dec)
     }
 }
 
+FAADAPI void faad_decoder_set_sbr_donor(faad_decoder *dec, faad_decoder *donor,
+                                        unsigned fields, bool valid)
+{
+    if (!dec) return;
+    dec->donor = donor;
+    dec->donor_fields = fields;
+    dec->donor_valid = valid && donor && fields != 0;
+}
+
 FAADAPI faad_status faad_decoder_get_info(const faad_decoder *dec, faad_stream_info *out_info)
 {
     if (!dec || !out_info) return FAAD_ERR_INVALID_ARGUMENT;
@@ -245,10 +254,18 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
  *   C frame ch bits win_seq max_sfb groups global_gain | cb:sf:nnz:ms ... / ...
  *       one per ICS; bits is the whole element (both channels of a CPE, and
  *       the second channel of a CPE carries ms_mask_present there instead)
- *   H frame nch amp_res start stop xover freq_scale alter_scale noise_bands
- *     limiter_bands limiter_gains interpol smoothing reset kx M n_low n_high n_q e1 e2
+ *   H frame nch bs_amp_res start_freq stop_freq xover_band freq_scale alter_scale noise_bands
+ *     limiter_bands limiter_gains interpol_freq smoothing_mode reset kx M n_low n_high n_q
+ *     header_extra_1 header_extra_2
  *   F frame ch class L_E L_Q freq_res amp_res invf harm_flag n_harm coupling -1 E_dB Q_dB
  *   G frame ch class L_E pointer t_E...
+ *   R frame ch bs_amp_res coupling | freq_res: r... | tE: border... | tQ: border...
+ *     | dtdf_env: flag... | dtdf_noise: flag... | invf: mode... | harm: flag...
+ *     | E: index... | Q: index...
+ *       R is emitted after F/G for each SBR channel. E and Q are the absolute,
+ *       delta-decoded quantized indices, flattened envelope-major (then band-major),
+ *       before dequantization. In coupled SBR, ch 0 carries level indices and ch 1
+ *       balance indices; both records have coupling=1.
  *   P frame iid icc num_env */
 FILE *faad_dump_file(struct faad_decoder *dec)
 {

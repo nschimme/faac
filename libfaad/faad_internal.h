@@ -349,6 +349,7 @@ typedef struct {
     uint8_t  index_sine;
     bool    have_frame;   /* a payload has been decoded since the last reset */
     bool    primed;       /* smoothing history holds real gains */
+    uint32_t donor_table_sig; /* active donor table set, for gain-history reset */
     float   x_low_tail[32][SBR_T_HFGEN][2];
     float   y_tail[SBR_MAX_BANDS][SBR_T_HFGEN][2];
     float   qmf_x[640];  /* analysis delay line, newest sample first, mirrored ring */
@@ -400,6 +401,12 @@ struct faad_decoder {
     SBRElement sbr_el[MAX_CHANNELS];
     SBRScratch sbr_scratch;
 #endif
+    /* Frontend-only SBR transplant probe.  The donor is independently
+     * decoded before this frame, so its parsed SBR fields are available. */
+    struct faad_decoder *donor;
+    unsigned donor_fields;
+    bool donor_valid;
+    uint32_t donor_debug_frame;
     bool sbr_present;
 
 #ifndef FAAD_DISABLE_PS

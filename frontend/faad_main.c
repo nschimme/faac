@@ -43,6 +43,97 @@ typedef struct {
 extern bool mp4_read_track_buf(const uint8_t *buf, long file_size, MP4Track *track);
 extern void mp4_free_track(MP4Track *track);
 
+enum {
+    DONOR_HDR = 1u << 0, DONOR_GRID = 1u << 1, DONOR_ENV = 1u << 2,
+    DONOR_NOISE = 1u << 3, DONOR_INVF = 1u << 4, DONOR_HARM = 1u << 5
+};
+
+typedef struct {
+    uint8_t *buf;
+    long len;
+    MP4Track track;
+    bool is_mp4;
+    faad_decoder *dec;
+    uint32_t next_frame;
+    uint32_t adts_offset;
+} SBRDonor;
+
+static unsigned donor_fields_parse(const char *s, bool *ok)
+{
+    unsigned fields = 0;
+    *ok = true;
+    if (!s || !*s) return DONOR_HDR | DONOR_GRID | DONOR_ENV | DONOR_NOISE | DONOR_INVF | DONOR_HARM;
+    char *copy = strdup(s), *save = NULL;
+    if (!copy) { *ok = false; return 0; }
+    for (char *p = strtok_r(copy, ",", &save); p; p = strtok_r(NULL, ",", &save)) {
+        if (!strcmp(p, "hdr")) fields |= DONOR_HDR;
+        else if (!strcmp(p, "grid")) fields |= DONOR_GRID;
+        else if (!strcmp(p, "env")) fields |= DONOR_ENV;
+        else if (!strcmp(p, "noise")) fields |= DONOR_NOISE;
+        else if (!strcmp(p, "invf")) fields |= DONOR_INVF;
+        else if (!strcmp(p, "harm")) fields |= DONOR_HARM;
+        else { *ok = false; break; }
+    }
+    free(copy);
+    return fields ? fields | DONOR_HDR : 0;
+}
+
+static void donor_close(SBRDonor *d)
+{
+    if (!d) return;
+    faad_decoder_destroy(d->dec);
+    d->dec = NULL;
+    if (d->is_mp4) mp4_free_track(&d->track);
+    free(d->buf);
+    memset(d, 0, sizeof(*d));
+}
+
+static bool donor_open(SBRDonor *d, const char *path, const faad_config *cfg)
+{
+    memset(d, 0, sizeof(*d));
+    FILE *f = cli_fopen(path, "rb");
+    if (!f) return false;
+    fseek(f, 0, SEEK_END); d->len = ftell(f); fseek(f, 0, SEEK_SET);
+    d->buf = (uint8_t *)malloc(d->len > 0 ? (size_t)d->len : 1);
+    if (!d->buf || fread(d->buf, 1, (size_t)d->len, f) != (size_t)d->len) { fclose(f); donor_close(d); return false; }
+    fclose(f);
+    d->is_mp4 = mp4_read_track_buf(d->buf, d->len, &d->track);
+    faad_config donor_cfg = *cfg;
+    donor_cfg.stream_format = d->is_mp4 ? FAAD_STREAM_RAW : FAAD_STREAM_ADTS;
+    return faad_decoder_create(&donor_cfg, d->is_mp4 ? d->track.asc_buf : NULL,
+                               d->is_mp4 ? d->track.asc_len : 0, &d->dec) == FAAD_OK;
+}
+
+/* Decode forward only: target frames before zero and frames past EOF simply
+ * leave the main decoder unmodified for that frame. */
+static bool donor_prepare(SBRDonor *d, int64_t target)
+{
+    uint8_t pcm[65536];
+    faad_frame_info info;
+    bool got_target = false;
+    if (target < 0 || !d->dec || (uint64_t)target < d->next_frame) return false;
+    while (d->next_frame <= (uint64_t)target) {
+        uint32_t used = 0, written = 0;
+        faad_status st;
+        if (d->is_mp4) {
+            if (d->next_frame >= d->track.num_samples) return false;
+            MP4Sample *s = &d->track.samples[d->next_frame];
+            if (!s->offset || s->offset + s->size > (uint64_t)d->len) return false;
+            st = faad_decode_frame(d->dec, d->buf + s->offset, s->size, &used, pcm, sizeof(pcm), &written, &info);
+        } else {
+            if (d->adts_offset >= (uint32_t)d->len) return false;
+            st = faad_decode_frame(d->dec, d->buf + d->adts_offset, (uint32_t)d->len - d->adts_offset,
+                                   &used, pcm, sizeof(pcm), &written, &info);
+            if (used == 0) return false;
+            d->adts_offset += used;
+        }
+        if (st != FAAD_OK || info.ps_active) return false;
+        got_target = d->next_frame == (uint64_t)target;
+        d->next_frame++;
+    }
+    return got_target;
+}
+
 typedef struct {
     uint8_t *data;
     uint32_t size;
@@ -362,6 +453,30 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    SBRDonor donor;
+    memset(&donor, 0, sizeof(donor));
+    const char *donor_path = getenv("FAAD_SBR_DONOR");
+    unsigned donor_fields = 0;
+    int64_t donor_offset = 0;
+    if (donor_path && *donor_path) {
+        bool fields_ok = false;
+        donor_fields = donor_fields_parse(getenv("FAAD_SBR_DONOR_FIELDS"), &fields_ok);
+        const char *offset_s = getenv("FAAD_SBR_DONOR_OFFSET");
+        char *end = NULL;
+        if (offset_s && *offset_s) donor_offset = strtoll(offset_s, &end, 10);
+        if (!fields_ok || !donor_fields || (offset_s && *offset_s && (!end || *end)) ||
+            !donor_open(&donor, donor_path, &cfg)) {
+            fprintf(stderr, "FAAD_SBR_DONOR: cannot open donor or parse fields/offset\n");
+            donor_close(&donor);
+            faad_decoder_destroy(dec);
+            free(inbuf);
+            if (is_mp4) mp4_free_track(&track);
+            return 1;
+        }
+        fprintf(stderr, "FAAD_SBR_DONOR: %s offset %lld fields 0x%x\n", donor_path,
+                (long long)donor_offset, donor_fields);
+    }
+
     FILE *fout = NULL;
     if (!info_only) {
         if (write_stdout) {
@@ -438,6 +553,9 @@ int main(int argc, char **argv)
             uint32_t bytes_written = 0;
 
             faad_frame_info finfo;
+            if (donor.dec)
+                faad_decoder_set_sbr_donor(dec, donor.dec, donor_fields,
+                    donor_prepare(&donor, (int64_t)s + donor_offset));
             st = faad_decode_frame(dec, inbuf + offset, size,
                                    &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
@@ -521,11 +639,15 @@ int main(int argc, char **argv)
         }
     } else {
         uint32_t offset = 0;
+        uint32_t donor_main_frame = 0;
         while (offset < (uint32_t)file_len) {
             uint32_t bytes_consumed = 0;
             uint32_t bytes_written = 0;
 
             faad_frame_info finfo;
+            if (donor.dec)
+                faad_decoder_set_sbr_donor(dec, donor.dec, donor_fields,
+                    donor_prepare(&donor, (int64_t)donor_main_frame + donor_offset));
             st = faad_decode_frame(dec, inbuf + offset, file_len - offset,
                                    &bytes_consumed, outbuf, sizeof(outbuf), &bytes_written, &finfo);
 
@@ -586,6 +708,7 @@ int main(int argc, char **argv)
 
             frames_decoded++;
             offset += bytes_consumed;
+            donor_main_frame++;
         }
     }
 
@@ -654,6 +777,7 @@ int main(int argc, char **argv)
     }
 
     faad_decoder_destroy(dec); dec = NULL;
+    donor_close(&donor);
     free(inbuf);
     if (is_mp4) mp4_free_track(&track);
 

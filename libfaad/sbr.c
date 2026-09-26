@@ -16,6 +16,7 @@
 #include "faad_internal.h"
 #include "sbr_tables.h"
 #include "fft.h"
+#include <stdio.h>
 
 #ifndef FAAD_DISABLE_SBR
 #define SBR_NOISE_FLOOR_OFFSET 6
@@ -436,6 +437,7 @@ static void sbr_reset_channel(SBRChannel *ch)
     ch->index_sine = 0;
     ch->have_frame = false;
     ch->primed = false;
+    ch->donor_table_sig = 0;
     ch->kx_prev = 0;
     ch->M_prev = 0;
 }
@@ -470,7 +472,227 @@ static const struct { const SBRHuffEntry *tab; uint8_t nsyms; int8_t offset; } s
     { ps_huff_opd_df, PS_HUFF_OPD_DF_NSYMS, PS_HUFF_OPD_DF_OFFSET },
     { ps_huff_opd_dt, PS_HUFF_OPD_DT_NSYMS, PS_HUFF_OPD_DT_OFFSET },
 #endif
+
 };
+
+/* SBR donor probe field bits.  A non-zero selection always takes the donor
+ * header/tables; the remaining bits select the independently coded groups. */
+enum {
+    SBR_DONOR_HDR   = 1u << 0,
+    SBR_DONOR_GRID  = 1u << 1,
+    SBR_DONOR_ENV   = 1u << 2,
+    SBR_DONOR_NOISE = 1u << 3,
+    SBR_DONOR_INVF  = 1u << 4,
+    SBR_DONOR_HARM  = 1u << 5
+};
+
+static uint32_t sbr_table_signature(const SBRElement *el)
+{
+    /* FNV-1a over precisely the table/header material used downstream. */
+    const uint8_t *p = (const uint8_t *)el;
+    uint32_t h = 2166136261u;
+    for (size_t i = offsetof(SBRElement, kx); i < sizeof(*el); i++)
+        h = (h ^ p[i]) * 16777619u;
+    return h;
+}
+
+static void sbr_copy_grid(SBRChannel *dst, const SBRChannel *src)
+{
+    dst->frame_class = src->frame_class;
+    dst->L_E = src->L_E; dst->L_Q = src->L_Q; dst->bs_pointer = src->bs_pointer;
+    dst->l_A = src->l_A; dst->amp_res = src->amp_res;
+    memcpy(dst->t_E, src->t_E, sizeof(dst->t_E));
+    memcpy(dst->t_Q, src->t_Q, sizeof(dst->t_Q));
+    memcpy(dst->freq_res, src->freq_res, sizeof(dst->freq_res));
+}
+
+static int sbr_band_at(const uint8_t *tab, int nb, int k)
+{
+    for (int i = 0; i < nb; i++) if (k >= tab[i] && k < tab[i + 1]) return i;
+    return -1;
+}
+
+/* Expand one source's piecewise SBR scalefactors into QMF-slot/subband
+ * samples.  Rebinning a source onto itself is therefore just an average of
+ * equal values, which is exact apart from normal float arithmetic. */
+static void sbr_expand_env(const SBRElement *el, const SBRChannel *ch,
+                           float E[SBR_MAX_ENV][SBR_MAX_BANDS], float map[32][64])
+{
+    memset(map, 0, 32 * 64 * sizeof(float));
+    for (int l = 0; l < ch->L_E; l++) {
+        const uint8_t *tab = ch->freq_res[l] ? el->f_high : el->f_low;
+        int nb = ch->freq_res[l] ? el->n_high : el->n_low;
+        int t0 = 2 * ch->t_E[l], t1 = 2 * ch->t_E[l + 1];
+        if (t0 < 0) t0 = 0; if (t1 > 32) t1 = 32;
+        for (int b = 0; b < nb; b++)
+            for (int t = t0; t < t1; t++)
+                for (int k = tab[b]; k < tab[b + 1] && k < 64; k++) map[t][k] = E[l][b];
+    }
+}
+
+static void sbr_expand_noise(const SBRElement *el, const SBRChannel *ch,
+                             float Q[2][SBR_MAX_NQ], float map[32][64])
+{
+    memset(map, 0, 32 * 64 * sizeof(float));
+    for (int l = 0; l < ch->L_Q; l++) {
+        int t0 = 2 * ch->t_Q[l], t1 = 2 * ch->t_Q[l + 1];
+        if (t0 < 0) t0 = 0; if (t1 > 32) t1 = 32;
+        for (int b = 0; b < el->n_q; b++)
+            for (int t = t0; t < t1; t++)
+                for (int k = el->f_noise[b]; k < el->f_noise[b + 1] && k < 64; k++) map[t][k] = Q[l][b];
+    }
+}
+
+static void sbr_rebin_env(const SBRElement *el, const SBRChannel *ch, float map[32][64],
+                          float out[SBR_MAX_ENV][SBR_MAX_BANDS])
+{
+    memset(out, 0, SBR_MAX_ENV * SBR_MAX_BANDS * sizeof(float));
+    for (int l = 0; l < ch->L_E; l++) {
+        const uint8_t *tab = ch->freq_res[l] ? el->f_high : el->f_low;
+        int nb = ch->freq_res[l] ? el->n_high : el->n_low;
+        int t0 = 2 * ch->t_E[l], t1 = 2 * ch->t_E[l + 1];
+        if (t0 < 0) t0 = 0; if (t1 > 32) t1 = 32;
+        for (int b = 0; b < nb; b++) {
+            float sum = 0.0f; int n = 0;
+            for (int t = t0; t < t1; t++) for (int k = tab[b]; k < tab[b + 1] && k < 64; k++) { sum += map[t][k]; n++; }
+            out[l][b] = n ? sum / (float)n : 0.0f;
+        }
+    }
+}
+
+static void sbr_rebin_noise(const SBRElement *el, const SBRChannel *ch, float map[32][64],
+                            float out[2][SBR_MAX_NQ])
+{
+    memset(out, 0, 2 * SBR_MAX_NQ * sizeof(float));
+    for (int l = 0; l < ch->L_Q; l++) {
+        int t0 = 2 * ch->t_Q[l], t1 = 2 * ch->t_Q[l + 1];
+        if (t0 < 0) t0 = 0; if (t1 > 32) t1 = 32;
+        for (int b = 0; b < el->n_q; b++) {
+            float sum = 0.0f; int n = 0;
+            for (int t = t0; t < t1; t++) for (int k = el->f_noise[b]; k < el->f_noise[b + 1] && k < 64; k++) { sum += map[t][k]; n++; }
+            out[l][b] = n ? sum / (float)n : 0.0f;
+        }
+    }
+}
+
+static void sbr_copy_process_state(SBRChannel *dst, const SBRChannel *src)
+{
+    memcpy(dst->bw_array, src->bw_array, sizeof(dst->bw_array));
+    memcpy(dst->invf_mode_prev, src->invf_mode_prev, sizeof(dst->invf_mode_prev));
+    memcpy(dst->g_hist, src->g_hist, sizeof(dst->g_hist));
+    memcpy(dst->q_hist, src->q_hist, sizeof(dst->q_hist));
+    memcpy(dst->s_index_prev, src->s_index_prev, sizeof(dst->s_index_prev));
+    memcpy(dst->x_low_tail, src->x_low_tail, sizeof(dst->x_low_tail));
+    memcpy(dst->y_tail, src->y_tail, sizeof(dst->y_tail));
+    memcpy(dst->qmf_x, src->qmf_x, sizeof(dst->qmf_x));
+    memcpy(dst->qmf_v, src->qmf_v, sizeof(dst->qmf_v));
+    dst->hist_pos = src->hist_pos; dst->l_A_prev = src->l_A_prev; dst->L_E_prev = src->L_E_prev;
+    dst->t_E_end_prev = src->t_E_end_prev; dst->kx_prev = src->kx_prev; dst->M_prev = src->M_prev;
+    dst->index_noise = src->index_noise; dst->index_sine = src->index_sine;
+    dst->qmf_x_pos = src->qmf_x_pos; dst->qmf_v_pos = src->qmf_v_pos;
+    dst->primed = src->primed; dst->donor_table_sig = src->donor_table_sig;
+}
+
+/* FAAD_SBR_DONOR_DEBUG is a writable log path (or "1" for stderr).  P is a
+ * plain decoder's dequantized input, D the donor source, and C the composite
+ * handed to sbr_process_channel. */
+static void sbr_donor_debug(const struct faad_decoder *dec, const char *tag, uint32_t ch,
+                            const SBRElement *el, const SBRChannel *sch,
+                            float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ])
+{
+    const char *path = getenv("FAAD_SBR_DONOR_DEBUG");
+    if (!path || !*path) return;
+    FILE *f = !strcmp(path, "1") ? stderr : fopen(path, "a");
+    if (!f) return;
+    fprintf(f, "SBRD %s f=%u ch=%u kx=%u nh=%u nl=%u nq=%u LE=%u LQ=%u te=",
+            tag, dec->donor_debug_frame, ch, el->kx, el->n_high, el->n_low, el->n_q, sch->L_E, sch->L_Q);
+    for (int l = 0; l <= sch->L_E; l++) fprintf(f, "%s%u", l ? "," : "", sch->t_E[l]);
+    fprintf(f, " fr=");
+    for (int l = 0; l < sch->L_E; l++) fprintf(f, "%s%u", l ? "," : "", sch->freq_res[l]);
+    fprintf(f, " tq=");
+    for (int l = 0; l <= sch->L_Q; l++) fprintf(f, "%s%u", l ? "," : "", sch->t_Q[l]);
+    fprintf(f, " E=");
+    for (int l = 0; l < sch->L_E; l++) {
+        int nb = sch->freq_res[l] ? el->n_high : el->n_low;
+        for (int k = 0; k < nb; k++) fprintf(f, "%s%.9g", (l || k) ? "," : "", E[l][k]);
+    }
+    fprintf(f, " Q=");
+    for (int l = 0; l < sch->L_Q; l++)
+        for (int k = 0; k < el->n_q; k++) fprintf(f, "%s%.9g", (l || k) ? "," : "", Q[l][k]);
+    fputc('\n', f);
+    if (f != stderr) fclose(f);
+}
+
+static void sbr_process_channel(const SBRElement *el, SBRChannel *ch, SBRScratch *sc, const float *pcm,
+                                float E[SBR_MAX_ENV][SBR_MAX_BANDS], float Q[2][SBR_MAX_NQ], bool have_hf, int nslots);
+
+static bool sbr_donor_process(SBRElement *main_el, SBRChannel *main_ch,
+                              const SBRElement *don_el, const SBRChannel *don_ch,
+                              SBRScratch *sc, const float *pcm,
+                              float main_E[SBR_MAX_ENV][SBR_MAX_BANDS], float main_Q[2][SBR_MAX_NQ],
+                              float don_E[SBR_MAX_ENV][SBR_MAX_BANDS], float don_Q[2][SBR_MAX_NQ],
+                              unsigned fields, bool have_hf, int nslots,
+                              const struct faad_decoder *dec, uint32_t out_ch)
+{
+    if (!have_hf || !don_el->header_present || !don_ch->have_frame) return false;
+
+    /* Header is intentionally implied by every non-empty transplant. */
+    const SBRElement *cel = don_el;
+    const SBRChannel *grid = (fields & SBR_DONOR_GRID) ? don_ch : main_ch;
+    const SBRElement *env_el = (fields & SBR_DONOR_ENV) ? don_el : main_el;
+    const SBRChannel *env_ch = (fields & SBR_DONOR_ENV) ? don_ch : main_ch;
+    const SBRElement *noise_el = (fields & SBR_DONOR_NOISE) ? don_el : main_el;
+    const SBRChannel *noise_ch = (fields & SBR_DONOR_NOISE) ? don_ch : main_ch;
+    float (*env)[SBR_MAX_BANDS] = (fields & SBR_DONOR_ENV) ? don_E : main_E;
+    float (*noise)[SBR_MAX_NQ] = (fields & SBR_DONOR_NOISE) ? don_Q : main_Q;
+    float env_map[32][64], noise_map[32][64];
+    float E[SBR_MAX_ENV][SBR_MAX_BANDS], Q[2][SBR_MAX_NQ];
+    SBRChannel work = *main_ch;
+
+    sbr_copy_grid(&work, grid);
+    sbr_expand_env(env_el, env_ch, env, env_map);
+    sbr_expand_noise(noise_el, noise_ch, noise, noise_map);
+    sbr_rebin_env(cel, &work, env_map, E);
+    sbr_rebin_noise(cel, &work, noise_map, Q);
+    sbr_donor_debug(dec, "D", out_ch, don_el, don_ch, don_E, don_Q);
+    sbr_donor_debug(dec, "C", out_ch, cel, &work, E, Q);
+
+    const SBRElement *inv_el = (fields & SBR_DONOR_INVF) ? don_el : main_el;
+    const SBRChannel *inv_ch = (fields & SBR_DONOR_INVF) ? don_ch : main_ch;
+    for (int b = 0; b < cel->n_q; b++) {
+        int src = sbr_band_at(inv_el->f_noise, inv_el->n_q, cel->f_noise[b]);
+        work.invf_mode[b] = (uint8_t)(src >= 0 ? inv_ch->invf_mode[src] : 0);
+    }
+
+    const SBRElement *harm_el = (fields & SBR_DONOR_HARM) ? don_el : main_el;
+    const SBRChannel *harm_ch = (fields & SBR_DONOR_HARM) ? don_ch : main_ch;
+    work.add_harmonic_flag = false;
+    memset(work.add_harmonic, 0, sizeof(work.add_harmonic));
+    for (int b = 0; b < cel->n_high; b++) {
+        int mid = (cel->f_high[b] + cel->f_high[b + 1]) >> 1;
+        int src = sbr_band_at(harm_el->f_high, harm_el->n_high, mid);
+        if (src >= 0 && harm_ch->add_harmonic[src]) {
+            work.add_harmonic[b] = 1;
+            work.add_harmonic_flag = true;
+        }
+    }
+
+    uint32_t sig = sbr_table_signature(cel);
+    if (work.donor_table_sig != sig) {
+        memset(work.g_hist, 0, sizeof(work.g_hist));
+        memset(work.q_hist, 0, sizeof(work.q_hist));
+        memset(work.s_index_prev, 0, sizeof(work.s_index_prev));
+        work.hist_pos = 0;
+        work.primed = false;
+        work.donor_table_sig = sig;
+    }
+
+    sbr_process_channel(cel, &work, sc, pcm, E, Q, have_hf, nslots);
+    /* Keep the main bitstream's syntax prediction state.  The copied fields
+     * are exactly the QMF/gain state which belongs to the composite. */
+    sbr_copy_process_state(main_ch, &work);
+    return true;
+}
 
 void init_sbr_books(void)
 {
@@ -1307,6 +1529,33 @@ static void sbr_dump_frame(FILE *df, unsigned int frame_idx, uint32_t ch, const 
     fprintf(df, "G %u %u %u %u %u", frame_idx, ch, sch->frame_class, sch->L_E, sch->bs_pointer);
     for (int l = 0; l <= sch->L_E; l++) fprintf(df, " %u", sch->t_E[l]);
     fprintf(df, "\n");
+
+    /* Keep this raw syntax record separate from the compact F/G summaries:
+     * all variable-size vectors are flattened in their syntax order. */
+    fprintf(df, "R %u %u %u %u | freq_res:", frame_idx, ch, (unsigned)sch->amp_res,
+            (unsigned)el->coupling);
+    for (int l = 0; l < sch->L_E; l++) fprintf(df, " %u", sch->freq_res[l]);
+    fprintf(df, " | tE:");
+    for (int l = 0; l <= sch->L_E; l++) fprintf(df, " %u", sch->t_E[l]);
+    fprintf(df, " | tQ:");
+    for (int l = 0; l <= sch->L_Q; l++) fprintf(df, " %u", sch->t_Q[l]);
+    fprintf(df, " | dtdf_env:");
+    for (int l = 0; l < sch->L_E; l++) fprintf(df, " %u", sch->df_env[l]);
+    fprintf(df, " | dtdf_noise:");
+    for (int l = 0; l < sch->L_Q; l++) fprintf(df, " %u", sch->df_noise[l]);
+    fprintf(df, " | invf:");
+    for (int k = 0; k < el->n_q; k++) fprintf(df, " %u", sch->invf_mode[k]);
+    fprintf(df, " | harm:");
+    for (int k = 0; k < el->n_high; k++) fprintf(df, " %u", sch->add_harmonic[k]);
+    fprintf(df, " | E:");
+    for (int l = 0; l < sch->L_E; l++) {
+        int nb = sch->freq_res[l] ? el->n_high : el->n_low;
+        for (int k = 0; k < nb; k++) fprintf(df, " %d", sch->E[l][k]);
+    }
+    fprintf(df, " | Q:");
+    for (int l = 0; l < sch->L_Q; l++)
+        for (int k = 0; k < el->n_q; k++) fprintf(df, " %d", sch->Q[l][k]);
+    fprintf(df, "\n");
 }
 #endif
 
@@ -1316,14 +1565,28 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
     SBRScratch *sc = &dec->sbr_scratch;
     float E0[SBR_MAX_ENV][SBR_MAX_BANDS], E1[SBR_MAX_ENV][SBR_MAX_BANDS];
     float Q0[2][SBR_MAX_NQ], Q1[2][SBR_MAX_NQ];
+    float DE0[SBR_MAX_ENV][SBR_MAX_BANDS], DE1[SBR_MAX_ENV][SBR_MAX_BANDS];
+    float DQ0[2][SBR_MAX_NQ], DQ1[2][SBR_MAX_NQ];
 
     for (uint32_t ch = 0; ch < num_ch; ) {
         SBRElement *el = &dec->sbr_el[ch];
         bool pair = el->header_present && el->nch == 2 && (ch + 1 < num_ch);
         int nch = pair ? 2 : 1;
         bool have_hf = el->header_present && dec->sbr[ch].have_frame;
+        const SBRElement *don_el = NULL;
+        bool donor_pair = false;
 
         if (have_hf) sbr_dequant(el, &dec->sbr[ch], pair ? &dec->sbr[ch + 1] : NULL, E0, Q0, E1, Q1);
+        if (dec->donor_valid && dec->donor && dec->donor_fields &&
+            ch < dec->donor->num_channels) {
+            don_el = &dec->donor->sbr_el[ch];
+            donor_pair = don_el->header_present && don_el->nch == 2 && (ch + 1 < dec->donor->num_channels);
+            if (don_el->header_present && dec->donor->sbr[ch].have_frame)
+                sbr_dequant(don_el, &dec->donor->sbr[ch], donor_pair ? &dec->donor->sbr[ch + 1] : NULL,
+                            DE0, DQ0, DE1, DQ1);
+            else
+                don_el = NULL;
+        }
 
 #ifdef FAAD_STATS
         if (have_hf) {
@@ -1335,8 +1598,14 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
         }
 #endif
 
+        if (have_hf && (!dec->donor_valid || !don_el)) {
+            sbr_donor_debug(dec, "P", ch, el, &dec->sbr[ch], E0, Q0);
+            if (pair) sbr_donor_debug(dec, "P", ch + 1, el, &dec->sbr[ch + 1], E1, Q1);
+        }
+
 #ifndef FAAD_DISABLE_PS
         if (dec->ps_present && num_ch == 1) {
+            if (don_el) fprintf(stderr, "FAAD_SBR_DONOR: Parametric Stereo is unsupported; ignoring donor for this frame\n");
             sbr_process_channel(el, &dec->sbr[0], sc, pcm_in, E0, Q0, have_hf, PS_IN_SLOTS);
             dec->num_channels = 2;
             if (dec->ps.start) ps_frame_begin(dec, sc->x, have_hf ? el->kx + el->M : 32);
@@ -1360,7 +1629,18 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
 #endif
         for (int c = 0; c < nch; c++) {
             SBRChannel *sch = &dec->sbr[ch + c];
-            sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * FRAME_LEN_LONG, c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS);
+            const SBRChannel *dch = don_el && (ch + (uint32_t)c < dec->donor->num_channels)
+                                    ? &dec->donor->sbr[ch + c] : NULL;
+            bool transplanted = dch && sbr_donor_process(el, sch, don_el, dch, sc,
+                pcm_in + (ch + c) * FRAME_LEN_LONG, c ? E1 : E0, c ? Q1 : Q0,
+                c ? DE1 : DE0, c ? DQ1 : DQ0, dec->donor_fields, have_hf, SBR_SLOTS, dec, ch + c);
+            if (!transplanted) {
+                /* A later donor frame must re-prime rather than smooth over
+                 * any plain-decoded interval. */
+                sch->donor_table_sig = 0;
+                sbr_process_channel(el, sch, sc, pcm_in + (ch + c) * FRAME_LEN_LONG,
+                                    c ? E1 : E0, c ? Q1 : Q0, have_hf, SBR_SLOTS);
+            }
 #ifdef FAAD_D_SBR
             for (int t = 0; t < SBR_SLOTS; t++)
                 qmf_synthesis_slot_ds(sch, sc->x[t], pcm_out + (ch + c) * 1024 + t * 32);
@@ -1371,6 +1651,7 @@ void sbr_apply(struct faad_decoder *dec, uint32_t num_ch, float *pcm_in, float *
         }
         ch += (uint32_t)nch;
     }
+    dec->donor_debug_frame++;
 #else
     (void)dec;
     for (uint32_t ch = 0; ch < num_ch; ch++) {
