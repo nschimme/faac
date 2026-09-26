@@ -264,9 +264,12 @@ jobs:
               with open(f"results/lc_{tag}.json", "w") as f:
                   json.dump(data, f, indent=2)
           '
-          echo "<details><summary><b>📦 View Footprint Details</b></summary>" >> $GITHUB_STEP_SUMMARY
+          python3 bench/compare_results.py results --gates footprint > results/footprint.md
+          grep -m 1 "^## " results/footprint.md >> $GITHUB_STEP_SUMMARY || true
           echo "" >> $GITHUB_STEP_SUMMARY
-          python3 bench/compare_results.py results --gates footprint >> $GITHUB_STEP_SUMMARY
+          echo "<details><summary><b>View full section size breakdown</b></summary>" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat results/footprint.md >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "</details>" >> $GITHUB_STEP_SUMMARY
 
