@@ -27,17 +27,54 @@ struct SbrInject *loadit(void) {
  else if(line[0]=='G' && sscanf(line,"G %u %u",&fr,&ch)==2 && fr<INJECT_FRAMES && ch<2) { InjectChannel*c=&in->f[fr].ch[ch]; char *p=line; int cls,le,ptr; if(sscanf(line,"G %u %u %d %d %d",&fr,&ch,&cls,&le,&ptr)==5){c->cls=cls;c->le=le;c->ptr=ptr;for(int i=0;i<6&&p;i++){p=strchr(p,' ');if(p)p++;}for(int i=0;p&&i<=SBR_MAX_ENVELOPES;i++,p=strchr(p,' '))c->t[i]=atoi(p);} }
  } fclose(fp); return in;
 }
-int SbrInjectGetGrid(SBRInfo *s, SignalAnalysis *sa, int stream_frame) {
+static void sbr_inject_close_grid(SbrAnalysisGrid *g, const InjectChannel *prev,
+                                  int high_res)
+{
+    int start = 0;
+    if (prev && prev->seen && prev->le > 0 &&
+        (prev->cls == SBR_FRAME_CLASS_FIXVAR || prev->cls == SBR_FRAME_CLASS_VARVAR)) {
+        int trailing = prev->t[prev->le] - SBR_NUM_TIME_SLOTS;
+        if (trailing > 0 && trailing < 4) start = trailing;
+    }
+    g->numEnvelopes = 1;
+    g->frameClass = start ? SBR_FRAME_CLASS_VARFIX : SBR_FRAME_CLASS_FIXFIX;
+    g->tEnv[0] = start;
+    g->tEnv[1] = SBR_NUM_TIME_SLOTS;
+    g->bsPointer = 0;
+    g->freqResEnv[0] = high_res;
+}
+
+int SbrInjectGetGrid(SBRInfo *s, SignalAnalysis *sa, int stream_frame)
+{
     struct SbrInject *in = s ? s->inject : NULL;
     if (!in || !(in->fields & IF_GRID)) return 0;
-    /* frameCount names the access unit currently leaving the core FIFO;
-       this analysis result is emitted after the four-slot SBR payload ring. */
     int n = stream_frame + in->offset + SBR_FRAME_FIFO;
-    if (n < 0 || n >= INJECT_FRAMES || !in->f[n].ch[0].seen) return 0;
+    int have = n >= 0 && n < INJECT_FRAMES && in->f[n].ch[0].seen;
+    for (int ch = 0; have && ch < s->numChannels; ch++)
+        have = in->f[n].ch[ch].seen;
+    if (!have) {
+        /* The donor can end before FAAC's SBR FIFO drains. Close the last
+           variable trailing border, and start a self-contained grid otherwise. */
+        for (int ch = 0; ch < s->numChannels; ch++) {
+            const InjectChannel *prev = n > 0 && n <= INJECT_FRAMES ? &in->f[n-1].ch[ch] : NULL;
+            sbr_inject_close_grid(&sa->grid[ch], prev, s->bs_freq_res);
+        }
+        const char *path = getenv("FAAC_PRICE_DUMP");
+        if (path && *path) {
+            FILE *out = fopen(path, "a");
+            if (out) {
+                fprintf(out, "X %d %d no_donor", stream_frame, n);
+                for (int ch = 0; ch < s->numChannels; ch++)
+                    fprintf(out, " %d", sa->grid[ch].frameClass);
+                fprintf(out, "\n");
+                fclose(out);
+            }
+        }
+        return 1;
+    }
     for (int ch = 0; ch < s->numChannels; ch++) {
         InjectChannel *c = &in->f[n].ch[ch];
         SbrAnalysisGrid *g = &sa->grid[ch];
-        if (!c->seen) return 0;
         g->frameClass = c->cls;
         g->numEnvelopes = c->le;
         g->bsPointer = c->ptr;

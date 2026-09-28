@@ -1,0 +1,221 @@
+diff --git a/libfaad/decoder.c b/libfaad/decoder.c
+index 977367f5..43963749 100644
+--- a/libfaad/decoder.c
++++ b/libfaad/decoder.c
+@@ -439,6 +439,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+             } else if (syntax_id == ID_PCE) {
+                 decode_pce(&bs, dec);
+             } else if (syntax_id == ID_FIL) {
++                uint32_t fill_start = bits_get_consumed(&bs) - 3;
+                 uint32_t count = bits_get(&bs, 4);
+                 if (count == 15) count += bits_get(&bs, 8) - 1;
+                 if (count > 0) {
+@@ -451,7 +452,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+                         } else {
+                             ch0 = (ch_idx >= 1) ? (ch_idx - 1) : 0;
+                         }
+-                        faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
++                        faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC, fill_start, fill_end);
+                         if (sbr_st != FAAD_OK) {
+                             decode_success = false;
+                         }
+diff --git a/libfaad/faad_internal.h b/libfaad/faad_internal.h
+index 13cecbc5..06f68943 100644
+--- a/libfaad/faad_internal.h
++++ b/libfaad/faad_internal.h
+@@ -458,7 +458,7 @@ faad_status decode_sce(BitReader *bs, struct faad_decoder *dec, ICSInfo *ics, ui
+ 
+ void faad_init_global_tables(void);
+ void sbr_init_tables(void);
+-faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc);
++faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc, uint32_t fill_start, uint32_t fill_end);
+ void ps_read_data(struct faad_decoder *dec, BitReader *bs, uint32_t bits_left);
+ void ps_frame_begin(struct faad_decoder *dec, float X[PS_IN_SLOTS][64][2], int top);
+ void ps_slot(struct faad_decoder *dec, int n, float X[PS_IN_SLOTS][64][2], float L[64][2], float R[64][2]);
+diff --git a/libfaad/sbr.c b/libfaad/sbr.c
+index cc5414fd..b70e2786 100644
+--- a/libfaad/sbr.c
++++ b/libfaad/sbr.c
+@@ -912,11 +912,17 @@ static bool sbr_read_noise(BitReader *bs, const SBRElement *el, SBRChannel *ch,
+     return true;
+ }
+ 
+-faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
++faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc, uint32_t fill_start, uint32_t fill_end)
+ {
+     int nch = (syntax_id == ID_CPE) ? 2 : 1;
+     if (ch0 + nch > MAX_CHANNELS) return FAAD_ERR_INVALID_ARGUMENT;
+     SBRElement *el = &dec->sbr_el[ch0];
++#ifdef FAAD_STATS
++    uint32_t price_hg[2] = {0}, price_env[2] = {0}, price_noise[2] = {0}, price_other[2] = {0};
++    uint32_t price_shared_hg = bits_get_consumed(bs) - fill_start;
++    uint32_t price_shared_other = 0, price_mark;
++    uint32_t price_syntax_start = bits_get_consumed(bs);
++#endif
+     if (crc) bits_skip(bs, 10); /* bs_sbr_crc_bits, not verified */
+     uint32_t sbr_sr = dec->asc.sbr_sample_rate > 0 ? dec->asc.sbr_sample_rate : 2 * dec->core_sample_rate;
+ 
+@@ -974,6 +980,10 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
+         }
+ #endif
+     }
++#ifdef FAAD_STATS
++    price_shared_hg += bits_get_consumed(bs) - price_syntax_start;
++    price_mark = bits_get_consumed(bs);
++#endif
+     if (!el->header_present) return FAAD_OK; /* nothing to reconstruct against yet */
+ 
+     SBRChannel *chs[2] = { &dec->sbr[ch0], &dec->sbr[ch0 + (nch > 1 ? 1 : 0)] };
+@@ -984,7 +994,16 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
+     el->coupling = (nch == 2) ? bits_get(bs, 1) : false;
+     if (data_extra) bits_skip(bs, 4 * (uint32_t)nch); /* bs_reserved */
+ 
++#ifdef FAAD_STATS
++    price_shared_hg += bits_get_consumed(bs) - price_mark;
++    price_mark = bits_get_consumed(bs);
++#endif
+     if (!sbr_read_grid(bs, chs[0])) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++    if (nch == 2 && el->coupling) price_shared_hg += bits_get_consumed(bs) - price_mark;
++    else price_hg[0] += bits_get_consumed(bs) - price_mark;
++    price_mark = bits_get_consumed(bs);
++#endif
+     if (nch == 2) {
+         if (el->coupling) {
+             SBRChannel *a = chs[0], *b = chs[1];
+@@ -997,6 +1016,9 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
+             return FAAD_ERR_DECODE_FAILED;
+         }
+     }
++#ifdef FAAD_STATS
++    if (nch == 2 && !el->coupling) price_hg[1] += bits_get_consumed(bs) - price_mark;
++#endif
+     for (int c = 0; c < nch; c++) {
+         SBRChannel *ch = chs[c];
+         /* a single FIXFIX envelope is always coded at 1.5 dB */
+@@ -1006,36 +1028,83 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
+         SBRChannel *ch = chs[c];
+         for (int l = 0; l < ch->L_E && l < SBR_MAX_ENV; l++) ch->df_env[l] = (uint8_t)bits_get(bs, 1);
+         for (int l = 0; l < ch->L_Q && l < 2; l++) ch->df_noise[l] = (uint8_t)bits_get(bs, 1);
++#ifdef FAAD_STATS
++        price_hg[c] += ch->L_E + ch->L_Q;
++#endif
+     }
++#ifdef FAAD_STATS
++    price_mark = bits_get_consumed(bs);
++#endif
+     for (int k = 0; k < el->n_q && k < SBR_MAX_NQ; k++) chs[0]->invf_mode[k] = (uint8_t)bits_get(bs, 2);
+     if (nch == 2) {
+         if (el->coupling) memcpy(chs[1]->invf_mode, chs[0]->invf_mode, sizeof(chs[0]->invf_mode));
+         else for (int k = 0; k < el->n_q && k < SBR_MAX_NQ; k++) chs[1]->invf_mode[k] = (uint8_t)bits_get(bs, 2);
+     }
++#ifdef FAAD_STATS
++    if (el->coupling) price_shared_other += bits_get_consumed(bs) - price_mark;
++    else if (nch == 2) { price_other[0] += 2 * el->n_q; price_other[1] += 2 * el->n_q; }
++    else price_other[0] += bits_get_consumed(bs) - price_mark;
++#endif
+     if (el->coupling) {
++#ifdef FAAD_STATS
++        price_mark = bits_get_consumed(bs);
++#endif
+         if (!sbr_read_envelope(bs, el, chs[0], false)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++        price_env[0] += bits_get_consumed(bs) - price_mark; price_mark = bits_get_consumed(bs);
++#endif
+         if (!sbr_read_noise(bs, el, chs[0], false)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++        price_noise[0] += bits_get_consumed(bs) - price_mark; price_mark = bits_get_consumed(bs);
++#endif
+         if (!sbr_read_envelope(bs, el, chs[1], true)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++        price_env[1] += bits_get_consumed(bs) - price_mark; price_mark = bits_get_consumed(bs);
++#endif
+         if (!sbr_read_noise(bs, el, chs[1], true)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++        price_noise[1] += bits_get_consumed(bs) - price_mark;
++#endif
+     } else {
+         for (int c = 0; c < nch; c++) {
++#ifdef FAAD_STATS
++            price_mark = bits_get_consumed(bs);
++#endif
+             if (!sbr_read_envelope(bs, el, chs[c], false)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++            price_env[c] += bits_get_consumed(bs) - price_mark;
++#endif
+         }
+         for (int c = 0; c < nch; c++) {
++#ifdef FAAD_STATS
++            price_mark = bits_get_consumed(bs);
++#endif
+             if (!sbr_read_noise(bs, el, chs[c], false)) return FAAD_ERR_DECODE_FAILED;
++#ifdef FAAD_STATS
++            price_noise[c] += bits_get_consumed(bs) - price_mark;
++#endif
+         }
+     }
+     for (int c = 0; c < nch; c++) {
+         SBRChannel *ch = chs[c];
++#ifdef FAAD_STATS
++        price_mark = bits_get_consumed(bs);
++#endif
+         ch->add_harmonic_flag = bits_get(bs, 1);
+         memset(ch->add_harmonic, 0, sizeof(ch->add_harmonic));
+         if (ch->add_harmonic_flag)
+             for (int k = 0; k < el->n_high; k++) ch->add_harmonic[k] = (uint8_t)bits_get(bs, 1);
++#ifdef FAAD_STATS
++        price_other[c] += bits_get_consumed(bs) - price_mark;
++#endif
+     }
+ #ifdef FAAD_STATS
+     dec->stats.sbrEnvelopeSum += chs[0]->L_E;
+ #endif
+ 
++#ifdef FAAD_STATS
++    price_mark = bits_get_consumed(bs);
++#endif
+     if (bits_get(bs, 1)) { /* bs_extended_data */
+         uint32_t cnt = bits_get(bs, 4);
+         if (cnt == 15) cnt += bits_get(bs, 8);
+@@ -1056,6 +1125,29 @@ faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32
+         if (consumed < end) bits_skip(bs, end - consumed);
+     }
+ 
++#ifdef FAAD_STATS
++    price_shared_other += bits_get_consumed(bs) - price_mark;
++    uint32_t price_consumed = bits_get_consumed(bs);
++    if (price_consumed > fill_end) return FAAD_ERR_DECODE_FAILED;
++    price_shared_other += fill_end - price_consumed;
++    FILE *price_df = faad_dump_file(dec);
++    if (price_df) for (int c = 0; c < nch; c++) {
++        SBRChannel *pc = chs[c];
++        double hg = price_hg[c] + (double)price_shared_hg / nch;
++        double other = price_other[c] + (double)price_shared_other / nch;
++        double total = hg + price_env[c] + price_noise[c] + other;
++        fprintf(price_df, "P %u %u %.1f %.1f %u %u %.1f %u %u %u %u %u %u %u | dt_env:",
++                dec->stats.totalFrames, ch0 + c, total, hg, price_env[c], price_noise[c], other,
++                pc->frame_class, pc->L_E, pc->amp_res, el->coupling, price_consumed - fill_start,
++                fill_end - fill_start, fill_end - price_consumed);
++        for (int e = 0; e < pc->L_E; e++) fprintf(price_df, " %u", pc->df_env[e]);
++        fprintf(price_df, " | dt_noise:");
++        for (int q = 0; q < pc->L_Q; q++) fprintf(price_df, " %u", pc->df_noise[q]);
++        fprintf(price_df, " | freq_res:");
++        for (int e = 0; e < pc->L_E; e++) fprintf(price_df, " %u", pc->freq_res[e]);
++        fprintf(price_df, "\n");
++    }
++#endif
+     for (int c = 0; c < nch; c++) chs[c]->have_frame = true;
+     dec->sbr_present = true;
+     return FAAD_OK;
+@@ -1470,9 +1562,9 @@ void init_qmf_twiddles(void) {}
+ void init_sbr_books(void) {}
+ SBRHuffBook sbr_books[HB_COUNT];
+ 
+-faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc)
++faad_status sbr_decode_extension(struct faad_decoder *dec, BitReader *bs, uint32_t ch0, uint32_t syntax_id, bool crc, uint32_t fill_start, uint32_t fill_end)
+ {
+-    (void)dec; (void)bs; (void)ch0; (void)syntax_id; (void)crc;
++    (void)dec; (void)bs; (void)ch0; (void)syntax_id; (void)crc; (void)fill_start; (void)fill_end;
+     return FAAD_OK;
+ }
+ #endif /* FAAD_DISABLE_SBR */

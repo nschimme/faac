@@ -453,7 +453,7 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
         g->frameClass = a->frameClass;
         g->bsPointer = a->bsPointer;
         for (int i = 0; i <= a->numEnvelopes; i++) g->tEnv[i] = a->tEnv[i];
-        g->eff_amp_res = (g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+        g->eff_amp_res = (g->frameClass == SBR_FRAME_CLASS_FIXFIX && g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
         for (int i = 0; i < g->numEnvelopes; i++) g->freqResEnv[i] = a->freqResEnv[i];
     }
 }
@@ -484,15 +484,11 @@ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLf
                 float factor = g->eff_amp_res ? 1.0f : 2.0f;
                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
                 int raw_level = clamp_int(level, 0, 127);
-                if (prevLevel < 0) {
+                if (prevLevel < 0)
                     raw_level = clamp_int(raw_level, 0, g->eff_amp_res ? 63 : 127);
-                    fd->ch[ch].envData[e][b] = raw_level;
-                    prevLevel = raw_level;
-                } else {
-                    int delta = clamp_int(raw_level - prevLevel, -dlav, dlav);
-                    fd->ch[ch].envData[e][b] = delta;
-                    prevLevel += delta;
-                }
+                else
+                    raw_level = clamp_int(raw_level, prevLevel - dlav, prevLevel + dlav);
+                fd->ch[ch].envData[e][b] = prevLevel = raw_level;
             }
         }
     }

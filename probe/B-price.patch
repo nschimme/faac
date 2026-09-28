@@ -1,0 +1,678 @@
+diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
+index bbdc7529..9a82b6ee 100644
+--- a/libfaac/ratecontrol.c
++++ b/libfaac/ratecontrol.c
+@@ -15,6 +15,8 @@
+  */
+ 
+ #include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
+ 
+ #include "ratecontrol.h"
+ #include "coder.h"
+@@ -160,6 +162,16 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        what the core actually spent. */
+     int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
+     int coreBits = totalBits - sbrBits;
++    const char *pricePath = getenv("FAAC_PRICE_DUMP");
++    if (pricePath && *pricePath) {
++        static FILE *price;
++        static unsigned priceFrame;
++        if (!price) price = fopen(pricePath, "a");
++        if (price) {
++            fprintf(price, "C %u %d %d %d %d\n", ++priceFrame, sentBits, sbrBits, coreBits, rc->stuffedBits);
++            fflush(price);
++        }
++    }
+     int lend;
+     int bound = RC_BALANCE_FRAMES * desbits;
+     int diff = coreTarget - coreBits;
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 91d65559..36a28867 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -155,6 +155,7 @@ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate)
+         sbr->oddSin[m] = (float)sin(M_PI_DOUBLE * (2 * m + 1) / 128.0);
+     }
+     SbrUpdate(sbr, bitRate);
++    sbr->inject = loadit();
+     return sbr;
+ }
+ 
+@@ -176,6 +177,8 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+     sbr->bs_alter_scale = 0; /* only warps a two-region table; see build_freq_table */
+     sbr->bs_freq_res = 1; /* HIGH resolution */
+     sbr->bs_xover_band = 0; /* every master band is an SBR band; no low-res split */
++    sbr->bs_noise_bands = 0;
++    sbr->bs_amp_res = SBR_AMP_RES;
+     sbr->kx = compute_kx(sampleRate, sbr->bs_start_freq);
+ 
+     /* Where the reconstruction stops. Aim at hearing rather than k2's ceiling:
+@@ -190,6 +193,7 @@ void SbrUpdate(SBRInfo *sbr, unsigned long bitRate)
+ void SbrEnd(SBRInfo *sbr)
+ {
+     if (!sbr) return;
++    SbrInjectFree(sbr->inject);
+     FreeMemory(sbr);
+ }
+ 
+@@ -198,13 +202,19 @@ void SbrEnd(SBRInfo *sbr)
+ static void sbr_frame_silence(SbrFrameData *fd)
+ {
+     SetMemory(fd, 0, sizeof(*fd));
+-    fd->numEnvelopes = 1;
+-    fd->eff_amp_res  = 0;
+-    fd->frameClass   = SBR_FRAME_CLASS_FIXFIX;
+-    fd->tEnv[0]      = 0;
+-    fd->tEnv[1]      = SBR_NUM_TIME_SLOTS;
+-    fd->bsPointer    = 0;
+-    fd->freqRes      = 1;
++    for (int ch = 0; ch < MAX_CHANNELS; ch++) {
++        SbrGrid *g = &fd->grid[ch];
++        g->numEnvelopes = 1;
++        g->eff_amp_res = 0;
++        g->frameClass = SBR_FRAME_CLASS_FIXFIX;
++        g->tEnv[0] = 0;
++        g->tEnv[1] = SBR_NUM_TIME_SLOTS;
++        g->bsPointer = 0;
++        g->freqResEnv[0] = 1;
++        fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
++        fd->ch[ch].noiseData[1][0] = SBR_NOISE_LEVEL_DEFAULT;
++        fd->ch[ch].invfMode[0] = SBR_INVF_MODE;
++    }
+ }
+ 
+ SBRContext *SbrContextInit(int channels)
+@@ -434,46 +444,48 @@ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restri
+ }
+ 
+ 
+-static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd)
++static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnalysis *sa, SbrFrameData *fd, int nch)
+ {
+-    fd->numEnvelopes = sa->numEnvelopes;
+-    fd->frameClass   = sa->frameClass;
+-    fd->bsPointer    = sa->bsPointer;
+-    for (int i = 0; i <= sa->numEnvelopes; i++) fd->tEnv[i] = sa->tEnv[i];
+-    fd->eff_amp_res = (fd->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+-    fd->freqRes = sbr->bs_freq_res;
++    for (int ch = 0; ch < nch; ch++) {
++        const SbrAnalysisGrid *a = &sa->grid[ch];
++        SbrGrid *g = &fd->grid[ch];
++        g->numEnvelopes = a->numEnvelopes;
++        g->frameClass = a->frameClass;
++        g->bsPointer = a->bsPointer;
++        for (int i = 0; i <= a->numEnvelopes; i++) g->tEnv[i] = a->tEnv[i];
++        g->eff_amp_res = (g->frameClass == SBR_FRAME_CLASS_FIXFIX && g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
++        for (int i = 0; i < g->numEnvelopes; i++) g->freqResEnv[i] = a->freqResEnv[i];
++    }
+ }
+ 
+ static void sbr_quantize_envelopes(const SBRInfo *sbr, int nch, const bool *isLfe,
+                                    const struct SignalAnalysis *sa, SbrFrameData *fd)
+ {
+-    int n_env = fd->numEnvelopes;
+-    /* Must match write_sbr_envelope's table, or the decoder desyncs. */
+-    int nb = sbr_env_bands(sbr, fd);
+-    const int *edges = sbr_env_edges(sbr, fd);
+-
+     for (int ch = 0; ch < nch; ch++) {
+         if (isLfe[ch]) continue;
+         /* Read-only alias; the quantizer never writes back through it. */
+         const float (* restrict bandE)[SBR_QMF_BANDS_64] = sa->bandE[ch];
+-        int dlav = fd->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
++        const SbrGrid *g = &fd->grid[ch];
++        int n_env = g->numEnvelopes;
++        int dlav = g->eff_amp_res ? SBR_ENV_DELTA_LIMIT_HIRES : SBR_ENV_DELTA_LIMIT_LORES;
+         for (int e = 0; e < n_env; e++) {
++            int nb = sbr_env_bands_at(sbr, g, e);
++            const int *edges = g->freqResEnv[e] ? sbr->bandEdges : sbr->bandEdgesLow;
+             int prevLevel = -1;
+             for (int b = 0; b < nb; b++) {
+                 int k_lo = edges[b], k_hi = edges[b+1];
+                 /* Weight energy by the number of QMF slots per envelope to
+                  * maintain normalized power levels across variable borders. */
+-                int e_slots = sa->envSampled[e];
++                int e_slots = sa->grid[ch].envSampled[e];
+                 if (e_slots < 1) e_slots = 1;
+                 float E = 0;
+                 for (int k = k_lo; k < k_hi; k++) E += bandE[e][k];
+                 E /= (float)(e_slots * (k_hi - k_lo));
+-                float factor = fd->eff_amp_res ? 1.0f : 2.0f;
++                float factor = g->eff_amp_res ? 1.0f : 2.0f;
+                 int level = lrintf(factor * (fast_log2(E + SBR_LOG_ENERGY_FLOOR) - SBR_ENV_LEVEL_LOG2_OFFSET));
+                 int raw_level = clamp_int(level, 0, 127);
+-                /* Clamped so the frequency-delta chain stays codable. */
+                 if (prevLevel < 0)
+-                    raw_level = clamp_int(raw_level, 0, fd->eff_amp_res ? 63 : 127);
++                    raw_level = clamp_int(raw_level, 0, g->eff_amp_res ? 63 : 127);
+                 else
+                     raw_level = clamp_int(raw_level, prevLevel - dlav, prevLevel + dlav);
+                 fd->ch[ch].envData[e][b] = prevLevel = raw_level;
+@@ -488,12 +500,18 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+         if (!isLfe[ch])
+             memcpy(sbr->ch[ch].qmfOvl64, timeDomain[ch] + numSamples - SBR_QMF_HIST_LEN, SBR_QMF_HIST_LEN * sizeof(float));
+ 
+-    sbr_adopt_envelope_grid(sbr, sa, fd);
++    sbr_adopt_envelope_grid(sbr, sa, fd, numChannels);
+     sbr_quantize_envelopes(sbr, numChannels, isLfe, sa, fd);
++    for (int ch=0; ch<numChannels; ch++) {
++        fd->ch[ch].noiseData[0][0] = SBR_NOISE_LEVEL_DEFAULT;
++        fd->ch[ch].noiseData[1][0] = SBR_NOISE_LEVEL_DEFAULT;
++        fd->ch[ch].invfMode[0] = SBR_INVF_MODE;
++    }
++    SbrInjectApply(sbr, fd, sbr->frameCount, numChannels);
+ 
+ #ifdef FAAC_STATS
+     g_faacStats.sbrFrames++;
+-    if (fd->frameClass != SBR_FRAME_CLASS_FIXFIX) {
++    if (fd->grid[0].frameClass != SBR_FRAME_CLASS_FIXFIX) {
+         g_faacStats.sbrTransientFrames++;
+     }
+     for (int ch = 0; ch < numChannels; ch++) {
+@@ -507,4 +525,3 @@ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, c
+ /* SBR bitstream writer. Emits the SBR fill element payload into the bitstream.
+  * Replays the write sequence into a counting sink during rate control to
+  * ensure accurate bit budget allocation. */
+-
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index cc16df6e..693c4bea 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -16,6 +16,8 @@
+ #include <assert.h>
+ #include <limits.h>
+ #include <string.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ #include "sbr.h"
+ #include "sbr_internal.h"
+@@ -29,6 +31,7 @@ typedef struct {
+     unsigned envDt[2];
+     unsigned noiseDt[2];
+     int coupled, noiseLinked, linked, bits;
++    int envBits[2], noiseBits[2], gridBits[2];
+ } SbrDecision;
+ 
+ static void emit_sbr_header(const SBRInfo *sbr, BitStream *bs)
+@@ -44,34 +47,55 @@ static void emit_sbr_header(const SBRInfo *sbr, BitStream *bs)
+ /* Width of the transient pointer field, indexed by number of envelopes. */
+ static const int sbr_ceil_log2[] = { 0, 1, 2, 2, 3, 3 };
+ 
+-static int sbr_grid_bits(const SbrFrameData *fd)
++static int sbr_grid_bits(const SbrGrid *g)
+ {
+-    int num_env = fd->numEnvelopes;
+-    int bits = 2;
+-    if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
+-        bits += 4 + 2 * (num_env - 1) + sbr_ceil_log2[num_env] + num_env;
+-    } else bits += 3;
+-    return bits;
++    int n = g->numEnvelopes;
++    if (g->frameClass == SBR_FRAME_CLASS_FIXFIX) return 5;
++    if (g->frameClass == SBR_FRAME_CLASS_VARFIX || g->frameClass == SBR_FRAME_CLASS_FIXVAR)
++        return 2 + 4 + 2 * (n - 1) + sbr_ceil_log2[n] + n;
++    return 2 + 8 + 2 * (n - 1) + sbr_ceil_log2[n] + n;
+ }
+ 
+-static void emit_sbr_grid(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs)
++static void emit_sbr_grid(const SBRInfo *sbr, const SbrGrid *g, BitStream *bs)
+ {
+-    int num_env = fd->numEnvelopes;
+-    PutBit(bs, fd->frameClass, 2);
+-    if (fd->frameClass == SBR_FRAME_CLASS_VARFIX) {
+-        PutBit(bs, fd->tEnv[0], 2); PutBit(bs, num_env - 1, 2);
+-        for (int i = 0; i < num_env - 1; i++) PutBit(bs, (fd->tEnv[i + 1] - fd->tEnv[i] - 2) / 2, 2);
+-        PutBit(bs, fd->bsPointer, sbr_ceil_log2[num_env]);
+-        for (int i = 0; i < num_env; i++) PutBit(bs, sbr->bs_freq_res, 1);
+-    } else { PutBit(bs, num_env > 1, 2); PutBit(bs, sbr->bs_freq_res, 1); }
++    int n = g->numEnvelopes;
++    PutBit(bs, g->frameClass, 2);
++    if (g->frameClass == SBR_FRAME_CLASS_FIXFIX) {
++        PutBit(bs, n > 1, 2);
++        PutBit(bs, sbr->inject ? g->freqResEnv[0] : sbr->bs_freq_res, 1);
++    } else if (g->frameClass == SBR_FRAME_CLASS_VARFIX) {
++        PutBit(bs, g->tEnv[0], 2); PutBit(bs, n - 1, 2);
++        for (int i = 0; i < n - 1; i++) PutBit(bs, (g->tEnv[i + 1] - g->tEnv[i] - 2) / 2, 2);
++        PutBit(bs, g->bsPointer, sbr_ceil_log2[n]);
++        for (int i = 0; i < n; i++) PutBit(bs, sbr->inject ? g->freqResEnv[i] : sbr->bs_freq_res, 1);
++    } else if (g->frameClass == SBR_FRAME_CLASS_FIXVAR) {
++        PutBit(bs, g->tEnv[n] - 16, 2); PutBit(bs, n - 1, 2);
++        for (int i = 0; i < n - 1; i++) PutBit(bs, (g->tEnv[n-i] - g->tEnv[n-i-1] - 2) / 2, 2);
++        PutBit(bs, g->bsPointer, sbr_ceil_log2[n]);
++        for (int i = n - 1; i >= 0; i--) PutBit(bs, g->freqResEnv[i], 1);
++    } else {
++        int n0 = 0, n1 = n - 1;
++        for (int split = n - 4 > 0 ? n - 4 : 0; split < n && split <= 3; split++) {
++            int ok = 1;
++            for (int i = 0; i < split; i++) { int d = g->tEnv[i+1] - g->tEnv[i]; if (d < 2 || d > 8 || (d & 1)) ok = 0; }
++            for (int i = 0; i < n-1-split; i++) { int d = g->tEnv[n-i] - g->tEnv[n-i-1]; if (d < 2 || d > 8 || (d & 1)) ok = 0; }
++            if (ok) { n0 = split; n1 = n-1-split; break; }
++        }
++        PutBit(bs, g->tEnv[0], 2); PutBit(bs, g->tEnv[n]-16, 2);
++        PutBit(bs, n0, 2); PutBit(bs, n1, 2);
++        for (int i = 0; i < n0; i++) PutBit(bs, (g->tEnv[i+1]-g->tEnv[i]-2)/2, 2);
++        for (int i = 0; i < n1; i++) PutBit(bs, (g->tEnv[n-i]-g->tEnv[n-i-1]-2)/2, 2);
++        PutBit(bs, g->bsPointer, sbr_ceil_log2[n]);
++        for (int i = 0; i < n; i++) PutBit(bs, g->freqResEnv[i], 1);
++    }
+ }
+ 
+ /* bs_df_env from the choices the sizing pass cached; bs_df_noise whenever a
+  * reference exists (see write_sbr_noise). */
+-static void emit_sbr_dtdf(const SbrFrameData *fd, const SbrDecision *d, int ch, BitStream *bs)
++static void emit_sbr_dtdf(const SbrGrid *g, const SbrDecision *d, int ch, BitStream *bs)
+ {
+-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
+-    for (int e = 0; e < fd->numEnvelopes; e++) PutBit(bs, (d->envDt[ch] >> e) & 1, 1);
++    int n_q = g->numEnvelopes > 1 ? 2 : 1;
++    for (int e = 0; e < g->numEnvelopes; e++) PutBit(bs, (d->envDt[ch] >> e) & 1, 1);
+     for (int q = 0; q < n_q; q++) PutBit(bs, (d->noiseDt[ch] >> q) & 1, 1);
+ }
+ 
+@@ -109,41 +133,40 @@ static int code_deltas(const int *values, const int *previous, int count, int ti
+  * first envelope refers to the channel's last written one, when linked. The
+  * sizing pass (write false) makes the choice and caches it for the write pass,
+  * which always follows it with the same frame. */
+-static int choose_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int (*env)[SBR_MAX_BANDS],
++static int choose_sbr_envelope(const SBRInfo *sbr, const SbrGrid *g, const int (*env)[SBR_MAX_BANDS],
+                                int bal, int linked, int ch, unsigned *chosen)
+ {
+     int bits = 0;
+-
+-    for (int e = 0; e < fd->numEnvelopes; e++) {
++    for (int e = 0; e < g->numEnvelopes; e++) {
+         const int *ref = e ? env[e - 1] : sbr->ch[ch].ref[~sbr->frameCount & 1].env;
+-        int best = INT_MAX;
+-        for (int t = 0; t <= (e || linked); t++) {
+-            int n = code_deltas(env[e], ref, sbr_env_bands(sbr, fd), t, &sbr_env_books[bal][fd->eff_amp_res], NULL);
++        int nb = sbr_env_bands_at(sbr, g, e), best = INT_MAX;
++        int time_ok = e ? g->freqResEnv[e] == g->freqResEnv[e-1] : linked;
++        for (int t = 0; t <= time_ok; t++) {
++            int n = code_deltas(env[e], ref, nb, t, &sbr_env_books[bal][g->eff_amp_res], NULL);
+             if (n < best) { best = n; *chosen = (*chosen & ~(1u << e)) | ((unsigned)t << e); }
+         }
+-        if (best == INT_MAX) { bits = INT_MAX; break; }
++        if (best == INT_MAX) return INT_MAX;
+         bits += best;
+     }
+     return bits;
+ }
+ 
+-static void emit_sbr_envelope(const SBRInfo *sbr, const SbrFrameData *fd, const int (*env)[SBR_MAX_BANDS],
++static void emit_sbr_envelope(const SBRInfo *sbr, const SbrGrid *g, const int (*env)[SBR_MAX_BANDS],
+                               int bal, int ch, unsigned dt, BitStream *bs)
+ {
+-    int nb = sbr_env_bands(sbr, fd);
+-    for (int e = 0; e < fd->numEnvelopes; e++) {
++    for (int e = 0; e < g->numEnvelopes; e++) {
+         const int *ref = e ? env[e - 1] : sbr->ch[ch].ref[~sbr->frameCount & 1].env;
+-        code_deltas(env[e], ref, nb, dt >> e & 1, &sbr_env_books[bal][fd->eff_amp_res], bs);
++        code_deltas(env[e], ref, sbr_env_bands_at(sbr, g, e), dt >> e & 1, &sbr_env_books[bal][g->eff_amp_res], bs);
+     }
+ }
+ 
+ /* One noise band at a constant level: 5-bit absolute (the level, or for a
+  * coupled balance channel the centre 6), or the time delta 0, whose code is
+  * the single bit 0 -- always the cheaper once a reference exists. */
+-static void emit_sbr_noise(const SbrFrameData *fd, int value, unsigned dt, BitStream *bs)
++static void emit_sbr_noise(const SbrGrid *g, int value, unsigned dt, BitStream *bs)
+ {
+     static const SbrDeltaBook noise = { NULL, NULL, 0, 5 };
+-    int n_q = fd->numEnvelopes > 1 ? 2 : 1;
++    int n_q = g->numEnvelopes > 1 ? 2 : 1;
+     for (int q = 0; q < n_q; q++) code_deltas(&value, &value, 1, dt >> q & 1, &noise, bs);
+ }
+ 
+@@ -151,11 +174,12 @@ static void emit_sbr_noise(const SbrFrameData *fd, int value, unsigned dt, BitSt
+  * (L + R) / 2, and the balance L - R at half resolution around its centre. */
+ static void couple_envelopes(SBRInfo *sbr, const SbrFrameData *fd, int ch0)
+ {
+-    int amp = fd->eff_amp_res;
++    const SbrGrid *g = &fd->grid[ch0];
++    int amp = g->eff_amp_res;
+     int pan = amp ? 12 : 24;
+-    int nb = sbr_env_bands(sbr, fd);
++    int nb = sbr_env_bands(sbr, g);
+ 
+-    for (int e = 0; e < fd->numEnvelopes; e++) {
++    for (int e = 0; e < g->numEnvelopes; e++) {
+         const int *restrict left = fd->ch[ch0].envData[e], *restrict right = fd->ch[ch0 + 1].envData[e];
+         int *restrict level = sbr->cplEnv[0][e], *restrict balance = sbr->cplEnv[1][e];
+         for (int b = 0; b < nb; b++) {
+@@ -171,39 +195,38 @@ static void couple_envelopes(SBRInfo *sbr, const SbrFrameData *fd, int ch0)
+ static int choose_sbr_channels(SBRInfo *sbr, const SbrFrameData *fd, int nch, int ch0,
+                                int sendHeader, SbrDecision *d)
+ {
+-    int bits = (nch == 2) ? 5 : 3; /* data_extra, coupling, add_harmonic flags, ext data flag */
+-    /* Time deltas need the previous frame's envelope in the same layout;
+-     * header frames stay self-contained so a decoder can start there. */
+-    const SBRChannel *sc0 = &sbr->ch[ch0];
+-    const SbrEnvRef *prev = &sc0->ref[~sbr->frameCount & 1];
+-    d->noiseLinked = !sendHeader && prev->nb && prev->coupled == d->coupled;
+-    d->linked = d->noiseLinked && prev->nb == sbr_env_bands(sbr, fd) && prev->ampRes == fd->eff_amp_res;
+-    const int (*env[2])[SBR_MAX_BANDS];
++    int bits = nch == 2 ? 5 : 3;
+     int ngrid = d->coupled ? 1 : nch;
+-
++    const int (*env[2])[SBR_MAX_BANDS];
+     for (int ch = 0; ch < nch; ch++)
+         env[ch] = d->coupled ? (const int (*)[SBR_MAX_BANDS])sbr->cplEnv[ch]
+-                          : (const int (*)[SBR_MAX_BANDS])fd->ch[ch0 + ch].envData;
+-
+-    for (int ch = 0; ch < ngrid; ch++)
+-        bits += sbr_grid_bits(fd);
+-    for (int ch = 0; ch < nch; ch++)
+-        bits += fd->numEnvelopes + (fd->numEnvelopes > 1 ? 2 : 1);
+-    for (int ch = 0; ch < ngrid; ch++)
+-        bits += 2;
+-    /* Coupled: envelope and noise per channel in turn; otherwise all
+-     * envelopes, then all noise floors. */
++                             : (const int (*)[SBR_MAX_BANDS])fd->ch[ch0 + ch].envData;
++    for (int ch = 0; ch < ngrid; ch++) {
++        d->gridBits[ch] = sbr_grid_bits(&fd->grid[ch0 + ch]);
++        bits += d->gridBits[ch];
++    }
++    for (int ch = 0; ch < nch; ch++) {
++        const SbrGrid *g = &fd->grid[ch0 + ch];
++        bits += g->numEnvelopes + (g->numEnvelopes > 1 ? 2 : 1);
++    }
++    bits += 2 * ngrid;
+     for (int k = 0; k < 2 * nch; k++) {
+         int ch = d->coupled ? k >> 1 : k % nch;
++        const SbrGrid *g = &fd->grid[ch0 + ch];
++        const SbrEnvRef *prev = &sbr->ch[ch0 + ch].ref[~sbr->frameCount & 1];
++        int noiseLinked = !sendHeader && prev->nb && prev->coupled == d->coupled;
++        int linked = noiseLinked && prev->nb == sbr_env_bands_at(sbr, g, 0) && prev->ampRes == g->eff_amp_res;
+         if (d->coupled ? k & 1 : k >= nch) {
+-            int n_q = fd->numEnvelopes > 1 ? 2 : 1;
++            int n_q = g->numEnvelopes > 1 ? 2 : 1;
+             d->noiseDt[ch] = 0;
+-            for (int q = 0; q < n_q; q++) d->noiseDt[ch] |= (unsigned)(q || d->noiseLinked) << q;
+-            for (int q = 0; q < n_q; q++) bits += (d->noiseDt[ch] >> q & 1) ? 1 : 5;
++            for (int q = 0; q < n_q; q++) d->noiseDt[ch] |= (unsigned)(q || noiseLinked) << q;
++            for (int q = 0; q < n_q; q++) d->noiseBits[ch] += (d->noiseDt[ch] >> q & 1) ? 1 : 5;
++            bits += d->noiseBits[ch];
+         } else {
+             d->envDt[ch] = 0;
+-            int n = choose_sbr_envelope(sbr, fd, env[ch], d->coupled && ch, d->linked, ch0 + ch, &d->envDt[ch]);
++            int n = choose_sbr_envelope(sbr, g, env[ch], d->coupled && ch, linked, ch0 + ch, &d->envDt[ch]);
+             if (n == INT_MAX) return INT_MAX;
++            d->envBits[ch] = n;
+             bits += n;
+         }
+     }
+@@ -215,23 +238,39 @@ static int emit_sbr_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs
+     int ngrid = d->coupled ? 1 : nch;
+     const int (*env[2])[SBR_MAX_BANDS];
+     PutBit(bs, d->coupled, nch);
+-    for (int ch = 0; ch < nch; ch++) env[ch] = d->coupled ? (const int (*)[SBR_MAX_BANDS])sbr->cplEnv[ch] : (const int (*)[SBR_MAX_BANDS])fd->ch[ch0 + ch].envData;
+-    for (int ch = 0; ch < ngrid; ch++) emit_sbr_grid(sbr, fd, bs);
+-    for (int ch = 0; ch < nch; ch++) emit_sbr_dtdf(fd, d, ch, bs);
++    for (int ch = 0; ch < nch; ch++)
++        env[ch] = d->coupled ? (const int (*)[SBR_MAX_BANDS])sbr->cplEnv[ch]
++                             : (const int (*)[SBR_MAX_BANDS])fd->ch[ch0 + ch].envData;
++    for (int ch = 0; ch < ngrid; ch++) emit_sbr_grid(sbr, &fd->grid[ch0 + ch], bs);
++    for (int ch = 0; ch < nch; ch++) emit_sbr_dtdf(&fd->grid[ch0 + ch], d, ch, bs);
+     for (int ch = 0; ch < ngrid; ch++) emit_sbr_invf(bs);
+     for (int k = 0; k < 2 * nch; k++) {
+         int ch = d->coupled ? k >> 1 : k % nch;
+-        if (d->coupled ? k & 1 : k >= nch) emit_sbr_noise(fd, d->coupled && ch ? 6 : SBR_NOISE_LEVEL_DEFAULT, d->noiseDt[ch], bs);
+-        else emit_sbr_envelope(sbr, fd, env[ch], d->coupled && ch, ch0 + ch, d->envDt[ch], bs);
++        const SbrGrid *g = &fd->grid[ch0 + ch];
++        if (d->coupled ? k & 1 : k >= nch)
++            emit_sbr_noise(g, d->coupled && ch ? 6 : SBR_NOISE_LEVEL_DEFAULT, d->noiseDt[ch], bs);
++        else emit_sbr_envelope(sbr, g, env[ch], d->coupled && ch, ch0 + ch, d->envDt[ch], bs);
+     }
+     PutBit(bs, 0, nch + 1);
+-    for (int ch = 0, nb = sbr_env_bands(sbr, fd); ch < nch; ch++) {
++    for (int ch = 0; ch < nch; ch++) {
++        const SbrGrid *g = &fd->grid[ch0 + ch];
++        int nb = sbr_env_bands_at(sbr, g, g->numEnvelopes - 1);
+         SbrEnvRef *cur = &sbr->ch[ch0 + ch].ref[sbr->frameCount & 1];
+-        memcpy(cur->env, env[ch][fd->numEnvelopes - 1], nb * sizeof(int)); cur->nb = nb; cur->ampRes = fd->eff_amp_res; cur->coupled = d->coupled;
++        memcpy(cur->env, env[ch][g->numEnvelopes - 1], nb * sizeof(int));
++        cur->nb = nb; cur->ampRes = g->eff_amp_res; cur->coupled = d->coupled;
+     }
+     return d->bits;
+ }
+ 
++static int equal_grids(const SbrGrid *a, const SbrGrid *b)
++{
++    if (a->frameClass != b->frameClass || a->numEnvelopes != b->numEnvelopes ||
++        a->bsPointer != b->bsPointer || a->eff_amp_res != b->eff_amp_res) return 0;
++    for (int i = 0; i <= a->numEnvelopes; i++) if (a->tEnv[i] != b->tEnv[i]) return 0;
++    for (int i = 0; i < a->numEnvelopes; i++) if (a->freqResEnv[i] != b->freqResEnv[i]) return 0;
++    return 1;
++}
++
+ /* A pair is coupled when that codes smaller. The sizing pass costs both
+  * layouts and ends on the chosen one, so the channel caches match it.
+  * One call site in a loop, so -O3 has no constant nch to clone on. */
+@@ -241,7 +280,7 @@ static int choose_sbr_data(SBRInfo *sbr, const SbrFrameData *fd, int id_aac, int
+     SbrDecision cand[2] = { { .coupled = 0 } };
+     int n = 1;
+ 
+-    if (nch == 2) {
++    if (nch == 2 && equal_grids(&fd->grid[ch0], &fd->grid[ch0 + 1])) {
+         cand[1] = (SbrDecision){ .coupled = 1 };
+         couple_envelopes(sbr, fd, ch0);
+         n = 2;
+@@ -312,6 +351,32 @@ static int SbrWrite(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, int id_
+     assert(bs->currentBit - payloadStart == (uint32_t)payloadBits);
+     if (padBits > 0) PutBit(bs, 0, padBits);
+ 
++    const char *pricePath = getenv("FAAC_PRICE_DUMP");
++    if (pricePath && *pricePath) {
++        static FILE *price;
++        if (!price) price = fopen(pricePath, "a");
++        if (price) {
++            int nch = id_aac == ID_CPE ? 2 : 1;
++            int sharedGrid = decision.coupled ? decision.gridBits[0] : 0;
++            int sharedHg = totalBits + 5 + (sendHeader ? 21 : 0) + (nch == 2 ? 2 : 1) + sharedGrid;
++            int sharedOther = padBits + 1 + (decision.coupled ? 2 : 0);
++            for (int c = 0; c < nch; c++) {
++                const SbrGrid *g = &fd->grid[ch0 + c];
++                int nq = g->numEnvelopes > 1 ? 2 : 1;
++                double hg = decision.gridBits[decision.coupled ? 1 : c] + g->numEnvelopes + nq + (double)sharedHg / nch;
++                double other = (decision.coupled ? 0 : 2) + 1 + (double)sharedOther / nch;
++                double all = hg + decision.envBits[c] + decision.noiseBits[c] + other;
++                fprintf(price, "W %d %d %.1f %.1f %d %d %.1f %d %d %d %d | dt_env:",
++                        sbr->frameCount, ch0 + c, all, hg, decision.envBits[c], decision.noiseBits[c], other,
++                        g->frameClass, g->numEnvelopes, g->eff_amp_res, decision.coupled);
++                for (int e = 0; e < g->numEnvelopes; e++) fprintf(price, " %u", decision.envDt[c] >> e & 1);
++                fprintf(price, " | freq_res:");
++                for (int e = 0; e < g->numEnvelopes; e++) fprintf(price, " %d", g->freqResEnv[e]);
++                fprintf(price, "\n");
++            }
++            fflush(price);
++        }
++    }
+     return totalBits + payloadBits + padBits;
+ }
+ 
+diff --git a/libfaac/sbr_inject.c b/libfaac/sbr_inject.c
+new file mode 100644
+index 00000000..5706d68b
+--- /dev/null
++++ b/libfaac/sbr_inject.c
+@@ -0,0 +1,88 @@
++/* Probe-only FDK SBR decision importer.  Input is FAAD_DUMP's text format,
++ * extended with RAW E=... Q=... A=... fields (see faad3 probe branch). */
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "sbr_internal.h"
++
++#define INJECT_FRAMES 16384
++typedef struct InjectChannel {
++    int seen, cls, le, lq, ptr, amp, harmflag;
++    int freq[SBR_INJECT_MAX_ENVELOPES], t[SBR_INJECT_MAX_ENVELOPES+1];
++    int e[SBR_INJECT_MAX_ENVELOPES][SBR_MAX_BANDS], q[2][SBR_MAX_BANDS];
++    int invf[SBR_MAX_BANDS], harm[SBR_MAX_BANDS];
++} InjectChannel;
++typedef struct InjectFrame { int have_hdr, amp,start,stop,xover,scale,alter,noise; InjectChannel ch[2]; } InjectFrame;
++struct SbrInject { unsigned fields; int offset; InjectFrame *f; int warned; };
++enum { IF_HDR=1, IF_GRID=2, IF_ENV=4, IF_NOISE=8, IF_INVF=16, IF_HARM=32 };
++
++static unsigned fields(const char *s) { unsigned x=0; char b[96], *p,*q; if (!s) return 0; snprintf(b,sizeof b,"%s",s); for(p=strtok_r(b,",",&q);p;p=strtok_r(NULL,",",&q)) { if(!strcmp(p,"hdr"))x|=IF_HDR; else if(!strcmp(p,"grid"))x|=IF_GRID; else if(!strcmp(p,"env"))x|=IF_ENV; else if(!strcmp(p,"noise"))x|=IF_NOISE; else if(!strcmp(p,"invf"))x|=IF_INVF; else if(!strcmp(p,"harm"))x|=IF_HARM; } return x; }
++static void ints(const char *s, int *v, int n) { char b[4096],*p,*q; int i=0; if(!s)return; snprintf(b,sizeof b,"%s",s); for(p=strtok_r(b," ,/|",&q);p&&i<n;p=strtok_r(NULL," ,/|",&q))v[i++]=atoi(p); }
++struct SbrInject *loadit(void) {
++ const char *path=getenv("FAAC_SBR_INJECT"), *fs=getenv("FAAC_SBR_INJECT_FIELDS"); FILE *fp; char line[16384]; struct SbrInject *in; int ha=1,hs=15,ht=13,hx=0,hf=2,hl=0,hn=0;
++ if(!path||!(fp=fopen(path,"r"))) return NULL; in=calloc(1,sizeof(*in)); if(!in){fclose(fp);return NULL;} in->fields=fs?fields(fs):IF_GRID; in->offset=(int)strtol(getenv("FAAC_SBR_INJECT_OFFSET")?getenv("FAAC_SBR_INJECT_OFFSET"):"0",NULL,0); in->f=calloc(INJECT_FRAMES,sizeof(*in->f)); if(!in->f){fclose(fp);free(in);return NULL;}
++ while(fgets(line,sizeof line,fp)) { unsigned fr,ch; if(line[0]=='H' && sscanf(line,"H %u %*d %d %d %d %d %d %d %d",&fr,&ha,&hs,&ht,&hx,&hf,&hl,&hn)==8) { if(fr<INJECT_FRAMES){InjectFrame *z=&in->f[fr];z->have_hdr=1;z->amp=ha;z->start=hs;z->stop=ht;z->xover=hx;z->scale=hf;z->alter=hl;z->noise=hn;} }
++ else if(line[0]=='F' && sscanf(line,"F %u %u",&fr,&ch)==2 && fr<INJECT_FRAMES && ch<2) { InjectChannel *c=&in->f[fr].ch[ch]; int x; if(sscanf(line,"F %u %u %d %d %d",&fr,&ch,&c->cls,&c->le,&x)==5)c->seen=1; }
++ else if(line[0]=='R' && sscanf(line,"R %u %u",&fr,&ch)==2 && fr<INJECT_FRAMES && ch<2) { InjectChannel*c=&in->f[fr].ch[ch]; char *p; int tmp[SBR_MAX_BANDS]; c->seen=1; p=strstr(line,"freq_res:"); if(p) ints(p+9,c->freq,SBR_INJECT_MAX_ENVELOPES); p=strstr(line,"tE:"); if(p){ints(p+3,c->t,SBR_INJECT_MAX_ENVELOPES+1); c->le=0; while(c->le<SBR_INJECT_MAX_ENVELOPES && c->t[c->le+1]) c->le++;} p=strstr(line,"tQ:"); if(p){ints(p+3,tmp,3);c->lq=tmp[2]?2:1;} p=strstr(line,"invf:");if(p)ints(p+5,c->invf,SBR_MAX_BANDS); p=strstr(line,"harm:");if(p){ints(p+5,tmp,SBR_MAX_BANDS);c->harmflag=tmp[0];for(int k=0;k<SBR_MAX_BANDS-1;k++)c->harm[k]=tmp[k+1];} p=strstr(line,"E:");if(p)ints(p+2,&c->e[0][0],SBR_INJECT_MAX_ENVELOPES*SBR_MAX_BANDS);p=strstr(line,"Q:");if(p)ints(p+2,&c->q[0][0],2*SBR_MAX_BANDS); }
++ else if(line[0]=='G' && sscanf(line,"G %u %u",&fr,&ch)==2 && fr<INJECT_FRAMES && ch<2) { InjectChannel*c=&in->f[fr].ch[ch]; char *p=line; int cls,le,ptr; if(sscanf(line,"G %u %u %d %d %d",&fr,&ch,&cls,&le,&ptr)==5){c->cls=cls;c->le=le;c->ptr=ptr;for(int i=0;i<6&&p;i++){p=strchr(p,' ');if(p)p++;}for(int i=0;p&&i<=SBR_MAX_ENVELOPES;i++,p=strchr(p,' '))c->t[i]=atoi(p);} }
++ } fclose(fp); return in;
++}
++static void sbr_inject_close_grid(SbrAnalysisGrid *g, const InjectChannel *prev,
++                                  int high_res)
++{
++    int start = 0;
++    if (prev && prev->seen && prev->le > 0 &&
++        (prev->cls == SBR_FRAME_CLASS_FIXVAR || prev->cls == SBR_FRAME_CLASS_VARVAR)) {
++        int trailing = prev->t[prev->le] - SBR_NUM_TIME_SLOTS;
++        if (trailing > 0 && trailing < 4) start = trailing;
++    }
++    g->numEnvelopes = 1;
++    g->frameClass = start ? SBR_FRAME_CLASS_VARFIX : SBR_FRAME_CLASS_FIXFIX;
++    g->tEnv[0] = start;
++    g->tEnv[1] = SBR_NUM_TIME_SLOTS;
++    g->bsPointer = 0;
++    g->freqResEnv[0] = high_res;
++}
++
++int SbrInjectGetGrid(SBRInfo *s, SignalAnalysis *sa, int stream_frame)
++{
++    struct SbrInject *in = s ? s->inject : NULL;
++    if (!in || !(in->fields & IF_GRID)) return 0;
++    int n = stream_frame + in->offset + SBR_FRAME_FIFO;
++    int have = n >= 0 && n < INJECT_FRAMES && in->f[n].ch[0].seen;
++    for (int ch = 0; have && ch < s->numChannels; ch++)
++        have = in->f[n].ch[ch].seen;
++    if (!have) {
++        /* The donor can end before FAAC's SBR FIFO drains. Close the last
++           variable trailing border, and start a self-contained grid otherwise. */
++        for (int ch = 0; ch < s->numChannels; ch++) {
++            const InjectChannel *prev = n > 0 && n <= INJECT_FRAMES ? &in->f[n-1].ch[ch] : NULL;
++            sbr_inject_close_grid(&sa->grid[ch], prev, s->bs_freq_res);
++        }
++        const char *path = getenv("FAAC_PRICE_DUMP");
++        if (path && *path) {
++            FILE *out = fopen(path, "a");
++            if (out) {
++                fprintf(out, "X %d %d no_donor", stream_frame, n);
++                for (int ch = 0; ch < s->numChannels; ch++)
++                    fprintf(out, " %d", sa->grid[ch].frameClass);
++                fprintf(out, "\n");
++                fclose(out);
++            }
++        }
++        return 1;
++    }
++    for (int ch = 0; ch < s->numChannels; ch++) {
++        InjectChannel *c = &in->f[n].ch[ch];
++        SbrAnalysisGrid *g = &sa->grid[ch];
++        g->frameClass = c->cls;
++        g->numEnvelopes = c->le;
++        g->bsPointer = c->ptr;
++        for (int i = 0; i <= c->le; i++) g->tEnv[i] = c->t[i];
++        for (int i = 0; i < c->le; i++) g->freqResEnv[i] = c->freq[i];
++    }
++    return 1;
++}
++
++int SbrInjectApply(SBRInfo *s, SbrFrameData *fd, int stream_frame, int channels) { struct SbrInject *in=s->inject; if (!in) return 0; int n=stream_frame+in->offset+SBR_FRAME_FIFO; if(n<0||n>=INJECT_FRAMES||!in->f[n].ch[0].seen)return 0; InjectFrame*z=&in->f[n]; for(int ch=0;ch<channels;ch++){InjectChannel*c=&z->ch[ch];if(!c->seen)continue;if(in->fields&IF_ENV)memcpy(fd->ch[ch].envData,c->e,sizeof(c->e));if(in->fields&IF_NOISE)memcpy(fd->ch[ch].noiseData,c->q,sizeof(c->q));if(in->fields&IF_INVF)memcpy(fd->ch[ch].invfMode,c->invf,sizeof(c->invf));if(in->fields&IF_HARM){fd->ch[ch].addHarmonicFlag=c->harmflag;memcpy(fd->ch[ch].addHarmonic,c->harm,sizeof(c->harm));}} return 1; }
++void SbrInjectFree(struct SbrInject *in){if(in){free(in->f);free(in);}}
+diff --git a/libfaac/sbr_internal.h b/libfaac/sbr_internal.h
+index 0c551d27..89835910 100644
+--- a/libfaac/sbr_internal.h
++++ b/libfaac/sbr_internal.h
+@@ -38,6 +38,7 @@ typedef struct SBRChannel {
+     SbrEnvRef ref[2];
+     unsigned envDt; /* bit e: envelope e time-delta coded (sizing pass -> write pass) */
+ } SBRChannel;
++#define SBR_INJECT_MAX_ENVELOPES 5
+ 
+ /* One frame's coded SBR payload: every field SbrWrite reads that varies per
+  * frame. What it reads that is constant for the stream (bs_* header fields,
+@@ -46,17 +47,25 @@ typedef struct SBRChannel {
+  * Sole home for these values: SbrEncode quantizes into a SBRContext.frameFIFO
+  * slot and SbrWrite reads an older one, so the delay costs a ring index. Caching
+  * a copy anywhere else reintroduces the skew this ring exists to remove. */
+-typedef struct SbrFrameData {
++typedef struct SbrGrid {
+     int numEnvelopes;
+     int eff_amp_res;
+     SbrFrameClass frameClass;
+-    int tEnv[SBR_MAX_ENVELOPES + 1];
++    int tEnv[SBR_INJECT_MAX_ENVELOPES + 1];
+     int bsPointer;
+-    int freqRes; /* 1 = high-res band table, 0 = low-res (half the bands) */
++    int freqResEnv[SBR_INJECT_MAX_ENVELOPES];
++} SbrGrid;
++
++typedef struct SbrFrameData {
++    SbrGrid grid[MAX_CHANNELS];
+     /* The noise floor and inverse-filter mode are stream constants
+      * (SBR_NOISE_LEVEL_DEFAULT, SBR_INVF_MODE), so only the envelope is carried. */
+     struct {
+-        int envData[SBR_MAX_ENVELOPES][SBR_MAX_BANDS];
++        int envData[SBR_INJECT_MAX_ENVELOPES][SBR_MAX_BANDS];
++        int noiseData[2][SBR_MAX_BANDS];
++        int invfMode[SBR_MAX_BANDS];
++        int addHarmonic[SBR_MAX_BANDS];
++        int addHarmonicFlag;
+     } ch[MAX_CHANNELS];
+ } SbrFrameData;
+ 
+@@ -85,6 +94,8 @@ struct SBRInfo {
+     int bs_xover_band;
+     int bs_alter_scale;
+     int bs_freq_scale;     /* 1..3: log-spaced master table, 12/10/8 bands per octave */
++    int bs_noise_bands;
++    int bs_amp_res;
+     int numEnvFixFix;      /* envelopes in a frame without a transient: 1 or 2 */
+ 
+     /* --- per-frame state --- */
+@@ -95,6 +106,8 @@ struct SBRInfo {
+     int headerDecided;
+     int sendHeaderThisFrame;
+ 
++    struct SbrInject *inject;
++
+     /* --- per-channel state --- */
+     SBRChannel ch[MAX_CHANNELS];
+ 
+@@ -122,14 +135,14 @@ struct SBRContext {
+ 
+ /* The envelope band table this frame codes over. The quantizer and the writer
+  * must agree on it, and the decoder picks the same one from bs_freq_res. */
+-static inline int sbr_env_bands(const SBRInfo *sbr, const SbrFrameData *fd)
++static inline int sbr_env_bands(const SBRInfo *sbr, const SbrGrid *grid)
+ {
+-    return fd->freqRes ? sbr->numBands : sbr->numBandsLow;
++    return grid->freqResEnv[0] ? sbr->numBands : sbr->numBandsLow;
+ }
+ 
+-static inline const int *sbr_env_edges(const SBRInfo *sbr, const SbrFrameData *fd)
++static inline int sbr_env_bands_at(const SBRInfo *sbr, const SbrGrid *grid, int e)
+ {
+-    return fd->freqRes ? sbr->bandEdges : sbr->bandEdgesLow;
++    return grid->freqResEnv[e] ? sbr->numBands : sbr->numBandsLow;
+ }
+ 
+ SBRInfo *SbrInit(int channels, int sampleRate, unsigned long bitRate);
+@@ -141,5 +154,9 @@ void SbrEnd(SBRInfo *sbr);
+ void SbrQmfAnalysis(SBRInfo *sbr, const float * restrict ovl_pos, float * restrict energy, int kx, int k2);
+ /* Quantizes this frame's payload directly into *fd (a delay-line slot). */
+ void SbrEncode(SBRInfo *sbr, float *timeDomain[MAX_CHANNELS], int numChannels, const bool *isLfe, int numSamples, struct SignalAnalysis *sa, SbrFrameData *fd);
++struct SbrInject *loadit(void);
++int SbrInjectGetGrid(SBRInfo *sbr, SignalAnalysis *sa, int stream_frame);
++int SbrInjectApply(SBRInfo *sbr, SbrFrameData *fd, int stream_frame, int channels);
++void SbrInjectFree(struct SbrInject *in);
+ 
+ #endif

@@ -1,0 +1,152 @@
+diff --git a/libfaac/ratecontrol.c b/libfaac/ratecontrol.c
+index bbdc7529..9a82b6ee 100644
+--- a/libfaac/ratecontrol.c
++++ b/libfaac/ratecontrol.c
+@@ -15,6 +15,8 @@
+  */
+ 
+ #include <math.h>
++#include <stdlib.h>
++#include <stdio.h>
+ 
+ #include "ratecontrol.h"
+ #include "coder.h"
+@@ -160,6 +162,16 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
+        what the core actually spent. */
+     int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
+     int coreBits = totalBits - sbrBits;
++    const char *pricePath = getenv("FAAC_PRICE_DUMP");
++    if (pricePath && *pricePath) {
++        static FILE *price;
++        static unsigned priceFrame;
++        if (!price) price = fopen(pricePath, "a");
++        if (price) {
++            fprintf(price, "C %u %d %d %d %d\n", ++priceFrame, sentBits, sbrBits, coreBits, rc->stuffedBits);
++            fflush(price);
++        }
++    }
+     int lend;
+     int bound = RC_BALANCE_FRAMES * desbits;
+     int diff = coreTarget - coreBits;
+diff --git a/libfaac/sbr.c b/libfaac/sbr.c
+index 17cceca7..62253f85 100644
+--- a/libfaac/sbr.c
++++ b/libfaac/sbr.c
+@@ -453,7 +453,7 @@ static void sbr_adopt_envelope_grid(const SBRInfo *sbr, const struct SignalAnaly
+         g->frameClass = a->frameClass;
+         g->bsPointer = a->bsPointer;
+         for (int i = 0; i <= a->numEnvelopes; i++) g->tEnv[i] = a->tEnv[i];
+-        g->eff_amp_res = (g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
++        g->eff_amp_res = (g->frameClass == SBR_FRAME_CLASS_FIXFIX && g->numEnvelopes == 1) ? 0 : SBR_AMP_RES;
+         for (int i = 0; i < g->numEnvelopes; i++) g->freqResEnv[i] = a->freqResEnv[i];
+     }
+ }
+diff --git a/libfaac/sbr_bitstream.c b/libfaac/sbr_bitstream.c
+index 45deb978..84066bc6 100644
+--- a/libfaac/sbr_bitstream.c
++++ b/libfaac/sbr_bitstream.c
+@@ -14,6 +14,8 @@
+  */
+ 
+ #include <assert.h>
++#include <stdio.h>
++#include <stdlib.h>
+ 
+ #include "sbr.h"
+ #include "sbr_internal.h"
+@@ -229,6 +231,31 @@ static int SbrWrite(const SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs, i
+     emit_sbr_payload(sbr, fd, bs, id_aac, ch0, sendHeader, true);
+     if (padBits > 0) PutBit(bs, 0, padBits);
+ 
++    const char *pricePath = getenv("FAAC_PRICE_DUMP");
++    if (pricePath && *pricePath) {
++        static FILE *price;
++        if (!price) price = fopen(pricePath, "a");
++        if (price) {
++            int nch = id_aac == ID_CPE ? 2 : 1;
++            double sharedHg = (double)(totalBits + 5 + (sendHeader ? 21 : 0) + (nch == 2 ? 2 : 1)) / nch;
++            double sharedOther = (double)(padBits + 1) / nch;
++            for (int c = 0; c < nch; c++) {
++                const SbrGrid *g = &fd->grid[ch0 + c];
++                int env = write_sbr_envelope(sbr, fd, NULL, ch0 + c, false);
++                int noise = write_sbr_noise(sbr, fd, NULL, ch0 + c, false);
++                double hg = sharedHg + write_sbr_grid(sbr, g, NULL, false) + write_sbr_dtdf(g, NULL, false);
++                double other = sharedOther + 2 + 1;
++                fprintf(price, "W %d %d %.1f %.1f %d %d %.1f %d %d %d 0 | dt_env:",
++                        sbr->frameCount, ch0 + c, hg + env + noise + other, hg, env, noise, other,
++                        g->frameClass, g->numEnvelopes, g->eff_amp_res);
++                for (int e = 0; e < g->numEnvelopes; e++) fprintf(price, " 0");
++                fprintf(price, " | freq_res:");
++                for (int e = 0; e < g->numEnvelopes; e++) fprintf(price, " %d", g->freqResEnv[e]);
++                fprintf(price, "\n");
++            }
++            fflush(price);
++        }
++    }
+     return totalBits + payloadBits + padBits;
+ }
+ 
+diff --git a/libfaac/sbr_inject.c b/libfaac/sbr_inject.c
+index 710efc86..5706d68b 100644
+--- a/libfaac/sbr_inject.c
++++ b/libfaac/sbr_inject.c
+@@ -27,17 +27,54 @@ struct SbrInject *loadit(void) {
+  else if(line[0]=='G' && sscanf(line,"G %u %u",&fr,&ch)==2 && fr<INJECT_FRAMES && ch<2) { InjectChannel*c=&in->f[fr].ch[ch]; char *p=line; int cls,le,ptr; if(sscanf(line,"G %u %u %d %d %d",&fr,&ch,&cls,&le,&ptr)==5){c->cls=cls;c->le=le;c->ptr=ptr;for(int i=0;i<6&&p;i++){p=strchr(p,' ');if(p)p++;}for(int i=0;p&&i<=SBR_MAX_ENVELOPES;i++,p=strchr(p,' '))c->t[i]=atoi(p);} }
+  } fclose(fp); return in;
+ }
+-int SbrInjectGetGrid(SBRInfo *s, SignalAnalysis *sa, int stream_frame) {
++static void sbr_inject_close_grid(SbrAnalysisGrid *g, const InjectChannel *prev,
++                                  int high_res)
++{
++    int start = 0;
++    if (prev && prev->seen && prev->le > 0 &&
++        (prev->cls == SBR_FRAME_CLASS_FIXVAR || prev->cls == SBR_FRAME_CLASS_VARVAR)) {
++        int trailing = prev->t[prev->le] - SBR_NUM_TIME_SLOTS;
++        if (trailing > 0 && trailing < 4) start = trailing;
++    }
++    g->numEnvelopes = 1;
++    g->frameClass = start ? SBR_FRAME_CLASS_VARFIX : SBR_FRAME_CLASS_FIXFIX;
++    g->tEnv[0] = start;
++    g->tEnv[1] = SBR_NUM_TIME_SLOTS;
++    g->bsPointer = 0;
++    g->freqResEnv[0] = high_res;
++}
++
++int SbrInjectGetGrid(SBRInfo *s, SignalAnalysis *sa, int stream_frame)
++{
+     struct SbrInject *in = s ? s->inject : NULL;
+     if (!in || !(in->fields & IF_GRID)) return 0;
+-    /* frameCount names the access unit currently leaving the core FIFO;
+-       this analysis result is emitted after the four-slot SBR payload ring. */
+     int n = stream_frame + in->offset + SBR_FRAME_FIFO;
+-    if (n < 0 || n >= INJECT_FRAMES || !in->f[n].ch[0].seen) return 0;
++    int have = n >= 0 && n < INJECT_FRAMES && in->f[n].ch[0].seen;
++    for (int ch = 0; have && ch < s->numChannels; ch++)
++        have = in->f[n].ch[ch].seen;
++    if (!have) {
++        /* The donor can end before FAAC's SBR FIFO drains. Close the last
++           variable trailing border, and start a self-contained grid otherwise. */
++        for (int ch = 0; ch < s->numChannels; ch++) {
++            const InjectChannel *prev = n > 0 && n <= INJECT_FRAMES ? &in->f[n-1].ch[ch] : NULL;
++            sbr_inject_close_grid(&sa->grid[ch], prev, s->bs_freq_res);
++        }
++        const char *path = getenv("FAAC_PRICE_DUMP");
++        if (path && *path) {
++            FILE *out = fopen(path, "a");
++            if (out) {
++                fprintf(out, "X %d %d no_donor", stream_frame, n);
++                for (int ch = 0; ch < s->numChannels; ch++)
++                    fprintf(out, " %d", sa->grid[ch].frameClass);
++                fprintf(out, "\n");
++                fclose(out);
++            }
++        }
++        return 1;
++    }
+     for (int ch = 0; ch < s->numChannels; ch++) {
+         InjectChannel *c = &in->f[n].ch[ch];
+         SbrAnalysisGrid *g = &sa->grid[ch];
+-        if (!c->seen) return 0;
+         g->frameClass = c->cls;
+         g->numEnvelopes = c->le;
+         g->bsPointer = c->ptr;

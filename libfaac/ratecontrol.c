@@ -15,6 +15,8 @@
  */
 
 #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "ratecontrol.h"
 #include "coder.h"
@@ -160,6 +162,16 @@ float RateControlUpdate(RateControl *rc, int payloadBits,
        what the core actually spent. */
     int coreTarget = (int)(desbits * RC_BALANCE_AIM) - sbrCharge;
     int coreBits = totalBits - sbrBits;
+    const char *pricePath = getenv("FAAC_PRICE_DUMP");
+    if (pricePath && *pricePath) {
+        static FILE *price;
+        static unsigned priceFrame;
+        if (!price) price = fopen(pricePath, "a");
+        if (price) {
+            fprintf(price, "C %u %d %d %d %d\n", ++priceFrame, sentBits, sbrBits, coreBits, rc->stuffedBits);
+            fflush(price);
+        }
+    }
     int lend;
     int bound = RC_BALANCE_FRAMES * desbits;
     int diff = coreTarget - coreBits;
