@@ -26,10 +26,10 @@ struct CoreInject *CoreInjectGet(void);
  * (short-vs-long family, max_sfb, num_groups, and the exact group-length
  * list) matches; else 0 and no fields are written. On a match: *cb is fdk's
  * codebook for `band` (0/1-11/13/14/15, -1 if band >= donor max_sfb*groups),
- * *sf_shape is fdk's scalefactor minus that frame/channel's mean over its own
- * coded bands (only meaningful when *cb is 1-11), *ms is fdk's ms_used flag
- * for that band (only meaningful when band is in the CPE's shared low
- * region). */
+ * *sf_shape is fdk's own absolute scalefactor for this band minus fdk's own
+ * global_gain for this (frame,ch) -- a plain integer delta, fdk's "shape"
+ * (only meaningful when *cb is 1-11 or 13), *ms is fdk's ms_used flag for
+ * that band (only meaningful when band is in the CPE's shared low region). */
 int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
                       int is_short, int max_sfb, int num_groups,
                       const int *group_len,
@@ -53,5 +53,14 @@ enum { CI_CLASS = 1, CI_SF = 2, CI_MS = 4, CI_WIN = 8 };
  * "share of matched frames" stat in the result table is real. */
 void CoreInjectNoteFrame(struct CoreInject *in, int matched);
 void CoreInjectStats(const struct CoreInject *in, unsigned long *matched, unsigned long *total);
+
+/* sf-injection accounting, separate from the class/ms counters above: called
+ * once per coded band evaluated for `sf` forcing (matched = donor is a
+ * cb 1-11 band and got forced; clamped = the achieved absolute scalefactor,
+ * after resolve_band_gain's existing legality clamps, differs from what the
+ * forced shape asked for). */
+void CoreInjectNoteSf(struct CoreInject *in, int matched, int clamped);
+void CoreInjectStatsSf(const struct CoreInject *in, unsigned long *matched,
+                        unsigned long *total, unsigned long *clamped);
 
 #endif

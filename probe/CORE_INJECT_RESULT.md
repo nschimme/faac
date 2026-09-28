@@ -577,3 +577,189 @@ untested, load-bearing piece; still not started.
 - Onset check: `probe/scratch_w/onset_align.py <ref.wav> <donor_or_self.dump>
   [offsets...]`; sensitivity sweep `probe/scratch_w/sensitivity_check.py`;
   self-consistency control `probe/scratch_w/self_consistency_check.py`.
+
+## Step D: scalefactor-shape injection -- the decisive arm
+
+Question this was built to answer: given fdk's windows AND fdk's per-band
+noise allocation, does FAAC's quantizer recover fdk's quality? If yes, the
+gap is allocation/psy; if no, it's quantizer execution/entropy coding.
+
+### Design implemented
+
+- `libfaac/core_inject.c`/`.h`: parse and store fdk's `global_gain` per
+  (frame,ch) (the C-record header field was already scanned by `sscanf` but
+  previously discarded). `CoreInjectLookup`'s `*sf_shape` output changed from
+  a fixed-point-*256 delta against a computed per-frame *mean* (an unused
+  scaffold from the `class`/`ms` session, never wired to anything) to a plain
+  integer delta against fdk's own `global_gain` -- exactly the brief's
+  `fdk_sf[band] - fdk_global_gain`, no fixed-point needed since both are
+  already integers.
+- `libfaac/quantize.c` `BlocQuant`/`assign_band_codebooks`: a new `sfAnchor`
+  state variable (`SF_CHAIN_UNSET` sentinel, same pattern as the existing
+  `lastsf`/`last_abs` scalefactor-delta chain), scoped to the whole channel's
+  frame like `global_gain` itself. The **first band this frame that ends up
+  naturally coded is left unforced** and its resulting absolute scalefactor
+  becomes the anchor -- this is what lets `quality` (the outer rate-control
+  retry loop's only knob) keep moving the whole forced shape up/down to hit
+  the bit budget, without this probe needing to intercept or duplicate that
+  loop. Every other coded (cb 1-11) band matched against the donor gets its
+  `sfac` **replaced outright** (`sfac = SF_OFFSET - (anchor + fdk_shape -
+  sf_bias)`) before `resolve_band_gain`/`qfunc` run -- so the quantizer
+  actually quantizes at the forced step, not a post-hoc relabel of `ci->sf`
+  the way the prior `class`-only session's regression was diagnosed. The
+  existing `resolve_band_gain` clamp chain (gain overflow, `clamp_sf_diff`
+  delta-vs-previous-band, 0..`SF_MAX_ABS`) runs completely unchanged on the
+  forced `sfac`, so legality is free; a clamped band is detected by comparing
+  the achieved `sf_abs` the function returns against the wanted value.
+  PNS bands (cb 13) get the same anchor+shape treatment on the non-M/S-cross-
+  channel path (skipped when the band's forced onto the partner channel via
+  `ci->msEl`/`ci->partner`, out of scope for this step). IS bands (14/15)
+  are untouched, per the brief.
+- New counters: `CoreInjectNoteSf`/`CoreInjectStatsSf` (separate from the
+  existing class/ms match counter) track forced-band attempts and how many
+  got clamped, printed by the existing `FAAC_CORE_INJECT_DEBUG=1` summary.
+
+### Gates
+
+**A -- FIELDS unset, byte-identical:** PASS, all 5 clips.
+
+**B -- self-injection, FIELDS=win,sf:** **byte-identical on all 5/5 clips**
+(offset 1), zero clamped bands on every clip (`sf: matched N/N, clamped 0`).
+`FIELDS=win,class,ms,sf` (all four fields) self-injected: 4/5 byte-identical;
+24-Greensleeves differs, reproducing the exact same pre-existing `class`+`ms`
+quantizer-retry nondeterminism documented in Step W (independent of `sf` --
+that arm's own `sf: matched/clamped` line is clean, `0` clamps, same as the
+other 4 clips; the 1-byte diff traces to the same `ms_mask_present`-summary
+staleness already root-caused and scoped out of this session).
+
+**C -- fdk-donor shape fidelity:** re-dumped the `W+D` (win,sf) stream with
+FAAD3 and compared each band's own encoded shape (its `sf` minus its own
+`global_gain`) against the donor's, at bands where *both* sides naturally/
+already ended up coded (cb 1-11) -- a donor-coded band FAAC classified zero
+is a natural class disagreement (no `class` field in this arm), not a
+forcing failure, so it's excluded from the denominator:
+
+| clip | shape match |
+|---|---:|
+| 12-German-male-speech | 6626/6663 (99.4%) |
+| 15-Good-evening | 12732/12879 (98.9%) |
+| 21-classic | 13291/13291 (100.0%) |
+| 24-Greensleeves-Korean-male-speech | 9360/9449 (99.1%) |
+| 35-glockenspiel | 8232/8266 (99.6%) |
+
+All 5 comfortably clear the brief's >=98% bar. Every one of the small
+remainders is the frame's *own* anchor band (by construction left unforced,
+so it floats a few quarter-dB off the donor's own first-band value -- not a
+bug, the documented cost of using "first naturally-coded band" as the
+moving reference instead of a second encode pass). `FAAC_CORE_INJECT_DEBUG=1`
+confirms 0 clamped bands on every clip at every arm tested (`WD`/`WCD`/
+`WCMD`, offset 2) -- the forced shape never had to be adjusted for legality.
+
+**D -- decode/object-type:** PASS on all 5 `W+D` (and `WCD`/`WCMD`) streams:
+FAAD3 `--strict` zero concealment/zero non-END termination; `ffmpeg -xerror`
+clean decode; `ffprobe` confirms `HE-AAC,48000,2` on all 5.
+
+### Quick signal: raw MOS, 5 clips x 48 kbps, ffmpeg + fdk decode, ViSQOL
+
+Arms: `N13` (baseline), `W` (from Step W, for reference), `W+D` (win,sf),
+`W+C+D` (win,class,sf), `W+C+M+D` (win,class,ms,sf). Donor offset 2
+throughout.
+
+| clip | arm | bytes | Δbytes | ff MOS | Δff | fdk MOS | Δfdk |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 12-German | N13 | 48162 | -- | 4.0265 | -- | 3.9963 | -- |
+| 12-German | W | 48436 | +274 | 3.8596 | -0.1669 | 3.7895 | -0.2068 |
+| 12-German | W+D | 48529 | +367 | 3.5545 | **-0.4720** | 3.5159 | -0.4803 |
+| 12-German | W+C+D | 48291 | +129 | 3.8399 | -0.1866 | 3.7976 | -0.1987 |
+| 12-German | W+C+M+D | 48274 | +112 | 3.8319 | -0.1946 | 3.7897 | -0.2066 |
+| 15-Good-evening | N13 | 53056 | -- | 4.0939 | -- | 4.0519 | -- |
+| 15-Good-evening | W | 53099 | +43 | 4.0296 | -0.0643 | 3.9888 | -0.0631 |
+| 15-Good-evening | W+D | 53380 | +324 | 4.0960 | **+0.0021** | 4.0630 | +0.0111 |
+| 15-Good-evening | W+C+D | 54142 | +1086 | 3.7264 | -0.3674 | 3.6865 | -0.3654 |
+| 15-Good-evening | W+C+M+D | 53863 | +807 | 3.8914 | -0.2025 | 3.8463 | -0.2056 |
+| 21-classic | N13 | 59284 | -- | 4.1424 | -- | 4.2046 | -- |
+| 21-classic | W | 59416 | +132 | 4.1581 | +0.0157 | 4.2129 | +0.0083 |
+| 21-classic | W+D | 59389 | +105 | 4.1064 | -0.0360 | 4.1575 | -0.0471 |
+| 21-classic | W+C+D | 59440 | +156 | 3.9424 | -0.2000 | 4.0116 | -0.1929 |
+| 21-classic | W+C+M+D | 59441 | +157 | 3.9909 | -0.1515 | 4.0647 | -0.1399 |
+| 24-Greensleeves | N13 | 53685 | -- | 3.8673 | -- | 3.7866 | -- |
+| 24-Greensleeves | W | 54128 | +443 | 3.2792 | -0.5881 | 3.2226 | -0.5641 |
+| 24-Greensleeves | W+D | 54607 | +922 | 3.1378 | **-0.7294** | 3.0588 | -0.7278 |
+| 24-Greensleeves | W+C+D | 54814 | +1129 | 2.9906 | -0.8766 | 2.9835 | -0.8032 |
+| 24-Greensleeves | W+C+M+D | 55147 | +1462 | 2.9067 | -0.9606 | 2.8742 | -0.9125 |
+| 35-glockenspiel | N13 | 61421 | -- | 4.5003 | -- | 4.4096 | -- |
+| 35-glockenspiel | W | 61692 | +271 | 4.4018 | -0.0985 | 4.2903 | -0.1193 |
+| 35-glockenspiel | W+D | 65421 | **+4000** | 4.0249 | **-0.4754** | 3.9558 | -0.4538 |
+| 35-glockenspiel | W+C+D | 62977 | +1556 | 3.7498 | -0.7505 | 3.7186 | -0.6909 |
+| 35-glockenspiel | W+C+M+D | 63287 | +1866 | 3.8482 | -0.6521 | 3.7999 | -0.6096 |
+
+Bits split (core side-info vs spectral) per arm vs fdk, from the FAAD3 C
+records: **not reported.** The C-record format (see the header comment in
+`libfaad/decoder.c`) carries per-band `cb:sf:nnz:ms` and a whole-element
+`bits` total, but no per-category (side-info vs spectral Huffman payload)
+breakdown -- computing one honestly needs either instrumenting the
+bitstream *writer* to count bits by category as it writes, or re-deriving
+Huffman code lengths per band from `cb`+quantized magnitudes, both of which
+are real additions beyond this step's C-record-only scope. Reported instead,
+exactly: the `bytes` column above (real, not estimated), and for reference
+fdk's own native N13-crossover stream size on these 5 clips (from the prior
+Step W probe's donor generation, same encode/config the donor dumps came
+from): German 48326, Good-evening 52467, classic 59050, Greensleeves 53728,
+glockenspiel 61238 -- all arms above (N13 through W+C+M+D) sit within about
++-10% of fdk's own size on 4/5 clips; glockenspiel's `W+D` bloats to +6.8%
+over fdk's own stream and +6.5% over N13, the largest byte movement in the
+whole table.
+
+### Interpretation
+
+**Does FAAC's quantizer recover fdk's quality once given fdk's windows AND
+fdk's verified (99-100% shape-matched, zero-clamped) per-band allocation? No.**
+On 4 of 5 clips, `W+D` is *not* an improvement over `W` alone -- it's a
+substantially larger loss (German -0.47 vs -0.17; Greensleeves -0.73 vs
+-0.59; glockenspiel -0.48 vs -0.10, plus a real +6.8%-over-fdk byte bloat).
+Layering `class` on top (`W+C+D`) sometimes partially recovers from `W+D`
+(German: -0.47 -> -0.19) and sometimes makes it *worse* (Good-evening: +0.00
+-> -0.37; Greensleeves: -0.73 -> -0.88; glockenspiel: -0.48 -> -0.75) --
+there is no consistent direction to combining the two fields.
+
+The one clear positive result is **15-Good-evening's `class`-only
+catastrophe substantially recovers once `sf` is added**: Step W's `W+C` was
+-1.42/-1.40 MOS; this session's `W+C+D` is -0.37/-0.37, and `W+C+M+D` is
+-0.20/-0.21 -- roughly 3-4x smaller a loss, though still short of N13. This
+*is* consistent with the prior session's diagnosis that a `sf`-less `class`
+arm was "not a fair test" of whether fdk's decisions help. But the fair
+test, now run, gives the answer: even fixed, `class`+`sf` is still a real
+loss on this clip, and a much larger one on every other clip in the sample
+except this single case.
+
+**Reading on the coordinator's question:** the evidence points to
+quantizer-execution/entropy-coding (or a more basic filterbank/spectral-
+realization mismatch between the two encoders), not psy/allocation, as the
+gap's location. If the gap were simply "FAAC picks worse per-band levels
+than fdk," transplanting fdk's *exact, verified* relative levels onto FAAC's
+own spectrum should have closed it, or come close. Instead it usually makes
+things worse, and on glockenspiel it makes the *bitstream itself* meaningfully
+larger for a worse-sounding result -- both signs that fdk's relative shape,
+correct for fdk's *own* spectral energy distribution (its own filterbank,
+its own pre-processing, its own windowing realization of the same PCM), is
+a poor fit once transplanted onto FAAC's *different* spectral realization of
+that same signal, regardless of how faithfully the transplant itself is
+executed. Native co-design (FAAC's own psy targeting FAAC's own spectrum) is
+not obviously beaten by copying another encoder's answer key.
+
+### Commands / provenance (Step D)
+
+- Self dumps, donor dumps, corpus, build commands: same as Step W.
+- Encode: `FAAC_SBR_START=12 FAAC_SBR_STOP=9 FAAC_SBR_FREQ_SCALE=2
+  FAAC_SBR_ALTER=1 FAAC_CORE_INJECT=<dump> FAAC_CORE_INJECT_FIELDS=<win,sf|win,class,sf|win,class,ms,sf>
+  FAAC_CORE_INJECT_OFFSET=<1 self, 2 fdk-donor> [FAAC_CORE_INJECT_DEBUG=1]
+  build/frontend/faac --overwrite --object-type he-aac-v1 -b 48 -o <out> <clip>.wav`.
+- Shape-fidelity script: `probe/scratch_w/sf_shape_match.py <output.dump>
+  <donor.dump> <shift>` (shift=1: `donor_frame = output_frame + 1`, the same
+  output-to-donor correlation established and validated in Step W).
+- Decode/score: identical commands to Step W (ffmpeg, `fdkdec`, FAAD3
+  `--strict`, `sc.py` ViSQOL).
+- Raw scores: `probe/scratch_w/scores_d.csv` (arms `WD`/`WCD`/`WCMD`, both
+  decoders); `probe/scratch_w/scores.csv` still holds `N13`/`W` from Step W.
+- Source diff: `probe/core_inject_d.patch` (`libfaac/core_inject.c`,
+  `libfaac/core_inject.h`, `libfaac/quantize.c`).

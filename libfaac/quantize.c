@@ -291,7 +291,8 @@ static float resolve_band_gain(int sfac, int sf_bias, float band_peak, int last_
 static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __restrict xr0,
                                    const float * __restrict target,
                                    const BandEnergy * __restrict be, int gnum, int pnslevel,
-                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen)
+                                   int * __restrict p_last_abs, int * __restrict qs, int * __restrict p_qlen,
+                                   int * __restrict p_sf_anchor)
 {
     int gsize = ci->groups.len[gnum];
     float pns_threshold = 0.1f * (float)pnslevel;
@@ -353,7 +354,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * zero instead, leaving the band mono. */
         if (force_cb == 13 || (force_cb < 0 && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))))
         {
-            if (ci->msEl[band] > 0.0f)
+            int ms_cross = ci->msEl[band] > 0.0f;
+            if (ms_cross)
             {
                 CoderInfo *r = ci->partner;
                 if (!r)
@@ -371,19 +373,71 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 #ifdef FAAC_STATS
             g_faacStats.pnsBands++;
 #endif
-            ci->sf[band] += lrintf(sf_enrg_avg);
+            /* Probe-only (core_inject.c): fdk's noise-level SHAPE for a PNS
+             * band, same anchor+shape idea as the coded-band case below.
+             * Skipped on the M/S cross-channel path (ms_cross) -- that path
+             * already overwrites both channels' sf through the partner
+             * pointer above, and forcing on top of that here isn't scoped
+             * for this probe. */
+            struct CoreInject *sfcinj = CoreInjectGet();
+            int forced_pns = 0;
+            if (!ms_cross && sfcinj && (CoreInjectFields(sfcinj) & CI_SF)
+                && *p_sf_anchor != SF_CHAIN_UNSET)
+            {
+                int donor_cb, sf_shape;
+                int is_short = (ci->block_type == ONLY_SHORT_WINDOW);
+                int matched = CoreInjectLookup(sfcinj, ci->ciFrame, ci->ciCh, band, is_short,
+                                                ci->sfbn, ci->groups.n, ci->groups.len,
+                                                &donor_cb, &sf_shape, NULL);
+                if (matched && donor_cb == 13)
+                {
+                    ci->sf[band] = *p_sf_anchor + sf_shape;
+                    forced_pns = 1;
+                }
+            }
+            if (!forced_pns)
+                ci->sf[band] += lrintf(sf_enrg_avg);
             ci->bandcnt++;
             continue;
         }
 
         float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
         int sfac = lrintf(log10f(target[sb]) * sfstep - sf_enrg_avg + log10_w_sf);
-        int sf_rel = SF_OFFSET - sfac;
         int sf_bias = ci->sf[band];
+
+        /* Probe-only (core_inject.c): fdk's scalefactor SHAPE for this coded
+         * band (fdk's own absolute sf minus fdk's own global_gain), replacing
+         * the natural target-derived `sfac` outright -- not a post-hoc
+         * relabel of ci->sf, so the qfunc() call below actually quantizes at
+         * the forced step, the way class-forcing without this was shown to
+         * NOT do (and paid for on 15-Good-evening in Step W). Floats on
+         * FAAC's own anchor: the first band this frame that ends up
+         * naturally coded is left unforced (see the anchor-set below) so it,
+         * and the `quality` knob the outer rate-control retry loop moves,
+         * still sets the reference level the whole forced shape rides on. */
+        int wanted_sf_abs = 0, forcing_sf = 0;
+        struct CoreInject *sfcinj = CoreInjectGet();
+        if (sfcinj && (CoreInjectFields(sfcinj) & CI_SF) && *p_sf_anchor != SF_CHAIN_UNSET)
+        {
+            int donor_cb, sf_shape;
+            int is_short = (ci->block_type == ONLY_SHORT_WINDOW);
+            int matched = CoreInjectLookup(sfcinj, ci->ciFrame, ci->ciCh, band, is_short,
+                                            ci->sfbn, ci->groups.n, ci->groups.len,
+                                            &donor_cb, &sf_shape, NULL);
+            if (matched && donor_cb >= 1 && donor_cb <= 11)
+            {
+                wanted_sf_abs = *p_sf_anchor + sf_shape;
+                sfac = SF_OFFSET - (wanted_sf_abs - sf_bias);
+                forcing_sf = 1;
+            }
+        }
+
+        int sf_rel = SF_OFFSET - sfac;
 
         if (sf_rel < SF_MIN)
         {
             ci->book[band] = HCB_ZERO;
+            if (forcing_sf) CoreInjectNoteSf(sfcinj, 1, 1); /* wanted below SF_MIN: can't honor at all */
         }
         else
         {
@@ -403,6 +457,14 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             if (maxq)
                 *p_qlen += gsize * width;
             *p_last_abs = sf_abs;
+
+            if (forcing_sf)
+                CoreInjectNoteSf(sfcinj, 1, sf_abs != wanted_sf_abs);
+            else if (*p_sf_anchor == SF_CHAIN_UNSET && maxq)
+                /* First band this frame that ends up naturally coded: this
+                 * IS the anchor every later sf-forced band floats on (not
+                 * forced itself, so the anchor still moves with `quality`). */
+                *p_sf_anchor = sf_abs;
         }
 
         ci->sf[ci->bandcnt++] += sf_rel;
@@ -458,6 +520,11 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
     BandEnergy be[NSFB_LONG];
     int qs[FRAME_LEN];
     int i, lastsf = SF_CHAIN_UNSET, qlen = 0;
+    /* Probe-only (core_inject.c): the sf-injection anchor, shared across every
+     * group/band in this channel's frame (same scope as `lastsf`/global_gain
+     * below) -- the first naturally-coded band sets it once, and every later
+     * `sf`-forced band's absolute scalefactor floats on it. */
+    int sfAnchor = SF_CHAIN_UNSET;
     float *gxr = xr;
     int cutoff = (coder->block_type == ONLY_SHORT_WINDOW)
                ? aacquantCfg->max_l / 8 : coder->sfb_offset[coder->sfbn];
@@ -472,7 +539,7 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
-        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen);
+        assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, &sfAnchor);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }
     huffbook(coder, qs);

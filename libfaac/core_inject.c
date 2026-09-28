@@ -13,11 +13,11 @@ typedef struct {
     int win_short;      /* 1 if fdk's window_sequence == EIGHT_SHORT (2) */
     int max_sfb, groups;
     int glen[8];        /* window_group_length per group; g=1 for long windows */
+    int global_gain;    /* fdk's own ics->global_gain for this (frame,ch) */
     int nbands;
     int cb[CI_MAX_BANDS];
     int sf[CI_MAX_BANDS];
     int ms[CI_MAX_BANDS];
-    int sf_mean_set, sf_mean; /* fixed-point *256, over coded (1-11) bands */
 } CIFrame;
 
 struct CoreInject {
@@ -25,6 +25,7 @@ struct CoreInject {
     int offset;
     CIFrame (*f)[2]; /* [frame][ch] */
     unsigned long matched, total;
+    unsigned long sf_matched, sf_total, sf_clamped;
 };
 
 static unsigned parse_fields(const char *s)
@@ -40,15 +41,6 @@ static unsigned parse_fields(const char *s)
         else if (!strcmp(p, "win")) x |= CI_WIN;
     }
     return x ? x : CI_CLASS;
-}
-
-static void compute_sf_mean(CIFrame *fr)
-{
-    long sum = 0; int n = 0;
-    for (int b = 0; b < fr->nbands; b++)
-        if (fr->cb[b] >= 1 && fr->cb[b] <= 11) { sum += fr->sf[b]; n++; }
-    fr->sf_mean = n ? (int)((sum * 256) / n) : 0;
-    fr->sf_mean_set = 1;
 }
 
 struct CoreInject *CoreInjectLoad(void)
@@ -82,6 +74,7 @@ struct CoreInject *CoreInjectLoad(void)
         fr->win_short = (win_seq == 2); /* EIGHT_SHORT_SEQUENCE */
         fr->max_sfb = max_sfb;
         fr->groups = groups;
+        fr->global_gain = gg;
         fr->nbands = 0;
         for (int g = 0; g < 8; g++) fr->glen[g] = 0;
 
@@ -120,7 +113,6 @@ struct CoreInject *CoreInjectLoad(void)
                 }
             }
         }
-        compute_sf_mean(fr);
     }
     fclose(fp);
     return in;
@@ -161,7 +153,13 @@ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
     if (band < 0 || band >= fr->nbands) return 0;
 
     if (cb) *cb = fr->cb[band];
-    if (sf_shape) *sf_shape = fr->sf[band] * 256 - fr->sf_mean; /* fixed-point *256 */
+    /* fdk's per-band scalefactor relative to fdk's OWN global_gain for this
+     * frame -- a plain integer delta (both are already integers; no
+     * fixed-point needed once the reference is the header's global_gain
+     * instead of a computed per-frame mean). This is fdk's "shape": adding
+     * it to FAAC's own anchor reproduces fdk's relative scalefactor curve
+     * on FAAC's own level. */
+    if (sf_shape) *sf_shape = fr->sf[band] - fr->global_gain;
     if (ms) *ms = fr->ms[band];
     return 1;
 }
@@ -201,12 +199,34 @@ void CoreInjectStats(const struct CoreInject *in, unsigned long *matched, unsign
     if (total) *total = in->total;
 }
 
+void CoreInjectNoteSf(struct CoreInject *in, int matched, int clamped)
+{
+    if (!in) return;
+    in->sf_total++;
+    if (matched) in->sf_matched++;
+    if (clamped) in->sf_clamped++;
+}
+
+void CoreInjectStatsSf(const struct CoreInject *in, unsigned long *matched,
+                        unsigned long *total, unsigned long *clamped)
+{
+    if (!in) {
+        if (matched) *matched = 0; if (total) *total = 0; if (clamped) *clamped = 0;
+        return;
+    }
+    if (matched) *matched = in->sf_matched;
+    if (total) *total = in->sf_total;
+    if (clamped) *clamped = in->sf_clamped;
+}
+
 static struct CoreInject *g_ci;
 static void core_inject_atexit(void)
 {
     if (g_ci && getenv("FAAC_CORE_INJECT_DEBUG"))
-        fprintf(stderr, "core_inject: matched %lu/%lu bands (fields=%u offset=%d)\n",
-                g_ci->matched, g_ci->total, g_ci->fields, g_ci->offset);
+        fprintf(stderr, "core_inject: matched %lu/%lu bands (fields=%u offset=%d); "
+                "sf: matched %lu/%lu, clamped %lu\n",
+                g_ci->matched, g_ci->total, g_ci->fields, g_ci->offset,
+                g_ci->sf_matched, g_ci->sf_total, g_ci->sf_clamped);
 }
 struct CoreInject *CoreInjectGet(void)
 {
