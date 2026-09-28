@@ -20,6 +20,7 @@
 #include "util.h"
 #include "faac_internal.h"
 #include "stats.h"
+#include "core_inject.h"
 
 /* Intensity stereo crossover scales with core bandwidth (3.5-7 kHz) to save low-band phase bits at low rates. */
 #define IS_BW_RATIO              0.35f
@@ -214,7 +215,20 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
 
         if (sfb < ms_end) {
             /* es and ed are 4x the mid and side energies. */
-            if (es * ed < 4.0f * el * er) {
+            int use_ms = (es * ed < 4.0f * el * er);
+            /* Probe-only: fdk's ms_used ground truth, on frames whose window
+             * layout already matches FAAC's own (no window injection in this
+             * build, so this is a natural, reported-share subset). */
+            struct CoreInject *cinj = CoreInjectGet();
+            if (cinj && (CoreInjectFields(cinj) & CI_MS)) {
+                int donor_ms, is_short = (cl->block_type == ONLY_SHORT_WINDOW);
+                int matched = CoreInjectLookup(cinj, cl->ciFrame, cl->ciCh, band,
+                                                is_short, cl->sfbn, cl->groups.n,
+                                                NULL, NULL, &donor_ms);
+                CoreInjectNoteFrame(cinj, matched);
+                if (matched) use_ms = donor_ms;
+            }
+            if (use_ms) {
                 apply_ms_full(sl0, sr0, start, len, wstart, wend);
                 element->msInfo.ms_used[band] = 1;
                 cl->msEl[band] = el;

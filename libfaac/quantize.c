@@ -23,6 +23,7 @@
 #include "huff2.h"
 #include "cpu_compute.h"
 #include "stats.h"
+#include "core_inject.h"
 
 typedef int (*QuantizeFunc)(const float * __restrict xr, int * __restrict xi, int n4, float sfacfix);
 
@@ -315,16 +316,33 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         float avg_per_window = be[sb].sum / (float)gsize;
         float rms = sqrtf(avg_per_window / width);
 
-        if (rms < SILENCE_RMS || target[sb] == 0.0f)
+        /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
+         * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf.
+         * Computed unconditionally (harmless when the band ends up zeroed) so
+         * a forced-PNS override below can reuse it exactly like the natural path. */
+        float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
+
+        /* Probe-only (core_inject.c): fdk's ground-truth class for this band,
+         * on frames whose window layout already matches FAAC's own. Only
+         * zero/PNS/coded are forced; intensity (14/15) is left to stereo.c's
+         * own decision, made earlier and unrelated to this loop. */
+        int force_cb = -1;
+        struct CoreInject *cinj = CoreInjectGet();
+        if (cinj && (CoreInjectFields(cinj) & CI_CLASS))
+        {
+            int is_short = (ci->block_type == ONLY_SHORT_WINDOW);
+            int matched = CoreInjectLookup(cinj, ci->ciFrame, ci->ciCh, band, is_short,
+                                            ci->sfbn, ci->groups.n, &force_cb, NULL, NULL);
+            CoreInjectNoteFrame(cinj, matched);
+            if (!matched || force_cb == 14 || force_cb == 15) force_cb = -1;
+        }
+
+        if (force_cb == 0 || (force_cb < 0 && (rms < SILENCE_RMS || target[sb] == 0.0f)))
         {
             ci->book[band] = HCB_ZERO;
             ci->bandcnt++;
             continue;
         }
-
-        /* Log-domain identity: log10(target/rms) = log10(target) - 0.5*log10(avg) + 0.5*log10(width).
-         * Reuses sf_enrg_avg (log10(avg) * SF_STEP_ENRG) shared with PNS to avoid division and sqrtf. */
-        float sf_enrg_avg = log10f(avg_per_window) * SF_STEP_ENRG;
 
         /* PNS is fine inside TNS-covered bands -- the decoder's inverse
          * TNS filter shapes the substituted noise too. Decoders skip M/S on a
@@ -332,7 +350,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * in both channels, decided on the mid. Its flag isn't restored on a
          * retry, so the fallback sticks. A side band left under M/S drops to
          * zero instead, leaving the band mono. */
-        if (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))
+        if (force_cb == 13 || (force_cb < 0 && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))))
         {
             if (ci->msEl[band] > 0.0f)
             {

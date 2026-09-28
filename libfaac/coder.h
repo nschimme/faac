@@ -112,6 +112,12 @@ typedef struct CoderInfo {
     float msEl[MAX_SCFAC_BANDS];          /* M/S band: this channel's L/R energy; 0 = not M/S */
     const float *msPeer;                  /* the other channel's msEl[] */
     uint8_t *msUsed;                      /* the element's ms_used[], set on the left */
+
+    /* Probe-only (core_inject.c): this channel's element-local index (0=left,
+     * 1=right of the CPE) and the donor-aligned output frame number, both set
+     * once per frame in frame.c. Unused (0) when FAAC_CORE_INJECT is unset. */
+    int ciCh;
+    int ciFrame;
 } CoderInfo;
 
 typedef struct {
