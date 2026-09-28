@@ -1,0 +1,377 @@
+diff --git a/libfaac/blockswitch.c b/libfaac/blockswitch.c
+index b81b53e1..c2471971 100644
+--- a/libfaac/blockswitch.c
++++ b/libfaac/blockswitch.c
+@@ -21,6 +21,7 @@
+ #include "coder.h"
+ #include "util.h"
+ #include "faac_internal.h"
++#include "core_inject.h"
+ 
+ typedef float psyfloat;
+ 
+@@ -216,6 +217,30 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
+       desire = ONLY_SHORT_WINDOW;
+   }
+ 
++  /* Probe-only (core_inject.c): fdk's own window_sequence for this frame,
++   * looked up once (every channel shares one ciFrame value, set in frame.c
++   * before this call). Applied per channel below, AFTER the natural decision,
++   * as a post-hoc override rather than by pre-empting `desire` -- `desire`
++   * only ever takes the natural psychoacoustic value here, so the hysteresis
++   * read of desired_block_type two lines down stays driven by real
++   * psychoacoustic history even on a frame the override later replaces. */
++  int have_donor_win = 0, donor_win_seq = 0;
++  {
++    struct CoreInject *cinj = CoreInjectGet();
++    if (cinj && (CoreInjectFields(cinj) & CI_WIN))
++    {
++      for (channel = 0; channel < numChannels; channel++)
++      {
++        if (coderInfo[channel].ciCh == 0)
++        {
++          have_donor_win = CoreInjectLookupWin(cinj, coderInfo[channel].ciFrame, 0,
++                                                &donor_win_seq, NULL, NULL, NULL);
++          break;
++        }
++      }
++    }
++  }
++
+   for (channel = 0; channel < numChannels; channel++)
+   {
+     int lasttype = coderInfo[channel].block_type;
+@@ -236,5 +261,27 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
+ 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
+     }
+     coderInfo[channel].desired_block_type = desire;
++
++    /* Probe-only (core_inject.c): swap in fdk's win_seq when it's a legal
++     * continuation from `lasttype` (the same predecessor state the natural
++     * decision above was just judged against). An illegal donor value (donor
++     * disagreed with FAAC on the LAST frame's family, so a raw transplant
++     * here would violate the LONG_START/STOP pairing) is silently declined,
++     * leaving the natural decision in place -- same as "no donor record".
++     * desired_block_type is overwritten to the override's own family so the
++     * NEXT frame's hysteresis check above sees the overridden history. */
++    if (have_donor_win)
++    {
++      int legal = (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
++                  ? (donor_win_seq == ONLY_LONG_WINDOW || donor_win_seq == LONG_SHORT_WINDOW)
++                  : (donor_win_seq == ONLY_SHORT_WINDOW || donor_win_seq == SHORT_LONG_WINDOW);
++      if (legal)
++      {
++        coderInfo[channel].block_type = donor_win_seq;
++        coderInfo[channel].desired_block_type =
++            (donor_win_seq == ONLY_SHORT_WINDOW || donor_win_seq == LONG_SHORT_WINDOW)
++            ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
++      }
++    }
+   }
+ }
+diff --git a/libfaac/core_inject.c b/libfaac/core_inject.c
+index d493da10..ab0dc6b6 100644
+--- a/libfaac/core_inject.c
++++ b/libfaac/core_inject.c
+@@ -9,8 +9,10 @@
+ 
+ typedef struct {
+     int seen;          /* 1 if this (frame,ch) had a C record */
++    int win_seq;        /* raw ISO window_sequence (0-3); == FAAC block_type */
+     int win_short;      /* 1 if fdk's window_sequence == EIGHT_SHORT (2) */
+     int max_sfb, groups;
++    int glen[8];        /* window_group_length per group; g=1 for long windows */
+     int nbands;
+     int cb[CI_MAX_BANDS];
+     int sf[CI_MAX_BANDS];
+@@ -35,8 +37,7 @@ static unsigned parse_fields(const char *s)
+         if (!strcmp(p, "class")) x |= CI_CLASS;
+         else if (!strcmp(p, "sf")) x |= CI_SF;
+         else if (!strcmp(p, "ms")) x |= CI_MS;
+-        /* "win" is accepted on the command line but not implemented by this
+-         * probe build; frames still gate on the natural window match. */
++        else if (!strcmp(p, "win")) x |= CI_WIN;
+     }
+     return x ? x : CI_CLASS;
+ }
+@@ -77,10 +78,28 @@ struct CoreInject *CoreInjectLoad(void)
+         if (!bar) continue;
+         CIFrame *fr = &in->f[frame][ch];
+         fr->seen = 1;
++        fr->win_seq = win_seq;
+         fr->win_short = (win_seq == 2); /* EIGHT_SHORT_SEQUENCE */
+         fr->max_sfb = max_sfb;
+         fr->groups = groups;
+         fr->nbands = 0;
++        for (int g = 0; g < 8; g++) fr->glen[g] = 0;
++
++        /* Trailing " g=<len0>,<len1>,..." token, appended after all '|'/'/'
++         * band data by core_dump_ics; parsed from the raw line rather than
++         * the tokenizer above so it can't be confused with a band token
++         * (it never matches "%d:%d:%d:%d"). */
++        char *gp = strstr(line, " g=");
++        if (gp) {
++            char gbuf[256], *tsave;
++            snprintf(gbuf, sizeof gbuf, "%s", gp + 3);
++            char *nl = strpbrk(gbuf, "\r\n");
++            if (nl) *nl = 0;
++            int ng = 0;
++            for (char *t = strtok_r(gbuf, ",", &tsave); t && ng < 8;
++                 t = strtok_r(NULL, ",", &tsave))
++                fr->glen[ng++] = atoi(t);
++        }
+ 
+         char *p = bar + 1, *grp_save;
+         for (char *grp = strtok_r(p, "/", &grp_save); grp && fr->groups <= groups + 8;
+@@ -118,6 +137,7 @@ unsigned CoreInjectFields(const struct CoreInject *in) { return in ? in->fields
+ 
+ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
+                       int is_short, int max_sfb, int num_groups,
++                      const int *group_len,
+                       int *cb, int *sf_shape, int *ms)
+ {
+     if (!in) return 0;
+@@ -125,11 +145,19 @@ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
+     if (n < 0 || n >= CI_MAX_FRAMES || ch < 0 || ch > 1) return 0;
+     CIFrame *fr = &in->f[n][ch];
+     if (!fr->seen) return 0;
+-    /* Window-layout match: short/long family, max_sfb, and group count all
+-     * agree. A long/short mismatch, or a differing max_sfb/groups count,
+-     * means fdk's per-band array doesn't line up with FAAC's, so decline. */
++    /* Window-layout match: short/long family, max_sfb, group count, AND the
++     * exact per-group length list all agree. A long/short mismatch, a
++     * differing max_sfb/groups count, or a same-count-different-boundaries
++     * grouping (possible without `win` injection: two encoders can agree on
++     * "3 groups" while splitting the 8 windows differently) means fdk's
++     * per-band array doesn't line up with FAAC's, so decline. */
+     if (fr->win_short != (is_short != 0)) return 0;
+     if (fr->max_sfb != max_sfb || fr->groups != num_groups) return 0;
++    if (is_short && group_len) {
++        int g;
++        for (g = 0; g < num_groups && g < 8; g++)
++            if (fr->glen[g] != group_len[g]) return 0;
++    }
+     if (band < 0 || band >= fr->nbands) return 0;
+ 
+     if (cb) *cb = fr->cb[band];
+@@ -138,6 +166,27 @@ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
+     return 1;
+ }
+ 
++int CoreInjectLookupWin(struct CoreInject *in, int frame, int ch,
++                         int *win_seq, int *max_sfb, int *num_groups,
++                         int *group_len)
++{
++    if (!in) return 0;
++    int n = frame + in->offset;
++    if (n < 0 || n >= CI_MAX_FRAMES || ch < 0 || ch > 1) return 0;
++    CIFrame *fr = &in->f[n][ch];
++    if (!fr->seen) return 0;
++
++    if (win_seq) *win_seq = fr->win_seq;
++    if (max_sfb) *max_sfb = fr->max_sfb;
++    if (num_groups) *num_groups = fr->groups;
++    if (group_len) {
++        int g;
++        for (g = 0; g < fr->groups && g < 8; g++)
++            group_len[g] = fr->glen[g];
++    }
++    return 1;
++}
++
+ void CoreInjectNoteFrame(struct CoreInject *in, int matched)
+ {
+     if (!in) return;
+diff --git a/libfaac/core_inject.h b/libfaac/core_inject.h
+index 1dc0e61f..234e09b4 100644
+--- a/libfaac/core_inject.h
++++ b/libfaac/core_inject.h
+@@ -18,19 +18,36 @@ void CoreInjectFree(struct CoreInject *in);
+ struct CoreInject *CoreInjectGet(void);
+ 
+ /* is_short: 1 if this channel's block is the short/grouped family.
++ * group_len: this channel's own group.len[] (num_groups entries) as FAAC
++ * computed it -- required (not just num_groups) so a `win`-uninjected build
++ * (natural onset grouping happens to match the donor's group *count* but not
++ * its *boundaries*) can't silently pass this gate.
+  * Returns 1 if the donor has this (frame,ch) and its window layout
+- * (short-vs-long family, max_sfb, num_groups) matches; else 0 and no fields
+- * are written. On a match: *cb is fdk's codebook for `band` (0/1-11/13/14/15,
+- * -1 if band >= donor max_sfb*groups), *sf_shape is fdk's scalefactor minus
+- * that frame/channel's mean over its own coded bands (only meaningful when
+- * *cb is 1-11), *ms is fdk's ms_used flag for that band (only meaningful
+- * when band is in the CPE's shared low region). */
++ * (short-vs-long family, max_sfb, num_groups, and the exact group-length
++ * list) matches; else 0 and no fields are written. On a match: *cb is fdk's
++ * codebook for `band` (0/1-11/13/14/15, -1 if band >= donor max_sfb*groups),
++ * *sf_shape is fdk's scalefactor minus that frame/channel's mean over its own
++ * coded bands (only meaningful when *cb is 1-11), *ms is fdk's ms_used flag
++ * for that band (only meaningful when band is in the CPE's shared low
++ * region). */
+ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
+                       int is_short, int max_sfb, int num_groups,
++                      const int *group_len,
+                       int *cb, int *sf_shape, int *ms);
+ 
++/* Raw per-frame window layout, unconditional (no match check -- this IS the
++ * override that makes later class/ms/sf lookups matchable). *win_seq is the
++ * donor's ISO window_sequence, which is FAAC's block_type enum value
++ * numerically (ONLY_LONG/LONG_SHORT/ONLY_SHORT/SHORT_LONG = 0/1/2/3, same
++ * order). group_len must have room for at least 8 entries; only meaningful
++ * when *win_seq == ONLY_SHORT_WINDOW (2). Returns 1 if the donor has a record
++ * for (frame,ch), else 0. */
++int CoreInjectLookupWin(struct CoreInject *in, int frame, int ch,
++                         int *win_seq, int *max_sfb, int *num_groups,
++                         int *group_len);
++
+ unsigned CoreInjectFields(const struct CoreInject *in);
+-enum { CI_CLASS = 1, CI_SF = 2, CI_MS = 4 };
++enum { CI_CLASS = 1, CI_SF = 2, CI_MS = 4, CI_WIN = 8 };
+ 
+ /* Call once per (frame,ch) whether or not injection changed anything, so the
+  * "share of matched frames" stat in the result table is real. */
+diff --git a/libfaac/frame.c b/libfaac/frame.c
+index ce4361b1..d4d48d90 100644
+--- a/libfaac/frame.c
++++ b/libfaac/frame.c
+@@ -818,6 +818,23 @@ int faacEncEncode(faacEncHandle hpEncoder,
+     if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
+         return 0;
+ 
++    /* Probe-only (core_inject.c): tag each channel with its element-local
++     * index and the donor-aligned output frame number before BlockSwitch
++     * runs, so both it and AACstereo/BlocQuant see the same (frame, ch) key.
++     * No effect unless FAAC_CORE_INJECT is set. */
++    {
++        int ciStreamFrame = (int)hEncoder->frameNum - LOOKAHEAD_DEPTH - 1;
++        for (int e = 0; e < hEncoder->numElements; e++) {
++            AACElement *el = &hEncoder->elements[e];
++            coderInfo[el->channels[0]].ciCh = 0;
++            coderInfo[el->channels[0]].ciFrame = ciStreamFrame;
++            if (el->type == ID_CPE) {
++                coderInfo[el->channels[1]].ciCh = 1;
++                coderInfo[el->channels[1]].ciFrame = ciStreamFrame;
++            }
++        }
++    }
++
+     /* Psychoacoustics */
+     PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels);
+ 
+@@ -953,23 +970,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
+     for (channel = 0; channel < numChannels; channel++)
+         ResetCoderSections(&coderInfo[channel]);
+ 
+-    /* Probe-only (core_inject.c): tag each channel with its element-local
+-     * index and the donor-aligned output frame number before AACstereo/
+-     * BlocQuant run, so the injector can look up fdk's per-band decisions
+-     * for this exact (frame, ch). No effect unless FAAC_CORE_INJECT is set. */
+-    {
+-        int ciStreamFrame = (int)hEncoder->frameNum - LOOKAHEAD_DEPTH - 1;
+-        for (int e = 0; e < hEncoder->numElements; e++) {
+-            AACElement *el = &hEncoder->elements[e];
+-            coderInfo[el->channels[0]].ciCh = 0;
+-            coderInfo[el->channels[0]].ciFrame = ciStreamFrame;
+-            if (el->type == ID_CPE) {
+-                coderInfo[el->channels[1]].ciCh = 1;
+-                coderInfo[el->channels[1]].ciFrame = ciStreamFrame;
+-            }
+-        }
+-    }
+-
+     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
+               (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
+ 
+diff --git a/libfaac/quantize.c b/libfaac/quantize.c
+index 2a8d11ff..16acd5a2 100644
+--- a/libfaac/quantize.c
++++ b/libfaac/quantize.c
+@@ -332,7 +332,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
+         {
+             int is_short = (ci->block_type == ONLY_SHORT_WINDOW);
+             int matched = CoreInjectLookup(cinj, ci->ciFrame, ci->ciCh, band, is_short,
+-                                            ci->sfbn, ci->groups.n, &force_cb, NULL, NULL);
++                                            ci->sfbn, ci->groups.n, ci->groups.len,
++                                            &force_cb, NULL, NULL);
+             CoreInjectNoteFrame(cinj, matched);
+             if (!matched || force_cb == 14 || force_cb == 15) force_cb = -1;
+         }
+@@ -599,6 +600,31 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
+ 
+     coderInfo->groups.n = 0;
+ 
++    /* Probe-only (core_inject.c): with `win` injection active, fdk's own
++     * group boundaries replace the onset detector below on frames it has an
++     * ONLY_SHORT record for. coderInfo here is always the element-primary
++     * channel (ciCh == 0): frame.c only ever passes el->channels[0] as `a`
++     * to BlocGroup's first argument. The per-window zeroing above cutoff
++     * still has to run every window regardless of which path picks the
++     * groups, so it stays outside this branch. */
++    int use_donor_groups = 0;
++    int donor_groups = 0, donor_glen[8];
++    {
++        struct CoreInject *cinj = CoreInjectGet();
++        if (cinj && (CoreInjectFields(cinj) & CI_WIN))
++        {
++            int donor_seq, donor_max_sfb;
++            if (CoreInjectLookupWin(cinj, coderInfo->ciFrame, 0, &donor_seq,
++                                     &donor_max_sfb, &donor_groups, donor_glen) &&
++                donor_seq == ONLY_SHORT_WINDOW && donor_groups >= 1 && donor_groups <= 8)
++            {
++                int g, sum = 0;
++                for (g = 0; g < donor_groups; g++) sum += donor_glen[g];
++                if (sum == MAX_SHORT_WINDOWS) use_donor_groups = 1;
++            }
++        }
++    }
++
+     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
+     {
+         int k, sfb, c;
+@@ -613,9 +639,13 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
+             for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
+                 w[k] = 0.0f;
+ 
+-            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
++            if (!use_donor_groups)
++                window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
+         }
+ 
++        if (use_donor_groups)
++            continue;
++
+         if (win == group_start)
+         {
+             for (sfb = GROUP_MIN_SFB; sfb < maxsfb; sfb++)
+@@ -639,7 +669,18 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
+                 run_min[sfb] = run_max[sfb] = band_e[sfb];
+         }
+     }
+-    coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
++
++    if (use_donor_groups)
++    {
++        int g;
++        coderInfo->groups.n = donor_groups;
++        for (g = 0; g < donor_groups; g++)
++            coderInfo->groups.len[g] = donor_glen[g];
++    }
++    else
++    {
++        coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
++    }
+ 
+     if (ci_r)
+         ci_r->groups = coderInfo->groups;
+diff --git a/libfaac/stereo.c b/libfaac/stereo.c
+index c1a1333c..9cdb15e1 100644
+--- a/libfaac/stereo.c
++++ b/libfaac/stereo.c
+@@ -224,6 +224,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
+                 int donor_ms, is_short = (cl->block_type == ONLY_SHORT_WINDOW);
+                 int matched = CoreInjectLookup(cinj, cl->ciFrame, cl->ciCh, band,
+                                                 is_short, cl->sfbn, cl->groups.n,
++                                                cl->groups.len,
+                                                 NULL, NULL, &donor_ms);
+                 CoreInjectNoteFrame(cinj, matched);
+                 if (matched) use_ms = donor_ms;

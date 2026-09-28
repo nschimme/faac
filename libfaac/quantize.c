@@ -332,7 +332,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
         {
             int is_short = (ci->block_type == ONLY_SHORT_WINDOW);
             int matched = CoreInjectLookup(cinj, ci->ciFrame, ci->ciCh, band, is_short,
-                                            ci->sfbn, ci->groups.n, &force_cb, NULL, NULL);
+                                            ci->sfbn, ci->groups.n, ci->groups.len,
+                                            &force_cb, NULL, NULL);
             CoreInjectNoteFrame(cinj, matched);
             if (!matched || force_cb == 14 || force_cb == 15) force_cb = -1;
         }
@@ -599,6 +600,31 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
 
     coderInfo->groups.n = 0;
 
+    /* Probe-only (core_inject.c): with `win` injection active, fdk's own
+     * group boundaries replace the onset detector below on frames it has an
+     * ONLY_SHORT record for. coderInfo here is always the element-primary
+     * channel (ciCh == 0): frame.c only ever passes el->channels[0] as `a`
+     * to BlocGroup's first argument. The per-window zeroing above cutoff
+     * still has to run every window regardless of which path picks the
+     * groups, so it stays outside this branch. */
+    int use_donor_groups = 0;
+    int donor_groups = 0, donor_glen[8];
+    {
+        struct CoreInject *cinj = CoreInjectGet();
+        if (cinj && (CoreInjectFields(cinj) & CI_WIN))
+        {
+            int donor_seq, donor_max_sfb;
+            if (CoreInjectLookupWin(cinj, coderInfo->ciFrame, 0, &donor_seq,
+                                     &donor_max_sfb, &donor_groups, donor_glen) &&
+                donor_seq == ONLY_SHORT_WINDOW && donor_groups >= 1 && donor_groups <= 8)
+            {
+                int g, sum = 0;
+                for (g = 0; g < donor_groups; g++) sum += donor_glen[g];
+                if (sum == MAX_SHORT_WINDOWS) use_donor_groups = 1;
+            }
+        }
+    }
+
     for (win = 0; win < MAX_SHORT_WINDOWS; win++)
     {
         int k, sfb, c;
@@ -613,8 +639,12 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
             for (k = cutoff; k < ci[c]->sfb_offset[maxsfb]; k++)
                 w[k] = 0.0f;
 
-            window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
+            if (!use_donor_groups)
+                window_band_energy(ci[c], w, GROUP_MIN_SFB, maxsfb, band_e);
         }
+
+        if (use_donor_groups)
+            continue;
 
         if (win == group_start)
         {
@@ -639,7 +669,18 @@ void BlocGroup(CoderInfo *coderInfo, float *xr, CoderInfo *ci_r, float *xr_r, AA
                 run_min[sfb] = run_max[sfb] = band_e[sfb];
         }
     }
-    coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+
+    if (use_donor_groups)
+    {
+        int g;
+        coderInfo->groups.n = donor_groups;
+        for (g = 0; g < donor_groups; g++)
+            coderInfo->groups.len[g] = donor_glen[g];
+    }
+    else
+    {
+        coderInfo->groups.len[coderInfo->groups.n++] = MAX_SHORT_WINDOWS - group_start;
+    }
 
     if (ci_r)
         ci_r->groups = coderInfo->groups;

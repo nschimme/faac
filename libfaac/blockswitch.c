@@ -21,6 +21,7 @@
 #include "coder.h"
 #include "util.h"
 #include "faac_internal.h"
+#include "core_inject.h"
 
 typedef float psyfloat;
 
@@ -216,6 +217,30 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
       desire = ONLY_SHORT_WINDOW;
   }
 
+  /* Probe-only (core_inject.c): fdk's own window_sequence for this frame,
+   * looked up once (every channel shares one ciFrame value, set in frame.c
+   * before this call). Applied per channel below, AFTER the natural decision,
+   * as a post-hoc override rather than by pre-empting `desire` -- `desire`
+   * only ever takes the natural psychoacoustic value here, so the hysteresis
+   * read of desired_block_type two lines down stays driven by real
+   * psychoacoustic history even on a frame the override later replaces. */
+  int have_donor_win = 0, donor_win_seq = 0;
+  {
+    struct CoreInject *cinj = CoreInjectGet();
+    if (cinj && (CoreInjectFields(cinj) & CI_WIN))
+    {
+      for (channel = 0; channel < numChannels; channel++)
+      {
+        if (coderInfo[channel].ciCh == 0)
+        {
+          have_donor_win = CoreInjectLookupWin(cinj, coderInfo[channel].ciFrame, 0,
+                                                &donor_win_seq, NULL, NULL, NULL);
+          break;
+        }
+      }
+    }
+  }
+
   for (channel = 0; channel < numChannels; channel++)
   {
     int lasttype = coderInfo[channel].block_type;
@@ -236,5 +261,27 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
+
+    /* Probe-only (core_inject.c): swap in fdk's win_seq when it's a legal
+     * continuation from `lasttype` (the same predecessor state the natural
+     * decision above was just judged against). An illegal donor value (donor
+     * disagreed with FAAC on the LAST frame's family, so a raw transplant
+     * here would violate the LONG_START/STOP pairing) is silently declined,
+     * leaving the natural decision in place -- same as "no donor record".
+     * desired_block_type is overwritten to the override's own family so the
+     * NEXT frame's hysteresis check above sees the overridden history. */
+    if (have_donor_win)
+    {
+      int legal = (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
+                  ? (donor_win_seq == ONLY_LONG_WINDOW || donor_win_seq == LONG_SHORT_WINDOW)
+                  : (donor_win_seq == ONLY_SHORT_WINDOW || donor_win_seq == SHORT_LONG_WINDOW);
+      if (legal)
+      {
+        coderInfo[channel].block_type = donor_win_seq;
+        coderInfo[channel].desired_block_type =
+            (donor_win_seq == ONLY_SHORT_WINDOW || donor_win_seq == LONG_SHORT_WINDOW)
+            ? ONLY_SHORT_WINDOW : ONLY_LONG_WINDOW;
+      }
+    }
   }
 }

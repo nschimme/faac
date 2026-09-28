@@ -9,8 +9,10 @@
 
 typedef struct {
     int seen;          /* 1 if this (frame,ch) had a C record */
+    int win_seq;        /* raw ISO window_sequence (0-3); == FAAC block_type */
     int win_short;      /* 1 if fdk's window_sequence == EIGHT_SHORT (2) */
     int max_sfb, groups;
+    int glen[8];        /* window_group_length per group; g=1 for long windows */
     int nbands;
     int cb[CI_MAX_BANDS];
     int sf[CI_MAX_BANDS];
@@ -35,8 +37,7 @@ static unsigned parse_fields(const char *s)
         if (!strcmp(p, "class")) x |= CI_CLASS;
         else if (!strcmp(p, "sf")) x |= CI_SF;
         else if (!strcmp(p, "ms")) x |= CI_MS;
-        /* "win" is accepted on the command line but not implemented by this
-         * probe build; frames still gate on the natural window match. */
+        else if (!strcmp(p, "win")) x |= CI_WIN;
     }
     return x ? x : CI_CLASS;
 }
@@ -77,10 +78,28 @@ struct CoreInject *CoreInjectLoad(void)
         if (!bar) continue;
         CIFrame *fr = &in->f[frame][ch];
         fr->seen = 1;
+        fr->win_seq = win_seq;
         fr->win_short = (win_seq == 2); /* EIGHT_SHORT_SEQUENCE */
         fr->max_sfb = max_sfb;
         fr->groups = groups;
         fr->nbands = 0;
+        for (int g = 0; g < 8; g++) fr->glen[g] = 0;
+
+        /* Trailing " g=<len0>,<len1>,..." token, appended after all '|'/'/'
+         * band data by core_dump_ics; parsed from the raw line rather than
+         * the tokenizer above so it can't be confused with a band token
+         * (it never matches "%d:%d:%d:%d"). */
+        char *gp = strstr(line, " g=");
+        if (gp) {
+            char gbuf[256], *tsave;
+            snprintf(gbuf, sizeof gbuf, "%s", gp + 3);
+            char *nl = strpbrk(gbuf, "\r\n");
+            if (nl) *nl = 0;
+            int ng = 0;
+            for (char *t = strtok_r(gbuf, ",", &tsave); t && ng < 8;
+                 t = strtok_r(NULL, ",", &tsave))
+                fr->glen[ng++] = atoi(t);
+        }
 
         char *p = bar + 1, *grp_save;
         for (char *grp = strtok_r(p, "/", &grp_save); grp && fr->groups <= groups + 8;
@@ -118,6 +137,7 @@ unsigned CoreInjectFields(const struct CoreInject *in) { return in ? in->fields 
 
 int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
                       int is_short, int max_sfb, int num_groups,
+                      const int *group_len,
                       int *cb, int *sf_shape, int *ms)
 {
     if (!in) return 0;
@@ -125,16 +145,45 @@ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
     if (n < 0 || n >= CI_MAX_FRAMES || ch < 0 || ch > 1) return 0;
     CIFrame *fr = &in->f[n][ch];
     if (!fr->seen) return 0;
-    /* Window-layout match: short/long family, max_sfb, and group count all
-     * agree. A long/short mismatch, or a differing max_sfb/groups count,
-     * means fdk's per-band array doesn't line up with FAAC's, so decline. */
+    /* Window-layout match: short/long family, max_sfb, group count, AND the
+     * exact per-group length list all agree. A long/short mismatch, a
+     * differing max_sfb/groups count, or a same-count-different-boundaries
+     * grouping (possible without `win` injection: two encoders can agree on
+     * "3 groups" while splitting the 8 windows differently) means fdk's
+     * per-band array doesn't line up with FAAC's, so decline. */
     if (fr->win_short != (is_short != 0)) return 0;
     if (fr->max_sfb != max_sfb || fr->groups != num_groups) return 0;
+    if (is_short && group_len) {
+        int g;
+        for (g = 0; g < num_groups && g < 8; g++)
+            if (fr->glen[g] != group_len[g]) return 0;
+    }
     if (band < 0 || band >= fr->nbands) return 0;
 
     if (cb) *cb = fr->cb[band];
     if (sf_shape) *sf_shape = fr->sf[band] * 256 - fr->sf_mean; /* fixed-point *256 */
     if (ms) *ms = fr->ms[band];
+    return 1;
+}
+
+int CoreInjectLookupWin(struct CoreInject *in, int frame, int ch,
+                         int *win_seq, int *max_sfb, int *num_groups,
+                         int *group_len)
+{
+    if (!in) return 0;
+    int n = frame + in->offset;
+    if (n < 0 || n >= CI_MAX_FRAMES || ch < 0 || ch > 1) return 0;
+    CIFrame *fr = &in->f[n][ch];
+    if (!fr->seen) return 0;
+
+    if (win_seq) *win_seq = fr->win_seq;
+    if (max_sfb) *max_sfb = fr->max_sfb;
+    if (num_groups) *num_groups = fr->groups;
+    if (group_len) {
+        int g;
+        for (g = 0; g < fr->groups && g < 8; g++)
+            group_len[g] = fr->glen[g];
+    }
     return 1;
 }
 

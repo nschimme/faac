@@ -197,9 +197,7 @@ further work this session did not reach.
 
 ## To finish this probe properly (not done, for whoever resumes)
 
-1. Implement `win` injection (block_type + grouping override) so the
-   class/ms/sf match rate isn't clip-luck-dependent -- hook `BlockSwitch`
-   (`libfaac/blockswitch.c:204`) and `BlocGroup` (`libfaac/quantize.c:565`).
+1. ~~Implement `win` injection~~ -- done this session, see "Step W" below.
 2. Implement `sf` injection properly: this needs a callable "quantize at this
    exact scalefactor" primitive, not a post-hoc relabel of `ci->sf[band]`,
    since scalefactor determines the actual quantization step (`qfunc` in
@@ -208,3 +206,230 @@ further work this session did not reach.
 3. Re-run at full scope: 49 clips x 40/48/64 kbps x arms {N13, W, M, C, WM,
    WMC, WMCD} x {ffmpeg, fdk} decode, matching the brief's Tables A-C and
    pre-registered verdict.
+
+## Step W: window-sequence + exact grouping injection (this session)
+
+Implements the `win` field the prior session left undone: donor block_type
+(`window_sequence`) and exact short-window grouping (`window_group_length`
+per group), so the class/ms match gate stops being clip-luck-dependent on
+whatever family FAAC's own transient detector happened to agree with.
+
+### What was built
+
+- FAAD3 (`/private/tmp/claude-501/faac-work/faad3`, `libfaad/decoder.c`
+  `core_dump_ics` ~line 264): appended one trailing token to every `C`
+  record, `g=<len0>,<len1>,...` (`window_group_length` per group; `g=1` for
+  long windows). No existing field touched; parsers split on the fixed
+  prefix/`|`, and the new token sits after the last `/`-separated group so
+  old parsers ignore it (it never matches the `cb:sf:nnz:ms` token pattern).
+  Rebuilt with the same `-Dstats`-style config as before
+  (`meson compile -C bs`). Patch: `probe/faad3_g_token.patch`.
+- `libfaac/core_inject.h`/`.c`: `CI_WIN` field bit; `CIFrame` now also stores
+  the raw `win_seq` and up to 8 `glen[]` group lengths parsed from the new
+  `g=` token (via `strstr`, not the per-band tokenizer, so it can't collide
+  with a band record). New `CoreInjectLookupWin()` returns the donor's raw
+  window layout unconditionally (no window-match gate -- it *is* the
+  override that makes later class/ms/sf lookups matchable). `CoreInjectLookup`
+  (used by `class`/`ms`) gained a `group_len` parameter: the window-match
+  gate now also compares the exact per-group length list, not just group
+  *count* (two encoders can agree "3 groups" while splitting the 8 short
+  windows differently -- that no longer silently passes).
+- `libfaac/frame.c`: moved the `ciFrame`/`ciCh` tagging block from just
+  before `AACstereo` to just before `PsyCalculate`/`BlockSwitch`, so both the
+  window override and the class/ms/sf lookups key off the same per-frame
+  index (removed the old duplicate copy near `AACstereo`; `hEncoder->elements`
+  is set up at encoder-open, well before this point, so the move is safe).
+- `libfaac/blockswitch.c` `BlockSwitch`: **post-hoc override, not a
+  pre-empted desire.** The natural per-channel FSM (`desire` +
+  `desired_block_type` hysteresis + `lasttype` legality table) runs
+  completely unmodified first. *Then*, for a frame with a donor record
+  (looked up once, from the ciCh==0 channel, since all channels already
+  share one block-type decision file-wide), the resulting `block_type` is
+  swapped for the donor's raw `win_seq` **iff** it's a legal continuation of
+  `lasttype` (the same predecessor state the natural decision was just
+  judged against); an illegal donor value is silently declined, falling back
+  to the natural decision, same as "no donor record". `desired_block_type` is
+  overwritten to the *override's* family so the next frame's hysteresis read
+  sees the overridden history, not the pre-override natural desire.
+  - This design point was not obvious and cost a real debugging pass: an
+    earlier version pre-empted `desire` itself (classifying the donor's
+    `win_seq` into a short/long "family" and feeding that into the unmodified
+    FSM). That version passed on 4/5 self-injection clips but silently
+    de-synced on isolated single-frame long/short "blips" (5 frames on the
+    German clip). Root cause: the FSM's hysteresis check
+    (`desire == SHORT || desired_block_type == SHORT`) reads
+    `desired_block_type`, which stores the *raw* `desire` value from the
+    previous frame -- not what `block_type` actually came out as when
+    hysteresis forced a family switch anyway. A window_sequence value alone
+    can't disambiguate "desire was SHORT this frame" from "desire was LONG
+    but got hysteresis-forced to the short-side branch", so re-deriving
+    `desire` from a decoded `win_seq` trace desyncs exactly at those
+    ambiguous blips. Overriding `block_type` post-hoc (after the real,
+    unforced FSM already ran, using the real unmodified `desire`) sidesteps
+    the ambiguity entirely and fixed all 5 clips to bit-exact self-injection.
+- `libfaac/quantize.c` `BlocGroup`: with `win` active and the donor's
+  `(frame, ch=0)` record has `win_seq == ONLY_SHORT_WINDOW` and its group
+  lengths sum to 8, `coderInfo->groups.n`/`.len[]` are set directly from the
+  donor's list, skipping the onset-detector loop entirely (falls back to the
+  natural onset detector otherwise -- no donor record, sum mismatch, or
+  donor frame isn't really grouped). The per-window zeroing above `cutoff`
+  (`w[k] = 0`) still runs unconditionally for every window regardless of
+  which path supplies the groups, per the brief.
+
+### Gates
+
+**A -- FIELDS unset, byte-identical:** PASS on all 5 clips x 48 kbps
+(`cmp` empty vs the xover-gate N13 `stream.aac` reference for each clip).
+
+**B -- self-injection identity:**
+- `FIELDS=win` alone: **PASS, byte-identical on all 5/5 clips**
+  (offset 1, the same self-offset established for `class`/`ms` last
+  session -- confirms the frame-tagging move didn't change that constant).
+- `FIELDS=win,class,ms` self-injected: **4/5 byte-identical**
+  (12-German, 15-Good-evening, 21-classic, 35-glockenspiel all
+  byte-identical; 24-Greensleeves differs by 1 byte). Bisected by ablation:
+  `FIELDS=win,class` alone is byte-identical on Greensleeves too; the
+  divergence needs *both* `class` and `ms` together, and **reproduces
+  identically with `win` fully OFF** (`FIELDS=class,ms` on this same clip,
+  no `win` at all, gives the same 1-byte diff). This proves the divergence
+  predates this session's `win` work -- it's a pre-existing `class`+`ms`
+  quantizer-retry nondeterminism (decoding both streams shows a handful of
+  scalefactors off by 1 in a `class`-forced band's *neighbour*, e.g. frame
+  32 band 2: `11:145:9:0` vs `11:144:10:0` -- consistent with the prior
+  session's own diagnosis that forcing a band's *class* without also
+  forcing its *scalefactor* lets that band's forced decision skip the
+  quantizer's normal iterative gain-search, which can very slightly perturb
+  neighbouring bands' independently-searched scalefactors in the same
+  retry loop). It simply wasn't caught by the prior session's 2-clip gate
+  (12, 15 don't happen to trigger it). Not a `win`-injection bug; out of
+  scope to fix here (that's exactly what `sf` injection is for).
+
+**C -- fdk donor, `FIELDS=win`, match share:**
+
+| clip | before (natural, no `win`) | after (`win` forced) |
+|---|---:|---:|
+| 12-German-male-speech | 2/372 (0.5%) | 370/372 (**99.5%**) |
+| 15-Good-evening | 44/406 (10.8%) | 398/406 (**98.0%**) |
+| 21-classic | 342/456 (75.0%) | 456/456 (**100.0%**) |
+| 24-Greensleeves-Korean-male-speech | 6/412 (1.5%) | 410/412 (**99.5%**) |
+| 35-glockenspiel | 348/472 (73.7%) | 472/472 (**100.0%**) |
+
+("match" = the encoded stream's own decoded `win_seq` *and* exact group-length
+list agree with the donor's, at the correlated frame -- i.e. an exact
+per-channel comparison, not just short/long family.) `FAAC_CORE_INJECT_OFFSET=2`
+(the fdk-donor constant established last session) confirmed correct: the
+window-family signal is too coarse/noisy on its own to re-derive this offset
+by sweeping (flat ~21% German-clip "family" match across offsets -2..4), so
+this reused the much stronger per-band `class`/`ms` alignment fact instead of
+re-deriving it from window data alone. All 5 clips clear the brief's >=98%
+bar; German and Greensleeves (previously 0.5-1.5% natural intersection) are
+now the biggest movers.
+
+**D -- decode/object-type:** PASS on all 5 `W` streams. FAAD3 `--strict`:
+zero concealment, zero non-END termination, all 5. `ffmpeg -xerror`: decodes
+clean, all 5. `ffprobe`: `HE-AAC,48000,2` (HE-AAC v1 profile, no PS) on all 5.
+
+### Table: raw MOS, 5 clips x 48 kbps, ffmpeg + fdk decode, ViSQOL python backend
+
+Donor = fdk's native N13-crossover-gate stream (same as last session).
+`FAAC_CORE_INJECT_OFFSET=2` for every injected arm.
+
+| clip | arm | bytes | Δbytes | ff MOS | Δff | fdk MOS | Δfdk |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 12-German-male-speech | N13 | 48162 | -- | 4.0265 | -- | 3.9963 | -- |
+| 12-German-male-speech | W | 48436 | +274 | 3.8596 | -0.1669 | 3.7895 | -0.2068 |
+| 12-German-male-speech | W+C | 48228 | +66 | 3.9614 | -0.0651 | 3.8980 | -0.0982 |
+| 12-German-male-speech | W+M | 48436 | +274 | 3.8662 | -0.1602 | 3.7933 | -0.2029 |
+| 12-German-male-speech | W+C+M | 48229 | +67 | 3.9616 | -0.0649 | 3.8976 | -0.0987 |
+| 15-Good-evening | N13 | 53056 | -- | 4.0939 | -- | 4.0519 | -- |
+| 15-Good-evening | W | 53099 | +43 | 4.0296 | -0.0643 | 3.9888 | -0.0631 |
+| 15-Good-evening | W+C | 53229 | +173 | 2.6757 | **-1.4182** | 2.6496 | **-1.4023** |
+| 15-Good-evening | W+M | 52998 | -58 | 3.9974 | -0.0965 | 3.9712 | -0.0807 |
+| 15-Good-evening | W+C+M | 53145 | +89 | 2.9597 | **-1.1341** | 2.9215 | **-1.1304** |
+| 21-classic | N13 | 59284 | -- | 4.1424 | -- | 4.2046 | -- |
+| 21-classic | W | 59416 | +132 | 4.1581 | +0.0157 | 4.2129 | +0.0083 |
+| 21-classic | W+C | 59396 | +112 | 3.9878 | -0.1547 | 4.0484 | -0.1562 |
+| 21-classic | W+M | 59425 | +141 | 4.1313 | -0.0111 | 4.1881 | -0.0164 |
+| 21-classic | W+C+M | 59391 | +107 | 4.0320 | -0.1104 | 4.0902 | -0.1144 |
+| 24-Greensleeves-Korean-male-speech | N13 | 53685 | -- | 3.8673 | -- | 3.7866 | -- |
+| 24-Greensleeves-Korean-male-speech | W | 54128 | +443 | 3.2792 | **-0.5881** | 3.2226 | **-0.5641** |
+| 24-Greensleeves-Korean-male-speech | W+C | 53894 | +209 | 3.4127 | -0.4546 | 3.3027 | -0.4840 |
+| 24-Greensleeves-Korean-male-speech | W+M | 53933 | +248 | 3.1977 | -0.6696 | 3.1317 | -0.6549 |
+| 24-Greensleeves-Korean-male-speech | W+C+M | 53947 | +262 | 3.1321 | -0.7351 | 3.0715 | -0.7151 |
+| 35-glockenspiel | N13 | 61421 | -- | 4.5003 | -- | 4.4096 | -- |
+| 35-glockenspiel | W | 61692 | +271 | 4.4018 | -0.0985 | 4.2903 | -0.1193 |
+| 35-glockenspiel | W+C | 61476 | +55 | 4.3633 | -0.1370 | 4.2903 | -0.1192 |
+| 35-glockenspiel | W+M | 61533 | +112 | 4.3741 | -0.1262 | 4.2847 | -0.1248 |
+| 35-glockenspiel | W+C+M | 61418 | -3 | 4.3873 | -0.1130 | 4.3105 | -0.0991 |
+
+### Interpretation
+
+**Does the -0.79 (class-only, ~54-67% match) disappear once grouping is
+exact (~98-100% match)? No -- it gets substantially worse.** On
+15-Good-evening, the prior reduced probe's `class`-only regression at ~58%
+match was -0.79/-0.60 MOS (ff, class/class+ms); at ~98% exact-grouping match
+this session, `W+C` is **-1.42/-1.13 MOS** (ff, W+C/W+C+M) -- roughly double.
+This directly falsifies the hypothesis that the earlier regression was a
+window-*misalignment* artifact that exact grouping would clear up. It
+confirms the prior session's own alternative diagnosis instead: forcing
+fdk's band *class* without also forcing its *scalefactor* is dangerous, and
+it gets *more* dangerous as more bands are actually forced (which is exactly
+what higher window-match share does -- it doesn't change the class decisions
+so much as it multiplies how many of them apply).
+
+**`win` alone is also a net loss, not neutral.** With no class/ms/sf
+involved at all, just forcing FAAC to adopt fdk's own block-type/grouping
+timing loses on 4/5 clips (up to -0.59 MOS on Greensleeves) and is only
+flat-to-slightly-positive on one (classic, +0.01/+0.008). This wasn't
+measured directly before (the prior probe's `class`/`ms` arms always rode on
+FAAC's *own* natural window choice). The likely mechanism: FAAC's transient
+detector and quantizer are co-tuned to each other (this project's own
+history includes a blockswitch/TNS co-tune WIN and an SBR transient-detector
+retune), so blindly copying another encoder's window-switch timing --
+correct for *that* encoder's pre-echo/quantizer behavior -- can be a worse
+fit for FAAC's own quantizer than FAAC's own (possibly "wrong" relative to
+fdk, but self-consistent) transient call.
+
+**`ms`-only stays roughly neutral to mildly negative** at near-100% window
+match (W+M deltas track W closely, e.g. German W=-0.167/W+M=-0.160,
+glockenspiel W=-0.099/W+M=-0.126), consistent with last session's ~neutral
+finding at lower match share.
+
+**Bottom line for this step:** `win` injection itself is built, gated, and
+correct (all 4 gates pass). But it does not unlock a `class`/`ms` win --
+if anything it makes the previously-known `class` danger a full order more
+visible, and adds its own, independent regression on top. `sf` injection
+remains the untested, load-bearing piece the brief's original
+quantizer-execution-vs-decision question depends on; forcing `win`+`class`
+without it is now confirmed harmful across more than one clip, not a
+single-clip fluke.
+
+### Commands / provenance (Step W)
+
+- Worktree: `/private/tmp/claude-501/faac-work/core-inject`, branch
+  `core-inject`, HEAD `62f07a81` at session start. Uncommitted; no merge, no
+  push. Patch: `git diff -- libfaac/ > probe/core_inject_w.patch`.
+- FAAD3 decoder: `/private/tmp/claude-501/faac-work/faad3`, `bs/` build dir
+  (`stats=true`). Rebuilt: `CCACHE_DISABLE=1 meson compile -C bs`. Patch:
+  `probe/faad3_g_token.patch`.
+- Build: `CCACHE_DISABLE=1 meson compile -C build`.
+- Corpus: `/Users/nschimme/gitprojects/faac-benchmark/data/external/audio`.
+- Self dump: `FAAD_DUMP=<path> FAAD_DUMPTAB=1 <faad3 bs>/frontend/faad
+  --strict -q -o /tmp/o.wav <FAAC's own N13 stream>`.
+- fdk donor dump: same, reading
+  `/private/tmp/claude-501/faac-work/xover-gate/probe/xover_run/<NN_clip>/48/F/stream.aac`
+  (fdk's native N-13-crossover stream, as last session; no fdk-aac source
+  read, only its pre-generated bitstream from the prior probe's own harness).
+- Encode: `FAAC_SBR_START=12 FAAC_SBR_STOP=9 FAAC_SBR_FREQ_SCALE=2
+  FAAC_SBR_ALTER=1 FAAC_CORE_INJECT=<dump> FAAC_CORE_INJECT_FIELDS=<win|win,class|win,ms|win,class,ms>
+  FAAC_CORE_INJECT_OFFSET=<1 self, 2 fdk-donor> build/frontend/faac
+  --overwrite --object-type he-aac-v1 -b 48 -o <out> <clip>.wav`.
+- Decode/score: ffmpeg as before; fdk decode via
+  `/Users/nschimme/gitprojects/faac-benchmark/bin/fdkdec <in.aac> <out.wav>`;
+  score via `NUMBA_DISABLE_JIT=1 <faac-benchmark>/.venv/bin/python
+  <faac-benchmark>/scripts/align/sc.py <ref.wav> <wav>`.
+- Match-share script (ad hoc, not committed):
+  `/tmp/win_match.py`, comparing two FAAD_DUMP files' `C` records
+  (`win_seq`, `g=` list) at a caller-supplied frame shift.
+- Scratch encodes/dumps/wavs/scores: `probe/scratch_w/` (5 clips: 12, 15, 21,
+  24, and 35-glockenspiel; scores.csv holds every arm/decoder MOS + bytes).

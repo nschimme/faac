@@ -1,0 +1,44 @@
+diff --git a/libfaad/decoder.c b/libfaad/decoder.c
+index 977367f5..892d4b11 100644
+--- a/libfaad/decoder.c
++++ b/libfaad/decoder.c
+@@ -251,9 +251,10 @@ FAADAPI faad_status faad_decoder_flush(faad_decoder *dec)
+ /* Per-frame record of what the encoder chose, appended to the file named by
+  * FAAD_DUMP, so streams from different encoders can be diffed decision by
+  * decision. One line per record, first field the type, second the frame:
+- *   C frame ch bits win_seq max_sfb groups global_gain | cb:sf:nnz:ms ... / ...
++ *   C frame ch bits win_seq max_sfb groups global_gain | cb:sf:nnz:ms ... / ... g=<len0>,<len1>,...
+  *       one per ICS; bits is the whole element (both channels of a CPE, and
+- *       the second channel of a CPE carries ms_mask_present there instead)
++ *       the second channel of a CPE carries ms_mask_present there instead);
++ *       trailing g= is window_group_length per group (g=1 for long windows)
+  *   H frame nch bs_amp_res start_freq stop_freq xover_band freq_scale alter_scale noise_bands
+  *     limiter_bands limiter_gains interpol_freq smoothing_mode reset kx M n_low n_high n_q
+  *     header_extra_1 header_extra_2
+@@ -298,6 +299,9 @@ static void core_dump_ics(struct faad_decoder *dec, int ch, const ICSInfo *ics,
+         fprintf(df, " /");
+         wo += ics->window_group_length[g];
+     }
++    fprintf(df, " g=");
++    for (int g = 0; g < ics->num_window_groups && g < 8; g++)
++        fprintf(df, "%s%d", g ? "," : "", ics->window_group_length[g]);
+     fprintf(df, "\n");
+ }
+ #endif
+@@ -439,6 +443,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+             } else if (syntax_id == ID_PCE) {
+                 decode_pce(&bs, dec);
+             } else if (syntax_id == ID_FIL) {
++                uint32_t fill_start = bits_get_consumed(&bs) - 3;
+                 uint32_t count = bits_get(&bs, 4);
+                 if (count == 15) count += bits_get(&bs, 8) - 1;
+                 if (count > 0) {
+@@ -451,7 +456,7 @@ FAADAPI faad_status faad_decode_frame(faad_decoder *dec,
+                         } else {
+                             ch0 = (ch_idx >= 1) ? (ch_idx - 1) : 0;
+                         }
+-                        faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC);
++                        faad_status sbr_st = sbr_decode_extension(dec, &bs, ch0, last_elem_type, ext_type == SBR_EXTENSION_DATA_CRC, fill_start, fill_end);
+                         if (sbr_st != FAAD_OK) {
+                             decode_success = false;
+                         }

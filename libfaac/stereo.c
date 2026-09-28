@@ -224,6 +224,7 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
                 int donor_ms, is_short = (cl->block_type == ONLY_SHORT_WINDOW);
                 int matched = CoreInjectLookup(cinj, cl->ciFrame, cl->ciCh, band,
                                                 is_short, cl->sfbn, cl->groups.n,
+                                                cl->groups.len,
                                                 NULL, NULL, &donor_ms);
                 CoreInjectNoteFrame(cinj, matched);
                 if (matched) use_ms = donor_ms;

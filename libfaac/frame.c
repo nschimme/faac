@@ -818,6 +818,23 @@ int faacEncEncode(faacEncHandle hpEncoder,
     if (!flushing && hEncoder->frameNum <= LOOKAHEAD_DEPTH) /* Still filling up the buffers */
         return 0;
 
+    /* Probe-only (core_inject.c): tag each channel with its element-local
+     * index and the donor-aligned output frame number before BlockSwitch
+     * runs, so both it and AACstereo/BlocQuant see the same (frame, ch) key.
+     * No effect unless FAAC_CORE_INJECT is set. */
+    {
+        int ciStreamFrame = (int)hEncoder->frameNum - LOOKAHEAD_DEPTH - 1;
+        for (int e = 0; e < hEncoder->numElements; e++) {
+            AACElement *el = &hEncoder->elements[e];
+            coderInfo[el->channels[0]].ciCh = 0;
+            coderInfo[el->channels[0]].ciFrame = ciStreamFrame;
+            if (el->type == ID_CPE) {
+                coderInfo[el->channels[1]].ciCh = 1;
+                coderInfo[el->channels[1]].ciFrame = ciStreamFrame;
+            }
+        }
+    }
+
     /* Psychoacoustics */
     PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels);
 
@@ -952,23 +969,6 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * bands and BlocQuant resolves the rest. */
     for (channel = 0; channel < numChannels; channel++)
         ResetCoderSections(&coderInfo[channel]);
-
-    /* Probe-only (core_inject.c): tag each channel with its element-local
-     * index and the donor-aligned output frame number before AACstereo/
-     * BlocQuant run, so the injector can look up fdk's per-band decisions
-     * for this exact (frame, ch). No effect unless FAAC_CORE_INJECT is set. */
-    {
-        int ciStreamFrame = (int)hEncoder->frameNum - LOOKAHEAD_DEPTH - 1;
-        for (int e = 0; e < hEncoder->numElements; e++) {
-            AACElement *el = &hEncoder->elements[e];
-            coderInfo[el->channels[0]].ciCh = 0;
-            coderInfo[el->channels[0]].ciFrame = ciStreamFrame;
-            if (el->type == ID_CPE) {
-                coderInfo[el->channels[1]].ciCh = 1;
-                coderInfo[el->channels[1]].ciFrame = ciStreamFrame;
-            }
-        }
-    }
 
     AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
               (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
