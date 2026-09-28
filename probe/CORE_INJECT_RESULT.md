@@ -433,3 +433,147 @@ single-clip fluke.
   (`win_seq`, `g=` list) at a caller-supplied frame shift.
 - Scratch encodes/dumps/wavs/scores: `probe/scratch_w/` (5 clips: 12, 15, 21,
   24, and 35-glockenspiel; scores.csv holds every arm/decoder MOS + bytes).
+
+## Step W alignment control (follow-up)
+
+Coordinator's risk: `FAAC_CORE_INJECT_OFFSET=2` for the fdk donor came from a
+sweep whose signal is tiny on some clips (German natural match 0.5%) --
+weakly determined. If the true offset is 1 frame off, transients get long
+windows (pre-echo) and the Step W losses could be an artifact of
+misalignment rather than a real "copying fdk's window timing doesn't help
+FAAC" finding. Two independent checks, `FIELDS=win` only, same 5 clips/48
+kbps/ff+fdk/same scorer:
+
+### 1. Donor-offset sweep (raw MOS, bytes, FAAC's own short-block share)
+
+Δ is vs the N13 baseline (unforced). `short%` is FAAD3's own "Short blocks"
+stats-banner percentage for the *injected* stream at that offset (ICS-level,
+both channels).
+
+| clip | off | bytes | ff MOS | Δff | fdk MOS | Δfdk | short% |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 12-German | 0 | 48319 | 3.8670 | -0.1595 | 3.7907 | -0.2056 | 11.3 |
+| 12-German | 1 | 48361 | 3.8376 | -0.1889 | 3.7771 | -0.2192 | 10.8 |
+| 12-German | 2 | 48436 | 3.8596 | -0.1669 | 3.7895 | -0.2068 | 10.2 |
+| 12-German | 3 | 48403 | 3.8832 | -0.1433 | 3.8055 | -0.1908 | 9.7 |
+| 12-German | 4 | 48424 | 3.8493 | -0.1772 | 3.8014 | -0.1949 | 26.9 |
+| 15-Good-evening | 0-4 | 53099 (all) | 4.0296 (all) | -0.0643 | 3.9888 | -0.0631 | 1.5 |
+| 21-classic | 0 | 59415 | 4.1499 | +0.0075 | 4.2033 | -0.0013 | 0.4 |
+| 21-classic | 1 | 59416 | 4.1586 | +0.0162 | 4.2142 | +0.0096 | 0.9 |
+| 21-classic | 2 | 59416 | 4.1581 | +0.0157 | 4.2129 | +0.0083 | 0.4 |
+| 21-classic | 3 | 59415 | 4.1499 | +0.0075 | 4.2033 | -0.0013 | 0.4 |
+| 21-classic | 4 | 59168 | 4.1499 | +0.0075 | 4.2033 | -0.0013 | 0.9 |
+| 24-Greensleeves | 0 | 54125 | 3.1481 | -0.7192 | 3.1049 | -0.6818 | 10.6 |
+| 24-Greensleeves | 1 | 54121 | 3.1745 | -0.6928 | 3.1246 | -0.6620 | 9.2 |
+| 24-Greensleeves | **2** | 54128 | **3.2792** | **-0.5881** | **3.2226** | **-0.5641** | 9.7 |
+| 24-Greensleeves | 3 | 54121 | 3.2489 | -0.6184 | 3.1896 | -0.5971 | 9.2 |
+| 24-Greensleeves | 4 | 53847 | 3.1973 | -0.6700 | 3.1567 | -0.6299 | 14.5 |
+| 35-glockenspiel | 0 | 61699 | 4.1354 | -0.3649 | 4.0294 | -0.3802 | 3.0 |
+| 35-glockenspiel | 1 | 61703 | 4.1445 | -0.3558 | 4.0601 | -0.3495 | 3.4 |
+| 35-glockenspiel | **2** | 61692 | **4.4018** | **-0.0985** | **4.2903** | **-0.1193** | 3.0 |
+| 35-glockenspiel | 3 | 61682 | 4.2520 | -0.2482 | 4.1834 | -0.2262 | 3.0 |
+| 35-glockenspiel | 4 | 61430 | 4.1104 | -0.3899 | 4.0242 | -0.3853 | 3.4 |
+
+15-Good-evening's fdk donor has **zero** `win_seq in {1,2}` records at all
+(it's all `ONLY_LONG` -- confirmed by grepping the donor dump) so every
+offset produces byte-identical output; no signal from this clip. classic is
+near-flat (donor has almost no short content either: 4 short/transitional
+records total). German is flat/noisy across offsets (deltas within
+~0.02-0.05 of each other, no clear winner, offset=4 is the one clear outlier
+via its short%-spike to 26.9% -- an over-forcing artifact, not a contender).
+
+The two clips with real transient density (Greensleeves, glockenspiel) both
+show **offset=2 as a clear, clean peak**, not offset=1 or 3: on glockenspiel
+it's not close (-0.10/-0.12 at offset 2 vs -0.25 to -0.39 at every other
+offset -- a 0.15-0.30 MOS gap). This is the opposite of the coordinator's
+risk scenario (pre-echo from a systematically-late offset would show up as
+the *current* offset being visibly worse than a neighbor on exactly this
+kind of transient content; instead it's visibly *best*).
+
+### 2. Independent onset-based alignment check
+
+Built `probe/scratch_w/onset_align.py`: high-pass first-difference energy
+per 128-sample block on the raw input WAV, top local-maxima jump-ratio peaks
+(top 3% by default, >=16 blocks / 1 core frame apart) as "onsets" -- no FAAC
+internals read at all, just the corpus WAV. Onset sample position mapped to
+a core frame index via `(sample + 3042) // 2048` (FAAC's encoder delay from
+`PRICE_RESULT.md`; `+` because a decoder skips the first `delay` output
+samples to realign with input, so input sample `s` surfaces at encoded
+position `s + delay`, not `s - delay`). For each candidate donor offset,
+share of the donor's `win_seq in {1,2}` (ch 0) records whose mapped core
+frame contains or immediately precedes (`ce` or `ce+1`) an onset:
+
+| clip | n(onsets) | off0 | off1 | off2 | off3 | off4 |
+|---|---:|---:|---:|---:|---:|---:|
+| 12-German | 24 | 29.0% | **45.2%** | 38.7% | 25.8% | 32.3% |
+| 15-Good-evening | 16 | n/a (0 short records) | | | | |
+| 21-classic | 24 | 0/1 | 1/1 | 1/1 | 0/1 | 0/1 |
+| 24-Greensleeves | 21 | 39.4% | **69.7%** | 48.5% | 24.2% | 12.1% |
+| 35-glockenspiel | 31 | 46.2% | **92.3%** | 69.2% | 38.5% | 38.5% |
+
+This *looks* like a clean, parameter-robust peak at offset=1 (checked
+`top_pct` in {1.5,3,5,8}% x spacing in {8,16,24} blocks -- offset=1 wins
+every combination on all 3 usable clips). Taken at face value this would
+say the fdk-donor offset should be 1, not 2, and support the coordinator's
+concern.
+
+**But it fails a ground-truth validation.** Ran the identical method against
+`self.dump` (FAAC's *own* natural window decisions on its own N13 stream),
+where the correct answer is not in question -- offset **1** is proven
+byte-exact via Gate B's self-injection identity check earlier in this
+document, on all 5 clips, no ambiguity. If the onset method is measuring
+real alignment, it must peak at 1 on this self-check. It doesn't:
+
+| clip | off-1 | off0 | off1 (true) | off2 | off3 |
+|---|---:|---:|---:|---:|---:|
+| 12-German | 24.2% | 24.7% | 24.7% | 24.7% | 24.2% |
+| 24-Greensleeves | 18.8% | 19.3% | 19.3% | 19.3% | 19.3% |
+| 35-glockenspiel | 43.4% | **64.2%** | 47.2% | 26.4% | 37.7% |
+
+German and Greensleeves are flat across a 4-frame shift (no discriminating
+power at all -- both clips are 96-99% short blocks per FAAD3's own stats
+banner, so "short-family" is the overwhelming background rate, not a sparse
+event; a handful of onsets overlaps it almost independently of true offset).
+glockenspiel *does* discriminate, but peaks at **offset=0**, not the known-
+correct 1 -- the opposite of what a valid method must show. The onset
+detector (128-sample high-pass-energy top-local-maxima, tuned by feel, no
+independent calibration against any ground truth beforehand) is not
+resolving true frame-level alignment; its apparent "clean peak at 1" against
+the fdk donor is not trustworthy signal, exactly because the same knobs miss
+the one case where the answer is already known.
+
+### Conclusion
+
+No re-run: nothing here displaces offset=2.
+- The onset-based check (what the coordinator asked for, as a FAAC-decision-
+  free cross-check) does not pass its own self-consistency control, so its
+  offset=1 preference for the fdk donor cannot be trusted either way.
+- The MOS evidence -- the thing that actually matters -- clearly and cleanly
+  favors offset=2 on both clips with enough real transient density to carry
+  a signal (Greensleeves, glockenspiel), and is flat/uninformative (not
+  contradictory) on the other three.
+- This converges with two things established before this control: the
+  original `class`/`ms` per-band match-rate sweep (~14,000 band comparisons,
+  far higher-powered than either check run here, clean peak at 2) and
+  `PRICE_RESULT.md`'s click-correlation-measured encoder delays (FAAC 3042 /
+  FDK 5057 samples, "FAAC frame n used FDK frame n+1" in FDK's own
+  0-indexed internal numbering -- converts to donor *decoder-dump* frame
+  `n+2` once both sides are put on the same 1-indexed dump-frame convention
+  used everywhere else in this document).
+
+**The W and W+C losses in the main Step W table stand.** They are not a
+consequence of a mistimed donor offset; at the one offset with real,
+convergent, multi-method support (2), copying fdk's window/grouping timing
+is still a net loss on 4/5 clips, and forcing `class` on top is still a much
+larger loss on 15-Good-evening specifically. `sf` injection remains the
+untested, load-bearing piece; still not started.
+
+### Commands / provenance (alignment control)
+
+- Offset sweep encodes: same command as Step W's main table, sweeping
+  `FAAC_CORE_INJECT_OFFSET` over 0-4 with `FIELDS=win` only. Decoded via
+  ffmpeg, `fdkdec`, and FAAD3 `--strict` (for the short-block stats banner).
+  Raw data: `probe/scratch_w/offset_sweep.csv`.
+- Onset check: `probe/scratch_w/onset_align.py <ref.wav> <donor_or_self.dump>
+  [offsets...]`; sensitivity sweep `probe/scratch_w/sensitivity_check.py`;
+  self-consistency control `probe/scratch_w/self_consistency_check.py`.
