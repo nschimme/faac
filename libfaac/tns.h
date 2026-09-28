@@ -36,6 +36,15 @@ void TnsInit(faacEncStruct* hEncoder);
  * Long blocks only -- the caller must not pass an ONLY_SHORT_WINDOW channel. */
 void TnsEncode(CoderInfo *coderInfo, float *spec);
 
+/* Probe-only (ladder step 1): standard Levinson step-up from `order`
+ * reflection coefficients `k[1..order]` to the direct-form AR polynomial
+ * `a[0..order]` (a[0]=1), FAAC's own internal convention -- exposed so
+ * step1.c can turn a reference's already-quantized (dequantized-to-float)
+ * TNS coefficients into a filter usable by the encoder's own filtering
+ * convention, without duplicating the recursion and risking a sign or
+ * indexing mismatch against tns.c's own (tested, decoder-compatible) one. */
+void TnsFinalizeFilterProbe(int order, const float *k, float *a);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

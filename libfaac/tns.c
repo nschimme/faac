@@ -209,6 +209,13 @@ void TnsInit(faacEncStruct* hEncoder)
         info->tnsMaxBandsLong = tns_sfb_range[fs].max;
         info->tnsNumSwbLong = hEncoder->srInfo->num_cb_long;
         info->tnsMinBandNumberLong = tns_sfb_range[fs].min;
+        /* Probe-only (ladder step 1): the short-window counterpart of
+         * tnsNumSwbLong (FAAC's own TNS never runs on short blocks, so this
+         * was never needed before). Step1ApplyTns's region math mirrors
+         * libfaad/tns.c's apply_tns, which stacks filters down from the
+         * channel's FULL sfb-table width for its block type -- num_cb_long
+         * for long, num_cb_short for short -- not from max_sfb. */
+        info->tnsNumSwbShort = hEncoder->srInfo->num_cb_short;
     }
 }
 
@@ -385,4 +392,10 @@ void TnsEncode(CoderInfo *coderInfo, float *spec)
     tnsInfo->windowData.numFilters = 1;
     tnsInfo->windowData.coefResolution = DEF_TNS_COEFF_RES;
     tnsInfo->tnsDataPresent = 1;
+}
+
+/* Probe-only (ladder step 1). See tns.h. */
+void TnsFinalizeFilterProbe(int order, const float *k, float *a)
+{
+    finalize_filter(order, k, a);
 }

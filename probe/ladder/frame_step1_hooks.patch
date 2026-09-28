@@ -1,0 +1,349 @@
+diff --git a/libfaac/frame.c b/libfaac/frame.c
+index d4d48d90..3382bc29 100644
+--- a/libfaac/frame.c
++++ b/libfaac/frame.c
+@@ -28,6 +28,8 @@
+ #include "util.h"
+ #include "tns.h"
+ #include "stereo.h"
++#include "reemit.h"
++#include "step1.h"
+ #include "sbr.h"
+ #include "ratecontrol.h"
+ #include "atomic.h"
+@@ -687,6 +689,18 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
+  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
+ #define TNS_ATTACK_MIN 0.5f
+ 
++/* Probe-only (ladder step 1): counts frames where a reference's window
++ * transition (LONG_SHORT/SHORT_LONG) was skipped -- see faacEncEncode's
++ * step1Matched setup. Exposed via Step1TransitionSkippedCount() so probe
++ * tools can report how often this known gap fires. */
++static long step1TransitionSkipped = 0;
++long Step1TransitionSkippedCount(void) { return step1TransitionSkipped; }
++/* Probe-only (ladder step 1): counts frames where the forced quantization
++ * initially overflowed the bitstream and needed the uniform-attenuation
++ * fallback (see faacEncEncode's retry loop). */
++static long step1OverflowFrames = 0;
++long Step1OverflowFrameCount(void) { return step1OverflowFrames; }
++
+ int faacEncEncode(faacEncHandle hpEncoder,
+                           int32_t *inputBuffer,
+                           unsigned int samplesInput,
+@@ -835,6 +849,44 @@ int faacEncEncode(faacEncHandle hpEncoder,
+         }
+     }
+ 
++    /* Probe-only (ladder step 1): look up this frame's reference decisions
++     * per channel, once, before anything downstream (block-switch, filter-
++     * bank, TNS, stereo, quantize) needs to know whether to run normally or
++     * take a forced value from step1Rec[channel]. No effect unless
++     * FAAC_STEP1 is set -- step1Matched[] is then all-0 and every branch
++     * below falls through to FAAC's ordinary behavior unchanged. */
++    ReemitICS step1Rec[MAX_CHANNELS];
++    int step1Matched[MAX_CHANNELS] = {0};
++    int step1ZeroBands = 0;
++    {
++        struct Step1Ctx *s1 = Step1Get();
++        if (s1) {
++            for (channel = 0; channel < numChannels; channel++) {
++                step1Matched[channel] = Step1Lookup(s1, coderInfo[channel].ciFrame,
++                                                     coderInfo[channel].ciCh, &step1Rec[channel]);
++                /* Probe-only (ladder step 1), known gap: a transition window
++                 * (LONG_SHORT_WINDOW=1 / SHORT_LONG_WINDOW=3) needs the
++                 * PREVIOUS frame's actual block_type/window_shape to be the
++                 * compatible half FAAC's own BlockSwitch enforces (see
++                 * blockswitch.c's lasttype checks) -- forcing one frame at a
++                 * time, independent of what FAAC's own state machine thinks
++                 * the previous frame was, desyncs that and produces a
++                 * corrupt overlap-add (observed: quantized magnitudes
++                 * exploding into an 8191-byte ADTS overflow on velvet's
++                 * first short-block transition). Not fixed this session;
++                 * fall through to FAAC's own natural decision for these
++                 * frames instead of forcing a decision that can't be made
++                 * safely yet, and count how often it happens. */
++                if (step1Matched[channel] &&
++                    step1Rec[channel].win_seq != ONLY_LONG_WINDOW &&
++                    step1Rec[channel].win_seq != ONLY_SHORT_WINDOW) {
++                    step1Matched[channel] = 0;
++                    step1TransitionSkipped++;
++                }
++            }
++        }
++    }
++
+     /* Psychoacoustics */
+     PsyCalculate(hEncoder->psyInfo, hEncoder->isLfeChannel, numChannels);
+ 
+@@ -864,6 +916,19 @@ int faacEncEncode(faacEncHandle hpEncoder,
+ 		}
+     }
+ 
++    /* Probe-only (ladder step 1): force the reference's window decision
++     * before the real MDCT runs, so FilterBank transforms with the same
++     * long/short choice the reference made (overriding BlockSwitch's and
++     * the shortctl forcing above, which must not win here). window_shape
++     * only matters once the writer supports non-sine shapes; forced anyway
++     * so it's ready. */
++    for (channel = 0; channel < numChannels; channel++) {
++        if (step1Matched[channel]) {
++            coderInfo[channel].block_type = step1Rec[channel].win_seq;
++            coderInfo[channel].window_shape = step1Rec[channel].window_shape;
++        }
++    }
++
+     /* AAC Filterbank, MDCT with overlap and add */
+     for (channel = 0; channel < numChannels; channel++) {
+         FilterBank(hEncoder,
+@@ -873,8 +938,46 @@ int faacEncEncode(faacEncHandle hpEncoder,
+             hEncoder->freqBuff[channel]);
+     }
+ 
++    /* Probe-only (ladder offset control): FAAC's real, natural (unforced)
++     * per-frame total MDCT energy, before any window/grouping override --
++     * this is what the offset control correlates against a reference's own
++     * dequantized energy to find the frame-count lag between the two
++     * encoders' outputs (see probe/ladder/mdct_offset.py). Zero cost unless
++     * FAAC_MDCT_ENERGY_DUMP is set. */
++    if (getenv("FAAC_MDCT_ENERGY_DUMP")) {
++        static FILE *edf;
++        static int edf_tried;
++        if (!edf_tried) {
++            edf_tried = 1;
++            edf = fopen(getenv("FAAC_MDCT_ENERGY_DUMP"), "a");
++        }
++        if (edf) {
++            for (channel = 0; channel < numChannels; channel++) {
++                double e = 0.0;
++                for (int k = 0; k < FRAME_LEN; k++) {
++                    float v = hEncoder->freqBuff[channel][k];
++                    e += (double)v * (double)v;
++                }
++                fprintf(edf, "E %d %u %.6f\n", coderInfo[channel].ciFrame, channel, e);
++            }
++            fflush(edf);
++        }
++    }
++
+     for (channel = 0; channel < numChannels; channel++) {
+-        if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
++        if (step1Matched[channel]) {
++            /* Probe-only (ladder step 1): sfbn/groups come straight from the
++             * reference, not from FAAC's own bandwidth config or BlocGroup's
++             * transient analysis. sfb_offset still follows FAAC's own
++             * standard per-rate table (verified against the reference's own
++             * table by Control 0's bit-exact decode -- same tables). */
++            coderInfo[channel].sfbn = step1Rec[channel].max_sfb;
++            coderInfo[channel].sfb_offset = (coderInfo[channel].block_type == ONLY_SHORT_WINDOW)
++                                           ? hEncoder->sfbOffsetShort : hEncoder->sfbOffsetLong;
++            coderInfo[channel].groups.n = step1Rec[channel].num_groups;
++            for (int g = 0; g < step1Rec[channel].num_groups; g++)
++                coderInfo[channel].groups.len[g] = step1Rec[channel].group_len[g];
++        } else if (coderInfo[channel].block_type == ONLY_SHORT_WINDOW) {
+             coderInfo[channel].sfbn = hEncoder->aacquantCfg.max_cbs;
+             coderInfo[channel].sfb_offset = hEncoder->sfbOffsetShort;
+         } else {
+@@ -895,6 +998,37 @@ int faacEncEncode(faacEncHandle hpEncoder,
+         CoderInfo *a = NULL, *b = NULL;
+         float *xa = NULL, *xb = NULL;
+ 
++        /* Probe-only (ladder step 1): groups were already forced above from
++         * the reference; BlocGroup's own transient-driven grouping must not
++         * overwrite them. BlocGroup's per-window bandwidth-cutoff zeroing
++         * (quantize.c: `for (k=cutoff; k<sfb_offset[maxsfb]; k++) w[k]=0`,
++         * cutoff = aacquantCfg.max_l/8) is NOT just grouping bookkeeping,
++         * though -- it discards real spectral content within a short band
++         * whose upper bins sit above FAAC's configured bandwidth, and
++         * control 1a's self-test showed this matters: a band a reference
++         * fully coded can have its top half silently zeroed here, changing
++         * the quantized values Step1Quantize produces. Replicate it at the
++         * SAME bitrate config so step1 measures FAAC's quantizer at a
++         * comparable bandwidth to the reference's, not an unbounded one. */
++        if (step1Matched[l] && (r < 0 || step1Matched[r])) {
++            if (coderInfo[l].block_type == ONLY_SHORT_WINDOW) {
++                /* Matches BlocGroup's own bound (cfg->max_cbs, cfg->max_l),
++                 * not the reference's forced sfbn -- this is FAAC's own
++                 * bandwidth policy at the configured bitrate, independent of
++                 * how many bands the reference chose to code. */
++                int cutoff = hEncoder->aacquantCfg.max_l / 8;
++                int top = coderInfo[l].sfb_offset[hEncoder->aacquantCfg.max_cbs];
++                for (int win = 0; win < MAX_SHORT_WINDOWS; win++) {
++                    for (int k = cutoff; k < top; k++)
++                        hEncoder->freqBuff[l][win * BLOCK_LEN_SHORT + k] = 0.0f;
++                    if (r >= 0)
++                        for (int k = cutoff; k < top; k++)
++                            hEncoder->freqBuff[r][win * BLOCK_LEN_SHORT + k] = 0.0f;
++                }
++            }
++            continue;
++        }
++
+         if (coderInfo[l].block_type == ONLY_SHORT_WINDOW)
+         {
+             a = &coderInfo[l];
+@@ -930,6 +1064,17 @@ int faacEncEncode(faacEncHandle hpEncoder,
+ 
+     /* Perform TNS analysis and filtering */
+     for (channel = 0; channel < numChannels; channel++) {
++        if (step1Matched[channel]) {
++            /* Probe-only (ladder step 1): the reference's already-quantized
++             * TNS filters, applied to FAAC's real spectrum in the analysis
++             * (whitening) direction -- see step1.h. Runs regardless of
++             * useTns/block_type: unlike FAAC's own TnsEncode this covers
++             * both long and short blocks, whichever the reference used. */
++            Step1ApplyTns(&coderInfo[channel], hEncoder->freqBuff[channel],
++                          &step1Rec[channel], (int)hEncoder->sampleRateIdx);
++            ReemitSetTnsInfo(&coderInfo[channel], &step1Rec[channel]);
++            continue;
++        }
+         if (!hEncoder->isLfeChannel[channel] && useTns && coderInfo[channel].block_type != ONLY_SHORT_WINDOW) {
+             float attack = PsyGetAttack(&hEncoder->psyInfo[channel]);
+ 
+@@ -970,8 +1115,33 @@ int faacEncEncode(faacEncHandle hpEncoder,
+     for (channel = 0; channel < numChannels; channel++)
+         ResetCoderSections(&coderInfo[channel]);
+ 
+-    AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
+-              (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
++    /* Probe-only (ladder step 1): when every channel this frame is step1-
++     * matched (this corpus is single-CPE stereo only, so that means "the
++     * whole frame"), skip AACstereo's natural M/S/IS search and apply the
++     * reference's true M/S transform to FAAC's real spectrum instead, plus
++     * its class/common_window/ms_used bookkeeping (Step1Quantize below
++     * still handles PNS/IS/zero classing per band). A frame mixing matched
++     * and unmatched channels would need AACstereo to run per-element, which
++     * it doesn't support and this corpus never needs. */
++    {
++        int allMatched = 1;
++        for (channel = 0; channel < numChannels; channel++)
++            if (!step1Matched[channel]) { allMatched = 0; break; }
++        if (allMatched && hEncoder->numElements >= 1) {
++            for (int e = 0; e < hEncoder->numElements; e++) {
++                AACElement *el = &hEncoder->elements[e];
++                if (el->type == ID_CPE) {
++                    int l = el->channels[0], r = el->channels[1];
++                    Step1ApplyMS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
++                                 hEncoder->freqBuff[l], hEncoder->freqBuff[r]);
++                    ReemitSetCpeInfo(el, &coderInfo[l], &coderInfo[r], &step1Rec[l], &step1Rec[r]);
++                }
++            }
++        } else {
++            AACstereo(coderInfo, hEncoder->elements, hEncoder->numElements, hEncoder->freqBuff,
++                      (float)hEncoder->aacquantCfg.quality/DEFQUAL, &hEncoder->stereoCfg);
++        }
++    }
+ 
+     /* AACstereo has already consumed freqBuff in place and BlocQuant
+      * accumulates into sf[] while reading book[], so a retry can re-run
+@@ -1032,13 +1202,53 @@ int faacEncEncode(faacEncHandle hpEncoder,
+         sfbnSnap[channel] = coderInfo[channel].sfbn;
+     }
+ 
++    int anyStep1 = 0;
++    for (channel = 0; channel < numChannels; channel++)
++        if (step1Matched[channel]) { anyStep1 = 1; break; }
++    float step1Scale = 1.0f;
++
++    /* Probe-only (ladder step 1, pre-quantization spectrum dump): FAAC's
++     * real spectrum AFTER the forced window/M-S/TNS stages but BEFORE
++     * quantization, so it can be compared line-for-line against a
++     * reference's dequantized values -- the check the coordinator asked
++     * for to confirm the spectrum itself matches before trusting any
++     * requantized-q or MOS comparison. Written once per matched channel
++     * (the retry loop below can call Step1Quantize again on overflow, but
++     * never touches freqBuff itself, so one dump per frame is correct).
++     * Same raw window-major layout as the Q record so probe/ladder/
++     * line_level.py's per_line() reconstruction works unchanged. */
++    if (anyStep1 && getenv("FAAC_STEP1_SPEC_DUMP")) {
++        static FILE *sdf;
++        static int sdf_tried;
++        if (!sdf_tried) { sdf_tried = 1; sdf = fopen(getenv("FAAC_STEP1_SPEC_DUMP"), "a"); }
++        if (sdf) {
++            for (channel = 0; channel < numChannels; channel++) {
++                if (!step1Matched[channel]) continue;
++                fprintf(sdf, "S %d %d", coderInfo[channel].ciFrame, coderInfo[channel].ciCh);
++                for (int k = 0; k < FRAME_LEN; k++)
++                    fprintf(sdf, " %.8g", hEncoder->freqBuff[channel][k]);
++                fprintf(sdf, "\n");
++            }
++            fflush(sdf);
++        }
++    }
++
+     /* Retry while the frame busts peakBits. The search is bounded, not
+      * exact-fit: an exact fit can fail to terminate on pathological input. */
+     for (attempt = 0; attempt <= PEAK_MAX_RETRIES; attempt++)
+     {
+         for (channel = 0; channel < numChannels; channel++) {
+-            BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
+-                      &(hEncoder->aacquantCfg));
++            if (step1Matched[channel])
++                /* Probe-only (ladder step 1): quantize FAAC's own (TNS/M-S-
++                 * adjusted) spectrum at the reference's absolute class/
++                 * scalefactor/global_gain -- no target search, no psy.
++                 * step1Scale is 1.0 unless a prior attempt this frame
++                 * overflowed the bitstream (see below). */
++                Step1Quantize(&coderInfo[channel], hEncoder->freqBuff[channel],
++                              &step1Rec[channel], &step1ZeroBands, step1Scale);
++            else
++                BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
++                          &(hEncoder->aacquantCfg));
+         }
+ 
+         /* A common window shares one max_sfb between the two channels. */
+@@ -1054,13 +1264,36 @@ int faacEncEncode(faacEncHandle hpEncoder,
+         if (!bitStream)
+             return -1;
+ 
+-        if (WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream) < 0)
++        int wrote = WriteBitstream(hEncoder, coderInfo, hEncoder->elements, hEncoder->numElements, bitStream);
++        if (wrote < 0) {
++            /* Probe-only (ladder step 1): without a rate loop, forcing the
++             * reference's exact scalefactors onto FAAC's own spectrum can
++             * legitimately need more than ISO 14496-3's 6144-bits/channel
++             * ceiling (or the frontend's output buffer) allows for one
++             * frame. Fall back to a uniformly attenuated re-quantization
++             * rather than failing the whole encode; every such fallback is
++             * counted (step1OverflowFrames) and belongs in the ladder
++             * write-up, not silently absorbed. */
++            if (anyStep1 && attempt < PEAK_MAX_RETRIES) {
++                step1Scale *= 0.5f;
++                continue;
++            }
+             return -1;
++        }
+ 
+         /* Close the bitstream and return the number of bytes written */
+         frameBytes = CloseBitStream(bitStream);
+         payloadBits = (frameBytes - hdrBytes) * 8;
+ 
++        /* Probe-only (ladder step 1): a forced quantization doesn't respond
++         * to the quality knob the backoff below moves, so retrying for
++         * peakBits (not overflow, already handled above) would just
++         * rewrite the identical bitstream -- stop after one pass. */
++        if (anyStep1) {
++            if (step1Scale != 1.0f) step1OverflowFrames++;
++            break;
++        }
++
+         if (!peakBits || (unsigned long long)payloadBits <= peakBits
+             || hEncoder->aacquantCfg.quality <= MINQUAL)
+             break;
+@@ -1101,8 +1334,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
+     g_faacStats.totalQuality += hEncoder->aacquantCfg.quality;
+ #endif
+ 
+-    /* Adjust quality to get correct average bitrate */
+-    if (hEncoder->config.bitRate)
++    /* Adjust quality to get correct average bitrate. Probe-only (ladder
++     * step 1): skipped when step1 is driving any part of this frame -- a
++     * forced quantization's frameBytes reflects the reference's decisions,
++     * not FAAC's own rate-vs-quality curve, and letting it drive
++     * RateControlUpdate drags `quality` away from where a normal (non-
++     * step1) frame elsewhere in the SAME encode would have landed, which
++     * then changes that OTHER frame's own natural encoding -- observed as
++     * unrelated frames drifting out of Control-1a's self-test agreement. */
++    if (hEncoder->config.bitRate && !anyStep1)
+         hEncoder->aacquantCfg.quality = RateControlUpdate(&hEncoder->rc, payloadBits,
+                                                           hEncoder->aacquantCfg.quality, maxqual);
+ 

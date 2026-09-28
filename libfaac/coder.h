@@ -39,13 +39,17 @@ enum WINDOW_TYPE {
     SHORT_LONG_WINDOW
 };
 
-/* Array bounds, sized to what this encoder actually emits rather than to what
- * the spec permits: one filter per long window at a fixed order (tns.c's
- * TNS_LPC_ORDER), never the spec's 4 filters at order 20. Both are checked
- * against the bitstream field widths by _Static_asserts in channels.c, which
- * this header can't include without a cycle. */
-#define TNS_MAX_ORDER 8
-#define TNS_MAX_FILTERS 1
+/* Array bounds. FAAC's own TNS analysis (tns.c) only ever emits one filter
+ * per long window at a fixed order; these wider bounds exist only for the
+ * ladder probe's reemit/injection path, which must represent whatever a
+ * reference encoder actually transmitted. LEN_TNS_NFILTL is 2 bits and the
+ * field is written as numFilters directly (no bias), so 3 is the true
+ * ceiling -- not the 4 an earlier pass used, which silently violated the
+ * _Static_assert's own field-width check in channels.c (which this header
+ * can't include without a cycle). TNS_MAX_ORDER 20 matches the spec's long-
+ * window ceiling and LEN_TNS_ORDERL (5 bits, max 31). */
+#define TNS_MAX_ORDER 20
+#define TNS_MAX_FILTERS 3
 #define DEF_TNS_COEFF_THRESH 0.1f
 #define DEF_TNS_COEFF_RES 4
 #define DEF_TNS_RES_OFFSET 3
@@ -70,12 +74,21 @@ typedef struct {
     int tnsMinBandNumberLong;
     int tnsMaxBandsLong;
     int tnsNumSwbLong;      /* full swb count for the sample rate (decoder's num_swb) */
+    int tnsNumSwbShort;     /* short-window counterpart, probe-only (see tns.c TnsInit) */
     TnsWindowData windowData;   /* long-only: one window per frame, not per-short-window */
+    int probeSyntax;
+    TnsWindowData probeWindowData[MAX_SHORT_WINDOWS];
 } TnsInfo;
 
 typedef struct CoderInfo {
     int block_type;
     int desired_block_type;
+    int window_shape;
+    int prev_window_shape;
+    int pulse_count;
+    int pulse_start_sfb;
+    int pulse_offset[4];
+    int pulse_amp[4];
 
     int global_gain;
     int sf[MAX_SCFAC_BANDS];

@@ -88,7 +88,11 @@ static int WriteICSInfo(BitStream *bs, CoderInfo *coder)
 {
     PutBit(bs, 0, LEN_ICS_RESERV);
     PutBit(bs, coder->block_type, LEN_WIN_SEQ);
-    PutBit(bs, 0, LEN_WIN_SH); /* window_shape: sine */
+    /* FAAC's own analysis never sets window_shape (coder->window_shape stays
+     * 0 = sine, its zero-initialized default), so this is unchanged for a
+     * normal encode; the ladder probe's reemit/injection path is the only
+     * caller that ever sets it to 1 (KBD). */
+    PutBit(bs, coder->window_shape, LEN_WIN_SH);
     int bits = LEN_ICS_RESERV + LEN_WIN_SEQ + LEN_WIN_SH;
 
     if (coder->block_type == ONLY_SHORT_WINDOW) {
@@ -134,34 +138,47 @@ static int WriteICS(BitStream *bs, CoderInfo *coder, bool commonWindow)
     PutBit(bs, tns->tnsDataPresent, LEN_TNS_PRES);
     bits += LEN_TNS_PRES;
 
-    /* TNS is long-only (see tns.c): tnsDataPresent is never set for
-     * ONLY_SHORT_WINDOW, so there's exactly one window's worth of TNS data
-     * to write, always at the long-window field widths. */
+    /* FAAC's own TNS analysis (tns.c) is long-only, so tnsDataPresent is
+     * never set for ONLY_SHORT_WINDOW on a normal encode and `win` below is
+     * always the one long-window's worth of data at long-window field
+     * widths. The probe-only reemit/injection path (reemit.c) can set
+     * tnsDataPresent on a short block too -- probeSyntax marks that its
+     * per-window data lives in probeWindowData[0..7] (one entry per RAW
+     * window, ISO 14496-3 4.6.9, not per window GROUP) and must be written
+     * at the short-window field widths instead. */
     if (tns->tnsDataPresent) {
-        TnsWindowData *win = &tns->windowData;
+        int is_short = (coder->block_type == ONLY_SHORT_WINDOW) && tns->probeSyntax;
+        int nwin = is_short ? MAX_SHORT_WINDOWS : 1;
+        int len_nfilt = is_short ? LEN_TNS_NFILTS : LEN_TNS_NFILTL;
+        int len_length = is_short ? LEN_TNS_LENGTHS : LEN_TNS_LENGTHL;
+        int len_order = is_short ? LEN_TNS_ORDERS : LEN_TNS_ORDERL;
 
-        PutBit(bs, win->numFilters, LEN_TNS_NFILTL);
-        bits += LEN_TNS_NFILTL;
+        for (int w = 0; w < nwin; w++) {
+            TnsWindowData *win = is_short ? &tns->probeWindowData[w] : &tns->windowData;
 
-        if (win->numFilters > 0) {
-            PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
-            bits += LEN_TNS_COEFF_RES;
+            PutBit(bs, win->numFilters, len_nfilt);
+            bits += len_nfilt;
 
-            for (int f = 0; f < win->numFilters; f++) {
-                TnsFilterData *flt = &win->tnsFilter[f];
-                PutBit(bs, flt->length, LEN_TNS_LENGTHL);
-                PutBit(bs, flt->order, LEN_TNS_ORDERL);
-                bits += LEN_TNS_LENGTHL + LEN_TNS_ORDERL;
+            if (win->numFilters > 0) {
+                PutBit(bs, win->coefResolution - DEF_TNS_RES_OFFSET, LEN_TNS_COEFF_RES);
+                bits += LEN_TNS_COEFF_RES;
 
-                if (flt->order > 0) {
-                    PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
-                    PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
-                    bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
+                for (int f = 0; f < win->numFilters; f++) {
+                    TnsFilterData *flt = &win->tnsFilter[f];
+                    PutBit(bs, flt->length, len_length);
+                    PutBit(bs, flt->order, len_order);
+                    bits += len_length + len_order;
 
-                    int res = win->coefResolution - flt->coefCompress;
-                    for (int i = 1; i <= flt->order; i++) {
-                        PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
-                        bits += res;
+                    if (flt->order > 0) {
+                        PutBit(bs, flt->direction, LEN_TNS_DIRECTION);
+                        PutBit(bs, flt->coefCompress, LEN_TNS_COMPRESS);
+                        bits += LEN_TNS_DIRECTION + LEN_TNS_COMPRESS;
+
+                        int res = win->coefResolution - flt->coefCompress;
+                        for (int i = 1; i <= flt->order; i++) {
+                            PutBit(bs, flt->index[i] & ((1 << res) - 1), res);
+                            bits += res;
+                        }
                     }
                 }
             }
