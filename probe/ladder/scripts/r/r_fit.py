@@ -1,9 +1,15 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
 # Predict Apple sf from FAAC's own sf curve (normal FAAC, same-layout long ICS, coded-in-both bands).
 import sys,json,pathlib,numpy as np
-sys.path.insert(0,'/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder')
+sys.path.insert(0,str(_REPO/'probe/ladder'))
 from parse_dump import parse,ICS
 from line_level import long_off
-g=pathlib.Path('/tmp/ladder_g');idx=json.load(open(g/'g2_index.json'))
+g=LADDER_G;idx=json.load(open(g/'g2_index.json'))
 def lay(v):return (v.win_seq,v.window_shape,v.num_groups,tuple(v.group_len))
 R=[]
 for ci,it in enumerate(idx):
@@ -19,7 +25,7 @@ for ci,it in enumerate(idx):
                 if not nb:continue
                 nb2=[sf[t] for t in range(s-2,s+3) if t!=s and 0<=t<fv.max_sfb and coded[t]]
                 R.append((ci,s,sf[s]-av.band_sf[s],sf[s]-np.mean(nb),sf[s]-np.mean(nb2),sf[s]-fv.global_gain))
-R=np.array(R,dtype=float);np.save('r_rows.npy',R)
+R=np.array(R,dtype=float);LADDER_H.mkdir(parents=True,exist_ok=True);np.save(LADDER_H/'r_rows.npy',R)
 clip,sb,y,d1,d2,rel=R.T
 print('n',len(y),'y mean %.2f sd %.2f'%(y.mean(),y.std()))
 def r2(X):

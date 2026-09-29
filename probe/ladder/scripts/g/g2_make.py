@@ -1,9 +1,9 @@
 import os
 import sys
 import json,pathlib,sys,copy
-root=pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(os.environ.get('LADDER_WORK', './ladder_work'));index=json.loads((root/'g2_index.json').read_text())
-sys.path.insert(0,str(root));from g_make import make_one
-sys.path.insert(0,'probe/ladder');from parse_dump import parse,ICS
+root=pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(os.environ.get('LADDER_G', str(pathlib.Path(os.environ.get('LADDER_WORK', './ladder_work'))/'g')));index=json.loads((root/'g2_index.json').read_text())
+repo=pathlib.Path(__file__).resolve().parents[4];sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent));from g_make import make_one
+sys.path.insert(0,str(repo/'probe/ladder'));from parse_dump import parse,ICS
 for item in index:
  k=item['id'];a_path=root/(k+'_apple.dump');f_path=root/(k+'_normal.dump')
  make_one(k,item['stem'],a_path,f_path,['A','F','rSF','rWIN','SFt','SFs'])

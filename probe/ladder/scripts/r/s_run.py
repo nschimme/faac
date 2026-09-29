@@ -1,9 +1,14 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
 # sf-smooth in FAAC's normal encoder (rate loop on), 49 clips, native input.
 import os,subprocess,pathlib,json,re,sys
-root=pathlib.Path('/tmp/ladder_s');wt=pathlib.Path('/private/tmp/claude-501/faac-work/sf-smooth')
-base=str(wt/'build-base/frontend/faac');new=str(wt/'build/frontend/faac')
-sc='/Users/nschimme/gitprojects/faac-benchmark/scripts/score_clip.py';py=sys.executable
-idx=json.load(open('/tmp/ladder_g/g2_index.json'));out=root/'s_scores.json';res=json.loads(out.read_text()) if out.exists() else {}
+root=LADDER_S;base=FAAC_MASTER_BIN;new=FAAC_SMOOTH_BIN
+sc=SCORE_CLIP;py=PYTHON_BIN
+idx=json.load(open(LADDER_G/'g2_index.json'));out=root/'s_scores.json';res=json.loads(out.read_text()) if out.exists() else {}
 ARMS=[('b112',base,112,None),('b128',base,128,None),('b144',base,144,None),('a3',new,128,'0.3'),('a6',new,128,'0.6'),('a9',new,128,'0.9')]
 for it in idx:
     k=it['id']

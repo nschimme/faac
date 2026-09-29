@@ -1,10 +1,16 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
 # Stage H: Apple decisions injected into FAAC's normal encoder (rate loop live), +64 input, offset 2.
 import os,subprocess,pathlib,json,re,numpy as np,soundfile as sf,sys
-sys.path.insert(0,'/tmp/ladder_h');from h_conv import conv
-root=pathlib.Path('/tmp/ladder_h');g=pathlib.Path('/tmp/ladder_g')
-faac='/private/tmp/claude-501/faac-work/fdk-ladder/build-ladder/frontend/faac'
-faad='/private/tmp/claude-501/faac-work/faad-dump/build-ladder/frontend/faad'
-sc='/Users/nschimme/gitprojects/faac-benchmark/scripts/score_clip.py';py='/Users/nschimme/gitprojects/faac-benchmark/.venv/bin/python'
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'h'));from h_conv import conv
+root=LADDER_H;g=LADDER_G
+faac=FAAC_BIN
+faad=FAAD_BIN
+sc=SCORE_CLIP;py=PYTHON_BIN
 index=json.loads((g/'g2_index.json').read_text())
 out=root/'h_scores.json';res=json.loads(out.read_text()) if out.exists() else {}
 ARMS=[('W','apple','win'),('S','apple','sf'),('WS','apple','win,sf'),('WSC','apple','win,sf,class'),('WSCM','apple','win,sf,class,ms'),

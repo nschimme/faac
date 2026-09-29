@@ -1,9 +1,15 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
 # Rule arms: normal FAAC decisions re-emitted via step1 with only long-block sf rewritten.
 # Coefficients fit on the other half of the clips (even/odd split) from r_rows.npy.
 import sys,copy,json,pathlib,numpy as np
-sys.path.insert(0,'/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder')
+sys.path.insert(0,str(_REPO/'probe/ladder'))
 from parse_dump import parse,ICS
-g=pathlib.Path('/tmp/ladder_g');root=pathlib.Path('/tmp/ladder_h');idx=json.load(open(g/'g2_index.json'))
+g=LADDER_G;root=LADDER_H;idx=json.load(open(g/'g2_index.json'))
 R=np.load(root/'r_rows.npy');clip,sb,y,d1,d2,rel=R.T
 ARMS={'T':('tilt',),'D':('d1',),'TD':('tilt','d1'),'TDR':('tilt','d2','rel')}
 FIXED={'S3':(0.3,0.0),'S6':(0.6,0.0),'S9':(0.9,0.0),'C':(0.0,None)}  # (alpha, const); const None = fitted D intercept only

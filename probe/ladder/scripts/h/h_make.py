@@ -1,11 +1,17 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
 # rWIN-b: FAAC's own decisions made at Apple's windows (W arm), with Apple's absolute sf swapped in.
 #   KW    = W dump re-emitted unchanged (control: must equal the W stream)
 #   WaSFd = Apple sf on coded-in-both bands, only in ICS where Apple's window differs from normal FAAC's
 #   WaSF  = Apple sf on coded-in-both bands, every ICS (includes the clean-window rSF effect)
 import sys,copy,pathlib,json
-sys.path.insert(0,'/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder')
+sys.path.insert(0,str(_REPO/'probe/ladder'))
 from parse_dump import parse,ICS
-root=pathlib.Path('/tmp/ladder_h');g=pathlib.Path('/tmp/ladder_g')
+root=LADDER_H;g=LADDER_G
 def lay(v):return (v.win_seq,v.window_shape,v.num_groups,tuple(v.group_len))
 def make(k):
     a=parse(str(g/f'{k}_apple.dump'));n=parse(str(g/f'{k}_normal.dump'));w=parse(str(root/f'{k}_W.dump'))

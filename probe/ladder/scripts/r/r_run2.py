@@ -1,8 +1,14 @@
+import sys
+import os,pathlib
+_W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
+LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
+FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
+FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/frontend/faac');FAAC_MASTER_BIN=os.environ.get('FAAC_MASTER_BIN','/home/user/wt/master/build/frontend/faac')
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent));from r_make import make
 import os,subprocess,pathlib,json,re,numpy as np,soundfile as sf,sys
-sys.path.insert(0,'/tmp/ladder_h');from r_make import make
-root=pathlib.Path('/tmp/ladder_h');g=pathlib.Path('/tmp/ladder_g')
-faac='/private/tmp/claude-501/faac-work/fdk-ladder/build-ladder/frontend/faac'
-sc='/Users/nschimme/gitprojects/faac-benchmark/scripts/score_clip.py';py=sys.executable
+root=LADDER_H;g=LADDER_G
+faac=FAAC_BIN
+sc=SCORE_CLIP;py=PYTHON_BIN
 idx=json.loads((g/'g2_index.json').read_text());out=root/'r2_scores.json';res=json.loads(out.read_text()) if out.exists() else {}
 def pcm(m4a):
     raw=root/'rtmp.f32';subprocess.run(['ffmpeg','-v','error','-y','-i',str(m4a),'-f','f32le','-ac','2',str(raw)],check=True);x=np.fromfile(raw,dtype='<f4').reshape(-1,2);raw.unlink();return x
