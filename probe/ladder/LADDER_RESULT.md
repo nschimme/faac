@@ -1163,3 +1163,56 @@ where Apple codes 0 (Apple zeroes small lines).
 **Verdict:** E0 alignment, Control 0 and KF pass; KA does not. Per the plan, no HE arm was run. Before any HE arm the
 ladder needs a way to carry Apple's small-line zeroing (e.g. take Apple's integers as-is for zeroed lines, or read the
 arms against A instead of Apple), or the HE work should start from the crossover difference instead.
+
+## Stage S4-H: HE SBR crossover sweep (2026-09-29)
+
+Scripts `scripts/s4/` (`knob_ctl.py`, `bin_ctl.py`, `ref_score.py`, `bandE.py`, `lag.py`) plus `s3/sweep.py`/`an.py`.
+Pre-registered rule H1 and its amendment: `results/s4/prereg.md`. Results `results/s4/h1_32k.json`, `h1_48k.json`.
+Base: static probe, `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12` (= master + #595 + #599), HE-AAC (auto), ABR, rate loop on.
+
+**Controls.** `FAAC_SBR_START=15` = base: decoded PCM 49/49 at 32k and 48k. kx read back with `FAAC_SBR_DUMPTAB`
+(48 kHz output): start 7 → kx 15 (5.6 kHz), 8 → 16 (6.0), 11 → 20 (7.5), 12 → 22 (8.25), 13 → 24 (9.0), 14 → 27 (10.1),
+15 → 31 (11.6).
+
+**Bug found (PR #600).** The first st8 arm scored −1.11 / −1.32 adj: at kx 16 `pick_stop_freq()` kept bs_stop_freq 10,
+whose k2 = 49 breaks the k2 − kx ≤ 32 span at 48 kHz. ffmpeg ("too many QMF subbands: 33, SBR reset failed") and FAAD
+drop the SBR, leaving a 6 kHz lowpass (`bandE.py`: −46 to −80 dB above 6 kHz). The search now starts at index 0
+(kx 16 → k2 45). Production (kx 31/32 at 32–96 kHz) never reaches the limit: the fixed binary is PCM-identical 49/49 at
+32k and 48k, knob unset and at start 11. st8 was re-scored with it; the invalid run is kept as `st8_invalid`.
+
+**Where the others put the crossover** (FAAD dump `H` records, 3 clips each, constant per rate):
+
+| encoder | rate | start | kx | crossover | stop k2 | freq_scale / alter |
+|---|---|---:|---:|---:|---:|---|
+| FAAC | 32k, 48k | 15 | 31 | 11.6 kHz | 54 (20.3 kHz) | 3 / 0 (32k), 1 / 0 (48k) |
+| Apple | 32k | 8 | 16 | 6.0 kHz | 38 (14.3 kHz) | 2 / 1 |
+| fdk-aac 2.0.3 | 32k | 7 | 15 | 5.6 kHz | 41 (15.4 kHz) | 2 / 1 |
+| fdk-aac 2.0.3 | 48k | 12 | 22 | 8.25 kHz | 45 (16.9 kHz) | 2 / 1 |
+
+**Sweep, bits-adjusted vs the base** (FAAC's own HE slope, 28/40k at 32k and 40/56k at 48k; 49 clips):
+
+| arm | crossover | 32k adj | median | W/L | worst | bytes | 48k adj | median | W/L | worst | bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| st7 (fdk 32k) | 5.6 kHz | −0.276 | −0.228 | 2/47 | −0.88 | −0.5 % | | | | | |
+| st8 (Apple) | 6.0 kHz | −0.143 | −0.140 | 3/46 | −0.54 | −0.5 % | −0.019 | −0.009 | 21/27 | −0.34 | −0.7 % |
+| st11 | 7.5 kHz | −0.122 | −0.116 | 3/46 | −0.46 | −0.3 % | −0.011 | +0.005 | 25/24 | −0.30 | −0.5 % |
+| st12 (fdk 48k) | 8.25 kHz | | | | | | −0.040 | −0.027 | 15/33 | −0.31 | −0.4 % |
+| st13 | 9.0 kHz | −0.107 | −0.094 | 1/47 | −0.39 | −0.2 % | −0.045 | −0.035 | 13/36 | −0.26 | −0.3 % |
+| st14 | 10.1 kHz | −0.044 | −0.039 | 9/40 | −0.24 | −0.1 % | −0.006 | −0.005 | 21/28 | −0.11 | −0.2 % |
+| base (15) | 11.6 kHz | 0 | | | | | 0 | | | | |
+
+**Against Apple HE 32k** (`ref/apple_he32k`, scored the same way; the scorer aligns by cross-correlation, so the HE
+decoder lag, 994 samples for FAAC and 3074 for Apple through ffmpeg, doesn't enter): Apple raw 3.891 at 2.145 MB vs
+FAAC base 3.817 at 1.974 MB, i.e. Apple spends +8.7 % bytes. Bits-adjusted with FAAC's 28/40 slope, **FAAC base − Apple
+= +0.011 (median −0.050, 23/26)**: FAAC is at par with Apple at HE 32k once the byte difference is priced.
+Arms − Apple: st14 −0.032, st13 −0.095, st11 −0.111, st8 −0.131, st7 −0.265.
+
+**Verdict against H1: nothing passes.** Every lower crossover loses at 32k (monotone: the lower, the worse) and none
+beats the base at 48k (best st14 −0.006, st11 −0.011 with a +0.005 median). The base 15 is the edge of the 4-bit range,
+so the bracket can't be extended upward; 11.6 kHz stays. Apple's and fdk's 6 kHz crossover works for them together
+with their own SBR (fscale 2 with alter, a 14–17 kHz stop, and their envelope/noise estimation); on FAAC's SBR and core a
+low crossover just hands more spectrum to a weaker parametric reconstruction. The earlier "−0.07 to −0.13 at HE" gap
+was mostly bytes: Apple overshoots to ~38.5k. No encoder change.
+
+**Next (not run):** `FAAC_SBR_STOP` (Apple and fdk stop at 14–17 kHz, FAAC at 20 kHz) and `FAAC_SBR_FREQ_SCALE`/
+`FAAC_SBR_ALTER` at the base crossover, same harness and rule. A crossover retry only makes sense together with them.
