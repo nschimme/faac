@@ -24,6 +24,12 @@ for item in index:
    if None in (ar,kar,fr,normal):s['reason'].append('ADTS extraction error')
    else:
     s['KA']=ar.read_bytes()==kar.read_bytes();s['KF']=fr.read_bytes()==normal.read_bytes()
+    if not s['KF']:
+     # master writes an all-zero M/S mask in a few frames (nschimme/faac#597); FAAC's own
+     # dump cannot reproduce that, so fall back to decoded PCM, which is the real control.
+     def _pcm(m):return subprocess.run(['ffmpeg','-v','error','-i',str(m),'-f','f32le','-'],capture_output=True).stdout
+     s['KF']=_pcm(F)==_pcm(root/(k+'_normal.m4a'))
+     if s['KF']:s['KF_note']='ADTS differs, PCM identical'
     if not s['KA']:s['reason'].append('KA byte mismatch')
     if not s['KF']:s['reason'].append('KF byte mismatch')
     s['clean_A']=clean(A,k,'A');s['clean_F']=clean(F,k,'F')

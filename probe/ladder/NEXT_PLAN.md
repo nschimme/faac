@@ -66,6 +66,21 @@ on the #595 base. Window rise ratio, no-hysteresis, no-drop-outs, and any drop r
 4. **Optional small PR (faac-benchmark, not faac):** keep the 44.1k VBR q76 rung out of the LC
    BD-rate ladder, or use piecewise-linear BD; it produces a spurious +1 % mean.
 
+### Reference sets verified (2026-09-29, after the Mac agent's commit 2f50e92)
+- `ref/apple_lc64k`, `ref/apple_lc96k`: 49/49 LC, 48 kHz stereo; same ~0.05 s end padding as
+  `ref/apple`. `ref/apple_he32k`: 49/49 HE-AAC (SBR), 48 kHz out; ~0.12 s longer than the source
+  (priming/padding in core-rate units — E0.1). The FAAD dump decoder parses the HE core
+  (velvet: 237 core frames, 0 concealment; Apple's HE core is 54 % short on velvet).
+- **LC 64k pipeline verified end to end:** `LADDER_REF=apple_lc64k LADDER_RATE=64 LADDER_SLOPE=56,72`
+  → g2_prepare → g2_make → g2_controls: **Control 0 49/49 exact, KA 49/49, KF 49/49 (PCM)**.
+  LC 96k uses the same code path (`LADDER_REF=apple_lc96k LADDER_RATE=96 LADDER_SLOPE=80,112`); not yet run.
+- G2 scripts now take `LADDER_REF` (ref subdir, default `apple`), `LADDER_RATE` (default 128) and
+  `LADDER_SLOPE` (slope anchors, default `112,144`; baselines are named `base<rate>`).
+  Use a separate `LADDER_WORK` per rate. `scripts/g/control0.py` runs Control 0 for any LC set
+  (`LADDER_PRIME`, default 2112). It is LC-only: for HE, E0.2 needs an SBR-passthrough variant.
+- `g2_controls.py` KF now falls back to decoded PCM when ADTS bytes differ (the #597 empty-M/S-mask
+  case; 4/49 at 64k, 1/49 at 128k) and records `KF_note`.
+
 ### Session facts that save time
 - Linux env: `export PATH=/opt/venv312/bin:$PATH` (py3.12 venv with zimtohrli+visqol);
   scorer `/opt/faac-benchmark/scripts/score_clip.py`; FAAD dump decoder
@@ -82,6 +97,8 @@ on the #595 base. Window rise ratio, no-hysteresis, no-drop-outs, and any drop r
   fine on 15 GB. Don't `pgrep -f` for a pattern contained in your own wait-loop command line.
 - KF compares ADTS bytes in `g2_controls.py`; after the master merge one clip differs only by the
   empty-M/S-mask bug (#597) with identical PCM — compare PCM.
+- **Disk:** a G2 work dir is 4–7 GB per rate; the session allowance filled once (tool output is
+  lost with ENOSPC; deletes still work). Delete work dirs you are done with.
 - The `scripts/s2/` files hard-code `/home/user/...` work paths; parametrise before reuse.
 
 ---
