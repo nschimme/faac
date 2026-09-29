@@ -10,7 +10,62 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
-## 0. Status after Stage S2 (2026-09-29, second session) — read this first
+## 0. Status after Stage S3 (2026-09-29, third session) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S3-D", "S3-C", "S3-E". Scripts `scripts/s3/`, results `results/s3/`,
+pre-registered rules `results/s3/prereg.md`. The S2 section below is history; its next steps are done.
+
+**What S3 settled (base = master + #595 + #599, i.e. probe `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`):**
+- D, M/S: Apple's M/S bit alone +0.000; on top of Apple's sf +0.010 (46/1). Encoder M/S rules (`FAAC_MS_Q`,
+  `FAAC_MS_LRDB`) ≤ +0.0007. Closed until the sf allocation moves. `g_make.py`'s rMS arm is invalid (flips the bit on
+  IS bands); use `s3/d_make.py`.
+- C, windows pass 2 (`FAAC_BS_RESET`, context span, energy floor): ≤ +0.0008. Apple's windows lose at every LC rate
+  on this base (rWIN/W at 64k, 96k; A−F ≈ 0 at 128k). Closed.
+- E, LC: Apple − FAAC is −0.48 at 64k (FAAC ahead; partly zimtohrli preferring PNS over Apple's holes), −0.003 at
+  96k, +0.008 at 128k. The one lever left is Apple's scalefactors: rSF +0.013 (96k), +0.016 (128k).
+- E0, HE 32k: alignment +96 / Apple n+1; Control 0 with SBR splice and KF pass 49/49; KA fails (A − Apple −0.147,
+  0/49: Apple zeroes small lines). No HE swap arms. Apple's SBR crossover is 6 kHz (kx 16), FAAC's 11.6 kHz (kx 31).
+- **Pitfall:** `faac -b 56/64` at 48 kHz stereo is HE-AAC under `--object-type auto` (LC from 72k). LC rungs below
+  72k need `--object-type lc`.
+
+### Next steps, in order
+
+1. **H — HE SBR crossover** (largest absolute gap; one knob, no ladder). `FAAC_SBR_START` (default 15 → kx 31,
+   11.6 kHz) already moves kx, and the core bandwidth follows kx (`frame.c` ~358). The code comment in `sbr.c` says
+   11.6 kHz "maximizes MOS": that was tuned on an older base, so re-check it.
+   - Controls: knob at 15 = base, PCM-identical 49/49 at HE 32k and 48k.
+   - Sweep start values giving roughly 6, 7.5, 9, 10.5 kHz (read kx back from a FAAD dump `H` record, field 16),
+     rate loop on, HE 32k and 48k ABR, 49 clips, bits-adjusted vs the base with FAAC's own HE slope (28/40k at 32k,
+     40/56k at 48k). Pre-register: mean ≥ +0.005, W > L, no clip < −0.05, bracket centre, both rates not worse.
+   - Also report each arm against the Apple HE 32k refs (raw MOS and bytes), and check where fdk-aac HE puts its
+     crossover at the same rates (build per the `faac-benchmark-cloud-setup` notes) so the target isn't Apple alone.
+   - If a start value passes: one focused PR on nschimme/faac (§7 style), CI BD-rate on the HE rungs decides.
+   - If nothing passes, `FAAC_SBR_STOP` and `FAAC_SBR_FREQ_SCALE` are the next knobs in the same harness.
+2. **B2 — decompose Apple's scalefactor gain at LC 96k and 128k** (rSF +0.013 / +0.016, and it unlocks D's +0.010).
+   Neighbour smoothing, constant offsets and tilts are exhausted, so split rSF with step1 arms built from the
+   regular-in-both band set (`d_make.py` pattern), each vs F, bits-adjusted:
+   - **rSFlev**: FAAC's sf shape with each ICS shifted to Apple's mean sf over those bands (frame-level allocation,
+     i.e. how bits are spread over time; rSF also saves 2.5 % bytes, which hints at this).
+   - **rSFshape**: Apple's shape, re-centred on FAAC's per-ICS mean (within-frame allocation).
+   - **rSF by region**: Apple sf only in 0–2 / 2–6 / 6–12 / >12 kHz.
+   Controls K0 (arm builder with no swap = KF, PCM) first. The arm that carries most of rSF names the encoder
+   lever: rate-loop / reservoir distribution across frames (rSFlev) or the per-band masking curve (rSFshape).
+   Then screen an encoder knob for that lever with the same rule as step 1, and only after that revisit M/S.
+3. Parked: LC 64k (FAAC already ahead of Apple), windows, M/S rules, HE swap arms (need a way to carry Apple's
+   small-line zeroing before KA can pass).
+
+### S3 session facts
+- Bootstrap: `jules_setup.sh`, plus `apt-get update && apt-get install ffmpeg meson`, venv `/opt/venv312`
+  (`python3.12 -m venv`, `pip install -r faac-benchmark/requirements.txt`), datasets by `git clone` + `git archive`
+  into `data/temp/` (see memory note `faac-benchmark-cloud-setup`).
+- Score from a **static** probe copy (`meson setup <dir> -Ddefault_library=static`); rebuilding `build_ladder` under
+  a running job swaps `libfaac.so` underneath it.
+- `scripts/s3/arm_score.py` scores step1 arms and `H_*` streams serially; `LADDER_PAD` sets the input pad
+  (64 LC, 96 HE). `scripts/s3/sweep.py` + `an.py` take `SWEEP_W` and `FAAC_BIN`.
+- One scored arm over 49 clips ≈ 4–5 min. A G2 work dir is 2–4 GB per rate with 4 arms; delete when done.
+- Don't `pkill -f` a pattern that appears in your own command line (it kills the shell).
+
+## 0-S2. Status after Stage S2 (2026-09-29, second session)
 
 Details: `LADDER_RESULT.md` → "Stage S2". Branch with everything: `claude/trusting-hamilton-uiadf9`
 (probe merged with master ec72dfc; block-switch probe knobs added). It supersedes `fdk-ladder`.
