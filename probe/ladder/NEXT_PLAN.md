@@ -43,10 +43,26 @@ on the #595 base. Window rise ratio, no-hysteresis, no-drop-outs, and any drop r
    floor on rises (`FAAC_BS_MINE`). Sweep with `scripts/s2/sweep.py` on top of #595 + drop 12;
    same pre-registered rule (≥ +0.005, W>L, no clip < −0.05, bracket centre). Watch girl,
    Last_Of_The_Mohicans, liberate and take_your_finger — they are the sentinels.
-3. **E — other rates and HE-AAC** (largest absolute gap). Needs Apple refs from the user
-   (afconvert, same settings as the 128k set: LC 64k and 96k, HE-AAC 48k at 32 kbps).
-   Verify HE alignment and Control 0/KA/KF on the HE core before any arm. Note: at HE the
-   block switcher wants MORE shorts than LC (any drop-ratio raise lost −0.02…−0.03 at 32k).
+3. **E — other rates and HE-AAC** (largest absolute gap). **The Apple refs now exist** (2026-09-29,
+   see `probe/ladder/ref/README.md`): `ref/apple_lc64k`, `ref/apple_lc96k`, `ref/apple_he32k`, 49 clips
+   each, same clip names as `ref/apple` (128k). Made with `afconvert -f m4af -d aac@48000 -b N` (LC) and
+   `-d aach@48000 -b 32000` (HE); the 128k settings were recovered as `-d aac -b 128000` (PCM-identical
+   re-encode of one clip). Realised rates overshoot the request (64k→72k, 96k→106k, HE 32k→38.5k):
+   compare bits-adjusted, and re-derive the FAAC slope pair around each rung (e.g. 56/72k, 80/112k, HE 28/40k).
+   **Do the HE prerequisites first (E0), before any arm:**
+   - E0.1 Alignment. Apple HE priming is 2112 in afinfo, probably core-rate samples (HE `valid frames`
+     are core-rate too). Decode with FAAD_LADDER_DUMP and find the true input offset by cross-correlating
+     the decoded Apple PCM against the source (`mdct_offset.py` pattern); expect something other than +64
+     at 48k. Same for FAAC's own HE stream (FAAC pairs core frame n with Apple frame n+k; find k).
+   - E0.2 Controls on the HE core: Control 0 (re-emit of the Apple HE core, bit-exact PCM through FAAC's
+     writer; SBR payload passes through untouched), KA (step1 at all-Apple core decisions equals the
+     re-emit within the LC-style 97-99 % integer match) and KF (step1 at FAAC's own core decisions =
+     normal FAAC PCM). Only after all three pass, run arms A/F/reverse/W.
+   - E0.3 Rate-loop caveat: at HE the FAAC core runs at the lowered core rate; the SBR payload is
+     Apple's in these controls, so score core-only effects with the SBR held identical (or compare
+     FAAC-core+FAAC-SBR vs Apple only at the end).
+   - LC 64k/96k need only the known +64/+1 alignment; rerun K0/KF, then A/F/W. Note at HE the block
+     switcher wants MORE shorts than LC (any drop-ratio raise lost −0.02…−0.03 at 32k).
 4. **Optional small PR (faac-benchmark, not faac):** keep the 44.1k VBR q76 rung out of the LC
    BD-rate ladder, or use piecewise-linear BD; it produces a spurious +1 % mean.
 
@@ -205,12 +221,10 @@ The Apple-scalefactor oracle is +0.017; the rule gets about +0.007 in the encode
 ### E. Other rates and HE-AAC (largest absolute gap; needs the user)
 - Everything above was measured at LC 128k. Rerun the swap matrix (A, F, the
   reverse arms, W) at LC 64k/96k and on the HE-AAC 48k core.
-- **Apple references can only be made on macOS (afconvert).** Ask the user for
-  the 49 clips at the needed rates and modes. The settings used for the existing
-  128k refs weren't recorded, so ask for the same settings. Don't try to
-  synthesise Apple streams.
-- The HE-core path through the ladder is untested. Budget time for alignment
-  (delay and frame offset) and re-verify Control 0, KA and KF there first.
+- **Apple references can only be made on macOS (afconvert).** **Done 2026-09-29**: the 64k/96k/HE-32k sets are in `probe/ladder/ref/`.
+  Ask the user only for further rates. Don't try to synthesise Apple streams.
+- The HE-core path through the ladder is untested. Do E0 in section 0 (alignment, then Control 0,
+  KA, KF) before any arm.
 
 ### F. fdk-aac
 Deprioritised. Go back to it only if Apple parity is reached, or the user asks.
@@ -274,6 +288,8 @@ loop: both are dead.
   E/F ones to `LADDER_WORK` and env vars; do the same for these first. The
   intermediate data (dumps, `*_plus.wav`, `.ci`) was local only. Regenerate it
   with `g2_prepare.py` (the ported version) before running H or R scripts.
+- `.gitignore` excludes `*.m4a`; new reference streams need `git add -f`.
+- afconvert without `@48000` silently lowers the output rate at ≤96k LC and at HE.
 - The faac CLI won't overwrite `-o` unless you pass `--overwrite`. Delete outputs
   first.
 - Serial MOS scoring only: parallel ViSQOL/zimtohrli pools have OOM'd hosts.
