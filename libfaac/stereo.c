@@ -15,6 +15,8 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "stereo.h"
 #include "huff2.h"
 #include "util.h"
@@ -216,6 +218,25 @@ static inline int process_cpe(CoderInfo * restrict cl, CoderInfo * restrict cr,
         if (sfb < ms_end) {
             /* es and ed are 4x the mid and side energies. */
             int use_ms = (es * ed < 4.0f * el * er);
+            /* Probe-only D knobs (unset = production): FAAC_MS_Q scales the
+             * threshold on EmEs/(ElEr/4); FAAC_MS_LRDB>0 replaces the rule by
+             * |10log10(El/Er)| < LRDB. */
+            {
+                static float msq = -1.0f, lrr = -1.0f;
+                if (msq < 0.0f) {
+                    const char *e = getenv("FAAC_MS_Q"); msq = e ? (float)atof(e) : 1.0f;
+                    e = getenv("FAAC_MS_LRDB"); lrr = e ? powf(10.0f, (float)atof(e) / 10.0f) : 0.0f;
+                }
+                if (msq != 1.0f) use_ms = (es * ed < 4.0f * msq * el * er);
+                if (lrr > 0.0f) use_ms = (el < lrr * er && er < lrr * el);
+            }
+            /* Probe-only: FAAC_MS_DUMP=<file> logs per band frame, group, sfb, short, el, er, elr, width, decision. */
+            {
+                static FILE *msd; static int tried;
+                if (!tried) { const char *e = getenv("FAAC_MS_DUMP"); tried = 1; if (e) msd = fopen(e, "w"); }
+                if (msd) fprintf(msd, "%d %d %d %d %g %g %g %d %d\n", cl->ciFrame, g, sfb,
+                                 cl->block_type == ONLY_SHORT_WINDOW, el, er, elr, len * (wend - wstart), use_ms);
+            }
             /* Probe-only: fdk's ms_used ground truth, on frames whose window
              * layout already matches FAAC's own (no window injection in this
              * build, so this is a natural, reported-share subset). */

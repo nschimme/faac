@@ -68,6 +68,7 @@ psydata_t;
  *   FAAC_BS_MINE      absolute sub-block energy floor for a rise to count
  *   FAAC_BS_PREVS / FAAC_BS_NEXTS  sub-blocks of context around the frame
  *   FAAC_BS_NOHYST    1: no extra short frame after a short-desiring frame
+ *   FAAC_BS_RESET     b>0: after a rise, lift the level to at least b*e (level recovery)
  *   FAAC_BS_DUMP      per-frame detector state to this file */
 static float bs_env(const char *name, float def)
 {
@@ -75,7 +76,7 @@ static float bs_env(const char *name, float def)
   return (v && *v) ? (float)atof(v) : def;
 }
 static int bs_knobs_init;
-static float bs_dropratio = -1.0f, bs_mine, bs_prevs = 2, bs_nexts = 2, bs_nohyst;
+static float bs_dropratio = -1.0f, bs_mine, bs_prevs = 2, bs_nexts = 2, bs_nohyst, bs_reset;
 static FILE *bs_dump;
 static void bs_knobs(void)
 {
@@ -86,6 +87,7 @@ static void bs_knobs(void)
   bs_prevs = bs_env("FAAC_BS_PREVS", 2);
   bs_nexts = bs_env("FAAC_BS_NEXTS", 2);
   bs_nohyst = bs_env("FAAC_BS_NOHYST", 0);
+  bs_reset = bs_env("FAAC_BS_RESET", 0);
   if (getenv("FAAC_BS_DUMP")) bs_dump = fopen(getenv("FAAC_BS_DUMP"), "w");
 }
 
@@ -228,10 +230,13 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
     psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
     {
       float dr = bs_dropratio < 0.0f ? gpsyInfo->levelRatio : bs_dropratio;
-      if ((e > gpsyInfo->levelRatio * level && e >= bs_mine) || (dr > 0.0f && e * dr < level))
+      int rise = e > gpsyInfo->levelRatio * level && e >= bs_mine;
+      if (rise || (dr > 0.0f && e * dr < level))
         psydata->attack |= 1u << (ENG_WIN_NEXT + win);
+      level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
+      if (rise && bs_reset > 0.0f && level < bs_reset * e)
+        level = bs_reset * e;
     }
-    level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
   }
   psydata->level = level;
 }

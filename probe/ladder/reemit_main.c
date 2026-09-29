@@ -20,8 +20,8 @@
 
 int main(int argc, char **argv)
 {
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <intermediate.bin> <out.aac>\n", argv[0]);
+    if (argc != 3 && argc != 4) {
+        fprintf(stderr, "usage: %s <intermediate.bin> <out.aac> [sample_rate]\n", argv[0]);
         return 1;
     }
     FILE *in = fopen(argv[1], "rb");
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
     faac_params p;
     faac_params_init(&p, sizeof p);
-    p.sample_rate = 48000;
+    p.sample_rate = argc > 3 ? atoi(argv[3]) : 48000; /* 24000 for an HE core */
     p.num_channels = 2;
     p.object_type = FAAC_OBJ_LOW;
     p.output_format = FAAC_STREAM_ADTS;

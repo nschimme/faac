@@ -8,7 +8,7 @@ for item in index:
  k=item['id'];src=pathlib.Path(item['src']);plus=root/(k+'_plus.wav')
  if not plus.exists():
   with wave.open(str(src),'rb') as w:params=w.getparams();pcm=w.readframes(w.getnframes())
-  with wave.open(str(plus),'wb') as w:w.setparams(params);w.writeframes(b'\0'*64*params.nchannels*params.sampwidth+pcm)
+  with wave.open(str(plus),'wb') as w:w.setparams(params);w.writeframes(b'\0'*int(os.environ.get('LADDER_PAD','64'))*params.nchannels*params.sampwidth+pcm)
  for tag,enc in [('apple',pathlib.Path(item['ref']))]:
   dump=root/(k+'_'+tag+'.dump');dump.unlink(missing_ok=True);env=os.environ.copy();env.update(FAAD_DUMP=str(dump),FAAD_LADDER_DUMP='1')
   with open(root/(k+'_'+tag+'_decode.log'),'w') as log:p=subprocess.run([faad,'-q','-o',str(root/(k+'_'+tag+'.wav')),str(enc)],env=env,stdout=log,stderr=subprocess.STDOUT)
