@@ -1,0 +1,639 @@
+{
+ "g2_00": {
+  "stem": "12-German-male-speech.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9245,
+   "bytes": 126800
+  },
+  "WR": {
+   "mos": 4.9379,
+   "bytes": 127259
+  }
+ },
+ "g2_01": {
+  "stem": "15-Good-evening.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.812,
+   "bytes": 138538
+  },
+  "WR": {
+   "mos": 4.8158,
+   "bytes": 138693
+  }
+ },
+ "g2_02": {
+  "stem": "21-classic.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8291,
+   "bytes": 155874
+  },
+  "WR": {
+   "mos": 4.8372,
+   "bytes": 156128
+  }
+ },
+ "g2_03": {
+  "stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8523,
+   "bytes": 141049
+  },
+  "WR": {
+   "mos": 4.8282,
+   "bytes": 141039
+  }
+ },
+ "g2_04": {
+  "stem": "25-This-is-the-end.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8404,
+   "bytes": 148579
+  },
+  "WR": {
+   "mos": 4.8511,
+   "bytes": 148835
+  }
+ },
+ "g2_05": {
+  "stem": "27-last-song-drums-and-trampets.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8448,
+   "bytes": 161134
+  },
+  "WR": {
+   "mos": 4.8545,
+   "bytes": 161519
+  }
+ },
+ "g2_06": {
+  "stem": "35_SQAM_glockenspiel_cut.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9143,
+   "bytes": 161386
+  },
+  "WR": {
+   "mos": 4.9152,
+   "bytes": 161340
+  }
+ },
+ "g2_07": {
+  "stem": "4-Sound-English-male.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9328,
+   "bytes": 145999
+  },
+  "WR": {
+   "mos": 4.9428,
+   "bytes": 146293
+  }
+ },
+ "g2_08": {
+  "stem": "9-Have-big-expensive-car.441.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8333,
+   "bytes": 156824
+  },
+  "WR": {
+   "mos": 4.8606,
+   "bytes": 156958
+  }
+ },
+ "g2_09": {
+  "stem": "Asleep__4.11-4.31_.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8423,
+   "bytes": 161427
+  },
+  "WR": {
+   "mos": 4.8452,
+   "bytes": 161434
+  }
+ },
+ "g2_10": {
+  "stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7437,
+   "bytes": 161410
+  },
+  "WR": {
+   "mos": 4.7806,
+   "bytes": 161408
+  }
+ },
+ "g2_11": {
+  "stem": "Changes.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7328,
+   "bytes": 161455
+  },
+  "WR": {
+   "mos": 4.8033,
+   "bytes": 161419
+  }
+ },
+ "g2_12": {
+  "stem": "Coral.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.845,
+   "bytes": 161358
+  },
+  "WR": {
+   "mos": 4.8572,
+   "bytes": 161357
+  }
+ },
+ "g2_13": {
+  "stem": "ExitMusic.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8764,
+   "bytes": 161470
+  },
+  "WR": {
+   "mos": 4.8861,
+   "bytes": 161722
+  }
+ },
+ "g2_14": {
+  "stem": "Girl_In_The_Fire__Sample_.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7968,
+   "bytes": 161391
+  },
+  "WR": {
+   "mos": 4.8055,
+   "bytes": 161372
+  }
+ },
+ "g2_15": {
+  "stem": "Greatest_Love_of_All_2min57.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8569,
+   "bytes": 161337
+  },
+  "WR": {
+   "mos": 4.8577,
+   "bytes": 161509
+  }
+ },
+ "g2_16": {
+  "stem": "Hey Tonight.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8514,
+   "bytes": 161376
+  },
+  "WR": {
+   "mos": 4.8598,
+   "bytes": 161346
+  }
+ },
+ "g2_17": {
+  "stem": "Hotel California.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7884,
+   "bytes": 161503
+  },
+  "WR": {
+   "mos": 4.8049,
+   "bytes": 161723
+  }
+ },
+ "g2_18": {
+  "stem": "Jupiter, the Bringer of Jolity.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8351,
+   "bytes": 161495
+  },
+  "WR": {
+   "mos": 4.8363,
+   "bytes": 161580
+  }
+ },
+ "g2_19": {
+  "stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7799,
+   "bytes": 161547
+  },
+  "WR": {
+   "mos": 4.5667,
+   "bytes": 161627
+  }
+ },
+ "g2_20": {
+  "stem": "NewYorkCity.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8553,
+   "bytes": 161462
+  },
+  "WR": {
+   "mos": 4.8587,
+   "bytes": 161529
+  }
+ },
+ "g2_21": {
+  "stem": "Only Time.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8032,
+   "bytes": 161367
+  },
+  "WR": {
+   "mos": 4.8105,
+   "bytes": 161363
+  }
+ },
+ "g2_22": {
+  "stem": "Robots_old.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7725,
+   "bytes": 161285
+  },
+  "WR": {
+   "mos": 4.7937,
+   "bytes": 161321
+  }
+ },
+ "g2_23": {
+  "stem": "Severance__1.31-1.51_.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.904,
+   "bytes": 161413
+  },
+  "WR": {
+   "mos": 4.9044,
+   "bytes": 161413
+  }
+ },
+ "g2_24": {
+  "stem": "Shinsho_pool_3min45_4min4.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.782,
+   "bytes": 161442
+  },
+  "WR": {
+   "mos": 4.8401,
+   "bytes": 161338
+  }
+ },
+ "g2_25": {
+  "stem": "SinceAlways.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8437,
+   "bytes": 161615
+  },
+  "WR": {
+   "mos": 4.8608,
+   "bytes": 161910
+  }
+ },
+ "g2_26": {
+  "stem": "SlavesOfFear.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8437,
+   "bytes": 161370
+  },
+  "WR": {
+   "mos": 4.8494,
+   "bytes": 161440
+  }
+ },
+ "g2_27": {
+  "stem": "The Chastising of Renegade.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7877,
+   "bytes": 161788
+  },
+  "WR": {
+   "mos": 4.8072,
+   "bytes": 161841
+  }
+ },
+ "g2_28": {
+  "stem": "Through The Fire And Flames.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8339,
+   "bytes": 161388
+  },
+  "WR": {
+   "mos": 4.8483,
+   "bytes": 161565
+  }
+ },
+ "g2_29": {
+  "stem": "TrosYGareg.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.899,
+   "bytes": 161399
+  },
+  "WR": {
+   "mos": 4.8936,
+   "bytes": 161608
+  }
+ },
+ "g2_30": {
+  "stem": "Waiting.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7722,
+   "bytes": 161743
+  },
+  "WR": {
+   "mos": 4.7979,
+   "bytes": 161829
+  }
+ },
+ "g2_31": {
+  "stem": "With Love (Outro).16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8743,
+   "bytes": 161463
+  },
+  "WR": {
+   "mos": 4.8818,
+   "bytes": 161650
+  }
+ },
+ "g2_32": {
+  "stem": "bah",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8229,
+   "bytes": 153380
+  },
+  "WR": {
+   "mos": 4.8344,
+   "bytes": 153731
+  }
+ },
+ "g2_33": {
+  "stem": "bas",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7316,
+   "bytes": 161423
+  },
+  "WR": {
+   "mos": 4.8541,
+   "bytes": 161351
+  }
+ },
+ "g2_34": {
+  "stem": "bonhemian_rhapsody.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8268,
+   "bytes": 161363
+  },
+  "WR": {
+   "mos": 4.8407,
+   "bytes": 161348
+  }
+ },
+ "g2_35": {
+  "stem": "clapton_44k.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7869,
+   "bytes": 161312
+  },
+  "WR": {
+   "mos": 4.7947,
+   "bytes": 161346
+  }
+ },
+ "g2_36": {
+  "stem": "cst",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8289,
+   "bytes": 105871
+  },
+  "WR": {
+   "mos": 4.8333,
+   "bytes": 106109
+  }
+ },
+ "g2_37": {
+  "stem": "fms",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8628,
+   "bytes": 161492
+  },
+  "WR": {
+   "mos": 4.8328,
+   "bytes": 161514
+  }
+ },
+ "g2_38": {
+  "stem": "girl.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9073,
+   "bytes": 161486
+  },
+  "WR": {
+   "mos": 4.4617,
+   "bytes": 161695
+  }
+ },
+ "g2_39": {
+  "stem": "glk",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9735,
+   "bytes": 161403
+  },
+  "WR": {
+   "mos": 4.9779,
+   "bytes": 161614
+  }
+ },
+ "g2_40": {
+  "stem": "hrp",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.9019,
+   "bytes": 142905
+  },
+  "WR": {
+   "mos": 4.9042,
+   "bytes": 143039
+  }
+ },
+ "g2_41": {
+  "stem": "liberate.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8229,
+   "bytes": 81341
+  },
+  "WR": {
+   "mos": 4.8444,
+   "bytes": 81344
+  }
+ },
+ "g2_42": {
+  "stem": "lob",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8069,
+   "bytes": 115366
+  },
+  "WR": {
+   "mos": 4.8363,
+   "bytes": 115583
+  }
+ },
+ "g2_43": {
+  "stem": "mof",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.756,
+   "bytes": 161364
+  },
+  "WR": {
+   "mos": 4.8122,
+   "bytes": 161650
+  }
+ },
+ "g2_44": {
+  "stem": "qrt",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7969,
+   "bytes": 161447
+  },
+  "WR": {
+   "mos": 4.8256,
+   "bytes": 161766
+  }
+ },
+ "g2_45": {
+  "stem": "sandman.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.8574,
+   "bytes": 161313
+  },
+  "WR": {
+   "mos": 4.8709,
+   "bytes": 161325
+  }
+ },
+ "g2_46": {
+  "stem": "take_your_finger_frin_my_head.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.7549,
+   "bytes": 161469
+  },
+  "WR": {
+   "mos": 4.8073,
+   "bytes": 161489
+  }
+ },
+ "g2_47": {
+  "stem": "trumpet.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.802,
+   "bytes": 162656
+  },
+  "WR": {
+   "mos": 4.8468,
+   "bytes": 162869
+  }
+ },
+ "g2_48": {
+  "stem": "velvet.16b48k",
+  "C1": true,
+  "C2": true,
+  "NR": {
+   "mos": 4.4948,
+   "bytes": 162583
+  },
+  "WR": {
+   "mos": 4.5415,
+   "bytes": 162722
+  }
+ }
+}

@@ -890,3 +890,24 @@ Per clip, W alone ≈ rWIN on bas, Changes, mof, trumpet, take_your_finger. Velv
 **sf in window-differing long blocks is not special** (`h_sfdiff.py`, FAAC@W − Apple, coded-in-both bands): the long-block regional means are −0.73/−0.01/+1.06/+0.83 in window-differing frames and −0.91/−0.49/+1.40/+1.38 in window-agreeing frames (0–2 / 2–6 / 6–12 / >12 kHz), with mean abs diff 2.5–4 per band in both. The same allocation difference (FAAC finer below 2 kHz, coarser above 6 kHz, plus per-band shape) governs both the clean-clip SF loss and long-block survival.
 
 **G3 shape features, multivariate** (5 clips, `g3_features.json`). The residual after regional offset is fit on log10 relative neighbour energy, peak/avg and flatness. R² is 0.20 on the clean clips; by region, 0–2k 0.12, 2–6k 0.38, 6–12k 0.36, >12k 0.47. The relative-energy coefficient rises from 0.46 to 3.1 sf steps per decade: FAAC's sf follows local band energy more steeply than Apple's, and Apple's curve is smoother across neighbouring bands. FAAC's masking target has r ≈ 0. At R² 0.2 this is a direction, not yet a rule.
+
+## Stage R: scalefactor smoothing rule (09-29)
+
+**Fit** (`scripts/r/r_fit.py`, 888,677 same-layout long coded bands, normal FAAC vs Apple): FAAC sf − Apple sf ≈ 0.61·(FAAC sf − mean of coded ±1 neighbours) − 0.26. R² is 0.09 for that term alone, 0.06 for a per-band tilt alone, and 0.21 for tilt + neighbour term + level vs global gain.
+
+**Offline** (step1 on normal FAAC's decisions with only long-block sf rewritten, even/odd cross-fit; control K0 PCM-identical 49/49). Adjusted vs normal FAAC 128k:
+
+| arm | adj mean | W/L | raw MOS | bytes |
+|---|---:|---:|---:|---:|
+| T (fitted per-band tilt) | −0.0044 | 9/40 | | +3.1 % |
+| D (fitted neighbour term) | +0.0101 | 48/1 | +0.0016 | −2.5 % |
+| TD / TDR | +0.0055 / +0.0050 | 32/17, 34/15 | | |
+| S3 (α 0.3, no constant) | +0.0054 | 48/0 | +0.0036 | −0.6 % |
+| **S6 (α 0.6)** | **+0.0101** | **49/0** | +0.0051 | −1.4 % |
+| S9 (α 0.9) | +0.0063 | 43/6 | +0.0042 | −0.5 % |
+
+That's 59 % of the rSF oracle (+0.017).
+
+**Encoder, rate loop on** (`scripts/r/s_run.py`, branch sf-smooth on upstream/master, 49 clips native input, 128k vs master; α=0 PCM-identical to master): α 0.3 / 0.6 / 0.9 gives +0.0028 / **+0.0066 (46/3)** / +0.0040, with bytes +0.01 %. PR nschimme/faac#595.
+
+**Long-block survival** (`scripts/r/wr_run.py`, the smoothing ported into this branch's quantize.c; controls α=0 reproduces W and normal PCM-identically 49/49): NR (normal + rule) −N +0.0105 (48/1); WR (Apple windows + rule) −N +0.0137 (45/4). On window-heavy clips (n=14), WR−NR is +0.022 and W−N +0.016: the rule adds ≈ +0.006 to Apple windows, against +0.022 for Apple's actual sf (WaSFd−W). Velvet W +0.035 → WR−NR +0.046. Mohicans −0.21 and girl −0.45 are unchanged: their loss at Apple windows is not sf shape. Verdict: smoothing is an independent broad gain, not the long-block-survival fix.

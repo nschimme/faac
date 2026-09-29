@@ -298,6 +298,60 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     float pns_threshold = 0.1f * (float)pnslevel;
     int sb;
 
+    /* Long blocks: pull each coded band's scalefactor 0.6 of the way towards
+     * the mean of its coded neighbours (probe port of sf_smooth.patch). */
+    int smooth_sfac[MAX_SCFAC_BANDS];
+    int smooth = ci->block_type != ONLY_SHORT_WINDOW;
+    static float alpha = -1.0f;
+    if (alpha < 0.0f) { const char *e = getenv("FAAC_SF_SMOOTH"); alpha = e ? (float)atof(e) : 0.6f; }
+    if (alpha == 0.0f) smooth = 0;
+    if (smooth)
+    {
+        int want[MAX_SCFAC_BANDS], coded[MAX_SCFAC_BANDS];
+        int n = ci->sfbn;
+        struct CoreInject *pcinj = CoreInjectGet();
+        if (n > MAX_SCFAC_BANDS - ci->bandcnt) n = MAX_SCFAC_BANDS - ci->bandcnt;
+        for (sb = 0; sb < n; sb++)
+        {
+            int band = ci->bandcnt + sb;
+            int width = ci->sfb_offset[sb + 1] - ci->sfb_offset[sb];
+            float avg_per_window = be[sb].sum / (float)gsize;
+            int fcb = -1;
+            coded[sb] = 0;
+            smooth_sfac[sb] = INT_MIN;
+            if (ci->book[band] != HCB_NONE)
+                continue;
+            if (pcinj && (CoreInjectFields(pcinj) & CI_CLASS))
+            {
+                int matched = CoreInjectLookup(pcinj, ci->ciFrame, ci->ciCh, band, 0,
+                                                ci->sfbn, ci->groups.n, ci->groups.len,
+                                                &fcb, NULL, NULL);
+                if (!matched || fcb == 14 || fcb == 15) fcb = -1;
+            }
+            if (fcb == 0 || (fcb < 0 && (sqrtf(avg_per_window / width) < SILENCE_RMS || target[sb] == 0.0f)))
+                continue;
+            if (fcb == 13 || (fcb < 0 && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))))
+                continue;
+            float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
+            int sfac = lrintf(log10f(target[sb]) * sfstep - log10f(avg_per_window) * SF_STEP_ENRG + log10_w_sf);
+            if (SF_OFFSET - sfac < SF_MIN)
+                continue;
+            smooth_sfac[sb] = sfac;
+            want[sb] = ci->sf[band] - sfac;
+            coded[sb] = 1;
+        }
+        for (sb = 0; sb < n; sb++)
+        {
+            if (!coded[sb])
+                continue;
+            int cnt = 0, sum = 0;
+            if (sb > 0 && coded[sb - 1]) { sum += want[sb - 1]; cnt++; }
+            if (sb + 1 < n && coded[sb + 1]) { sum += want[sb + 1]; cnt++; }
+            if (cnt)
+                smooth_sfac[sb] += lrintf(alpha * ((float)want[sb] - (float)sum / (float)cnt));
+        }
+    }
+
     for (sb = 0; sb < ci->sfbn && ci->bandcnt < MAX_SCFAC_BANDS; sb++)
     {
         int band = ci->bandcnt;
@@ -403,6 +457,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
 
         float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
         int sfac = lrintf(log10f(target[sb]) * sfstep - sf_enrg_avg + log10_w_sf);
+        if (smooth && smooth_sfac[sb] != INT_MIN)
+            sfac = smooth_sfac[sb];
         int sf_bias = ci->sf[band];
 
         /* Probe-only (core_inject.c): fdk's scalefactor SHAPE for this coded
