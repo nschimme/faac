@@ -1,5 +1,6 @@
 import sys
 import os,pathlib
+_SLOPE=tuple(int(x) for x in os.environ.get('LADDER_SLOPE','112,144').split(','));_LO,_HI=f'base{_SLOPE[0]}',f'base{_SLOPE[1]}'
 _W=pathlib.Path(os.environ.get('LADDER_WORK','./ladder_work'));_REPO=pathlib.Path(__file__).resolve().parents[4]
 LADDER_G=pathlib.Path(os.environ.get('LADDER_G',str(_W/'g')));LADDER_H=pathlib.Path(os.environ.get('LADDER_H',str(_W/'h')));LADDER_S=pathlib.Path(os.environ.get('LADDER_S',str(_W/'s')))
 FAAC_BIN=os.environ.get('FAAC_BIN',str(_REPO/'build_ladder/frontend/faac'));FAAD_BIN=os.environ.get('FAAD_BIN','/tmp/faad-ladder-dump/build_faad/frontend/faad');SCORE_CLIP=os.environ.get('SCORE_CLIP','/opt/faac-benchmark/scripts/score_clip.py');PYTHON_BIN=os.environ.get('PYTHON_BIN',sys.executable)
@@ -7,7 +8,7 @@ FAAC_SMOOTH_BIN=os.environ.get('FAAC_SMOOTH_BIN','/home/user/wt/sf-smooth/build/
 import json,math,statistics as st
 s=json.load(open(str(LADDER_G/'g2_scores.json')))
 def adj(r,x,y):
-    sl=(r['base144']['mos']-r['base112']['mos'])/math.log2(r['base144']['bytes']/r['base112']['bytes'])
+    sl=(r[_HI]['mos']-r[_LO]['mos'])/math.log2(r[_HI]['bytes']/r[_LO]['bytes'])
     return (r[x]['mos']-r[y]['mos'])-sl*math.log2(r[x]['bytes']/r[y]['bytes'])
 rows={}
 for k,r in s.items():

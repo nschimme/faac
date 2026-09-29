@@ -1,11 +1,12 @@
 import os
+_SLOPE=tuple(int(x) for x in os.environ.get('LADDER_SLOPE','112,144').split(','));_LO,_HI=f'base{_SLOPE[0]}',f'base{_SLOPE[1]}'
 import sys
 import json,math,statistics,pathlib
 root=pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(os.environ.get('LADDER_G', str(pathlib.Path(os.environ.get('LADDER_WORK', './ladder_work'))/'g')));scores=json.loads((root/'g2_scores.json').read_text());index=json.loads((root/'g2_index.json').read_text());encoded=json.loads((root/'g2_encode.json').read_text());rows=[];byarm={x:[] for x in ('F_vs_A','fSF','fWIN','rSF','rWIN','A_vs_Apple')}
 for item in index:
  k=item['id'];d=scores.get(k)
  if not d:continue
- slope=(d['base144']['mos']-d['base112']['mos'])/math.log2(d['base144']['bytes']/d['base112']['bytes'])
+ slope=(d[_HI]['mos']-d[_LO]['mos'])/math.log2(d[_HI]['bytes']/d[_LO]['bytes'])
  def adj(x,y):return (d[x]['mos']-d[y]['mos'])-slope*math.log2(d[x]['bytes']/d[y]['bytes'])
  for arm,x,y in [('F_vs_A','F','A'),('fSF','fSF','A'),('fWIN','fWIN','A'),('rSF','rSF','F'),('rWIN','rWIN','F'),('A_vs_Apple','A','apple')]:
   z=adj(x,y);r={'id':k,'stem':item['stem'],'arm':arm,'delta':z,'mos':d[x]['mos'],'bytes':d[x]['bytes'],'base_mos':d[y]['mos'],'base_bytes':d[y]['bytes']};rows.append(r);byarm[arm].append(r)

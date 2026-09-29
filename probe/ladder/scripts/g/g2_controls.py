@@ -1,11 +1,12 @@
 import sys
 import os,subprocess,pathlib,json
+_RATE=os.environ.get('LADDER_RATE','128');_SLOPE=tuple(int(x) for x in os.environ.get('LADDER_SLOPE','112,144').split(','));_RATES=(_SLOPE[0],int(_RATE),_SLOPE[1])
 root=pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else pathlib.Path(os.environ.get('LADDER_G', str(pathlib.Path(os.environ.get('LADDER_WORK', './ladder_work'))/'g')));repo=pathlib.Path(__file__).resolve().parents[4];faac=os.environ.get('FAAC_BIN', str(repo / 'build_ladder/frontend/faac'));faad=os.environ.get('FAAD_BIN', '/tmp/faad-ladder-dump/build_faad/frontend/faad');index=json.loads((root/'g2_index.json').read_text());status={}
 def enc(k,arm,origin):
  env=os.environ.copy();env.update(FAAC_STEP1=str(root/(k+'_G_A.bin' if arm=='KA' else k+'_G_'+arm+'.bin')),FAAC_STEP1_OFFSET='1')
  if origin:env['FAAC_STEP1_ORIGIN']=str(root/(k+'_G_'+arm+'_origin.bin'))
  out=root/(k+'_G_'+arm+'.m4a')
- with open(root/(k+'_G_'+arm+'.log'),'w') as log:p=subprocess.run([faac,'--overwrite','-b','128','-o',str(out),str(root/(k+'_plus.wav'))],env=env,stdout=log,stderr=subprocess.STDOUT)
+ with open(root/(k+'_G_'+arm+'.log'),'w') as log:p=subprocess.run([faac,'--overwrite','-b',_RATE,'-o',str(out),str(root/(k+'_plus.wav'))],env=env,stdout=log,stderr=subprocess.STDOUT)
  return out,p.returncode
 def raw(path,k,tag):
  out=root/(k+'_'+tag+'.aac');p=subprocess.run([faad,'-a',str(out),str(path)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL);return out if p.returncode==0 else None
