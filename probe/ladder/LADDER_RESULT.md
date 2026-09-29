@@ -1025,3 +1025,62 @@ Bytes are within ±0.1 % on every LC arm. The mean LC short share falls from 36.
 | master + #595 + #599 | **+0.0068** | +0.0110 | 31/18 |
 
 The older +0.042 was against the pre-#232 master. With #595 and #599, about two-thirds of today's master gap is closed.
+
+## Stage S3-D: M/S on the #595 + #599 base (2026-09-29)
+
+Scripts: `scripts/s3/` (`arm_score.py`, `adj.py`, `d_make.py`, `d_char.py`, `sweep.py`, `an.py`). Pre-registered rules:
+`results/s3/prereg.md` (D1, D1b, D2). Results: `results/s3/d_oracle.json`, `results/s3/d2_sweep.json`.
+
+**Base and controls.** Probe with `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12` = master ec72dfc + #595 + #599 merged
+and built separately: 49/49 PCM-identical at 128k. Scoring used a static copy of the probe (a rebuild under a
+running score job swaps `libfaac.so` underneath it). At 128k on this base: Control 0 49/49 exact, KA (A = KA) 49/49,
+KF 49/49 (2 by the PCM fallback, the #597 empty-mask case). New M/S knobs unset = base, 49/49 PCM.
+
+**The old rMS arm is invalid.** `g_make.py`'s rMS (and rSF+rMS) copies Apple's M/S bit onto every band, including
+FAAC's intensity bands, where the bit inverts the intensity phase, and PNS bands. On this base the first clips scored
+rMS −0.27 and rSF+rMS down to 2.74 MOS. The earlier "Apple's M/S alone loses −0.023" figure came from the same
+construction and should not be used. `d_make.py` moves the bit only on bands regular (books 1–11) in both channels of
+both streams, same window layout, with the origin mask set on changed bands.
+
+**D1 oracle** (step1, vs F = FAAC's own decisions, bits-adjusted with the base's 112/144 slope, 49 clips):
+
+| arm | adj | median | W/L | bytes |
+|---|---:|---:|---:|---:|
+| A (all Apple) | +0.0013 | +0.0009 | 25/23 | +3.2 % |
+| rSF (g_make, all regular-in-both bands) | +0.0156 | +0.0106 | 40/8 | −2.5 % |
+| rMSr (Apple M/S bit only) | +0.0003 | +0.0003 | 23/17 | −2.2 % |
+| rSFr (Apple sf on the rMSr band set) | +0.0153 | +0.0106 | 40/8 | −2.4 % |
+| rSFMSr (Apple sf + M/S bit on that set) | +0.0256 | +0.0196 | 42/5 | −4.7 % |
+| **rSFMSr − rSFr** | **+0.0103** | +0.0099 | **46/1** | −2.3 % |
+
+Apple vs F on this base: Apple leads by +0.0078 (29/18). A − F is only +0.0013: Apple's windows now lose about as much
+as its sf gains (girl −0.28 at A). Verdict against D1b: **M/S alone is not a lever (+0.0003); M/S is a lever once the
+sf are Apple's (+0.010, 46/1).**
+
+**Where Apple codes M/S and FAAC doesn't** (`d_char.py` with the new `FAAC_MS_DUMP`; 516,524 long bands regular in both
+streams; FAAC M/S frame f = FAAC dump f+1 = Apple dump f+2, checked 100 % on regular bands). FAAC's rule is
+M/S iff q = Em·Es/(El·Er/4) < 1. Apple codes M/S on 86 % of these bands vs FAAC's 64 %; it keeps M/S at 91 % for
+1 ≤ q < 1.25, 77 % to 1.6, 66 % to 2, 48 % to 5. By level: |L/R| < 1 dB 97 %, 1–3 dB 96 %, 3–6 dB 88 %, 6–10 dB
+66 %, 10–15 dB 46 %. By correlation Apple is flat (82–92 % at every ρ); FAAC drops to 27–30 % at ρ ∈ [−0.5, 0.3).
+The disagreement is spread evenly across 0–12 kHz (27–32 % of bands are Apple M/S, FAAC L/R).
+
+**D2 encoder screen** (probe knobs, rate loop on, 128k, adj vs knob-unset, rule D2):
+
+| arm | adj | median | W/L | bytes | worst |
+|---|---:|---:|---:|---:|---:|
+| q < 1.25 | +0.0007 | +0.0006 | 25/14 | +0.00 % | −0.008 |
+| q < 1.6 | −0.0007 | +0.0001 | 20/18 | 0.00 % | −0.027 |
+| q < 2 | −0.0019 | −0.0001 | 20/22 | 0.00 % | −0.051 |
+| q < 3 | −0.0040 | −0.0001 | 19/22 | +0.01 % | −0.093 Girl_In_The_Fire |
+| \|L/R\| < 6 dB | +0.0006 | −0.0001 | 23/17 | 0.00 % | −0.008 |
+| \|L/R\| < 10 dB | −0.0031 | −0.0002 | 20/22 | +0.01 % | −0.069 |
+| \|L/R\| < 15 dB | −0.0058 | −0.0004 | 17/24 | 0.00 % | −0.096 |
+
+**Verdict: no rule passes** (best +0.0007, below +0.005). Moving FAAC's M/S decisions toward Apple's pattern, with
+FAAC's own allocation for the M and S channels, is neutral to negative, as the oracle predicts (rMSr ≈ 0). The
++0.010 is only reachable together with Apple's sf, i.e. through the remaining allocation gap (rSF +0.016 is still
+open on this base). No encoder change.
+
+**Found on the way (E):** at 48 kHz stereo, `faac -b 56` and `-b 64` pick HE-AAC under `--object-type auto`
+(LC from 72k). The G2 pipeline's 64k "verified" run (§0 of NEXT_PLAN) therefore compared FAAC's HE core with Apple's
+LC 64k (471 vs 237 frames). S3 forces `--object-type lc` for LC rungs (`/home/user/lw/bin/faac_lc` wrapper).
