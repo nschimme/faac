@@ -948,3 +948,80 @@ MOS scores evaluated using `score_clip.py` (`zimtohrli` backend) on Linux agains
 | German | 125,695 | 4.8738 (111,214) | 4.9229 (126,798) | 4.9483 (142,534) | 4.9228 | +0.0001 |
 
 Linux FAAC-128 MOS scores match macOS MOS scores within 0.0003 across all 5 ladder clips.
+
+## Stage S2: Linux controls, #595 follow-up, windows, allocation refit (09-29)
+
+Scripts: `scripts/s2/` (paths point at the Linux session's work dirs: `/home/user/ladder_work{,_m}`, `/home/user/wsB`, `/home/user/wsC`; edit before reuse). Results: `results/s2/`.
+
+**Setup and controls.** The G/H/R scripts are ported to `LADDER_WORK`/env paths (commit 3761af5). master ec72dfc is merged into the probe (8a8cfe2): the conflict was in `derive_masking_targets`' new `treble_slope` argument, and the `FAAC_SF_SMOOTH` hook gained #595's "never smooth into a zero band" clamp. Decoded PCM, 49 clips:
+
+| control | result |
+|---|---|
+| Control 0 (Apple dump → reemit = Apple decode, after 2112 samples) | 49/49 exact |
+| KA (step1 at all-Apple) byte-identical to re-run; KA MOS vs Stage F0 A | 49/49; 4.9240 / 4.8955 / 4.7876 / 4.8890 / 4.9313 = F0 ±0.0001 |
+| KA MP4 bytes vs F0 targets | −6/−7 bytes on all 5, from the embedded version tag (PCM compared instead) |
+| KF (step1 at FAAC's own decisions = normal FAAC), PCM | 49/49, before and after the merge |
+| probe, no env = master ec72dfc | 49/49 PCM-identical |
+| probe `FAAC_SF_SMOOTH=0.6` = sf-smooth (#595) | 49/49 PCM-identical |
+
+After the merge, KF has 1/49 ADTS-byte mismatch (Robots_old) with identical PCM. master wrote `ms_mask_present=1` with an all-zero mask; that bug is fixed in nschimme/faac#597. The probe also finds LFE channels taking short/transition windows, which the spec forbids; fixed in nschimme/faac#596. Probe-only block-switch knobs were added to `blockswitch.c`: `FAAC_BS_RATIO`, `_DROPRATIO`, `_SMOOTH`, `_MINE`, `_PREVS`, `_NEXTS`, `_NOHYST` and `_DUMP`. With all unset, output is PCM-identical to the production encoder.
+
+### A: finishing #595
+
+- **VBR 44.1k BD +1.07 % mean / −0.21 % median is a fitting artefact.** The q76 "64k" rung resolves to LC and joins the 128–256k LC ladder. With the ~4.5-MOS point, the cubic has negative d(log rate)/dMOS inside the overlap for 37/49 clips. Local reproduction: 5 rungs +1.00 % / −0.17 %. On the 4 LC rungs: −2.04 % mean, −1.52 % median, 0/49 clips worse. Piecewise-linear over 5 rungs: −1.67 %. Per rung, candidate bytes are −0.74 to −1.41 %, with MOS ≥ base from 128k up. The fix belongs in faac-benchmark's ladder or BD fit, not the encoder.
+- **16 kHz mono speech is noise.** 400 clips; 271 change (long blocks only; 85 % of speech frames are short, and windows are unchanged). ABR20 −0.0015 (85/80), CBR20 +0.0019, VBR +0.0015, ABR24 −0.0000. Per-clip deltas are uncorrelated across modes (r ≈ 0). R_02_COMPSPKR_FA is −0.097 at ABR20 and +0.053 at ABR24.
+- **5.1 `6_Channel_ID` (synthetic sines, HE at 96/160k) is a metric artefact.**
+  - CI's phase-2 scorer reproduces −0.110/−0.094, driven by the LFE (a full-scale 110 Hz sine): 4.994 → 4.359.
+  - Per-frame waveform SNR on the LFE is 29.4–29.7 dB median in master, #595 and #595 with an LFE gate alike.
+  - At 96k, the LFE gate scores the same 4.36 as ungated.
+  - Stereo multi-sine tests at 32–128k: |Δ| ≤ 0.004.
+  - **Verdict: no gate for #595; strength 0.6 unchanged.**
+
+### C: the window decision
+
+**C1 frame labels** (`c1_collect.py`, `c1_an.py`):
+- FAAC frame f pairs with Apple frame f+2 (42/49 clips peak there).
+- Among FAAC-short frames, rise/drop ratios separate Apple-long from Apple-short only weakly (rise median 1.6–1.8 vs 2.3–2.4).
+- girl and Mohicans lose at Apple's windows because FAAC's allocation can't carry the long block there (Stage H), not because Apple stays short. So frame labels can't find the rule, and the sweep decides.
+
+**C2 sweep** (rate loop on, 48k 128k ABR, #595 on, 49 clips, adj vs control with the #595 112/144 slope).
+- Pre-registered rule: mean ≥ +0.005, W > L, no clip < −0.05, bracket centre.
+- Control (knobs unset) is PCM-identical to sf-smooth.
+
+| arm | adj | W/L | worst | girl | Mohicans | velvet | bas | Changes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| rise ratio 3 / 4 / 6 | +0.0021 / −0.0002 / −0.0033 | 30/12 … 25/23 | liberate −0.12 at 6 | 0 | +0.01…+0.02 | | +0.03…+0.10 | |
+| no drop-outs | −0.0049 | 30/15 | −0.267 | −0.264 | −0.267 | +0.049 | +0.079 | +0.057 |
+| no hysteresis | −0.0059 | 24/21 | −0.114 | −0.111 | −0.114 | | | |
+| level smooth 1.0 | +0.0032 | 25/21 | −0.018 | | | +0.046 | | +0.053 |
+| drop ratio 4 | +0.0055 | 37/9 | −0.007 | +0.000 | +0.018 | +0.003 | +0.059 | +0.047 |
+| drop ratio 8 | +0.0074 | 36/11 | −0.013 | +0.000 | +0.020 | +0.045 | +0.080 | +0.057 |
+| **drop ratio 12** | **+0.0075** | **36/11** | −0.017 | +0.000 | +0.021 | +0.044 | +0.080 | +0.057 |
+| drop ratio 16 | +0.0073 | 36/12 | −0.018 | | | | | |
+| drop ratio 32 | +0.0064 | 33/13 | −0.030 | | −0.030 | | | |
+| drop 8 + rise 3 / + smooth 1 | +0.0066 / +0.0009 | | | | −0.097 (smooth) | | | |
+| HE 32k, drop ratio 4 / 8 | −0.021 / −0.030 | 21/28 | fms −0.26 | | | | | |
+
+Bytes are within ±0.1 % on every LC arm. The mean LC short share falls from 36.5 % to 23.8 % at drop ratio 12.
+
+**Verdict:** drop ratio 12 passes, at the bracket centre with 8 and 16 either side. It is LC only; the same change loses on HE.
+
+**Encoder:** nschimme/faac#599 (on master; HE bit-identical). **vs master, 49 clips, 128k: +0.0061 adj, 33/10, worst −0.020, bytes −0.00 %.**
+
+### B: the rest of the allocation, refit on #595
+
+- **Residual** (`b_fit.py`; #595 encoder on the master-based probe vs Apple, 829,742 same-layout long bands). FAAC − Apple by region: −4.14 / −2.23 / +1.31 / +2.03 steps. Master #232 roughly doubled the old low-band gap.
+- **Neighbour-term slope on the smoothed curve:** +0.11 / −0.03 / +0.64 / +0.82 by region. Smoothing suffices below 6 kHz. All R² ≤ 0, i.e. no shape is left that a neighbour term explains.
+- **B2** (step1, #595 decisions, extra smoothing above 6 kHz only; K0 PCM-identical 49/49): α 0.4 / 0.7 / 1.0 → +0.0001 / +0.0004 / +0.0001. Dead.
+- **B3** (re-test of low-band offsets, justified by the doubled gap; same rule): L1 +0.0011 (27/6), L2 +0.0020 (32/11), L3 +0.0020 (29/15), L4 +0.0009 (26/20), Hm1 −0.0017. Bytes −0.7 to −3.1 %. The peak of +0.002 is below the +0.005 bar. **Not promoted; offsets stay dead.**
+
+### Where the gap stands (Apple 128k refs vs current encoders, 49 clips, bits-adjusted with the encoder's own 112/144 slope)
+
+| FAAC | Apple lead (adj) | median | Apple W/L |
+|---|---:|---:|---:|
+| master ec72dfc | +0.0206 | +0.0223 | 37/11 |
+| master + #599 | +0.0144 | +0.0167 | 32/16 |
+| master + #595 | +0.0142 | +0.0161 | 33/15 |
+| master + #595 + #599 | **+0.0068** | +0.0110 | 31/18 |
+
+The older +0.042 was against the pre-#232 master. With #595 and #599, about two-thirds of today's master gap is closed.

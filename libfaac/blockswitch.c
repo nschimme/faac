@@ -61,12 +61,40 @@ psydata_t;
 #define PSY_LEVEL_SMOOTH_LC (0.3f)
 #define PSY_LEVEL_RATIO_HE  (1.5f)
 
+/* Probe-only knobs (window-decision study). Unset = production behaviour.
+ *   FAAC_BS_RATIO     override levelRatio (rise test)
+ *   FAAC_BS_DROPRATIO ratio for the drop-out test (0 disables drop-outs)
+ *   FAAC_BS_SMOOTH    override levelSmooth
+ *   FAAC_BS_MINE      absolute sub-block energy floor for a rise to count
+ *   FAAC_BS_PREVS / FAAC_BS_NEXTS  sub-blocks of context around the frame
+ *   FAAC_BS_NOHYST    1: no extra short frame after a short-desiring frame
+ *   FAAC_BS_DUMP      per-frame detector state to this file */
+static float bs_env(const char *name, float def)
+{
+  const char *v = getenv(name);
+  return (v && *v) ? (float)atof(v) : def;
+}
+static int bs_knobs_init;
+static float bs_dropratio = -1.0f, bs_mine, bs_prevs = 2, bs_nexts = 2, bs_nohyst;
+static FILE *bs_dump;
+static void bs_knobs(void)
+{
+  if (bs_knobs_init) return;
+  bs_knobs_init = 1;
+  bs_dropratio = bs_env("FAAC_BS_DROPRATIO", -1.0f);
+  bs_mine = bs_env("FAAC_BS_MINE", 0.0f);
+  bs_prevs = bs_env("FAAC_BS_PREVS", 2);
+  bs_nexts = bs_env("FAAC_BS_NEXTS", 2);
+  bs_nohyst = bs_env("FAAC_BS_NOHYST", 0);
+  if (getenv("FAAC_BS_DUMP")) bs_dump = fopen(getenv("FAAC_BS_DUMP"), "w");
+}
+
 /* Attack anywhere in the frame or its immediate temporal context, sub-blocks
    [cur-2, cur+9], wants a short block. */
 static void PsyCheckShort(PsyInfo * psyInfo)
 {
-  enum {PREVS = 2, NEXTS = 2};
   const psydata_t *psydata = (const psydata_t *)psyInfo->data;
+  int PREVS = (int)bs_prevs, NEXTS = (int)bs_nexts;
   unsigned span = (1u << (PREVS + SUBBLOCKS_PER_FRAME + NEXTS - 1)) - 1;
 
   psyInfo->block_type = (psydata->attack >> (ENG_WIN_CUR - PREVS + 1)) & span
@@ -82,6 +110,9 @@ void PsyInit(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo, unsigned int numChanne
   gpsyInfo->sampleRate = (float) sampleRate;
   gpsyInfo->levelRatio = heCore ? PSY_LEVEL_RATIO_HE : PSY_LEVEL_RATIO_LC;
   gpsyInfo->levelSmooth = heCore ? 1.0f : PSY_LEVEL_SMOOTH_LC;
+  bs_knobs();
+  gpsyInfo->levelRatio = bs_env("FAAC_BS_RATIO", gpsyInfo->levelRatio);
+  gpsyInfo->levelSmooth = bs_env("FAAC_BS_SMOOTH", gpsyInfo->levelSmooth);
 
   for (channel = 0; channel < numChannels; channel++)
   {
@@ -195,8 +226,11 @@ void PsyBufferUpdate(GlobalPsyInfo * gpsyInfo, PsyInfo * psyInfo,
       e += d * d;
     }
     psydata->eng[ENG_WIN_NEXT + win] = (psyfloat)e;
-    if (e > gpsyInfo->levelRatio * level || e * gpsyInfo->levelRatio < level)
-      psydata->attack |= 1u << (ENG_WIN_NEXT + win);
+    {
+      float dr = bs_dropratio < 0.0f ? gpsyInfo->levelRatio : bs_dropratio;
+      if ((e > gpsyInfo->levelRatio * level && e >= bs_mine) || (dr > 0.0f && e * dr < level))
+        psydata->attack |= 1u << (ENG_WIN_NEXT + win);
+    }
     level = gpsyInfo->levelSmooth * e + (1.0f - gpsyInfo->levelSmooth) * level;
   }
   psydata->level = level;
@@ -246,7 +280,7 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
     int lasttype = coderInfo[channel].block_type;
 
     if (desire == ONLY_SHORT_WINDOW
-	|| coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW)
+	|| (!bs_nohyst && coderInfo[channel].desired_block_type == ONLY_SHORT_WINDOW))
     {
       if (lasttype == ONLY_LONG_WINDOW || lasttype == SHORT_LONG_WINDOW)
 	coderInfo[channel].block_type = LONG_SHORT_WINDOW;
@@ -261,6 +295,16 @@ void BlockSwitch(CoderInfo * coderInfo, PsyInfo * psyInfo, unsigned int numChann
 	coderInfo[channel].block_type = ONLY_LONG_WINDOW;
     }
     coderInfo[channel].desired_block_type = desire;
+    if (bs_dump && psyInfo[channel].data)
+    {
+      const psydata_t *pd = (const psydata_t *)psyInfo[channel].data;
+      fprintf(bs_dump, "B %d %u %d %d %d %u %g", coderInfo[channel].ciFrame, channel,
+              psyInfo[channel].block_type, desire, coderInfo[channel].block_type,
+              pd->attack, (double)pd->level);
+      for (int w = 0; w < 3 * SUBBLOCKS_PER_FRAME; w++)
+        fprintf(bs_dump, " %g", (double)pd->eng[w]);
+      fputc('\n', bs_dump);
+    }
 
     /* Probe-only (core_inject.c): swap in fdk's win_seq when it's a legal
      * continuation from `lasttype` (the same predecessor state the natural
