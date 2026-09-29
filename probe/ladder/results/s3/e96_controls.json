@@ -1,0 +1,396 @@
+{
+  "g2_00": {
+    "stem": "12-German-male-speech.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_01": {
+    "stem": "15-Good-evening.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_02": {
+    "stem": "21-classic.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_03": {
+    "stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_04": {
+    "stem": "25-This-is-the-end.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_05": {
+    "stem": "27-last-song-drums-and-trampets.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_06": {
+    "stem": "35_SQAM_glockenspiel_cut.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_07": {
+    "stem": "4-Sound-English-male.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_08": {
+    "stem": "9-Have-big-expensive-car.441.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_09": {
+    "stem": "Asleep__4.11-4.31_.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_10": {
+    "stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_11": {
+    "stem": "Changes.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_12": {
+    "stem": "Coral.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_13": {
+    "stem": "ExitMusic.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_14": {
+    "stem": "Girl_In_The_Fire__Sample_.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_15": {
+    "stem": "Greatest_Love_of_All_2min57.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_16": {
+    "stem": "Hey Tonight.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_17": {
+    "stem": "Hotel California.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_18": {
+    "stem": "Jupiter, the Bringer of Jolity.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_19": {
+    "stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_20": {
+    "stem": "NewYorkCity.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_21": {
+    "stem": "Only Time.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_22": {
+    "stem": "Robots_old.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": [],
+    "KF_note": "ADTS differs, PCM identical"
+  },
+  "g2_23": {
+    "stem": "Severance__1.31-1.51_.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_24": {
+    "stem": "Shinsho_pool_3min45_4min4.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_25": {
+    "stem": "SinceAlways.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_26": {
+    "stem": "SlavesOfFear.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_27": {
+    "stem": "The Chastising of Renegade.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_28": {
+    "stem": "Through The Fire And Flames.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_29": {
+    "stem": "TrosYGareg.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_30": {
+    "stem": "Waiting.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_31": {
+    "stem": "With Love (Outro).16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_32": {
+    "stem": "bah",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_33": {
+    "stem": "bas",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_34": {
+    "stem": "bonhemian_rhapsody.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_35": {
+    "stem": "clapton_44k.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_36": {
+    "stem": "cst",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_37": {
+    "stem": "fms",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_38": {
+    "stem": "girl.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_39": {
+    "stem": "glk",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_40": {
+    "stem": "hrp",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_41": {
+    "stem": "liberate.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_42": {
+    "stem": "lob",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_43": {
+    "stem": "mof",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_44": {
+    "stem": "qrt",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_45": {
+    "stem": "sandman.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_46": {
+    "stem": "take_your_finger_frin_my_head.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_47": {
+    "stem": "trumpet.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": []
+  },
+  "g2_48": {
+    "stem": "velvet.16b48k",
+    "KA": true,
+    "KF": true,
+    "clean_A": true,
+    "clean_F": true,
+    "reason": [],
+    "KF_note": "ADTS differs, PCM identical"
+  }
+}

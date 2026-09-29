@@ -71,7 +71,7 @@ on the #595 base. Window rise ratio, no-hysteresis, no-drop-outs, and any drop r
   `ref/apple`. `ref/apple_he32k`: 49/49 HE-AAC (SBR), 48 kHz out; ~0.12 s longer than the source
   (priming/padding in core-rate units — E0.1). The FAAD dump decoder parses the HE core
   (velvet: 237 core frames, 0 concealment; Apple's HE core is 54 % short on velvet).
-- **LC 64k pipeline verified end to end:** `LADDER_REF=apple_lc64k LADDER_RATE=64 LADDER_SLOPE=56,72`
+- **(Superseded by S3: this run encoded FAAC 64k as HE-AAC; see LADDER_RESULT "Stage S3-D".)** - **LC 64k pipeline verified end to end:** `LADDER_REF=apple_lc64k LADDER_RATE=64 LADDER_SLOPE=56,72`
   → g2_prepare → g2_make → g2_controls: **Control 0 49/49 exact, KA 49/49, KF 49/49 (PCM)**.
   LC 96k uses the same code path (`LADDER_REF=apple_lc96k LADDER_RATE=96 LADDER_SLOPE=80,112`); not yet run.
 - G2 scripts now take `LADDER_REF` (ref subdir, default `apple`), `LADDER_RATE` (default 128) and

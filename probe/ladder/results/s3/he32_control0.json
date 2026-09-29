@@ -1,0 +1,443 @@
+{
+ "g2_00": {
+  "stem": "12-German-male-speech.441.16b48k",
+  "rms": 2485.7116060655117,
+  "frames": 187,
+  "apple_frames": 187,
+  "diff_samples": 0,
+  "n": 765952,
+  "bitexact_frames": 13
+ },
+ "g2_01": {
+  "stem": "15-Good-evening.441.16b48k",
+  "rms": 3876.889788272494,
+  "frames": 204,
+  "apple_frames": 204,
+  "diff_samples": 0,
+  "n": 835584,
+  "bitexact_frames": 2
+ },
+ "g2_02": {
+  "stem": "21-classic.441.16b48k",
+  "rms": 5370.041301235165,
+  "frames": 229,
+  "apple_frames": 229,
+  "diff_samples": 0,
+  "n": 937984,
+  "bitexact_frames": 1
+ },
+ "g2_03": {
+  "stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+  "rms": 2003.472645127319,
+  "frames": 207,
+  "apple_frames": 207,
+  "diff_samples": 0,
+  "n": 847872,
+  "bitexact_frames": 3
+ },
+ "g2_04": {
+  "stem": "25-This-is-the-end.441.16b48k",
+  "rms": 4486.19054676833,
+  "frames": 218,
+  "apple_frames": 218,
+  "diff_samples": 0,
+  "n": 892928,
+  "bitexact_frames": 2
+ },
+ "g2_05": {
+  "stem": "27-last-song-drums-and-trampets.441.16b48k",
+  "rms": 2529.8230302047587,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 3
+ },
+ "g2_06": {
+  "stem": "35_SQAM_glockenspiel_cut.16b48k",
+  "rms": 1672.3105033642175,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_07": {
+  "stem": "4-Sound-English-male.441.16b48k",
+  "rms": 3473.2714723917325,
+  "frames": 215,
+  "apple_frames": 215,
+  "diff_samples": 0,
+  "n": 880640,
+  "bitexact_frames": 13
+ },
+ "g2_08": {
+  "stem": "9-Have-big-expensive-car.441.16b48k",
+  "rms": 3618.296836541918,
+  "frames": 231,
+  "apple_frames": 231,
+  "diff_samples": 0,
+  "n": 946176,
+  "bitexact_frames": 2
+ },
+ "g2_09": {
+  "stem": "Asleep__4.11-4.31_.16b48k",
+  "rms": 8566.23819297165,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_10": {
+  "stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+  "rms": 2982.8368147036217,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_11": {
+  "stem": "Changes.16b48k",
+  "rms": 1264.676877892923,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_12": {
+  "stem": "Coral.16b48k",
+  "rms": 4915.0055409575725,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_13": {
+  "stem": "ExitMusic.16b48k",
+  "rms": 3628.546150504517,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_14": {
+  "stem": "Girl_In_The_Fire__Sample_.16b48k",
+  "rms": 2111.7794233877426,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 3
+ },
+ "g2_15": {
+  "stem": "Greatest_Love_of_All_2min57.16b48k",
+  "rms": 2863.3685973591614,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_16": {
+  "stem": "Hey Tonight.16b48k",
+  "rms": 5140.39886507776,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_17": {
+  "stem": "Hotel California.16b48k",
+  "rms": 4050.0521781725065,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_18": {
+  "stem": "Jupiter, the Bringer of Jolity.16b48k",
+  "rms": 2206.504353132475,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_19": {
+  "stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+  "rms": 8887.458791415223,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 6
+ },
+ "g2_20": {
+  "stem": "NewYorkCity.16b48k",
+  "rms": 7102.931128044084,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_21": {
+  "stem": "Only Time.16b48k",
+  "rms": 4784.348863294874,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_22": {
+  "stem": "Robots_old.16b48k",
+  "rms": 1578.697102895817,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 5
+ },
+ "g2_23": {
+  "stem": "Severance__1.31-1.51_.16b48k",
+  "rms": 2476.2755740190137,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_24": {
+  "stem": "Shinsho_pool_3min45_4min4.16b48k",
+  "rms": 1786.3106164763,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_25": {
+  "stem": "SinceAlways.16b48k",
+  "rms": 5380.333938162205,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 9
+ },
+ "g2_26": {
+  "stem": "SlavesOfFear.16b48k",
+  "rms": 8505.312366399874,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_27": {
+  "stem": "The Chastising of Renegade.16b48k",
+  "rms": 3865.544297989528,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 3
+ },
+ "g2_28": {
+  "stem": "Through The Fire And Flames.16b48k",
+  "rms": 7474.371281555199,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_29": {
+  "stem": "TrosYGareg.16b48k",
+  "rms": 8557.245637339498,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_30": {
+  "stem": "Waiting.16b48k",
+  "rms": 4922.553139499111,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_31": {
+  "stem": "With Love (Outro).16b48k",
+  "rms": 4344.339700938069,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_32": {
+  "stem": "bah",
+  "rms": 2127.447078758679,
+  "frames": 225,
+  "apple_frames": 225,
+  "diff_samples": 0,
+  "n": 921600,
+  "bitexact_frames": 1
+ },
+ "g2_33": {
+  "stem": "bas",
+  "rms": 2587.6276603222454,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_34": {
+  "stem": "bonhemian_rhapsody.16b48k",
+  "rms": 923.7604116856741,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_35": {
+  "stem": "clapton_44k.16b48k",
+  "rms": 2232.5245986837126,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_36": {
+  "stem": "cst",
+  "rms": 1762.0844442586078,
+  "frames": 156,
+  "apple_frames": 156,
+  "diff_samples": 0,
+  "n": 638976,
+  "bitexact_frames": 5
+ },
+ "g2_37": {
+  "stem": "fms",
+  "rms": 2645.6518200989303,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 20
+ },
+ "g2_38": {
+  "stem": "girl.16b48k",
+  "rms": 2681.782654739951,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 3
+ },
+ "g2_39": {
+  "stem": "glk",
+  "rms": 1454.1028096667192,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_40": {
+  "stem": "hrp",
+  "rms": 1756.7624881233683,
+  "frames": 209,
+  "apple_frames": 209,
+  "diff_samples": 0,
+  "n": 856064,
+  "bitexact_frames": 1
+ },
+ "g2_41": {
+  "stem": "liberate.16b48k",
+  "rms": 9252.337008776574,
+  "frames": 120,
+  "apple_frames": 120,
+  "diff_samples": 0,
+  "n": 491520,
+  "bitexact_frames": 1
+ },
+ "g2_42": {
+  "stem": "lob",
+  "rms": 1799.2460659356277,
+  "frames": 169,
+  "apple_frames": 169,
+  "diff_samples": 0,
+  "n": 692224,
+  "bitexact_frames": 1
+ },
+ "g2_43": {
+  "stem": "mof",
+  "rms": 2372.888376431857,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_44": {
+  "stem": "qrt",
+  "rms": 3087.3786014934767,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_45": {
+  "stem": "sandman.16b48k",
+  "rms": 4551.312782624072,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 2
+ },
+ "g2_46": {
+  "stem": "take_your_finger_frin_my_head.16b48k",
+  "rms": 4700.025112057985,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_47": {
+  "stem": "trumpet.16b48k",
+  "rms": 3707.8644516329273,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 1
+ },
+ "g2_48": {
+  "stem": "velvet.16b48k",
+  "rms": 5938.428202745702,
+  "frames": 237,
+  "apple_frames": 237,
+  "diff_samples": 0,
+  "n": 970752,
+  "bitexact_frames": 14
+ }
+}

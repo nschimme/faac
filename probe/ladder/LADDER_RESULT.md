@@ -1109,3 +1109,57 @@ Bytes within ±0.01 % on every arm. Short-window share moves little: velvet 42.1
 **Verdict: nothing passes** (best +0.0008, a sixth of the +0.005 bar). The sentinels are untouched (|Δ| ≤ 0.009), so
 none of these levers reach the frames where Apple goes long; with #599's drop ratio the remaining FAAC shorts are
 triggered by rises that these knobs don't veto. No encoder change.
+
+## Stage S3-E: LC 64k / 96k swap matrix and HE 32k prerequisites (2026-09-29)
+
+Base as D (master + #595 + #599 via probe knobs). LC rungs force `--object-type lc` (see S3-D: `-b 56/64` is HE under
+auto). Slope anchors 56/72k and 80/112k (Apple realises 72k / 106k). Scripts `scripts/s3/e_prep.sh`, `e_make.py`,
+`e_score.sh`, `arm_score.py`; results `results/s3/e{64,96}_*.json`. These arms are attribution measurements read
+the Stage H way; no encoder decision rests on them, and no separate decision rule was pre-registered for them.
+
+**Controls (both rates):** Control 0 49/49 exact; KA (A = KA) 49/49; KF 49/49 (PCM fallback on 8 clips at 64k, 2 at
+96k, the #597 empty-mask case); core-inject self control (FAAC's own dump re-injected, win) PCM-identical 49/49.
+
+**Arms vs F (bits-adjusted, 49 clips):**
+
+| rate | Apple − F | A − Apple | A − F | rSF | rWIN | W (Apple windows, FAAC re-decides) |
+|---|---:|---:|---:|---:|---:|---:|
+| LC 64k | **−0.48** (1/48) | −0.023 (18/31) | −0.50 (2/47) | +0.005 (22/27) | −0.27 (3/46) | −0.062 (14/33) |
+| LC 96k | −0.003 (26/23) | −0.027 (1/48) | −0.030 (21/28) | **+0.0135 (35/12)** | −0.020 (18/31) | −0.018 (25/19; girl −0.68, Mohicans −0.36) |
+| LC 128k (S3-D) | −0.008 | −0.006 (S2) | +0.001 | +0.016 (40/8) | | |
+
+(Apple − F is F's lead over Apple, sign as in adj.py: F vs control Apple.) Mean MOS at 64k: Apple 3.97 at 82 kB,
+FAAC 4.43 at 79 kB. At 64k Apple codes no PNS and leaves 15–22 % of bands ZERO, where FAAC uses PNS on 31–49 % and
+ZERO on 1–7 % (3 clips); zimtohrli scores Apple's holes far below FAAC's noise fill. Both code long max_sfb 38.
+
+**Reading.** On this metric FAAC already leads Apple at LC 64k by ~0.5 and is at par at 96k and 128k. Apple's
+windows lose at every LC rate on this base (rWIN, W). Apple's scalefactors are the one lever left at 96k and 128k
+(+0.013 / +0.016); at 64k they are neutral. Apple is no longer a useful target below 96k LC. Quantizer fidelity
+also drops with rate: the share of Apple's nonzero-or-FAAC-nonzero integers that step1 reproduces at all-Apple
+decisions (`ka_match.py`, same metric everywhere) is 0.95 median at 128k, 0.87 at 64k; the misses are mostly FAAC ±1
+where Apple codes 0 (Apple zeroes small lines).
+
+### E0: HE 32k (`ref/apple_he32k`)
+
+- **E0.1 alignment.** Raw ADTS decodes (no edit list) put the source at 5186 samples in Apple's HE output and 3042
+  in FAAC's (same decoder, so the SBR delay cancels): Apple priming 2112 core samples + 962. Difference 2144 = one
+  2048 core frame + 96. KA integer match peaks sharply at pad **+96** (velvet 0.865 vs 0.385 at ±2), frame offset
+  **Apple n+1 = FAAC n**, i.e. the LC convention with a 96-sample pad (`LADDER_PAD=96`, `FAAC_STEP1_OFFSET=1`).
+- **E0.2 Control 0** (`he_control0.py`, `he_splice.py`): Apple HE core → dump → `reemit_tool` at 24 kHz (new optional
+  sample-rate argument) → Apple's FIL/SBR tail spliced back bit for bit after FAAC's CPE → ADTS: **49/49 PCM-exact**
+  against Apple's own ADTS decode (most AUs differ in bits, sectioning, but not in PCM).
+- **KF** (step1 at FAAC's own HE core decisions, FAAC SBR): **49/49 ADTS byte-identical**. A = KA byte-identical 49/49.
+- **KA** fails. Integer match below Apple's 6 kHz crossover: median 0.888 (0/49 ≥ 0.97; long 0.876, short 0.903).
+  Functional check (`he_ka_score.py`: A's core + Apple's SBR tail, Apple's AU 0 kept for the first SBR header;
+  delay 5186 on 48/49): **A − Apple −0.147 adj, 0/49**, bytes +13 %. Band SNR vs source below 6 kHz is 0.2–0.7 dB
+  worse than Apple's and A carries 4–14 % more energy in 1.5–5.8 kHz. The misses are lines FAAC codes ±1 where Apple
+  codes 0 (Apple holds 10–20 % more zeros), so Apple's HE lead sits partly in its quantizer, which step1 cannot
+  transplant. A scipy 2:1 resample into a 24 kHz LC step1 gives the same 0.90 match (pad 64 core samples), so FAAC's
+  resampler is not the cause.
+- **Decision difference seen on the way:** Apple's SBR crossover is kx 16 (6 kHz) on every clip; FAAC's is kx 31
+  (11.6 kHz). FAAC spends HE core bits up to 11.6 kHz where Apple lets SBR take over at 6 kHz (`FAAC_SBR_START`
+  exists as a probe knob).
+
+**Verdict:** E0 alignment, Control 0 and KF pass; KA does not. Per the plan, no HE arm was run. Before any HE arm the
+ladder needs a way to carry Apple's small-line zeroing (e.g. take Apple's integers as-is for zeroed lines, or read the
+arms against A instead of Apple), or the HE work should start from the crossover difference instead.
