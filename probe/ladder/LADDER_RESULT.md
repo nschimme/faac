@@ -1084,3 +1084,28 @@ open on this base). No encoder change.
 **Found on the way (E):** at 48 kHz stereo, `faac -b 56` and `-b 64` pick HE-AAC under `--object-type auto`
 (LC from 72k). The G2 pipeline's 64k "verified" run (§0 of NEXT_PLAN) therefore compared FAAC's HE core with Apple's
 LC 64k (471 vs 237 frames). S3 forces `--object-type lc` for LC rungs (`/home/user/lw/bin/faac_lc` wrapper).
+
+## Stage S3-C: second window pass (2026-09-29)
+
+Same base and 128k ABR sweep as S2-C2 (`scripts/s3/sweep.py`, parametrised copy of the S2 one; rule C3 in
+`results/s3/prereg.md`; control = knobs unset = master + #595 + #599, 49/49 PCM). New probe knob `FAAC_BS_RESET=b`:
+after a rise, the running level is lifted to at least b·e (level recovery after an attack). Results `results/s3/c3_sweep.json`.
+
+| arm | adj | median | W/L | worst | girl | Mohicans | liberate | take_your_finger | velvet |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| reset 0.25 | +0.0000 | 0 | 0/0 | 0 | identical to control (0.3 smoothing already lifts the level past 0.25·e) | | | | |
+| reset 0.5 | +0.0002 | 0 | 8/2 | −0.002 | 0 | 0 | 0 | 0 | +0.003 |
+| reset 1.0 | +0.0005 | 0 | 19/9 | −0.005 | 0 | 0 | 0 | +0.006 | −0.001 |
+| context prev 1 / next 2 | +0.0003 | 0 | 19/12 | −0.004 | 0 | −0.001 | −0.002 | +0.002 | +0.003 |
+| context prev 2 / next 1 | +0.0008 | +0.0003 | 23/9 | −0.001 | +0.001 | −0.001 | +0.003 | +0.008 | +0.003 |
+| context prev 1 / next 1 | +0.0008 | +0.0006 | 26/10 | −0.008 | +0.002 | 0 | −0.008 | +0.009 | +0.008 |
+| energy floor 1e5 | +0.0001 | 0 | 4/2 | −0.001 | 0 | 0 | 0 | 0 | 0 |
+| energy floor 1e6 | +0.0002 | 0 | 9/3 | −0.002 | 0 | 0 | 0 | 0 | 0 |
+| energy floor 1e7 | −0.0003 | 0 | 10/11 | −0.006 | 0 | −0.002 | 0 | 0 | 0 |
+
+Bytes within ±0.01 % on every arm. Short-window share moves little: velvet 42.1 % → 39.4 % (reset 1.0) / 37.9 %
+(context 1/1); Greensleeves 47.1 % → 40.7 % at floor 1e7. Apple is at 25 % / 11 %.
+
+**Verdict: nothing passes** (best +0.0008, a sixth of the +0.005 bar). The sentinels are untouched (|Δ| ≤ 0.009), so
+none of these levers reach the frames where Apple goes long; with #599's drop ratio the remaining FAAC shorts are
+triggered by rises that these knobs don't veto. No encoder change.
