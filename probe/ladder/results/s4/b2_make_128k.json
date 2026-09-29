@@ -1,0 +1,982 @@
+{
+"g2_00": {
+"stem": "12-German-male-speech.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 1493,
+"rSFlev": 1438,
+"rSFshape": 1341,
+"rSFr0": 724,
+"rSFr1": 464,
+"rSFr2": 270,
+"rSFr3": 35
+},
+"set_by_region": [
+406,
+247,
+135,
+18
+],
+"mean_level_shift": -0.19827586206896552
+},
+"g2_01": {
+"stem": "15-Good-evening.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 22442,
+"rSFlev": 23644,
+"rSFshape": 21894,
+"rSFr0": 12073,
+"rSFr1": 7658,
+"rSFr2": 2711,
+"rSFr3": 0
+},
+"set_by_region": [
+6174,
+4167,
+1481,
+0
+],
+"mean_level_shift": 3.9612403100775193
+},
+"g2_02": {
+"stem": "21-classic.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 26828,
+"rSFlev": 29010,
+"rSFshape": 27054,
+"rSFr0": 14147,
+"rSFr1": 8506,
+"rSFr2": 4083,
+"rSFr3": 92
+},
+"set_by_region": [
+7161,
+4868,
+2442,
+50
+],
+"mean_level_shift": 4.190848214285714
+},
+"g2_03": {
+"stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 4857,
+"rSFlev": 4944,
+"rSFshape": 4738,
+"rSFr0": 3579,
+"rSFr1": 729,
+"rSFr2": 523,
+"rSFr3": 26
+},
+"set_by_region": [
+1864,
+414,
+309,
+16
+],
+"mean_level_shift": 3.7936507936507935
+},
+"g2_04": {
+"stem": "25-This-is-the-end.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 18453,
+"rSFlev": 18677,
+"rSFshape": 17298,
+"rSFr0": 10162,
+"rSFr1": 5719,
+"rSFr2": 2518,
+"rSFr3": 54
+},
+"set_by_region": [
+5280,
+3165,
+1500,
+30
+],
+"mean_level_shift": 3.0911764705882354
+},
+"g2_05": {
+"stem": "27-last-song-drums-and-trampets.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19709,
+"rSFlev": 20629,
+"rSFshape": 20717,
+"rSFr0": 10533,
+"rSFr1": 6001,
+"rSFr2": 3013,
+"rSFr3": 162
+},
+"set_by_region": [
+5505,
+3619,
+1892,
+89
+],
+"mean_level_shift": 2.589337175792507
+},
+"g2_06": {
+"stem": "35_SQAM_glockenspiel_cut.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 23692,
+"rSFlev": 21523,
+"rSFshape": 22681,
+"rSFr0": 11954,
+"rSFr1": 6316,
+"rSFr2": 4829,
+"rSFr3": 593
+},
+"set_by_region": [
+6317,
+3368,
+2523,
+312
+],
+"mean_level_shift": -1.6924829157175398
+},
+"g2_07": {
+"stem": "4-Sound-English-male.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 1352,
+"rSFlev": 1332,
+"rSFshape": 1201,
+"rSFr0": 1148,
+"rSFr1": 193,
+"rSFr2": 11,
+"rSFr3": 0
+},
+"set_by_region": [
+613,
+104,
+6,
+0
+],
+"mean_level_shift": 3.2457627118644066
+},
+"g2_08": {
+"stem": "9-Have-big-expensive-car.441.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16891,
+"rSFlev": 16903,
+"rSFshape": 16971,
+"rSFr0": 8608,
+"rSFr1": 4474,
+"rSFr2": 3156,
+"rSFr3": 653
+},
+"set_by_region": [
+4507,
+2553,
+1794,
+348
+],
+"mean_level_shift": 2.688888888888889
+},
+"g2_09": {
+"stem": "Asleep__4.11-4.31_.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 20481,
+"rSFlev": 20589,
+"rSFshape": 20434,
+"rSFr0": 10543,
+"rSFr1": 6244,
+"rSFr2": 3641,
+"rSFr3": 53
+},
+"set_by_region": [
+5553,
+3711,
+2139,
+28
+],
+"mean_level_shift": 2.180440771349862
+},
+"g2_10": {
+"stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 20712,
+"rSFlev": 20523,
+"rSFshape": 20496,
+"rSFr0": 10303,
+"rSFr1": 6707,
+"rSFr2": 3411,
+"rSFr3": 291
+},
+"set_by_region": [
+5412,
+3756,
+1999,
+168
+],
+"mean_level_shift": 1.8972222222222221
+},
+"g2_11": {
+"stem": "Changes.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16548,
+"rSFlev": 17267,
+"rSFshape": 15431,
+"rSFr0": 8659,
+"rSFr1": 5725,
+"rSFr2": 2126,
+"rSFr3": 38
+},
+"set_by_region": [
+4506,
+3085,
+1253,
+19
+],
+"mean_level_shift": 3.661512027491409
+},
+"g2_12": {
+"stem": "Coral.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19576,
+"rSFlev": 20927,
+"rSFshape": 19426,
+"rSFr0": 11783,
+"rSFr1": 5073,
+"rSFr2": 2597,
+"rSFr3": 123
+},
+"set_by_region": [
+6109,
+2945,
+1514,
+66
+],
+"mean_level_shift": 3.481012658227848
+},
+"g2_13": {
+"stem": "ExitMusic.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 12490,
+"rSFlev": 10972,
+"rSFshape": 12336,
+"rSFr0": 10530,
+"rSFr1": 1838,
+"rSFr2": 98,
+"rSFr3": 24
+},
+"set_by_region": [
+5837,
+1065,
+56,
+13
+],
+"mean_level_shift": 1.224935732647815
+},
+"g2_14": {
+"stem": "Girl_In_The_Fire__Sample_.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 20864,
+"rSFlev": 22108,
+"rSFshape": 20333,
+"rSFr0": 11195,
+"rSFr1": 6995,
+"rSFr2": 2581,
+"rSFr3": 93
+},
+"set_by_region": [
+5629,
+3869,
+1557,
+51
+],
+"mean_level_shift": 4.418994413407821
+},
+"g2_15": {
+"stem": "Greatest_Love_of_All_2min57.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 25220,
+"rSFlev": 27164,
+"rSFshape": 24730,
+"rSFr0": 14351,
+"rSFr1": 8422,
+"rSFr2": 2443,
+"rSFr3": 4
+},
+"set_by_region": [
+7316,
+4905,
+1430,
+2
+],
+"mean_level_shift": 3.4748908296943233
+},
+"g2_16": {
+"stem": "Hey Tonight.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19907,
+"rSFlev": 20729,
+"rSFshape": 19296,
+"rSFr0": 9373,
+"rSFr1": 6921,
+"rSFr2": 3598,
+"rSFr3": 15
+},
+"set_by_region": [
+4836,
+3812,
+2079,
+8
+],
+"mean_level_shift": 3.086206896551724
+},
+"g2_17": {
+"stem": "Hotel California.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19097,
+"rSFlev": 20037,
+"rSFshape": 18769,
+"rSFr0": 9980,
+"rSFr1": 6006,
+"rSFr2": 2891,
+"rSFr3": 220
+},
+"set_by_region": [
+5161,
+3464,
+1732,
+122
+],
+"mean_level_shift": 3.111764705882353
+},
+"g2_18": {
+"stem": "Jupiter, the Bringer of Jolity.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 27908,
+"rSFlev": 29187,
+"rSFshape": 26963,
+"rSFr0": 14382,
+"rSFr1": 9545,
+"rSFr2": 3914,
+"rSFr3": 67
+},
+"set_by_region": [
+7369,
+5068,
+2326,
+35
+],
+"mean_level_shift": 3.423160173160173
+},
+"g2_19": {
+"stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16490,
+"rSFlev": 14440,
+"rSFshape": 15687,
+"rSFr0": 8444,
+"rSFr1": 4850,
+"rSFr2": 2375,
+"rSFr3": 821
+},
+"set_by_region": [
+4675,
+2857,
+1397,
+468
+],
+"mean_level_shift": 0.44375
+},
+"g2_20": {
+"stem": "NewYorkCity.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 22465,
+"rSFlev": 23651,
+"rSFshape": 21256,
+"rSFr0": 11827,
+"rSFr1": 7268,
+"rSFr2": 3223,
+"rSFr3": 147
+},
+"set_by_region": [
+6328,
+4141,
+1999,
+80
+],
+"mean_level_shift": 2.5124688279301743
+},
+"g2_21": {
+"stem": "Only Time.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 25716,
+"rSFlev": 26690,
+"rSFshape": 26050,
+"rSFr0": 12968,
+"rSFr1": 7644,
+"rSFr2": 4916,
+"rSFr3": 188
+},
+"set_by_region": [
+6691,
+4581,
+2706,
+98
+],
+"mean_level_shift": 2.851543942992874
+},
+"g2_22": {
+"stem": "Robots_old.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 24133,
+"rSFlev": 21178,
+"rSFshape": 23905,
+"rSFr0": 11599,
+"rSFr1": 6423,
+"rSFr2": 3960,
+"rSFr3": 2151
+},
+"set_by_region": [
+6153,
+3865,
+2459,
+1155
+],
+"mean_level_shift": 1.9439024390243902
+},
+"g2_23": {
+"stem": "Severance__1.31-1.51_.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 27062,
+"rSFlev": 28909,
+"rSFshape": 27332,
+"rSFr0": 14397,
+"rSFr1": 8294,
+"rSFr2": 3820,
+"rSFr3": 551
+},
+"set_by_region": [
+7459,
+4999,
+2197,
+281
+],
+"mean_level_shift": 2.6641791044776117
+},
+"g2_24": {
+"stem": "Shinsho_pool_3min45_4min4.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16171,
+"rSFlev": 17470,
+"rSFshape": 15962,
+"rSFr0": 9325,
+"rSFr1": 4276,
+"rSFr2": 2509,
+"rSFr3": 61
+},
+"set_by_region": [
+4833,
+2442,
+1455,
+32
+],
+"mean_level_shift": 3.9380952380952383
+},
+"g2_25": {
+"stem": "SinceAlways.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 8924,
+"rSFlev": 8714,
+"rSFshape": 8438,
+"rSFr0": 7049,
+"rSFr1": 1229,
+"rSFr2": 616,
+"rSFr3": 30
+},
+"set_by_region": [
+3925,
+708,
+375,
+15
+],
+"mean_level_shift": 0.5670391061452514
+},
+"g2_26": {
+"stem": "SlavesOfFear.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 22689,
+"rSFlev": 23809,
+"rSFshape": 19882,
+"rSFr0": 11632,
+"rSFr1": 8111,
+"rSFr2": 2894,
+"rSFr3": 52
+},
+"set_by_region": [
+6006,
+4140,
+1790,
+30
+],
+"mean_level_shift": 3.532981530343008
+},
+"g2_27": {
+"stem": "The Chastising of Renegade.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16285,
+"rSFlev": 16640,
+"rSFshape": 15474,
+"rSFr0": 8645,
+"rSFr1": 5419,
+"rSFr2": 2007,
+"rSFr3": 214
+},
+"set_by_region": [
+4527,
+3002,
+1179,
+129
+],
+"mean_level_shift": 3.2363013698630136
+},
+"g2_28": {
+"stem": "Through The Fire And Flames.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16613,
+"rSFlev": 17560,
+"rSFshape": 15206,
+"rSFr0": 8849,
+"rSFr1": 6108,
+"rSFr2": 1419,
+"rSFr3": 237
+},
+"set_by_region": [
+4740,
+3088,
+863,
+129
+],
+"mean_level_shift": 3.51980198019802
+},
+"g2_29": {
+"stem": "TrosYGareg.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 16605,
+"rSFlev": 17332,
+"rSFshape": 15199,
+"rSFr0": 11751,
+"rSFr1": 4545,
+"rSFr2": 297,
+"rSFr3": 12
+},
+"set_by_region": [
+6143,
+2616,
+162,
+7
+],
+"mean_level_shift": 3.2525906735751295
+},
+"g2_30": {
+"stem": "Waiting.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 24250,
+"rSFlev": 25420,
+"rSFshape": 23771,
+"rSFr0": 12378,
+"rSFr1": 7832,
+"rSFr2": 3969,
+"rSFr3": 71
+},
+"set_by_region": [
+6310,
+4309,
+2301,
+45
+],
+"mean_level_shift": 4.203517587939698
+},
+"g2_31": {
+"stem": "With Love (Outro).16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 22284,
+"rSFlev": 23795,
+"rSFshape": 21144,
+"rSFr0": 11721,
+"rSFr1": 6993,
+"rSFr2": 3254,
+"rSFr3": 316
+},
+"set_by_region": [
+6216,
+3978,
+2094,
+190
+],
+"mean_level_shift": 2.5111940298507465
+},
+"g2_32": {
+"stem": "bah",
+"changed": {
+"K0": 0,
+"rSFr": 22728,
+"rSFlev": 24404,
+"rSFshape": 23270,
+"rSFr0": 11987,
+"rSFr1": 7141,
+"rSFr2": 3578,
+"rSFr3": 22
+},
+"set_by_region": [
+6013,
+4132,
+2046,
+11
+],
+"mean_level_shift": 4.55718085106383
+},
+"g2_33": {
+"stem": "bas",
+"changed": {
+"K0": 0,
+"rSFr": 18665,
+"rSFlev": 19409,
+"rSFshape": 18152,
+"rSFr0": 11210,
+"rSFr1": 4962,
+"rSFr2": 2449,
+"rSFr3": 44
+},
+"set_by_region": [
+5768,
+2667,
+1351,
+24
+],
+"mean_level_shift": 4.751373626373627
+},
+"g2_34": {
+"stem": "bonhemian_rhapsody.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 22979,
+"rSFlev": 22979,
+"rSFshape": 22121,
+"rSFr0": 13154,
+"rSFr1": 6590,
+"rSFr2": 3036,
+"rSFr3": 199
+},
+"set_by_region": [
+6861,
+3660,
+1739,
+113
+],
+"mean_level_shift": 2.8329493087557602
+},
+"g2_35": {
+"stem": "clapton_44k.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 12081,
+"rSFlev": 12914,
+"rSFshape": 11497,
+"rSFr0": 6851,
+"rSFr1": 3743,
+"rSFr2": 1472,
+"rSFr3": 15
+},
+"set_by_region": [
+3614,
+2091,
+929,
+8
+],
+"mean_level_shift": 3.1352459016393444
+},
+"g2_36": {
+"stem": "cst",
+"changed": {
+"K0": 0,
+"rSFr": 8506,
+"rSFlev": 8593,
+"rSFshape": 8459,
+"rSFr0": 4207,
+"rSFr1": 2692,
+"rSFr2": 1401,
+"rSFr3": 206
+},
+"set_by_region": [
+2220,
+1535,
+887,
+106
+],
+"mean_level_shift": 3.125748502994012
+},
+"g2_37": {
+"stem": "fms",
+"changed": {
+"K0": 0,
+"rSFr": 6112,
+"rSFlev": 5925,
+"rSFshape": 6040,
+"rSFr0": 3213,
+"rSFr1": 622,
+"rSFr2": 1542,
+"rSFr3": 735
+},
+"set_by_region": [
+1692,
+354,
+891,
+423
+],
+"mean_level_shift": 0.751101321585903
+},
+"g2_38": {
+"stem": "girl.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 14431,
+"rSFlev": 14205,
+"rSFshape": 13818,
+"rSFr0": 6349,
+"rSFr1": 4199,
+"rSFr2": 2801,
+"rSFr3": 1082
+},
+"set_by_region": [
+3436,
+2382,
+1685,
+613
+],
+"mean_level_shift": 0.8360655737704918
+},
+"g2_39": {
+"stem": "glk",
+"changed": {
+"K0": 0,
+"rSFr": 23939,
+"rSFlev": 23106,
+"rSFshape": 22244,
+"rSFr0": 13174,
+"rSFr1": 4239,
+"rSFr2": 5893,
+"rSFr3": 633
+},
+"set_by_region": [
+6956,
+2328,
+3052,
+353
+],
+"mean_level_shift": -2.3051948051948052
+},
+"g2_40": {
+"stem": "hrp",
+"changed": {
+"K0": 0,
+"rSFr": 23617,
+"rSFlev": 22018,
+"rSFshape": 22633,
+"rSFr0": 11075,
+"rSFr1": 6873,
+"rSFr2": 4538,
+"rSFr3": 1131
+},
+"set_by_region": [
+6134,
+4077,
+2657,
+626
+],
+"mean_level_shift": 0.14561855670103094
+},
+"g2_41": {
+"stem": "liberate.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 8715,
+"rSFlev": 8848,
+"rSFshape": 8183,
+"rSFr0": 4571,
+"rSFr1": 2949,
+"rSFr2": 1189,
+"rSFr3": 6
+},
+"set_by_region": [
+2366,
+1532,
+697,
+4
+],
+"mean_level_shift": 4.928571428571429
+},
+"g2_42": {
+"stem": "lob",
+"changed": {
+"K0": 0,
+"rSFr": 13891,
+"rSFlev": 13696,
+"rSFshape": 13319,
+"rSFr0": 6812,
+"rSFr1": 4401,
+"rSFr2": 2509,
+"rSFr3": 169
+},
+"set_by_region": [
+3757,
+2464,
+1482,
+97
+],
+"mean_level_shift": 1.7069672131147542
+},
+"g2_43": {
+"stem": "mof",
+"changed": {
+"K0": 0,
+"rSFr": 8132,
+"rSFlev": 7576,
+"rSFshape": 7943,
+"rSFr0": 4382,
+"rSFr1": 1971,
+"rSFr2": 1497,
+"rSFr3": 282
+},
+"set_by_region": [
+2402,
+1083,
+885,
+174
+],
+"mean_level_shift": 0.42702702702702705
+},
+"g2_44": {
+"stem": "qrt",
+"changed": {
+"K0": 0,
+"rSFr": 27236,
+"rSFlev": 28364,
+"rSFshape": 26675,
+"rSFr0": 14041,
+"rSFr1": 8804,
+"rSFr2": 4167,
+"rSFr3": 224
+},
+"set_by_region": [
+7259,
+4869,
+2406,
+120
+],
+"mean_level_shift": 3.535010940919037
+},
+"g2_45": {
+"stem": "sandman.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19341,
+"rSFlev": 19583,
+"rSFshape": 18306,
+"rSFr0": 10607,
+"rSFr1": 7102,
+"rSFr2": 1632,
+"rSFr3": 0
+},
+"set_by_region": [
+5793,
+3878,
+981,
+0
+],
+"mean_level_shift": 2.8911290322580645
+},
+"g2_46": {
+"stem": "take_your_finger_frin_my_head.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19691,
+"rSFlev": 20240,
+"rSFshape": 17985,
+"rSFr0": 10027,
+"rSFr1": 7160,
+"rSFr2": 2492,
+"rSFr3": 12
+},
+"set_by_region": [
+5370,
+3716,
+1477,
+6
+],
+"mean_level_shift": 3.2196531791907512
+},
+"g2_47": {
+"stem": "trumpet.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 19202,
+"rSFlev": 18056,
+"rSFshape": 18934,
+"rSFr0": 10968,
+"rSFr1": 3702,
+"rSFr2": 3475,
+"rSFr3": 1057
+},
+"set_by_region": [
+5766,
+2013,
+1912,
+600
+],
+"mean_level_shift": 1.2481572481572483
+},
+"g2_48": {
+"stem": "velvet.16b48k",
+"changed": {
+"K0": 0,
+"rSFr": 6900,
+"rSFlev": 6207,
+"rSFshape": 6883,
+"rSFr0": 2447,
+"rSFr1": 2437,
+"rSFr2": 1383,
+"rSFr3": 633
+},
+"set_by_region": [
+1292,
+1324,
+776,
+418
+],
+"mean_level_shift": -0.27540106951871657
+}
+}

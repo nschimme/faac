@@ -1216,3 +1216,47 @@ was mostly bytes: Apple overshoots to ~38.5k. No encoder change.
 
 **Next (not run):** `FAAC_SBR_STOP` (Apple and fdk stop at 14–17 kHz, FAAC at 20 kHz) and `FAAC_SBR_FREQ_SCALE`/
 `FAAC_SBR_ALTER` at the base crossover, same harness and rule. A crossover retry only makes sense together with them.
+
+## Stage S4-B2: splitting Apple's scalefactor gain at LC 96k / 128k (2026-09-29)
+
+Rule B2a in `results/s4/prereg.md` (written before building the arms). Builder `scripts/s4/b2_make.py` on the d_make
+rSFr band set (regular in both channels of both streams, same window layout); per ICS d = round(mean(Apple sf − FAAC
+sf)) over the set. Prep `s3/e_prep.sh` (LC forced, `LADDER_SLOPE` 80,112 / 112,144), scoring `s3/arm_score.py`, table
+`s3/adj.py`. Results `results/s4/b2_{96k,128k}.json`, builder counts `b2_make_{96k,128k}.json`.
+
+**Controls (both rates):** Control 0 49/49 exact; KA 49/49; KF 49/49 (PCM fallback on 2, the #597 empty-mask case);
+**K0** (builder, no change) PCM-identical to FAAC's own encode 49/49. rSFr at 128k reproduces S3-D (+0.0153, 40/8).
+
+Apple's sf on the set are on average 2.66 (96k) / 2.50 (128k) steps coarser than FAAC's; the set is 58 % / 52 % of its
+bands below 2 kHz, 33 % / 31 % in 2–6 kHz, 9 % / 16 % in 6–12 kHz, < 2 % above 12 kHz.
+
+**Arms vs F, bits-adjusted (49 clips):**
+
+| arm | 96k adj | median | W/L | bytes | share of rSFr | 128k adj | median | W/L | bytes | share |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| rSFr (all) | +0.0113 | +0.0064 | 34/15 | −3.8 % | 100 % | +0.0153 | +0.0106 | 40/8 | −2.4 % | 100 % |
+| rSFlev (FAAC shape, Apple level) | −0.0545 | −0.0182 | 8/40 | −9.2 % | | −0.0228 | −0.0076 | 6/40 | −9.2 % | |
+| rSFshape (Apple shape, FAAC level) | −0.0279 | −0.0251 | 1/48 | +7.0 % | | −0.0163 | −0.0146 | 2/47 | +7.7 % | |
+| rSFr0 (0–2 kHz) | +0.0037 | −0.0003 | 20/24 | −2.4 % | 33 % | +0.0072 | +0.0030 | 37/7 | −2.2 % | 47 % |
+| rSFr1 (2–6 kHz) | +0.0053 | +0.0043 | 33/11 | −2.0 % | 47 % | +0.0066 | +0.0040 | 38/3 | −2.0 % | 43 % |
+| rSFr2 (6–12 kHz) | −0.0022 | −0.0018 | 9/36 | +1.2 % | | −0.0010 | −0.0008 | 13/28 | +2.1 % | |
+| rSFr3 (> 12 kHz) | −0.0001 | −0.0001 | 2/10 | +0.1 % | | −0.0001 | −0.0002 | 4/13 | +0.4 % | |
+| Apple (own stream) | −0.0026 | +0.0046 | 26/23 | +3.2 % | | +0.0078 | +0.0122 | 29/18 | +2.7 % | |
+
+Worst clips: rSFlev liberate −0.25 / −0.24 and bah −0.38 (96k); every other arm ≥ −0.07.
+
+**Reading against B2a: no part carries.**
+- Level and shape don't separate. Each alone loses on almost every clip; only Apple's shape *at* Apple's level wins.
+  Taking Apple's ~2.5-step coarser level with FAAC's shape starves the bands (−9 % bytes, liberate −0.24); Apple's shape
+  at FAAC's level spends +7 % bytes where it doesn't pay. So the gain isn't a frame-level (rate-loop/reservoir) offset
+  and isn't a masking-curve shape on its own: it's where Apple's coarser level lands band by band.
+- By region the gain sits entirely below 6 kHz, split about evenly between 0–2 kHz and 2–6 kHz (their sum is 80 % / 90 %
+  of rSFr). 2–6 kHz is the steadier half (33/11, 38/3, never worse than −0.008) but reaches +0.0053 / +0.0066, 47 % /
+  43 % of rSFr, short of the 50 % bar at both rates; 0–2 kHz misses +0.005 at 96k. Apple's sf above 6 kHz are neutral
+  to slightly negative inside FAAC.
+- Per the pre-registered rule no encoder knob was screened.
+
+**What it points to** (not tested): the lever is Apple's allocation in 0–6 kHz as a whole, level and shape together;
+it's worth +0.011 to +0.015 and saves 2–4 % bytes. The next useful measurement is a fit of Apple − FAAC sf on the 0–6 kHz
+set against per-band features *within* the frame (energy relative to the frame's 0–6 kHz mean, tonality, band width)
+on top of the #595 smoothing, screened offline with step1 and the S2-B rule before any encoder knob.
