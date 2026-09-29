@@ -1,0 +1,1742 @@
+{
+  "arms": [
+    {
+      "clip": "Severance",
+      "arm": "F",
+      "mos": 4.8503,
+      "bytes": 161422,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Severance",
+      "arm": "rWIN",
+      "mos": 4.8511,
+      "bytes": 161391,
+      "delta": 0.0008709396128100248,
+      "share": 1.3360325935149153,
+      "ics": 10,
+      "bands": 0
+    },
+    {
+      "clip": "Severance",
+      "arm": "rBW",
+      "mos": 4.8503,
+      "bytes": 162587,
+      "delta": -0.0026561271288167514,
+      "share": -4.07453325629412,
+      "ics": 928,
+      "bands": 1856
+    },
+    {
+      "clip": "Severance",
+      "arm": "rCLS",
+      "mos": 4.8388,
+      "bytes": 160311,
+      "delta": -0.008949071352323264,
+      "share": -13.7279908188106,
+      "ics": 0,
+      "bands": 7929
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF",
+      "mos": 4.9218,
+      "bytes": 175247,
+      "delta": 0.0411482011873835,
+      "share": 63.12187107149653,
+      "ics": 0,
+      "bands": 29653
+    },
+    {
+      "clip": "Severance",
+      "arm": "rMS",
+      "mos": 4.8252,
+      "bytes": 155577,
+      "delta": -0.01147758890743694,
+      "share": -17.606769344002554,
+      "ics": 0,
+      "bands": 18312
+    },
+    {
+      "clip": "Severance",
+      "arm": "rTNS",
+      "mos": 4.8503,
+      "bytes": 161420,
+      "delta": 4.5763380828671944e-06,
+      "share": 0.007020161613647707,
+      "ics": 2,
+      "bands": 0
+    },
+    {
+      "clip": "Severance",
+      "arm": "A",
+      "mos": 4.924,
+      "bytes": 165185,
+      "delta": 0.06518850041814506,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF+rWIN",
+      "mos": 4.9226,
+      "bytes": 175216,
+      "delta": 0.042013543974551856,
+      "share": 64.44931806232728,
+      "ics": 10,
+      "bands": 29653
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF+rBW",
+      "mos": 4.9218,
+      "bytes": 176399,
+      "delta": 0.03872813922539658,
+      "share": 59.40946482428471,
+      "ics": 928,
+      "bands": 31509
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF+rCLS",
+      "mos": 4.9114,
+      "bytes": 174272,
+      "delta": 0.03280889319885967,
+      "share": 50.32926511334106,
+      "ics": 0,
+      "bands": 37582
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF+rMS",
+      "mos": 4.9227,
+      "bytes": 168089,
+      "delta": 0.057451488632683026,
+      "share": 88.1313241816674,
+      "ics": 0,
+      "bands": 47965
+    },
+    {
+      "clip": "Severance",
+      "arm": "rSF+rTNS",
+      "mos": 4.9218,
+      "bytes": 175247,
+      "delta": 0.0411482011873835,
+      "share": 63.12187107149653,
+      "ics": 2,
+      "bands": 29653
+    },
+    {
+      "clip": "Severance",
+      "arm": "rWIN+rBW",
+      "mos": 4.8511,
+      "bytes": 162556,
+      "delta": -0.0017856958747868319,
+      "share": -2.7392804917012445,
+      "ics": 938,
+      "bands": 1856
+    },
+    {
+      "clip": "Severance",
+      "arm": "rWIN+rCLS",
+      "mos": 4.8402,
+      "bytes": 160280,
+      "delta": -0.007477640060642765,
+      "share": -11.470796248844808,
+      "ics": 10,
+      "bands": 7929
+    },
+    {
+      "clip": "Severance",
+      "arm": "rWIN+rMS",
+      "mos": 4.8258,
+      "bytes": 155546,
+      "delta": -0.010803983840516168,
+      "share": -16.573450487762575,
+      "ics": 10,
+      "bands": 18312
+    },
+    {
+      "clip": "Severance",
+      "arm": "rWIN+rTNS",
+      "mos": 4.8511,
+      "bytes": 161389,
+      "delta": 0.0008755168299218727,
+      "share": 1.3430541035703512,
+      "ics": 12,
+      "bands": 0
+    },
+    {
+      "clip": "Severance",
+      "arm": "rMS+rCLS",
+      "mos": 4.8241,
+      "bytes": 153069,
+      "delta": -0.006574779249728959,
+      "share": -10.085796125935865,
+      "ics": 0,
+      "bands": 26241
+    },
+    {
+      "clip": "Severance",
+      "arm": "SFt",
+      "mos": 4.86,
+      "bytes": 152892,
+      "delta": 0.029752572392858143,
+      "share": 45.64082959726527,
+      "ics": 0,
+      "bands": 28563
+    },
+    {
+      "clip": "Severance",
+      "arm": "SFs",
+      "mos": 4.8792,
+      "bytes": 167718,
+      "delta": 0.014767624521312049,
+      "share": 22.653726388222786,
+      "ics": 0,
+      "bands": 28102
+    },
+    {
+      "clip": "21classic",
+      "arm": "F",
+      "mos": 4.8102,
+      "bytes": 155853,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "21classic",
+      "arm": "rWIN",
+      "mos": 4.8215,
+      "bytes": 155815,
+      "delta": 0.011354162039960638,
+      "share": 14.756630046824542,
+      "ics": 78,
+      "bands": 0
+    },
+    {
+      "clip": "21classic",
+      "arm": "rBW",
+      "mos": 4.8102,
+      "bytes": 156888,
+      "delta": -0.0014701469369969855,
+      "share": -1.910701502002872,
+      "ics": 830,
+      "bands": 1660
+    },
+    {
+      "clip": "21classic",
+      "arm": "rCLS",
+      "mos": 4.807,
+      "bytes": 155826,
+      "delta": -0.003161517803574787,
+      "share": -4.108920451338228,
+      "ics": 0,
+      "bands": 4854
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF",
+      "mos": 4.8826,
+      "bytes": 169959,
+      "delta": 0.05315526180931671,
+      "share": 69.08414119875529,
+      "ics": 0,
+      "bands": 27918
+    },
+    {
+      "clip": "21classic",
+      "arm": "rMS",
+      "mos": 4.7661,
+      "bytes": 149721,
+      "delta": -0.03518445941789594,
+      "share": -45.72808184347543,
+      "ics": 0,
+      "bands": 15748
+    },
+    {
+      "clip": "21classic",
+      "arm": "rTNS",
+      "mos": 4.8102,
+      "bytes": 155853,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "21classic",
+      "arm": "A",
+      "mos": 4.8954,
+      "bytes": 161756,
+      "delta": 0.07694278438866145,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF+rWIN",
+      "mos": 4.8957,
+      "bytes": 169921,
+      "delta": 0.06630492808758234,
+      "share": 86.17432890478196,
+      "ics": 78,
+      "bands": 27918
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF+rBW",
+      "mos": 4.8826,
+      "bytes": 170982,
+      "delta": 0.051822350247762605,
+      "share": 67.35179998944686,
+      "ics": 830,
+      "bands": 29578
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF+rCLS",
+      "mos": 4.8801,
+      "bytes": 170011,
+      "delta": 0.05058731542044341,
+      "share": 65.74666594454324,
+      "ics": 0,
+      "bands": 32772
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF+rMS",
+      "mos": 4.8825,
+      "bytes": 162572,
+      "delta": 0.06292512296925368,
+      "share": 81.7817076275791,
+      "ics": 0,
+      "bands": 43666
+    },
+    {
+      "clip": "21classic",
+      "arm": "rSF+rTNS",
+      "mos": 4.8826,
+      "bytes": 169959,
+      "delta": 0.05315526180931671,
+      "share": 69.08414119875529,
+      "ics": 0,
+      "bands": 27918
+    },
+    {
+      "clip": "21classic",
+      "arm": "rWIN+rBW",
+      "mos": 4.8215,
+      "bytes": 156850,
+      "delta": 0.009883657749299736,
+      "share": 12.845464104046934,
+      "ics": 908,
+      "bands": 1660
+    },
+    {
+      "clip": "21classic",
+      "arm": "rWIN+rCLS",
+      "mos": 4.8186,
+      "bytes": 155788,
+      "delta": 0.008492653622196403,
+      "share": 11.037621902656163,
+      "ics": 78,
+      "bands": 4854
+    },
+    {
+      "clip": "21classic",
+      "arm": "rWIN+rMS",
+      "mos": 4.7776,
+      "bytes": 149683,
+      "delta": -0.023628078826196115,
+      "share": -30.708635012275472,
+      "ics": 78,
+      "bands": 15748
+    },
+    {
+      "clip": "21classic",
+      "arm": "rWIN+rTNS",
+      "mos": 4.8215,
+      "bytes": 155815,
+      "delta": 0.011354162039960638,
+      "share": 14.756630046824542,
+      "ics": 78,
+      "bands": 0
+    },
+    {
+      "clip": "21classic",
+      "arm": "rMS+rCLS",
+      "mos": 4.7664,
+      "bytes": 149000,
+      "delta": -0.03381226391287837,
+      "share": -43.94468458807303,
+      "ics": 0,
+      "bands": 20602
+    },
+    {
+      "clip": "21classic",
+      "arm": "SFt",
+      "mos": 4.8078,
+      "bytes": 149519,
+      "delta": 0.006815412238058998,
+      "share": 8.857766575787371,
+      "ics": 0,
+      "bands": 27434
+    },
+    {
+      "clip": "21classic",
+      "arm": "SFs",
+      "mos": 4.8342,
+      "bytes": 164312,
+      "delta": 0.012260492316570698,
+      "share": 15.934557624843954,
+      "ics": 0,
+      "bands": 26652
+    },
+    {
+      "clip": "velvet",
+      "arm": "F",
+      "mos": 4.4973,
+      "bytes": 162652,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "velvet",
+      "arm": "rWIN",
+      "mos": 4.7725,
+      "bytes": 178882,
+      "delta": 0.21086650492143455,
+      "share": 95.5862415984489,
+      "ics": 900,
+      "bands": 0
+    },
+    {
+      "clip": "velvet",
+      "arm": "rBW",
+      "mos": 4.4973,
+      "bytes": 162658,
+      "delta": -2.495049546995847e-05,
+      "share": -0.01131011342404067,
+      "ics": 4,
+      "bands": 8
+    },
+    {
+      "clip": "velvet",
+      "arm": "rCLS",
+      "mos": 4.3578,
+      "bytes": 165072,
+      "delta": -0.14948942177565375,
+      "share": -67.7638773952457,
+      "ics": 0,
+      "bands": 513
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF",
+      "mos": 4.4985,
+      "bytes": 162573,
+      "delta": 0.0015286007232756713,
+      "share": 0.6929180056217626,
+      "ics": 0,
+      "bands": 542
+    },
+    {
+      "clip": "velvet",
+      "arm": "rMS",
+      "mos": 4.4665,
+      "bytes": 162346,
+      "delta": -0.02952630277102084,
+      "share": -13.384336745332291,
+      "ics": 0,
+      "bands": 570
+    },
+    {
+      "clip": "velvet",
+      "arm": "rTNS",
+      "mos": 4.4975,
+      "bytes": 162600,
+      "delta": 0.00041627618942476346,
+      "share": 0.1886988947289771,
+      "ics": 14,
+      "bands": 0
+    },
+    {
+      "clip": "velvet",
+      "arm": "A",
+      "mos": 4.7876,
+      "bytes": 180306,
+      "delta": 0.22060340630115993,
+      "share": 100.00000000000001,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF+rWIN",
+      "mos": 4.7755,
+      "bytes": 178803,
+      "delta": 0.21416528504881807,
+      "share": 97.0815857468888,
+      "ics": 900,
+      "bands": 542
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF+rBW",
+      "mos": 4.4985,
+      "bytes": 162578,
+      "delta": 0.0015077984763169467,
+      "share": 0.6834883021971808,
+      "ics": 4,
+      "bands": 550
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF+rCLS",
+      "mos": 4.359,
+      "bytes": 164920,
+      "delta": -0.14766631059382945,
+      "share": -66.93745716339514,
+      "ics": 0,
+      "bands": 1055
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF+rMS",
+      "mos": 4.4734,
+      "bytes": 162300,
+      "delta": -0.02243462439734745,
+      "share": -10.169663639155463,
+      "ics": 0,
+      "bands": 1112
+    },
+    {
+      "clip": "velvet",
+      "arm": "rSF+rTNS",
+      "mos": 4.499,
+      "bytes": 162516,
+      "delta": 0.0022657915687179925,
+      "share": 1.0270882062558973,
+      "ics": 14,
+      "bands": 542
+    },
+    {
+      "clip": "velvet",
+      "arm": "rWIN+rBW",
+      "mos": 4.7725,
+      "bytes": 178888,
+      "delta": 0.21084381815149528,
+      "share": 95.5759576366916,
+      "ics": 904,
+      "bands": 8
+    },
+    {
+      "clip": "velvet",
+      "arm": "rWIN+rCLS",
+      "mos": 4.5873,
+      "bytes": 181302,
+      "delta": 0.01657736431583262,
+      "share": 7.514555007913972,
+      "ics": 900,
+      "bands": 513
+    },
+    {
+      "clip": "velvet",
+      "arm": "rWIN+rMS",
+      "mos": 4.7339,
+      "bytes": 178576,
+      "delta": 0.17342454035725308,
+      "share": 78.61371828524717,
+      "ics": 900,
+      "bands": 570
+    },
+    {
+      "clip": "velvet",
+      "arm": "rWIN+rTNS",
+      "mos": 4.7722,
+      "bytes": 178830,
+      "delta": 0.21076315547567653,
+      "share": 95.53939307172354,
+      "ics": 914,
+      "bands": 0
+    },
+    {
+      "clip": "velvet",
+      "arm": "rMS+rCLS",
+      "mos": 4.5055,
+      "bytes": 164316,
+      "delta": 0.0013154246410975274,
+      "share": 0.5962848276702293,
+      "ics": 0,
+      "bands": 1083
+    },
+    {
+      "clip": "velvet",
+      "arm": "SFt",
+      "mos": 4.7759,
+      "bytes": 180175,
+      "delta": 0.20939500901667052,
+      "share": 94.91920933025482,
+      "ics": 0,
+      "bands": 517
+    },
+    {
+      "clip": "velvet",
+      "arm": "SFs",
+      "mos": 4.777,
+      "bytes": 180720,
+      "delta": 0.20845213631662815,
+      "share": 94.49180310119813,
+      "ics": 0,
+      "bands": 503
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "F",
+      "mos": 4.8517,
+      "bytes": 141058,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rWIN",
+      "mos": 4.8896,
+      "bytes": 147775,
+      "delta": 0.019086205010651298,
+      "share": 73.95674759918984,
+      "ics": 752,
+      "bands": 0
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rBW",
+      "mos": 4.8517,
+      "bytes": 141137,
+      "delta": -0.0002264369765059976,
+      "share": -0.8774160347346224,
+      "ics": 64,
+      "bands": 128
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rCLS",
+      "mos": 4.8489,
+      "bytes": 139324,
+      "delta": 0.0022023498299161195,
+      "share": 8.533840562088097,
+      "ics": 0,
+      "bands": 1005
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF",
+      "mos": 4.8502,
+      "bytes": 140520,
+      "delta": 4.544531925714055e-05,
+      "share": 0.17609514327176634,
+      "ics": 0,
+      "bands": 1768
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rMS",
+      "mos": 4.8503,
+      "bytes": 142742,
+      "delta": -0.006199592350288351,
+      "share": -24.022674303889694,
+      "ics": 0,
+      "bands": 1852
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rTNS",
+      "mos": 4.8512,
+      "bytes": 141065,
+      "delta": -0.0005200691558716943,
+      "share": -2.0152053943391084,
+      "ics": 2,
+      "bands": 0
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "A",
+      "mos": 4.889,
+      "bytes": 145124,
+      "delta": 0.02580725306376288,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF+rWIN",
+      "mos": 4.8881,
+      "bytes": 147237,
+      "delta": 0.019061275024672125,
+      "share": 73.86014690357307,
+      "ics": 752,
+      "bands": 1768
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF+rBW",
+      "mos": 4.8502,
+      "bytes": 140601,
+      "delta": -0.00018761122427703278,
+      "share": -0.7269709171041768,
+      "ics": 64,
+      "bands": 1896
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF+rCLS",
+      "mos": 4.8489,
+      "bytes": 138610,
+      "delta": 0.00428026133938322,
+      "share": 16.585497607234018,
+      "ics": 0,
+      "bands": 2773
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF+rMS",
+      "mos": 4.8507,
+      "bytes": 142055,
+      "delta": -0.0038484375420631545,
+      "share": -14.912232357913823,
+      "ics": 0,
+      "bands": 3620
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rSF+rTNS",
+      "mos": 4.8499,
+      "bytes": 140526,
+      "delta": -0.00027182273486458294,
+      "share": -1.0532803866919933,
+      "ics": 2,
+      "bands": 1768
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rWIN+rBW",
+      "mos": 4.8896,
+      "bytes": 147854,
+      "delta": 0.018870057804400066,
+      "share": 73.11920318593054,
+      "ics": 816,
+      "bands": 128
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rWIN+rCLS",
+      "mos": 4.8879,
+      "bytes": 146041,
+      "delta": 0.02215982949734301,
+      "share": 85.8666726078593,
+      "ics": 752,
+      "bands": 1005
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rWIN+rMS",
+      "mos": 4.8882,
+      "bytes": 149459,
+      "delta": 0.013103543213723458,
+      "share": 50.774653084340585,
+      "ics": 752,
+      "bands": 1852
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rWIN+rTNS",
+      "mos": 4.8892,
+      "bytes": 147782,
+      "delta": 0.01866704806135911,
+      "share": 72.33256486166034,
+      "ics": 754,
+      "bands": 0
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "rMS+rCLS",
+      "mos": 4.8497,
+      "bytes": 139164,
+      "delta": 0.003467060991320237,
+      "share": 13.4344441183029,
+      "ics": 0,
+      "bands": 2857
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "SFt",
+      "mos": 4.8891,
+      "bytes": 146099,
+      "delta": 0.023199243921422044,
+      "share": 89.89427841895014,
+      "ics": 0,
+      "bands": 1782
+    },
+    {
+      "clip": "Greensleeves",
+      "arm": "SFs",
+      "mos": 4.8875,
+      "bytes": 145078,
+      "delta": 0.024435464567367005,
+      "share": 94.68448465628423,
+      "ics": 0,
+      "bands": 1540
+    },
+    {
+      "clip": "German",
+      "arm": "F",
+      "mos": 4.9237,
+      "bytes": 126800,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "German",
+      "arm": "rWIN",
+      "mos": 4.9295,
+      "bytes": 123834,
+      "delta": 0.012906763665132267,
+      "share": 126.18994507091762,
+      "ics": 676,
+      "bands": 0
+    },
+    {
+      "clip": "German",
+      "arm": "rBW",
+      "mos": 4.9237,
+      "bytes": 126863,
+      "delta": -0.00014914334224728544,
+      "share": -1.4581804280434345,
+      "ics": 54,
+      "bands": 108
+    },
+    {
+      "clip": "German",
+      "arm": "rCLS",
+      "mos": 4.742,
+      "bytes": 126397,
+      "delta": -0.18074419940944947,
+      "share": -1767.1432736450959,
+      "ics": 0,
+      "bands": 505
+    },
+    {
+      "clip": "German",
+      "arm": "rSF",
+      "mos": 4.9251,
+      "bytes": 129143,
+      "delta": -0.004097453971612977,
+      "share": -40.06097152032697,
+      "ics": 0,
+      "bands": 1655
+    },
+    {
+      "clip": "German",
+      "arm": "rMS",
+      "mos": 4.9193,
+      "bytes": 126798,
+      "delta": -0.004395264077261119,
+      "share": -42.97267284595268,
+      "ics": 0,
+      "bands": 496
+    },
+    {
+      "clip": "German",
+      "arm": "rTNS",
+      "mos": 4.9236,
+      "bytes": 126778,
+      "delta": -4.790074093122732e-05,
+      "share": -0.46832746177086576,
+      "ics": 18,
+      "bands": 0
+    },
+    {
+      "clip": "German",
+      "arm": "A",
+      "mos": 4.9313,
+      "bytes": 125695,
+      "delta": 0.010228044443540078,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "German",
+      "arm": "rSF+rWIN",
+      "mos": 4.9309,
+      "bytes": 126177,
+      "delta": 0.008678864295605363,
+      "share": 84.85360367285888,
+      "ics": 676,
+      "bands": 1655
+    },
+    {
+      "clip": "German",
+      "arm": "rSF+rBW",
+      "mos": 4.9251,
+      "bytes": 129209,
+      "delta": -0.004250863577542179,
+      "share": -41.56086337918661,
+      "ics": 54,
+      "bands": 1763
+    },
+    {
+      "clip": "German",
+      "arm": "rSF+rCLS",
+      "mos": 4.7426,
+      "bytes": 128678,
+      "delta": -0.1855143863505862,
+      "share": -1813.7815823410415,
+      "ics": 0,
+      "bands": 2160
+    },
+    {
+      "clip": "German",
+      "arm": "rSF+rMS",
+      "mos": 4.9209,
+      "bytes": 129133,
+      "delta": -0.008274203252703487,
+      "share": -80.89721645597056,
+      "ics": 0,
+      "bands": 2151
+    },
+    {
+      "clip": "German",
+      "arm": "rSF+rTNS",
+      "mos": 4.9253,
+      "bytes": 129111,
+      "delta": -0.0038230453326162867,
+      "share": -37.37806727102052,
+      "ics": 18,
+      "bands": 1655
+    },
+    {
+      "clip": "German",
+      "arm": "rWIN+rBW",
+      "mos": 4.9295,
+      "bytes": 123897,
+      "delta": 0.012754049036514243,
+      "share": 124.69684803305252,
+      "ics": 730,
+      "bands": 108
+    },
+    {
+      "clip": "German",
+      "arm": "rWIN+rCLS",
+      "mos": 4.7452,
+      "bytes": 123431,
+      "delta": -0.17041450561257124,
+      "share": -1666.1494438480192,
+      "ics": 676,
+      "bands": 505
+    },
+    {
+      "clip": "German",
+      "arm": "rWIN+rMS",
+      "mos": 4.9247,
+      "bytes": 123832,
+      "delta": 0.008111613020856303,
+      "share": 79.30756524996828,
+      "ics": 676,
+      "bands": 496
+    },
+    {
+      "clip": "German",
+      "arm": "rWIN+rTNS",
+      "mos": 4.9291,
+      "bytes": 123812,
+      "delta": 0.01256011088623699,
+      "share": 122.80070697355856,
+      "ics": 694,
+      "bands": 0
+    },
+    {
+      "clip": "German",
+      "arm": "rMS+rCLS",
+      "mos": 4.9232,
+      "bytes": 126364,
+      "delta": 0.0005342020802459443,
+      "share": 5.222915125122873,
+      "ics": 0,
+      "bands": 1001
+    },
+    {
+      "clip": "German",
+      "arm": "SFt",
+      "mos": 4.9292,
+      "bytes": 123626,
+      "delta": 0.013111516615250169,
+      "share": 128.1918228614196,
+      "ics": 0,
+      "bands": 1618
+    },
+    {
+      "clip": "German",
+      "arm": "SFs",
+      "mos": 4.9306,
+      "bytes": 125624,
+      "delta": 0.009697694291423037,
+      "share": 94.81474533040375,
+      "ics": 0,
+      "bands": 1391
+    },
+    {
+      "clip": "Pooled",
+      "arm": "F",
+      "mos": 4.78664,
+      "bytes": 747785,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rWIN",
+      "mos": 4.85284,
+      "bytes": 767697,
+      "delta": 0.05101691504999776,
+      "share": 63.96784676193189,
+      "ics": 2416,
+      "bands": 0
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rBW",
+      "mos": 4.78664,
+      "bytes": 750133,
+      "delta": -0.0009053609760073957,
+      "share": -1.1351919676193107,
+      "ics": 1880,
+      "bands": 3760
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rCLS",
+      "mos": 4.7189000000000005,
+      "bytes": 746930,
+      "delta": -0.06802837210221703,
+      "share": -85.29775816184898,
+      "ics": 0,
+      "bands": 14806
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF",
+      "mos": 4.81564,
+      "bytes": 777442,
+      "delta": 0.01835601101352401,
+      "share": 23.01578796998408,
+      "ics": 0,
+      "bands": 61536
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rMS",
+      "mos": 4.76548,
+      "bytes": 737184,
+      "delta": -0.01735664150478064,
+      "share": -21.762722873217786,
+      "ics": 0,
+      "bands": 36978
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rTNS",
+      "mos": 4.78656,
+      "bytes": 747716,
+      "delta": -2.9423473859058196e-05,
+      "share": -0.036892788699108656,
+      "ics": 36,
+      "bands": 0
+    },
+    {
+      "clip": "Pooled",
+      "arm": "A",
+      "mos": 4.88546,
+      "bytes": 778066,
+      "delta": 0.07975399772305387,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF+rWIN",
+      "mos": 4.88256,
+      "bytes": 797354,
+      "delta": 0.07004477928624595,
+      "share": 87.82604168568047,
+      "ics": 2416,
+      "bands": 61536
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF+rBW",
+      "mos": 4.81564,
+      "bytes": 779769,
+      "delta": 0.017523962629531382,
+      "share": 21.9725194094764,
+      "ics": 1880,
+      "bands": 65296
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF+rCLS",
+      "mos": 4.7484,
+      "bytes": 776491,
+      "delta": -0.04910084539714587,
+      "share": -61.565372017649544,
+      "ics": 0,
+      "bands": 76342
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF+rMS",
+      "mos": 4.81004,
+      "bytes": 764149,
+      "delta": 0.017163869281964523,
+      "share": 21.521014334060265,
+      "ics": 0,
+      "bands": 98514
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rSF+rTNS",
+      "mos": 4.81572,
+      "bytes": 777359,
+      "delta": 0.018494877299587466,
+      "share": 23.189906246218545,
+      "ics": 36,
+      "bands": 61536
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rWIN+rBW",
+      "mos": 4.85284,
+      "bytes": 770045,
+      "delta": 0.0501131773733845,
+      "share": 62.83469017741623,
+      "ics": 4296,
+      "bands": 3760
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rWIN+rCLS",
+      "mos": 4.77584,
+      "bytes": 766842,
+      "delta": -0.026132459647568395,
+      "share": -32.76633196283587,
+      "ics": 2416,
+      "bands": 14806
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rWIN+rMS",
+      "mos": 4.83004,
+      "bytes": 757096,
+      "delta": 0.03204152678502411,
+      "share": 40.175449130824084,
+      "ics": 2416,
+      "bands": 36978
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rWIN+rTNS",
+      "mos": 4.85262,
+      "bytes": 767628,
+      "delta": 0.050843998658631026,
+      "share": 63.75103456905953,
+      "ics": 2452,
+      "bands": 0
+    },
+    {
+      "clip": "Pooled",
+      "arm": "rMS+rCLS",
+      "mos": 4.7737799999999995,
+      "bytes": 731913,
+      "delta": -0.007014071089988724,
+      "share": -8.794632608067019,
+      "ics": 0,
+      "bands": 51784
+    },
+    {
+      "clip": "Pooled",
+      "arm": "SFt",
+      "mos": 4.8524,
+      "bytes": 752311,
+      "delta": 0.056454750836851975,
+      "share": 70.78610784238221,
+      "ics": 0,
+      "bands": 59914
+    },
+    {
+      "clip": "Pooled",
+      "arm": "SFs",
+      "mos": 4.8617,
+      "bytes": 783452,
+      "delta": 0.05392268240266019,
+      "share": 67.61125955078383,
+      "ics": 0,
+      "bands": 58188
+    },
+    {
+      "clip": "Clean",
+      "arm": "F",
+      "mos": 4.8302499999999995,
+      "bytes": 317275,
+      "delta": 0.0,
+      "share": 0.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Clean",
+      "arm": "rWIN",
+      "mos": 4.8363,
+      "bytes": 317206,
+      "delta": 0.006112550826385331,
+      "share": 8.601274286226122,
+      "ics": 88,
+      "bands": 0
+    },
+    {
+      "clip": "Clean",
+      "arm": "rBW",
+      "mos": 4.8302499999999995,
+      "bytes": 319475,
+      "delta": -0.0020631370329068687,
+      "share": -2.9031427327364416,
+      "ics": 1758,
+      "bands": 3516
+    },
+    {
+      "clip": "Clean",
+      "arm": "rCLS",
+      "mos": 4.822900000000001,
+      "bytes": 316137,
+      "delta": -0.006055294577949026,
+      "share": -8.520706171311616,
+      "ics": 0,
+      "bands": 12783
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF",
+      "mos": 4.902200000000001,
+      "bytes": 345206,
+      "delta": 0.047151731498350107,
+      "share": 66.34954656526409,
+      "ics": 0,
+      "bands": 57571
+    },
+    {
+      "clip": "Clean",
+      "arm": "rMS",
+      "mos": 4.79565,
+      "bytes": 305298,
+      "delta": -0.02333102416266644,
+      "share": -32.83024450863072,
+      "ics": 0,
+      "bands": 34060
+    },
+    {
+      "clip": "Clean",
+      "arm": "rTNS",
+      "mos": 4.8302499999999995,
+      "bytes": 317273,
+      "delta": 2.2881690414335972e-06,
+      "share": 0.0032197964642954094,
+      "ics": 2,
+      "bands": 0
+    },
+    {
+      "clip": "Clean",
+      "arm": "A",
+      "mos": 4.909700000000001,
+      "bytes": 326941,
+      "delta": 0.07106564240340325,
+      "share": 100.0,
+      "ics": 0,
+      "bands": 0
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF+rWIN",
+      "mos": 4.90915,
+      "bytes": 345137,
+      "delta": 0.0541592360310671,
+      "share": 76.21015472375927,
+      "ics": 88,
+      "bands": 57571
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF+rBW",
+      "mos": 4.902200000000001,
+      "bytes": 347381,
+      "delta": 0.045275244736579595,
+      "share": 63.70904871242171,
+      "ics": 1758,
+      "bands": 61087
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF+rCLS",
+      "mos": 4.89575,
+      "bytes": 344283,
+      "delta": 0.04169810430965154,
+      "share": 58.67547650234801,
+      "ics": 0,
+      "bands": 70354
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF+rMS",
+      "mos": 4.9026,
+      "bytes": 330661,
+      "delta": 0.06018830580096835,
+      "share": 84.69395866333011,
+      "ics": 0,
+      "bands": 91631
+    },
+    {
+      "clip": "Clean",
+      "arm": "rSF+rTNS",
+      "mos": 4.902200000000001,
+      "bytes": 345206,
+      "delta": 0.047151731498350107,
+      "share": 66.34954656526409,
+      "ics": 2,
+      "bands": 57571
+    },
+    {
+      "clip": "Clean",
+      "arm": "rWIN+rBW",
+      "mos": 4.8363,
+      "bytes": 319406,
+      "delta": 0.004048980937256452,
+      "share": 5.697522459970826,
+      "ics": 1846,
+      "bands": 3516
+    },
+    {
+      "clip": "Clean",
+      "arm": "rWIN+rCLS",
+      "mos": 4.8294,
+      "bytes": 316068,
+      "delta": 0.0005075067807768191,
+      "share": 0.7141380329695228,
+      "ics": 88,
+      "bands": 12783
+    },
+    {
+      "clip": "Clean",
+      "arm": "rWIN+rMS",
+      "mos": 4.8017,
+      "bytes": 305229,
+      "delta": -0.01721603133335614,
+      "share": -24.225533958631583,
+      "ics": 88,
+      "bands": 34060
+    },
+    {
+      "clip": "Clean",
+      "arm": "rWIN+rTNS",
+      "mos": 4.8363,
+      "bytes": 317204,
+      "delta": 0.006114839434941255,
+      "share": 8.604494701153117,
+      "ics": 90,
+      "bands": 0
+    },
+    {
+      "clip": "Clean",
+      "arm": "rMS+rCLS",
+      "mos": 4.795249999999999,
+      "bytes": 302069,
+      "delta": -0.020193521581303664,
+      "share": -28.41530857721004,
+      "ics": 0,
+      "bands": 46843
+    },
+    {
+      "clip": "Clean",
+      "arm": "SFt",
+      "mos": 4.8339,
+      "bytes": 302411,
+      "delta": 0.01828399231545857,
+      "share": 25.72831497345751,
+      "ics": 0,
+      "bands": 55997
+    },
+    {
+      "clip": "Clean",
+      "arm": "SFs",
+      "mos": 4.8567,
+      "bytes": 332030,
+      "delta": 0.013514058418941374,
+      "share": 19.016303746652966,
+      "ics": 0,
+      "bands": 54754
+    }
+  ],
+  "interaction": [
+    {
+      "clip": "Severance",
+      "decision": "WIN",
+      "forward_loss": 0.0015693104113695016,
+      "reverse_gain": 0.0008709396128100248,
+      "sum_share": 3.7433749948638004,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Severance",
+      "decision": "BW",
+      "forward_loss": -0.00029303607751447497,
+      "reverse_gain": -0.0026561271288167514,
+      "sum_share": -4.524054376790564,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Severance",
+      "decision": "CLS",
+      "forward_loss": 0.008231889331840296,
+      "reverse_gain": -0.008949071352323264,
+      "sum_share": -1.100166464763994,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Severance",
+      "decision": "SF",
+      "forward_loss": 0.07113322736681206,
+      "reverse_gain": 0.0411482011873835,
+      "sum_share": 172.24115884546765,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Severance",
+      "decision": "MS",
+      "forward_loss": 0.0296780535861335,
+      "reverse_gain": -0.01147758890743694,
+      "sum_share": 27.919747443109618,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Severance",
+      "decision": "TNS",
+      "forward_loss": 2.683137955426952e-05,
+      "reverse_gain": 4.5763380828671944e-06,
+      "sum_share": 0.048179843738811415,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "21classic",
+      "decision": "WIN",
+      "forward_loss": 0.013252173001589937,
+      "reverse_gain": 0.011354162039960638,
+      "sum_share": 31.980042361420768,
+      "verdict": "separable"
+    },
+    {
+      "clip": "21classic",
+      "decision": "BW",
+      "forward_loss": -0.00015384438607044895,
+      "reverse_gain": -0.0014701469369969855,
+      "sum_share": -2.1106479781965772,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "21classic",
+      "decision": "CLS",
+      "forward_loss": 0.0015563154473608896,
+      "reverse_gain": -0.003161517803574787,
+      "sum_share": -2.0862285774654725,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "21classic",
+      "decision": "SF",
+      "forward_loss": 0.09968232943230003,
+      "reverse_gain": 0.05315526180931671,
+      "sum_share": 198.63797814956567,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "21classic",
+      "decision": "MS",
+      "forward_loss": 0.013746929859618291,
+      "reverse_gain": -0.03518445941789594,
+      "sum_share": -27.86165035305995,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "21classic",
+      "decision": "TNS",
+      "forward_loss": 0.0,
+      "reverse_gain": 0.0,
+      "sum_share": 0.0,
+      "verdict": "interaction"
+    },
+    {
+      "clip": "velvet",
+      "decision": "WIN",
+      "forward_loss": 0.2145993282062026,
+      "reverse_gain": 0.21086650492143455,
+      "sum_share": 192.8645800449728,
+      "verdict": "separable"
+    },
+    {
+      "clip": "velvet",
+      "decision": "BW",
+      "forward_loss": 0.0,
+      "reverse_gain": -2.495049546995847e-05,
+      "sum_share": -0.01131011342404067,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "velvet",
+      "decision": "CLS",
+      "forward_loss": 0.03351282188857488,
+      "reverse_gain": -0.14948942177565375,
+      "sum_share": -52.572442933520136,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "velvet",
+      "decision": "SF",
+      "forward_loss": 0.006997387564186044,
+      "reverse_gain": 0.0015286007232756713,
+      "sum_share": 3.8648488844375954,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "velvet",
+      "decision": "MS",
+      "forward_loss": 0.20104875391603175,
+      "reverse_gain": -0.02952630277102084,
+      "sum_share": 77.75149714182317,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "velvet",
+      "decision": "TNS",
+      "forward_loss": 0.0005037894234923207,
+      "reverse_gain": 0.00041627618942476346,
+      "sum_share": 0.4170677272594074,
+      "verdict": "separable"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "WIN",
+      "forward_loss": 0.019634258524765517,
+      "reverse_gain": 0.019086205010651298,
+      "sum_share": 150.03713661329556,
+      "verdict": "separable"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "BW",
+      "forward_loss": -2.2294733274295105e-05,
+      "reverse_gain": -0.0002264369765059976,
+      "sum_share": -0.9638054432439694,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "CLS",
+      "forward_loss": 0.010916555250695448,
+      "reverse_gain": 0.0022023498299161195,
+      "sum_share": 50.83417846989849,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "SF",
+      "forward_loss": 0.0024759443434865186,
+      "reverse_gain": 4.544531925714055e-05,
+      "sum_share": 9.770081521322608,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "MS",
+      "forward_loss": 0.0015456367619769628,
+      "reverse_gain": -0.006199592350288351,
+      "sum_share": -18.033517851794215,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Greensleeves",
+      "decision": "TNS",
+      "forward_loss": 1.1146905765129952e-05,
+      "reverse_gain": -0.0005200691558716943,
+      "sum_share": -1.9720124759080417,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "German",
+      "decision": "WIN",
+      "forward_loss": 0.013202760652559885,
+      "reverse_gain": 0.012906763665132267,
+      "sum_share": 255.27386453803146,
+      "verdict": "separable"
+    },
+    {
+      "clip": "German",
+      "decision": "BW",
+      "forward_loss": -2.3888545935383877e-05,
+      "reverse_gain": -0.00014914334224728544,
+      "sum_share": -1.6917396980216914,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "German",
+      "decision": "CLS",
+      "forward_loss": 0.00638011380203083,
+      "reverse_gain": -0.18074419940944947,
+      "sum_share": -1704.7646455774359,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "German",
+      "decision": "SF",
+      "forward_loss": -0.003272321896565418,
+      "reverse_gain": -0.004097453971612977,
+      "sum_share": -72.05459370909428,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "German",
+      "decision": "MS",
+      "forward_loss": 0.18507643057751866,
+      "reverse_gain": -0.004395264077261119,
+      "sum_share": 1766.52699836843,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "German",
+      "decision": "TNS",
+      "forward_loss": 0.00034744268993394987,
+      "reverse_gain": -4.790074093122732e-05,
+      "sum_share": 2.928633627437061,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "WIN",
+      "forward_loss": 0.05245156615929748,
+      "reverse_gain": 0.05101691504999776,
+      "sum_share": 129.7345389112531,
+      "verdict": "separable"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "BW",
+      "forward_loss": -9.861274855892058e-05,
+      "reverse_gain": -0.0009053609760073957,
+      "sum_share": -1.2588381187518893,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "CLS",
+      "forward_loss": 0.012119539144100468,
+      "reverse_gain": -0.06802837210221703,
+      "sum_share": -70.10160563017824,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "SF",
+      "forward_loss": 0.035403313362043845,
+      "reverse_gain": 0.01835601101352401,
+      "sum_share": 67.40643216688315,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "MS",
+      "forward_loss": 0.08621916094025583,
+      "reverse_gain": -0.01735664150478064,
+      "sum_share": 86.34365850173505,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Pooled",
+      "decision": "TNS",
+      "forward_loss": 0.000177842079749134,
+      "reverse_gain": -2.9423473859058196e-05,
+      "sum_share": 0.18609550634121197,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Clean",
+      "decision": "WIN",
+      "forward_loss": 0.0074107417064797195,
+      "reverse_gain": 0.006112550826385331,
+      "sum_share": 19.0292975276298,
+      "verdict": "separable"
+    },
+    {
+      "clip": "Clean",
+      "decision": "BW",
+      "forward_loss": -0.00022344023179246195,
+      "reverse_gain": -0.0020631370329068687,
+      "sum_share": -3.2175565960828196,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Clean",
+      "decision": "CLS",
+      "forward_loss": 0.004894102389600592,
+      "reverse_gain": -0.006055294577949026,
+      "sum_share": -1.6339712821519856,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Clean",
+      "decision": "SF",
+      "forward_loss": 0.08540777839955604,
+      "reverse_gain": 0.047151731498350107,
+      "sum_share": 186.53107945669964,
+      "verdict": "needs partner"
+    },
+    {
+      "clip": "Clean",
+      "decision": "MS",
+      "forward_loss": 0.021712491722875895,
+      "reverse_gain": -0.02333102416266644,
+      "sum_share": -2.2775174965744585,
+      "verdict": "compensated"
+    },
+    {
+      "clip": "Clean",
+      "decision": "TNS",
+      "forward_loss": 1.341568977713476e-05,
+      "reverse_gain": 2.2881690414335972e-06,
+      "sum_share": 0.022097680802525634,
+      "verdict": "needs partner"
+    }
+  ]
+}

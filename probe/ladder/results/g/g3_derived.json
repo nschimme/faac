@@ -1,0 +1,114 @@
+[
+  {
+    "clip": "Severance",
+    "arm": "SFt",
+    "mos": 4.86,
+    "bytes": 152892,
+    "delta_vs_A": -0.03543592802528693,
+    "share_SF_loss": 49.81628043186457
+  },
+  {
+    "clip": "Severance",
+    "arm": "SFs",
+    "mos": 4.8792,
+    "bytes": 167718,
+    "delta_vs_A": -0.05042087589683299,
+    "share_SF_loss": 70.88231163311082
+  },
+  {
+    "clip": "21classic",
+    "arm": "SFt",
+    "mos": 4.8078,
+    "bytes": 149519,
+    "delta_vs_A": -0.07012737215060244,
+    "share_SF_loss": 70.35085611460349
+  },
+  {
+    "clip": "21classic",
+    "arm": "SFs",
+    "mos": 4.8342,
+    "bytes": 164312,
+    "delta_vs_A": -0.06468229207209074,
+    "share_SF_loss": 64.88842349538007
+  },
+  {
+    "clip": "velvet",
+    "arm": "SFt",
+    "mos": 4.7759,
+    "bytes": 180175,
+    "delta_vs_A": -0.011208397284489373,
+    "share_SF_loss": 160.17974110589608
+  },
+  {
+    "clip": "velvet",
+    "arm": "SFs",
+    "mos": 4.777,
+    "bytes": 180720,
+    "delta_vs_A": -0.012151269984531785,
+    "share_SF_loss": 173.6543799106439
+  },
+  {
+    "clip": "Greensleeves",
+    "arm": "SFt",
+    "mos": 4.8891,
+    "bytes": 146099,
+    "delta_vs_A": -0.0026080091423408116,
+    "share_SF_loss": 105.33391629750145
+  },
+  {
+    "clip": "Greensleeves",
+    "arm": "SFs",
+    "mos": 4.8875,
+    "bytes": 145078,
+    "delta_vs_A": -0.0013717884963959349,
+    "share_SF_loss": 55.40465802491509
+  },
+  {
+    "clip": "German",
+    "arm": "SFt",
+    "mos": 4.9292,
+    "bytes": 123626,
+    "delta_vs_A": 0.0028834721717100904,
+    "share_SF_loss": 88.11700874344119
+  },
+  {
+    "clip": "German",
+    "arm": "SFs",
+    "mos": 4.9306,
+    "bytes": 125624,
+    "delta_vs_A": -0.0005303501521170111,
+    "share_SF_loss": -16.20715103467232
+  },
+  {
+    "clip": "Pooled",
+    "arm": "SFt",
+    "mos": 4.8524,
+    "bytes": 752311,
+    "delta_vs_A": -0.023299246886201892,
+    "share_SF_loss": 65.81092184208156
+  },
+  {
+    "clip": "Pooled",
+    "arm": "SFs",
+    "mos": 4.8617,
+    "bytes": 783452,
+    "delta_vs_A": -0.02583131532039369,
+    "share_SF_loss": 72.96298811423577
+  },
+  {
+    "clip": "Clean",
+    "arm": "SFt",
+    "mos": 4.8339,
+    "bytes": 302411,
+    "delta_vs_A": -0.052781650087944686,
+    "share_SF_loss": 61.79958204862878
+  },
+  {
+    "clip": "Clean",
+    "arm": "SFs",
+    "mos": 4.8567,
+    "bytes": 332030,
+    "delta_vs_A": -0.05755158398446186,
+    "share_SF_loss": 67.38447605465525
+  }
+]

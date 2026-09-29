@@ -539,6 +539,26 @@ int BlocQuant(CoderInfo * __restrict coder, float * __restrict xr, AACQuantCfg *
             group_total = coder->refTotal[i];
 
         derive_masking_targets(coder, i, (float)aacquantCfg->quality / DEFQUAL, be, group_total, target);
+        /* Ladder measurement only: expose the normal quantizer's per-band
+         * masking target and energy beside the forced-SF spectrum probe. */
+        if (getenv("FAAC_G_MASK_DUMP"))
+        {
+            static FILE *mask_dump;
+            static int mask_dump_tried;
+            if (!mask_dump_tried)
+            {
+                mask_dump_tried = 1;
+                mask_dump = fopen(getenv("FAAC_G_MASK_DUMP"), "a");
+            }
+            if (mask_dump)
+            {
+                for (int sb = 0; sb < coder->sfbn; sb++)
+                    fprintf(mask_dump, "M %d %d %d %d %.9g %.9g %.9g\n",
+                            coder->ciFrame, coder->ciCh, i, sb,
+                            target[sb], be[sb].sum, be[sb].peak_energy);
+                fflush(mask_dump);
+            }
+        }
         assign_band_codebooks(coder, gxr, target, be, i, aacquantCfg->pnslevel, &lastsf, qs, &qlen, &sfAnchor);
         gxr += coder->groups.len[i] * BLOCK_LEN_SHORT;
     }

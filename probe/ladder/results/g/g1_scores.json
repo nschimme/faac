@@ -1,0 +1,612 @@
+{
+  "Severance": {
+    "F": {
+      "mos": 4.8503,
+      "bytes": 161422
+    },
+    "A": {
+      "mos": 4.924,
+      "bytes": 165185
+    },
+    "rWIN": {
+      "mos": 4.8511,
+      "bytes": 161391
+    },
+    "rBW": {
+      "mos": 4.8503,
+      "bytes": 162587
+    },
+    "rCLS": {
+      "mos": 4.8388,
+      "bytes": 160311
+    },
+    "rSF": {
+      "mos": 4.9218,
+      "bytes": 175247
+    },
+    "rMS": {
+      "mos": 4.8252,
+      "bytes": 155577
+    },
+    "rTNS": {
+      "mos": 4.8503,
+      "bytes": 161420
+    },
+    "SFt": {
+      "mos": 4.86,
+      "bytes": 152892
+    },
+    "SFs": {
+      "mos": 4.8792,
+      "bytes": 167718
+    },
+    "rSF+rWIN": {
+      "mos": 4.9226,
+      "bytes": 175216
+    },
+    "rSF+rBW": {
+      "mos": 4.9218,
+      "bytes": 176399
+    },
+    "rSF+rCLS": {
+      "mos": 4.9114,
+      "bytes": 174272
+    },
+    "rSF+rMS": {
+      "mos": 4.9227,
+      "bytes": 168089
+    },
+    "rSF+rTNS": {
+      "mos": 4.9218,
+      "bytes": 175247
+    },
+    "rWIN+rBW": {
+      "mos": 4.8511,
+      "bytes": 162556
+    },
+    "rWIN+rCLS": {
+      "mos": 4.8402,
+      "bytes": 160280
+    },
+    "rWIN+rMS": {
+      "mos": 4.8258,
+      "bytes": 155546
+    },
+    "rWIN+rTNS": {
+      "mos": 4.8511,
+      "bytes": 161389
+    },
+    "rMS+rCLS": {
+      "mos": 4.8241,
+      "bytes": 153069
+    },
+    "fWIN": {
+      "mos": 4.9225,
+      "bytes": 165216
+    },
+    "fBW": {
+      "mos": 4.924,
+      "bytes": 165054
+    },
+    "fCLS": {
+      "mos": 4.9233,
+      "bytes": 168588
+    },
+    "fSF": {
+      "mos": 4.8263,
+      "bytes": 153721
+    },
+    "fMS": {
+      "mos": 4.9129,
+      "bytes": 173706
+    },
+    "fTNS": {
+      "mos": 4.924,
+      "bytes": 165197
+    },
+    "faac112": {
+      "mos": 4.7834,
+      "bytes": 141719
+    },
+    "faac128": {
+      "mos": 4.8458,
+      "bytes": 161441
+    },
+    "faac144": {
+      "mos": 4.8744,
+      "bytes": 181312
+    },
+    "apple": {
+      "mos": 4.9237,
+      "bytes": 164154
+    }
+  },
+  "21classic": {
+    "F": {
+      "mos": 4.8102,
+      "bytes": 155853
+    },
+    "A": {
+      "mos": 4.8954,
+      "bytes": 161756
+    },
+    "rWIN": {
+      "mos": 4.8215,
+      "bytes": 155815
+    },
+    "rBW": {
+      "mos": 4.8102,
+      "bytes": 156888
+    },
+    "rCLS": {
+      "mos": 4.807,
+      "bytes": 155826
+    },
+    "rSF": {
+      "mos": 4.8826,
+      "bytes": 169959
+    },
+    "rMS": {
+      "mos": 4.7661,
+      "bytes": 149721
+    },
+    "rTNS": {
+      "mos": 4.8102,
+      "bytes": 155853
+    },
+    "SFt": {
+      "mos": 4.8078,
+      "bytes": 149519
+    },
+    "SFs": {
+      "mos": 4.8342,
+      "bytes": 164312
+    },
+    "rSF+rWIN": {
+      "mos": 4.8957,
+      "bytes": 169921
+    },
+    "rSF+rBW": {
+      "mos": 4.8826,
+      "bytes": 170982
+    },
+    "rSF+rCLS": {
+      "mos": 4.8801,
+      "bytes": 170011
+    },
+    "rSF+rMS": {
+      "mos": 4.8825,
+      "bytes": 162572
+    },
+    "rSF+rTNS": {
+      "mos": 4.8826,
+      "bytes": 169959
+    },
+    "rWIN+rBW": {
+      "mos": 4.8215,
+      "bytes": 156850
+    },
+    "rWIN+rCLS": {
+      "mos": 4.8186,
+      "bytes": 155788
+    },
+    "rWIN+rMS": {
+      "mos": 4.7776,
+      "bytes": 149683
+    },
+    "rWIN+rTNS": {
+      "mos": 4.8215,
+      "bytes": 155815
+    },
+    "rMS+rCLS": {
+      "mos": 4.7664,
+      "bytes": 149000
+    },
+    "fWIN": {
+      "mos": 4.8822,
+      "bytes": 161794
+    },
+    "fBW": {
+      "mos": 4.8954,
+      "bytes": 161644
+    },
+    "fCLS": {
+      "mos": 4.8958,
+      "bytes": 163187
+    },
+    "fSF": {
+      "mos": 4.7783,
+      "bytes": 149556
+    },
+    "fMS": {
+      "mos": 4.8924,
+      "bytes": 169775
+    },
+    "fTNS": {
+      "mos": 4.8954,
+      "bytes": 161756
+    },
+    "faac112": {
+      "mos": 4.7781,
+      "bytes": 136851
+    },
+    "faac128": {
+      "mos": 4.8129,
+      "bytes": 155941
+    },
+    "faac144": {
+      "mos": 4.8329,
+      "bytes": 175145
+    },
+    "apple": {
+      "mos": 4.8969,
+      "bytes": 161500
+    }
+  },
+  "velvet": {
+    "F": {
+      "mos": 4.4973,
+      "bytes": 162652
+    },
+    "A": {
+      "mos": 4.7876,
+      "bytes": 180306
+    },
+    "rWIN": {
+      "mos": 4.7725,
+      "bytes": 178882
+    },
+    "rBW": {
+      "mos": 4.4973,
+      "bytes": 162658
+    },
+    "rCLS": {
+      "mos": 4.3578,
+      "bytes": 165072
+    },
+    "rSF": {
+      "mos": 4.4985,
+      "bytes": 162573
+    },
+    "rMS": {
+      "mos": 4.4665,
+      "bytes": 162346
+    },
+    "rTNS": {
+      "mos": 4.4975,
+      "bytes": 162600
+    },
+    "SFt": {
+      "mos": 4.7759,
+      "bytes": 180175
+    },
+    "SFs": {
+      "mos": 4.777,
+      "bytes": 180720
+    },
+    "rSF+rWIN": {
+      "mos": 4.7755,
+      "bytes": 178803
+    },
+    "rSF+rBW": {
+      "mos": 4.4985,
+      "bytes": 162578
+    },
+    "rSF+rCLS": {
+      "mos": 4.359,
+      "bytes": 164920
+    },
+    "rSF+rMS": {
+      "mos": 4.4734,
+      "bytes": 162300
+    },
+    "rSF+rTNS": {
+      "mos": 4.499,
+      "bytes": 162516
+    },
+    "rWIN+rBW": {
+      "mos": 4.7725,
+      "bytes": 178888
+    },
+    "rWIN+rCLS": {
+      "mos": 4.5873,
+      "bytes": 181302
+    },
+    "rWIN+rMS": {
+      "mos": 4.7339,
+      "bytes": 178576
+    },
+    "rWIN+rTNS": {
+      "mos": 4.7722,
+      "bytes": 178830
+    },
+    "rMS+rCLS": {
+      "mos": 4.5055,
+      "bytes": 164316
+    },
+    "fWIN": {
+      "mos": 4.5092,
+      "bytes": 164076
+    },
+    "fBW": {
+      "mos": 4.7876,
+      "bytes": 180306
+    },
+    "fCLS": {
+      "mos": 4.7471,
+      "bytes": 178453
+    },
+    "fSF": {
+      "mos": 4.7813,
+      "bytes": 180492
+    },
+    "fMS": {
+      "mos": 4.5894,
+      "bytes": 181067
+    },
+    "fTNS": {
+      "mos": 4.7874,
+      "bytes": 180387
+    },
+    "faac112": {
+      "mos": 4.4206,
+      "bytes": 144053
+    },
+    "faac128": {
+      "mos": 4.4807,
+      "bytes": 162457
+    },
+    "faac144": {
+      "mos": 4.5798,
+      "bytes": 182281
+    },
+    "apple": {
+      "mos": 4.7807,
+      "bytes": 178939
+    }
+  },
+  "Greensleeves": {
+    "F": {
+      "mos": 4.8517,
+      "bytes": 141058
+    },
+    "A": {
+      "mos": 4.889,
+      "bytes": 145124
+    },
+    "rWIN": {
+      "mos": 4.8896,
+      "bytes": 147775
+    },
+    "rBW": {
+      "mos": 4.8517,
+      "bytes": 141137
+    },
+    "rCLS": {
+      "mos": 4.8489,
+      "bytes": 139324
+    },
+    "rSF": {
+      "mos": 4.8502,
+      "bytes": 140520
+    },
+    "rMS": {
+      "mos": 4.8503,
+      "bytes": 142742
+    },
+    "rTNS": {
+      "mos": 4.8512,
+      "bytes": 141065
+    },
+    "SFt": {
+      "mos": 4.8891,
+      "bytes": 146099
+    },
+    "SFs": {
+      "mos": 4.8875,
+      "bytes": 145078
+    },
+    "rSF+rWIN": {
+      "mos": 4.8881,
+      "bytes": 147237
+    },
+    "rSF+rBW": {
+      "mos": 4.8502,
+      "bytes": 140601
+    },
+    "rSF+rCLS": {
+      "mos": 4.8489,
+      "bytes": 138610
+    },
+    "rSF+rMS": {
+      "mos": 4.8507,
+      "bytes": 142055
+    },
+    "rSF+rTNS": {
+      "mos": 4.8499,
+      "bytes": 140526
+    },
+    "rWIN+rBW": {
+      "mos": 4.8896,
+      "bytes": 147854
+    },
+    "rWIN+rCLS": {
+      "mos": 4.8879,
+      "bytes": 146041
+    },
+    "rWIN+rMS": {
+      "mos": 4.8882,
+      "bytes": 149459
+    },
+    "rWIN+rTNS": {
+      "mos": 4.8892,
+      "bytes": 147782
+    },
+    "rMS+rCLS": {
+      "mos": 4.8497,
+      "bytes": 139164
+    },
+    "fWIN": {
+      "mos": 4.8502,
+      "bytes": 138407
+    },
+    "fBW": {
+      "mos": 4.889,
+      "bytes": 145116
+    },
+    "fCLS": {
+      "mos": 4.8882,
+      "bytes": 148800
+    },
+    "fSF": {
+      "mos": 4.8888,
+      "bytes": 145943
+    },
+    "fMS": {
+      "mos": 4.8879,
+      "bytes": 145284
+    },
+    "fTNS": {
+      "mos": 4.889,
+      "bytes": 145128
+    },
+    "faac112": {
+      "mos": 4.7915,
+      "bytes": 123885
+    },
+    "faac128": {
+      "mos": 4.8526,
+      "bytes": 141092
+    },
+    "faac144": {
+      "mos": 4.8911,
+      "bytes": 158480
+    },
+    "apple": {
+      "mos": 4.9027,
+      "bytes": 146220
+    }
+  },
+  "German": {
+    "F": {
+      "mos": 4.9237,
+      "bytes": 126800
+    },
+    "A": {
+      "mos": 4.9313,
+      "bytes": 125695
+    },
+    "rWIN": {
+      "mos": 4.9295,
+      "bytes": 123834
+    },
+    "rBW": {
+      "mos": 4.9237,
+      "bytes": 126863
+    },
+    "rCLS": {
+      "mos": 4.742,
+      "bytes": 126397
+    },
+    "rSF": {
+      "mos": 4.9251,
+      "bytes": 129143
+    },
+    "rMS": {
+      "mos": 4.9193,
+      "bytes": 126798
+    },
+    "rTNS": {
+      "mos": 4.9236,
+      "bytes": 126778
+    },
+    "SFt": {
+      "mos": 4.9292,
+      "bytes": 123626
+    },
+    "SFs": {
+      "mos": 4.9306,
+      "bytes": 125624
+    },
+    "rSF+rWIN": {
+      "mos": 4.9309,
+      "bytes": 126177
+    },
+    "rSF+rBW": {
+      "mos": 4.9251,
+      "bytes": 129209
+    },
+    "rSF+rCLS": {
+      "mos": 4.7426,
+      "bytes": 128678
+    },
+    "rSF+rMS": {
+      "mos": 4.9209,
+      "bytes": 129133
+    },
+    "rSF+rTNS": {
+      "mos": 4.9253,
+      "bytes": 129111
+    },
+    "rWIN+rBW": {
+      "mos": 4.9295,
+      "bytes": 123897
+    },
+    "rWIN+rCLS": {
+      "mos": 4.7452,
+      "bytes": 123431
+    },
+    "rWIN+rMS": {
+      "mos": 4.9247,
+      "bytes": 123832
+    },
+    "rWIN+rTNS": {
+      "mos": 4.9291,
+      "bytes": 123812
+    },
+    "rMS+rCLS": {
+      "mos": 4.9232,
+      "bytes": 126364
+    },
+    "fWIN": {
+      "mos": 4.9251,
+      "bytes": 128661
+    },
+    "fBW": {
+      "mos": 4.9313,
+      "bytes": 125685
+    },
+    "fCLS": {
+      "mos": 4.9261,
+      "bytes": 126190
+    },
+    "fSF": {
+      "mos": 4.9292,
+      "bytes": 123466
+    },
+    "fMS": {
+      "mos": 4.7463,
+      "bytes": 125727
+    },
+    "fTNS": {
+      "mos": 4.9309,
+      "bytes": 125673
+    },
+    "faac112": {
+      "mos": 4.8738,
+      "bytes": 111215
+    },
+    "faac128": {
+      "mos": 4.9228,
+      "bytes": 126799
+    },
+    "faac144": {
+      "mos": 4.9483,
+      "bytes": 142535
+    },
+    "apple": {
+      "mos": 4.9245,
+      "bytes": 126356
+    }
+  }
+}

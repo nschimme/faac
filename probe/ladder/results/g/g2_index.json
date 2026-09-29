@@ -1,0 +1,296 @@
+[
+  {
+    "id": "g2_00",
+    "stem": "12-German-male-speech.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/12-German-male-speech.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/12-German-male-speech.441.16b48k.wav"
+  },
+  {
+    "id": "g2_01",
+    "stem": "15-Good-evening.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/15-Good-evening.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/15-Good-evening.441.16b48k.wav"
+  },
+  {
+    "id": "g2_02",
+    "stem": "21-classic.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/21-classic.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/21-classic.441.16b48k.wav"
+  },
+  {
+    "id": "g2_03",
+    "stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/24-Greensleeves-Korean-male-speech.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/24-Greensleeves-Korean-male-speech.441.16b48k.wav"
+  },
+  {
+    "id": "g2_04",
+    "stem": "25-This-is-the-end.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/25-This-is-the-end.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/25-This-is-the-end.441.16b48k.wav"
+  },
+  {
+    "id": "g2_05",
+    "stem": "27-last-song-drums-and-trampets.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/27-last-song-drums-and-trampets.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/27-last-song-drums-and-trampets.441.16b48k.wav"
+  },
+  {
+    "id": "g2_06",
+    "stem": "35_SQAM_glockenspiel_cut.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/35_SQAM_glockenspiel_cut.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/35_SQAM_glockenspiel_cut.16b48k.wav"
+  },
+  {
+    "id": "g2_07",
+    "stem": "4-Sound-English-male.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/4-Sound-English-male.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/4-Sound-English-male.441.16b48k.wav"
+  },
+  {
+    "id": "g2_08",
+    "stem": "9-Have-big-expensive-car.441.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/9-Have-big-expensive-car.441.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/9-Have-big-expensive-car.441.16b48k.wav"
+  },
+  {
+    "id": "g2_09",
+    "stem": "Asleep__4.11-4.31_.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Asleep__4.11-4.31_.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Asleep__4.11-4.31_.16b48k.wav"
+  },
+  {
+    "id": "g2_10",
+    "stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k.wav"
+  },
+  {
+    "id": "g2_11",
+    "stem": "Changes.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Changes.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Changes.16b48k.wav"
+  },
+  {
+    "id": "g2_12",
+    "stem": "Coral.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Coral.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Coral.16b48k.wav"
+  },
+  {
+    "id": "g2_13",
+    "stem": "ExitMusic.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/ExitMusic.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/ExitMusic.16b48k.wav"
+  },
+  {
+    "id": "g2_14",
+    "stem": "Girl_In_The_Fire__Sample_.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Girl_In_The_Fire__Sample_.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Girl_In_The_Fire__Sample_.16b48k.wav"
+  },
+  {
+    "id": "g2_15",
+    "stem": "Greatest_Love_of_All_2min57.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Greatest_Love_of_All_2min57.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Greatest_Love_of_All_2min57.16b48k.wav"
+  },
+  {
+    "id": "g2_16",
+    "stem": "Hey Tonight.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Hey Tonight.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Hey Tonight.16b48k.wav"
+  },
+  {
+    "id": "g2_17",
+    "stem": "Hotel California.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Hotel California.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Hotel California.16b48k.wav"
+  },
+  {
+    "id": "g2_18",
+    "stem": "Jupiter, the Bringer of Jolity.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Jupiter, the Bringer of Jolity.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Jupiter, the Bringer of Jolity.16b48k.wav"
+  },
+  {
+    "id": "g2_19",
+    "stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Last_Of_The_Mohicanz__Sample_.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Last_Of_The_Mohicanz__Sample_.16b48k.wav"
+  },
+  {
+    "id": "g2_20",
+    "stem": "NewYorkCity.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/NewYorkCity.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/NewYorkCity.16b48k.wav"
+  },
+  {
+    "id": "g2_21",
+    "stem": "Only Time.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Only Time.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Only Time.16b48k.wav"
+  },
+  {
+    "id": "g2_22",
+    "stem": "Robots_old.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Robots_old.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Robots_old.16b48k.wav"
+  },
+  {
+    "id": "g2_23",
+    "stem": "Severance__1.31-1.51_.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Severance__1.31-1.51_.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Severance__1.31-1.51_.16b48k.wav"
+  },
+  {
+    "id": "g2_24",
+    "stem": "Shinsho_pool_3min45_4min4.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Shinsho_pool_3min45_4min4.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Shinsho_pool_3min45_4min4.16b48k.wav"
+  },
+  {
+    "id": "g2_25",
+    "stem": "SinceAlways.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/SinceAlways.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/SinceAlways.16b48k.wav"
+  },
+  {
+    "id": "g2_26",
+    "stem": "SlavesOfFear.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/SlavesOfFear.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/SlavesOfFear.16b48k.wav"
+  },
+  {
+    "id": "g2_27",
+    "stem": "The Chastising of Renegade.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/The Chastising of Renegade.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/The Chastising of Renegade.16b48k.wav"
+  },
+  {
+    "id": "g2_28",
+    "stem": "Through The Fire And Flames.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Through The Fire And Flames.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Through The Fire And Flames.16b48k.wav"
+  },
+  {
+    "id": "g2_29",
+    "stem": "TrosYGareg.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/TrosYGareg.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/TrosYGareg.16b48k.wav"
+  },
+  {
+    "id": "g2_30",
+    "stem": "Waiting.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/Waiting.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/Waiting.16b48k.wav"
+  },
+  {
+    "id": "g2_31",
+    "stem": "With Love (Outro).16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/With Love (Outro).16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/With Love (Outro).16b48k.wav"
+  },
+  {
+    "id": "g2_32",
+    "stem": "bah",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/bah.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bah.wav"
+  },
+  {
+    "id": "g2_33",
+    "stem": "bas",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/bas.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bas.wav"
+  },
+  {
+    "id": "g2_34",
+    "stem": "bonhemian_rhapsody.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/bonhemian_rhapsody.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/bonhemian_rhapsody.16b48k.wav"
+  },
+  {
+    "id": "g2_35",
+    "stem": "clapton_44k.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/clapton_44k.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/clapton_44k.16b48k.wav"
+  },
+  {
+    "id": "g2_36",
+    "stem": "cst",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/cst.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/cst.wav"
+  },
+  {
+    "id": "g2_37",
+    "stem": "fms",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/fms.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/fms.wav"
+  },
+  {
+    "id": "g2_38",
+    "stem": "girl.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/girl.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/girl.16b48k.wav"
+  },
+  {
+    "id": "g2_39",
+    "stem": "glk",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/glk.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/glk.wav"
+  },
+  {
+    "id": "g2_40",
+    "stem": "hrp",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/hrp.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/hrp.wav"
+  },
+  {
+    "id": "g2_41",
+    "stem": "liberate.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/liberate.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/liberate.16b48k.wav"
+  },
+  {
+    "id": "g2_42",
+    "stem": "lob",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/lob.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/lob.wav"
+  },
+  {
+    "id": "g2_43",
+    "stem": "mof",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/mof.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/mof.wav"
+  },
+  {
+    "id": "g2_44",
+    "stem": "qrt",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/qrt.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/qrt.wav"
+  },
+  {
+    "id": "g2_45",
+    "stem": "sandman.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/sandman.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/sandman.16b48k.wav"
+  },
+  {
+    "id": "g2_46",
+    "stem": "take_your_finger_frin_my_head.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/take_your_finger_frin_my_head.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/take_your_finger_frin_my_head.16b48k.wav"
+  },
+  {
+    "id": "g2_47",
+    "stem": "trumpet.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/trumpet.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/trumpet.16b48k.wav"
+  },
+  {
+    "id": "g2_48",
+    "stem": "velvet.16b48k",
+    "ref": "/private/tmp/claude-501/faac-work/fdk-ladder/probe/ladder/ref/apple/velvet.16b48k.m4a",
+    "src": "/Users/nschimme/gitprojects/faac-benchmark/data/external/audio/velvet.16b48k.wav"
+  }
+]
