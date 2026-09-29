@@ -689,10 +689,8 @@ static void doHEAACFrame(faacEncStruct *hEncoder, unsigned int realPerCh,
  * the same transient reads as a smaller jump with fewer, longer sub-blocks. */
 #define TNS_ATTACK_MIN 0.5f
 
-/* Probe-only (ladder step 1): counts frames where a reference's window
- * transition (LONG_SHORT/SHORT_LONG) was skipped -- see faacEncEncode's
- * step1Matched setup. Exposed via Step1TransitionSkippedCount() so probe
- * tools can report how often this known gap fires. */
+/* Retained for probe callers that tracked the former transition skip.
+ * Matched transition windows are now forced, so this stays zero. */
 static long step1TransitionSkipped = 0;
 long Step1TransitionSkippedCount(void) { return step1TransitionSkipped; }
 /* Probe-only (ladder step 1): counts frames where the forced quantization
@@ -857,6 +855,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
      * below falls through to FAAC's ordinary behavior unchanged. */
     ReemitICS step1Rec[MAX_CHANNELS];
     int step1Matched[MAX_CHANNELS] = {0};
+    int step1SelfIsBias[MAX_CHANNELS][MAX_SCFAC_BANDS] = {{0}};
     int step1ZeroBands = 0;
     {
         struct Step1Ctx *s1 = Step1Get();
@@ -864,25 +863,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
             for (channel = 0; channel < numChannels; channel++) {
                 step1Matched[channel] = Step1Lookup(s1, coderInfo[channel].ciFrame,
                                                      coderInfo[channel].ciCh, &step1Rec[channel]);
-                /* Probe-only (ladder step 1), known gap: a transition window
-                 * (LONG_SHORT_WINDOW=1 / SHORT_LONG_WINDOW=3) needs the
-                 * PREVIOUS frame's actual block_type/window_shape to be the
-                 * compatible half FAAC's own BlockSwitch enforces (see
-                 * blockswitch.c's lasttype checks) -- forcing one frame at a
-                 * time, independent of what FAAC's own state machine thinks
-                 * the previous frame was, desyncs that and produces a
-                 * corrupt overlap-add (observed: quantized magnitudes
-                 * exploding into an 8191-byte ADTS overflow on velvet's
-                 * first short-block transition). Not fixed this session;
-                 * fall through to FAAC's own natural decision for these
-                 * frames instead of forcing a decision that can't be made
-                 * safely yet, and count how often it happens. */
-                if (step1Matched[channel] &&
-                    step1Rec[channel].win_seq != ONLY_LONG_WINDOW &&
-                    step1Rec[channel].win_seq != ONLY_SHORT_WINDOW) {
-                    step1Matched[channel] = 0;
-                    step1TransitionSkipped++;
-                }
+                /* FilterBank consumes the chosen sequence directly. For a
+                 * matched record below, override BlockSwitch before the
+                 * transform, including LONG_SHORT and SHORT_LONG. The
+                 * reference sequence supplies the legal transition history
+                 * instead of FAAC's psychoacoustic state machine. */
             }
         }
     }
@@ -1133,7 +1118,12 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 if (el->type == ID_CPE) {
                     int l = el->channels[0], r = el->channels[1];
                     Step1ApplyMS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
-                                 hEncoder->freqBuff[l], hEncoder->freqBuff[r]);
+                                 hEncoder->freqBuff[l], hEncoder->freqBuff[r],
+                                 getenv("FAAC_STEP1_SELF_IS") != NULL);
+                    if (getenv("FAAC_STEP1_SELF_IS"))
+                        Step1ApplySelfIS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
+                                         hEncoder->freqBuff[l], hEncoder->freqBuff[r],
+                                         step1SelfIsBias[l]);
                     ReemitSetCpeInfo(el, &coderInfo[l], &coderInfo[r], &step1Rec[l], &step1Rec[r]);
                 }
             }
@@ -1245,7 +1235,9 @@ int faacEncEncode(faacEncHandle hpEncoder,
                  * step1Scale is 1.0 unless a prior attempt this frame
                  * overflowed the bitstream (see below). */
                 Step1Quantize(&coderInfo[channel], hEncoder->freqBuff[channel],
-                              &step1Rec[channel], &step1ZeroBands, step1Scale);
+                              &step1Rec[channel], &step1ZeroBands, step1Scale,
+                              getenv("FAAC_STEP1_SELF_IS")
+                              ? step1SelfIsBias[channel] : NULL);
             else
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],
                           &(hEncoder->aacquantCfg));

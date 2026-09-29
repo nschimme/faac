@@ -355,3 +355,408 @@ enough signal to act on without a wider run.
 - Patches (all uncommitted, nothing pushed, regenerated this session):
   `step1_engine.patch`, `frame_step1_hooks.patch`,
   `coder_channels_tns_writer.patch`, `reemit_and_build.patch`.
+
+## Apple-aligned ladder (E1–E3)
+
+### Initial E1 frame-energy control (superseded by shift sweep)
+
+**Measurements.** Severance, 48 kHz stereo. `+64` prepends 64 zero samples per
+channel; `−64` drops the first 64 samples per channel. The source WAV was
+transformed with Python `wave` into `/tmp/ladder_e/Severance_{plus,minus}.wav`.
+Each arm was encoded with `FAAC_MDCT_ENERGY_DUMP=/tmp/ladder_e/Severance_<arm>.energy
+build-ladder/frontend/faac -b 128 -o /tmp/ladder_e/Severance_<arm>.m4a <source>`.
+`python3 probe/ladder/mdct_offset.py <energy> <reference dump> <label>`
+found the peak offset. The peak Pearson correlation was calculated by
+`python3 /tmp/ladder_e/corr.py`, using `mdct_offset.py`'s extracted energy
+series, paired at each offset, omitting startup frames 0–2. The latter is
+the normalized correlation; `mdct_offset.py` itself reports an unnormalized
+energy dot product. Reference dumps were under `probe/ladder/survey/`.
+
+| reference | FAAC input | peak Pearson correlation | peak offset (dump frame − FAAC frame) |
+|---|---|---:|---:|
+| Apple | unshifted | 0.8770 | +2 |
+| Apple | +64 | 0.9237 | +2 |
+| Apple | −64 | 0.8651 | +2 |
+| fdk | unshifted | 0.9636 | +2 |
+
+**Inference.** +64 improves the Apple match, but does not reach the specified
+0.95 minimum or fdk's unshifted 0.9636. Neither 64-sample direction passes.
+The reason for the remaining gap is unresolved. Per the E1 stop condition,
+scoring lag and the Apple re-emit known-answer score were **not run**.
+
+### Initial E2 and E3 stop (superseded below)
+
+Aligned step1 MOS, prequantization and line-level tables, and hybrid arms
+were not measured because E1 failed. In particular, no K0/K1 known-answer
+controls passed in this run, so there are no arm results to report. The
+existing uncommitted `hybrid_merge.py` transition-window fallback was kept.
+
+### E1 addendum (coordinator): shift sweep — +64 IS the Apple alignment
+
+The 0.95 threshold in the brief was arbitrary. The discriminating test is whether the correlation *peaks* at +64 across a sweep. Script: scratchpad shift/sweep.py (same frame-energy Pearson as /tmp/ladder_e/corr.py, FAAC -b 128, Severance).
+
+| shift | 0 | 16 | 32 | 48 | 56 | **64** | 72 | 80 | 96 | 128 | 256 | 512 | 1024 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Apple | .877 | .881 | .867 | .870 | .899 | **.924** | .915 | .891 | .870 | .894 | .866 | .846 | .877 (@1) |
+| fdk | **.964** | .930 | .924 | .933 | .934 | .933 | .916 | .898 | .896 | .899 | .920 | .852 | .964 (@1) |
+
+Apple peaks at exactly +64 (with shoulders at 56/72), and fdk peaks at 0. The 1024-sample row reproduces the 0 row one frame later, which is a known-answer check of the sweep. Apple's lower absolute level is expected from the metric: frame-energy correlation is taken against the reference's regular-band dequantized energy, and FAAC's own -b 128 window choices differ. The line-level check in E2 (step1 at Apple's forced windows) is the real alignment test.
+
+### E1 continued: scoring alignment and known answer
+
+**Measurements.** `python3 /tmp/ladder_e/all_lags.py` decoded with ffmpeg to stereo float PCM and cross-correlated a 30,000-sample source segment. `python3 /tmp/ladder_e/e2_score.py` trimmed the measured delay, converted with the established `faac-benchmark/scripts/score_clip.py` path, and scored serially with zimtohrli. Re-emit was driven by `probe/ladder/reemit_tool` from the archived Apple `*.bin` intermediates; `python3 /tmp/ladder_e/e3_controls.py` checked decoded PCM and byte identities. The `score_clip.py` import of unused ViSQOL failed in this sandbox, so `/tmp/ladder_e/visqol.py` raises `ImportError` to let its existing zimtohrli backend run. All audio scoring uses that same path.
+
+| clip | aligned step1 lag | Apple re-emit lag | Apple decoded-WAV MOS | re-emit MOS | PCM / MOS known answer |
+|---|---:|---:|---:|---:|---|
+| Severance | +64 | +2112 | 4.9237 | 4.9237 | PASS |
+| 21classic | +64 | +2112 | 4.8969 | 4.8969 | PASS |
+| velvet | +64 | +2112 | 4.7807 | 4.7807 | PASS |
+| Greensleeves | +64 | +2112 | 4.9026 | 4.9026 | PASS |
+| German | +64 | +2112 | 4.9246 | 4.9246 | PASS |
+
+`python3 /tmp/ladder_e/known_answer_pcm.py` confirmed that the re-emit PCM equals Apple’s decoded reference PCM exactly after 2112 samples on **all five clips** (maximum absolute difference 0 and zero differing samples over each source length). Both decoded WAVs scored identically on every clip. Scoring the Apple MP4 directly changes Greensleeves and German by 0.0001, a conversion-path difference; the E2 MP4 reference values below use that direct path. The prior energy sweep addendum establishes +64 as the alignment; its lower frame-energy coefficient is not used as the E2 gate.
+
+### E2: Apple step1 on the aligned grid
+
+**Measurements.** `python3 /tmp/ladder_e/e2_generate.py` prepended 64 zero samples per channel, encoded `FAAC_STEP1=<Apple intermediate> FAAC_STEP1_OFFSET=1 FAAC_STEP1_SPEC_DUMP=<path> build-ladder/frontend/faac -b 128`, and also encoded an unshifted control. `python3 probe/ladder/prequant_check.py <spec> <Apple dump> 2` produced the next table; fdk/Severance was rerun with the same command against its unshifted spec and dump. Each cell is per-line Pearson correlation.
+
+| clip | grid | 0–2 kHz | 2–6 kHz | 6–12 kHz | >12 kHz |
+|---|---|---:|---:|---:|---:|
+| Severance | Apple +64 | 0.9994 | 0.9923 | 0.9761 | 0.9558 |
+| Severance | Apple 0 | 0.1571 | 0.1890 | -0.1965 | -0.2381 |
+| 21classic | Apple +64 | 0.9997 | 0.9962 | 0.9736 | 0.9559 |
+| 21classic | Apple 0 | -0.3516 | 0.3605 | 0.1905 | -0.0684 |
+| velvet | Apple +64 | 0.9989 | 0.9716 | 0.9608 | 0.9440 |
+| velvet | Apple 0 | 0.8025 | 0.1321 | 0.1551 | -0.1104 |
+| Greensleeves | Apple +64 | 0.9997 | 0.9910 | 0.9725 | 0.9561 |
+| Greensleeves | Apple 0 | -0.3846 | 0.0744 | -0.0029 | -0.0652 |
+| German | Apple +64 | 0.9998 | 0.9944 | 0.9809 | 0.9617 |
+| German | Apple 0 | -0.2800 | 0.0468 | -0.0138 | -0.0264 |
+| Severance | fdk 0 | 0.9884 | 0.9819 | 0.9689 | 0.9540 |
+
+**Gate: PASS.** The aligned Apple correlations reach 0.9440–0.9998 by region across clips, near or above the fdk control; unshifted Apple correlations are markedly worse. Velvet >12 kHz is 0.9440, slightly below fdk/Severance’s 0.9540, while velvet’s other regions are 0.9608–0.9989. This is not a clearly lower aligned spectrum overall.
+
+The same script reports signed FAAC/reference dequantized magnitude ratio (median [IQR]) by `|q|`. On Severance, Apple +64 gives small 0.904 [0.711, 1.130], mid 1.003 [0.957, 1.049], large 0.999 [0.985, 1.013]; Apple 0 gives 0.040 [−0.737, 0.779], 0.066 [−0.832, 0.900], 0.112 [−0.712, 0.866]. The rerun fdk control gives 0.815 [0.588, 1.108], 0.943 [0.751, 1.074], 0.997 [0.882, 1.064].
+
+The same `prequant_check.py` runs give the signed prequant/reference ratio median [IQR] by region and `|q|` below. The full residual-dB and line-count outputs are `/tmp/ladder_e/*.{prequant,lines}`.
+
+| clip | Apple grid | 0–2 kHz | 2–6 kHz | 6–12 kHz | >12 kHz |
+|---|---|---|---|---|---|
+| Severance | +64 | 0.999 [0.920, 1.077] | 0.961 [0.775, 1.121] | 0.867 [0.677, 1.079] | 0.821 [0.634, 1.041] |
+| Severance | 0 | -0.079 [-0.943, 0.880] | 0.140 [-0.721, 0.859] | 0.056 [-0.653, 0.738] | -0.024 [-0.668, 0.648] |
+| 21classic | +64 | 0.998 [0.912, 1.081] | 0.945 [0.756, 1.117] | 0.825 [0.658, 1.045] | 0.777 [0.630, 0.991] |
+| 21classic | 0 | -0.057 [-0.939, 0.924] | 0.203 [-0.664, 0.881] | 0.022 [-0.639, 0.685] | 0.000 [-0.618, 0.614] |
+| velvet | +64 | 0.997 [0.871, 1.131] | 0.941 [0.755, 1.146] | 0.863 [0.677, 1.083] | 0.929 [0.722, 1.204] |
+| velvet | 0 | 0.096 [-0.811, 0.912] | 0.113 [-0.679, 0.813] | 0.085 [-0.597, 0.719] | -0.077 [-0.777, 0.663] |
+| Greensleeves | +64 | 1.003 [0.937, 1.081] | 0.992 [0.838, 1.156] | 0.936 [0.738, 1.152] | 0.869 [0.682, 1.107] |
+| Greensleeves | 0 | -0.102 [-1.005, 0.924] | 0.098 [-0.865, 0.965] | -0.016 [-0.813, 0.797] | 0.015 [-0.688, 0.711] |
+| German | +64 | 1.005 [0.960, 1.062] | 1.007 [0.898, 1.140] | 1.000 [0.839, 1.197] | 0.987 [0.794, 1.236] |
+| German | 0 | -0.115 [-1.016, 0.933] | 0.091 [-0.948, 1.049] | -0.031 [-0.971, 0.932] | -0.002 [-0.877, 0.873] |
+
+| clip | Apple grid | small `|q|` 1–2 | mid 3–8 | large >8 |
+|---|---|---|---|---|
+| Severance | +64 | 0.904 [0.711, 1.130] | 1.003 [0.957, 1.049] | 0.999 [0.985, 1.013] |
+| Severance | 0 | 0.040 [-0.737, 0.779] | 0.066 [-0.832, 0.900] | 0.112 [-0.712, 0.866] |
+| 21classic | +64 | 0.877 [0.691, 1.100] | 1.001 [0.955, 1.047] | 0.999 [0.987, 1.011] |
+| 21classic | 0 | 0.040 [-0.692, 0.749] | 0.210 [-0.822, 0.942] | 0.206 [-0.742, 0.961] |
+| velvet | +64 | 0.908 [0.714, 1.152] | 1.002 [0.945, 1.068] | 1.003 [0.991, 1.020] |
+| velvet | 0 | 0.035 [-0.694, 0.738] | 0.140 [-0.767, 0.904] | 0.738 [-0.273, 1.082] |
+| Greensleeves | +64 | 0.946 [0.749, 1.178] | 1.000 [0.947, 1.057] | 1.000 [0.988, 1.014] |
+| Greensleeves | 0 | 0.015 [-0.856, 0.875] | -0.026 [-0.861, 0.832] | -0.237 [-0.911, 0.602] |
+| German | +64 | 1.003 [0.805, 1.249] | 1.004 [0.945, 1.066] | 1.003 [0.989, 1.017] |
+| German | 0 | 0.008 [-1.002, 1.006] | -0.015 [-0.875, 0.861] | -0.107 [-0.882, 0.802] |
+
+`python3 probe/ladder/line_level.py <step1 dump> <Apple dump> 1` produced the match and ratio tables below. The aggregate includes all regular-band lines emitted by that script. Percentages are weighted from its region and `|q|` rows by `python3 /tmp/ladder_e/e2_tables.py`.
+
+| clip | regular lines | exact | ±1 | larger |
+|---|---:|---:|---:|---:|
+| Severance | 808,832 | 99.1% | 0.9% | 0.0% |
+| 21classic | 782,848 | 99.4% | 0.6% | 0.0% |
+| velvet | 517,440 | 97.9% | 1.9% | 0.2% |
+| Greensleeves | 604,352 | 97.5% | 2.5% | 0.0% |
+| German | 570,368 | 97.4% | 2.5% | 0.0% |
+
+Severance by frequency and reference `|q|` (same `line_level.py` output):
+
+| region | `|q|` | lines | exact | ±1 | larger |
+|---|---:|---:|---:|---:|---:|
+| 0-2k | 0 | 18,891 | 99.9% | 0.1% | 0.0% |
+| 0-2k | 1 | 22,774 | 99.8% | 0.1% | 0.1% |
+| 0-2k | 2-4 | 23,224 | 100.0% | 0.0% | 0.0% |
+| 0-2k | >4 | 15,615 | 100.0% | 0.0% | 0.0% |
+| 2-6k | 0 | 77,696 | 99.6% | 0.4% | 0.0% |
+| 2-6k | 1 | 56,541 | 99.7% | 0.2% | 0.1% |
+| 2-6k | 2-4 | 19,767 | 100.0% | 0.0% | 0.0% |
+| 2-6k | >4 | 5,108 | 100.0% | 0.0% | 0.0% |
+| 6-12k | 0 | 178,541 | 99.4% | 0.6% | 0.0% |
+| 6-12k | 1 | 52,219 | 98.7% | 1.1% | 0.3% |
+| 6-12k | 2-4 | 7,127 | 99.7% | 0.3% | 0.0% |
+| 6-12k | >4 | 1,729 | 100.0% | 0.0% | 0.0% |
+| >12k | 0 | 305,334 | 98.9% | 1.1% | 0.0% |
+| >12k | 1 | 21,422 | 91.5% | 8.3% | 0.1% |
+| >12k | 2-4 | 2,403 | 99.3% | 0.7% | 0.0% |
+| >12k | >4 | 441 | 100.0% | 0.0% | 0.0% |
+
+The signed dequantized step1/reference ratio from `line_level.py` is 1.000 [1.000, 1.000] in **each region of all five clips**; the per-region nonzero-line counts are in `/tmp/ladder_e/*_aligned.lines`.
+
+`python3 /tmp/ladder_e/e2_score.py` scored the aligned MP4, Apple reference and FAAC 112/128/144 controls; `python3 /tmp/ladder_e/e3_score.py` rescored each old misaligned step1 MP4. Bits adjustment uses each clip’s measured slope `(MOS144−MOS112)/log2(bytes144/bytes112)` and subtracts `slope*log2(bytes_variant/bytes_faac128)`.
+
+| clip | Apple ref MOS | aligned step1 MOS | old step1 MOS | FAAC-128 MOS | adj Apple | adj aligned | adj old |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Severance | 4.9237 | 4.9240 | 4.9000 | 4.8458 | +0.0717 | +0.0688 | +0.0425 |
+| 21classic | 4.8969 | 4.8954 | 4.8623 | 4.8129 | +0.0762 | +0.0744 | +0.0392 |
+| velvet | 4.7807 | 4.5886 | 4.5679 | 4.4807 | +0.2346 | +0.0487 | +0.0118 |
+| Greensleeves | 4.9027 | 4.8517 | 4.8225 | 4.8526 | +0.0357 | -0.0122 | -0.0556 |
+| German | 4.9245 | 4.9132 | 4.8985 | 4.9228 | +0.0028 | -0.0088 | -0.0331 |
+| **mean** | | | | | **+0.0842** | **+0.0342** | **+0.0010** |
+
+The old misaligned adjusted mean is +0.0010 when recomputed from the five raw rows. The earlier Stage C prose stated −0.0110, which does not equal its own per-clip table; the rescores here resolve that arithmetic discrepancy.
+
+### E3: hybrid q-swap, controls first
+
+**Measurements.** `python3 /tmp/ladder_e/e3_controls.py` ran `hybrid_merge.py K0/K1`, wrote ADTS with `probe/ladder/reemit_tool`, compared K0 bytes to each reference’s own re-emit, and compared K1 ffmpeg-decoded stereo float PCM after 2048 priming samples to step1’s decoded PCM. Both controls pass for every clip/reference over the full source length (zero differing samples). In transition windows with different ICS layout, the existing hybrid fallback uses reference ICS; K1 specifically uses step1 ICS so its known answer is exact. Layout fallback ICS counts, from `*.merge.log`:
+
+| clip | Apple K0 | Apple K1 | Apple fallback ICS | fdk K0 | fdk K1 | fdk fallback ICS |
+|---|---|---|---:|---|---|---:|
+| Severance | PASS | PASS | 4 | PASS | PASS | 2 |
+| 21classic | PASS | PASS | 2 | PASS | PASS | 2 |
+| velvet | PASS | PASS | 350 | PASS | PASS | 350 |
+| Greensleeves | PASS | PASS | 124 | PASS | PASS | 104 |
+| German | PASS | PASS | 80 | PASS | PASS | 88 |
+
+`python3 /tmp/ladder_e/e3_generate.py` generated Z, S, ZS, M, LO and HI, recomputing books in the writer. `python3 /tmp/ladder_e/e3_score.py` decoded each ADTS via ffmpeg, trimmed Apple by 2112 or fdk by 2048 samples, cropped to source length, and scored serially with `score_clip.py`. ADTS byte sizes are compared only among E3 arms. Δ = arm − K1 after each clip’s FAAC ladder slope byte adjustment. Gap recovered = adjusted Δ / adjusted (K0−K1). Pooled rows use mean MOS/adjusted Δ, sum bytes/changed lines, and ratio of summed adjusted gaps. All signs below were calculated as arm minus K1 from raw MOS and bytes by `python3 /tmp/ladder_e/derive.py`.
+
+#### apple hybrid arms
+
+| clip | arm | MOS | ADTS bytes | adj Δ vs K1 | gap recovered | lines changed |
+|---|---|---:|---:|---:|---:|---:|
+| Severance | K0 | 4.9237 | 164,827 | +0.0025 | +100.0% | 7,471 |
+| Severance | K1 | 4.9240 | 166,086 | +0.0000 | +0.0% | 0 |
+| Severance | Z | 4.9190 | 164,117 | -0.0006 | -23.7% | 4,699 |
+| Severance | S | 4.9234 | 166,231 | -0.0009 | -36.7% | 2,380 |
+| Severance | ZS | 4.9229 | 164,870 | +0.0016 | +64.3% | 7,079 |
+| Severance | M | 4.9245 | 165,623 | +0.0015 | +61.0% | 392 |
+| Severance | LO | 4.9240 | 165,676 | +0.0009 | +36.4% | 59 |
+| Severance | HI | 4.9237 | 164,827 | +0.0025 | +100.0% | 7,412 |
+| 21classic | K0 | 4.8969 | 161,500 | +0.0025 | +100.0% | 4,879 |
+| 21classic | K1 | 4.8954 | 162,211 | +0.0000 | +0.0% | 0 |
+| 21classic | Z | 4.8941 | 161,276 | -0.0000 | -0.6% | 3,439 |
+| 21classic | S | 4.8948 | 162,418 | -0.0009 | -35.7% | 1,199 |
+| 21classic | ZS | 4.8967 | 161,619 | +0.0021 | +85.3% | 4,638 |
+| 21classic | M | 4.8965 | 162,093 | +0.0013 | +51.0% | 241 |
+| 21classic | LO | 4.8955 | 162,199 | +0.0001 | +4.7% | 12 |
+| 21classic | HI | 4.8969 | 161,500 | +0.0025 | +100.0% | 4,867 |
+| velvet | K0 | 4.7807 | 178,031 | +0.1912 | +100.0% | 10,642 |
+| velvet | K1 | 4.5886 | 177,804 | +0.0000 | +0.0% | 0 |
+| velvet | Z | 4.7804 | 178,887 | +0.1877 | +98.1% | 6,575 |
+| velvet | S | 4.7836 | 180,127 | +0.1862 | +97.4% | 502 |
+| velvet | ZS | 4.7822 | 178,942 | +0.1893 | +99.0% | 7,077 |
+| velvet | M | 4.7832 | 179,257 | +0.1891 | +98.9% | 3,565 |
+| velvet | LO | 4.7867 | 180,074 | +0.1895 | +99.1% | 698 |
+| velvet | HI | 4.7763 | 178,043 | +0.1868 | +97.7% | 9,944 |
+| Greensleeves | K0 | 4.9026 | 144,724 | +0.0528 | +100.0% | 15,084 |
+| Greensleeves | K1 | 4.8517 | 145,403 | +0.0000 | +0.0% | 0 |
+| Greensleeves | Z | 4.8953 | 144,320 | +0.0466 | +88.3% | 6,341 |
+| Greensleeves | S | 4.8911 | 145,705 | +0.0386 | +73.0% | 4,386 |
+| Greensleeves | ZS | 4.8970 | 144,798 | +0.0470 | +89.0% | 10,727 |
+| Greensleeves | M | 4.8968 | 145,267 | +0.0455 | +86.1% | 4,357 |
+| Greensleeves | LO | 4.8910 | 145,326 | +0.0395 | +74.8% | 431 |
+| Greensleeves | HI | 4.9018 | 144,728 | +0.0520 | +98.5% | 14,653 |
+| German | K0 | 4.9246 | 125,188 | +0.0149 | +100.0% | 14,739 |
+| German | K1 | 4.9132 | 126,649 | +0.0000 | +0.0% | 0 |
+| German | Z | 4.9274 | 125,341 | +0.0173 | +116.3% | 5,265 |
+| German | S | 4.9312 | 125,914 | +0.0197 | +132.7% | 3,118 |
+| German | ZS | 4.9280 | 125,448 | +0.0177 | +118.7% | 8,383 |
+| German | M | 4.9307 | 125,558 | +0.0201 | +135.0% | 6,356 |
+| German | LO | 4.9311 | 125,815 | +0.0199 | +133.6% | 816 |
+| German | HI | 4.9244 | 125,184 | +0.0147 | +98.7% | 13,923 |
+| **pooled** | **K0** | **4.8857** | **774,270** | **+0.0528** | **+100.0%** | **52,815** |
+| **pooled** | **K1** | **4.8346** | **778,153** | **+0.0000** | **+0.0%** | **0** |
+| **pooled** | **Z** | **4.8832** | **773,941** | **+0.0502** | **+95.1%** | **26,319** |
+| **pooled** | **S** | **4.8848** | **780,395** | **+0.0485** | **+92.0%** | **11,585** |
+| **pooled** | **ZS** | **4.8854** | **775,677** | **+0.0515** | **+97.6%** | **37,904** |
+| **pooled** | **M** | **4.8863** | **777,798** | **+0.0515** | **+97.6%** | **14,911** |
+| **pooled** | **LO** | **4.8857** | **779,090** | **+0.0500** | **+94.7%** | **2,016** |
+| **pooled** | **HI** | **4.8846** | **774,282** | **+0.0517** | **+97.9%** | **50,799** |
+
+#### fdk hybrid arms
+
+| clip | arm | MOS | ADTS bytes | adj Δ vs K1 | gap recovered | lines changed |
+|---|---|---:|---:|---:|---:|---:|
+| Severance | K0 | 4.8921 | 165,575 | +0.1254 | +100.0% | 94,700 |
+| Severance | K1 | 4.7657 | 165,124 | +0.0000 | +0.0% | 0 |
+| Severance | Z | 4.7673 | 159,882 | +0.0135 | +10.8% | 22,652 |
+| Severance | S | 4.7742 | 168,836 | +0.0003 | +0.2% | 22,383 |
+| Severance | ZS | 4.7782 | 164,259 | +0.0144 | +11.5% | 45,035 |
+| Severance | M | 4.8752 | 166,455 | +0.1065 | +85.0% | 49,665 |
+| Severance | LO | 4.8534 | 165,988 | +0.0858 | +68.4% | 44,224 |
+| Severance | HI | 4.8036 | 164,690 | +0.0389 | +31.0% | 50,476 |
+| 21classic | K0 | 4.8462 | 159,393 | +0.1165 | +100.0% | 87,547 |
+| 21classic | K1 | 4.7286 | 158,576 | +0.0000 | +0.0% | 0 |
+| 21classic | Z | 4.7255 | 154,562 | +0.0026 | +2.2% | 18,940 |
+| 21classic | S | 4.7413 | 161,925 | +0.0081 | +6.9% | 19,640 |
+| 21classic | ZS | 4.7405 | 158,349 | +0.0122 | +10.5% | 38,580 |
+| 21classic | M | 4.8263 | 159,566 | +0.0963 | +82.7% | 48,967 |
+| 21classic | LO | 4.8124 | 159,225 | +0.0829 | +71.2% | 44,411 |
+| 21classic | HI | 4.7620 | 158,663 | +0.0333 | +28.6% | 43,136 |
+| velvet | K0 | 4.6044 | 164,938 | +0.4422 | +100.0% | 44,510 |
+| velvet | K1 | 4.1968 | 173,598 | +0.0000 | +0.0% | 0 |
+| velvet | Z | 4.5704 | 163,865 | +0.4126 | +93.3% | 24,449 |
+| velvet | S | 4.5725 | 171,076 | +0.3856 | +87.2% | 10,094 |
+| velvet | ZS | 4.5784 | 165,162 | +0.4153 | +93.9% | 34,543 |
+| velvet | M | 4.5960 | 169,816 | +0.4141 | +93.6% | 9,967 |
+| velvet | LO | 4.5919 | 169,989 | +0.4093 | +92.6% | 8,069 |
+| velvet | HI | 4.5798 | 165,006 | +0.4173 | +94.4% | 36,441 |
+| Greensleeves | K0 | 4.8922 | 143,568 | +0.1707 | +100.0% | 78,604 |
+| Greensleeves | K1 | 4.7313 | 147,073 | +0.0000 | +0.0% | 0 |
+| Greensleeves | Z | 4.7718 | 142,950 | +0.0520 | +30.5% | 20,458 |
+| Greensleeves | S | 4.7677 | 147,294 | +0.0358 | +21.0% | 12,098 |
+| Greensleeves | ZS | 4.7762 | 144,217 | +0.0528 | +31.0% | 32,556 |
+| Greensleeves | M | 4.8646 | 145,730 | +0.1370 | +80.3% | 46,048 |
+| Greensleeves | LO | 4.8411 | 146,628 | +0.1110 | +65.1% | 29,037 |
+| Greensleeves | HI | 4.8134 | 143,284 | +0.0927 | +54.3% | 49,567 |
+| German | K0 | 4.8944 | 130,542 | +0.2032 | +100.0% | 80,426 |
+| German | K1 | 4.6954 | 132,376 | +0.0000 | +0.0% | 0 |
+| German | Z | 4.7154 | 131,186 | +0.0227 | +11.2% | 15,664 |
+| German | S | 4.7220 | 132,798 | +0.0256 | +12.6% | 10,689 |
+| German | ZS | 4.7144 | 131,585 | +0.0208 | +10.2% | 26,353 |
+| German | M | 4.8768 | 131,532 | +0.1833 | +90.2% | 54,073 |
+| German | LO | 4.8147 | 132,492 | +0.1190 | +58.6% | 17,679 |
+| German | HI | 4.7995 | 130,578 | +0.1082 | +53.3% | 62,747 |
+| **pooled** | **K0** | **4.8259** | **764,016** | **+0.2116** | **+100.0%** | **385,787** |
+| **pooled** | **K1** | **4.6236** | **776,747** | **+0.0000** | **+0.0%** | **0** |
+| **pooled** | **Z** | **4.7101** | **752,445** | **+0.1007** | **+47.6%** | **102,163** |
+| **pooled** | **S** | **4.7155** | **781,929** | **+0.0911** | **+43.0%** | **74,904** |
+| **pooled** | **ZS** | **4.7175** | **763,572** | **+0.1031** | **+48.7%** | **177,067** |
+| **pooled** | **M** | **4.8078** | **773,099** | **+0.1875** | **+88.6%** | **208,720** |
+| **pooled** | **LO** | **4.7827** | **774,322** | **+0.1616** | **+76.4%** | **143,420** |
+| **pooled** | **HI** | **4.7517** | **762,221** | **+0.1381** | **+65.3%** | **242,367** |
+
+**Z/S line character, measured.** `python3 /tmp/ladder_e/zs_character.py` walks each reference’s regular bands, corresponding step1 quantized lines, and `FAAC_STEP1_SPEC_DUMP` spectrum; `python3 /tmp/ladder_e/character_summary.py` pools counts. Frequencies are band-center regions; band peak/avg is maximum absolute prequant coefficient divided by mean absolute coefficient in that band, reported as the range of per-clip medians. “Isolated” means exactly one changed line in its band; “whole” means every regular line in the band changed. The percentages are shares of changed lines.
+
+| reference | rule | changed lines | 0–2k | 2–6k | 6–12k | >12k | band peak/avg median range | isolated | whole |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| apple | Z | 26,319 | 1.7% | 9.1% | 21.0% | 68.2% | 2.92–3.47 | 14.9% | 0.00% |
+| apple | S | 11,585 | 3.8% | 16.9% | 36.9% | 42.4% | 2.90–3.09 | 30.6% | 0.00% |
+| fdk | Z | 102,163 | 13.7% | 25.6% | 26.5% | 34.2% | 2.93–3.47 | 29.3% | 0.13% |
+| fdk | S | 74,904 | 20.4% | 35.0% | 30.4% | 14.1% | 2.94–3.64 | 42.5% | 0.00% |
+
+**Inference.** Apple’s +64 spectrum and quantized lines now nearly reproduce its reference; the prior misaligned Apple result cannot diagnose its quantizer. For fdk, M and LO recover much more of the K0−K1 gap than Z/S on most clips. Velvet’s 350 fallback ICS in each reference make its hybrid arms unusually close to K0 by construction; its arm gains should not be attributed wholly to each line-swap rule. Small Apple K0−K1 gaps on Severance and 21classic also make their per-clip recovery percentages sensitive to small score changes.
+
+## Stage F: Apple decision swaps
+
+### F0: force transition windows
+
+**Measurement.** `libfaac/frame.c` now applies the matched reference window
+sequence before `FilterBank` for LONG_SHORT and SHORT_LONG as well as the
+ordinary long and short sequences. `BlockSwitch` still runs for an unmatched
+record; its result is overridden for a matched record. `python3
+/tmp/ladder_f/f0_generate.py` encoded the five +64-sample inputs using
+`FAAC_STEP1=<Apple bin> FAAC_STEP1_OFFSET=1`, decoded with
+`FAAD_LADDER_DUMP=1 FAAD_DUMP=<path>`, and compared window sequence, shape,
+grouping and `max_sfb` against the Apple dump at dump-frame offset +1.
+
+| clip | paired ICS | unforced ICS | F0 decode |
+|---|---:|---:|---|
+| Severance | 940 | 0 | PASS |
+| 21classic | 908 | 0 | PASS |
+| velvet | 940 | 0 | PASS |
+| Greensleeves | 820 | 0 | PASS |
+| German | 738 | 0 | PASS |
+
+`python3 /tmp/ladder_f/f0_score.py` used ffmpeg stereo float decode, removed
+the measured 64-sample +64-input lag, cropped to source length, and ran
+`faac-benchmark/scripts/score_clip.py` serially with zimtohrli. It rescored
+Apple and FAAC 112/128/144 MP4s in this job. `python3
+/tmp/ladder_f/f0_derive.py` computed each clip's ladder slope and
+bits-adjusted delta versus FAAC-128 from those scores and file sizes.
+
+| clip | F0 A MOS | F0 A bytes | Apple MOS | Apple bytes | FAAC-128 MOS | adj A | adj Apple |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Severance | 4.9240 | 165,185 | 4.9237 | 164,154 | 4.8458 | +0.0697 | +0.0717 |
+| 21classic | 4.8954 | 161,756 | 4.8969 | 161,500 | 4.8129 | +0.0744 | +0.0762 |
+| velvet | 4.7876 | 180,306 | 4.7807 | 178,939 | 4.4807 | +0.2364 | +0.2346 |
+| Greensleeves | 4.8890 | 145,124 | 4.9027 | 146,220 | 4.8526 | +0.0250 | +0.0357 |
+| German | 4.9313 | 125,695 | 4.9245 | 126,356 | 4.9228 | +0.0111 | +0.0028 |
+
+All F0 streams decoded cleanly: the decoder logs in `/tmp/ladder_f/` report
+zero non-END terminations and zero concealment. The E3 fallback is now zero,
+so the requested F arm (K1 plus reference ICS only at a fallback) has no
+ICS to replace and was skipped.
+
+### F1: FAAC decisions and KF/KA gate — KF FAIL; stopped
+
+**Measurement.** `python3 /tmp/ladder_f/f1_generate.py` encoded each +64 input
+with normal `faac -b 128`, dumped it through the same FAAD decoder, and
+produced `/tmp/ladder_f/*_F1.bin` with `parse_dump.py`. The FAAC-normal and
+F0 dumps have the same decoded-frame numbering (offset 0). `python3
+/tmp/ladder_f/f1_lag.py` independently measured **zero PCM sample lag**
+between the two encodes on all five clips.
+
+`python3 /tmp/ladder_f/controls.py` reran KA from Apple's binary at offset
+1 and KF from FAAC's own binary at offset 0 on the same +64 input. It
+extracted ADTS from each MP4 with FAAD, compared bytes, decoded stereo
+float PCM with ffmpeg, and found the first differing PCM sample. The frame
+column is zero-based `sample // 1024`.
+
+| clip | KA ADTS/PCM | KF ADTS | KF PCM max absolute difference | first differing sample | first differing frame |
+|---|---|---|---:|---:|---:|
+| Severance | PASS / exact | FAIL | 0.02277935 | 0 | 0 |
+| 21classic | PASS / exact | FAIL | 0.06492334 | 32,769 | 32 |
+| velvet | PASS / exact | FAIL | 0.22699441 | 0 | 0 |
+| Greensleeves | PASS / exact | FAIL | 0.11354631 | 0 | 0 |
+| German | PASS / exact | FAIL | 0.01622593 | 0 | 0 |
+
+**Inference.** Transition forcing removes the observed ICS-layout fallback,
+but KF still does not reproduce FAAC's natural encode. The cause of KF's
+spectral difference was not diagnosed in this stage. Per the required
+control gate, F2 WIN/BW/CLS/SF/MS/TNS/ALLF arms, their scores, and the
+decision-statistics table were **not run**. There is no arm attribution to
+report until KF passes.
+
+### F1b: KF diagnosis
+
+**Measurements.** `python3 /tmp/ladder_f/dump_kf.py` decoded the original KF streams with `FAAD_LADDER_DUMP=1 FAAD_DUMP=<path>`. `python3 /tmp/ladder_f/diff_ics.py` compared those dumps to the FAAC-normal dumps from F1 at frame offset 0. The table reports the percent of paired ICS (window, gain, TNS, pulse, any quantized-line change) or paired bands (class, book, SF, M/S); PNS energy and IS position use only paired bands of the named class. Class means ZERO/regular/PNS/IS, while “book” compares the exact regular Huffman book too. Pulse is the dump’s pulse-present flag. All streams here are one CPE, element 0.
+
+| component | unit | Severance | 21classic | velvet | Greensleeves | German |
+|---|---|---:|---:|---:|---:|---:|
+| window sequence | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| window shape | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| grouping | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| max_sfb | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| band class | bands | 0.00% | 0.00% | 0.01% | 0.00% | 0.00% |
+| exact Huffman book | bands | 0.13% | 0.24% | 4.51% | 5.68% | 3.09% |
+| SF | bands | 0.00% | 0.00% | 0.01% | 0.00% | 0.00% |
+| global gain | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| M/S mask | bands | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| TNS | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| PNS energy | PNS bands | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| IS position | IS bands | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| pulse present | ICS | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+| any q-line mismatch | ICS | 7.55% | 7.82% | 49.89% | 46.22% | 48.92% |
+
+The same script counts quantized lines and, separately, lines in bands whose **entire recorded syntax** matched (window/shape/grouping, max_sfb, class, exact book, SF, global gain, M/S, TNS, pulse). Thus the latter differences cannot be explained by a different transmitted decision.
+
+| clip | paired ICS | paired bands | differing q lines / regular lines | differing q lines with all syntax matching | first differing dump frame / element / component |
+|---|---:|---:|---:|---:|---|
+| Severance | 940 | 41,190 | 459 / 563,968 (0.081%) | 393 / 562,892 (0.070%) | 1 / CPE ch0 / book and q |
+| 21classic | 908 | 39,112 | 798 / 577,500 (0.138%) | 709 / 575,244 (0.123%) | 34 / CPE ch0 / book and q |
+| velvet | 940 | 25,468 | 30,197 / 468,800 (6.441%) | 25,261 / 442,400 (5.710%) | 1 / CPE ch0 / q |
+| Greensleeves | 820 | 34,634 | 24,984 / 402,648 (6.205%) | 20,740 / 362,080 (5.728%) | 1 / CPE ch0 / q |
+| German | 738 | 34,868 | 12,864 / 342,984 (3.751%) | 10,995 / 319,444 (3.442%) | 1 / CPE ch0 / q |
+
+**Cause 1, measured and verified: intensity stereo changes the left spectrum and its quantizer bias.** `python3 /tmp/ladder_f/q_context.py` found that 109/459, 624/798, 30,123/30,197, 24,834/24,984, and 11,827/12,864 original regular-line differences (clip order above) sat in the left channel with an IS right partner. `stereo.c::apply_is` replaces the left spectrum with a scaled sum/difference and sets `cl->sf[band]` to the left energy bias before `BlocQuant`; the old step1 applied neither. The self-reference probe now derives that transform and bias from the dumped IS decision. `python3 /tmp/ladder_f/verify_is_bias.py` and `diff_is_bias.py` measured the staged reduction below. KA was byte/PCM exact on each staged rerun.
+
+| clip | original differing regular q lines | after self IS transform + SF bias | after M/S-ZERO fix |
+|---|---:|---:|---:|
+| Severance | 459 | 350 | 0 |
+| 21classic | 798 | 174 | 0 |
+| velvet | 30,197 | 74 | 0 |
+| Greensleeves | 24,984 | 150 | 0 |
+| German | 12,864 | 1,037 | 0 |
+
+**Cause 2, measured and verified: M/S happens before band zeroing.** `python3 /tmp/ladder_f/remaining_context.py` found that every residual line after the IS-bias stage had M/S enabled and the opposite channel’s final book ZERO: 350, 174, 74, 150, and 1,037 lines. In `stereo.c`, `apply_ms_full` changes both spectra before `quantize.c::assign_band_codebooks` can zero one side. The previous `Step1ApplyMS` skipped such a band because it looked only at final regular books. In FAAC self mode it now applies M/S when one side was later zeroed, in either channel. `python3 /tmp/ladder_f/verify_self_full.py` first cleared four clips; the remaining ten Severance lines were the mirror (right regular, left ZERO). Adding that case cleared Severance too.
+
+**Other candidates.** The initial dump comparison measured identical PNS energy, IS position, SF, global gain, TNS, pulse, and M/S mask. The two fixes above removed every decoded and ADTS difference without changing `BlocQuant`, PNS, the rate loop, or TNS. This rules those paths out as necessary causes of the observed KF mismatch on these five clips; it does not establish their behavior on other inputs.
+
+**Final controls: PASS.** `CCACHE_DISABLE=1 meson compile -C build-ladder` rebuilt the final code. `python3 /tmp/ladder_f/verify_clean.py` ran KF with `FAAC_STEP1_SELF_IS=1` and FAAC’s own binary at offset 0, and KA with Apple’s binary at offset 1 and the self mode unset. It extracted ADTS and decoded stereo float PCM for all five clips. **KF and KA were byte-identical to their respective targets on all five; decoded PCM maximum absolute difference was 0 in every comparison.** The explicit self mode preserves the established Apple KA spectrum path. Since KF is exact, a separate KF MOS and byte-adjusted score was not needed. F2 was not run in this diagnosis task.

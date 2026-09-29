@@ -43,14 +43,19 @@ int Step1Lookup(struct Step1Ctx *s1, int ciFrame, int ch, ReemitICS *out);
 void Step1ApplyTns(CoderInfo *ci, float *spec, const ReemitICS *rec, int sr_idx);
 
 /* True M/S butterfly (FAAC's own 0.5*(L+R)/0.5*(L-R) convention, exactly
- * inverted by a decoder's l=m+s/r=m-s) on specL/specR, applied only where
- * BOTH channels' reference codebook for that band is regular (1-11) *and*
- * the reference's ms flag is set -- matching libfaad/stereo.c's
- * apply_ms_stereo, which skips the transform entirely otherwise (a lone
- * PNS/zero/intensity side never gets butterflied). sfb_offset/max_sfb/
- * groups must already match between left and right (common_window). */
+ * inverted by a decoder's l=m+s/r=m-s) on specL/specR, where the ms flag
+ * is set and both channels are regular. In self_mode a band with one side
+ * subsequently reclassed ZERO is also transformed, matching AACstereo's
+ * earlier spectrum change. sfb_offset/max_sfb/groups must match. */
 void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
-                   const int *sfb_offset, float *specL, float *specR);
+                   const int *sfb_offset, float *specL, float *specR,
+                   int self_mode);
+
+/* Reproduce AACstereo's intensity transform and left-channel SF bias for a
+ * FAAC self-reference. External references preserve the KA baseline. */
+void Step1ApplySelfIS(const ReemitICS *left, const ReemitICS *right,
+                      const int *sfb_offset, float *specL, float *specR,
+                      int *left_sf_bias);
 
 /* Quantizes ci's (already TNS/M-S-adjusted) spectrum at rec's absolute
  * per-band class/scalefactor/global_gain, using FAAC's own qfunc-equivalent
@@ -63,12 +68,9 @@ void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
 /* scale: uniform gain multiplier, 1.0 for a normal call. See step1.c for
  * when frame.c's retry loop passes something smaller. */
 void Step1Quantize(CoderInfo *ci, float *spec, const ReemitICS *rec, int *zero_count,
-                    float scale);
+                    float scale, const int *sf_bias);
 
-/* Total frames (process-wide, across every faacEncEncode call) where a
- * reference's window transition (LONG_SHORT/SHORT_LONG) was skipped -- see
- * frame.c. Known gap: forcing one frame's transition type independent of
- * FAAC's own previous-frame state corrupts the overlap-add. */
+/* Legacy probe counter; matched transition windows are now forced. */
 long Step1TransitionSkippedCount(void);
 
 /* Total frames (process-wide) that needed the uniform-attenuation overflow

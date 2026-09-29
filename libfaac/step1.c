@@ -160,7 +160,8 @@ void Step1ApplyTns(CoderInfo *ci, float *spec, const ReemitICS *rec, int sr_idx)
 }
 
 void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
-                   const int *sfb_offset, float *specL, float *specR)
+                   const int *sfb_offset, float *specL, float *specR,
+                   int self_mode)
 {
     int absw = 0;
     for (int g = 0; g < left->num_groups; g++) {
@@ -176,7 +177,13 @@ void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
              * a mismatched PNS/regular pair skips the transform entirely.
              * Only apply the real butterfly when both sides are genuinely
              * coded spectral data. */
-            if (!(l_reg && r_reg)) continue;
+            /* FAAC can M/S-transform a band before BlocQuant later drops
+             * its side to ZERO. The self-reference's ms flag retains that
+             * analysis transform even though the final side book is ZERO. */
+            if (!(l_reg && r_reg) &&
+                !(self_mode && (l_reg || r_reg) &&
+                  (l_reg || lcb == HCB_ZERO) &&
+                  (r_reg || rcb == HCB_ZERO))) continue;
             int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
             for (int w = 0; w < glen; w++) {
                 int base = (left->win_seq == ONLY_SHORT_WINDOW) ? (absw + w) * 128 : 0;
@@ -189,6 +196,54 @@ void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
         }
         absw += glen;
     }
+}
+
+void Step1ApplySelfIS(const ReemitICS *left, const ReemitICS *right,
+                      const int *sfb_offset, float *specL, float *specR,
+                      int *left_sf_bias)
+{
+    int absw = 0;
+    for (int g = 0; g < right->num_groups; g++) {
+        int glen = right->group_len[g];
+        for (int sfb = 0; sfb < right->max_sfb; sfb++) {
+            int band = g * right->max_sfb + sfb;
+            int cb = right->band[band].cb;
+            if (cb != HCB_INTENSITY && cb != HCB_INTENSITY2) continue;
+            int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
+            float el = 0.0f, er = 0.0f, elr = 0.0f;
+            for (int w = 0; w < glen; w++) {
+                int base = (right->win_seq == ONLY_SHORT_WINDOW)
+                         ? (absw + w) * BLOCK_LEN_SHORT : 0;
+                for (int k = lo; k < hi; k += 4) {
+                    float l0 = specL[base+k], r0 = specR[base+k];
+                    float l1 = specL[base+k+1], r1 = specR[base+k+1];
+                    float l2 = specL[base+k+2], r2 = specR[base+k+2];
+                    float l3 = specL[base+k+3], r3 = specR[base+k+3];
+                    el += l0*l0; el += l1*l1; el += l2*l2; el += l3*l3;
+                    er += r0*r0; er += r1*r1; er += r2*r2; er += r3*r3;
+                    elr += l0*r0; elr += l1*r1; elr += l2*r2; elr += l3*r3;
+                }
+            }
+            float etot = el + er;
+            float dom = cb == HCB_INTENSITY ? etot + 2.0f*elr
+                                             : etot - 2.0f*elr;
+            if (el <= 0.0f || er <= 0.0f || dom <= 0.0f) continue;
+            left_sf_bias[band] = lrintf(log10f(el * (1.0f / etot)) * SF_STEP_ENRG);
+            float vfix = sqrtf(etot / dom);
+            for (int w = 0; w < glen; w++) {
+                int base = (right->win_seq == ONLY_SHORT_WINDOW)
+                         ? (absw + w) * BLOCK_LEN_SHORT : 0;
+                for (int k = lo; k < hi; k++) {
+                    specL[base+k] = cb == HCB_INTENSITY
+                                  ? (specL[base+k] + specR[base+k]) * vfix
+                                  : (specL[base+k] - specR[base+k]) * vfix;
+                    specR[base+k] = 0.0f;
+                }
+            }
+        }
+        absw += glen;
+    }
+    (void)left;
 }
 
 /* Mirrors quantize.c's sfac_to_gain/gain_with_overflow_clamp exactly (values
@@ -235,7 +290,7 @@ static int step1_quantize_line(float val, float gain)
 }
 
 void Step1Quantize(CoderInfo *ci, float *spec, const ReemitICS *rec, int *zero_count,
-                    float scale)
+                    float scale, const int *sf_bias)
 {
     int qs[FRAME_LEN];
     int qlen = 0;
@@ -286,7 +341,10 @@ void Step1Quantize(CoderInfo *ci, float *spec, const ReemitICS *rec, int *zero_c
              * for a valid bitstream on the rare frame that doesn't fit --
              * the alternative is dropping the frame, which is worse for
              * this ladder's whole-clip decode-based scoring. */
-            float gain = step1_gain(sf, band_peak) * scale;
+            /* AACstereo leaves an intensity-band bias in the left channel's
+             * sf[] before BlocQuant. The transmitted absolute SF includes
+             * that bias, but its quantizer gain uses the relative SF. */
+            float gain = step1_gain(sf - (sf_bias ? sf_bias[band] : 0), band_peak) * scale;
 
             int band_start = qlen;
             int maxq = 0;

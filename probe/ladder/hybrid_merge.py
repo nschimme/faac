@@ -127,6 +127,7 @@ def main():
     empty_packed = empty.pack()
     n_written = 0
     total_changed = total_lines = 0
+    fallback_ics = 0
     with open(out_path, 'wb') as out:
         for rf in range(1, max_ref_frame + 1):
             sf = rf - 1  # step1's own decoded frame number for this reference frame
@@ -149,6 +150,28 @@ def main():
                     # number by one relative to the reference, corrupting
                     # every subsequent comparison silently.
                     step1_ics = ref_ics
+                elif (step1_ics.win_seq != ref_ics.win_seq
+                      or step1_ics.max_sfb != ref_ics.max_sfb
+                      or step1_ics.num_groups != ref_ics.num_groups
+                      or step1_ics.group_len != ref_ics.group_len):
+                    # step1's own known gap: a transition window
+                    # (LONG_SHORT/SHORT_LONG) is excluded from forcing (see
+                    # LADDER_RESULT.md), so that one frame falls back to
+                    # FAAC's natural encode, whose window/grouping and band
+                    # layout won't generally match the reference's -- the
+                    # band-major position-for-position assumption below
+                    # requires matching layouts. Falls back to K0 (fdk's
+                    # own value) for this one frame, same as the missing-
+                    # counterpart case above, rather than silently indexing
+                    # step1_ics.quantized[] at positions that mean a
+                    # different band in step1's own (different) layout.
+                    fallback_ics += 1
+                    if arm == 'K1':
+                        # Preserve K1's exact step1 known answer on a
+                        # transition whose ICS layout cannot be merged.
+                        ref_ics = step1_ics
+                    else:
+                        step1_ics = ref_ics
                 merged, changed, total = merge_quantized(arm, ref_ics, step1_ics)
                 total_changed += changed
                 total_lines += total
@@ -176,7 +199,8 @@ def main():
                 out.write(new_ics.pack())
             n_written += 1
     print(f"arm={arm}: wrote {n_written} frames; lines changed (vs step1) "
-          f"{total_changed}/{total_lines} ({100*total_changed/total_lines:.1f}%)")
+          f"{total_changed}/{total_lines} ({100*total_changed/total_lines:.1f}%); "
+          f"layout fallback ICS={fallback_ics}")
 
 
 if __name__ == '__main__':
