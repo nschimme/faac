@@ -1,4 +1,4 @@
-# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-29)
+# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-29, updated after Stage S4)
 
 You are picking up a research programme on the FAAC AAC encoder (`nschimme/faac`).
 The goal is to reach the perceptual quality (MOS) of Apple's AAC encoder, the
@@ -10,7 +10,91 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
-## 0. Status after Stage S3 (2026-09-29, third session) — read this first
+## 0. Status after Stage S4 (2026-09-29, fourth session) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S4-H", "Stage S4-B2". Scripts `scripts/s4/`, results `results/s4/`, pre-registered
+rules `results/s4/prereg.md`. §0-S3 below is history; its steps 1 (H) and 2 (B2) are done.
+
+**Scoreboard** (base = master + #595 + #599 via probe `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`; 49 clips, bits-adjusted
+with FAAC's own slope; positive = the reference leads):
+
+| rung | vs Apple | vs fdk-aac |
+|---|---:|---|
+| LC 64k (`--object-type lc`) | −0.48 (FAAC far ahead; partly PNS vs Apple's holes) | not measured on this base |
+| LC 96k | −0.003 (par) | not measured on this base |
+| LC 128k | **+0.008 (29/18)**; the lever is Apple's sf below 6 kHz (rSFr +0.015) | ≈ par (S2, older base) |
+| HE 32k | −0.011 (par; Apple spends +8.7 % bytes, raw 3.891 vs 3.817) | not measured on this base (old: fdk ahead 0.07–0.13) |
+| HE 48k | no Apple refs | not measured |
+
+So the Apple goal is met except a small LC 128k residual; **whether the fdk goal is met is unknown**. The parity rests on
+#595 and #599, which are not merged.
+
+**What S4 settled:**
+- H: the SBR crossover (`FAAC_SBR_START`) is dead. Every lower value loses at HE 32k (monotone; 6 kHz −0.14, fdk's
+  5.6 kHz −0.28) and none wins at 48k (best −0.006). 11.6 kHz (start 15, the 4-bit maximum) stays. Apple: kx 16, stop
+  k2 38 (14.3 kHz), freq_scale 2 + alter. fdk-aac 2.0.3: kx 15 at 32k, kx 22 at 48k, stop 15.4 / 16.9 kHz, freq_scale 2
+  + alter. FAAC: kx 31, stop k2 54 (20.3 kHz), freq_scale 3 (32k) / 1 (48k), no alter.
+- Bug found: `pick_stop_freq()` gave an invalid k2 − kx span at kx ≤ 16 (48 kHz) → decoders drop SBR. Latent in
+  production. **PR #600** (search from index 0), CI bit-identical, −16 B. The probe branch carries the same fix.
+- B2: Apple's sf gain does not split. Level only (rSFlev) and shape only (rSFshape) each lose (−0.02…−0.05); by region
+  the gain is all below 6 kHz, about half 0–2 kHz and half 2–6 kHz (2–6 kHz 38/3 at 128k), none ≥ 50 % of rSFr, so no
+  encoder knob was screened. Apple's sf are ~2.5 steps coarser than FAAC's on the regular-in-both set.
+
+**Open PRs on nschimme/faac:** #595 (sf smoothing), #599 (LC drop ratio 12), #596 (LFE long), #597 (empty M/S mask),
+#600 (SBR stop span). CI failures on them are handled by another agent.
+
+### Next steps, in order
+
+1. **F2 — measure fdk-aac on this base** (decides whether the fdk half of the goal is met; cheap, no ladder).
+   Rungs HE 32k, HE 48k, LC 64k, LC 96k, LC 128k, 49 clips, 48 kHz stereo. fdk: `fdkaac -p 5 -b <N>000` (HE) and
+   `-p 2 -b <N>000` (LC), m4a output. FAAC: probe base, `--object-type lc` for LC below 72k. Score both with
+   `score_clip.py` (it aligns by cross-correlation, so the HE decoder lag doesn't matter); bits-adjust fdk vs FAAC with
+   FAAC's slope pair around each rung (HE 28/40k, 40/56k; LC 56/72k, 80/112k, 112/144k) because fdk's realised bytes
+   differ. Report adj, median, W/L, bytes and the worst clips per rung. Pre-register "at par" as |adj| < 0.005 or FAAC
+   ahead. Control: re-score 5 clips twice, identical MOS. Where fdk leads by ≥ 0.01, that rung is the next target.
+2. **H2 — HE SBR stop and frequency scale** (only if F2 or Apple shows an HE gap worth chasing, or as the HE lever
+   after F2). Probe knobs exist: `FAAC_SBR_STOP` (bs_stop_freq; pick_stop_freq searches 0–13), `FAAC_SBR_FREQ_SCALE`
+   (0–3), `FAAC_SBR_ALTER` (0/1). Sweep at the base crossover: stop giving ~14, 15.5, 17, 18.5 kHz (read k2 with
+   `FAAC_SBR_DUMPTAB=1`), freq_scale 2 with alter 1 (what Apple and fdk use). HE 32k and 48k, same rule as H1
+   (mean ≥ +0.005, W > L, no clip < −0.05, bytes ±12.5 %, bracket centre, both rates not worse). Knob at its neutral
+   value = base, PCM 49/49 first (`s4/knob_ctl.py`). A crossover retry only together with a stop/scale that passes.
+3. **B3 — fit Apple's 0–6 kHz sf allocation** (LC 128k residual +0.008; ceiling rSFr +0.015). Level and shape must move
+   together, so fit Apple − FAAC sf per band on the 0–6 kHz regular-in-both set against features within the frame
+   (band energy relative to the frame's 0–6 kHz mean, tonality/flatness, band width, the #595 smoothing residual), on
+   top of #595. Fit on even clips, test on odd (and vice versa). Screen the fitted rule offline with step1
+   (`s4/b2_make.py` pattern, K0 control) at 96k and 128k; promote to a probe knob with the rate loop on only if the
+   offline arm is ≥ +0.005 with W > L and bytes ±12.5 %, then the H1-style rule, then a focused PR.
+4. Parked: LC 64k, windows, M/S rules (reopen D only once B3 moves the allocation), HE swap arms (KA fails), the
+   crossover alone.
+
+### S4 session facts
+- Bootstrap in a fresh container (about 15 min):
+  `apt-get update && apt-get install -y ffmpeg meson ninja-build python3.12-venv`;
+  `git clone https://github.com/nschimme/faac-benchmark /opt/faac-benchmark`; `python3.12 -m venv /opt/venv312`;
+  `/opt/venv312/bin/pip install -r /opt/faac-benchmark/requirements.txt`; datasets: for (PMLT2014, PMLT2014),
+  (TCD-VOIP, harte2015tcd), (SoundExpert, SoundExpert) `git clone --depth 1 --branch <tag>
+  https://github.com/nschimme/<Repo>` then `git archive --format=zip --prefix=<Repo>-<tag>/ HEAD >
+  /opt/faac-benchmark/data/temp/<Repo>.zip`, then `setup_datasets.py` (49 WAVs in `data/external/audio`).
+  `git fetch origin faad-ladder-dump:refs/remotes/origin/faad-ladder-dump` BEFORE `jules_setup.sh`, else its FAAD
+  step fails. Run `jules_setup.sh` with `/opt/venv312/bin` first on PATH.
+- Static probe: `meson setup /home/user/lw/bstatic -Ddefault_library=static --buildtype=release`, copy
+  `frontend/faac` to `/home/user/lw/bin/faac_probe`; `faac_lc` = a wrapper adding `--object-type lc`.
+- fdk-aac with HE: `git clone mstorsjo/fdk-aac` → `cmake -B b -DCMAKE_INSTALL_PREFIX=/opt/fdk -DBUILD_SHARED_LIBS=ON`,
+  build, install; `git clone nu774/fdkaac` → `autoreconf -i`, `PKG_CONFIG_PATH=/opt/fdk/lib/pkgconfig ./configure
+  --prefix=/opt/fdk`, make install; run as `LD_LIBRARY_PATH=/opt/fdk/lib /opt/fdk/bin/fdkaac`.
+- Reading SBR parameters of any stream: `ffmpeg -i x.m4a -c copy -f adts x.aac`, then
+  `FAAD_DUMP=d.txt FAAD_LADDER_DUMP=1 /tmp/faad-ladder-dump/build_faad/frontend/faad -o d.wav x.aac`; `H` records:
+  awk `$5` start, `$6` stop, `$8` freq_scale, `$9` alter, `$16` kx, `$17` M (k2 = kx + M).
+- Timing on 4 cores: one sweep arm (49 clips, encode + serial score) ≈ 2.5 min; a B2 prep per rate ≈ 15 min and
+  6–9 GB (delete `*.ci`, `*_H_W.m4a`, unused `*_G_*.bin` after building arms).
+- **Never let two jobs write the same `results.json`** (sweep.py and ref_score.py re-read and rewrite it per clip; a
+  concurrent writer silently reverted a rename in S4). One results file per job, or chain jobs.
+- `faac ... 2>&1 | grep -m1` kills faac with SIGPIPE mid-encode (truncated m4a, "moov atom not found"): redirect
+  stderr to a file first. `rm` on `$var/*` is blocked by the sandbox: write `"${d:?}"/*`.
+- HE decodes through ffmpeg lag the source (FAAC 994, Apple 3074, fdk 3009 samples); `score_clip.py` aligns by
+  cross-correlation, so raw m4a scoring is fair across encoders.
+
+## 0-S3. Status after Stage S3 (2026-09-29, third session)
 
 Details: `LADDER_RESULT.md` → "Stage S3-D", "S3-C", "S3-E". Scripts `scripts/s3/`, results `results/s3/`,
 pre-registered rules `results/s3/prereg.md`. The S2 section below is history; its next steps are done.
