@@ -303,7 +303,7 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
     int smooth_sfac[MAX_SCFAC_BANDS];
     int smooth = ci->block_type != ONLY_SHORT_WINDOW;
     static float alpha = -1.0f;
-    if (alpha < 0.0f) { const char *e = getenv("FAAC_SF_SMOOTH"); alpha = e ? (float)atof(e) : 0.6f; }
+    if (alpha < 0.0f) { const char *e = getenv("FAAC_SF_SMOOTH"); alpha = e ? (float)atof(e) : 0.0f; /* probe default off: keeps Stage E-H controls; set FAAC_SF_SMOOTH=0.6 for PR #595 behaviour */ }
     if (alpha == 0.0f) smooth = 0;
     if (smooth)
     {
