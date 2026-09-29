@@ -1126,9 +1126,9 @@ the Stage H way; no encoder decision rests on them, and no separate decision rul
 |---|---:|---:|---:|---:|---:|---:|
 | LC 64k | **−0.48** (1/48) | −0.023 (18/31) | −0.50 (2/47) | +0.005 (22/27) | −0.27 (3/46) | −0.062 (14/33) |
 | LC 96k | −0.003 (26/23) | −0.027 (1/48) | −0.030 (21/28) | **+0.0135 (35/12)** | −0.020 (18/31) | −0.018 (25/19; girl −0.68, Mohicans −0.36) |
-| LC 128k (S3-D) | −0.008 | −0.006 (S2) | +0.001 | +0.016 (40/8) | | |
+| LC 128k (S3-D) | +0.008 (29/18) | −0.006 (S2) | +0.001 | +0.016 (40/8) | | |
 
-(Apple − F is F's lead over Apple, sign as in adj.py: F vs control Apple.) Mean MOS at 64k: Apple 3.97 at 82 kB,
+Positive Apple − F means Apple leads. Mean MOS at 64k: Apple 3.97 at 82 kB,
 FAAC 4.43 at 79 kB. At 64k Apple codes no PNS and leaves 15–22 % of bands ZERO, where FAAC uses PNS on 31–49 % and
 ZERO on 1–7 % (3 clips); zimtohrli scores Apple's holes far below FAAC's noise fill. Both code long max_sfb 38.
 
