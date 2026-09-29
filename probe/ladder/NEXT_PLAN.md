@@ -10,6 +10,64 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
+## 0. Status after Stage S2 (2026-09-29, second session) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S2". Branch with everything: `claude/trusting-hamilton-uiadf9`
+(probe merged with master ec72dfc; block-switch probe knobs added). It supersedes `fdk-ladder`.
+
+**Gap now (Apple 128k refs vs FAAC, 49 clips, bits-adjusted):** master +0.021 (Apple 37/11);
+master + #595 + #599 **+0.007** (31/18). fdk ≈ par at LC ≥ 128k.
+
+**Open PRs on nschimme/faac:** #595 (sf smoothing; workstream A closed, no gate, no change),
+#599 (LC drop-out ratio 12 in blockswitch; +0.0061 vs master, HE bit-identical),
+#596 (LFE forced long, spec fix), #597 (no empty M/S mask). #595 + #599 were measured together
+only locally (+0.0138 vs master); CI benchmarks each alone.
+
+**Closed this round:** A (VBR-44.1k BD is the 64k rung folded into the LC ladder by
+bd_rate.py — a faac-benchmark issue; speech is noise; 5.1 is a scorer artefact on a synthetic sine).
+B: extra smoothing above 6 kHz (≤ +0.0004) and low-band offsets (peak +0.002 at L2/L3) are dead
+on the #595 base. Window rise ratio, no-hysteresis, no-drop-outs, and any drop ratio on HE are dead.
+
+### Next steps, in order
+
+1. **D — M/S, on top of #595 + #599** (ceiling ≈ +0.013 clean, covers the +0.007 left).
+   Build a probe base = master-based probe with `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`
+   (LC). Re-dump it on the +64 inputs (`scripts/s2/b0_prepare.py` pattern) and first rerun the
+   reverse single-swap arm rMS (Apple's M/S mask into FAAC decisions, step1, F2/G2 pattern)
+   and the SF+MS pair, to get the current oracle. Controls K0/KF first. Then characterise where
+   Apple uses M/S and FAAC does not (band region, L/R correlation, energy ratio) and screen a
+   rule in `stereo.c` offline before the encoder.
+2. **C, second pass — windows** (velvet still 61 % short vs Apple 25 %; Greensleeves 58 % vs 11 %).
+   Candidates not yet tried: level recovery after an attack (reset/decay of `level` after a
+   transient), the ±2 sub-block context span (`FAAC_BS_PREVS/NEXTS`), and a minimum-energy
+   floor on rises (`FAAC_BS_MINE`). Sweep with `scripts/s2/sweep.py` on top of #595 + drop 12;
+   same pre-registered rule (≥ +0.005, W>L, no clip < −0.05, bracket centre). Watch girl,
+   Last_Of_The_Mohicans, liberate and take_your_finger — they are the sentinels.
+3. **E — other rates and HE-AAC** (largest absolute gap). Needs Apple refs from the user
+   (afconvert, same settings as the 128k set: LC 64k and 96k, HE-AAC 48k at 32 kbps).
+   Verify HE alignment and Control 0/KA/KF on the HE core before any arm. Note: at HE the
+   block switcher wants MORE shorts than LC (any drop-ratio raise lost −0.02…−0.03 at 32k).
+4. **Optional small PR (faac-benchmark, not faac):** keep the 44.1k VBR q76 rung out of the LC
+   BD-rate ladder, or use piecewise-linear BD; it produces a spurious +1 % mean.
+
+### Session facts that save time
+- Linux env: `export PATH=/opt/venv312/bin:$PATH` (py3.12 venv with zimtohrli+visqol);
+  scorer `/opt/faac-benchmark/scripts/score_clip.py`; FAAD dump decoder
+  `/tmp/faad-ladder-dump/build_faad/frontend/faad`. Rebuild with `probe/ladder/jules_setup.sh`
+  in a fresh container (datasets: GitHub archive zips 403 through the proxy — clone
+  nschimme/{pmlt2014,tcd-voip,soundexpert} and zip them into faac-benchmark `data/temp/`;
+  `setup_datasets.py` needs Python 3.12).
+- Frame alignment for FAAC block-switch dumps vs the Apple dump is **f+2** (inject offset),
+  while step1 uses `FAAC_STEP1_OFFSET=1`.
+- Block-switch probe knobs (all unset = production): `FAAC_BS_RATIO`, `FAAC_BS_DROPRATIO`,
+  `FAAC_BS_SMOOTH`, `FAAC_BS_MINE`, `FAAC_BS_PREVS`, `FAAC_BS_NEXTS`, `FAAC_BS_NOHYST`,
+  `FAAC_BS_DUMP=<file>` (per frame: frame ch psy desire final attackmask level eng[24]).
+- One encode+score pass over 49 clips at 128k ≈ 2 m 45 s; two serial scorers side by side were
+  fine on 15 GB. Don't `pgrep -f` for a pattern contained in your own wait-loop command line.
+- KF compares ADTS bytes in `g2_controls.py`; after the master merge one clip differs only by the
+  empty-M/S-mask bug (#597) with identical PCM — compare PCM.
+- The `scripts/s2/` files hard-code `/home/user/...` work paths; parametrise before reuse.
+
 ---
 
 ## 1. Where things are
