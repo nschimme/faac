@@ -30,6 +30,7 @@ struct Step1Ctx *Step1Get(void);
 /* Looks up the record at ciFrame + configured offset for channel ch. Returns
  * 1 and fills *out if present, 0 (out left untouched) otherwise. */
 int Step1Lookup(struct Step1Ctx *s1, int ciFrame, int ch, ReemitICS *out);
+void Step1Origin(int ciFrame, int ch, int *bands);
 
 /* Applies rec's already-quantized TNS filters to ci's real spectrum, in
  * FAAC's own analysis (whitening) sign convention -- mirrors libfaad/tns.c's
@@ -49,13 +50,13 @@ void Step1ApplyTns(CoderInfo *ci, float *spec, const ReemitICS *rec, int sr_idx)
  * earlier spectrum change. sfb_offset/max_sfb/groups must match. */
 void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
                    const int *sfb_offset, float *specL, float *specR,
-                   int self_mode);
+                   const int *self_bands);
 
 /* Reproduce AACstereo's intensity transform and left-channel SF bias for a
  * FAAC self-reference. External references preserve the KA baseline. */
 void Step1ApplySelfIS(const ReemitICS *left, const ReemitICS *right,
                       const int *sfb_offset, float *specL, float *specR,
-                      int *left_sf_bias);
+                      int *left_sf_bias, const int *self_bands);
 
 /* Quantizes ci's (already TNS/M-S-adjusted) spectrum at rec's absolute
  * per-band class/scalefactor/global_gain, using FAAC's own qfunc-equivalent

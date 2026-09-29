@@ -856,6 +856,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
     ReemitICS step1Rec[MAX_CHANNELS];
     int step1Matched[MAX_CHANNELS] = {0};
     int step1SelfIsBias[MAX_CHANNELS][MAX_SCFAC_BANDS] = {{0}};
+    int step1Origin[MAX_CHANNELS][MAX_SCFAC_BANDS] = {{0}};
     int step1ZeroBands = 0;
     {
         struct Step1Ctx *s1 = Step1Get();
@@ -863,6 +864,11 @@ int faacEncEncode(faacEncHandle hpEncoder,
             for (channel = 0; channel < numChannels; channel++) {
                 step1Matched[channel] = Step1Lookup(s1, coderInfo[channel].ciFrame,
                                                      coderInfo[channel].ciCh, &step1Rec[channel]);
+                if (getenv("FAAC_STEP1_ORIGIN"))
+                    Step1Origin(coderInfo[channel].ciFrame, coderInfo[channel].ciCh,
+                                step1Origin[channel]);
+                else if (getenv("FAAC_STEP1_SELF_IS"))
+                    for (int b = 0; b < MAX_SCFAC_BANDS; b++) step1Origin[channel][b] = 1;
                 /* FilterBank consumes the chosen sequence directly. For a
                  * matched record below, override BlockSwitch before the
                  * transform, including LONG_SHORT and SHORT_LONG. The
@@ -1117,13 +1123,15 @@ int faacEncEncode(faacEncHandle hpEncoder,
                 AACElement *el = &hEncoder->elements[e];
                 if (el->type == ID_CPE) {
                     int l = el->channels[0], r = el->channels[1];
+                    int pairOrigin[MAX_SCFAC_BANDS];
+                    for (int b = 0; b < MAX_SCFAC_BANDS; b++)
+                        pairOrigin[b] = step1Origin[l][b] || step1Origin[r][b];
                     Step1ApplyMS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
                                  hEncoder->freqBuff[l], hEncoder->freqBuff[r],
-                                 getenv("FAAC_STEP1_SELF_IS") != NULL);
-                    if (getenv("FAAC_STEP1_SELF_IS"))
-                        Step1ApplySelfIS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
-                                         hEncoder->freqBuff[l], hEncoder->freqBuff[r],
-                                         step1SelfIsBias[l]);
+                                 pairOrigin);
+                    Step1ApplySelfIS(&step1Rec[l], &step1Rec[r], coderInfo[l].sfb_offset,
+                                     hEncoder->freqBuff[l], hEncoder->freqBuff[r],
+                                     step1SelfIsBias[l], pairOrigin);
                     ReemitSetCpeInfo(el, &coderInfo[l], &coderInfo[r], &step1Rec[l], &step1Rec[r]);
                 }
             }
@@ -1236,7 +1244,7 @@ int faacEncEncode(faacEncHandle hpEncoder,
                  * overflowed the bitstream (see below). */
                 Step1Quantize(&coderInfo[channel], hEncoder->freqBuff[channel],
                               &step1Rec[channel], &step1ZeroBands, step1Scale,
-                              getenv("FAAC_STEP1_SELF_IS")
+                              (getenv("FAAC_STEP1_SELF_IS") || getenv("FAAC_STEP1_ORIGIN"))
                               ? step1SelfIsBias[channel] : NULL);
             else
                 BlocQuant(&coderInfo[channel], hEncoder->freqBuff[channel],

@@ -18,6 +18,7 @@ struct Step1Ctx {
     int offset;
     ReemitICS (*f)[2]; /* [frame][ch] */
     int max_frame;
+    ReemitICS (*origin)[2];
 };
 
 struct Step1Ctx *Step1Get(void)
@@ -48,8 +49,27 @@ struct Step1Ctx *Step1Get(void)
     }
     fclose(f);
     s1->max_frame = n;
+    const char *op = getenv("FAAC_STEP1_ORIGIN");
+    if (op && *op) {
+        FILE *of = fopen(op, "rb");
+        if (!of) { perror(op); exit(1); }
+        s1->origin = calloc(STEP1_MAX_FRAMES, sizeof(*s1->origin));
+        for (int j = 0; j < n; j++)
+            for (int ch = 0; ch < 2; ch++) ReemitReadICS(of, &s1->origin[j][ch]);
+        fclose(of);
+    }
     ctx = s1;
     return ctx;
+}
+
+void Step1Origin(int ciFrame, int ch, int *bands)
+{
+    struct Step1Ctx *s = Step1Get();
+    memset(bands, 0, MAX_SCFAC_BANDS * sizeof(int));
+    if (!s || !s->origin || ch < 0 || ch > 1) return;
+    int n = ciFrame + s->offset;
+    if (n < 0 || n >= s->max_frame) return;
+    for (int b = 0; b < MAX_SCFAC_BANDS; b++) bands[b] = s->origin[n][ch].band[b].cb != 0;
 }
 
 int Step1Lookup(struct Step1Ctx *s1, int ciFrame, int ch, ReemitICS *out)
@@ -161,7 +181,7 @@ void Step1ApplyTns(CoderInfo *ci, float *spec, const ReemitICS *rec, int sr_idx)
 
 void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
                    const int *sfb_offset, float *specL, float *specR,
-                   int self_mode)
+                   const int *self_bands)
 {
     int absw = 0;
     for (int g = 0; g < left->num_groups; g++) {
@@ -181,7 +201,7 @@ void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
              * its side to ZERO. The self-reference's ms flag retains that
              * analysis transform even though the final side book is ZERO. */
             if (!(l_reg && r_reg) &&
-                !(self_mode && (l_reg || r_reg) &&
+                !(self_bands && self_bands[band] && (l_reg || r_reg) &&
                   (l_reg || lcb == HCB_ZERO) &&
                   (r_reg || rcb == HCB_ZERO))) continue;
             int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];
@@ -200,13 +220,14 @@ void Step1ApplyMS(const ReemitICS *left, const ReemitICS *right,
 
 void Step1ApplySelfIS(const ReemitICS *left, const ReemitICS *right,
                       const int *sfb_offset, float *specL, float *specR,
-                      int *left_sf_bias)
+                      int *left_sf_bias, const int *self_bands)
 {
     int absw = 0;
     for (int g = 0; g < right->num_groups; g++) {
         int glen = right->group_len[g];
         for (int sfb = 0; sfb < right->max_sfb; sfb++) {
             int band = g * right->max_sfb + sfb;
+            if (self_bands && !self_bands[band]) continue;
             int cb = right->band[band].cb;
             if (cb != HCB_INTENSITY && cb != HCB_INTENSITY2) continue;
             int lo = sfb_offset[sfb], hi = sfb_offset[sfb + 1];

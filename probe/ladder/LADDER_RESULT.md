@@ -760,3 +760,109 @@ The same script counts quantized lines and, separately, lines in bands whose **e
 **Other candidates.** The initial dump comparison measured identical PNS energy, IS position, SF, global gain, TNS, pulse, and M/S mask. The two fixes above removed every decoded and ADTS difference without changing `BlocQuant`, PNS, the rate loop, or TNS. This rules those paths out as necessary causes of the observed KF mismatch on these five clips; it does not establish their behavior on other inputs.
 
 **Final controls: PASS.** `CCACHE_DISABLE=1 meson compile -C build-ladder` rebuilt the final code. `python3 /tmp/ladder_f/verify_clean.py` ran KF with `FAAC_STEP1_SELF_IS=1` and FAAC’s own binary at offset 0, and KA with Apple’s binary at offset 1 and the self mode unset. It extracted ADTS and decoded stereo float PCM for all five clips. **KF and KA were byte-identical to their respective targets on all five; decoded PCM maximum absolute difference was 0 in every comparison.** The explicit self mode preserves the established Apple KA spectrum path. Since KF is exact, a separate KF MOS and byte-adjusted score was not needed. F2 was not run in this diagnosis task.
+
+### F2: single-decision swaps
+
+**Measurement and controls.** `python3 /tmp/ladder_f/f2_generate.py` merged the Apple dump at step1 offset +1 with the +64-input FAAC-normal dump at offset 0. `FAAC_STEP1_ORIGIN` is a per-band mask; `libfaac/step1.c` applies FAAC’s self-reference IS transform/SF bias and M/S-before-zeroing only to marked bands. For a CPE, either channel marking a band selects the FAAC stereo treatment for that band. A/no-swap retained Apple decisions; ALLF used FAAC decisions in every ICS. `CCACHE_DISABLE=1 meson compile -C build-ladder` rebuilt the probe, and `python3 /tmp/ladder_f/f2_controls.py` extracted ADTS and compared it byte for byte. Both controls passed on **all five clips**: A = KA and ALLF = KF, byte-identical (thus decoded PCM exact). The controls were rerun after the final per-band change and before arm scoring.
+
+| control | Severance | 21classic | velvet | Greensleeves | German |
+|---|---|---|---|---|---|
+| A/no-swap = KA ADTS | PASS | PASS | PASS | PASS | PASS |
+| ALLF/per-band = KF ADTS | PASS | PASS | PASS | PASS | PASS |
+
+**Measurement.** `python3 /tmp/ladder_f/f2_encode.py` encoded and ffmpeg-decoded each mixed arm: all 30 streams decoded with no ffmpeg error output. `python3 /tmp/ladder_f/f2_score.py` decoded stereo float PCM, dropped the +64 input samples, cropped to the source length, and scored all arms and the FAAC 112/128/144 controls serially through `faac-benchmark/scripts/score_clip.py` (zimtohrli). Bytes are MP4 bytes. `python3 /tmp/ladder_f/f2_derive.py` computed the per-clip slope `(MOS144−MOS112)/log2(bytes144/bytes112)` and adjusted Δ = `(MOS_arm−MOS_A) − slope·log2(bytes_arm/bytes_A)`. Share = `−adjusted Δ / −adjusted Δ_ALLF`; single-arm shares need not sum to 100% because decisions interact. Pooled and clean rows use mean MOS/Δ, summed bytes and units, and ratio of summed adjusted losses. `python3 /tmp/ladder_f/f2_units.py` counted changed ICS and bands from aligned dumps; `f2_generate.py` counted changes in each isolated arm. A direct assertion checked all 40 clip-arm Δ signs against raw MOS and bytes. The units column reports changed window/TNS ICS for WIN/TNS, changed bands for BW/CLS/SF/MS, and both measures for ALLF; zero in the other unit does not mean the arm made no change.
+
+| clip | arm | MOS | bytes | adj Δ vs A | gap share | units changed |
+|---|---|---:|---:|---:|---:|---:|
+| Severance | A | 4.9240 | 165,185 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| Severance | WIN | 4.9225 | 165,216 | -0.00157 | +2.4% | 10 ICS / 0 bands |
+| Severance | BW | 4.9240 | 165,054 | +0.00029 | -0.4% | 928 ICS / 1,856 bands |
+| Severance | CLS | 4.9233 | 168,588 | -0.00823 | +12.6% | 0 ICS / 7,929 bands |
+| Severance | SF | 4.8263 | 153,721 | -0.07113 | +109.1% | 0 ICS / 29,653 bands |
+| Severance | MS | 4.9129 | 173,706 | -0.02968 | +45.5% | 0 ICS / 18,312 bands |
+| Severance | TNS | 4.9240 | 165,197 | -0.00003 | +0.0% | 2 ICS / 0 bands |
+| Severance | ALLF | 4.8503 | 161,422 | -0.06519 | +100.0% | 940 ICS / 42,106 bands |
+| 21classic | A | 4.8954 | 161,756 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| 21classic | WIN | 4.8822 | 161,794 | -0.01325 | +17.2% | 78 ICS / 0 bands |
+| 21classic | BW | 4.8954 | 161,644 | +0.00015 | -0.2% | 830 ICS / 1,660 bands |
+| 21classic | CLS | 4.8958 | 163,187 | -0.00156 | +2.0% | 0 ICS / 4,854 bands |
+| 21classic | SF | 4.7783 | 149,556 | -0.09968 | +129.6% | 0 ICS / 27,918 bands |
+| 21classic | MS | 4.8924 | 169,775 | -0.01375 | +17.9% | 0 ICS / 15,748 bands |
+| 21classic | TNS | 4.8954 | 161,756 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| 21classic | ALLF | 4.8102 | 155,853 | -0.07694 | +100.0% | 908 ICS / 40,355 bands |
+| velvet | A | 4.7876 | 180,306 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| velvet | WIN | 4.5092 | 164,076 | -0.21460 | +97.3% | 900 ICS / 0 bands |
+| velvet | BW | 4.7876 | 180,306 | +0.00000 | +0.0% | 4 ICS / 8 bands |
+| velvet | CLS | 4.7471 | 178,453 | -0.03351 | +15.2% | 0 ICS / 513 bands |
+| velvet | SF | 4.7813 | 180,492 | -0.00700 | +3.2% | 0 ICS / 542 bands |
+| velvet | MS | 4.5894 | 181,067 | -0.20105 | +91.1% | 0 ICS / 570 bands |
+| velvet | TNS | 4.7874 | 180,387 | -0.00050 | +0.2% | 14 ICS / 0 bands |
+| velvet | ALLF | 4.4973 | 162,652 | -0.22060 | +100.0% | 940 ICS / 41,401 bands |
+| Greensleeves | A | 4.8890 | 145,124 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| Greensleeves | WIN | 4.8502 | 138,407 | -0.01963 | +76.1% | 752 ICS / 0 bands |
+| Greensleeves | BW | 4.8890 | 145,116 | +0.00002 | -0.1% | 64 ICS / 128 bands |
+| Greensleeves | CLS | 4.8882 | 148,800 | -0.01092 | +42.3% | 0 ICS / 1,005 bands |
+| Greensleeves | SF | 4.8888 | 145,943 | -0.00248 | +9.6% | 0 ICS / 1,768 bands |
+| Greensleeves | MS | 4.8879 | 145,284 | -0.00155 | +6.0% | 0 ICS / 1,852 bands |
+| Greensleeves | TNS | 4.8890 | 145,128 | -0.00001 | +0.0% | 2 ICS / 0 bands |
+| Greensleeves | ALLF | 4.8517 | 141,058 | -0.02581 | +100.0% | 820 ICS / 40,555 bands |
+| German | A | 4.9313 | 125,695 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| German | WIN | 4.9251 | 128,661 | -0.01320 | +129.1% | 676 ICS / 0 bands |
+| German | BW | 4.9313 | 125,685 | +0.00002 | -0.2% | 54 ICS / 108 bands |
+| German | CLS | 4.9261 | 126,190 | -0.00638 | +62.4% | 0 ICS / 505 bands |
+| German | SF | 4.9292 | 123,466 | +0.00327 | -32.0% | 0 ICS / 1,655 bands |
+| German | MS | 4.7463 | 125,727 | -0.18508 | +1809.5% | 0 ICS / 496 bands |
+| German | TNS | 4.9309 | 125,673 | -0.00035 | +3.4% | 18 ICS / 0 bands |
+| German | ALLF | 4.9237 | 126,800 | -0.01023 | +100.0% | 738 ICS / 38,184 bands |
+| Pooled | A | 4.8855 | 778,066 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| Pooled | WIN | 4.8178 | 758,154 | -0.05245 | +65.8% | 2,416 ICS / 0 bands |
+| Pooled | BW | 4.8855 | 777,805 | +0.00010 | -0.1% | 1,880 ICS / 3,760 bands |
+| Pooled | CLS | 4.8761 | 785,218 | -0.01212 | +15.2% | 0 ICS / 14,806 bands |
+| Pooled | SF | 4.8408 | 753,178 | -0.03540 | +44.4% | 0 ICS / 61,536 bands |
+| Pooled | MS | 4.8058 | 795,559 | -0.08622 | +108.1% | 0 ICS / 36,978 bands |
+| Pooled | TNS | 4.8853 | 778,141 | -0.00018 | +0.2% | 36 ICS / 0 bands |
+| Pooled | ALLF | 4.7866 | 747,785 | -0.07975 | +100.0% | 4,346 ICS / 202,601 bands |
+| Clean | A | 4.9097 | 326,941 | +0.00000 | +0.0% | 0 ICS / 0 bands |
+| Clean | WIN | 4.9024 | 327,010 | -0.00741 | +10.4% | 88 ICS / 0 bands |
+| Clean | BW | 4.9097 | 326,698 | +0.00022 | -0.3% | 1,758 ICS / 3,516 bands |
+| Clean | CLS | 4.9096 | 331,775 | -0.00489 | +6.9% | 0 ICS / 12,783 bands |
+| Clean | SF | 4.8023 | 303,277 | -0.08541 | +120.2% | 0 ICS / 57,571 bands |
+| Clean | MS | 4.9026 | 343,481 | -0.02171 | +30.6% | 0 ICS / 34,060 bands |
+| Clean | TNS | 4.9097 | 326,953 | -0.00001 | +0.0% | 2 ICS / 0 bands |
+| Clean | ALLF | 4.8302 | 317,275 | -0.07107 | +100.0% | 1,848 ICS / 82,461 bands |
+
+**Decision statistics, measured.** `python3 /tmp/ladder_f/f2_stats.py` compared each Apple frame `n+1` with FAAC frame `n` on the same +64 grid. Short/TNS percentages use ICS; class and M/S percentages use coded bands. `max_sfb` and coded bandwidth are means across ICS; bandwidth converts the SFB edge using the 48-kHz tables in `probe/ladder/line_level.py`. Region SF means include regular bands only. A short window has a different SFB scale, so bandwidth is the comparable coverage measure.
+
+| clip | ref | short % | mean max_sfb | mean edge kHz | ZERO / REG / PNS / IS % | SF 0–2 / 2–6 / 6–12 / >12 kHz | M/S % | TNS % |
+|---|---|---:|---:|---:|---|---|---:|---:|
+| Severance | Apple | 0.4 | 45.9 | 20.25 | 18.2/81.8/0.0/0.0 | 156.5/150.5/147.2/141.0 | 92.0 | 0.4 |
+| Severance | FAAC | 0.9 | 43.7 | 18.77 | 0.4/85.7/13.9/0.0 | 154.9/152.5/147.5/140.2 | 52.4 | 0.0 |
+| 21classic | Apple | 0.2 | 45.9 | 20.25 | 14.8/85.2/0.0/0.0 | 161.2/152.3/143.3/140.5 | 86.7 | 0.7 |
+| 21classic | FAAC | 4.2 | 42.7 | 18.84 | 0.4/88.0/11.4/0.2 | 159.1/154.4/144.8/140.6 | 50.2 | 0.0 |
+| velvet | Apple | 25.5 | 37.6 | 20.44 | 15.5/84.4/0.0/0.1 | 149.2/154.3/154.3/154.6 | 49.0 | 12.4 |
+| velvet | FAAC | 99.1 | 13.3 | 20.98 | 0.6/58.6/15.4/25.4 | 149.7/149.4/150.2/153.2 | 0.8 | 0.0 |
+| Greensleeves | Apple | 11.5 | 42.2 | 20.34 | 11.4/68.7/0.0/19.8 | 148.5/146.8/138.5/139.0 | 37.1 | 38.0 |
+| Greensleeves | FAAC | 88.5 | 16.6 | 20.74 | 0.3/61.3/7.9/30.5 | 142.7/142.6/138.6/131.8 | 8.3 | 0.0 |
+| German | Apple | 7.9 | 43.4 | 20.31 | 39.0/49.8/0.0/11.2 | 142.9/140.5/137.5/138.9 | 77.6 | 46.6 |
+| German | FAAC | 83.7 | 18.0 | 20.63 | 5.0/55.0/2.5/37.5 | 141.6/140.2/138.1/133.7 | 14.6 | 4.9 |
+
+**Dominant-arm characterization, measured.** The pooled M/S swap loses 108.1% of the adjusted A→ALLF gap; on clean clips, the SF swap loses 120.2%; velvet’s WIN swap loses 97.3%. These are isolated-swap effects, not additive attribution. `python3 /tmp/ladder_f/f2_character.py` counted M/S disagreement in the *same-layout* subset by region and signal clip. The table gives common bands and percent with differing M/S masks; unlike the overall decision table, it excludes frames with different windows/grouping.
+
+| clip / signal | 0–2 kHz | 2–6 kHz | 6–12 kHz | >12 kHz |
+|---|---:|---:|---:|---:|
+| Severance / clean | 39.3% (7,430) | 40.1% (5,110) | 31.5% (3,720) | 72.1% (4,182) |
+| 21classic / clean | 36.6% (6,640) | 38.9% (4,565) | 34.3% (3,320) | 67.8% (3,735) |
+| velvet / transient | 57.3% (143) | 47.4% (133) | 52.4% (164) | 41.9% (129) |
+| Greensleeves / speech | 37.0% (527) | 77.1% (367) | 65.6% (276) | 88.1% (303) |
+| German / speech | 8.2% (474) | 10.9% (339) | 18.4% (272) | 42.8% (285) |
+
+In the matched-layout subset, `f2_character.py` also found the frequent clean-clip M/S disagreements in regular/regular long-window bands below 6 kHz, while >12 kHz includes many Apple ZERO/FAAC PNS pairs. Velvet’s disagreements are predominantly short-window regular/regular or regular/IS pairs; the two speech clips have many regular/IS and regular/ZERO mismatches. The overall M/S shares in the decision table cover all frames, including the unmatched-window majority of the three non-clean clips.
+
+**Clean-clip SF characterization, measured.** `python3 /tmp/ladder_f/f2_stats.py` compared FAAC minus Apple SF in bands regular in both references and with identical windows/grouping. Entries are differing-band %, mean signed SF difference, and mean absolute SF difference; SF retains Apple global gain in the isolated arm.
+
+| clip | 0–2 kHz | 2–6 kHz | 6–12 kHz | >12 kHz |
+|---|---:|---:|---:|---:|
+| Severance | 91.1% / -1.63 / 3.35 (n=14,807) | 88.8% / +2.15 / 3.30 (n=10,019) | 89.3% / +1.83 / 3.49 (n=6,185) | 92.3% / +1.87 / 4.14 (n=1,889) |
+| 21classic | 91.0% / -2.08 / 3.35 (n=13,268) | 89.2% / +2.11 / 3.20 (n=9,041) | 83.4% / +1.66 / 2.29 (n=6,554) | 83.1% / +0.91 / 1.95 (n=2,787) |
+
+**Inference.** The clean-clip lead is strongly associated with SF decisions on this grid; velvet’s loss is strongly associated with window decisions. The pooled M/S arm is dominated by velvet and an especially large German isolated loss even though German ALLF is close to A. The German 1,809.5% share is evidence of interaction with the other FAAC decisions, so it is not a standalone estimate of M/S’s contribution in the fully FAAC stream. No encoder fix is proposed here.
