@@ -866,3 +866,27 @@ In the matched-layout subset, `f2_character.py` also found the frequent clean-cl
 | 21classic | 91.0% / -2.08 / 3.35 (n=13,268) | 89.2% / +2.11 / 3.20 (n=9,041) | 83.4% / +1.66 / 2.29 (n=6,554) | 83.1% / +0.91 / 1.95 (n=2,787) |
 
 **Inference.** The clean-clip lead is strongly associated with SF decisions on this grid; velvet’s loss is strongly associated with window decisions. The pooled M/S arm is dominated by velvet and an especially large German isolated loss even though German ALLF is close to A. The German 1,809.5% share is evidence of interaction with the other FAAC decisions, so it is not a standalone estimate of M/S’s contribution in the fully FAAC stream. No encoder fix is proposed here.
+
+## Stage H: 49-clip G2 and the window split (09-29)
+
+**G2, 49 clips** (`scripts/h/g2_49_derive.py`; bits-adjusted with the per-clip 112/144 slope; controls A = KA and F = KF byte-exact on 49/49). A−F +0.034 (41 wins / 8 losses), Apple−FAAC128 +0.042, A−Apple −0.006. Forward: fSF loses 101 % of A−F (48/49), fWIN 75 % (45/49). Reverse: rSF +0.017 (50 %, 46/3), rWIN +0.020 (58 %, 42/7). rSF and rWIN touch disjoint ICS and together ≈ the gap. The 5-clip attribution holds. Outlier girl.16b48k: A−F −0.262 and rWIN −0.228, so FAAC's short windows are right there.
+
+**Window split** (`scripts/h`). Apple decisions go into FAAC's *normal* encoder through `FAAC_CORE_INJECT` (Apple offset 2 verified at 716/738 windows matched; the misses are startup frames where FAAC starts short). `FAAC_CORE_INJECT_LOOSE_SFB` is new: Apple codes max_sfb 46 against FAAC's 44 on long blocks. Controls: FAAC's own dump re-injected (win, and win+sf) is PCM-identical to normal FAAC on 49/49. KW (the W stream re-emitted through step1) is PCM-identical to W on 49/49.
+- **W** = Apple windows and grouping, with FAAC re-deriving sf/classes/M-S/TNS (rate loop live). This is rWIN-a.
+- **WaSFd** = W's own decisions plus Apple's absolute sf, only in ICS whose Apple window differs from normal FAAC. This is rWIN-b. **WaSF** is the same with every ICS swapped.
+- **rWIN** = Apple's whole ICS where the window differs (G2).
+- S/WS/WSC/WSCM inject Apple's sf *shape* inside FAAC's rate loop. They lose on every clip (up to −2), so they are an invalid construction and are not interpreted.
+
+| set | A−F | rWIN | W | WaSFd | WaSF | WaSFd−W |
+|---|---:|---:|---:|---:|---:|---:|
+| all 49 (mean) | +0.034 | +0.020 | +0.000 | +0.015 | **+0.034** (45/4) | +0.015 (41/8) |
+| window-heavy, rWIN>0.03 (n=14), mean / median | +0.081 | +0.063 / +0.040 | +0.016 / +0.032 | +0.038 / +0.051 | +0.058 | +0.022 (14/0) |
+| clean-window, abs(rWIN)<0.01 (n=15) | +0.013 | +0.002 | +0.006 | +0.008 | +0.028 | +0.002 |
+
+Per clip, W alone ≈ rWIN on bas, Changes, mof, trumpet, take_your_finger. Velvet: W +0.035 (17 %), WaSFd +0.115 (55 %). Last_Of_The_Mohicans: W −0.233 and WaSFd −0.153, so Apple's windows need Apple's classes/M-S there. Girl: W −0.463; Apple sf recovers +0.289.
+
+**Verdict (pre-registered: W ≥ 70 % of rWIN ⇒ windows suffice; ≤ 30 % ⇒ sf-led; between ⇒ both):** mean 26 %, median 80 %, bimodal ⇒ **both**. Apple windows + Apple sf with FAAC's own classes/M-S/TNS (WaSF) recover the **entire** 49-clip Apple lead (+0.034 = A−F, 45/4). Bytes +3.8 % vs A/F +3.2 %, inside the ±12.5 % bracket.
+
+**sf in window-differing long blocks is not special** (`h_sfdiff.py`, FAAC@W − Apple, coded-in-both bands): the long-block regional means are −0.73/−0.01/+1.06/+0.83 in window-differing frames and −0.91/−0.49/+1.40/+1.38 in window-agreeing frames (0–2 / 2–6 / 6–12 / >12 kHz), with mean abs diff 2.5–4 per band in both. The same allocation difference (FAAC finer below 2 kHz, coarser above 6 kHz, plus per-band shape) governs both the clean-clip SF loss and long-block survival.
+
+**G3 shape features, multivariate** (5 clips, `g3_features.json`). The residual after regional offset is fit on log10 relative neighbour energy, peak/avg and flatness. R² is 0.20 on the clean clips; by region, 0–2k 0.12, 2–6k 0.38, 6–12k 0.36, >12k 0.47. The relative-energy coefficient rises from 0.46 to 3.1 sf steps per decade: FAAC's sf follows local band energy more steeply than Apple's, and Apple's curve is smoother across neighbouring bands. FAAC's masking target has r ≈ 0. At R² 0.2 this is a direction, not yet a rule.

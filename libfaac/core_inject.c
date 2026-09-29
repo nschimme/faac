@@ -144,7 +144,16 @@ int CoreInjectLookup(struct CoreInject *in, int frame, int ch, int band,
      * "3 groups" while splitting the 8 windows differently) means fdk's
      * per-band array doesn't line up with FAAC's, so decline. */
     if (fr->win_short != (is_short != 0)) return 0;
-    if (fr->max_sfb != max_sfb || fr->groups != num_groups) return 0;
+    /* FAAC_CORE_INJECT_LOOSE_SFB: accept a differing max_sfb (Apple codes two
+     * more long bands than FAAC at 128k, which would otherwise decline every
+     * long frame) and remap FAAC's g*max_sfb+sb onto the donor's layout. */
+    static int loose = -1;
+    if (loose < 0) loose = getenv("FAAC_CORE_INJECT_LOOSE_SFB") != NULL;
+    if (loose && max_sfb > 0 && fr->max_sfb != max_sfb && fr->groups == num_groups) {
+        int g = band / max_sfb, sb = band % max_sfb;
+        if (sb >= fr->max_sfb) return 0;
+        band = g * fr->max_sfb + sb;
+    } else if (fr->max_sfb != max_sfb || fr->groups != num_groups) return 0;
     if (is_short && group_len) {
         int g;
         for (g = 0; g < num_groups && g < 8; g++)

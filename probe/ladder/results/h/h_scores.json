@@ -1,0 +1,1962 @@
+{
+ "g2_00": {
+  "stem": "12-German-male-speech.441.16b48k",
+  "N": {
+   "mos": 4.9237,
+   "bytes": 126800
+  },
+  "W": {
+   "mos": 4.9328,
+   "bytes": 127276,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8971,
+   "bytes": 126784,
+   "sf_matched": 3003
+  },
+  "WS": {
+   "mos": 4.8506,
+   "bytes": 127204,
+   "sf_matched": 14712
+  },
+  "WSC": {
+   "mos": 4.6453,
+   "bytes": 127149,
+   "sf_matched": 15681
+  },
+  "WSCM": {
+   "mos": 4.5529,
+   "bytes": 127166,
+   "sf_matched": 15688
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 126800
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 126800
+  }
+ },
+ "g2_01": {
+  "stem": "15-Good-evening.441.16b48k",
+  "N": {
+   "mos": 4.7982,
+   "bytes": 138533
+  },
+  "W": {
+   "mos": 4.8096,
+   "bytes": 138697,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.2055,
+   "bytes": 139001,
+   "sf_matched": 26479
+  },
+  "WS": {
+   "mos": 4.2617,
+   "bytes": 139253,
+   "sf_matched": 28727
+  },
+  "WSC": {
+   "mos": 4.5002,
+   "bytes": 139079,
+   "sf_matched": 28799
+  },
+  "WSCM": {
+   "mos": 4.4346,
+   "bytes": 139025,
+   "sf_matched": 28798
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 138533
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 138533
+  }
+ },
+ "g2_02": {
+  "stem": "21-classic.441.16b48k",
+  "N": {
+   "mos": 4.8102,
+   "bytes": 155853
+  },
+  "W": {
+   "mos": 4.8184,
+   "bytes": 156120,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7675,
+   "bytes": 155978,
+   "sf_matched": 28326
+  },
+  "WS": {
+   "mos": 4.7789,
+   "bytes": 156382,
+   "sf_matched": 29389
+  },
+  "WSC": {
+   "mos": 4.7028,
+   "bytes": 156600,
+   "sf_matched": 34703
+  },
+  "WSCM": {
+   "mos": 4.7344,
+   "bytes": 156469,
+   "sf_matched": 34703
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 155853
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 155853
+  }
+ },
+ "g2_03": {
+  "stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+  "N": {
+   "mos": 4.8517,
+   "bytes": 141058
+  },
+  "W": {
+   "mos": 4.7946,
+   "bytes": 141045,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8293,
+   "bytes": 141142,
+   "sf_matched": 2540
+  },
+  "WS": {
+   "mos": 4.6705,
+   "bytes": 141282,
+   "sf_matched": 21077
+  },
+  "WSC": {
+   "mos": 4.5922,
+   "bytes": 141563,
+   "sf_matched": 24104
+  },
+  "WSCM": {
+   "mos": 4.638,
+   "bytes": 141560,
+   "sf_matched": 24069
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 141058
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 141058
+  }
+ },
+ "g2_04": {
+  "stem": "25-This-is-the-end.441.16b48k",
+  "N": {
+   "mos": 4.8331,
+   "bytes": 148541
+  },
+  "W": {
+   "mos": 4.8432,
+   "bytes": 148831,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7166,
+   "bytes": 148735,
+   "sf_matched": 19701
+  },
+  "WS": {
+   "mos": 4.732,
+   "bytes": 149558,
+   "sf_matched": 25972
+  },
+  "WSC": {
+   "mos": 4.4681,
+   "bytes": 149600,
+   "sf_matched": 30630
+  },
+  "WSCM": {
+   "mos": 4.4979,
+   "bytes": 149405,
+   "sf_matched": 30628
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 148541
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 148541
+  }
+ },
+ "g2_05": {
+  "stem": "27-last-song-drums-and-trampets.441.16b48k",
+  "N": {
+   "mos": 4.8384,
+   "bytes": 161153
+  },
+  "W": {
+   "mos": 4.8435,
+   "bytes": 161519,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8133,
+   "bytes": 161757,
+   "sf_matched": 16411
+  },
+  "WS": {
+   "mos": 4.8174,
+   "bytes": 161869,
+   "sf_matched": 25025
+  },
+  "WSC": {
+   "mos": 4.6674,
+   "bytes": 160714,
+   "sf_matched": 32114
+  },
+  "WSCM": {
+   "mos": 4.7095,
+   "bytes": 160793,
+   "sf_matched": 32123
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161153
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161153
+  }
+ },
+ "g2_06": {
+  "stem": "35_SQAM_glockenspiel_cut.16b48k",
+  "N": {
+   "mos": 4.8883,
+   "bytes": 161370
+  },
+  "W": {
+   "mos": 4.8911,
+   "bytes": 161320,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.546,
+   "bytes": 162508,
+   "sf_matched": 27133
+  },
+  "WS": {
+   "mos": 4.6073,
+   "bytes": 162450,
+   "sf_matched": 28620
+  },
+  "WSC": {
+   "mos": 4.8656,
+   "bytes": 157129,
+   "sf_matched": 29483
+  },
+  "WSCM": {
+   "mos": 4.839,
+   "bytes": 156810,
+   "sf_matched": 29495
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161370
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161370
+  }
+ },
+ "g2_07": {
+  "stem": "4-Sound-English-male.441.16b48k",
+  "N": {
+   "mos": 4.9307,
+   "bytes": 145999
+  },
+  "W": {
+   "mos": 4.9354,
+   "bytes": 146293,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.913,
+   "bytes": 146116,
+   "sf_matched": 5236
+  },
+  "WS": {
+   "mos": 4.7499,
+   "bytes": 146894,
+   "sf_matched": 17840
+  },
+  "WSC": {
+   "mos": 4.4502,
+   "bytes": 146962,
+   "sf_matched": 19065
+  },
+  "WSCM": {
+   "mos": 4.2944,
+   "bytes": 146749,
+   "sf_matched": 19051
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 145999
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 145999
+  }
+ },
+ "g2_08": {
+  "stem": "9-Have-big-expensive-car.441.16b48k",
+  "N": {
+   "mos": 4.8267,
+   "bytes": 156819
+  },
+  "W": {
+   "mos": 4.8462,
+   "bytes": 156962,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7618,
+   "bytes": 157524,
+   "sf_matched": 13083
+  },
+  "WS": {
+   "mos": 4.7521,
+   "bytes": 157687,
+   "sf_matched": 23196
+  },
+  "WSC": {
+   "mos": 4.5049,
+   "bytes": 156978,
+   "sf_matched": 30328
+  },
+  "WSCM": {
+   "mos": 4.5468,
+   "bytes": 157024,
+   "sf_matched": 30340
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 156819
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 156819
+  }
+ },
+ "g2_09": {
+  "stem": "Asleep__4.11-4.31_.16b48k",
+  "N": {
+   "mos": 4.8274,
+   "bytes": 161424
+  },
+  "W": {
+   "mos": 4.831,
+   "bytes": 161438,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.644,
+   "bytes": 162358,
+   "sf_matched": 23436
+  },
+  "WS": {
+   "mos": 4.6381,
+   "bytes": 163600,
+   "sf_matched": 26257
+  },
+  "WSC": {
+   "mos": 4.3024,
+   "bytes": 164807,
+   "sf_matched": 32145
+  },
+  "WSCM": {
+   "mos": 4.3919,
+   "bytes": 164967,
+   "sf_matched": 32188
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161424
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161424
+  }
+ },
+ "g2_10": {
+  "stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+  "N": {
+   "mos": 4.7359,
+   "bytes": 161395
+  },
+  "W": {
+   "mos": 4.765,
+   "bytes": 161398,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 2.9405,
+   "bytes": 163915,
+   "sf_matched": 21950
+  },
+  "WS": {
+   "mos": 3.6111,
+   "bytes": 164196,
+   "sf_matched": 34160
+  },
+  "WSC": {
+   "mos": 3.6542,
+   "bytes": 165259,
+   "sf_matched": 35581
+  },
+  "WSCM": {
+   "mos": 3.614,
+   "bytes": 165608,
+   "sf_matched": 35590
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161395
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161395
+  }
+ },
+ "g2_11": {
+  "stem": "Changes.16b48k",
+  "N": {
+   "mos": 4.7305,
+   "bytes": 161452
+  },
+  "W": {
+   "mos": 4.8003,
+   "bytes": 161402,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.6003,
+   "bytes": 161570,
+   "sf_matched": 14388
+  },
+  "WS": {
+   "mos": 4.581,
+   "bytes": 162019,
+   "sf_matched": 31269
+  },
+  "WSC": {
+   "mos": 4.4862,
+   "bytes": 161980,
+   "sf_matched": 33364
+  },
+  "WSCM": {
+   "mos": 4.5811,
+   "bytes": 162570,
+   "sf_matched": 33397
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161452
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161452
+  }
+ },
+ "g2_12": {
+  "stem": "Coral.16b48k",
+  "N": {
+   "mos": 4.8357,
+   "bytes": 161344
+  },
+  "W": {
+   "mos": 4.8449,
+   "bytes": 161365,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7092,
+   "bytes": 162932,
+   "sf_matched": 20232
+  },
+  "WS": {
+   "mos": 4.7137,
+   "bytes": 162645,
+   "sf_matched": 23533
+  },
+  "WSC": {
+   "mos": 4.6385,
+   "bytes": 164224,
+   "sf_matched": 32279
+  },
+  "WSCM": {
+   "mos": 4.6162,
+   "bytes": 163873,
+   "sf_matched": 32280
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161344
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161344
+  }
+ },
+ "g2_13": {
+  "stem": "ExitMusic.16b48k",
+  "N": {
+   "mos": 4.8647,
+   "bytes": 161488
+  },
+  "W": {
+   "mos": 4.8709,
+   "bytes": 161735,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8581,
+   "bytes": 161583,
+   "sf_matched": 20412
+  },
+  "WS": {
+   "mos": 4.8686,
+   "bytes": 162425,
+   "sf_matched": 25336
+  },
+  "WSC": {
+   "mos": 4.8479,
+   "bytes": 162374,
+   "sf_matched": 26510
+  },
+  "WSCM": {
+   "mos": 4.6425,
+   "bytes": 162187,
+   "sf_matched": 26496
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161488
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161488
+  }
+ },
+ "g2_14": {
+  "stem": "Girl_In_The_Fire__Sample_.16b48k",
+  "N": {
+   "mos": 4.7715,
+   "bytes": 161383
+  },
+  "W": {
+   "mos": 4.7799,
+   "bytes": 161366,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.591,
+   "bytes": 161650,
+   "sf_matched": 25297
+  },
+  "WS": {
+   "mos": 4.6392,
+   "bytes": 161677,
+   "sf_matched": 28060
+  },
+  "WSC": {
+   "mos": 4.65,
+   "bytes": 161557,
+   "sf_matched": 33340
+  },
+  "WSCM": {
+   "mos": 4.649,
+   "bytes": 161544,
+   "sf_matched": 33350
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161383
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161383
+  }
+ },
+ "g2_15": {
+  "stem": "Greatest_Love_of_All_2min57.16b48k",
+  "N": {
+   "mos": 4.8425,
+   "bytes": 161331
+  },
+  "W": {
+   "mos": 4.8432,
+   "bytes": 161516,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7609,
+   "bytes": 161440,
+   "sf_matched": 30350
+  },
+  "WS": {
+   "mos": 4.7606,
+   "bytes": 161636,
+   "sf_matched": 30572
+  },
+  "WSC": {
+   "mos": 4.7046,
+   "bytes": 161489,
+   "sf_matched": 33861
+  },
+  "WSCM": {
+   "mos": 4.6969,
+   "bytes": 161538,
+   "sf_matched": 33862
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161331
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161331
+  }
+ },
+ "g2_16": {
+  "stem": "Hey Tonight.16b48k",
+  "N": {
+   "mos": 4.8416,
+   "bytes": 161377
+  },
+  "W": {
+   "mos": 4.8469,
+   "bytes": 161337,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.794,
+   "bytes": 161753,
+   "sf_matched": 22109
+  },
+  "WS": {
+   "mos": 4.7916,
+   "bytes": 161990,
+   "sf_matched": 25904
+  },
+  "WSC": {
+   "mos": 4.6241,
+   "bytes": 162281,
+   "sf_matched": 32785
+  },
+  "WSCM": {
+   "mos": 4.6411,
+   "bytes": 162166,
+   "sf_matched": 32789
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161377
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161377
+  }
+ },
+ "g2_17": {
+  "stem": "Hotel California.16b48k",
+  "N": {
+   "mos": 4.7784,
+   "bytes": 161508
+  },
+  "W": {
+   "mos": 4.7955,
+   "bytes": 161723,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7304,
+   "bytes": 161957,
+   "sf_matched": 17413
+  },
+  "WS": {
+   "mos": 4.7265,
+   "bytes": 162362,
+   "sf_matched": 24268
+  },
+  "WSC": {
+   "mos": 4.4522,
+   "bytes": 162194,
+   "sf_matched": 31918
+  },
+  "WSCM": {
+   "mos": 4.5254,
+   "bytes": 162094,
+   "sf_matched": 31946
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161508
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161508
+  }
+ },
+ "g2_18": {
+  "stem": "Jupiter, the Bringer of Jolity.16b48k",
+  "N": {
+   "mos": 4.8224,
+   "bytes": 161498
+  },
+  "W": {
+   "mos": 4.825,
+   "bytes": 161590,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.615,
+   "bytes": 161245,
+   "sf_matched": 33065
+  },
+  "WS": {
+   "mos": 4.6179,
+   "bytes": 161431,
+   "sf_matched": 33363
+  },
+  "WSC": {
+   "mos": 4.5755,
+   "bytes": 161385,
+   "sf_matched": 37056
+  },
+  "WSCM": {
+   "mos": 4.5743,
+   "bytes": 161480,
+   "sf_matched": 37056
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161498
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161498
+  }
+ },
+ "g2_19": {
+  "stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+  "N": {
+   "mos": 4.7765,
+   "bytes": 161533
+  },
+  "W": {
+   "mos": 4.5433,
+   "bytes": 161638,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.6703,
+   "bytes": 162080,
+   "sf_matched": 11061
+  },
+  "WS": {
+   "mos": 3.8597,
+   "bytes": 162294,
+   "sf_matched": 26481
+  },
+  "WSC": {
+   "mos": 3.4346,
+   "bytes": 162014,
+   "sf_matched": 32264
+  },
+  "WSCM": {
+   "mos": 3.4799,
+   "bytes": 161806,
+   "sf_matched": 32259
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161533
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161533
+  }
+ },
+ "g2_20": {
+  "stem": "NewYorkCity.16b48k",
+  "N": {
+   "mos": 4.8482,
+   "bytes": 161455
+  },
+  "W": {
+   "mos": 4.8511,
+   "bytes": 161505,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.777,
+   "bytes": 161742,
+   "sf_matched": 25784
+  },
+  "WS": {
+   "mos": 4.7762,
+   "bytes": 161953,
+   "sf_matched": 27974
+  },
+  "WSC": {
+   "mos": 4.5083,
+   "bytes": 162452,
+   "sf_matched": 34246
+  },
+  "WSCM": {
+   "mos": 4.5863,
+   "bytes": 162352,
+   "sf_matched": 34252
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161455
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161455
+  }
+ },
+ "g2_21": {
+  "stem": "Only Time.16b48k",
+  "N": {
+   "mos": 4.8016,
+   "bytes": 161375
+  },
+  "W": {
+   "mos": 4.808,
+   "bytes": 161363,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7406,
+   "bytes": 162366,
+   "sf_matched": 22260
+  },
+  "WS": {
+   "mos": 4.7727,
+   "bytes": 162334,
+   "sf_matched": 25967
+  },
+  "WSC": {
+   "mos": 4.5624,
+   "bytes": 163044,
+   "sf_matched": 35174
+  },
+  "WSCM": {
+   "mos": 4.6412,
+   "bytes": 162636,
+   "sf_matched": 35174
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161375
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161375
+  }
+ },
+ "g2_22": {
+  "stem": "Robots_old.16b48k",
+  "N": {
+   "mos": 4.7643,
+   "bytes": 161270
+  },
+  "W": {
+   "mos": 4.7834,
+   "bytes": 161304,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.3209,
+   "bytes": 161017,
+   "sf_matched": 27255
+  },
+  "WS": {
+   "mos": 4.3283,
+   "bytes": 161115,
+   "sf_matched": 31217
+  },
+  "WSC": {
+   "mos": 3.9576,
+   "bytes": 160980,
+   "sf_matched": 36686
+  },
+  "WSCM": {
+   "mos": 4.0948,
+   "bytes": 160636,
+   "sf_matched": 36686
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161270
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161270
+  }
+ },
+ "g2_23": {
+  "stem": "Severance__1.31-1.51_.16b48k",
+  "N": {
+   "mos": 4.8503,
+   "bytes": 161422
+  },
+  "W": {
+   "mos": 4.8511,
+   "bytes": 161422,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7133,
+   "bytes": 161968,
+   "sf_matched": 25612
+  },
+  "WS": {
+   "mos": 4.7147,
+   "bytes": 161774,
+   "sf_matched": 25736
+  },
+  "WSC": {
+   "mos": 4.7921,
+   "bytes": 161514,
+   "sf_matched": 34372
+  },
+  "WSCM": {
+   "mos": 4.8206,
+   "bytes": 161435,
+   "sf_matched": 34372
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161422
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161422
+  }
+ },
+ "g2_24": {
+  "stem": "Shinsho_pool_3min45_4min4.16b48k",
+  "N": {
+   "mos": 4.772,
+   "bytes": 161452
+  },
+  "W": {
+   "mos": 4.823,
+   "bytes": 161332,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7642,
+   "bytes": 161679,
+   "sf_matched": 14558
+  },
+  "WS": {
+   "mos": 4.8267,
+   "bytes": 161583,
+   "sf_matched": 27063
+  },
+  "WSC": {
+   "mos": 4.7332,
+   "bytes": 161630,
+   "sf_matched": 33352
+  },
+  "WSCM": {
+   "mos": 4.7438,
+   "bytes": 161623,
+   "sf_matched": 33355
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161452
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161452
+  }
+ },
+ "g2_25": {
+  "stem": "SinceAlways.16b48k",
+  "N": {
+   "mos": 4.8413,
+   "bytes": 161619
+  },
+  "W": {
+   "mos": 4.8575,
+   "bytes": 161919,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7474,
+   "bytes": 161769,
+   "sf_matched": 17890
+  },
+  "WS": {
+   "mos": 4.744,
+   "bytes": 162113,
+   "sf_matched": 21273
+  },
+  "WSC": {
+   "mos": 4.5854,
+   "bytes": 161933,
+   "sf_matched": 24190
+  },
+  "WSCM": {
+   "mos": 4.5317,
+   "bytes": 161836,
+   "sf_matched": 24186
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161619
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161619
+  }
+ },
+ "g2_26": {
+  "stem": "SlavesOfFear.16b48k",
+  "N": {
+   "mos": 4.8363,
+   "bytes": 161372
+  },
+  "W": {
+   "mos": 4.8411,
+   "bytes": 161440,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.787,
+   "bytes": 162206,
+   "sf_matched": 25404
+  },
+  "WS": {
+   "mos": 4.7831,
+   "bytes": 162378,
+   "sf_matched": 27077
+  },
+  "WSC": {
+   "mos": 4.6264,
+   "bytes": 162782,
+   "sf_matched": 34544
+  },
+  "WSCM": {
+   "mos": 4.6784,
+   "bytes": 162586,
+   "sf_matched": 34562
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161372
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161372
+  }
+ },
+ "g2_27": {
+  "stem": "The Chastising of Renegade.16b48k",
+  "N": {
+   "mos": 4.7812,
+   "bytes": 161810
+  },
+  "W": {
+   "mos": 4.8007,
+   "bytes": 161872,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7318,
+   "bytes": 162987,
+   "sf_matched": 15876
+  },
+  "WS": {
+   "mos": 4.7146,
+   "bytes": 163176,
+   "sf_matched": 24705
+  },
+  "WSC": {
+   "mos": 4.3213,
+   "bytes": 163410,
+   "sf_matched": 31160
+  },
+  "WSCM": {
+   "mos": 4.4089,
+   "bytes": 163171,
+   "sf_matched": 31192
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161810
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161810
+  }
+ },
+ "g2_28": {
+  "stem": "Through The Fire And Flames.16b48k",
+  "N": {
+   "mos": 4.8199,
+   "bytes": 161391
+  },
+  "W": {
+   "mos": 4.8389,
+   "bytes": 161575,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7773,
+   "bytes": 161714,
+   "sf_matched": 22372
+  },
+  "WS": {
+   "mos": 4.7698,
+   "bytes": 161894,
+   "sf_matched": 26248
+  },
+  "WSC": {
+   "mos": 4.5567,
+   "bytes": 162351,
+   "sf_matched": 31714
+  },
+  "WSCM": {
+   "mos": 4.5591,
+   "bytes": 162270,
+   "sf_matched": 31715
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161391
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161391
+  }
+ },
+ "g2_29": {
+  "stem": "TrosYGareg.16b48k",
+  "N": {
+   "mos": 4.8801,
+   "bytes": 161395
+  },
+  "W": {
+   "mos": 4.8763,
+   "bytes": 161605,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7863,
+   "bytes": 161434,
+   "sf_matched": 22728
+  },
+  "WS": {
+   "mos": 4.7856,
+   "bytes": 161509,
+   "sf_matched": 23540
+  },
+  "WSC": {
+   "mos": 4.8357,
+   "bytes": 161516,
+   "sf_matched": 27991
+  },
+  "WSCM": {
+   "mos": 4.7499,
+   "bytes": 161680,
+   "sf_matched": 27981
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161395
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161395
+  }
+ },
+ "g2_30": {
+  "stem": "Waiting.16b48k",
+  "N": {
+   "mos": 4.7647,
+   "bytes": 161723
+  },
+  "W": {
+   "mos": 4.7907,
+   "bytes": 161836,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.3456,
+   "bytes": 161772,
+   "sf_matched": 29007
+  },
+  "WS": {
+   "mos": 4.3841,
+   "bytes": 161929,
+   "sf_matched": 33477
+  },
+  "WSC": {
+   "mos": 4.5098,
+   "bytes": 161666,
+   "sf_matched": 35192
+  },
+  "WSCM": {
+   "mos": 4.54,
+   "bytes": 161649,
+   "sf_matched": 35196
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161723
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161723
+  }
+ },
+ "g2_31": {
+  "stem": "With Love (Outro).16b48k",
+  "N": {
+   "mos": 4.8683,
+   "bytes": 161452
+  },
+  "W": {
+   "mos": 4.8745,
+   "bytes": 161651,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7317,
+   "bytes": 161607,
+   "sf_matched": 25247
+  },
+  "WS": {
+   "mos": 4.7372,
+   "bytes": 162205,
+   "sf_matched": 28110
+  },
+  "WSC": {
+   "mos": 4.5145,
+   "bytes": 161960,
+   "sf_matched": 34406
+  },
+  "WSCM": {
+   "mos": 4.3952,
+   "bytes": 162000,
+   "sf_matched": 34419
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161452
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161452
+  }
+ },
+ "g2_32": {
+  "stem": "bah",
+  "N": {
+   "mos": 4.8077,
+   "bytes": 153374
+  },
+  "W": {
+   "mos": 4.8143,
+   "bytes": 153734,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7457,
+   "bytes": 153638,
+   "sf_matched": 22225
+  },
+  "WS": {
+   "mos": 4.7498,
+   "bytes": 154175,
+   "sf_matched": 27786
+  },
+  "WSC": {
+   "mos": 4.599,
+   "bytes": 153307,
+   "sf_matched": 34252
+  },
+  "WSCM": {
+   "mos": 4.6846,
+   "bytes": 153268,
+   "sf_matched": 34252
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 153374
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 153374
+  }
+ },
+ "g2_33": {
+  "stem": "bas",
+  "N": {
+   "mos": 4.7215,
+   "bytes": 161432
+  },
+  "W": {
+   "mos": 4.8196,
+   "bytes": 161354,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.6544,
+   "bytes": 161766,
+   "sf_matched": 14396
+  },
+  "WS": {
+   "mos": 4.6849,
+   "bytes": 161564,
+   "sf_matched": 30049
+  },
+  "WSC": {
+   "mos": 4.6419,
+   "bytes": 161866,
+   "sf_matched": 32826
+  },
+  "WSCM": {
+   "mos": 4.633,
+   "bytes": 161849,
+   "sf_matched": 32824
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161432
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161432
+  }
+ },
+ "g2_34": {
+  "stem": "bonhemian_rhapsody.16b48k",
+  "N": {
+   "mos": 4.8154,
+   "bytes": 161371
+  },
+  "W": {
+   "mos": 4.8273,
+   "bytes": 161348,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.5875,
+   "bytes": 161433,
+   "sf_matched": 28929
+  },
+  "WS": {
+   "mos": 4.5674,
+   "bytes": 161626,
+   "sf_matched": 31982
+  },
+  "WSC": {
+   "mos": 4.5966,
+   "bytes": 161645,
+   "sf_matched": 33628
+  },
+  "WSCM": {
+   "mos": 4.6097,
+   "bytes": 161551,
+   "sf_matched": 33628
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161371
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161371
+  }
+ },
+ "g2_35": {
+  "stem": "clapton_44k.16b48k",
+  "N": {
+   "mos": 4.7825,
+   "bytes": 161303
+  },
+  "W": {
+   "mos": 4.7914,
+   "bytes": 161345,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7451,
+   "bytes": 161461,
+   "sf_matched": 13408
+  },
+  "WS": {
+   "mos": 4.6513,
+   "bytes": 161679,
+   "sf_matched": 23877
+  },
+  "WSC": {
+   "mos": 4.508,
+   "bytes": 162011,
+   "sf_matched": 27860
+  },
+  "WSCM": {
+   "mos": 4.4902,
+   "bytes": 162277,
+   "sf_matched": 27862
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161303
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161303
+  }
+ },
+ "g2_36": {
+  "stem": "cst",
+  "N": {
+   "mos": 4.8279,
+   "bytes": 105845
+  },
+  "W": {
+   "mos": 4.8258,
+   "bytes": 106108,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7718,
+   "bytes": 105964,
+   "sf_matched": 10295
+  },
+  "WS": {
+   "mos": 4.6293,
+   "bytes": 106372,
+   "sf_matched": 16576
+  },
+  "WSC": {
+   "mos": 4.4969,
+   "bytes": 105851,
+   "sf_matched": 19534
+  },
+  "WSCM": {
+   "mos": 4.5205,
+   "bytes": 105831,
+   "sf_matched": 19538
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 105845
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 105845
+  }
+ },
+ "g2_37": {
+  "stem": "fms",
+  "N": {
+   "mos": 4.8589,
+   "bytes": 161497
+  },
+  "W": {
+   "mos": 4.8138,
+   "bytes": 161519,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7438,
+   "bytes": 161483,
+   "sf_matched": 9050
+  },
+  "WS": {
+   "mos": 4.61,
+   "bytes": 161884,
+   "sf_matched": 24195
+  },
+  "WSC": {
+   "mos": 4.6112,
+   "bytes": 161833,
+   "sf_matched": 26649
+  },
+  "WSCM": {
+   "mos": 4.2942,
+   "bytes": 161991,
+   "sf_matched": 26576
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161497
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161497
+  }
+ },
+ "g2_38": {
+  "stem": "girl.16b48k",
+  "N": {
+   "mos": 4.9043,
+   "bytes": 161483
+  },
+  "W": {
+   "mos": 4.4413,
+   "bytes": 161704,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8662,
+   "bytes": 161886,
+   "sf_matched": 18425
+  },
+  "WS": {
+   "mos": 4.4131,
+   "bytes": 165610,
+   "sf_matched": 28278
+  },
+  "WSC": {
+   "mos": 4.2632,
+   "bytes": 164033,
+   "sf_matched": 34971
+  },
+  "WSCM": {
+   "mos": 4.2381,
+   "bytes": 164127,
+   "sf_matched": 35018
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161483
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161483
+  }
+ },
+ "g2_39": {
+  "stem": "glk",
+  "N": {
+   "mos": 4.9553,
+   "bytes": 161398
+  },
+  "W": {
+   "mos": 4.9602,
+   "bytes": 161607,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.6526,
+   "bytes": 161800,
+   "sf_matched": 27153
+  },
+  "WS": {
+   "mos": 4.6565,
+   "bytes": 161913,
+   "sf_matched": 27691
+  },
+  "WSC": {
+   "mos": 4.9383,
+   "bytes": 155440,
+   "sf_matched": 27796
+  },
+  "WSCM": {
+   "mos": 4.9374,
+   "bytes": 154071,
+   "sf_matched": 27796
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161398
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161398
+  }
+ },
+ "g2_40": {
+  "stem": "hrp",
+  "N": {
+   "mos": 4.8899,
+   "bytes": 142931
+  },
+  "W": {
+   "mos": 4.8941,
+   "bytes": 143084,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7891,
+   "bytes": 144078,
+   "sf_matched": 27854
+  },
+  "WS": {
+   "mos": 4.7929,
+   "bytes": 144874,
+   "sf_matched": 29189
+  },
+  "WSC": {
+   "mos": 4.7515,
+   "bytes": 144187,
+   "sf_matched": 31786
+  },
+  "WSCM": {
+   "mos": 4.7575,
+   "bytes": 143971,
+   "sf_matched": 31801
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 142931
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 142931
+  }
+ },
+ "g2_41": {
+  "stem": "liberate.16b48k",
+  "N": {
+   "mos": 4.8124,
+   "bytes": 81347
+  },
+  "W": {
+   "mos": 4.8367,
+   "bytes": 81350,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7655,
+   "bytes": 81850,
+   "sf_matched": 9105
+  },
+  "WS": {
+   "mos": 4.7885,
+   "bytes": 81580,
+   "sf_matched": 11930
+  },
+  "WSC": {
+   "mos": 4.523,
+   "bytes": 81783,
+   "sf_matched": 15855
+  },
+  "WSCM": {
+   "mos": 4.5692,
+   "bytes": 81764,
+   "sf_matched": 15860
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 81347
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 81347
+  }
+ },
+ "g2_42": {
+  "stem": "lob",
+  "N": {
+   "mos": 4.7961,
+   "bytes": 115399
+  },
+  "W": {
+   "mos": 4.8263,
+   "bytes": 115613,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7784,
+   "bytes": 116706,
+   "sf_matched": 14708
+  },
+  "WS": {
+   "mos": 4.7825,
+   "bytes": 117504,
+   "sf_matched": 19423
+  },
+  "WSC": {
+   "mos": 4.5889,
+   "bytes": 116730,
+   "sf_matched": 24641
+  },
+  "WSCM": {
+   "mos": 4.626,
+   "bytes": 116375,
+   "sf_matched": 24655
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 115399
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 115399
+  }
+ },
+ "g2_43": {
+  "stem": "mof",
+  "N": {
+   "mos": 4.7503,
+   "bytes": 161367
+  },
+  "W": {
+   "mos": 4.7976,
+   "bytes": 161654,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.6903,
+   "bytes": 161458,
+   "sf_matched": 7501
+  },
+  "WS": {
+   "mos": 4.4713,
+   "bytes": 162459,
+   "sf_matched": 24504
+  },
+  "WSC": {
+   "mos": 2.6732,
+   "bytes": 162352,
+   "sf_matched": 28167
+  },
+  "WSCM": {
+   "mos": 2.7019,
+   "bytes": 162603,
+   "sf_matched": 28221
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161367
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161367
+  }
+ },
+ "g2_44": {
+  "stem": "qrt",
+  "N": {
+   "mos": 4.7808,
+   "bytes": 161467
+  },
+  "W": {
+   "mos": 4.808,
+   "bytes": 161765,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.4634,
+   "bytes": 161903,
+   "sf_matched": 29619
+  },
+  "WS": {
+   "mos": 4.5032,
+   "bytes": 162214,
+   "sf_matched": 34012
+  },
+  "WSC": {
+   "mos": 4.4632,
+   "bytes": 161876,
+   "sf_matched": 36102
+  },
+  "WSCM": {
+   "mos": 4.523,
+   "bytes": 161762,
+   "sf_matched": 36116
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161467
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161467
+  }
+ },
+ "g2_45": {
+  "stem": "sandman.16b48k",
+  "N": {
+   "mos": 4.8521,
+   "bytes": 161312
+  },
+  "W": {
+   "mos": 4.8658,
+   "bytes": 161317,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.8143,
+   "bytes": 161530,
+   "sf_matched": 18056
+  },
+  "WS": {
+   "mos": 4.7835,
+   "bytes": 161471,
+   "sf_matched": 24974
+  },
+  "WSC": {
+   "mos": 4.5611,
+   "bytes": 161762,
+   "sf_matched": 31362
+  },
+  "WSCM": {
+   "mos": 4.5717,
+   "bytes": 161859,
+   "sf_matched": 31364
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161312
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161312
+  }
+ },
+ "g2_46": {
+  "stem": "take_your_finger_frin_my_head.16b48k",
+  "N": {
+   "mos": 4.7298,
+   "bytes": 161459
+  },
+  "W": {
+   "mos": 4.7969,
+   "bytes": 161467,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.7143,
+   "bytes": 161867,
+   "sf_matched": 25541
+  },
+  "WS": {
+   "mos": 4.7656,
+   "bytes": 162085,
+   "sf_matched": 27835
+  },
+  "WSC": {
+   "mos": 4.6371,
+   "bytes": 162489,
+   "sf_matched": 33910
+  },
+  "WSCM": {
+   "mos": 4.6713,
+   "bytes": 162588,
+   "sf_matched": 33946
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 161459
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 161459
+  }
+ },
+ "g2_47": {
+  "stem": "trumpet.16b48k",
+  "N": {
+   "mos": 4.7878,
+   "bytes": 162724
+  },
+  "W": {
+   "mos": 4.83,
+   "bytes": 162943,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.1846,
+   "bytes": 162887,
+   "sf_matched": 27401
+  },
+  "WS": {
+   "mos": 4.2197,
+   "bytes": 163331,
+   "sf_matched": 32171
+  },
+  "WSC": {
+   "mos": 4.2814,
+   "bytes": 162316,
+   "sf_matched": 32884
+  },
+  "WSCM": {
+   "mos": 4.3237,
+   "bytes": 162490,
+   "sf_matched": 32897
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 162724
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 162724
+  }
+ },
+ "g2_48": {
+  "stem": "velvet.16b48k",
+  "N": {
+   "mos": 4.4973,
+   "bytes": 162652
+  },
+  "W": {
+   "mos": 4.5328,
+   "bytes": 162755,
+   "sf_matched": 0
+  },
+  "S": {
+   "mos": 4.4384,
+   "bytes": 162766,
+   "sf_matched": 613
+  },
+  "WS": {
+   "mos": 3.0997,
+   "bytes": 162814,
+   "sf_matched": 28009
+  },
+  "WSC": {
+   "mos": 2.5249,
+   "bytes": 162924,
+   "sf_matched": 30721
+  },
+  "WSCM": {
+   "mos": 2.5616,
+   "bytes": 163011,
+   "sf_matched": 30795
+  },
+  "selfW": {
+   "pcm_ident": true,
+   "bytes": 162652
+  },
+  "selfWS": {
+   "pcm_ident": true,
+   "bytes": 162652
+  }
+ }
+}
