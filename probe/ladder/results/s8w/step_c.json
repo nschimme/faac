@@ -1,0 +1,4 @@
+{
+  "status": "stopped",
+  "reason": "Step A1 alignment threshold (>= 95% window match) was not reached for FDK (82.68%) or Apple (80.62%). Per Step A1 prompt rule: 'If no combination reaches 95 %, STOP, report the table and what you found, and do not run step B.' Step C is likewise stopped."
+}
