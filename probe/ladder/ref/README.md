@@ -9,6 +9,7 @@ Made on macOS 27 (Darwin 27.0.0) with `afconvert`, from the 49 clips in
 | `apple_lc64k/` | `afconvert -f m4af -d aac@48000 -b 64000 IN OUT` | ~72k | 48 kHz |
 | `apple_lc96k/` | `afconvert -f m4af -d aac@48000 -b 96000 IN OUT` | ~106k | 48 kHz |
 | `apple_he32k/` | `afconvert -f m4af -d aach@48000 -b 32000 IN OUT` | ~38.5k | 24 kHz core, SBR to 48 kHz |
+| `apple_he48k/` | `afconvert -f m4af -d aach@48000 -b 48000 IN OUT` | ~48.6k (mean of per-clip rates) | 24 kHz core, SBR to 48 kHz |
 
 - The 128k settings were not recorded. They were recovered by re-encoding
   `12-German-male-speech.441.16b48k` with `-b 128000` and default strategy: same size

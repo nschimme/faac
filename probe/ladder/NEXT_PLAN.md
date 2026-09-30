@@ -51,8 +51,9 @@ positive = the reference leads):
    policy unknown; the crossover alone lost in S4, so if SBR carries it, look at envelope time/frequency resolution,
    noise floor and inverse filtering, not kx.
 2. **HE 32k vs fdk (+0.015)** — same split, after 48k (small; FAAC is at par with Apple here).
-3. **Ask Nils for Apple HE 48k refs** (`afconvert -f m4af -d aach@48000 -b 48000`, 49 clips into `ref/apple_he48k`) so
-   HE 48k has an Apple column; until then the HE 48k target is fdk alone.
+3. **Apple HE 48k refs: DONE** (2026-09-30, `ref/apple_he48k`, `afconvert -f m4af -d aach@48000 -b 48000`, 49 clips,
+   realised mean ~48.6k, so HE 48k now has an Apple column). Reuse the E0 alignment and controls already
+   established on HE 32k; rerun Control 0/KA/KF on this rung before any arm, and derive its own FAAC slope pair.
 4. **Re-baseline HE after #595/#599/#601 land** (and decide #579): every HE number is on the probe, which carries #579;
    re-run F2's HE rungs on the merged master so the scoreboard matches what ships.
 5. Parked: the LC 128k Apple residual (+0.008; B3 closed per-band rules; only cross-frame context untried), LC 64k,
