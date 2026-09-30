@@ -20,13 +20,14 @@ with FAAC's own slope; positive = the reference leads):
 
 | rung | vs Apple | vs fdk-aac |
 |---|---:|---|
-| LC 64k (`--object-type lc`) | −0.48 (FAAC far ahead; partly PNS vs Apple's holes) | not measured on this base |
-| LC 96k | −0.003 (par) | not measured on this base |
-| LC 128k | **+0.008 (29/18)**; the lever is Apple's sf below 6 kHz (rSFr +0.015) | ≈ par (S2, older base) |
-| HE 32k | −0.011 (par; Apple spends +8.7 % bytes, raw 3.891 vs 3.817) | not measured on this base (old: fdk ahead 0.07–0.13) |
-| HE 48k | no Apple refs | not measured |
+| LC 64k (`--object-type lc`) | −0.48 (FAAC far ahead; partly PNS vs Apple's holes) | −0.203 (FAAC ahead, 5/44; S5-F2) |
+| LC 96k | −0.003 (par) | +0.000 (par, 20/29; S5-F2) |
+| LC 128k | **+0.008 (29/18)**; the lever is Apple's sf below 6 kHz (rSFr +0.015) | −0.021 (FAAC ahead, 14/35; S5-F2) |
+| HE 32k | −0.011 (par; Apple spends +8.7 % bytes, raw 3.891 vs 3.817) | **+0.015 (fdk leads, 31/18; S5-F2)** |
+| HE 48k | no Apple refs | **+0.075 (fdk leads, 35/14; S5-F2)** |
 
-So the Apple goal is met except a small LC 128k residual; **whether the fdk goal is met is unknown**. The parity rests on
+So the Apple goal is met except a small LC 128k residual. **S5-F2 (fifth session): the fdk goal is met at LC and not at
+HE**; HE 48k (+0.075) is the largest gap left to either reference. (fdk column: `LADDER_RESULT.md` → "Stage S5-F2".) The parity rests on
 #595 and #599, which are not merged.
 
 **What S4 settled:**

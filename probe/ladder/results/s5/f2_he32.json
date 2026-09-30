@@ -1,0 +1,794 @@
+{
+"ctl": {
+"12-German-male-speech.441.16b48k": {
+"mos": 3.6648,
+"bytes": 32942
+},
+"15-Good-evening.441.16b48k": {
+"mos": 3.6578,
+"bytes": 36123
+},
+"21-classic.441.16b48k": {
+"mos": 3.9537,
+"bytes": 40324
+},
+"24-Greensleeves-Korean-male-speech.441.16b48k": {
+"mos": 3.6263,
+"bytes": 36555
+},
+"25-This-is-the-end.441.16b48k": {
+"mos": 3.7533,
+"bytes": 38986
+},
+"27-last-song-drums-and-trampets.441.16b48k": {
+"mos": 3.9541,
+"bytes": 42397
+},
+"35_SQAM_glockenspiel_cut.16b48k": {
+"mos": 4.1969,
+"bytes": 41961
+},
+"4-Sound-English-male.441.16b48k": {
+"mos": 3.809,
+"bytes": 38121
+},
+"9-Have-big-expensive-car.441.16b48k": {
+"mos": 3.4933,
+"bytes": 40657
+},
+"Asleep__4.11-4.31_.16b48k": {
+"mos": 3.6753,
+"bytes": 41635
+},
+"Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+"mos": 3.5002,
+"bytes": 41571
+},
+"Changes.16b48k": {
+"mos": 3.5381,
+"bytes": 41723
+},
+"Coral.16b48k": {
+"mos": 3.7311,
+"bytes": 41691
+},
+"ExitMusic.16b48k": {
+"mos": 3.8778,
+"bytes": 41764
+},
+"Girl_In_The_Fire__Sample_.16b48k": {
+"mos": 3.4281,
+"bytes": 41642
+},
+"Greatest_Love_of_All_2min57.16b48k": {
+"mos": 3.6986,
+"bytes": 41595
+},
+"Hey Tonight.16b48k": {
+"mos": 4.2222,
+"bytes": 41714
+},
+"Hotel California.16b48k": {
+"mos": 3.8355,
+"bytes": 42208
+},
+"Jupiter, the Bringer of Jolity.16b48k": {
+"mos": 3.8354,
+"bytes": 41771
+},
+"Last_Of_The_Mohicanz__Sample_.16b48k": {
+"mos": 3.9286,
+"bytes": 44203
+},
+"NewYorkCity.16b48k": {
+"mos": 4.0215,
+"bytes": 42143
+},
+"Only Time.16b48k": {
+"mos": 3.8752,
+"bytes": 41544
+},
+"Robots_old.16b48k": {
+"mos": 4.1916,
+"bytes": 41565
+},
+"Severance__1.31-1.51_.16b48k": {
+"mos": 3.2644,
+"bytes": 41661
+},
+"Shinsho_pool_3min45_4min4.16b48k": {
+"mos": 4.206,
+"bytes": 41636
+},
+"SinceAlways.16b48k": {
+"mos": 3.9847,
+"bytes": 41667
+},
+"SlavesOfFear.16b48k": {
+"mos": 4.0456,
+"bytes": 42163
+},
+"The Chastising of Renegade.16b48k": {
+"mos": 3.705,
+"bytes": 42254
+},
+"Through The Fire And Flames.16b48k": {
+"mos": 4.0024,
+"bytes": 42189
+},
+"TrosYGareg.16b48k": {
+"mos": 3.8946,
+"bytes": 41638
+},
+"Waiting.16b48k": {
+"mos": 3.7063,
+"bytes": 41774
+},
+"With Love (Outro).16b48k": {
+"mos": 4.1232,
+"bytes": 41659
+},
+"bah": {
+"mos": 3.6218,
+"bytes": 39565
+},
+"bas": {
+"mos": 3.5265,
+"bytes": 41608
+},
+"bonhemian_rhapsody.16b48k": {
+"mos": 3.6727,
+"bytes": 41614
+},
+"clapton_44k.16b48k": {
+"mos": 3.7437,
+"bytes": 41841
+},
+"cst": {
+"mos": 3.6112,
+"bytes": 27773
+},
+"fms": {
+"mos": 3.7092,
+"bytes": 41859
+},
+"girl.16b48k": {
+"mos": 4.3349,
+"bytes": 42017
+},
+"glk": {
+"mos": 4.6679,
+"bytes": 41696
+},
+"hrp": {
+"mos": 4.0646,
+"bytes": 37639
+},
+"liberate.16b48k": {
+"mos": 3.914,
+"bytes": 21769
+},
+"lob": {
+"mos": 3.9528,
+"bytes": 31067
+},
+"mof": {
+"mos": 3.2501,
+"bytes": 41652
+},
+"qrt": {
+"mos": 3.5466,
+"bytes": 41593
+},
+"sandman.16b48k": {
+"mos": 3.7677,
+"bytes": 41707
+},
+"take_your_finger_frin_my_head.16b48k": {
+"mos": 3.5231,
+"bytes": 41891
+},
+"trumpet.16b48k": {
+"mos": 4.1303,
+"bytes": 43167
+},
+"velvet.16b48k": {
+"mos": 3.5903,
+"bytes": 43712
+}
+},
+"s28": {
+"12-German-male-speech.441.16b48k": {
+"mos": 3.4933,
+"bytes": 29076
+},
+"15-Good-evening.441.16b48k": {
+"mos": 3.5321,
+"bytes": 31810
+},
+"21-classic.441.16b48k": {
+"mos": 3.8496,
+"bytes": 35546
+},
+"24-Greensleeves-Korean-male-speech.441.16b48k": {
+"mos": 3.353,
+"bytes": 32210
+},
+"25-This-is-the-end.441.16b48k": {
+"mos": 3.5878,
+"bytes": 34234
+},
+"27-last-song-drums-and-trampets.441.16b48k": {
+"mos": 3.8417,
+"bytes": 37262
+},
+"35_SQAM_glockenspiel_cut.16b48k": {
+"mos": 4.141,
+"bytes": 36807
+},
+"4-Sound-English-male.441.16b48k": {
+"mos": 3.5872,
+"bytes": 33753
+},
+"9-Have-big-expensive-car.441.16b48k": {
+"mos": 3.4605,
+"bytes": 35746
+},
+"Asleep__4.11-4.31_.16b48k": {
+"mos": 3.4167,
+"bytes": 36671
+},
+"Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+"mos": 3.1853,
+"bytes": 36472
+},
+"Changes.16b48k": {
+"mos": 3.3575,
+"bytes": 36722
+},
+"Coral.16b48k": {
+"mos": 3.6083,
+"bytes": 36669
+},
+"ExitMusic.16b48k": {
+"mos": 3.773,
+"bytes": 36741
+},
+"Girl_In_The_Fire__Sample_.16b48k": {
+"mos": 3.3554,
+"bytes": 36642
+},
+"Greatest_Love_of_All_2min57.16b48k": {
+"mos": 3.5578,
+"bytes": 36626
+},
+"Hey Tonight.16b48k": {
+"mos": 4.0972,
+"bytes": 36712
+},
+"Hotel California.16b48k": {
+"mos": 3.6988,
+"bytes": 37059
+},
+"Jupiter, the Bringer of Jolity.16b48k": {
+"mos": 3.6769,
+"bytes": 36784
+},
+"Last_Of_The_Mohicanz__Sample_.16b48k": {
+"mos": 3.7995,
+"bytes": 38813
+},
+"NewYorkCity.16b48k": {
+"mos": 3.8917,
+"bytes": 37062
+},
+"Only Time.16b48k": {
+"mos": 3.7514,
+"bytes": 36565
+},
+"Robots_old.16b48k": {
+"mos": 4.1012,
+"bytes": 36589
+},
+"Severance__1.31-1.51_.16b48k": {
+"mos": 3.0195,
+"bytes": 36665
+},
+"Shinsho_pool_3min45_4min4.16b48k": {
+"mos": 4.098,
+"bytes": 36664
+},
+"SinceAlways.16b48k": {
+"mos": 3.8348,
+"bytes": 36695
+},
+"SlavesOfFear.16b48k": {
+"mos": 3.8974,
+"bytes": 37048
+},
+"The Chastising of Renegade.16b48k": {
+"mos": 3.619,
+"bytes": 37189
+},
+"Through The Fire And Flames.16b48k": {
+"mos": 3.8377,
+"bytes": 37081
+},
+"TrosYGareg.16b48k": {
+"mos": 3.7141,
+"bytes": 36673
+},
+"Waiting.16b48k": {
+"mos": 3.5979,
+"bytes": 36683
+},
+"With Love (Outro).16b48k": {
+"mos": 3.9941,
+"bytes": 36709
+},
+"bah": {
+"mos": 3.5631,
+"bytes": 34912
+},
+"bas": {
+"mos": 3.126,
+"bytes": 36609
+},
+"bonhemian_rhapsody.16b48k": {
+"mos": 3.5057,
+"bytes": 36634
+},
+"clapton_44k.16b48k": {
+"mos": 3.6059,
+"bytes": 36786
+},
+"cst": {
+"mos": 3.4045,
+"bytes": 24484
+},
+"fms": {
+"mos": 3.5879,
+"bytes": 36812
+},
+"girl.16b48k": {
+"mos": 4.2536,
+"bytes": 36971
+},
+"glk": {
+"mos": 4.6521,
+"bytes": 36947
+},
+"hrp": {
+"mos": 3.7858,
+"bytes": 33144
+},
+"liberate.16b48k": {
+"mos": 3.7993,
+"bytes": 19165
+},
+"lob": {
+"mos": 3.8069,
+"bytes": 27280
+},
+"mof": {
+"mos": 3.0905,
+"bytes": 36666
+},
+"qrt": {
+"mos": 3.3724,
+"bytes": 36619
+},
+"sandman.16b48k": {
+"mos": 3.6982,
+"bytes": 36712
+},
+"take_your_finger_frin_my_head.16b48k": {
+"mos": 3.3642,
+"bytes": 36932
+},
+"trumpet.16b48k": {
+"mos": 3.928,
+"bytes": 37836
+},
+"velvet.16b48k": {
+"mos": 3.5125,
+"bytes": 38567
+}
+},
+"s40": {
+"12-German-male-speech.441.16b48k": {
+"mos": 3.9304,
+"bytes": 40761
+},
+"15-Good-evening.441.16b48k": {
+"mos": 3.7971,
+"bytes": 44934
+},
+"21-classic.441.16b48k": {
+"mos": 4.1467,
+"bytes": 49907
+},
+"24-Greensleeves-Korean-male-speech.441.16b48k": {
+"mos": 3.8694,
+"bytes": 45273
+},
+"25-This-is-the-end.441.16b48k": {
+"mos": 4.0387,
+"bytes": 48617
+},
+"27-last-song-drums-and-trampets.441.16b48k": {
+"mos": 4.1092,
+"bytes": 52637
+},
+"35_SQAM_glockenspiel_cut.16b48k": {
+"mos": 4.5554,
+"bytes": 52212
+},
+"4-Sound-English-male.441.16b48k": {
+"mos": 4.1074,
+"bytes": 46993
+},
+"9-Have-big-expensive-car.441.16b48k": {
+"mos": 3.9764,
+"bytes": 50615
+},
+"Asleep__4.11-4.31_.16b48k": {
+"mos": 4.0028,
+"bytes": 51601
+},
+"Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+"mos": 3.5917,
+"bytes": 51784
+},
+"Changes.16b48k": {
+"mos": 3.6829,
+"bytes": 51713
+},
+"Coral.16b48k": {
+"mos": 3.9669,
+"bytes": 51822
+},
+"ExitMusic.16b48k": {
+"mos": 4.1314,
+"bytes": 51865
+},
+"Girl_In_The_Fire__Sample_.16b48k": {
+"mos": 3.6601,
+"bytes": 51699
+},
+"Greatest_Love_of_All_2min57.16b48k": {
+"mos": 3.9307,
+"bytes": 51532
+},
+"Hey Tonight.16b48k": {
+"mos": 4.3479,
+"bytes": 51966
+},
+"Hotel California.16b48k": {
+"mos": 4.0826,
+"bytes": 52486
+},
+"Jupiter, the Bringer of Jolity.16b48k": {
+"mos": 3.997,
+"bytes": 51827
+},
+"Last_Of_The_Mohicanz__Sample_.16b48k": {
+"mos": 4.0447,
+"bytes": 54298
+},
+"NewYorkCity.16b48k": {
+"mos": 4.1953,
+"bytes": 52511
+},
+"Only Time.16b48k": {
+"mos": 4.0898,
+"bytes": 51461
+},
+"Robots_old.16b48k": {
+"mos": 4.3094,
+"bytes": 51438
+},
+"Severance__1.31-1.51_.16b48k": {
+"mos": 3.6123,
+"bytes": 51633
+},
+"Shinsho_pool_3min45_4min4.16b48k": {
+"mos": 4.365,
+"bytes": 51528
+},
+"SinceAlways.16b48k": {
+"mos": 4.175,
+"bytes": 51684
+},
+"SlavesOfFear.16b48k": {
+"mos": 4.1878,
+"bytes": 52600
+},
+"The Chastising of Renegade.16b48k": {
+"mos": 3.9629,
+"bytes": 52808
+},
+"Through The Fire And Flames.16b48k": {
+"mos": 4.2261,
+"bytes": 52322
+},
+"TrosYGareg.16b48k": {
+"mos": 4.1269,
+"bytes": 51629
+},
+"Waiting.16b48k": {
+"mos": 3.8373,
+"bytes": 51985
+},
+"With Love (Outro).16b48k": {
+"mos": 4.2378,
+"bytes": 51872
+},
+"bah": {
+"mos": 3.8954,
+"bytes": 49048
+},
+"bas": {
+"mos": 3.866,
+"bytes": 51484
+},
+"bonhemian_rhapsody.16b48k": {
+"mos": 3.8666,
+"bytes": 51608
+},
+"clapton_44k.16b48k": {
+"mos": 4.011,
+"bytes": 51964
+},
+"cst": {
+"mos": 3.8136,
+"bytes": 34424
+},
+"fms": {
+"mos": 3.98,
+"bytes": 52013
+},
+"girl.16b48k": {
+"mos": 4.4935,
+"bytes": 51944
+},
+"glk": {
+"mos": 4.8502,
+"bytes": 51697
+},
+"hrp": {
+"mos": 4.2769,
+"bytes": 46648
+},
+"liberate.16b48k": {
+"mos": 4.0908,
+"bytes": 27093
+},
+"lob": {
+"mos": 4.1116,
+"bytes": 38756
+},
+"mof": {
+"mos": 3.5924,
+"bytes": 51489
+},
+"qrt": {
+"mos": 3.743,
+"bytes": 51516
+},
+"sandman.16b48k": {
+"mos": 4.0487,
+"bytes": 51696
+},
+"take_your_finger_frin_my_head.16b48k": {
+"mos": 3.7689,
+"bytes": 52076
+},
+"trumpet.16b48k": {
+"mos": 4.1782,
+"bytes": 53770
+},
+"velvet.16b48k": {
+"mos": 3.5695,
+"bytes": 53958
+}
+},
+"fdk": {
+"12-German-male-speech.441.16b48k": {
+"mos": 3.8839,
+"bytes": 34207
+},
+"15-Good-evening.441.16b48k": {
+"mos": 3.6867,
+"bytes": 37206
+},
+"21-classic.441.16b48k": {
+"mos": 3.7391,
+"bytes": 41829
+},
+"24-Greensleeves-Korean-male-speech.441.16b48k": {
+"mos": 3.2815,
+"bytes": 38152
+},
+"25-This-is-the-end.441.16b48k": {
+"mos": 3.929,
+"bytes": 39826
+},
+"27-last-song-drums-and-trampets.441.16b48k": {
+"mos": 3.9549,
+"bytes": 42720
+},
+"35_SQAM_glockenspiel_cut.16b48k": {
+"mos": 4.5058,
+"bytes": 43483
+},
+"4-Sound-English-male.441.16b48k": {
+"mos": 3.8779,
+"bytes": 39050
+},
+"9-Have-big-expensive-car.441.16b48k": {
+"mos": 3.6912,
+"bytes": 42071
+},
+"Asleep__4.11-4.31_.16b48k": {
+"mos": 3.9577,
+"bytes": 43337
+},
+"Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+"mos": 3.7268,
+"bytes": 43386
+},
+"Changes.16b48k": {
+"mos": 3.6479,
+"bytes": 43413
+},
+"Coral.16b48k": {
+"mos": 4.022,
+"bytes": 43248
+},
+"ExitMusic.16b48k": {
+"mos": 4.0194,
+"bytes": 43200
+},
+"Girl_In_The_Fire__Sample_.16b48k": {
+"mos": 3.6577,
+"bytes": 43452
+},
+"Greatest_Love_of_All_2min57.16b48k": {
+"mos": 3.8315,
+"bytes": 43284
+},
+"Hey Tonight.16b48k": {
+"mos": 4.0359,
+"bytes": 43189
+},
+"Hotel California.16b48k": {
+"mos": 3.9613,
+"bytes": 43239
+},
+"Jupiter, the Bringer of Jolity.16b48k": {
+"mos": 3.8321,
+"bytes": 43279
+},
+"Last_Of_The_Mohicanz__Sample_.16b48k": {
+"mos": 3.9594,
+"bytes": 43246
+},
+"NewYorkCity.16b48k": {
+"mos": 3.9075,
+"bytes": 43223
+},
+"Only Time.16b48k": {
+"mos": 3.6249,
+"bytes": 43114
+},
+"Robots_old.16b48k": {
+"mos": 3.7592,
+"bytes": 43066
+},
+"Severance__1.31-1.51_.16b48k": {
+"mos": 3.8192,
+"bytes": 43254
+},
+"Shinsho_pool_3min45_4min4.16b48k": {
+"mos": 4.1313,
+"bytes": 43225
+},
+"SinceAlways.16b48k": {
+"mos": 4.3391,
+"bytes": 43419
+},
+"SlavesOfFear.16b48k": {
+"mos": 4.093,
+"bytes": 43051
+},
+"The Chastising of Renegade.16b48k": {
+"mos": 3.642,
+"bytes": 43300
+},
+"Through The Fire And Flames.16b48k": {
+"mos": 4.1928,
+"bytes": 43163
+},
+"TrosYGareg.16b48k": {
+"mos": 4.1306,
+"bytes": 43303
+},
+"Waiting.16b48k": {
+"mos": 3.4957,
+"bytes": 43183
+},
+"With Love (Outro).16b48k": {
+"mos": 4.225,
+"bytes": 43264
+},
+"bah": {
+"mos": 3.3282,
+"bytes": 41054
+},
+"bas": {
+"mos": 2.9513,
+"bytes": 43087
+},
+"bonhemian_rhapsody.16b48k": {
+"mos": 3.5434,
+"bytes": 43258
+},
+"clapton_44k.16b48k": {
+"mos": 3.8428,
+"bytes": 43296
+},
+"cst": {
+"mos": 3.7287,
+"bytes": 28813
+},
+"fms": {
+"mos": 3.9977,
+"bytes": 43135
+},
+"girl.16b48k": {
+"mos": 3.8538,
+"bytes": 43320
+},
+"glk": {
+"mos": 4.503,
+"bytes": 43064
+},
+"hrp": {
+"mos": 4.3015,
+"bytes": 37928
+},
+"liberate.16b48k": {
+"mos": 3.9467,
+"bytes": 22599
+},
+"lob": {
+"mos": 4.0068,
+"bytes": 31207
+},
+"mof": {
+"mos": 3.6784,
+"bytes": 43450
+},
+"qrt": {
+"mos": 3.4286,
+"bytes": 42887
+},
+"sandman.16b48k": {
+"mos": 3.893,
+"bytes": 43175
+},
+"take_your_finger_frin_my_head.16b48k": {
+"mos": 4.094,
+"bytes": 43381
+},
+"trumpet.16b48k": {
+"mos": 4.2653,
+"bytes": 43268
+},
+"velvet.16b48k": {
+"mos": 3.4738,
+"bytes": 43254
+}
+}
+}

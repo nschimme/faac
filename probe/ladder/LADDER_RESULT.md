@@ -1260,3 +1260,36 @@ Worst clips: rSFlev liberate −0.25 / −0.24 and bah −0.38 (96k); every othe
 it's worth +0.011 to +0.015 and saves 2–4 % bytes. The next useful measurement is a fit of Apple − FAAC sf on the 0–6 kHz
 set against per-band features *within* the frame (energy relative to the frame's 0–6 kHz mean, tonality, band width)
 on top of the #595 smoothing, screened offline with step1 and the S2-B rule before any encoder knob.
+
+## Stage S5-F2: fdk-aac on the #595 + #599 base (2026-09-29)
+
+Rule F2 in `results/s5/prereg.md` (written before any encode). Scripts `scripts/s5/f2_run.sh`, `f2_ctl.sh`, `f2_an.py`
+(with `s3/sweep.py`); results `results/s5/f2_{he32,he48,lc64,lc96,lc128}.json` (arms `ctl` = FAAC base, `s<lo>`/`s<hi>`
+= FAAC slope anchors, `fdk`). FAAC: static probe, `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`, HE under auto at 32k/48k,
+`--object-type lc` at 64k/96k/128k. fdk-aac: mstorsjo/fdk-aac master 2212850 (libAACenc 4.0.1, the 2.0.3 code) +
+nu774/fdkaac 1.0.9, `fdkaac -p 5` (HE) / `-p 2` (LC) `-b <N>000`, defaults otherwise. ffprobe on velvet: HE-AAC 32.7k,
+LC 64.7k as requested.
+
+**Controls.** 5 clips × {FAAC, fdk} at LC 128k scored twice: 10/10 identical MOS. The HE 32k FAAC base reproduces S4's
+`h1_32k` ctl exactly (49/49 MOS and bytes).
+
+**fdk − FAAC, bits-adjusted with FAAC's own per-clip slope around the rung (positive = fdk leads), 49 clips:**
+
+| rung | slope | adj | median | W/L | fdk bytes | raw MOS FAAC → fdk | reading |
+|---|---|---:|---:|---:|---:|---|---|
+| HE 32k | 28/40 | **+0.015** | +0.059 | 31/18 | +3.0 % | 3.817 → 3.865 | **fdk leads** |
+| HE 48k | 40/56 | **+0.075** | +0.071 | 35/14 | +1.5 % | 4.176 → 4.265 | **fdk leads** |
+| LC 64k | 56/72 | −0.203 | −0.198 | 5/44 | +2.3 % | 4.430 → 4.245 | FAAC ahead |
+| LC 96k | 80/112 | +0.000 | −0.008 | 20/29 | +1.7 % | 4.717 → 4.727 | at par |
+| LC 128k | 112/144 | −0.021 | −0.023 | 14/35 | +1.6 % | 4.848 → 4.833 | FAAC ahead |
+
+Largest per-clip differences (adj): HE 32k fdk take_your_finger +0.53, Severance +0.49, mof +0.37; FAAC bas −0.65,
+girl −0.50, Robots_old −0.45. HE 48k fdk Can't_Wait +0.44, take_your_finger +0.35, SinceAlways +0.32, Coral +0.31;
+FAAC girl −0.46, Robots_old −0.30. LC 64k: FAAC ahead on 44 clips (Changes −0.68, liberate −0.65); fdk only on
+Greensleeves +0.39 and fms +0.33 (speech-like). LC 96k/128k: within ±0.15 on every clip.
+
+**Verdict against F2:** the fdk half of the goal is met at LC (ahead at 64k and 128k, par at 96k) and **not met at HE**:
+fdk leads by +0.015 at 32k and **+0.075 at 48k** (35/14, median +0.071), both over the 0.01 bar. HE 48k is now the
+largest gap to either reference, and the next target. (For comparison, FAAC is at par with Apple at HE 32k, S4-H.)
+fdk's HE differs from FAAC's in its SBR (kx 22 = 8.25 kHz at 48k, stop 16.9 kHz, freq_scale 2 + alter; S4-H) and in its
+HE core; which one carries the 48k gap is not yet known.
