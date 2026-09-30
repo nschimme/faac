@@ -1,0 +1,12 @@
+== 128 k
+rows 1012650 set 786552 (short 4938); y mean +3.42 sd 4.57
+test fold 0: n 427066 R2 0.424 (vs 0: 0.647) within-ICS R2 0.375 | c=-4.547 relE=+0.706 mE=+0.941 tonal=-0.226 lw=+2.021 smr=+0.939 nres=-1.102 relsf=+0.789 khz=+0.231 short=-2.199
+test fold 1: n 359486 R2 0.416 (vs 0: 0.605) within-ICS R2 0.414 | c=-4.465 relE=+0.757 mE=+1.062 tonal=-0.219 lw=+1.795 smr=+1.063 nres=-1.241 relsf=+0.898 khz=+0.161 short=-3.735
+set: mean pred +3.37, exact 13.3%, |err|<=1 38.0%
+non-set rows 226098: mean pred +3.28
+== 96 k
+rows 940450 set 718588 (short 2824); y mean +3.37 sd 4.63
+test fold 0: n 392896 R2 0.423 (vs 0: 0.654) within-ICS R2 0.393 | c=-5.603 relE=+0.708 mE=+0.957 tonal=-0.230 lw=+2.662 smr=+0.922 nres=-1.058 relsf=+0.798 khz=+0.220 short=-1.941
+test fold 1: n 325692 R2 0.400 (vs 0: 0.571) within-ICS R2 0.420 | c=-2.592 relE=+0.831 mE=+1.193 tonal=-0.171 lw=+1.966 smr=+1.192 nres=-1.207 relsf=+0.990 khz=+0.088 short=-4.282
+set: mean pred +3.31, exact 13.1%, |err|<=1 37.7%
+non-set rows 221862: mean pred +3.27

@@ -1,0 +1,443 @@
+{
+"g2_00": {
+"stem": "12-German-male-speech.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 1188,
+"rFIT": 1293,
+"rFITall": 3999
+}
+},
+"g2_01": {
+"stem": "15-Good-evening.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 19731,
+"rFIT": 19925,
+"rFITall": 20675
+}
+},
+"g2_02": {
+"stem": "21-classic.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 22653,
+"rFIT": 22717,
+"rFITall": 23003
+}
+},
+"g2_03": {
+"stem": "24-Greensleeves-Korean-male-speech.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 4308,
+"rFIT": 4440,
+"rFITall": 13128
+}
+},
+"g2_04": {
+"stem": "25-This-is-the-end.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 15881,
+"rFIT": 16543,
+"rFITall": 19881
+}
+},
+"g2_05": {
+"stem": "27-last-song-drums-and-trampets.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 16534,
+"rFIT": 16892,
+"rFITall": 20437
+}
+},
+"g2_06": {
+"stem": "35_SQAM_glockenspiel_cut.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 18270,
+"rFIT": 17813,
+"rFITall": 21873
+}
+},
+"g2_07": {
+"stem": "4-Sound-English-male.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 1341,
+"rFIT": 1424,
+"rFITall": 6632
+}
+},
+"g2_08": {
+"stem": "9-Have-big-expensive-car.441.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 13082,
+"rFIT": 12931,
+"rFITall": 18110
+}
+},
+"g2_09": {
+"stem": "Asleep__4.11-4.31_.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 16787,
+"rFIT": 18231,
+"rFITall": 22153
+}
+},
+"g2_10": {
+"stem": "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 17010,
+"rFIT": 17350,
+"rFITall": 20895
+}
+},
+"g2_11": {
+"stem": "Changes.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 14384,
+"rFIT": 15051,
+"rFITall": 20786
+}
+},
+"g2_12": {
+"stem": "Coral.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 16856,
+"rFIT": 17247,
+"rFITall": 22521
+}
+},
+"g2_13": {
+"stem": "ExitMusic.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 12368,
+"rFIT": 13443,
+"rFITall": 20258
+}
+},
+"g2_14": {
+"stem": "Girl_In_The_Fire__Sample_.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 18190,
+"rFIT": 17660,
+"rFITall": 21436
+}
+},
+"g2_15": {
+"stem": "Greatest_Love_of_All_2min57.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 22773,
+"rFIT": 23532,
+"rFITall": 24259
+}
+},
+"g2_16": {
+"stem": "Hey Tonight.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 16294,
+"rFIT": 16874,
+"rFITall": 23594
+}
+},
+"g2_17": {
+"stem": "Hotel California.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 15986,
+"rFIT": 16958,
+"rFITall": 21039
+}
+},
+"g2_18": {
+"stem": "Jupiter, the Bringer of Jolity.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 23927,
+"rFIT": 24206,
+"rFITall": 24484
+}
+},
+"g2_19": {
+"stem": "Last_Of_The_Mohicanz__Sample_.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 13294,
+"rFIT": 14380,
+"rFITall": 19034
+}
+},
+"g2_20": {
+"stem": "NewYorkCity.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 19095,
+"rFIT": 20843,
+"rFITall": 24098
+}
+},
+"g2_21": {
+"stem": "Only Time.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 20612,
+"rFIT": 21433,
+"rFITall": 23135
+}
+},
+"g2_22": {
+"stem": "Robots_old.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 18022,
+"rFIT": 17738,
+"rFITall": 20622
+}
+},
+"g2_23": {
+"stem": "Severance__1.31-1.51_.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 22691,
+"rFIT": 23175,
+"rFITall": 23390
+}
+},
+"g2_24": {
+"stem": "Shinsho_pool_3min45_4min4.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 13601,
+"rFIT": 13808,
+"rFITall": 19785
+}
+},
+"g2_25": {
+"stem": "SinceAlways.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 8278,
+"rFIT": 9252,
+"rFITall": 21804
+}
+},
+"g2_26": {
+"stem": "SlavesOfFear.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 19743,
+"rFIT": 20286,
+"rFITall": 24029
+}
+},
+"g2_27": {
+"stem": "The Chastising of Renegade.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 14064,
+"rFIT": 14780,
+"rFITall": 20553
+}
+},
+"g2_28": {
+"stem": "Through The Fire And Flames.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 14957,
+"rFIT": 15637,
+"rFITall": 23301
+}
+},
+"g2_29": {
+"stem": "TrosYGareg.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 16296,
+"rFIT": 17335,
+"rFITall": 24343
+}
+},
+"g2_30": {
+"stem": "Waiting.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 20210,
+"rFIT": 20256,
+"rFITall": 22719
+}
+},
+"g2_31": {
+"stem": "With Love (Outro).16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 18714,
+"rFIT": 20370,
+"rFITall": 22905
+}
+},
+"g2_32": {
+"stem": "bah",
+"changed": {
+"K0": 0,
+"rSF06": 19128,
+"rFIT": 19011,
+"rFITall": 21506
+}
+},
+"g2_33": {
+"stem": "bas",
+"changed": {
+"K0": 0,
+"rSF06": 16172,
+"rFIT": 16643,
+"rFITall": 22521
+}
+},
+"g2_34": {
+"stem": "bonhemian_rhapsody.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 19744,
+"rFIT": 20192,
+"rFITall": 23074
+}
+},
+"g2_35": {
+"stem": "clapton_44k.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 10594,
+"rFIT": 11230,
+"rFITall": 17838
+}
+},
+"g2_36": {
+"stem": "cst",
+"changed": {
+"K0": 0,
+"rSF06": 6899,
+"rFIT": 7170,
+"rFITall": 10596
+}
+},
+"g2_37": {
+"stem": "fms",
+"changed": {
+"K0": 0,
+"rSF06": 3835,
+"rFIT": 4041,
+"rFITall": 14637
+}
+},
+"g2_38": {
+"stem": "girl.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 10548,
+"rFIT": 11398,
+"rFITall": 17574
+}
+},
+"g2_39": {
+"stem": "glk",
+"changed": {
+"K0": 0,
+"rSF06": 17413,
+"rFIT": 17701,
+"rFITall": 23652
+}
+},
+"g2_40": {
+"stem": "hrp",
+"changed": {
+"K0": 0,
+"rSF06": 17948,
+"rFIT": 19316,
+"rFITall": 20240
+}
+},
+"g2_41": {
+"stem": "liberate.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 7520,
+"rFIT": 7760,
+"rFITall": 10877
+}
+},
+"g2_42": {
+"stem": "lob",
+"changed": {
+"K0": 0,
+"rSF06": 11213,
+"rFIT": 11910,
+"rFITall": 14532
+}
+},
+"g2_43": {
+"stem": "mof",
+"changed": {
+"K0": 0,
+"rSF06": 6353,
+"rFIT": 6663,
+"rFITall": 13987
+}
+},
+"g2_44": {
+"stem": "qrt",
+"changed": {
+"K0": 0,
+"rSF06": 22845,
+"rFIT": 23529,
+"rFITall": 24291
+}
+},
+"g2_45": {
+"stem": "sandman.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 17709,
+"rFIT": 19111,
+"rFITall": 22563
+}
+},
+"g2_46": {
+"stem": "take_your_finger_frin_my_head.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 17187,
+"rFIT": 17884,
+"rFITall": 23442
+}
+},
+"g2_47": {
+"stem": "trumpet.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 14670,
+"rFIT": 14901,
+"rFITall": 21834
+}
+},
+"g2_48": {
+"stem": "velvet.16b48k",
+"changed": {
+"K0": 0,
+"rSF06": 4884,
+"rFIT": 4783,
+"rFITall": 10535
+}
+}
+}

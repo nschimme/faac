@@ -1293,3 +1293,44 @@ fdk leads by +0.015 at 32k and **+0.075 at 48k** (35/14, median +0.071), both ov
 largest gap to either reference, and the next target. (For comparison, FAAC is at par with Apple at HE 32k, S4-H.)
 fdk's HE differs from FAAC's in its SBR (kx 22 = 8.25 kHz at 48k, stop 16.9 kHz, freq_scale 2 + alter; S4-H) and in its
 HE core; which one carries the 48k gap is not yet known.
+
+## Stage S5-B3: fitting Apple's 0–6 kHz scalefactors from within-frame features (2026-09-30)
+
+Rules B3 and B3b in `results/s5/prereg.md`. Prep `s3/e_prep.sh` at 128k (ref `apple`, slope 112/144) and 96k
+(`apple_lc96k`, 80/112), LC forced. Scripts `scripts/s5/b3_feat.py` (features), `b3_fit.py` (linear), `b3_gbm.py`
+(trees), `b3_make.py` (arms), scoring `s3/arm_score.py`, table `s3/adj.py`. Results `results/s5/b3_{128k,96k}.json`,
+`b3b_gbm_128k.json`, fit log `b3_fit.txt`, arm counts `b3_make_{128k,96k}.json`.
+
+**Controls (both rates):** Control 0 49/49 exact; KA/KF 49/49 (PCM fallback on 2, the #597 case); core-inject selfW
+49/49; the `FAAC_G_MASK_DUMP` encode PCM-identical to the normal encode 49/49; K0 (builder, no change) PCM-identical to
+FAAC's own encode 49/49.
+
+**Data.** Target y = Apple sf − FAAC sf on the 0–6 kHz rSFr set (787 k bands at 128k, 719 k at 96k; < 1 % short).
+Mean y is +3.4 steps at both rates (Apple coarser), sd 4.6. Features come from FAAC's own encode only: band energy per
+line relative to the ICS's 0–6 kHz mean (relE), that mean (mE), peak/mean (tonal), log width, target/energy (smr), the
+#595 neighbour residual (nres), sf relative to the ICS mean (relsf), frequency, short/long.
+
+**Fit (2-fold by clip, test on the held-out half).** Linear: R² 0.42 / 0.42 (128k), 0.42 / 0.40 (96k), within-ICS
+(shape only) R² 0.38–0.42, stable coefficients across folds and rates (relE +0.7, mE +1.0, smr +1.0, relsf +0.8–1.0,
+nres −1.1…−1.2, tonal −0.2 steps per dB/step). Gradient-boosted trees on the same features: R² 0.44 / 0.44. Rounded
+predictions hit Apple's step exactly on 13 % of bands and within ±1 on 38 %. This is far above the S2 fits (R² 0.09–0.21),
+but the residual (sd ≈ 3.5 steps) is still larger than the shape it has to reproduce.
+
+**Arms vs F (step1, bits-adjusted, 49 clips):**
+
+| arm | 128k adj | median | W/L | bytes | worst | 96k adj | median | W/L | bytes | worst |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| rSF06 (Apple sf on the set, ceiling) | +0.0161 | +0.0110 | 41/5 | −4.6 % | −0.002 | +0.0127 | +0.0078 | 33/13 | −4.9 % | −0.032 |
+| rFIT (linear fit, set only) | +0.0018 | +0.0007 | 25/21 | −4.9 % | −0.041 | −0.0055 | −0.0062 | 12/35 | −5.1 % | −0.045 |
+| **rFITall** (linear fit, every FAAC-regular band < 6 kHz) | **−0.0019** | +0.0007 | 25/23 | −6.9 % | −0.138 velvet | **−0.0234** | −0.0143 | 9/37 | −7.7 % | −0.227 velvet |
+| rGBM (trees, set only; B3b) | +0.0055 | +0.0017 | 25/19 | −4.9 % | −0.029 | | | | | |
+| rGBMall (trees, all; B3b) | +0.0040 | +0.0002 | 23/22 | −7.1 % | −0.089 Mohicans | | | | | |
+| Apple (own stream) | +0.0078 | +0.0122 | 29/18 | +2.7 % | −0.239 girl | −0.0026 | +0.0046 | 26/23 | +3.2 % | −0.391 girl |
+
+**Verdict against B3: fails** (rFITall −0.002 at 128k and −0.023 at 96k; the bar was ≥ +0.005 with W > L at both).
+No encoder knob was built. The linear fit captures 11 % of the 128k ceiling on the set and loses at 96k; applied to every
+band (what an encoder would do) it loses at both rates, worst on velvet and Mohicans. **B3b (diagnostic):** a tree fit of
+the same features reaches +0.0055 on the set (34 % of the ceiling) but +0.0040 with a flat median (23/22) on all bands,
+below the bar. Reading, as pre-registered: the within-frame features explain ~40 % of the variance of Apple − FAAC but
+not the part zimtohrli rewards; Apple's 0–6 kHz allocation is not reachable as a per-band rule on FAAC's own features.
+What's left untested is context across frames (Apple's sf are coarser mainly where FAAC's are finer below 2 kHz, S2).

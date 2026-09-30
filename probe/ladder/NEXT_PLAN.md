@@ -27,7 +27,9 @@ with FAAC's own slope; positive = the reference leads):
 | HE 48k | no Apple refs | **+0.075 (fdk leads, 35/14; S5-F2)** |
 
 So the Apple goal is met except a small LC 128k residual. **S5-F2 (fifth session): the fdk goal is met at LC and not at
-HE**; HE 48k (+0.075) is the largest gap left to either reference. (fdk column: `LADDER_RESULT.md` → "Stage S5-F2".) The parity rests on
+HE**; HE 48k (+0.075) is the largest gap left to either reference. (fdk column: `LADDER_RESULT.md` → "Stage S5-F2".)
+**S5-B3:** fitting Apple's 0–6 kHz sf from FAAC's within-frame features fails (linear R² 0.42, rule −0.002 at 128k and
+−0.023 at 96k; a tree fit +0.004, flat median). No encoder knob; `LADDER_RESULT.md` → "Stage S5-B3". The parity rests on
 #595 and #599, which are not merged.
 
 **What S4 settled:**
