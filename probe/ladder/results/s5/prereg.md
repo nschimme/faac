@@ -59,3 +59,10 @@ Diagnostic only, not a decision: same rows, features and folds, gradient-boosted
 HistGradientBoostingRegressor, defaults, max_iter 200), cross-fitted, arms rGBM (set) and rGBMall at 128k.
 Reading: if rGBMall ≥ +0.005 with W > L, the within-frame features carry Apple's gain and a compact rule is worth deriving
 next; if not, they don't, and the 0–6 kHz allocation needs features across frames (or is not reachable offline).
+
+## H2 confirmation on master (2026-09-30, after H2, before scoring)
+Found while cutting the PR: the probe's HE is not master's. It carries #579 (SBR time deltas / stereo coupling) and its
+follow-up, so HE results since S4 are on master + #579 + #595 + #599 (probe knobs unset ≠ master at HE 32k and 48k,
+0/49 PCM). The PR (freq scale 3 in the ≥ 24 kbps/ch tier) is cut from master, so it is re-measured there: master vs
+master + change, HE 48k, 49 clips, static builds, bits-adjusted with master's own 40/56k slope. Confirm if mean
+adj ≥ +0.005, W > L, no clip < −0.05, bytes ±12.5 %. HE 32k and LC are PCM-identical to master (checked 49/49).

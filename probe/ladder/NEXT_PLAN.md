@@ -1,4 +1,4 @@
-# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-29, updated after Stage S4)
+# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S5)
 
 You are picking up a research programme on the FAAC AAC encoder (`nschimme/faac`).
 The goal is to reach the perceptual quality (MOS) of Apple's AAC encoder, the
@@ -10,7 +10,62 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
-## 0. Status after Stage S4 (2026-09-29, fourth session) — read this first
+## 0. Status after Stage S5 (2026-09-30, fifth session) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S5-F2", "S5-B3", "S5-H2". Scripts `scripts/s5/`, results `results/s5/`,
+pre-registered rules `results/s5/prereg.md`. §0-S4 below is history; its steps 1 (F2), 2 (H2) and 3 (B3) are done.
+
+**Correction to every earlier §0:** the probe's HE path is master + **#579** (SBR time deltas / stereo coupling) + its
+follow-up, not master. So the HE base since S4 is master + #579 + #595 + #599 (probe knobs unset ≠ master at HE, 0/49
+PCM). LC is unaffected. Re-measure an HE change on master before a PR (S5-H2 did).
+
+**Scoreboard** (base = probe `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`; 49 clips, bits-adjusted with FAAC's own slope;
+positive = the reference leads):
+
+| rung | vs Apple | vs fdk-aac 2.0.3 (S5-F2) |
+|---|---:|---:|
+| LC 64k (`--object-type lc`) | −0.48 (FAAC far ahead) | −0.203 (FAAC ahead, 5/44) |
+| LC 96k | −0.003 (par) | +0.000 (par, 20/29) |
+| LC 128k | **+0.008 (29/18)** | −0.021 (FAAC ahead, 14/35) |
+| HE 32k | −0.011 (par) | **+0.015 (31/18)** |
+| HE 48k | no Apple refs | **+0.075 (35/14)**; #601 recovers ~+0.011 of it |
+
+**What S5 settled:**
+- F2: the fdk goal is met at LC and **not at HE**. HE 48k (+0.075, median +0.071) is the largest gap to either reference.
+- H2: SBR stop is dead (Apple's/fdk's 14–17 kHz lose at 32k and 48k; 18.4 kHz +0.004 at 48k only). Freq scale 3 wins at
+  48k (+0.011, 40/7; +0.012 38/10 on master) → **PR #601** (drop the ≥ 24 kbps/ch fine tier). Alter is inert at kx 31.
+- B3: Apple − FAAC sf in 0–6 kHz is predictable from FAAC's within-frame features to R² 0.42 (trees 0.44), but the
+  rule loses (−0.002 at 128k, −0.023 at 96k; trees +0.004, flat median). The LC 128k residual (+0.008 vs Apple) has no
+  per-band lever left from these features.
+
+**Open PRs on nschimme/faac:** #595, #599, #596, #597, #600, **#601** (SBR freq scale). CI failures are another agent's.
+
+### Next steps, in order
+
+1. **HE 48k vs fdk (+0.075)** — find which half carries it before building anything. Cheapest split: decode fdk's and
+   FAAC's HE 48k streams and score (a) FAAC's core with fdk's SBR and (b) fdk's core with FAAC's SBR. The S3 E0 splice
+   (`s3/he_splice.py`, `he_control0.py`: core re-emit + SBR tail spliced bit for bit) is the tool; fdk's alignment needs
+   its own E0.1 (fdk HE delay differs from Apple's). Controls: Control 0 on fdk's HE core first. Score on master + #601
+   + #579 (the probe base with `FAAC_SBR_FREQ_SCALE=3`). Watch girl/Robots_old (FAAC ahead) vs Can't_Wait/take_your_finger/
+   SinceAlways/Coral (fdk ahead). fdk's 48k SBR: kx 22 (8.25 kHz), stop 16.9 kHz, freq_scale 2 + alter, two envelopes
+   policy unknown; the crossover alone lost in S4, so if SBR carries it, look at envelope time/frequency resolution,
+   noise floor and inverse filtering, not kx.
+2. **HE 32k vs fdk (+0.015)** — same split, after 48k (small; FAAC is at par with Apple here).
+3. Parked: the LC 128k Apple residual (+0.008; B3 closed per-band rules; only cross-frame context untried), LC 64k,
+   windows, M/S, SBR stop, crossover.
+
+### S5 session facts
+- Bootstrap as S4 (below) took ~20 min; fdk-aac master 2212850 (libAACenc 4.0.1) + fdkaac 1.0.9 into `/opt/fdk`. Also
+  `apt-get install cmake autoconf automake libtool pkg-config` for the fdk build; `pip install scikit-learn` for B3b.
+- Wrappers in `/home/user/lw/bin`: `faac_probe` (static), `faac_lc`, `fdk_he`/`fdk_lc` (faac-style `-b N -o out in`).
+- A second serial scorer beside the first was fine (two separate results files); a G2 prep beside a scorer roughly
+  doubles the scorer's time. GBM fit on 1 M rows ≈ 15 min under load.
+- `FAAC_G_MASK_DUMP` (target, band energy, peak) keys by (FAAC dump frame − 1, ch, group, sfb) and doesn't change the
+  output (49/49 PCM); `s5/b3_feat.py` turns it into per-band features.
+- Don't delete a sweep dir a queued job copies from (H2's 48k copy of F2's results failed; restarted from `results/s5`).
+- `pkill -f <pattern>` with the pattern in your own command kills the tool shell (exit 144) — happened again.
+
+## 0-S4. Status after Stage S4 (2026-09-29, fourth session)
 
 Details: `LADDER_RESULT.md` → "Stage S4-H", "Stage S4-B2". Scripts `scripts/s4/`, results `results/s4/`, pre-registered
 rules `results/s4/prereg.md`. §0-S3 below is history; its steps 1 (H) and 2 (B2) are done.

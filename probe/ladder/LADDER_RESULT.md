@@ -1334,3 +1334,54 @@ the same features reaches +0.0055 on the set (34 % of the ceiling) but +0.0040 w
 below the bar. Reading, as pre-registered: the within-frame features explain ~40 % of the variance of Apple − FAAC but
 not the part zimtohrli rewards; Apple's 0–6 kHz allocation is not reachable as a per-band rule on FAAC's own features.
 What's left untested is context across frames (Apple's sf are coarser mainly where FAAC's are finer below 2 kHz, S2).
+
+## Stage S5-H2: HE SBR stop frequency and frequency scale (2026-09-30)
+
+Rule H2 (and the master confirmation) in `results/s5/prereg.md`. Scripts `scripts/s5/h2_run.sh`, `h2_run48.sh`,
+`h2_run64.sh`, `h2_master.sh` (with `s3/sweep.py`, `s3/an.py`, `s4/knob_ctl.py`, `s4/bin_ctl.py`, `s4/ref_score.py`).
+Results `results/s5/h2_{32,48,64}.json`, `h2m_48.json`. Base = static probe with `FAAC_SF_SMOOTH=0.6
+FAAC_BS_DROPRATIO=12`, HE under auto, ABR, crossover at start 15 (kx 31, 11.6 kHz). The ctl and slope anchors are
+copies of F2's (same binary, same encodes).
+
+**Controls.** Knob at its neutral value = base, decoded PCM 49/49: `FAAC_SBR_STOP=11` at 32k and 48k,
+`FAAC_SBR_FREQ_SCALE=3` at 32k, `=1` at 48k. `FAAC_SBR_ALTER=1` is also 49/49 PCM-identical at both rates: alter only
+warps the upper region of a two-region table (k2/kx > 2.2449), and at kx 31 every stop gives one region (DUMPTAB: the
+fs 2 table is `31 33 35 38 41 44 47 50 54` with alter 0 and 1). So "freq_scale 2 + alter" = freq_scale 2 here.
+k2 by stop (48 kHz output, DUMPTAB): 7 → 38 (14.3 kHz), 8 → 41 (15.4), 9 → 45 (16.9), 10 → 49 (18.4), 11 → 54 (20.3,
+base), 12 → 59 (22.1).
+
+**Sweep, bits-adjusted vs the base (FAAC's own HE slope, 28/40k at 32k, 40/56k at 48k), 49 clips:**
+
+| arm | 32k adj | median | W/L | worst | bytes | 48k adj | median | W/L | worst | bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| stop 7 (14.3 kHz, Apple) | −0.0144 | −0.0064 | 22/26 | −0.258 velvet | −0.08 % | −0.0164 | −0.0132 | 20/29 | −0.173 velvet | −0.11 % |
+| stop 8 (15.4 kHz) | −0.0128 | −0.0064 | 23/26 | −0.123 | −0.06 % | −0.0137 | −0.0057 | 22/26 | −0.149 | −0.11 % |
+| stop 9 (16.9 kHz) | −0.0081 | −0.0024 | 22/27 | −0.087 | −0.06 % | −0.0117 | −0.0066 | 20/29 | −0.127 | −0.06 % |
+| stop 10 (18.4 kHz) | −0.0066 | −0.0020 | 18/28 | −0.050 | 0.00 % | +0.0042 | +0.0022 | 28/20 | −0.019 | −0.03 % |
+| stop 12 (22.1 kHz) | −0.0158 | −0.0097 | 8/40 | −0.124 | +0.03 % | −0.0101 | −0.0091 | 12/35 | −0.090 | +0.04 % |
+| freq scale 1 (12/oct) | −0.0148 | −0.0130 | 10/38 | −0.109 | +0.04 % | base | | | | |
+| freq scale 2 (10/oct) | −0.0072 | −0.0055 | 13/34 | −0.056 | +0.02 % | +0.0056 | +0.0046 | 36/12 | −0.066 | −0.03 % |
+| freq scale 3 (8/oct) | base | | | | | **+0.0109** | +0.0111 | **40/7** | −0.038 | −0.06 % |
+
+Against Apple HE 32k (`ref/apple_he32k`, bits-adjusted with the 28/40 slope): base − Apple +0.011 (reproduces S4);
+every arm lands between −0.005 and +0.005 of Apple.
+
+**Verdict against H2.**
+- Stop: nothing passes. At 32k every stop loses and 11 is the bracket centre; at 48k stop 10 is +0.0042 (28/20), below
+  the bar, and not better at 32k. 20.3 kHz stays; Apple's and fdk's 14–17 kHz stops lose at both rates.
+- Freq scale: at 32k the production 3 is the bracket centre (1 and 2 lose). **At 48k scale 3 passes**: +0.0109, 40/7,
+  worst −0.038, bytes −0.06 %, at the bounded end of the 1–3 range with 2 (+0.0056) and 1 (base) both worse. In
+  production 48k sits in the ≥ 24 kbps/ch "fine" tier (scale 1); the change drops that tier.
+- No stop passed, so no combination and no crossover retry (per the rule).
+- Follow-up outside the rule: in the same tier at HE 64k, scale 3 is +0.0070 raw (28/16, worst −0.012, bytes −0.05 %),
+  not worse.
+
+**Found on the way: the probe's HE is not master's.** The probe branch carries #579 (SBR time deltas / stereo envelope
+coupling) and its follow-up commit, so with its knobs unset it is 0/49 PCM-identical to master at HE 32k and 48k.
+Every HE number since S4 (and F2's HE rungs) is on master + #579 + #595 + #599, not master + #595 + #599 as §0 said
+(LC is unaffected). The PR was therefore re-measured on master (pre-registered): master + change vs master at HE 48k,
+master's own 40/56k slope, **+0.0119, median +0.0111, 38/10, worst −0.031 (bohemian), bytes −0.06 %**: confirmed.
+The change is PCM-identical to master at HE 32k and LC 128k (49/49).
+
+**PR #601** (`sbr-freq-scale-coarse`, one commit from master): `bs_freq_scale` 3 from 12 kbps/ch up, the fine tier and
+`SBR_FREQ_SCALE_FINE_BPS` removed; libfaac.a text −56 B (gcc, release, not LTO). CI decides on the HE rungs.
