@@ -340,9 +340,12 @@ int faacEncApplyConfig(faacEncStruct* hEncoder,
         unsigned long outputRate = hEncoder->sampleRate;
         if (hEncoder->config.aacObjectType == HE_V1)
             outputRate *= 2;
+        /* HE-AAC object type uses tighter PNS threshold (pnslevel 3 -> PNS threshold 0.3)
+         * to prevent over-substitution of low/mid tonal bands in SBR core. */
+        int default_pnslevel = (hEncoder->config.aacObjectType == HE_V1) ? 3 : PNSLEVEL_DEFAULT;
         hEncoder->aacquantCfg.pnslevel = !config->usePns ? 0 :
             (outputRate <= 16000 && hEncoder->numChannels == 1)
-                ? PNSLEVEL_NARROWBAND_MONO : PNSLEVEL_DEFAULT;
+                ? PNSLEVEL_NARROWBAND_MONO : default_pnslevel;
     }
     /* set quantization quality */
     hEncoder->aacquantCfg.quality = config->quantqual;
