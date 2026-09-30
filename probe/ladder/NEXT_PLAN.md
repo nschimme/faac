@@ -10,25 +10,48 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
-## 0-S7. In flight (2026-09-29, evening) — read this before §0
+## 0-S8. Status after Stage S7 (2026-09-30) — read this first
 
-Two Jules sessions were started from this branch; each opens its own probe PR against it. Read both results before
-running anything:
+**Rule from now on:** candidate PRs and stacks are judged by the standard CI benchmark (a combined PR such as #602,
+read its report). Jules or local runs only for what CI cannot measure (core injection, reference splits,
+reference scoreboards). Jules can push only its own branch/PR: never ask it to open a second PR; have it leave the
+patch in its probe PR.
 
-| session | stage | what | expected |
-|---|---|---|---|
-| 11857299189276564833 | S7-STACK | Scoreboard of **PR #602** (stack-vs-refs) vs Apple refs and fdk-aac 2.0.3 at LC 64/96/128k, HE 32/48k, 49 clips, bits-adjusted with the stack's own slopes. Beat = adj ≤ −0.005 and W < L; par = abs(adj) < 0.005. | LC ahead or at par, HE 32k at par, **HE 48k still trails** (core gap, S6). |
-| 2401188129569818503 | S7-CORE | Step 2 below: HE 48k core. Control A0 (self-inject = F, 49/49), A1 (fdk/Apple inject offsets verified by window match), then W_fdk / W_apple window injection vs F. Windows carry the gap if ≥ 50 % of the core gap with W > L → HE block-switch rule; else a PNS threshold knob sweep. | Unknown; this is the open question. |
+**S7-STACK (#604, verified from its JSON).** Stack = PR #602. LC streams byte-identical to S5-F2 on 43–47/49 (so
+#595/#599 reproduce the probe knobs), fdk MOS identical to S5-F2. Its control-2 gap (+0.033 vs the probe base at HE 48k)
+is #579 (SBR time deltas + coupling, not in the probe base), not #601 as the section says. Scoreboard (adj, + = ref leads):
 
-**PR #602** = master + #595 #599 #600 #601 #597 #596 #579, cherry-picked commits only (the #595 and #579 branches carry
-stale copies of master's old CI / "wip TODO" commits that conflict in `benchmark.yml` if merged). It is benchmark-only,
-never merge. Its CI compares against master, not the references: read its three Benchmark job logs ("S6 session
-facts" shows how) for the stacked BD-rate, and use them for step 0's #599/#601 questions.
+| rung | vs Apple | vs fdk-aac 2.0.3 |
+|---|---|---|
+| LC 64k | −0.49 beat | −0.204 beat |
+| LC 96k | −0.003 par | +0.000 par |
+| LC 128k | **+0.007 Apple leads (31/18)** | −0.021 beat |
+| HE 32k | −0.045 beat | −0.020 beat |
+| HE 48k | −0.003 par on the mean, **median +0.030, 28/21** | **+0.030 fdk leads (32/17)** |
 
-**Next session, in order:** (1) check both Jules sessions and their probe PRs; verify their controls passed and read
-their tables yourself (§4: past agent summaries have had sign errors); (2) read #602's CI; (3) update the scoreboard
-from S7-STACK; (4) act on S7-CORE's verdict (a passing knob must be re-measured on plain master before its own PR);
-(5) steps 0 and 1 below were deliberately deferred: HE 32k is already at par, so step 1 is a gain beyond parity.
+**#602 CI vs master:** MOS Δ ABR +0.014, CBR +0.015, VBR +0.001; BD-rate CBR LC −0.7/−3.8 %, HE −4.2 %; VBR LC −1.6/−4.0 %,
+HE −5.7 %. Fails the per-clip MOS gate (ABR 18 / CBR 16 / VBR 10 clips past −0.10) and footprint (+8.41 %).
+
+**S7-CORE (#605) review: the window verdict is void.** A1 matched only 82.6 % (fdk) / 80.6 % (Apple) of windows
+against Stage H's 716/738 (97 %) with the same tooling; the misses are about every non-long frame, i.e. a frame
+misalignment, not "transition constraints". So W_fdk −0.25 / W_apple −0.21 measure misplaced short blocks. A0 re-injected
+windows only. PNS: production threshold is 0.4 (`PNSLEVEL_DEFAULT` 4 × 0.1); both 0.3 (+0.024, 36/13) and 0.5 (+0.011)
+beat it, which is non-monotonic and unexplained; 0.4 set explicitly was never run. `FAAC_PNS_MIN_SB=4` (+0.007) counts
+sb per window group: it drops PNS below ~190 Hz on long and ~1.5 kHz on short core blocks, not "500 Hz". The "plain
+master" check was the probe binary with no knobs. Only that one JSON was committed.
+
+**Next steps, in order** (remaining gaps: HE 48k core vs both, LC 128k vs Apple):
+1. **Land the stack.** Its gains count only on master. Attribute #602's per-clip gate losses to single PRs from each
+   PR's own CI regression table; fix or drop the offender. Footprint +8.41 % is a trade for the user (#579 ≈ +2.6 KB).
+2. **HE 48k window arms, redone.** Rebuild A1 first: sweep `FAAC_CORE_INJECT_OFFSET` and the pad by ±1 frame and take the
+   offset with the best match; the arms are read only at ≥ 95 % window match (Stage H level), misses listed by frame.
+   Then W_fdk / W_apple with the S7-CORE rule (≥ 50 % of the core gap, W > L). Same harness next for M/S and TNS
+   (FAAC 67 % / 0.5 % vs refs 77–89 % / 9–15 %), one decision at a time.
+3. **PNS threshold at HE.** Bracket 0.2 / 0.3 / 0.4 (explicit, must equal neutral) / 0.5 at HE 48k and 32k to check the
+   non-monotonic result. A bracket-centre winner goes out as an HE-only PR and CI decides.
+4. **LC 128k vs Apple (+0.007).** The known lever is Apple's sf below 6 kHz (rSFr +0.015, S5); lowest priority.
+5. Optional: a reference-scoreboard job in faac-benchmark (fdk built in CI, Apple refs stored once) so the vs-reference
+   numbers stop needing Jules.
 
 ## 0. Status after Stage S6 (2026-09-30, sixth session) — read this first
 
@@ -60,6 +83,7 @@ Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determin
 **Scoreboard** is unchanged from S5 (below); X − F in S6 on the #601 base: fdk +0.065 at 48k, Apple +0.058.
 
 - **S6-N:** FAAC's SBR noise-floor and inverse-filter constants are not the lever (best +0.0028; see LADDER_RESULT "Stage S6-N").
+- **S7-CORE:** see §0-S8 (window verdict void, misaligned; PNS knobs unconfirmed).
 
 **Open PRs on nschimme/faac, and what CI says about each ALONE** (read 2026-09-30 from the per-rate job logs; the
 Consolidated Report step is broken, "No result pairs found", so always read the Benchmark jobs' logs):

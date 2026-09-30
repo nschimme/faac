@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "quantize.h"
 #include "huff2.h"
 #include "cpu_compute.h"
@@ -302,7 +303,19 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
                                    int * __restrict p_sf_anchor)
 {
     int gsize = ci->groups.len[gnum];
-    float pns_threshold = 0.1f * (float)pnslevel;
+    static float env_pns_thresh = -1.0f;
+    static int env_pns_min_sb = -1;
+    if (env_pns_thresh < -0.5f) {
+        const char *e = getenv("FAAC_PNS_THRESH");
+        env_pns_thresh = e ? (float)atof(e) : -1.0f;
+    }
+    if (env_pns_min_sb < 0) {
+        const char *e = getenv("FAAC_PNS_MIN_SB");
+        env_pns_min_sb = e ? atoi(e) : 0;
+    }
+
+    float pns_threshold = (env_pns_thresh >= 0.0f) ? env_pns_thresh : (0.1f * (float)pnslevel);
+    int pns_min_sb = env_pns_min_sb;
     int sb;
 
     /* Long blocks: pull each coded band's scalefactor 0.6 of the way towards
@@ -337,8 +350,11 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
             }
             if (fcb == 0 || (fcb < 0 && (sqrtf(avg_per_window / width) < SILENCE_RMS || target[sb] == 0.0f)))
                 continue;
-            if (fcb == 13 || (fcb < 0 && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))))
-                continue;
+
+            bool want_pns = (fcb == 13) || (fcb < 0 && sb >= pns_min_sb && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band])));
+            if (want_pns)
+                continue; /* PNS bands are not smoothed */
+
             float log10_w_sf = (width < 128) ? log10_width_sf_lut[width] : log10f((float)width) * SF_STEP_ENRG;
             int sfac = lrintf(log10f(target[sb]) * sfstep - log10f(avg_per_window) * SF_STEP_ENRG + log10_w_sf);
             if (SF_OFFSET - sfac < SF_MIN)
@@ -416,7 +432,8 @@ static void assign_band_codebooks(CoderInfo * __restrict ci, const float * __res
          * in both channels, decided on the mid. Its flag isn't restored on a
          * retry, so the fallback sticks. A side band left under M/S drops to
          * zero instead, leaving the band mono. */
-        if (force_cb == 13 || (force_cb < 0 && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band]))))
+        bool want_pns = (force_cb == 13) || (force_cb < 0 && sb >= pns_min_sb && (target[sb] < pns_threshold || (ci->msEl[band] > 0.0f && ci->msUsed && !ci->msUsed[band])));
+        if (want_pns)
         {
             int ms_cross = ci->msEl[band] > 0.0f;
             if (ms_cross)

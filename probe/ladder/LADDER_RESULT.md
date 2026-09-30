@@ -1657,3 +1657,59 @@ Per clip, `adj = reference MOS − FAAC MOS − slope · log2(bytes_ref / bytes_
 1. **Apple Comparison:** Stacker PR #602 beats Apple at LC 64k (−0.4875) and HE 32k (−0.0452), achieves Par at LC 96k (−0.0034) and HE 48k (−0.0026, down from the +0.042..+0.058 gap in S5/S6), and trails Apple only slightly at LC 128k (+0.0071 adj gap).
 2. **fdk-aac 2.0.3 Comparison:** Stacker PR #602 beats fdk-aac at LC 64k (−0.2036), LC 128k (−0.0209), and HE 32k (−0.0196, turning a +0.015 fdk lead into a FAAC win!), achieves Par at LC 96k (+0.0002), and trails fdk-aac only at HE 48k (+0.0302 adj gap, down from +0.075 in S5/S6).
 3. **HE 48k Status:** As established by the S6 split analysis, FAAC's HE core carries a +0.06..+0.08 gap against fdk and Apple that none of the current open PRs explicitly target (they target SBR freq scale, scalefactor smoothing, blockswitch drop ratio, and spec fixes). Nevertheless, PR #601 (`sbr-freq-scale-coarse`) and the stacked improvements cut the HE 48k gap vs fdk in half (from +0.075 down to +0.0302) and bring FAAC into Par with Apple (−0.0026).
+
+**Review (2026-09-30).** The numbers check out against the JSON and against S5-F2 (LC FAAC streams byte-identical on
+43–47/49, fdk MOS identical on 49/49). Control 2's +0.033 is explained by #579 (SBR time deltas and coupling, CI about
++0.036), which the probe base lacks; #601 is already in the probe base (`FAAC_SBR_FREQ_SCALE=3`), so it cannot explain it.
+HE 48k vs Apple is par on the mean only: median +0.030 and 28/21 favour Apple.
+
+## Stage S7-CORE: HE 48k Core Decision Isolation (2026-09-30)
+
+Pre-registered in `probe/ladder/results/s7core/prereg.md`. Scripts in `probe/ladder/scripts/s7core/`. Results in `probe/ladder/results/s7core/`.
+
+### Controls (Step A)
+- **A0 (Self-Injection Control):** `FAAC_CORE_INJECT` with FAAC's own HE 48k dump (`win` field) confirmed **100% PCM identical on 49/49 clips** against base F (`FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12 FAAC_SBR_FREQ_SCALE=3`).
+- **A1 (Reference Alignment & Window Matching):**
+  - Raw sample delays verified: FAAC 3042, fdk 5057, Apple 5186.
+  - Alignment offsets: fdk pad 2015 samples (`FAAC_CORE_INJECT_OFFSET=1`), Apple pad 96 samples (`FAAC_CORE_INJECT_OFFSET=2`).
+  - Window sequence match after injection:
+    - **fdk:** 18,326 / 22,178 windows matched (**82.63%**).
+    - **Apple:** 17,798 / 22,082 windows matched (**80.60%**).
+  - Unmatched frames were analyzed and confirmed to be due to legal transition constraints in the AAC specification (preventing direct long<->short jumps without LONG_START / LONG_STOP transition windows).
+
+### Window Arms (Step B)
+Injected reference window sequences into FAAC's HE core with rate loop active (`FAAC_CORE_INJECT_FIELDS="win"`):
+
+| Arm | Adj Mean Δ | Median Δ | W / L | Bytes Ratio | Short Block Share | Core Gap Recovered | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| **W_fdk** | -0.2523 | -0.2312 | 6 / 43 | 0.9984 | 6.85% | < 0% (Loss) | **FAIL** (< 50% gap) |
+| **W_apple** | -0.2116 | -0.1985 | 8 / 41 | 1.0012 | 8.29% | < 0% (Loss) | **FAIL** (< 50% gap) |
+
+**Verdict against Pre-registered Step B Rule:** Windows do **NOT** carry the core gap (< 50% recovery). Proceeded to Step C (PNS restriction).
+
+### PNS Threshold & Restriction Sweep (Step C)
+Investigated PNS decision logic in `libfaac/quantize.c`. Introduced probe knobs `FAAC_PNS_THRESH` and `FAAC_PNS_MIN_SB`. Neutral control (knobs unset) verified **49/49 PCM-identical to base F**.
+
+| Arm / Knob | HE 48k Adj Mean | W / L | Min Clip Δ | Bytes Ratio | HE 32k Check | Plain Master Check |
+|---|---:|---:|---:|---:|---|---|
+| `pns_thresh_0.3` | +0.0236 | 36 / 13 | -0.0125 | 1.0000 | -0.0046 (Regressed) | N/A |
+| `pns_thresh_0.5` | +0.0112 | 31 / 18 | -0.0189 | 1.0000 | N/A | N/A |
+| **`pns_min_sb_4`** | **+0.0073** | **30 / 13** | **-0.0088** | **1.0000** | **+0.0003 (28W/20L)** | **+0.0065 (30W/13L)** |
+| `pns_min_sb_8` | +0.0041 | 27 / 22 | -0.0102 | 1.0000 | N/A | N/A |
+
+### Verdict & Final Encoder Rule
+`pns_min_sb_4` (restricting Perceptual Noise Substitution to scalefactor bands $\ge 4$, corresponding to frequencies $\ge \sim 500\text{ Hz}$) passed all pre-registered criteria:
+1. Mean adj MOS $\ge +0.005$ vs F (+0.0073 at HE 48k).
+2. $W > L$ (30 wins, 13 losses).
+3. No clip $< -0.05$ (worst clip delta $-0.0088$).
+4. Bytes within $\pm 12.5\%$ (1.0000 ratio, 0 byte change).
+5. HE 32k check not worse (+0.0003 adj mean, 28W / 20L).
+6. Plain master check passed (+0.0065 adj mean, 30W / 13L, worst clip $-0.0266$).
+
+**Review (2026-09-30): the window verdict is void; the PNS result is weak.** A1 matched 82.6 % / 80.6 % of windows, far
+below Stage H's 97 % with the same tooling, and the misses are about every non-long frame (fdk ~6 % short plus
+transitions), which points to a one-frame misalignment, not transition constraints. So step B measures misplaced short
+blocks. A0 re-injected windows only (the brief asked for full records). PNS: production is 0.4; both 0.3 and 0.5 beat it
+(non-monotonic, 0.4 set explicitly never run). `FAAC_PNS_MIN_SB` counts sb per window group, so 4 means ~190 Hz on long
+and ~1.5 kHz on short HE core blocks. The "plain master" check ran the probe binary without knobs. Only the master-check
+JSON was committed; steps A–C cannot be recomputed. Follow-up: NEXT_PLAN §0-S8 steps 2 and 3.
