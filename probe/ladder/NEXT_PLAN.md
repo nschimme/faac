@@ -12,7 +12,12 @@ upstream (`knik0/faac`) PRs; merging any probe branch.
 
 ## 0. Status after Stage S6 (2026-09-30, sixth session) — read this first
 
-Details: `LADDER_RESULT.md` → "Stage S6-X". Scripts `scripts/s6/`, results `results/s6/`, pre-registered rules
+**New session, start here:** bootstrap per "S6 session facts" and "S4 session facts" below (~20 min); work step 0
+(PR hygiene) and then the research steps in order; method rules are §4, reporting §7 (one focused commit per encoder
+change, no AI trailers, its own PR; any bug found gets its own PR). CI failures on the PRs are another agent's, but
+their per-rate numbers are yours to read (see step 0).
+
+Details: `LADDER_RESULT.md` → "Stage S6-X", "Stage S6-N". Scripts `scripts/s6/`, results `results/s6/`, pre-registered rules
 `results/s6/prereg.md`. §0-S5 below is history; its steps 1 (HE 48k split) and 2 (HE 32k split) are done.
 
 **What S6 settled** (bitstream splice: one stream's core CPE + another's SBR tail, all arms through the same FAAD path;
@@ -36,10 +41,28 @@ Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determin
 
 - **S6-N:** FAAC's SBR noise-floor and inverse-filter constants are not the lever (best +0.0028; see LADDER_RESULT "Stage S6-N").
 
-**Open PRs on nschimme/faac:** #595, #599, #596, #597, #600, #601. CI failures are another agent's.
+**Open PRs on nschimme/faac, and what CI says about each ALONE** (read 2026-09-30 from the per-rate job logs; the
+Consolidated Report step is broken, "No result pairs found", so always read the Benchmark jobs' logs):
+
+| PR | what | CI alone (MOS Δ per rung, BD-rate) | standing |
+|---|---|---|---|
+| #595 sf smoothing | quantize | ABR +0.004…+0.014 on every stereo LC rung (W/L e.g. 42/0 at 48k 96k), BD 32k −1.80 %, 44.1k −1.90 %, 48k LC −1.62 %, HE −0.66 %. Gate fails only on the synthetic 5.1 sine (scorer artefact) and one 16k speech clip. VBR 44.1k BD +1.07 % (median −0.21 %). | **Stands alone.** Mergeable on its own evidence. |
+| #599 LC drop ratio 12 | blockswitch | ABR mixed: 32k stereo −0.001…−0.008 (BD +1.08 %), 48k ≥ 96k +0.003…+0.016, 44.1k/48k LC BD −1.3/−1.7 %; 49 clips past −0.05, mostly 16/24 kHz mono speech. VBR 32k +0.27 %, 48k LC −2.5 %. | **Weak alone.** Locally it was only ever measured on top of #595 (+0.006 at 128k). Rework (restrict to ≥ 44.1 kHz / ≥ 96k, or re-sweep on master) or close. |
+| #601 SBR freq scale 3 | sbr | ABR HE 48k rungs +0.011…+0.013 (33/8, 39/1, 32/2), BD HE −0.44 %, no clip past −0.05. **VBR: 32 kHz-input 48k rung −0.020 (8/31)** and 48k-input HE rungs −0.003, BD HE −1.32 %. | **ABR-only win**; the VBR tier mapping needs a look before merge. |
+| #600 SBR stop span | sbr | bit-identical on the corpus (latent bug) | Bug fix, stands alone. |
+| #597 empty M/S mask | channels | ±0.000 (−0.19 % size) | Spec/bitstream fix, stands alone. |
+| #596 LFE long | blockswitch | benchmarks green | Spec fix, stands alone. |
+
+So only #599 depends on another PR. Every change was screened on the probe with #595 on (and HE with #579 on),
+which is why a PR can look better locally than in CI: **from now on, screen each candidate on plain master (or
+re-measure on master before the PR, as S5-H2 did), and read all three CI modes before calling it a win.**
 
 ### Next steps, in order
 
+0. **PR hygiene first (small, before new research).** Re-measure #599 on plain master at 32k/44.1k/48k LC and on the
+   speech corpora (the CI losses); either narrow it to where it wins or recommend closing it. Find why #601 loses at
+   VBR (which `-q` values land in the ≥ 12 kbps/ch tier at 32 kHz input; the 32k_stereo_48k VBR rung is −0.020) and
+   narrow the tier or document the trade. Ask Nils before closing any PR.
 1. **HE SBR at a low crossover: which field of the references' SBR pays** (ceiling +0.056 at 32k kx 16, S6-X).
    **S6-N closed the constants:** `FAAC_SBR_INVF` / `FAAC_SBR_NOISE` (probe knobs now on this branch) give at most
    +0.0028 at kx 31 and recover ≤ +0.007 of the low-crossover loss; the references' noise levels lose everywhere. So
@@ -64,6 +87,9 @@ Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determin
 - The FAAD dump's `F` records per SBR channel-frame: class, L_E, L_Q, freq_res list, amp_res (0 = 1.5 dB), invf list,
   add_harmonic flag, count, coupling, −1, mean envelope and noise energy in dB.
 - `pkill -f <pattern>` with the pattern in your own command killed the shell again (exit 144).
+- Reading CI numbers: GitHub MCP `pull_request_read` get_check_runs → the three "Benchmark …" job ids →
+  `get_job_logs` (no return_content) gives a short-lived URL → `curl` it and read the block that starts with
+  `#### ❌/✅ <suite>` (MOS Δ, gates, BD-rate table) and the per-rung "Scenario Performance" rows.
 
 ## 0-S5. Status after Stage S5 (2026-09-30, fifth session)
 
