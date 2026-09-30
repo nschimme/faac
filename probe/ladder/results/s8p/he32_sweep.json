@@ -1,0 +1,3032 @@
+{
+  "0.4_baseF": {
+    "thresh": 0.4,
+    "adj_mean": 0.0,
+    "adj_median": 0.0,
+    "wins": 0,
+    "losses": 0,
+    "ties": 49,
+    "bytes_ratio_mean": 1.0,
+    "min_clip_delta": 0.0,
+    "pns_long_share": 0.4026787080973519,
+    "pns_short_share": 0.45904654654654653,
+    "pns_total_share": 0.42253181292348374,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.6648,
+        "bytes": 32942,
+        "pns_long_share": 0.45332875772134523,
+        "pns_short_share": 0.5539491298527444,
+        "pns_total_share": 0.5375266046824241,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.6578,
+        "bytes": 36123,
+        "pns_long_share": 0.3405999302406697,
+        "pns_short_share": 0.39692307692307693,
+        "pns_total_share": 0.35489328474752735,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.9537,
+        "bytes": 40324,
+        "pns_long_share": 0.4279544975774173,
+        "pns_short_share": 0.41574074074074074,
+        "pns_total_share": 0.42729718955551127,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.6263,
+        "bytes": 36555,
+        "pns_long_share": 0.48199672667757776,
+        "pns_short_share": 0.5725850340136054,
+        "pns_total_share": 0.5545028857671784,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.7533,
+        "bytes": 38986,
+        "pns_long_share": 0.37211567275996404,
+        "pns_short_share": 0.38830022075055187,
+        "pns_total_share": 0.37621657903568634,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.9541,
+        "bytes": 42397,
+        "pns_long_share": 0.4270397051432401,
+        "pns_short_share": 0.4927536231884058,
+        "pns_total_share": 0.44952611858055985,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.1969,
+        "bytes": 41961,
+        "pns_long_share": 0.5486613051002749,
+        "pns_short_share": 0.48688524590163934,
+        "pns_total_share": 0.5433972806854163,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.809,
+        "bytes": 38121,
+        "pns_long_share": 0.5021822149481724,
+        "pns_short_share": 0.6068774265113699,
+        "pns_total_share": 0.5891869469026548,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.4933,
+        "bytes": 40657,
+        "pns_long_share": 0.4653338224504769,
+        "pns_short_share": 0.4664310954063604,
+        "pns_total_share": 0.46581416933072084,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.6753,
+        "bytes": 41635,
+        "pns_long_share": 0.47129666800481734,
+        "pns_short_share": 0.410062893081761,
+        "pns_total_share": 0.444121915820029,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.5002,
+        "bytes": 41571,
+        "pns_long_share": 0.5567875337129158,
+        "pns_short_share": 0.47980225988700564,
+        "pns_total_share": 0.5301057372234188,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.5381,
+        "bytes": 41723,
+        "pns_long_share": 0.5421863536316948,
+        "pns_short_share": 0.4262074425969913,
+        "pns_total_share": 0.46117686096670724,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.7311,
+        "bytes": 41691,
+        "pns_long_share": 0.3803191489361702,
+        "pns_short_share": 0.38342342342342345,
+        "pns_total_share": 0.38120439831466446,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.8778,
+        "bytes": 41764,
+        "pns_long_share": 0.36745617556536864,
+        "pns_short_share": 0.4580896686159844,
+        "pns_total_share": 0.39061566049013746,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.4281,
+        "bytes": 41642,
+        "pns_long_share": 0.3992372541148133,
+        "pns_short_share": 0.4492063492063492,
+        "pns_total_share": 0.410622029344906,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.6986,
+        "bytes": 41595,
+        "pns_long_share": 0.3829285427539141,
+        "pns_short_share": 0.4111111111111111,
+        "pns_total_share": 0.38460449310930717,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 4.2222,
+        "bytes": 41714,
+        "pns_long_share": 0.3162415752610017,
+        "pns_short_share": 0.38823529411764707,
+        "pns_total_share": 0.3329953356317177,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.8355,
+        "bytes": 42208,
+        "pns_long_share": 0.3669806724053922,
+        "pns_short_share": 0.3966824644549763,
+        "pns_total_share": 0.3770650075091182,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.8354,
+        "bytes": 41771,
+        "pns_long_share": 0.34371088861076343,
+        "pns_short_share": 0.3824561403508772,
+        "pns_total_share": 0.34688307957483483,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.9286,
+        "bytes": 44203,
+        "pns_long_share": 0.4365456821026283,
+        "pns_short_share": 0.45495495495495497,
+        "pns_total_share": 0.4476732673267327,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 4.0215,
+        "bytes": 42143,
+        "pns_long_share": 0.3021997836278399,
+        "pns_short_share": 0.36405228758169933,
+        "pns_total_share": 0.31180830541171695,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.8752,
+        "bytes": 41544,
+        "pns_long_share": 0.4152876280535855,
+        "pns_short_share": 0.4896713615023474,
+        "pns_total_share": 0.43398230088495576,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 4.1916,
+        "bytes": 41565,
+        "pns_long_share": 0.39550972457903666,
+        "pns_short_share": 0.47346938775510206,
+        "pns_total_share": 0.4080604534005038,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.2644,
+        "bytes": 41661,
+        "pns_long_share": 0.4411636995223621,
+        "pns_short_share": 0.4553672316384181,
+        "pns_total_share": 0.44240863622858273,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 4.206,
+        "bytes": 41636,
+        "pns_long_share": 0.36936795994993743,
+        "pns_short_share": 0.43618677042801557,
+        "pns_total_share": 0.4058998723585307,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.9847,
+        "bytes": 41667,
+        "pns_long_share": 0.2976459936622906,
+        "pns_short_share": 0.3415857605177994,
+        "pns_total_share": 0.31161881239065553,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 4.0456,
+        "bytes": 42163,
+        "pns_long_share": 0.28002284735113525,
+        "pns_short_share": 0.3411764705882353,
+        "pns_total_share": 0.295117229511723,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.705,
+        "bytes": 42254,
+        "pns_long_share": 0.3272593216768485,
+        "pns_short_share": 0.44161220043572985,
+        "pns_total_share": 0.3834743493627503,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 4.0024,
+        "bytes": 42189,
+        "pns_long_share": 0.27606382978723404,
+        "pns_short_share": 0.29916317991631797,
+        "pns_total_share": 0.2860591430295715,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.8946,
+        "bytes": 41638,
+        "pns_long_share": 0.38113858539390455,
+        "pns_short_share": 0.39859649122807017,
+        "pns_total_share": 0.38359683794466404,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.7063,
+        "bytes": 41774,
+        "pns_long_share": 0.3855212096882109,
+        "pns_short_share": 0.38193548387096776,
+        "pns_total_share": 0.3846703408858951,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 4.1232,
+        "bytes": 41659,
+        "pns_long_share": 0.32056737588652484,
+        "pns_short_share": 0.3443478260869565,
+        "pns_total_share": 0.32459499263622976,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "bah": {
+        "raw_mos": 3.6218,
+        "bytes": 39565,
+        "pns_long_share": 0.3881205673758865,
+        "pns_short_share": 0.4835185185185185,
+        "pns_total_share": 0.41900479616306957,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "bas": {
+        "raw_mos": 3.5265,
+        "bytes": 41608,
+        "pns_long_share": 0.3933255610609152,
+        "pns_short_share": 0.4896103896103896,
+        "pns_total_share": 0.44857781642032046,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6727,
+        "bytes": 41614,
+        "pns_long_share": 0.38007736943907156,
+        "pns_short_share": 0.41202185792349727,
+        "pns_total_share": 0.38617631716223266,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.7437,
+        "bytes": 41841,
+        "pns_long_share": 0.38282674772036474,
+        "pns_short_share": 0.3858974358974359,
+        "pns_total_share": 0.3847921225382932,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "cst": {
+        "raw_mos": 3.6112,
+        "bytes": 27773,
+        "pns_long_share": 0.40899942495687175,
+        "pns_short_share": 0.45570570570570573,
+        "pns_total_share": 0.4318448883666275,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "fms": {
+        "raw_mos": 3.7092,
+        "bytes": 41859,
+        "pns_long_share": 0.4554871220604703,
+        "pns_short_share": 0.5426829268292683,
+        "pns_total_share": 0.5142439737034331,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.3349,
+        "bytes": 42017,
+        "pns_long_share": 0.42319148936170214,
+        "pns_short_share": 0.42903954802259886,
+        "pns_total_share": 0.426027397260274,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "glk": {
+        "raw_mos": 4.6679,
+        "bytes": 41696,
+        "pns_long_share": 0.5256786500366838,
+        "pns_short_share": 0.17777777777777778,
+        "pns_total_share": 0.5200288704438831,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "hrp": {
+        "raw_mos": 4.0646,
+        "bytes": 37639,
+        "pns_long_share": 0.4374151199637845,
+        "pns_short_share": 0.3383333333333333,
+        "pns_total_share": 0.4311148791860958,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.914,
+        "bytes": 21769,
+        "pns_long_share": 0.28191489361702127,
+        "pns_short_share": 0.3760919540229885,
+        "pns_total_share": 0.33019090266321,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "lob": {
+        "raw_mos": 3.9528,
+        "bytes": 31067,
+        "pns_long_share": 0.4455569461827284,
+        "pns_short_share": 0.3480263157894737,
+        "pns_total_share": 0.41011952191235057,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "mof": {
+        "raw_mos": 3.2501,
+        "bytes": 41652,
+        "pns_long_share": 0.530098598858329,
+        "pns_short_share": 0.525739247311828,
+        "pns_total_share": 0.5266360627735668,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "qrt": {
+        "raw_mos": 3.5466,
+        "bytes": 41593,
+        "pns_long_share": 0.3898936170212766,
+        "pns_short_share": 0.45726495726495725,
+        "pns_total_share": 0.40964912280701754,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.7677,
+        "bytes": 41707,
+        "pns_long_share": 0.3499917532574633,
+        "pns_short_share": 0.34206349206349207,
+        "pns_total_share": 0.34728101595571476,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.5231,
+        "bytes": 41891,
+        "pns_long_share": 0.4091016548463357,
+        "pns_short_share": 0.3849122807017544,
+        "pns_total_share": 0.4056145675265554,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 4.1303,
+        "bytes": 43167,
+        "pns_long_share": 0.4748706152961472,
+        "pns_short_share": 0.3904320987654321,
+        "pns_total_share": 0.46160930683470675,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.5903,
+        "bytes": 43712,
+        "pns_long_share": 0.5721040189125296,
+        "pns_short_share": 0.5425391095066185,
+        "pns_total_share": 0.5464557887044577,
+        "raw_delta": 0.0,
+        "adj_delta": 0.0,
+        "bytes_ratio": 1.0
+      }
+    }
+  },
+  "0.2": {
+    "thresh": 0.2,
+    "adj_mean": -0.14944079867666377,
+    "adj_median": -0.13604183337444817,
+    "wins": 7,
+    "losses": 42,
+    "ties": 0,
+    "bytes_ratio_mean": 1.000483325633795,
+    "min_clip_delta": -0.38291954971836833,
+    "pns_long_share": 0.27375716448118104,
+    "pns_short_share": 0.3280593093093093,
+    "pns_total_share": 0.292882719109789,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.5273,
+        "bytes": 32923,
+        "pns_long_share": 0.3242964996568291,
+        "pns_short_share": 0.39230254350736277,
+        "pns_total_share": 0.38120309174414696,
+        "raw_delta": -0.13750000000000018,
+        "adj_delta": -0.13675349312773744,
+        "bytes_ratio": 0.9994232287049967
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.5404,
+        "bytes": 36338,
+        "pns_long_share": 0.2687478200209278,
+        "pns_short_share": 0.3241025641025641,
+        "pns_total_share": 0.28279541905257677,
+        "raw_delta": -0.11739999999999995,
+        "adj_delta": -0.1219527236927091,
+        "bytes_ratio": 1.0059518866096393
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.969,
+        "bytes": 40304,
+        "pns_long_share": 0.2889193174636613,
+        "pns_short_share": 0.3175925925925926,
+        "pns_total_share": 0.2904624277456647,
+        "raw_delta": 0.01529999999999987,
+        "adj_delta": 0.0157343600232202,
+        "bytes_ratio": 0.9995040174585854
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.492,
+        "bytes": 36597,
+        "pns_long_share": 0.35542825968357883,
+        "pns_short_share": 0.4319047619047619,
+        "pns_total_share": 0.4166394424480017,
+        "raw_delta": -0.13430000000000009,
+        "adj_delta": -0.13604183337444817,
+        "bytes_ratio": 1.0011489536315141
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.6355,
+        "bytes": 39024,
+        "pns_long_share": 0.24011087803416242,
+        "pns_short_share": 0.2565121412803532,
+        "pns_total_share": 0.24426669649848975,
+        "raw_delta": -0.1177999999999999,
+        "adj_delta": -0.1190523940597011,
+        "bytes_ratio": 1.0009747088698506
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.7378,
+        "bytes": 42106,
+        "pns_long_share": 0.26930809180767296,
+        "pns_short_share": 0.336231884057971,
+        "pns_total_share": 0.29220850782455365,
+        "raw_delta": -0.21629999999999994,
+        "adj_delta": -0.21096668628914267,
+        "bytes_ratio": 0.9931363068141614
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.3867,
+        "bytes": 41542,
+        "pns_long_share": 0.39438053547795987,
+        "pns_short_share": 0.2748633879781421,
+        "pns_total_share": 0.38419631216241384,
+        "raw_delta": 0.18979999999999997,
+        "adj_delta": 0.2016949798483264,
+        "bytes_ratio": 0.9900145373084531
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.7554,
+        "bytes": 38123,
+        "pns_long_share": 0.386797599563557,
+        "pns_short_share": 0.46744315030504713,
+        "pns_total_share": 0.4538163716814159,
+        "raw_delta": -0.053600000000000314,
+        "adj_delta": -0.05368246874345797,
+        "bytes_ratio": 1.0000524645208677
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.5038,
+        "bytes": 40770,
+        "pns_long_share": 0.35106382978723405,
+        "pns_short_share": 0.32249705535924617,
+        "pns_total_share": 0.33855831700525935,
+        "raw_delta": 0.010499999999999954,
+        "adj_delta": 0.006383157559026071,
+        "bytes_ratio": 1.0027793491895614
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.6018,
+        "bytes": 41679,
+        "pns_long_share": 0.30379365716579687,
+        "pns_short_share": 0.2739622641509434,
+        "pns_total_share": 0.29055487328346546,
+        "raw_delta": -0.07350000000000012,
+        "adj_delta": -0.07531249181786187,
+        "bytes_ratio": 1.0010568031704095
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.4066,
+        "bytes": 41641,
+        "pns_long_share": 0.4059784237338927,
+        "pns_short_share": 0.3135593220338983,
+        "pns_total_share": 0.37394752300763656,
+        "raw_delta": -0.0935999999999999,
+        "adj_delta": -0.09555057557493243,
+        "bytes_ratio": 1.0016838661566958
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.2706,
+        "bytes": 41713,
+        "pns_long_share": 0.3716067498165811,
+        "pns_short_share": 0.30292953285827395,
+        "pns_total_share": 0.32363676584448625,
+        "raw_delta": -0.26750000000000007,
+        "adj_delta": -0.26727215206907157,
+        "bytes_ratio": 0.9997603240418954
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.6627,
+        "bytes": 41910,
+        "pns_long_share": 0.2540971822886717,
+        "pns_short_share": 0.2672072072072072,
+        "pns_total_share": 0.25783578255061146,
+        "raw_delta": -0.06840000000000002,
+        "adj_delta": -0.07383181070632543,
+        "bytes_ratio": 1.005252932287544
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.4938,
+        "bytes": 41681,
+        "pns_long_share": 0.18499933092466211,
+        "pns_short_share": 0.23976608187134502,
+        "pns_total_share": 0.19899382347081093,
+        "raw_delta": -0.38400000000000034,
+        "adj_delta": -0.38193190485173756,
+        "bytes_ratio": 0.9980126424671967
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.3777,
+        "bytes": 41675,
+        "pns_long_share": 0.30262277532450155,
+        "pns_short_share": 0.3294784580498866,
+        "pns_total_share": 0.3087414755114693,
+        "raw_delta": -0.05040000000000022,
+        "adj_delta": -0.05110116022655431,
+        "bytes_ratio": 1.0007924691417318
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.717,
+        "bytes": 41620,
+        "pns_long_share": 0.2881372942593336,
+        "pns_short_share": 0.319047619047619,
+        "pns_total_share": 0.28997545780630546,
+        "raw_delta": 0.018400000000000194,
+        "adj_delta": 0.017743793496148578,
+        "bytes_ratio": 1.0006010337780984
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 3.9886,
+        "bytes": 41879,
+        "pns_long_share": 0.2337121712699881,
+        "pns_short_share": 0.2766884531590414,
+        "pns_total_share": 0.2437132427499493,
+        "raw_delta": -0.23360000000000003,
+        "adj_delta": -0.23644814199657344,
+        "bytes_ratio": 1.0039555065445653
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.6054,
+        "bytes": 42387,
+        "pns_long_share": 0.25028422933246713,
+        "pns_short_share": 0.24723538704581358,
+        "pns_total_share": 0.24924908817850247,
+        "raw_delta": -0.2301000000000002,
+        "adj_delta": -0.2347668166909848,
+        "bytes_ratio": 1.0042409021986354
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.7537,
+        "bytes": 41936,
+        "pns_long_share": 0.2562578222778473,
+        "pns_short_share": 0.26900584795321636,
+        "pns_total_share": 0.2573015417025759,
+        "raw_delta": -0.0817000000000001,
+        "adj_delta": -0.08538075086512843,
+        "bytes_ratio": 1.0039501089272462
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.5233,
+        "bytes": 42869,
+        "pns_long_share": 0.26195244055068834,
+        "pns_short_share": 0.3244062244062244,
+        "pns_total_share": 0.2997029702970297,
+        "raw_delta": -0.4053,
+        "adj_delta": -0.38291954971836833,
+        "bytes_ratio": 0.9698210528697148
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 3.8409,
+        "bytes": 42329,
+        "pns_long_share": 0.1886043995672557,
+        "pns_short_share": 0.25555555555555554,
+        "pns_total_share": 0.19900497512437812,
+        "raw_delta": -0.18059999999999965,
+        "adj_delta": -0.18443721811482947,
+        "bytes_ratio": 1.0044135443608666
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.4949,
+        "bytes": 41542,
+        "pns_long_share": 0.29259259259259257,
+        "pns_short_share": 0.3316901408450704,
+        "pns_total_share": 0.3024188790560472,
+        "raw_delta": -0.3803000000000001,
+        "adj_delta": -0.3802523266242823,
+        "bytes_ratio": 0.9999518582707491
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 3.8612,
+        "bytes": 41524,
+        "pns_long_share": 0.20669625375277378,
+        "pns_short_share": 0.2931972789115646,
+        "pns_total_share": 0.2206220567298215,
+        "raw_delta": -0.3304,
+        "adj_delta": -0.329796789684648,
+        "bytes_ratio": 0.9990135931673283
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.3215,
+        "bytes": 41658,
+        "pns_long_share": 0.33586626139817627,
+        "pns_short_share": 0.34858757062146895,
+        "pns_total_share": 0.3369812815687828,
+        "raw_delta": 0.05709999999999971,
+        "adj_delta": 0.057224698090645294,
+        "bytes_ratio": 0.9999279902066681
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 3.949,
+        "bytes": 41603,
+        "pns_long_share": 0.251720901126408,
+        "pns_short_share": 0.2819714656290532,
+        "pns_total_share": 0.268259821301943,
+        "raw_delta": -0.25700000000000056,
+        "adj_delta": -0.25637794593966556,
+        "bytes_ratio": 0.9992074166586608
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.8264,
+        "bytes": 41710,
+        "pns_long_share": 0.19103666817564507,
+        "pns_short_share": 0.21067961165048543,
+        "pns_total_share": 0.19728311207162705,
+        "raw_delta": -0.1583000000000001,
+        "adj_delta": -0.1593245098346736,
+        "bytes_ratio": 1.001031991744066
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 3.7927,
+        "bytes": 42334,
+        "pns_long_share": 0.18392117663858346,
+        "pns_short_share": 0.23703703703703705,
+        "pns_total_share": 0.19703161970316196,
+        "raw_delta": -0.25290000000000035,
+        "adj_delta": -0.25625344995581417,
+        "bytes_ratio": 1.0040556886369565
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.3792,
+        "bytes": 42436,
+        "pns_long_share": 0.22656414577627976,
+        "pns_short_share": 0.32287581699346407,
+        "pns_total_share": 0.2739102495448217,
+        "raw_delta": -0.3258000000000001,
+        "adj_delta": -0.33001530160167936,
+        "bytes_ratio": 1.0043072845174421
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 3.9085,
+        "bytes": 42256,
+        "pns_long_share": 0.18893617021276596,
+        "pns_short_share": 0.2290097629009763,
+        "pns_total_share": 0.20627640313820156,
+        "raw_delta": -0.09389999999999965,
+        "adj_delta": -0.0956900193657771,
+        "bytes_ratio": 1.001588091682666
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.8508,
+        "bytes": 41690,
+        "pns_long_share": 0.2795284646348476,
+        "pns_short_share": 0.2729824561403509,
+        "pns_total_share": 0.2786067193675889,
+        "raw_delta": -0.04380000000000006,
+        "adj_delta": -0.045306266261311824,
+        "bytes_ratio": 1.00124885921514
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.5746,
+        "bytes": 41937,
+        "pns_long_share": 0.2634818680583434,
+        "pns_short_share": 0.2729032258064516,
+        "pns_total_share": 0.26571749336599304,
+        "raw_delta": -0.13169999999999993,
+        "adj_delta": -0.13437411654576492,
+        "bytes_ratio": 1.0039019485804568
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 3.9019,
+        "bytes": 41788,
+        "pns_long_share": 0.1981678486997636,
+        "pns_short_share": 0.20579710144927535,
+        "pns_total_share": 0.19945999018163968,
+        "raw_delta": -0.22129999999999983,
+        "adj_delta": -0.22347918265956446,
+        "bytes_ratio": 1.0030965697688374
+      },
+      "bah": {
+        "raw_mos": 3.3547,
+        "bytes": 39767,
+        "pns_long_share": 0.3172872340425532,
+        "pns_short_share": 0.4022222222222222,
+        "pns_total_share": 0.3447841726618705,
+        "raw_delta": -0.2671000000000001,
+        "adj_delta": -0.27207765942344375,
+        "bytes_ratio": 1.0051055225578163
+      },
+      "bas": {
+        "raw_mos": 3.672,
+        "bytes": 41620,
+        "pns_long_share": 0.3152142232585252,
+        "pns_short_share": 0.4531385281385281,
+        "pns_total_share": 0.39436094895044094,
+        "raw_delta": 0.14550000000000018,
+        "adj_delta": 0.14487418140773156,
+        "bytes_ratio": 1.0002884060757546
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6086,
+        "bytes": 41616,
+        "pns_long_share": 0.27092198581560284,
+        "pns_short_share": 0.32076502732240436,
+        "pns_total_share": 0.28043818466353676,
+        "raw_delta": -0.06409999999999982,
+        "adj_delta": -0.06415061193775838,
+        "bytes_ratio": 1.0000480607487865
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.4961,
+        "bytes": 41948,
+        "pns_long_share": 0.27006079027355623,
+        "pns_short_share": 0.2658119658119658,
+        "pns_total_share": 0.26734135667396064,
+        "raw_delta": -0.24759999999999982,
+        "adj_delta": -0.2505951899756522,
+        "bytes_ratio": 1.00255730025573
+      },
+      "cst": {
+        "raw_mos": 3.4943,
+        "bytes": 27937,
+        "pns_long_share": 0.24827487061529616,
+        "pns_short_share": 0.2912912912912913,
+        "pns_total_share": 0.26931551116333724,
+        "raw_delta": -0.11690000000000023,
+        "adj_delta": -0.12396896372808262,
+        "bytes_ratio": 1.005905015662694
+      },
+      "fms": {
+        "raw_mos": 3.5998,
+        "bytes": 41880,
+        "pns_long_share": 0.30753079507278835,
+        "pns_short_share": 0.3964769647696477,
+        "pns_total_share": 0.36746712929145364,
+        "raw_delta": -0.10939999999999994,
+        "adj_delta": -0.10996892749483919,
+        "bytes_ratio": 1.0005016842256145
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.0954,
+        "bytes": 41961,
+        "pns_long_share": 0.22904255319148936,
+        "pns_short_share": 0.3045197740112994,
+        "pns_total_share": 0.26564383561643834,
+        "raw_delta": -0.2395000000000005,
+        "adj_delta": -0.23855905873498431,
+        "bytes_ratio": 0.9986672061308518
+      },
+      "glk": {
+        "raw_mos": 4.7298,
+        "bytes": 41569,
+        "pns_long_share": 0.34446074834922963,
+        "pns_short_share": 0.09166666666666666,
+        "pns_total_share": 0.34035546734031036,
+        "raw_delta": 0.06189999999999962,
+        "adj_delta": 0.06369897968074938,
+        "bytes_ratio": 0.9969541442824251
+      },
+      "hrp": {
+        "raw_mos": 3.8198,
+        "bytes": 37679,
+        "pns_long_share": 0.3049456767768221,
+        "pns_short_share": 0.19,
+        "pns_total_share": 0.29763671047053836,
+        "raw_delta": -0.24480000000000057,
+        "adj_delta": -0.2463262628806083,
+        "bytes_ratio": 1.0010627274901034
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.6546,
+        "bytes": 21986,
+        "pns_long_share": 0.21832688588007737,
+        "pns_short_share": 0.29517241379310344,
+        "pns_total_share": 0.25771859533349045,
+        "raw_delta": -0.2594000000000003,
+        "adj_delta": -0.26775199118628673,
+        "bytes_ratio": 1.009968303550921
+      },
+      "lob": {
+        "raw_mos": 3.7185,
+        "bytes": 31176,
+        "pns_long_share": 0.2531914893617021,
+        "pns_short_share": 0.14232456140350877,
+        "pns_total_share": 0.21290836653386455,
+        "raw_delta": -0.23429999999999973,
+        "adj_delta": -0.23733926644076536,
+        "bytes_ratio": 1.0035085460456432
+      },
+      "mof": {
+        "raw_mos": 3.1344,
+        "bytes": 41655,
+        "pns_long_share": 0.3632589517384536,
+        "pns_short_share": 0.36236559139784946,
+        "pns_total_share": 0.3625493754670652,
+        "raw_delta": -0.11570000000000036,
+        "adj_delta": -0.11580646914502783,
+        "bytes_ratio": 1.0000720253529243
+      },
+      "qrt": {
+        "raw_mos": 3.516,
+        "bytes": 41624,
+        "pns_long_share": 0.28643617021276596,
+        "pns_short_share": 0.3901709401709402,
+        "pns_total_share": 0.3168546365914787,
+        "raw_delta": -0.030600000000000183,
+        "adj_delta": -0.03140894073668792,
+        "bytes_ratio": 1.000745317721732
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.6073,
+        "bytes": 41794,
+        "pns_long_share": 0.22505360382648854,
+        "pns_short_share": 0.25142857142857145,
+        "pns_total_share": 0.23407142081840876,
+        "raw_delta": -0.1604000000000001,
+        "adj_delta": -0.16253387204726696,
+        "bytes_ratio": 1.002085980770614
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.4408,
+        "bytes": 42100,
+        "pns_long_share": 0.26518912529550825,
+        "pns_short_share": 0.26982456140350874,
+        "pns_total_share": 0.26585735963581186,
+        "raw_delta": -0.08230000000000004,
+        "adj_delta": -0.08816127177048194,
+        "bytes_ratio": 1.0049891384784322
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 3.7854,
+        "bytes": 43383,
+        "pns_long_share": 0.2505462909718229,
+        "pns_short_share": 0.28888888888888886,
+        "pns_total_share": 0.25656810470189045,
+        "raw_delta": -0.3449,
+        "adj_delta": -0.3484533302649665,
+        "bytes_ratio": 1.005003822364306
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.3727,
+        "bytes": 42941,
+        "pns_long_share": 0.48739164696611503,
+        "pns_short_share": 0.4006016847172082,
+        "pns_total_share": 0.4120993840693183,
+        "raw_delta": -0.21760000000000002,
+        "adj_delta": -0.21457938910277552,
+        "bytes_ratio": 0.98236182284041
+      }
+    }
+  },
+  "0.3": {
+    "thresh": 0.3,
+    "adj_mean": -0.0045616644495884194,
+    "adj_median": -0.0014223583309921715,
+    "wins": 21,
+    "losses": 27,
+    "ties": 1,
+    "bytes_ratio_mean": 1.0003728814183392,
+    "min_clip_delta": -0.19310538229489377,
+    "pns_long_share": 0.352813919077504,
+    "pns_short_share": 0.40726664164164167,
+    "pns_total_share": 0.3719925081253787,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.6704,
+        "bytes": 32949,
+        "pns_long_share": 0.40665751544269046,
+        "pns_short_share": 0.49732262382864795,
+        "pns_total_share": 0.48252492438669203,
+        "raw_delta": 0.005599999999999827,
+        "adj_delta": 0.005325079682842159,
+        "bytes_ratio": 1.0002124946876327
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.6472,
+        "bytes": 36245,
+        "pns_long_share": 0.30659225671433554,
+        "pns_short_share": 0.3638461538461538,
+        "pns_total_share": 0.321121811556481,
+        "raw_delta": -0.01059999999999972,
+        "adj_delta": -0.013186720792770215,
+        "bytes_ratio": 1.0033773496110512
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.9623,
+        "bytes": 40313,
+        "pns_long_share": 0.38182009690330737,
+        "pns_short_share": 0.3861111111111111,
+        "pns_total_share": 0.38205102650986644,
+        "raw_delta": 0.008599999999999941,
+        "adj_delta": 0.008838871345636892,
+        "bytes_ratio": 0.9997272096022221
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.6231,
+        "bytes": 36569,
+        "pns_long_share": 0.43235133660665576,
+        "pns_short_share": 0.5185034013605442,
+        "pns_total_share": 0.5013067624959163,
+        "raw_delta": -0.0032000000000000917,
+        "adj_delta": -0.003780833390603929,
+        "bytes_ratio": 1.0003829845438381
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.7871,
+        "bytes": 38988,
+        "pns_long_share": 0.32281989811207673,
+        "pns_short_share": 0.3346578366445916,
+        "pns_total_share": 0.32581944289070364,
+        "raw_delta": 0.033800000000000274,
+        "adj_delta": 0.033734054095703285,
+        "bytes_ratio": 1.0000513004668343
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.9219,
+        "bytes": 42268,
+        "pns_long_share": 0.3813871670296532,
+        "pns_short_share": 0.44412238325281805,
+        "pns_total_share": 0.4028543090147675,
+        "raw_delta": -0.032200000000000006,
+        "adj_delta": -0.029840278848312907,
+        "bytes_ratio": 0.9969573318866901
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.2892,
+        "bytes": 41679,
+        "pns_long_share": 0.5010180189351522,
+        "pns_short_share": 0.4202185792349727,
+        "pns_total_share": 0.4941329856584094,
+        "raw_delta": 0.09229999999999983,
+        "adj_delta": 0.1002925406012328,
+        "bytes_ratio": 0.9932794737970974
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.8489,
+        "bytes": 38120,
+        "pns_long_share": 0.46181123840698307,
+        "pns_short_share": 0.5509706045479756,
+        "pns_total_share": 0.5359052359882006,
+        "raw_delta": 0.039899999999999824,
+        "adj_delta": 0.03994123599424901,
+        "bytes_ratio": 0.9999737677395661
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.5224,
+        "bytes": 40742,
+        "pns_long_share": 0.4279163609684519,
+        "pns_short_share": 0.41648998822143696,
+        "pns_total_share": 0.4229143033928019,
+        "raw_delta": 0.029100000000000126,
+        "adj_delta": 0.026002195742674237,
+        "bytes_ratio": 1.0020906608948028
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.7503,
+        "bytes": 41644,
+        "pns_long_share": 0.40937374548374145,
+        "pns_short_share": 0.3548427672955975,
+        "pns_total_share": 0.3851736072345651,
+        "raw_delta": 0.07500000000000018,
+        "adj_delta": 0.07462910725918073,
+        "bytes_ratio": 1.0002161642848566
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.5023,
+        "bytes": 41623,
+        "pns_long_share": 0.5062181600239737,
+        "pns_short_share": 0.4155367231638418,
+        "pns_total_share": 0.4747895046015273,
+        "raw_delta": 0.0020999999999999908,
+        "adj_delta": 0.0006506876466430057,
+        "bytes_ratio": 1.001250872002117
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.5104,
+        "bytes": 41706,
+        "pns_long_share": 0.47010271460014674,
+        "pns_short_share": 0.37157561361836894,
+        "pns_total_share": 0.4012830439110718,
+        "raw_delta": -0.027699999999999836,
+        "adj_delta": -0.027312626014539574,
+        "bytes_ratio": 0.9995925508712221
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.7399,
+        "bytes": 41840,
+        "pns_long_share": 0.3289965497412306,
+        "pns_short_share": 0.33441441441441444,
+        "pns_total_share": 0.33054156818415376,
+        "raw_delta": 0.008799999999999919,
+        "adj_delta": 0.005101292063197884,
+        "bytes_ratio": 1.0035739128349044
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.8585,
+        "bytes": 41784,
+        "pns_long_share": 0.29352335072929214,
+        "pns_short_share": 0.37348927875243665,
+        "pns_total_share": 0.3139569635385535,
+        "raw_delta": -0.019300000000000317,
+        "adj_delta": -0.019797721664744295,
+        "bytes_ratio": 1.0004788813332057
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.428,
+        "bytes": 41664,
+        "pns_long_share": 0.3572862304295464,
+        "pns_short_share": 0.4070294784580499,
+        "pns_total_share": 0.368619549493697,
+        "raw_delta": -0.00010000000000021103,
+        "adj_delta": -0.00056750185980249,
+        "bytes_ratio": 1.0005283127611546
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.7404,
+        "bytes": 41618,
+        "pns_long_share": 0.344239261340827,
+        "pns_short_share": 0.35873015873015873,
+        "pns_total_share": 0.34510100056635834,
+        "raw_delta": 0.04180000000000028,
+        "adj_delta": 0.04119627550925403,
+        "bytes_ratio": 1.0005529510758504
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 4.1556,
+        "bytes": 41823,
+        "pns_long_share": 0.2774547376767543,
+        "pns_short_share": 0.3394335511982571,
+        "pns_total_share": 0.2918779152301764,
+        "raw_delta": -0.06660000000000021,
+        "adj_delta": -0.06848275977308443,
+        "bytes_ratio": 1.0026130315961068
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.8132,
+        "bytes": 42319,
+        "pns_long_share": 0.31849926912457366,
+        "pns_short_share": 0.3325434439178515,
+        "pns_total_share": 0.3232675391546878,
+        "raw_delta": -0.022299999999999986,
+        "adj_delta": -0.025196273236269398,
+        "bytes_ratio": 1.002629833206975
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.8292,
+        "bytes": 41849,
+        "pns_long_share": 0.30699833124739256,
+        "pns_short_share": 0.34327485380116957,
+        "pns_total_share": 0.3099683998850905,
+        "raw_delta": -0.006199999999999761,
+        "adj_delta": -0.007941799890751371,
+        "bytes_ratio": 1.0018673242201528
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.8814,
+        "bytes": 43540,
+        "pns_long_share": 0.37296620775969963,
+        "pns_short_share": 0.4045045045045045,
+        "pns_total_share": 0.39202970297029704,
+        "raw_delta": -0.04719999999999969,
+        "adj_delta": -0.03616259846133813,
+        "bytes_ratio": 0.9850010180304504
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 3.9928,
+        "bytes": 42294,
+        "pns_long_share": 0.2543574948912129,
+        "pns_short_share": 0.31176470588235294,
+        "pns_total_share": 0.26327545943750635,
+        "raw_delta": -0.028699999999999726,
+        "adj_delta": -0.03181645049433578,
+        "bytes_ratio": 1.0035830387015636
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.8389,
+        "bytes": 41534,
+        "pns_long_share": 0.3698187549251379,
+        "pns_short_share": 0.43145539906103286,
+        "pns_total_share": 0.3853097345132743,
+        "raw_delta": -0.03629999999999978,
+        "adj_delta": -0.036061610166755714,
+        "bytes_ratio": 0.9997592913537454
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 4.1641,
+        "bytes": 41553,
+        "pns_long_share": 0.3262628899621459,
+        "pns_short_share": 0.3986394557823129,
+        "pns_total_share": 0.33791479575073924,
+        "raw_delta": -0.027499999999999858,
+        "adj_delta": -0.027323512250854713,
+        "bytes_ratio": 0.9997112955611692
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.3064,
+        "bytes": 41658,
+        "pns_long_share": 0.3998046026921407,
+        "pns_short_share": 0.41468926553672314,
+        "pns_total_share": 0.40110924036842627,
+        "raw_delta": 0.041999999999999815,
+        "adj_delta": 0.0421246980906454,
+        "bytes_ratio": 0.9999279902066681
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 4.1854,
+        "bytes": 41611,
+        "pns_long_share": 0.31758448060075095,
+        "pns_short_share": 0.3715953307392996,
+        "pns_total_share": 0.3471138845553822,
+        "raw_delta": -0.02060000000000084,
+        "adj_delta": -0.0201287922217236,
+        "bytes_ratio": 0.999399558074743
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.9961,
+        "bytes": 41685,
+        "pns_long_share": 0.2513203561189075,
+        "pns_short_share": 0.2826860841423948,
+        "pns_total_share": 0.26129463826283833,
+        "raw_delta": 0.011400000000000077,
+        "adj_delta": 0.010971006818847837,
+        "bytes_ratio": 1.0004319965440276
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 4.0126,
+        "bytes": 42300,
+        "pns_long_share": 0.23961159503070112,
+        "pns_short_share": 0.2923747276688453,
+        "pns_total_share": 0.25263497526349754,
+        "raw_delta": -0.03300000000000036,
+        "adj_delta": -0.03568776232159131,
+        "bytes_ratio": 1.003249294405047
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.69,
+        "bytes": 42403,
+        "pns_long_share": 0.2788076680008426,
+        "pns_short_share": 0.3954248366013072,
+        "pns_total_share": 0.3361358037913677,
+        "raw_delta": -0.015000000000000124,
+        "adj_delta": -0.01845233214810658,
+        "bytes_ratio": 1.003526293368675
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 4.01,
+        "bytes": 42207,
+        "pns_long_share": 0.22957446808510637,
+        "pns_short_share": 0.26638772663877264,
+        "pns_total_share": 0.24550392275196137,
+        "raw_delta": 0.007600000000000051,
+        "adj_delta": 0.007118820159387512,
+        "bytes_ratio": 1.0004266514968356
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.8944,
+        "bytes": 41655,
+        "pns_long_share": 0.3386428982173663,
+        "pns_short_share": 0.34596491228070175,
+        "pns_total_share": 0.33967391304347827,
+        "raw_delta": -0.00019999999999997797,
+        "adj_delta": -0.000692640065799767,
+        "bytes_ratio": 1.0004082808972574
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.7222,
+        "bytes": 41855,
+        "pns_long_share": 0.3346714840090994,
+        "pns_short_share": 0.3382795698924731,
+        "pns_total_share": 0.3355276587058583,
+        "raw_delta": 0.015899999999999803,
+        "adj_delta": 0.014569842832923606,
+        "bytes_ratio": 1.0019390051228036
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 4.1234,
+        "bytes": 41755,
+        "pns_long_share": 0.26666666666666666,
+        "pns_short_share": 0.2915942028985507,
+        "pns_total_share": 0.2708885616102111,
+        "raw_delta": 0.00020000000000042206,
+        "adj_delta": -0.0014223583309921715,
+        "bytes_ratio": 1.0023044240140186
+      },
+      "bah": {
+        "raw_mos": 3.6402,
+        "bytes": 39643,
+        "pns_long_share": 0.3601063829787234,
+        "pns_short_share": 0.45537037037037037,
+        "pns_total_share": 0.390947242206235,
+        "raw_delta": 0.018400000000000194,
+        "adj_delta": 0.01647492803595967,
+        "bytes_ratio": 1.0019714394035133
+      },
+      "bas": {
+        "raw_mos": 3.6534,
+        "bytes": 41591,
+        "pns_long_share": 0.36811425240454676,
+        "pns_short_share": 0.46915584415584416,
+        "pns_total_share": 0.4260961371258229,
+        "raw_delta": 0.1269,
+        "adj_delta": 0.12778688537196123,
+        "bytes_ratio": 0.9995914247260143
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6816,
+        "bytes": 41616,
+        "pns_long_share": 0.33268858800773693,
+        "pns_short_share": 0.373224043715847,
+        "pns_total_share": 0.34042775169535733,
+        "raw_delta": 0.00890000000000013,
+        "adj_delta": 0.008849388062241578,
+        "bytes_ratio": 1.0000480607487865
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.7546,
+        "bytes": 41906,
+        "pns_long_share": 0.3322188449848024,
+        "pns_short_share": 0.335042735042735,
+        "pns_total_share": 0.33402625820568926,
+        "raw_delta": 0.01089999999999991,
+        "adj_delta": 0.009079580192552197,
+        "bytes_ratio": 1.00155350015535
+      },
+      "cst": {
+        "raw_mos": 3.6322,
+        "bytes": 27840,
+        "pns_long_share": 0.33999424956871765,
+        "pns_short_share": 0.39894894894894894,
+        "pns_total_share": 0.36883078730904817,
+        "raw_delta": 0.020999999999999908,
+        "adj_delta": 0.018107039535767325,
+        "bytes_ratio": 1.0024124149353688
+      },
+      "fms": {
+        "raw_mos": 3.7245,
+        "bytes": 41869,
+        "pns_long_share": 0.40929451287793955,
+        "pns_short_share": 0.4901084010840108,
+        "pns_total_share": 0.4637509130752374,
+        "raw_delta": 0.01529999999999987,
+        "adj_delta": 0.01502904655711587,
+        "bytes_ratio": 1.0002388972502927
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.3335,
+        "bytes": 41953,
+        "pns_long_share": 0.35202127659574467,
+        "pns_short_share": 0.3823728813559322,
+        "pns_total_share": 0.36673972602739724,
+        "raw_delta": -0.00140000000000029,
+        "adj_delta": -0.00032453605346259356,
+        "bytes_ratio": 0.9984768070066877
+      },
+      "glk": {
+        "raw_mos": 4.6585,
+        "bytes": 41633,
+        "pns_long_share": 0.4749633162142333,
+        "pns_short_share": 0.12777777777777777,
+        "pns_total_share": 0.46932515337423314,
+        "raw_delta": -0.009400000000000297,
+        "adj_delta": -0.008508278682794178,
+        "bytes_ratio": 0.9984890636991558
+      },
+      "hrp": {
+        "raw_mos": 3.8718,
+        "bytes": 37647,
+        "pns_long_share": 0.3850158442734269,
+        "pns_short_share": 0.2875,
+        "pns_total_share": 0.37881517592200087,
+        "raw_delta": -0.19280000000000053,
+        "adj_delta": -0.19310538229489377,
+        "bytes_ratio": 1.0002125454980206
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.8756,
+        "bytes": 21866,
+        "pns_long_share": 0.2536266924564797,
+        "pns_short_share": 0.3432183908045977,
+        "pns_total_share": 0.2995522036295074,
+        "raw_delta": -0.03840000000000021,
+        "adj_delta": -0.042143621134073495,
+        "bytes_ratio": 1.0044558776241443
+      },
+      "lob": {
+        "raw_mos": 3.8729,
+        "bytes": 31153,
+        "pns_long_share": 0.3811013767209011,
+        "pns_short_share": 0.26666666666666666,
+        "pns_total_share": 0.3395219123505976,
+        "raw_delta": -0.07989999999999986,
+        "adj_delta": -0.08229883883201268,
+        "bytes_ratio": 1.0027682106415168
+      },
+      "mof": {
+        "raw_mos": 3.2603,
+        "bytes": 41642,
+        "pns_long_share": 0.47560975609756095,
+        "pns_short_share": 0.4657930107526882,
+        "pns_total_share": 0.46781253336180206,
+        "raw_delta": 0.010199999999999765,
+        "adj_delta": 0.010554952541742593,
+        "bytes_ratio": 0.9997599154902526
+      },
+      "qrt": {
+        "raw_mos": 3.5438,
+        "bytes": 41615,
+        "pns_long_share": 0.3396276595744681,
+        "pns_short_share": 0.42799145299145297,
+        "pns_total_share": 0.3655388471177945,
+        "raw_delta": -0.0028000000000001357,
+        "adj_delta": -0.003374149056027974,
+        "bytes_ratio": 1.0005289351573583
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.7622,
+        "bytes": 41770,
+        "pns_long_share": 0.2838528781131453,
+        "pns_short_share": 0.3047619047619048,
+        "pns_total_share": 0.2910018452187127,
+        "raw_delta": -0.00550000000000006,
+        "adj_delta": -0.007045661680345824,
+        "bytes_ratio": 1.0015105377994102
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.5098,
+        "bytes": 41991,
+        "pns_long_share": 0.3401300236406619,
+        "pns_short_share": 0.3291228070175439,
+        "pns_total_share": 0.3385432473444613,
+        "raw_delta": -0.01330000000000009,
+        "adj_delta": -0.01610807599743227,
+        "bytes_ratio": 1.002387147597336
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 4.1119,
+        "bytes": 43288,
+        "pns_long_share": 0.4072455434157562,
+        "pns_short_share": 0.3490740740740741,
+        "pns_total_share": 0.39810954920019387,
+        "raw_delta": -0.01839999999999975,
+        "adj_delta": -0.02039270739787946,
+        "bytes_ratio": 1.0028030671577826
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.5262,
+        "bytes": 43364,
+        "pns_long_share": 0.5307328605200946,
+        "pns_short_share": 0.48104693140794225,
+        "pns_total_share": 0.4876291888506107,
+        "raw_delta": -0.06410000000000027,
+        "adj_delta": -0.06274326310829278,
+        "bytes_ratio": 0.9920387994143485
+      }
+    }
+  },
+  "0.35": {
+    "thresh": 0.35,
+    "adj_mean": -0.0009254383157629896,
+    "adj_median": 0.00011018737258241564,
+    "wins": 24,
+    "losses": 23,
+    "ties": 2,
+    "bytes_ratio_mean": 1.0002406685272067,
+    "min_clip_delta": -0.16493964519332935,
+    "pns_long_share": 0.3800517033181965,
+    "pns_short_share": 0.43562625125125126,
+    "pns_total_share": 0.3996254062689363,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.6769,
+        "bytes": 32947,
+        "pns_long_share": 0.43067947838023335,
+        "pns_short_share": 0.5267068273092369,
+        "pns_total_share": 0.5110339419737874,
+        "raw_delta": 0.012099999999999778,
+        "adj_delta": 0.01190362238456803,
+        "bytes_ratio": 1.0001517819197376
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.6623,
+        "bytes": 36190,
+        "pns_long_share": 0.32534007673526333,
+        "pns_short_share": 0.382051282051282,
+        "pns_total_share": 0.33973191046330037,
+        "raw_delta": 0.0045000000000001705,
+        "adj_delta": 0.0030783443015725666,
+        "bytes_ratio": 1.0018547739667247
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.9554,
+        "bytes": 40318,
+        "pns_long_share": 0.4079418580155888,
+        "pns_short_share": 0.4046296296296296,
+        "pns_total_share": 0.40776360374725934,
+        "raw_delta": 0.0017000000000000348,
+        "adj_delta": 0.0018302853821775588,
+        "bytes_ratio": 0.9998512052375756
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.6326,
+        "bytes": 36550,
+        "pns_long_share": 0.45390070921985815,
+        "pns_short_share": 0.5495918367346939,
+        "pns_total_share": 0.5304911249047153,
+        "raw_delta": 0.006299999999999972,
+        "adj_delta": 0.0065074944082473855,
+        "bytes_ratio": 0.9998632198057721
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.7617,
+        "bytes": 38958,
+        "pns_long_share": 0.35008990110878035,
+        "pns_short_share": 0.3690949227373068,
+        "pns_total_share": 0.3549054704105605,
+        "raw_delta": 0.008399999999999963,
+        "adj_delta": 0.00932359804813605,
+        "bytes_ratio": 0.9992817934643206
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.9342,
+        "bytes": 42392,
+        "pns_long_share": 0.4076897302730776,
+        "pns_short_share": 0.47326892109500807,
+        "pns_total_share": 0.4301300418778929,
+        "raw_delta": -0.019899999999999807,
+        "adj_delta": -0.019808671769467007,
+        "bytes_ratio": 0.9998820671273911
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.2009,
+        "bytes": 41762,
+        "pns_long_share": 0.5287081339712919,
+        "pns_short_share": 0.4601092896174863,
+        "pns_total_share": 0.5228627304898491,
+        "raw_delta": 0.0039999999999995595,
+        "adj_delta": 0.009634524009183847,
+        "bytes_ratio": 0.9952575010128453
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.8385,
+        "bytes": 38125,
+        "pns_long_share": 0.48145117294053463,
+        "pns_short_share": 0.5829728230726566,
+        "pns_total_share": 0.5658185840707964,
+        "raw_delta": 0.029499999999999638,
+        "adj_delta": 0.02933506683942697,
+        "bytes_ratio": 1.0001049290417354
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.5082,
+        "bytes": 40704,
+        "pns_long_share": 0.44680851063829785,
+        "pns_short_share": 0.44322732626619554,
+        "pns_total_share": 0.4452407961225121,
+        "raw_delta": 0.014899999999999913,
+        "adj_delta": 0.013186296882892464,
+        "bytes_ratio": 1.0011560124947734
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.7643,
+        "bytes": 41639,
+        "pns_long_share": 0.4427940586109996,
+        "pns_short_share": 0.3837735849056604,
+        "pns_total_share": 0.41660154069442895,
+        "raw_delta": 0.08899999999999997,
+        "adj_delta": 0.08883514888485299,
+        "bytes_ratio": 1.0000960730154917
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.5221,
+        "bytes": 41599,
+        "pns_long_share": 0.5334881630206773,
+        "pns_short_share": 0.45084745762711864,
+        "pns_total_share": 0.5048462894066967,
+        "raw_delta": 0.02190000000000003,
+        "adj_delta": 0.021119375916381543,
+        "bytes_ratio": 1.0006735464626784
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.527,
+        "bytes": 41713,
+        "pns_long_share": 0.5113719735876743,
+        "pns_short_share": 0.4013460015835313,
+        "pns_total_share": 0.4345205176418538,
+        "raw_delta": -0.011099999999999888,
+        "adj_delta": -0.010872152069071404,
+        "bytes_ratio": 0.9997603240418954
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.7364,
+        "bytes": 41755,
+        "pns_long_share": 0.35688614146060954,
+        "pns_short_share": 0.3583783783783784,
+        "pns_total_share": 0.357311684307882,
+        "raw_delta": 0.005300000000000082,
+        "adj_delta": 0.0037096763171213442,
+        "bytes_ratio": 1.0015351034995563
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.8741,
+        "bytes": 41817,
+        "pns_long_share": 0.3326642579954503,
+        "pns_short_share": 0.4173489278752437,
+        "pns_total_share": 0.3543036461446503,
+        "raw_delta": -0.0037000000000002586,
+        "adj_delta": -0.0050184418016915415,
+        "bytes_ratio": 1.001269035532995
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.4495,
+        "bytes": 41643,
+        "pns_long_share": 0.3792988090458986,
+        "pns_short_share": 0.4272108843537415,
+        "pns_total_share": 0.39021492043810707,
+        "raw_delta": 0.021399999999999864,
+        "adj_delta": 0.021378744557827532,
+        "bytes_ratio": 1.000024014216416
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.7245,
+        "bytes": 41607,
+        "pns_long_share": 0.36375953432356484,
+        "pns_short_share": 0.38412698412698415,
+        "pns_total_share": 0.36497073815367187,
+        "raw_delta": 0.025900000000000034,
+        "adj_delta": 0.02558497167113987,
+        "bytes_ratio": 1.0002884962134873
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 4.208,
+        "bytes": 41756,
+        "pns_long_share": 0.3003171666446412,
+        "pns_short_share": 0.36840958605664487,
+        "pns_total_share": 0.3161630500912594,
+        "raw_delta": -0.014199999999999768,
+        "adj_delta": -0.01492604903827902,
+        "bytes_ratio": 1.0010068562113439
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.824,
+        "bytes": 42263,
+        "pns_long_share": 0.34326782523956473,
+        "pns_short_share": 0.3661927330173776,
+        "pns_total_share": 0.35105127655009655,
+        "raw_delta": -0.011500000000000288,
+        "adj_delta": -0.012936041112063234,
+        "bytes_ratio": 1.0013030705079606
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.8349,
+        "bytes": 41796,
+        "pns_long_share": 0.32770129328327074,
+        "pns_short_share": 0.36666666666666664,
+        "pns_total_share": 0.33089150627214403,
+        "raw_delta": -0.0004999999999997229,
+        "adj_delta": -0.0010586231168055538,
+        "bytes_ratio": 1.000598501352613
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.9184,
+        "bytes": 43874,
+        "pns_long_share": 0.40938673341677095,
+        "pns_short_share": 0.4304668304668305,
+        "pns_total_share": 0.4221287128712871,
+        "raw_delta": -0.010199999999999765,
+        "adj_delta": -0.004743766700762466,
+        "bytes_ratio": 0.9925570662624709
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 3.9858,
+        "bytes": 42265,
+        "pns_long_share": 0.28002163721601153,
+        "pns_short_share": 0.3333333333333333,
+        "pns_total_share": 0.2883033810539141,
+        "raw_delta": -0.03569999999999984,
+        "adj_delta": -0.03821879104079802,
+        "bytes_ratio": 1.0028949054409986
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.8636,
+        "bytes": 41545,
+        "pns_long_share": 0.39290780141843973,
+        "pns_short_share": 0.4624413145539906,
+        "pns_total_share": 0.4103834808259587,
+        "raw_delta": -0.011600000000000055,
+        "adj_delta": -0.011623835827211373,
+        "bytes_ratio": 1.0000240708646255
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 4.1833,
+        "bytes": 41577,
+        "pns_long_share": 0.3675760344602532,
+        "pns_short_share": 0.4421768707482993,
+        "pns_total_share": 0.379586025626985,
+        "raw_delta": -0.008300000000000196,
+        "adj_delta": -0.008476436803702074,
+        "bytes_ratio": 1.0002887044388307
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.3097,
+        "bytes": 41660,
+        "pns_long_share": 0.4235779418150239,
+        "pns_short_share": 0.4322033898305085,
+        "pns_total_share": 0.4243339605823512,
+        "raw_delta": 0.045299999999999674,
+        "adj_delta": 0.045341565032466516,
+        "bytes_ratio": 0.999975996735556
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 4.1994,
+        "bytes": 41629,
+        "pns_long_share": 0.3460575719649562,
+        "pns_short_share": 0.4040207522697795,
+        "pns_total_share": 0.37774783718621474,
+        "raw_delta": -0.006600000000000605,
+        "adj_delta": -0.006468090347772236,
+        "bytes_ratio": 0.9998318762609281
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.9917,
+        "bytes": 41674,
+        "pns_long_share": 0.2763693979176098,
+        "pns_short_share": 0.3163430420711974,
+        "pns_total_share": 0.28908099207574356,
+        "raw_delta": 0.006999999999999673,
+        "adj_delta": 0.006833147301017601,
+        "bytes_ratio": 1.0001679986560108
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 4.0311,
+        "bytes": 42254,
+        "pns_long_share": 0.26095958874767955,
+        "pns_short_share": 0.3224400871459695,
+        "pns_total_share": 0.27613465261346526,
+        "raw_delta": -0.014499999999999957,
+        "adj_delta": -0.016286273941361524,
+        "bytes_ratio": 1.0021582904442283
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.7132,
+        "bytes": 42365,
+        "pns_long_share": 0.3032441542026543,
+        "pns_short_share": 0.42145969498910674,
+        "pns_total_share": 0.36135803791367677,
+        "raw_delta": 0.008199999999999985,
+        "adj_delta": 0.005626974625975594,
+        "bytes_ratio": 1.0026269702276707
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 4.0189,
+        "bytes": 42203,
+        "pns_long_share": 0.2522340425531915,
+        "pns_short_share": 0.2828451882845188,
+        "pns_total_share": 0.26547978273989137,
+        "raw_delta": 0.016500000000000625,
+        "adj_delta": 0.016125731276404036,
+        "bytes_ratio": 1.0003318400530945
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.895,
+        "bytes": 41648,
+        "pns_long_share": 0.3628522139160437,
+        "pns_short_share": 0.37473684210526315,
+        "pns_total_share": 0.36452569169960475,
+        "raw_delta": 0.00039999999999995595,
+        "adj_delta": 0.00011018737258241564,
+        "bytes_ratio": 1.0002401652336808
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.7034,
+        "bytes": 41806,
+        "pns_long_share": 0.3619697577947277,
+        "pns_short_share": 0.3627956989247312,
+        "pns_total_share": 0.3621657481118596,
+        "raw_delta": -0.0029000000000003467,
+        "adj_delta": -0.003425802129403882,
+        "bytes_ratio": 1.0007660267151817
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 4.103,
+        "bytes": 41722,
+        "pns_long_share": 0.29397163120567377,
+        "pns_short_share": 0.31478260869565217,
+        "pns_total_share": 0.2974963181148748,
+        "raw_delta": -0.020199999999999996,
+        "adj_delta": -0.021265093756490227,
+        "bytes_ratio": 1.0015122782591996
+      },
+      "bah": {
+        "raw_mos": 3.6603,
+        "bytes": 39593,
+        "pns_long_share": 0.375177304964539,
+        "pns_short_share": 0.4688888888888889,
+        "pns_total_share": 0.405515587529976,
+        "raw_delta": 0.03849999999999998,
+        "adj_delta": 0.03780851221906036,
+        "bytes_ratio": 1.000707696196133
+      },
+      "bas": {
+        "raw_mos": 3.5769,
+        "bytes": 41605,
+        "pns_long_share": 0.38195861264937336,
+        "pns_short_share": 0.47943722943722944,
+        "pns_total_share": 0.4378959135511117,
+        "raw_delta": 0.05040000000000022,
+        "adj_delta": 0.05055648284961198,
+        "bytes_ratio": 0.9999278984810613
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6956,
+        "bytes": 41618,
+        "pns_long_share": 0.35654416505480335,
+        "pns_short_share": 0.3945355191256831,
+        "pns_total_share": 0.36379760041731873,
+        "raw_delta": 0.022900000000000365,
+        "adj_delta": 0.022798778556755543,
+        "bytes_ratio": 1.000096121497573
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.766,
+        "bytes": 41883,
+        "pns_long_share": 0.359726443768997,
+        "pns_short_share": 0.36256410256410254,
+        "pns_total_share": 0.3615426695842451,
+        "raw_delta": 0.022299999999999986,
+        "adj_delta": 0.021123405741361605,
+        "bytes_ratio": 1.00100380010038
+      },
+      "cst": {
+        "raw_mos": 3.6529,
+        "bytes": 27805,
+        "pns_long_share": 0.37852213916043703,
+        "pns_short_share": 0.43108108108108106,
+        "pns_total_share": 0.40423031727379555,
+        "raw_delta": 0.041699999999999626,
+        "adj_delta": 0.04031741792828168,
+        "bytes_ratio": 1.0011521981780866
+      },
+      "fms": {
+        "raw_mos": 3.7067,
+        "bytes": 41871,
+        "pns_long_share": 0.4349104143337066,
+        "pns_short_share": 0.522289972899729,
+        "pns_total_share": 0.493791088385683,
+        "raw_delta": -0.0024999999999999467,
+        "adj_delta": -0.002825136365650059,
+        "bytes_ratio": 1.000286676700351
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.3319,
+        "bytes": 42007,
+        "pns_long_share": 0.3930851063829787,
+        "pns_short_share": 0.40836158192090394,
+        "pns_total_share": 0.4004931506849315,
+        "raw_delta": -0.0030000000000001137,
+        "adj_delta": -0.002832066785735552,
+        "bytes_ratio": 0.999762001094795
+      },
+      "glk": {
+        "raw_mos": 4.6678,
+        "bytes": 41694,
+        "pns_long_share": 0.5044479090242113,
+        "pns_short_share": 0.1638888888888889,
+        "pns_total_share": 0.4989173583543847,
+        "raw_delta": -0.00010000000000065512,
+        "adj_delta": -7.171209996391333e-05,
+        "bytes_ratio": 0.9999520337682272
+      },
+      "hrp": {
+        "raw_mos": 3.9005,
+        "bytes": 37661,
+        "pns_long_share": 0.4127999094612947,
+        "pns_short_share": 0.31666666666666665,
+        "pns_total_share": 0.40668715557439594,
+        "raw_delta": -0.16410000000000036,
+        "adj_delta": -0.16493964519332935,
+        "bytes_ratio": 1.0005845001195568
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.8976,
+        "bytes": 21797,
+        "pns_long_share": 0.27079303675048355,
+        "pns_short_share": 0.3604597701149425,
+        "pns_total_share": 0.3167570115484327,
+        "raw_delta": -0.01639999999999997,
+        "adj_delta": -0.01748234278143476,
+        "bytes_ratio": 1.001286232716248
+      },
+      "lob": {
+        "raw_mos": 3.9078,
+        "bytes": 31122,
+        "pns_long_share": 0.41551939924906134,
+        "pns_short_share": 0.3081140350877193,
+        "pns_total_share": 0.37649402390438247,
+        "raw_delta": -0.04499999999999993,
+        "adj_delta": -0.04653490527555784,
+        "bytes_ratio": 1.0017703672707374
+      },
+      "mof": {
+        "raw_mos": 3.235,
+        "bytes": 41621,
+        "pns_long_share": 0.5067462376751427,
+        "pns_short_share": 0.501008064516129,
+        "pns_total_share": 0.5021885342158642,
+        "raw_delta": -0.015100000000000335,
+        "adj_delta": -0.013999369585213894,
+        "bytes_ratio": 0.999255738019783
+      },
+      "qrt": {
+        "raw_mos": 3.5508,
+        "bytes": 41607,
+        "pns_long_share": 0.36693262411347516,
+        "pns_short_share": 0.44465811965811963,
+        "pns_total_share": 0.38972431077694236,
+        "raw_delta": 0.0041999999999999815,
+        "adj_delta": 0.0038345972924591102,
+        "bytes_ratio": 1.000336595100137
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.6893,
+        "bytes": 41741,
+        "pns_long_share": 0.3214580240804882,
+        "pns_short_share": 0.3217460317460317,
+        "pns_total_share": 0.3215564962552914,
+        "raw_delta": -0.07840000000000025,
+        "adj_delta": -0.07923445639998104,
+        "bytes_ratio": 1.000815210875872
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.5179,
+        "bytes": 41933,
+        "pns_long_share": 0.3775413711583924,
+        "pns_short_share": 0.36105263157894735,
+        "pns_total_share": 0.3751643904906424,
+        "raw_delta": -0.005199999999999871,
+        "adj_delta": -0.006380207510434203,
+        "bytes_ratio": 1.001002601990881
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 4.1331,
+        "bytes": 43232,
+        "pns_long_share": 0.44456584243818287,
+        "pns_short_share": 0.3709876543209877,
+        "pns_total_share": 0.4330101793504605,
+        "raw_delta": 0.0027999999999996916,
+        "adj_delta": 0.0017288440191369685,
+        "bytes_ratio": 1.0015057798781477
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.5559,
+        "bytes": 43494,
+        "pns_long_share": 0.5559495665878644,
+        "pns_short_share": 0.5154031287605295,
+        "pns_total_share": 0.5207746111285103,
+        "raw_delta": -0.03440000000000021,
+        "adj_delta": -0.033551359838847855,
+        "bytes_ratio": 0.9950128111273792
+      }
+    }
+  },
+  "0.45": {
+    "thresh": 0.45,
+    "adj_mean": -0.001365607828987638,
+    "adj_median": -0.002941326505750139,
+    "wins": 23,
+    "losses": 26,
+    "ties": 0,
+    "bytes_ratio_mean": 0.9996073435916563,
+    "min_clip_delta": -0.056095679353942,
+    "pns_long_share": 0.4217936289266459,
+    "pns_short_share": 0.47900713213213214,
+    "pns_total_share": 0.4419445821627279,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.6697,
+        "bytes": 32941,
+        "pns_long_share": 0.4698009608785175,
+        "pns_short_share": 0.5729585006693441,
+        "pns_total_share": 0.5561218774504313,
+        "raw_delta": 0.0049000000000001265,
+        "adj_delta": 0.00493927909985699,
+        "bytes_ratio": 0.9999696436160525
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.6542,
+        "bytes": 36092,
+        "pns_long_share": 0.35420299965120333,
+        "pns_short_share": 0.41307692307692306,
+        "pns_total_share": 0.36914367516918273,
+        "raw_delta": -0.0036000000000000476,
+        "adj_delta": -0.002941326505750139,
+        "bytes_ratio": 0.9991418210004707
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.984,
+        "bytes": 40331,
+        "pns_long_share": 0.44275331788498,
+        "pns_short_share": 0.4388888888888889,
+        "pns_total_share": 0.44254534582419774,
+        "raw_delta": 0.030299999999999994,
+        "adj_delta": 0.03014802488670699,
+        "bytes_ratio": 1.0001735938894951
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.6529,
+        "bytes": 36541,
+        "pns_long_share": 0.4972722313147845,
+        "pns_short_share": 0.5903401360544218,
+        "pns_total_share": 0.5717630404007406,
+        "raw_delta": 0.026599999999999735,
+        "adj_delta": 0.027181055883425644,
+        "bytes_ratio": 0.999617015456162
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.7301,
+        "bytes": 39000,
+        "pns_long_share": 0.3923434222355409,
+        "pns_short_share": 0.4055187637969095,
+        "pns_total_share": 0.3956818436066674,
+        "raw_delta": -0.023199999999999665,
+        "adj_delta": -0.023661550303519553,
+        "bytes_ratio": 1.0003591032678398
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.9372,
+        "bytes": 42367,
+        "pns_long_share": 0.44463059138884237,
+        "pns_short_share": 0.5080515297906603,
+        "pns_total_share": 0.4663323782234957,
+        "raw_delta": -0.016900000000000137,
+        "adj_delta": -0.01635186897836354,
+        "bytes_ratio": 0.9992924027643465
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.1551,
+        "bytes": 41969,
+        "pns_long_share": 0.5636770843937697,
+        "pns_short_share": 0.5147540983606558,
+        "pns_total_share": 0.5595082883218476,
+        "raw_delta": -0.04180000000000028,
+        "adj_delta": -0.0420259544435733,
+        "bytes_ratio": 1.0001906532256142
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.7946,
+        "bytes": 38121,
+        "pns_long_share": 0.5133660665575559,
+        "pns_short_share": 0.6254575707154743,
+        "pns_total_share": 0.6065173303834809,
+        "raw_delta": -0.01440000000000019,
+        "adj_delta": -0.01440000000000019,
+        "bytes_ratio": 1.0
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.4385,
+        "bytes": 40616,
+        "pns_long_share": 0.48138297872340424,
+        "pns_short_share": 0.4878680800942285,
+        "pns_total_share": 0.48422192430648653,
+        "raw_delta": -0.05480000000000018,
+        "adj_delta": -0.05330344886441122,
+        "bytes_ratio": 0.9989915635683893
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.7696,
+        "bytes": 41633,
+        "pns_long_share": 0.4902649538338017,
+        "pns_short_share": 0.43345911949685534,
+        "pns_total_share": 0.46505526403929887,
+        "raw_delta": 0.09430000000000005,
+        "adj_delta": 0.09438243149682254,
+        "bytes_ratio": 0.9999519634922541
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.4958,
+        "bytes": 41546,
+        "pns_long_share": 0.5747677554689841,
+        "pns_short_share": 0.503954802259887,
+        "pns_total_share": 0.5502251811239475,
+        "raw_delta": -0.0043999999999999595,
+        "adj_delta": -0.0037025697796523333,
+        "bytes_ratio": 0.9993986192297515
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.5506,
+        "bytes": 41703,
+        "pns_long_share": 0.57006603081438,
+        "pns_short_share": 0.4482977038796516,
+        "pns_total_share": 0.485012719831877,
+        "raw_delta": 0.012500000000000178,
+        "adj_delta": 0.01295575049116892,
+        "bytes_ratio": 0.9995206480837907
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.7201,
+        "bytes": 41648,
+        "pns_long_share": 0.3991518113858539,
+        "pns_short_share": 0.4099099099099099,
+        "pns_total_share": 0.4022197102045011,
+        "raw_delta": -0.01100000000000012,
+        "adj_delta": -0.00993012953132754,
+        "bytes_ratio": 0.9989686023362356
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.8455,
+        "bytes": 41754,
+        "pns_long_share": 0.3977652883714706,
+        "pns_short_share": 0.4834307992202729,
+        "pns_total_share": 0.41965530982267385,
+        "raw_delta": -0.03230000000000022,
+        "adj_delta": -0.03205104977938645,
+        "bytes_ratio": 0.9997605593333971
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.4432,
+        "bytes": 41643,
+        "pns_long_share": 0.41770373344038536,
+        "pns_short_share": 0.463265306122449,
+        "pns_total_share": 0.42808431494110355,
+        "raw_delta": 0.015099999999999891,
+        "adj_delta": 0.01507874455782756,
+        "bytes_ratio": 1.000024014216416
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.7216,
+        "bytes": 41598,
+        "pns_long_share": 0.3986350863107186,
+        "pns_short_share": 0.43333333333333335,
+        "pns_total_share": 0.4006985085897678,
+        "raw_delta": 0.02300000000000013,
+        "adj_delta": 0.022921234398184286,
+        "bytes_ratio": 1.0000721240533719
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 4.2108,
+        "bytes": 41687,
+        "pns_long_share": 0.3304479978855557,
+        "pns_short_share": 0.4017429193899782,
+        "pns_total_share": 0.34703914013384707,
+        "raw_delta": -0.011400000000000077,
+        "adj_delta": -0.010932868060806386,
+        "bytes_ratio": 0.9993527352927075
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.8352,
+        "bytes": 42160,
+        "pns_long_share": 0.3853337664446971,
+        "pns_short_share": 0.41753554502369666,
+        "pns_total_share": 0.3962668955159837,
+        "raw_delta": -0.000300000000000189,
+        "adj_delta": 0.0009548022487441759,
+        "bytes_ratio": 0.9988627748294162
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.8336,
+        "bytes": 41730,
+        "pns_long_share": 0.3605027117229871,
+        "pns_short_share": 0.39649122807017545,
+        "pns_total_share": 0.3634492004213349,
+        "raw_delta": -0.0017999999999998018,
+        "adj_delta": -0.0008831339146578436,
+        "bytes_ratio": 0.9990184577817146
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.9118,
+        "bytes": 44312,
+        "pns_long_share": 0.4600750938673342,
+        "pns_short_share": 0.47846027846027844,
+        "pns_total_share": 0.47118811881188116,
+        "raw_delta": -0.016799999999999926,
+        "adj_delta": -0.018598735770434843,
+        "bytes_ratio": 1.0024658959799109
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 3.9987,
+        "bytes": 42079,
+        "pns_long_share": 0.32257482870537324,
+        "pns_short_share": 0.380718954248366,
+        "pns_total_share": 0.33160726977358107,
+        "raw_delta": -0.02279999999999971,
+        "adj_delta": -0.021475749565564254,
+        "bytes_ratio": 0.998481361080132
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.8847,
+        "bytes": 41549,
+        "pns_long_share": 0.43451536643026006,
+        "pns_short_share": 0.5131455399061032,
+        "pns_total_share": 0.45427728613569324,
+        "raw_delta": 0.009500000000000064,
+        "adj_delta": 0.009380826600950286,
+        "bytes_ratio": 1.0001203543231272
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 4.2075,
+        "bytes": 41561,
+        "pns_long_share": 0.4188095548883958,
+        "pns_short_share": 0.5003401360544217,
+        "pns_total_share": 0.4319351659183003,
+        "raw_delta": 0.01589999999999936,
+        "adj_delta": 0.015958823587656865,
+        "bytes_ratio": 0.9999037651870564
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.2467,
+        "bytes": 41669,
+        "pns_long_share": 0.4563612679114199,
+        "pns_short_share": 0.47966101694915253,
+        "pns_total_share": 0.45840348618401505,
+        "raw_delta": -0.01770000000000005,
+        "adj_delta": -0.018032484347115685,
+        "bytes_ratio": 1.0001920261155517
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 4.2028,
+        "bytes": 41637,
+        "pns_long_share": 0.3948685857321652,
+        "pns_short_share": 0.45888456549935147,
+        "pns_total_share": 0.4298681038150617,
+        "raw_delta": -0.0032000000000005357,
+        "adj_delta": -0.0032188424256323553,
+        "bytes_ratio": 1.0000240176770103
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.9762,
+        "bytes": 41663,
+        "pns_long_share": 0.31726271314320204,
+        "pns_short_share": 0.35970873786407764,
+        "pns_total_share": 0.3307605227951014,
+        "raw_delta": -0.008500000000000174,
+        "adj_delta": -0.008404643014768762,
+        "bytes_ratio": 0.9999040007679939
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 4.0321,
+        "bytes": 42110,
+        "pns_long_share": 0.2932314722261888,
+        "pns_short_share": 0.3570806100217865,
+        "pns_total_share": 0.3089911808991181,
+        "raw_delta": -0.013500000000000512,
+        "adj_delta": -0.012457865223565649,
+        "bytes_ratio": 0.9987429736973176
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.7197,
+        "bytes": 42256,
+        "pns_long_share": 0.3466399831472509,
+        "pns_short_share": 0.46013071895424834,
+        "pns_total_share": 0.40243118774767056,
+        "raw_delta": 0.014699999999999935,
+        "adj_delta": 0.014653579413431836,
+        "bytes_ratio": 1.000047332796895
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 4.024,
+        "bytes": 42142,
+        "pns_long_share": 0.29904255319148937,
+        "pns_short_share": 0.31813110181311016,
+        "pns_total_share": 0.3073023536511768,
+        "raw_delta": 0.021600000000000286,
+        "adj_delta": 0.022857382548535622,
+        "bytes_ratio": 0.9988859655360403
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.8907,
+        "bytes": 41621,
+        "pns_long_share": 0.39959746981023575,
+        "pns_short_share": 0.4168421052631579,
+        "pns_total_share": 0.4020256916996047,
+        "raw_delta": -0.0039000000000002366,
+        "adj_delta": -0.003407158757598621,
+        "bytes_ratio": 0.9995917191027427
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.7106,
+        "bytes": 41728,
+        "pns_long_share": 0.4035862438110531,
+        "pns_short_share": 0.3978494623655914,
+        "pns_total_share": 0.40222494386609514,
+        "raw_delta": 0.0042999999999997485,
+        "adj_delta": 0.0050565466383262585,
+        "bytes_ratio": 0.9988988365969264
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 4.1151,
+        "bytes": 41647,
+        "pns_long_share": 0.3375886524822695,
+        "pns_short_share": 0.37275362318840577,
+        "pns_total_share": 0.34354442808051056,
+        "raw_delta": -0.008099999999999774,
+        "adj_delta": -0.007896942388590355,
+        "bytes_ratio": 0.9997119469982477
+      },
+      "bah": {
+        "raw_mos": 3.6761,
+        "bytes": 39538,
+        "pns_long_share": 0.399468085106383,
+        "pns_short_share": 0.4937037037037037,
+        "pns_total_share": 0.4299760191846523,
+        "raw_delta": 0.054300000000000015,
+        "adj_delta": 0.0549672554045148,
+        "bytes_ratio": 0.9993175786680146
+      },
+      "bas": {
+        "raw_mos": 3.4703,
+        "bytes": 41606,
+        "pns_long_share": 0.40527542990381815,
+        "pns_short_share": 0.49956709956709955,
+        "pns_total_share": 0.459383927462427,
+        "raw_delta": -0.05620000000000003,
+        "adj_delta": -0.056095679353942,
+        "bytes_ratio": 0.9999519323207076
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6686,
+        "bytes": 41621,
+        "pns_long_share": 0.40322372662798195,
+        "pns_short_share": 0.4262295081967213,
+        "pns_total_share": 0.4076160667709963,
+        "raw_delta": -0.0040999999999997705,
+        "adj_delta": -0.004277131141474821,
+        "bytes_ratio": 1.0001682126207527
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.7522,
+        "bytes": 41806,
+        "pns_long_share": 0.39969604863221886,
+        "pns_short_share": 0.40615384615384614,
+        "pns_total_share": 0.4038293216630197,
+        "raw_delta": 0.008500000000000174,
+        "adj_delta": 0.009481397770750114,
+        "bytes_ratio": 0.99916349991635
+      },
+      "cst": {
+        "raw_mos": 3.5967,
+        "bytes": 27714,
+        "pns_long_share": 0.43300747556066704,
+        "pns_short_share": 0.4764264264264264,
+        "pns_total_share": 0.45424500587544064,
+        "raw_delta": -0.014500000000000401,
+        "adj_delta": -0.011946682981948974,
+        "bytes_ratio": 0.9978756346091527
+      },
+      "fms": {
+        "raw_mos": 3.6982,
+        "bytes": 41864,
+        "pns_long_share": 0.4710246360582307,
+        "pns_short_share": 0.5610433604336044,
+        "pns_total_share": 0.5316837107377648,
+        "raw_delta": -0.01100000000000012,
+        "adj_delta": -0.011135484811729823,
+        "bytes_ratio": 1.0001194486251463
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.3498,
+        "bytes": 42041,
+        "pns_long_share": 0.44872340425531915,
+        "pns_short_share": 0.452090395480226,
+        "pns_total_share": 0.45035616438356163,
+        "raw_delta": 0.014899999999999913,
+        "adj_delta": 0.0144971232992789,
+        "bytes_ratio": 1.000571197372492
+      },
+      "glk": {
+        "raw_mos": 4.6742,
+        "bytes": 41801,
+        "pns_long_share": 0.5425531914893617,
+        "pns_short_share": 0.19444444444444445,
+        "pns_total_share": 0.5369000360880548,
+        "raw_delta": 0.006299999999999528,
+        "adj_delta": 0.004816787616068524,
+        "bytes_ratio": 1.0025182271680737
+      },
+      "hrp": {
+        "raw_mos": 4.0166,
+        "bytes": 37591,
+        "pns_long_share": 0.4577297419646899,
+        "pns_short_share": 0.36916666666666664,
+        "pns_total_share": 0.4520983467571005,
+        "raw_delta": -0.04800000000000004,
+        "adj_delta": -0.04616634205875237,
+        "bytes_ratio": 0.998724727011876
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.9179,
+        "bytes": 21713,
+        "pns_long_share": 0.29859767891682787,
+        "pns_short_share": 0.39057471264367816,
+        "pns_total_share": 0.34574593448032054,
+        "raw_delta": 0.0038999999999997925,
+        "adj_delta": 0.006068868276249433,
+        "bytes_ratio": 0.9974275345675042
+      },
+      "lob": {
+        "raw_mos": 3.9625,
+        "bytes": 31010,
+        "pns_long_share": 0.47221526908635797,
+        "pns_short_share": 0.3796052631578947,
+        "pns_total_share": 0.4385657370517928,
+        "raw_delta": 0.009700000000000042,
+        "adj_delta": 0.011293590039614089,
+        "bytes_ratio": 0.9981652557375994
+      },
+      "mof": {
+        "raw_mos": 3.2228,
+        "bytes": 41658,
+        "pns_long_share": 0.5518941359626363,
+        "pns_short_share": 0.5488575268817204,
+        "pns_total_share": 0.5494822248318565,
+        "raw_delta": -0.027300000000000324,
+        "adj_delta": -0.027512930622405906,
+        "bytes_ratio": 1.0001440507058486
+      },
+      "qrt": {
+        "raw_mos": 3.5228,
+        "bytes": 41584,
+        "pns_long_share": 0.4103723404255319,
+        "pns_short_share": 0.4673076923076923,
+        "pns_total_share": 0.4270676691729323,
+        "raw_delta": -0.023800000000000043,
+        "adj_delta": -0.02356503330600323,
+        "bytes_ratio": 0.9997836174356262
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.778,
+        "bytes": 41683,
+        "pns_long_share": 0.380009896091044,
+        "pns_short_share": 0.3611111111111111,
+        "pns_total_share": 0.37354824704222295,
+        "raw_delta": 0.010299999999999976,
+        "adj_delta": 0.010889437715637941,
+        "bytes_ratio": 0.9994245570287962
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.5308,
+        "bytes": 41872,
+        "pns_long_share": 0.4379432624113475,
+        "pns_short_share": 0.40842105263157896,
+        "pns_total_share": 0.4336874051593323,
+        "raw_delta": 0.007700000000000262,
+        "adj_delta": 0.008234292174599025,
+        "bytes_ratio": 0.9995464419565062
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 4.1394,
+        "bytes": 43108,
+        "pns_long_share": 0.4965497412305923,
+        "pns_short_share": 0.4024691358024691,
+        "pns_total_share": 0.48177411536597187,
+        "raw_delta": 0.009100000000000108,
+        "adj_delta": 0.010073677435905877,
+        "bytes_ratio": 0.9986332151875275
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.6009,
+        "bytes": 43694,
+        "pns_long_share": 0.5772261623325453,
+        "pns_short_share": 0.5678098676293623,
+        "pns_total_share": 0.5690573128719073,
+        "raw_delta": 0.010600000000000165,
+        "adj_delta": 0.010669910726325213,
+        "bytes_ratio": 0.9995882137628112
+      }
+    }
+  },
+  "0.5": {
+    "thresh": 0.5,
+    "adj_mean": -0.014066528057591489,
+    "adj_median": -0.011006200621123612,
+    "wins": 19,
+    "losses": 28,
+    "ties": 2,
+    "bytes_ratio_mean": 0.9994834002157423,
+    "min_clip_delta": -0.12380000000000013,
+    "pns_long_share": 0.43797472660169734,
+    "pns_short_share": 0.496092967967968,
+    "pns_total_share": 0.4584443342698177,
+    "clips": {
+      "12-German-male-speech.441.16b48k": {
+        "raw_mos": 3.6355,
+        "bytes": 32945,
+        "pns_long_share": 0.49245024021962935,
+        "pns_short_share": 0.5894912985274431,
+        "pns_total_share": 0.5736529629214742,
+        "raw_delta": -0.029300000000000104,
+        "adj_delta": -0.02941783014574006,
+        "bytes_ratio": 1.0000910691518425
+      },
+      "15-Good-evening.441.16b48k": {
+        "raw_mos": 3.6563,
+        "bytes": 36060,
+        "pns_long_share": 0.3671956749215208,
+        "pns_short_share": 0.42615384615384616,
+        "pns_total_share": 0.3821577303487767,
+        "raw_delta": -0.0015000000000000568,
+        "adj_delta": -0.00016081179903074615,
+        "bytes_ratio": 0.998255958807408
+      },
+      "21-classic.441.16b48k": {
+        "raw_mos": 3.9646,
+        "bytes": 40335,
+        "pns_long_share": 0.4543922477354118,
+        "pns_short_share": 0.4583333333333333,
+        "pns_total_share": 0.45460434522623083,
+        "raw_delta": 0.01089999999999991,
+        "adj_delta": 0.010661193807286614,
+        "bytes_ratio": 1.000272790397778
+      },
+      "24-Greensleeves-Korean-male-speech.441.16b48k": {
+        "raw_mos": 3.6124,
+        "bytes": 36531,
+        "pns_long_share": 0.5095471903982542,
+        "pns_short_share": 0.6040816326530613,
+        "pns_total_share": 0.5852118044212131,
+        "raw_delta": -0.013900000000000023,
+        "adj_delta": -0.012903767885296189,
+        "bytes_ratio": 0.9993434550677062
+      },
+      "25-This-is-the-end.441.16b48k": {
+        "raw_mos": 3.7222,
+        "bytes": 39029,
+        "pns_long_share": 0.41047347917290977,
+        "pns_short_share": 0.42119205298013246,
+        "pns_total_share": 0.41318939478688893,
+        "raw_delta": -0.031099999999999905,
+        "adj_delta": -0.03251709195560371,
+        "bytes_ratio": 1.0011029600369363
+      },
+      "27-last-song-drums-and-trampets.441.16b48k": {
+        "raw_mos": 3.9164,
+        "bytes": 42384,
+        "pns_long_share": 0.45753057463561736,
+        "pns_short_share": 0.5193236714975845,
+        "pns_total_share": 0.47867533612519286,
+        "raw_delta": -0.03770000000000007,
+        "adj_delta": -0.03746252419274445,
+        "bytes_ratio": 0.9996933745312169
+      },
+      "35_SQAM_glockenspiel_cut.16b48k": {
+        "raw_mos": 4.1644,
+        "bytes": 42043,
+        "pns_long_share": 0.5764532220299298,
+        "pns_short_share": 0.5311475409836065,
+        "pns_total_share": 0.5725926615757124,
+        "raw_delta": -0.03250000000000064,
+        "adj_delta": -0.034813993556912226,
+        "bytes_ratio": 1.0019541955625462
+      },
+      "4-Sound-English-male.441.16b48k": {
+        "raw_mos": 3.7693,
+        "bytes": 38097,
+        "pns_long_share": 0.5207310420076378,
+        "pns_short_share": 0.6431503050471437,
+        "pns_total_share": 0.622464970501475,
+        "raw_delta": -0.03970000000000029,
+        "adj_delta": -0.0387100374584641,
+        "bytes_ratio": 0.9993704257495868
+      },
+      "9-Have-big-expensive-car.441.16b48k": {
+        "raw_mos": 3.4233,
+        "bytes": 40535,
+        "pns_long_share": 0.4950476889214967,
+        "pns_short_share": 0.5056537102473498,
+        "pns_total_share": 0.49969062596679387,
+        "raw_delta": -0.07000000000000028,
+        "adj_delta": -0.06554240224223346,
+        "bytes_ratio": 0.9969992867156947
+      },
+      "Asleep__4.11-4.31_.16b48k": {
+        "raw_mos": 3.7412,
+        "bytes": 41640,
+        "pns_long_share": 0.5082296266559615,
+        "pns_short_share": 0.4564779874213836,
+        "pns_total_share": 0.48526292285363404,
+        "raw_delta": 0.06590000000000007,
+        "adj_delta": 0.06569393858047617,
+        "bytes_ratio": 1.0001200912693646
+      },
+      "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+        "raw_mos": 3.5359,
+        "bytes": 41612,
+        "pns_long_share": 0.5860053940665269,
+        "pns_short_share": 0.5278248587570622,
+        "pns_total_share": 0.5658410025455257,
+        "raw_delta": 0.03569999999999984,
+        "adj_delta": 0.03455712189586695,
+        "bytes_ratio": 1.0009862644632075
+      },
+      "Changes.16b48k": {
+        "raw_mos": 3.4501,
+        "bytes": 41715,
+        "pns_long_share": 0.590975788701394,
+        "pns_short_share": 0.46999208234362627,
+        "pns_total_share": 0.5064705231722154,
+        "raw_delta": -0.08800000000000008,
+        "adj_delta": -0.087817726024764,
+        "bytes_ratio": 0.9998082592335162
+      },
+      "Coral.16b48k": {
+        "raw_mos": 3.7007,
+        "bytes": 41605,
+        "pns_long_share": 0.41510925819436456,
+        "pns_short_share": 0.4308108108108108,
+        "pns_total_share": 0.41958688726749566,
+        "raw_delta": -0.030400000000000205,
+        "adj_delta": -0.028259153890749397,
+        "bytes_ratio": 0.9979372046724713
+      },
+      "ExitMusic.16b48k": {
+        "raw_mos": 3.8876,
+        "bytes": 41805,
+        "pns_long_share": 0.4219858156028369,
+        "pns_short_share": 0.508187134502924,
+        "pns_total_share": 0.4440127515441323,
+        "raw_delta": 0.009799999999999809,
+        "adj_delta": 0.008779926922834368,
+        "bytes_ratio": 1.0009817067330715
+      },
+      "Girl_In_The_Fire__Sample_.16b48k": {
+        "raw_mos": 3.4411,
+        "bytes": 41637,
+        "pns_long_share": 0.4310852401980463,
+        "pns_short_share": 0.47687074829931975,
+        "pns_total_share": 0.441516842322794,
+        "raw_delta": 0.0129999999999999,
+        "adj_delta": 0.01310628486793587,
+        "bytes_ratio": 0.9998799289179194
+      },
+      "Greatest_Love_of_All_2min57.16b48k": {
+        "raw_mos": 3.6872,
+        "bytes": 41599,
+        "pns_long_share": 0.4137394620634283,
+        "pns_short_share": 0.44603174603174606,
+        "pns_total_share": 0.41565980743817255,
+        "raw_delta": -0.011400000000000077,
+        "adj_delta": -0.01150501954009623,
+        "bytes_ratio": 1.0000961654044958
+      },
+      "Hey Tonight.16b48k": {
+        "raw_mos": 4.1877,
+        "bytes": 41642,
+        "pns_long_share": 0.34306858728690365,
+        "pns_short_share": 0.4148148148148148,
+        "pns_total_share": 0.3597647535996755,
+        "raw_delta": -0.03449999999999953,
+        "adj_delta": -0.033253642075317,
+        "bytes_ratio": 0.9982739607805533
+      },
+      "Hotel California.16b48k": {
+        "raw_mos": 3.8321,
+        "bytes": 42073,
+        "pns_long_share": 0.4014130258242651,
+        "pns_short_share": 0.4399684044233807,
+        "pns_total_share": 0.41450332546663804,
+        "raw_delta": -0.0034000000000000696,
+        "adj_delta": 0.00013277694986417237,
+        "bytes_ratio": 0.9968015542077331
+      },
+      "Jupiter, the Bringer of Jolity.16b48k": {
+        "raw_mos": 3.8223,
+        "bytes": 41721,
+        "pns_long_share": 0.37442636629119735,
+        "pns_short_share": 0.4128654970760234,
+        "pns_total_share": 0.3775734942066456,
+        "raw_delta": -0.013100000000000112,
+        "adj_delta": -0.011981750055332724,
+        "bytes_ratio": 0.9988029972947738
+      },
+      "Last_Of_The_Mohicanz__Sample_.16b48k": {
+        "raw_mos": 3.89,
+        "bytes": 44581,
+        "pns_long_share": 0.4762202753441802,
+        "pns_short_share": 0.4924651924651925,
+        "pns_total_share": 0.486039603960396,
+        "raw_delta": -0.038599999999999746,
+        "adj_delta": -0.04481895256156734,
+        "bytes_ratio": 1.008551455783544
+      },
+      "NewYorkCity.16b48k": {
+        "raw_mos": 3.9966,
+        "bytes": 42053,
+        "pns_long_share": 0.33814160355811995,
+        "pns_short_share": 0.396078431372549,
+        "pns_total_share": 0.3471418418113514,
+        "raw_delta": -0.0248999999999997,
+        "adj_delta": -0.02303719741379822,
+        "bytes_ratio": 0.9978644140189356
+      },
+      "Only Time.16b48k": {
+        "raw_mos": 3.8894,
+        "bytes": 41551,
+        "pns_long_share": 0.4469661150512214,
+        "pns_short_share": 0.5288732394366197,
+        "pns_total_share": 0.46755162241887904,
+        "raw_delta": 0.014200000000000212,
+        "adj_delta": 0.014033161256848198,
+        "bytes_ratio": 1.0001684960523782
+      },
+      "Robots_old.16b48k": {
+        "raw_mos": 4.212,
+        "bytes": 41545,
+        "pns_long_share": 0.43630074402819474,
+        "pns_short_share": 0.5156462585034014,
+        "pns_total_share": 0.44907458109736065,
+        "raw_delta": 0.02039999999999953,
+        "adj_delta": 0.020694174566130583,
+        "bytes_ratio": 0.9995188259352821
+      },
+      "Severance__1.31-1.51_.16b48k": {
+        "raw_mos": 3.2238,
+        "bytes": 41659,
+        "pns_long_share": 0.4700933564915328,
+        "pns_short_share": 0.49265536723163844,
+        "pns_total_share": 0.4720709121521244,
+        "raw_delta": -0.04059999999999997,
+        "adj_delta": -0.0405168689373339,
+        "bytes_ratio": 0.9999519934711121
+      },
+      "Shinsho_pool_3min45_4min4.16b48k": {
+        "raw_mos": 4.1996,
+        "bytes": 41628,
+        "pns_long_share": 0.41739674593241555,
+        "pns_short_share": 0.48249027237354086,
+        "pns_total_share": 0.45298539214295847,
+        "raw_delta": -0.006400000000000183,
+        "adj_delta": -0.006249244301077379,
+        "bytes_ratio": 0.9998078585839177
+      },
+      "SinceAlways.16b48k": {
+        "raw_mos": 3.9582,
+        "bytes": 41658,
+        "pns_long_share": 0.3340123736230572,
+        "pns_short_share": 0.3768608414239482,
+        "pns_total_share": 0.3476381599259031,
+        "raw_delta": -0.026499999999999968,
+        "adj_delta": -0.026285433908079154,
+        "bytes_ratio": 0.9997840017279862
+      },
+      "SlavesOfFear.16b48k": {
+        "raw_mos": 3.9851,
+        "bytes": 42050,
+        "pns_long_share": 0.3045123518492075,
+        "pns_short_share": 0.37625272331154686,
+        "pns_total_share": 0.32221983222198325,
+        "raw_delta": -0.06050000000000022,
+        "adj_delta": -0.05827650589925596,
+        "bytes_ratio": 0.9973199250527713
+      },
+      "The Chastising of Renegade.16b48k": {
+        "raw_mos": 3.716,
+        "bytes": 42233,
+        "pns_long_share": 0.3673899304824099,
+        "pns_short_share": 0.4803921568627451,
+        "pns_total_share": 0.42294098746920855,
+        "raw_delta": 0.01100000000000012,
+        "adj_delta": 0.011487548858814568,
+        "bytes_ratio": 0.9995030056326029
+      },
+      "Through The Fire And Flames.16b48k": {
+        "raw_mos": 4.0161,
+        "bytes": 42110,
+        "pns_long_share": 0.32382978723404254,
+        "pns_short_share": 0.33556485355648535,
+        "pns_total_share": 0.32890766445383224,
+        "raw_delta": 0.013700000000000045,
+        "adj_delta": 0.01581427547115039,
+        "bytes_ratio": 0.9981274739861101
+      },
+      "TrosYGareg.16b48k": {
+        "raw_mos": 3.8831,
+        "bytes": 41583,
+        "pns_long_share": 0.4147786083956297,
+        "pns_short_share": 0.4414035087719298,
+        "pns_total_share": 0.4185276679841897,
+        "raw_delta": -0.011499999999999844,
+        "adj_delta": -0.009904785350220944,
+        "bytes_ratio": 0.9986790912147557
+      },
+      "Waiting.16b48k": {
+        "raw_mos": 3.7097,
+        "bytes": 41712,
+        "pns_long_share": 0.4207145724608591,
+        "pns_short_share": 0.41118279569892474,
+        "pns_total_share": 0.4184527454582568,
+        "raw_delta": 0.0034000000000000696,
+        "adj_delta": 0.004419888802557484,
+        "bytes_ratio": 0.9985158232393355
+      },
+      "With Love (Outro).16b48k": {
+        "raw_mos": 4.1155,
+        "bytes": 41653,
+        "pns_long_share": 0.3531323877068558,
+        "pns_short_share": 0.3982608695652174,
+        "pns_total_share": 0.3607756504663721,
+        "raw_delta": -0.007699999999999818,
+        "adj_delta": -0.007598478506767596,
+        "bytes_ratio": 0.9998559734991238
+      },
+      "bah": {
+        "raw_mos": 3.6614,
+        "bytes": 39538,
+        "pns_long_share": 0.4109042553191489,
+        "pns_short_share": 0.5016666666666667,
+        "pns_total_share": 0.44028776978417267,
+        "raw_delta": 0.03960000000000008,
+        "adj_delta": 0.04026725540451487,
+        "bytes_ratio": 0.9993175786680146
+      },
+      "bas": {
+        "raw_mos": 3.4027,
+        "bytes": 41608,
+        "pns_long_share": 0.4178082191780822,
+        "pns_short_share": 0.5106060606060606,
+        "pns_total_share": 0.47105949571481803,
+        "raw_delta": -0.12380000000000013,
+        "adj_delta": -0.12380000000000013,
+        "bytes_ratio": 1.0
+      },
+      "bonhemian_rhapsody.16b48k": {
+        "raw_mos": 3.6403,
+        "bytes": 41619,
+        "pns_long_share": 0.4213410702772405,
+        "pns_short_share": 0.4418032786885246,
+        "pns_total_share": 0.42524778299426186,
+        "raw_delta": -0.032399999999999984,
+        "adj_delta": -0.03252652528395889,
+        "bytes_ratio": 1.0001201518719662
+      },
+      "clapton_44k.16b48k": {
+        "raw_mos": 3.73,
+        "bytes": 41745,
+        "pns_long_share": 0.41717325227963525,
+        "pns_short_share": 0.42495726495726494,
+        "pns_total_share": 0.42215536105032825,
+        "raw_delta": -0.013700000000000045,
+        "adj_delta": -0.011006200621123612,
+        "bytes_ratio": 0.99770559977056
+      },
+      "cst": {
+        "raw_mos": 3.553,
+        "bytes": 27667,
+        "pns_long_share": 0.45342150661299596,
+        "pns_short_share": 0.49174174174174173,
+        "pns_total_share": 0.47216509988249117,
+        "raw_delta": -0.05820000000000025,
+        "adj_delta": -0.053608791857331514,
+        "bytes_ratio": 0.9961833435350881
+      },
+      "fms": {
+        "raw_mos": 3.728,
+        "bytes": 41854,
+        "pns_long_share": 0.48614221724524076,
+        "pns_short_share": 0.574390243902439,
+        "pns_total_share": 0.5456081081081081,
+        "raw_delta": 0.01880000000000015,
+        "adj_delta": 0.018935500996170987,
+        "bytes_ratio": 0.9998805513748537
+      },
+      "girl.16b48k": {
+        "raw_mos": 4.322,
+        "bytes": 42089,
+        "pns_long_share": 0.46893617021276596,
+        "pns_short_share": 0.46711864406779663,
+        "pns_total_share": 0.46805479452054793,
+        "raw_delta": -0.012900000000000134,
+        "adj_delta": -0.014107940589074728,
+        "bytes_ratio": 1.0017135921174762
+      },
+      "glk": {
+        "raw_mos": 4.6751,
+        "bytes": 41944,
+        "pns_long_share": 0.5546129860601614,
+        "pns_short_share": 0.20555555555555555,
+        "pns_total_share": 0.548944424395525,
+        "raw_delta": 0.007199999999999207,
+        "adj_delta": 0.0037027746629755298,
+        "bytes_ratio": 1.0059478127398311
+      },
+      "hrp": {
+        "raw_mos": 4.0159,
+        "bytes": 37525,
+        "pns_long_share": 0.4766862833861476,
+        "pns_short_share": 0.3875,
+        "pns_total_share": 0.471015260703688,
+        "raw_delta": -0.04870000000000019,
+        "adj_delta": -0.04434123565550041,
+        "bytes_ratio": 0.9969712266532055
+      },
+      "liberate.16b48k": {
+        "raw_mos": 3.925,
+        "bytes": 21670,
+        "pns_long_share": 0.31262088974854935,
+        "pns_short_share": 0.40551724137931033,
+        "pns_total_share": 0.36024039594626445,
+        "raw_delta": 0.010999999999999677,
+        "adj_delta": 0.014838049297035864,
+        "bytes_ratio": 0.9954522486104093
+      },
+      "lob": {
+        "raw_mos": 3.953,
+        "bytes": 30990,
+        "pns_long_share": 0.4917396745932415,
+        "pns_short_share": 0.4067982456140351,
+        "pns_total_share": 0.4608764940239044,
+        "raw_delta": 0.00019999999999997797,
+        "adj_delta": 0.0023534387352482215,
+        "bytes_ratio": 0.9975214858209676
+      },
+      "mof": {
+        "raw_mos": 3.2179,
+        "bytes": 41677,
+        "pns_long_share": 0.5648676699532953,
+        "pns_short_share": 0.5661290322580645,
+        "pns_total_share": 0.5658695420091812,
+        "raw_delta": -0.032200000000000006,
+        "adj_delta": -0.0330870086571582,
+        "bytes_ratio": 1.0006002112743686
+      },
+      "qrt": {
+        "raw_mos": 3.4844,
+        "bytes": 41572,
+        "pns_long_share": 0.4270390070921986,
+        "pns_short_share": 0.4792735042735043,
+        "pns_total_share": 0.4423558897243108,
+        "raw_delta": -0.062200000000000255,
+        "adj_delta": -0.061651665262551586,
+        "bytes_ratio": 0.9994951073497944
+      },
+      "sandman.16b48k": {
+        "raw_mos": 3.7695,
+        "bytes": 41679,
+        "pns_long_share": 0.40590466765627575,
+        "pns_short_share": 0.3753968253968254,
+        "pns_total_share": 0.3954737870400521,
+        "raw_delta": 0.0017999999999998018,
+        "adj_delta": 0.0024877103294339425,
+        "bytes_ratio": 0.9993286498669288
+      },
+      "take_your_finger_frin_my_head.16b48k": {
+        "raw_mos": 3.527,
+        "bytes": 41808,
+        "pns_long_share": 0.4618203309692671,
+        "pns_short_share": 0.42771929824561405,
+        "pns_total_share": 0.4569044006069803,
+        "raw_delta": 0.0039000000000002366,
+        "adj_delta": 0.006235798600264212,
+        "bytes_ratio": 0.9980186674942112
+      },
+      "trumpet.16b48k": {
+        "raw_mos": 4.132,
+        "bytes": 43011,
+        "pns_long_share": 0.518688901667625,
+        "pns_short_share": 0.41512345679012347,
+        "pns_total_share": 0.5024236548715463,
+        "raw_delta": 0.0016999999999995907,
+        "adj_delta": 0.004277369330022885,
+        "bytes_ratio": 0.9963861282924457
+      },
+      "velvet.16b48k": {
+        "raw_mos": 3.624,
+        "bytes": 43783,
+        "pns_long_share": 0.5843183609141056,
+        "pns_short_share": 0.5856799037304452,
+        "pns_total_share": 0.5854995302223615,
+        "raw_delta": 0.03370000000000006,
+        "adj_delta": 0.03342452146966917,
+        "bytes_ratio": 1.0016242679355782
+      }
+    }
+  }
+}

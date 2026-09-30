@@ -12,6 +12,13 @@ upstream (`knik0/faac`) PRs; merging any probe branch.
 
 ## 0-S8. Status after Stage S7 (2026-09-30) — read this first
 
+**Update after S8 (2026-09-30 night).** Stack landed on FreewareAdvancedAudio/faac as #1–#6; SBR time deltas +
+coupling (upstream #7) held back, gain not yet worth +2.5 KB. Step 2 (S8-W, #609): stopped at the 95 % gate, but the
+match is flat across pads and full self-inject is 0/49, so the injector/metric is broken; windows parked. Step 3
+(S8-P, #607): 0.3 wins at HE 48k (+0.024, 37/12) but loses at HE 32k (21/28, hrp −0.193); the HE ≥ 24 kbps/ch variant
+went to master as a Jules PR for CI. Step 4 (S8-L): in progress.
+
+
 **Rule from now on:** candidate PRs and stacks are judged by the standard CI benchmark (a combined PR such as #602,
 read its report). Jules or local runs only for what CI cannot measure (core injection, reference splits,
 reference scoreboards). Jules can push only its own branch/PR: never ask it to open a second PR; have it leave the
