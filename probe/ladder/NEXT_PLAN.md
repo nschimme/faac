@@ -34,18 +34,20 @@ Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determin
 
 **Scoreboard** is unchanged from S5 (below); X − F in S6 on the #601 base: fdk +0.065 at 48k, Apple +0.058.
 
+- **S6-N:** FAAC's SBR noise-floor and inverse-filter constants are not the lever (best +0.0028; see LADDER_RESULT "Stage S6-N").
+
 **Open PRs on nschimme/faac:** #595, #599, #596, #597, #600, #601. CI failures are another agent's.
 
 ### Next steps, in order
 
-1. **HE SBR noise floor and inverse filtering** (32k first; ceiling +0.056 at kx 16 with Apple's SBR, and Apple's SBR
-   is also worth +0.03–0.05 at 48k). Add probe knobs for the two constants (`SBR_NOISE_LEVEL_DEFAULT`,
-   `SBR_INVF_MODE`; knob unset = base, PCM 49/49), sweep invf 0/1/2 and a noise level bracket at the base kx 31 and at
-   kx 16 (`FAAC_SBR_START=8`), 32k and 48k, H1 rule. If a constant pair moves the low-crossover arm most of the way to
-   +0.056, a crossover retry at 32k follows, then a per-band estimate (tonality of source vs patched HF, as fdk's
-   `sbr_encoder` does). `libfaac/sbr_inject.c` (`FAAC_SBR_INJECT`) could carry a reference's noise/invf/harm fields
-   into FAAC's SBR for a field-by-field split, but it reads `R` records the current `faad-ladder-dump` doesn't write;
-   add them to the dump first if the constants don't explain it.
+1. **HE SBR at a low crossover: which field of the references' SBR pays** (ceiling +0.056 at 32k kx 16, S6-X).
+   **S6-N closed the constants:** `FAAC_SBR_INVF` / `FAAC_SBR_NOISE` (probe knobs now on this branch) give at most
+   +0.0028 at kx 31 and recover ≤ +0.007 of the low-crossover loss; the references' noise levels lose everywhere. So
+   split Apple's SBR by field before building an estimator: add per-channel-frame `R` records (grid, freq_res, tE/tQ,
+   invf, harmonics, E, Q) to the `faad-ladder-dump` decoder, then inject one field set at a time into FAAC's own SBR
+   at kx 16 with `libfaac/sbr_inject.c` (`FAAC_SBR_INJECT`, `_FIELDS` grid/env/noise/invf/harm, `_OFFSET`; alignment
+   pad 96, n+1). Control: inject FAAC's own dump = F, PCM 49/49. The field set that carries most of +0.056 names the
+   estimator to build (per-band noise/invf from source vs patched tonality, or the transient grid).
 2. **HE 48k core** (fdk +0.065–0.079, Apple +0.058–0.105). The decisions differ as a set, so start where LC started:
    inject the reference's window sequence into FAAC's HE core rate loop (`FAAC_CORE_INJECT` `win`, the LC W arm;
    alignment above; control first: injection of FAAC's own HE dump = F, PCM 49/49) and read it against F; then PNS at HE (a threshold, not off: `--no-pns` −1.12). The step1 swap

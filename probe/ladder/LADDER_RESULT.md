@@ -1496,3 +1496,36 @@ all four frame classes, 1.7–1.9 envelopes per frame at 32k (FAAC 1.27).
 bytes; its decisions differ as a set: 45 % short vs 6–8 %, PNS on a quarter of the bands vs none, almost no TNS).
 HE 32k is an SBR problem at low crossover: FAAC's fixed noise floor and strong inverse filtering are the obvious
 difference, and a crossover move only pays once they adapt. No encoder change passed or was proposed in this stage.
+
+## Stage S6-N: SBR noise floor and inverse-filter constants (2026-09-30)
+
+Rule N in `results/s6/prereg.md`. New probe knobs in `libfaac/sbr_bitstream.c` (unset = production): `FAAC_SBR_INVF`
+(bs_invf_mode for every channel, production 3) and `FAAC_SBR_NOISE` (the single noise band's level, production 12;
+noise floor 2^(6 − level), 3 dB per step). Script `scripts/s6/n_run.sh` (with `s3/sweep.py`, `s3/an.py`), results
+`results/s6/n32.json`, `n48.json`. Base as S6-X (unpadded); every arm adj vs the kx 31 base F.
+
+**Controls.** `FAAC_SBR_INVF=3` and `FAAC_SBR_NOISE=12` PCM-identical to the base, 49/49 at 32k and 48k. The knobs
+reach the stream (FAAD `F` records: invf 1, noise −6.02 dB at level 8).
+
+| arm | 32k kx 31 | W/L | 32k low kx 16 | W/L | 48k kx 31 | W/L | 48k low kx 24 | W/L |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| base / L (crossover alone) | 0 | | −0.142 | 3/46 | 0 | | −0.041 | 13/36 |
+| invf 0 | −0.0016 | 19/28 | −0.176 | 1/48 | −0.0051 | 19/29 | −0.081 | 7/41 |
+| invf 1 | +0.0028 | 30/19 | −0.139 | 5/44 | +0.0018 | 31/14 | −0.046 | 17/31 |
+| invf 2 | +0.0018 | 30/11 | −0.135 | 5/44 | +0.0013 | 31/15 | −0.038 | 16/33 |
+| noise 6 (+18 dB) | −0.0461 | 5/44 | −0.202 | 4/44 | −0.0325 | 2/47 | −0.075 | 11/37 |
+| noise 8 | −0.0222 | 5/40 | −0.172 | 2/47 | −0.0152 | 3/42 | −0.059 | 12/37 |
+| noise 10 | −0.0068 | 4/35 | −0.151 | 2/47 | −0.0043 | 4/32 | −0.047 | 11/37 |
+| noise 14 (−6 dB) | +0.0028 | 28/4 | −0.138 | 3/46 | +0.0015 | 24/4 | −0.040 | 14/35 |
+| invf 1 + noise 8 | −0.0175 | 14/32 | −0.166 | 5/44 | −0.0126 | 14/31 | −0.058 | 12/36 |
+| invf 1 + noise 10 | −0.0033 | 19/28 | −0.146 | 5/44 | −0.0022 | 26/22 | −0.050 | 12/34 |
+
+Bytes are unchanged by the knobs (±0.00 %; −0.54 % / −0.34 % from the crossover).
+
+**Verdict against N: nothing passes.** The best arm is +0.0028 (invf 1, and noise 14, at 32k kx 31), below +0.005.
+Moving the noise floor toward the references' levels (~8–9) loses at every rate and crossover, most on
+Last_Of_The_Mohicans and girl. At the low crossover the constants recover at most +0.007 of the −0.142 (32k) and
++0.003 of the −0.041 (48k). So the +0.056 ceiling found in S6-X (FAAC core at kx 16 under Apple's SBR) is not in
+FAAC's two SBR constants. It is either in per-band adaptation of noise/invf (the references change them per band and
+frame; a constant can't) or in the envelope data and time grid (the references use 1.7–1.9 envelopes and all four
+frame classes at 32k, FAAC 1.27 and two classes).

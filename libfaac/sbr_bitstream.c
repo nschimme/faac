@@ -99,9 +99,16 @@ static void emit_sbr_dtdf(const SbrGrid *g, const SbrDecision *d, int ch, BitStr
     for (int q = 0; q < n_q; q++) PutBit(bs, (d->noiseDt[ch] >> q) & 1, 1);
 }
 
+/* Probe knobs (unset = production constants): FAAC_SBR_INVF (0..3), FAAC_SBR_NOISE (noise floor level 0..30). */
+static int sbr_knob(const char *name, int def)
+{
+    const char *e = getenv(name);
+    return e ? atoi(e) : def;
+}
+
 static void emit_sbr_invf(BitStream *bs)
 {
-    PutBit(bs, SBR_INVF_MODE, 2);
+    PutBit(bs, sbr_knob("FAAC_SBR_INVF", SBR_INVF_MODE), 2);
 }
 
 typedef struct { const SBRHuffEntry *f, *t; int lav, start; } SbrDeltaBook;
@@ -248,7 +255,7 @@ static int emit_sbr_channels(SBRInfo *sbr, const SbrFrameData *fd, BitStream *bs
         int ch = d->coupled ? k >> 1 : k % nch;
         const SbrGrid *g = &fd->grid[ch0 + ch];
         if (d->coupled ? k & 1 : k >= nch)
-            emit_sbr_noise(g, d->coupled && ch ? 6 : SBR_NOISE_LEVEL_DEFAULT, d->noiseDt[ch], bs);
+            emit_sbr_noise(g, d->coupled && ch ? 6 : sbr_knob("FAAC_SBR_NOISE", SBR_NOISE_LEVEL_DEFAULT), d->noiseDt[ch], bs);
         else emit_sbr_envelope(sbr, g, env[ch], d->coupled && ch, ch0 + ch, d->envDt[ch], bs);
     }
     PutBit(bs, 0, nch + 1);

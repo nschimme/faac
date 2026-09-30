@@ -47,3 +47,21 @@ screened as a diagnostic of where in the core the gap sits: `--no-pns` and `--sh
 F (probe base with `FAAC_SBR_FREQ_SCALE=3`, unpadded, `s3/sweep.py`), bits-adjusted vs F with the 40/56k slope,
 49 clips. Reading: an arm ≥ +0.005 with W > L names that decision as a lever worth an encoder rule (not a PR as is:
 blanket switches, S2/S3 show blanket long loses at LC); ≤ −0.005 rules it out as a blanket change. No PR from this.
+
+## S6-N SBR noise floor and inverse filtering (2026-09-30 ~02:45 UTC, before any encode or score)
+New probe knobs in `libfaac/sbr_bitstream.c` (unset = production): `FAAC_SBR_INVF` (bs_invf_mode, written for every
+channel, production 3 = strong) and `FAAC_SBR_NOISE` (the single noise band's level, production 12; the decoder's noise
+floor is 2^(6 − level), so lower = more noise; a coupled balance channel keeps its centre 6).
+Base F: static probe `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12` (+ `FAAC_SBR_FREQ_SCALE=3` at 48k), HE auto, ABR,
+unpadded (`s3/sweep.py`), slope anchors 28/40k (32k) and 40/56k (48k).
+Controls first: `FAAC_SBR_INVF=3` and `FAAC_SBR_NOISE=12` each PCM-identical to the base, 49/49, at 32k and 48k.
+Arms, each at the base crossover (kx 31) and at a low crossover (32k: `FAAC_SBR_START=8`, kx 16 = Apple 32k;
+48k: `FAAC_SBR_START=13`, kx 24 = Apple 48k), plus the low-crossover base itself (L):
+invf 0, 1, 2 (noise 12); noise 6, 8, 10, 14 (invf 3); invf 1 with noise 8 and 10. Nine arms per crossover.
+All bits-adjusted vs F (kx 31 base) at the same rate.
+Pass (H1 rule): mean adj ≥ +0.005, W > L (|d| > 0.0005), no clip < −0.05, bytes within ±12.5 %, the chosen value at
+the bracket centre of each swept dimension (invf 0–3 bounded; noise neighbours among 6/8/10/12/14), and not worse
+(mean ≥ 0) at the other rate at the same crossover, unless the value is tiered per rate (then the per-rate rule alone).
+A low-crossover arm that passes vs F is a crossover move plus the SBR constants; it is also reported against L to show
+how much of the S6-X ceiling (+0.056 at 32k: FAAC core at kx 16 under Apple's SBR) the constants recover.
+A passing change is re-measured on master (+#601 where it applies) before a PR, per the S5 correction (#579).
