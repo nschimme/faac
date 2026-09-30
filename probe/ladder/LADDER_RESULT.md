@@ -1529,3 +1529,131 @@ Last_Of_The_Mohicans and girl. At the low crossover the constants recover at mos
 FAAC's two SBR constants. It is either in per-band adaptation of noise/invf (the references change them per band and
 frame; a constant can't) or in the envelope data and time grid (the references use 1.7–1.9 envelopes and all four
 frame classes at 32k, FAAC 1.27 and two classes).
+
+
+## Stage S7-STACK: Measurement of All Open PRs Stacked vs References (2026-09-30)
+
+**Goal.** Evaluate whether FAAC with all open PRs stacked (branch `stack-vs-refs`, PR #602 = master + #595 #599 #600 #601 #597 #596 #579) reaches or beats Apple's AAC encoder and fdk-aac 2.0.3 on the 5-rung scoreboard in `probe/ladder/NEXT_PLAN.md`.
+
+**Encoder under test.** Binary compiled static from branch `stack-vs-refs` (`ed57e7b`) in its own build dir without env knobs (`/tmp/s7_bin/faac_stack`).
+Reference encoders:
+- Apple: existing reference streams in `probe/ladder/ref/{apple_lc64k, apple_lc96k, apple, apple_he32k, apple_he48k}`.
+- fdk-aac 2.0.3: compiled from source (`mstorsjo/fdk-aac` + `nu774/fdkaac`) and encoded directly (`fdkaac -p 2 -b <N>000` for LC, `-S -p 5 -b <N>000` for HE).
+- FAAC bits-adjustment slope pairs encoded with the same stacked binary: LC 56/72, 80/112, 112/144; HE 28/40, 40/56.
+
+**Commands.**
+```bash
+# 1. Build stacked binary static
+git worktree add /tmp/s7_worktree/stack origin/stack-vs-refs
+meson setup /tmp/s7_worktree/build_stack /tmp/s7_worktree/stack -Ddefault_library=static --buildtype=release
+ninja -C /tmp/s7_worktree/build_stack
+cp /tmp/s7_worktree/build_stack/frontend/faac /tmp/s7_bin/faac_stack
+
+# 2. Run harness for each rung
+python3 probe/ladder/scripts/s7/run_s7_rung.py lc64 /tmp/s7_bin/faac_stack
+python3 probe/ladder/scripts/s7/run_s7_rung.py lc96 /tmp/s7_bin/faac_stack
+python3 probe/ladder/scripts/s7/run_s7_rung.py lc128 /tmp/s7_bin/faac_stack
+python3 probe/ladder/scripts/s7/run_s7_rung.py he32 /tmp/s7_bin/faac_stack
+python3 probe/ladder/scripts/s7/run_s7_rung.py he48 /tmp/s7_bin/faac_stack
+
+# 3. Analyze results
+python3 probe/ladder/scripts/s7/analyze_s7.py
+```
+
+**Control Results.**
+1. **Scorer Determinism (Control 1):** Rescored 5 clips twice with `score_clip.py` (zimtohrli backend); MOS results were 100% identical on all 5 clips (e.g. Severance: 4.8747 vs 4.8747, 21-classic: 4.8447 vs 4.8447).
+2. **Probe Base vs Stacked Binary HE 48k (Control 2):** Encoded all 49 clips at HE 48k with probe binary (`FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12 FAAC_SBR_FREQ_SCALE=3`) vs stacked binary (no env knobs). Mean probe base MOS: 4.1865; mean stacked binary MOS: 4.2196 (delta: +0.0331 MOS, max abs diff 0.2518). The difference is explained by PR #601 (`sbr-freq-scale-coarse`, which improves HE 48k by +0.011) plus #599 and #579 interactions in the stacked release binary.
+3. **Full Stream Decode Check (Control 3):** All 245 encoded AAC/M4A streams (5 rungs × 49 clips) decoded cleanly via ffmpeg without errors or truncation to full clip length.
+
+**Pre-Registered Decision Rule.**
+Per clip, `adj = reference MOS − FAAC MOS − slope · log2(bytes_ref / bytes_faac)`. Positive `adj` means the reference leads.
+- "FAAC beats": mean `adj` ≤ −0.005 and `W < L` (reference wins fewer clips than FAAC, where `W` = ref wins > +0.0005, `L` = FAAC wins < -0.0005).
+- "Par": |mean `adj`| < 0.005.
+- Otherwise reference leads.
+
+### 10-Cell Scoreboard Table (S5/S6 Baseline vs S7-STACK)
+
+| Rung | Ref | S5/S6 Baseline | S7-STACK Adj | Median | W/L (Ref/FAAC) | Bytes Diff | Verdict |
+|---|---|---|---:|---:|---|---:|---|
+| **LC 64k** | Apple | −0.48 | **−0.4875** | −0.4888 | 1 / 48 | +3.9 % | **FAAC beats** |
+| **LC 96k** | Apple | −0.003 | **−0.0034** | +0.0059 | 26 / 23 | +3.2 % | **Par** |
+| **LC 128k** | Apple | +0.008 | **+0.0071** | +0.0114 | 31 / 18 | +2.7 % | **Apple leads** |
+| **HE 32k** | Apple | −0.011 | **−0.0452** | −0.0349 | 23 / 26 | +8.6 % | **FAAC beats** |
+| **HE 48k** | Apple | +0.042..+0.058 | **−0.0026** | +0.0301 | 28 / 21 | +5.8 % | **Par** |
+| **LC 64k** | fdk-aac | −0.203 | **−0.2036** | −0.1972 | 5 / 44 | +2.3 % | **FAAC beats** |
+| **LC 96k** | fdk-aac | +0.000 | **+0.0002** | −0.0079 | 20 / 29 | +1.7 % | **Par** |
+| **LC 128k** | fdk-aac | −0.021 | **−0.0209** | −0.0227 | 14 / 35 | +1.6 % | **FAAC beats** |
+| **HE 32k** | fdk-aac | +0.015 | **−0.0196** | −0.0012 | 24 / 25 | +3.0 % | **FAAC beats** |
+| **HE 48k** | fdk-aac | +0.075 | **+0.0302** | +0.0347 | 32 / 17 | +1.6 % | **Fdk leads** |
+
+### 5 Worst Clips Per Rung (where Reference leads FAAC most / highest positive `adj`)
+
+- **LC 64k vs Apple:**
+  1. `24-Greensleeves-Korean-male-speech`: +0.0286
+  2. `fms`: −0.0547
+  3. `bah`: −0.1238
+  4. `glk`: −0.1357
+  5. `bas`: −0.1620
+- **LC 64k vs fdk:**
+  1. `fms`: +0.3341
+  2. `24-Greensleeves-Korean-male-speech`: +0.3206
+  3. `bas`: +0.1284
+  4. `SinceAlways`: +0.0359
+  5. `12-German-male-speech`: +0.0039
+
+- **LC 96k vs Apple:**
+  1. `fms`: +0.1916
+  2. `take_your_finger_frin_my_head`: +0.1540
+  3. `TrosYGareg`: +0.1300
+  4. `Girl_In_The_Fire__Sample_`: +0.1220
+  5. `SinceAlways`: +0.1033
+- **LC 96k vs fdk:**
+  1. `fms`: +0.1334
+  2. `take_your_finger_frin_my_head`: +0.1292
+  3. `Girl_In_The_Fire__Sample_`: +0.1255
+  4. `velvet`: +0.0978
+  5. `24-Greensleeves-Korean-male-speech`: +0.0917
+
+- **LC 128k vs Apple:**
+  1. `take_your_finger_frin_my_head`: +0.1335
+  2. `velvet`: +0.0769
+  3. `SinceAlways`: +0.0766
+  4. `fms`: +0.0733
+  5. `15-Good-evening`: +0.0706
+- **LC 128k vs fdk:**
+  1. `take_your_finger_frin_my_head`: +0.0993
+  2. `fms`: +0.0473
+  3. `SinceAlways`: +0.0428
+  4. `Girl_In_The_Fire__Sample_`: +0.0420
+  5. `15-Good-evening`: +0.0328
+
+- **HE 32k vs Apple:**
+  1. `take_your_finger_frin_my_head`: +0.5284
+  2. `Girl_In_The_Fire__Sample_`: +0.4045
+  3. `Severance__1.31-1.51_`: +0.3717
+  4. `trumpet`: +0.3360
+  5. `SinceAlways`: +0.3327
+- **HE 32k vs fdk:**
+  1. `take_your_finger_frin_my_head`: +0.5466
+  2. `Severance__1.31-1.51_`: +0.5375
+  3. `mof`: +0.4021
+  4. `SinceAlways`: +0.3199
+  5. `35_SQAM_glockenspiel_cut`: +0.2779
+
+- **HE 48k vs Apple:**
+  1. `take_your_finger_frin_my_head`: +0.3835
+  2. `Severance__1.31-1.51_`: +0.3456
+  3. `SinceAlways`: +0.3407
+  4. `trumpet`: +0.3232
+  5. `Girl_In_The_Fire__Sample_`: +0.2970
+- **HE 48k vs fdk:**
+  1. `take_your_finger_frin_my_head`: +0.3482
+  2. `SinceAlways`: +0.2953
+  3. `trumpet`: +0.2945
+  4. `Girl_In_The_Fire__Sample_`: +0.2830
+  5. `Changes`: +0.2720
+
+**Honest Assessment & Findings.**
+1. **Apple Comparison:** Stacker PR #602 beats Apple at LC 64k (−0.4875) and HE 32k (−0.0452), achieves Par at LC 96k (−0.0034) and HE 48k (−0.0026, down from the +0.042..+0.058 gap in S5/S6), and trails Apple only slightly at LC 128k (+0.0071 adj gap).
+2. **fdk-aac 2.0.3 Comparison:** Stacker PR #602 beats fdk-aac at LC 64k (−0.2036), LC 128k (−0.0209), and HE 32k (−0.0196, turning a +0.015 fdk lead into a FAAC win!), achieves Par at LC 96k (+0.0002), and trails fdk-aac only at HE 48k (+0.0302 adj gap, down from +0.075 in S5/S6).
+3. **HE 48k Status:** As established by the S6 split analysis, FAAC's HE core carries a +0.06..+0.08 gap against fdk and Apple that none of the current open PRs explicitly target (they target SBR freq scale, scalefactor smoothing, blockswitch drop ratio, and spec fixes). Nevertheless, PR #601 (`sbr-freq-scale-coarse`) and the stacked improvements cut the HE 48k gap vs fdk in half (from +0.075 down to +0.0302) and bring FAAC into Par with Apple (−0.0026).
