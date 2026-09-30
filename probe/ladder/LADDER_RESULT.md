@@ -1529,3 +1529,46 @@ Last_Of_The_Mohicans and girl. At the low crossover the constants recover at mos
 FAAC's two SBR constants. It is either in per-band adaptation of noise/invf (the references change them per band and
 frame; a constant can't) or in the envelope data and time grid (the references use 1.7–1.9 envelopes and all four
 frame classes at 32k, FAAC 1.27 and two classes).
+
+## Stage S7-CORE: HE 48k Core Decision Isolation (2026-09-30)
+
+Pre-registered in `probe/ladder/results/s7core/prereg.md`. Scripts in `probe/ladder/scripts/s7core/`. Results in `probe/ladder/results/s7core/`.
+
+### Controls (Step A)
+- **A0 (Self-Injection Control):** `FAAC_CORE_INJECT` with FAAC's own HE 48k dump (`win` field) confirmed **100% PCM identical on 49/49 clips** against base F (`FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12 FAAC_SBR_FREQ_SCALE=3`).
+- **A1 (Reference Alignment & Window Matching):**
+  - Raw sample delays verified: FAAC 3042, fdk 5057, Apple 5186.
+  - Alignment offsets: fdk pad 2015 samples (`FAAC_CORE_INJECT_OFFSET=1`), Apple pad 96 samples (`FAAC_CORE_INJECT_OFFSET=2`).
+  - Window sequence match after injection:
+    - **fdk:** 18,326 / 22,178 windows matched (**82.63%**).
+    - **Apple:** 17,798 / 22,082 windows matched (**80.60%**).
+  - Unmatched frames were analyzed and confirmed to be due to legal transition constraints in the AAC specification (preventing direct long<->short jumps without LONG_START / LONG_STOP transition windows).
+
+### Window Arms (Step B)
+Injected reference window sequences into FAAC's HE core with rate loop active (`FAAC_CORE_INJECT_FIELDS="win"`):
+
+| Arm | Adj Mean Δ | Median Δ | W / L | Bytes Ratio | Short Block Share | Core Gap Recovered | Verdict |
+|---|---:|---:|---:|---:|---:|---:|---|
+| **W_fdk** | -0.2523 | -0.2312 | 6 / 43 | 0.9984 | 6.85% | < 0% (Loss) | **FAIL** (< 50% gap) |
+| **W_apple** | -0.2116 | -0.1985 | 8 / 41 | 1.0012 | 8.29% | < 0% (Loss) | **FAIL** (< 50% gap) |
+
+**Verdict against Pre-registered Step B Rule:** Windows do **NOT** carry the core gap (< 50% recovery). Proceeded to Step C (PNS restriction).
+
+### PNS Threshold & Restriction Sweep (Step C)
+Investigated PNS decision logic in `libfaac/quantize.c`. Introduced probe knobs `FAAC_PNS_THRESH` and `FAAC_PNS_MIN_SB`. Neutral control (knobs unset) verified **49/49 PCM-identical to base F**.
+
+| Arm / Knob | HE 48k Adj Mean | W / L | Min Clip Δ | Bytes Ratio | HE 32k Check | Plain Master Check |
+|---|---:|---:|---:|---:|---|---|
+| `pns_thresh_0.3` | +0.0236 | 36 / 13 | -0.0125 | 1.0000 | -0.0046 (Regressed) | N/A |
+| `pns_thresh_0.5` | +0.0112 | 31 / 18 | -0.0189 | 1.0000 | N/A | N/A |
+| **`pns_min_sb_4`** | **+0.0073** | **30 / 13** | **-0.0088** | **1.0000** | **+0.0003 (28W/20L)** | **+0.0065 (30W/13L)** |
+| `pns_min_sb_8` | +0.0041 | 27 / 22 | -0.0102 | 1.0000 | N/A | N/A |
+
+### Verdict & Final Encoder Rule
+`pns_min_sb_4` (restricting Perceptual Noise Substitution to scalefactor bands $\ge 4$, corresponding to frequencies $\ge \sim 500\text{ Hz}$) passed all pre-registered criteria:
+1. Mean adj MOS $\ge +0.005$ vs F (+0.0073 at HE 48k).
+2. $W > L$ (30 wins, 13 losses).
+3. No clip $< -0.05$ (worst clip delta $-0.0088$).
+4. Bytes within $\pm 12.5\%$ (1.0000 ratio, 0 byte change).
+5. HE 32k check not worse (+0.0003 adj mean, 28W / 20L).
+6. Plain master check passed (+0.0065 adj mean, 30W / 13L, worst clip $-0.0266$).

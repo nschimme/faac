@@ -40,6 +40,7 @@ Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determin
 **Scoreboard** is unchanged from S5 (below); X − F in S6 on the #601 base: fdk +0.065 at 48k, Apple +0.058.
 
 - **S6-N:** FAAC's SBR noise-floor and inverse-filter constants are not the lever (best +0.0028; see LADDER_RESULT "Stage S6-N").
+- **S7-CORE:** HE 48k core decision isolation settled that window sequences do NOT carry the core gap (Step B `W_fdk` -0.2523, `W_apple` -0.2116; < 50% recovery). PNS restriction to scalefactor bands $\ge 4$ (`pns_min_sb_4`) carried the gain (+0.0073 at HE 48k, +0.0003 at HE 32k, +0.0065 on plain master). See `LADDER_RESULT.md` "Stage S7-CORE".
 
 **Open PRs on nschimme/faac, and what CI says about each ALONE** (read 2026-09-30 from the per-rate job logs; the
 Consolidated Report step is broken, "No result pairs found", so always read the Benchmark jobs' logs):
