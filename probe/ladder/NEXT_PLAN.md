@@ -28,7 +28,7 @@ positive = the reference leads):
 | LC 96k | −0.003 (par) | +0.000 (par, 20/29) |
 | LC 128k | **+0.008 (29/18)** | −0.021 (FAAC ahead, 14/35) |
 | HE 32k | −0.011 (par) | **+0.015 (31/18)** |
-| HE 48k | no Apple refs | **+0.075 (35/14)**; #601 recovers ~+0.011 of it |
+| HE 48k | **+0.042 (36/13; median +0.056; S5 addendum)** | **+0.075 (35/14)**; #601 recovers ~+0.011 of it |
 
 **What S5 settled:**
 - F2: the fdk goal is met at LC and **not at HE**. HE 48k (+0.075, median +0.071) is the largest gap to either reference.

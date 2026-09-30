@@ -1385,3 +1385,20 @@ The change is PCM-identical to master at HE 32k and LC 128k (49/49).
 
 **PR #601** (`sbr-freq-scale-coarse`, one commit from master): `bs_freq_scale` 3 from 12 kbps/ch up, the fine tier and
 `SBR_FREQ_SCALE_FINE_BPS` removed; libfaac.a text −56 B (gcc, release, not LTO). CI decides on the HE rungs.
+
+## Stage S5 addendum: Apple HE 48k references checked and scored (2026-09-30)
+
+`ref/apple_he48k` (Mac agent, commit 48570f7): 49/49 clips, every one matches a corpus WAV; all HE-AAC, 48 kHz out,
+stereo; realised 46.1–60.5k (mean 48.6k), 3.09 MB vs FAAC's 2.92 MB (+5.7 %); decoded length +0.11–0.15 s over the
+source (same priming/padding as `apple_he32k`). SBR header (FAAD dump, velvet / Severance / 12-German, constant):
+start 13 → **kx 24 (9.0 kHz)**, stop 11 → k2 54 (20.3 kHz, same as FAAC), freq_scale 2, alter 1. Verdict: made correctly.
+
+Scored against F2's HE 48k set (`results/s5/he48_apple.json`, same FAAC base, FAAC 40/56k slope, positive = Apple leads):
+
+| | adj | median | W/L | bytes | raw MOS |
+|---|---:|---:|---:|---:|---|
+| Apple − FAAC | **+0.042** | +0.056 | 36/13 | +5.7 % | 4.176 → 4.271 |
+| Apple − fdk | −0.033 | −0.002 | 24/25 | +4.2 % | 4.265 → 4.271 |
+
+Apple's mean is pulled down by girl (−1.04 vs FAAC, −0.58 vs fdk); by median Apple ≈ fdk, both ~+0.06 ahead of FAAC.
+FAAC's #601 recovers ~+0.011 of this.
