@@ -10,6 +10,26 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
+## 0-S7. In flight (2026-09-29, evening) — read this before §0
+
+Two Jules sessions were started from this branch; each opens its own probe PR against it. Read both results before
+running anything:
+
+| session | stage | what | expected |
+|---|---|---|---|
+| 11857299189276564833 | S7-STACK | Scoreboard of **PR #602** (stack-vs-refs) vs Apple refs and fdk-aac 2.0.3 at LC 64/96/128k, HE 32/48k, 49 clips, bits-adjusted with the stack's own slopes. Beat = adj ≤ −0.005 and W < L; par = abs(adj) < 0.005. | LC ahead or at par, HE 32k at par, **HE 48k still trails** (core gap, S6). |
+| 2401188129569818503 | S7-CORE | Step 2 below: HE 48k core. Control A0 (self-inject = F, 49/49), A1 (fdk/Apple inject offsets verified by window match), then W_fdk / W_apple window injection vs F. Windows carry the gap if ≥ 50 % of the core gap with W > L → HE block-switch rule; else a PNS threshold knob sweep. | Unknown; this is the open question. |
+
+**PR #602** = master + #595 #599 #600 #601 #597 #596 #579, cherry-picked commits only (the #595 and #579 branches carry
+stale copies of master's old CI / "wip TODO" commits that conflict in `benchmark.yml` if merged). It is benchmark-only,
+never merge. Its CI compares against master, not the references: read its three Benchmark job logs ("S6 session
+facts" shows how) for the stacked BD-rate, and use them for step 0's #599/#601 questions.
+
+**Next session, in order:** (1) check both Jules sessions and their probe PRs; verify their controls passed and read
+their tables yourself (§4: past agent summaries have had sign errors); (2) read #602's CI; (3) update the scoreboard
+from S7-STACK; (4) act on S7-CORE's verdict (a passing knob must be re-measured on plain master before its own PR);
+(5) steps 0 and 1 below were deliberately deferred: HE 32k is already at par, so step 1 is a gain beyond parity.
+
 ## 0. Status after Stage S6 (2026-09-30, sixth session) — read this first
 
 **New session, start here:** bootstrap per "S6 session facts" and "S4 session facts" below (~20 min); work step 0
