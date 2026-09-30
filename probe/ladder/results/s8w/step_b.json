@@ -1,0 +1,4 @@
+{
+  "status": "skipped",
+  "reason": "Step A1 alignment threshold (>= 95% window match) was not reached for FDK (82.68%) or Apple (80.62%). Step B stopped per prompt and pre-registered rules."
+}

@@ -1713,3 +1713,82 @@ blocks. A0 re-injected windows only (the brief asked for full records). PNS: pro
 (non-monotonic, 0.4 set explicitly never run). `FAAC_PNS_MIN_SB` counts sb per window group, so 4 means ~190 Hz on long
 and ~1.5 kHz on short HE core blocks. The "plain master" check ran the probe binary without knobs. Only the master-check
 JSON was committed; steps A–C cannot be recomputed. Follow-up: NEXT_PLAN §0-S8 steps 2 and 3.
+
+
+## Stage S8-W: Redo of HE 48k Window Arms with Alignment Verification (2026-10-01)
+
+Pre-registered in `probe/ladder/results/s8w/prereg.md`. Scripts in `probe/ladder/scripts/s8w/`. JSON results in `probe/ladder/results/s8w/step_a.json`, `step_b.json`, and `step_c.json`.
+
+**Commands.**
+```bash
+python3 probe/ladder/scripts/s8w/step_a.py
+python3 probe/ladder/scripts/s8w/step_b.py
+python3 probe/ladder/scripts/s8w/step_c.py
+```
+
+### Controls (Step A)
+- **A0 (Self-Injection Controls):**
+  - Full self-injection (`FAAC_CORE_INJECT_FIELDS="win,cls,sf,ms,tns"`, `OFFSET=1`, `FAAC_CORE_INJECT_LOOSE_SFB=1`): 0/49 PCM-identical (expected due to scalefactor re-quantization difference between FAAD decoder dequantization and FAAC quantizer).
+  - Win-only self-injection (`FAAC_CORE_INJECT_FIELDS="win"`, `OFFSET=1`): **49/49 PCM-identical (100%)** against base F (`FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12 FAAC_SBR_FREQ_SCALE=3`).
+- **A1 (Alignment Sweep & Window Match Verification):**
+  - Swept input sample pad values around raw lag differences ($5057 - 3042 = 2015$ for FDK; $5186 - 3042 = 2144$ for Apple) across `FAAC_CORE_INJECT_OFFSET` $0..3$ for window-only injection (`FAAC_CORE_INJECT_FIELDS="win"`).
+
+#### A1 Alignment Sweep Results
+
+| Reference | Input Pad (samples) | Core Inject Offset | Matched / Total Windows | Match % | Short Agreement |
+|---|---:|---:|---:|---:|---:|
+| **FDK** | 0 | 0 | 18,300 / 22,266 | 82.19% | 366 / 1,352 (27.1%) |
+| **FDK** | 0 | 1 | 18,328 / 22,178 | 82.64% | 400 / 1,352 (29.6%) |
+| **FDK** | 0 | 2 | 18,248 / 22,080 | 82.64% | 332 / 1,282 (25.9%) |
+| **FDK** | 0 | 3 | 18,094 / 21,982 | 82.31% | 320 / 1,268 (25.2%) |
+| **FDK** | 961 | 0 | 18,340 / 22,276 | 82.33% | 404 / 1,352 (29.9%) |
+| **FDK (Best)** | **961** | **1** | **18,336 / 22,178** | **82.68%** | **402 / 1,352 (29.7%)** |
+| **FDK** | 961 | 2 | 18,254 / 22,080 | 82.67% | 332 / 1,282 (25.9%) |
+| **FDK** | 961 | 3 | 18,048 / 21,982 | 82.10% | 322 / 1,268 (25.4%) |
+| **FDK** | 2015 | 0 | 18,334 / 22,276 | 82.30% | 402 / 1,352 (29.7%) |
+| **FDK** | 2015 | 1 | 18,326 / 22,178 | 82.63% | 402 / 1,352 (29.7%) |
+| **FDK** | 2015 | 2 | 18,244 / 22,080 | 82.63% | 332 / 1,282 (25.9%) |
+| **FDK** | 2015 | 3 | 18,004 / 21,982 | 81.90% | 318 / 1,268 (25.1%) |
+| **FDK** | 4063 | 0 | 18,322 / 22,276 | 82.25% | 402 / 1,352 (29.7%) |
+| **FDK** | 4063 | 1 | 18,310 / 22,178 | 82.56% | 402 / 1,352 (29.7%) |
+| **FDK** | 4063 | 2 | 18,230 / 22,080 | 82.56% | 334 / 1,282 (26.1%) |
+| **FDK** | 4063 | 3 | 17,966 / 21,982 | 81.73% | 328 / 1,268 (25.9%) |
+| **Apple** | 0 | 0 | 17,828 / 22,266 | 80.07% | 666 / 1,772 (37.6%) |
+| **Apple** | 0 | 1 | 17,878 / 22,180 | 80.60% | 702 / 1772 (39.6%) |
+| **Apple** | 0 | 2 | 17,794 / 22,082 | 80.58% | 626 / 1,694 (37.0%) |
+| **Apple** | 0 | 3 | 17,622 / 21,984 | 80.16% | 612 / 1,680 (36.4%) |
+| **Apple** | 96 | 0 | 17,830 / 22,266 | 80.08% | 670 / 1,772 (37.8%) |
+| **Apple (Best)** | **96** | **1** | **17,882 / 22,180** | **80.62%** | **702 / 1,772 (39.6%)** |
+| **Apple** | 96 | 2 | 17,798 / 22,082 | 80.60% | 626 / 1,694 (37.0%) |
+| **Apple** | 96 | 3 | 17,616 / 21,984 | 80.13% | 612 / 1,680 (36.4%) |
+| **Apple** | 1024 | 0 | 17,888 / 22,278 | 80.29% | 706 / 1,772 (39.8%) |
+| **Apple** | 1024 | 1 | 17,880 / 22,180 | 80.61% | 704 / 1772 (39.7%) |
+| **Apple** | 1024 | 2 | 17,794 / 22,082 | 80.58% | 626 / 1,694 (37.0%) |
+| **Apple** | 1024 | 3 | 17,580 / 21,984 | 79.97% | 614 / 1,680 (36.5%) |
+| **Apple** | 2144 | 0 | 17,882 / 22,278 | 80.27% | 704 / 1772 (39.7%) |
+| **Apple** | 2144 | 1 | 17,876 / 22,180 | 80.60% | 704 / 1772 (39.7%) |
+| **Apple** | 2144 | 2 | 17,790 / 22,082 | 80.56% | 626 / 1,694 (37.0%) |
+| **Apple** | 2144 | 3 | 17,550 / 21,984 | 79.83% | 614 / 1,680 (36.5%) |
+| **Apple** | 4192 | 0 | 17,874 / 22,278 | 80.23% | 704 / 1,772 (39.7%) |
+| **Apple** | 4192 | 1 | 17,864 / 22,180 | 80.54% | 702 / 1,772 (39.6%) |
+| **Apple** | 4192 | 2 | 17,782 / 22,082 | 80.53% | 628 / 1,694 (37.1%) |
+| **Apple** | 4192 | 3 | 17,490 / 21,984 | 79.56% | 622 / 1,680 (37.0%) |
+
+#### Analysis of Remaining Misses at Best Alignments
+
+- **FDK (pad=961, offset=1, 82.68% match, 3,842 total misses):**
+  - Startup frames ($f \le 2$): 112
+  - Legal transition constraint frames (start/stop transition windows): 3,708
+  - Other non-transition misses: 22
+- **Apple (pad=96, offset=1, 80.62% match, 4,298 total misses):**
+  - Startup frames ($f \le 2$): 106
+  - Legal transition constraint frames (start/stop transition windows): 4,176
+  - Other non-transition misses: 16
+
+### Verdict against Step A1 Gate Rule
+Per the prompt instruction and pre-registered Step A1 gate rule:
+> *"PASS = $\ge 95\%$ of windows matched on the corpus for that reference... If no combination reaches 95 %, STOP, report the table and what you found, and do not run step B."*
+
+Neither FDK (best 82.68%) nor Apple (best 80.62%) reached the mandatory 95% window match threshold. The vast majority of window mismatches ($>96\%$ of misses for both references) occur because FAAC's HE core block-switcher requests short windows on transient frames where references stay long, and forcing window sequences without transition windows causes mandatory ISO 14496-3 sequence constraint re-alignments.
+
+Per the pre-registered rules, **Step B window arms ($W_{\text{fdk}}$, $W_{\text{apple}}$) and Step C secondary sweeps were STOPPED**. Results are recorded in `probe/ladder/results/s8w/step_a.json`, `step_b.json`, and `step_c.json`.
