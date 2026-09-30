@@ -51,7 +51,11 @@ positive = the reference leads):
    policy unknown; the crossover alone lost in S4, so if SBR carries it, look at envelope time/frequency resolution,
    noise floor and inverse filtering, not kx.
 2. **HE 32k vs fdk (+0.015)** — same split, after 48k (small; FAAC is at par with Apple here).
-3. Parked: the LC 128k Apple residual (+0.008; B3 closed per-band rules; only cross-frame context untried), LC 64k,
+3. **Ask Nils for Apple HE 48k refs** (`afconvert -f m4af -d aach@48000 -b 48000`, 49 clips into `ref/apple_he48k`) so
+   HE 48k has an Apple column; until then the HE 48k target is fdk alone.
+4. **Re-baseline HE after #595/#599/#601 land** (and decide #579): every HE number is on the probe, which carries #579;
+   re-run F2's HE rungs on the merged master so the scoreboard matches what ships.
+5. Parked: the LC 128k Apple residual (+0.008; B3 closed per-band rules; only cross-frame context untried), LC 64k,
    windows, M/S, SBR stop, crossover.
 
 ### S5 session facts
