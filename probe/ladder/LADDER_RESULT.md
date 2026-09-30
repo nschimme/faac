@@ -1402,3 +1402,97 @@ Scored against F2's HE 48k set (`results/s5/he48_apple.json`, same FAAC base, FA
 
 Apple's mean is pulled down by girl (−1.04 vs FAAC, −0.58 vs fdk); by median Apple ≈ fdk, both ~+0.06 ahead of FAAC.
 FAAC's #601 recovers ~+0.011 of this.
+
+## Stage S6-X: HE core vs SBR split against fdk-aac and Apple (2026-09-30)
+
+Rules X48, X32 and K48 in `results/s6/prereg.md` (X48/X32 written before any encode). Scripts `scripts/s6/`: `xs.py`
+(splice helpers over `s3/he_splice.py`), `x_run.py` (encode, controls, arms, serial scoring), `x_an.py` (table),
+`c0_index.py` (+ `s3/he_control0.py`), `x_char.py` (core decisions), `x_sbr.py` (SBR payload). Results
+`results/s6/x_{fdk48,ap48,fdk32,ap32}.json` (+ `_ctl`, `_char`, `_sbr`), `k48.json`, Control 0 logs `c0_*.log`.
+
+**Method.** A splice arm is the core CPE of one stream plus the FIL/SBR tail (to ID_END) of another, per AU, written
+as raw ADTS at 24 kHz and decoded by the FAAD dump decoder; every arm, the unspliced ones too, goes through that same
+path and is scored on the decoded WAV (`score_clip.py` aligns by cross-correlation). Bytes are raw AU bytes. FAAC base
+F = static probe `FAAC_SF_SMOOTH=0.6 FAAC_BS_DROPRATIO=12`, plus `FAAC_SBR_FREQ_SCALE=3` at 48k (= master + #579 +
+#595 + #599 + #601). Because a kx 22 core under a kx 31 SBR would leave a hole, FAAC is also encoded at the
+reference's crossover (Fm: `FAAC_SBR_START` 12 → kx 22 for fdk 48k, 13 → kx 24 for Apple 48k, 7 → kx 15 for fdk 32k,
+8 → kx 16 for Apple 32k; read back with DUMPTAB). fdk: 2212850 + fdkaac 1.0.9, `-p 5 -b <N>000`. Every arm is
+bits-adjusted vs F with FAAC's own padded slope anchors (40/56k, 28/40k).
+
+**Alignment.** Raw ADTS decode lags: FAAC 3042, fdk 5057, Apple 5186 output samples at both rates. So FAAC's input is
+padded by **2015 samples, same frame** for fdk (the fdk E0.1), and by **96, Apple n+1 = FAAC n** for Apple (as E0 at
+32k). After padding, decoded Fm lag + 2048k = reference lag exactly on 49/49 clips at every rung.
+
+**Controls (all before any arm was read).** Alignment 49/49 (fdk48, ap48, fdk32, ap32). Control S, self-splice
+byte-identical on every AU of F, Fm and X: 49/49 at each. **Control 0 on fdk's HE core** (dump → `parse_dump.py` →
+`reemit_tool` at 24 kHz → fdk's SBR tail spliced back): **49/49 PCM-exact** at 48k and at 32k. Control 0 on Apple's
+HE 48k core: 49/49 PCM-exact. Scorer determinism: 5 clips × 8 arms re-scored, 40/40 identical MOS.
+(KA/KF are step1 controls; no step1 arm is used here.)
+
+**HE 48k.** Adj vs F (positive = better than FAAC base), 49 clips:
+
+| arm | vs fdk: adj | median | W/L | bytes | vs Apple: adj | median | W/L | bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Fm (FAAC at the ref's kx) | −0.014 | −0.020 | 19/30 | −0.6 % | −0.046 | −0.048 | 13/36 | −0.3 % |
+| X (reference) | +0.065 | +0.056 | 35/13 | +1.0 % | +0.058 | +0.076 | 37/12 | +2.1 % |
+| FmC+XS (FAAC core, ref SBR) | −0.034 | −0.029 | 19/30 | +1.4 % | −0.017 | −0.017 | 19/30 | +1.0 % |
+| XC+FmS (ref core, FAAC SBR) | **+0.054** | +0.046 | 30/18 | −1.0 % | +0.010 | +0.030 | 33/16 | +0.8 % |
+| FC+XS (FAAC kx 31 core, ref SBR) | −0.075 | −0.075 | 15/34 | +3.4 % | −0.033 | −0.035 | 16/32 | +2.8 % |
+
+Components at the matched crossover (Gm = X − Fm):
+
+| | fdk adj | share | W/L | Apple adj | share | W/L |
+|---|---:|---:|---:|---:|---:|---:|
+| Gm | +0.079 | | 39/10 | +0.105 | | 40/9 |
+| s1 SBR, FAAC core held | −0.020 | −25 % | 19/30 | +0.030 | 28 % | 27/22 |
+| s2 SBR, ref core held | +0.011 | 14 % | 25/24 | +0.049 | 47 % | 34/14 |
+| c1 core, ref SBR held | **+0.099** | 125 % | 42/7 | **+0.075** | 72 % | 39/10 |
+| c2 core, FAAC SBR held | **+0.068** | 86 % | 40/8 | **+0.056** | 53 % | 38/11 |
+
+Worst/best: the core terms lose only on girl (−0.41 fdk, −0.99 Apple) and win most on Can't_Wait, trumpet, SinceAlways.
+
+**Verdict X48: the core carries it**, against both references (c1 and c2 ≥ 50 % of Gm with W > L at each). fdk's SBR
+is no better than FAAC's (s1 −0.020, s2 +0.011); Apple's SBR adds a smaller +0.03–0.05. fdk's core under FAAC's own
+SBR beats the FAAC base by +0.054 (30/18). FAAC's core moved down to the reference crossover loses (Fm), so the gap is
+per-bit core quality, not where the crossover sits.
+
+**What differs in the core** (`x_char.py`, 49-clip means; long-block band shares):
+
+| | short blocks | long max_sfb | ZERO | PNS | IS | M/S of regular | TNS | core bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| FAAC F (kx 31) | 44.7 % | 47.0 | 5.1 % | 32.4 % | 0 | 67 % | 0.6 % | 95.4 % |
+| FAAC Fm (kx 22) | 44.7 % | 42.0 | 5.8 % | 23.1 % | 0 | 67 % | 0.5 % | 93.9 % |
+| fdk (kx 22) | 6.1 % | 41.8 | 10.3 % | 0 | 1.3 % | 89 % | 15.1 % | 92.1 % |
+| Apple (kx 24) | 8.0 % | 42.8 | 9.7 % | 0 | 7.6 % | 77 % | 9.0 % | 92.8 % |
+
+**K48 (diagnostic).** Blanket switches on F: `--no-pns` −1.122 (0/49), `--shortctl 1` −0.469 (4/45, girl −2.75,
+Mohicans −2.18). Both ruled out as blanket changes: FAAC's HE allocation depends on PNS and short blocks, so the
+reference's decisions only pay as a set (as at LC 128k, where Apple's windows needed Apple's scalefactors).
+
+**HE 32k.** Same arms (fdk kx 15, Apple kx 16; slope 28/40k):
+
+| arm | vs fdk: adj | median | W/L | bytes | vs Apple: adj | median | W/L | bytes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Fm | −0.277 | −0.219 | 2/47 | −0.7 % | −0.137 | −0.125 | 3/46 | −0.5 % |
+| X | +0.023 | +0.066 | 31/18 | +2.4 % | +0.050 | +0.108 | 29/20 | +3.3 % |
+| FmC+XS | −0.065 | −0.040 | 19/30 | +4.9 % | **+0.056** | +0.050 | **34/15** | +2.2 % |
+| XC+FmS | −0.265 | −0.242 | 3/46 | −3.1 % | −0.187 | −0.125 | 11/38 | +0.6 % |
+| FC+XS | −0.134 | −0.096 | 14/35 | +8.2 % | −0.038 | −0.040 | 19/30 | +5.3 % |
+| Gm = X − Fm | +0.299 | +0.317 | 43/6 | | +0.187 | +0.213 | 39/10 | |
+| s1 / s2 (SBR) | +0.212 / +0.288 | | 42/7, 43/6 | 71 % / 96 % | +0.193 / +0.237 | | 47/2, 48/1 | 103 % / 127 % |
+| c1 / c2 (core) | +0.087 / +0.012 | | 37/12, 27/22 | 29 % / 4 % | −0.006 / −0.050 | | 27/22, 24/25 | −3 % / −27 % |
+
+**Verdict X32: the SBR carries it at the references' crossover** (s1, s2 ≥ 50 % with W > L against both). FAAC's SBR
+is what fails at a low crossover (Fm −0.28 / −0.14, the S4-H loss), and a better SBR there would pay: FAAC's own core
+at kx 16 under Apple's SBR beats the FAAC base by **+0.056 (34/15)**. fdk's core adds a little (c1 +0.087, c2 +0.012).
+
+**What differs in the SBR payload** (`x_sbr.py`, per channel-frame, 49-clip means; the same at 32k and 48k):
+FAAC sends a constant noise floor (`SBR_NOISE_LEVEL_DEFAULT` 12, one noise band) and inverse filtering mode 3
+(strong) on every frame, never add_harmonic, and only the FIXFIX and VARFIX frame classes. fdk and Apple adapt: invf off/low
+on 90–94 % of noise bands (strong 2–3 %), noise floors ~11–14 dB higher on average, add_harmonic on 7–11 % of frames,
+all four frame classes, 1.7–1.9 envelopes per frame at 32k (FAAC 1.27).
+
+**Reading.** HE 48k is a core problem (FAAC's HE core spends bits worse than fdk's or Apple's at the same crossover and
+bytes; its decisions differ as a set: 45 % short vs 6–8 %, PNS on a quarter of the bands vs none, almost no TNS).
+HE 32k is an SBR problem at low crossover: FAAC's fixed noise floor and strong inverse filtering are the obvious
+difference, and a crossover move only pays once they adapt. No encoder change passed or was proposed in this stage.

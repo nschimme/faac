@@ -1,4 +1,4 @@
-# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S5)
+# Plan: close FAAC's MOS gap to Apple and fdk-aac (handoff, 2026-09-30, updated after Stage S6)
 
 You are picking up a research programme on the FAAC AAC encoder (`nschimme/faac`).
 The goal is to reach the perceptual quality (MOS) of Apple's AAC encoder, the
@@ -10,7 +10,60 @@ running anything.
 Out of scope: throughput and footprint optimisation (another agent owns it);
 upstream (`knik0/faac`) PRs; merging any probe branch.
 
-## 0. Status after Stage S5 (2026-09-30, fifth session) — read this first
+## 0. Status after Stage S6 (2026-09-30, sixth session) — read this first
+
+Details: `LADDER_RESULT.md` → "Stage S6-X". Scripts `scripts/s6/`, results `results/s6/`, pre-registered rules
+`results/s6/prereg.md`. §0-S5 below is history; its steps 1 (HE 48k split) and 2 (HE 32k split) are done.
+
+**What S6 settled** (bitstream splice: one stream's core CPE + another's SBR tail, all arms through the same FAAD path;
+FAAC also encoded at the reference's crossover so neither splice leaves a hole; controls 49/49: alignment, self-splice,
+Control 0 on fdk's HE core at 32k and 48k and on Apple's at 48k, scorer determinism 40/40):
+- **HE 48k: the core carries the gap**, against fdk (core +0.099 / +0.068 of Gm +0.079, 42/7 and 40/8) and Apple
+  (+0.075 / +0.056 of +0.105). fdk's SBR is no better than FAAC's (−0.020 / +0.011); Apple's adds +0.03–0.05. fdk's
+  core under FAAC's own SBR beats the FAAC base by +0.054. FAAC's HE core differs as a set: 45 % short blocks (fdk 6 %,
+  Apple 8 %), PNS on 23–32 % of long bands (refs 0), TNS 0.5 % (refs 9–15 %), M/S 67 % (refs 77–89 %). Blanket switches
+  lose badly (`--no-pns` −1.12, `--shortctl 1` −0.47), so no single core decision is the lever.
+- **HE 32k: at the references' crossover the SBR carries it** (fdk 71 % / 96 %, Apple 103 % / 127 %, W/L ≥ 42/7).
+  FAAC's SBR is what fails at a low crossover (S4-H). FAAC's own core at kx 16 under Apple's SBR beats the FAAC base
+  by **+0.056 (34/15)**: that is the ceiling of an SBR fix plus a crossover move at 32k.
+- FAAC's SBR payload is fixed: constant noise floor (`SBR_NOISE_LEVEL_DEFAULT` 12, one noise band), inverse filtering
+  mode 3 (strong) always (`SBR_INVF_MODE`), no add_harmonic, only FIXFIX/VARFIX. fdk and Apple: invf off/low on
+  90–94 % of noise bands, noise floors ~11–14 dB higher on average, add_harmonic on 7–11 % of frames.
+- Alignment for splices/injection: raw ADTS lags FAAC 3042, fdk 5057, Apple 5186 (48 kHz output, both rates). fdk:
+  pad FAAC's input 2015 samples, same frame. Apple: pad 96, Apple n+1 = FAAC n.
+
+**Scoreboard** is unchanged from S5 (below); X − F in S6 on the #601 base: fdk +0.065 at 48k, Apple +0.058.
+
+**Open PRs on nschimme/faac:** #595, #599, #596, #597, #600, #601. CI failures are another agent's.
+
+### Next steps, in order
+
+1. **HE SBR noise floor and inverse filtering** (32k first; ceiling +0.056 at kx 16 with Apple's SBR, and Apple's SBR
+   is also worth +0.03–0.05 at 48k). Add probe knobs for the two constants (`SBR_NOISE_LEVEL_DEFAULT`,
+   `SBR_INVF_MODE`; knob unset = base, PCM 49/49), sweep invf 0/1/2 and a noise level bracket at the base kx 31 and at
+   kx 16 (`FAAC_SBR_START=8`), 32k and 48k, H1 rule. If a constant pair moves the low-crossover arm most of the way to
+   +0.056, a crossover retry at 32k follows, then a per-band estimate (tonality of source vs patched HF, as fdk's
+   `sbr_encoder` does). `libfaac/sbr_inject.c` (`FAAC_SBR_INJECT`) could carry a reference's noise/invf/harm fields
+   into FAAC's SBR for a field-by-field split, but it reads `R` records the current `faad-ladder-dump` doesn't write;
+   add them to the dump first if the constants don't explain it.
+2. **HE 48k core** (fdk +0.065–0.079, Apple +0.058–0.105). The decisions differ as a set, so start where LC started:
+   inject the reference's window sequence into FAAC's HE core rate loop (`FAAC_CORE_INJECT` `win`, the LC W arm;
+   alignment above; control first: injection of FAAC's own HE dump = F, PCM 49/49) and read it against F; then PNS at HE (a threshold, not off: `--no-pns` −1.12). The step1 swap
+   matrix is not available at HE (KA fails, S3-E0) and fdk transplants are dead (§5).
+3. **Re-baseline HE after #595/#599/#601 land** (and decide #579), as S5 step 4.
+4. Parked: the LC 128k Apple residual (+0.008), LC 64k, windows at LC, M/S, SBR stop, crossover alone.
+
+### S6 session facts
+- Bootstrap as S5 (~20 min, run the dataset clones, fdk build and `jules_setup.sh` in the background). fdk wrapper
+  `/home/user/lw/bin/fdk_he` (`fdkaac -S -p 5 -b <N>000`).
+- `x_run.py` makes a padded WAV per clip and three encoders read it: create them serially first (a race truncated
+  encodes in the first run; fixed).
+- One split job (8 arms × 49 clips, FAAD decode + score) ≈ 50 min alone; four side by side on 4 cores took ~70 min.
+- The FAAD dump's `F` records per SBR channel-frame: class, L_E, L_Q, freq_res list, amp_res (0 = 1.5 dB), invf list,
+  add_harmonic flag, count, coupling, −1, mean envelope and noise energy in dB.
+- `pkill -f <pattern>` with the pattern in your own command killed the shell again (exit 144).
+
+## 0-S5. Status after Stage S5 (2026-09-30, fifth session)
 
 Details: `LADDER_RESULT.md` → "Stage S5-F2", "S5-B3", "S5-H2". Scripts `scripts/s5/`, results `results/s5/`,
 pre-registered rules `results/s5/prereg.md`. §0-S4 below is history; its steps 1 (F2), 2 (H2) and 3 (B3) are done.

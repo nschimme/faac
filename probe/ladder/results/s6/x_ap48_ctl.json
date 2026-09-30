@@ -1,0 +1,639 @@
+{
+"12-German-male-speech.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 185,
+"Fm": 185,
+"X": 187
+}
+},
+"15-Good-evening.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 202,
+"Fm": 202,
+"X": 204
+}
+},
+"21-classic.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 228,
+"Fm": 228,
+"X": 229
+}
+},
+"24-Greensleeves-Korean-male-speech.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 206,
+"Fm": 206,
+"X": 207
+}
+},
+"25-This-is-the-end.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 217,
+"Fm": 217,
+"X": 218
+}
+},
+"27-last-song-drums-and-trampets.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 235,
+"Fm": 235,
+"X": 237
+}
+},
+"35_SQAM_glockenspiel_cut.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"4-Sound-English-male.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 213,
+"Fm": 213,
+"X": 215
+}
+},
+"9-Have-big-expensive-car.441.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 229,
+"Fm": 229,
+"X": 231
+}
+},
+"Asleep__4.11-4.31_.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Changes.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Coral.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"ExitMusic.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Girl_In_The_Fire__Sample_.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Greatest_Love_of_All_2min57.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Hey Tonight.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Hotel California.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Jupiter, the Bringer of Jolity.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Last_Of_The_Mohicanz__Sample_.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"NewYorkCity.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Only Time.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Robots_old.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Severance__1.31-1.51_.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Shinsho_pool_3min45_4min4.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"SinceAlways.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"SlavesOfFear.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"The Chastising of Renegade.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Through The Fire And Flames.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"TrosYGareg.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"Waiting.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"With Love (Outro).16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"bah": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 224,
+"Fm": 224,
+"X": 225
+}
+},
+"bas": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"bonhemian_rhapsody.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"clapton_44k.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"cst": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 154,
+"Fm": 154,
+"X": 156
+}
+},
+"fms": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"girl.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"glk": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"hrp": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 208,
+"Fm": 208,
+"X": 209
+}
+},
+"liberate.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 119,
+"Fm": 119,
+"X": 120
+}
+},
+"lob": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 168,
+"Fm": 168,
+"X": 169
+}
+},
+"mof": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"qrt": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"sandman.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"take_your_finger_frin_my_head.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"trumpet.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+},
+"velvet.16b48k": {
+"selfsplice_bad_F": 0,
+"selfsplice_bad_Fm": 0,
+"selfsplice_bad_X": 0,
+"lag_Fm": 3138,
+"lag_X": 5186,
+"lag_ok": true,
+"frames": {
+"F": 236,
+"Fm": 236,
+"X": 237
+}
+}
+}

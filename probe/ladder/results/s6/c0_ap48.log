@@ -1,0 +1,50 @@
+00 12-German-male-speech.441.16b48k {'stem': '12-German-male-speech.441.16b48k', 'rms': 2489.361563598082, 'frames': 187, 'apple_frames': 187, 'diff_samples': 0, 'n': 765952, 'bitexact_frames': 29}
+01 15-Good-evening.441.16b48k {'stem': '15-Good-evening.441.16b48k', 'rms': 3901.6195523027145, 'frames': 204, 'apple_frames': 204, 'diff_samples': 0, 'n': 835584, 'bitexact_frames': 2}
+02 21-classic.441.16b48k {'stem': '21-classic.441.16b48k', 'rms': 5373.369553409502, 'frames': 229, 'apple_frames': 229, 'diff_samples': 0, 'n': 937984, 'bitexact_frames': 1}
+03 24-Greensleeves-Korean-male-speech.441.16b48k {'stem': '24-Greensleeves-Korean-male-speech.441.16b48k', 'rms': 2013.4451591093664, 'frames': 207, 'apple_frames': 207, 'diff_samples': 0, 'n': 847872, 'bitexact_frames': 2}
+04 25-This-is-the-end.441.16b48k {'stem': '25-This-is-the-end.441.16b48k', 'rms': 4509.007844494718, 'frames': 218, 'apple_frames': 218, 'diff_samples': 0, 'n': 892928, 'bitexact_frames': 1}
+05 27-last-song-drums-and-trampets.441.16b48k {'stem': '27-last-song-drums-and-trampets.441.16b48k', 'rms': 2550.7846203989484, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+06 35_SQAM_glockenspiel_cut.16b48k {'stem': '35_SQAM_glockenspiel_cut.16b48k', 'rms': 1664.9498166166702, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 3}
+07 4-Sound-English-male.441.16b48k {'stem': '4-Sound-English-male.441.16b48k', 'rms': 3482.6113277385202, 'frames': 215, 'apple_frames': 215, 'diff_samples': 0, 'n': 880640, 'bitexact_frames': 17}
+08 9-Have-big-expensive-car.441.16b48k {'stem': '9-Have-big-expensive-car.441.16b48k', 'rms': 3634.2200150249764, 'frames': 231, 'apple_frames': 231, 'diff_samples': 0, 'n': 946176, 'bitexact_frames': 2}
+09 Asleep__4.11-4.31_.16b48k {'stem': 'Asleep__4.11-4.31_.16b48k', 'rms': 8583.67104632767, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+10 Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k {'stem': "Can't Wait Until Tonight (Dry Wurlitzer Mix).16b48k", 'rms': 2999.2236843939636, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+11 Changes.16b48k {'stem': 'Changes.16b48k', 'rms': 1266.0770189779118, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+12 Coral.16b48k {'stem': 'Coral.16b48k', 'rms': 4936.594636662972, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+13 ExitMusic.16b48k {'stem': 'ExitMusic.16b48k', 'rms': 3629.3700922883695, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 5}
+14 Girl_In_The_Fire__Sample_.16b48k {'stem': 'Girl_In_The_Fire__Sample_.16b48k', 'rms': 2116.7660636563246, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+15 Greatest_Love_of_All_2min57.16b48k {'stem': 'Greatest_Love_of_All_2min57.16b48k', 'rms': 2867.371041420709, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+16 Hey Tonight.16b48k {'stem': 'Hey Tonight.16b48k', 'rms': 5142.803370256418, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 6}
+17 Hotel California.16b48k {'stem': 'Hotel California.16b48k', 'rms': 4068.86286880338, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+18 Jupiter, the Bringer of Jolity.16b48k {'stem': 'Jupiter, the Bringer of Jolity.16b48k', 'rms': 2228.6352556075663, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+19 Last_Of_The_Mohicanz__Sample_.16b48k {'stem': 'Last_Of_The_Mohicanz__Sample_.16b48k', 'rms': 8913.867057376685, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 3}
+20 NewYorkCity.16b48k {'stem': 'NewYorkCity.16b48k', 'rms': 7193.451982846522, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+21 Only Time.16b48k {'stem': 'Only Time.16b48k', 'rms': 4791.105183705975, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+22 Robots_old.16b48k {'stem': 'Robots_old.16b48k', 'rms': 1582.4228355646756, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+23 Severance__1.31-1.51_.16b48k {'stem': 'Severance__1.31-1.51_.16b48k', 'rms': 2479.372250596209, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+24 Shinsho_pool_3min45_4min4.16b48k {'stem': 'Shinsho_pool_3min45_4min4.16b48k', 'rms': 1785.2957826773606, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 5}
+25 SinceAlways.16b48k {'stem': 'SinceAlways.16b48k', 'rms': 5435.870011386555, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 18}
+26 SlavesOfFear.16b48k {'stem': 'SlavesOfFear.16b48k', 'rms': 8630.57019829652, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+27 The Chastising of Renegade.16b48k {'stem': 'The Chastising of Renegade.16b48k', 'rms': 3905.8744729951263, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+28 Through The Fire And Flames.16b48k {'stem': 'Through The Fire And Flames.16b48k', 'rms': 7566.632122403362, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+29 TrosYGareg.16b48k {'stem': 'TrosYGareg.16b48k', 'rms': 8602.173182337094, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+30 Waiting.16b48k {'stem': 'Waiting.16b48k', 'rms': 4957.762706877234, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 3}
+31 With Love (Outro).16b48k {'stem': 'With Love (Outro).16b48k', 'rms': 4368.798560694592, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+32 bah {'stem': 'bah', 'rms': 2137.2447135572133, 'frames': 225, 'apple_frames': 225, 'diff_samples': 0, 'n': 921600, 'bitexact_frames': 1}
+33 bas {'stem': 'bas', 'rms': 2591.388953709726, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+34 bonhemian_rhapsody.16b48k {'stem': 'bonhemian_rhapsody.16b48k', 'rms': 926.7636082655524, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+35 clapton_44k.16b48k {'stem': 'clapton_44k.16b48k', 'rms': 2253.430973353525, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 3}
+36 cst {'stem': 'cst', 'rms': 1775.5153293076091, 'frames': 156, 'apple_frames': 156, 'diff_samples': 0, 'n': 638976, 'bitexact_frames': 2}
+37 fms {'stem': 'fms', 'rms': 2648.1690667571575, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 16}
+38 girl.16b48k {'stem': 'girl.16b48k', 'rms': 2681.576535394916, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+39 glk {'stem': 'glk', 'rms': 1473.4819356768078, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 6}
+40 hrp {'stem': 'hrp', 'rms': 1787.61609432641, 'frames': 209, 'apple_frames': 209, 'diff_samples': 0, 'n': 856064, 'bitexact_frames': 2}
+41 liberate.16b48k {'stem': 'liberate.16b48k', 'rms': 9382.820005513344, 'frames': 120, 'apple_frames': 120, 'diff_samples': 0, 'n': 491520, 'bitexact_frames': 1}
+42 lob {'stem': 'lob', 'rms': 1818.165273472479, 'frames': 169, 'apple_frames': 169, 'diff_samples': 0, 'n': 692224, 'bitexact_frames': 1}
+43 mof {'stem': 'mof', 'rms': 2386.84570324429, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+44 qrt {'stem': 'qrt', 'rms': 3101.7756704435824, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+45 sandman.16b48k {'stem': 'sandman.16b48k', 'rms': 4584.766273806255, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+46 take_your_finger_frin_my_head.16b48k {'stem': 'take_your_finger_frin_my_head.16b48k', 'rms': 4718.6238163398175, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 1}
+47 trumpet.16b48k {'stem': 'trumpet.16b48k', 'rms': 3717.8981874954784, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 2}
+48 velvet.16b48k {'stem': 'velvet.16b48k', 'rms': 6005.344326187137, 'frames': 237, 'apple_frames': 237, 'diff_samples': 0, 'n': 970752, 'bitexact_frames': 10}
+HE Control 0: 49/49 exact
